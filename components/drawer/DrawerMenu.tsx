@@ -1,17 +1,13 @@
-import React, { useEffect, memo } from 'react';
+import React, { memo } from 'react';
 import { Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
-import { useChatStore } from '../store/chatStore';
-import ColorPalette from '../colors';
+import { useChatStore } from '../../store/chatStore';
+import ColorPalette from '../../colors';
 
 const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const { chats, loadChats } = useChatStore();
-
-  useEffect(() => {
-    loadChats();
-  }, [loadChats]);
+  const { chats } = useChatStore();
 
   const navigate = (path: string) => {
     router.push(path);

@@ -58,9 +58,7 @@ export const removeModelFiles = async (db: SQLiteDatabase, id: string) => {
 
 export const getAllModels = async (db: SQLiteDatabase): Promise<Model[]> => {
   const models = await db.getAllAsync<Model>(`SELECT * FROM models`);
-  return models.map((model) => ({
-    ...model,
-  }));
+  return models;
 };
 
 export const getDownloadedModels = async (

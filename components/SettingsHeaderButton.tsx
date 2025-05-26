@@ -19,7 +19,7 @@ const SettingsHeaderButton = ({ chatId }: Props) => {
   );
 };
 
-export default React.memo(SettingsHeaderButton);
+export default SettingsHeaderButton;
 
 const styles = StyleSheet.create({
   button: {

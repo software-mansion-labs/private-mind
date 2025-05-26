@@ -1,7 +1,7 @@
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
-import CustomDrawerLayout from '../components/CustomDrawerLayout';
+import CustomDrawerLayout from '../components/drawer/CustomDrawerLayout';
 import { initDatabase } from '../database/db';
 
 export default function Layout() {

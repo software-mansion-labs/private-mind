@@ -42,7 +42,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.swmansion.localmind",
       "appleTeamId": "B357MU264T"
     },

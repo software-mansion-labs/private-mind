@@ -1,6 +1,6 @@
 import { useNavigation } from 'expo-router';
 import { useLayoutEffect } from 'react';
-import DrawerToggleButton from '../components/DrawerToggleButton';
+import DrawerToggleButton from '../components/drawer/DrawerToggleButton';
 
 export const useDefaultHeader = () => {
   const navigation = useNavigation();

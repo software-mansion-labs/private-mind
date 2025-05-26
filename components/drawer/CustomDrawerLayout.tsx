@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DrawerMenu from './DrawerMenu';
-import { DrawerProvider } from '../context/DrawerContext';
+import { DrawerProvider } from '../../context/DrawerContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;

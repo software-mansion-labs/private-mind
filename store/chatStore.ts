@@ -14,7 +14,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   chats: [],
   settings: {},
   db: null,
-  setDB: (db) => set({ db }),
+  setDB: (db) => {
+    set({ db });
+    get().loadChats();
+  },
   loadChats: async () => {
     const db = get().db;
     if (!db) return;
