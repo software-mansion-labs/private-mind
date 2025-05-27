@@ -13,7 +13,7 @@ export default function Layout() {
             <Stack.Screen name="model-hub" options={{ title: 'Models' }} />
             <Stack.Screen
               name="index"
-              options={{ title: 'Chat', animation: 'none' }}
+              options={{ title: 'Local Mind', animation: 'none' }}
             />
             <Stack.Screen name="benchmark" options={{ title: 'Benchmark' }} />
             <Stack.Screen name="chat/[id]" options={{ animation: 'none' }} />

@@ -1784,6 +1784,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-native-menu/menu@npm:^1.2.3":
+  version: 1.2.3
+  resolution: "@react-native-menu/menu@npm:1.2.3"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: b19dbb1d9583e2e065238c6d343c16b6ed00bc6297a59cc142d9f877484c4e3406cbe5e8f4fb9368b7cfb9eef11cbe0d1c79cccc8b0d725533d15dab02966b95
+  languageName: node
+  linkType: hard
+
 "@react-native/assets-registry@npm:0.79.2":
   version: 0.79.2
   resolution: "@react-native/assets-registry@npm:0.79.2"
@@ -5141,6 +5151,7 @@ __metadata:
   dependencies:
     "@babel/core": ^7.25.2
     "@react-native-async-storage/async-storage": 2.1.2
+    "@react-native-menu/menu": ^1.2.3
     "@react-native/metro-config": ^0.76.3
     "@react-navigation/drawer": ^7.3.11
     "@types/react": ~19.0.10

@@ -1,28 +1,30 @@
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../components/chat-screen/ChatScreen';
 import { useDefaultHeader } from '../../hooks/useDefaultHeader';
-import { useEffect, useLayoutEffect, useState } from 'react';
-import SettingsHeaderButton from '../../components/SettingsHeaderButton';
+import { useEffect, useState } from 'react';
 import { getChatMessages, Message } from '../../database/chatRepository';
 import { useLLMStore } from '../../store/llmStore';
+import { useChatHeader } from '../../hooks/useChatHeader';
+import RenameChatDialog from '../../components/RenameChatDialog';
+import { useChatStore } from '../../store/chatStore';
+import { Platform } from 'react-native';
 
 export default function ChatScreenWrapper() {
   useDefaultHeader();
   const { activeChatId, activeChatMessages, db } = useLLMStore();
-  const navigation = useNavigation();
+  const { getChatById, renameChat } = useChatStore();
   const { id } = useLocalSearchParams<{ id: string }>();
   const chatId = id ? Number(id) : null;
   const [messageHistory, setMessageHistory] = useState<Message[]>([]);
+  const [renameDialogVisible, setRenameDialogVisible] = useState(false);
+  const [chatTitle, setChatTitle] = useState(
+    getChatById(chatId as number)?.title || ''
+  );
 
-  useLayoutEffect(() => {
-    if (chatId) {
-      navigation.setOptions({
-        title: `Chat #${chatId}`,
-        // eslint-disable-next-line react/no-unstable-nested-components
-        headerRight: () => <SettingsHeaderButton chatId={chatId} />,
-      });
-    }
-  }, [navigation, chatId]);
+  useChatHeader({
+    chatId: chatId as number,
+    onRenamePress: setRenameDialogVisible,
+  });
 
   useEffect(() => {
     (async () => {
@@ -41,5 +43,26 @@ export default function ChatScreenWrapper() {
     }
   }, [activeChatMessages, activeChatId, chatId]);
 
-  return <ChatScreen chatId={chatId} messageHistory={messageHistory} />;
+  return (
+    <>
+      {Platform.OS === 'android' && (
+        <RenameChatDialog
+          visible={renameDialogVisible}
+          initialTitle={chatTitle}
+          onCancel={() => setRenameDialogVisible(false)}
+          onConfirm={(newTitle) => {
+            if (newTitle && newTitle.trim()) {
+              const truncatedInput =
+                newTitle.length > 17 ? newTitle.slice(0, 17) + '...' : newTitle;
+              renameChat(chatId as number, truncatedInput);
+              setChatTitle(truncatedInput);
+              setRenameDialogVisible(false);
+            }
+          }}
+        />
+      )}
+
+      <ChatScreen chatId={chatId} messageHistory={messageHistory} />
+    </>
+  );
 }
