@@ -24,6 +24,10 @@ const HeaderTitleWithMenu = ({ chatId, title, onSelect }: Props) => {
           title: 'Details',
         },
         {
+          id: 'import',
+          title: 'Import',
+        },
+        {
           id: 'export',
           title: 'Export',
         },

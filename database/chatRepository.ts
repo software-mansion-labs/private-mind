@@ -69,6 +69,28 @@ export const persistMessage = async (
   return result.lastInsertRowId;
 };
 
+export const importMessages = async (
+  db: SQLiteDatabase,
+  chatId: number,
+  messages: Message[]
+): Promise<void> => {
+  if (messages.length === 0) return;
+
+  const placeholders = messages.map(() => '(?, ?, ?, ?, ?, ?)').join(', ');
+  const flattenedValues = messages.flatMap((msg) => [
+    chatId,
+    msg.role,
+    msg.content,
+    msg.tokensPerSecond ?? 0,
+    msg.timeToFirstToken ?? 0,
+    msg.timestamp ?? Date.now(),
+  ]);
+  await db.runAsync(
+    `INSERT INTO messages (chatId, role, content, tokensPerSecond, timeToFirstToken, timestamp) VALUES ${placeholders}`,
+    flattenedValues
+  );
+};
+
 export const deleteChat = async (
   db: SQLiteDatabase,
   chatId: number

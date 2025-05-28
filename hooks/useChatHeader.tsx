@@ -10,6 +10,11 @@ import HeaderTitleWithMenu from '../components/HeaderTitleWithMenu';
 import { router } from 'expo-router';
 import { Platform, Alert } from 'react-native';
 import { useChatStore } from '../store/chatStore';
+import {
+  exportChatRoom,
+  importChatRoom,
+} from '../database/exportImportRepository';
+import { importMessages } from '../database/chatRepository';
 
 interface Props {
   chatId: number;
@@ -18,7 +23,7 @@ interface Props {
 
 export function useChatHeader({ chatId, onRenamePress }: Props) {
   const navigation = useNavigation();
-  const { getChatById, renameChat, deleteChat } = useChatStore();
+  const { getChatById, renameChat, deleteChat, db } = useChatStore();
   const [title, setTitle] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,13 +62,33 @@ export function useChatHeader({ chatId, onRenamePress }: Props) {
     }
   };
 
-  const handleMenuSelect = (action: string) => {
+  const handleMenuSelect = async (action: string) => {
     switch (action) {
       case 'details':
         router.push(`/chat/${chatId}/settings`);
         break;
       case 'rename':
         showRenamePrompt();
+        break;
+      case 'export':
+        await exportChatRoom(db!, chatId, title || `Chat ${chatId}`);
+        break;
+      case 'import':
+        const importedChat = await importChatRoom();
+        if (importedChat) {
+          try {
+            const newChatId = await useChatStore
+              .getState()
+              .addChat(importedChat.title);
+            if (newChatId) {
+              await importMessages(db!, newChatId, importedChat.messages);
+              router.push(`/chat/${newChatId}`);
+            }
+          } catch (error) {
+            console.error('Error importing chat:', error);
+            Alert.alert('Error', 'Failed to import chat. Please try again.');
+          }
+        }
         break;
       case 'delete':
         Alert.alert(
