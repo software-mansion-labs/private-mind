@@ -25,7 +25,6 @@ export const exportChatRoom = async (
     await FileSystem.writeAsStringAsync(fileUri, jsonData, {
       encoding: FileSystem.EncodingType.UTF8,
     });
-    console.log(`Chat room exported to ${fileUri}`);
 
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(fileUri, {

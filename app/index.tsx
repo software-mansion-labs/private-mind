@@ -21,8 +21,6 @@ export default function App() {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      // eslint-disable-next-line react/no-unstable-nested-components
-
       headerRight: () => <SettingsHeaderButton chatId={null} />,
     });
   }, [navigation]);

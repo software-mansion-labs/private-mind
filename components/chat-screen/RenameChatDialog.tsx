@@ -26,7 +26,7 @@ const RenameChatDialog: React.FC<Props> = ({
   const [newTitle, setNewTitle] = useState(initialTitle);
 
   const handleConfirm = () => {
-    onConfirm(newTitle);
+    onConfirm(newTitle.trim());
     setNewTitle('');
   };
 

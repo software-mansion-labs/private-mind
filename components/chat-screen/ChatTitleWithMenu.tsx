@@ -9,7 +9,7 @@ interface Props {
   onSelect: (action: string) => void;
 }
 
-const HeaderTitleWithMenu = ({ chatId, title, onSelect }: Props) => {
+const ChatTitleWithMenu = ({ chatId, title, onSelect }: Props) => {
   return (
     <MenuView
       title={title || `Chat ${chatId}`}
@@ -59,4 +59,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HeaderTitleWithMenu;
+export default ChatTitleWithMenu;

@@ -1,4 +1,4 @@
-import {
+import React, {
   Dispatch,
   SetStateAction,
   useEffect,
@@ -6,7 +6,7 @@ import {
   useState,
 } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import HeaderTitleWithMenu from '../components/HeaderTitleWithMenu';
+import HeaderTitleWithMenu from '../components/chat-screen/ChatTitleWithMenu';
 import { router } from 'expo-router';
 import { Platform, Alert } from 'react-native';
 import { useChatStore } from '../store/chatStore';
@@ -18,10 +18,10 @@ import { importMessages } from '../database/chatRepository';
 
 interface Props {
   chatId: number;
-  onRenamePress?: Dispatch<SetStateAction<boolean>>;
+  onRenamePress: Dispatch<SetStateAction<boolean>>;
 }
 
-export function useChatHeader({ chatId, onRenamePress }: Props) {
+const useChatHeader = ({ chatId, onRenamePress }: Props) => {
   const navigation = useNavigation();
   const { getChatById, renameChat, deleteChat, db } = useChatStore();
   const [title, setTitle] = useState<string | null>(null);
@@ -58,7 +58,7 @@ export function useChatHeader({ chatId, onRenamePress }: Props) {
         title || ''
       );
     } else {
-      onRenamePress?.(true);
+      onRenamePress(true);
     }
   };
 
@@ -125,16 +125,16 @@ export function useChatHeader({ chatId, onRenamePress }: Props) {
   };
 
   useLayoutEffect(() => {
-    if (chatId) {
-      navigation.setOptions({
-        headerTitle: () => (
-          <HeaderTitleWithMenu
-            chatId={chatId}
-            title={title || `Chat ${chatId}`}
-            onSelect={handleMenuSelect}
-          />
-        ),
-      });
-    }
+    navigation.setOptions({
+      headerTitle: () => (
+        <HeaderTitleWithMenu
+          chatId={chatId}
+          title={title || `Chat ${chatId}`}
+          onSelect={handleMenuSelect}
+        />
+      ),
+    });
   }, [navigation, chatId, title]);
-}
+};
+
+export default useChatHeader;

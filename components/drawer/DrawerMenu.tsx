@@ -41,7 +41,7 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
         return (
           <DrawerItem
             key={chat.id}
-            label={chat.title}
+            label={chat.title || `Chat ${chat.id}`}
             active={active}
             onPress={() => navigate(path)}
           />

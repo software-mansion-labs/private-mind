@@ -5,8 +5,8 @@ import { useDefaultHeader } from '../../hooks/useDefaultHeader';
 import { useEffect, useState } from 'react';
 import { getChatMessages, Message } from '../../database/chatRepository';
 import { useLLMStore } from '../../store/llmStore';
-import { useChatHeader } from '../../hooks/useChatHeader';
-import RenameChatDialog from '../../components/RenameChatDialog';
+import useChatHeader from '../../hooks/useChatHeader';
+import RenameChatDialog from '../../components/chat-screen/RenameChatDialog';
 import { useChatStore } from '../../store/chatStore';
 import { Platform } from 'react-native';
 
