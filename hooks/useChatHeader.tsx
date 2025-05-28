@@ -3,7 +3,6 @@ import React, {
   SetStateAction,
   useEffect,
   useLayoutEffect,
-  useState,
 } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import HeaderTitleWithMenu from '../components/chat-screen/ChatTitleWithMenu';
@@ -19,16 +18,26 @@ import { importMessages } from '../database/chatRepository';
 interface Props {
   chatId: number;
   onRenamePress: Dispatch<SetStateAction<boolean>>;
+  chatTitle: string;
+  setChatTitle: Dispatch<SetStateAction<string>>;
+  handleChatRename: (newTitle: string) => Promise<void>;
 }
 
-const useChatHeader = ({ chatId, onRenamePress }: Props) => {
+const useChatHeader = ({
+  chatId,
+  onRenamePress,
+  chatTitle,
+  setChatTitle,
+  handleChatRename,
+}: Props) => {
   const navigation = useNavigation();
   const { getChatById, renameChat, deleteChat, db } = useChatStore();
-  const [title, setTitle] = useState<string | null>(null);
 
   useEffect(() => {
     const chat = getChatById(chatId);
-    setTitle(chat?.title || 'Chat');
+    if (chat?.title) {
+      setChatTitle(chat.title);
+    }
   }, [chatId, getChatById]);
 
   const showRenamePrompt = () => {
@@ -44,18 +53,14 @@ const useChatHeader = ({ chatId, onRenamePress }: Props) => {
           {
             text: 'OK',
             onPress: (text) => {
-              if (text && text.trim()) {
-                const truncatedInput =
-                  text.length > 17 ? text.slice(0, 17) + '...' : text;
-
-                renameChat(chatId, truncatedInput);
-                setTitle(truncatedInput);
+              if (text) {
+                handleChatRename(text);
               }
             },
           },
         ],
         'plain-text',
-        title || ''
+        chatTitle
       );
     } else {
       onRenamePress(true);
@@ -71,7 +76,7 @@ const useChatHeader = ({ chatId, onRenamePress }: Props) => {
         showRenamePrompt();
         break;
       case 'export':
-        await exportChatRoom(db!, chatId, title || `Chat ${chatId}`);
+        await exportChatRoom(db!, chatId, chatTitle);
         break;
       case 'import':
         const importedChat = await importChatRoom();
@@ -127,14 +132,10 @@ const useChatHeader = ({ chatId, onRenamePress }: Props) => {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: () => (
-        <HeaderTitleWithMenu
-          chatId={chatId}
-          title={title || `Chat ${chatId}`}
-          onSelect={handleMenuSelect}
-        />
+        <HeaderTitleWithMenu title={chatTitle} onSelect={handleMenuSelect} />
       ),
     });
-  }, [navigation, chatId, title]);
+  }, [navigation, chatId, chatTitle]);
 };
 
 export default useChatHeader;

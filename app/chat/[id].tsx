@@ -16,15 +16,30 @@ export default function ChatScreenWrapper() {
   const { getChatById, renameChat } = useChatStore();
   const { id } = useLocalSearchParams<{ id: string }>();
   const chatId = id ? Number(id) : null;
+
   const [messageHistory, setMessageHistory] = useState<Message[]>([]);
   const [renameDialogVisible, setRenameDialogVisible] = useState(false);
   const [chatTitle, setChatTitle] = useState(
-    getChatById(chatId as number)?.title || ''
+    getChatById(chatId as number)?.title || `Chat #${chatId}`
   );
+
+  const handleChatRename = async (newTitle: string) => {
+    if (newTitle.trim()) {
+      // truncating new chat title to fixed length
+      const newChatTitle =
+        newTitle.length > 25 ? newTitle.slice(0, 25) + '...' : newTitle;
+      await renameChat(chatId as number, newChatTitle);
+      setChatTitle(newChatTitle);
+      setRenameDialogVisible(false);
+    }
+  };
 
   useChatHeader({
     chatId: chatId as number,
     onRenamePress: setRenameDialogVisible,
+    chatTitle: chatTitle,
+    setChatTitle: setChatTitle,
+    handleChatRename: handleChatRename,
   });
 
   useEffect(() => {
@@ -51,15 +66,7 @@ export default function ChatScreenWrapper() {
           visible={renameDialogVisible}
           initialTitle={chatTitle}
           onCancel={() => setRenameDialogVisible(false)}
-          onConfirm={(newTitle) => {
-            if (newTitle && newTitle.trim()) {
-              const truncatedInput =
-                newTitle.length > 17 ? newTitle.slice(0, 17) + '...' : newTitle;
-              renameChat(chatId as number, truncatedInput);
-              setChatTitle(truncatedInput);
-              setRenameDialogVisible(false);
-            }
-          }}
+          onConfirm={handleChatRename}
         />
       )}
 

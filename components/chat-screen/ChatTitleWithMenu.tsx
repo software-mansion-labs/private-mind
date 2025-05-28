@@ -4,15 +4,14 @@ import { MenuView } from '@react-native-menu/menu';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 interface Props {
-  chatId: number;
   title: string;
   onSelect: (action: string) => void;
 }
 
-const ChatTitleWithMenu = ({ chatId, title, onSelect }: Props) => {
+const ChatTitleWithMenu = ({ title, onSelect }: Props) => {
   return (
     <MenuView
-      title={title || `Chat ${chatId}`}
+      title={title}
       onPressAction={({ nativeEvent }) => onSelect(nativeEvent.event)}
       actions={[
         {

@@ -76,17 +76,15 @@ export const importMessages = async (
 ): Promise<void> => {
   if (messages.length === 0) return;
 
-  const placeholders = messages.map(() => '(?, ?, ?, ?, ?, ?)').join(', ');
+  const placeholders = messages.map(() => '(?, ?, ?, ?)').join(', ');
   const flattenedValues = messages.flatMap((msg) => [
     chatId,
     msg.role,
     msg.content,
-    msg.tokensPerSecond ?? 0,
-    msg.timeToFirstToken ?? 0,
     msg.timestamp ?? Date.now(),
   ]);
   await db.runAsync(
-    `INSERT INTO messages (chatId, role, content, tokensPerSecond, timeToFirstToken, timestamp) VALUES ${placeholders}`,
+    `INSERT INTO messages (chatId, role, content, timestamp) VALUES ${placeholders}`,
     flattenedValues
   );
 };
