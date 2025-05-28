@@ -8,26 +8,31 @@ import {
   Platform,
 } from 'react-native';
 import SendIcon from '../../assets/icons/send_icon.svg';
+import PauseIcon from '../../assets/icons/pause_icon.svg';
 import { Model } from '../../database/modelRepository';
 import ColorPalette from '../../colors';
 
 interface Props {
   isLoading: boolean;
+  isGenerating: boolean;
   selectedModel: Model | null;
   userInput: string;
   setUserInput: (text: string) => void;
   onSend: () => void;
   onSelectModel: () => void;
+  interrupt: () => void;
   inputRef: Ref<TextInput>;
 }
 
 const ChatInputBar = ({
   isLoading,
+  isGenerating,
   selectedModel,
   userInput,
   setUserInput,
   onSend,
   onSelectModel,
+  interrupt,
   inputRef,
 }: Props) => {
   return (
@@ -54,9 +59,16 @@ const ChatInputBar = ({
             onChangeText={setUserInput}
           />
           <View style={styles.buttonBar}>
-            <TouchableOpacity style={styles.sendButton} onPress={onSend}>
-              <SendIcon width={24} height={24} />
-            </TouchableOpacity>
+            {userInput && (
+              <TouchableOpacity style={styles.sendButton} onPress={onSend}>
+                <SendIcon width={24} height={24} />
+              </TouchableOpacity>
+            )}
+            {isGenerating && (
+              <TouchableOpacity style={styles.sendButton} onPress={interrupt}>
+                <PauseIcon height={24} width={24} padding={4} margin={8} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}

@@ -40,6 +40,7 @@ export default function ChatScreen({ chatId, messageHistory }: Props) {
     sendChatMessage,
     activeChatId,
     setActiveChatId,
+    interrupt,
   } = useLLMStore();
   const { addChat } = useChatStore();
 
@@ -129,12 +130,14 @@ export default function ChatScreen({ chatId, messageHistory }: Props) {
 
           <ChatInputBar
             isLoading={isLoading}
+            isGenerating={isGenerating}
             selectedModel={model}
             userInput={userInput}
             setUserInput={setUserInput}
             onSend={handleSendMessage}
             onSelectModel={() => setShowModelModal(true)}
             inputRef={inputRef}
+            interrupt={interrupt}
           />
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>

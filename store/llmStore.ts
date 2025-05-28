@@ -31,6 +31,7 @@ interface LLMStore {
   loadModel: (model: Model) => Promise<void>;
   setActiveChatId: (chatId: number) => void;
   runBenchmark: () => Promise<BenchmarkResult>;
+  interrupt: () => void;
 }
 
 const calculatePerformanceMetrics = (
@@ -216,7 +217,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const startTime = performance.now();
 
       try {
-        await LLMModule.generate([{role: 'system', content: 'You are helpful assistant. Do exactly what user tells you.'},{ role: 'user', content: BENCHMARK_PROMPT }]);
+        await LLMModule.generate([
+          {
+            role: 'system',
+            content:
+              'You are helpful assistant. Do exactly what user tells you.',
+          },
+          { role: 'user', content: BENCHMARK_PROMPT },
+        ]);
         const endTime = performance.now();
 
         clearInterval(memoryUsageTracker);
@@ -261,4 +269,5 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       id: benchmarkId,
     };
   },
+  interrupt: () => LLMModule.interrupt(),
 }));
