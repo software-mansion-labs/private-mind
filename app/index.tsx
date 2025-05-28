@@ -1,3 +1,4 @@
+import React from 'react';
 import { useFonts } from 'expo-font';
 import ChatScreen from '../components/chat-screen/ChatScreen';
 import { useDefaultHeader } from '../hooks/useDefaultHeader';

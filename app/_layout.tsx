@@ -1,3 +1,4 @@
+import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';

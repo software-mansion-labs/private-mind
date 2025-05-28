@@ -1,3 +1,4 @@
+import React from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../components/chat-screen/ChatScreen';
 import { useDefaultHeader } from '../../hooks/useDefaultHeader';
