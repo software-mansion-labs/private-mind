@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Button } from 'react-native';
 import Divider from '../Divider';
 import { Model } from '../../database/modelRepository';
 import { useModelStore } from '../../store/modelStore';
@@ -12,7 +12,7 @@ interface Props {
 
 const ModelCard = ({ model }: Props) => {
   const { downloadStates, downloadModel, removeModel } = useModelStore();
-  const { model: activeModel } = useLLMStore();
+  const { model: activeModel, loadModel, unloadModel } = useLLMStore();
 
   const downloadState = downloadStates[model.id] || {
     progress: 0,
@@ -21,6 +21,7 @@ const ModelCard = ({ model }: Props) => {
 
   const isDownloading = downloadState.status === 'downloading';
   const isLoaded = activeModel?.id === model.id;
+  const isRemote = model.source === 'remote';
 
   const [isDownloaded, setIsDownloaded] = useState(
     model.isDownloaded === 1 || downloadState.status === 'downloaded'
@@ -52,12 +53,39 @@ const ModelCard = ({ model }: Props) => {
 
   const getStatusHint = () => {
     if (isDownloading) return null;
+
     if (isDownloaded && isLoaded)
       return <Text style={styles.loadedHint}>Model Loaded</Text>;
+
     if (isDownloaded)
       return <Text style={styles.deleteHint}>Tap to Delete</Text>;
 
     return <Text style={styles.downloadHint}>Tap to Download</Text>;
+  };
+
+  const renderSideAction = () => {
+    if (isDownloading) return null;
+
+    if (isDownloaded && !isLoaded) {
+      return (
+        <TouchableOpacity
+          style={styles.loadButton}
+          onPress={async () => await loadModel(model)}
+        >
+          <Text style={styles.loadButtonText}>Load</Text>
+        </TouchableOpacity>
+      );
+    }
+
+    if (isDownloaded && isLoaded) {
+      return (
+        <TouchableOpacity style={styles.unloadButton} onPress={unloadModel}>
+          <Text style={styles.unloadButtonText}>Unload</Text>
+        </TouchableOpacity>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -68,14 +96,15 @@ const ModelCard = ({ model }: Props) => {
     >
       <View style={styles.header}>
         <Text style={styles.name}>{model.id}</Text>
-        <Text style={styles.sourceText}>
-          {model.source === 'remote' ? 'Remote' : 'Local'}
-        </Text>
+        <Text style={styles.sourceText}>{isRemote ? 'Remote' : 'Local'}</Text>
       </View>
 
       <Divider />
 
-      {getStatusHint()}
+      <View style={styles.statusRow}>
+        {getStatusHint()}
+        {renderSideAction()}
+      </View>
 
       {isDownloading && (
         <View style={styles.progressBarContainer}>
@@ -157,5 +186,31 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#fff',
     fontWeight: 'bold',
+  },
+  statusRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  loadButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: ColorPalette.primary,
+    borderRadius: 6,
+  },
+  loadButtonText: {
+    color: '#fff',
+    fontWeight: '500',
+  },
+  unloadButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: ColorPalette.danger,
+    borderRadius: 6,
+  },
+  unloadButtonText: {
+    color: '#fff',
+    fontWeight: '500',
   },
 });

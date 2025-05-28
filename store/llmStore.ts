@@ -29,6 +29,7 @@ interface LLMStore {
   sendChatMessage: (messages: Message[], newMessage: string) => Promise<void>;
   setDB: (db: SQLiteDatabase) => void;
   loadModel: (model: Model) => Promise<void>;
+  unloadModel: () => void;
   setActiveChatId: (chatId: number) => void;
   runBenchmark: () => Promise<BenchmarkResult>;
   interrupt: () => void;
@@ -93,6 +94,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     });
 
     set({ model, isLoading: false });
+  },
+
+  unloadModel: () => {
+    if (get().model !== null) {
+      LLMModule.delete();
+      set({ model: null, response: '', tokenCount: 0, firstTokenTime: 0 });
+    }
   },
 
   sendChatMessage: async (messages: Message[], newMessage: string) => {
