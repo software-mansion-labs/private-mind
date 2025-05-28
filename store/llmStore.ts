@@ -180,7 +180,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   runBenchmark: async () => {
     const { isGenerating, db, model, isLoading } = get();
 
-    const iterations = 1;
+    const iterations = 3;
 
     let avgTotalTime = 0;
     let avgTTFT = 0;
