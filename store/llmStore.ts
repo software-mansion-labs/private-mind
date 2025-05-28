@@ -82,9 +82,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       tokenizerConfigSource: model.tokenizerConfigPath,
       responseCallback: (response) => {
         set({ response });
-        set({ tokenCount: get().tokenCount + 1 });
-        if (get().tokenCount === 2) {
-          set({ firstTokenTime: performance.now() });
+        if (response != '') {
+          set({ tokenCount: get().tokenCount + 1 });
+          if (get().tokenCount === 1) {
+            set({ firstTokenTime: performance.now() });
+          }
         }
       },
     });
@@ -214,7 +216,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const startTime = performance.now();
 
       try {
-        await LLMModule.generate([{ role: 'user', content: BENCHMARK_PROMPT }]);
+        await LLMModule.generate([{role: 'system', content: 'You are helpful assistant. Do exactly what user tells you.'},{ role: 'user', content: BENCHMARK_PROMPT }]);
         const endTime = performance.now();
 
         clearInterval(memoryUsageTracker);

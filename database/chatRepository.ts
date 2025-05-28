@@ -98,18 +98,6 @@ export const setChatSettings = async (
   chatId: number,
   settings: ChatSettings
 ): Promise<void> => {
-  if (chatId === null) {
-    await AsyncStorage.setItem(
-      'default_chat_settings',
-      JSON.stringify({
-        systemPrompt: settings.systemPrompt,
-        contextWindow: settings.contextWindow,
-      })
-    );
-
-    return;
-  }
-
   await db.runAsync(
     `
     INSERT INTO chatSettings (chatId, systemPrompt, contextWindow)
