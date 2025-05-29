@@ -65,7 +65,11 @@ export default function ChatScreen({ chatId, messageHistory }: Props) {
     if (chatIdRef.current) {
       setActiveChatId(chatIdRef.current);
     } else {
-      const newChatId = await addChat();
+      // truncating new chat title to fixed lenght
+      const newChatTitle =
+        userInput.length > 25 ? userInput.slice(0, 25) + '...' : userInput;
+
+      const newChatId = await addChat(newChatTitle);
       chatIdRef.current = newChatId!;
       setActiveChatId(chatIdRef.current);
       router.replace(`/chat/${newChatId}`);

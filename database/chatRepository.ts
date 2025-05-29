@@ -3,6 +3,8 @@ import { SQLiteDatabase } from 'expo-sqlite';
 
 export type Chat = {
   id: number;
+  title: string;
+  createdAt: number;
 };
 
 export type ChatSettings = {
@@ -20,13 +22,18 @@ export type Message = {
   timestamp: number;
 };
 
-export const createChat = async (db: SQLiteDatabase): Promise<number> => {
-  const result = await db.runAsync(`INSERT INTO chats DEFAULT VALUES;`);
+export const createChat = async (
+  db: SQLiteDatabase,
+  title: string
+): Promise<number> => {
+  const result = await db.runAsync(`INSERT INTO chats (title) VALUES (?)`, [
+    title,
+  ]);
   return result.lastInsertRowId;
 };
 
 export const getAllChats = async (db: SQLiteDatabase): Promise<Chat[]> => {
-  return await db.getAllAsync<Chat>(`SELECT id FROM chats ORDER BY id DESC`);
+  return await db.getAllAsync<Chat>(`SELECT * FROM chats ORDER BY id DESC`);
 };
 
 export const getChatMessages = async (
@@ -60,6 +67,26 @@ export const persistMessage = async (
   );
 
   return result.lastInsertRowId;
+};
+
+export const importMessages = async (
+  db: SQLiteDatabase,
+  chatId: number,
+  messages: Message[]
+): Promise<void> => {
+  if (messages.length === 0) return;
+
+  const placeholders = messages.map(() => '(?, ?, ?, ?)').join(', ');
+  const flattenedValues = messages.flatMap((msg) => [
+    chatId,
+    msg.role,
+    msg.content,
+    msg.timestamp ?? Date.now(),
+  ]);
+  await db.runAsync(
+    `INSERT INTO messages (chatId, role, content, timestamp) VALUES ${placeholders}`,
+    flattenedValues
+  );
 };
 
 export const deleteChat = async (
@@ -108,4 +135,14 @@ export const setChatSettings = async (
   `,
     [chatId, settings.systemPrompt, settings.contextWindow]
   );
+};
+
+export const renameChat = async (
+  db: SQLiteDatabase,
+  id: number,
+  newTitle: string
+) => {
+  await db.runAsync(`UPDATE chats SET title = ? WHERE id = ?`, [newTitle, id]);
+
+  return;
 };

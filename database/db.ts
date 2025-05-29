@@ -19,7 +19,9 @@ export const initDatabase = async (db: SQLiteDatabase) => {
 
   await db.execAsync(`
       CREATE TABLE IF NOT EXISTS chats (
-        id INTEGER PRIMARY KEY AUTOINCREMENT
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT DEFAULT '',
+        createdAt timestamp DEFAULT CURRENT_TIMESTAMP
       )`);
 
   await db.execAsync(`

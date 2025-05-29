@@ -1784,6 +1784,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-native-menu/menu@npm:^1.2.3":
+  version: 1.2.3
+  resolution: "@react-native-menu/menu@npm:1.2.3"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: b19dbb1d9583e2e065238c6d343c16b6ed00bc6297a59cc142d9f877484c4e3406cbe5e8f4fb9368b7cfb9eef11cbe0d1c79cccc8b0d725533d15dab02966b95
+  languageName: node
+  linkType: hard
+
 "@react-native/assets-registry@npm:0.79.2":
   version: 0.79.2
   resolution: "@react-native/assets-registry@npm:0.79.2"
@@ -4015,6 +4025,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-sharing@npm:~13.1.5":
+  version: 13.1.5
+  resolution: "expo-sharing@npm:13.1.5"
+  peerDependencies:
+    expo: "*"
+  checksum: e1d23401762c2174b4483e4306771da7132c54f4be5880895452bd7e403d82a30311e601a9fe2b3eb361d611b1b2de1b98ba9908b86fe8912164044c7dc12f9d
+  languageName: node
+  linkType: hard
+
 "expo-sqlite@npm:~15.2.9":
   version: 15.2.10
   resolution: "expo-sqlite@npm:15.2.10"
@@ -5141,6 +5160,7 @@ __metadata:
   dependencies:
     "@babel/core": ^7.25.2
     "@react-native-async-storage/async-storage": 2.1.2
+    "@react-native-menu/menu": ^1.2.3
     "@react-native/metro-config": ^0.76.3
     "@react-navigation/drawer": ^7.3.11
     "@types/react": ~19.0.10
@@ -5150,6 +5170,7 @@ __metadata:
     expo-font: ~13.3.1
     expo-linking: ~7.1.4
     expo-router: ~5.0.6
+    expo-sharing: ~13.1.5
     expo-sqlite: ~15.2.9
     expo-status-bar: ~2.2.3
     metro-config: ^0.81.0
