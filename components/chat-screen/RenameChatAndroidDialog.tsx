@@ -17,7 +17,7 @@ interface Props {
   onConfirm: (newTitle: string) => void;
 }
 
-const RenameChatDialog: React.FC<Props> = ({
+const RenameChatAndroidDialog: React.FC<Props> = ({
   visible,
   initialTitle,
   onCancel,
@@ -58,7 +58,7 @@ const RenameChatDialog: React.FC<Props> = ({
   );
 };
 
-export default RenameChatDialog;
+export default RenameChatAndroidDialog;
 
 const styles = StyleSheet.create({
   overlay: {

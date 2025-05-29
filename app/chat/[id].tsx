@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { getChatMessages, Message } from '../../database/chatRepository';
 import { useLLMStore } from '../../store/llmStore';
 import useChatHeader from '../../hooks/useChatHeader';
-import RenameChatDialog from '../../components/chat-screen/RenameChatDialog';
+import RenameChatAndroidDialog from '../../components/chat-screen/RenameChatAndroidDialog';
 import { useChatStore } from '../../store/chatStore';
 import { Platform } from 'react-native';
 
@@ -18,6 +18,10 @@ export default function ChatScreenWrapper() {
   const chatId = id ? Number(id) : null;
 
   const [messageHistory, setMessageHistory] = useState<Message[]>([]);
+  /*
+    For iOS, we are using default prompt alert which doesn't
+    exist on Android. That's why we have to use a custom dialog which is a component and can't be returned from a hook.
+  */
   const [renameDialogVisible, setRenameDialogVisible] = useState(false);
   const [chatTitle, setChatTitle] = useState(
     getChatById(chatId as number)?.title || `Chat #${chatId}`
@@ -62,7 +66,7 @@ export default function ChatScreenWrapper() {
   return (
     <>
       {Platform.OS === 'android' && (
-        <RenameChatDialog
+        <RenameChatAndroidDialog
           visible={renameDialogVisible}
           initialTitle={chatTitle}
           onCancel={() => setRenameDialogVisible(false)}
