@@ -28,6 +28,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   await db.execAsync(`
       CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        modelName TEXT,
         timestamp timestamp DEFAULT CURRENT_TIMESTAMP,
         chatId INTEGER,
         role TEXT,
@@ -48,7 +49,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   await db.execAsync(`
       CREATE TABLE IF NOT EXISTS benchmarks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        modelId TEXT,
+        modelId TEXT DEFAULT '',
         totalTime INTEGER DEFAULT 0,
         timeToFirstToken INTEGER DEFAULT 0,
         tokensGenerated INTEGER DEFAULT 0,

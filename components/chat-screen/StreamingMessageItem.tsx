@@ -4,12 +4,14 @@ import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import LlamaIcon from '../../assets/icons/llama_icon.svg';
 import ColorPalette from '../../colors';
+import { useLLMStore } from '../../store/llmStore';
 
 interface StreamingMessageItemProps {
   content: string;
 }
 
 const StreamingMessageItem = memo(({ content }: StreamingMessageItemProps) => {
+  const { model } = useLLMStore();
   // Function to parse streaming content with thinking blocks
   const parseStreamingContent = (text: string) => {
     const thinkStartIndex = text.indexOf('<think>');
@@ -54,6 +56,7 @@ const StreamingMessageItem = memo(({ content }: StreamingMessageItemProps) => {
         <LlamaIcon width={24} height={24} />
       </View>
       <View style={styles.bubbleContent}>
+        <Text>{model!.id}</Text>
         {parsedContent.normalContent.trim() && (
           <MarkdownComponent text={parsedContent.normalContent} />
         )}

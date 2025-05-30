@@ -58,6 +58,7 @@ const MessageItem = memo(({ message }: MessageItemProps) => {
         </View>
       )}
       <View style={styles.bubbleContent}>
+        <Text>{message.modelName}</Text>
         {contentParts.map((part, index) => (
           <View key={index}>
             {part.type === 'thinking' ? (

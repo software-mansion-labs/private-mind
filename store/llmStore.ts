@@ -14,7 +14,6 @@ import {
   insertBenchmark,
 } from '../database/benchmarkRepository';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
-import { useChatStore } from './chatStore';
 
 interface LLMStore {
   isLoading: boolean;
@@ -158,6 +157,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       if (generatedResponse) {
         const assistantMessageId = await persistMessage(db, {
           role: 'assistant',
+          modelName: model.id,
           content: generatedResponse,
           tokensPerSecond: tokensPerSecond,
           timeToFirstToken: timeToFirstToken,
