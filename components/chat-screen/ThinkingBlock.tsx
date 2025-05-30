@@ -32,9 +32,11 @@ const ThinkingBlock = memo(
       }
 
       prevContentRef.current = content;
-    }, [content, expanded]);
+    }, [content]);
 
     const toggleExpanded = () => {
+      if (!isComplete) return;
+
       setExpanded((prev) => !prev);
     };
 
@@ -57,7 +59,7 @@ const ThinkingBlock = memo(
         ) : (
           <ScrollView
             ref={scrollViewRef}
-            style={{ maxHeight: 60 }}
+            style={styles.collapsedContent}
             scrollEnabled={false}
             onContentSizeChange={() => {
               scrollViewRef.current?.scrollToEnd({ animated: false });
@@ -102,12 +104,8 @@ const styles = StyleSheet.create({
     color: ColorPalette.blueDark,
     fontWeight: 'bold',
   },
-  scrollView: {
-    maxHeight: 200, // optional: allows expansion
-  },
   collapsedContent: {
-    maxHeight: 60,
-    overflow: 'hidden',
+    maxHeight: 55,
   },
   streamingCursor: {
     fontSize: 16,

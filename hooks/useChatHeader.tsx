@@ -5,7 +5,6 @@ import React, {
   useLayoutEffect,
 } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import HeaderTitleWithMenu from '../components/chat-screen/ChatTitleWithMenu';
 import { router } from 'expo-router';
 import { Platform, Alert } from 'react-native';
 import { useChatStore } from '../store/chatStore';
@@ -14,6 +13,7 @@ import {
   importChatRoom,
 } from '../database/exportImportRepository';
 import { importMessages } from '../database/chatRepository';
+import ChatTitleWithMenu from '../components/chat-screen/ChatTitleWithMenu';
 
 interface Props {
   chatId: number;
@@ -132,7 +132,7 @@ const useChatHeader = ({
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: () => (
-        <HeaderTitleWithMenu title={chatTitle} onSelect={handleMenuSelect} />
+        <ChatTitleWithMenu title={chatTitle} onSelect={handleMenuSelect} />
       ),
     });
   }, [navigation, chatId, chatTitle]);

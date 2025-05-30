@@ -13,6 +13,7 @@ interface ChatStore {
   db: SQLiteDatabase | null;
   setDB: (db: SQLiteDatabase) => void;
   loadChats: () => Promise<void>;
+  updateLastUsed: (id: number) => void;
   getChatById: (id: number) => Chat | undefined;
   addChat: (title: string) => Promise<number | undefined>;
   renameChat: (id: number, newTitle: string) => Promise<void>;
@@ -36,6 +37,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       chats,
     });
   },
+  updateLastUsed: (id: number) => {
+    get().chats.forEach((chat) => {
+      if (chat.id === id) {
+        chat.lastUsed = Date.now();
+      }
+    });
+
+    set((state) => ({
+      chats: state.chats.sort((a, b) => b.lastUsed - a.lastUsed),
+    }));
+  },
   getChatById: (id: number) => {
     const chats = get().chats;
     return chats.find((chat) => chat.id === id);
@@ -48,7 +60,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     set((state) => ({
       chats: [
-        { id: newChatId, title: title, createdAt: Date.now() },
+        { id: newChatId, title: title, lastUsed: Date.now() },
         ...state.chats,
       ],
     }));

@@ -1,5 +1,5 @@
-import React, { memo, useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import React, { memo } from 'react';
+import { View, StyleSheet, Text } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import LlamaIcon from '../../assets/icons/llama_icon.svg';
 import ColorPalette from '../../colors';
@@ -12,8 +12,6 @@ interface MessageItemProps {
 
 const MessageItem = memo(({ message }: MessageItemProps) => {
   const isAssistant = message.role === 'assistant';
-  const [expandedThinking, setExpandedThinking] = useState<boolean>(false);
-
   // Function to parse thinking content
   const parseThinkingContent = (content: string) => {
     const thinkingRegex = /<think>([\s\S]*?)<\/think>/g;
@@ -52,10 +50,6 @@ const MessageItem = memo(({ message }: MessageItemProps) => {
 
   const contentParts = parseThinkingContent(message.content);
 
-  const toggleThinking = () => {
-    setExpandedThinking((prev) => !prev);
-  };
-
   return (
     <View style={isAssistant ? styles.aiMessage : styles.userMessage}>
       {isAssistant && (
@@ -67,10 +61,7 @@ const MessageItem = memo(({ message }: MessageItemProps) => {
         {contentParts.map((part, index) => (
           <View key={index}>
             {part.type === 'thinking' ? (
-              <ThinkingBlock
-                content={part.content}
-                isComplete={expandedThinking}
-              />
+              <ThinkingBlock content={part.content} isComplete={true} />
             ) : (
               part.content.trim() && <MarkdownComponent text={part.content} />
             )}
@@ -128,31 +119,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderLeftWidth: 3,
     borderLeftColor: ColorPalette.blueDark,
-  },
-  thinkingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  thinkingTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: ColorPalette.blueDark,
-  },
-  chevronButton: {
-    padding: 4,
-  },
-  chevron: {
-    fontSize: 16,
-    color: ColorPalette.blueDark,
-    fontWeight: 'bold',
-  },
-  thinkingContent: {
-    overflow: 'hidden',
-  },
-  thinkingContentCollapsed: {
-    height: 60,
   },
   meta: {
     fontSize: 12,

@@ -37,22 +37,19 @@ const Messages = ({ chatHistory, llmResponse, isGenerating }: Props) => {
             <MessageItem key={`${message.role}-${index}`} message={message} />
           ))}
 
-          {isGenerating && (
-            <View style={styles.aiRow}>
-              {!llmResponse ? (
-                <>
-                  <View style={styles.iconBubble}>
-                    <LlamaIcon width={24} height={24} />
-                  </View>
-                  <View style={styles.loadingWrapper}>
-                    <AnimatedChatLoading />
-                  </View>
-                </>
-              ) : (
-                <StreamingMessageItem content={llmResponse.trim()} />
-              )}
-            </View>
-          )}
+          {isGenerating &&
+            (!llmResponse ? (
+              <View style={styles.aiRow}>
+                <View style={styles.iconBubble}>
+                  <LlamaIcon width={24} height={24} />
+                </View>
+                <View style={styles.loadingWrapper}>
+                  <AnimatedChatLoading />
+                </View>
+              </View>
+            ) : (
+              <StreamingMessageItem content={llmResponse.trim()} />
+            ))}
 
           {isEmpty && (
             <Text style={styles.emptyState}>
@@ -92,13 +89,6 @@ const styles = StyleSheet.create({
     marginRight: 8,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  responseText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: ColorPalette.primary,
-    fontFamily: 'regular',
-    flexShrink: 1,
   },
   emptyState: {
     textAlign: 'center',

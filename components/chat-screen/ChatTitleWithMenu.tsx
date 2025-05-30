@@ -40,7 +40,7 @@ const ChatTitleWithMenu = ({ title, onSelect }: Props) => {
       ]}
     >
       <TouchableOpacity style={styles.titleContainer}>
-        <Text style={styles.title}>Local Mind</Text>
+        <Text style={styles.title}>{title}</Text>
         <Ionicons name="chevron-forward" size={16} color="gray" />
       </TouchableOpacity>
     </MenuView>

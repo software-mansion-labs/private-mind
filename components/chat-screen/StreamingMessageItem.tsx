@@ -54,34 +54,22 @@ const StreamingMessageItem = memo(({ content }: StreamingMessageItemProps) => {
         <LlamaIcon width={24} height={24} />
       </View>
       <View style={styles.bubbleContent}>
-        {/* Content before thinking block */}
         {parsedContent.normalContent.trim() && (
           <MarkdownComponent text={parsedContent.normalContent} />
         )}
-
-        {/* Thinking block */}
-        {parsedContent.hasThinking && (
-          <ThinkingBlock
-            content={parsedContent.thinkingContent || ''}
-            isComplete={parsedContent.isThinkingComplete || false}
-          />
-        )}
-
-        {/* Content after thinking block */}
-        {parsedContent.normalAfterThink &&
-          parsedContent.normalAfterThink.trim() && (
-            <View>
-              <MarkdownComponent text={parsedContent.normalAfterThink} />
-              {parsedContent.isThinkingComplete && (
-                <Text style={styles.streamingCursor}>▊</Text>
-              )}
-            </View>
+        <View>
+          {parsedContent.hasThinking && (
+            <ThinkingBlock
+              content={parsedContent.thinkingContent || ''}
+              isComplete={parsedContent.isThinkingComplete || false}
+            />
           )}
 
-        {/* Streaming cursor for normal content (when no thinking or thinking is complete) */}
-        {!parsedContent.hasThinking && (
-          <Text style={styles.streamingCursor}>▊</Text>
-        )}
+          {parsedContent.normalAfterThink &&
+            parsedContent.normalAfterThink.trim() && (
+              <MarkdownComponent text={parsedContent.normalAfterThink} />
+            )}
+        </View>
       </View>
     </View>
   );
@@ -109,10 +97,5 @@ const styles = StyleSheet.create({
   },
   bubbleContent: {
     flexShrink: 1,
-  },
-  streamingCursor: {
-    fontSize: 16,
-    color: ColorPalette.blueDark,
-    marginTop: 4,
   },
 });

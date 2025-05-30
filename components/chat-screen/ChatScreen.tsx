@@ -42,7 +42,7 @@ export default function ChatScreen({ chatId, messageHistory }: Props) {
     setActiveChatId,
     interrupt,
   } = useLLMStore();
-  const { addChat } = useChatStore();
+  const { addChat, updateLastUsed } = useChatStore();
 
   const [userInput, setUserInput] = useState('');
   const [showModelModal, setShowModelModal] = useState(false);
@@ -78,7 +78,7 @@ export default function ChatScreen({ chatId, messageHistory }: Props) {
 
     inputRef.current?.clear();
     setUserInput('');
-
+    updateLastUsed(chatIdRef.current);
     await sendChatMessage(messageHistory, userInput);
   };
 

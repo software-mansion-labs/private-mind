@@ -14,6 +14,7 @@ import {
   insertBenchmark,
 } from '../database/benchmarkRepository';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
+import { useChatStore } from './chatStore';
 
 interface LLMStore {
   isLoading: boolean;

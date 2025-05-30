@@ -4,7 +4,7 @@ import { SQLiteDatabase } from 'expo-sqlite';
 export type Chat = {
   id: number;
   title: string;
-  createdAt: number;
+  lastUsed: number;
 };
 
 export type ChatSettings = {
@@ -65,6 +65,12 @@ export const persistMessage = async (
       message.timeToFirstToken,
     ]
   );
+
+  const timestamp = Date.now();
+  await db.runAsync(`UPDATE chats SET lastUsed = ? WHERE id = ?`, [
+    timestamp,
+    message.chatId,
+  ]);
 
   return result.lastInsertRowId;
 };
