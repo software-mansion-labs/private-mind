@@ -1,3 +1,4 @@
+import React from 'react';
 import { Platform } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import ColorPalette from '../../colors';

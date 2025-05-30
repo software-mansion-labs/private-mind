@@ -5,6 +5,7 @@ import MessageItem from './MessageItem';
 import LlamaIcon from '../../assets/icons/llama_icon.svg';
 import ColorPalette from '../../colors';
 import { Message } from '../../database/chatRepository';
+import StreamingMessageItem from './StreamingMessageItem';
 
 interface Props {
   chatHistory: Message[];
@@ -38,16 +39,17 @@ const Messages = ({ chatHistory, llmResponse, isGenerating }: Props) => {
 
           {isGenerating && (
             <View style={styles.aiRow}>
-              <View style={styles.iconBubble}>
-                <LlamaIcon width={24} height={24} />
-              </View>
-
               {!llmResponse ? (
-                <View style={styles.loadingWrapper}>
-                  <AnimatedChatLoading />
-                </View>
+                <>
+                  <View style={styles.iconBubble}>
+                    <LlamaIcon width={24} height={24} />
+                  </View>
+                  <View style={styles.loadingWrapper}>
+                    <AnimatedChatLoading />
+                  </View>
+                </>
               ) : (
-                <Text style={styles.responseText}>{llmResponse.trim()}</Text>
+                <StreamingMessageItem content={llmResponse.trim()} />
               )}
             </View>
           )}
