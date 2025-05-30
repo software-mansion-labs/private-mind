@@ -24,7 +24,7 @@ export default function ChatSettingsScreen() {
   const [contextWindow, setContextWindow] = useState(6);
 
   useEffect(() => {
-    if (!db || !chatId) return;
+    if (!db) return;
     (async () => {
       const settings = await getChatSettings(db, chatId);
       setSystemPrompt(settings.systemPrompt);

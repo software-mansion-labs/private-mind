@@ -30,6 +30,18 @@ export const createChat = async (
   const result = await db.runAsync(`INSERT INTO chats (title) VALUES (?)`, [
     title,
   ]);
+
+  if (result.lastInsertRowId) {
+    const defaultSettings = await AsyncStorage.getItem('default_chat_settings');
+    if (defaultSettings) {
+      const parsedSettings: ChatSettings = JSON.parse(defaultSettings);
+      await setChatSettings(db, result.lastInsertRowId, {
+        systemPrompt: parsedSettings.systemPrompt,
+        contextWindow: parsedSettings.contextWindow,
+      });
+    }
+  }
+
   return result.lastInsertRowId;
 };
 
