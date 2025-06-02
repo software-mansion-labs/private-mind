@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet, View, Text } from 'react-native';
 import AnimatedChatLoading from './AnimatedChatLoading';
 import MessageItem from './MessageItem';
-import LlamaIcon from '../../assets/icons/llama_icon.svg';
 import ColorPalette from '../../colors';
 import { Message } from '../../database/chatRepository';
 import StreamingMessageItem from './StreamingMessageItem';
@@ -40,9 +39,6 @@ const Messages = ({ chatHistory, llmResponse, isGenerating }: Props) => {
           {isGenerating &&
             (!llmResponse ? (
               <View style={styles.aiRow}>
-                <View style={styles.iconBubble}>
-                  <LlamaIcon width={24} height={24} />
-                </View>
                 <View style={styles.loadingWrapper}>
                   <AnimatedChatLoading />
                 </View>
@@ -80,15 +76,6 @@ const styles = StyleSheet.create({
     height: 20,
     justifyContent: 'center',
     paddingTop: 4,
-  },
-  iconBubble: {
-    backgroundColor: ColorPalette.seaBlueLight,
-    height: 32,
-    width: 32,
-    borderRadius: 16,
-    marginRight: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   emptyState: {
     textAlign: 'center',

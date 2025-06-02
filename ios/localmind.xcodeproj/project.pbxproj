@@ -23,8 +23,8 @@
 		13B07F961A680F5B00A75B9A /* localmind.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = localmind.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = localmind/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = localmind/Info.plist; sourceTree = "<group>"; };
-		52F93D50E948F855530BE970 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = localmind/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		66FD0DA88DE041D4B2294CB4 /* Aeonik-Medium.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Aeonik-Medium.otf"; path = "../assets/fonts/Aeonik-Medium.otf"; sourceTree = "<group>"; };
+		52F93D50E948F855530BE970 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = localmind/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		66FD0DA88DE041D4B2294CB4 /* Aeonik-Medium.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Aeonik-Medium.otf"; path = "../assets/fonts/Aeonik-Medium.otf"; sourceTree = "<group>"; };
 		99F00DD47E42AF45816C58B8 /* Pods-localmind.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-localmind.release.xcconfig"; path = "Target Support Files/Pods-localmind/Pods-localmind.release.xcconfig"; sourceTree = "<group>"; };
 		A8F7447548358E44DADA5029 /* Pods-localmind.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-localmind.debug.xcconfig"; path = "Target Support Files/Pods-localmind/Pods-localmind.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = localmind/SplashScreen.storyboard; sourceTree = "<group>"; };
@@ -33,7 +33,7 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = localmind/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* localmind-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "localmind-Bridging-Header.h"; path = "localmind/localmind-Bridging-Header.h"; sourceTree = "<group>"; };
-		F73A1A19BDF34985A5AAA585 /* Aeonik-Regular.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Aeonik-Regular.otf"; path = "../assets/fonts/Aeonik-Regular.otf"; sourceTree = "<group>"; };
+		F73A1A19BDF34985A5AAA585 /* Aeonik-Regular.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Aeonik-Regular.otf"; path = "../assets/fonts/Aeonik-Regular.otf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -117,7 +117,6 @@
 				66FD0DA88DE041D4B2294CB4 /* Aeonik-Medium.otf */,
 			);
 			name = Resources;
-			path = "";
 			sourceTree = "<group>";
 		};
 		B83BB53798F9A57DA3D5DBEC /* Pods */ = {
@@ -126,7 +125,6 @@
 				A8F7447548358E44DADA5029 /* Pods-localmind.debug.xcconfig */,
 				99F00DD47E42AF45816C58B8 /* Pods-localmind.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -181,7 +179,6 @@
 				LastUpgradeCheck = 1130;
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
-						DevelopmentTeam = B357MU264T;
 						LastSwiftMigration = 1250;
 						ProvisioningStyle = Automatic;
 					};

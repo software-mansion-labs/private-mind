@@ -11,6 +11,8 @@ import SendIcon from '../../assets/icons/send_icon.svg';
 import PauseIcon from '../../assets/icons/pause_icon.svg';
 import { Model } from '../../database/modelRepository';
 import ColorPalette from '../../colors';
+import { fontFamily } from '../../fontFamily';
+import RotateLeft from '../../assets/icons/rotate_left.svg';
 
 interface Props {
   isLoading: boolean;
@@ -37,23 +39,32 @@ const ChatInputBar = ({
 }: Props) => {
   return (
     <View style={styles.container}>
-      {isLoading ? (
-        <Text style={styles.selectButtonText}>Loading model...</Text>
-      ) : !selectedModel ? (
-        <TouchableOpacity onPress={onSelectModel}>
-          <Text style={styles.selectButtonText}>
-            Model not loaded. Please initialize the model.
-          </Text>
-        </TouchableOpacity>
-      ) : (
-        <View style={styles.inputContainer}>
+      <TouchableOpacity
+        style={
+          selectedModel
+            ? styles.modelSelection
+            : {
+                ...styles.modelSelection,
+                marginBottom: 0,
+                borderBottomLeftRadius: 8,
+                borderBottomRightRadius: 8,
+                paddingBottom: 12,
+              }
+        }
+        onPress={onSelectModel}
+      >
+        <Text style={styles.selectedModel}>
+          {selectedModel ? selectedModel.id : 'Select a model'}
+        </Text>
+        <RotateLeft width={20} height={20} />
+      </TouchableOpacity>
+      {selectedModel && (
+        <View style={styles.content}>
           <TextInput
             ref={inputRef}
-            style={{
-              ...styles.input,
-            }}
+            style={styles.input}
             multiline
-            placeholder="Your message"
+            placeholder="Ask about anything..."
             placeholderTextColor={ColorPalette.blueDark}
             value={userInput}
             onChangeText={setUserInput}
@@ -61,12 +72,12 @@ const ChatInputBar = ({
           <View style={styles.buttonBar}>
             {userInput && (
               <TouchableOpacity style={styles.sendButton} onPress={onSend}>
-                <SendIcon width={24} height={24} />
+                <SendIcon width={20} height={20} />
               </TouchableOpacity>
             )}
             {isGenerating && (
               <TouchableOpacity style={styles.sendButton} onPress={interrupt}>
-                <PauseIcon height={24} width={24} padding={4} margin={8} />
+                <PauseIcon height={20} width={20} />
               </TouchableOpacity>
             )}
           </View>
@@ -80,41 +91,64 @@ export default ChatInputBar;
 
 const styles = StyleSheet.create({
   container: {
-    height: 112,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  modelSelection: {
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingBottom: Platform.OS === 'ios' ? 16 : 12,
+    height: 52,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderWidth: 1,
+    marginBottom: -8,
+    paddingHorizontal: 16,
     paddingTop: 12,
-    backgroundColor: ColorPalette.seaBlueLight,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    paddingBottom: 20,
+  },
+  selectedModel: {
+    fontSize: 14,
+    fontFamily: fontFamily.regular,
+    width: '80%',
+  },
+  content: {
+    backgroundColor: ColorPalette.primary,
+    height: 68,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    borderRadius: 8,
+    padding: 16,
   },
   selectButtonText: {
     color: ColorPalette.primary,
     fontSize: 12,
-    fontWeight: '500',
-  },
-  inputContainer: {
-    flexDirection: 'column',
-    flex: 1,
   },
   input: {
-    flex: 1,
-    fontSize: 14,
-    padding: 12,
-    color: ColorPalette.primary,
+    fontSize: 16,
+    lineHeight: 30,
+    height: 48,
+    color: '#fff',
+    fontFamily: fontFamily.regular,
+    width: '80%',
+    textAlignVertical: 'center',
   },
   sendButton: {
-    width: 44,
-    height: 44,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 18,
+    backgroundColor: '#fff',
   },
   buttonBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    width: '20%',
   },
 });

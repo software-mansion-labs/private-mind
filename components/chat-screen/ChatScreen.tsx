@@ -90,32 +90,6 @@ export default function ChatScreen({ chatId, messageHistory }: Props) {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 100}
         >
-          <View style={styles.header}>
-            <Text style={styles.headerText}>
-              {model ? (
-                <>
-                  Using model: <Text style={styles.modelName}>{model.id}</Text>{' '}
-                  <Text
-                    style={styles.changeModel}
-                    onPress={() => setShowModelModal(true)}
-                  >
-                    (Change)
-                  </Text>
-                </>
-              ) : (
-                <>
-                  No model selected{' '}
-                  <Text
-                    style={styles.changeModel}
-                    onPress={() => setShowModelModal(true)}
-                  >
-                    (Select)
-                  </Text>
-                </>
-              )}
-            </Text>
-          </View>
-
           <View style={styles.messagesContainer}>
             <Messages
               chatHistory={messageHistory}
@@ -127,7 +101,6 @@ export default function ChatScreen({ chatId, messageHistory }: Props) {
               isGenerating={isGenerating}
             />
           </View>
-
           <ChatInputBar
             isLoading={isLoading}
             isGenerating={isGenerating}
@@ -156,25 +129,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: ColorPalette.seaBlueDark,
-    backgroundColor: ColorPalette.seaBlueLight,
-  },
-  headerText: {
-    fontSize: 16,
-    color: ColorPalette.primary,
-  },
-  modelName: {
-    fontWeight: '600',
-    color: ColorPalette.primary,
-  },
-  changeModel: {
-    color: ColorPalette.blueDark,
-    fontWeight: 'bold',
   },
   messagesContainer: {
     flex: 1,

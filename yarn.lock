@@ -1168,6 +1168,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@expo-google-fonts/dm-sans@npm:^0.4.0":
+  version: 0.4.0
+  resolution: "@expo-google-fonts/dm-sans@npm:0.4.0"
+  checksum: f371cb536717af060190ad7823f6eba42b7146e4ec764914009ae185b593d445fd02d53c182865b47560d8648593342df848bbfbc60f87d359e7138095fa5526
+  languageName: node
+  linkType: hard
+
 "@expo/cli@npm:0.24.13":
   version: 0.24.13
   resolution: "@expo/cli@npm:0.24.13"
@@ -5159,6 +5166,7 @@ __metadata:
   resolution: "local-mind@workspace:."
   dependencies:
     "@babel/core": ^7.25.2
+    "@expo-google-fonts/dm-sans": ^0.4.0
     "@react-native-async-storage/async-storage": 2.1.2
     "@react-native-menu/menu": ^1.2.3
     "@react-native/metro-config": ^0.76.3

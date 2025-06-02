@@ -1,5 +1,4 @@
 import React from 'react';
-import { useFonts } from 'expo-font';
 import ChatScreen from '../components/chat-screen/ChatScreen';
 import { useDefaultHeader } from '../hooks/useDefaultHeader';
 import { useNavigation } from 'expo-router';
@@ -9,10 +8,7 @@ import { configureReanimatedLogger } from 'react-native-reanimated';
 
 export default function App() {
   const navigation = useNavigation();
-  useFonts({
-    medium: require('../assets/fonts/Aeonik-Medium.otf'),
-    regular: require('../assets/fonts/Aeonik-Regular.otf'),
-  });
+
   useDefaultHeader();
 
   configureReanimatedLogger({

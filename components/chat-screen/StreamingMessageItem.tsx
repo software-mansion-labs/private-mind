@@ -2,7 +2,6 @@ import React, { memo } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
-import LlamaIcon from '../../assets/icons/llama_icon.svg';
 import ColorPalette from '../../colors';
 import { useLLMStore } from '../../store/llmStore';
 
@@ -52,9 +51,6 @@ const StreamingMessageItem = memo(({ content }: StreamingMessageItemProps) => {
 
   return (
     <View style={styles.aiMessage}>
-      <View style={styles.iconBubble}>
-        <LlamaIcon width={24} height={24} />
-      </View>
       <View style={styles.bubbleContent}>
         <Text>{model!.id}</Text>
         {parsedContent.normalContent.trim() && (
@@ -88,15 +84,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
     maxWidth: '85%',
     alignSelf: 'flex-start',
-  },
-  iconBubble: {
-    backgroundColor: ColorPalette.seaBlueLight,
-    height: 32,
-    width: 32,
-    borderRadius: 16,
-    marginRight: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   bubbleContent: {
     flexShrink: 1,

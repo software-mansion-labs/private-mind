@@ -50,7 +50,7 @@ const ThinkingBlock = memo(
             onPress={toggleExpanded}
             style={styles.chevronButton}
           >
-            <Text style={styles.chevron}>{expanded ? '⌄' : '⌃'}</Text>
+            <Text style={styles.chevron}>{expanded ? '⌃' : '⌄'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -77,13 +77,12 @@ export default ThinkingBlock;
 
 const styles = StyleSheet.create({
   thinkingBox: {
-    backgroundColor: ColorPalette.seaBlueLight,
-    borderRadius: 8,
+    borderRadius: 4,
     padding: 12,
     marginBottom: 8,
     marginTop: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: ColorPalette.blueDark,
+    borderWidth: 1,
+    borderColor: ColorPalette.blueDark,
   },
   thinkingHeader: {
     flexDirection: 'row',

@@ -1,10 +1,10 @@
 import React, { memo } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
-import LlamaIcon from '../../assets/icons/llama_icon.svg';
 import ColorPalette from '../../colors';
 import { Message } from '../../database/chatRepository';
 import ThinkingBlock from './ThinkingBlock';
+import { fontFamily } from '../../fontFamily';
 
 interface MessageItemProps {
   message: Message;
@@ -52,19 +52,18 @@ const MessageItem = memo(({ message }: MessageItemProps) => {
 
   return (
     <View style={isAssistant ? styles.aiMessage : styles.userMessage}>
-      {isAssistant && (
-        <View style={styles.iconBubble}>
-          <LlamaIcon width={24} height={24} />
-        </View>
-      )}
       <View style={styles.bubbleContent}>
-        <Text>{message.modelName}</Text>
+        {isAssistant && (
+          <Text style={styles.modelName}>{message.modelName}</Text>
+        )}
         {contentParts.map((part, index) => (
           <View key={index}>
-            {part.type === 'thinking' ? (
+            {part.type === 'thinking' && part.content !== '' ? (
               <ThinkingBlock content={part.content} isComplete={true} />
             ) : (
-              part.content.trim() && <MarkdownComponent text={part.content} />
+              part.content.trim() && (
+                <MarkdownComponent text={part.content} isUser={!isAssistant} />
+              )
             )}
           </View>
         ))}
@@ -87,39 +86,37 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
     marginHorizontal: 12,
-    maxWidth: '85%',
+    width: '90%',
     alignSelf: 'flex-start',
+    lineHeight: 16,
   },
   userMessage: {
     flexDirection: 'row-reverse',
     alignItems: 'flex-start',
     marginBottom: 12,
     marginHorizontal: 12,
-    maxWidth: '85%',
+    maxWidth: '75%',
     alignSelf: 'flex-end',
     backgroundColor: ColorPalette.seaBlueLight,
-    borderRadius: 12,
+    borderRadius: 4,
     padding: 12,
-  },
-  iconBubble: {
-    backgroundColor: ColorPalette.seaBlueLight,
-    height: 32,
-    width: 32,
-    borderRadius: 16,
-    marginRight: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   bubbleContent: {
     flexShrink: 1,
+    width: '100%',
   },
   thinkingBox: {
     backgroundColor: ColorPalette.seaBlueLight,
-    borderRadius: 8,
+    borderRadius: 4,
     padding: 12,
     marginBottom: 8,
     borderLeftWidth: 3,
     borderLeftColor: ColorPalette.blueDark,
+  },
+  modelName: {
+    fontSize: 12,
+    fontFamily: fontFamily.regular,
+    color: ColorPalette.blueDark,
   },
   meta: {
     fontSize: 12,
