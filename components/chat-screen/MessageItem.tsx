@@ -2,81 +2,93 @@ import React, { memo } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ColorPalette from '../../colors';
-import { Message } from '../../database/chatRepository';
 import ThinkingBlock from './ThinkingBlock';
 import { fontFamily } from '../../fontFamily';
 
 interface MessageItemProps {
-  message: Message;
+  content: string;
+  role: 'user' | 'assistant' | 'system';
+  modelName?: string;
+  tokensPerSecond?: number;
+  timeToFirstToken?: number;
 }
 
-const MessageItem = memo(({ message }: MessageItemProps) => {
-  const isAssistant = message.role === 'assistant';
-  // Function to parse thinking content
-  const parseThinkingContent = (content: string) => {
-    const thinkingRegex = /<think>([\s\S]*?)<\/think>/g;
-    const parts = [];
-    let lastIndex = 0;
-    let match;
+const MessageItem = memo(
+  ({
+    content,
+    modelName,
+    role,
+    tokensPerSecond,
+    timeToFirstToken,
+  }: MessageItemProps) => {
+    const isAssistant = role === 'assistant';
 
-    while ((match = thinkingRegex.exec(content)) !== null) {
-      // Add content before thinking block
-      if (match.index > lastIndex) {
+    const parseThinkingContent = (content: string) => {
+      const thinkingRegex = /<think>([\s\S]*?)<\/think>/g;
+      const parts = [];
+      let lastIndex = 0;
+      let match;
+
+      while ((match = thinkingRegex.exec(content)) !== null) {
+        // Add content before thinking block
+        if (match.index > lastIndex) {
+          parts.push({
+            type: 'normal',
+            content: content.slice(lastIndex, match.index),
+          });
+        }
+
+        // Add thinking content
+        parts.push({
+          type: 'thinking',
+          content: match[1].trim(),
+        });
+
+        lastIndex = match.index + match[0].length;
+      }
+
+      // Add remaining content after last thinking block
+      if (lastIndex < content.length) {
         parts.push({
           type: 'normal',
-          content: content.slice(lastIndex, match.index),
+          content: content.slice(lastIndex),
         });
       }
 
-      // Add thinking content
-      parts.push({
-        type: 'thinking',
-        content: match[1].trim(),
-      });
+      return parts.length > 0 ? parts : [{ type: 'normal', content }];
+    };
 
-      lastIndex = match.index + match[0].length;
-    }
+    const contentParts = parseThinkingContent(content);
 
-    // Add remaining content after last thinking block
-    if (lastIndex < content.length) {
-      parts.push({
-        type: 'normal',
-        content: content.slice(lastIndex),
-      });
-    }
-
-    return parts.length > 0 ? parts : [{ type: 'normal', content }];
-  };
-
-  const contentParts = parseThinkingContent(message.content);
-
-  return (
-    <View style={isAssistant ? styles.aiMessage : styles.userMessage}>
-      <View style={styles.bubbleContent}>
-        {isAssistant && (
-          <Text style={styles.modelName}>{message.modelName}</Text>
-        )}
-        {contentParts.map((part, index) => (
-          <View key={index}>
-            {part.type === 'thinking' && part.content !== '' ? (
-              <ThinkingBlock content={part.content} isComplete={true} />
-            ) : (
-              part.content.trim() && (
-                <MarkdownComponent text={part.content} isUser={!isAssistant} />
-              )
-            )}
-          </View>
-        ))}
-        {isAssistant && message.tokensPerSecond !== undefined && (
-          <Text style={styles.meta}>
-            ⏱️ {message.timeToFirstToken?.toFixed()} ms • ⚡{' '}
-            {message.tokensPerSecond?.toFixed(2)} tok/s
-          </Text>
-        )}
+    return (
+      <View style={isAssistant ? styles.aiMessage : styles.userMessage}>
+        <View style={styles.bubbleContent}>
+          {isAssistant && <Text style={styles.modelName}>{modelName}</Text>}
+          {contentParts.map((part, index) => (
+            <View key={index}>
+              {part.type === 'thinking' && part.content !== '' ? (
+                <ThinkingBlock content={part.content} isComplete={true} />
+              ) : (
+                part.content.trim() && (
+                  <MarkdownComponent
+                    text={part.content}
+                    isUser={!isAssistant}
+                  />
+                )
+              )}
+            </View>
+          ))}
+          {isAssistant && tokensPerSecond !== undefined && (
+            <Text style={styles.meta}>
+              ⏱️ {timeToFirstToken?.toFixed()} ms • ⚡{' '}
+              {tokensPerSecond?.toFixed(2)} tok/s
+            </Text>
+          )}
+        </View>
       </View>
-    </View>
-  );
-});
+    );
+  }
+);
 
 export default MessageItem;
 

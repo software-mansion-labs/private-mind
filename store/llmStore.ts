@@ -83,7 +83,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       tokenizerSource: model.tokenizerPath,
       tokenizerConfigSource: model.tokenizerConfigPath,
       responseCallback: (response) => {
-        set({ response });
+        const messages = get().activeChatMessages;
+        messages[messages.length - 1]
+          ? (messages[messages.length - 1].content = response)
+          : null;
+        set({ response, activeChatMessages: messages });
         if (response != '') {
           set({ tokenCount: get().tokenCount + 1 });
           if (get().tokenCount === 1) {
@@ -125,13 +129,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         id: userMessageId,
       });
 
-      set({
-        isGenerating: true,
-        response: '',
-        activeChatMessages: messages,
-        tokenCount: 0,
-      });
-
       const chatSettings = await getChatSettings(db, activeChatId);
 
       const systemPrompt = chatSettings.systemPrompt;
@@ -141,6 +138,22 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         { role: 'system', content: systemPrompt },
         ...messages.slice(-contextWindow),
       ];
+
+      messages.push({
+        role: 'assistant',
+        content: '',
+        modelName: model.id,
+        chatId: activeChatId,
+        timestamp: Date.now(),
+        id: -1,
+      });
+
+      set({
+        isGenerating: true,
+        response: '',
+        activeChatMessages: messages,
+        tokenCount: 0,
+      });
 
       const startTime = performance.now();
       const generatedResponse = await LLMModule.generate(
@@ -155,7 +168,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       );
 
       if (generatedResponse) {
-        const assistantMessageId = await persistMessage(db, {
+        await persistMessage(db, {
           role: 'assistant',
           modelName: model.id,
           content: generatedResponse,
@@ -164,20 +177,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           chatId: activeChatId,
         });
 
-        const newMessageHistory: Message[] = [
-          ...messages,
-          {
-            role: 'assistant',
-            content: generatedResponse,
-            tokensPerSecond: tokensPerSecond,
-            timeToFirstToken: timeToFirstToken,
-            chatId: activeChatId,
-            timestamp: Date.now(),
-            id: assistantMessageId,
-          },
-        ];
+        messages[messages.length - 1].timeToFirstToken = timeToFirstToken;
+        messages[messages.length - 1].tokensPerSecond = tokensPerSecond;
 
-        set({ activeChatMessages: newMessageHistory });
+        set({
+          activeChatMessages: messages,
+        });
       }
     } catch (e) {
       console.error('Chat sendMessage failed', e);

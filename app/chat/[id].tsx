@@ -48,7 +48,7 @@ export default function ChatScreenWrapper() {
 
   useEffect(() => {
     (async () => {
-      if (chatId !== null && db !== null) {
+      if (chatId !== null && chatId != activeChatId && db !== null) {
         const messages = await getChatMessages(db, chatId);
         setMessageHistory(messages);
       } else {

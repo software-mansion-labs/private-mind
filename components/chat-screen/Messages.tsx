@@ -1,51 +1,68 @@
-import React, { useEffect, useRef } from 'react';
-import { ScrollView, StyleSheet, View, Text } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  Text,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+} from 'react-native';
 import AnimatedChatLoading from './AnimatedChatLoading';
 import MessageItem from './MessageItem';
 import ColorPalette from '../../colors';
 import { Message } from '../../database/chatRepository';
-import StreamingMessageItem from './StreamingMessageItem';
 
 interface Props {
   chatHistory: Message[];
-  llmResponse: string;
   isGenerating: boolean;
 }
 
-const Messages = ({ chatHistory, llmResponse, isGenerating }: Props) => {
+const Messages = ({ chatHistory, isGenerating }: Props) => {
   const scrollRef = useRef<ScrollView>(null);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-    return () => clearTimeout(timeout);
-  }, [chatHistory, llmResponse, isGenerating]);
-
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const isEmpty = chatHistory.length === 0 && !isGenerating;
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+
+    const distanceFromBottom =
+      contentSize.height - (contentOffset.y + layoutMeasurement.height);
+
+    setIsAtBottom(distanceFromBottom < 50);
+  };
 
   return (
     <View style={styles.container}>
       <ScrollView
         ref={scrollRef}
+        onScroll={handleScroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => {
+          if (isAtBottom) {
+            scrollRef.current?.scrollToEnd({ animated: true });
+          }
+        }}
       >
         <View onStartShouldSetResponder={() => true}>
           {chatHistory.map((message, index) => (
-            <MessageItem key={`${message.role}-${index}`} message={message} />
+            <MessageItem
+              key={`${message.role}-${index}`}
+              content={message.content}
+              modelName={message.modelName}
+              role={message.role}
+              tokensPerSecond={message.tokensPerSecond}
+              timeToFirstToken={message.timeToFirstToken}
+            />
           ))}
 
-          {isGenerating &&
-            (!llmResponse ? (
-              <View style={styles.aiRow}>
-                <View style={styles.loadingWrapper}>
-                  <AnimatedChatLoading />
-                </View>
+          {isGenerating && (
+            <View style={styles.aiRow}>
+              <View style={styles.loadingWrapper}>
+                <AnimatedChatLoading />
               </View>
-            ) : (
-              <StreamingMessageItem content={llmResponse.trim()} />
-            ))}
+            </View>
+          )}
 
           {isEmpty && (
             <Text style={styles.emptyState}>

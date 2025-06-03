@@ -18,7 +18,6 @@ import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
 import ChatInputBar from './ChatInputBar';
 import ModelSelectorModal from './ModelSelector';
-import ColorPalette from '../../colors';
 
 interface Props {
   chatId: number | null;
@@ -34,11 +33,9 @@ export default function ChatScreen({ chatId, messageHistory }: Props) {
     db,
     model,
     loadModel,
-    response,
     isLoading,
     isGenerating,
     sendChatMessage,
-    activeChatId,
     setActiveChatId,
     interrupt,
   } = useLLMStore();
@@ -93,11 +90,6 @@ export default function ChatScreen({ chatId, messageHistory }: Props) {
           <View style={styles.messagesContainer}>
             <Messages
               chatHistory={messageHistory}
-              llmResponse={
-                activeChatId === chatIdRef.current && chatIdRef.current !== null
-                  ? response
-                  : ''
-              }
               isGenerating={isGenerating}
             />
           </View>
