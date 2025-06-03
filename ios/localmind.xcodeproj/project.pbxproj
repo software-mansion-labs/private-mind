@@ -11,11 +11,15 @@
 		0CE44A4026FC4A8A10B66423 /* libPods-localmind.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0063D2E33A4A329BA8B30838 /* libPods-localmind.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		6E9472947E2E4DD1A2AD3613 /* Aeonik-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = F73A1A19BDF34985A5AAA585 /* Aeonik-Regular.otf */; };
 		BA74DE0E290E29E44567C249 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 52F93D50E948F855530BE970 /* PrivacyInfo.xcprivacy */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		E298AC45BCF541049F330967 /* Aeonik-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = 66FD0DA88DE041D4B2294CB4 /* Aeonik-Medium.otf */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		D3BDD428537649C5A51916BC /* DMSans_400Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1E8E6B1C7E2F4EB68E11E83D /* DMSans_400Regular.ttf */; };
+		FAA5BC43FF6A4A87A1692DAC /* DMSans_500Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 88BCA4DB435B40498C2E9DA9 /* DMSans_500Medium.ttf */; };
+		21D42A3765C44CE1960516ED /* DMSans_600SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C9CAF938BD77467BB92B62DE /* DMSans_600SemiBold.ttf */; };
+		E11580CBE20D4E349F3AADC6 /* DMSans_400Regular_Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 13CD47C0F9E0478987FFA70B /* DMSans_400Regular_Italic.ttf */; };
+		F4C3F895227D4F798F489A45 /* DMSans_500Medium_Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CCFC6E81EC5F4B3184BF185A /* DMSans_500Medium_Italic.ttf */; };
+		6500CD9C7E2F4D2399CF132F /* DMSans_600SemiBold_Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 21AB316C4B3941BF9A3AD28B /* DMSans_600SemiBold_Italic.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,7 +28,6 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = localmind/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = localmind/Info.plist; sourceTree = "<group>"; };
 		52F93D50E948F855530BE970 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = localmind/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		66FD0DA88DE041D4B2294CB4 /* Aeonik-Medium.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Aeonik-Medium.otf"; path = "../assets/fonts/Aeonik-Medium.otf"; sourceTree = "<group>"; };
 		99F00DD47E42AF45816C58B8 /* Pods-localmind.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-localmind.release.xcconfig"; path = "Target Support Files/Pods-localmind/Pods-localmind.release.xcconfig"; sourceTree = "<group>"; };
 		A8F7447548358E44DADA5029 /* Pods-localmind.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-localmind.debug.xcconfig"; path = "Target Support Files/Pods-localmind/Pods-localmind.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = localmind/SplashScreen.storyboard; sourceTree = "<group>"; };
@@ -33,7 +36,12 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = localmind/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* localmind-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "localmind-Bridging-Header.h"; path = "localmind/localmind-Bridging-Header.h"; sourceTree = "<group>"; };
-		F73A1A19BDF34985A5AAA585 /* Aeonik-Regular.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Aeonik-Regular.otf"; path = "../assets/fonts/Aeonik-Regular.otf"; sourceTree = "<group>"; };
+		1E8E6B1C7E2F4EB68E11E83D /* DMSans_400Regular.ttf */ = {isa = PBXFileReference; name = "DMSans_400Regular.ttf"; path = "../node_modules/@expo-google-fonts/dm-sans/400Regular/DMSans_400Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		88BCA4DB435B40498C2E9DA9 /* DMSans_500Medium.ttf */ = {isa = PBXFileReference; name = "DMSans_500Medium.ttf"; path = "../node_modules/@expo-google-fonts/dm-sans/500Medium/DMSans_500Medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		C9CAF938BD77467BB92B62DE /* DMSans_600SemiBold.ttf */ = {isa = PBXFileReference; name = "DMSans_600SemiBold.ttf"; path = "../node_modules/@expo-google-fonts/dm-sans/600SemiBold/DMSans_600SemiBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		13CD47C0F9E0478987FFA70B /* DMSans_400Regular_Italic.ttf */ = {isa = PBXFileReference; name = "DMSans_400Regular_Italic.ttf"; path = "../node_modules/@expo-google-fonts/dm-sans/400Regular_Italic/DMSans_400Regular_Italic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		CCFC6E81EC5F4B3184BF185A /* DMSans_500Medium_Italic.ttf */ = {isa = PBXFileReference; name = "DMSans_500Medium_Italic.ttf"; path = "../node_modules/@expo-google-fonts/dm-sans/500Medium_Italic/DMSans_500Medium_Italic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		21AB316C4B3941BF9A3AD28B /* DMSans_600SemiBold_Italic.ttf */ = {isa = PBXFileReference; name = "DMSans_600SemiBold_Italic.ttf"; path = "../node_modules/@expo-google-fonts/dm-sans/600SemiBold_Italic/DMSans_600SemiBold_Italic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -113,8 +121,12 @@
 		9E144D528B8E4D3CA4F45F5A /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				F73A1A19BDF34985A5AAA585 /* Aeonik-Regular.otf */,
-				66FD0DA88DE041D4B2294CB4 /* Aeonik-Medium.otf */,
+				1E8E6B1C7E2F4EB68E11E83D /* DMSans_400Regular.ttf */,
+				88BCA4DB435B40498C2E9DA9 /* DMSans_500Medium.ttf */,
+				C9CAF938BD77467BB92B62DE /* DMSans_600SemiBold.ttf */,
+				13CD47C0F9E0478987FFA70B /* DMSans_400Regular_Italic.ttf */,
+				CCFC6E81EC5F4B3184BF185A /* DMSans_500Medium_Italic.ttf */,
+				21AB316C4B3941BF9A3AD28B /* DMSans_600SemiBold_Italic.ttf */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -210,9 +222,13 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				6E9472947E2E4DD1A2AD3613 /* Aeonik-Regular.otf in Resources */,
-				E298AC45BCF541049F330967 /* Aeonik-Medium.otf in Resources */,
 				BA74DE0E290E29E44567C249 /* PrivacyInfo.xcprivacy in Resources */,
+				D3BDD428537649C5A51916BC /* DMSans_400Regular.ttf in Resources */,
+				FAA5BC43FF6A4A87A1692DAC /* DMSans_500Medium.ttf in Resources */,
+				21D42A3765C44CE1960516ED /* DMSans_600SemiBold.ttf in Resources */,
+				E11580CBE20D4E349F3AADC6 /* DMSans_400Regular_Italic.ttf in Resources */,
+				F4C3F895227D4F798F489A45 /* DMSans_500Medium_Italic.ttf in Resources */,
+				6500CD9C7E2F4D2399CF132F /* DMSans_600SemiBold_Italic.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -378,11 +394,11 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.swmansion.localmind;
-				PRODUCT_NAME = localmind;
+				PRODUCT_NAME = "LocalMind";
 				SWIFT_OBJC_BRIDGING_HEADER = "localmind/localmind-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
@@ -412,10 +428,10 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.swmansion.localmind;
-				PRODUCT_NAME = localmind;
+				PRODUCT_NAME = "LocalMind";
 				SWIFT_OBJC_BRIDGING_HEADER = "localmind/localmind-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;

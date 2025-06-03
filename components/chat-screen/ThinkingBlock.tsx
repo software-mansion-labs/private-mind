@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ColorPalette from '../../colors';
+import { fontFamily } from '../../fontFamily';
 
 interface ThinkingBlockProps {
   content: string;
@@ -43,9 +44,7 @@ const ThinkingBlock = memo(
     return (
       <View style={styles.thinkingBox}>
         <View style={styles.thinkingHeader}>
-          <Text style={styles.thinkingTitle}>
-            Thinking{!isComplete && '...'}
-          </Text>
+          <Text style={styles.thinkingTitle}>Thinking...</Text>
           <TouchableOpacity
             onPress={toggleExpanded}
             style={styles.chevronButton}
@@ -78,11 +77,11 @@ export default ThinkingBlock;
 const styles = StyleSheet.create({
   thinkingBox: {
     borderRadius: 4,
-    padding: 12,
     marginBottom: 8,
     marginTop: 8,
     borderWidth: 1,
     borderColor: ColorPalette.blueDark,
+    padding: 16,
   },
   thinkingHeader: {
     flexDirection: 'row',
@@ -94,6 +93,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: ColorPalette.blueDark,
+    fontFamily: fontFamily.bold,
   },
   chevronButton: {
     padding: 4,
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   collapsedContent: {
-    maxHeight: 55,
+    height: 60,
   },
   streamingCursor: {
     fontSize: 16,

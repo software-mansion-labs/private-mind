@@ -68,7 +68,7 @@ const MarkdownComponent = memo(({ text, isUser = false }: Props) => {
         },
         em: {
           color: baseColor,
-          fontFamily: fontFamily.italic,
+          fontFamily: fontFamily.regularItalic,
           lineHeight: 24,
         },
         bullet_list: {

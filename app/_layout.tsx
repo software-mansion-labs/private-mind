@@ -21,9 +21,9 @@ export default function Layout() {
     [fontFamily.regular]: DMSans_400Regular,
     [fontFamily.medium]: DMSans_500Medium,
     [fontFamily.bold]: DMSans_600SemiBold,
-    [fontFamily.regular + '_italic']: DMSans_400Regular_Italic,
-    [fontFamily.medium + '_italic']: DMSans_500Medium_Italic,
-    [fontFamily.bold + '_italic']: DMSans_600SemiBold_Italic,
+    [fontFamily.regularItalic]: DMSans_400Regular_Italic,
+    [fontFamily.mediumItalic]: DMSans_500Medium_Italic,
+    [fontFamily.boldItalic]: DMSans_600SemiBold_Italic,
   });
 
   return (

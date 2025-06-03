@@ -12,8 +12,12 @@
         "expo-font",
         {
           "fonts": [
-            "./assets/fonts/Aeonik-Regular.otf",
-            "./assets/fonts/Aeonik-Medium.otf"
+            "node_modules/@expo-google-fonts/dm-sans/400Regular/DMSans_400Regular.ttf",
+            "node_modules/@expo-google-fonts/dm-sans/500Medium/DMSans_500Medium.ttf",
+            "node_modules/@expo-google-fonts/dm-sans/600SemiBold/DMSans_600SemiBold.ttf",
+            "node_modules/@expo-google-fonts/dm-sans/400Regular_Italic/DMSans_400Regular_Italic.ttf",
+            "node_modules/@expo-google-fonts/dm-sans/500Medium_Italic/DMSans_500Medium_Italic.ttf",
+            "node_modules/@expo-google-fonts/dm-sans/600SemiBold_Italic/DMSans_600SemiBold_Italic.ttf"
           ]
         }
       ],
