@@ -15,20 +15,26 @@ import {
 import { importMessages } from '../database/chatRepository';
 import ChatTitleWithMenu from '../components/chat-screen/ChatTitleWithMenu';
 import SettingsHeaderButton from '../components/SettingsHeaderButton';
+import { Model } from '../database/modelRepository';
 
 interface Props {
   chatId: number;
+  chatModel: Model | null;
   onRenamePress: Dispatch<SetStateAction<boolean>>;
   handleChatRename: (newTitle: string) => Promise<void>;
 }
 
-const useChatHeader = ({ chatId, onRenamePress, handleChatRename }: Props) => {
+const useChatHeader = ({
+  chatId,
+  chatModel,
+  onRenamePress,
+  handleChatRename,
+}: Props) => {
   const navigation = useNavigation();
-  const { getChatById, renameChat, deleteChat, db } = useChatStore();
+  const { getChatById, deleteChat, db } = useChatStore();
   const chat = getChatById(chatId);
   const chatTitle = chat ? chat.title : `Chat #${chatId}`;
-  const chatModel = chat ? chat.model : 'Default Model';
-
+  console.log(chatModel?.id);
   const showRenamePrompt = () => {
     if (Platform.OS === 'ios') {
       Alert.prompt(
@@ -123,13 +129,13 @@ const useChatHeader = ({ chatId, onRenamePress, handleChatRename }: Props) => {
       headerTitle: () => (
         <ChatTitleWithMenu
           title={chatTitle}
-          modelName={chatModel}
+          modelName={chatModel?.id || 'No model selected'}
           onSelect={handleMenuSelect}
         />
       ),
       headerRight: () => <SettingsHeaderButton chatId={chatId} />,
     });
-  }, [navigation, chatId, chatTitle]);
+  }, [navigation, chatId, chatTitle, chatModel]);
 };
 
 export default useChatHeader;

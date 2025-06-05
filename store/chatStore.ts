@@ -6,6 +6,7 @@ import {
   createChat,
   renameChat,
   deleteChat,
+  setChatModel,
 } from '../database/chatRepository';
 
 interface ChatStore {
@@ -17,6 +18,7 @@ interface ChatStore {
   getChatById: (id: number) => Chat | undefined;
   addChat: (title: string, model: string) => Promise<number | undefined>;
   renameChat: (id: number, newTitle: string) => Promise<void>;
+  setChatModel: (id: number, model: string) => Promise<void>;
   deleteChat: (id: number) => Promise<void>;
 }
 
@@ -76,6 +78,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set((state) => ({
       chats: state.chats.map((chat) =>
         chat.id === id ? { ...chat, title: newTitle } : chat
+      ),
+    }));
+  },
+  setChatModel: async (id: number, model: string) => {
+    const db = get().db;
+    if (!db) return;
+    await setChatModel(db, id, model);
+
+    set((state) => ({
+      chats: state.chats.map((chat) =>
+        chat.id === id ? { ...chat, model: model } : chat
       ),
     }));
   },

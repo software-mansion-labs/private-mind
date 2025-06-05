@@ -10,6 +10,7 @@ import { useChatStore } from '../../store/chatStore';
 import { Platform } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
 import { getChatMessages, Message } from '../../database/chatRepository';
+import { Model } from '../../database/modelRepository';
 
 export default function ChatScreenWrapper() {
   useDefaultHeader();
@@ -20,7 +21,9 @@ export default function ChatScreenWrapper() {
   const [messageHistory, setMessageHistory] = useState<Message[]>([]);
   const chatId = id ? Number(id) : null;
   const chat = getChatById(chatId as number);
-  const model = getModelById(chat?.model || '');
+  const [model, setModel] = useState<Model | null>(
+    getModelById(chat?.model || '') || null
+  );
   /*
     For iOS, we are using default prompt alert which doesn't
     exist on Android. That's why we have to use a custom dialog which is a component and can't be returned from a hook.
@@ -43,6 +46,7 @@ export default function ChatScreenWrapper() {
 
   useChatHeader({
     chatId: chatId as number,
+    chatModel: model,
     onRenamePress: setRenameDialogVisible,
     handleChatRename: handleChatRename,
   });
@@ -78,6 +82,7 @@ export default function ChatScreenWrapper() {
         chatId={chatId}
         messageHistory={messageHistory}
         model={model || null}
+        selectModel={setModel}
       />
     </>
   );

@@ -45,7 +45,12 @@ const ChatTitleWithMenu = ({ title, modelName, onSelect }: Props) => {
       ]}
     >
       <TouchableOpacity style={styles.titleContainer}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
           <Text style={{ ...styles.title, color: theme.text.primary }}>
             {title}
           </Text>
@@ -71,6 +76,7 @@ const styles = StyleSheet.create({
   modelName: {
     fontSize: fontSizes.fontSizeXs,
     fontFamily: fontFamily.regular,
+    width: '100%',
   },
 });
 

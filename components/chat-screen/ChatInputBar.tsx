@@ -29,6 +29,7 @@ const ChatInputBar = ({
   userInput,
   setUserInput,
   onSend,
+  onSelectModel,
   inputRef,
   model,
 }: Props) => {
@@ -46,6 +47,23 @@ const ChatInputBar = ({
     <View
       style={{ ...styles.container, backgroundColor: theme.bg.softPrimary }}
     >
+      {chatId && !model && (
+        <TouchableOpacity
+          style={{
+            ...styles.modelSelection,
+            marginBottom: 0,
+            borderBottomLeftRadius: 8,
+            borderBottomRightRadius: 8,
+            paddingBottom: 12,
+          }}
+          onPress={() => {
+            onSelectModel();
+          }}
+        >
+          <Text style={styles.selectedModel}>{'Select Model'}</Text>
+          <RotateLeft width={20} height={20} />
+        </TouchableOpacity>
+      )}
       {chatId && model && loadedModel?.id !== model?.id && (
         <TouchableOpacity
           style={{

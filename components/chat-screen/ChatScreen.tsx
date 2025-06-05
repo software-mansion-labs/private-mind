@@ -44,7 +44,7 @@ export default function ChatScreen({
 
   const { downloadedModels, loadModels } = useModelStore();
   const { db, isGenerating, loadModel, sendChatMessage } = useLLMStore();
-  const { addChat, updateLastUsed } = useChatStore();
+  const { addChat, updateLastUsed, setChatModel } = useChatStore();
 
   const [userInput, setUserInput] = useState('');
   const [showModelModal, setShowModelModal] = useState(false);
@@ -57,6 +57,9 @@ export default function ChatScreen({
     setShowModelModal(false);
     try {
       await loadModel(selectedModel);
+      if (chatIdRef.current && !model) {
+        await setChatModel(chatIdRef.current, selectedModel.id);
+      }
       selectModel?.(selectedModel);
     } catch (error) {
       console.error('Error loading model:', error);

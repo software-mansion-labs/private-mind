@@ -99,17 +99,19 @@ const MessageItem = memo(
                 <MarkdownComponent text={contentParts.normalAfterThink} />
               </View>
             )}
-          {isAssistant && tokensPerSecond !== undefined && (
-            <Text
-              style={{
-                ...styles.meta,
-                color: theme.text.defaultTertiary,
-              }}
-            >
-              ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
-              {tokensPerSecond?.toFixed(2)} tok/s
-            </Text>
-          )}
+          {isAssistant &&
+            tokensPerSecond !== undefined &&
+            tokensPerSecond !== 0 && (
+              <Text
+                style={{
+                  ...styles.meta,
+                  color: theme.text.defaultTertiary,
+                }}
+              >
+                ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
+                {tokensPerSecond?.toFixed(2)} tok/s
+              </Text>
+            )}
         </View>
       </View>
     );
