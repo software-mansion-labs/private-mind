@@ -3,21 +3,24 @@ import { useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../components/chat-screen/ChatScreen';
 import { useDefaultHeader } from '../../hooks/useDefaultHeader';
 import { useEffect, useState } from 'react';
-import { getChatMessages, Message } from '../../database/chatRepository';
 import { useLLMStore } from '../../store/llmStore';
 import useChatHeader from '../../hooks/useChatHeader';
 import RenameChatAndroidDialog from '../../components/chat-screen/RenameChatAndroidDialog';
 import { useChatStore } from '../../store/chatStore';
 import { Platform } from 'react-native';
+import { useModelStore } from '../../store/modelStore';
+import { getChatMessages, Message } from '../../database/chatRepository';
 
 export default function ChatScreenWrapper() {
   useDefaultHeader();
-  const { activeChatId, activeChatMessages, db } = useLLMStore();
+  const { db, activeChatId, activeChatMessages } = useLLMStore();
   const { getChatById, renameChat } = useChatStore();
+  const { getModelById } = useModelStore();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const chatId = id ? Number(id) : null;
-
   const [messageHistory, setMessageHistory] = useState<Message[]>([]);
+  const chatId = id ? Number(id) : null;
+  const chat = getChatById(chatId as number);
+  const model = getModelById(chat?.model || '');
   /*
     For iOS, we are using default prompt alert which doesn't
     exist on Android. That's why we have to use a custom dialog which is a component and can't be returned from a hook.
@@ -41,18 +44,15 @@ export default function ChatScreenWrapper() {
   useChatHeader({
     chatId: chatId as number,
     onRenamePress: setRenameDialogVisible,
-    chatTitle: chatTitle,
-    setChatTitle: setChatTitle,
     handleChatRename: handleChatRename,
   });
 
   useEffect(() => {
     (async () => {
-      if (chatId !== null && chatId != activeChatId && db !== null) {
-        const messages = await getChatMessages(db, chatId);
-        setMessageHistory(messages);
-      } else {
-        setMessageHistory([]);
+      if (!db || !chatId) return;
+      if (chatId != activeChatId) {
+        const history = await getChatMessages(db, chatId);
+        setMessageHistory(history);
       }
     })();
   }, [chatId, db]);
@@ -74,7 +74,11 @@ export default function ChatScreenWrapper() {
         />
       )}
 
-      <ChatScreen chatId={chatId} messageHistory={messageHistory} />
+      <ChatScreen
+        chatId={chatId}
+        messageHistory={messageHistory}
+        model={model || null}
+      />
     </>
   );
 }

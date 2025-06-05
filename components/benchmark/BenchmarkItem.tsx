@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
-import ColorPalette from '../../colors';
 
 const BenchmarkItem = ({ entry }: { entry: BenchmarkResult }) => {
   const toFixed = (n: number, d = 2) => Number(n).toFixed(d);
@@ -34,10 +33,8 @@ const styles = StyleSheet.create({
   title: {
     fontWeight: '600',
     marginBottom: 2,
-    color: ColorPalette.primary,
   },
   stat: {
     fontSize: 13,
-    color: ColorPalette.primary,
   },
 });

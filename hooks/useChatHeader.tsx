@@ -14,31 +14,20 @@ import {
 } from '../database/exportImportRepository';
 import { importMessages } from '../database/chatRepository';
 import ChatTitleWithMenu from '../components/chat-screen/ChatTitleWithMenu';
+import SettingsHeaderButton from '../components/SettingsHeaderButton';
 
 interface Props {
   chatId: number;
   onRenamePress: Dispatch<SetStateAction<boolean>>;
-  chatTitle: string;
-  setChatTitle: Dispatch<SetStateAction<string>>;
   handleChatRename: (newTitle: string) => Promise<void>;
 }
 
-const useChatHeader = ({
-  chatId,
-  onRenamePress,
-  chatTitle,
-  setChatTitle,
-  handleChatRename,
-}: Props) => {
+const useChatHeader = ({ chatId, onRenamePress, handleChatRename }: Props) => {
   const navigation = useNavigation();
   const { getChatById, renameChat, deleteChat, db } = useChatStore();
-
-  useEffect(() => {
-    const chat = getChatById(chatId);
-    if (chat?.title) {
-      setChatTitle(chat.title);
-    }
-  }, [chatId, getChatById]);
+  const chat = getChatById(chatId);
+  const chatTitle = chat ? chat.title : `Chat #${chatId}`;
+  const chatModel = chat ? chat.model : 'Default Model';
 
   const showRenamePrompt = () => {
     if (Platform.OS === 'ios') {
@@ -84,7 +73,7 @@ const useChatHeader = ({
           try {
             const newChatId = await useChatStore
               .getState()
-              .addChat(importedChat.title);
+              .addChat(importedChat.title, '');
             if (newChatId) {
               await importMessages(db!, newChatId, importedChat.messages);
               router.push(`/chat/${newChatId}`);
@@ -132,8 +121,13 @@ const useChatHeader = ({
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: () => (
-        <ChatTitleWithMenu title={chatTitle} onSelect={handleMenuSelect} />
+        <ChatTitleWithMenu
+          title={chatTitle}
+          modelName={chatModel}
+          onSelect={handleMenuSelect}
+        />
       ),
+      headerRight: () => <SettingsHeaderButton chatId={chatId} />,
     });
   }, [navigation, chatId, chatTitle]);
 };

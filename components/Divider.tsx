@@ -6,7 +6,6 @@ import {
   ViewStyle,
   DimensionValue,
 } from 'react-native';
-import ColorPalette from '../colors';
 
 interface Props {
   color?: string;
@@ -17,7 +16,7 @@ interface Props {
 }
 
 const Divider = ({
-  color = ColorPalette.seaBlueMedium,
+  color = '#E0E0E0',
   thickness = StyleSheet.hairlineWidth,
   orientation = 'horizontal',
   length = '100%',

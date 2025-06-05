@@ -4,7 +4,6 @@ import Divider from '../Divider';
 import { Model } from '../../database/modelRepository';
 import { useModelStore } from '../../store/modelStore';
 import { useLLMStore } from '../../store/llmStore';
-import ColorPalette from '../../colors';
 
 interface Props {
   model: Model;
@@ -129,7 +128,6 @@ const styles = StyleSheet.create({
   card: {
     padding: 12,
     borderWidth: 1,
-    borderColor: ColorPalette.blueLight,
     backgroundColor: '#fff',
     borderRadius: 10,
     marginBottom: 12,
@@ -143,41 +141,34 @@ const styles = StyleSheet.create({
   name: {
     fontWeight: '600',
     fontSize: 16,
-    color: ColorPalette.primary,
   },
   sourceText: {
     fontSize: 12,
-    color: ColorPalette.blueDark,
   },
   downloadHint: {
     marginTop: 10,
     textAlign: 'center',
-    color: ColorPalette.info,
     fontWeight: '500',
   },
   deleteHint: {
     marginTop: 10,
     textAlign: 'center',
-    color: ColorPalette.danger,
     fontWeight: '500',
   },
   loadedHint: {
     marginTop: 10,
     textAlign: 'center',
-    color: ColorPalette.success,
     fontWeight: '500',
   },
   progressBarContainer: {
     marginTop: 10,
     height: 12,
-    backgroundColor: ColorPalette.blueLight,
     borderRadius: 6,
     overflow: 'hidden',
     position: 'relative',
   },
   progressBar: {
     height: '100%',
-    backgroundColor: ColorPalette.info,
   },
   progressText: {
     position: 'absolute',
@@ -196,7 +187,6 @@ const styles = StyleSheet.create({
   loadButton: {
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: ColorPalette.primary,
     borderRadius: 6,
   },
   loadButtonText: {
@@ -206,7 +196,6 @@ const styles = StyleSheet.create({
   unloadButton: {
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: ColorPalette.danger,
     borderRadius: 6,
   },
   unloadButtonText: {

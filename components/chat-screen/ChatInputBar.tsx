@@ -5,67 +5,76 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
-  Platform,
 } from 'react-native';
 import SendIcon from '../../assets/icons/send_icon.svg';
 import PauseIcon from '../../assets/icons/pause_icon.svg';
 import { Model } from '../../database/modelRepository';
-import ColorPalette from '../../colors';
-import { fontFamily } from '../../fontFamily';
+import { fontFamily } from '../../styles/fontFamily';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
+import { useTheme } from '../../context/ThemeContext';
+import { useLLMStore } from '../../store/llmStore';
 
 interface Props {
-  isLoading: boolean;
-  isGenerating: boolean;
-  selectedModel: Model | null;
+  chatId: number | null;
   userInput: string;
   setUserInput: (text: string) => void;
   onSend: () => void;
   onSelectModel: () => void;
-  interrupt: () => void;
   inputRef: Ref<TextInput>;
+  model: Model | null;
 }
 
 const ChatInputBar = ({
-  isLoading,
-  isGenerating,
-  selectedModel,
+  chatId,
   userInput,
   setUserInput,
   onSend,
-  onSelectModel,
-  interrupt,
   inputRef,
+  model,
 }: Props) => {
+  const { theme } = useTheme();
+
+  const {
+    isLoading,
+    isGenerating,
+    interrupt,
+    loadModel,
+    model: loadedModel,
+  } = useLLMStore();
+
   return (
-    <View style={styles.container}>
-      <TouchableOpacity
-        style={
-          selectedModel
-            ? styles.modelSelection
-            : {
-                ...styles.modelSelection,
-                marginBottom: 0,
-                borderBottomLeftRadius: 8,
-                borderBottomRightRadius: 8,
-                paddingBottom: 12,
-              }
-        }
-        onPress={onSelectModel}
-      >
-        <Text style={styles.selectedModel}>
-          {selectedModel ? selectedModel.id : 'Select a model'}
-        </Text>
-        <RotateLeft width={20} height={20} />
-      </TouchableOpacity>
-      {selectedModel && (
-        <View style={styles.content}>
+    <View
+      style={{ ...styles.container, backgroundColor: theme.bg.softPrimary }}
+    >
+      {chatId && model && loadedModel?.id !== model?.id && (
+        <TouchableOpacity
+          style={{
+            ...styles.modelSelection,
+            marginBottom: 0,
+            borderBottomLeftRadius: 8,
+            borderBottomRightRadius: 8,
+            paddingBottom: 12,
+          }}
+          onPress={() => {
+            loadModel(model);
+          }}
+        >
+          <Text style={styles.selectedModel}>
+            {'Load Model'} {model.id}
+          </Text>
+          <RotateLeft width={20} height={20} />
+        </TouchableOpacity>
+      )}
+      {model && loadedModel?.id === model.id && (
+        <View
+          style={{ ...styles.content, backgroundColor: theme.bg.strongPrimary }}
+        >
           <TextInput
             ref={inputRef}
             style={styles.input}
             multiline
-            placeholder="Ask about anything..."
-            placeholderTextColor={ColorPalette.blueDark}
+            placeholder={!isLoading ? 'Ask about anything...' : 'Loading...'}
+            placeholderTextColor={theme.text.contrastTertiary}
             value={userInput}
             onChangeText={setUserInput}
           />
@@ -102,13 +111,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     height: 52,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
     borderWidth: 1,
-    marginBottom: -8,
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 20,
+    marginBottom: 0,
+    paddingBottom: 12,
+    borderRadius: 8,
   },
   selectedModel: {
     fontSize: 14,
@@ -116,7 +124,6 @@ const styles = StyleSheet.create({
     width: '80%',
   },
   content: {
-    backgroundColor: ColorPalette.primary,
     height: 68,
     flexDirection: 'row',
     alignItems: 'center',
@@ -126,7 +133,6 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   selectButtonText: {
-    color: ColorPalette.primary,
     fontSize: 12,
   },
   input: {

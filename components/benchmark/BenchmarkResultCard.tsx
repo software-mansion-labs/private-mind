@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
-import ColorPalette from '../../colors';
 
 const toFixed = (n: number, d = 2) => Number(n).toFixed(d);
 
@@ -37,24 +36,19 @@ const styles = StyleSheet.create({
   card: {
     marginVertical: 16,
     padding: 16,
-    backgroundColor: ColorPalette.seaBlueLight,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: ColorPalette.seaBlueDark,
   },
   cardTitle: {
     fontWeight: '600',
     fontSize: 16,
     marginBottom: 12,
-    color: ColorPalette.primary,
   },
   row: {
     fontSize: 14,
-    color: ColorPalette.blueDark,
     marginBottom: 6,
   },
   value: {
     fontWeight: 'bold',
-    color: ColorPalette.primary,
   },
 });

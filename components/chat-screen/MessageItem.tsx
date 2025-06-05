@@ -1,9 +1,9 @@
 import React, { memo } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
-import ColorPalette from '../../colors';
 import ThinkingBlock from './ThinkingBlock';
-import { fontFamily } from '../../fontFamily';
+import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { useTheme } from '../../context/ThemeContext';
 
 interface MessageItemProps {
   content: string;
@@ -22,65 +22,91 @@ const MessageItem = memo(
     timeToFirstToken,
   }: MessageItemProps) => {
     const isAssistant = role === 'assistant';
+    const { theme } = useTheme();
 
-    const parseThinkingContent = (content: string) => {
-      const thinkingRegex = /<think>([\s\S]*?)<\/think>/g;
-      const parts = [];
-      let lastIndex = 0;
-      let match;
+    const parseThinkingContent = (text: string) => {
+      const thinkStartIndex = text.indexOf('<think>');
 
-      while ((match = thinkingRegex.exec(content)) !== null) {
-        // Add content before thinking block
-        if (match.index > lastIndex) {
-          parts.push({
-            type: 'normal',
-            content: content.slice(lastIndex, match.index),
-          });
-        }
-
-        // Add thinking content
-        parts.push({
-          type: 'thinking',
-          content: match[1].trim(),
-        });
-
-        lastIndex = match.index + match[0].length;
+      if (thinkStartIndex === -1) {
+        // No thinking block, return all as normal content
+        return {
+          normalContent: text,
+          thinkingContent: null,
+          hasThinking: false,
+        };
       }
 
-      // Add remaining content after last thinking block
-      if (lastIndex < content.length) {
-        parts.push({
-          type: 'normal',
-          content: content.slice(lastIndex),
-        });
-      }
+      const thinkEndIndex = text.indexOf('</think>');
+      const normalBeforeThink = text.slice(0, thinkStartIndex);
 
-      return parts.length > 0 ? parts : [{ type: 'normal', content }];
+      if (thinkEndIndex === -1) {
+        // Incomplete thinking block (still streaming)
+        const thinkingContent = text.slice(thinkStartIndex + 7); // +7 for '<think>'
+        return {
+          normalContent: normalBeforeThink,
+          thinkingContent,
+          hasThinking: true,
+          isThinkingComplete: false,
+          normalAfterThink: '',
+        };
+      } else {
+        // Complete thinking block
+        const thinkingContent = text.slice(thinkStartIndex + 7, thinkEndIndex);
+        const normalAfterThink = text.slice(thinkEndIndex + 8); // +8 for '</think>'
+        return {
+          normalContent: normalBeforeThink,
+          thinkingContent,
+          hasThinking: true,
+          isThinkingComplete: true,
+          normalAfterThink,
+        };
+      }
     };
 
     const contentParts = parseThinkingContent(content);
 
     return (
-      <View style={isAssistant ? styles.aiMessage : styles.userMessage}>
+      <View
+        style={
+          isAssistant
+            ? styles.aiMessage
+            : { ...styles.userMessage, backgroundColor: theme.bg.softSecondary }
+        }
+      >
         <View style={styles.bubbleContent}>
-          {isAssistant && <Text style={styles.modelName}>{modelName}</Text>}
-          {contentParts.map((part, index) => (
-            <View key={index}>
-              {part.type === 'thinking' && part.content !== '' ? (
-                <ThinkingBlock content={part.content} isComplete={true} />
-              ) : (
-                part.content.trim() && (
-                  <MarkdownComponent
-                    text={part.content}
-                    isUser={!isAssistant}
-                  />
-                )
-              )}
-            </View>
-          ))}
+          {isAssistant && (
+            <Text
+              style={{
+                ...styles.modelName,
+                color: theme.text.defaultSecondary,
+              }}
+            >
+              {modelName}
+            </Text>
+          )}
+          {contentParts.normalContent.trim() && (
+            <MarkdownComponent text={contentParts.normalContent} />
+          )}
+          {contentParts.hasThinking && (
+            <ThinkingBlock
+              content={contentParts.thinkingContent || ''}
+              isComplete={true}
+            />
+          )}
+          {contentParts.normalAfterThink &&
+            contentParts.normalAfterThink.trim() && (
+              <View>
+                <MarkdownComponent text={contentParts.normalAfterThink} />
+              </View>
+            )}
           {isAssistant && tokensPerSecond !== undefined && (
-            <Text style={styles.meta}>
-              ⏱️ {timeToFirstToken?.toFixed()} ms • ⚡{' '}
+            <Text
+              style={{
+                ...styles.meta,
+                color: theme.text.defaultTertiary,
+              }}
+            >
+              ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
               {tokensPerSecond?.toFixed(2)} tok/s
             </Text>
           )}
@@ -104,35 +130,32 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     flexDirection: 'row-reverse',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 12,
     marginHorizontal: 12,
-    maxWidth: '75%',
+    maxWidth: '65%',
     alignSelf: 'flex-end',
-    backgroundColor: ColorPalette.seaBlueLight,
     borderRadius: 4,
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    justifyContent: 'center',
   },
   bubbleContent: {
-    flexShrink: 1,
     width: '100%',
+    gap: 4,
   },
   thinkingBox: {
-    backgroundColor: ColorPalette.seaBlueLight,
     borderRadius: 4,
     padding: 12,
     marginBottom: 8,
     borderLeftWidth: 3,
-    borderLeftColor: ColorPalette.blueDark,
   },
   modelName: {
-    fontSize: 12,
-    fontFamily: fontFamily.regular,
-    color: ColorPalette.blueDark,
+    fontSize: fontSizes.fontSizeXs,
+    fontFamily: fontFamily.medium,
   },
   meta: {
-    fontSize: 12,
-    marginTop: 8,
-    color: ColorPalette.blueDark,
+    fontSize: fontSizes.fontSizeXxs,
+    fontFamily: fontFamily.regular,
   },
 });

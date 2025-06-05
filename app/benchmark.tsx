@@ -15,7 +15,6 @@ import {
   BenchmarkResult,
   getAllBenchmarks,
 } from '../database/benchmarkRepository';
-import ColorPalette from '../colors';
 import BenchmarkItem from '../components/benchmark/BenchmarkItem';
 import BenchmarkResultCard from '../components/benchmark/BenchmarkResultCard';
 import ModelSelectorModal from '../components/chat-screen/ModelSelector';
@@ -77,12 +76,7 @@ const BenchmarkScreen = () => {
           </Text>
         </TouchableOpacity>
 
-        {loading && (
-          <ActivityIndicator
-            color={ColorPalette.primary}
-            style={{ marginTop: 12 }}
-          />
-        )}
+        {loading && <ActivityIndicator style={{ marginTop: 12 }} />}
 
         {benchmarkResult && <BenchmarkResultCard result={benchmarkResult} />}
       </View>
@@ -123,15 +117,12 @@ const styles = StyleSheet.create({
   headerBox: {
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: ColorPalette.seaBlueDark,
   },
   infoText: {
     fontSize: 14,
     marginBottom: 8,
-    color: ColorPalette.blueDark,
   },
   modelSelectorButton: {
-    backgroundColor: ColorPalette.primary,
     padding: 12,
     borderRadius: 6,
     marginBottom: 12,
@@ -142,7 +133,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   runButton: {
-    backgroundColor: ColorPalette.primary,
     padding: 12,
     borderRadius: 6,
     width: '100%',
@@ -158,10 +148,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 12,
     marginBottom: 8,
-    color: ColorPalette.primary,
   },
   noDataText: {
-    color: ColorPalette.blueDark,
     textAlign: 'center',
     marginTop: 16,
   },

@@ -13,8 +13,9 @@ import {
   DMSans_500Medium_Italic,
   DMSans_600SemiBold_Italic,
 } from '@expo-google-fonts/dm-sans';
-import { fontFamily } from '../fontFamily';
+import { fontFamily } from '../styles/fontFamily';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ThemeProvider } from '../context/ThemeContext';
 
 export default function Layout() {
   useFonts({
@@ -29,39 +30,47 @@ export default function Layout() {
   return (
     <GestureHandlerRootView>
       <SQLiteProvider databaseName="executorch.db" onInit={initDatabase}>
-        <CustomDrawerLayout>
-          <SafeAreaView style={{ flex: 1 }}>
-            <Stack
-              screenOptions={{
-                headerShadowVisible: false,
-              }}
-            >
-              <Stack.Screen name="model-hub" options={{ title: 'Models' }} />
-              <Stack.Screen
-                name="index"
-                options={{ title: '', animation: 'none' }}
-              />
-              <Stack.Screen name="benchmark" options={{ title: 'Benchmark' }} />
-              <Stack.Screen name="chat/[id]" options={{ animation: 'none' }} />
-              <Stack.Screen
-                name="chat/[id]/settings"
-                options={{
-                  title: 'Chat Settings',
-                  presentation: 'modal',
-                  headerShown: false,
+        <ThemeProvider>
+          <CustomDrawerLayout>
+            <SafeAreaView style={{ flex: 1 }}>
+              <Stack
+                screenOptions={{
+                  headerShadowVisible: false,
                 }}
-              />
-              <Stack.Screen
-                name="modal/add-model"
-                options={{
-                  presentation: 'modal',
-                  title: 'Add Model',
-                  headerShown: false,
-                }}
-              />
-            </Stack>
-          </SafeAreaView>
-        </CustomDrawerLayout>
+              >
+                <Stack.Screen name="model-hub" options={{ title: 'Models' }} />
+                <Stack.Screen
+                  name="index"
+                  options={{ title: '', animation: 'none' }}
+                />
+                <Stack.Screen
+                  name="benchmark"
+                  options={{ title: 'Benchmark' }}
+                />
+                <Stack.Screen
+                  name="chat/[id]"
+                  options={{ animation: 'none' }}
+                />
+                <Stack.Screen
+                  name="chat/[id]/settings"
+                  options={{
+                    title: 'Chat Settings',
+                    presentation: 'modal',
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="modal/add-model"
+                  options={{
+                    presentation: 'modal',
+                    title: 'Add Model',
+                    headerShown: false,
+                  }}
+                />
+              </Stack>
+            </SafeAreaView>
+          </CustomDrawerLayout>
+        </ThemeProvider>
       </SQLiteProvider>
     </GestureHandlerRootView>
   );

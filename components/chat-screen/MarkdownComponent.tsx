@@ -1,8 +1,8 @@
 import React, { memo } from 'react';
 import Markdown from 'react-native-markdown-display';
-import ColorPalette from '../../colors';
 import { Platform } from 'react-native';
-import { fontFamily } from '../../fontFamily';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontFamily';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Props {
   text: string;
@@ -10,28 +10,25 @@ interface Props {
 }
 
 const MarkdownComponent = memo(({ text, isUser = false }: Props) => {
-  const baseColor = isUser ? ColorPalette.primary : ColorPalette.primary;
+  const { theme } = useTheme();
+  const baseColor = isUser ? theme.text.primary : theme.text.primary;
 
   return (
     <Markdown
       style={{
         body: {
           color: baseColor,
-          fontSize: 16,
-          alignSelf: 'flex-start',
+          fontSize: fontSizes.fontSizeMd,
           fontFamily: fontFamily.regular,
-          lineHeight: 24,
+          lineHeight: lineHeights.lineHeightMd,
         },
         paragraph: {
-          marginTop: 0,
-          marginBottom: 8,
           fontFamily: fontFamily.regular,
-          lineHeight: 24,
+          lineHeight: lineHeights.lineHeightMd,
         },
         heading1: {
-          fontSize: 22,
+          fontSize: fontSizes.fontSize2xl,
           color: baseColor,
-          marginTop: 16,
           marginBottom: 8,
           fontFamily: fontFamily.bold,
           lineHeight: 24,
@@ -39,24 +36,18 @@ const MarkdownComponent = memo(({ text, isUser = false }: Props) => {
         heading2: {
           fontSize: 20,
           color: baseColor,
-          marginTop: 14,
-          marginBottom: 6,
           fontFamily: fontFamily.bold,
           lineHeight: 24,
         },
         heading3: {
           fontSize: 18,
           color: baseColor,
-          marginTop: 12,
-          marginBottom: 4,
           fontFamily: fontFamily.bold,
           lineHeight: 24,
         },
         heading4: {
           fontSize: 17,
           color: baseColor,
-          marginTop: 10,
-          marginBottom: 4,
           fontFamily: fontFamily.bold,
           lineHeight: 24,
         },
@@ -72,19 +63,14 @@ const MarkdownComponent = memo(({ text, isUser = false }: Props) => {
           lineHeight: 24,
         },
         bullet_list: {
-          marginTop: 8,
-          marginBottom: 8,
           fontFamily: fontFamily.regular,
           lineHeight: 24,
         },
         ordered_list: {
-          marginTop: 8,
-          marginBottom: 8,
           fontFamily: fontFamily.regular,
           lineHeight: 24,
         },
         list_item: {
-          marginBottom: 4,
           flexDirection: 'row',
           alignItems: 'flex-start',
           fontFamily: fontFamily.regular,
@@ -93,9 +79,9 @@ const MarkdownComponent = memo(({ text, isUser = false }: Props) => {
         bullet_list_icon: {
           color: baseColor,
           marginRight: 8,
-          fontSize: 16,
+          fontSize: 30,
           fontFamily: fontFamily.regular,
-          lineHeight: 24,
+          lineHeight: 30,
         },
         bullet_list_content: {
           flex: 1,
@@ -139,7 +125,6 @@ const MarkdownComponent = memo(({ text, isUser = false }: Props) => {
           marginBottom: 8,
           fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
           borderLeftWidth: 3,
-          borderLeftColor: ColorPalette.info,
         },
         fence: {
           backgroundColor: isUser
@@ -153,21 +138,15 @@ const MarkdownComponent = memo(({ text, isUser = false }: Props) => {
           marginBottom: 8,
           fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
           borderLeftWidth: 3,
-          borderLeftColor: ColorPalette.info,
         },
         link: {
-          color: ColorPalette.info,
           textDecorationLine: 'underline',
           fontFamily: fontFamily.regular,
           fontSize: 16,
           lineHeight: 24,
         },
         blockquote: {
-          backgroundColor: isUser
-            ? 'rgba(255,255,255,0.1)'
-            : ColorPalette.seaBlueLight,
           borderLeftWidth: 4,
-          borderLeftColor: ColorPalette.info,
           paddingLeft: 12,
           paddingRight: 12,
           paddingTop: 8,

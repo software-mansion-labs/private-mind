@@ -12,7 +12,6 @@ import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
 import { Model } from '../../database/modelRepository';
 import { useModelStore } from '../../store/modelStore';
-import ColorPalette from '../../colors';
 
 export default function AddModelModal() {
   const router = useRouter();
@@ -161,38 +160,30 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginBottom: 16,
     fontWeight: 'bold',
-    color: ColorPalette.primary,
   },
   section: {
     fontSize: 16,
     fontWeight: '600',
     marginTop: 20,
     marginBottom: 8,
-    color: ColorPalette.primary,
   },
   input: {
     borderWidth: 1,
-    borderColor: ColorPalette.blueLight,
     borderRadius: 6,
     padding: 12,
     marginBottom: 10,
     fontSize: 14,
-    color: ColorPalette.primary,
   },
   fileButton: {
     padding: 12,
     borderWidth: 1,
-    borderColor: ColorPalette.seaBlueDark,
     borderRadius: 6,
-    backgroundColor: ColorPalette.seaBlueLight,
     marginBottom: 12,
   },
   fileButtonText: {
-    color: ColorPalette.primary,
     fontWeight: '500',
   },
   saveButton: {
-    backgroundColor: ColorPalette.primary,
     padding: 14,
     borderRadius: 6,
     marginTop: 20,
@@ -206,7 +197,6 @@ const styles = StyleSheet.create({
   cancelText: {
     marginTop: 18,
     textAlign: 'center',
-    color: ColorPalette.blueDark,
     fontSize: 14,
   },
 });

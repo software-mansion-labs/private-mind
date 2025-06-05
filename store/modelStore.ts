@@ -22,6 +22,7 @@ interface ModelStore {
   setDB: (db: SQLiteDatabase) => void;
   loadModels: () => Promise<void>;
   addModelToDB: (model: Model) => Promise<void>;
+  getModelById: (id: string) => Model | undefined;
   downloadModel: (model: Model) => Promise<void>;
   removeModel: (modelId: string) => Promise<void>;
 }
@@ -33,6 +34,11 @@ export const useModelStore = create<ModelStore>((set, get) => ({
   downloadStates: {},
 
   setDB: (db) => set({ db }),
+
+  getModelById: (id: string) => {
+    const models = get().models;
+    return models.find((model) => model.id === id);
+  },
 
   loadModels: async () => {
     const db = get().db;

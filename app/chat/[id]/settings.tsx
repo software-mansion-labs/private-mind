@@ -13,7 +13,6 @@ import {
   setChatSettings,
 } from '../../../database/chatRepository';
 import { useSQLiteContext } from 'expo-sqlite';
-import ColorPalette from '../../../colors';
 
 export default function ChatSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -89,22 +88,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 20,
     marginBottom: 24,
-    color: ColorPalette.primary,
   },
   label: {
     fontSize: 15,
     marginTop: 16,
     marginBottom: 6,
     fontWeight: '500',
-    color: ColorPalette.blueDark,
   },
   input: {
     borderWidth: 1,
-    borderColor: ColorPalette.blueLight,
     borderRadius: 6,
     padding: 10,
     fontSize: 14,
-    color: ColorPalette.primary,
   },
   largeInput: {
     height: 120,
@@ -113,7 +108,6 @@ const styles = StyleSheet.create({
   saveButton: {
     marginTop: 30,
     paddingVertical: 14,
-    backgroundColor: ColorPalette.primary,
     borderRadius: 8,
     alignItems: 'center',
   },

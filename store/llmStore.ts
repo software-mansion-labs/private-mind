@@ -4,8 +4,8 @@ import { Model } from '../database/modelRepository';
 import { SQLiteDatabase } from 'expo-sqlite';
 import {
   getChatSettings,
-  persistMessage,
   Message,
+  persistMessage,
 } from '../database/chatRepository';
 import DeviceInfo from 'react-native-device-info';
 import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
@@ -19,18 +19,21 @@ interface LLMStore {
   isLoading: boolean;
   isGenerating: boolean;
   db: SQLiteDatabase | null;
-  activeChatId: number | null;
-  activeChatMessages: Message[];
   response: string;
   model: Model | null;
   tokenCount: number;
   firstTokenTime: number;
+  activeChatId: number | null;
+  activeChatMessages: Message[];
 
-  sendChatMessage: (messages: Message[], newMessage: string) => Promise<void>;
+  sendChatMessage: (
+    messages: Message[],
+    newMessage: string,
+    chatId: number
+  ) => Promise<void>;
   setDB: (db: SQLiteDatabase) => void;
   loadModel: (model: Model) => Promise<void>;
   unloadModel: () => void;
-  setActiveChatId: (chatId: number) => void;
   runBenchmark: () => Promise<BenchmarkResult>;
   interrupt: () => void;
 }
@@ -58,38 +61,40 @@ const calculatePerformanceMetrics = (
 export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
   isGenerating: false,
-  activeChatId: null,
-  activeChatMessages: [],
   db: null,
   response: '',
   model: null,
   tokenCount: 0,
   firstTokenTime: 0,
+  activeChatId: null,
+  activeChatMessages: [],
 
   setDB: (db) => set({ db }),
-  setActiveChatId: (chatId) =>
-    set({
-      activeChatId: chatId,
-      activeChatMessages: [],
-    }),
 
-  loadModel: async (model: Model) => {
-    if (get().model !== null) {
+  loadModel: async (model) => {
+    if (model.id === get().model?.id || get().isLoading) {
+      return;
+    }
+    if (get().model) {
       LLMModule.delete();
     }
+
     set({ isLoading: true });
     await LLMModule.load({
       modelSource: model.modelPath,
       tokenizerSource: model.tokenizerPath,
       tokenizerConfigSource: model.tokenizerConfigPath,
       responseCallback: (response) => {
-        const messages = get().activeChatMessages;
-        messages[messages.length - 1]
-          ? (messages[messages.length - 1].content = response)
-          : null;
-        set({ response, activeChatMessages: messages });
         if (response != '') {
-          set({ tokenCount: get().tokenCount + 1 });
+          const messages = get().activeChatMessages;
+          messages[messages.length - 1]
+            ? (messages[messages.length - 1].content = response)
+            : null;
+          set({
+            response,
+            activeChatMessages: messages,
+            tokenCount: get().tokenCount + 1,
+          });
           if (get().tokenCount === 1) {
             set({ firstTokenTime: performance.now() });
           }
@@ -102,19 +107,26 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
   unloadModel: () => {
     if (get().model !== null) {
-      LLMModule.delete();
-      set({ model: null, response: '', tokenCount: 0, firstTokenTime: 0 });
+      try {
+        LLMModule.delete();
+        set({ model: null, response: '', tokenCount: 0, firstTokenTime: 0 });
+      } catch (e) {
+        console.warn('Error unloading model:', e);
+      }
     }
   },
 
-  sendChatMessage: async (messages: Message[], newMessage: string) => {
-    const { isGenerating, db, model, isLoading, activeChatId } = get();
-    if (isGenerating || !db || model === null || isLoading || !activeChatId)
-      return;
+  sendChatMessage: async (
+    messages: Message[],
+    newMessage: string,
+    chatId: number
+  ) => {
+    const { isGenerating, db, model, isLoading } = get();
+    if (isGenerating || !db || model === null || isLoading) return;
 
     try {
       const userMessageId = await persistMessage(db, {
-        chatId: activeChatId,
+        chatId: chatId,
         role: 'user',
         content: newMessage,
         timeToFirstToken: 0,
@@ -124,13 +136,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       messages.push({
         role: 'user',
         content: newMessage,
-        chatId: activeChatId,
+        chatId: chatId,
         timestamp: Date.now(),
         id: userMessageId,
       });
 
-      const chatSettings = await getChatSettings(db, activeChatId);
-
+      const chatSettings = await getChatSettings(db, chatId);
       const systemPrompt = chatSettings.systemPrompt;
       const contextWindow = chatSettings.contextWindow;
 
@@ -143,7 +154,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         role: 'assistant',
         content: '',
         modelName: model.id,
-        chatId: activeChatId,
+        chatId: chatId,
         timestamp: Date.now(),
         id: -1,
       });
@@ -153,6 +164,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         response: '',
         activeChatMessages: messages,
         tokenCount: 0,
+        activeChatId: chatId,
       });
 
       const startTime = performance.now();
@@ -166,7 +178,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         get().firstTokenTime,
         get().tokenCount
       );
-
       if (generatedResponse) {
         await persistMessage(db, {
           role: 'assistant',
@@ -174,7 +185,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           content: generatedResponse,
           tokensPerSecond: tokensPerSecond,
           timeToFirstToken: timeToFirstToken,
-          chatId: activeChatId,
+          chatId: chatId,
         });
 
         messages[messages.length - 1].timeToFirstToken = timeToFirstToken;
@@ -283,5 +294,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       id: benchmarkId,
     };
   },
-  interrupt: () => LLMModule.interrupt(),
+  interrupt: () => {
+    if (get().isGenerating) {
+      LLMModule.interrupt();
+    }
+  },
 }));

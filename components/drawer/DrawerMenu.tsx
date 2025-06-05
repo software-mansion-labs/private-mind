@@ -1,9 +1,16 @@
 import React, { memo } from 'react';
-import { Text, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  Text,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  Alert,
+} from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { useChatStore } from '../../store/chatStore';
-import ColorPalette from '../../colors';
 import { Chat } from '../../database/chatRepository';
+import { useLLMStore } from '../../store/llmStore';
 
 const getRelativeDateSection = (date: Date): string => {
   const now = new Date();
@@ -42,12 +49,16 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
   const router = useRouter();
   const pathname = usePathname();
   const { chats } = useChatStore();
+  const { isGenerating, interrupt } = useLLMStore();
 
   const groupedChats = groupChatsByDate(
-    [...chats].sort((a, b) => b.lastUsed - a.lastUsed) // newest first
+    [...chats].sort((a, b) => b.lastUsed - a.lastUsed)
   );
 
   const navigate = (path: string) => {
+    if (isGenerating) {
+      interrupt();
+    }
     router.push(path);
     onNavigate();
   };
@@ -56,7 +67,7 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
     <ScrollView contentContainerStyle={styles.container}>
       <Section title="App" />
       <DrawerItem
-        label="Chat"
+        label="New chat"
         active={pathname === '/'}
         onPress={() => navigate('/')}
       />
@@ -71,7 +82,6 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
         onPress={() => navigate('/benchmark')}
       />
 
-      {/* Grouped Chats */}
       <Section title="Chats" />
       {Object.entries(groupedChats).map(([sectionTitle, sectionChats]) => (
         <View key={sectionTitle}>
@@ -136,12 +146,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 20,
     marginBottom: 12,
-    color: ColorPalette.primary,
   },
   subSection: {
     fontSize: 12,
     fontWeight: '600',
-    color: ColorPalette.blueDark,
     marginTop: 16,
     marginBottom: 4,
     paddingLeft: 4,
@@ -151,18 +159,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 6,
   },
-  itemActive: {
-    backgroundColor: ColorPalette.seaBlueLight,
-  },
-  itemPressed: {
-    backgroundColor: ColorPalette.seaBlueMedium,
-  },
+  itemActive: {},
+  itemPressed: {},
   label: {
     fontSize: 16,
-    color: ColorPalette.blueDark,
   },
   labelActive: {
-    color: ColorPalette.primary,
     fontWeight: 'bold',
   },
 });

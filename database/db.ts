@@ -22,7 +22,8 @@ export const initDatabase = async (db: SQLiteDatabase) => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         lastUsed timestamp DEFAULT CURRENT_TIMESTAMP,
         model TEXT,
-        title TEXT DEFAULT ''
+        title TEXT DEFAULT '',
+        FOREIGN KEY (model) REFERENCES models (id) ON DELETE SET NULL
       )`);
 
   await db.execAsync(`

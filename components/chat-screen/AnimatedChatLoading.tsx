@@ -1,3 +1,4 @@
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   interpolateColor,
@@ -6,22 +7,20 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import ColorPalette from '../../colors';
+import { useTheme } from '../../context/ThemeContext';
 
 const AnimatedChatLoading = () => {
   const progress = useSharedValue(0);
   progress.value = withRepeat(withTiming(1, { duration: 500 }), -1, true);
+
+  const { theme } = useTheme();
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
       backgroundColor: interpolateColor(
         progress.value,
         [0, 1],
-        [
-          ColorPalette.seaBlueLight,
-          ColorPalette.seaBlueMedium,
-          ColorPalette.seaBlueDark,
-        ]
+        [theme.bg.strongPrimary, theme.bg.softSecondary, theme.bg.softPrimary]
       ),
     };
   });

@@ -3,6 +3,7 @@ import { SQLiteDatabase } from 'expo-sqlite';
 
 export type Chat = {
   id: number;
+  model: string;
   title: string;
   lastUsed: number;
 };
@@ -25,11 +26,13 @@ export type Message = {
 
 export const createChat = async (
   db: SQLiteDatabase,
-  title: string
+  title: string,
+  model: string
 ): Promise<number> => {
-  const result = await db.runAsync(`INSERT INTO chats (title) VALUES (?)`, [
-    title,
-  ]);
+  const result = await db.runAsync(
+    `INSERT INTO chats (title, model) VALUES (?, ?)`,
+    [title, model]
+  );
 
   if (result.lastInsertRowId) {
     const defaultSettings = await AsyncStorage.getItem('default_chat_settings');

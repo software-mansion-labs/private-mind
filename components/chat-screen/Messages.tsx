@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -6,20 +6,34 @@ import {
   Text,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Image,
 } from 'react-native';
 import AnimatedChatLoading from './AnimatedChatLoading';
 import MessageItem from './MessageItem';
-import ColorPalette from '../../colors';
 import { Message } from '../../database/chatRepository';
+import { useLLMStore } from '../../store/llmStore';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontFamily';
+import { useTheme } from '../../context/ThemeContext';
+import CustomButton from '../CustomButton';
+import { Model } from '../../database/modelRepository';
 
 interface Props {
   chatHistory: Message[];
   isGenerating: boolean;
+  onSelectModel: () => void;
+  model: Model | null;
 }
 
-const Messages = ({ chatHistory, isGenerating }: Props) => {
+const Messages = ({
+  chatHistory,
+  isGenerating,
+  onSelectModel,
+  model,
+}: Props) => {
   const scrollRef = useRef<ScrollView>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const { theme } = useTheme();
+
   const isEmpty = chatHistory.length === 0 && !isGenerating;
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -33,44 +47,72 @@ const Messages = ({ chatHistory, isGenerating }: Props) => {
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        ref={scrollRef}
-        onScroll={handleScroll}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        onContentSizeChange={() => {
-          if (isAtBottom) {
-            scrollRef.current?.scrollToEnd({ animated: true });
-          }
-        }}
-      >
-        <View onStartShouldSetResponder={() => true}>
-          {chatHistory.map((message, index) => (
-            <MessageItem
-              key={`${message.role}-${index}`}
-              content={message.content}
-              modelName={message.modelName}
-              role={message.role}
-              tokensPerSecond={message.tokensPerSecond}
-              timeToFirstToken={message.timeToFirstToken}
-            />
-          ))}
-
-          {isGenerating && (
-            <View style={styles.aiRow}>
-              <View style={styles.loadingWrapper}>
-                <AnimatedChatLoading />
-              </View>
-            </View>
-          )}
-
-          {isEmpty && (
-            <Text style={styles.emptyState}>
-              Start a conversation to see messages here.
+      {!model && isEmpty ? (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 36,
+            gap: 24,
+          }}
+        >
+          <Image
+            source={require('../../assets/icons/icon.png')}
+            style={{ width: 64, height: 64 }}
+          />
+          <View style={{ gap: 8 }}>
+            <Text
+              style={{ ...styles.emptyMessageTitle, color: theme.text.primary }}
+            >
+              Select a model to use Local Mind
             </Text>
-          )}
+            <Text
+              style={{
+                ...styles.emptyMessage,
+                color: theme.text.defaultSecondary,
+              }}
+            >
+              Use default models or upload custom ones from your local files or
+              external url’s.
+            </Text>
+          </View>
+          <CustomButton text="Open a models list" onPress={onSelectModel} />
         </View>
-      </ScrollView>
+      ) : (
+        <ScrollView
+          ref={scrollRef}
+          onScroll={handleScroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => {
+            if (isAtBottom) {
+              scrollRef.current?.scrollToEnd({ animated: true });
+            }
+          }}
+        >
+          <View onStartShouldSetResponder={() => true}>
+            {chatHistory.map((message, index) => (
+              <MessageItem
+                key={`${message.role}-${index}`}
+                content={message.content}
+                modelName={message.modelName}
+                role={message.role}
+                tokensPerSecond={message.tokensPerSecond}
+                timeToFirstToken={message.timeToFirstToken}
+              />
+            ))}
+
+            {isGenerating && chatHistory.at(-1)?.content === '' && (
+              <View style={styles.aiRow}>
+                <View style={styles.loadingWrapper}>
+                  <AnimatedChatLoading />
+                </View>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      )}
     </View>
   );
 };
@@ -94,11 +136,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: 4,
   },
-  emptyState: {
+  emptyMessage: {
     textAlign: 'center',
-    color: ColorPalette.blueDark,
-    marginTop: 24,
-    fontStyle: 'italic',
-    fontSize: 13,
+    lineHeight: lineHeights.lineHeightSm,
+  },
+  emptyMessageTitle: {
+    fontFamily: fontFamily.medium,
+    fontSize: fontSizes.fontSizeLg,
+    lineHeight: lineHeights.lineHeightLg,
+    textAlign: 'center',
   },
 });

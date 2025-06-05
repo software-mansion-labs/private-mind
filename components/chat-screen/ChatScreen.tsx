@@ -1,15 +1,19 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+  Dispatch,
+  SetStateAction,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  Text,
   TextInput,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
 import { useModelStore } from '../../store/modelStore';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
@@ -18,27 +22,28 @@ import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
 import ChatInputBar from './ChatInputBar';
 import ModelSelectorModal from './ModelSelector';
+import { useTheme } from '../../context/ThemeContext';
+import { router } from 'expo-router';
 
 interface Props {
   chatId: number | null;
   messageHistory: Message[];
+  model: Model | null;
+  selectModel?: Dispatch<SetStateAction<Model | null>>;
 }
 
-export default function ChatScreen({ chatId, messageHistory }: Props) {
+export default function ChatScreen({
+  chatId,
+  messageHistory,
+  model,
+  selectModel,
+}: Props) {
   const inputRef = useRef<TextInput>(null);
   const chatIdRef = useRef<number | null>(chatId);
+  const { theme } = useTheme();
 
   const { downloadedModels, loadModels } = useModelStore();
-  const {
-    db,
-    model,
-    loadModel,
-    isLoading,
-    isGenerating,
-    sendChatMessage,
-    setActiveChatId,
-    interrupt,
-  } = useLLMStore();
+  const { db, isGenerating, loadModel, sendChatMessage } = useLLMStore();
   const { addChat, updateLastUsed } = useChatStore();
 
   const [userInput, setUserInput] = useState('');
@@ -52,6 +57,7 @@ export default function ChatScreen({ chatId, messageHistory }: Props) {
     setShowModelModal(false);
     try {
       await loadModel(selectedModel);
+      selectModel?.(selectedModel);
     } catch (error) {
       console.error('Error loading model:', error);
     }
@@ -60,23 +66,19 @@ export default function ChatScreen({ chatId, messageHistory }: Props) {
   const handleSendMessage = async () => {
     if (!userInput.trim() || isGenerating) return;
 
-    if (chatIdRef.current) {
-      setActiveChatId(chatIdRef.current);
-    } else {
+    if (!chatIdRef.current) {
       // truncating new chat title to fixed lenght
       const newChatTitle =
         userInput.length > 25 ? userInput.slice(0, 25) + '...' : userInput;
 
-      const newChatId = await addChat(newChatTitle);
+      const newChatId = await addChat(newChatTitle, model!.id);
       chatIdRef.current = newChatId!;
-      setActiveChatId(chatIdRef.current);
       router.replace(`/chat/${newChatId}`);
     }
-
     inputRef.current?.clear();
     setUserInput('');
     updateLastUsed(chatIdRef.current);
-    await sendChatMessage(messageHistory, userInput);
+    await sendChatMessage(messageHistory, userInput, chatIdRef.current!);
   };
 
   return (
@@ -87,22 +89,27 @@ export default function ChatScreen({ chatId, messageHistory }: Props) {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 100}
         >
-          <View style={styles.messagesContainer}>
+          <View
+            style={{
+              ...styles.messagesContainer,
+              backgroundColor: theme.bg.softPrimary,
+            }}
+          >
             <Messages
               chatHistory={messageHistory}
               isGenerating={isGenerating}
+              model={model}
+              onSelectModel={() => setShowModelModal(true)}
             />
           </View>
           <ChatInputBar
-            isLoading={isLoading}
-            isGenerating={isGenerating}
-            selectedModel={model}
+            chatId={chatId}
             userInput={userInput}
             setUserInput={setUserInput}
             onSend={handleSendMessage}
             onSelectModel={() => setShowModelModal(true)}
             inputRef={inputRef}
-            interrupt={interrupt}
+            model={model}
           />
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
@@ -120,12 +127,10 @@ export default function ChatScreen({ chatId, messageHistory }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   messagesContainer: {
     flex: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#fdfdfd',
   },
 });
