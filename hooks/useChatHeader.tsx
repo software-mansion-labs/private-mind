@@ -34,7 +34,7 @@ const useChatHeader = ({
   const { getChatById, deleteChat, db } = useChatStore();
   const chat = getChatById(chatId);
   const chatTitle = chat ? chat.title : `Chat #${chatId}`;
-  console.log(chatModel?.id);
+
   const showRenamePrompt = () => {
     if (Platform.OS === 'ios') {
       Alert.prompt(

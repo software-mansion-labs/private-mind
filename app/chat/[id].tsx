@@ -21,9 +21,8 @@ export default function ChatScreenWrapper() {
   const [messageHistory, setMessageHistory] = useState<Message[]>([]);
   const chatId = id ? Number(id) : null;
   const chat = getChatById(chatId as number);
-  const [model, setModel] = useState<Model | null>(
-    getModelById(chat?.model || '') || null
-  );
+  const chatModel = getModelById(chat?.model || '');
+  const [model, setModel] = useState<Model | null>(chatModel || null);
   /*
     For iOS, we are using default prompt alert which doesn't
     exist on Android. That's why we have to use a custom dialog which is a component and can't be returned from a hook.

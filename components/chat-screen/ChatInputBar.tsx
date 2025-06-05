@@ -64,25 +64,28 @@ const ChatInputBar = ({
           <RotateLeft width={20} height={20} />
         </TouchableOpacity>
       )}
-      {chatId && model && loadedModel?.id !== model?.id && (
-        <TouchableOpacity
-          style={{
-            ...styles.modelSelection,
-            marginBottom: 0,
-            borderBottomLeftRadius: 8,
-            borderBottomRightRadius: 8,
-            paddingBottom: 12,
-          }}
-          onPress={() => {
-            loadModel(model);
-          }}
-        >
-          <Text style={styles.selectedModel}>
-            {'Load Model'} {model.id}
-          </Text>
-          <RotateLeft width={20} height={20} />
-        </TouchableOpacity>
-      )}
+      {chatId &&
+        model &&
+        model.isDownloaded === 1 &&
+        loadedModel?.id !== model.id && (
+          <TouchableOpacity
+            style={{
+              ...styles.modelSelection,
+              marginBottom: 0,
+              borderBottomLeftRadius: 8,
+              borderBottomRightRadius: 8,
+              paddingBottom: 12,
+            }}
+            onPress={() => {
+              loadModel(model);
+            }}
+          >
+            <Text style={styles.selectedModel}>
+              {'Load Model'} {model.id}
+            </Text>
+            <RotateLeft width={20} height={20} />
+          </TouchableOpacity>
+        )}
       {model && loadedModel?.id === model.id && (
         <View
           style={{ ...styles.content, backgroundColor: theme.bg.strongPrimary }}
