@@ -29,8 +29,10 @@ interface LLMStore {
   sendChatMessage: (messages: Message[], newMessage: string) => Promise<void>;
   setDB: (db: SQLiteDatabase) => void;
   loadModel: (model: Model) => Promise<void>;
+  unloadModel: () => void;
   setActiveChatId: (chatId: number) => void;
   runBenchmark: () => Promise<BenchmarkResult>;
+  interrupt: () => void;
 }
 
 const calculatePerformanceMetrics = (
@@ -92,6 +94,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     });
 
     set({ model, isLoading: false });
+  },
+
+  unloadModel: () => {
+    if (get().model !== null) {
+      LLMModule.delete();
+      set({ model: null, response: '', tokenCount: 0, firstTokenTime: 0 });
+    }
   },
 
   sendChatMessage: async (messages: Message[], newMessage: string) => {
@@ -179,7 +188,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   runBenchmark: async () => {
     const { isGenerating, db, model, isLoading } = get();
 
-    const iterations = 1;
+    const iterations = 3;
 
     let avgTotalTime = 0;
     let avgTTFT = 0;
@@ -216,7 +225,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const startTime = performance.now();
 
       try {
-        await LLMModule.generate([{role: 'system', content: 'You are helpful assistant. Do exactly what user tells you.'},{ role: 'user', content: BENCHMARK_PROMPT }]);
+        await LLMModule.generate([
+          {
+            role: 'system',
+            content:
+              'You are helpful assistant. Do exactly what user tells you.',
+          },
+          { role: 'user', content: BENCHMARK_PROMPT },
+        ]);
         const endTime = performance.now();
 
         clearInterval(memoryUsageTracker);
@@ -261,4 +277,5 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       id: benchmarkId,
     };
   },
+  interrupt: () => LLMModule.interrupt(),
 }));
