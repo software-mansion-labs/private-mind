@@ -3,6 +3,7 @@ export const lightTheme = {
     softPrimary: '#ffffff',
     softSecondary: '#e6efff',
     strongPrimary: '#020f3c',
+    errorSecondary: '#F5D0D1',
   },
   text: {
     primary: '#020f3c',
@@ -21,6 +22,7 @@ export const darkTheme = {
     softPrimary: '#ffffff',
     softSecondary: '#e6efff',
     strongPrimary: '#020f3c',
+    errorSecondary: '#F5D0D1',
   },
   text: {
     primary: '#020f3c',

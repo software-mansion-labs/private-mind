@@ -59,7 +59,7 @@ const ThinkingBlock = memo(({ content, isComplete = true }: Props) => {
       </View>
 
       {expanded ? (
-        <MarkdownComponent text={content} />
+        <MarkdownComponent text={content} isThinking={true} />
       ) : (
         <ScrollView
           ref={scrollViewRef}
@@ -69,7 +69,7 @@ const ThinkingBlock = memo(({ content, isComplete = true }: Props) => {
             scrollViewRef.current?.scrollToEnd({ animated: false });
           }}
         >
-          <MarkdownComponent text={content} />
+          <MarkdownComponent text={content} isThinking={true} />
         </ScrollView>
       )}
     </View>
@@ -106,6 +106,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   collapsedContent: {
-    height: 60,
+    height: 80,
   },
 });

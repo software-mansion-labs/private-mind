@@ -1,17 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Button } from 'react-native';
-import Divider from '../Divider';
 import { Model } from '../../database/modelRepository';
 import { useModelStore } from '../../store/modelStore';
-import { useLLMStore } from '../../store/llmStore';
+import { useTheme } from '../../context/ThemeContext';
+import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import Chip from '../Chip';
+import ProcessorIcon from '../../assets/icons/processor.svg';
+import DownloadCloudIcon from '../../assets/icons/download_cloud.svg';
+import DownloadIcon from '../../assets/icons/download.svg';
+import CircleButton from '../CircleButton';
+import CloseIcon from '../../assets/icons/close.svg';
 
 interface Props {
   model: Model;
 }
 
+enum ModelState {
+  Downloaded = 'downloaded',
+  Downloading = 'downloading',
+  NotStarted = 'not_started',
+}
+
 const ModelCard = ({ model }: Props) => {
   const { downloadStates, downloadModel, removeModel } = useModelStore();
-  const { model: activeModel, loadModel, unloadModel } = useLLMStore();
+  const { theme } = useTheme();
 
   const downloadState = downloadStates[model.id] || {
     progress: 0,
@@ -19,22 +31,24 @@ const ModelCard = ({ model }: Props) => {
   };
 
   const isDownloading = downloadState.status === 'downloading';
-  const isLoaded = activeModel?.id === model.id;
   const isRemote = model.source === 'remote';
 
-  const [isDownloaded, setIsDownloaded] = useState(
-    model.isDownloaded === 1 || downloadState.status === 'downloaded'
+  const [modelState, setModelState] = useState<ModelState>(
+    isDownloading
+      ? ModelState.Downloading
+      : model.isDownloaded === 1
+      ? ModelState.Downloaded
+      : ModelState.NotStarted
   );
-
   useEffect(() => {
     if (downloadState.status === 'downloaded') {
-      setIsDownloaded(true);
+      setModelState(ModelState.Downloaded);
     }
   }, [downloadState.status]);
 
   const handlePress = async () => {
-    if (isDownloading || isLoaded) return;
-    if (isDownloaded) {
+    if (isDownloading) return;
+    if (modelState === ModelState.Downloaded) {
       await deleteModel();
     } else {
       await downloadModel(model);
@@ -44,81 +58,106 @@ const ModelCard = ({ model }: Props) => {
   const deleteModel = async () => {
     try {
       await removeModel(model.id);
-      setIsDownloaded(false);
+      setModelState(ModelState.NotStarted);
     } catch (error) {
       console.error('Failed to delete model:', error);
     }
   };
 
-  const getStatusHint = () => {
-    if (isDownloading) return null;
-
-    if (isDownloaded && isLoaded)
-      return <Text style={styles.loadedHint}>Model Loaded</Text>;
-
-    if (isDownloaded)
-      return <Text style={styles.deleteHint}>Tap to Delete</Text>;
-
-    return <Text style={styles.downloadHint}>Tap to Download</Text>;
-  };
-
-  const renderSideAction = () => {
-    if (isDownloading) return null;
-
-    if (isDownloaded && !isLoaded) {
-      return (
-        <TouchableOpacity
-          style={styles.loadButton}
-          onPress={async () => await loadModel(model)}
-        >
-          <Text style={styles.loadButtonText}>Load</Text>
-        </TouchableOpacity>
-      );
-    }
-
-    if (isDownloaded && isLoaded) {
-      return (
-        <TouchableOpacity style={styles.unloadButton} onPress={unloadModel}>
-          <Text style={styles.unloadButtonText}>Unload</Text>
-        </TouchableOpacity>
-      );
-    }
-
-    return null;
-  };
-
   return (
-    <TouchableOpacity
-      style={[styles.card, isDownloading && styles.disabled]}
-      onPress={handlePress}
-      disabled={isDownloading}
-    >
-      <View style={styles.header}>
-        <Text style={styles.name}>{model.id}</Text>
-        <Text style={styles.sourceText}>{isRemote ? 'Remote' : 'Local'}</Text>
-      </View>
-
-      <Divider />
-
-      <View style={styles.statusRow}>
-        {getStatusHint()}
-        {renderSideAction()}
-      </View>
-
-      {isDownloading && (
-        <View style={styles.progressBarContainer}>
-          <View
-            style={[
-              styles.progressBar,
-              { width: `${downloadState.progress * 100}%` },
-            ]}
+    <View style={{ ...styles.card, borderColor: theme.border.soft }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <View style={{ gap: 4 }}>
+          <Text style={{ ...styles.name, color: theme.text.primary }}>
+            {model.id}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Chip
+              title={'0.6 B'}
+              icon={<ProcessorIcon width={16} height={16} />}
+            />
+            {modelState === ModelState.NotStarted && (
+              <Chip
+                title={'2.47 GB'}
+                icon={<DownloadCloudIcon width={16} height={16} />}
+              />
+            )}
+            <Text
+              style={{
+                fontFamily: fontFamily.regular,
+                fontSize: fontSizes.fontSizeXs,
+                color: theme.text.defaultSecondary,
+              }}
+            >
+              ·
+            </Text>
+            <Text
+              style={{
+                ...styles.sourceText,
+                color: theme.text.defaultSecondary,
+              }}
+            >
+              Built-in
+            </Text>
+          </View>
+        </View>
+        {isDownloading ? (
+          <CircleButton
+            onPress={() => {}}
+            backgroundColor={theme.bg.errorSecondary}
+            icon={<CloseIcon width={13.33} height={13.33} />}
           />
-          <Text style={styles.progressText}>
+        ) : (
+          modelState === ModelState.NotStarted && (
+            <CircleButton
+              onPress={handlePress}
+              icon={<DownloadIcon width={15} height={15} />}
+              backgroundColor={theme.bg.softSecondary}
+            />
+          )
+        )}
+      </View>
+      {isDownloading && (
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <View
+            style={{
+              ...styles.progressBarContainer,
+              backgroundColor: theme.bg.softSecondary,
+            }}
+          >
+            <View
+              style={[
+                styles.progressBar,
+                {
+                  width: `${downloadState.progress * 100}%`,
+                  backgroundColor: theme.bg.strongPrimary,
+                },
+              ]}
+            />
+          </View>
+          <Text
+            style={{
+              ...styles.progressText,
+              color: theme.text.defaultSecondary,
+            }}
+          >
             {Math.floor(downloadState.progress * 100)}%
           </Text>
         </View>
       )}
-    </TouchableOpacity>
+    </View>
   );
 };
 
@@ -126,80 +165,32 @@ export default ModelCard;
 
 const styles = StyleSheet.create({
   card: {
-    padding: 12,
+    padding: 16,
     borderWidth: 1,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    marginBottom: 12,
-  },
-  disabled: {
-    opacity: 0.6,
-  },
-  header: {
-    marginBottom: 4,
+    borderRadius: 4,
+    gap: 16,
+    flexDirection: 'column',
   },
   name: {
-    fontWeight: '600',
-    fontSize: 16,
+    fontFamily: fontFamily.medium,
+    fontSize: fontSizes.fontSizeMd,
   },
   sourceText: {
-    fontSize: 12,
-  },
-  downloadHint: {
-    marginTop: 10,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  deleteHint: {
-    marginTop: 10,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  loadedHint: {
-    marginTop: 10,
-    textAlign: 'center',
-    fontWeight: '500',
+    fontSize: fontSizes.fontSizeXs,
+    fontFamily: fontFamily.regular,
   },
   progressBarContainer: {
-    marginTop: 10,
-    height: 12,
-    borderRadius: 6,
+    height: 8,
+    borderRadius: 4,
     overflow: 'hidden',
     position: 'relative',
+    width: '85%',
   },
   progressBar: {
     height: '100%',
   },
   progressText: {
-    position: 'absolute',
-    top: 0,
-    left: '45%',
-    fontSize: 10,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  statusRow: {
-    marginTop: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  loadButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  loadButtonText: {
-    color: '#fff',
-    fontWeight: '500',
-  },
-  unloadButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  unloadButtonText: {
-    color: '#fff',
-    fontWeight: '500',
+    fontSize: fontSizes.fontSizeXs,
+    fontFamily: fontFamily.regular,
   },
 });

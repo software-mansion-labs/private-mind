@@ -59,7 +59,6 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: fontFamily.medium,
     fontSize: fontSizes.fontSizeSm,
-    color: '#fff',
   },
 });
 
