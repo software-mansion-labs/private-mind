@@ -20,13 +20,18 @@ const AnimatedChatLoading = () => {
       backgroundColor: interpolateColor(
         progress.value,
         [0, 1],
-        [theme.bg.strongPrimary, theme.bg.softSecondary, theme.bg.softPrimary]
+        ['rgba(2, 15, 60, 1', 'rgba(2, 15, 60, 0.5)', 'rgba(2, 15, 60, 0.25)']
       ),
     };
   });
 
   return (
-    <View style={styles.messageLoadingContainer}>
+    <View
+      style={{
+        ...styles.messageLoadingContainer,
+        backgroundColor: theme.bg.softSecondary,
+      }}
+    >
       <Animated.View style={[styles.loadingDot, animatedStyle]} />
       <Animated.View style={[styles.loadingDot, animatedStyle]} />
       <Animated.View style={[styles.loadingDot, animatedStyle]} />
@@ -38,10 +43,13 @@ export default AnimatedChatLoading;
 
 const styles = StyleSheet.create({
   messageLoadingContainer: {
-    flex: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     alignItems: 'center',
+    width: 56,
+    height: 32,
+    borderRadius: 16,
+    padding: 8,
   },
   loadingDot: {
     width: 8,

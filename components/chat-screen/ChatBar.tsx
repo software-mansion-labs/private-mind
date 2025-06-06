@@ -100,7 +100,7 @@ const ChatBar = ({
             onChangeText={setUserInput}
           />
           <View style={styles.buttonBar}>
-            {userInput && (
+            {userInput && !isGenerating && (
               <TouchableOpacity style={styles.sendButton} onPress={onSend}>
                 <SendIcon width={20} height={20} />
               </TouchableOpacity>
