@@ -35,6 +35,7 @@ import {
 import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import PrimaryButton from '../PrimaryButton';
 import ChatBar from './ChatBar';
+import ModelCard from '../model-hub/ModelCard';
 
 interface Props {
   chatId: number | null;
@@ -146,53 +147,52 @@ export default function ChatScreen({
 
       <BottomSheetModal
         ref={bottomSheetModalRef}
-        snapPoints={['30%', '50%']}
         backdropComponent={renderBackdrop}
+        snapPoints={['50%']}
         enableDynamicSizing={false}
         handleIndicatorStyle={{
           backgroundColor: theme.text.primary,
           ...styles.bottomSheetIndicator,
         }}
       >
-        <BottomSheetView style={styles.bottomSheet}>
-          {downloadedModels.length > 0 ? (
-            <>
-              <Text style={{ ...styles.title, color: theme.text.primary }}>
-                Select a Model
-              </Text>
-              <BottomSheetFlatList
-                data={downloadedModels}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <TouchableOpacity onPress={() => handleSelectModel(item)}>
-                    <Text style={styles.modelItemText}>{item.id}</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </>
-          ) : (
-            <>
-              <Text style={{ ...styles.title, color: theme.text.primary }}>
-                You have no available models yet
-              </Text>
-              <Text
-                style={{
-                  ...styles.bottomSheetSubText,
-                  color: theme.text.defaultSecondary,
-                }}
-              >
-                To use Local Mind you need to have at least one model downloaded
-              </Text>
-              <PrimaryButton
-                text="Open models list"
-                onPress={() => {
-                  bottomSheetModalRef.current?.dismiss();
-                  router.push('/model-hub');
-                }}
-              />
-            </>
-          )}
-        </BottomSheetView>
+        {downloadedModels.length > 0 ? (
+          <View style={styles.bottomSheet}>
+            <Text style={{ ...styles.title, color: theme.text.primary }}>
+              Select a Model
+            </Text>
+            <BottomSheetFlatList
+              data={downloadedModels}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={{ gap: 8, paddingBottom: 60 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity onPress={() => handleSelectModel(item)}>
+                  <ModelCard model={item} />
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        ) : (
+          <BottomSheetView style={styles.bottomSheet}>
+            <Text style={{ ...styles.title, color: theme.text.primary }}>
+              You have no available models yet
+            </Text>
+            <Text
+              style={{
+                ...styles.bottomSheetSubText,
+                color: theme.text.defaultSecondary,
+              }}
+            >
+              To use Local Mind you need to have at least one model downloaded
+            </Text>
+            <PrimaryButton
+              text="Open models list"
+              onPress={() => {
+                bottomSheetModalRef.current?.dismiss();
+                router.push('/model-hub');
+              }}
+            />
+          </BottomSheetView>
+        )}
       </BottomSheetModal>
     </>
   );
