@@ -32,7 +32,6 @@ const Messages = ({
   const scrollRef = useRef<ScrollView>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const { theme } = useTheme();
-
   const isEmpty = chatHistory.length === 0 && !isGenerating;
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -85,7 +84,10 @@ const Messages = ({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => {
-            if (isAtBottom) {
+            if (
+              isAtBottom ||
+              chatHistory[chatHistory.length - 1].content === ''
+            ) {
               scrollRef.current?.scrollToEnd({ animated: true });
             }
           }}
