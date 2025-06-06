@@ -75,7 +75,7 @@ export default function ChatSettingsScreen() {
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: '#fff' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 40}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
     >
       <View style={styles.container}>
         <ModalHeader title="Chat Settings" onClose={() => router.back()} />
@@ -162,7 +162,6 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
   },
   textFieldSection: {
     gap: 16,

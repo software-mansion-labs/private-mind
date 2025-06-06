@@ -112,9 +112,12 @@ export default function ChatScreen({
   return (
     <>
       <KeyboardAvoidingView
-        style={styles.container}
+        style={{
+          ...styles.container,
+          paddingBottom: Platform.OS === 'android' ? 20 : 0,
+        }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 100}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 40}
       >
         <View
           style={{
@@ -196,6 +199,7 @@ export default function ChatScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fff',
   },
   messagesContainer: {
     flex: 1,
