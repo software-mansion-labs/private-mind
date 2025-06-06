@@ -17,7 +17,6 @@ const ModalHeader = ({ title, onClose }: Props) => {
       <TouchableOpacity
         style={styles.iconWrap}
         onPress={() => {
-          console.log('Close modal');
           onClose();
         }}
       >
