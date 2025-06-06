@@ -14,4 +14,3 @@ local.properties
 
 # Bundle artifacts
 *.jsbundle
-.kotlin
