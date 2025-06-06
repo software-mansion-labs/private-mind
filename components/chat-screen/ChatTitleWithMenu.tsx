@@ -20,14 +20,6 @@ const ChatTitleWithMenu = ({ title, modelName, onSelect }: Props) => {
       onPressAction={({ nativeEvent }) => onSelect(nativeEvent.event)}
       actions={[
         {
-          id: 'rename',
-          title: 'Rename',
-        },
-        {
-          id: 'details',
-          title: 'Details',
-        },
-        {
           id: 'import',
           title: 'Import',
         },

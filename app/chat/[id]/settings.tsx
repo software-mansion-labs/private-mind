@@ -75,6 +75,7 @@ export default function ChatSettingsScreen() {
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: '#fff' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 40}
     >
       <View style={styles.container}>
         <ModalHeader title="Chat Settings" onClose={() => router.back()} />

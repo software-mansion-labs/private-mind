@@ -7,12 +7,10 @@ import React, {
   useState,
 } from 'react';
 import {
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   TextInput,
-  TouchableWithoutFeedback,
   View,
   Text,
   TouchableOpacity,
@@ -113,41 +111,39 @@ export default function ChatScreen({
 
   return (
     <>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <KeyboardAvoidingView
-          style={styles.container}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 100}
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 100}
+      >
+        <View
+          style={{
+            ...styles.messagesContainer,
+            backgroundColor: theme.bg.softPrimary,
+          }}
         >
-          <View
-            style={{
-              ...styles.messagesContainer,
-              backgroundColor: theme.bg.softPrimary,
-            }}
-          >
-            <Messages
-              chatHistory={messageHistory}
-              isGenerating={isGenerating}
-              model={model}
-              onSelectModel={handlePresentModalPress}
-            />
-          </View>
-          <ChatBar
-            chatId={chatId}
-            userInput={userInput}
-            setUserInput={setUserInput}
-            onSend={handleSendMessage}
-            onSelectModel={handlePresentModalPress}
-            inputRef={inputRef}
+          <Messages
+            chatHistory={messageHistory}
+            isGenerating={isGenerating}
             model={model}
+            onSelectModel={handlePresentModalPress}
           />
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+        </View>
+        <ChatBar
+          chatId={chatId}
+          userInput={userInput}
+          setUserInput={setUserInput}
+          onSend={handleSendMessage}
+          onSelectModel={handlePresentModalPress}
+          inputRef={inputRef}
+          model={model}
+        />
+      </KeyboardAvoidingView>
 
       <BottomSheetModal
         ref={bottomSheetModalRef}
         backdropComponent={renderBackdrop}
-        snapPoints={['50%']}
+        snapPoints={['30%', '50%']}
         enableDynamicSizing={false}
         handleIndicatorStyle={{
           backgroundColor: theme.text.primary,

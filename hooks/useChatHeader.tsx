@@ -20,56 +20,16 @@ import { Model } from '../database/modelRepository';
 interface Props {
   chatId: number;
   chatModel: Model | null;
-  onRenamePress: Dispatch<SetStateAction<boolean>>;
-  handleChatRename: (newTitle: string) => Promise<void>;
 }
 
-const useChatHeader = ({
-  chatId,
-  chatModel,
-  onRenamePress,
-  handleChatRename,
-}: Props) => {
+const useChatHeader = ({ chatId, chatModel }: Props) => {
   const navigation = useNavigation();
   const { getChatById, deleteChat, db } = useChatStore();
   const chat = getChatById(chatId);
   const chatTitle = chat ? chat.title : `Chat #${chatId}`;
 
-  const showRenamePrompt = () => {
-    if (Platform.OS === 'ios') {
-      Alert.prompt(
-        'Rename Chat',
-        'Enter a new chat name:',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'OK',
-            onPress: (text) => {
-              if (text) {
-                handleChatRename(text);
-              }
-            },
-          },
-        ],
-        'plain-text',
-        chatTitle
-      );
-    } else {
-      onRenamePress(true);
-    }
-  };
-
   const handleMenuSelect = async (action: string) => {
     switch (action) {
-      case 'details':
-        router.push(`/chat/${chatId}/settings`);
-        break;
-      case 'rename':
-        showRenamePrompt();
-        break;
       case 'export':
         await exportChatRoom(db!, chatId, chatTitle);
         break;
