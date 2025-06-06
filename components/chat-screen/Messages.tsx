@@ -11,11 +11,10 @@ import {
 import AnimatedChatLoading from './AnimatedChatLoading';
 import MessageItem from './MessageItem';
 import { Message } from '../../database/chatRepository';
-import { useLLMStore } from '../../store/llmStore';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
-import CustomButton from '../CustomButton';
 import { Model } from '../../database/modelRepository';
+import SecondaryButton from '../SecondaryButton';
 
 interface Props {
   chatHistory: Message[];
@@ -65,7 +64,7 @@ const Messages = ({
             <Text
               style={{ ...styles.emptyMessageTitle, color: theme.text.primary }}
             >
-              Select a model to use Local Mind
+              Select a model to start chatting
             </Text>
             <Text
               style={{
@@ -77,7 +76,7 @@ const Messages = ({
               external url’s.
             </Text>
           </View>
-          <CustomButton text="Open a models list" onPress={onSelectModel} />
+          <SecondaryButton text="Open a models list" onPress={onSelectModel} />
         </View>
       ) : (
         <ScrollView

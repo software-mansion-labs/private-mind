@@ -1,11 +1,13 @@
 import React, {
   Dispatch,
   SetStateAction,
+  useCallback,
   useEffect,
   useRef,
   useState,
 } from 'react';
 import {
+  Button,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +15,8 @@ import {
   TextInput,
   TouchableWithoutFeedback,
   View,
+  Text,
+  TouchableOpacity,
 } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
 import { useLLMStore } from '../../store/llmStore';
@@ -20,10 +24,17 @@ import { useChatStore } from '../../store/chatStore';
 import { type Message } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
-import ChatInputBar from './ChatInputBar';
-import ModelSelectorModal from './ModelSelector';
 import { useTheme } from '../../context/ThemeContext';
 import { router } from 'expo-router';
+import {
+  BottomSheetModal,
+  BottomSheetView,
+  BottomSheetFlatList,
+  BottomSheetBackdrop,
+} from '@gorhom/bottom-sheet';
+import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import PrimaryButton from '../PrimaryButton';
+import ChatBar from './ChatBar';
 
 interface Props {
   chatId: number | null;
@@ -40,6 +51,7 @@ export default function ChatScreen({
 }: Props) {
   const inputRef = useRef<TextInput>(null);
   const chatIdRef = useRef<number | null>(chatId);
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { theme } = useTheme();
 
   const { downloadedModels, loadModels } = useModelStore();
@@ -47,20 +59,23 @@ export default function ChatScreen({
   const { addChat, updateLastUsed, setChatModel } = useChatStore();
 
   const [userInput, setUserInput] = useState('');
-  const [showModelModal, setShowModelModal] = useState(false);
+
+  const handlePresentModalPress = useCallback(() => {
+    bottomSheetModalRef.current?.present();
+  }, []);
 
   useEffect(() => {
     loadModels();
   }, [chatId, db, loadModels]);
 
   const handleSelectModel = async (selectedModel: Model) => {
-    setShowModelModal(false);
     try {
       await loadModel(selectedModel);
       if (chatIdRef.current && !model) {
         await setChatModel(chatIdRef.current, selectedModel.id);
       }
       selectModel?.(selectedModel);
+      bottomSheetModalRef.current?.dismiss();
     } catch (error) {
       console.error('Error loading model:', error);
     }
@@ -84,6 +99,18 @@ export default function ChatScreen({
     await sendChatMessage(messageHistory, userInput, chatIdRef.current!);
   };
 
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.2}
+      />
+    ),
+    []
+  );
+
   return (
     <>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -102,27 +129,71 @@ export default function ChatScreen({
               chatHistory={messageHistory}
               isGenerating={isGenerating}
               model={model}
-              onSelectModel={() => setShowModelModal(true)}
+              onSelectModel={handlePresentModalPress}
             />
           </View>
-          <ChatInputBar
+          <ChatBar
             chatId={chatId}
             userInput={userInput}
             setUserInput={setUserInput}
             onSend={handleSendMessage}
-            onSelectModel={() => setShowModelModal(true)}
+            onSelectModel={handlePresentModalPress}
             inputRef={inputRef}
             model={model}
           />
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
 
-      <ModelSelectorModal
-        visible={showModelModal}
-        models={downloadedModels}
-        onSelect={handleSelectModel}
-        onClose={() => setShowModelModal(false)}
-      />
+      <BottomSheetModal
+        ref={bottomSheetModalRef}
+        snapPoints={['30%', '50%']}
+        backdropComponent={renderBackdrop}
+        enableDynamicSizing={false}
+        handleIndicatorStyle={{
+          backgroundColor: theme.text.primary,
+          ...styles.bottomSheetIndicator,
+        }}
+      >
+        <BottomSheetView style={styles.bottomSheet}>
+          {downloadedModels.length > 0 ? (
+            <>
+              <Text style={{ ...styles.title, color: theme.text.primary }}>
+                Select a Model
+              </Text>
+              <BottomSheetFlatList
+                data={downloadedModels}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity onPress={() => handleSelectModel(item)}>
+                    <Text style={styles.modelItemText}>{item.id}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </>
+          ) : (
+            <>
+              <Text style={{ ...styles.title, color: theme.text.primary }}>
+                You have no available models yet
+              </Text>
+              <Text
+                style={{
+                  ...styles.bottomSheetSubText,
+                  color: theme.text.defaultSecondary,
+                }}
+              >
+                To use Local Mind you need to have at least one model downloaded
+              </Text>
+              <PrimaryButton
+                text="Open models list"
+                onPress={() => {
+                  bottomSheetModalRef.current?.dismiss();
+                  router.push('/model-hub');
+                }}
+              />
+            </>
+          )}
+        </BottomSheetView>
+      </BottomSheetModal>
     </>
   );
 }
@@ -135,5 +206,30 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
+  },
+  contentContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: fontSizes.fontSizeLg,
+    fontFamily: fontFamily.medium,
+  },
+  modelItemText: {
+    fontSize: 16,
+  },
+  bottomSheet: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    gap: 24,
+  },
+  bottomSheetSubText: {
+    fontFamily: fontFamily.regular,
+    fontSize: fontSizes.fontSizeMd,
+  },
+  bottomSheetIndicator: {
+    width: 64,
+    height: 4,
+    borderRadius: 20,
   },
 });

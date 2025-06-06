@@ -77,6 +77,7 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.fontSizeXs,
     fontFamily: fontFamily.regular,
     width: '100%',
+    textAlign: 'center',
   },
 });
 

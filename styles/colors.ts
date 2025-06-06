@@ -9,6 +9,7 @@ export const lightTheme = {
     defaultSecondary: 'rgba(2, 15, 60, 0.8)',
     defaultTertiary: 'rgba(2, 15, 60, 0.6)',
     contrastTertiary: 'rgba(255, 255, 255, 0.6)',
+    contrastPrimary: '#ffffff',
   },
   border: {
     soft: 'rgba(2, 15, 60, 0.2)',
@@ -26,6 +27,7 @@ export const darkTheme = {
     defaultSecondary: 'rgba(2, 15, 60, 0.8)',
     defaultTertiary: 'rgba(2, 15, 60, 0.6)',
     contrastTertiary: 'rgba(255, 255, 255, 0.6)',
+    contrastPrimary: '#ffffff',
   },
   border: {
     soft: 'rgba(2, 15, 60, 0.2)',

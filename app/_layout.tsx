@@ -16,6 +16,7 @@ import {
 import { fontFamily } from '../styles/fontFamily';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemeProvider } from '../context/ThemeContext';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 export default function Layout() {
   useFonts({
@@ -31,45 +32,50 @@ export default function Layout() {
     <GestureHandlerRootView>
       <SQLiteProvider databaseName="executorch.db" onInit={initDatabase}>
         <ThemeProvider>
-          <CustomDrawerLayout>
-            <SafeAreaView style={{ flex: 1 }}>
-              <Stack
-                screenOptions={{
-                  headerShadowVisible: false,
-                }}
-              >
-                <Stack.Screen name="model-hub" options={{ title: 'Models' }} />
-                <Stack.Screen
-                  name="index"
-                  options={{ title: '', animation: 'none' }}
-                />
-                <Stack.Screen
-                  name="benchmark"
-                  options={{ title: 'Benchmark' }}
-                />
-                <Stack.Screen
-                  name="chat/[id]"
-                  options={{ animation: 'none' }}
-                />
-                <Stack.Screen
-                  name="chat/[id]/settings"
-                  options={{
-                    title: 'Chat Settings',
-                    presentation: 'modal',
-                    headerShown: false,
+          <BottomSheetModalProvider>
+            <CustomDrawerLayout>
+              <SafeAreaView style={{ flex: 1 }}>
+                <Stack
+                  screenOptions={{
+                    headerShadowVisible: false,
                   }}
-                />
-                <Stack.Screen
-                  name="modal/add-model"
-                  options={{
-                    presentation: 'modal',
-                    title: 'Add Model',
-                    headerShown: false,
-                  }}
-                />
-              </Stack>
-            </SafeAreaView>
-          </CustomDrawerLayout>
+                >
+                  <Stack.Screen
+                    name="model-hub"
+                    options={{ title: 'Models' }}
+                  />
+                  <Stack.Screen
+                    name="index"
+                    options={{ title: '', animation: 'none' }}
+                  />
+                  <Stack.Screen
+                    name="benchmark"
+                    options={{ title: 'Benchmark' }}
+                  />
+                  <Stack.Screen
+                    name="chat/[id]"
+                    options={{ animation: 'none' }}
+                  />
+                  <Stack.Screen
+                    name="chat/[id]/settings"
+                    options={{
+                      title: 'Chat Settings',
+                      presentation: 'modal',
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="modal/add-model"
+                    options={{
+                      presentation: 'modal',
+                      title: 'Add Model',
+                      headerShown: false,
+                    }}
+                  />
+                </Stack>
+              </SafeAreaView>
+            </CustomDrawerLayout>
+          </BottomSheetModalProvider>
         </ThemeProvider>
       </SQLiteProvider>
     </GestureHandlerRootView>

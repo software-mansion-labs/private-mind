@@ -24,7 +24,7 @@ interface Props {
   model: Model | null;
 }
 
-const ChatInputBar = ({
+const ChatBar = ({
   chatId,
   userInput,
   setUserInput,
@@ -117,7 +117,7 @@ const ChatInputBar = ({
   );
 };
 
-export default ChatInputBar;
+export default ChatBar;
 
 const styles = StyleSheet.create({
   container: {

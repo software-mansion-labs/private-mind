@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.0",
+    "@gorhom/bottom-sheet": "^5",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-menu/menu": "^1.2.3",
     "@react-native/metro-config": "^0.76.3",

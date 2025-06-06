@@ -19,7 +19,7 @@ interface Props {
   textStyle?: TextStyle;
 }
 
-const CustomButton = ({
+const SecondaryButton = ({
   text,
   onPress,
   disabled = false,
@@ -59,7 +59,8 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: fontFamily.medium,
     fontSize: fontSizes.fontSizeSm,
+    color: '#fff',
   },
 });
 
-export default CustomButton;
+export default SecondaryButton;
