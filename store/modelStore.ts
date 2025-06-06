@@ -9,9 +9,15 @@ import {
 } from '../database/modelRepository';
 import { ResourceFetcher } from 'react-native-executorch';
 
+export enum ModelState {
+  Downloaded = 'downloaded',
+  Downloading = 'downloading',
+  NotStarted = 'not_started',
+}
+
 interface DownloadState {
   progress: number;
-  status: 'not_started' | 'downloading' | 'downloaded' | 'error';
+  status: ModelState;
 }
 
 interface ModelStore {
@@ -72,7 +78,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
 
     let lastReportedPercent = -1;
 
-    setDownloading(0, 'downloading');
+    setDownloading(0, ModelState.Downloading);
 
     try {
       const { modelPath, tokenizerPath, tokenizerConfigPath } = model;
@@ -81,7 +87,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         const currentPercent = Math.floor(p * 100);
         if (currentPercent !== lastReportedPercent) {
           lastReportedPercent = currentPercent;
-          setDownloading(p, 'downloading');
+          setDownloading(p, ModelState.Downloading);
         }
       });
 
@@ -97,10 +103,9 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         await get().loadModels();
       }
 
-      setDownloading(1, 'downloaded');
+      setDownloading(1, ModelState.Downloaded);
     } catch (err) {
       console.error('Failed:', err);
-      setDownloading(0, 'error');
     }
   },
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Button } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Model } from '../../database/modelRepository';
-import { useModelStore } from '../../store/modelStore';
+import { ModelState, useModelStore } from '../../store/modelStore';
 import { useTheme } from '../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import Chip from '../Chip';
@@ -15,23 +15,16 @@ interface Props {
   model: Model;
 }
 
-enum ModelState {
-  Downloaded = 'downloaded',
-  Downloading = 'downloading',
-  NotStarted = 'not_started',
-}
-
 const ModelCard = ({ model }: Props) => {
   const { downloadStates, downloadModel, removeModel } = useModelStore();
   const { theme } = useTheme();
 
   const downloadState = downloadStates[model.id] || {
     progress: 0,
-    status: 'not_started',
+    status: ModelState.NotStarted,
   };
 
-  const isDownloading = downloadState.status === 'downloading';
-  const isRemote = model.source === 'remote';
+  const isDownloading = downloadState.status === ModelState.Downloading;
 
   const [modelState, setModelState] = useState<ModelState>(
     isDownloading
