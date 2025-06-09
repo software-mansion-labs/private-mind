@@ -81,7 +81,7 @@ const Messages = ({
         <ScrollView
           ref={scrollRef}
           onScroll={handleScroll}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="never"
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => {
             if (

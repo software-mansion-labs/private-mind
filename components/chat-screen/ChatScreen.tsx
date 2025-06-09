@@ -14,6 +14,8 @@ import {
   View,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
 import { useLLMStore } from '../../store/llmStore';
@@ -110,38 +112,36 @@ export default function ChatScreen({
   );
 
   return (
-    <>
-      <KeyboardAvoidingView
+    <KeyboardAvoidingView
+      style={{
+        ...styles.container,
+        paddingBottom: Platform.OS === 'android' ? 20 : 0,
+      }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 40}
+    >
+      <View
         style={{
-          ...styles.container,
-          paddingBottom: Platform.OS === 'android' ? 20 : 0,
+          ...styles.messagesContainer,
+          backgroundColor: theme.bg.softPrimary,
         }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 40}
       >
-        <View
-          style={{
-            ...styles.messagesContainer,
-            backgroundColor: theme.bg.softPrimary,
-          }}
-        >
-          <Messages
-            chatHistory={messageHistory}
-            isGenerating={isGenerating}
-            model={model}
-            onSelectModel={handlePresentModalPress}
-          />
-        </View>
-        <ChatBar
-          chatId={chatId}
-          userInput={userInput}
-          setUserInput={setUserInput}
-          onSend={handleSendMessage}
-          onSelectModel={handlePresentModalPress}
-          inputRef={inputRef}
+        <Messages
+          chatHistory={messageHistory}
+          isGenerating={isGenerating}
           model={model}
+          onSelectModel={handlePresentModalPress}
         />
-      </KeyboardAvoidingView>
+      </View>
+      <ChatBar
+        chatId={chatId}
+        userInput={userInput}
+        setUserInput={setUserInput}
+        onSend={handleSendMessage}
+        onSelectModel={handlePresentModalPress}
+        inputRef={inputRef}
+        model={model}
+      />
 
       <BottomSheetModal
         ref={bottomSheetModalRef}
@@ -192,7 +192,7 @@ export default function ChatScreen({
           </BottomSheetView>
         )}
       </BottomSheetModal>
-    </>
+    </KeyboardAvoidingView>
   );
 }
 
