@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSizes.fontSizeSm,
+    fontSize: fontSizes.sm,
   },
 });
 

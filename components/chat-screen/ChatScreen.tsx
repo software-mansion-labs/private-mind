@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: fontSizes.fontSizeLg,
+    fontSize: fontSizes.lg,
     fontFamily: fontFamily.medium,
   },
   modelItemText: {
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   },
   bottomSheetSubText: {
     fontFamily: fontFamily.regular,
-    fontSize: fontSizes.fontSizeMd,
+    fontSize: fontSizes.md,
   },
   bottomSheetIndicator: {
     width: 64,

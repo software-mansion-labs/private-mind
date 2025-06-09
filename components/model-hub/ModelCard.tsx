@@ -84,7 +84,7 @@ const ModelCard = ({ model }: Props) => {
             <Text
               style={{
                 fontFamily: fontFamily.regular,
-                fontSize: fontSizes.fontSizeXs,
+                fontSize: fontSizes.xs,
                 color: theme.text.defaultSecondary,
               }}
             >
@@ -166,10 +166,10 @@ const styles = StyleSheet.create({
   },
   name: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSizes.fontSizeMd,
+    fontSize: fontSizes.md,
   },
   sourceText: {
-    fontSize: fontSizes.fontSizeXs,
+    fontSize: fontSizes.xs,
     fontFamily: fontFamily.regular,
   },
   progressBarContainer: {
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   progressText: {
-    fontSize: fontSizes.fontSizeXs,
+    fontSize: fontSizes.xs,
     fontFamily: fontFamily.regular,
   },
 });

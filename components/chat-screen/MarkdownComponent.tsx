@@ -14,9 +14,7 @@ const MarkdownComponent = memo(
   ({ text, isUser = false, isThinking = false }: Props) => {
     const { theme } = useTheme();
     const baseColor = isUser ? theme.text.primary : theme.text.primary;
-    const baseFontSize = isThinking
-      ? fontSizes.fontSizeSm
-      : fontSizes.fontSizeMd;
+    const baseFontSize = isThinking ? fontSizes.sm : fontSizes.md;
 
     return (
       <Markdown
@@ -25,14 +23,14 @@ const MarkdownComponent = memo(
             color: baseColor,
             fontSize: baseFontSize,
             fontFamily: fontFamily.regular,
-            lineHeight: lineHeights.lineHeightMd,
+            lineHeight: lineHeights.md,
           },
           paragraph: {
             fontFamily: fontFamily.regular,
-            lineHeight: lineHeights.lineHeightMd,
+            lineHeight: lineHeights.md,
           },
           heading1: {
-            fontSize: fontSizes.fontSize2xl,
+            fontSize: fontSizes.xxl,
             color: baseColor,
             marginBottom: 8,
             fontFamily: fontFamily.bold,

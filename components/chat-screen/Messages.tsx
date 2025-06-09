@@ -144,12 +144,12 @@ const styles = StyleSheet.create({
   },
   emptyMessage: {
     textAlign: 'center',
-    lineHeight: lineHeights.lineHeightSm,
+    lineHeight: lineHeights.sm,
   },
   emptyMessageTitle: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSizes.fontSizeLg,
-    lineHeight: lineHeights.lineHeightLg,
+    fontSize: fontSizes.lg,
+    lineHeight: lineHeights.lg,
     textAlign: 'center',
   },
 });

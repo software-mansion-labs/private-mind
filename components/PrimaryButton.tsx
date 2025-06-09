@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSizes.fontSizeMd,
+    fontSize: fontSizes.md,
   },
 });
 

@@ -50,6 +50,6 @@ const styles = StyleSheet.create({
   },
   text: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSizes.fontSizeXs,
+    fontSize: fontSizes.xs,
   },
 });

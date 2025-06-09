@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   input: {
-    fontSize: fontSizes.fontSizeMd,
+    fontSize: fontSizes.md,
     fontFamily: fontFamily.regular,
   },
 });

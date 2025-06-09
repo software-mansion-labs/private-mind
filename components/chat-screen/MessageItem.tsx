@@ -153,11 +153,11 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
   },
   modelName: {
-    fontSize: fontSizes.fontSizeXs,
+    fontSize: fontSizes.xs,
     fontFamily: fontFamily.medium,
   },
   meta: {
-    fontSize: fontSizes.fontSizeXxs,
+    fontSize: fontSizes.xxs,
     fontFamily: fontFamily.regular,
   },
 });

@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
   textArea: {
     height: 120,
     fontFamily: fontFamily.regular,
-    fontSize: fontSizes.fontSizeSm,
+    fontSize: fontSizes.sm,
   },
 });
 

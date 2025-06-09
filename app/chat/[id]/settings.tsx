@@ -170,8 +170,8 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   label: {
-    fontSize: fontSizes.fontSizeMd,
+    fontSize: fontSizes.md,
     fontFamily: fontFamily.medium,
   },
-  subLabel: { fontFamily: fontFamily.regular, fontSize: fontSizes.fontSizeSm },
+  subLabel: { fontFamily: fontFamily.regular, fontSize: fontSizes.sm },
 });

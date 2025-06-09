@@ -8,21 +8,21 @@ export const fontFamily = {
 };
 
 export const fontSizes = {
-  fontSize2xl: 34,
-  fontSizeXl: 22,
-  fontSizeLg: 18,
-  fontSizeMd: 16,
-  fontSizeSm: 14,
-  fontSizeXs: 12,
-  fontSizeXxs: 10,
+  xxl: 34,
+  xl: 22,
+  lg: 18,
+  md: 16,
+  sm: 14,
+  xs: 12,
+  xxs: 10,
 };
 
 export const lineHeights = {
-  lineHeight2xl: 40,
-  lineHeightXl: 28,
-  lineHeightLg: 24,
-  lineHeightMd: 24,
-  lineHeightSm: 20,
-  lineHeightXs: 16,
-  lineHeightXxs: 12,
+  xxl: 40,
+  xl: 28,
+  lg: 24,
+  md: 24,
+  sm: 20,
+  xs: 16,
+  xxs: 12,
 };

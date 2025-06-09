@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   thinkingTitle: {
-    fontSize: fontSizes.fontSizeSm,
+    fontSize: fontSizes.sm,
     fontFamily: fontFamily.medium,
   },
   chevronButton: {

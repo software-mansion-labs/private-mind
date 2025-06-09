@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   title: {
-    fontSize: fontSizes.fontSizeMd,
+    fontSize: fontSizes.md,
     fontFamily: fontFamily.medium,
     textAlign: 'center',
     flex: 1,

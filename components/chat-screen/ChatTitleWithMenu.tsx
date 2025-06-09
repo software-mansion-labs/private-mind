@@ -62,11 +62,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: fontSizes.fontSizeMd,
+    fontSize: fontSizes.md,
     fontFamily: fontFamily.medium,
   },
   modelName: {
-    fontSize: fontSizes.fontSizeXs,
+    fontSize: fontSizes.xs,
     fontFamily: fontFamily.regular,
     width: '100%',
     textAlign: 'center',
