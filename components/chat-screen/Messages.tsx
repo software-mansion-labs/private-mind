@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { RefObject, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -21,6 +21,9 @@ interface Props {
   isGenerating: boolean;
   onSelectModel: () => void;
   model: Model | null;
+  ref: RefObject<ScrollView | null>;
+  isAtBottom: boolean;
+  setIsAtBottom: (value: boolean) => void;
 }
 
 const Messages = ({
@@ -28,9 +31,10 @@ const Messages = ({
   isGenerating,
   onSelectModel,
   model,
+  ref,
+  isAtBottom,
+  setIsAtBottom,
 }: Props) => {
-  const scrollRef = useRef<ScrollView>(null);
-  const [isAtBottom, setIsAtBottom] = useState(true);
   const { theme } = useTheme();
   const isEmpty = chatHistory.length === 0 && !isGenerating;
 
@@ -79,8 +83,9 @@ const Messages = ({
         </View>
       ) : (
         <ScrollView
-          ref={scrollRef}
+          ref={ref}
           onScroll={handleScroll}
+          contentInsetAdjustmentBehavior="automatic"
           keyboardShouldPersistTaps="never"
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => {
@@ -88,7 +93,7 @@ const Messages = ({
               isAtBottom ||
               chatHistory[chatHistory.length - 1].content === ''
             ) {
-              scrollRef.current?.scrollToEnd({ animated: true });
+              ref.current?.scrollToEnd({ animated: true });
             }
           }}
         >

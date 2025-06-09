@@ -1,10 +1,11 @@
-import React, { Ref } from 'react';
+import React, { Ref, RefObject } from 'react';
 import {
   View,
   TextInput,
   TouchableOpacity,
   Text,
   StyleSheet,
+  ScrollView,
 } from 'react-native';
 import SendIcon from '../../assets/icons/send_icon.svg';
 import PauseIcon from '../../assets/icons/pause_icon.svg';
@@ -22,6 +23,8 @@ interface Props {
   onSelectModel: () => void;
   inputRef: Ref<TextInput>;
   model: Model | null;
+  scrollRef: RefObject<ScrollView | null>;
+  isAtBottom: boolean;
 }
 
 const ChatBar = ({
@@ -32,6 +35,8 @@ const ChatBar = ({
   onSelectModel,
   inputRef,
   model,
+  scrollRef,
+  isAtBottom,
 }: Props) => {
   const { theme } = useTheme();
 
@@ -94,6 +99,12 @@ const ChatBar = ({
             ref={inputRef}
             style={styles.input}
             multiline
+            onFocus={async () => {
+              if (!isAtBottom) return;
+              setTimeout(() => {
+                scrollRef.current?.scrollToEnd({ animated: true });
+              }, 25);
+            }}
             placeholder={!isLoading ? 'Ask about anything...' : 'Loading...'}
             placeholderTextColor={theme.text.contrastTertiary}
             value={userInput}

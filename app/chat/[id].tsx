@@ -14,7 +14,7 @@ import WithDrawerGesture from '../../components/WithDrawerGesture';
 export default function ChatScreenWrapper() {
   useDefaultHeader();
   const { db, activeChatId, activeChatMessages } = useLLMStore();
-  const { getChatById, renameChat } = useChatStore();
+  const { getChatById } = useChatStore();
   const { getModelById } = useModelStore();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [messageHistory, setMessageHistory] = useState<Message[]>([]);

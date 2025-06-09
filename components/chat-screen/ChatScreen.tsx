@@ -14,6 +14,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  ScrollView,
 } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
 import { useLLMStore } from '../../store/llmStore';
@@ -50,6 +51,8 @@ export default function ChatScreen({
   const inputRef = useRef<TextInput>(null);
   const chatIdRef = useRef<number | null>(chatId);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const scrollRef = useRef<ScrollView>(null);
+
   const { theme } = useTheme();
 
   const { downloadedModels, loadModels } = useModelStore();
@@ -57,6 +60,7 @@ export default function ChatScreen({
   const { addChat, updateLastUsed, setChatModel } = useChatStore();
 
   const [userInput, setUserInput] = useState('');
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
   const handlePresentModalPress = useCallback(() => {
     bottomSheetModalRef.current?.present();
@@ -130,6 +134,9 @@ export default function ChatScreen({
           isGenerating={isGenerating}
           model={model}
           onSelectModel={handlePresentModalPress}
+          ref={scrollRef}
+          isAtBottom={isAtBottom}
+          setIsAtBottom={setIsAtBottom}
         />
       </View>
       <ChatBar
@@ -140,6 +147,8 @@ export default function ChatScreen({
         onSelectModel={handlePresentModalPress}
         inputRef={inputRef}
         model={model}
+        scrollRef={scrollRef}
+        isAtBottom={isAtBottom}
       />
 
       <BottomSheetModal
