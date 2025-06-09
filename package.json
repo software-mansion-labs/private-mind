@@ -14,7 +14,6 @@
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-menu/menu": "^1.2.3",
     "@react-native/metro-config": "^0.76.3",
-    "@react-navigation/drawer": "^7.3.11",
     "expo": "^53.0.9",
     "expo-constants": "~17.1.6",
     "expo-document-picker": "~13.1.5",

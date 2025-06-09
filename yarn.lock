@@ -2155,26 +2155,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-navigation/drawer@npm:^7.3.11":
-  version: 7.3.12
-  resolution: "@react-navigation/drawer@npm:7.3.12"
-  dependencies:
-    "@react-navigation/elements": ^2.4.2
-    color: ^4.2.3
-    react-native-drawer-layout: ^4.1.8
-    use-latest-callback: ^0.2.3
-  peerDependencies:
-    "@react-navigation/native": ^7.1.9
-    react: ">= 18.2.0"
-    react-native: "*"
-    react-native-gesture-handler: ">= 2.0.0"
-    react-native-reanimated: ">= 2.0.0"
-    react-native-safe-area-context: ">= 4.0.0"
-    react-native-screens: ">= 4.0.0"
-  checksum: 4a3fcff2ce818abe88d0a3175f0e446da6a61e585c1496a68ae4fcd983f109372be3d785c3f0c2bb2da397b1b35a012c1c98e6988fa81a819757676c299cd7c1
-  languageName: node
-  linkType: hard
-
 "@react-navigation/elements@npm:^2.4.2":
   version: 2.4.2
   resolution: "@react-navigation/elements@npm:2.4.2"
@@ -5222,7 +5202,6 @@ __metadata:
     "@react-native-async-storage/async-storage": 2.1.2
     "@react-native-menu/menu": ^1.2.3
     "@react-native/metro-config": ^0.76.3
-    "@react-navigation/drawer": ^7.3.11
     "@types/react": ~19.0.10
     expo: ^53.0.9
     expo-constants: ~17.1.6
@@ -6806,20 +6785,6 @@ __metadata:
   peerDependencies:
     react-native: "*"
   checksum: aa839dbe7df1246a4b5f9bcfeb3d4cc4be585f13a0d3ff6a03f57a0c2cfe7590291ac292dda4c51fd8765f94c870857676463e8e2f1660b057f3ae2b4335db29
-  languageName: node
-  linkType: hard
-
-"react-native-drawer-layout@npm:^4.1.8":
-  version: 4.1.8
-  resolution: "react-native-drawer-layout@npm:4.1.8"
-  dependencies:
-    use-latest-callback: ^0.2.3
-  peerDependencies:
-    react: ">= 18.2.0"
-    react-native: "*"
-    react-native-gesture-handler: ">= 2.0.0"
-    react-native-reanimated: ">= 2.0.0"
-  checksum: 21ec3778f82457c5e0a0506b0c30ee14e998aabe17a86d243d1e9c12e01f0fa7b8a31ac7f0349207d0a21aab28bd394910a3b7600ee75567aa66e6ab9d993207
   languageName: node
   linkType: hard
 
