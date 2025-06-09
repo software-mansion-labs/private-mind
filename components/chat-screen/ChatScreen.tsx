@@ -14,8 +14,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
-  Keyboard,
 } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
 import { useLLMStore } from '../../store/llmStore';
@@ -117,6 +115,7 @@ export default function ChatScreen({
         ...styles.container,
         paddingBottom: Platform.OS === 'android' ? 20 : 0,
       }}
+      collapsable={false}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 40}
     >

@@ -87,7 +87,10 @@ export default function ChatSettingsScreen() {
               </Text>
               <TextFieldInput
                 value={chatTitle}
-                onChangeText={(val) => setChatTitle(val)}
+                maxLength={25}
+                onChangeText={(val) => {
+                  setChatTitle(val);
+                }}
               />
             </View>
           )}

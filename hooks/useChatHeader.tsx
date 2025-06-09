@@ -1,12 +1,7 @@
-import React, {
-  Dispatch,
-  SetStateAction,
-  useEffect,
-  useLayoutEffect,
-} from 'react';
+import React, { useLayoutEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { router } from 'expo-router';
-import { Platform, Alert } from 'react-native';
+import { Alert } from 'react-native';
 import { useChatStore } from '../store/chatStore';
 import {
   exportChatRoom,

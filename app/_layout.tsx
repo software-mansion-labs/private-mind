@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
@@ -42,19 +42,31 @@ export default function Layout() {
                 >
                   <Stack.Screen
                     name="model-hub"
-                    options={{ title: 'Models' }}
+                    options={{
+                      title: 'Models',
+                      gestureEnabled: false,
+                      animation: 'none',
+                    }}
                   />
                   <Stack.Screen
                     name="index"
-                    options={{ title: '', animation: 'none' }}
+                    options={{
+                      title: '',
+                      animation: 'none',
+                      gestureEnabled: false,
+                    }}
                   />
                   <Stack.Screen
                     name="benchmark"
-                    options={{ title: 'Benchmark' }}
+                    options={{
+                      title: 'Benchmark',
+                      gestureEnabled: false,
+                      animation: 'none',
+                    }}
                   />
                   <Stack.Screen
                     name="chat/[id]"
-                    options={{ animation: 'none' }}
+                    options={{ animation: 'none', gestureEnabled: false }}
                   />
                   <Stack.Screen
                     name="chat/[id]/settings"

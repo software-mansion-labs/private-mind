@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, StyleSheet } from 'react-native';
 import { useDrawer } from '../../context/DrawerContext';
 import Menu from '../../assets/icons/menu.svg';
 

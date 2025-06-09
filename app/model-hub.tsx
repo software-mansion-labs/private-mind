@@ -4,25 +4,28 @@ import { useDefaultHeader } from '../hooks/useDefaultHeader';
 import { useModelStore } from '../store/modelStore';
 import ModelCard from '../components/model-hub/ModelCard';
 import FloatingActionButton from '../components/model-hub/FloatingActionButton';
+import WithDrawerGesture from '../components/WithDrawerGesture';
 
 const ModelHubScreen = () => {
   useDefaultHeader();
   const { models } = useModelStore();
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>Available Models</Text>
+    <WithDrawerGesture>
+      <View style={styles.container}>
+        <Text style={styles.heading}>Available Models</Text>
 
-      <FlatList
-        data={models}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ModelCard model={item} />}
-        contentContainerStyle={{ gap: 8 }}
-        showsVerticalScrollIndicator={false}
-      />
+        <FlatList
+          data={models}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <ModelCard model={item} />}
+          contentContainerStyle={{ gap: 8 }}
+          showsVerticalScrollIndicator={false}
+        />
 
-      <FloatingActionButton />
-    </View>
+        <FloatingActionButton />
+      </View>
+    </WithDrawerGesture>
   );
 };
 

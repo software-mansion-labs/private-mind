@@ -9,6 +9,7 @@ import { useChatStore } from '../../store/chatStore';
 import { useModelStore } from '../../store/modelStore';
 import { getChatMessages, Message } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
+import WithDrawerGesture from '../../components/WithDrawerGesture';
 
 export default function ChatScreenWrapper() {
   useDefaultHeader();
@@ -48,11 +49,13 @@ export default function ChatScreenWrapper() {
   }, [activeChatMessages, activeChatId, chatId]);
 
   return (
-    <ChatScreen
-      chatId={chatId}
-      messageHistory={messageHistory}
-      model={model || null}
-      selectModel={setModel}
-    />
+    <WithDrawerGesture>
+      <ChatScreen
+        chatId={chatId}
+        messageHistory={messageHistory}
+        model={model || null}
+        selectModel={setModel}
+      />
+    </WithDrawerGesture>
   );
 }
