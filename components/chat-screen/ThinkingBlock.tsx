@@ -71,8 +71,6 @@ const ThinkingBlock = memo(({ content, isComplete = true }: Props) => {
   );
 });
 
-('/');
-
 export default ThinkingBlock;
 
 const styles = StyleSheet.create({

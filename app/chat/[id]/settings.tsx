@@ -27,13 +27,14 @@ import ModalHeader from '../../../components/ModalHeader';
 export default function ChatSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const chatId = Number(id) || null;
+
   const db = useSQLiteContext();
+  const { theme } = useTheme();
   const { getModelById } = useModelStore();
   const { getChatById, renameChat } = useChatStore();
 
   const chat = getChatById(chatId as number);
   const model = getModelById(chat?.model || '');
-  const { theme } = useTheme();
 
   const [chatTitle, setChatTitle] = useState(
     chat ? chat.title : `Chat #${chatId}`
@@ -42,7 +43,6 @@ export default function ChatSettingsScreen() {
   const [contextWindow, setContextWindow] = useState('6');
 
   useEffect(() => {
-    if (!db) return;
     (async () => {
       const settings = await getChatSettings(db, chatId);
       setSystemPrompt(settings.systemPrompt);

@@ -1,4 +1,3 @@
-// components/ReusableButton.tsx
 import React from 'react';
 import {
   TouchableOpacity,

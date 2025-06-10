@@ -13,19 +13,17 @@ import WithDrawerGesture from '../../components/WithDrawerGesture';
 
 export default function ChatScreenWrapper() {
   useDefaultHeader();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const { db, activeChatId, activeChatMessages } = useLLMStore();
   const { getChatById } = useChatStore();
   const { getModelById } = useModelStore();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const [messageHistory, setMessageHistory] = useState<Message[]>([]);
+
   const chatId = id ? Number(id) : null;
   const chat = getChatById(chatId as number);
   const chatModel = getModelById(chat?.model || '');
+
+  const [messageHistory, setMessageHistory] = useState<Message[]>([]);
   const [model, setModel] = useState<Model | null>(chatModel || null);
-  /*
-    For iOS, we are using default prompt alert which doesn't
-    exist on Android. That's why we have to use a custom dialog which is a component and can't be returned from a hook.
-  */
 
   useChatHeader({
     chatId: chatId as number,
