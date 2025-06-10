@@ -5,6 +5,11 @@ import { useChatStore } from '../../store/chatStore';
 import { Chat } from '../../database/chatRepository';
 import { useLLMStore } from '../../store/llmStore';
 import { ScrollView } from 'react-native-gesture-handler';
+import { useTheme } from '../../context/ThemeContext';
+import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import ChatIcon from '../../assets/icons/chat.svg';
+import ModelsIcon from '../../assets/icons/models.svg';
+import BenchmarkIcon from '../../assets/icons/benchmark.svg';
 
 const getRelativeDateSection = (date: Date): string => {
   const now = new Date();
@@ -42,6 +47,7 @@ const groupChatsByDate = (chats: Chat[]): Record<string, Chat[]> => {
 const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const { theme } = useTheme();
   const { chats } = useChatStore();
   const { isGenerating, interrupt } = useLLMStore();
 
@@ -65,39 +71,50 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Section title="App" />
-      <DrawerItem
-        label="New chat"
-        active={pathname === '/'}
-        onPress={() => navigate('/')}
-      />
-      <DrawerItem
-        label="Models"
-        active={pathname === '/model-hub'}
-        onPress={() => navigate('/model-hub')}
-      />
-      <DrawerItem
-        label="Benchmark"
-        active={pathname === '/benchmark'}
-        onPress={() => navigate('/benchmark')}
-      />
-
-      <Section title="Chats" />
+      <View>
+        <DrawerItem
+          icon={<ChatIcon width={18} height={18} />}
+          label="New chat"
+          active={pathname === '/'}
+          onPress={() => navigate('/')}
+        />
+        <DrawerItem
+          icon={<ModelsIcon width={18} height={18} />}
+          label="Models"
+          active={pathname === '/model-hub'}
+          onPress={() => navigate('/model-hub')}
+        />
+        <DrawerItem
+          icon={<BenchmarkIcon width={18} height={18} />}
+          label="Benchmark"
+          active={pathname === '/benchmark'}
+          onPress={() => navigate('/benchmark')}
+        />
+      </View>
       {Object.entries(groupedChats).map(([sectionTitle, sectionChats]) => (
-        <View key={sectionTitle}>
-          <Text style={styles.subSection}>{sectionTitle}</Text>
-          {sectionChats.map((chat) => {
-            const path = `/chat/${chat.id}`;
-            const active = pathname === path;
-            return (
-              <DrawerItem
-                key={chat.id}
-                label={chat.title || `Chat ${chat.id}`}
-                active={active}
-                onPress={() => navigate(path)}
-              />
-            );
-          })}
+        <View key={sectionTitle} style={{ gap: 8 }}>
+          <Text
+            style={{
+              ...styles.subSection,
+              color: theme.text.defaultTertiary,
+            }}
+          >
+            {sectionTitle}
+          </Text>
+          <View>
+            {sectionChats.map((chat) => {
+              const path = `/chat/${chat.id}`;
+              const active = pathname === path;
+              return (
+                <DrawerItem
+                  key={chat.id}
+                  label={chat.title || `Chat ${chat.id}`}
+                  active={active}
+                  onPress={() => navigate(path)}
+                />
+              );
+            })}
+          </View>
         </View>
       ))}
     </ScrollView>
@@ -111,60 +128,61 @@ const DrawerItem = memo(
     label,
     active,
     onPress,
+    icon,
   }: {
     label: string;
     active: boolean;
     onPress: () => void;
+    icon?: React.ReactNode;
   }) => {
+    const { theme } = useTheme();
     return (
       <Pressable
         onPress={onPress}
         style={({ pressed }) => [
           styles.item,
-          active && styles.itemActive,
           pressed && styles.itemPressed,
+          active && {
+            ...styles.itemActive,
+            backgroundColor: theme.bg.softSecondary,
+          },
         ]}
       >
-        <Text style={[styles.label, active && styles.labelActive]}>
-          {label}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          {icon && icon}
+          <Text
+            style={[
+              { ...styles.label, color: theme.text.primary },
+              active && styles.labelActive,
+            ]}
+          >
+            {label}
+          </Text>
+        </View>
       </Pressable>
     );
   }
 );
 
-const Section = ({ title }: { title: string }) => (
-  <Text style={styles.section}>{title}</Text>
-);
-
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-  },
-  section: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginTop: 20,
-    marginBottom: 12,
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+    gap: 24,
   },
   subSection: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 4,
-    paddingLeft: 4,
+    paddingHorizontal: 12,
+    fontFamily: fontFamily.medium,
   },
   item: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 6,
+    padding: 12,
+    borderRadius: 4,
   },
   itemActive: {},
   itemPressed: {},
   label: {
-    fontSize: 16,
+    fontSize: fontSizes.md,
+    fontFamily: fontFamily.medium,
   },
-  labelActive: {
-    fontWeight: 'bold',
-  },
+  labelActive: {},
 });
