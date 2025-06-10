@@ -1,16 +1,10 @@
 import React, { memo } from 'react';
-import {
-  Text,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-  Alert,
-} from 'react-native';
+import { Text, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { useChatStore } from '../../store/chatStore';
 import { Chat } from '../../database/chatRepository';
 import { useLLMStore } from '../../store/llmStore';
+import { ScrollView } from 'react-native-gesture-handler';
 
 const getRelativeDateSection = (date: Date): string => {
   const now = new Date();
@@ -59,7 +53,13 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
     if (isGenerating) {
       interrupt();
     }
-    router.push(path);
+
+    if (path.includes('chat')) {
+      router.replace(path);
+    } else {
+      router.push(path);
+    }
+
     onNavigate();
   };
 

@@ -14,7 +14,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
 } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
 import { useLLMStore } from '../../store/llmStore';
@@ -34,6 +33,7 @@ import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import PrimaryButton from '../PrimaryButton';
 import ChatBar from './ChatBar';
 import ModelCard from '../model-hub/ModelCard';
+import { ScrollView } from 'react-native-gesture-handler';
 
 interface Props {
   chatId: number | null;

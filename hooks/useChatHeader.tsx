@@ -37,7 +37,7 @@ const useChatHeader = ({ chatId, chatModel }: Props) => {
               .addChat(importedChat.title, '');
             if (newChatId) {
               await importMessages(db!, newChatId, importedChat.messages);
-              router.push(`/chat/${newChatId}`);
+              router.replace(`/chat/${newChatId}`);
             }
           } catch (error) {
             console.error('Error importing chat:', error);

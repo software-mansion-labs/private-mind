@@ -1,6 +1,5 @@
-import React, { RefObject, useState } from 'react';
+import React, { RefObject } from 'react';
 import {
-  ScrollView,
   StyleSheet,
   View,
   Text,
@@ -15,6 +14,7 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
 import { Model } from '../../database/modelRepository';
 import SecondaryButton from '../SecondaryButton';
+import { ScrollView } from 'react-native-gesture-handler';
 
 interface Props {
   chatHistory: Message[];

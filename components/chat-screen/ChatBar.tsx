@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
-  ScrollView,
 } from 'react-native';
 import SendIcon from '../../assets/icons/send_icon.svg';
 import PauseIcon from '../../assets/icons/pause_icon.svg';
@@ -14,6 +13,7 @@ import { fontFamily } from '../../styles/fontFamily';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
+import { ScrollView } from 'react-native-gesture-handler';
 
 interface Props {
   chatId: number | null;

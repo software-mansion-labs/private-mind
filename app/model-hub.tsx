@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useDefaultHeader } from '../hooks/useDefaultHeader';
 import { useModelStore } from '../store/modelStore';
 import ModelCard from '../components/model-hub/ModelCard';
 import FloatingActionButton from '../components/model-hub/FloatingActionButton';
 import WithDrawerGesture from '../components/WithDrawerGesture';
+import { FlatList } from 'react-native-gesture-handler';
 
 const ModelHubScreen = () => {
   useDefaultHeader();

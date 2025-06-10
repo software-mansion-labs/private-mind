@@ -1,17 +1,11 @@
 import React, { memo, useState, useEffect, useRef } from 'react';
-import {
-  View,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  ScrollView as ScrollViewType,
-} from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
 import ChevronUp from '../../assets/icons/chevron-up.svg';
+import { ScrollView } from 'react-native-gesture-handler';
 
 interface Props {
   content: string;
@@ -20,7 +14,7 @@ interface Props {
 
 const ThinkingBlock = memo(({ content, isComplete = true }: Props) => {
   const [expanded, setExpanded] = useState(false);
-  const scrollViewRef = useRef<ScrollViewType | null>(null);
+  const scrollViewRef = useRef<ScrollView | null>(null);
   const prevContentRef = useRef(content);
   const { theme } = useTheme();
 
@@ -65,6 +59,7 @@ const ThinkingBlock = memo(({ content, isComplete = true }: Props) => {
           ref={scrollViewRef}
           style={styles.collapsedContent}
           scrollEnabled={false}
+          showsVerticalScrollIndicator={false}
           onContentSizeChange={() => {
             scrollViewRef.current?.scrollToEnd({ animated: false });
           }}
