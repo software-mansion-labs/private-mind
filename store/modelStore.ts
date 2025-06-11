@@ -8,6 +8,7 @@ import {
   removeModelFiles,
 } from '../database/modelRepository';
 import { ResourceFetcher } from 'react-native-executorch';
+import Toast from 'react-native-toast-message';
 
 export enum ModelState {
   Downloaded = 'downloaded',
@@ -104,6 +105,11 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       }
 
       setDownloading(1, ModelState.Downloaded);
+      Toast.show({
+        type: 'defaultToast',
+        text1: `${model.id} has been successfully downloaded`,
+        props: { backgroundColor: '#020f3c' },
+      });
     } catch (err) {
       console.error('Failed:', err);
     }
@@ -123,12 +129,18 @@ export const useModelStore = create<ModelStore>((set, get) => ({
           model.tokenizerPath,
           model.tokenizerConfigPath
         );
+        await updateModelDownloaded(db, modelId, 0);
+        await get().loadModels();
+        set((state) => ({
+          downloadStates: Object.fromEntries(
+            Object.entries(state.downloadStates).filter(
+              ([key]) => key !== modelId
+            )
+          ),
+        }));
       } else if (model.source === 'local') {
         await removeModelFiles(db, modelId);
-        await get().loadModels();
       }
-
-      await updateModelDownloaded(db, modelId, 0);
     } catch (err) {
       console.error('Failed to remove files:', err);
     }

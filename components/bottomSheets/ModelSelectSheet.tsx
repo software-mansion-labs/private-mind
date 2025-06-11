@@ -79,9 +79,7 @@ const ModelSelectSheet = ({
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ gap: 8, paddingBottom: 60 }}
             renderItem={({ item }) => (
-              <TouchableOpacity onPress={() => handleSelectModel(item)}>
-                <ModelCard model={item} />
-              </TouchableOpacity>
+              <ModelCard model={item} onPress={handleSelectModel} />
             )}
           />
         </View>

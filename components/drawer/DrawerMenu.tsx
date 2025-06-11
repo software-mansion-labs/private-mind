@@ -139,23 +139,16 @@ const DrawerItem = memo(
     return (
       <Pressable
         onPress={onPress}
-        style={({ pressed }) => [
+        style={() => [
           styles.item,
-          pressed && styles.itemPressed,
           active && {
-            ...styles.itemActive,
             backgroundColor: theme.bg.softSecondary,
           },
         ]}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           {icon && icon}
-          <Text
-            style={[
-              { ...styles.label, color: theme.text.primary },
-              active && styles.labelActive,
-            ]}
-          >
+          <Text style={[{ ...styles.label, color: theme.text.primary }]}>
             {label}
           </Text>
         </View>
@@ -173,16 +166,15 @@ const styles = StyleSheet.create({
   subSection: {
     paddingHorizontal: 12,
     fontFamily: fontFamily.medium,
+    fontSize: fontSizes.xs,
+    letterSpacing: 0.1,
   },
   item: {
     padding: 12,
     borderRadius: 4,
   },
-  itemActive: {},
-  itemPressed: {},
   label: {
     fontSize: fontSizes.md,
     fontFamily: fontFamily.medium,
   },
-  labelActive: {},
 });

@@ -13,10 +13,41 @@ import {
   DMSans_500Medium_Italic,
   DMSans_600SemiBold_Italic,
 } from '@expo-google-fonts/dm-sans';
-import { fontFamily } from '../styles/fontFamily';
+import { fontFamily, fontSizes } from '../styles/fontFamily';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemeProvider } from '../context/ThemeContext';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import Toast from 'react-native-toast-message';
+import CloseWhiteIcon from '../assets/icons/close-white.svg';
+import { View, Text } from 'react-native';
+
+const toastConfig = {
+  defaultToast: ({ text1, props }: any) => (
+    <View
+      style={{
+        width: '90%',
+        backgroundColor: props.backgroundColor,
+        borderRadius: 4,
+        padding: 16,
+        flexDirection: 'row',
+      }}
+    >
+      <Text
+        style={{
+          color: '#fff',
+          fontFamily: fontFamily.bold,
+          fontSize: fontSizes.sm,
+          width: '80%',
+        }}
+      >
+        {text1}
+      </Text>
+      <View style={{ width: '20%', alignItems: 'flex-end', marginTop: 3.33 }}>
+        <CloseWhiteIcon width={13.33} height={13.33} />
+      </View>
+    </View>
+  ),
+};
 
 export default function Layout() {
   useFonts({
@@ -86,6 +117,7 @@ export default function Layout() {
                   />
                 </Stack>
               </SafeAreaView>
+              <Toast config={toastConfig} />
             </CustomDrawerLayout>
           </BottomSheetModalProvider>
         </ThemeProvider>
