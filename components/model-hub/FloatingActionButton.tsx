@@ -3,14 +3,17 @@ import { StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
 
-const FloatingActionButton = () => {
-  const router = useRouter();
+interface Props {
+  onPress: () => void;
+}
+
+const FloatingActionButton = ({ onPress }: Props) => {
   const { theme } = useTheme();
 
   return (
     <TouchableOpacity
       style={{ ...styles.fab, backgroundColor: theme.bg.strongPrimary }}
-      onPress={() => router.push('/modal/add-model')}
+      onPress={onPress}
     >
       <Text style={styles.fabText}>＋</Text>
     </TouchableOpacity>

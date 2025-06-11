@@ -5,29 +5,51 @@ import { useModelStore } from '../store/modelStore';
 import ModelCard from '../components/model-hub/ModelCard';
 import FloatingActionButton from '../components/model-hub/FloatingActionButton';
 import WithDrawerGesture from '../components/WithDrawerGesture';
-import { FlatList, ScrollView } from 'react-native-gesture-handler';
+import { ScrollView } from 'react-native-gesture-handler';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { Model } from '../database/modelRepository';
 import ModelManagementSheet from '../components/bottomSheets/ModelManagementSheet';
 import { fontFamily, fontSizes } from '../styles/fontFamily';
 import TextFieldInput from '../components/TextFieldInput';
 import SearchIcon from '../assets/icons/search.svg';
 import { useTheme } from '../context/ThemeContext';
 import SortingTag from '../components/model-hub/SortingTag';
+import SecondaryButton from '../components/SecondaryButton';
+import QuestionIcon from '../assets/icons/question.svg';
+import AddModelSheet from '../components/bottomSheets/AddModelSheet';
 
 const ModelHubScreen = () => {
-  const bottomSheetModalRef = useRef<BottomSheetModal | null>(null);
-  useDefaultHeader();
-  const { theme } = useTheme();
+  const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
+  const addModelSheetRef = useRef<BottomSheetModal | null>(null);
   const { models } = useModelStore();
+  const { theme } = useTheme();
+
+  useDefaultHeader();
+
   const [search, setSearch] = useState('');
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
+  const [groupByModel, setGroupByModel] = useState(false);
 
-  const downloadedModels = models.filter((m) => m.isDownloaded === 1);
-  const availableModels = models.filter((m) => m.isDownloaded !== 1);
-
-  const openModal = (model: Model) => {
-    bottomSheetModalRef.current?.present(model);
+  const toggleFilter = (filter: string) => {
+    const newFilters = new Set(activeFilters);
+    if (newFilters.has(filter)) {
+      newFilters.delete(filter);
+    } else {
+      newFilters.add(filter);
+    }
+    setActiveFilters(newFilters);
   };
+
+  const filteredModels = models.filter((model) => {
+    const matchesSearch = model.id.toLowerCase().includes(search.toLowerCase());
+
+    const matchesFilter =
+      activeFilters.size === 0 || activeFilters.has(model.source);
+
+    return matchesSearch && matchesFilter;
+  });
+
+  const downloadedModels = filteredModels.filter((m) => m.isDownloaded === 1);
+  const availableModels = filteredModels.filter((m) => m.isDownloaded !== 1);
 
   return (
     <>
@@ -39,68 +61,129 @@ const ModelHubScreen = () => {
             placeholder="Search Models..."
             icon={<SearchIcon width={20} height={20} />}
           />
-
-          <ScrollView
-            horizontal={true}
-            style={{ height: 110 }}
-            contentContainerStyle={{ gap: 8 }}
-          >
-            <SortingTag
-              text="Group by model"
-              selected={false}
-              onPress={() => {}}
-            />
-            <SortingTag text="Built-in" selected={false} onPress={() => {}} />
-            <SortingTag text="Remote" selected={false} onPress={() => {}} />
-            <SortingTag text="Local" selected={false} onPress={() => {}} />
-          </ScrollView>
-          {downloadedModels.length > 0 && (
-            <>
-              <Text
+          <View>
+            <ScrollView horizontal={true} contentContainerStyle={{ gap: 8 }}>
+              <SortingTag
+                text="Group by model"
+                selected={groupByModel}
+                onPress={() => setGroupByModel(!groupByModel)}
+              />
+              <SortingTag
+                text="Built-in"
+                selected={activeFilters.has('builtin')}
+                onPress={() => toggleFilter('builtin')}
+              />
+              <SortingTag
+                text="Remote"
+                selected={activeFilters.has('remote')}
+                onPress={() => toggleFilter('remote')}
+              />
+              <SortingTag
+                text="Local"
+                selected={activeFilters.has('local')}
+                onPress={() => toggleFilter('local')}
+              />
+            </ScrollView>
+          </View>
+          {downloadedModels.length + availableModels.length === 0 ? (
+            <View style={styles.noModelsContainer}>
+              <View
                 style={{
-                  ...styles.sectionHeader,
-                  color: theme.text.defaultSecondary,
+                  backgroundColor: theme.bg.softSecondary,
+                  width: 64,
+                  height: 64,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderRadius: 9999,
                 }}
               >
-                Ready to Use
-              </Text>
-              <FlatList
-                data={downloadedModels}
-                keyExtractor={(item) => item.id + '_downloaded'}
-                renderItem={({ item }) => (
-                  <ModelCard model={item} onPress={openModal} />
-                )}
-                contentContainerStyle={{
-                  gap: 8,
+                <QuestionIcon width={12} height={21.33} />
+              </View>
+              <View style={{ alignItems: 'center', gap: 8 }}>
+                <Text
+                  style={{
+                    fontFamily: fontFamily.medium,
+                    fontSize: fontSizes.lg,
+                    color: theme.text.primary,
+                  }}
+                >
+                  No models found
+                </Text>
+                <Text
+                  style={{
+                    color: theme.text.defaultTertiary,
+                    fontFamily: fontFamily.regular,
+                    fontSize: fontSizes.sm,
+                  }}
+                >
+                  Adjust your search, filters or add new model.
+                </Text>
+              </View>
+              <SecondaryButton
+                text="Clear Filters"
+                onPress={() => {
+                  setSearch('');
+                  setActiveFilters(new Set());
                 }}
-                scrollEnabled={true}
               />
-            </>
+            </View>
+          ) : (
+            <ScrollView contentContainerStyle={{ gap: 16 }}>
+              {downloadedModels.length > 0 && (
+                <>
+                  <Text
+                    style={[
+                      styles.sectionHeader,
+                      { color: theme.text.defaultSecondary },
+                    ]}
+                  >
+                    Ready to Use
+                  </Text>
+                  <View style={{ gap: 8 }}>
+                    {downloadedModels.map((model) => (
+                      <ModelCard
+                        key={model.id}
+                        model={model}
+                        onPress={() => {
+                          modelManagementSheetRef.current?.present(model);
+                        }}
+                      />
+                    ))}
+                  </View>
+                </>
+              )}
+
+              <Text
+                style={[
+                  styles.sectionHeader,
+                  { color: theme.text.defaultSecondary },
+                ]}
+              >
+                Available to Download
+              </Text>
+              <View style={{ gap: 8, paddingBottom: 60 }}>
+                {availableModels.map((model) => (
+                  <ModelCard
+                    key={model.id}
+                    model={model}
+                    onPress={() => {
+                      modelManagementSheetRef.current?.present(model);
+                    }}
+                  />
+                ))}
+              </View>
+            </ScrollView>
           )}
-
-          <Text
-            style={{
-              ...styles.sectionHeader,
-              color: theme.text.defaultSecondary,
+          <FloatingActionButton
+            onPress={() => {
+              addModelSheetRef.current?.present();
             }}
-          >
-            Available to Download
-          </Text>
-          <FlatList
-            data={availableModels}
-            keyExtractor={(item) => item.id + '_available'}
-            renderItem={({ item }) => (
-              <ModelCard model={item} onPress={openModal} />
-            )}
-            contentContainerStyle={{ gap: 8, paddingBottom: 60 }}
-            showsVerticalScrollIndicator={false}
           />
-
-          <FloatingActionButton />
         </View>
       </WithDrawerGesture>
 
-      <ModelManagementSheet bottomSheetModalRef={bottomSheetModalRef} />
+      <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
+      <AddModelSheet bottomSheetModalRef={addModelSheetRef} />
     </>
   );
 };
@@ -114,10 +197,20 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#fff',
   },
+  noModelsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 24,
+  },
   sectionHeader: {
     fontSize: fontSizes.sm,
     fontFamily: fontFamily.medium,
-    marginBottom: 8,
-    marginTop: 16,
+  },
+  tagContainer: {
+    gap: 8,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingRight: 8,
   },
 });

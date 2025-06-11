@@ -263,7 +263,7 @@ export const DEFAULT_MODELS = [
   {
     id: 'LLaMA 3.2 - 3B',
     modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/llama-3.2-3B/original/llama3_2_3b_bf16.pte',
+      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/llama-3.2-3B/original/llama3_2_3B_bf16.pte',
     tokenizerPath:
       'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer.json',
     tokenizerConfigPath:
@@ -272,7 +272,7 @@ export const DEFAULT_MODELS = [
   {
     id: 'LLaMA 3.2 - 3B - QLoRa',
     modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/llama-3.2-3B/QLoRA/llama3_2_3b_qat_lora.pte',
+      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/llama-3.2-3B/QLoRA/llama3_2_3B_qat_lora.pte',
     tokenizerPath:
       'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer.json',
     tokenizerConfigPath:
@@ -281,7 +281,7 @@ export const DEFAULT_MODELS = [
   {
     id: 'LLaMA 3.2 - 3B - SpinQuant',
     modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/llama-3.2-3B/spinquant/llama3_2_3b_spinquant.pte',
+      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/llama-3.2-3B/spinquant/llama3_2_3B_spinquant.pte',
     tokenizerPath:
       'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer.json',
     tokenizerConfigPath:

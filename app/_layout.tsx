@@ -108,7 +108,15 @@ export default function Layout() {
                     }}
                   />
                   <Stack.Screen
-                    name="modal/add-model"
+                    name="modal/add-local-model"
+                    options={{
+                      presentation: 'modal',
+                      title: 'Add Model',
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="modal/add-remote-model"
                     options={{
                       presentation: 'modal',
                       title: 'Add Model',

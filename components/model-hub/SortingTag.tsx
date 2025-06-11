@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { fontSizes, fontFamily } from '../../styles/fontFamily';
+import CheckIcon from '../../assets/icons/check.svg';
 
 interface Props {
   text: string;
@@ -13,14 +14,32 @@ const SortingTag = ({ text, selected, onPress }: Props) => {
   const { theme } = useTheme();
 
   return (
-    <View
-      style={{
-        ...styles.container,
-        borderColor: theme.border.soft,
-      }}
+    <TouchableOpacity
+      style={
+        selected
+          ? {
+              ...styles.container,
+              borderColor: theme.bg.strongPrimary,
+              borderWidth: 2,
+            }
+          : {
+              ...styles.container,
+              borderColor: theme.border.soft,
+            }
+      }
+      onPress={onPress}
     >
-      <Text style={{ color: theme.text.primary }}>{text}</Text>
-    </View>
+      <Text
+        style={
+          selected
+            ? { ...styles.text, fontFamily: fontFamily.medium }
+            : { ...styles.text, color: theme.text.primary }
+        }
+      >
+        {text}
+      </Text>
+      {selected && <CheckIcon width={20} height={20} />}
+    </TouchableOpacity>
   );
 };
 
@@ -34,6 +53,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 9999,
     borderWidth: 1,
+    flexDirection: 'row',
+    maxHeight: 44,
   },
   text: {
     fontFamily: fontFamily.regular,

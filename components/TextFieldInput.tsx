@@ -27,7 +27,11 @@ const TextFieldInput: React.FC<TextFieldInputProps> = ({
     >
       {icon}
       <TextInput
-        style={{ ...styles.input, color: theme.text.primary }}
+        style={
+          icon
+            ? { ...styles.input, color: theme.text.primary }
+            : { ...styles.input, color: theme.text.primary, width: '100%' }
+        }
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
