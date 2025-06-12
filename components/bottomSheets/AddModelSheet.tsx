@@ -51,6 +51,7 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
             text={'From external URLs'}
             onPress={() => {
               router.push('/modal/add-remote-model');
+              bottomSheetModalRef.current?.close();
             }}
           />
           <EntryButton
@@ -58,6 +59,7 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
             text={'From local files'}
             onPress={() => {
               router.push('/modal/add-local-model');
+              bottomSheetModalRef.current?.close();
             }}
           />
         </View>

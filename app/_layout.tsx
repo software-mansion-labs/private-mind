@@ -119,7 +119,20 @@ export default function Layout() {
                     name="modal/add-remote-model"
                     options={{
                       presentation: 'modal',
-                      title: 'Add Model',
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="modal/edit-local-model/[modelId]"
+                    options={{
+                      presentation: 'modal',
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="modal/edit-remote-model/[modelId]"
+                    options={{
+                      presentation: 'modal',
                       headerShown: false,
                     }}
                   />

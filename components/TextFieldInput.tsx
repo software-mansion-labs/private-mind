@@ -17,7 +17,6 @@ const TextFieldInput: React.FC<TextFieldInputProps> = ({
   ...props
 }) => {
   const { theme } = useTheme();
-
   return (
     <View
       style={{
@@ -29,8 +28,17 @@ const TextFieldInput: React.FC<TextFieldInputProps> = ({
       <TextInput
         style={
           icon
-            ? { ...styles.input, color: theme.text.primary }
-            : { ...styles.input, color: theme.text.primary, width: '100%' }
+            ? {
+                ...styles.input,
+                color: theme.text.primary,
+                opacity: props.editable !== false ? 1 : 0.4,
+              }
+            : {
+                ...styles.input,
+                color: theme.text.primary,
+                width: '100%',
+                opacity: props.editable !== false ? 1 : 0.4,
+              }
         }
         value={value}
         onChangeText={onChangeText}

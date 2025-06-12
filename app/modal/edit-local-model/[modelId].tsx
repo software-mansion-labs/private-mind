@@ -2,20 +2,21 @@ import React, { useState } from 'react';
 import {
   Text,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   View,
+  Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useModelStore } from '../../store/modelStore';
-import { Model } from '../../database/modelRepository';
-import ModalHeader from '../../components/ModalHeader';
-import { fontSizes, fontFamily } from '../../styles/fontFamily';
-import { useTheme } from '../../context/ThemeContext';
-import PrimaryButton from '../../components/PrimaryButton';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useModelStore } from '../../../store/modelStore';
+import ModalHeader from '../../../components/ModalHeader';
+import { fontSizes, fontFamily } from '../../../styles/fontFamily';
+import { useTheme } from '../../../context/ThemeContext';
+import PrimaryButton from '../../../components/PrimaryButton';
 import { ScrollView } from 'react-native-gesture-handler';
-import UploadInput from '../../components/UploadInput';
+import UploadInput from '../../../components/UploadInput';
+import { InfoAlert } from '../../../components/InfoAlert';
+import TextFieldInput from '../../../components/TextFieldInput';
 import Toast from 'react-native-toast-message';
 
 type LocalFile = {
@@ -24,16 +25,31 @@ type LocalFile = {
   uri: string;
 };
 
-export default function AddLocalModelScreen() {
+export default function EditLocalModelScreen() {
+  const { modelId } = useLocalSearchParams<{ modelId: string }>();
   const router = useRouter();
   const { theme } = useTheme();
-  const { addModelToDB } = useModelStore();
+  const { getModelById, editModel } = useModelStore();
+  const model = getModelById(modelId);
 
-  const [localModelPath, setLocalModelPath] = useState<LocalFile | null>(null);
+  const [modelName, setModelName] = useState(model?.id || '');
+  const [localModelPath, setLocalModelPath] = useState<LocalFile | null>({
+    name: model?.modelPath.split('/').pop() || '',
+    size: null,
+    uri: model?.modelPath.replace('file://', '') || '',
+  });
   const [localTokenizerPath, setLocalTokenizerPath] =
-    useState<LocalFile | null>(null);
+    useState<LocalFile | null>({
+      name: model?.tokenizerPath.split('/').pop() || '',
+      size: null,
+      uri: model?.tokenizerPath.replace('file://', '') || '',
+    });
   const [localTokenizerConfigPath, setLocalTokenizerConfigPath] =
-    useState<LocalFile | null>(null);
+    useState<LocalFile | null>({
+      name: model?.tokenizerConfigPath.split('/').pop() || '',
+      size: null,
+      uri: model?.tokenizerConfigPath.replace('file://', '') || '',
+    });
 
   const handleSave = async () => {
     if (!localModelPath || !localTokenizerPath || !localTokenizerConfigPath) {
@@ -41,19 +57,16 @@ export default function AddLocalModelScreen() {
       return;
     }
 
-    const id = `model-${Date.now()}`;
-    const model: Model = {
-      id,
-      isDownloaded: 1,
-      source: 'local',
-      modelPath: `file://${localModelPath.uri}`,
-      tokenizerPath: `file://${localTokenizerPath.uri}`,
-      tokenizerConfigPath: `file://${localTokenizerConfigPath.uri}`,
-    };
-    await addModelToDB(model);
+    await editModel(
+      modelId,
+      localTokenizerPath.uri,
+      localTokenizerConfigPath.uri,
+      modelName || modelId
+    );
+
     Toast.show({
       type: 'defaultToast',
-      text1: `${model.id} has been succesfully added`,
+      text1: `${modelName} has been successfully updated`,
       props: { backgroundColor: theme.bg.strongPrimary },
     });
     router.back();
@@ -66,11 +79,14 @@ export default function AddLocalModelScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
     >
       <View style={styles.container}>
-        <ModalHeader title="Add Local Model" onClose={() => router.back()} />
+        <ModalHeader title="Edit Local Model" onClose={() => router.back()} />
         <ScrollView contentContainerStyle={{ gap: 24 }}>
-          <Text style={{ ...styles.description, color: theme.text.primary }}>
-            Add a model using an existing files in your phone storage.
-          </Text>
+          <View style={styles.textFieldSection}>
+            <Text style={{ ...styles.label, color: theme.text.primary }}>
+              Model Name
+            </Text>
+            <TextFieldInput value={modelName} onChangeText={setModelName} />
+          </View>
           <View style={styles.textFieldSection}>
             <Text style={{ ...styles.label, color: theme.text.primary }}>
               Model URL
@@ -78,6 +94,12 @@ export default function AddLocalModelScreen() {
             <UploadInput
               fileInfo={localModelPath}
               onChange={setLocalModelPath}
+              disabled
+            />
+            <InfoAlert
+              text={
+                'Model file is permanently linked to this model and cannot be changed'
+              }
             />
           </View>
           <View style={styles.textFieldSection}>
@@ -99,7 +121,7 @@ export default function AddLocalModelScreen() {
             />
           </View>
         </ScrollView>
-        <PrimaryButton text="Add model" onPress={handleSave} />
+        <PrimaryButton text="Save changes" onPress={handleSave} />
       </View>
     </KeyboardAvoidingView>
   );

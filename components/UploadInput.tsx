@@ -13,12 +13,13 @@ import AttachmentIcon from '../assets/icons/attachment.svg';
 import { useTheme } from '../context/ThemeContext';
 import { fontFamily, fontSizes } from '../styles/fontFamily';
 
-type Props = {
+interface Props {
   fileInfo: { name: string; size: number | null; uri: string } | null;
   onChange: (
     file: { name: string; size: number | null; uri: string } | null
   ) => void;
-};
+  disabled?: boolean;
+}
 
 const formatFileSize = (bytes: number | null) => {
   if (!bytes || isNaN(bytes)) return '';
@@ -31,7 +32,7 @@ const formatFileSize = (bytes: number | null) => {
   return `${bytes} B`;
 };
 
-const UploadInput = ({ fileInfo, onChange }: Props) => {
+const UploadInput = ({ fileInfo, onChange, disabled = false }: Props) => {
   const { theme } = useTheme();
   const handlePickFile = async () => {
     const result = await DocumentPicker.getDocumentAsync({
@@ -55,7 +56,12 @@ const UploadInput = ({ fileInfo, onChange }: Props) => {
   return (
     <View>
       {!fileInfo ? (
-        <View style={{ ...styles.emptyBox, borderColor: theme.border.soft }}>
+        <View
+          style={{
+            ...styles.emptyBox,
+            borderColor: theme.border.soft,
+          }}
+        >
           <TouchableOpacity
             style={{
               ...styles.selectButton,
@@ -76,7 +82,11 @@ const UploadInput = ({ fileInfo, onChange }: Props) => {
         </View>
       ) : (
         <View
-          style={{ ...styles.fileBox, backgroundColor: theme.bg.softSecondary }}
+          style={{
+            ...styles.fileBox,
+            backgroundColor: theme.bg.softSecondary,
+            opacity: disabled ? 0.4 : 1,
+          }}
         >
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             <AttachmentIcon width={15.83} height={15.83} />
@@ -92,9 +102,12 @@ const UploadInput = ({ fileInfo, onChange }: Props) => {
               {fileInfo.size ? `(${formatFileSize(fileInfo.size)})` : ''}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => onChange(null)}>
-            <TrashIcon width={15} height={15.83} />
-          </TouchableOpacity>
+
+          {!disabled && (
+            <TouchableOpacity onPress={() => onChange(null)}>
+              <TrashIcon width={15} height={15.83} />
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>

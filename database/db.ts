@@ -16,7 +16,6 @@ export const initDatabase = async (db: SQLiteDatabase) => {
           tokenizerPath TEXT,
           tokenizerConfigPath TEXT
         );`);
-
   await db.execAsync(`
       CREATE TABLE IF NOT EXISTS chats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,7 +66,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       const { id, modelPath, tokenizerPath, tokenizerConfigPath } = model;
       await addModel(db, {
         id,
-        source: 'remote',
+        source: 'built-in',
         isDownloaded: 0,
         modelPath: modelPath,
         tokenizerPath: tokenizerPath,

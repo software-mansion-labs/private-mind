@@ -70,8 +70,8 @@ const ModelHubScreen = () => {
               />
               <SortingTag
                 text="Built-in"
-                selected={activeFilters.has('builtin')}
-                onPress={() => toggleFilter('builtin')}
+                selected={activeFilters.has('built-in')}
+                onPress={() => toggleFilter('built-in')}
               />
               <SortingTag
                 text="Remote"

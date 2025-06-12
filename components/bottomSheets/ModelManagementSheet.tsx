@@ -1,4 +1,4 @@
-import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import React, { RefObject, useCallback, useState } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -10,11 +10,14 @@ import { useTheme } from '../../context/ThemeContext';
 import EntryButton from '../EntryButton';
 import ModelCard from '../model-hub/ModelCard';
 import ThrashIcon from '../../assets/icons/trash.svg';
+import EditIcon from '../../assets/icons/edit.svg';
+import CrossCircleIcon from '../../assets/icons/cross-circle.svg';
 import { useModelStore } from '../../store/modelStore';
 import { Model } from '../../database/modelRepository';
 import Toast from 'react-native-toast-message';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
+import { router } from 'expo-router';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -28,21 +31,8 @@ enum ModalStage {
 
 const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
   const { theme } = useTheme();
-  const { removeModel } = useModelStore();
+  const { removeModel, removeModelFiles } = useModelStore();
   const [stage, setStage] = useState<ModalStage>(ModalStage.Initial);
-
-  const removeModelFiles = async (model: Model) => {
-    try {
-      await removeModel(model.id);
-      Toast.show({
-        type: 'defaultToast',
-        text1: `${model.id} has been successfully deleted`,
-        props: { backgroundColor: '#020f3c' },
-      });
-    } catch (error) {
-      console.error('Failed to delete model:', error);
-    }
-  };
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -62,13 +52,54 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
         return (
           <>
             <ModelCard model={model} onPress={() => {}} />
-            <EntryButton
-              text="Delete downloaded files"
-              icon={<ThrashIcon width={18} height={19} />}
-              onPress={() => {
-                setStage(ModalStage.RemoveFiles);
-              }}
-            />
+            <View style={{ gap: 8 }}>
+              {model.source !== 'built-in' && (
+                <EntryButton
+                  text="Edit model"
+                  icon={<EditIcon width={18} height={20} />}
+                  onPress={() => {
+                    if (model.source === 'remote') {
+                      router.push(`modal/edit-remote-model/${model.id}`);
+                    } else if (model.source === 'local') {
+                      router.push(`modal/edit-local-model/${model.id}`);
+                    }
+
+                    bottomSheetModalRef.current?.dismiss();
+                  }}
+                />
+              )}
+              {model.source !== 'local' && (
+                <EntryButton
+                  text="Delete downloaded files"
+                  icon={
+                    <ThrashIcon
+                      width={18}
+                      height={19}
+                      style={{ color: theme.bg.strongPrimary }}
+                    />
+                  }
+                  onPress={() => {
+                    setStage(ModalStage.RemoveFiles);
+                  }}
+                />
+              )}
+              {model.source !== 'built-in' && (
+                <EntryButton
+                  text="Remove from the app"
+                  textStyle={{ color: theme.text.error }}
+                  icon={
+                    <CrossCircleIcon
+                      width={20}
+                      height={20}
+                      style={{ color: theme.text.error }}
+                    />
+                  }
+                  onPress={() => {
+                    setStage(ModalStage.RemoveModel);
+                  }}
+                />
+              )}
+            </View>
           </>
         );
       case ModalStage.RemoveFiles:
@@ -90,7 +121,50 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
               <PrimaryButton
                 text="Delete model files"
                 onPress={async () => {
-                  await removeModelFiles(model);
+                  await removeModelFiles(model.id);
+                  Toast.show({
+                    type: 'defaultToast',
+                    text1: `${model.id} has been successfully deleted`,
+                    props: { backgroundColor: '#020f3c' },
+                  });
+                  bottomSheetModalRef.current?.dismiss();
+                }}
+              />
+              <SecondaryButton
+                text="Close"
+                onPress={() => {
+                  setStage(ModalStage.Initial);
+                }}
+              />
+            </View>
+          </>
+        );
+      case ModalStage.RemoveModel:
+        return (
+          <>
+            <Text style={{ ...styles.title, color: theme.text.primary }}>
+              Are you sure you want permanently remove this model from the app?
+            </Text>
+            <Text
+              style={{
+                ...styles.bottomSheetSubText,
+                color: theme.text.defaultSecondary,
+              }}
+            >
+              It will delete the model files and stored external urls. You can
+              always add this model to the app again manually.
+            </Text>
+            <View style={{ gap: 8 }}>
+              <PrimaryButton
+                style={{ backgroundColor: theme.bg.errorPrimary }}
+                text="Delete model files"
+                onPress={async () => {
+                  await removeModel(model.id);
+                  Toast.show({
+                    type: 'defaultToast',
+                    text1: `${model.id} has been successfully deleted`,
+                    props: { backgroundColor: '#020f3c' },
+                  });
                   bottomSheetModalRef.current?.dismiss();
                 }}
               />
