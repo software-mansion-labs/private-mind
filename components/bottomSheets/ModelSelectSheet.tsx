@@ -1,4 +1,4 @@
-import React, { Dispatch, RefObject, SetStateAction, useCallback } from 'react';
+import React, { RefObject, useCallback } from 'react';
 import {
   BottomSheetModal,
   BottomSheetFlatList,
@@ -6,46 +6,22 @@ import {
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
 import { router } from 'expo-router';
-import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import ModelCard from '../model-hub/ModelCard';
 import PrimaryButton from '../PrimaryButton';
 import { Model } from '../../database/modelRepository';
 import { useModelStore } from '../../store/modelStore';
-import { useLLMStore } from '../../store/llmStore';
-import { useChatStore } from '../../store/chatStore';
 import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
 
 interface Props {
-  chatId: RefObject<number | null>;
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
-  model?: Model | null;
-  selectModel?: Dispatch<SetStateAction<Model | null>>;
+  selectModel: (model: Model) => void;
 }
 
-const ModelSelectSheet = ({
-  chatId,
-  bottomSheetModalRef,
-  model,
-  selectModel,
-}: Props) => {
+const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
   const { theme } = useTheme();
   const { downloadedModels } = useModelStore();
-  const { loadModel } = useLLMStore();
-  const { setChatModel } = useChatStore();
-
-  const handleSelectModel = async (selectedModel: Model) => {
-    try {
-      await loadModel(selectedModel);
-      if (chatId.current && !model) {
-        await setChatModel(chatId.current, selectedModel.id);
-      }
-      selectModel?.(selectedModel);
-      bottomSheetModalRef.current?.dismiss();
-    } catch (error) {
-      console.error('Error loading model:', error);
-    }
-  };
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -61,16 +37,27 @@ const ModelSelectSheet = ({
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
+      style={{
+        backgroundColor: theme.bg.softPrimary,
+      }}
       backdropComponent={renderBackdrop}
       snapPoints={['30%', '50%']}
       enableDynamicSizing={false}
+      handleStyle={{
+        backgroundColor: theme.bg.softPrimary,
+      }}
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,
         ...styles.bottomSheetIndicator,
       }}
     >
       {downloadedModels.length > 0 ? (
-        <View style={styles.bottomSheet}>
+        <View
+          style={{
+            ...styles.bottomSheet,
+            backgroundColor: theme.bg.softPrimary,
+          }}
+        >
           <Text style={{ ...styles.title, color: theme.text.primary }}>
             Select a Model
           </Text>
@@ -79,7 +66,13 @@ const ModelSelectSheet = ({
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ gap: 8, paddingBottom: 60 }}
             renderItem={({ item }) => (
-              <ModelCard model={item} onPress={handleSelectModel} />
+              <ModelCard
+                model={item}
+                onPress={() => {
+                  selectModel(item);
+                  bottomSheetModalRef.current?.dismiss();
+                }}
+              />
             )}
           />
         </View>

@@ -57,6 +57,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     justifyContent: 'center',
+    alignItems: 'center',
     flexDirection: 'row',
     gap: 8,
   },
@@ -64,6 +65,8 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.md,
     fontFamily: fontFamily.regular,
     width: '90%',
+    height: '100%',
+    lineHeight: 22,
   },
 });
 

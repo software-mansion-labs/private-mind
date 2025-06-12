@@ -49,6 +49,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   await db.execAsync(`
       CREATE TABLE IF NOT EXISTS benchmarks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp timestamp DEFAULT CURRENT_TIMESTAMP,
         modelId TEXT DEFAULT '',
         totalTime INTEGER DEFAULT 0,
         timeToFirstToken INTEGER DEFAULT 0,

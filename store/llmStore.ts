@@ -33,7 +33,7 @@ interface LLMStore {
   ) => Promise<void>;
   setDB: (db: SQLiteDatabase) => void;
   loadModel: (model: Model) => Promise<void>;
-  runBenchmark: () => Promise<BenchmarkResult>;
+  runBenchmark: (selectedModel: Model) => Promise<BenchmarkResult>;
   interrupt: () => void;
 }
 
@@ -191,9 +191,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
-  runBenchmark: async () => {
-    const { isGenerating, db, model, isLoading } = get();
-
+  runBenchmark: async (selectedModel) => {
+    const { isGenerating, db, isLoading } = get();
+    await get().loadModel(selectedModel);
     const iterations = 3;
 
     let avgTotalTime = 0;
@@ -202,7 +202,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     let avgTokens = 0;
     let peakMemory = 0;
 
-    if (isGenerating || !db || model === null || isLoading)
+    if (isGenerating || !db || isLoading)
       return {
         id: -1,
         modelId: '',
@@ -268,7 +268,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
 
     const result = {
-      modelId: model.id,
+      modelId: selectedModel.id,
       timeToFirstToken: avgTTFT,
       tokensPerSecond: avgTPS,
       totalTime: avgTotalTime,

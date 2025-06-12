@@ -1,21 +1,51 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
+import BenchmarkIcon from '../../assets/icons/benchmark.svg';
+import { useTheme } from '../../context/ThemeContext';
+import { fontFamily, fontSizes } from '../../styles/fontFamily';
 
-const BenchmarkItem = ({ entry }: { entry: BenchmarkResult }) => {
+interface Props {
+  entry: BenchmarkResult;
+  onPress: () => void;
+}
+
+const BenchmarkItem = ({ entry, onPress }: Props) => {
+  const { theme } = useTheme();
   const toFixed = (n: number, d = 2) => Number(n).toFixed(d);
   const msToS = (ms: number) => toFixed(ms / 1000);
+  const date = new Date(entry.timestamp);
+  const formattedDate = `${date.getDate()} ${date.toLocaleString('default', {
+    month: 'short',
+  })}`;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Model: {entry.modelId}</Text>
-      <Text style={styles.stat}>TTFT: {msToS(entry.timeToFirstToken)} s</Text>
-      <Text style={styles.stat}>
-        TPS: {toFixed(entry.tokensPerSecond)} | Tokens: {entry.tokensGenerated}
-      </Text>
-      <Text style={styles.stat}>Time: {msToS(entry.totalTime)} s</Text>
-      <Text style={styles.stat}>Peak Mem: {toFixed(entry.peakMemory)} GB</Text>
-    </View>
+    <TouchableOpacity style={styles.container} onPress={onPress}>
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 9999,
+          backgroundColor: theme.bg.softSecondary,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <BenchmarkIcon
+          width={15}
+          height={15}
+          style={{ color: theme.text.primary }}
+        />
+      </View>
+      <View>
+        <Text style={{ ...styles.title, color: theme.text.primary }}>
+          {entry.modelId}
+        </Text>
+        <Text style={{ ...styles.date, color: theme.text.defaultSecondary }}>
+          {formattedDate}
+        </Text>
+      </View>
+    </TouchableOpacity>
   );
 };
 
@@ -23,18 +53,18 @@ export default BenchmarkItem;
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    padding: 12,
-    marginBottom: 12,
+    borderRadius: 4,
+    padding: 16,
+    paddingLeft: 12,
     borderWidth: 1,
     borderColor: '#eee',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  title: {
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  stat: {
-    fontSize: 13,
+  title: { fontFamily: fontFamily.medium, fontSize: fontSizes.sm },
+  date: {
+    fontSize: fontSizes.xs,
+    fontFamily: fontFamily.regular,
   },
 });
