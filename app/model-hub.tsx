@@ -29,6 +29,18 @@ const ModelHubScreen = () => {
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [groupByModel, setGroupByModel] = useState(false);
 
+  const groupModelsByPrefix = (models: typeof filteredModels) => {
+    return models.reduce<Record<string, typeof filteredModels>>(
+      (acc, model) => {
+        const prefix = model.id.split('-')[0].toLowerCase();
+        if (!acc[prefix]) acc[prefix] = [];
+        acc[prefix].push(model);
+        return acc;
+      },
+      {}
+    );
+  };
+
   const toggleFilter = (filter: string) => {
     const newFilters = new Set(activeFilters);
     if (newFilters.has(filter)) {
@@ -50,6 +62,40 @@ const ModelHubScreen = () => {
 
   const downloadedModels = filteredModels.filter((m) => m.isDownloaded === 1);
   const availableModels = filteredModels.filter((m) => m.isDownloaded !== 1);
+
+  const renderGroupedModels = (models: typeof filteredModels) => {
+    const grouped = groupModelsByPrefix(models);
+    return (
+      <>
+        {Object.entries(grouped).map(([prefix, group]) => (
+          <React.Fragment key={prefix}>
+            <Text
+              style={[
+                styles.sectionHeader,
+                {
+                  color: theme.text.defaultSecondary,
+                  textTransform: 'capitalize',
+                },
+              ]}
+            >
+              {prefix}
+            </Text>
+            <View style={{ gap: 8 }}>
+              {group.map((model) => (
+                <ModelCard
+                  key={model.id}
+                  model={model}
+                  onPress={() => {
+                    modelManagementSheetRef.current?.present(model);
+                  }}
+                />
+              ))}
+            </View>
+          </React.Fragment>
+        ))}
+      </>
+    );
+  };
 
   return (
     <>
@@ -129,18 +175,48 @@ const ModelHubScreen = () => {
             </View>
           ) : (
             <ScrollView contentContainerStyle={{ gap: 16 }}>
-              {downloadedModels.length > 0 && (
+              {groupByModel ? (
                 <>
+                  {renderGroupedModels([
+                    ...downloadedModels,
+                    ...availableModels,
+                  ])}
+                </>
+              ) : (
+                <>
+                  {downloadedModels.length > 0 && (
+                    <>
+                      <Text
+                        style={[
+                          styles.sectionHeader,
+                          { color: theme.text.defaultSecondary },
+                        ]}
+                      >
+                        Ready to Use
+                      </Text>
+                      <View style={{ gap: 8 }}>
+                        {downloadedModels.map((model) => (
+                          <ModelCard
+                            key={model.id}
+                            model={model}
+                            onPress={() => {
+                              modelManagementSheetRef.current?.present(model);
+                            }}
+                          />
+                        ))}
+                      </View>
+                    </>
+                  )}
                   <Text
                     style={[
                       styles.sectionHeader,
                       { color: theme.text.defaultSecondary },
                     ]}
                   >
-                    Ready to Use
+                    Available to Download
                   </Text>
-                  <View style={{ gap: 8 }}>
-                    {downloadedModels.map((model) => (
+                  <View style={{ gap: 8, paddingBottom: 60 }}>
+                    {availableModels.map((model) => (
                       <ModelCard
                         key={model.id}
                         model={model}
@@ -152,26 +228,6 @@ const ModelHubScreen = () => {
                   </View>
                 </>
               )}
-
-              <Text
-                style={[
-                  styles.sectionHeader,
-                  { color: theme.text.defaultSecondary },
-                ]}
-              >
-                Available to Download
-              </Text>
-              <View style={{ gap: 8, paddingBottom: 60 }}>
-                {availableModels.map((model) => (
-                  <ModelCard
-                    key={model.id}
-                    model={model}
-                    onPress={() => {
-                      modelManagementSheetRef.current?.present(model);
-                    }}
-                  />
-                ))}
-              </View>
             </ScrollView>
           )}
           <FloatingActionButton
