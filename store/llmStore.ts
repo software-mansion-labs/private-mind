@@ -196,6 +196,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         get().firstTokenTime,
         get().tokenCount
       );
+
       if (generatedResponse) {
         await persistMessage(db, {
           role: 'assistant',
