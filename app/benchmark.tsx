@@ -50,7 +50,7 @@ const BenchmarkScreen = () => {
   const { runBenchmark, loadModel, interrupt } = useLLMStore();
   const { downloadedModels: models, getModelById } = useModelStore();
 
-  const [selectedModel, setSelectedModel] = useState<Model | null>(null);
+  const [selectedModel, setSelectedModel] = useState<Model | null>(models[0]);
   const [benchmarkList, setBenchmarkList] = useState<BenchmarkResult[]>([]);
   const [timer, setTimer] = useState(0);
   const [isBenchmarkModalVisible, setIsBenchmarkModalVisible] = useState(false);

@@ -205,6 +205,9 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
         backgroundColor: theme.text.primary,
         ...styles.bottomSheetIndicator,
       }}
+      backgroundStyle={{
+        backgroundColor: theme.bg.softPrimary,
+      }}
     >
       {(props) => {
         return (

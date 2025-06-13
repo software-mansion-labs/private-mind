@@ -38,15 +38,15 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       enableDynamicSizing={true}
-      style={{
-        backgroundColor: theme.bg.softPrimary,
-      }}
       handleStyle={{
         backgroundColor: theme.bg.softPrimary,
       }}
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,
         ...styles.bottomSheetIndicator,
+      }}
+      backgroundStyle={{
+        backgroundColor: theme.bg.softPrimary,
       }}
     >
       <BottomSheetView

@@ -39,9 +39,6 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
-      style={{
-        backgroundColor: theme.bg.softPrimary,
-      }}
       backdropComponent={renderBackdrop}
       snapPoints={['30%', '50%']}
       enableDynamicSizing={false}
@@ -51,6 +48,9 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,
         ...styles.bottomSheetIndicator,
+      }}
+      backgroundStyle={{
+        backgroundColor: theme.bg.softPrimary,
       }}
     >
       {downloadedModels.length > 0 ? (
