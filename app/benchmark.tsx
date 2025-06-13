@@ -73,7 +73,8 @@ const BenchmarkScreen = () => {
     const interval = setInterval(() => {
       setTimer((prev) => prev + 1);
     }, 1000);
-    const iterations = 1;
+
+    const iterations = 3;
     await loadModel(selectedModel);
     const results: Omit<BenchmarkResult, 'modelId' | 'id' | 'timestamp'>[] = [];
     for (let i = 0; i < iterations; i++) {
@@ -116,6 +117,10 @@ const BenchmarkScreen = () => {
       model: await getModelById(newBenchmark.modelId),
     });
   };
+
+  useEffect(() => {
+    loadBenchmarks();
+  }, [loadBenchmarks]);
 
   const handleCancel = () => {
     interrupt();
