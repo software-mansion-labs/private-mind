@@ -206,6 +206,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
           localTokenizerConfigPath
         );
       }
+
       await updateModel(
         db,
         modelId,

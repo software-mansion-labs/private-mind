@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useModelStore } from '../../../store/modelStore';
-import { Model } from '../../../database/modelRepository';
 import ModalHeader from '../../../components/ModalHeader';
 import TextFieldInput from '../../../components/TextFieldInput';
 import { fontSizes, fontFamily } from '../../../styles/fontFamily';
