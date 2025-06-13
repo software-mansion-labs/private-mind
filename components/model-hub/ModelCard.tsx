@@ -71,12 +71,24 @@ const ModelCard = ({ model, onPress }: Props) => {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Chip
               title={'0.6 B'}
-              icon={<ProcessorIcon width={16} height={16} />}
+              icon={
+                <ProcessorIcon
+                  width={16}
+                  height={16}
+                  style={{ color: theme.text.defaultSecondary }}
+                />
+              }
             />
             {modelState === ModelState.NotStarted && (
               <Chip
                 title={'2.47 GB'}
-                icon={<DownloadCloudIcon width={16} height={16} />}
+                icon={
+                  <DownloadCloudIcon
+                    width={16}
+                    height={16}
+                    style={{ color: theme.text.defaultSecondary }}
+                  />
+                }
                 borderColor={theme.border.soft}
               />
             )}
@@ -86,13 +98,25 @@ const ModelCard = ({ model, onPress }: Props) => {
           <CircleButton
             onPress={() => {}}
             backgroundColor={theme.bg.errorSecondary}
-            icon={<CloseIcon width={13.33} height={13.33} />}
+            icon={
+              <CloseIcon
+                width={13.33}
+                height={13.33}
+                style={{ color: theme.text.primary }}
+              />
+            }
           />
         )} */}
         {modelState === ModelState.NotStarted && (
           <CircleButton
             onPress={handlePress}
-            icon={<DownloadIcon width={15} height={15} />}
+            icon={
+              <DownloadIcon
+                width={15}
+                height={15}
+                style={{ color: theme.text.primary }}
+              />
+            }
             backgroundColor={theme.bg.softSecondary}
           />
         )}

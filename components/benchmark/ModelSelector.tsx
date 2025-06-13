@@ -41,11 +41,19 @@ export const ModelSelector = ({ model, setSelectedModel }: Props) => {
             }}
           >
             <Text
-              style={{ fontFamily: fontFamily.medium, fontSize: fontSizes.md }}
+              style={{
+                fontFamily: fontFamily.medium,
+                fontSize: fontSizes.md,
+                color: theme.text.primary,
+              }}
             >
               Select a model
             </Text>
-            <ChevronDownIcon width={18} height={10} />
+            <ChevronDownIcon
+              width={18}
+              height={10}
+              style={{ color: theme.text.primary }}
+            />
           </TouchableOpacity>
         )}
       </View>

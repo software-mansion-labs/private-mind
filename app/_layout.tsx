@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemeProvider } from '../context/ThemeContext';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
-import CloseWhiteIcon from '../assets/icons/close-white.svg';
+import CloseIcon from '../assets/icons/close.svg';
 import { View, Text, Appearance } from 'react-native';
 import { darkTheme, lightTheme } from '../styles/colors';
 
@@ -44,7 +44,7 @@ const toastConfig = {
         {text1}
       </Text>
       <View style={{ width: '20%', alignItems: 'flex-end', marginTop: 3.33 }}>
-        <CloseWhiteIcon width={13.33} height={13.33} />
+        <CloseIcon width={13.33} height={13.33} style={{ color: '#fff' }} />
       </View>
     </View>
   ),
@@ -61,6 +61,18 @@ export default function Layout() {
     [fontFamily.mediumItalic]: DMSans_500Medium_Italic,
     [fontFamily.boldItalic]: DMSans_600SemiBold_Italic,
   });
+
+  const [theme, setTheme] = useState(
+    colorScheme === 'dark' ? darkTheme : lightTheme
+  );
+
+  useEffect(() => {
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      setTheme(colorScheme === 'dark' ? darkTheme : lightTheme);
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   return (
     <GestureHandlerRootView>

@@ -80,15 +80,22 @@ const ChatBar = ({
               borderBottomLeftRadius: 8,
               borderBottomRightRadius: 8,
               paddingBottom: 12,
+              borderColor: theme.border.soft,
             }}
             onPress={() => {
               loadModel(model);
             }}
           >
-            <Text style={styles.selectedModel}>
+            <Text
+              style={{ ...styles.selectedModel, color: theme.text.primary }}
+            >
               {'Load Model'} {model.id}
             </Text>
-            <RotateLeft width={20} height={20} />
+            <RotateLeft
+              width={20}
+              height={20}
+              style={{ color: theme.text.primary }}
+            />
           </TouchableOpacity>
         )}
       {model && loadedModel?.id === model.id && (
@@ -97,7 +104,7 @@ const ChatBar = ({
         >
           <TextInput
             ref={inputRef}
-            style={styles.input}
+            style={{ ...styles.input, color: theme.text.contrastPrimary }}
             multiline
             onFocus={async () => {
               if (!isAtBottom) return;
@@ -112,13 +119,33 @@ const ChatBar = ({
           />
           <View style={styles.buttonBar}>
             {userInput && !isGenerating && (
-              <TouchableOpacity style={styles.sendButton} onPress={onSend}>
-                <SendIcon width={20} height={20} />
+              <TouchableOpacity
+                style={{
+                  ...styles.sendButton,
+                  backgroundColor: theme.bg.softPrimary,
+                }}
+                onPress={onSend}
+              >
+                <SendIcon
+                  width={20}
+                  height={20}
+                  style={{ color: theme.text.primary }}
+                />
               </TouchableOpacity>
             )}
             {isGenerating && (
-              <TouchableOpacity style={styles.sendButton} onPress={interrupt}>
-                <PauseIcon height={20} width={20} />
+              <TouchableOpacity
+                style={{
+                  ...styles.sendButton,
+                  backgroundColor: theme.bg.softPrimary,
+                }}
+                onPress={interrupt}
+              >
+                <PauseIcon
+                  height={20}
+                  width={20}
+                  style={{ color: theme.text.primary }}
+                />
               </TouchableOpacity>
             )}
           </View>

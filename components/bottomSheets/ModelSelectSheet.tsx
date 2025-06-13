@@ -29,7 +29,9 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={0.2}
+        style={{
+          backgroundColor: theme.bg.overlay,
+        }}
       />
     ),
     []

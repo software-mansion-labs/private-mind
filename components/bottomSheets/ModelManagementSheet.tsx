@@ -40,7 +40,9 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={0.2}
+        style={{
+          backgroundColor: theme.bg.overlay,
+        }}
       />
     ),
     []
@@ -56,7 +58,13 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
               {model.source !== 'built-in' && (
                 <EntryButton
                   text="Edit model"
-                  icon={<EditIcon width={18} height={20} />}
+                  icon={
+                    <EditIcon
+                      width={18}
+                      height={20}
+                      style={{ color: theme.text.primary }}
+                    />
+                  }
                   onPress={() => {
                     if (model.source === 'remote') {
                       router.push(`modal/edit-remote-model/${model.id}`);
@@ -190,6 +198,9 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
       onChange={() => {
         setStage(ModalStage.Initial);
       }}
+      handleStyle={{
+        backgroundColor: theme.bg.softPrimary,
+      }}
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,
         ...styles.bottomSheetIndicator,
@@ -197,7 +208,12 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
     >
       {(props) => {
         return (
-          <BottomSheetView style={styles.bottomSheet}>
+          <BottomSheetView
+            style={{
+              ...styles.bottomSheet,
+              backgroundColor: theme.bg.softPrimary,
+            }}
+          >
             {renderStageContent(props.data)}
           </BottomSheetView>
         );

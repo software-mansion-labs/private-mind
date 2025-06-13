@@ -8,10 +8,13 @@ import { configureReanimatedLogger } from 'react-native-reanimated';
 import { Text, View } from 'react-native';
 import { Model } from '../database/modelRepository';
 import WithDrawerGesture from '../components/WithDrawerGesture';
+import { useTheme } from '../context/ThemeContext';
+import { fontFamily, fontSizes } from '../styles/fontFamily';
 
 export default function App() {
   const navigation = useNavigation();
   const [model, setModel] = useState<Model | null>(null);
+  const { theme } = useTheme();
   useDefaultHeader();
 
   configureReanimatedLogger({
@@ -29,7 +32,14 @@ export default function App() {
             alignItems: 'center',
           }}
         >
-          <Text>{model ? model.id : ''}</Text>
+          <Text
+            style={{
+              color: theme.text.primary,
+              fontFamily: fontFamily.medium,
+            }}
+          >
+            {model ? model.id : ''}
+          </Text>
         </View>
       ),
     });

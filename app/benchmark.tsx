@@ -50,7 +50,7 @@ const BenchmarkScreen = () => {
   const { runBenchmark, loadModel, interrupt } = useLLMStore();
   const { downloadedModels: models, getModelById } = useModelStore();
 
-  const [selectedModel, setSelectedModel] = useState<Model | null>(models[0]);
+  const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [benchmarkList, setBenchmarkList] = useState<BenchmarkResult[]>([]);
   const [timer, setTimer] = useState(0);
   const [isBenchmarkModalVisible, setIsBenchmarkModalVisible] = useState(false);
@@ -130,7 +130,9 @@ const BenchmarkScreen = () => {
   return (
     <>
       <WithDrawerGesture>
-        <View style={styles.container}>
+        <View
+          style={{ ...styles.container, backgroundColor: theme.bg.softPrimary }}
+        >
           <ModelSelector
             model={selectedModel}
             setSelectedModel={setSelectedModel}
