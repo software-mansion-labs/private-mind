@@ -24,7 +24,6 @@
     "expo-sharing": "~13.1.5",
     "expo-sqlite": "~15.2.9",
     "expo-status-bar": "~2.2.3",
-    "expo-system-ui": "~5.0.7",
     "metro-config": "^0.81.0",
     "react": "19.0.0",
     "react-native": "^0.79.2",
