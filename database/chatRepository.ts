@@ -3,8 +3,9 @@ import { SQLiteDatabase } from 'expo-sqlite';
 
 export type Chat = {
   id: number;
+  model: string;
   title: string;
-  createdAt: number;
+  lastUsed: number;
 };
 
 export type ChatSettings = {
@@ -15,6 +16,7 @@ export type ChatSettings = {
 export type Message = {
   id: number;
   chatId: number;
+  modelName?: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   tokensPerSecond?: number;
@@ -24,11 +26,25 @@ export type Message = {
 
 export const createChat = async (
   db: SQLiteDatabase,
-  title: string
+  title: string,
+  model: string
 ): Promise<number> => {
-  const result = await db.runAsync(`INSERT INTO chats (title) VALUES (?)`, [
-    title,
-  ]);
+  const result = await db.runAsync(
+    `INSERT INTO chats (title, model) VALUES (?, ?)`,
+    [title, model]
+  );
+
+  if (result.lastInsertRowId) {
+    const defaultSettings = await AsyncStorage.getItem('default_chat_settings');
+    if (defaultSettings) {
+      const parsedSettings: ChatSettings = JSON.parse(defaultSettings);
+      await setChatSettings(db, result.lastInsertRowId, {
+        systemPrompt: parsedSettings.systemPrompt,
+        contextWindow: parsedSettings.contextWindow,
+      });
+    }
+  }
+
   return result.lastInsertRowId;
 };
 
@@ -56,15 +72,22 @@ export const persistMessage = async (
   }
 
   const result = await db.runAsync(
-    `INSERT INTO messages (chatId, role, content, tokensPerSecond, timeToFirstToken) VALUES (?, ?, ?, ?, ?);`,
+    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken) VALUES (?, ?, ?, ?, ?, ?);`,
     [
       message.chatId,
       message.role,
       message.content,
+      message.modelName || '',
       message.tokensPerSecond,
       message.timeToFirstToken,
     ]
   );
+
+  const timestamp = Date.now();
+  await db.runAsync(`UPDATE chats SET lastUsed = ? WHERE id = ?`, [
+    timestamp,
+    message.chatId,
+  ]);
 
   return result.lastInsertRowId;
 };
@@ -144,5 +167,14 @@ export const renameChat = async (
 ) => {
   await db.runAsync(`UPDATE chats SET title = ? WHERE id = ?`, [newTitle, id]);
 
+  return;
+};
+
+export const setChatModel = async (
+  db: SQLiteDatabase,
+  id: number,
+  model: string
+) => {
+  await db.runAsync(`UPDATE chats SET model = ? WHERE id = ?`, [model, id]);
   return;
 };

@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import Settings from '../assets/icons/settings.svg';
 
 interface Props {
   chatId: number | null;
@@ -14,7 +15,7 @@ const SettingsHeaderButton = ({ chatId }: Props) => {
       onPress={() => router.push(`/chat/${chatId}/settings`)}
       style={styles.button}
     >
-      <Text style={styles.text}>⚙️</Text>
+      <Settings width={18} height={20} />
     </TouchableOpacity>
   );
 };

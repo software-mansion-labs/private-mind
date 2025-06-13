@@ -1,13 +1,14 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, StyleSheet } from 'react-native';
 import { useDrawer } from '../../context/DrawerContext';
+import Menu from '../../assets/icons/menu.svg';
 
 const DrawerToggleButton = () => {
   const { openDrawer } = useDrawer();
 
   return (
     <TouchableOpacity onPress={openDrawer} style={styles.button}>
-      <Text style={styles.text}>☰</Text>
+      <Menu width={16} height={14} />
     </TouchableOpacity>
   );
 };

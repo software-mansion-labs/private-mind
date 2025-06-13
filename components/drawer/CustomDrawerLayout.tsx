@@ -9,6 +9,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DrawerMenu from './DrawerMenu';
 import { DrawerProvider } from '../../context/DrawerContext';
+import { Easing } from 'react-native-reanimated';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
@@ -22,16 +23,18 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
     setIsOpen(true);
     Animated.timing(translateX, {
       toValue: 0,
-      duration: 250,
+      duration: 200,
       useNativeDriver: true,
+      easing: Easing.out(Easing.cubic),
     }).start();
   };
 
   const closeDrawer = () => {
     Animated.timing(translateX, {
       toValue: -DRAWER_WIDTH,
-      duration: 250,
+      duration: 200,
       useNativeDriver: true,
+      easing: Easing.out(Easing.cubic),
     }).start(() => {
       setIsOpen(false);
     });
@@ -40,7 +43,24 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <DrawerProvider openDrawer={openDrawer} closeDrawer={closeDrawer}>
       <View style={styles.container}>
-        <View style={styles.content}>{children}</View>
+        <Animated.View
+          style={[
+            styles.content,
+            {
+              transform: [
+                {
+                  translateX: translateX.interpolate({
+                    inputRange: [-DRAWER_WIDTH, 0],
+                    outputRange: [0, DRAWER_WIDTH],
+                    extrapolate: 'clamp',
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          {children}
+        </Animated.View>
 
         {isOpen && <Pressable style={styles.backdrop} onPress={closeDrawer} />}
 

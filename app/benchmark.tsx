@@ -15,10 +15,10 @@ import {
   BenchmarkResult,
   getAllBenchmarks,
 } from '../database/benchmarkRepository';
-import ColorPalette from '../colors';
 import BenchmarkItem from '../components/benchmark/BenchmarkItem';
 import BenchmarkResultCard from '../components/benchmark/BenchmarkResultCard';
 import ModelSelectorModal from '../components/chat-screen/ModelSelector';
+import WithDrawerGesture from '../components/WithDrawerGesture';
 
 const BenchmarkScreen = () => {
   useDefaultHeader();
@@ -54,61 +54,60 @@ const BenchmarkScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerBox}>
-        <Text style={styles.infoText}>Please select a model to benchmark:</Text>
-
-        <TouchableOpacity
-          onPress={() => setModelModalVisible(true)}
-          style={styles.modelSelectorButton}
-        >
-          <Text style={styles.modelSelectorButtonText}>
-            {selectedModel ? `Model: ${selectedModel.id}` : 'Select a model'}
+    <WithDrawerGesture>
+      <View style={styles.container}>
+        <View style={styles.headerBox}>
+          <Text style={styles.infoText}>
+            Please select a model to benchmark:
           </Text>
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={handleRun}
-          style={styles.runButton}
-          disabled={loading || !selectedModel}
-        >
-          <Text style={styles.runButtonText}>
-            {loading ? 'Running...' : 'Run Benchmark'}
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setModelModalVisible(true)}
+            style={styles.modelSelectorButton}
+          >
+            <Text style={styles.modelSelectorButtonText}>
+              {selectedModel ? `Model: ${selectedModel.id}` : 'Select a model'}
+            </Text>
+          </TouchableOpacity>
 
-        {loading && (
-          <ActivityIndicator
-            color={ColorPalette.primary}
-            style={{ marginTop: 12 }}
-          />
-        )}
+          <TouchableOpacity
+            onPress={handleRun}
+            style={styles.runButton}
+            disabled={loading || !selectedModel}
+          >
+            <Text style={styles.runButtonText}>
+              {loading ? 'Running...' : 'Run Benchmark'}
+            </Text>
+          </TouchableOpacity>
 
-        {benchmarkResult && <BenchmarkResultCard result={benchmarkResult} />}
+          {loading && <ActivityIndicator style={{ marginTop: 12 }} />}
+
+          {benchmarkResult && <BenchmarkResultCard result={benchmarkResult} />}
+        </View>
+
+        <Text style={styles.historyHeading}>📊 Benchmark History</Text>
+
+        <FlatList
+          data={benchmarkList}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => <BenchmarkItem entry={item} />}
+          ListEmptyComponent={
+            <Text style={styles.noDataText}>No benchmarks saved yet.</Text>
+          }
+        />
+
+        <ModelSelectorModal
+          visible={modelModalVisible}
+          models={models}
+          onClose={() => setModelModalVisible(false)}
+          onSelect={async (model) => {
+            setModelModalVisible(false);
+            await loadModel(model);
+            setSelectedModel(model);
+          }}
+        />
       </View>
-
-      <Text style={styles.historyHeading}>📊 Benchmark History</Text>
-
-      <FlatList
-        data={benchmarkList}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => <BenchmarkItem entry={item} />}
-        ListEmptyComponent={
-          <Text style={styles.noDataText}>No benchmarks saved yet.</Text>
-        }
-      />
-
-      <ModelSelectorModal
-        visible={modelModalVisible}
-        models={models}
-        onClose={() => setModelModalVisible(false)}
-        onSelect={async (model) => {
-          setModelModalVisible(false);
-          await loadModel(model);
-          setSelectedModel(model);
-        }}
-      />
-    </View>
+    </WithDrawerGesture>
   );
 };
 
@@ -123,15 +122,12 @@ const styles = StyleSheet.create({
   headerBox: {
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: ColorPalette.seaBlueDark,
   },
   infoText: {
     fontSize: 14,
     marginBottom: 8,
-    color: ColorPalette.blueDark,
   },
   modelSelectorButton: {
-    backgroundColor: ColorPalette.primary,
     padding: 12,
     borderRadius: 6,
     marginBottom: 12,
@@ -142,7 +138,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   runButton: {
-    backgroundColor: ColorPalette.primary,
     padding: 12,
     borderRadius: 6,
     width: '100%',
@@ -158,10 +153,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 12,
     marginBottom: 8,
-    color: ColorPalette.primary,
   },
   noDataText: {
-    color: ColorPalette.blueDark,
     textAlign: 'center',
     marginTop: 16,
   },

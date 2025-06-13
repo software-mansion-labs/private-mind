@@ -9,10 +9,11 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@expo-google-fonts/dm-sans": "^0.4.0",
+    "@gorhom/bottom-sheet": "^5",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-menu/menu": "^1.2.3",
     "@react-native/metro-config": "^0.76.3",
-    "@react-navigation/drawer": "^7.3.11",
     "expo": "^53.0.9",
     "expo-constants": "~17.1.6",
     "expo-document-picker": "~13.1.5",
@@ -22,6 +23,7 @@
     "expo-sharing": "~13.1.5",
     "expo-sqlite": "~15.2.9",
     "expo-status-bar": "~2.2.3",
+    "expo-system-ui": "~5.0.7",
     "metro-config": "^0.81.0",
     "react": "19.0.0",
     "react-native": "^0.79.2",

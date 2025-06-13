@@ -9,9 +9,15 @@ import {
 } from '../database/modelRepository';
 import { ResourceFetcher } from 'react-native-executorch';
 
+export enum ModelState {
+  Downloaded = 'downloaded',
+  Downloading = 'downloading',
+  NotStarted = 'not_started',
+}
+
 interface DownloadState {
   progress: number;
-  status: 'not_started' | 'downloading' | 'downloaded' | 'error';
+  status: ModelState;
 }
 
 interface ModelStore {
@@ -22,6 +28,7 @@ interface ModelStore {
   setDB: (db: SQLiteDatabase) => void;
   loadModels: () => Promise<void>;
   addModelToDB: (model: Model) => Promise<void>;
+  getModelById: (id: string) => Model | undefined;
   downloadModel: (model: Model) => Promise<void>;
   removeModel: (modelId: string) => Promise<void>;
 }
@@ -33,6 +40,11 @@ export const useModelStore = create<ModelStore>((set, get) => ({
   downloadStates: {},
 
   setDB: (db) => set({ db }),
+
+  getModelById: (id: string) => {
+    const models = get().models;
+    return models.find((model) => model.id === id);
+  },
 
   loadModels: async () => {
     const db = get().db;
@@ -66,7 +78,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
 
     let lastReportedPercent = -1;
 
-    setDownloading(0, 'downloading');
+    setDownloading(0, ModelState.Downloading);
 
     try {
       const { modelPath, tokenizerPath, tokenizerConfigPath } = model;
@@ -75,7 +87,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         const currentPercent = Math.floor(p * 100);
         if (currentPercent !== lastReportedPercent) {
           lastReportedPercent = currentPercent;
-          setDownloading(p, 'downloading');
+          setDownloading(p, ModelState.Downloading);
         }
       });
 
@@ -91,10 +103,9 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         await get().loadModels();
       }
 
-      setDownloading(1, 'downloaded');
+      setDownloading(1, ModelState.Downloaded);
     } catch (err) {
       console.error('Failed:', err);
-      setDownloading(0, 'error');
     }
   },
 

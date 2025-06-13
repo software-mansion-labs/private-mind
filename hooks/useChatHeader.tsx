@@ -1,80 +1,30 @@
-import React, {
-  Dispatch,
-  SetStateAction,
-  useEffect,
-  useLayoutEffect,
-} from 'react';
+import React, { useLayoutEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import HeaderTitleWithMenu from '../components/chat-screen/ChatTitleWithMenu';
 import { router } from 'expo-router';
-import { Platform, Alert } from 'react-native';
+import { Alert } from 'react-native';
 import { useChatStore } from '../store/chatStore';
 import {
   exportChatRoom,
   importChatRoom,
 } from '../database/exportImportRepository';
 import { importMessages } from '../database/chatRepository';
+import ChatTitleWithMenu from '../components/chat-screen/ChatTitleWithMenu';
+import SettingsHeaderButton from '../components/SettingsHeaderButton';
+import { Model } from '../database/modelRepository';
 
 interface Props {
   chatId: number;
-  onRenamePress: Dispatch<SetStateAction<boolean>>;
-  chatTitle: string;
-  setChatTitle: Dispatch<SetStateAction<string>>;
-  handleChatRename: (newTitle: string) => Promise<void>;
+  chatModel: Model | null;
 }
 
-const useChatHeader = ({
-  chatId,
-  onRenamePress,
-  chatTitle,
-  setChatTitle,
-  handleChatRename,
-}: Props) => {
+const useChatHeader = ({ chatId, chatModel }: Props) => {
   const navigation = useNavigation();
-  const { getChatById, renameChat, deleteChat, db } = useChatStore();
-
-  useEffect(() => {
-    const chat = getChatById(chatId);
-    if (chat?.title) {
-      setChatTitle(chat.title);
-    }
-  }, [chatId, getChatById]);
-
-  const showRenamePrompt = () => {
-    if (Platform.OS === 'ios') {
-      Alert.prompt(
-        'Rename Chat',
-        'Enter a new chat name:',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'OK',
-            onPress: (text) => {
-              if (text) {
-                handleChatRename(text);
-              }
-            },
-          },
-        ],
-        'plain-text',
-        chatTitle
-      );
-    } else {
-      onRenamePress(true);
-    }
-  };
+  const { getChatById, deleteChat, db } = useChatStore();
+  const chat = getChatById(chatId);
+  const chatTitle = chat ? chat.title : `Chat #${chatId}`;
 
   const handleMenuSelect = async (action: string) => {
     switch (action) {
-      case 'details':
-        router.push(`/chat/${chatId}/settings`);
-        break;
-      case 'rename':
-        showRenamePrompt();
-        break;
       case 'export':
         await exportChatRoom(db!, chatId, chatTitle);
         break;
@@ -84,10 +34,10 @@ const useChatHeader = ({
           try {
             const newChatId = await useChatStore
               .getState()
-              .addChat(importedChat.title);
+              .addChat(importedChat.title, '');
             if (newChatId) {
               await importMessages(db!, newChatId, importedChat.messages);
-              router.push(`/chat/${newChatId}`);
+              router.replace(`/chat/${newChatId}`);
             }
           } catch (error) {
             console.error('Error importing chat:', error);
@@ -132,10 +82,15 @@ const useChatHeader = ({
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: () => (
-        <HeaderTitleWithMenu title={chatTitle} onSelect={handleMenuSelect} />
+        <ChatTitleWithMenu
+          title={chatTitle}
+          modelName={chatModel?.id || 'No model selected'}
+          onSelect={handleMenuSelect}
+        />
       ),
+      headerRight: () => <SettingsHeaderButton chatId={chatId} />,
     });
-  }, [navigation, chatId, chatTitle]);
+  }, [navigation, chatId, chatTitle, chatModel]);
 };
 
 export default useChatHeader;

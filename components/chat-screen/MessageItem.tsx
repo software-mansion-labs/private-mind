@@ -1,36 +1,122 @@
 import React, { memo } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
-import LlamaIcon from '../../assets/icons/llama_icon.svg';
-import ColorPalette from '../../colors';
-import { Message } from '../../database/chatRepository';
+import ThinkingBlock from './ThinkingBlock';
+import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { useTheme } from '../../context/ThemeContext';
 
 interface MessageItemProps {
-  message: Message;
+  content: string;
+  role: 'user' | 'assistant' | 'system';
+  modelName?: string;
+  tokensPerSecond?: number;
+  timeToFirstToken?: number;
 }
 
-const MessageItem = memo(({ message }: MessageItemProps) => {
-  const isAssistant = message.role === 'assistant';
+const MessageItem = memo(
+  ({
+    content,
+    modelName,
+    role,
+    tokensPerSecond,
+    timeToFirstToken,
+  }: MessageItemProps) => {
+    const isAssistant = role === 'assistant';
+    const { theme } = useTheme();
 
-  return (
-    <View style={isAssistant ? styles.aiMessage : styles.userMessage}>
-      {isAssistant && (
-        <View style={styles.iconBubble}>
-          <LlamaIcon width={24} height={24} />
+    const parseThinkingContent = (text: string) => {
+      const thinkStartIndex = text.indexOf('<think>');
+
+      if (thinkStartIndex === -1) {
+        // No thinking block, return all as normal content
+        return {
+          normalContent: text,
+          thinkingContent: null,
+          hasThinking: false,
+        };
+      }
+
+      const thinkEndIndex = text.indexOf('</think>');
+      const normalBeforeThink = text.slice(0, thinkStartIndex);
+
+      if (thinkEndIndex === -1) {
+        // Incomplete thinking block (still streaming)
+        const thinkingContent = text.slice(thinkStartIndex + 7); // +7 for '<think>'
+        return {
+          normalContent: normalBeforeThink,
+          thinkingContent,
+          hasThinking: true,
+          isThinkingComplete: false,
+          normalAfterThink: '',
+        };
+      } else {
+        // Complete thinking block
+        const thinkingContent = text.slice(thinkStartIndex + 7, thinkEndIndex);
+        const normalAfterThink = text.slice(thinkEndIndex + 8); // +8 for '</think>'
+        return {
+          normalContent: normalBeforeThink,
+          thinkingContent,
+          hasThinking: true,
+          isThinkingComplete: true,
+          normalAfterThink,
+        };
+      }
+    };
+
+    const contentParts = parseThinkingContent(content);
+
+    return (
+      <View
+        style={
+          isAssistant
+            ? styles.aiMessage
+            : { ...styles.userMessage, backgroundColor: theme.bg.softSecondary }
+        }
+      >
+        <View style={styles.bubbleContent}>
+          {isAssistant && (
+            <Text
+              style={{
+                ...styles.modelName,
+                color: theme.text.defaultSecondary,
+              }}
+            >
+              {modelName}
+            </Text>
+          )}
+          {contentParts.normalContent.trim() && (
+            <MarkdownComponent text={contentParts.normalContent} />
+          )}
+          {contentParts.hasThinking && (
+            <ThinkingBlock
+              content={contentParts.thinkingContent || ''}
+              isComplete={true}
+            />
+          )}
+          {contentParts.normalAfterThink &&
+            contentParts.normalAfterThink.trim() && (
+              <View>
+                <MarkdownComponent text={contentParts.normalAfterThink} />
+              </View>
+            )}
+          {isAssistant &&
+            tokensPerSecond !== undefined &&
+            tokensPerSecond !== 0 && (
+              <Text
+                style={{
+                  ...styles.meta,
+                  color: theme.text.defaultTertiary,
+                }}
+              >
+                ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
+                {tokensPerSecond?.toFixed(2)} tok/s
+              </Text>
+            )}
         </View>
-      )}
-      <View style={styles.bubbleContent}>
-        <MarkdownComponent text={message.content} />
-        {isAssistant && message.tokensPerSecond !== undefined && (
-          <Text style={styles.meta}>
-            ⏱️ {message.timeToFirstToken?.toFixed()} ms • ⚡{' '}
-            {message.tokensPerSecond?.toFixed(2)} tok/s
-          </Text>
-        )}
       </View>
-    </View>
-  );
-});
+    );
+  }
+);
 
 export default MessageItem;
 
@@ -40,35 +126,38 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
     marginHorizontal: 12,
-    maxWidth: '85%',
+    width: '90%',
     alignSelf: 'flex-start',
+    lineHeight: 16,
   },
   userMessage: {
     flexDirection: 'row-reverse',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 12,
     marginHorizontal: 12,
-    maxWidth: '85%',
+    maxWidth: '65%',
     alignSelf: 'flex-end',
-    backgroundColor: ColorPalette.seaBlueLight,
-    borderRadius: 12,
-    padding: 12,
-  },
-  iconBubble: {
-    backgroundColor: ColorPalette.seaBlueLight,
-    height: 32,
-    width: 32,
-    borderRadius: 16,
-    marginRight: 8,
-    alignItems: 'center',
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     justifyContent: 'center',
   },
   bubbleContent: {
-    flexShrink: 1,
+    width: '100%',
+    gap: 4,
+  },
+  thinkingBox: {
+    borderRadius: 4,
+    padding: 12,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+  },
+  modelName: {
+    fontSize: fontSizes.xs,
+    fontFamily: fontFamily.medium,
   },
   meta: {
-    fontSize: 12,
-    marginTop: 8,
-    color: ColorPalette.blueDark,
+    fontSize: fontSizes.xxs,
+    fontFamily: fontFamily.regular,
   },
 });

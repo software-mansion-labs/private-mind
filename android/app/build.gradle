@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.swmansion.localmind'
+    namespace 'com.swmansion.privatemind'
     defaultConfig {
-        applicationId 'com.swmansion.localmind'
+        applicationId 'com.swmansion.privatemind'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

@@ -1,64 +1,124 @@
-import React, { useEffect, useRef } from 'react';
-import { ScrollView, StyleSheet, View, Text } from 'react-native';
+import React, { RefObject } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+  Image,
+} from 'react-native';
 import AnimatedChatLoading from './AnimatedChatLoading';
 import MessageItem from './MessageItem';
-import LlamaIcon from '../../assets/icons/llama_icon.svg';
-import ColorPalette from '../../colors';
 import { Message } from '../../database/chatRepository';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontFamily';
+import { useTheme } from '../../context/ThemeContext';
+import { Model } from '../../database/modelRepository';
+import SecondaryButton from '../SecondaryButton';
+import { ScrollView } from 'react-native-gesture-handler';
 
 interface Props {
   chatHistory: Message[];
-  llmResponse: string;
   isGenerating: boolean;
+  onSelectModel: () => void;
+  model: Model | null;
+  ref: RefObject<ScrollView | null>;
+  isAtBottom: boolean;
+  setIsAtBottom: (value: boolean) => void;
 }
 
-const Messages = ({ chatHistory, llmResponse, isGenerating }: Props) => {
-  const scrollRef = useRef<ScrollView>(null);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-    return () => clearTimeout(timeout);
-  }, [chatHistory, llmResponse, isGenerating]);
-
+const Messages = ({
+  chatHistory,
+  isGenerating,
+  onSelectModel,
+  model,
+  ref,
+  isAtBottom,
+  setIsAtBottom,
+}: Props) => {
+  const { theme } = useTheme();
   const isEmpty = chatHistory.length === 0 && !isGenerating;
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+
+    const distanceFromBottom =
+      contentSize.height - (contentOffset.y + layoutMeasurement.height);
+
+    setIsAtBottom(distanceFromBottom < 50);
+  };
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        ref={scrollRef}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View onStartShouldSetResponder={() => true}>
-          {chatHistory.map((message, index) => (
-            <MessageItem key={`${message.role}-${index}`} message={message} />
-          ))}
+      {!model && isEmpty ? (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 36,
+            gap: 24,
+          }}
+        >
+          <Image
+            source={require('../../assets/icons/icon.png')}
+            style={{ width: 64, height: 64 }}
+          />
+          <View style={{ gap: 8 }}>
+            <Text
+              style={{ ...styles.emptyMessageTitle, color: theme.text.primary }}
+            >
+              Select a model to start chatting
+            </Text>
+            <Text
+              style={{
+                ...styles.emptyMessage,
+                color: theme.text.defaultSecondary,
+              }}
+            >
+              Use default models or upload custom ones from your local files or
+              external url’s.
+            </Text>
+          </View>
+          <SecondaryButton text="Open a models list" onPress={onSelectModel} />
+        </View>
+      ) : (
+        <ScrollView
+          ref={ref}
+          onScroll={handleScroll}
+          contentInsetAdjustmentBehavior="automatic"
+          keyboardShouldPersistTaps="never"
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => {
+            if (
+              isAtBottom ||
+              chatHistory[chatHistory.length - 1].content === ''
+            ) {
+              ref.current?.scrollToEnd({ animated: true });
+            }
+          }}
+        >
+          <View onStartShouldSetResponder={() => true}>
+            {chatHistory.map((message, index) => (
+              <MessageItem
+                key={`${message.role}-${index}`}
+                content={message.content}
+                modelName={message.modelName}
+                role={message.role}
+                tokensPerSecond={message.tokensPerSecond}
+                timeToFirstToken={message.timeToFirstToken}
+              />
+            ))}
 
-          {isGenerating && (
-            <View style={styles.aiRow}>
-              <View style={styles.iconBubble}>
-                <LlamaIcon width={24} height={24} />
-              </View>
-
-              {!llmResponse ? (
+            {isGenerating && chatHistory.at(-1)?.content === '' && (
+              <View style={styles.aiRow}>
                 <View style={styles.loadingWrapper}>
                   <AnimatedChatLoading />
                 </View>
-              ) : (
-                <Text style={styles.responseText}>{llmResponse.trim()}</Text>
-              )}
-            </View>
-          )}
-
-          {isEmpty && (
-            <Text style={styles.emptyState}>
-              Start a conversation to see messages here.
-            </Text>
-          )}
-        </View>
-      </ScrollView>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      )}
     </View>
   );
 };
@@ -82,27 +142,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: 4,
   },
-  iconBubble: {
-    backgroundColor: ColorPalette.seaBlueLight,
-    height: 32,
-    width: 32,
-    borderRadius: 16,
-    marginRight: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  responseText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: ColorPalette.primary,
-    fontFamily: 'regular',
-    flexShrink: 1,
-  },
-  emptyState: {
+  emptyMessage: {
     textAlign: 'center',
-    color: ColorPalette.blueDark,
-    marginTop: 24,
-    fontStyle: 'italic',
-    fontSize: 13,
+    lineHeight: lineHeights.sm,
+  },
+  emptyMessageTitle: {
+    fontFamily: fontFamily.medium,
+    fontSize: fontSizes.lg,
+    lineHeight: lineHeights.lg,
+    textAlign: 'center',
   },
 });

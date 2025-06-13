@@ -1168,6 +1168,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@expo-google-fonts/dm-sans@npm:^0.4.0":
+  version: 0.4.0
+  resolution: "@expo-google-fonts/dm-sans@npm:0.4.0"
+  checksum: f371cb536717af060190ad7823f6eba42b7146e4ec764914009ae185b593d445fd02d53c182865b47560d8648593342df848bbfbc60f87d359e7138095fa5526
+  languageName: node
+  linkType: hard
+
 "@expo/cli@npm:0.24.13":
   version: 0.24.13
   resolution: "@expo/cli@npm:0.24.13"
@@ -1523,6 +1530,40 @@ __metadata:
   bin:
     excpretty: build/cli.js
   checksum: 8771b2812f0dfc49f6dab4338c986beaf4cf2ec20ed8fd598be6e3803fcbfc0a337dbb5b4dad9556b85ba2489f63c777735ad2c2ee6f5842ff68b9322e47f6a3
+  languageName: node
+  linkType: hard
+
+"@gorhom/bottom-sheet@npm:^5":
+  version: 5.1.6
+  resolution: "@gorhom/bottom-sheet@npm:5.1.6"
+  dependencies:
+    "@gorhom/portal": 1.0.14
+    invariant: ^2.2.4
+  peerDependencies:
+    "@types/react": "*"
+    "@types/react-native": "*"
+    react: "*"
+    react-native: "*"
+    react-native-gesture-handler: ">=2.16.1"
+    react-native-reanimated: ">=3.16.0"
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    "@types/react-native":
+      optional: true
+  checksum: 7217501a8688a560b2d7be673ba51edeb4489e13184e7510706ce2b3e52c225cbc254922de23ac40fdd18f1df5a7c41b3ec20ac0700a55314fad0ed8a7b19a26
+  languageName: node
+  linkType: hard
+
+"@gorhom/portal@npm:1.0.14":
+  version: 1.0.14
+  resolution: "@gorhom/portal@npm:1.0.14"
+  dependencies:
+    nanoid: ^3.3.1
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 227bb96a2db854ab29bb9da8d4f3823c7f7448358de459709dd1b78522110da564c9a8734c6bc7d7153ed7c99320e0fb5d60b420c2ebb75ecaf2f0d757f410f9
   languageName: node
   linkType: hard
 
@@ -2111,26 +2152,6 @@ __metadata:
   peerDependencies:
     react: ">= 18.2.0"
   checksum: 346040b232b8e9dae6930cc8dd306020d3c6779d0aaf704947ca7279b7862aa0fc2e91abdcd8cc25b373d98435d787149539ca86e314317e7a5465df1e640239
-  languageName: node
-  linkType: hard
-
-"@react-navigation/drawer@npm:^7.3.11":
-  version: 7.3.12
-  resolution: "@react-navigation/drawer@npm:7.3.12"
-  dependencies:
-    "@react-navigation/elements": ^2.4.2
-    color: ^4.2.3
-    react-native-drawer-layout: ^4.1.8
-    use-latest-callback: ^0.2.3
-  peerDependencies:
-    "@react-navigation/native": ^7.1.9
-    react: ">= 18.2.0"
-    react-native: "*"
-    react-native-gesture-handler: ">= 2.0.0"
-    react-native-reanimated: ">= 2.0.0"
-    react-native-safe-area-context: ">= 4.0.0"
-    react-native-screens: ">= 4.0.0"
-  checksum: 4a3fcff2ce818abe88d0a3175f0e446da6a61e585c1496a68ae4fcd983f109372be3d785c3f0c2bb2da397b1b35a012c1c98e6988fa81a819757676c299cd7c1
   languageName: node
   linkType: hard
 
@@ -4060,6 +4081,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-system-ui@npm:~5.0.7":
+  version: 5.0.7
+  resolution: "expo-system-ui@npm:5.0.7"
+  dependencies:
+    "@react-native/normalize-colors": 0.79.2
+    debug: ^4.3.2
+  peerDependencies:
+    expo: "*"
+    react-native: "*"
+    react-native-web: "*"
+  peerDependenciesMeta:
+    react-native-web:
+      optional: true
+  checksum: 65e9a36fdf5bb23bbc697799cae3b3222bf7a9904460219ea27cad5eb44d1d11a7bd0ff6ba35252bd01db72f655ab9dffc621f2343cc3e278c9cde82e81ea56d
+  languageName: node
+  linkType: hard
+
 "expo@npm:^53.0.7, expo@npm:^53.0.9":
   version: 53.0.9
   resolution: "expo@npm:53.0.9"
@@ -5159,10 +5197,11 @@ __metadata:
   resolution: "local-mind@workspace:."
   dependencies:
     "@babel/core": ^7.25.2
+    "@expo-google-fonts/dm-sans": ^0.4.0
+    "@gorhom/bottom-sheet": ^5
     "@react-native-async-storage/async-storage": 2.1.2
     "@react-native-menu/menu": ^1.2.3
     "@react-native/metro-config": ^0.76.3
-    "@react-navigation/drawer": ^7.3.11
     "@types/react": ~19.0.10
     expo: ^53.0.9
     expo-constants: ~17.1.6
@@ -5173,6 +5212,7 @@ __metadata:
     expo-sharing: ~13.1.5
     expo-sqlite: ~15.2.9
     expo-status-bar: ~2.2.3
+    expo-system-ui: ~5.0.7
     metro-config: ^0.81.0
     react: 19.0.0
     react-native: ^0.79.2
@@ -6043,7 +6083,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nanoid@npm:^3.3.11, nanoid@npm:^3.3.7":
+"nanoid@npm:^3.3.1, nanoid@npm:^3.3.11, nanoid@npm:^3.3.7":
   version: 3.3.11
   resolution: "nanoid@npm:3.3.11"
   bin:
@@ -6745,20 +6785,6 @@ __metadata:
   peerDependencies:
     react-native: "*"
   checksum: aa839dbe7df1246a4b5f9bcfeb3d4cc4be585f13a0d3ff6a03f57a0c2cfe7590291ac292dda4c51fd8765f94c870857676463e8e2f1660b057f3ae2b4335db29
-  languageName: node
-  linkType: hard
-
-"react-native-drawer-layout@npm:^4.1.8":
-  version: 4.1.8
-  resolution: "react-native-drawer-layout@npm:4.1.8"
-  dependencies:
-    use-latest-callback: ^0.2.3
-  peerDependencies:
-    react: ">= 18.2.0"
-    react-native: "*"
-    react-native-gesture-handler: ">= 2.0.0"
-    react-native-reanimated: ">= 2.0.0"
-  checksum: 21ec3778f82457c5e0a0506b0c30ee14e998aabe17a86d243d1e9c12e01f0fa7b8a31ac7f0349207d0a21aab28bd394910a3b7600ee75567aa66e6ab9d993207
   languageName: node
   linkType: hard
 

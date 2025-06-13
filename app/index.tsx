@@ -1,18 +1,17 @@
-import React from 'react';
-import { useFonts } from 'expo-font';
+import React, { useState } from 'react';
 import ChatScreen from '../components/chat-screen/ChatScreen';
 import { useDefaultHeader } from '../hooks/useDefaultHeader';
 import { useNavigation } from 'expo-router';
 import { useLayoutEffect } from 'react';
 import SettingsHeaderButton from '../components/SettingsHeaderButton';
 import { configureReanimatedLogger } from 'react-native-reanimated';
+import { Text, View } from 'react-native';
+import { Model } from '../database/modelRepository';
+import WithDrawerGesture from '../components/WithDrawerGesture';
 
 export default function App() {
   const navigation = useNavigation();
-  useFonts({
-    medium: require('../assets/fonts/Aeonik-Medium.otf'),
-    regular: require('../assets/fonts/Aeonik-Regular.otf'),
-  });
+  const [model, setModel] = useState<Model | null>(null);
   useDefaultHeader();
 
   configureReanimatedLogger({
@@ -22,8 +21,28 @@ export default function App() {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => <SettingsHeaderButton chatId={null} />,
+      headerTitle: () => (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Text>{model ? model.id : ''}</Text>
+        </View>
+      ),
     });
-  }, [navigation]);
+  }, [navigation, model]);
 
-  return <ChatScreen chatId={null} messageHistory={[]} />;
+  return (
+    <WithDrawerGesture>
+      <ChatScreen
+        chatId={null}
+        messageHistory={[]}
+        model={model}
+        selectModel={setModel}
+      />
+    </WithDrawerGesture>
+  );
 }

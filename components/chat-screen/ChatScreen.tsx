@@ -1,154 +1,128 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  Text,
   TextInput,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
 import { useModelStore } from '../../store/modelStore';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
 import { type Message } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
-import ChatInputBar from './ChatInputBar';
-import ModelSelectorModal from './ModelSelector';
-import ColorPalette from '../../colors';
+import { useTheme } from '../../context/ThemeContext';
+import { router } from 'expo-router';
+import ChatBar from './ChatBar';
+import { ScrollView } from 'react-native-gesture-handler';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 
 interface Props {
   chatId: number | null;
   messageHistory: Message[];
+  model: Model | null;
+  selectModel?: Dispatch<SetStateAction<Model | null>>;
 }
 
-export default function ChatScreen({ chatId, messageHistory }: Props) {
+export default function ChatScreen({
+  chatId,
+  messageHistory,
+  model,
+  selectModel,
+}: Props) {
   const inputRef = useRef<TextInput>(null);
   const chatIdRef = useRef<number | null>(chatId);
+  const scrollRef = useRef<ScrollView>(null);
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  const { downloadedModels, loadModels } = useModelStore();
-  const {
-    db,
-    model,
-    loadModel,
-    response,
-    isLoading,
-    isGenerating,
-    sendChatMessage,
-    activeChatId,
-    setActiveChatId,
-    interrupt,
-  } = useLLMStore();
-  const { addChat } = useChatStore();
+  const { theme } = useTheme();
+
+  const { loadModels } = useModelStore();
+  const { db, isGenerating, sendChatMessage } = useLLMStore();
+  const { addChat, updateLastUsed } = useChatStore();
 
   const [userInput, setUserInput] = useState('');
-  const [showModelModal, setShowModelModal] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+
+  const handlePresentModalPress = useCallback(() => {
+    bottomSheetModalRef.current?.present();
+  }, []);
 
   useEffect(() => {
     loadModels();
   }, [chatId, db, loadModels]);
 
-  const handleSelectModel = async (selectedModel: Model) => {
-    setShowModelModal(false);
-    try {
-      await loadModel(selectedModel);
-    } catch (error) {
-      console.error('Error loading model:', error);
-    }
-  };
-
   const handleSendMessage = async () => {
     if (!userInput.trim() || isGenerating) return;
 
-    if (chatIdRef.current) {
-      setActiveChatId(chatIdRef.current);
-    } else {
+    if (!chatIdRef.current) {
       // truncating new chat title to fixed lenght
       const newChatTitle =
         userInput.length > 25 ? userInput.slice(0, 25) + '...' : userInput;
 
-      const newChatId = await addChat(newChatTitle);
+      const newChatId = await addChat(newChatTitle, model!.id);
       chatIdRef.current = newChatId!;
-      setActiveChatId(chatIdRef.current);
       router.replace(`/chat/${newChatId}`);
     }
-
     inputRef.current?.clear();
     setUserInput('');
-
-    await sendChatMessage(messageHistory, userInput);
+    updateLastUsed(chatIdRef.current);
+    await sendChatMessage(messageHistory, userInput, chatIdRef.current!);
   };
 
   return (
-    <>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <KeyboardAvoidingView
-          style={styles.container}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 100}
-        >
-          <View style={styles.header}>
-            <Text style={styles.headerText}>
-              {model ? (
-                <>
-                  Using model: <Text style={styles.modelName}>{model.id}</Text>{' '}
-                  <Text
-                    style={styles.changeModel}
-                    onPress={() => setShowModelModal(true)}
-                  >
-                    (Change)
-                  </Text>
-                </>
-              ) : (
-                <>
-                  No model selected{' '}
-                  <Text
-                    style={styles.changeModel}
-                    onPress={() => setShowModelModal(true)}
-                  >
-                    (Select)
-                  </Text>
-                </>
-              )}
-            </Text>
-          </View>
-
-          <View style={styles.messagesContainer}>
-            <Messages
-              chatHistory={messageHistory}
-              llmResponse={
-                activeChatId === chatIdRef.current && chatIdRef.current !== null
-                  ? response
-                  : ''
-              }
-              isGenerating={isGenerating}
-            />
-          </View>
-
-          <ChatInputBar
-            isLoading={isLoading}
-            isGenerating={isGenerating}
-            selectedModel={model}
-            userInput={userInput}
-            setUserInput={setUserInput}
-            onSend={handleSendMessage}
-            onSelectModel={() => setShowModelModal(true)}
-            inputRef={inputRef}
-            interrupt={interrupt}
-          />
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
-
-      <ModelSelectorModal
-        visible={showModelModal}
-        models={downloadedModels}
-        onSelect={handleSelectModel}
-        onClose={() => setShowModelModal(false)}
+    <KeyboardAvoidingView
+      style={{
+        ...styles.container,
+        paddingBottom: Platform.OS === 'android' ? 20 : 0,
+      }}
+      collapsable={false}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 40}
+    >
+      <View
+        style={{
+          ...styles.messagesContainer,
+          backgroundColor: theme.bg.softPrimary,
+        }}
+      >
+        <Messages
+          chatHistory={messageHistory}
+          isGenerating={isGenerating}
+          model={model}
+          onSelectModel={handlePresentModalPress}
+          ref={scrollRef}
+          isAtBottom={isAtBottom}
+          setIsAtBottom={setIsAtBottom}
+        />
+      </View>
+      <ChatBar
+        chatId={chatId}
+        userInput={userInput}
+        setUserInput={setUserInput}
+        onSend={handleSendMessage}
+        onSelectModel={handlePresentModalPress}
+        inputRef={inputRef}
+        model={model}
+        scrollRef={scrollRef}
+        isAtBottom={isAtBottom}
       />
-    </>
+      <ModelSelectSheet
+        chatId={chatIdRef}
+        bottomSheetModalRef={bottomSheetModalRef}
+        selectModel={selectModel}
+        model={model}
+      />
+    </KeyboardAvoidingView>
   );
 }
 
@@ -157,29 +131,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: ColorPalette.seaBlueDark,
-    backgroundColor: ColorPalette.seaBlueLight,
-  },
-  headerText: {
-    fontSize: 16,
-    color: ColorPalette.primary,
-  },
-  modelName: {
-    fontWeight: '600',
-    color: ColorPalette.primary,
-  },
-  changeModel: {
-    color: ColorPalette.blueDark,
-    fontWeight: 'bold',
-  },
   messagesContainer: {
     flex: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#fdfdfd',
+  },
+  contentContainer: {
+    flex: 1,
+    alignItems: 'center',
   },
 });
