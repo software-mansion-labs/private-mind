@@ -80,23 +80,6 @@ const ModelCard = ({ model, onPress }: Props) => {
                 borderColor={theme.border.soft}
               />
             )}
-            {/* <Text
-              style={{
-                fontFamily: fontFamily.regular,
-                fontSize: fontSizes.xs,
-                color: theme.text.defaultSecondary,
-              }}
-            >
-              ·
-            </Text> */}
-            {/* <Text
-              style={{
-                ...styles.sourceText,
-                color: theme.text.defaultSecondary,
-              }}
-            >
-              Built-in
-            </Text> */}
           </View>
         </View>
         {modelState === ModelState.Downloading && (

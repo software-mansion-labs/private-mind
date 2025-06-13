@@ -1,5 +1,5 @@
-import React, { memo } from 'react';
-import { Text, Pressable, StyleSheet, View } from 'react-native';
+import React from 'react';
+import { Text, StyleSheet, View } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { useChatStore } from '../../store/chatStore';
 import { Chat } from '../../database/chatRepository';
@@ -10,6 +10,7 @@ import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import ChatIcon from '../../assets/icons/chat.svg';
 import ModelsIcon from '../../assets/icons/models.svg';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
+import { DrawerItem } from './DrawerItem';
 
 const getRelativeDateSection = (date: Date): string => {
   const now = new Date();
@@ -123,40 +124,6 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
 
 export default DrawerMenu;
 
-const DrawerItem = memo(
-  ({
-    label,
-    active,
-    onPress,
-    icon,
-  }: {
-    label: string;
-    active: boolean;
-    onPress: () => void;
-    icon?: React.ReactNode;
-  }) => {
-    const { theme } = useTheme();
-    return (
-      <Pressable
-        onPress={onPress}
-        style={() => [
-          styles.item,
-          active && {
-            backgroundColor: theme.bg.softSecondary,
-          },
-        ]}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          {icon && icon}
-          <Text style={[{ ...styles.label, color: theme.text.primary }]}>
-            {label}
-          </Text>
-        </View>
-      </Pressable>
-    );
-  }
-);
-
 const styles = StyleSheet.create({
   container: {
     paddingVertical: 32,
@@ -168,13 +135,5 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.medium,
     fontSize: fontSizes.xs,
     letterSpacing: 0.1,
-  },
-  item: {
-    padding: 12,
-    borderRadius: 4,
-  },
-  label: {
-    fontSize: fontSizes.md,
-    fontFamily: fontFamily.medium,
   },
 });
