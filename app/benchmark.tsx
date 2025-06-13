@@ -7,6 +7,7 @@ import { Model } from '../database/modelRepository';
 import {
   BenchmarkResult,
   getAllBenchmarks,
+  insertBenchmark,
 } from '../database/benchmarkRepository';
 import BenchmarkItem from '../components/benchmark/BenchmarkItem';
 import WithDrawerGesture from '../components/WithDrawerGesture';
@@ -21,17 +22,18 @@ import CheckIcon from '../assets/icons/check.svg';
 import { SpinningCircleTimer } from '../components/SpinningCircleTimer';
 import BenchmarkResultSheet from '../components/bottomSheets/BenchmarkResultSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { useSQLiteContext } from 'expo-sqlite';
 
 const BenchmarkScreen = () => {
   useDefaultHeader();
+  const isBenchmarkCancelled = useRef(false);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { theme } = useTheme();
-  const { runBenchmark, db } = useLLMStore();
+  const db = useSQLiteContext();
+  const { runBenchmark, loadModel, interrupt } = useLLMStore();
   const { downloadedModels: models, getModelById } = useModelStore();
 
   const [selectedModel, setSelectedModel] = useState<Model | null>(models[0]);
-  const [benchmarkResult, setBenchmarkResult] =
-    useState<BenchmarkResult | null>(null);
   const [benchmarkList, setBenchmarkList] = useState<BenchmarkResult[]>([]);
   const [timer, setTimer] = useState(0);
   const [isBenchmarkModalVisible, setIsBenchmarkModalVisible] = useState(false);
@@ -43,19 +45,55 @@ const BenchmarkScreen = () => {
     setBenchmarkList(history);
   }, [db]);
 
-  useEffect(() => {
-    loadBenchmarks();
-  }, [loadBenchmarks]);
-
-  const handleRun = async () => {
+  const runBenchmarks = async () => {
     if (!selectedModel) return;
     setIsBenchmarkModalVisible(true);
+
     const interval = setInterval(() => {
       setTimer((prev) => prev + 1);
     }, 1000);
-    const result = await runBenchmark(selectedModel);
+    const iterations = 3;
+    await loadModel(selectedModel);
+    const results: Omit<BenchmarkResult, 'modelId' | 'id' | 'timestamp'>[] = [];
+    for (let i = 0; i < iterations; i++) {
+      if (isBenchmarkCancelled.current) {
+        clearInterval(interval);
+        setTimer(0);
+        setIsBenchmarkModalVisible(false);
+        return;
+      }
+      const result = await runBenchmark(selectedModel!);
+      if (result) {
+        results.push(result);
+      }
+    }
 
-    setBenchmarkResult(result);
+    const averageResult = results.reduce((acc, curr) => {
+      acc.totalTime += curr.totalTime;
+      acc.timeToFirstToken += curr.timeToFirstToken;
+      acc.tokensPerSecond += curr.tokensPerSecond;
+      acc.tokensGenerated += curr.tokensGenerated;
+      return acc;
+    });
+    averageResult.totalTime /= iterations;
+    averageResult.timeToFirstToken /= iterations;
+    averageResult.tokensPerSecond /= iterations;
+    averageResult.tokensGenerated /= iterations;
+    averageResult.peakMemory =
+      Math.max(...results.map((r) => r.peakMemory)) / 1024 / 1024 / 1024;
+
+    const benchmarkId = await insertBenchmark(db, {
+      ...averageResult,
+      modelId: selectedModel.id,
+    });
+
+    const newBenchmark: BenchmarkResult = {
+      ...averageResult,
+      id: benchmarkId,
+      timestamp: Date.now(),
+      modelId: selectedModel.id,
+    };
+
     await loadBenchmarks();
     clearInterval(interval!);
     setShowSuccess(true);
@@ -65,15 +103,18 @@ const BenchmarkScreen = () => {
       setShowSuccess(false);
     }, 2000);
     bottomSheetModalRef.current?.present({
-      ...result,
-      model: await getModelById(result.modelId),
+      ...newBenchmark,
+      model: await getModelById(newBenchmark.modelId),
     });
   };
 
+  useEffect(() => {
+    loadBenchmarks();
+  }, [loadBenchmarks]);
+
   const handleCancel = () => {
-    setIsBenchmarkModalVisible(false);
-    setShowSuccess(false);
-    setTimer(0);
+    interrupt();
+    isBenchmarkCancelled.current = true;
   };
 
   return (
@@ -87,7 +128,7 @@ const BenchmarkScreen = () => {
           <PrimaryButton
             disabled={!selectedModel}
             text="Run benchmark"
-            onPress={handleRun}
+            onPress={runBenchmarks}
           />
           <Text style={{ ...styles.label, color: theme.text.primary }}>
             Benchmark History
@@ -104,7 +145,6 @@ const BenchmarkScreen = () => {
                     ...item,
                     model: await getModelById(item.modelId),
                   });
-                  setBenchmarkResult(item);
                 }}
               />
             )}
