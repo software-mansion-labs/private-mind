@@ -81,7 +81,7 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <DrawerProvider openDrawer={openDrawer} closeDrawer={closeDrawer}>
-      <View style={styles.container}>
+      <View style={{ ...styles.container }}>
         <Animated.View
           style={[
             styles.content,
