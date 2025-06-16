@@ -90,7 +90,7 @@ const BenchmarkScreen = () => {
     const newBenchmark: BenchmarkResult = {
       ...averageResult,
       id: benchmarkId,
-      timestamp: Date.now(),
+      timestamp: Date.now().toString(),
       modelId: selectedModel.id,
     };
 

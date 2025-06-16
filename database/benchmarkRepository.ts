@@ -2,7 +2,7 @@ import { SQLiteDatabase } from 'expo-sqlite';
 
 export type BenchmarkResult = {
   id: number;
-  timestamp: number;
+  timestamp: string;
   modelId: string;
   totalTime: number;
   timeToFirstToken: number;
@@ -43,6 +43,7 @@ export const getAllBenchmarks = async (
   const rows = await db.getAllAsync<BenchmarkResult>(
     `SELECT * FROM benchmarks ORDER BY id DESC`
   );
+  console.log(rows);
   return rows;
 };
 
