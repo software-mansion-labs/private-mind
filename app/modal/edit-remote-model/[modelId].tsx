@@ -64,7 +64,10 @@ export default function EditRemoteModelScreen() {
     >
       <View style={styles.container}>
         <ModalHeader title="Edit Local Model" onClose={() => router.back()} />
-        <ScrollView contentContainerStyle={{ gap: 24, paddingBottom: 24 }}>
+        <ScrollView
+          contentContainerStyle={{ gap: 24, paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.textFieldSection}>
             <Text style={{ ...styles.label, color: theme.text.primary }}>
               Model Name

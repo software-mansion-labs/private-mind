@@ -85,7 +85,10 @@ export default function ChatSettingsScreen() {
     >
       <View style={styles.container}>
         <ModalHeader title="Chat Settings" onClose={() => router.back()} />
-        <ScrollView contentContainerStyle={{ gap: 24 }}>
+        <ScrollView
+          contentContainerStyle={{ gap: 24 }}
+          showsVerticalScrollIndicator={false}
+        >
           {chatId !== null && (
             <View style={styles.textFieldSection}>
               <Text style={{ ...styles.label, color: theme.text.primary }}>

@@ -116,7 +116,11 @@ const ModelHubScreen = () => {
             }
           />
           <View>
-            <ScrollView horizontal={true} contentContainerStyle={{ gap: 8 }}>
+            <ScrollView
+              horizontal={true}
+              contentContainerStyle={{ gap: 8 }}
+              showsHorizontalScrollIndicator={false}
+            >
               <SortingTag
                 text="Group by model"
                 selected={groupByModel}
