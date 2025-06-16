@@ -36,6 +36,7 @@ interface LLMStore {
   runBenchmark: (
     selectedModel: Model
   ) => Promise<BenchmarkResultPerformanceNumbers | undefined>;
+
   interrupt: () => void;
 }
 
