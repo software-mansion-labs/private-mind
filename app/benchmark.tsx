@@ -73,8 +73,7 @@ const BenchmarkScreen = () => {
     const interval = setInterval(() => {
       setTimer((prev) => prev + 1);
     }, 1000);
-
-    const iterations = 3;
+    const iterations = 1;
     await loadModel(selectedModel);
     const results: Omit<BenchmarkResult, 'modelId' | 'id' | 'timestamp'>[] = [];
     for (let i = 0; i < iterations; i++) {
@@ -118,10 +117,6 @@ const BenchmarkScreen = () => {
     });
   };
 
-  useEffect(() => {
-    loadBenchmarks();
-  }, [loadBenchmarks]);
-
   const handleCancel = () => {
     interrupt();
     isBenchmarkCancelled.current = true;
@@ -130,9 +125,7 @@ const BenchmarkScreen = () => {
   return (
     <>
       <WithDrawerGesture>
-        <View
-          style={{ ...styles.container, backgroundColor: theme.bg.softPrimary }}
-        >
+        <View style={styles.container}>
           <ModelSelector
             model={selectedModel}
             setSelectedModel={setSelectedModel}
