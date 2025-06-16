@@ -23,6 +23,7 @@ import TextFieldInput from '../../../components/TextFieldInput';
 import { fontFamily, fontSizes } from '../../../styles/fontFamily';
 import TextAreaField from '../../../components/TextAreaField';
 import ModalHeader from '../../../components/ModalHeader';
+import Toast from 'react-native-toast-message';
 
 export default function ChatSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -69,6 +70,11 @@ export default function ChatSettingsScreen() {
     }
 
     router.back();
+    Toast.show({
+      type: 'defaultToast',
+      text1: 'Chat settings has been succesfully updated',
+      props: { backgroundColor: theme.bg.strongPrimary },
+    });
   };
 
   return (
@@ -109,7 +115,7 @@ export default function ChatSettingsScreen() {
                 Model selected during the creation of the chatroom. It cannot be
                 changed.
               </Text>
-              <ModelCard model={model!} />
+              <ModelCard model={model!} onPress={() => {}} />
             </View>
           )}
 

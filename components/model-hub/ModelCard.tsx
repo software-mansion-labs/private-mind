@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
 import { useTheme } from '../../context/ThemeContext';
@@ -13,15 +13,15 @@ import CloseIcon from '../../assets/icons/close.svg';
 
 interface Props {
   model: Model;
+  onPress: (model: Model) => void;
 }
 
-const ModelCard = ({ model }: Props) => {
-  const { downloadStates, downloadModel, removeModel } = useModelStore();
+const ModelCard = ({ model, onPress }: Props) => {
+  const { downloadStates, downloadModel } = useModelStore();
   const { theme } = useTheme();
-
   const downloadState = downloadStates[model.id] || {
-    progress: 0,
-    status: ModelState.NotStarted,
+    progress: model.isDownloaded ? 1 : 0,
+    status: model.isDownloaded ? ModelState.Downloaded : ModelState.NotStarted,
   };
 
   const isDownloading = downloadState.status === ModelState.Downloading;
@@ -29,36 +29,34 @@ const ModelCard = ({ model }: Props) => {
   const [modelState, setModelState] = useState<ModelState>(
     isDownloading
       ? ModelState.Downloading
-      : model.isDownloaded === 1
-      ? ModelState.Downloaded
-      : ModelState.NotStarted
+      : model.isDownloaded === 0
+      ? ModelState.NotStarted
+      : ModelState.Downloaded
   );
+
   useEffect(() => {
-    if (downloadState.status === 'downloaded') {
+    if (downloadState.status === ModelState.Downloaded) {
       setModelState(ModelState.Downloaded);
+    } else if (downloadState.status === ModelState.NotStarted) {
+      setModelState(ModelState.NotStarted);
+    } else if (downloadState.status === ModelState.Downloading) {
+      setModelState(ModelState.Downloading);
     }
   }, [downloadState.status]);
 
   const handlePress = async () => {
     if (isDownloading) return;
-    if (modelState === ModelState.Downloaded) {
-      await deleteModel();
-    } else {
-      await downloadModel(model);
-    }
-  };
-
-  const deleteModel = async () => {
-    try {
-      await removeModel(model.id);
-      setModelState(ModelState.NotStarted);
-    } catch (error) {
-      console.error('Failed to delete model:', error);
-    }
+    await downloadModel(model);
   };
 
   return (
-    <View style={{ ...styles.card, borderColor: theme.border.soft }}>
+    <TouchableOpacity
+      onPress={() => {
+        onPress(model);
+      }}
+      style={{ ...styles.card, borderColor: theme.border.soft }}
+      disabled={modelState !== ModelState.Downloaded}
+    >
       <View
         style={{
           flexDirection: 'row',
@@ -79,44 +77,27 @@ const ModelCard = ({ model }: Props) => {
               <Chip
                 title={'2.47 GB'}
                 icon={<DownloadCloudIcon width={16} height={16} />}
+                borderColor={theme.border.soft}
               />
             )}
-            <Text
-              style={{
-                fontFamily: fontFamily.regular,
-                fontSize: fontSizes.xs,
-                color: theme.text.defaultSecondary,
-              }}
-            >
-              ·
-            </Text>
-            <Text
-              style={{
-                ...styles.sourceText,
-                color: theme.text.defaultSecondary,
-              }}
-            >
-              Built-in
-            </Text>
           </View>
         </View>
-        {isDownloading ? (
+        {/* {modelState === ModelState.Downloading && (
           <CircleButton
             onPress={() => {}}
             backgroundColor={theme.bg.errorSecondary}
             icon={<CloseIcon width={13.33} height={13.33} />}
           />
-        ) : (
-          modelState === ModelState.NotStarted && (
-            <CircleButton
-              onPress={handlePress}
-              icon={<DownloadIcon width={15} height={15} />}
-              backgroundColor={theme.bg.softSecondary}
-            />
-          )
+        )} */}
+        {modelState === ModelState.NotStarted && (
+          <CircleButton
+            onPress={handlePress}
+            icon={<DownloadIcon width={15} height={15} />}
+            backgroundColor={theme.bg.softSecondary}
+          />
         )}
       </View>
-      {isDownloading && (
+      {modelState === ModelState.Downloading && (
         <View
           style={{
             flexDirection: 'row',
@@ -150,7 +131,7 @@ const ModelCard = ({ model }: Props) => {
           </Text>
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 };
 

@@ -6,8 +6,10 @@ import {
   addModel,
   updateModelDownloaded,
   removeModelFiles,
+  updateModel,
 } from '../database/modelRepository';
 import { ResourceFetcher } from 'react-native-executorch';
+import Toast from 'react-native-toast-message';
 
 export enum ModelState {
   Downloaded = 'downloaded',
@@ -31,6 +33,13 @@ interface ModelStore {
   getModelById: (id: string) => Model | undefined;
   downloadModel: (model: Model) => Promise<void>;
   removeModel: (modelId: string) => Promise<void>;
+  removeModelFiles: (modelId: string) => Promise<void>;
+  editModel: (
+    modelId: string,
+    localTokenizerPath: string,
+    localTokenizerConfigPath: string,
+    newModelId: string
+  ) => Promise<void>;
 }
 
 export const useModelStore = create<ModelStore>((set, get) => ({
@@ -104,6 +113,11 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       }
 
       setDownloading(1, ModelState.Downloaded);
+      Toast.show({
+        type: 'defaultToast',
+        text1: `${model.id} has been successfully downloaded`,
+        props: { backgroundColor: '#020f3c' },
+      });
     } catch (err) {
       console.error('Failed:', err);
     }
@@ -123,14 +137,79 @@ export const useModelStore = create<ModelStore>((set, get) => ({
           model.tokenizerPath,
           model.tokenizerConfigPath
         );
-      } else if (model.source === 'local') {
-        await removeModelFiles(db, modelId);
-        await get().loadModels();
+        await updateModelDownloaded(db, modelId, 0);
+        set((state) => {
+          const { [modelId]: _, ...rest } = state.downloadStates;
+          return { downloadStates: rest };
+        });
       }
 
-      await updateModelDownloaded(db, modelId, 0);
+      await removeModelFiles(db, modelId);
+      await get().loadModels();
     } catch (err) {
       console.error('Failed to remove files:', err);
+    }
+  },
+
+  removeModelFiles: async (modelId: string) => {
+    const db = get().db;
+    if (!db) return;
+
+    const model = get().models.find((m) => m.id === modelId);
+    if (!model) return;
+
+    try {
+      await ResourceFetcher.deleteMultipleResources(
+        model.modelPath,
+        model.tokenizerPath,
+        model.tokenizerConfigPath
+      );
+      await updateModelDownloaded(db, modelId, 0);
+      await get().loadModels();
+      set((state) => {
+        const { [modelId]: _, ...rest } = state.downloadStates;
+        return { downloadStates: rest };
+      });
+    } catch (err) {
+      console.error('Failed to remove model files:', err);
+    }
+  },
+
+  editModel: async (
+    modelId: string,
+    localTokenizerPath: string,
+    localTokenizerConfigPath: string,
+    newModelId: string
+  ) => {
+    const db = get().db;
+    if (!db) return;
+
+    const model = get().models.find((m) => m.id === modelId);
+    if (!model) return;
+
+    try {
+      if (model.source === 'remote') {
+        await ResourceFetcher.deleteMultipleResources(
+          model.tokenizerPath,
+          model.tokenizerConfigPath
+        );
+
+        await ResourceFetcher.fetchMultipleResources(
+          () => {},
+          localTokenizerPath,
+          localTokenizerConfigPath
+        );
+      }
+
+      await updateModel(db, {
+        modelId,
+        tokenizerPath: localTokenizerPath,
+        tokenizerConfigPath: localTokenizerConfigPath,
+        newModelId,
+      });
+      await get().loadModels();
+    } catch (err) {
+      console.error('Failed to edit local model:', err);
     }
   },
 }));

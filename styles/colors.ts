@@ -4,6 +4,7 @@ export const lightTheme = {
     softSecondary: '#e6efff',
     strongPrimary: '#020f3c',
     errorSecondary: '#F5D0D1',
+    errorPrimary: '#DE595B',
   },
   text: {
     primary: '#020f3c',
@@ -11,6 +12,7 @@ export const lightTheme = {
     defaultTertiary: 'rgba(2, 15, 60, 0.6)',
     contrastTertiary: 'rgba(255, 255, 255, 0.6)',
     contrastPrimary: '#ffffff',
+    error: '#DE595B',
   },
   border: {
     soft: 'rgba(2, 15, 60, 0.2)',
@@ -23,6 +25,7 @@ export const darkTheme = {
     softSecondary: '#e6efff',
     strongPrimary: '#020f3c',
     errorSecondary: '#F5D0D1',
+    errorPrimary: '#DE595B',
   },
   text: {
     primary: '#020f3c',
@@ -30,6 +33,7 @@ export const darkTheme = {
     defaultTertiary: 'rgba(2, 15, 60, 0.6)',
     contrastTertiary: 'rgba(255, 255, 255, 0.6)',
     contrastPrimary: '#ffffff',
+    error: '#DE595B',
   },
   border: {
     soft: 'rgba(2, 15, 60, 0.2)',

@@ -2,7 +2,7 @@ import { type SQLiteDatabase } from 'expo-sqlite';
 
 export type Model = {
   id: string;
-  source: 'local' | 'remote';
+  source: 'local' | 'remote' | 'built-in';
   isDownloaded: number;
   modelPath: string;
   tokenizerPath: string;
@@ -71,5 +71,29 @@ export const getDownloadedModels = async (
       AND tokenizerPath IS NOT NULL
       AND tokenizerConfigPath IS NOT NULL
   `
+  );
+};
+
+export const updateModel = async (
+  db: SQLiteDatabase,
+  {
+    modelId,
+    tokenizerPath,
+    tokenizerConfigPath,
+    newModelId,
+  }: {
+    modelId: string;
+    tokenizerPath: string;
+    tokenizerConfigPath: string;
+    newModelId: string;
+  }
+) => {
+  await db.runAsync(
+    `
+    UPDATE models
+    SET id = ?, tokenizerPath = ?, tokenizerConfigPath = ?
+    WHERE id = ?
+  `,
+    [newModelId, tokenizerPath, tokenizerConfigPath, modelId]
   );
 };
