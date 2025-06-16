@@ -43,7 +43,7 @@ export const getAllBenchmarks = async (
   const rows = await db.getAllAsync<BenchmarkResult>(
     `SELECT * FROM benchmarks ORDER BY id DESC`
   );
-  console.log(rows);
+
   return rows;
 };
 
