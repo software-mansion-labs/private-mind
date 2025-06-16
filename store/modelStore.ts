@@ -138,13 +138,10 @@ export const useModelStore = create<ModelStore>((set, get) => ({
           model.tokenizerConfigPath
         );
         await updateModelDownloaded(db, modelId, 0);
-        set((state) => ({
-          downloadStates: Object.fromEntries(
-            Object.entries(state.downloadStates).filter(
-              ([key]) => key !== modelId
-            )
-          ),
-        }));
+        set((state) => {
+          const { [modelId]: _, ...rest } = state.downloadStates;
+          return { downloadStates: rest };
+        });
       }
 
       await removeModelFiles(db, modelId);
@@ -169,13 +166,10 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       );
       await updateModelDownloaded(db, modelId, 0);
       await get().loadModels();
-      set((state) => ({
-        downloadStates: Object.fromEntries(
-          Object.entries(state.downloadStates).filter(
-            ([key]) => key !== modelId
-          )
-        ),
-      }));
+      set((state) => {
+        const { [modelId]: _, ...rest } = state.downloadStates;
+        return { downloadStates: rest };
+      });
     } catch (err) {
       console.error('Failed to remove model files:', err);
     }
@@ -207,13 +201,12 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         );
       }
 
-      await updateModel(
-        db,
+      await updateModel(db, {
         modelId,
-        localTokenizerPath,
-        localTokenizerConfigPath,
-        newModelId
-      );
+        tokenizerPath: localTokenizerPath,
+        tokenizerConfigPath: localTokenizerConfigPath,
+        newModelId,
+      });
       await get().loadModels();
     } catch (err) {
       console.error('Failed to edit local model:', err);

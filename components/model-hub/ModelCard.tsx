@@ -82,13 +82,13 @@ const ModelCard = ({ model, onPress }: Props) => {
             )}
           </View>
         </View>
-        {modelState === ModelState.Downloading && (
+        {/* {modelState === ModelState.Downloading && (
           <CircleButton
             onPress={() => {}}
             backgroundColor={theme.bg.errorSecondary}
             icon={<CloseIcon width={13.33} height={13.33} />}
           />
-        )}
+        )} */}
         {modelState === ModelState.NotStarted && (
           <CircleButton
             onPress={handlePress}

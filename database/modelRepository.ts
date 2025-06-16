@@ -76,10 +76,17 @@ export const getDownloadedModels = async (
 
 export const updateModel = async (
   db: SQLiteDatabase,
-  modelId: string,
-  tokenizerPath: string,
-  tokenizerConfigPath: string,
-  newModelId: string
+  {
+    modelId,
+    tokenizerPath,
+    tokenizerConfigPath,
+    newModelId,
+  }: {
+    modelId: string;
+    tokenizerPath: string;
+    tokenizerConfigPath: string;
+    newModelId: string;
+  }
 ) => {
   await db.runAsync(
     `
