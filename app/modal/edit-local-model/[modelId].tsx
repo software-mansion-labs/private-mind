@@ -30,9 +30,9 @@ export default function EditLocalModelScreen() {
   const router = useRouter();
   const { theme } = useTheme();
   const { getModelById, editModel } = useModelStore();
-  const model = getModelById(modelId);
+  const model = getModelById(parseInt(modelId));
 
-  const [modelName, setModelName] = useState(model?.id || '');
+  const [modelName, setModelName] = useState(model?.modelName || '');
   const [localModelPath, setLocalModelPath] = useState<LocalFile | null>({
     name: model?.modelPath.split('/').pop() || '',
     size: null,
@@ -58,10 +58,10 @@ export default function EditLocalModelScreen() {
     }
 
     await editModel(
-      modelId,
+      parseInt(modelId),
       localTokenizerPath.uri,
       localTokenizerConfigPath.uri,
-      modelName || modelId
+      modelName
     );
 
     Toast.show({

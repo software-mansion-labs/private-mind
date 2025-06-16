@@ -89,7 +89,7 @@ const ChatBar = ({
             <Text
               style={{ ...styles.selectedModel, color: theme.text.primary }}
             >
-              {'Load Model'} {model.id}
+              {'Load Model'} {model.modelName}
             </Text>
             <RotateLeft
               width={20}

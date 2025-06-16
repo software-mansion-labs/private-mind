@@ -1,36 +1,43 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
 
 export type Model = {
-  id: string;
+  id: number;
+  modelName: string;
   source: 'local' | 'remote' | 'built-in';
   isDownloaded: number;
   modelPath: string;
   tokenizerPath: string;
   tokenizerConfigPath: string;
+  parameters?: number;
+  modelSize?: number;
 };
 
 export const addModel = async (
   db: SQLiteDatabase,
-  model: Model
+  model: Omit<Model, 'id'>
 ): Promise<number> => {
   const result = await db.runAsync(
     `
     INSERT OR IGNORE INTO models (
-      id,
+      modelName,
       isDownloaded,
       source,
       modelPath,
       tokenizerPath,
-      tokenizerConfigPath
-    ) VALUES (?, ?, ?, ?, ?, ?)
+      tokenizerConfigPath,
+      parameters,
+      modelSize
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `,
     [
-      model.id,
+      model.modelName,
       model.isDownloaded ? 1 : 0,
       model.source || 'remote',
       model.modelPath,
       model.tokenizerPath,
       model.tokenizerConfigPath,
+      model.parameters || null,
+      model.modelSize || null,
     ]
   );
 
@@ -39,7 +46,7 @@ export const addModel = async (
 
 export const updateModelDownloaded = async (
   db: SQLiteDatabase,
-  id: string,
+  id: number,
   downloadedStatus: number
 ) => {
   await db.runAsync(
@@ -52,7 +59,7 @@ export const updateModelDownloaded = async (
   );
 };
 
-export const removeModelFiles = async (db: SQLiteDatabase, id: string) => {
+export const removeModelFiles = async (db: SQLiteDatabase, id: number) => {
   await db.runAsync(`DELETE FROM models WHERE id = ?`, [id]);
 };
 
@@ -80,20 +87,20 @@ export const updateModel = async (
     modelId,
     tokenizerPath,
     tokenizerConfigPath,
-    newModelId,
+    newModelName,
   }: {
-    modelId: string;
+    modelId: number;
     tokenizerPath: string;
     tokenizerConfigPath: string;
-    newModelId: string;
+    newModelName: string;
   }
 ) => {
   await db.runAsync(
     `
     UPDATE models
-    SET id = ?, tokenizerPath = ?, tokenizerConfigPath = ?
+    SET modelName = ?, tokenizerPath = ?, tokenizerConfigPath = ?
     WHERE id = ?
   `,
-    [newModelId, tokenizerPath, tokenizerConfigPath, modelId]
+    [newModelName, tokenizerPath, tokenizerConfigPath, modelId]
   );
 };

@@ -13,7 +13,6 @@ interface Props {
 const BenchmarkItem = ({ entry, onPress }: Props) => {
   const { theme } = useTheme();
   const toFixed = (n: number, d = 2) => Number(n).toFixed(d);
-  const msToS = (ms: number) => toFixed(ms / 1000);
   const date = new Date(entry.timestamp);
   const formattedDate = `${date.getDate()} ${date.toLocaleString('default', {
     month: 'short',
@@ -39,7 +38,7 @@ const BenchmarkItem = ({ entry, onPress }: Props) => {
       </View>
       <View>
         <Text style={{ ...styles.title, color: theme.text.primary }}>
-          {entry.modelId}
+          {entry.modelName}
         </Text>
         <Text style={{ ...styles.date, color: theme.text.defaultSecondary }}>
           {formattedDate}

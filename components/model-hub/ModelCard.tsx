@@ -66,22 +66,24 @@ const ModelCard = ({ model, onPress }: Props) => {
       >
         <View style={{ gap: 4 }}>
           <Text style={{ ...styles.name, color: theme.text.primary }}>
-            {model.id}
+            {model.modelName}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Chip
-              title={'0.6 B'}
-              icon={
-                <ProcessorIcon
-                  width={16}
-                  height={16}
-                  style={{ color: theme.text.defaultSecondary }}
-                />
-              }
-            />
-            {modelState === ModelState.NotStarted && (
+            {model.parameters && (
               <Chip
-                title={'2.47 GB'}
+                title={model.parameters.toFixed(2) + ' B'}
+                icon={
+                  <ProcessorIcon
+                    width={16}
+                    height={16}
+                    style={{ color: theme.text.defaultSecondary }}
+                  />
+                }
+              />
+            )}
+            {modelState === ModelState.NotStarted && model.modelSize && (
+              <Chip
+                title={model.modelSize.toFixed(2) + ' GB'}
                 icon={
                   <DownloadCloudIcon
                     width={16}

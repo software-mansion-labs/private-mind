@@ -3,7 +3,7 @@ import { SQLiteDatabase } from 'expo-sqlite';
 
 export type Chat = {
   id: number;
-  model: string;
+  model: number;
   title: string;
   lastUsed: number;
 };
@@ -27,7 +27,7 @@ export type Message = {
 export const createChat = async (
   db: SQLiteDatabase,
   title: string,
-  model: string
+  model: number
 ): Promise<number> => {
   const result = await db.runAsync(
     `INSERT INTO chats (title, model) VALUES (?, ?)`,
@@ -173,7 +173,7 @@ export const renameChat = async (
 export const setChatModel = async (
   db: SQLiteDatabase,
   id: number,
-  model: string
+  model: number
 ) => {
   await db.runAsync(`UPDATE chats SET model = ? WHERE id = ?`, [model, id]);
   return;

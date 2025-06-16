@@ -20,12 +20,13 @@ import { InfoAlert } from '../../../components/InfoAlert';
 
 export default function EditRemoteModelScreen() {
   const { modelId } = useLocalSearchParams<{ modelId: string }>();
+
   const router = useRouter();
   const { theme } = useTheme();
   const { getModelById, editModel } = useModelStore();
-  const model = getModelById(modelId);
+  const model = getModelById(parseInt(modelId));
 
-  const [modelName, setModelName] = useState(model?.id || '');
+  const [modelName, setModelName] = useState(model?.modelName || '');
   const [localModelPath, setLocalModelPath] = useState<string>(
     model?.modelPath || ''
   );
@@ -42,10 +43,10 @@ export default function EditRemoteModelScreen() {
     }
 
     await editModel(
-      modelId,
+      parseInt(modelId),
       localTokenizerPath,
       localTokenizerConfigPath,
-      modelName || modelId
+      modelName
     );
 
     Toast.show({

@@ -38,19 +38,18 @@ export default function AddRemoteModelScreen() {
       return;
     }
 
-    const id = `model-${Date.now()}`;
-    const model: Model = {
-      id,
+    const modelName = `model-${Date.now()}`;
+    await addModelToDB({
+      modelName,
       isDownloaded: 0,
       source: 'remote',
       modelPath: remoteModelPath,
       tokenizerPath: remoteTokenizerPath,
       tokenizerConfigPath: remoteTokenizerConfigPath,
-    };
-    await addModelToDB(model);
+    });
     Toast.show({
       type: 'defaultToast',
-      text1: `${model.id} has been succesfully added`,
+      text1: `${modelName} has been succesfully added`,
       props: { backgroundColor: theme.bg.strongPrimary },
     });
     router.back();

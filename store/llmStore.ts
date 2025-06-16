@@ -34,7 +34,8 @@ interface LLMStore {
   runBenchmark: (
     selectedModel: Model
   ) => Promise<
-    Omit<BenchmarkResult, 'modelId' | 'timestamp' | 'id'> | undefined
+    | Omit<BenchmarkResult, 'modelId' | 'modelName' | 'timestamp' | 'id'>
+    | undefined
   >;
   interrupt: () => void;
 }
@@ -144,7 +145,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       messages.push({
         role: 'assistant',
         content: '',
-        modelName: model.id,
+        modelName: model.modelName,
         chatId: chatId,
         timestamp: Date.now(),
         id: -1,
@@ -172,7 +173,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       if (generatedResponse) {
         await persistMessage(db, {
           role: 'assistant',
-          modelName: model.id,
+          modelName: model.modelName,
           content: generatedResponse,
           tokensPerSecond: tokensPerSecond,
           timeToFirstToken: timeToFirstToken,

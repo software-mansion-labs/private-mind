@@ -9,18 +9,22 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   await db.execAsync(`
         PRAGMA journal_mode = 'wal';
         CREATE TABLE IF NOT EXISTS models (
-          id TEXT PRIMARY KEY NOT NULL,
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          modelName TEXT UNIQUE NOT NULL,
+          modelSize INTEGER DEFAULT NULL,
+          parameters INTEGER DEFAULT NULL,
           source TEXT,
           isDownloaded INTEGER DEFAULT 0,
           modelPath TEXT,
           tokenizerPath TEXT,
           tokenizerConfigPath TEXT
         );`);
+  await db.execAsync(`DROP TABLE IF EXISTS chats;`);
   await db.execAsync(`
       CREATE TABLE IF NOT EXISTS chats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         lastUsed timestamp DEFAULT CURRENT_TIMESTAMP,
-        model TEXT,
+        model INTEGER,
         title TEXT DEFAULT '',
         FOREIGN KEY (model) REFERENCES models (id) ON DELETE SET NULL
       )`);
@@ -49,12 +53,14 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       CREATE TABLE IF NOT EXISTS benchmarks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp timestamp DEFAULT CURRENT_TIMESTAMP,
-        modelId TEXT DEFAULT '',
+        modelId INTEGER,
+        modelName TEXT,
         totalTime INTEGER DEFAULT 0,
         timeToFirstToken INTEGER DEFAULT 0,
         tokensGenerated INTEGER DEFAULT 0,
         tokensPerSecond INTEGER DEFAULT 0,
-        peakMemory INTEGER DEFAULT 0
+        peakMemory INTEGER DEFAULT 0,
+        FOREIGN KEY (modelId) REFERENCES models (id) ON DELETE SET NULL
         )`);
 
   useChatStore.getState().setDB(db);
@@ -63,14 +69,17 @@ export const initDatabase = async (db: SQLiteDatabase) => {
 
   await db.withTransactionAsync(async () => {
     for (const model of DEFAULT_MODELS) {
-      const { id, modelPath, tokenizerPath, tokenizerConfigPath } = model;
+      const { modelName, modelPath, tokenizerPath, tokenizerConfigPath } =
+        model;
       await addModel(db, {
-        id,
+        modelName,
         source: 'built-in',
         isDownloaded: 0,
         modelPath: modelPath,
         tokenizerPath: tokenizerPath,
         tokenizerConfigPath: tokenizerConfigPath,
+        parameters: model.parameters,
+        modelSize: model.modelSize,
       });
     }
   });

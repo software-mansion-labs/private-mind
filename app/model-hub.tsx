@@ -32,7 +32,7 @@ const ModelHubScreen = () => {
   const groupModelsByPrefix = (models: typeof filteredModels) => {
     return models.reduce<Record<string, typeof filteredModels>>(
       (acc, model) => {
-        const prefix = model.id.split('-')[0].toLowerCase();
+        const prefix = model.modelName.split('-')[0].toLowerCase();
         if (!acc[prefix]) acc[prefix] = [];
         acc[prefix].push(model);
         return acc;
@@ -52,7 +52,9 @@ const ModelHubScreen = () => {
   };
 
   const filteredModels = models.filter((model) => {
-    const matchesSearch = model.id.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = model.modelName
+      .toLowerCase()
+      .includes(search.toLowerCase());
 
     const matchesFilter =
       activeFilters.size === 0 || activeFilters.has(model.source);

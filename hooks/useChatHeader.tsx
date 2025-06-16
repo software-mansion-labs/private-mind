@@ -34,7 +34,7 @@ const useChatHeader = ({ chatId, chatModel }: Props) => {
           try {
             const newChatId = await useChatStore
               .getState()
-              .addChat(importedChat.title, '');
+              .addChat(importedChat.title, -1);
             if (newChatId) {
               await importMessages(db!, newChatId, importedChat.messages);
               router.replace(`/chat/${newChatId}`);
@@ -84,7 +84,7 @@ const useChatHeader = ({ chatId, chatModel }: Props) => {
       headerTitle: () => (
         <ChatTitleWithMenu
           title={chatTitle}
-          modelName={chatModel?.id || 'No model selected'}
+          modelName={chatModel?.modelName || 'No model selected'}
           onSelect={handleMenuSelect}
         />
       ),
