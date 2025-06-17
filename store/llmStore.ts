@@ -9,11 +9,9 @@ import {
 } from '../database/chatRepository';
 import DeviceInfo from 'react-native-device-info';
 import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
-import {
-  BenchmarkResult,
-  insertBenchmark,
-} from '../database/benchmarkRepository';
+import { BenchmarkResult } from '../database/benchmarkRepository';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
+import { Platform } from 'react-native';
 
 interface LLMStore {
   isLoading: boolean;
@@ -33,7 +31,11 @@ interface LLMStore {
   ) => Promise<void>;
   setDB: (db: SQLiteDatabase) => void;
   loadModel: (model: Model) => Promise<void>;
-  runBenchmark: () => Promise<BenchmarkResult>;
+  runBenchmark: (
+    selectedModel: Model
+  ) => Promise<
+    Omit<BenchmarkResult, 'modelId' | 'timestamp' | 'id'> | undefined
+  >;
   interrupt: () => void;
 }
 
@@ -191,33 +193,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
-  runBenchmark: async () => {
-    const { isGenerating, db, model, isLoading } = get();
+  runBenchmark: async (selectedModel) => {
+    set({ tokenCount: 0, firstTokenTime: 0, isGenerating: true });
 
-    const iterations = 3;
-
-    let avgTotalTime = 0;
-    let avgTTFT = 0;
-    let avgTPS = 0;
-    let avgTokens = 0;
-    let peakMemory = 0;
-
-    if (isGenerating || !db || model === null || isLoading)
-      return {
-        id: -1,
-        modelId: '',
-        timeToFirstToken: 0,
-        tokensPerSecond: 0,
-        totalTime: 0,
-        tokensGenerated: 0,
-        peakMemory: 0,
-      };
-
-    for (let i = 1; i <= iterations; i++) {
-      set({ tokenCount: 0, firstTokenTime: 0, isGenerating: true });
-
-      let runPeakMemory = 0;
-      const memoryUsageTracker = setInterval(async () => {
+    let runPeakMemory = 0;
+    let memoryUsageTracker: NodeJS.Timeout | undefined;
+    if (Platform.OS === 'ios') {
+      memoryUsageTracker = setInterval(async () => {
         try {
           const usedMemory = await DeviceInfo.getUsedMemory();
           if (usedMemory > runPeakMemory) {
@@ -227,61 +209,47 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           console.warn('Unable to read memory:', e);
         }
       }, 3000);
-
-      const startTime = performance.now();
-
-      try {
-        await LLMModule.generate([
-          {
-            role: 'system',
-            content:
-              'You are helpful assistant. Do exactly what user tells you.',
-          },
-          { role: 'user', content: BENCHMARK_PROMPT },
-        ]);
-        const endTime = performance.now();
-
-        clearInterval(memoryUsageTracker);
-
-        const count = get().tokenCount;
-        const firstTokenTime = get().firstTokenTime;
-
-        const { totalTime, timeToFirstToken, tokensPerSecond } =
-          calculatePerformanceMetrics(
-            startTime,
-            endTime,
-            firstTokenTime,
-            count
-          );
-
-        avgTotalTime += (totalTime - avgTotalTime) / i;
-        avgTTFT += (timeToFirstToken - avgTTFT) / i;
-        avgTPS += (tokensPerSecond - avgTPS) / i;
-        avgTokens += (count - avgTokens) / i;
-
-        peakMemory = Math.max(peakMemory, runPeakMemory);
-      } catch (e) {
-        console.error(`Benchmark iteration ${i} failed`, e);
-      } finally {
-        set({ isGenerating: false });
-      }
     }
 
-    const result = {
-      modelId: model.id,
-      timeToFirstToken: avgTTFT,
-      tokensPerSecond: avgTPS,
-      totalTime: avgTotalTime,
-      tokensGenerated: avgTokens,
-      peakMemory: peakMemory / 1024 / 1024 / 1024,
-    };
+    try {
+      await get().loadModel(selectedModel);
 
-    const benchmarkId = await insertBenchmark(db, result);
+      const startTime = performance.now();
+      await LLMModule.generate([
+        {
+          role: 'system',
+          content:
+            "/no_think Copy the text provided by user, don't think, just copy.",
+        },
+        { role: 'user', content: BENCHMARK_PROMPT },
+      ]);
+      const endTime = performance.now();
 
-    return {
-      ...result,
-      id: benchmarkId,
-    };
+      if (Platform.OS === 'ios') clearInterval(memoryUsageTracker);
+
+      const generatedTokens = get().tokenCount;
+      const firstTokenTime = get().firstTokenTime;
+
+      const { totalTime, timeToFirstToken, tokensPerSecond } =
+        calculatePerformanceMetrics(
+          startTime,
+          endTime,
+          firstTokenTime,
+          generatedTokens
+        );
+
+      return {
+        totalTime,
+        timeToFirstToken,
+        tokensPerSecond,
+        tokensGenerated: generatedTokens,
+        peakMemory: Platform.OS === 'ios' ? runPeakMemory : 0,
+      };
+    } catch (e) {
+      console.error(`Benchmark failed`, e);
+    } finally {
+      set({ isGenerating: false });
+    }
   },
   interrupt: () => {
     if (get().isGenerating) {

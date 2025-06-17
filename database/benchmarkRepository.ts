@@ -2,6 +2,7 @@ import { SQLiteDatabase } from 'expo-sqlite';
 
 export type BenchmarkResult = {
   id: number;
+  timestamp: string;
   modelId: string;
   totalTime: number;
   timeToFirstToken: number;
@@ -12,7 +13,7 @@ export type BenchmarkResult = {
 
 export const insertBenchmark = async (
   db: SQLiteDatabase,
-  benchmark: Omit<BenchmarkResult, 'id'>
+  benchmark: Omit<BenchmarkResult, 'id' | 'timestamp'>
 ): Promise<number> => {
   const result = await db.runAsync(
     `INSERT INTO benchmarks (
@@ -42,6 +43,7 @@ export const getAllBenchmarks = async (
   const rows = await db.getAllAsync<BenchmarkResult>(
     `SELECT * FROM benchmarks ORDER BY id DESC`
   );
+
   return rows;
 };
 

@@ -1,12 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-} from 'react-native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { useDefaultHeader } from '../hooks/useDefaultHeader';
 import { useLLMStore } from '../store/llmStore';
 import { useModelStore } from '../store/modelStore';
@@ -14,23 +7,54 @@ import { Model } from '../database/modelRepository';
 import {
   BenchmarkResult,
   getAllBenchmarks,
+  insertBenchmark,
 } from '../database/benchmarkRepository';
-import BenchmarkItem from '../components/benchmark/BenchmarkItem';
-import BenchmarkResultCard from '../components/benchmark/BenchmarkResultCard';
-import ModelSelectorModal from '../components/chat-screen/ModelSelector';
 import WithDrawerGesture from '../components/WithDrawerGesture';
+import { ModelSelector } from '../components/benchmark/ModelSelector';
+import PrimaryButton from '../components/PrimaryButton';
+import { fontFamily, fontSizes } from '../styles/fontFamily';
+import { useTheme } from '../context/ThemeContext';
+import BenchmarkResultSheet from '../components/bottomSheets/BenchmarkResultSheet';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { useSQLiteContext } from 'expo-sqlite';
+import { BenchmarkModal } from '../components/benchmark/BenchmarkModal';
+import BenchmarkHistory from '../components/benchmark/BenchmarkHistory';
+
+const calculateAverageBenchmark = (
+  results: Omit<BenchmarkResult, 'modelId' | 'id' | 'timestamp'>[],
+  iterations: number
+) => {
+  const averageResult = results.reduce((acc, curr) => {
+    acc.totalTime += curr.totalTime;
+    acc.timeToFirstToken += curr.timeToFirstToken;
+    acc.tokensPerSecond += curr.tokensPerSecond;
+    acc.tokensGenerated += curr.tokensGenerated;
+    return acc;
+  });
+  averageResult.totalTime /= iterations;
+  averageResult.timeToFirstToken /= iterations;
+  averageResult.tokensPerSecond /= iterations;
+  averageResult.tokensGenerated /= iterations;
+  averageResult.peakMemory =
+    Math.max(...results.map((r) => r.peakMemory)) / 1024 / 1024 / 1024;
+
+  return averageResult;
+};
 
 const BenchmarkScreen = () => {
   useDefaultHeader();
-  const { runBenchmark, loadModel, db, model: activeModel } = useLLMStore();
-  const { downloadedModels: models } = useModelStore();
+  const isBenchmarkCancelled = useRef(false);
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const { theme } = useTheme();
+  const db = useSQLiteContext();
+  const { runBenchmark, loadModel, interrupt } = useLLMStore();
+  const { downloadedModels: models, getModelById } = useModelStore();
 
-  const [selectedModel, setSelectedModel] = useState<Model | null>(activeModel);
-  const [benchmarkResult, setBenchmarkResult] =
-    useState<BenchmarkResult | null>(null);
+  const [selectedModel, setSelectedModel] = useState<Model | null>(models[0]);
   const [benchmarkList, setBenchmarkList] = useState<BenchmarkResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [modelModalVisible, setModelModalVisible] = useState(false);
+  const [timer, setTimer] = useState(0);
+  const [isBenchmarkModalVisible, setIsBenchmarkModalVisible] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const loadBenchmarks = useCallback(async () => {
     if (!db) return;
@@ -42,72 +66,90 @@ const BenchmarkScreen = () => {
     loadBenchmarks();
   }, [loadBenchmarks]);
 
-  const handleRun = async () => {
+  const runBenchmarks = async () => {
     if (!selectedModel) return;
-    setLoading(true);
+    setIsBenchmarkModalVisible(true);
 
-    const result = await runBenchmark();
-    setBenchmarkResult(result);
+    const interval = setInterval(() => {
+      setTimer((prev) => prev + 1);
+    }, 1000);
+    const iterations = 1;
+    await loadModel(selectedModel);
+    const results: Omit<BenchmarkResult, 'modelId' | 'id' | 'timestamp'>[] = [];
+    for (let i = 0; i < iterations; i++) {
+      if (isBenchmarkCancelled.current) {
+        clearInterval(interval);
+        setTimer(0);
+        setIsBenchmarkModalVisible(false);
+        return;
+      }
+      const result = await runBenchmark(selectedModel!);
+      if (result) {
+        results.push(result);
+      }
+    }
+
+    const averageResult = calculateAverageBenchmark(results, iterations);
+
+    const benchmarkId = await insertBenchmark(db, {
+      ...averageResult,
+      modelId: selectedModel.id,
+    });
+
+    const newBenchmark: BenchmarkResult = {
+      ...averageResult,
+      id: benchmarkId,
+      timestamp: '',
+      modelId: selectedModel.id,
+    };
+
     await loadBenchmarks();
+    clearInterval(interval!);
+    setShowSuccess(true);
+    setTimer(0);
+    setTimeout(() => {
+      setIsBenchmarkModalVisible(false);
+      setShowSuccess(false);
+    }, 2000);
+    bottomSheetModalRef.current?.present({
+      ...newBenchmark,
+      model: await getModelById(newBenchmark.modelId),
+    });
+  };
 
-    setLoading(false);
+  const handleCancel = () => {
+    interrupt();
+    isBenchmarkCancelled.current = true;
   };
 
   return (
-    <WithDrawerGesture>
-      <View style={styles.container}>
-        <View style={styles.headerBox}>
-          <Text style={styles.infoText}>
-            Please select a model to benchmark:
-          </Text>
-
-          <TouchableOpacity
-            onPress={() => setModelModalVisible(true)}
-            style={styles.modelSelectorButton}
-          >
-            <Text style={styles.modelSelectorButtonText}>
-              {selectedModel ? `Model: ${selectedModel.id}` : 'Select a model'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleRun}
-            style={styles.runButton}
-            disabled={loading || !selectedModel}
-          >
-            <Text style={styles.runButtonText}>
-              {loading ? 'Running...' : 'Run Benchmark'}
-            </Text>
-          </TouchableOpacity>
-
-          {loading && <ActivityIndicator style={{ marginTop: 12 }} />}
-
-          {benchmarkResult && <BenchmarkResultCard result={benchmarkResult} />}
+    <>
+      <WithDrawerGesture>
+        <View style={styles.container}>
+          <ModelSelector
+            model={selectedModel}
+            setSelectedModel={setSelectedModel}
+          />
+          <PrimaryButton
+            disabled={!selectedModel}
+            text="Run benchmark"
+            onPress={runBenchmarks}
+          />
+          <BenchmarkHistory
+            modalRef={bottomSheetModalRef}
+            benchmarkList={benchmarkList}
+          />
         </View>
-
-        <Text style={styles.historyHeading}>📊 Benchmark History</Text>
-
-        <FlatList
-          data={benchmarkList}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => <BenchmarkItem entry={item} />}
-          ListEmptyComponent={
-            <Text style={styles.noDataText}>No benchmarks saved yet.</Text>
-          }
-        />
-
-        <ModelSelectorModal
-          visible={modelModalVisible}
-          models={models}
-          onClose={() => setModelModalVisible(false)}
-          onSelect={async (model) => {
-            setModelModalVisible(false);
-            await loadModel(model);
-            setSelectedModel(model);
-          }}
-        />
-      </View>
-    </WithDrawerGesture>
+      </WithDrawerGesture>
+      <BenchmarkModal
+        isVisible={isBenchmarkModalVisible}
+        timer={timer}
+        selectedModel={selectedModel!}
+        showSuccess={showSuccess}
+        handleCancel={handleCancel}
+      />
+      <BenchmarkResultSheet bottomSheetModalRef={bottomSheetModalRef} />
+    </>
   );
 };
 
@@ -118,44 +160,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     backgroundColor: '#fff',
-  },
-  headerBox: {
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-  },
-  infoText: {
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  modelSelectorButton: {
-    padding: 12,
-    borderRadius: 6,
-    marginBottom: 12,
-  },
-  modelSelectorButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  runButton: {
-    padding: 12,
-    borderRadius: 6,
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  runButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  historyHeading: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  noDataText: {
-    textAlign: 'center',
-    marginTop: 16,
+    gap: 16,
   },
 });

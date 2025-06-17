@@ -35,6 +35,7 @@ const PrimaryButton = ({
         styles.button,
         {
           backgroundColor: theme.bg.strongPrimary,
+          opacity: disabled ? 0.4 : 1,
         },
         style,
       ]}

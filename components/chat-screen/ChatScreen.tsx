@@ -47,8 +47,8 @@ export default function ChatScreen({
   const { theme } = useTheme();
 
   const { loadModels } = useModelStore();
-  const { db, isGenerating, sendChatMessage } = useLLMStore();
-  const { addChat, updateLastUsed } = useChatStore();
+  const { db, isGenerating, sendChatMessage, loadModel } = useLLMStore();
+  const { addChat, updateLastUsed, setChatModel } = useChatStore();
 
   const [userInput, setUserInput] = useState('');
   const [isAtBottom, setIsAtBottom] = useState(true);
@@ -77,6 +77,19 @@ export default function ChatScreen({
     setUserInput('');
     updateLastUsed(chatIdRef.current);
     await sendChatMessage(messageHistory, userInput, chatIdRef.current!);
+  };
+
+  const handleSelectModel = async (selectedModel: Model) => {
+    try {
+      await loadModel(selectedModel);
+      if (chatIdRef.current && !model) {
+        await setChatModel(chatIdRef.current, selectedModel.id);
+      }
+      selectModel?.(selectedModel);
+      bottomSheetModalRef.current?.dismiss();
+    } catch (error) {
+      console.error('Error loading model:', error);
+    }
   };
 
   return (
@@ -117,10 +130,8 @@ export default function ChatScreen({
         isAtBottom={isAtBottom}
       />
       <ModelSelectSheet
-        chatId={chatIdRef}
         bottomSheetModalRef={bottomSheetModalRef}
-        selectModel={selectModel}
-        model={model}
+        selectModel={handleSelectModel}
       />
     </KeyboardAvoidingView>
   );

@@ -65,7 +65,11 @@ export default function Layout() {
         <ThemeProvider>
           <BottomSheetModalProvider>
             <CustomDrawerLayout>
-              <SafeAreaView style={{ flex: 1 }}>
+              <SafeAreaView
+                style={{
+                  flex: 1,
+                }}
+              >
                 <Stack
                   screenOptions={{
                     headerShadowVisible: false,
