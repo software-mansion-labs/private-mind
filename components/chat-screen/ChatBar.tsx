@@ -41,8 +41,8 @@ const ChatBar = ({
   const { theme } = useTheme();
 
   const {
-    isLoading,
     isGenerating,
+    isProcessingPrompt,
     interrupt,
     loadModel,
     model: loadedModel,
@@ -69,36 +69,7 @@ const ChatBar = ({
           <RotateLeft width={20} height={20} />
         </TouchableOpacity>
       )}
-      {chatId &&
-        model &&
-        model.isDownloaded === 1 &&
-        loadedModel?.id !== model.id && (
-          <TouchableOpacity
-            style={{
-              ...styles.modelSelection,
-              marginBottom: 0,
-              borderBottomLeftRadius: 8,
-              borderBottomRightRadius: 8,
-              paddingBottom: 12,
-              borderColor: theme.border.soft,
-            }}
-            onPress={() => {
-              loadModel(model);
-            }}
-          >
-            <Text
-              style={{ ...styles.selectedModel, color: theme.text.primary }}
-            >
-              {'Load Model'} {model.modelName}
-            </Text>
-            <RotateLeft
-              width={20}
-              height={20}
-              style={{ color: theme.text.primary }}
-            />
-          </TouchableOpacity>
-        )}
-      {model && loadedModel?.id === model.id && (
+      {model && model.isDownloaded === 1 && (
         <View
           style={{ ...styles.content, backgroundColor: theme.bg.strongPrimary }}
         >
@@ -108,17 +79,21 @@ const ChatBar = ({
             multiline
             onFocus={async () => {
               if (!isAtBottom) return;
+
+              if (loadedModel?.id !== model.id) {
+                await loadModel(model);
+              }
               setTimeout(() => {
                 scrollRef.current?.scrollToEnd({ animated: true });
               }, 25);
             }}
-            placeholder={!isLoading ? 'Ask about anything...' : 'Loading...'}
+            placeholder={'Ask about anything...'}
             placeholderTextColor={theme.text.contrastTertiary}
             value={userInput}
             onChangeText={setUserInput}
           />
           <View style={styles.buttonBar}>
-            {userInput && !isGenerating && (
+            {userInput && !isGenerating && !isProcessingPrompt && (
               <TouchableOpacity
                 style={{
                   ...styles.sendButton,
@@ -133,7 +108,7 @@ const ChatBar = ({
                 />
               </TouchableOpacity>
             )}
-            {isGenerating && (
+            {(isGenerating || isProcessingPrompt) && (
               <TouchableOpacity
                 style={{
                   ...styles.sendButton,

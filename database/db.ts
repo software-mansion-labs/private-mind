@@ -19,7 +19,6 @@ export const initDatabase = async (db: SQLiteDatabase) => {
           tokenizerPath TEXT,
           tokenizerConfigPath TEXT
         );`);
-  await db.execAsync(`DROP TABLE IF EXISTS chats;`);
   await db.execAsync(`
       CREATE TABLE IF NOT EXISTS chats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

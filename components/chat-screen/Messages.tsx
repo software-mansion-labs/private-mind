@@ -15,10 +15,10 @@ import { useTheme } from '../../context/ThemeContext';
 import { Model } from '../../database/modelRepository';
 import SecondaryButton from '../SecondaryButton';
 import { ScrollView } from 'react-native-gesture-handler';
+import { useLLMStore } from '../../store/llmStore';
 
 interface Props {
   chatHistory: Message[];
-  isGenerating: boolean;
   onSelectModel: () => void;
   model: Model | null;
   ref: RefObject<ScrollView | null>;
@@ -28,7 +28,6 @@ interface Props {
 
 const Messages = ({
   chatHistory,
-  isGenerating,
   onSelectModel,
   model,
   ref,
@@ -36,7 +35,8 @@ const Messages = ({
   setIsAtBottom,
 }: Props) => {
   const { theme } = useTheme();
-  const isEmpty = chatHistory.length === 0 && !isGenerating;
+  const { isProcessingPrompt } = useLLMStore();
+  const isEmpty = chatHistory.length === 0 && !isProcessingPrompt;
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
@@ -108,7 +108,7 @@ const Messages = ({
               />
             ))}
 
-            {isGenerating && chatHistory.at(-1)?.content === '' && (
+            {isProcessingPrompt && (
               <View style={styles.aiRow}>
                 <View style={styles.loadingWrapper}>
                   <AnimatedChatLoading />

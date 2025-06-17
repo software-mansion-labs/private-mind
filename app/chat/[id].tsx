@@ -24,7 +24,6 @@ export default function ChatScreenWrapper() {
 
   const [messageHistory, setMessageHistory] = useState<Message[]>([]);
   const [model, setModel] = useState<Model | null>(chatModel || null);
-
   useChatHeader({
     chatId: chatId as number,
     chatModel: model,

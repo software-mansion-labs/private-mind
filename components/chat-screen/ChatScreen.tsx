@@ -76,12 +76,17 @@ export default function ChatScreen({
     inputRef.current?.clear();
     setUserInput('');
     updateLastUsed(chatIdRef.current);
-    await sendChatMessage(messageHistory, userInput, chatIdRef.current!);
+    await sendChatMessage(
+      messageHistory,
+      userInput,
+      chatIdRef.current!,
+      model!.modelName
+    );
   };
 
   const handleSelectModel = async (selectedModel: Model) => {
     try {
-      await loadModel(selectedModel);
+      loadModel(selectedModel);
       if (chatIdRef.current && !model) {
         await setChatModel(chatIdRef.current, selectedModel.id);
       }
@@ -111,7 +116,6 @@ export default function ChatScreen({
       >
         <Messages
           chatHistory={messageHistory}
-          isGenerating={isGenerating}
           model={model}
           onSelectModel={handlePresentModalPress}
           ref={scrollRef}
