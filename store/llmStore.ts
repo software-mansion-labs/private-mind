@@ -82,11 +82,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
 
     set({ isLoading: true });
-    await new Promise<void>((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, 2500);
-    });
 
     await LLMModule.load({
       modelSource: model.modelPath,
@@ -137,27 +132,24 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         tokensPerSecond: 0,
       });
 
-      const userMessage: Message = {
-        id: userMessageId,
-        chatId,
+      messages.push({
         role: 'user',
         content: newMessage,
+        chatId: chatId,
         timestamp: Date.now(),
-      };
-
-      const assistantPlaceholder: Message = {
-        id: -1,
-        chatId,
+        id: userMessageId,
+      });
+      messages.push({
         role: 'assistant',
         content: '',
-        modelName,
+        modelName: modelName,
+        chatId: chatId,
         timestamp: Date.now(),
-      };
-
-      const updatedMessages = [...messages, userMessage, assistantPlaceholder];
+        id: -1,
+      });
       set({
         activeChatId: chatId,
-        activeChatMessages: updatedMessages,
+        activeChatMessages: messages,
       });
 
       const chatSettings = await getChatSettings(db, chatId);
@@ -181,9 +173,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       }
 
       if (!get().isProcessingPrompt) {
-        set({
-          activeChatMessages: updatedMessages.slice(0, -1),
-        });
+        messages.pop();
         return;
       }
 
@@ -226,7 +216,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     } catch (e) {
       console.error('Chat sendMessage failed', e);
     } finally {
-      set({ isGenerating: false });
+      set({ isGenerating: false, isProcessingPrompt: false });
     }
   },
 
