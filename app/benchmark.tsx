@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useDefaultHeader } from '../hooks/useDefaultHeader';
 import { useLLMStore } from '../store/llmStore';
 import { useModelStore } from '../store/modelStore';
@@ -9,17 +9,16 @@ import {
   getAllBenchmarks,
   insertBenchmark,
 } from '../database/benchmarkRepository';
-import BenchmarkItem from '../components/benchmark/BenchmarkItem';
 import WithDrawerGesture from '../components/WithDrawerGesture';
 import { ModelSelector } from '../components/benchmark/ModelSelector';
 import PrimaryButton from '../components/PrimaryButton';
 import { fontFamily, fontSizes } from '../styles/fontFamily';
-import BenchmarkIcon from '../assets/icons/benchmark.svg';
 import { useTheme } from '../context/ThemeContext';
 import BenchmarkResultSheet from '../components/bottomSheets/BenchmarkResultSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useSQLiteContext } from 'expo-sqlite';
 import { BenchmarkModal } from '../components/benchmark/BenchmarkModal';
+import BenchmarkHistory from '../components/benchmark/BenchmarkHistory';
 
 const calculateAverageBenchmark = (
   results: Omit<BenchmarkResult, 'modelId' | 'id' | 'timestamp'>[],
@@ -136,47 +135,9 @@ const BenchmarkScreen = () => {
             text="Run benchmark"
             onPress={runBenchmarks}
           />
-          <Text style={{ ...styles.label, color: theme.text.primary }}>
-            Benchmark History
-          </Text>
-
-          <FlatList
-            data={benchmarkList}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <BenchmarkItem
-                entry={item}
-                onPress={async () => {
-                  bottomSheetModalRef.current?.present({
-                    ...item,
-                    model: await getModelById(item.modelId),
-                  });
-                }}
-              />
-            )}
-            contentContainerStyle={{ gap: 8 }}
-            ListEmptyComponent={
-              <View
-                style={{
-                  ...styles.noDataContainer,
-                  borderColor: theme.border.soft,
-                }}
-              >
-                <BenchmarkIcon
-                  width={18}
-                  height={18}
-                  style={{ color: theme.text.defaultTertiary }}
-                />
-                <Text
-                  style={{
-                    ...styles.noDataText,
-                    color: theme.text.defaultTertiary,
-                  }}
-                >
-                  There are no benchmarks to display yet
-                </Text>
-              </View>
-            }
+          <BenchmarkHistory
+            modalRef={bottomSheetModalRef}
+            benchmarkList={benchmarkList}
           />
         </View>
       </WithDrawerGesture>
@@ -200,21 +161,5 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#fff',
     gap: 16,
-  },
-  label: {
-    fontSize: fontSizes.md,
-    fontFamily: fontFamily.medium,
-  },
-  noDataContainer: {
-    alignItems: 'center',
-    gap: 8,
-    padding: 24,
-    borderWidth: 1,
-    borderRadius: 4,
-  },
-  noDataText: {
-    textAlign: 'center',
-    fontFamily: fontFamily.regular,
-    fontSize: fontSizes.sm,
   },
 });

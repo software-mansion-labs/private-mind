@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Divider } from '../Divider';
 import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
@@ -51,7 +51,7 @@ const BenchmarkStatsCard = ({ data }: { data: any }) => {
             Peak Memory
           </Text>
           <Text style={[styles.result, { color: theme.text.primary }]}>
-            {data.peakMemory.toFixed(2)} GB
+            {Platform.OS === 'ios' ? `${data.peakMemory.toFixed(2)} GB` : 'N/A'}
           </Text>
         </View>
       </View>

@@ -19,8 +19,7 @@ import { ThemeProvider } from '../context/ThemeContext';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
 import CloseWhiteIcon from '../assets/icons/close-white.svg';
-import { View, Text, Appearance } from 'react-native';
-import { darkTheme, lightTheme } from '../styles/colors';
+import { View, Text } from 'react-native';
 
 const toastConfig = {
   defaultToast: ({ text1, props }: any) => (
@@ -51,8 +50,6 @@ const toastConfig = {
 };
 
 export default function Layout() {
-  const colorScheme = Appearance.getColorScheme();
-
   useFonts({
     [fontFamily.regular]: DMSans_400Regular,
     [fontFamily.medium]: DMSans_500Medium,
@@ -71,10 +68,6 @@ export default function Layout() {
               <SafeAreaView
                 style={{
                   flex: 1,
-                  backgroundColor:
-                    colorScheme === 'dark'
-                      ? darkTheme.bg.softPrimary
-                      : lightTheme.bg.softPrimary,
                 }}
               >
                 <Stack

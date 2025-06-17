@@ -11,6 +11,7 @@ import DeviceInfo from 'react-native-device-info';
 import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
 import { BenchmarkResult } from '../database/benchmarkRepository';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
+import { Platform } from 'react-native';
 
 interface LLMStore {
   isLoading: boolean;
@@ -196,16 +197,19 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     set({ tokenCount: 0, firstTokenTime: 0, isGenerating: true });
 
     let runPeakMemory = 0;
-    const memoryUsageTracker = setInterval(async () => {
-      try {
-        const usedMemory = await DeviceInfo.getUsedMemory();
-        if (usedMemory > runPeakMemory) {
-          runPeakMemory = usedMemory;
+    let memoryUsageTracker: NodeJS.Timeout | undefined;
+    if (Platform.OS === 'ios') {
+      memoryUsageTracker = setInterval(async () => {
+        try {
+          const usedMemory = await DeviceInfo.getUsedMemory();
+          if (usedMemory > runPeakMemory) {
+            runPeakMemory = usedMemory;
+          }
+        } catch (e) {
+          console.warn('Unable to read memory:', e);
         }
-      } catch (e) {
-        console.warn('Unable to read memory:', e);
-      }
-    }, 3000);
+      }, 3000);
+    }
 
     try {
       await get().loadModel(selectedModel);
@@ -221,7 +225,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       ]);
       const endTime = performance.now();
 
-      clearInterval(memoryUsageTracker);
+      if (Platform.OS === 'ios') clearInterval(memoryUsageTracker);
 
       const generatedTokens = get().tokenCount;
       const firstTokenTime = get().firstTokenTime;
@@ -239,7 +243,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         timeToFirstToken,
         tokensPerSecond,
         tokensGenerated: generatedTokens,
-        peakMemory: runPeakMemory,
+        peakMemory: Platform.OS === 'ios' ? runPeakMemory : 0,
       };
     } catch (e) {
       console.error(`Benchmark failed`, e);
