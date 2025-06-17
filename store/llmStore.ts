@@ -16,6 +16,7 @@ import { Platform } from 'react-native';
 interface LLMStore {
   isLoading: boolean;
   isGenerating: boolean;
+  isProcessingPrompt: boolean;
   db: SQLiteDatabase | null;
   response: string;
   model: Model | null;
@@ -27,7 +28,8 @@ interface LLMStore {
   sendChatMessage: (
     messages: Message[],
     newMessage: string,
-    chatId: number
+    chatId: number,
+    modelName: string
   ) => Promise<void>;
   setDB: (db: SQLiteDatabase) => void;
   loadModel: (model: Model) => Promise<void>;
@@ -60,6 +62,7 @@ const calculatePerformanceMetrics = (
 export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
   isGenerating: false,
+  isProcessingPrompt: false,
   db: null,
   response: '',
   model: null,
@@ -79,6 +82,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
 
     set({ isLoading: true });
+    await new Promise<void>((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, 2500);
+    });
+
     await LLMModule.load({
       modelSource: model.modelPath,
       tokenizerSource: model.tokenizerPath,
@@ -96,7 +105,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             tokenCount: get().tokenCount + 1,
           });
           if (get().tokenCount === 1) {
-            set({ firstTokenTime: performance.now() });
+            set({
+              firstTokenTime: performance.now(),
+              isProcessingPrompt: false,
+            });
           }
         }
       },
@@ -108,11 +120,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   sendChatMessage: async (
     messages: Message[],
     newMessage: string,
-    chatId: number
+    chatId: number,
+    modelName: string
   ) => {
-    const { isGenerating, db, model, isLoading } = get();
-    if (isGenerating || !db || model === null || isLoading) return;
-
+    const { db } = get();
+    if (!db) return;
+    set({
+      isProcessingPrompt: true,
+    });
     try {
       const userMessageId = await persistMessage(db, {
         chatId: chatId,
@@ -122,12 +137,27 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         tokensPerSecond: 0,
       });
 
-      messages.push({
+      const userMessage: Message = {
+        id: userMessageId,
+        chatId,
         role: 'user',
         content: newMessage,
-        chatId: chatId,
         timestamp: Date.now(),
-        id: userMessageId,
+      };
+
+      const assistantPlaceholder: Message = {
+        id: -1,
+        chatId,
+        role: 'assistant',
+        content: '',
+        modelName,
+        timestamp: Date.now(),
+      };
+
+      const updatedMessages = [...messages, userMessage, assistantPlaceholder];
+      set({
+        activeChatId: chatId,
+        activeChatMessages: updatedMessages,
       });
 
       const chatSettings = await getChatSettings(db, chatId);
@@ -139,14 +169,23 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         ...messages.slice(-contextWindow),
       ];
 
-      messages.push({
-        role: 'assistant',
-        content: '',
-        modelName: model.modelName,
-        chatId: chatId,
-        timestamp: Date.now(),
-        id: -1,
-      });
+      if (get().isLoading) {
+        await new Promise((resolve) => {
+          const interval = setInterval(() => {
+            if (!get().isLoading || !get().isProcessingPrompt) {
+              clearInterval(interval);
+              resolve(null);
+            }
+          }, 100);
+        });
+      }
+
+      if (!get().isProcessingPrompt) {
+        set({
+          activeChatMessages: updatedMessages.slice(0, -1),
+        });
+        return;
+      }
 
       set({
         isGenerating: true,
@@ -170,7 +209,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       if (generatedResponse) {
         await persistMessage(db, {
           role: 'assistant',
-          modelName: model.modelName,
+          modelName: get().model?.modelName,
           content: generatedResponse,
           tokensPerSecond: tokensPerSecond,
           timeToFirstToken: timeToFirstToken,
@@ -246,12 +285,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     } catch (e) {
       console.error(`Benchmark failed`, e);
     } finally {
-      set({ isGenerating: false });
+      set({ isGenerating: false, isProcessingPrompt: false });
     }
   },
   interrupt: () => {
     if (get().isGenerating) {
       LLMModule.interrupt();
+    } else if (get().isProcessingPrompt) {
+      set({ isProcessingPrompt: false });
     }
   },
 }));

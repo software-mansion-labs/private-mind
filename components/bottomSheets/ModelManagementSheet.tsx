@@ -40,6 +40,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
+        opacity={1}
         style={{
           backgroundColor: theme.bg.overlay,
         }}
@@ -200,6 +201,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
       }}
       handleStyle={{
         backgroundColor: theme.bg.softPrimary,
+        borderRadius: 12,
       }}
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,
