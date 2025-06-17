@@ -133,12 +133,27 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         tokensPerSecond: 0,
       });
 
-      messages.push({
+      const userMessage: Message = {
+        id: userMessageId,
+        chatId,
         role: 'user',
         content: newMessage,
-        chatId: chatId,
         timestamp: Date.now(),
-        id: userMessageId,
+      };
+
+      const assistantPlaceholder: Message = {
+        id: -1,
+        chatId,
+        role: 'assistant',
+        content: '',
+        modelName,
+        timestamp: Date.now(),
+      };
+
+      const updatedMessages = [...messages, userMessage, assistantPlaceholder];
+      set({
+        activeChatId: chatId,
+        activeChatMessages: updatedMessages,
       });
       messages.push({
         role: 'assistant',
