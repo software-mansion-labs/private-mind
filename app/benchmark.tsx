@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useDefaultHeader } from '../hooks/useDefaultHeader';
 import { useLLMStore } from '../store/llmStore';
 import { useModelStore } from '../store/modelStore';
@@ -12,7 +12,6 @@ import {
 import WithDrawerGesture from '../components/WithDrawerGesture';
 import { ModelSelector } from '../components/benchmark/ModelSelector';
 import PrimaryButton from '../components/PrimaryButton';
-import { fontFamily, fontSizes } from '../styles/fontFamily';
 import { useTheme } from '../context/ThemeContext';
 import BenchmarkResultSheet from '../components/bottomSheets/BenchmarkResultSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -125,7 +124,9 @@ const BenchmarkScreen = () => {
   return (
     <>
       <WithDrawerGesture>
-        <View style={styles.container}>
+        <View
+          style={{ ...styles.container, backgroundColor: theme.bg.softPrimary }}
+        >
           <ModelSelector
             model={selectedModel}
             setSelectedModel={setSelectedModel}
@@ -159,7 +160,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#fff',
     gap: 16,
   },
 });
