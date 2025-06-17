@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
@@ -13,15 +13,11 @@ import {
   DMSans_500Medium_Italic,
   DMSans_600SemiBold_Italic,
 } from '@expo-google-fonts/dm-sans';
-import { fontFamily, fontSizes } from '../styles/fontFamily';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { fontFamily } from '../styles/fontFamily';
 import { ThemeProvider } from '../context/ThemeContext';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
-import CloseIcon from '../assets/icons/close.svg';
-import { View, Text, Appearance } from 'react-native';
-import { darkTheme, lightTheme } from '../styles/colors';
-import { StatusBar } from 'react-native';
+import { Appearance } from 'react-native';
 
 export default function Layout() {
   const colorScheme = Appearance.getColorScheme();
@@ -35,140 +31,83 @@ export default function Layout() {
     [fontFamily.boldItalic]: DMSans_600SemiBold_Italic,
   });
 
-  const [theme, setTheme] = useState(
-    colorScheme === 'dark' ? darkTheme : lightTheme
-  );
-
-  const toastConfig = {
-    defaultToast: ({ text1, props }: any) => (
-      <View
-        style={{
-          width: '90%',
-          backgroundColor: theme.bg.strongPrimary,
-          borderRadius: 4,
-          padding: 16,
-          flexDirection: 'row',
-        }}
-      >
-        <Text
-          style={{
-            color: theme.text.contrastPrimary,
-            fontFamily: fontFamily.bold,
-            fontSize: fontSizes.sm,
-            width: '80%',
-          }}
-        >
-          {text1}
-        </Text>
-        <View style={{ width: '20%', alignItems: 'flex-end', marginTop: 3.33 }}>
-          <CloseIcon
-            width={13.33}
-            height={13.33}
-            style={{ color: theme.text.contrastPrimary }}
-          />
-        </View>
-      </View>
-    ),
-  };
-
-  useEffect(() => {
-    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      const newTheme = colorScheme === 'dark' ? darkTheme : lightTheme;
-      setTheme(newTheme);
-      // SystemUI.setBackgroundColorAsync(newTheme.bg.softPrimary);
-    });
-
-    // SystemUI.setBackgroundColorAsync(theme.bg.softPrimary);
-
-    return () => subscription.remove();
-  }, []);
-
   return (
     <GestureHandlerRootView>
       <SQLiteProvider databaseName="executorch.db" onInit={initDatabase}>
         <ThemeProvider>
           <BottomSheetModalProvider>
             <CustomDrawerLayout>
-              <SafeAreaView
-                style={{
-                  flex: 1,
-                  backgroundColor: theme.bg.softPrimary,
+              <Stack
+                screenOptions={{
+                  headerShadowVisible: false,
                 }}
               >
-                <StatusBar backgroundColor={theme.bg.softPrimary} />
-                <Stack
-                  screenOptions={{
-                    headerShadowVisible: false,
+                <Stack.Screen
+                  name="model-hub"
+                  options={{
+                    title: 'Models',
+                    gestureEnabled: false,
+                    animation: 'none',
                   }}
-                >
-                  <Stack.Screen
-                    name="model-hub"
-                    options={{
-                      title: 'Models',
-                      gestureEnabled: false,
-                      animation: 'none',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="index"
-                    options={{
-                      title: '',
-                      animation: 'none',
-                      gestureEnabled: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="benchmark"
-                    options={{
-                      title: 'Benchmark',
-                      gestureEnabled: false,
-                      animation: 'none',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="chat/[id]"
-                    options={{ animation: 'none', gestureEnabled: false }}
-                  />
-                  <Stack.Screen
-                    name="chat/[id]/settings"
-                    options={{
-                      title: 'Chat Settings',
-                      presentation: 'modal',
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="modal/add-local-model"
-                    options={{
-                      presentation: 'modal',
-                      title: 'Add Model',
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="modal/add-remote-model"
-                    options={{
-                      presentation: 'modal',
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="modal/edit-local-model/[modelId]"
-                    options={{
-                      presentation: 'modal',
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="modal/edit-remote-model/[modelId]"
-                    options={{
-                      presentation: 'modal',
-                      headerShown: false,
-                    }}
-                  />
-                </Stack>
-              </SafeAreaView>
-              <Toast config={toastConfig} />
+                />
+                <Stack.Screen
+                  name="index"
+                  options={{
+                    title: '',
+                    animation: 'none',
+                    gestureEnabled: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="benchmark"
+                  options={{
+                    title: 'Benchmark',
+                    gestureEnabled: false,
+                    animation: 'none',
+                  }}
+                />
+                <Stack.Screen
+                  name="chat/[id]"
+                  options={{ animation: 'none', gestureEnabled: false }}
+                />
+                <Stack.Screen
+                  name="chat/[id]/settings"
+                  options={{
+                    title: 'Chat Settings',
+                    presentation: 'modal',
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="modal/add-local-model"
+                  options={{
+                    presentation: 'modal',
+                    title: 'Add Model',
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="modal/add-remote-model"
+                  options={{
+                    presentation: 'modal',
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="modal/edit-local-model/[modelId]"
+                  options={{
+                    presentation: 'modal',
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="modal/edit-remote-model/[modelId]"
+                  options={{
+                    presentation: 'modal',
+                    headerShown: false,
+                  }}
+                />
+              </Stack>
             </CustomDrawerLayout>
           </BottomSheetModalProvider>
         </ThemeProvider>
