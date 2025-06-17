@@ -19,7 +19,7 @@ export const DEFAULT_MODELS = [
     tokenizerConfigPath:
       'https://huggingface.co/software-mansion/react-native-executorch-smolLm-2/resolve/v0.4.0/tokenizer_config.json',
     parameters: 0.36,
-    modelSize: 0.73,
+    modelSize: 1.36,
   },
   {
     modelName: 'SMOLLM 2 - 360M - Quantized',
@@ -30,7 +30,7 @@ export const DEFAULT_MODELS = [
     tokenizerConfigPath:
       'https://huggingface.co/software-mansion/react-native-executorch-smolLm-2/resolve/v0.4.0/tokenizer_config.json',
     parameters: 0.36,
-    modelSize: 1.36,
+    modelSize: 0.73,
   },
   {
     modelName: 'SMOLLM 2 - 135M',
@@ -41,7 +41,7 @@ export const DEFAULT_MODELS = [
     tokenizerConfigPath:
       'https://huggingface.co/software-mansion/react-native-executorch-smolLm-2/resolve/v0.4.0/tokenizer_config.json',
     parameters: 0.14,
-    modelSize: 0.27,
+    modelSize: 0.56,
   },
   {
     modelName: 'SMOLLM 2 - 135M - Quantized',
@@ -52,7 +52,7 @@ export const DEFAULT_MODELS = [
     tokenizerConfigPath:
       'https://huggingface.co/software-mansion/react-native-executorch-smolLm-2/resolve/v0.4.0/tokenizer_config.json',
     parameters: 0.14,
-    modelSize: 0.56,
+    modelSize: 0.27,
   },
   {
     modelName: 'PHI 4 MINI',
