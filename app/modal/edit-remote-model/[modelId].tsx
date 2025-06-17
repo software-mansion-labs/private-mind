@@ -63,7 +63,7 @@ export default function EditRemoteModelScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
     >
       <View style={styles.container}>
-        <ModalHeader title="Edit Local Model" onClose={() => router.back()} />
+        <ModalHeader title="Edit Remote Model" onClose={() => router.back()} />
         <ScrollView
           contentContainerStyle={{ gap: 24, paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
