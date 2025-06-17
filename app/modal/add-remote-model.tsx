@@ -58,13 +58,16 @@ export default function AddRemoteModelScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#fff' }}
+      style={{ flex: 1, backgroundColor: theme.bg.softPrimary }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
     >
       <View style={styles.container}>
         <ModalHeader title="Add External Model" onClose={() => router.back()} />
-        <ScrollView contentContainerStyle={{ gap: 24 }}>
+        <ScrollView
+          contentContainerStyle={{ gap: 24 }}
+          showsVerticalScrollIndicator={false}
+        >
           <Text style={{ ...styles.description, color: theme.text.primary }}>
             Add a model from HuggingFace or other external sources. You'll need
             the model and tokenizer URLs.

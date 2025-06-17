@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
+import PlusIcon from '../../assets/icons/plus.svg';
 
 interface Props {
   onPress: () => void;
@@ -15,7 +15,11 @@ const FloatingActionButton = ({ onPress }: Props) => {
       style={{ ...styles.fab, backgroundColor: theme.bg.strongPrimary }}
       onPress={onPress}
     >
-      <Text style={styles.fabText}>＋</Text>
+      <PlusIcon
+        width={18}
+        height={18}
+        style={{ color: theme.text.contrastPrimary }}
+      />
     </TouchableOpacity>
   );
 };
@@ -32,9 +36,5 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  fabText: {
-    color: '#fff',
-    fontSize: 30,
   },
 });

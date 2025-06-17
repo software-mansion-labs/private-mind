@@ -58,13 +58,16 @@ export default function EditRemoteModelScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#fff' }}
+      style={{ flex: 1, backgroundColor: theme.bg.softPrimary }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
     >
       <View style={styles.container}>
-        <ModalHeader title="Edit Local Model" onClose={() => router.back()} />
-        <ScrollView contentContainerStyle={{ gap: 24, paddingBottom: 24 }}>
+        <ModalHeader title="Edit Remote Model" onClose={() => router.back()} />
+        <ScrollView
+          contentContainerStyle={{ gap: 24, paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.textFieldSection}>
             <Text style={{ ...styles.label, color: theme.text.primary }}>
               Model Name

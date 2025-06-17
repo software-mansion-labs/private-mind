@@ -79,13 +79,16 @@ export default function ChatSettingsScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#fff' }}
+      style={{ flex: 1, backgroundColor: theme.bg.softPrimary }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
     >
       <View style={styles.container}>
         <ModalHeader title="Chat Settings" onClose={() => router.back()} />
-        <ScrollView contentContainerStyle={{ gap: 24 }}>
+        <ScrollView
+          contentContainerStyle={{ gap: 24 }}
+          showsVerticalScrollIndicator={false}
+        >
           {chatId !== null && (
             <View style={styles.textFieldSection}>
               <Text style={{ ...styles.label, color: theme.text.primary }}>

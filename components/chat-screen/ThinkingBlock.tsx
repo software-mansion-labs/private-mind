@@ -45,9 +45,17 @@ const ThinkingBlock = memo(({ content, isComplete = true }: Props) => {
         </Text>
         <TouchableOpacity onPress={toggleExpanded} style={styles.chevronButton}>
           {expanded ? (
-            <ChevronUp width={15} height={8.33} />
+            <ChevronUp
+              width={15}
+              height={8.33}
+              style={{ color: theme.text.primary }}
+            />
           ) : (
-            <ChevronDown width={15} height={8.33} />
+            <ChevronDown
+              width={15}
+              height={8.33}
+              style={{ color: theme.text.primary }}
+            />
           )}
         </TouchableOpacity>
       </View>

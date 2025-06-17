@@ -86,9 +86,15 @@ export const BenchmarkModal = ({
                 backgroundColor: theme.bg.softSecondary,
               }}
             >
-              <CheckIcon width={48} height={48} />
+              <CheckIcon
+                width={48}
+                height={48}
+                style={{ color: theme.text.primary }}
+              />
             </View>
-            <Text style={styles.statusText}>Your benchmark is ready!</Text>
+            <Text style={{ ...styles.statusText, color: theme.text.primary }}>
+              Your benchmark is ready!
+            </Text>
           </View>
         )}
       </View>

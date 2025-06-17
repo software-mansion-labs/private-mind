@@ -32,13 +32,23 @@ const SortingTag = ({ text, selected, onPress }: Props) => {
       <Text
         style={
           selected
-            ? { ...styles.text, fontFamily: fontFamily.medium }
+            ? {
+                ...styles.text,
+                fontFamily: fontFamily.medium,
+                color: theme.text.primary,
+              }
             : { ...styles.text, color: theme.text.primary }
         }
       >
         {text}
       </Text>
-      {selected && <CheckIcon width={20} height={20} />}
+      {selected && (
+        <CheckIcon
+          width={20}
+          height={20}
+          style={{ color: theme.text.primary }}
+        />
+      )}
     </TouchableOpacity>
   );
 };

@@ -87,7 +87,6 @@ const Messages = ({
           onScroll={handleScroll}
           contentInsetAdjustmentBehavior="automatic"
           keyboardShouldPersistTaps="never"
-          showsVerticalScrollIndicator={false}
           onContentSizeChange={() => {
             if (
               isAtBottom ||

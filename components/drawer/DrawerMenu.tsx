@@ -74,19 +74,37 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
     <ScrollView contentContainerStyle={styles.container}>
       <View>
         <DrawerItem
-          icon={<ChatIcon width={18} height={18} />}
+          icon={
+            <ChatIcon
+              width={18}
+              height={18}
+              style={{ color: theme.text.primary }}
+            />
+          }
           label="New chat"
           active={pathname === '/'}
           onPress={() => navigate('/')}
         />
         <DrawerItem
-          icon={<ModelsIcon width={18} height={18} />}
+          icon={
+            <ModelsIcon
+              width={18}
+              height={18}
+              style={{ color: theme.text.primary }}
+            />
+          }
           label="Models"
           active={pathname === '/model-hub'}
           onPress={() => navigate('/model-hub')}
         />
         <DrawerItem
-          icon={<BenchmarkIcon width={18} height={18} />}
+          icon={
+            <BenchmarkIcon
+              width={18}
+              height={18}
+              style={{ color: theme.text.primary }}
+            />
+          }
           label="Benchmark"
           active={pathname === '/benchmark'}
           onPress={() => navigate('/benchmark')}

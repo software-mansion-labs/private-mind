@@ -97,6 +97,7 @@ export default function ChatScreen({
       style={{
         ...styles.container,
         paddingBottom: Platform.OS === 'android' ? 20 : 0,
+        backgroundColor: theme.bg.softPrimary,
       }}
       collapsable={false}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}

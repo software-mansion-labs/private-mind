@@ -5,11 +5,18 @@ import {
   Animated,
   Dimensions,
   Pressable,
+  SafeAreaView,
+  StatusBar,
+  Text,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DrawerMenu from './DrawerMenu';
 import { DrawerProvider } from '../../context/DrawerContext';
 import { Easing } from 'react-native-reanimated';
+import { useTheme } from '../../context/ThemeContext';
+import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import CloseIcon from '../../assets/icons/close.svg';
+import Toast from 'react-native-toast-message';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
@@ -18,7 +25,7 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
   const [isOpen, setIsOpen] = useState(false);
   const translateX = useState(new Animated.Value(-DRAWER_WIDTH))[0];
   const insets = useSafeAreaInsets();
-
+  const { theme } = useTheme();
   const openDrawer = () => {
     setIsOpen(true);
     Animated.timing(translateX, {
@@ -40,6 +47,38 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
+  const toastConfig = {
+    defaultToast: ({ text1, props }: any) => (
+      <View
+        style={{
+          width: '90%',
+          backgroundColor: theme.bg.strongPrimary,
+          borderRadius: 4,
+          padding: 16,
+          flexDirection: 'row',
+        }}
+      >
+        <Text
+          style={{
+            color: theme.text.contrastPrimary,
+            fontFamily: fontFamily.bold,
+            fontSize: fontSizes.sm,
+            width: '80%',
+          }}
+        >
+          {text1}
+        </Text>
+        <View style={{ width: '20%', alignItems: 'flex-end', marginTop: 3.33 }}>
+          <CloseIcon
+            width={13.33}
+            height={13.33}
+            style={{ color: theme.text.contrastPrimary }}
+          />
+        </View>
+      </View>
+    ),
+  };
+
   return (
     <DrawerProvider openDrawer={openDrawer} closeDrawer={closeDrawer}>
       <View style={styles.container}>
@@ -59,10 +98,23 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
             },
           ]}
         >
-          {children}
+          <SafeAreaView
+            style={{
+              flex: 1,
+              backgroundColor: theme.bg.softPrimary,
+            }}
+          >
+            <StatusBar backgroundColor={theme.bg.softPrimary} />
+            {children}
+          </SafeAreaView>
         </Animated.View>
 
-        {isOpen && <Pressable style={styles.backdrop} onPress={closeDrawer} />}
+        {isOpen && (
+          <Pressable
+            style={{ ...styles.backdrop, backgroundColor: theme.bg.overlay }}
+            onPress={closeDrawer}
+          />
+        )}
 
         <Animated.View
           style={[
@@ -70,12 +122,14 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
             {
               transform: [{ translateX }],
               paddingTop: insets.top,
+              backgroundColor: theme.bg.softPrimary,
             },
           ]}
         >
           <DrawerMenu onNavigate={closeDrawer} />
         </Animated.View>
       </View>
+      <Toast config={toastConfig} />
     </DrawerProvider>
   );
 };
@@ -88,23 +142,14 @@ const styles = StyleSheet.create({
   },
   header: {
     height: 56,
-    backgroundColor: '#fff',
     justifyContent: 'center',
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     zIndex: 2,
   },
-  menuButton: {
-    padding: 8,
-  },
-  menuIcon: {
-    fontSize: 24,
-    color: '#333',
-  },
   content: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   drawer: {
     position: 'absolute',
@@ -112,13 +157,11 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: '#fff',
     zIndex: 3,
     elevation: 8,
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.2)',
     zIndex: 2,
   },
 });

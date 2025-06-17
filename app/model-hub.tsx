@@ -100,15 +100,27 @@ const ModelHubScreen = () => {
   return (
     <>
       <WithDrawerGesture>
-        <View style={styles.container}>
+        <View
+          style={{ ...styles.container, backgroundColor: theme.bg.softPrimary }}
+        >
           <TextFieldInput
             value={search}
             onChangeText={setSearch}
             placeholder="Search Models..."
-            icon={<SearchIcon width={20} height={20} />}
+            icon={
+              <SearchIcon
+                width={20}
+                height={20}
+                style={{ color: theme.text.primary }}
+              />
+            }
           />
           <View>
-            <ScrollView horizontal={true} contentContainerStyle={{ gap: 8 }}>
+            <ScrollView
+              horizontal={true}
+              contentContainerStyle={{ gap: 8 }}
+              showsHorizontalScrollIndicator={false}
+            >
               <SortingTag
                 text="Group by model"
                 selected={groupByModel}
@@ -143,7 +155,11 @@ const ModelHubScreen = () => {
                   borderRadius: 9999,
                 }}
               >
-                <QuestionIcon width={12} height={21.33} />
+                <QuestionIcon
+                  width={12}
+                  height={21.33}
+                  style={{ color: theme.text.primary }}
+                />
               </View>
               <View style={{ alignItems: 'center', gap: 8 }}>
                 <Text

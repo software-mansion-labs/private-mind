@@ -20,7 +20,11 @@ const ModalHeader = ({ title, onClose }: Props) => {
           onClose();
         }}
       >
-        <CloseIcon width={16} height={16} />
+        <CloseIcon
+          width={16}
+          height={16}
+          style={{ color: theme.text.primary }}
+        />
       </TouchableOpacity>
 
       <Text style={[styles.title, { color: theme.text.primary }]}>{title}</Text>

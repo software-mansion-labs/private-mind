@@ -25,7 +25,9 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={0.2}
+        style={{
+          backgroundColor: theme.bg.overlay,
+        }}
       />
     ),
     []
@@ -36,18 +38,32 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       enableDynamicSizing={true}
+      handleStyle={{
+        backgroundColor: theme.bg.softPrimary,
+      }}
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,
         ...styles.bottomSheetIndicator,
       }}
+      backgroundStyle={{
+        backgroundColor: theme.bg.softPrimary,
+      }}
     >
-      <BottomSheetView style={styles.bottomSheet}>
+      <BottomSheetView
+        style={{ ...styles.bottomSheet, backgroundColor: theme.bg.softPrimary }}
+      >
         <Text style={{ ...styles.title, color: theme.text.primary }}>
           Add model
         </Text>
         <View style={{ gap: 8 }}>
           <EntryButton
-            icon={<LinkAltIcon width={22} height={22} />}
+            icon={
+              <LinkAltIcon
+                width={22}
+                height={22}
+                style={{ color: theme.text.primary }}
+              />
+            }
             text={'From external URLs'}
             onPress={() => {
               router.push('/modal/add-remote-model');
@@ -55,7 +71,13 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
             }}
           />
           <EntryButton
-            icon={<FolderIcon width={20} height={17} />}
+            icon={
+              <FolderIcon
+                width={20}
+                height={17}
+                style={{ color: theme.text.primary }}
+              />
+            }
             text={'From local files'}
             onPress={() => {
               router.push('/modal/add-local-model');

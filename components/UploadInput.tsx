@@ -7,7 +7,7 @@ import {
   Platform,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import FolderWhite from '../assets/icons/folder-white.svg';
+import Folder from '../assets/icons/folder.svg';
 import TrashIcon from '../assets/icons/trash.svg';
 import AttachmentIcon from '../assets/icons/attachment.svg';
 import { useTheme } from '../context/ThemeContext';
@@ -69,7 +69,11 @@ const UploadInput = ({ fileInfo, onChange, disabled = false }: Props) => {
             }}
             onPress={handlePickFile}
           >
-            <FolderWhite width={16.67} height={14.17} />
+            <Folder
+              width={16.67}
+              height={14.17}
+              style={{ color: theme.text.contrastPrimary }}
+            />
             <Text
               style={{
                 ...styles.selectButtonText,
@@ -89,7 +93,11 @@ const UploadInput = ({ fileInfo, onChange, disabled = false }: Props) => {
           }}
         >
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <AttachmentIcon width={15.83} height={15.83} />
+            <AttachmentIcon
+              width={15.83}
+              height={15.83}
+              style={{ color: theme.text.primary }}
+            />
             <Text style={{ ...styles.fileText, color: theme.text.primary }}>
               {fileInfo.name}
             </Text>
@@ -105,7 +113,11 @@ const UploadInput = ({ fileInfo, onChange, disabled = false }: Props) => {
 
           {!disabled && (
             <TouchableOpacity onPress={() => onChange(null)}>
-              <TrashIcon width={15} height={15.83} />
+              <TrashIcon
+                width={15}
+                height={15.83}
+                style={{ color: theme.text.primary }}
+              />
             </TouchableOpacity>
           )}
         </View>

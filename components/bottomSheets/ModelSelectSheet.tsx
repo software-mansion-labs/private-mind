@@ -29,7 +29,9 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={0.2}
+        style={{
+          backgroundColor: theme.bg.overlay,
+        }}
       />
     ),
     []
@@ -37,9 +39,6 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
-      style={{
-        backgroundColor: theme.bg.softPrimary,
-      }}
       backdropComponent={renderBackdrop}
       snapPoints={['30%', '50%']}
       enableDynamicSizing={false}
@@ -49,6 +48,9 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,
         ...styles.bottomSheetIndicator,
+      }}
+      backgroundStyle={{
+        backgroundColor: theme.bg.softPrimary,
       }}
     >
       {downloadedModels.length > 0 ? (

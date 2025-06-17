@@ -63,10 +63,15 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef }: Props) => {
         backgroundColor: theme.text.primary,
         ...styles.bottomSheetIndicator,
       }}
+      backgroundStyle={{
+        backgroundColor: theme.bg.softPrimary,
+      }}
     >
       {(props) => (
         <BottomSheetScrollView contentContainerStyle={styles.contentContainer}>
-          <Text style={styles.header}>Benchmark results</Text>
+          <Text style={{ ...styles.header, color: theme.text.primary }}>
+            Benchmark results
+          </Text>
           <ModelCard model={props.data.model} onPress={() => {}} />
           <BenchmarkStatsCard data={props.data} />
           <DeviceInfoCard deviceInfo={deviceInfo} />

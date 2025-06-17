@@ -13,7 +13,11 @@ export const InfoAlert = ({ text }: Props) => {
 
   return (
     <View style={{ ...styles.container, borderColor: theme.border.soft }}>
-      <InfoCircleIcon width={20} height={20} />
+      <InfoCircleIcon
+        width={20}
+        height={20}
+        style={{ color: theme.text.primary }}
+      />
       <View style={{ paddingRight: 12 }}>
         <Text style={{ ...styles.alertText, color: theme.text.primary }}>
           {text}
