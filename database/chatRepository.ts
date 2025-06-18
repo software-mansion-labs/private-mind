@@ -27,25 +27,32 @@ export type Message = {
 export const createChat = async (
   db: SQLiteDatabase,
   title: string,
-  model: number
+  modelId: number
 ): Promise<number> => {
-  const result = await db.runAsync(
-    `INSERT INTO chats (title, model) VALUES (?, ?)`,
-    [title, model]
-  );
+  try {
+    const result = await db.runAsync(
+      `INSERT INTO chats (title, modelId) VALUES (?, ?)`,
+      [title, modelId]
+    );
 
-  if (result.lastInsertRowId) {
-    const defaultSettings = await AsyncStorage.getItem('default_chat_settings');
-    if (defaultSettings) {
-      const parsedSettings: ChatSettings = JSON.parse(defaultSettings);
-      await setChatSettings(db, result.lastInsertRowId, {
-        systemPrompt: parsedSettings.systemPrompt,
-        contextWindow: parsedSettings.contextWindow,
-      });
+    if (result.lastInsertRowId) {
+      const defaultSettings = await AsyncStorage.getItem(
+        'default_chat_settings'
+      );
+      if (defaultSettings) {
+        const parsedSettings: ChatSettings = JSON.parse(defaultSettings);
+        await setChatSettings(db, result.lastInsertRowId, {
+          systemPrompt: parsedSettings.systemPrompt,
+          contextWindow: parsedSettings.contextWindow,
+        });
+      }
     }
-  }
 
-  return result.lastInsertRowId;
+    return result.lastInsertRowId;
+  } catch (error) {
+    console.error('Error creating chat:', error);
+    throw error;
+  }
 };
 
 export const getAllChats = async (db: SQLiteDatabase): Promise<Chat[]> => {
