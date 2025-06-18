@@ -12,13 +12,17 @@ import CircleButton from '../CircleButton';
 import CloseIcon from '../../assets/icons/close.svg';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
+import DeviceInfo from 'react-native-device-info';
+
+const MEMORY_TO_PARAMETERS_RATIO = 2.5;
 
 interface Props {
   model: Model;
   onPress: (model: Model) => void;
+  bottomSheetModalRef?: React.RefObject<any>;
 }
 
-const ModelCard = ({ model, onPress }: Props) => {
+const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
   const { downloadStates, downloadModel } = useModelStore();
   const { theme } = useTheme();
   const downloadState = downloadStates[model.id] || {
@@ -57,7 +61,16 @@ const ModelCard = ({ model, onPress }: Props) => {
 
       return;
     }
-    await downloadModel(model);
+    const memoryInGB = (await DeviceInfo.getTotalMemory()) / 1024 / 1024 / 1024;
+    if (
+      model.parameters &&
+      model.parameters * MEMORY_TO_PARAMETERS_RATIO > memoryInGB &&
+      bottomSheetModalRef?.current
+    ) {
+      bottomSheetModalRef?.current?.present(model);
+    } else {
+      await downloadModel(model);
+    }
   };
 
   return (
