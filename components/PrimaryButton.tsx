@@ -34,7 +34,7 @@ const PrimaryButton = ({
       style={[
         styles.button,
         {
-          backgroundColor: theme.bg.strongPrimary,
+          backgroundColor: theme.bg.main,
           opacity: disabled ? 0.4 : 1,
         },
         style,
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 4,
+    borderRadius: 12,
     width: '100%',
   },
   text: {

@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   card: {
     padding: 16,
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 12,
     gap: 16,
     flexDirection: 'column',
   },
