@@ -116,7 +116,6 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       Toast.show({
         type: 'defaultToast',
         text1: `${model.modelName} has been successfully downloaded`,
-        props: { backgroundColor: '#020f3c' },
       });
     } catch (err) {
       console.error('Failed:', err);

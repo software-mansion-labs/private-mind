@@ -61,6 +61,9 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef }: Props) => {
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       snapPoints={['50%', '90%']}
+      handleStyle={{
+        borderRadius: 16,
+      }}
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,
         ...styles.bottomSheetIndicator,

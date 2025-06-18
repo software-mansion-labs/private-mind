@@ -38,7 +38,7 @@ export default function ChatSettingsScreen() {
   const { getChatById, renameChat, deleteChat } = useChatStore();
 
   const chat = getChatById(chatId as number);
-  const model = getModelById(chat?.model || -1);
+  const model = getModelById(chat?.model ?? -1);
 
   const [chatTitle, setChatTitle] = useState(
     chat ? chat.title : `Chat #${chatId}`
@@ -76,7 +76,6 @@ export default function ChatSettingsScreen() {
     Toast.show({
       type: 'defaultToast',
       text1: 'Chat settings has been succesfully updated',
-      props: { backgroundColor: theme.bg.strongPrimary },
     });
   };
 

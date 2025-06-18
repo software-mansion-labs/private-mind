@@ -83,7 +83,7 @@ export default ThinkingBlock;
 
 const styles = StyleSheet.create({
   thinkingBox: {
-    borderRadius: 4,
+    borderRadius: 12,
     marginBottom: 8,
     marginTop: 8,
     borderWidth: 1,

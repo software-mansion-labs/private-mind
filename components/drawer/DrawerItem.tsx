@@ -43,7 +43,7 @@ export const DrawerItem = memo(
 const styles = StyleSheet.create({
   item: {
     padding: 12,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   label: {
     fontSize: fontSizes.md,

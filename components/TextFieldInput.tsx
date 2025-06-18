@@ -53,7 +53,7 @@ const TextFieldInput: React.FC<TextFieldInputProps> = ({
 const styles = StyleSheet.create({
   inputWrapper: {
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     justifyContent: 'center',

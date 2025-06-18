@@ -49,8 +49,7 @@ export default function AddRemoteModelScreen() {
     });
     Toast.show({
       type: 'defaultToast',
-      text1: `${modelName} has been succesfully added`,
-      props: { backgroundColor: theme.bg.strongPrimary },
+      text1: `${modelName} has been successfully added`,
     });
     router.back();
   };

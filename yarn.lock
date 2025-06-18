@@ -1825,6 +1825,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-native-community/netinfo@npm:^11.4.1":
+  version: 11.4.1
+  resolution: "@react-native-community/netinfo@npm:11.4.1"
+  peerDependencies:
+    react-native: ">=0.59"
+  checksum: d347ae522da6b8c045d6378754d4928bdf23cc85b74571b91fa8a03fa168bdac5e3c65eb97eac0dd0c7cbd20e782f99d41b090fb79ce7d815cbaf6fb5d1abe37
+  languageName: node
+  linkType: hard
+
 "@react-native-menu/menu@npm:^1.2.3":
   version: 1.2.3
   resolution: "@react-native-menu/menu@npm:1.2.3"
@@ -5194,6 +5203,7 @@ __metadata:
     "@expo-google-fonts/dm-sans": ^0.4.0
     "@gorhom/bottom-sheet": ^5
     "@react-native-async-storage/async-storage": 2.1.2
+    "@react-native-community/netinfo": ^11.4.1
     "@react-native-menu/menu": ^1.2.3
     "@react-native/metro-config": ^0.76.3
     "@types/react": ~19.0.10
@@ -5211,7 +5221,7 @@ __metadata:
     react: 19.0.0
     react-native: ^0.79.2
     react-native-device-info: ^14.0.4
-    react-native-executorch: ^0.4.2
+    react-native-executorch: ^0.4.5
     react-native-gesture-handler: ~2.24.0
     react-native-loading-spinner-overlay: ^3.0.1
     react-native-markdown-display: ^7.0.2
@@ -6793,9 +6803,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-executorch@npm:^0.4.2":
-  version: 0.4.2
-  resolution: "react-native-executorch@npm:0.4.2"
+"react-native-executorch@npm:^0.4.5":
+  version: 0.4.5
+  resolution: "react-native-executorch@npm:0.4.5"
   dependencies:
     "@huggingface/jinja": ^0.5.0
     expo: ^53.0.7
@@ -6805,7 +6815,7 @@ __metadata:
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 8955571334e7c9a6fcaa88c9c5531bd4acc538723d9f767c59de85f6189dbe0a422b78973b5e4bef3b7f6f1e7c7159c37d13ed6f42c13f774066fccc4f9c6bcc
+  checksum: b5cf0921caa6b492b1ce186a28977be19eeafc70521604fb06ca149d6840190880af71bdb9d4f8aca04e418ee024f25cda9c82155c483072c3ae654d0e34d9a9
   languageName: node
   linkType: hard
 

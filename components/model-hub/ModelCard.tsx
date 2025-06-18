@@ -10,13 +10,19 @@ import DownloadCloudIcon from '../../assets/icons/download_cloud.svg';
 import DownloadIcon from '../../assets/icons/download.svg';
 import CircleButton from '../CircleButton';
 import CloseIcon from '../../assets/icons/close.svg';
+import NetInfo from '@react-native-community/netinfo';
+import Toast from 'react-native-toast-message';
+import DeviceInfo from 'react-native-device-info';
+
+const MEMORY_TO_PARAMETERS_RATIO = 2.5;
 
 interface Props {
   model: Model;
   onPress: (model: Model) => void;
+  bottomSheetModalRef?: React.RefObject<any>;
 }
 
-const ModelCard = ({ model, onPress }: Props) => {
+const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
   const { downloadStates, downloadModel } = useModelStore();
   const { theme } = useTheme();
   const downloadState = downloadStates[model.id] || {
@@ -46,7 +52,25 @@ const ModelCard = ({ model, onPress }: Props) => {
 
   const handlePress = async () => {
     if (isDownloading) return;
-    await downloadModel(model);
+    const networkState = await NetInfo.fetch();
+    if (!networkState.isConnected) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: `Model cannot be downloaded without internet connection.`,
+      });
+
+      return;
+    }
+    const memoryInGB = (await DeviceInfo.getTotalMemory()) / 1024 / 1024 / 1024;
+    if (
+      model.parameters &&
+      model.parameters * MEMORY_TO_PARAMETERS_RATIO > memoryInGB &&
+      bottomSheetModalRef?.current
+    ) {
+      bottomSheetModalRef?.current?.present(model);
+    } else {
+      await downloadModel(model);
+    }
   };
 
   return (
@@ -167,7 +191,7 @@ const styles = StyleSheet.create({
   card: {
     padding: 16,
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 12,
     gap: 16,
     flexDirection: 'column',
   },
