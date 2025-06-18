@@ -1,15 +1,19 @@
 import { SQLiteDatabase } from 'expo-sqlite';
 
-export type BenchmarkResult = {
-  id: number;
-  timestamp: string;
-  modelId: string;
+export interface BenchmarkResultPerformanceNumbers {
   totalTime: number;
   timeToFirstToken: number;
   tokensGenerated: number;
   tokensPerSecond: number;
   peakMemory: number;
-};
+}
+
+export interface BenchmarkResult extends BenchmarkResultPerformanceNumbers {
+  id: number;
+  timestamp: string;
+  modelId?: number;
+  modelName: string;
+}
 
 export const insertBenchmark = async (
   db: SQLiteDatabase,
@@ -18,14 +22,16 @@ export const insertBenchmark = async (
   const result = await db.runAsync(
     `INSERT INTO benchmarks (
       modelId,
+      modelName,
       totalTime,
       timeToFirstToken,
       tokensGenerated,
       tokensPerSecond,
       peakMemory
-    ) VALUES (?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
-      benchmark.modelId,
+      benchmark.modelId!,
+      benchmark.modelName,
       benchmark.totalTime,
       benchmark.timeToFirstToken,
       benchmark.tokensGenerated,

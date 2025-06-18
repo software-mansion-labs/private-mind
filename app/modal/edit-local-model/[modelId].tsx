@@ -26,13 +26,14 @@ type LocalFile = {
 };
 
 export default function EditLocalModelScreen() {
-  const { modelId } = useLocalSearchParams<{ modelId: string }>();
+  const { modelId: rawModelId } = useLocalSearchParams<{ modelId: string }>();
+  const modelId = parseInt(rawModelId);
   const router = useRouter();
   const { theme } = useTheme();
   const { getModelById, editModel } = useModelStore();
   const model = getModelById(modelId);
 
-  const [modelName, setModelName] = useState(model?.id || '');
+  const [modelName, setModelName] = useState(model?.modelName || '');
   const [localModelPath, setLocalModelPath] = useState<LocalFile | null>({
     name: model?.modelPath.split('/').pop() || '',
     size: null,
@@ -61,7 +62,7 @@ export default function EditLocalModelScreen() {
       modelId,
       localTokenizerPath.uri,
       localTokenizerConfigPath.uri,
-      modelName || modelId
+      modelName
     );
 
     Toast.show({

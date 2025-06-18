@@ -29,16 +29,16 @@ interface ModelStore {
   downloadStates: Record<string, DownloadState>;
   setDB: (db: SQLiteDatabase) => void;
   loadModels: () => Promise<void>;
-  addModelToDB: (model: Model) => Promise<void>;
-  getModelById: (id: string) => Model | undefined;
+  addModelToDB: (model: Omit<Model, 'id'>) => Promise<void>;
+  getModelById: (id: number) => Model | undefined;
   downloadModel: (model: Model) => Promise<void>;
-  removeModel: (modelId: string) => Promise<void>;
-  removeModelFiles: (modelId: string) => Promise<void>;
+  removeModel: (modelId: number) => Promise<void>;
+  removeModelFiles: (modelId: number) => Promise<void>;
   editModel: (
-    modelId: string,
+    modelId: number,
     localTokenizerPath: string,
     localTokenizerConfigPath: string,
-    newModelId: string
+    newModelName: string
   ) => Promise<void>;
 }
 
@@ -50,7 +50,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
 
   setDB: (db) => set({ db }),
 
-  getModelById: (id: string) => {
+  getModelById: (id: number) => {
     const models = get().models;
     return models.find((model) => model.id === id);
   },
@@ -65,7 +65,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     });
   },
 
-  addModelToDB: async (model: Model) => {
+  addModelToDB: async (model: Omit<Model, 'id'>) => {
     const db = get().db;
     if (!db) return;
     await addModel(db, model);
@@ -115,7 +115,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       setDownloading(1, ModelState.Downloaded);
       Toast.show({
         type: 'defaultToast',
-        text1: `${model.id} has been successfully downloaded`,
+        text1: `${model.modelName} has been successfully downloaded`,
         props: { backgroundColor: '#020f3c' },
       });
     } catch (err) {
@@ -123,7 +123,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     }
   },
 
-  removeModel: async (modelId: string) => {
+  removeModel: async (modelId: number) => {
     const db = get().db;
     if (!db) return;
 
@@ -151,7 +151,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     }
   },
 
-  removeModelFiles: async (modelId: string) => {
+  removeModelFiles: async (modelId: number) => {
     const db = get().db;
     if (!db) return;
 
@@ -176,10 +176,10 @@ export const useModelStore = create<ModelStore>((set, get) => ({
   },
 
   editModel: async (
-    modelId: string,
+    modelId: number,
     localTokenizerPath: string,
     localTokenizerConfigPath: string,
-    newModelId: string
+    newModelName: string
   ) => {
     const db = get().db;
     if (!db) return;
@@ -205,7 +205,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         modelId,
         tokenizerPath: localTokenizerPath,
         tokenizerConfigPath: localTokenizerConfigPath,
-        newModelId,
+        newModelName,
       });
       await get().loadModels();
     } catch (err) {

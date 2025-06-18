@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useModelStore } from '../../store/modelStore';
-import { Model } from '../../database/modelRepository';
 import ModalHeader from '../../components/ModalHeader';
 import { fontSizes, fontFamily } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
@@ -41,19 +40,20 @@ export default function AddLocalModelScreen() {
       return;
     }
 
-    const id = `model-${Date.now()}`;
-    const model: Model = {
-      id,
+    const modelName = localModelPath.name.split('.')[0];
+
+    await addModelToDB({
+      modelName,
       isDownloaded: 1,
       source: 'local',
       modelPath: `file://${localModelPath.uri}`,
       tokenizerPath: `file://${localTokenizerPath.uri}`,
       tokenizerConfigPath: `file://${localTokenizerConfigPath.uri}`,
-    };
-    await addModelToDB(model);
+      modelSize: localModelPath.size! / 1024 / 1024 / 1024,
+    });
     Toast.show({
       type: 'defaultToast',
-      text1: `${model.id} has been succesfully added`,
+      text1: `${modelName} has been successfully added`,
       props: { backgroundColor: theme.bg.strongPrimary },
     });
     router.back();

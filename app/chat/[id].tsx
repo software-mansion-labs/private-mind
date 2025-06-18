@@ -13,20 +13,20 @@ import WithDrawerGesture from '../../components/WithDrawerGesture';
 
 export default function ChatScreenWrapper() {
   useDefaultHeader();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  const chatId = parseInt(rawId);
   const { db, activeChatId, activeChatMessages } = useLLMStore();
   const { getChatById } = useChatStore();
   const { getModelById } = useModelStore();
 
-  const chatId = id ? Number(id) : null;
-  const chat = getChatById(chatId as number);
-  const chatModel = getModelById(chat?.model || '');
+  const chat = getChatById(chatId);
+  const chatModel = getModelById(chat?.modelId ?? -1);
 
   const [messageHistory, setMessageHistory] = useState<Message[]>([]);
   const [model, setModel] = useState<Model | null>(chatModel || null);
 
   useChatHeader({
-    chatId: chatId as number,
+    chatId: chatId,
     chatModel: model,
   });
 

@@ -9,7 +9,7 @@ import {
 } from '../database/chatRepository';
 import DeviceInfo from 'react-native-device-info';
 import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
-import { BenchmarkResult } from '../database/benchmarkRepository';
+import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
 
@@ -33,9 +33,7 @@ interface LLMStore {
   loadModel: (model: Model) => Promise<void>;
   runBenchmark: (
     selectedModel: Model
-  ) => Promise<
-    Omit<BenchmarkResult, 'modelId' | 'timestamp' | 'id'> | undefined
-  >;
+  ) => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   interrupt: () => void;
 }
 
@@ -144,7 +142,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       messages.push({
         role: 'assistant',
         content: '',
-        modelName: model.id,
+        modelName: model.modelName,
         chatId: chatId,
         timestamp: Date.now(),
         id: -1,
@@ -172,7 +170,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       if (generatedResponse) {
         await persistMessage(db, {
           role: 'assistant',
-          modelName: model.id,
+          modelName: model.modelName,
           content: generatedResponse,
           tokensPerSecond: tokensPerSecond,
           timeToFirstToken: timeToFirstToken,

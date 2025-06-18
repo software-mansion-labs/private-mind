@@ -16,12 +16,8 @@ import {
 import { fontFamily } from '../styles/fontFamily';
 import { ThemeProvider } from '../context/ThemeContext';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import Toast from 'react-native-toast-message';
-import { Appearance } from 'react-native';
 
 export default function Layout() {
-  const colorScheme = Appearance.getColorScheme();
-
   useFonts({
     [fontFamily.regular]: DMSans_400Regular,
     [fontFamily.medium]: DMSans_500Medium,

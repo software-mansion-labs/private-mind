@@ -65,7 +65,7 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
           </Text>
           <BottomSheetFlatList
             data={downloadedModels}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={{ gap: 8, paddingBottom: 60 }}
             renderItem={({ item }) => (
               <ModelCard

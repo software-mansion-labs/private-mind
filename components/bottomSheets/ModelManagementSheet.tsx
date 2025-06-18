@@ -132,7 +132,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
                   await removeModelFiles(model.id);
                   Toast.show({
                     type: 'defaultToast',
-                    text1: `${model.id} has been successfully deleted`,
+                    text1: `${model.modelName} has been successfully deleted`,
                     props: { backgroundColor: '#020f3c' },
                   });
                   bottomSheetModalRef.current?.dismiss();
@@ -170,7 +170,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
                   await removeModel(model.id);
                   Toast.show({
                     type: 'defaultToast',
-                    text1: `${model.id} has been successfully deleted`,
+                    text1: `${model.modelName} has been successfully deleted`,
                     props: { backgroundColor: '#020f3c' },
                   });
                   bottomSheetModalRef.current?.dismiss();

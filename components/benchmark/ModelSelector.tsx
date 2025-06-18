@@ -1,4 +1,4 @@
-import React, { Dispatch, RefObject, SetStateAction, useRef } from 'react';
+import React, { Dispatch, SetStateAction, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Model } from '../../database/modelRepository';
 import ModelCard from '../model-hub/ModelCard';

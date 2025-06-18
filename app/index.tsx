@@ -38,7 +38,7 @@ export default function App() {
               fontFamily: fontFamily.medium,
             }}
           >
-            {model ? model.id : ''}
+            {model ? model.modelName : ''}
           </Text>
         </View>
       ),
