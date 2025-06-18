@@ -65,7 +65,7 @@ const UploadInput = ({ fileInfo, onChange, disabled = false }: Props) => {
           <TouchableOpacity
             style={{
               ...styles.selectButton,
-              backgroundColor: theme.bg.strongPrimary,
+              backgroundColor: theme.bg.main,
             }}
             onPress={handlePickFile}
           >
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   emptyBox: {
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderRadius: 4,
+    borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
     alignItems: 'center',
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   },
   selectButton: {
     height: 40,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 10,
     flexDirection: 'row',
     justifyContent: 'center',
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
   },
   fileBox: {
-    borderRadius: 4,
+    borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 12,
     flexDirection: 'row',

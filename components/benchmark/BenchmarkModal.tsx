@@ -32,7 +32,9 @@ export const BenchmarkModal = ({
       animationType="fade"
       onRequestClose={handleCancel}
     >
-      <View style={styles.modalOverlay}>
+      <View
+        style={{ ...styles.modalOverlay, backgroundColor: theme.bg.overlay }}
+      >
         {!showSuccess ? (
           <View
             style={{
@@ -83,7 +85,7 @@ export const BenchmarkModal = ({
             <View
               style={{
                 ...styles.successIcon,
-                backgroundColor: theme.bg.softSecondary,
+                backgroundColor: theme.bg.main,
               }}
             >
               <CheckIcon
@@ -104,7 +106,7 @@ export const BenchmarkModal = ({
 
 const styles = StyleSheet.create({
   benchmarkCard: {
-    borderRadius: 16,
+    borderRadius: 18,
     alignItems: 'center',
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -140,7 +142,6 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
   },

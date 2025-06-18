@@ -12,7 +12,7 @@ const FloatingActionButton = ({ onPress }: Props) => {
 
   return (
     <TouchableOpacity
-      style={{ ...styles.fab, backgroundColor: theme.bg.strongPrimary }}
+      style={{ ...styles.fab, backgroundColor: theme.bg.main }}
       onPress={onPress}
     >
       <PlusIcon

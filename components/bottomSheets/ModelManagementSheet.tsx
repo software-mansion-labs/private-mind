@@ -133,7 +133,6 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
                   Toast.show({
                     type: 'defaultToast',
                     text1: `${model.modelName} has been successfully deleted`,
-                    props: { backgroundColor: '#020f3c' },
                   });
                   bottomSheetModalRef.current?.dismiss();
                 }}
@@ -171,7 +170,6 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
                   Toast.show({
                     type: 'defaultToast',
                     text1: `${model.modelName} has been successfully deleted`,
-                    props: { backgroundColor: '#020f3c' },
                   });
                   bottomSheetModalRef.current?.dismiss();
                 }}
@@ -200,6 +198,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
       }}
       handleStyle={{
         backgroundColor: theme.bg.softPrimary,
+        borderRadius: 16,
       }}
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,

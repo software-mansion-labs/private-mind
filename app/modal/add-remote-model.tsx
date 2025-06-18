@@ -50,7 +50,6 @@ export default function AddRemoteModelScreen() {
     Toast.show({
       type: 'defaultToast',
       text1: `${modelName} has been successfully added`,
-      props: { backgroundColor: theme.bg.strongPrimary },
     });
     router.back();
   };

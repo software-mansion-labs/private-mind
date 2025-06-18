@@ -12,14 +12,16 @@ interface Props {
 
 const BenchmarkItem = ({ entry, onPress }: Props) => {
   const { theme } = useTheme();
-  const toFixed = (n: number, d = 2) => Number(n).toFixed(d);
   const date = new Date(entry.timestamp);
   const formattedDate = `${date.getDate()} ${date.toLocaleString('default', {
     month: 'short',
   })}`;
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <TouchableOpacity
+      style={{ ...styles.container, borderColor: theme.border.soft }}
+      onPress={onPress}
+    >
       <View
         style={{
           width: 36,
@@ -33,7 +35,7 @@ const BenchmarkItem = ({ entry, onPress }: Props) => {
         <BenchmarkIcon
           width={15}
           height={15}
-          style={{ color: theme.text.primary }}
+          style={{ color: theme.text.defaultTertiary }}
         />
       </View>
       <View>
@@ -52,11 +54,10 @@ export default BenchmarkItem;
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 4,
+    borderRadius: 12,
     padding: 16,
     paddingLeft: 12,
     borderWidth: 1,
-    borderColor: '#eee',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,

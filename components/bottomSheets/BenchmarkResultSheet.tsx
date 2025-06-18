@@ -31,9 +31,11 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef }: Props) => {
     (props: any) => (
       <BottomSheetBackdrop
         {...props}
+        style={{
+          backgroundColor: theme.bg.overlay,
+        }}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={0.2}
       />
     ),
     []
@@ -59,6 +61,9 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef }: Props) => {
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       snapPoints={['50%', '90%']}
+      handleStyle={{
+        borderRadius: 16,
+      }}
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,
         ...styles.bottomSheetIndicator,

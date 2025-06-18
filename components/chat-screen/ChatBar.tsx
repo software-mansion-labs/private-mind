@@ -122,14 +122,14 @@ const ChatBar = ({
               <TouchableOpacity
                 style={{
                   ...styles.sendButton,
-                  backgroundColor: theme.bg.softPrimary,
+                  backgroundColor: theme.bg.main,
                 }}
                 onPress={onSend}
               >
                 <SendIcon
                   width={20}
                   height={20}
-                  style={{ color: theme.text.primary }}
+                  style={{ color: theme.text.contrastPrimary }}
                 />
               </TouchableOpacity>
             )}
@@ -137,14 +137,14 @@ const ChatBar = ({
               <TouchableOpacity
                 style={{
                   ...styles.sendButton,
-                  backgroundColor: theme.bg.softPrimary,
+                  backgroundColor: theme.bg.main,
                 }}
                 onPress={interrupt}
               >
                 <PauseIcon
-                  height={20}
-                  width={20}
-                  style={{ color: theme.text.primary }}
+                  height={13.33}
+                  width={13.33}
+                  style={{ color: theme.text.contrastPrimary }}
                 />
               </TouchableOpacity>
             )}
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    borderRadius: 8,
+    borderRadius: 18,
     padding: 16,
   },
   selectButtonText: {
