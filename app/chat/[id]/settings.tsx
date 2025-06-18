@@ -76,7 +76,6 @@ export default function ChatSettingsScreen() {
     Toast.show({
       type: 'defaultToast',
       text1: 'Chat settings has been succesfully updated',
-      props: { backgroundColor: theme.bg.strongPrimary },
     });
   };
 

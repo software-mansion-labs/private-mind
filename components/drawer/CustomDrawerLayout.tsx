@@ -48,19 +48,19 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
   };
 
   const toastConfig = {
-    defaultToast: ({ text1, props }: any) => (
+    defaultToast: ({ text1 }: any) => (
       <View
         style={{
           width: '90%',
-          backgroundColor: theme.bg.strongPrimary,
-          borderRadius: 4,
+          backgroundColor: theme.bg.softSecondary,
+          borderRadius: 12,
           padding: 16,
           flexDirection: 'row',
         }}
       >
         <Text
           style={{
-            color: theme.text.contrastPrimary,
+            color: theme.text.primary,
             fontFamily: fontFamily.bold,
             fontSize: fontSizes.sm,
             width: '80%',
@@ -72,7 +72,7 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
           <CloseIcon
             width={13.33}
             height={13.33}
-            style={{ color: theme.text.contrastPrimary }}
+            style={{ color: theme.text.primary }}
           />
         </View>
       </View>

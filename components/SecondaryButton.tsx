@@ -48,12 +48,12 @@ const SecondaryButton = ({
 
 const styles = StyleSheet.create({
   button: {
-    height: 40,
+    height: 48,
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   text: {
     fontFamily: fontFamily.medium,

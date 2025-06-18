@@ -35,7 +35,7 @@ const TextAreaField: React.FC<TextAreaFieldProps> = ({
 const styles = StyleSheet.create({
   inputWrapper: {
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },

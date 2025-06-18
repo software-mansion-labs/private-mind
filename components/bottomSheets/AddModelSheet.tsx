@@ -41,7 +41,7 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
       enableDynamicSizing={true}
       handleStyle={{
         backgroundColor: theme.bg.softPrimary,
-        borderRadius: 12,
+        borderRadius: 16,
       }}
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,
