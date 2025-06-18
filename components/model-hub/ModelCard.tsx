@@ -64,6 +64,7 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
 
       return;
     }
+
     if (
       totalMemory !== null &&
       model.parameters &&
