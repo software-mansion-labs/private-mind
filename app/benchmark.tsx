@@ -75,6 +75,7 @@ const BenchmarkScreen = () => {
     }, 1000);
     const iterations = 1;
     await loadModel(selectedModel);
+
     const results: BenchmarkResultPerformanceNumbers[] = [];
 
     for (let i = 0; i < iterations; i++) {
@@ -95,6 +96,7 @@ const BenchmarkScreen = () => {
     const benchmarkId = await insertBenchmark(db, {
       ...averageResult,
       modelId: selectedModel.id,
+      modelName: selectedModel.modelName,
     });
 
     const newBenchmark: BenchmarkResult = {
@@ -102,6 +104,7 @@ const BenchmarkScreen = () => {
       id: benchmarkId,
       timestamp: '',
       modelId: selectedModel.id,
+      modelName: selectedModel.modelName,
     };
 
     await loadBenchmarks();
@@ -114,7 +117,7 @@ const BenchmarkScreen = () => {
     }, 2000);
     bottomSheetModalRef.current?.present({
       ...newBenchmark,
-      model: await getModelById(newBenchmark.modelId),
+      model: await getModelById(newBenchmark.modelId!),
     });
   };
 
