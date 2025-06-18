@@ -31,9 +31,11 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef }: Props) => {
     (props: any) => (
       <BottomSheetBackdrop
         {...props}
+        style={{
+          backgroundColor: theme.bg.overlay,
+        }}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={0.2}
       />
     ),
     []
