@@ -122,6 +122,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     if (!db) return;
     set({
       isProcessingPrompt: true,
+      activeChatId: chatId,
     });
     try {
       const userMessageId = await persistMessage(db, {
@@ -162,8 +163,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         timestamp: Date.now(),
         id: -1,
       });
+
       set({
-        activeChatId: chatId,
         activeChatMessages: messages,
       });
 
@@ -197,7 +198,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         response: '',
         activeChatMessages: messages,
         tokenCount: 0,
-        activeChatId: chatId,
       });
 
       const startTime = performance.now();

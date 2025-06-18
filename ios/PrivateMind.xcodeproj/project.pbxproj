@@ -373,7 +373,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = PrivateMind/PrivateMind.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = J5FM626PE2;
+				DEVELOPMENT_TEAM = B357MU264T;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -393,11 +393,11 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.swmansion.privatemind;
-				PRODUCT_NAME = PrivateMind;
+				PRODUCT_NAME = "PrivateMind";
 				SWIFT_OBJC_BRIDGING_HEADER = "PrivateMind/PrivateMind-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
@@ -410,7 +410,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = PrivateMind/PrivateMind.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = J5FM626PE2;
+				DEVELOPMENT_TEAM = B357MU264T;
 				INFOPLIST_FILE = PrivateMind/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -425,10 +425,10 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.swmansion.privatemind;
-				PRODUCT_NAME = PrivateMind;
+				PRODUCT_NAME = "PrivateMind";
 				SWIFT_OBJC_BRIDGING_HEADER = "PrivateMind/PrivateMind-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;
