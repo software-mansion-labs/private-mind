@@ -26,11 +26,12 @@ type LocalFile = {
 };
 
 export default function EditLocalModelScreen() {
-  const { modelId } = useLocalSearchParams<{ modelId: string }>();
+  const { modelId: rawModelId } = useLocalSearchParams<{ modelId: string }>();
+  const modelId = parseInt(rawModelId);
   const router = useRouter();
   const { theme } = useTheme();
   const { getModelById, editModel } = useModelStore();
-  const model = getModelById(parseInt(modelId));
+  const model = getModelById(modelId);
 
   const [modelName, setModelName] = useState(model?.modelName || '');
   const [localModelPath, setLocalModelPath] = useState<LocalFile | null>({
@@ -58,7 +59,7 @@ export default function EditLocalModelScreen() {
     }
 
     await editModel(
-      parseInt(modelId),
+      modelId,
       localTokenizerPath.uri,
       localTokenizerConfigPath.uri,
       modelName

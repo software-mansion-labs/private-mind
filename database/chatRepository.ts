@@ -3,7 +3,7 @@ import { SQLiteDatabase } from 'expo-sqlite';
 
 export type Chat = {
   id: number;
-  model: number;
+  modelId: number;
   title: string;
   lastUsed: number;
 };

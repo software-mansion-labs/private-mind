@@ -1,16 +1,19 @@
 import { SQLiteDatabase } from 'expo-sqlite';
 
-export type BenchmarkResult = {
-  id: number;
-  timestamp: string;
-  modelId?: number;
-  modelName: string;
+export interface BenchmarkResultPerformanceNumbers {
   totalTime: number;
   timeToFirstToken: number;
   tokensGenerated: number;
   tokensPerSecond: number;
   peakMemory: number;
-};
+}
+
+export interface BenchmarkResult extends BenchmarkResultPerformanceNumbers {
+  id: number;
+  timestamp: string;
+  modelId?: number;
+  modelName: string;
+}
 
 export const insertBenchmark = async (
   db: SQLiteDatabase,

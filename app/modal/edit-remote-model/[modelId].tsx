@@ -19,12 +19,12 @@ import Toast from 'react-native-toast-message';
 import { InfoAlert } from '../../../components/InfoAlert';
 
 export default function EditRemoteModelScreen() {
-  const { modelId } = useLocalSearchParams<{ modelId: string }>();
-
+  const { modelId: rawModelId } = useLocalSearchParams<{ modelId: string }>();
+  const modelId = parseInt(rawModelId);
   const router = useRouter();
   const { theme } = useTheme();
   const { getModelById, editModel } = useModelStore();
-  const model = getModelById(parseInt(modelId));
+  const model = getModelById(modelId);
 
   const [modelName, setModelName] = useState(model?.modelName || '');
   const [localModelPath, setLocalModelPath] = useState<string>(
@@ -43,7 +43,7 @@ export default function EditRemoteModelScreen() {
     }
 
     await editModel(
-      parseInt(modelId),
+      modelId,
       localTokenizerPath,
       localTokenizerConfigPath,
       modelName

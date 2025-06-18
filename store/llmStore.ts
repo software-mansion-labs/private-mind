@@ -9,7 +9,7 @@ import {
 } from '../database/chatRepository';
 import DeviceInfo from 'react-native-device-info';
 import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
-import { BenchmarkResult } from '../database/benchmarkRepository';
+import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
 
@@ -33,10 +33,7 @@ interface LLMStore {
   loadModel: (model: Model) => Promise<void>;
   runBenchmark: (
     selectedModel: Model
-  ) => Promise<
-    | Omit<BenchmarkResult, 'modelId' | 'modelName' | 'timestamp' | 'id'>
-    | undefined
-  >;
+  ) => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   interrupt: () => void;
 }
 

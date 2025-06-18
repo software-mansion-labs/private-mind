@@ -24,9 +24,9 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       CREATE TABLE IF NOT EXISTS chats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         lastUsed timestamp DEFAULT CURRENT_TIMESTAMP,
-        model INTEGER,
+        modelId INTEGER,
         title TEXT DEFAULT '',
-        FOREIGN KEY (model) REFERENCES models (id) ON DELETE SET NULL
+        FOREIGN KEY (modelId) REFERENCES models (id) ON DELETE SET NULL
       )`);
 
   await db.execAsync(`

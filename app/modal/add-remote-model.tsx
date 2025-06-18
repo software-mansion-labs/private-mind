@@ -38,7 +38,8 @@ export default function AddRemoteModelScreen() {
       return;
     }
 
-    const modelName = `model-${Date.now()}`;
+    const modelName =
+      remoteModelPath.split('/').pop()?.split('.')[0] || `model-${Date.now()}`;
     await addModelToDB({
       modelName,
       isDownloaded: 0,

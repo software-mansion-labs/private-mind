@@ -40,7 +40,7 @@ export default function AddLocalModelScreen() {
       return;
     }
 
-    const modelName = `model-${Date.now()}`;
+    const modelName = localModelPath.name.split('.')[0];
 
     await addModelToDB({
       modelName,
