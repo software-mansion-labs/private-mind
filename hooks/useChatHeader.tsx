@@ -1,9 +1,6 @@
 import React, { useLayoutEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { router } from 'expo-router';
-import { Alert } from 'react-native';
 import { useChatStore } from '../store/chatStore';
-import { exportChatRoom } from '../database/exportImportRepository';
 import ChatTitleWithMenu from '../components/chat-screen/ChatTitleWithMenu';
 import SettingsHeaderButton from '../components/SettingsHeaderButton';
 import { Model } from '../database/modelRepository';
