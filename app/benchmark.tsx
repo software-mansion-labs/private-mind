@@ -81,6 +81,7 @@ const BenchmarkScreen = () => {
         clearInterval(interval);
         setTimer(0);
         setIsBenchmarkModalVisible(false);
+        isBenchmarkCancelled.current = false;
         return;
       }
       const result = await runBenchmark(selectedModel!);
