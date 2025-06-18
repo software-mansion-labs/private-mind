@@ -124,7 +124,6 @@ const BenchmarkScreen = () => {
 
   const handleCancel = () => {
     interrupt();
-    console.log('Benchmark cancelled');
     isBenchmarkCancelled.current = true;
   };
 
