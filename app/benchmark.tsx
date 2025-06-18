@@ -20,7 +20,10 @@ import { BenchmarkModal } from '../components/benchmark/BenchmarkModal';
 import BenchmarkHistory from '../components/benchmark/BenchmarkHistory';
 
 const calculateAverageBenchmark = (
-  results: Omit<BenchmarkResult, 'modelId' | 'id' | 'timestamp'>[],
+  results: Omit<
+    BenchmarkResult,
+    'modelId' | 'id' | 'timestamp' | 'modelName'
+  >[],
   iterations: number
 ) => {
   const averageResult = results.reduce((acc, curr) => {
@@ -74,7 +77,10 @@ const BenchmarkScreen = () => {
     }, 1000);
     const iterations = 1;
     await loadModel(selectedModel);
-    const results: Omit<BenchmarkResult, 'modelId' | 'id' | 'timestamp'>[] = [];
+    const results: Omit<
+      BenchmarkResult,
+      'modelId' | 'id' | 'timestamp' | 'modelName'
+    >[] = [];
     for (let i = 0; i < iterations; i++) {
       if (isBenchmarkCancelled.current) {
         clearInterval(interval);
@@ -93,6 +99,7 @@ const BenchmarkScreen = () => {
     const benchmarkId = await insertBenchmark(db, {
       ...averageResult,
       modelId: selectedModel.id,
+      modelName: selectedModel.modelName,
     });
 
     const newBenchmark: BenchmarkResult = {
@@ -100,6 +107,7 @@ const BenchmarkScreen = () => {
       id: benchmarkId,
       timestamp: '',
       modelId: selectedModel.id,
+      modelName: selectedModel.modelName,
     };
 
     await loadBenchmarks();
@@ -112,7 +120,7 @@ const BenchmarkScreen = () => {
     }, 2000);
     bottomSheetModalRef.current?.present({
       ...newBenchmark,
-      model: await getModelById(newBenchmark.modelId),
+      model: await getModelById(newBenchmark.modelId!),
     });
   };
 
