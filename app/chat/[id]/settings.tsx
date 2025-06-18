@@ -6,6 +6,7 @@ import {
   View,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,6 +25,8 @@ import { fontFamily, fontSizes } from '../../../styles/fontFamily';
 import TextAreaField from '../../../components/TextAreaField';
 import ModalHeader from '../../../components/ModalHeader';
 import Toast from 'react-native-toast-message';
+import SecondaryButton from '../../../components/SecondaryButton';
+import { exportChatRoom } from '../../../database/exportImportRepository';
 
 export default function ChatSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,7 +35,7 @@ export default function ChatSettingsScreen() {
   const db = useSQLiteContext();
   const { theme } = useTheme();
   const { getModelById } = useModelStore();
-  const { getChatById, renameChat } = useChatStore();
+  const { getChatById, renameChat, deleteChat } = useChatStore();
 
   const chat = getChatById(chatId as number);
   const model = chat?.modelId ? getModelById(chat?.modelId) : undefined;
@@ -86,7 +89,7 @@ export default function ChatSettingsScreen() {
       <View style={styles.container}>
         <ModalHeader title="Chat Settings" onClose={() => router.back()} />
         <ScrollView
-          contentContainerStyle={{ gap: 24 }}
+          contentContainerStyle={{ gap: 24, paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
         >
           {chatId !== null && (
@@ -161,6 +164,49 @@ export default function ChatSettingsScreen() {
               placeholderTextColor={theme.text.defaultTertiary}
             />
           </View>
+          {chatId && (
+            <View style={{ gap: 12 }}>
+              <SecondaryButton
+                text={'Export Chat'}
+                onPress={async () => {
+                  await exportChatRoom(db, chatId, chatTitle);
+                }}
+              />
+              <SecondaryButton
+                text={'Delete Chat'}
+                style={{ borderColor: theme.bg.errorPrimary }}
+                textStyle={{ color: theme.text.error }}
+                onPress={async () => {
+                  Alert.alert(
+                    'Delete Chat',
+                    'Are you sure you want to delete this chat?',
+                    [
+                      {
+                        text: 'Cancel',
+                        style: 'cancel',
+                      },
+                      {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: async () => {
+                          try {
+                            await deleteChat(chatId);
+                            router.replace('/');
+                          } catch (error) {
+                            console.error('Error deleting chat:', error);
+                            Alert.alert(
+                              'Error',
+                              'Failed to delete chat. Please try again.'
+                            );
+                          }
+                        },
+                      },
+                    ]
+                  );
+                }}
+              />
+            </View>
+          )}
         </ScrollView>
         <PrimaryButton text="Save changes" onPress={handleSave} />
       </View>
