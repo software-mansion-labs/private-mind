@@ -28,7 +28,7 @@ export const createChat = async (
   db: SQLiteDatabase,
   title: string,
   modelId: number
-): Promise<number> => {
+): Promise<number | void> => {
   try {
     const result = await db.runAsync(
       `INSERT INTO chats (title, modelId) VALUES (?, ?)`,
@@ -51,7 +51,6 @@ export const createChat = async (
     return result.lastInsertRowId;
   } catch (error) {
     console.error('Error creating chat:', error);
-    throw error;
   }
 };
 

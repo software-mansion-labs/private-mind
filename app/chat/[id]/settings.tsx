@@ -35,7 +35,7 @@ export default function ChatSettingsScreen() {
   const { getChatById, renameChat } = useChatStore();
 
   const chat = getChatById(chatId as number);
-  const model = getModelById(chat?.modelId ?? -1);
+  const model = chat?.modelId ? getModelById(chat?.modelId) : undefined;
 
   const [chatTitle, setChatTitle] = useState(
     chat ? chat.title : `Chat #${chatId}`

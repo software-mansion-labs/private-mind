@@ -30,7 +30,7 @@ interface Props {
   chatId: number | null;
   messageHistory: Message[];
   model: Model | null;
-  selectModel?: Dispatch<SetStateAction<Model | null>>;
+  selectModel?: Dispatch<SetStateAction<Model | undefined>>;
 }
 
 export default function ChatScreen({

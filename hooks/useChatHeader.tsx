@@ -14,7 +14,7 @@ import { Model } from '../database/modelRepository';
 
 interface Props {
   chatId: number;
-  chatModel: Model | null;
+  chatModel: Model | undefined;
 }
 
 const useChatHeader = ({ chatId, chatModel }: Props) => {
