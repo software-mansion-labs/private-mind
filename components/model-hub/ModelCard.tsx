@@ -10,6 +10,8 @@ import DownloadCloudIcon from '../../assets/icons/download_cloud.svg';
 import DownloadIcon from '../../assets/icons/download.svg';
 import CircleButton from '../CircleButton';
 import CloseIcon from '../../assets/icons/close.svg';
+import NetInfo from '@react-native-community/netinfo';
+import Toast from 'react-native-toast-message';
 
 interface Props {
   model: Model;
@@ -46,6 +48,15 @@ const ModelCard = ({ model, onPress }: Props) => {
 
   const handlePress = async () => {
     if (isDownloading) return;
+    const networkState = await NetInfo.fetch();
+    if (!networkState.isConnected) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: `Model cannot be downloaded without internet connection.`,
+      });
+
+      return;
+    }
     await downloadModel(model);
   };
 
