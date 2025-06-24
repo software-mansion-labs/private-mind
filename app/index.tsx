@@ -9,7 +9,7 @@ import { Text, View } from 'react-native';
 import { Model } from '../database/modelRepository';
 import WithDrawerGesture from '../components/WithDrawerGesture';
 import { useTheme } from '../context/ThemeContext';
-import { fontFamily, fontSizes } from '../styles/fontFamily';
+import { fontFamily } from '../styles/fontFamily';
 
 export default function App() {
   const navigation = useNavigation();

@@ -31,7 +31,9 @@ const BenchmarkHistory = ({ modalRef, benchmarkList }: Props) => {
             onPress={async () => {
               modalRef.current?.present({
                 ...item,
-                model: await getModelById(item.modelId!),
+                model: item.modelId
+                  ? await getModelById(item.modelId)
+                  : undefined,
               });
             }}
           />

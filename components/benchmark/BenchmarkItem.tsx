@@ -12,7 +12,6 @@ interface Props {
 
 const BenchmarkItem = ({ entry, onPress }: Props) => {
   const { theme } = useTheme();
-  const toFixed = (n: number, d = 2) => Number(n).toFixed(d);
   const date = new Date(entry.timestamp);
   const formattedDate = `${date.getDate()} ${date.toLocaleString('default', {
     month: 'short',

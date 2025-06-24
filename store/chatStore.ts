@@ -59,6 +59,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (!db) return;
 
     const newChatId = await createChat(db, title, modelId);
+    if (newChatId === undefined) return;
 
     set((state) => ({
       chats: [

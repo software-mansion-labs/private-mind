@@ -200,6 +200,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
       }}
       handleStyle={{
         backgroundColor: theme.bg.softPrimary,
+        borderRadius: 12,
       }}
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,

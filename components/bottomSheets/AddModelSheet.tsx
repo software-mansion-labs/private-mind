@@ -25,6 +25,7 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
+        opacity={1}
         style={{
           backgroundColor: theme.bg.overlay,
         }}
@@ -40,6 +41,7 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
       enableDynamicSizing={true}
       handleStyle={{
         backgroundColor: theme.bg.softPrimary,
+        borderRadius: 12,
       }}
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,

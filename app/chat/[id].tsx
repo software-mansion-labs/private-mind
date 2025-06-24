@@ -20,11 +20,9 @@ export default function ChatScreenWrapper() {
   const { getModelById } = useModelStore();
 
   const chat = getChatById(chatId);
-  const chatModel = getModelById(chat?.modelId ?? -1);
-
+  const chatModel = chat?.modelId ? getModelById(chat?.modelId) : undefined;
   const [messageHistory, setMessageHistory] = useState<Message[]>([]);
-  const [model, setModel] = useState<Model | null>(chatModel || null);
-
+  const [model, setModel] = useState<Model | undefined>(chatModel);
   useChatHeader({
     chatId: chatId,
     chatModel: model,
