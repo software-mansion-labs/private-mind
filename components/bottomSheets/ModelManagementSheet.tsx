@@ -76,7 +76,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
                   }}
                 />
               )}
-              {model.source !== 'local' && (
+              {model.source !== 'local' && model.isDownloaded === 1 && (
                 <EntryButton
                   text="Delete downloaded files"
                   icon={

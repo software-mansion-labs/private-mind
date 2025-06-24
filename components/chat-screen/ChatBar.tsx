@@ -166,9 +166,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
   },
-  selectButtonText: {
-    fontSize: 12,
-  },
   input: {
     fontSize: 16,
     lineHeight: 30,

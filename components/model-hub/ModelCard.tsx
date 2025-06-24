@@ -83,7 +83,9 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
         onPress(model);
       }}
       style={{ ...styles.card, borderColor: theme.border.soft }}
-      disabled={modelState !== ModelState.Downloaded}
+      disabled={
+        modelState !== ModelState.Downloaded && model.source === 'built-in'
+      }
     >
       <View
         style={{

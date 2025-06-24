@@ -91,7 +91,7 @@ export const BenchmarkModal = ({
               <CheckIcon
                 width={48}
                 height={48}
-                style={{ color: theme.text.primary }}
+                style={{ color: theme.text.contrastPrimary }}
               />
             </View>
             <Text style={{ ...styles.statusText, color: theme.text.primary }}>

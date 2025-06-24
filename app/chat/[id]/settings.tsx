@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Text,
   StyleSheet,
@@ -27,10 +27,13 @@ import ModalHeader from '../../../components/ModalHeader';
 import Toast from 'react-native-toast-message';
 import SecondaryButton from '../../../components/SecondaryButton';
 import { exportChatRoom } from '../../../database/exportImportRepository';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ChatSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const chatId = Number(id) || null;
+  const scrollViewRef = useRef<ScrollView>(null);
+  const insets = useSafeAreaInsets();
 
   const db = useSQLiteContext();
   const { theme } = useTheme();
@@ -101,17 +104,26 @@ export default function ChatSettingsScreen() {
     ]);
   };
 
+  const scrollToInput = async () => {
+    if (Platform.OS === 'ios') {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      scrollViewRef.current?.scrollTo({ y: 500, animated: true });
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: theme.bg.softPrimary }}
+      contentContainerStyle={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 16 + insets.bottom : 0}
     >
       <View style={styles.container}>
         <ModalHeader title="Chat Settings" onClose={() => router.back()} />
         <ScrollView
           contentContainerStyle={{ gap: 24, paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
+          ref={scrollViewRef}
         >
           {chatId !== null && (
             <View style={styles.textFieldSection}>
@@ -183,6 +195,7 @@ export default function ChatSettingsScreen() {
               onChangeText={setSystemPrompt}
               placeholder="ex. Act as a IT support consultant and reply using only 1 sentence."
               placeholderTextColor={theme.text.defaultTertiary}
+              onFocus={() => scrollToInput()}
             />
           </View>
           {chatId && (
@@ -212,8 +225,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    paddingBottom: 32,
     justifyContent: 'space-between',
+    paddingBottom: Platform.OS === 'ios' ? 16 : 0,
   },
   textFieldSection: {
     gap: 16,

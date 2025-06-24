@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Text,
   StyleSheet,
@@ -17,10 +17,13 @@ import PrimaryButton from '../../../components/PrimaryButton';
 import { ScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { InfoAlert } from '../../../components/InfoAlert';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function EditRemoteModelScreen() {
   const { modelId: rawModelId } = useLocalSearchParams<{ modelId: string }>();
   const modelId = parseInt(rawModelId);
+  const insets = useSafeAreaInsets();
+  const scrollViewRef = useRef<ScrollView>(null);
   const router = useRouter();
   const { theme } = useTheme();
   const { getModelById, editModel } = useModelStore();
@@ -56,17 +59,25 @@ export default function EditRemoteModelScreen() {
     router.back();
   };
 
+  const scrollToBottom = async () => {
+    if (Platform.OS === 'ios') {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      scrollViewRef.current?.scrollTo({ y: 500, animated: true });
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: theme.bg.softPrimary }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 16 + insets.bottom : 0}
     >
       <View style={styles.container}>
         <ModalHeader title="Edit Remote Model" onClose={() => router.back()} />
         <ScrollView
           contentContainerStyle={{ gap: 24, paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
+          ref={scrollViewRef}
         >
           <View style={styles.textFieldSection}>
             <Text style={{ ...styles.label, color: theme.text.primary }}>
@@ -100,6 +111,7 @@ export default function EditRemoteModelScreen() {
               multiline={true}
               onChangeText={setLocalTokenizerPath}
               placeholder="Enter external tokenizer URL"
+              onFocus={scrollToBottom}
             />
           </View>
           <View style={styles.textFieldSection}>
@@ -111,6 +123,7 @@ export default function EditRemoteModelScreen() {
               multiline={true}
               onChangeText={setLocalTokenizerConfigPath}
               placeholder="Enter external config URL"
+              onFocus={scrollToBottom}
             />
           </View>
         </ScrollView>
@@ -124,7 +137,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: Platform.OS === 'ios' ? 16 : 0,
     justifyContent: 'space-between',
   },
   description: {

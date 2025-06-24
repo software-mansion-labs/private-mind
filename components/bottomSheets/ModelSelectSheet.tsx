@@ -1,9 +1,10 @@
-import React, { RefObject, useCallback } from 'react';
+import React, { RefObject, useCallback, useState } from 'react';
 import {
   BottomSheetModal,
   BottomSheetFlatList,
   BottomSheetView,
   BottomSheetBackdrop,
+  BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
 import { router } from 'expo-router';
 import { View, StyleSheet, Text } from 'react-native';
@@ -13,6 +14,7 @@ import { Model } from '../../database/modelRepository';
 import { useModelStore } from '../../store/modelStore';
 import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
+import SearchIcon from '../../assets/icons/search.svg';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -22,6 +24,16 @@ interface Props {
 const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
   const { theme } = useTheme();
   const { downloadedModels } = useModelStore();
+  const [search, setSearch] = useState('');
+  const [active, setActive] = useState(false);
+
+  const filteredModels = downloadedModels.filter((model) => {
+    const matchesSearch = model.modelName
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    return matchesSearch;
+  });
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -36,6 +48,7 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
     ),
     []
   );
+
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
@@ -56,9 +69,11 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
       backgroundStyle={{
         backgroundColor: theme.bg.softPrimary,
       }}
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
     >
       {downloadedModels.length > 0 ? (
-        <View
+        <BottomSheetView
           style={{
             ...styles.bottomSheet,
             backgroundColor: theme.bg.softPrimary,
@@ -67,8 +82,33 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
           <Text style={{ ...styles.title, color: theme.text.primary }}>
             Select a Model
           </Text>
+          <View
+            style={{
+              ...styles.inputWrapper,
+              borderColor: active ? theme.bg.strongPrimary : theme.border.soft,
+              borderWidth: active ? 2 : 1,
+            }}
+          >
+            <SearchIcon
+              width={20}
+              height={20}
+              style={{ color: theme.text.primary }}
+            />
+            <BottomSheetTextInput
+              style={{
+                ...styles.input,
+                color: theme.text.primary,
+              }}
+              value={search}
+              onChangeText={setSearch}
+              placeholder={'Search Models...'}
+              placeholderTextColor={theme.text.defaultTertiary}
+              onFocus={() => setActive(true)}
+              onBlur={() => setActive(false)}
+            />
+          </View>
           <BottomSheetFlatList
-            data={downloadedModels}
+            data={filteredModels}
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={{ gap: 8, paddingBottom: 60 }}
             renderItem={({ item }) => (
@@ -81,7 +121,7 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
               />
             )}
           />
-        </View>
+        </BottomSheetView>
       ) : (
         <BottomSheetView style={styles.bottomSheet}>
           <Text style={{ ...styles.title, color: theme.text.primary }}>
@@ -93,7 +133,7 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
               color: theme.text.defaultSecondary,
             }}
           >
-            To use Local Mind you need to have at least one model downloaded
+            To use Private Mind you need to have at least one model downloaded
           </Text>
           <PrimaryButton
             text="Open models list"
@@ -129,6 +169,22 @@ const styles = StyleSheet.create({
     width: 64,
     height: 4,
     borderRadius: 20,
+  },
+  inputWrapper: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  input: {
+    fontSize: fontSizes.md,
+    fontFamily: fontFamily.regular,
+    width: '90%',
+    lineHeight: 22,
   },
 });
 
