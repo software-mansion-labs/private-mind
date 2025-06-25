@@ -9,12 +9,15 @@ import ProcessorIcon from '../../assets/icons/processor.svg';
 import DownloadCloudIcon from '../../assets/icons/download_cloud.svg';
 import DownloadIcon from '../../assets/icons/download.svg';
 import CircleButton from '../CircleButton';
-import CloseIcon from '../../assets/icons/close.svg';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import DeviceInfo from 'react-native-device-info';
 
+// This ratio represents the estimated memory (in GB) required per billion model parameters.
+// It is used to determine if the device has sufficient memory to handle the model.
 const MEMORY_TO_PARAMETERS_RATIO = 2.5;
+
+const totalMemory = DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024; // in GB
 
 interface Props {
   model: Model;
@@ -61,10 +64,10 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
 
       return;
     }
-    const memoryInGB = (await DeviceInfo.getTotalMemory()) / 1024 / 1024 / 1024;
     if (
+      totalMemory !== null &&
       model.parameters &&
-      model.parameters * MEMORY_TO_PARAMETERS_RATIO > memoryInGB &&
+      model.parameters * MEMORY_TO_PARAMETERS_RATIO > totalMemory &&
       bottomSheetModalRef?.current
     ) {
       bottomSheetModalRef?.current?.present(model);
