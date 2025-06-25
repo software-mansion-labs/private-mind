@@ -58,7 +58,7 @@ const MemoryWarningSheet = ({ bottomSheetModalRef }: Props) => {
             }}
           >
             <Text style={{ ...styles.title, color: theme.text.primary }}>
-              Your device doesn’t have enough RAM memory to download this model.
+              Not enough memory to run this model.
             </Text>
             <Text
               style={{
@@ -66,8 +66,9 @@ const MemoryWarningSheet = ({ bottomSheetModalRef }: Props) => {
                 color: theme.text.defaultSecondary,
               }}
             >
-              There is a high chance that you won’t be able to download and use
-              this model.
+              Your device may not have enough RAM to run this model smoothly.
+              For better compatibility, try using the quantized version, which
+              requires less memory and works on more devices.
             </Text>
             <View style={{ gap: 8 }}>
               <PrimaryButton
