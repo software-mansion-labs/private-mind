@@ -16,10 +16,12 @@ import SortingTag from '../components/model-hub/SortingTag';
 import SecondaryButton from '../components/SecondaryButton';
 import QuestionIcon from '../assets/icons/question.svg';
 import AddModelSheet from '../components/bottomSheets/AddModelSheet';
+import MemoryWarningSheet from '../components/bottomSheets/MemoryWarningSheet';
 
 const ModelHubScreen = () => {
   const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
   const addModelSheetRef = useRef<BottomSheetModal | null>(null);
+  const memoryWarningSheetRef = useRef<BottomSheetModal | null>(null);
   const { models } = useModelStore();
   const { theme } = useTheme();
 
@@ -238,6 +240,7 @@ const ModelHubScreen = () => {
                       <ModelCard
                         key={model.id}
                         model={model}
+                        bottomSheetModalRef={memoryWarningSheetRef}
                         onPress={() => {
                           modelManagementSheetRef.current?.present(model);
                         }}
@@ -258,6 +261,7 @@ const ModelHubScreen = () => {
 
       <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
       <AddModelSheet bottomSheetModalRef={addModelSheetRef} />
+      <MemoryWarningSheet bottomSheetModalRef={memoryWarningSheetRef} />
     </>
   );
 };
