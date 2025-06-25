@@ -54,6 +54,24 @@ const Messages = ({
     setIsAtBottom(distanceFromBottom < 50);
   };
 
+  const handleImport = async () => {
+    const importedChat = await importChatRoom();
+    if (importedChat) {
+      try {
+        const newChatId = await useChatStore
+          .getState()
+          .addChat(importedChat.title, -1);
+        if (newChatId) {
+          await importMessages(db!, newChatId, importedChat.messages);
+          router.replace(`/chat/${newChatId}`);
+        }
+      } catch (error) {
+        console.error('Error importing chat:', error);
+        Alert.alert('Error', 'Failed to import chat. Please try again.');
+      }
+    }
+  };
+
   return (
     <View style={styles.container}>
       {!model && isEmpty ? (
@@ -90,30 +108,7 @@ const Messages = ({
             <PrimaryButton text="Open a models list" onPress={onSelectModel} />
             <TextButton
               text="Import chat"
-              onPress={async () => {
-                const importedChat = await importChatRoom();
-                if (importedChat) {
-                  try {
-                    const newChatId = await useChatStore
-                      .getState()
-                      .addChat(importedChat.title, -1);
-                    if (newChatId) {
-                      await importMessages(
-                        db!,
-                        newChatId,
-                        importedChat.messages
-                      );
-                      router.replace(`/chat/${newChatId}`);
-                    }
-                  } catch (error) {
-                    console.error('Error importing chat:', error);
-                    Alert.alert(
-                      'Error',
-                      'Failed to import chat. Please try again.'
-                    );
-                  }
-                }
-              }}
+              onPress={handleImport}
               style={{ borderWidth: 0 }}
             />
           </View>

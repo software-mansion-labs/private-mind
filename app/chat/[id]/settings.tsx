@@ -79,6 +79,28 @@ export default function ChatSettingsScreen() {
     });
   };
 
+  const handleDelete = async () => {
+    Alert.alert('Delete Chat', 'Are you sure you want to delete this chat?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteChat(chatId!);
+            router.replace('/');
+          } catch (error) {
+            console.error('Error deleting chat:', error);
+            Alert.alert('Error', 'Failed to delete chat. Please try again.');
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: theme.bg.softPrimary }}
@@ -175,34 +197,7 @@ export default function ChatSettingsScreen() {
                 text={'Delete Chat'}
                 style={{ borderColor: theme.bg.errorPrimary }}
                 textStyle={{ color: theme.text.error }}
-                onPress={async () => {
-                  Alert.alert(
-                    'Delete Chat',
-                    'Are you sure you want to delete this chat?',
-                    [
-                      {
-                        text: 'Cancel',
-                        style: 'cancel',
-                      },
-                      {
-                        text: 'Delete',
-                        style: 'destructive',
-                        onPress: async () => {
-                          try {
-                            await deleteChat(chatId);
-                            router.replace('/');
-                          } catch (error) {
-                            console.error('Error deleting chat:', error);
-                            Alert.alert(
-                              'Error',
-                              'Failed to delete chat. Please try again.'
-                            );
-                          }
-                        },
-                      },
-                    ]
-                  );
-                }}
+                onPress={handleDelete}
               />
             </View>
           )}

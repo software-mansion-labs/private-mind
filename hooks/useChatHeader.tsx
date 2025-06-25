@@ -1,9 +1,9 @@
 import React, { useLayoutEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useChatStore } from '../store/chatStore';
-import ChatTitleWithMenu from '../components/chat-screen/ChatTitleWithMenu';
 import SettingsHeaderButton from '../components/SettingsHeaderButton';
 import { Model } from '../database/modelRepository';
+import ChatTitle from '../components/chat-screen/ChatTitle';
 
 interface Props {
   chatId: number;
@@ -19,7 +19,7 @@ const useChatHeader = ({ chatId, chatModel }: Props) => {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: () => (
-        <ChatTitleWithMenu
+        <ChatTitle
           title={chatTitle}
           modelName={chatModel?.modelName || 'No model selected'}
         />

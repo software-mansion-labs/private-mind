@@ -8,7 +8,7 @@ interface Props {
   modelName: string;
 }
 
-const ChatTitleWithMenu = ({ title, modelName }: Props) => {
+const ChatTitle = ({ title, modelName }: Props) => {
   const { theme } = useTheme();
 
   return (
@@ -41,4 +41,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ChatTitleWithMenu;
+export default ChatTitle;
