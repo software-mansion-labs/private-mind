@@ -4,6 +4,7 @@ import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
+import { useLLMStore } from '../../store/llmStore';
 
 interface MessageItemProps {
   content: string;
@@ -11,6 +12,7 @@ interface MessageItemProps {
   modelName?: string;
   tokensPerSecond?: number;
   timeToFirstToken?: number;
+  isLastMessage: boolean;
 }
 
 const MessageItem = memo(
@@ -20,9 +22,11 @@ const MessageItem = memo(
     role,
     tokensPerSecond,
     timeToFirstToken,
+    isLastMessage = false,
   }: MessageItemProps) => {
     const isAssistant = role === 'assistant';
     const { theme } = useTheme();
+    const { isGenerating } = useLLMStore();
 
     const parseThinkingContent = (text: string) => {
       const thinkStartIndex = text.indexOf('<think>');
@@ -90,7 +94,12 @@ const MessageItem = memo(
           {contentParts.hasThinking && (
             <ThinkingBlock
               content={contentParts.thinkingContent || ''}
-              isComplete={true}
+              isComplete={contentParts.isThinkingComplete}
+              inProgress={
+                isLastMessage &&
+                isGenerating &&
+                !contentParts.isThinkingComplete
+              }
             />
           )}
           {contentParts.normalAfterThink &&

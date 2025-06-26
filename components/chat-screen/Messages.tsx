@@ -42,7 +42,7 @@ const Messages = ({
 }: Props) => {
   const { theme } = useTheme();
   const db = useSQLiteContext();
-  const { isProcessingPrompt } = useLLMStore();
+  const { isProcessingPrompt, isGenerating } = useLLMStore();
   const isEmpty = chatHistory.length === 0 && !isProcessingPrompt;
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -86,7 +86,7 @@ const Messages = ({
         >
           <Image
             source={require('../../assets/icons/icon.png')}
-            style={{ width: 64, height: 64 }}
+            style={{ width: 64, height: 64, borderRadius: 12 }}
           />
           <View style={{ gap: 8 }}>
             <Text
@@ -129,16 +129,20 @@ const Messages = ({
           }}
         >
           <View onStartShouldSetResponder={() => true}>
-            {chatHistory.map((message, index) => (
-              <MessageItem
-                key={`${message.role}-${index}`}
-                content={message.content}
-                modelName={message.modelName}
-                role={message.role}
-                tokensPerSecond={message.tokensPerSecond}
-                timeToFirstToken={message.timeToFirstToken}
-              />
-            ))}
+            {chatHistory.map((message, index) => {
+              const isLastMessage = index === chatHistory.length - 1;
+              return (
+                <MessageItem
+                  key={`${message.role}-${index}`}
+                  content={message.content}
+                  modelName={message.modelName}
+                  role={message.role}
+                  tokensPerSecond={message.tokensPerSecond}
+                  timeToFirstToken={message.timeToFirstToken}
+                  isLastMessage={isLastMessage}
+                />
+              );
+            })}
 
             {isProcessingPrompt && (
               <View style={styles.aiRow}>
