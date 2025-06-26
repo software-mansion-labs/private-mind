@@ -92,11 +92,11 @@ const ModelHubScreen = () => {
                     fontSize: fontSizes.sm,
                   }}
                 >
-                  Adjust your search, filters or add new model.
+                  Adjust your search or add new model.
                 </Text>
               </View>
               <SecondaryButton
-                text="Clear Filters"
+                text="Clear Search"
                 onPress={() => {
                   setSearch('');
                 }}
