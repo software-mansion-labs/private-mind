@@ -4,7 +4,7 @@ export type Model = {
   id: number;
   modelName: string;
   source: 'local' | 'remote' | 'built-in';
-  isDownloaded: number;
+  isDownloaded: boolean;
   modelPath: string;
   tokenizerPath: string;
   tokenizerConfigPath: string;
@@ -64,14 +64,28 @@ export const removeModelFiles = async (db: SQLiteDatabase, id: number) => {
 };
 
 export const getAllModels = async (db: SQLiteDatabase): Promise<Model[]> => {
-  const models = await db.getAllAsync<Model>(`SELECT * FROM models`);
+  const rawModels = await db.getAllAsync<
+    Omit<Model, 'isDownloaded'> & {
+      isDownloaded: number;
+    }
+  >(`SELECT * FROM models`);
+
+  const models: Model[] = rawModels.map((model) => ({
+    ...model,
+    isDownloaded: model.isDownloaded === 1,
+  }));
+
   return models;
 };
 
 export const getDownloadedModels = async (
   db: SQLiteDatabase
 ): Promise<Model[]> => {
-  return await db.getAllAsync<Model>(
+  const rawModels = await db.getAllAsync<
+    Omit<Model, 'isDownloaded'> & {
+      isDownloaded: number;
+    }
+  >(
     `
     SELECT * FROM models
     WHERE modelPath IS NOT NULL
@@ -79,6 +93,13 @@ export const getDownloadedModels = async (
       AND tokenizerConfigPath IS NOT NULL
   `
   );
+
+  const models: Model[] = rawModels.map((model) => ({
+    ...model,
+    isDownloaded: model.isDownloaded === 1,
+  }));
+
+  return models;
 };
 
 export const updateModel = async (

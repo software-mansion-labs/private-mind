@@ -22,7 +22,7 @@ interface Props {
   onSend: () => void;
   onSelectModel: () => void;
   inputRef: Ref<TextInput>;
-  model: Model | null;
+  model: Model | undefined;
   scrollRef: RefObject<ScrollView | null>;
   isAtBottom: boolean;
 }
@@ -69,7 +69,7 @@ const ChatBar = ({
           <RotateLeft width={20} height={20} />
         </TouchableOpacity>
       )}
-      {model && model.isDownloaded === 1 && (
+      {model && model.isDownloaded && (
         <View
           style={{ ...styles.content, backgroundColor: theme.bg.strongPrimary }}
         >
@@ -165,9 +165,6 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 18,
     padding: 16,
-  },
-  selectButtonText: {
-    fontSize: 12,
   },
   input: {
     fontSize: 16,

@@ -75,8 +75,8 @@ const BenchmarkScreen = () => {
     }, 1000);
     const iterations = 1;
     await loadModel(selectedModel);
-
     const results: BenchmarkResultPerformanceNumbers[] = [];
+
     for (let i = 0; i < iterations; i++) {
       if (isBenchmarkCancelled.current) {
         clearInterval(interval);

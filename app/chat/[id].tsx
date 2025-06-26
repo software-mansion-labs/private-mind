@@ -49,7 +49,7 @@ export default function ChatScreenWrapper() {
       <ChatScreen
         chatId={chatId}
         messageHistory={messageHistory}
-        model={model || null}
+        model={model}
         selectModel={setModel}
       />
     </WithDrawerGesture>

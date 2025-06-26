@@ -64,8 +64,8 @@ const ModelHubScreen = () => {
     return matchesSearch && matchesFilter;
   });
 
-  const downloadedModels = filteredModels.filter((m) => m.isDownloaded === 1);
-  const availableModels = filteredModels.filter((m) => m.isDownloaded !== 1);
+  const downloadedModels = filteredModels.filter((m) => m.isDownloaded);
+  const availableModels = filteredModels.filter((m) => !m.isDownloaded);
 
   const renderGroupedModels = (models: typeof filteredModels) => {
     const grouped = groupModelsByPrefix(models);

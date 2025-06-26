@@ -5,9 +5,9 @@ import {
   Animated,
   Dimensions,
   Pressable,
-  SafeAreaView,
   StatusBar,
   Text,
+  SafeAreaView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DrawerMenu from './DrawerMenu';
@@ -81,7 +81,13 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <DrawerProvider openDrawer={openDrawer} closeDrawer={closeDrawer}>
-      <View style={styles.container}>
+      <View
+        style={{
+          ...styles.container,
+          backgroundColor: theme.bg.softPrimary,
+          paddingBottom: insets.bottom === 0 ? 16 : 0,
+        }}
+      >
         <Animated.View
           style={[
             styles.content,

@@ -25,11 +25,12 @@ import ChatBar from './ChatBar';
 import { ScrollView } from 'react-native-gesture-handler';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Props {
   chatId: number | null;
   messageHistory: Message[];
-  model: Model | null;
+  model: Model | undefined;
   selectModel?: Dispatch<SetStateAction<Model | undefined>>;
 }
 
@@ -56,6 +57,8 @@ export default function ChatScreen({
   const handlePresentModalPress = useCallback(() => {
     bottomSheetModalRef.current?.present();
   }, []);
+
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     loadModels();
@@ -106,7 +109,7 @@ export default function ChatScreen({
       }}
       collapsable={false}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 40}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 85 + insets.bottom : 40}
     >
       <View
         style={{

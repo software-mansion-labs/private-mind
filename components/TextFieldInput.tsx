@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TextInput, StyleSheet, View, TextInputProps } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { fontFamily, fontSizes } from '../styles/fontFamily';
@@ -7,21 +7,26 @@ type TextFieldInputProps = TextInputProps & {
   value: string;
   onChangeText: (text: string) => void;
   icon?: React.ReactNode;
+  onFocus?: () => void;
 };
 
 const TextFieldInput: React.FC<TextFieldInputProps> = ({
   value,
   onChangeText,
   icon,
+  onFocus,
   placeholder,
   ...props
 }) => {
   const { theme } = useTheme();
+  const [active, setActive] = useState(false);
+
   return (
     <View
       style={{
         ...styles.inputWrapper,
-        borderColor: theme.border.soft,
+        borderColor: active ? theme.bg.strongPrimary : theme.border.soft,
+        borderWidth: active ? 2 : 1,
       }}
     >
       {icon}
@@ -44,6 +49,11 @@ const TextFieldInput: React.FC<TextFieldInputProps> = ({
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={theme.text.defaultTertiary}
+        onFocus={() => {
+          onFocus?.();
+          setActive(true);
+        }}
+        onBlur={() => setActive(false)}
         {...props}
       />
     </View>
@@ -65,7 +75,6 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.md,
     fontFamily: fontFamily.regular,
     width: '90%',
-    height: '100%',
     lineHeight: 22,
   },
 });
