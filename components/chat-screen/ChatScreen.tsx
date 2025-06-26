@@ -30,7 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 interface Props {
   chatId: number | null;
   messageHistory: Message[];
-  model: Model | null;
+  model: Model | undefined;
   selectModel?: Dispatch<SetStateAction<Model | undefined>>;
 }
 

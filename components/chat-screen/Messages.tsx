@@ -26,7 +26,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 interface Props {
   chatHistory: Message[];
   onSelectModel: () => void;
-  model: Model | null;
+  model: Model | undefined;
   ref: RefObject<ScrollView | null>;
   isAtBottom: boolean;
   setIsAtBottom: (value: boolean) => void;

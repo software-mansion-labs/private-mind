@@ -44,7 +44,7 @@ export default function AddLocalModelScreen() {
 
     await addModelToDB({
       modelName,
-      isDownloaded: 1,
+      isDownloaded: true,
       source: 'local',
       modelPath: `file://${localModelPath.uri}`,
       tokenizerPath: `file://${localTokenizerPath.uri}`,

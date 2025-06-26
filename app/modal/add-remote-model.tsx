@@ -43,7 +43,7 @@ export default function AddRemoteModelScreen() {
       remoteModelPath.split('/').pop()?.split('.')[0] || `model-${Date.now()}`;
     await addModelToDB({
       modelName,
-      isDownloaded: 0,
+      isDownloaded: false,
       source: 'remote',
       modelPath: remoteModelPath,
       tokenizerPath: remoteTokenizerPath,

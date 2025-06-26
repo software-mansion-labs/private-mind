@@ -38,7 +38,7 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
   const [modelState, setModelState] = useState<ModelState>(
     isDownloading
       ? ModelState.Downloading
-      : model.isDownloaded === 0
+      : !model.isDownloaded
       ? ModelState.NotStarted
       : ModelState.Downloaded
   );

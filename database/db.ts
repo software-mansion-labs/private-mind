@@ -73,7 +73,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       await addModel(db, {
         modelName,
         source: 'built-in',
-        isDownloaded: 0,
+        isDownloaded: false,
         modelPath: modelPath,
         tokenizerPath: tokenizerPath,
         tokenizerConfigPath: tokenizerConfigPath,

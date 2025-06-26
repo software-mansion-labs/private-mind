@@ -13,7 +13,7 @@ import { fontFamily } from '../styles/fontFamily';
 
 export default function App() {
   const navigation = useNavigation();
-  const [model, setModel] = useState<Model | null>(null);
+  const [model, setModel] = useState<Model | undefined>();
   const { theme } = useTheme();
   useDefaultHeader();
 
