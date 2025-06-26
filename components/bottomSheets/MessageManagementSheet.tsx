@@ -16,7 +16,7 @@ interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
 }
 
-const messageManagementSheet = ({ bottomSheetModalRef }: Props) => {
+const MessageManagementSheet = ({ bottomSheetModalRef }: Props) => {
   const { theme } = useTheme();
 
   const renderBackdrop = useCallback(
@@ -82,7 +82,7 @@ const messageManagementSheet = ({ bottomSheetModalRef }: Props) => {
   );
 };
 
-export default messageManagementSheet;
+export default MessageManagementSheet;
 
 const styles = StyleSheet.create({
   title: {
