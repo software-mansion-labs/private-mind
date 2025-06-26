@@ -13,8 +13,6 @@ import ModelCard from '../model-hub/ModelCard';
 import BenchmarkStatsCard from '../benchmark/BenchmarkStatsCard';
 import DeviceInfoCard from '../benchmark/DeviceInfoCard';
 import BenchmarkDateCard from '../benchmark/BenchmarkDateCard';
-import { deleteBenchmark } from '../../database/benchmarkRepository';
-import { useSQLiteContext } from 'expo-sqlite';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -23,7 +21,6 @@ interface Props {
 
 const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
   const { theme } = useTheme();
-  const db = useSQLiteContext();
 
   const [deviceInfo, setDeviceInfo] = useState({
     model: '',
