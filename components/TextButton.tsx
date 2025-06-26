@@ -18,7 +18,7 @@ interface Props {
   textStyle?: TextStyle;
 }
 
-const SecondaryButton = ({
+const TextButton = ({
   text,
   onPress,
   disabled = false,
@@ -31,13 +31,7 @@ const SecondaryButton = ({
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
-      style={[
-        styles.button,
-        {
-          borderColor: theme.bg.strongPrimary,
-        },
-        style,
-      ]}
+      style={[styles.button, style]}
     >
       <Text style={[styles.text, { color: theme.text.primary }, textStyle]}>
         {text}
@@ -48,12 +42,13 @@ const SecondaryButton = ({
 
 const styles = StyleSheet.create({
   button: {
-    height: 48,
+    height: 40,
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 4,
+    width: '100%',
   },
   text: {
     fontFamily: fontFamily.medium,
@@ -61,4 +56,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SecondaryButton;
+export default TextButton;

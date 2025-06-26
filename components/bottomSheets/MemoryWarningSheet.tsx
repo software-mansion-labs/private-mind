@@ -40,6 +40,7 @@ const MemoryWarningSheet = ({ bottomSheetModalRef }: Props) => {
       enableDynamicSizing={true}
       handleStyle={{
         backgroundColor: theme.bg.softPrimary,
+        borderRadius: 16,
       }}
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,

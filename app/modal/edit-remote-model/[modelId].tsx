@@ -52,7 +52,6 @@ export default function EditRemoteModelScreen() {
     Toast.show({
       type: 'defaultToast',
       text1: `${modelName} has been successfully updated`,
-      props: { backgroundColor: theme.bg.strongPrimary },
     });
     router.back();
   };

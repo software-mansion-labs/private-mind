@@ -122,6 +122,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     if (!db) return;
     set({
       isProcessingPrompt: true,
+      activeChatId: chatId,
     });
     try {
       const userMessageId = await persistMessage(db, {
@@ -132,12 +133,27 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         tokensPerSecond: 0,
       });
 
-      messages.push({
+      const userMessage: Message = {
+        id: userMessageId,
+        chatId,
         role: 'user',
         content: newMessage,
-        chatId: chatId,
         timestamp: Date.now(),
-        id: userMessageId,
+      };
+
+      const assistantPlaceholder: Message = {
+        id: -1,
+        chatId,
+        role: 'assistant',
+        content: '',
+        modelName,
+        timestamp: Date.now(),
+      };
+
+      const updatedMessages = [...messages, userMessage, assistantPlaceholder];
+      set({
+        activeChatId: chatId,
+        activeChatMessages: updatedMessages,
       });
       messages.push({
         role: 'assistant',
@@ -147,8 +163,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         timestamp: Date.now(),
         id: -1,
       });
+
       set({
-        activeChatId: chatId,
         activeChatMessages: messages,
       });
 
@@ -182,7 +198,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         response: '',
         activeChatMessages: messages,
         tokenCount: 0,
-        activeChatId: chatId,
       });
 
       const startTime = performance.now();

@@ -6,16 +6,22 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Image,
+  Alert,
 } from 'react-native';
 import AnimatedChatLoading from './AnimatedChatLoading';
 import MessageItem from './MessageItem';
-import { Message } from '../../database/chatRepository';
+import { importMessages, Message } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
 import { Model } from '../../database/modelRepository';
-import SecondaryButton from '../SecondaryButton';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useLLMStore } from '../../store/llmStore';
+import PrimaryButton from '../PrimaryButton';
+import TextButton from '../TextButton';
+import { router } from 'expo-router';
+import { importChatRoom } from '../../database/exportImportRepository';
+import { useChatStore } from '../../store/chatStore';
+import { useSQLiteContext } from 'expo-sqlite';
 
 interface Props {
   chatHistory: Message[];
@@ -35,6 +41,7 @@ const Messages = ({
   setIsAtBottom,
 }: Props) => {
   const { theme } = useTheme();
+  const db = useSQLiteContext();
   const { isProcessingPrompt } = useLLMStore();
   const isEmpty = chatHistory.length === 0 && !isProcessingPrompt;
 
@@ -45,6 +52,24 @@ const Messages = ({
       contentSize.height - (contentOffset.y + layoutMeasurement.height);
 
     setIsAtBottom(distanceFromBottom < 50);
+  };
+
+  const handleImport = async () => {
+    const importedChat = await importChatRoom();
+    if (importedChat) {
+      try {
+        const newChatId = await useChatStore
+          .getState()
+          .addChat(importedChat.title, -1);
+        if (newChatId) {
+          await importMessages(db!, newChatId, importedChat.messages);
+          router.replace(`/chat/${newChatId}`);
+        }
+      } catch (error) {
+        console.error('Error importing chat:', error);
+        Alert.alert('Error', 'Failed to import chat. Please try again.');
+      }
+    }
   };
 
   return (
@@ -79,7 +104,14 @@ const Messages = ({
               external url’s.
             </Text>
           </View>
-          <SecondaryButton text="Open a models list" onPress={onSelectModel} />
+          <View style={{ gap: 8, width: '100%' }}>
+            <PrimaryButton text="Open a models list" onPress={onSelectModel} />
+            <TextButton
+              text="Import chat"
+              onPress={handleImport}
+              style={{ borderWidth: 0 }}
+            />
+          </View>
         </View>
       ) : (
         <ScrollView

@@ -29,7 +29,7 @@
     "react": "19.0.0",
     "react-native": "^0.79.2",
     "react-native-device-info": "^14.0.4",
-    "react-native-executorch": "^0.4.2",
+    "react-native-executorch": "^0.4.6",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-loading-spinner-overlay": "^3.0.1",
     "react-native-markdown-display": "^7.0.2",

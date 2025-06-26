@@ -39,12 +39,15 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
+      style={{
+        backgroundColor: theme.bg.softPrimary,
+      }}
       backdropComponent={renderBackdrop}
       snapPoints={['30%', '50%']}
       enableDynamicSizing={false}
       handleStyle={{
         backgroundColor: theme.bg.softPrimary,
-        borderRadius: 12,
+        borderRadius: 16,
       }}
       handleIndicatorStyle={{
         backgroundColor: theme.text.primary,

@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
     maxWidth: '65%',
     alignSelf: 'flex-end',
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
     justifyContent: 'center',

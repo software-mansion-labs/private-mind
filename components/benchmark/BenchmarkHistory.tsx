@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 24,
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   noDataText: {
     textAlign: 'center',
