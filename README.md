@@ -19,9 +19,9 @@ All conversations happen locally, with no data sent to the cloud and no internet
 > **Note**: The app will be relased on App Store and Google Play Store in near future.
 
 <p float="left" style="display: flex; justify-content: space-between;">
-  <img src="./promo/phone1.png" width="200" />
-  <img src="./promo/phone2.png" width="200" />
-  <img src="./promo/phone3.png" width="200" />
+  <img src="./promo/phone1.png" width="300" />
+  <img src="./promo/phone2.png" width="300" />
+  <img src="./promo/phone3.png" width="300" />
 </p>
 
 ## Getting Started
@@ -38,3 +38,5 @@ yarn expo run:ios | yarn expo run:android
 Since 2012 [Software Mansion](https://swmansion.com) is a software agency with experience in building web and mobile apps. We are Core React Native Contributors and experts in dealing with all kinds of React Native issues. We can help you build your next dream product – [Hire us](https://swmansion.com/contact/projects?utm_source=react-native-executorch&utm_medium=readme).
 
 [![swm](https://logo.swmansion.com/logo?color=white&variant=desktop&width=150&tag=react-native-executorch-github 'Software Mansion')](https://swmansion.com)
+
+Copyright 2025, [Software Mansion](https://swmansion.com/)
