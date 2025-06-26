@@ -12,7 +12,6 @@ import { fontFamily, fontSizes } from '../styles/fontFamily';
 import TextFieldInput from '../components/TextFieldInput';
 import SearchIcon from '../assets/icons/search.svg';
 import { useTheme } from '../context/ThemeContext';
-import SortingTag from '../components/model-hub/SortingTag';
 import SecondaryButton from '../components/SecondaryButton';
 import QuestionIcon from '../assets/icons/question.svg';
 import AddModelSheet from '../components/bottomSheets/AddModelSheet';
@@ -28,78 +27,17 @@ const ModelHubScreen = () => {
   useDefaultHeader();
 
   const [search, setSearch] = useState('');
-  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
-  const [groupByModel, setGroupByModel] = useState(false);
-
-  const groupModelsByPrefix = (models: typeof filteredModels) => {
-    return models.reduce<Record<string, typeof filteredModels>>(
-      (acc, model) => {
-        const prefix = model.modelName.split('-')[0].toLowerCase();
-        if (!acc[prefix]) acc[prefix] = [];
-        acc[prefix].push(model);
-        return acc;
-      },
-      {}
-    );
-  };
-
-  const toggleFilter = (filter: string) => {
-    const newFilters = new Set(activeFilters);
-    if (newFilters.has(filter)) {
-      newFilters.delete(filter);
-    } else {
-      newFilters.add(filter);
-    }
-    setActiveFilters(newFilters);
-  };
 
   const filteredModels = models.filter((model) => {
     const matchesSearch = model.modelName
       .toLowerCase()
       .includes(search.toLowerCase());
 
-    const matchesFilter =
-      activeFilters.size === 0 || activeFilters.has(model.source);
-
-    return matchesSearch && matchesFilter;
+    return matchesSearch;
   });
 
   const downloadedModels = filteredModels.filter((m) => m.isDownloaded);
   const availableModels = filteredModels.filter((m) => !m.isDownloaded);
-
-  const renderGroupedModels = (models: typeof filteredModels) => {
-    const grouped = groupModelsByPrefix(models);
-    return (
-      <>
-        {Object.entries(grouped).map(([prefix, group]) => (
-          <React.Fragment key={prefix}>
-            <Text
-              style={[
-                styles.sectionHeader,
-                {
-                  color: theme.text.defaultSecondary,
-                  textTransform: 'capitalize',
-                },
-              ]}
-            >
-              {prefix}
-            </Text>
-            <View style={{ gap: 8 }}>
-              {group.map((model) => (
-                <ModelCard
-                  key={model.id}
-                  model={model}
-                  onPress={() => {
-                    modelManagementSheetRef.current?.present(model);
-                  }}
-                />
-              ))}
-            </View>
-          </React.Fragment>
-        ))}
-      </>
-    );
-  };
 
   return (
     <>
@@ -119,34 +57,6 @@ const ModelHubScreen = () => {
               />
             }
           />
-          <View>
-            <ScrollView
-              horizontal={true}
-              contentContainerStyle={{ gap: 8 }}
-              showsHorizontalScrollIndicator={false}
-            >
-              <SortingTag
-                text="Group by model"
-                selected={groupByModel}
-                onPress={() => setGroupByModel(!groupByModel)}
-              />
-              <SortingTag
-                text="Built-in"
-                selected={activeFilters.has('built-in')}
-                onPress={() => toggleFilter('built-in')}
-              />
-              <SortingTag
-                text="Remote"
-                selected={activeFilters.has('remote')}
-                onPress={() => toggleFilter('remote')}
-              />
-              <SortingTag
-                text="Local"
-                selected={activeFilters.has('local')}
-                onPress={() => toggleFilter('local')}
-              />
-            </ScrollView>
-          </View>
           {downloadedModels.length + availableModels.length === 0 ? (
             <View style={styles.noModelsContainer}>
               <View
@@ -189,54 +99,23 @@ const ModelHubScreen = () => {
                 text="Clear Filters"
                 onPress={() => {
                   setSearch('');
-                  setActiveFilters(new Set());
                 }}
               />
             </View>
           ) : (
             <ScrollView contentContainerStyle={{ gap: 16 }}>
-              {groupByModel ? (
+              {downloadedModels.length > 0 && (
                 <>
-                  {renderGroupedModels([
-                    ...downloadedModels,
-                    ...availableModels,
-                  ])}
-                </>
-              ) : (
-                <>
-                  {downloadedModels.length > 0 && (
-                    <>
-                      <Text
-                        style={[
-                          styles.sectionHeader,
-                          { color: theme.text.defaultSecondary },
-                        ]}
-                      >
-                        Ready to Use
-                      </Text>
-                      <View style={{ gap: 8 }}>
-                        {downloadedModels.map((model) => (
-                          <ModelCard
-                            key={model.id}
-                            model={model}
-                            onPress={() => {
-                              modelManagementSheetRef.current?.present(model);
-                            }}
-                          />
-                        ))}
-                      </View>
-                    </>
-                  )}
                   <Text
                     style={[
                       styles.sectionHeader,
                       { color: theme.text.defaultSecondary },
                     ]}
                   >
-                    Available to Download
+                    Ready to Use
                   </Text>
-                  <View style={{ gap: 8, paddingBottom: 60 }}>
-                    {availableModels.map((model) => (
+                  <View style={{ gap: 8 }}>
+                    {downloadedModels.map((model) => (
                       <ModelCard
                         key={model.id}
                         model={model}
@@ -249,6 +128,26 @@ const ModelHubScreen = () => {
                   </View>
                 </>
               )}
+              <Text
+                style={[
+                  styles.sectionHeader,
+                  { color: theme.text.defaultSecondary },
+                ]}
+              >
+                Available to Download
+              </Text>
+              <View style={{ gap: 8, paddingBottom: 60 }}>
+                {availableModels.map((model) => (
+                  <ModelCard
+                    key={model.id}
+                    model={model}
+                    bottomSheetModalRef={memoryWarningSheetRef}
+                    onPress={() => {
+                      modelManagementSheetRef.current?.present(model);
+                    }}
+                  />
+                ))}
+              </View>
             </ScrollView>
           )}
           <FloatingActionButton
