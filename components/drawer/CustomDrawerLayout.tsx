@@ -8,6 +8,7 @@ import {
   StatusBar,
   Text,
   SafeAreaView,
+  TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DrawerMenu from './DrawerMenu';
@@ -68,13 +69,16 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
         >
           {text1}
         </Text>
-        <View style={{ width: '20%', alignItems: 'flex-end', marginTop: 3.33 }}>
+        <TouchableOpacity
+          onPress={() => Toast.hide()}
+          style={{ width: '20%', alignItems: 'flex-end', marginTop: 3.33 }}
+        >
           <CloseIcon
             width={13.33}
             height={13.33}
             style={{ color: theme.text.primary }}
           />
-        </View>
+        </TouchableOpacity>
       </View>
     ),
   };

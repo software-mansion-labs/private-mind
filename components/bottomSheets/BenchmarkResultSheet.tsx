@@ -13,13 +13,17 @@ import ModelCard from '../model-hub/ModelCard';
 import BenchmarkStatsCard from '../benchmark/BenchmarkStatsCard';
 import DeviceInfoCard from '../benchmark/DeviceInfoCard';
 import BenchmarkDateCard from '../benchmark/BenchmarkDateCard';
+import { deleteBenchmark } from '../../database/benchmarkRepository';
+import { useSQLiteContext } from 'expo-sqlite';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
+  handleDelete: (benchmarkId: number) => Promise<void>;
 }
 
-const BenchmarkResultSheet = ({ bottomSheetModalRef }: Props) => {
+const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
   const { theme } = useTheme();
+  const db = useSQLiteContext();
 
   const [deviceInfo, setDeviceInfo] = useState({
     model: '',
@@ -83,6 +87,15 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef }: Props) => {
           <BenchmarkDateCard timestamp={props.data.timestamp} />
 
           {/* <SecondaryButton text="Share this benchmark" onPress={() => {}} /> */}
+          <SecondaryButton
+            text="Delete this benchmark"
+            style={{ borderColor: theme.text.error }}
+            textStyle={{ color: theme.text.error }}
+            onPress={async () => {
+              await handleDelete(props.data.id);
+              bottomSheetModalRef.current?.dismiss();
+            }}
+          />
         </BottomSheetScrollView>
       )}
     </BottomSheetModal>

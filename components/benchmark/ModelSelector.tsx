@@ -10,7 +10,7 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 interface Props {
   model?: Model | null;
-  setSelectedModel: Dispatch<SetStateAction<Model | null>>;
+  setSelectedModel: Dispatch<SetStateAction<Model | undefined>>;
 }
 
 export const ModelSelector = ({ model, setSelectedModel }: Props) => {
