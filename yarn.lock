@@ -5221,7 +5221,7 @@ __metadata:
     react: 19.0.0
     react-native: ^0.79.2
     react-native-device-info: ^14.0.4
-    react-native-executorch: ^0.4.5
+    react-native-executorch: ^0.4.6
     react-native-gesture-handler: ~2.24.0
     react-native-loading-spinner-overlay: ^3.0.1
     react-native-markdown-display: ^7.0.2
@@ -6803,9 +6803,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-executorch@npm:^0.4.5":
-  version: 0.4.5
-  resolution: "react-native-executorch@npm:0.4.5"
+"react-native-executorch@npm:^0.4.6":
+  version: 0.4.6
+  resolution: "react-native-executorch@npm:0.4.6"
   dependencies:
     "@huggingface/jinja": ^0.5.0
     expo: ^53.0.7
@@ -6815,7 +6815,7 @@ __metadata:
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: b5cf0921caa6b492b1ce186a28977be19eeafc70521604fb06ca149d6840190880af71bdb9d4f8aca04e418ee024f25cda9c82155c483072c3ae654d0e34d9a9
+  checksum: 61a413a7ab849619c84bcf5f4dc0cdfcbe1bf1a044a8850ca18b0873a1bcc8c6b22a57be90693c80c8d1bdd719a52e564fc659f7e359719fa794f6b36e239a68
   languageName: node
   linkType: hard
 
