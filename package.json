@@ -12,6 +12,7 @@
     "@expo-google-fonts/dm-sans": "^0.4.0",
     "@gorhom/bottom-sheet": "^5",
     "@react-native-async-storage/async-storage": "2.1.2",
+    "@react-native-clipboard/clipboard": "^1.16.2",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native-menu/menu": "^1.2.3",
     "@react-native/metro-config": "^0.76.3",
