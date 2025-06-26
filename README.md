@@ -18,11 +18,11 @@ All conversations happen locally, with no data sent to the cloud and no internet
 
 > **Note**: The app will be relased on App Store and Google Play Store in near future.
 
-<p float="left" style="display: flex; justify-content: space-between;">
-  <img src="./promo/phone1.png" width="300" />
-  <img src="./promo/phone2.png" width="300" />
-  <img src="./promo/phone3.png" width="300" />
-</p>
+<div style="display: flex; justify-content: space-between;">
+  <img src="./promo/phone1.png" width="250" />
+  <img src="./promo/phone2.png" width="250" />
+  <img src="./promo/phone3.png" width="250" />
+</div>
 
 ## Getting Started
 
