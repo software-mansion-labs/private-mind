@@ -73,7 +73,7 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
       keyboardBlurBehavior="restore"
     >
       {downloadedModels.length > 0 ? (
-        <BottomSheetView
+        <View
           style={{
             ...styles.bottomSheet,
             backgroundColor: theme.bg.softPrimary,
@@ -110,7 +110,7 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
           <BottomSheetFlatList
             data={filteredModels}
             keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={{ gap: 8, paddingBottom: 60 }}
+            contentContainerStyle={{ gap: 8, paddingBottom: 120 }}
             renderItem={({ item }) => (
               <ModelCard
                 model={item}
@@ -121,7 +121,7 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
               />
             )}
           />
-        </BottomSheetView>
+        </View>
       ) : (
         <BottomSheetView style={styles.bottomSheet}>
           <Text style={{ ...styles.title, color: theme.text.primary }}>

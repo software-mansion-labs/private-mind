@@ -71,7 +71,7 @@ const MessageManagementSheet = ({ bottomSheetModalRef }: Props) => {
                 Clipboard.setString(props.data);
                 Toast.show({
                   type: 'defaultToast',
-                  text1: 'Message copied to your clipboard',
+                  text1: 'Message copied to clipboard',
                 });
               }}
             />
