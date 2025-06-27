@@ -1,10 +1,18 @@
-import React, { memo } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import React, { memo, useRef } from 'react';
+import {
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import MessageManagementSheet from '../bottomSheets/MessageManagementSheet';
 
 interface MessageItemProps {
   content: string;
@@ -27,6 +35,7 @@ const MessageItem = memo(
     const isAssistant = role === 'assistant';
     const { theme } = useTheme();
     const { isGenerating } = useLLMStore();
+    const messageManagementSheetRef = useRef<BottomSheetModal | null>(null);
 
     const parseThinkingContent = (text: string) => {
       const thinkStartIndex = text.indexOf('<think>');
@@ -70,59 +79,71 @@ const MessageItem = memo(
     const contentParts = parseThinkingContent(content);
 
     return (
-      <View
-        style={
-          isAssistant
-            ? styles.aiMessage
-            : { ...styles.userMessage, backgroundColor: theme.bg.softSecondary }
-        }
-      >
-        <View style={styles.bubbleContent}>
-          {isAssistant && (
-            <Text
-              style={{
-                ...styles.modelName,
-                color: theme.text.defaultSecondary,
-              }}
-            >
-              {modelName}
-            </Text>
-          )}
-          {contentParts.normalContent.trim() && (
-            <MarkdownComponent text={contentParts.normalContent} />
-          )}
-          {contentParts.hasThinking && (
-            <ThinkingBlock
-              content={contentParts.thinkingContent || ''}
-              isComplete={contentParts.isThinkingComplete}
-              inProgress={
-                isLastMessage &&
-                isGenerating &&
-                !contentParts.isThinkingComplete
-              }
-            />
-          )}
-          {contentParts.normalAfterThink &&
-            contentParts.normalAfterThink.trim() && (
-              <View>
-                <MarkdownComponent text={contentParts.normalAfterThink} />
-              </View>
-            )}
-          {isAssistant &&
-            tokensPerSecond !== undefined &&
-            tokensPerSecond !== 0 && (
+      <>
+        <View
+          style={
+            isAssistant
+              ? styles.aiMessage
+              : {
+                  ...styles.userMessage,
+                  backgroundColor: theme.bg.softSecondary,
+                }
+          }
+        >
+          <View style={styles.bubbleContent}>
+            {isAssistant && (
               <Text
                 style={{
-                  ...styles.meta,
-                  color: theme.text.defaultTertiary,
+                  ...styles.modelName,
+                  color: theme.text.defaultSecondary,
                 }}
               >
-                ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
-                {tokensPerSecond?.toFixed(2)} tok/s
+                {modelName}
               </Text>
             )}
+            {contentParts.normalContent.trim() && (
+              <MarkdownComponent text={contentParts.normalContent} />
+            )}
+            {contentParts.hasThinking && (
+              <ThinkingBlock
+                content={contentParts.thinkingContent || ''}
+                isComplete={contentParts.isThinkingComplete}
+                inProgress={
+                  isLastMessage &&
+                  isGenerating &&
+                  !contentParts.isThinkingComplete
+                }
+              />
+            )}
+            {contentParts.normalAfterThink &&
+              contentParts.normalAfterThink.trim() && (
+                <TouchableOpacity
+                  onLongPress={() => {
+                    messageManagementSheetRef.current?.present(content);
+                  }}
+                >
+                  <MarkdownComponent text={contentParts.normalAfterThink} />
+                </TouchableOpacity>
+              )}
+            {isAssistant &&
+              tokensPerSecond !== undefined &&
+              tokensPerSecond !== 0 && (
+                <Text
+                  style={{
+                    ...styles.meta,
+                    color: theme.text.defaultTertiary,
+                  }}
+                >
+                  ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
+                  {tokensPerSecond?.toFixed(2)} tok/s
+                </Text>
+              )}
+          </View>
         </View>
-      </View>
+        <MessageManagementSheet
+          bottomSheetModalRef={messageManagementSheetRef}
+        />
+      </>
     );
   }
 );

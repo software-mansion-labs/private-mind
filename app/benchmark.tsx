@@ -7,6 +7,7 @@ import { Model } from '../database/modelRepository';
 import {
   BenchmarkResult,
   BenchmarkResultPerformanceNumbers,
+  deleteBenchmark,
   getAllBenchmarks,
   insertBenchmark,
 } from '../database/benchmarkRepository';
@@ -50,14 +51,13 @@ const BenchmarkScreen = () => {
   const { runBenchmark, loadModel, interrupt } = useLLMStore();
   const { downloadedModels: models, getModelById } = useModelStore();
 
-  const [selectedModel, setSelectedModel] = useState<Model | null>(models[0]);
+  const [selectedModel, setSelectedModel] = useState<Model | undefined>();
   const [benchmarkList, setBenchmarkList] = useState<BenchmarkResult[]>([]);
   const [timer, setTimer] = useState(0);
   const [isBenchmarkModalVisible, setIsBenchmarkModalVisible] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const loadBenchmarks = useCallback(async () => {
-    if (!db) return;
     const history = await getAllBenchmarks(db);
     setBenchmarkList(history);
   }, [db]);
@@ -126,6 +126,11 @@ const BenchmarkScreen = () => {
     isBenchmarkCancelled.current = true;
   };
 
+  const handleDelete = async (benchmarkId: number) => {
+    await deleteBenchmark(db, benchmarkId);
+    await loadBenchmarks();
+  };
+
   return (
     <>
       <WithDrawerGesture>
@@ -154,7 +159,10 @@ const BenchmarkScreen = () => {
         showSuccess={showSuccess}
         handleCancel={handleCancel}
       />
-      <BenchmarkResultSheet bottomSheetModalRef={bottomSheetModalRef} />
+      <BenchmarkResultSheet
+        bottomSheetModalRef={bottomSheetModalRef}
+        handleDelete={handleDelete}
+      />
     </>
   );
 };

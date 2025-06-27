@@ -16,9 +16,10 @@ import BenchmarkDateCard from '../benchmark/BenchmarkDateCard';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
+  handleDelete: (benchmarkId: number) => Promise<void>;
 }
 
-const BenchmarkResultSheet = ({ bottomSheetModalRef }: Props) => {
+const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
   const { theme } = useTheme();
 
   const [deviceInfo, setDeviceInfo] = useState({
@@ -83,6 +84,15 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef }: Props) => {
           <BenchmarkDateCard timestamp={props.data.timestamp} />
 
           {/* <SecondaryButton text="Share this benchmark" onPress={() => {}} /> */}
+          <SecondaryButton
+            text="Delete this benchmark"
+            style={{ borderColor: theme.text.error }}
+            textStyle={{ color: theme.text.error }}
+            onPress={async () => {
+              await handleDelete(props.data.id);
+              bottomSheetModalRef.current?.dismiss();
+            }}
+          />
         </BottomSheetScrollView>
       )}
     </BottomSheetModal>
