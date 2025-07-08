@@ -102,7 +102,13 @@ const MessageItem = memo(
               </Text>
             )}
             {contentParts.normalContent.trim() && (
-              <MarkdownComponent text={contentParts.normalContent} />
+              <TouchableOpacity
+                onLongPress={() => {
+                  messageManagementSheetRef.current?.present(content);
+                }}
+              >
+                <MarkdownComponent text={contentParts.normalContent} />
+              </TouchableOpacity>
             )}
             {contentParts.hasThinking && (
               <ThinkingBlock
@@ -119,6 +125,7 @@ const MessageItem = memo(
               contentParts.normalAfterThink.trim() && (
                 <TouchableOpacity
                   onLongPress={() => {
+                    console.log('Long press on message');
                     messageManagementSheetRef.current?.present(content);
                   }}
                 >

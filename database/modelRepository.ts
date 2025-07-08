@@ -8,6 +8,7 @@ export type Model = {
   modelPath: string;
   tokenizerPath: string;
   tokenizerConfigPath: string;
+  featured?: boolean;
   parameters?: number;
   modelSize?: number;
 };
@@ -65,14 +66,16 @@ export const removeModelFiles = async (db: SQLiteDatabase, id: number) => {
 
 export const getAllModels = async (db: SQLiteDatabase): Promise<Model[]> => {
   const rawModels = await db.getAllAsync<
-    Omit<Model, 'isDownloaded'> & {
+    Omit<Model, 'isDownloaded' | 'featured'> & {
       isDownloaded: number;
+      featured: number;
     }
-  >(`SELECT * FROM models`);
+  >(`SELECT * FROM models ORDER BY featured DESC`);
 
   const models: Model[] = rawModels.map((model) => ({
     ...model,
     isDownloaded: model.isDownloaded === 1,
+    featured: model.featured === 1,
   }));
 
   return models;

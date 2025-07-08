@@ -8,8 +8,8 @@ import {
   removeModelFiles,
   updateModel,
 } from '../database/modelRepository';
-import { ResourceFetcher } from 'react-native-executorch';
 import Toast from 'react-native-toast-message';
+import { ResourceFetcher } from '../fetchUtils/ResourceFetcher';
 
 export enum ModelState {
   Downloaded = 'downloaded',
@@ -32,6 +32,7 @@ interface ModelStore {
   addModelToDB: (model: Omit<Model, 'id'>) => Promise<void>;
   getModelById: (id: number) => Model | undefined;
   downloadModel: (model: Model) => Promise<void>;
+  cancelDownload: (model: Model) => Promise<void>;
   removeModel: (modelId: number) => Promise<void>;
   removeModelFiles: (modelId: number) => Promise<void>;
   editModel: (
@@ -92,19 +93,22 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     try {
       const { modelPath, tokenizerPath, tokenizerConfigPath } = model;
 
-      await ResourceFetcher.fetch(modelPath, (p: number) => {
-        const currentPercent = Math.floor(p * 100);
-        if (currentPercent !== lastReportedPercent) {
-          lastReportedPercent = currentPercent;
-          setDownloading(p, ModelState.Downloading);
-        }
-      });
-
-      await ResourceFetcher.fetchMultipleResources(
-        () => {},
+      const result = await ResourceFetcher.fetch(
+        (p: number) => {
+          const currentPercent = Math.floor(p * 100);
+          if (currentPercent !== lastReportedPercent) {
+            lastReportedPercent = currentPercent;
+            setDownloading(p, ModelState.Downloading);
+          }
+        },
+        modelPath,
         tokenizerPath,
         tokenizerConfigPath
       );
+
+      if (result === null) {
+        return;
+      }
 
       const db = get().db;
       if (db) {
@@ -122,6 +126,24 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     }
   },
 
+  cancelDownload: async (model: Model) => {
+    console.log('Cancelling download for model:', model.modelName);
+    await ResourceFetcher.cancelFetching(
+      model.modelPath,
+      model.tokenizerPath,
+      model.tokenizerConfigPath
+    );
+
+    set((state) => ({
+      downloadStates: {
+        ...state.downloadStates,
+        [model.id]: { progress: 0, status: ModelState.NotStarted },
+      },
+    }));
+
+    return;
+  },
+
   removeModel: async (modelId: number) => {
     const db = get().db;
     if (!db) return;
@@ -131,7 +153,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
 
     try {
       if (model.source === 'remote') {
-        await ResourceFetcher.deleteMultipleResources(
+        await ResourceFetcher.deleteResources(
           model.modelPath,
           model.tokenizerPath,
           model.tokenizerConfigPath
@@ -158,7 +180,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     if (!model) return;
 
     try {
-      await ResourceFetcher.deleteMultipleResources(
+      await ResourceFetcher.deleteResources(
         model.modelPath,
         model.tokenizerPath,
         model.tokenizerConfigPath
@@ -188,12 +210,12 @@ export const useModelStore = create<ModelStore>((set, get) => ({
 
     try {
       if (model.source === 'remote') {
-        await ResourceFetcher.deleteMultipleResources(
+        await ResourceFetcher.deleteResources(
           model.tokenizerPath,
           model.tokenizerConfigPath
         );
 
-        await ResourceFetcher.fetchMultipleResources(
+        await ResourceFetcher.deleteResources(
           () => {},
           localTokenizerPath,
           localTokenizerConfigPath

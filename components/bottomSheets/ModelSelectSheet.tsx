@@ -136,7 +136,7 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
             To use Private Mind you need to have at least one model downloaded
           </Text>
           <PrimaryButton
-            text="Open models list"
+            text="Download a Model"
             onPress={() => {
               bottomSheetModalRef.current?.dismiss();
               router.push('/model-hub');
