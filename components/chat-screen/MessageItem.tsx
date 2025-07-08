@@ -104,7 +104,6 @@ const MessageItem = memo(
             {contentParts.normalContent.trim() && (
               <TouchableOpacity
                 onLongPress={() => {
-                  console.log('Long press on message');
                   messageManagementSheetRef.current?.present(content);
                 }}
               >

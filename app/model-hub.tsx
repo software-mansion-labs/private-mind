@@ -71,7 +71,7 @@ const ModelHubScreen = () => {
     const aState = downloadStates[a.id]?.status;
     const bState = downloadStates[b.id]?.status;
 
-    if (aState === ModelState.Downloading && bState !== ModelState.Downloaded)
+    if (aState === ModelState.Downloading && bState !== ModelState.Downloading)
       return -1;
     if (bState === ModelState.Downloading && aState !== ModelState.Downloading)
       return 1;
