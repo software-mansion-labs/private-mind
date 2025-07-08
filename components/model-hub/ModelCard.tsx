@@ -8,10 +8,12 @@ import Chip from '../Chip';
 import ProcessorIcon from '../../assets/icons/processor.svg';
 import DownloadCloudIcon from '../../assets/icons/download_cloud.svg';
 import DownloadIcon from '../../assets/icons/download.svg';
+import StarIcon from '../../assets/icons/star.svg';
 import CircleButton from '../CircleButton';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import DeviceInfo from 'react-native-device-info';
+import CloseIcon from '../../assets/icons/close.svg';
 
 // This ratio represents the estimated memory (in GB) required per billion model parameters.
 // It is used to determine if the device has sufficient memory to handle the model.
@@ -26,7 +28,7 @@ interface Props {
 }
 
 const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
-  const { downloadStates, downloadModel } = useModelStore();
+  const { downloadStates, downloadModel, cancelDownload } = useModelStore();
   const { theme } = useTheme();
   const downloadState = downloadStates[model.id] || {
     progress: model.isDownloaded ? 1 : 0,
@@ -54,7 +56,11 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
   }, [downloadState.status]);
 
   const handlePress = async () => {
-    if (isDownloading) return;
+    if (isDownloading) {
+      await cancelDownload(model);
+      return;
+    }
+
     const networkState = await NetInfo.fetch();
     if (!networkState.isConnected) {
       Toast.show({
@@ -111,7 +117,7 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
                 }
               />
             )}
-            {modelState === ModelState.NotStarted && model.modelSize && (
+            {model.modelSize && (
               <Chip
                 title={model.modelSize.toFixed(2) + ' GB'}
                 icon={
@@ -124,11 +130,24 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
                 borderColor={theme.border.soft}
               />
             )}
+            {model.featured && (
+              <Chip
+                title={'Featured'}
+                icon={
+                  <StarIcon
+                    width={13.33}
+                    height={13.33}
+                    style={{ color: theme.text.defaultSecondary }}
+                  />
+                }
+                borderColor={theme.border.soft}
+              />
+            )}
           </View>
         </View>
-        {/* {modelState === ModelState.Downloading && (
+        {modelState === ModelState.Downloading && (
           <CircleButton
-            onPress={() => {}}
+            onPress={handlePress}
             backgroundColor={theme.bg.errorSecondary}
             icon={
               <CloseIcon
@@ -138,7 +157,7 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
               />
             }
           />
-        )} */}
+        )}
         {modelState === ModelState.NotStarted && (
           <CircleButton
             onPress={handlePress}

@@ -67,9 +67,9 @@ const MemoryWarningSheet = ({ bottomSheetModalRef }: Props) => {
                 color: theme.text.defaultSecondary,
               }}
             >
-              Your device may not have enough RAM to run this model smoothly.
-              For better compatibility, try using the quantized version, which
-              requires less memory and works on more devices.
+              Your device may not have enough RAM to run this model smoothly. In
+              some cases, using quantized models might be a solution due to
+              their smaller size and lower memory requirements.
             </Text>
             <View style={{ gap: 8 }}>
               <PrimaryButton
