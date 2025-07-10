@@ -224,7 +224,7 @@ export default function ChatSettingsScreen() {
                   <InfoCircleIcon
                     width={20}
                     height={20}
-                    fill={theme.text.primary}
+                    style={{ color: theme.text.primary }}
                   />
                 }
               />
