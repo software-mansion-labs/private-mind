@@ -59,7 +59,10 @@ const ModelHubScreen = () => {
     const matchesSearch = model.modelName
       .toLowerCase()
       .includes(search.toLowerCase());
-    const matchesFilter = activeFilters.has('featured') ? model.featured : true;
+    const matchesFilter =
+      activeFilters.has('featured') && model.source === 'built-in'
+        ? model.featured
+        : true;
 
     return matchesSearch && matchesFilter;
   });
@@ -75,6 +78,10 @@ const ModelHubScreen = () => {
       return -1;
     if (bState === ModelState.Downloading && aState !== ModelState.Downloading)
       return 1;
+
+    if (a.parameters !== b.parameters && a.parameters && b.parameters) {
+      return a.parameters! - b.parameters;
+    }
 
     return a.modelName.localeCompare(b.modelName);
   });
@@ -138,16 +145,16 @@ const ModelHubScreen = () => {
               showsHorizontalScrollIndicator={false}
             >
               <SortingTag
-                text="Group by model"
-                selected={groupByModel}
-                onPress={() => setGroupByModel(!groupByModel)}
-              />
-              <SortingTag
                 text="Featured"
                 selected={activeFilters.has('featured')}
                 onPress={() => {
                   toggleFilter('featured');
                 }}
+              />
+              <SortingTag
+                text="Group by model"
+                selected={groupByModel}
+                onPress={() => setGroupByModel(!groupByModel)}
               />
             </ScrollView>
           </View>

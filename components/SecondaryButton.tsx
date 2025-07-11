@@ -13,6 +13,7 @@ import { fontFamily, fontSizes } from '../styles/fontFamily';
 interface Props {
   text: string;
   onPress: (event: GestureResponderEvent) => void;
+  icon?: React.ReactNode;
   disabled?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
@@ -21,6 +22,7 @@ interface Props {
 const SecondaryButton = ({
   text,
   onPress,
+  icon,
   disabled = false,
   style,
   textStyle,
@@ -39,6 +41,7 @@ const SecondaryButton = ({
         style,
       ]}
     >
+      {icon}
       <Text style={[styles.text, { color: theme.text.primary }, textStyle]}>
         {text}
       </Text>
@@ -52,6 +55,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
     borderWidth: 1,
     borderRadius: 12,
   },

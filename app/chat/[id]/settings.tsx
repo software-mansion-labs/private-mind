@@ -28,6 +28,8 @@ import Toast from 'react-native-toast-message';
 import SecondaryButton from '../../../components/SecondaryButton';
 import { exportChatRoom } from '../../../database/exportImportRepository';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import EntryButton from '../../../components/EntryButton';
+import InfoCircleIcon from '../../../assets/icons/info-circle.svg';
 
 export default function ChatSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -211,6 +213,38 @@ export default function ChatSettingsScreen() {
                 style={{ borderColor: theme.bg.errorPrimary }}
                 textStyle={{ color: theme.text.error }}
                 onPress={handleDelete}
+              />
+              <EntryButton
+                text={'App Info'}
+                onPress={() => {
+                  router.push('/modal/app-info');
+                }}
+                style={{ justifyContent: 'center' }}
+                icon={
+                  <InfoCircleIcon
+                    width={20}
+                    height={20}
+                    style={{ color: theme.text.primary }}
+                  />
+                }
+              />
+            </View>
+          )}
+          {!chatId && (
+            <View style={{ gap: 12 }}>
+              <EntryButton
+                text={'App Info'}
+                onPress={() => {
+                  router.push('/modal/app-info');
+                }}
+                style={{ justifyContent: 'center' }}
+                icon={
+                  <InfoCircleIcon
+                    width={20}
+                    height={20}
+                    style={{ color: theme.text.primary }}
+                  />
+                }
               />
             </View>
           )}
