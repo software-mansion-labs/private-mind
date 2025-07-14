@@ -16,12 +16,14 @@ All conversations happen locally, with no data sent to the cloud and no internet
 
 ## Installation
 
-> **Note**: The app will be relased on App Store and Google Play Store in near future.
+Private Mind is available in App Store and Google Play:
+- [App Store](https://apps.apple.com/pl/app/private-mind/id6746713439?l=pl)
+- [Google Play](https://play.google.com/store/apps/details?id=com.swmansion.privatemind)
 
-<div style="display: flex; justify-content: space-between;">
-  <img src="./promo/phone1.png" width="250" />
-  <img src="./promo/phone2.png" width="250" />
-  <img src="./promo/phone3.png" width="250" />
+<div style="display: flex; justify-content: space-between; gap: '16px'; flex-direction: row;">
+  <img src="./promo/phone1.png" width='33%'/>
+  <img src="./promo/phone2.png" width='33%'/>
+  <img src="./promo/phone3.png" width='33%'/>
 </div>
 
 ## Getting Started
