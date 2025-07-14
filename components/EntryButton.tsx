@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -6,9 +6,11 @@ import {
   ViewStyle,
   TextStyle,
   GestureResponderEvent,
+  View,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { fontFamily, fontSizes } from '../styles/fontFamily';
+import { Theme } from '../styles/colors';
 
 interface Props {
   text: string;
@@ -28,6 +30,7 @@ const EntryButton = ({
   textStyle,
 }: Props) => {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <TouchableOpacity
@@ -35,28 +38,29 @@ const EntryButton = ({
       disabled={disabled}
       style={[styles.button, style]}
     >
-      {icon}
-      <Text style={[styles.text, { color: theme.text.primary }, textStyle]}>
-        {text}
-      </Text>
+      {icon && <View>{icon}</View>}
+      <Text style={[styles.text, textStyle]}>{text}</Text>
     </TouchableOpacity>
   );
 };
 
-const styles = StyleSheet.create({
-  button: {
-    height: 40,
-    paddingVertical: 8,
-    gap: 12,
-    alignItems: 'center',
-    borderRadius: 4,
-    width: '100%',
-    flexDirection: 'row',
-  },
-  text: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSizes.md,
-  },
-});
-
 export default EntryButton;
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    button: {
+      height: 40,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      gap: 12,
+      alignItems: 'center',
+      borderRadius: 4,
+      width: '100%',
+      flexDirection: 'row',
+    },
+    text: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.md,
+      color: theme.text.primary,
+    },
+  });

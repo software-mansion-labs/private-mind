@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Text,
   StyleSheet,
@@ -18,6 +18,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { InfoAlert } from '../../../components/InfoAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Theme } from '../../../styles/colors';
 
 export default function EditRemoteModelScreen() {
   const { modelId: rawModelId } = useLocalSearchParams<{ modelId: string }>();
@@ -26,6 +27,8 @@ export default function EditRemoteModelScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const router = useRouter();
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const { getModelById, editModel } = useModelStore();
   const model = getModelById(modelId);
 
@@ -44,14 +47,12 @@ export default function EditRemoteModelScreen() {
       Alert.alert('Missing Fields', 'Please select all necessary files.');
       return;
     }
-
     await editModel(
       modelId,
       localTokenizerPath,
       localTokenizerConfigPath,
       modelName
     );
-
     Toast.show({
       type: 'defaultToast',
       text1: `${modelName} has been successfully updated`,
@@ -68,27 +69,23 @@ export default function EditRemoteModelScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.bg.softPrimary }}
+      style={styles.keyboardAvoidingView}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 16 + insets.bottom : 0}
     >
       <View style={styles.container}>
         <ModalHeader title="Edit Remote Model" onClose={() => router.back()} />
         <ScrollView
-          contentContainerStyle={{ gap: 24, paddingBottom: 24 }}
+          contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
           ref={scrollViewRef}
         >
           <View style={styles.textFieldSection}>
-            <Text style={{ ...styles.label, color: theme.text.primary }}>
-              Model Name
-            </Text>
+            <Text style={styles.label}>Model Name</Text>
             <TextFieldInput value={modelName} onChangeText={setModelName} />
           </View>
           <View style={styles.textFieldSection}>
-            <Text style={{ ...styles.label, color: theme.text.primary }}>
-              Model URL
-            </Text>
+            <Text style={styles.label}>Model URL</Text>
             <TextFieldInput
               editable={false}
               value={localModelPath}
@@ -96,16 +93,10 @@ export default function EditRemoteModelScreen() {
               onChangeText={setLocalModelPath}
               placeholder="Enter external model URL"
             />
-            <InfoAlert
-              text={
-                'Model file is permanently linked to this model and cannot be changed'
-              }
-            />
+            <InfoAlert text="Model file is permanently linked to this model and cannot be changed" />
           </View>
           <View style={styles.textFieldSection}>
-            <Text style={{ ...styles.label, color: theme.text.primary }}>
-              Tokenizer URL
-            </Text>
+            <Text style={styles.label}>Tokenizer URL</Text>
             <TextFieldInput
               value={localTokenizerPath}
               multiline={true}
@@ -115,9 +106,7 @@ export default function EditRemoteModelScreen() {
             />
           </View>
           <View style={styles.textFieldSection}>
-            <Text style={{ ...styles.label, color: theme.text.primary }}>
-              Tokenizer Config URL
-            </Text>
+            <Text style={styles.label}>Tokenizer Config URL</Text>
             <TextFieldInput
               value={localTokenizerConfigPath}
               multiline={true}
@@ -133,23 +122,28 @@ export default function EditRemoteModelScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 16 : 0,
-    justifyContent: 'space-between',
-  },
-  description: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSizes.md,
-  },
-  textFieldSection: {
-    gap: 16,
-  },
-  label: {
-    fontSize: fontSizes.md,
-    fontFamily: fontFamily.medium,
-  },
-  subLabel: { fontFamily: fontFamily.regular, fontSize: fontSizes.sm },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    keyboardAvoidingView: {
+      flex: 1,
+      backgroundColor: theme.bg.softPrimary,
+    },
+    container: {
+      flex: 1,
+      padding: 16,
+      paddingBottom: Platform.OS === 'ios' ? 16 : 0,
+      justifyContent: 'space-between',
+    },
+    scrollViewContent: {
+      gap: 24,
+      paddingBottom: 24,
+    },
+    textFieldSection: {
+      gap: 16,
+    },
+    label: {
+      fontSize: fontSizes.md,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
+    },
+  });

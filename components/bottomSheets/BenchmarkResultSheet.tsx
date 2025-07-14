@@ -1,4 +1,10 @@
-import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import React, {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   BottomSheetModal,
   BottomSheetBackdrop,
@@ -7,6 +13,7 @@ import {
 import { StyleSheet, Text } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
+import { Theme } from '../../styles/colors';
 import DeviceInfo from 'react-native-device-info';
 import SecondaryButton from '../SecondaryButton';
 import ModelCard from '../model-hub/ModelCard';
@@ -21,6 +28,7 @@ interface Props {
 
 const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [deviceInfo, setDeviceInfo] = useState({
     model: '',
@@ -32,14 +40,12 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
     (props: any) => (
       <BottomSheetBackdrop
         {...props}
-        style={{
-          backgroundColor: theme.bg.overlay,
-        }}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
+        style={styles.backdrop}
       />
     ),
-    []
+    [styles.backdrop]
   );
 
   useEffect(() => {
@@ -62,32 +68,21 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       snapPoints={['50%', '90%']}
-      handleStyle={{
-        borderRadius: 16,
-      }}
-      handleIndicatorStyle={{
-        backgroundColor: theme.text.primary,
-        ...styles.bottomSheetIndicator,
-      }}
-      backgroundStyle={{
-        backgroundColor: theme.bg.softPrimary,
-      }}
+      handleStyle={styles.handleStyle}
+      handleIndicatorStyle={styles.handleIndicator}
+      backgroundStyle={styles.sheetBackground}
     >
       {(props) => (
         <BottomSheetScrollView contentContainerStyle={styles.contentContainer}>
-          <Text style={{ ...styles.header, color: theme.text.primary }}>
-            Benchmark results
-          </Text>
+          <Text style={styles.header}>Benchmark results</Text>
           <ModelCard model={props.data.model} onPress={() => {}} />
           <BenchmarkStatsCard data={props.data} />
           <DeviceInfoCard deviceInfo={deviceInfo} />
           <BenchmarkDateCard timestamp={props.data.timestamp} />
-
-          {/* <SecondaryButton text="Share this benchmark" onPress={() => {}} /> */}
           <SecondaryButton
             text="Delete this benchmark"
-            style={{ borderColor: theme.text.error }}
-            textStyle={{ color: theme.text.error }}
+            style={styles.deleteButton}
+            textStyle={styles.deleteText}
             onPress={async () => {
               await handleDelete(props.data.id);
               bottomSheetModalRef.current?.dismiss();
@@ -99,21 +94,39 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
   );
 };
 
-const styles = StyleSheet.create({
-  contentContainer: {
-    gap: 24,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-  },
-  header: {
-    fontSize: fontSizes.lg,
-    fontFamily: fontFamily.medium,
-  },
-  bottomSheetIndicator: {
-    width: 64,
-    height: 4,
-    borderRadius: 20,
-  },
-});
-
 export default BenchmarkResultSheet;
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    contentContainer: {
+      gap: 24,
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+    },
+    header: {
+      fontSize: fontSizes.lg,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
+    },
+    handleStyle: {
+      borderRadius: 16,
+    },
+    handleIndicator: {
+      width: 64,
+      height: 4,
+      borderRadius: 20,
+      backgroundColor: theme.text.primary,
+    },
+    sheetBackground: {
+      backgroundColor: theme.bg.softPrimary,
+    },
+    backdrop: {
+      backgroundColor: theme.bg.overlay,
+    },
+    deleteButton: {
+      borderColor: theme.text.error,
+    },
+    deleteText: {
+      color: theme.text.error,
+    },
+  });

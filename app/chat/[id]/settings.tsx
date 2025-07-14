@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Text,
   StyleSheet,
@@ -28,6 +28,7 @@ import Toast from 'react-native-toast-message';
 import SecondaryButton from '../../../components/SecondaryButton';
 import { exportChatRoom } from '../../../database/exportImportRepository';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Theme } from '../../../styles/colors';
 
 export default function ChatSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -37,6 +38,7 @@ export default function ChatSettingsScreen() {
 
   const db = useSQLiteContext();
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { getModelById } = useModelStore();
   const { getChatById, renameChat, deleteChat } = useChatStore();
 
@@ -113,23 +115,20 @@ export default function ChatSettingsScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.bg.softPrimary }}
-      contentContainerStyle={{ flex: 1 }}
+      style={styles.keyboardAvoidingView}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 16 + insets.bottom : 0}
     >
       <View style={styles.container}>
         <ModalHeader title="Chat Settings" onClose={() => router.back()} />
         <ScrollView
-          contentContainerStyle={{ gap: 24, paddingBottom: 24 }}
+          contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
           ref={scrollViewRef}
         >
           {chatId !== null && (
             <View style={styles.textFieldSection}>
-              <Text style={{ ...styles.label, color: theme.text.primary }}>
-                Chat name
-              </Text>
+              <Text style={styles.label}>Chat name</Text>
               <TextFieldInput
                 value={chatTitle}
                 maxLength={25}
@@ -142,15 +141,8 @@ export default function ChatSettingsScreen() {
 
           {model && (
             <View style={styles.textFieldSection}>
-              <Text style={{ ...styles.label, color: theme.text.primary }}>
-                Model in use
-              </Text>
-              <Text
-                style={{
-                  ...styles.subLabel,
-                  color: theme.text.defaultSecondary,
-                }}
-              >
+              <Text style={styles.label}>Model in use</Text>
+              <Text style={styles.subLabel}>
                 Model selected during the creation of the chatroom. It cannot be
                 changed.
               </Text>
@@ -159,15 +151,8 @@ export default function ChatSettingsScreen() {
           )}
 
           <View style={styles.textFieldSection}>
-            <Text style={{ ...styles.label, color: theme.text.primary }}>
-              Context Window
-            </Text>
-            <Text
-              style={{
-                ...styles.subLabel,
-                color: theme.text.defaultSecondary,
-              }}
-            >
+            <Text style={styles.label}>Context Window</Text>
+            <Text style={styles.subLabel}>
               Number of previously entered messages the model will have access
               to.
             </Text>
@@ -179,15 +164,8 @@ export default function ChatSettingsScreen() {
           </View>
 
           <View style={styles.textFieldSection}>
-            <Text style={{ ...styles.label, color: theme.text.primary }}>
-              System Prompt
-            </Text>
-            <Text
-              style={{
-                ...styles.subLabel,
-                color: theme.text.defaultSecondary,
-              }}
-            >
+            <Text style={styles.label}>System Prompt</Text>
+            <Text style={styles.subLabel}>
               Instruction defining the behavior of the model.
             </Text>
             <TextAreaField
@@ -199,7 +177,7 @@ export default function ChatSettingsScreen() {
             />
           </View>
           {chatId && (
-            <View style={{ gap: 12 }}>
+            <View style={styles.buttonSection}>
               <SecondaryButton
                 text={'Export Chat'}
                 onPress={async () => {
@@ -221,19 +199,36 @@ export default function ChatSettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    justifyContent: 'space-between',
-    paddingBottom: Platform.OS === 'ios' ? 16 : 0,
-  },
-  textFieldSection: {
-    gap: 16,
-  },
-  label: {
-    fontSize: fontSizes.md,
-    fontFamily: fontFamily.medium,
-  },
-  subLabel: { fontFamily: fontFamily.regular, fontSize: fontSizes.sm },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    keyboardAvoidingView: {
+      flex: 1,
+      backgroundColor: theme.bg.softPrimary,
+    },
+    container: {
+      flex: 1,
+      padding: 16,
+      justifyContent: 'space-between',
+      paddingBottom: Platform.OS === 'ios' ? 24 : 0,
+    },
+    scrollViewContent: {
+      gap: 24,
+      paddingBottom: 24,
+    },
+    textFieldSection: {
+      gap: 16,
+    },
+    buttonSection: {
+      gap: 12,
+    },
+    label: {
+      fontSize: fontSizes.md,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
+    },
+    subLabel: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      color: theme.text.defaultSecondary,
+    },
+  });

@@ -1,4 +1,4 @@
-import React, { RefObject, useCallback } from 'react';
+import React, { RefObject, useCallback, useMemo } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -7,6 +7,7 @@ import {
 import { StyleSheet, Text, View } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
+import { Theme } from '../../styles/colors';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
 import { useModelStore } from '../../store/modelStore';
@@ -17,6 +18,7 @@ interface Props {
 
 const MemoryWarningSheet = ({ bottomSheetModalRef }: Props) => {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { downloadModel } = useModelStore();
 
   const renderBackdrop = useCallback(
@@ -25,95 +27,92 @@ const MemoryWarningSheet = ({ bottomSheetModalRef }: Props) => {
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        style={{
-          backgroundColor: theme.bg.overlay,
-        }}
+        style={styles.backdrop}
       />
     ),
-    []
+    [styles.backdrop]
   );
 
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
-      enableDynamicSizing={true}
-      handleStyle={{
-        backgroundColor: theme.bg.softPrimary,
-        borderRadius: 16,
-      }}
-      handleIndicatorStyle={{
-        backgroundColor: theme.text.primary,
-        ...styles.bottomSheetIndicator,
-      }}
-      backgroundStyle={{
-        backgroundColor: theme.bg.softPrimary,
-      }}
+      enableDynamicSizing
+      handleStyle={styles.handleStyle}
+      handleIndicatorStyle={styles.handleIndicator}
+      backgroundStyle={styles.background}
     >
-      {(props) => {
-        return (
-          <BottomSheetView
-            style={{
-              ...styles.bottomSheet,
-              backgroundColor: theme.bg.softPrimary,
-            }}
-          >
-            <Text style={{ ...styles.title, color: theme.text.primary }}>
-              Not enough memory to run this model.
-            </Text>
-            <Text
-              style={{
-                ...styles.bottomSheetSubText,
-                color: theme.text.defaultSecondary,
+      {(props) => (
+        <BottomSheetView style={styles.sheet}>
+          <Text style={styles.title}>Not enough memory to run this model.</Text>
+          <Text style={styles.subText}>
+            Your device may not have enough RAM to run this model smoothly. In
+            some cases, using quantized models might be a solution due to their
+            smaller size and lower memory requirements.
+          </Text>
+          <View style={styles.buttonGroup}>
+            <PrimaryButton
+              style={styles.downloadButton}
+              text="Download anyway"
+              onPress={async () => {
+                downloadModel(props.data);
+                bottomSheetModalRef.current?.dismiss();
               }}
-            >
-              Your device may not have enough RAM to run this model smoothly. In
-              some cases, using quantized models might be a solution due to
-              their smaller size and lower memory requirements.
-            </Text>
-            <View style={{ gap: 8 }}>
-              <PrimaryButton
-                style={{ backgroundColor: theme.bg.errorPrimary }}
-                text="Download anyway"
-                onPress={async () => {
-                  downloadModel(props.data);
-                  bottomSheetModalRef.current?.dismiss();
-                }}
-              />
-              <SecondaryButton
-                text="Cancel"
-                onPress={() => {
-                  bottomSheetModalRef.current?.dismiss();
-                }}
-              />
-            </View>
-          </BottomSheetView>
-        );
-      }}
+            />
+            <SecondaryButton
+              text="Cancel"
+              onPress={() => {
+                bottomSheetModalRef.current?.dismiss();
+              }}
+            />
+          </View>
+        </BottomSheetView>
+      )}
     </BottomSheetModal>
   );
 };
 
-const styles = StyleSheet.create({
-  title: {
-    fontSize: fontSizes.lg,
-    fontFamily: fontFamily.medium,
-  },
-  bottomSheet: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    gap: 24,
-    paddingBottom: 36,
-  },
-  bottomSheetIndicator: {
-    width: 64,
-    height: 4,
-    borderRadius: 20,
-  },
-  bottomSheetSubText: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSizes.md,
-  },
-});
-
 export default MemoryWarningSheet;
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    sheet: {
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      paddingBottom: 36,
+      gap: 24,
+      backgroundColor: theme.bg.softPrimary,
+    },
+    backdrop: {
+      backgroundColor: theme.bg.overlay,
+    },
+    handleStyle: {
+      backgroundColor: theme.bg.softPrimary,
+      borderRadius: 16,
+    },
+    handleIndicator: {
+      width: 64,
+      height: 4,
+      borderRadius: 20,
+      backgroundColor: theme.text.primary,
+    },
+    background: {
+      backgroundColor: theme.bg.softPrimary,
+    },
+    title: {
+      fontSize: fontSizes.lg,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
+    },
+    subText: {
+      fontSize: fontSizes.md,
+      fontFamily: fontFamily.regular,
+      color: theme.text.defaultSecondary,
+    },
+    buttonGroup: {
+      gap: 8,
+    },
+    downloadButton: {
+      backgroundColor: theme.bg.errorPrimary,
+    },
+  });

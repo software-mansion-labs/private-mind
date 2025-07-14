@@ -1,25 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { StyleSheet, TouchableOpacity, View, Text, Alert } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
+import Toast from 'react-native-toast-message';
+import DeviceInfo from 'react-native-device-info';
+import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { useTheme } from '../../context/ThemeContext';
+import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
-import { useTheme } from '../../context/ThemeContext';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import Chip from '../Chip';
+import CircleButton from '../CircleButton';
 import ProcessorIcon from '../../assets/icons/processor.svg';
 import DownloadCloudIcon from '../../assets/icons/download_cloud.svg';
 import DownloadIcon from '../../assets/icons/download.svg';
 import StarIcon from '../../assets/icons/star.svg';
-import CircleButton from '../CircleButton';
-import NetInfo from '@react-native-community/netinfo';
-import Toast from 'react-native-toast-message';
-import DeviceInfo from 'react-native-device-info';
 import CloseIcon from '../../assets/icons/close.svg';
 
-// This ratio represents the estimated memory (in GB) required per billion model parameters.
-// It is used to determine if the device has sufficient memory to handle the model.
 const MEMORY_TO_PARAMETERS_RATIO = 2.5;
-
-const totalMemory = DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024; // in GB
+const TOTAL_MEMORY = DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024; // in GB
 
 interface Props {
   model: Model;
@@ -28,8 +26,11 @@ interface Props {
 }
 
 const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
-  const { downloadStates, downloadModel, cancelDownload } = useModelStore();
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const { downloadStates, downloadModel, cancelDownload } = useModelStore();
+
   const downloadState = downloadStates[model.id] || {
     progress: model.isDownloaded ? 1 : 0,
     status: model.isDownloaded ? ModelState.Downloaded : ModelState.NotStarted,
@@ -46,13 +47,7 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
   );
 
   useEffect(() => {
-    if (downloadState.status === ModelState.Downloaded) {
-      setModelState(ModelState.Downloaded);
-    } else if (downloadState.status === ModelState.NotStarted) {
-      setModelState(ModelState.NotStarted);
-    } else if (downloadState.status === ModelState.Downloading) {
-      setModelState(ModelState.Downloading);
-    }
+    setModelState(downloadState.status);
   }, [downloadState.status]);
 
   const handlePress = async () => {
@@ -65,66 +60,58 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
     if (!networkState.isConnected) {
       Toast.show({
         type: 'defaultToast',
-        text1: `Model cannot be downloaded without internet connection.`,
+        text1: 'Model cannot be downloaded without internet connection.',
       });
-
       return;
     }
 
+    const estimatedRequiredMemory =
+      model.parameters && model.parameters * MEMORY_TO_PARAMETERS_RATIO;
+
     if (
-      totalMemory !== null &&
-      model.parameters &&
-      model.parameters * MEMORY_TO_PARAMETERS_RATIO > totalMemory &&
+      estimatedRequiredMemory &&
+      estimatedRequiredMemory > TOTAL_MEMORY &&
       bottomSheetModalRef?.current
     ) {
-      bottomSheetModalRef?.current?.present(model);
+      bottomSheetModalRef.current?.present(model);
     } else {
       await downloadModel(model);
     }
   };
 
+  const disabled =
+    modelState !== ModelState.Downloaded && model.source === 'built-in';
+
   return (
     <TouchableOpacity
-      onPress={() => {
-        onPress(model);
-      }}
-      style={{ ...styles.card, borderColor: theme.border.soft }}
-      disabled={
-        modelState !== ModelState.Downloaded && model.source === 'built-in'
-      }
+      style={[styles.card, { borderColor: theme.border.soft }]}
+      onPress={() => onPress(model)}
+      disabled={disabled}
     >
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
-        <View style={{ gap: 4 }}>
-          <Text style={{ ...styles.name, color: theme.text.primary }}>
-            {model.modelName}
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <View style={styles.topRow}>
+        <View style={styles.titleSection}>
+          <Text style={styles.name}>{model.modelName}</Text>
+          <View style={styles.chipContainer}>
             {model.parameters && (
               <Chip
-                title={model.parameters.toFixed(2) + ' B'}
+                title={`${model.parameters.toFixed(2)} B`}
                 icon={
                   <ProcessorIcon
                     width={16}
                     height={16}
-                    style={{ color: theme.text.defaultSecondary }}
+                    style={styles.iconSecondary}
                   />
                 }
               />
             )}
             {model.modelSize && (
               <Chip
-                title={model.modelSize.toFixed(2) + ' GB'}
+                title={`${model.modelSize.toFixed(2)} GB`}
                 icon={
                   <DownloadCloudIcon
                     width={16}
                     height={16}
-                    style={{ color: theme.text.defaultSecondary }}
+                    style={styles.iconSecondary}
                   />
                 }
                 borderColor={theme.border.soft}
@@ -132,12 +119,12 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
             )}
             {model.featured && (
               <Chip
-                title={'Featured'}
+                title="Featured"
                 icon={
                   <StarIcon
                     width={13.33}
                     height={13.33}
-                    style={{ color: theme.text.defaultSecondary }}
+                    style={styles.iconSecondary}
                   />
                 }
                 borderColor={theme.border.soft}
@@ -145,6 +132,7 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
             )}
           </View>
         </View>
+
         {modelState === ModelState.Downloading && (
           <CircleButton
             onPress={handlePress}
@@ -153,38 +141,30 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
               <CloseIcon
                 width={13.33}
                 height={13.33}
-                style={{ color: theme.text.primary }}
+                style={styles.iconPrimary}
               />
             }
           />
         )}
+
         {modelState === ModelState.NotStarted && (
           <CircleButton
             onPress={handlePress}
-            icon={
-              <DownloadIcon
-                width={15}
-                height={15}
-                style={{ color: theme.text.primary }}
-              />
-            }
             backgroundColor={theme.bg.softSecondary}
+            icon={
+              <DownloadIcon width={15} height={15} style={styles.iconPrimary} />
+            }
           />
         )}
       </View>
+
       {modelState === ModelState.Downloading && (
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
+        <View style={styles.progressRow}>
           <View
-            style={{
-              ...styles.progressBarContainer,
-              backgroundColor: theme.bg.softSecondary,
-            }}
+            style={[
+              styles.progressBarContainer,
+              { backgroundColor: theme.bg.softSecondary },
+            ]}
           >
             <View
               style={[
@@ -196,12 +176,7 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
               ]}
             />
           </View>
-          <Text
-            style={{
-              ...styles.progressText,
-              color: theme.text.defaultSecondary,
-            }}
-          >
+          <Text style={styles.progressText}>
             {Math.floor(downloadState.progress * 100)}%
           </Text>
         </View>
@@ -212,34 +187,56 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
 
 export default ModelCard;
 
-const styles = StyleSheet.create({
-  card: {
-    padding: 16,
-    borderWidth: 1,
-    borderRadius: 12,
-    gap: 16,
-    flexDirection: 'column',
-  },
-  name: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSizes.md,
-  },
-  sourceText: {
-    fontSize: fontSizes.xs,
-    fontFamily: fontFamily.regular,
-  },
-  progressBarContainer: {
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-    position: 'relative',
-    width: '85%',
-  },
-  progressBar: {
-    height: '100%',
-  },
-  progressText: {
-    fontSize: fontSizes.xs,
-    fontFamily: fontFamily.regular,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    card: {
+      padding: 16,
+      borderWidth: 1,
+      borderRadius: 12,
+      flexDirection: 'column',
+      gap: 16,
+    },
+    name: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.md,
+      color: theme.text.primary,
+    },
+    iconPrimary: {
+      color: theme.text.primary,
+    },
+    iconSecondary: {
+      color: theme.text.defaultSecondary,
+    },
+    titleSection: {
+      gap: 4,
+    },
+    chipContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    topRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    progressRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    progressBarContainer: {
+      height: 8,
+      borderRadius: 4,
+      overflow: 'hidden',
+      width: '85%',
+    },
+    progressBar: {
+      height: '100%',
+    },
+    progressText: {
+      fontSize: fontSizes.xs,
+      fontFamily: fontFamily.regular,
+      color: theme.text.defaultSecondary,
+    },
+  });

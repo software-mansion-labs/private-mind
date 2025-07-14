@@ -1,7 +1,8 @@
-import React from 'react';
-import { StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import React, { useMemo } from 'react';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 import PlusIcon from '../../assets/icons/plus.svg';
+import { useTheme } from '../../context/ThemeContext';
+import { Theme } from '../../styles/colors';
 
 interface Props {
   onPress: () => void;
@@ -9,32 +10,31 @@ interface Props {
 
 const FloatingActionButton = ({ onPress }: Props) => {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <TouchableOpacity
-      style={{ ...styles.fab, backgroundColor: theme.bg.main }}
-      onPress={onPress}
-    >
-      <PlusIcon
-        width={18}
-        height={18}
-        style={{ color: theme.text.contrastPrimary }}
-      />
+    <TouchableOpacity style={styles.button} onPress={onPress}>
+      <PlusIcon width={18} height={18} style={styles.icon} />
     </TouchableOpacity>
   );
 };
 
 export default FloatingActionButton;
 
-const styles = StyleSheet.create({
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 30,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    button: {
+      position: 'absolute',
+      right: 20,
+      bottom: 30,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.bg.main,
+    },
+    icon: {
+      color: theme.text.contrastPrimary,
+    },
+  });

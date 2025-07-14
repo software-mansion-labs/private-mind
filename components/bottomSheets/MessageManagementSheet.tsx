@@ -1,11 +1,12 @@
-import React, { RefObject, useCallback } from 'react';
+import React, { RefObject, useCallback, useMemo } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
 import { StyleSheet } from 'react-native';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { Theme } from '../../styles/colors';
+import { fontSizes, fontFamily } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
 import EntryButton from '../EntryButton';
 import CopyIcon from '../../assets/icons/copy.svg';
@@ -18,6 +19,7 @@ interface Props {
 
 const MessageManagementSheet = ({ bottomSheetModalRef }: Props) => {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -25,86 +27,68 @@ const MessageManagementSheet = ({ bottomSheetModalRef }: Props) => {
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        style={{
-          backgroundColor: theme.bg.overlay,
-        }}
+        style={styles.backdrop}
       />
     ),
-    []
+    [styles.backdrop]
   );
 
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
-      enableDynamicSizing={true}
-      handleStyle={{
-        backgroundColor: theme.bg.softPrimary,
-        borderRadius: 16,
-      }}
-      handleIndicatorStyle={{
-        backgroundColor: theme.text.primary,
-        ...styles.bottomSheetIndicator,
-      }}
-      backgroundStyle={{
-        backgroundColor: theme.bg.softPrimary,
-      }}
+      enableDynamicSizing
+      handleStyle={styles.handle}
+      handleIndicatorStyle={styles.handleIndicator}
+      backgroundStyle={styles.background}
     >
-      {(props) => {
-        return (
-          <BottomSheetView
-            style={{
-              ...styles.bottomSheet,
-              backgroundColor: theme.bg.softPrimary,
+      {(props) => (
+        <BottomSheetView style={styles.content}>
+          <EntryButton
+            text="Copy to clipboard"
+            icon={<CopyIcon width={19} height={20} style={styles.icon} />}
+            onPress={() => {
+              Clipboard.setString(props.data);
+              Toast.show({
+                type: 'defaultToast',
+                text1: 'Message copied to clipboard',
+              });
             }}
-          >
-            <EntryButton
-              text="Copy to clipboard"
-              icon={
-                <CopyIcon
-                  width={19}
-                  height={20}
-                  style={{ color: theme.bg.strongPrimary }}
-                />
-              }
-              onPress={() => {
-                Clipboard.setString(props.data);
-                Toast.show({
-                  type: 'defaultToast',
-                  text1: 'Message copied to clipboard',
-                });
-              }}
-            />
-          </BottomSheetView>
-        );
-      }}
+          />
+        </BottomSheetView>
+      )}
     </BottomSheetModal>
   );
 };
 
 export default MessageManagementSheet;
 
-const styles = StyleSheet.create({
-  title: {
-    fontSize: fontSizes.lg,
-    fontFamily: fontFamily.medium,
-  },
-  modelItemText: {
-    fontSize: 16,
-  },
-  bottomSheet: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    gap: 24,
-    paddingBottom: 36,
-  },
-  bottomSheetSubText: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSizes.md,
-  },
-  bottomSheetIndicator: {
-    width: 64,
-    height: 4,
-    borderRadius: 20,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    content: {
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      paddingBottom: 36,
+      gap: 24,
+      backgroundColor: theme.bg.softPrimary,
+    },
+    backdrop: {
+      backgroundColor: theme.bg.overlay,
+    },
+    handle: {
+      borderRadius: 16,
+      backgroundColor: theme.bg.softPrimary,
+    },
+    handleIndicator: {
+      width: 64,
+      height: 4,
+      borderRadius: 20,
+      backgroundColor: theme.text.primary,
+    },
+    background: {
+      backgroundColor: theme.bg.softPrimary,
+    },
+    icon: {
+      color: theme.bg.strongPrimary,
+    },
+  });

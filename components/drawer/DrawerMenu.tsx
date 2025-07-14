@@ -1,21 +1,23 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Text, StyleSheet, View } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
-import { useChatStore } from '../../store/chatStore';
-import { Chat } from '../../database/chatRepository';
-import { useLLMStore } from '../../store/llmStore';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useTheme } from '../../context/ThemeContext';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { useChatStore } from '../../store/chatStore';
+import { useLLMStore } from '../../store/llmStore';
+import { Chat } from '../../database/chatRepository';
 import ChatIcon from '../../assets/icons/chat.svg';
 import ModelsIcon from '../../assets/icons/models.svg';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
 import { DrawerItem } from './DrawerItem';
+import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { Theme } from '../../styles/colors';
 
 const getRelativeDateSection = (date: Date): string => {
   const now = new Date();
-  const diffTime = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const diffDays = Math.floor(
+    (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+  );
 
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
@@ -27,12 +29,12 @@ const getRelativeDateSection = (date: Date): string => {
   if (diffDays <= 89) return '2 months ago';
   if (diffDays <= 119) return '3 months ago';
   if (diffDays <= 364) return 'Within a year';
+
   return 'More than a year ago';
 };
 
 const groupChatsByDate = (chats: Chat[]): Record<string, Chat[]> => {
   const sections: Record<string, Chat[]> = {};
-
   chats.forEach((chat) => {
     const date = new Date(chat.lastUsed);
     const section = getRelativeDateSection(date);
@@ -41,14 +43,15 @@ const groupChatsByDate = (chats: Chat[]): Record<string, Chat[]> => {
     }
     sections[section].push(chat);
   });
-
   return sections;
 };
 
 const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const router = useRouter();
   const pathname = usePathname();
-  const { theme } = useTheme();
   const { chats } = useChatStore();
   const { isGenerating, interrupt } = useLLMStore();
 
@@ -57,78 +60,45 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
   );
 
   const navigate = (path: string) => {
-    if (isGenerating) {
-      interrupt();
-    }
-
-    if (path.includes('chat')) {
-      router.replace(path);
-    } else {
-      router.push(path);
-    }
-
+    if (isGenerating) interrupt();
+    pathname === path ? router.replace(path) : router.push(path);
     onNavigate();
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View>
+      <View style={styles.section}>
         <DrawerItem
-          icon={
-            <ChatIcon
-              width={18}
-              height={18}
-              style={{ color: theme.text.primary }}
-            />
-          }
+          icon={<ChatIcon width={18} height={18} style={styles.icon} />}
           label="New chat"
           active={pathname === '/'}
           onPress={() => navigate('/')}
         />
         <DrawerItem
-          icon={
-            <ModelsIcon
-              width={18}
-              height={18}
-              style={{ color: theme.text.primary }}
-            />
-          }
+          icon={<ModelsIcon width={18} height={18} style={styles.icon} />}
           label="Models"
           active={pathname === '/model-hub'}
           onPress={() => navigate('/model-hub')}
         />
         <DrawerItem
-          icon={
-            <BenchmarkIcon
-              width={18}
-              height={18}
-              style={{ color: theme.text.primary }}
-            />
-          }
+          icon={<BenchmarkIcon width={18} height={18} style={styles.icon} />}
           label="Benchmark"
           active={pathname === '/benchmark'}
           onPress={() => navigate('/benchmark')}
         />
       </View>
+
       {Object.entries(groupedChats).map(([sectionTitle, sectionChats]) => (
-        <View key={sectionTitle} style={{ gap: 8 }}>
-          <Text
-            style={{
-              ...styles.subSection,
-              color: theme.text.defaultTertiary,
-            }}
-          >
-            {sectionTitle}
-          </Text>
+        <View key={sectionTitle} style={styles.subSectionContainer}>
+          <Text style={styles.subSection}>{sectionTitle}</Text>
           <View>
             {sectionChats.map((chat) => {
               const path = `/chat/${chat.id}`;
-              const active = pathname === path;
               return (
                 <DrawerItem
                   key={chat.id}
                   label={chat.title || `Chat ${chat.id}`}
-                  active={active}
+                  active={pathname === path}
                   onPress={() => navigate(path)}
                 />
               );
@@ -142,16 +112,27 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
 
 export default DrawerMenu;
 
-const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 32,
-    paddingHorizontal: 16,
-    gap: 24,
-  },
-  subSection: {
-    paddingHorizontal: 12,
-    fontFamily: fontFamily.medium,
-    fontSize: fontSizes.xs,
-    letterSpacing: 0.1,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      paddingVertical: 32,
+      paddingHorizontal: 16,
+      gap: 24,
+    },
+    section: {
+      gap: 8,
+    },
+    subSectionContainer: {
+      gap: 8,
+    },
+    subSection: {
+      paddingHorizontal: 12,
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.xs,
+      letterSpacing: 0.1,
+      color: theme.text.defaultTertiary,
+    },
+    icon: {
+      color: theme.text.primary,
+    },
+  });
