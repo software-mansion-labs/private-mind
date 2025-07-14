@@ -9,7 +9,6 @@ import {
   Alert,
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router } from 'expo-router';
 
