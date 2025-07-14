@@ -20,11 +20,19 @@ Private Mind is available in App Store and Google Play:
 - [App Store](https://apps.apple.com/pl/app/private-mind/id6746713439?l=pl)
 - [Google Play](https://play.google.com/store/apps/details?id=com.swmansion.privatemind)
 
-<div style="display: flex; justify-content: space-between; gap: '16px'; flex-direction: row;">
-  <img src="./promo/phone1.png" width='33%'/>
-  <img src="./promo/phone2.png" width='33%'/>
-  <img src="./promo/phone3.png" width='33%'/>
-</div>
+<table style="width: 100%; border-collapse: collapse; border: none;">
+  <tr>
+    <td style="width: 33.33%; border: none; padding: 0;">
+      <img src="./promo/phone1.png" alt="Phone 1" style="width: 100%; height: auto;" />
+    </td>
+    <td style="width: 33.33%; border: none; padding: 0;">
+      <img src="./promo/phone2.png" alt="Phone 2" style="width: 100%; height: auto;" />
+    </td>
+    <td style="width: 33.33%; border: none; padding: 0;">
+      <img src="./promo/phone3.png" alt="Phone 3" style="width: 100%; height: auto;" />
+    </td>
+  </tr>
+</table>
 
 ## Getting Started
 
