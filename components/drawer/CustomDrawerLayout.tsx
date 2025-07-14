@@ -9,6 +9,7 @@ import {
   Text,
   SafeAreaView,
   TouchableOpacity,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DrawerProvider } from '../../context/DrawerContext';
@@ -32,6 +33,7 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const openDrawer = () => {
+    Keyboard.dismiss();
     setIsOpen(true);
     Animated.timing(translateX, {
       toValue: 0,

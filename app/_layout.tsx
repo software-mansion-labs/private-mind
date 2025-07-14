@@ -103,6 +103,13 @@ export default function Layout() {
                     headerShown: false,
                   }}
                 />
+                <Stack.Screen
+                  name="modal/app-info"
+                  options={{
+                    presentation: 'modal',
+                    headerShown: false,
+                  }}
+                />
               </Stack>
             </CustomDrawerLayout>
           </BottomSheetModalProvider>

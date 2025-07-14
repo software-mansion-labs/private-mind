@@ -14,6 +14,7 @@ import { Theme } from '../styles/colors';
 interface Props {
   text: string;
   onPress: (event: GestureResponderEvent) => void;
+  icon?: React.ReactNode;
   disabled?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
@@ -22,6 +23,7 @@ interface Props {
 const SecondaryButton = ({
   text,
   onPress,
+  icon,
   disabled = false,
   style,
   textStyle,
@@ -38,7 +40,10 @@ const SecondaryButton = ({
       disabled={disabled}
       style={[styles.button, style]}
     >
-      <Text style={[styles.text, textStyle]}>{text}</Text>
+      {icon}
+      <Text style={[styles.text, textStyle]}>
+        {text}
+      </Text>
     </TouchableOpacity>
   );
 };
