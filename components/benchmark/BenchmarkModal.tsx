@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Modal, View, Text, StyleSheet } from 'react-native';
 import ModelCard from '../model-hub/ModelCard';
 import SecondaryButton from '../SecondaryButton';
 import { SpinningCircleTimer } from '../SpinningCircleTimer';
 import { fontSizes, fontFamily } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
+import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';
 import CheckIcon from '../../assets/icons/check.svg';
 
@@ -24,79 +25,40 @@ export const BenchmarkModal = ({
   selectedModel,
 }: Props) => {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <Modal
       visible={isVisible}
-      transparent={true}
+      transparent
       animationType="fade"
       onRequestClose={handleCancel}
     >
-      <View
-        style={{ ...styles.modalOverlay, backgroundColor: theme.bg.overlay }}
-      >
+      <View style={styles.modalOverlay}>
         {!showSuccess ? (
-          <View
-            style={{
-              ...styles.benchmarkCard,
-              backgroundColor: theme.bg.softPrimary,
-              height: 368,
-            }}
-          >
+          <View style={styles.benchmarkCard}>
             <SpinningCircleTimer size={100} time={timer} />
-            <View
-              style={{
-                width: '100%',
-                justifyContent: 'center',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <Text style={{ ...styles.statusText, color: theme.text.primary }}>
-                Running a benchmark
-              </Text>
-              <Text
-                style={{
-                  ...styles.subText,
-                  color: theme.text.defaultTertiary,
-                }}
-              >
+            <View style={styles.textWrapper}>
+              <Text style={styles.statusText}>Running a benchmark</Text>
+              <Text style={styles.subText}>
                 It may take around 1–3 minutes…
               </Text>
             </View>
-            <View style={{ width: '100%', gap: 8 }}>
-              <ModelCard model={selectedModel!} onPress={() => {}} />
-              <SecondaryButton
-                text={'Cancel benchmark'}
-                onPress={handleCancel}
-              />
+            <View style={styles.bottomSection}>
+              <ModelCard model={selectedModel} onPress={() => {}} />
+              <SecondaryButton text="Cancel benchmark" onPress={handleCancel} />
             </View>
           </View>
         ) : (
-          <View
-            style={{
-              ...styles.benchmarkCard,
-              backgroundColor: theme.bg.softPrimary,
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: 368,
-            }}
-          >
-            <View
-              style={{
-                ...styles.successIcon,
-                backgroundColor: theme.bg.main,
-              }}
-            >
+          <View style={styles.benchmarkCardSuccess}>
+            <View style={styles.successIcon}>
               <CheckIcon
                 width={48}
                 height={48}
-                style={{ color: theme.text.contrastPrimary }}
+                style={styles.successIconCheck}
               />
             </View>
-            <Text style={{ ...styles.statusText, color: theme.text.primary }}>
-              Your benchmark is ready!
-            </Text>
+            <Text style={styles.statusText}>Your benchmark is ready!</Text>
           </View>
         )}
       </View>
@@ -104,45 +66,64 @@ export const BenchmarkModal = ({
   );
 };
 
-const styles = StyleSheet.create({
-  benchmarkCard: {
-    borderRadius: 18,
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    gap: 24,
-    width: '90%',
-  },
-  timerText: { fontFamily: fontFamily.medium, fontSize: fontSizes.xl },
-  statusText: {
-    fontSize: fontSizes.lg,
-    fontFamily: fontFamily.medium,
-  },
-  subText: { fontSize: fontSizes.xs, fontFamily: fontFamily.regular },
-  cancelBtn: {
-    borderWidth: 1,
-    borderColor: '#293775',
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  successCard: {
-    backgroundColor: '#fff',
-    padding: 24,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  successIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 9999,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    modalOverlay: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.bg.overlay,
+    },
+    benchmarkCard: {
+      width: '90%',
+      height: 368,
+      borderRadius: 18,
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      backgroundColor: theme.bg.softPrimary,
+      alignItems: 'center',
+      gap: 24,
+    },
+    benchmarkCardSuccess: {
+      width: '90%',
+      height: 368,
+      borderRadius: 18,
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      backgroundColor: theme.bg.softPrimary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 24,
+    },
+    statusText: {
+      fontSize: fontSizes.lg,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
+    },
+    subText: {
+      fontSize: fontSizes.xs,
+      fontFamily: fontFamily.regular,
+      color: theme.text.defaultTertiary,
+    },
+    textWrapper: {
+      width: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    bottomSection: {
+      width: '100%',
+      gap: 8,
+    },
+    successIcon: {
+      width: 100,
+      height: 100,
+      borderRadius: 9999,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.bg.main,
+    },
+    successIconCheck: {
+      color: theme.text.contrastPrimary,
+    },
+  });

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Animated, {
@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme } from '../context/ThemeContext';
 import { fontFamily, fontSizes } from '../styles/fontFamily';
+import { Theme } from '../styles/colors';
 
 interface SpinningCircleProps {
   size?: number;
@@ -22,8 +23,9 @@ export const SpinningCircleTimer = ({
   strokeWidth = 8,
   time,
 }: SpinningCircleProps) => {
-  const rotation = useSharedValue(0);
   const { theme } = useTheme();
+  const rotation = useSharedValue(0);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   useEffect(() => {
     rotation.value = withRepeat(
@@ -37,27 +39,18 @@ export const SpinningCircleTimer = ({
   }, []);
 
   const radius = (size - strokeWidth) / 2;
-  const center = size / 2;
-  const minutes = Math.floor(time / 60);
-  const seconds = time % 60;
-  const text = `${minutes}:${String(seconds).padStart(2, '0')}`;
   const cx = size / 2;
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ rotate: `${rotation.value}deg` }],
-    };
-  });
+  const minutes = Math.floor(time / 60);
+  const seconds = time % 60;
+  const displayTime = `${minutes}:${String(seconds).padStart(2, '0')}`;
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
 
   return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
+    <View style={[styles.wrapper, { width: size, height: size }]}>
       <Svg width={size} height={size}>
         <Circle
           cx={cx}
@@ -73,8 +66,8 @@ export const SpinningCircleTimer = ({
       >
         <Svg height={size} width={size}>
           <Circle
-            cx={center}
-            cy={center}
+            cx={cx}
+            cy={cx}
             r={radius}
             stroke={theme.text.primary}
             strokeWidth={strokeWidth}
@@ -86,21 +79,25 @@ export const SpinningCircleTimer = ({
           />
         </Svg>
       </Animated.View>
-      <Text style={[styles.timeText, { color: theme.text.primary }]}>
-        {text}
-      </Text>
+      <Text style={styles.timeText}>{displayTime}</Text>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  spinner: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  timeText: {
-    position: 'absolute',
-    fontFamily: fontFamily.medium,
-    fontSize: fontSizes.xl,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    wrapper: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    spinner: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    timeText: {
+      position: 'absolute',
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.xl,
+      color: theme.text.primary,
+    },
+  });

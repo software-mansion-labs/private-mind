@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { fontFamily, fontSizes } from '../styles/fontFamily';
+import { Theme } from '../styles/colors';
 
 interface Props {
   text: string;
@@ -26,42 +27,39 @@ const PrimaryButton = ({
   textStyle,
 }: Props) => {
   const { theme } = useTheme();
+  const styles = useMemo(
+    () => createStyles(theme, disabled),
+    [theme, disabled]
+  );
 
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
-      style={[
-        styles.button,
-        {
-          backgroundColor: theme.bg.main,
-          opacity: disabled ? 0.4 : 1,
-        },
-        style,
-      ]}
+      style={[styles.button, style]}
     >
-      <Text
-        style={[styles.text, { color: theme.text.contrastPrimary }, textStyle]}
-      >
-        {text}
-      </Text>
+      <Text style={[styles.text, textStyle]}>{text}</Text>
     </TouchableOpacity>
   );
 };
 
-const styles = StyleSheet.create({
-  button: {
-    height: 48,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    width: '100%',
-  },
-  text: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSizes.md,
-  },
-});
-
 export default PrimaryButton;
+
+const createStyles = (theme: Theme, disabled: boolean) =>
+  StyleSheet.create({
+    button: {
+      height: 48,
+      width: '100%',
+      borderRadius: 12,
+      paddingHorizontal: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.bg.main,
+      opacity: disabled ? 0.4 : 1,
+    },
+    text: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.md,
+      color: theme.text.contrastPrimary,
+    },
+  });

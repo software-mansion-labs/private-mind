@@ -1,10 +1,17 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
+import { Theme } from '../../styles/colors';
 
-const BenchmarkDateCard = ({ timestamp }: { timestamp: string }) => {
+type Props = {
+  timestamp: string;
+};
+
+const BenchmarkDateCard = ({ timestamp }: Props) => {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const displayDate = new Date(timestamp || new Date()).toLocaleDateString(
     'en-GB',
     {
@@ -15,32 +22,32 @@ const BenchmarkDateCard = ({ timestamp }: { timestamp: string }) => {
   );
 
   return (
-    <View style={[styles.card, { borderColor: theme.border.soft }]}>
-      <Text style={[styles.label, { color: theme.text.defaultSecondary }]}>
-        Benchmark date
-      </Text>
-      <Text style={[styles.result, { color: theme.text.primary }]}>
-        {displayDate}
-      </Text>
+    <View style={styles.card}>
+      <Text style={styles.label}>Benchmark date</Text>
+      <Text style={styles.result}>{displayDate}</Text>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  card: {
-    borderWidth: 1,
-    borderRadius: 4,
-    padding: 16,
-    gap: 16,
-  },
-  label: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSizes.sm,
-  },
-  result: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSizes.md,
-  },
-});
-
 export default BenchmarkDateCard;
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    card: {
+      borderWidth: 1,
+      borderColor: theme.border.soft,
+      borderRadius: 4,
+      padding: 16,
+      gap: 16,
+    },
+    label: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      color: theme.text.defaultSecondary,
+    },
+    result: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.md,
+      color: theme.text.primary,
+    },
+  });

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
 import { useTheme } from '../../context/ThemeContext';
+import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontFamily';
 
 interface Props {
@@ -12,39 +13,21 @@ interface Props {
 
 const BenchmarkItem = ({ entry, onPress }: Props) => {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const date = new Date(entry.timestamp);
   const formattedDate = `${date.getDate()} ${date.toLocaleString('default', {
     month: 'short',
   })}`;
 
   return (
-    <TouchableOpacity
-      style={{ ...styles.container, borderColor: theme.border.soft }}
-      onPress={onPress}
-    >
-      <View
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 9999,
-          backgroundColor: theme.bg.softSecondary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <BenchmarkIcon
-          width={15}
-          height={15}
-          style={{ color: theme.text.defaultTertiary }}
-        />
+    <TouchableOpacity style={styles.container} onPress={onPress}>
+      <View style={styles.iconWrapper}>
+        <BenchmarkIcon width={15} height={15} style={styles.icon} />
       </View>
       <View>
-        <Text style={{ ...styles.title, color: theme.text.primary }}>
-          {entry.modelName}
-        </Text>
-        <Text style={{ ...styles.date, color: theme.text.defaultSecondary }}>
-          {formattedDate}
-        </Text>
+        <Text style={styles.title}>{entry.modelName}</Text>
+        <Text style={styles.date}>{formattedDate}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -52,19 +35,37 @@ const BenchmarkItem = ({ entry, onPress }: Props) => {
 
 export default BenchmarkItem;
 
-const styles = StyleSheet.create({
-  container: {
-    borderRadius: 12,
-    padding: 16,
-    paddingLeft: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  title: { fontFamily: fontFamily.medium, fontSize: fontSizes.sm },
-  date: {
-    fontSize: fontSizes.xs,
-    fontFamily: fontFamily.regular,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      padding: 16,
+      paddingLeft: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border.soft,
+    },
+    iconWrapper: {
+      width: 36,
+      height: 36,
+      borderRadius: 9999,
+      backgroundColor: theme.bg.softSecondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    icon: {
+      color: theme.text.defaultTertiary,
+    },
+    title: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.sm,
+      color: theme.text.primary,
+    },
+    date: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.xs,
+      color: theme.text.defaultSecondary,
+    },
+  });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { fontFamily, fontSizes } from '../styles/fontFamily';
+import { Theme } from '../styles/colors';
 
 interface Props {
   text: string;
@@ -28,41 +29,42 @@ const SecondaryButton = ({
   textStyle,
 }: Props) => {
   const { theme } = useTheme();
+  const styles = useMemo(
+    () => createStyles(theme, disabled),
+    [theme, disabled]
+  );
 
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
-      style={[
-        styles.button,
-        {
-          borderColor: theme.bg.strongPrimary,
-        },
-        style,
-      ]}
+      style={[styles.button, style]}
     >
       {icon}
-      <Text style={[styles.text, { color: theme.text.primary }, textStyle]}>
+      <Text style={[styles.text, textStyle]}>
         {text}
       </Text>
     </TouchableOpacity>
   );
 };
 
-const styles = StyleSheet.create({
-  button: {
-    height: 48,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderRadius: 12,
-  },
-  text: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSizes.sm,
-  },
-});
-
 export default SecondaryButton;
+
+const createStyles = (theme: Theme, disabled: boolean) =>
+  StyleSheet.create({
+    button: {
+      height: 48,
+      paddingHorizontal: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderRadius: 12,
+      borderColor: theme.bg.strongPrimary,
+      opacity: disabled ? 0.4 : 1,
+    },
+    text: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.sm,
+      color: theme.text.primary,
+    },
+  });

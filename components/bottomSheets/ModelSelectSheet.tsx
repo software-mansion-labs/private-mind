@@ -1,4 +1,4 @@
-import React, { RefObject, useCallback, useState } from 'react';
+import React, { RefObject, useCallback, useMemo, useState } from 'react';
 import {
   BottomSheetModal,
   BottomSheetFlatList,
@@ -8,12 +8,13 @@ import {
 } from '@gorhom/bottom-sheet';
 import { router } from 'expo-router';
 import { View, StyleSheet, Text } from 'react-native';
+import { useModelStore } from '../../store/modelStore';
+import { useTheme } from '../../context/ThemeContext';
+import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { Theme } from '../../styles/colors';
+import { Model } from '../../database/modelRepository';
 import ModelCard from '../model-hub/ModelCard';
 import PrimaryButton from '../PrimaryButton';
-import { Model } from '../../database/modelRepository';
-import { useModelStore } from '../../store/modelStore';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
-import { useTheme } from '../../context/ThemeContext';
 import SearchIcon from '../../assets/icons/search.svg';
 
 interface Props {
@@ -23,17 +24,14 @@ interface Props {
 
 const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { downloadedModels } = useModelStore();
   const [search, setSearch] = useState('');
   const [active, setActive] = useState(false);
 
-  const filteredModels = downloadedModels.filter((model) => {
-    const matchesSearch = model.modelName
-      .toLowerCase()
-      .includes(search.toLowerCase());
-
-    return matchesSearch;
-  });
+  const filteredModels = downloadedModels.filter((model) =>
+    model.modelName.toLowerCase().includes(search.toLowerCase())
+  );
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -41,76 +39,55 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        style={{
-          backgroundColor: theme.bg.overlay,
-        }}
+        style={styles.backdrop}
       />
     ),
-    []
+    [styles.backdrop]
   );
 
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
-      style={{
-        backgroundColor: theme.bg.softPrimary,
-      }}
       backdropComponent={renderBackdrop}
       snapPoints={['30%', '50%']}
       enableDynamicSizing={false}
-      handleStyle={{
-        backgroundColor: theme.bg.softPrimary,
-        borderRadius: 16,
-      }}
-      handleIndicatorStyle={{
-        backgroundColor: theme.text.primary,
-        ...styles.bottomSheetIndicator,
-      }}
-      backgroundStyle={{
-        backgroundColor: theme.bg.softPrimary,
-      }}
+      style={styles.sheet}
+      handleStyle={styles.handle}
+      handleIndicatorStyle={styles.handleIndicator}
+      backgroundStyle={styles.background}
       keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
     >
       {downloadedModels.length > 0 ? (
-        <View
-          style={{
-            ...styles.bottomSheet,
-            backgroundColor: theme.bg.softPrimary,
-          }}
-        >
-          <Text style={{ ...styles.title, color: theme.text.primary }}>
-            Select a Model
-          </Text>
+        <View style={styles.content}>
+          <Text style={styles.title}>Select a Model</Text>
           <View
-            style={{
-              ...styles.inputWrapper,
-              borderColor: active ? theme.bg.strongPrimary : theme.border.soft,
-              borderWidth: active ? 2 : 1,
-            }}
+            style={[
+              styles.inputWrapper,
+              {
+                borderColor: active
+                  ? theme.bg.strongPrimary
+                  : theme.border.soft,
+                borderWidth: active ? 2 : 1,
+              },
+            ]}
           >
-            <SearchIcon
-              width={20}
-              height={20}
-              style={{ color: theme.text.primary }}
-            />
+            <SearchIcon width={20} height={20} style={styles.searchIcon} />
             <BottomSheetTextInput
-              style={{
-                ...styles.input,
-                color: theme.text.primary,
-              }}
+              style={styles.input}
               value={search}
               onChangeText={setSearch}
-              placeholder={'Search Models...'}
+              placeholder="Search Models..."
               placeholderTextColor={theme.text.defaultTertiary}
               onFocus={() => setActive(true)}
               onBlur={() => setActive(false)}
             />
           </View>
+
           <BottomSheetFlatList
             data={filteredModels}
             keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={{ gap: 8, paddingBottom: 120 }}
+            contentContainerStyle={styles.modelList}
             renderItem={({ item }) => (
               <ModelCard
                 model={item}
@@ -123,16 +100,9 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
           />
         </View>
       ) : (
-        <BottomSheetView style={styles.bottomSheet}>
-          <Text style={{ ...styles.title, color: theme.text.primary }}>
-            You have no available models yet
-          </Text>
-          <Text
-            style={{
-              ...styles.bottomSheetSubText,
-              color: theme.text.defaultSecondary,
-            }}
-          >
+        <BottomSheetView style={styles.content}>
+          <Text style={styles.title}>You have no available models yet</Text>
+          <Text style={styles.subText}>
             To use Private Mind you need to have at least one model downloaded
           </Text>
           <PrimaryButton
@@ -148,44 +118,64 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
   );
 };
 
-const styles = StyleSheet.create({
-  title: {
-    fontSize: fontSizes.lg,
-    fontFamily: fontFamily.medium,
-  },
-  modelItemText: {
-    fontSize: 16,
-  },
-  bottomSheet: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    gap: 24,
-  },
-  bottomSheetSubText: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSizes.md,
-  },
-  bottomSheetIndicator: {
-    width: 64,
-    height: 4,
-    borderRadius: 20,
-  },
-  inputWrapper: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  input: {
-    fontSize: fontSizes.md,
-    fontFamily: fontFamily.regular,
-    width: '90%',
-    lineHeight: 22,
-  },
-});
-
 export default ModelSelectSheet;
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    sheet: {
+      backgroundColor: theme.bg.softPrimary,
+    },
+    handle: {
+      backgroundColor: theme.bg.softPrimary,
+      borderRadius: 16,
+    },
+    handleIndicator: {
+      width: 64,
+      height: 4,
+      borderRadius: 20,
+      backgroundColor: theme.text.primary,
+    },
+    background: {
+      backgroundColor: theme.bg.softPrimary,
+    },
+    backdrop: {
+      backgroundColor: theme.bg.overlay,
+    },
+    content: {
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      gap: 24,
+    },
+    title: {
+      fontSize: fontSizes.lg,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
+    },
+    subText: {
+      fontSize: fontSizes.md,
+      fontFamily: fontFamily.regular,
+      color: theme.text.defaultSecondary,
+    },
+    inputWrapper: {
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    input: {
+      width: '90%',
+      fontSize: fontSizes.md,
+      fontFamily: fontFamily.regular,
+      color: theme.text.primary,
+      lineHeight: 22,
+    },
+    searchIcon: {
+      color: theme.text.primary,
+    },
+    modelList: {
+      gap: 8,
+      paddingBottom: 120,
+    },
+  });

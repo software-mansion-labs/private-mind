@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Text,
   StyleSheet,
@@ -16,6 +16,7 @@ import PrimaryButton from '../../components/PrimaryButton';
 import { ScrollView } from 'react-native-gesture-handler';
 import UploadInput from '../../components/UploadInput';
 import Toast from 'react-native-toast-message';
+import { Theme } from '../../styles/colors';
 
 type LocalFile = {
   name: string;
@@ -26,6 +27,7 @@ type LocalFile = {
 export default function AddLocalModelScreen() {
   const router = useRouter();
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { addModelToDB } = useModelStore();
 
   const [localModelPath, setLocalModelPath] = useState<LocalFile | null>(null);
@@ -39,9 +41,7 @@ export default function AddLocalModelScreen() {
       Alert.alert('Missing Fields', 'Please select all necessary files.');
       return;
     }
-
     const modelName = localModelPath.name.split('.')[0];
-
     await addModelToDB({
       modelName,
       isDownloaded: true,
@@ -60,41 +60,35 @@ export default function AddLocalModelScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.bg.softPrimary }}
+      style={styles.keyboardAvoidingView}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
     >
       <View style={styles.container}>
         <ModalHeader title="Add Local Model" onClose={() => router.back()} />
         <ScrollView
-          contentContainerStyle={{ gap: 24 }}
+          contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={{ ...styles.description, color: theme.text.primary }}>
+          <Text style={styles.description}>
             Add a model using an existing files in your phone storage.
           </Text>
           <View style={styles.textFieldSection}>
-            <Text style={{ ...styles.label, color: theme.text.primary }}>
-              Model URL
-            </Text>
+            <Text style={styles.label}>Model URL</Text>
             <UploadInput
               fileInfo={localModelPath}
               onChange={setLocalModelPath}
             />
           </View>
           <View style={styles.textFieldSection}>
-            <Text style={{ ...styles.label, color: theme.text.primary }}>
-              Tokenizer URL
-            </Text>
+            <Text style={styles.label}>Tokenizer URL</Text>
             <UploadInput
               fileInfo={localTokenizerPath}
               onChange={setLocalTokenizerPath}
             />
           </View>
           <View style={styles.textFieldSection}>
-            <Text style={{ ...styles.label, color: theme.text.primary }}>
-              Tokenizer Config URL
-            </Text>
+            <Text style={styles.label}>Tokenizer Config URL</Text>
             <UploadInput
               fileInfo={localTokenizerConfigPath}
               onChange={setLocalTokenizerConfigPath}
@@ -107,23 +101,33 @@ export default function AddLocalModelScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    paddingBottom: 32,
-    justifyContent: 'space-between',
-  },
-  description: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSizes.md,
-  },
-  textFieldSection: {
-    gap: 16,
-  },
-  label: {
-    fontSize: fontSizes.md,
-    fontFamily: fontFamily.medium,
-  },
-  subLabel: { fontFamily: fontFamily.regular, fontSize: fontSizes.sm },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    keyboardAvoidingView: {
+      flex: 1,
+      backgroundColor: theme.bg.softPrimary,
+    },
+    container: {
+      flex: 1,
+      padding: 16,
+      paddingBottom: Platform.OS === 'ios' ? 24 : 0,
+      justifyContent: 'space-between',
+    },
+    scrollViewContent: {
+      gap: 24,
+      paddingBottom: 24,
+    },
+    description: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.md,
+      color: theme.text.primary,
+    },
+    textFieldSection: {
+      gap: 16,
+    },
+    label: {
+      fontSize: fontSizes.md,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
+    },
+  });

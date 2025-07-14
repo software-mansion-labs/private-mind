@@ -1,8 +1,9 @@
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import React, { useMemo } from 'react';
+import { TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import Settings from '../assets/icons/settings.svg';
 import { useTheme } from '../context/ThemeContext';
+import { Theme } from '../styles/colors';
 
 interface Props {
   chatId: number | null;
@@ -11,23 +12,29 @@ interface Props {
 const SettingsHeaderButton = ({ chatId }: Props) => {
   const router = useRouter();
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const handlePress = () => {
+    router.push(`/chat/${chatId}/settings`);
+  };
+
   return (
-    <TouchableOpacity
-      onPress={() => router.push(`/chat/${chatId}/settings`)}
-      style={styles.button}
-    >
-      <Settings width={18} height={20} style={{ color: theme.text.primary }} />
+    <TouchableOpacity onPress={handlePress} style={styles.button}>
+      <Settings width={18} height={20} style={styles.icon} />
     </TouchableOpacity>
   );
 };
 
 export default SettingsHeaderButton;
 
-const styles = StyleSheet.create({
-  button: {
-    paddingHorizontal: 16,
-  },
-  text: {
-    fontSize: 20,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    button: {
+      paddingHorizontal: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    icon: {
+      color: theme.text.primary,
+    },
+  });

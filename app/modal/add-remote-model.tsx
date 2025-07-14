@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Text,
   StyleSheet,
@@ -17,13 +17,16 @@ import PrimaryButton from '../../components/PrimaryButton';
 import { ScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Theme } from '../../styles/colors';
 
 export default function AddRemoteModelScreen() {
   const router = useRouter();
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const scrollViewRef = useRef<ScrollView>(null);
   const { addModelToDB } = useModelStore();
   const insets = useSafeAreaInsets();
+
   const [remoteModelPath, setRemoteModelPath] = useState('');
   const [remoteTokenizerPath, setRemoteTokenizerPath] = useState('');
   const [remoteTokenizerConfigPath, setRemoteTokenizerConfigPath] =
@@ -41,6 +44,7 @@ export default function AddRemoteModelScreen() {
 
     const modelName =
       remoteModelPath.split('/').pop()?.split('.')[0] || `model-${Date.now()}`;
+
     await addModelToDB({
       modelName,
       isDownloaded: false,
@@ -49,10 +53,12 @@ export default function AddRemoteModelScreen() {
       tokenizerPath: remoteTokenizerPath,
       tokenizerConfigPath: remoteTokenizerConfigPath,
     });
+
     Toast.show({
       type: 'defaultToast',
       text1: `${modelName} has been successfully added`,
     });
+
     router.back();
   };
 
@@ -65,25 +71,24 @@ export default function AddRemoteModelScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.bg.softPrimary }}
+      style={styles.keyboardAvoidingView}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 16 + insets.bottom : 0}
     >
       <View style={styles.container}>
         <ModalHeader title="Add External Model" onClose={() => router.back()} />
         <ScrollView
-          contentContainerStyle={{ gap: 24, paddingBottom: 16 }}
+          contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
           ref={scrollViewRef}
         >
-          <Text style={{ ...styles.description, color: theme.text.primary }}>
+          <Text style={styles.description}>
             Add a model from HuggingFace or other external sources. You'll need
             the model and tokenizer URLs.
           </Text>
+
           <View style={styles.textFieldSection}>
-            <Text style={{ ...styles.label, color: theme.text.primary }}>
-              Model URL
-            </Text>
+            <Text style={styles.label}>Model URL</Text>
             <TextFieldInput
               value={remoteModelPath}
               multiline={true}
@@ -91,10 +96,9 @@ export default function AddRemoteModelScreen() {
               placeholder="Enter external model URL"
             />
           </View>
+
           <View style={styles.textFieldSection}>
-            <Text style={{ ...styles.label, color: theme.text.primary }}>
-              Tokenizer URL
-            </Text>
+            <Text style={styles.label}>Tokenizer URL</Text>
             <TextFieldInput
               value={remoteTokenizerPath}
               multiline={true}
@@ -103,10 +107,9 @@ export default function AddRemoteModelScreen() {
               onFocus={scrollToBottom}
             />
           </View>
+
           <View style={styles.textFieldSection}>
-            <Text style={{ ...styles.label, color: theme.text.primary }}>
-              Tokenizer Config URL
-            </Text>
+            <Text style={styles.label}>Tokenizer Config URL</Text>
             <TextFieldInput
               value={remoteTokenizerConfigPath}
               multiline={true}
@@ -122,23 +125,33 @@ export default function AddRemoteModelScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 16 : 0,
-    justifyContent: 'space-between',
-  },
-  description: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSizes.md,
-  },
-  textFieldSection: {
-    gap: 16,
-  },
-  label: {
-    fontSize: fontSizes.md,
-    fontFamily: fontFamily.medium,
-  },
-  subLabel: { fontFamily: fontFamily.regular, fontSize: fontSizes.sm },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    keyboardAvoidingView: {
+      flex: 1,
+      backgroundColor: theme.bg.softPrimary,
+    },
+    container: {
+      flex: 1,
+      padding: 16,
+      paddingBottom: Platform.OS === 'ios' ? 24 : 0,
+      justifyContent: 'space-between',
+    },
+    scrollViewContent: {
+      gap: 24,
+      paddingBottom: 16,
+    },
+    description: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.md,
+      color: theme.text.primary,
+    },
+    textFieldSection: {
+      gap: 16,
+    },
+    label: {
+      fontSize: fontSizes.md,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
+    },
+  });

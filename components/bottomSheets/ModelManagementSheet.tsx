@@ -1,4 +1,4 @@
-import React, { RefObject, useCallback, useState } from 'react';
+import React, { RefObject, useCallback, useMemo, useState } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -7,6 +7,7 @@ import {
 import { StyleSheet, Text, View } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
+import { Theme } from '../../styles/colors';
 import EntryButton from '../EntryButton';
 import ModelCard from '../model-hub/ModelCard';
 import ThrashIcon from '../../assets/icons/trash.svg';
@@ -31,6 +32,8 @@ enum ModalStage {
 
 const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const { removeModel, removeModelFiles } = useModelStore();
   const [stage, setStage] = useState<ModalStage>(ModalStage.Initial);
 
@@ -40,12 +43,10 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        style={{
-          backgroundColor: theme.bg.overlay,
-        }}
+        style={styles.backdrop}
       />
     ),
-    []
+    [styles.backdrop]
   );
 
   const renderStageContent = (model: Model) => {
@@ -54,7 +55,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
         return (
           <>
             <ModelCard model={model} onPress={() => {}} />
-            <View style={{ gap: 8 }}>
+            <View style={styles.buttonGroup}>
               {model.source !== 'built-in' && (
                 <EntryButton
                   text="Edit model"
@@ -62,20 +63,20 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
                     <EditIcon
                       width={18}
                       height={20}
-                      style={{ color: theme.text.primary }}
+                      style={styles.iconPrimary}
                     />
                   }
                   onPress={() => {
-                    if (model.source === 'remote') {
-                      router.push(`modal/edit-remote-model/${model.id}`);
-                    } else if (model.source === 'local') {
-                      router.push(`modal/edit-local-model/${model.id}`);
-                    }
-
+                    router.push(
+                      model.source === 'remote'
+                        ? `modal/edit-remote-model/${model.id}`
+                        : `modal/edit-local-model/${model.id}`
+                    );
                     bottomSheetModalRef.current?.dismiss();
                   }}
                 />
               )}
+
               {model.source !== 'local' && model.isDownloaded && (
                 <EntryButton
                   text="Delete downloaded files"
@@ -83,49 +84,42 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
                     <ThrashIcon
                       width={18}
                       height={19}
-                      style={{ color: theme.bg.strongPrimary }}
+                      style={styles.iconImportant}
                     />
                   }
-                  onPress={() => {
-                    setStage(ModalStage.RemoveFiles);
-                  }}
+                  onPress={() => setStage(ModalStage.RemoveFiles)}
                 />
               )}
+
               {model.source !== 'built-in' && (
                 <EntryButton
                   text="Remove from the app"
-                  textStyle={{ color: theme.text.error }}
+                  textStyle={styles.textError}
                   icon={
                     <CrossCircleIcon
                       width={20}
                       height={20}
-                      style={{ color: theme.text.error }}
+                      style={styles.iconError}
                     />
                   }
-                  onPress={() => {
-                    setStage(ModalStage.RemoveModel);
-                  }}
+                  onPress={() => setStage(ModalStage.RemoveModel)}
                 />
               )}
             </View>
           </>
         );
+
       case ModalStage.RemoveFiles:
         return (
           <>
-            <Text style={{ ...styles.title, color: theme.text.primary }}>
+            <Text style={styles.title}>
               Are you sure you want to delete files of this model?
             </Text>
-            <Text
-              style={{
-                ...styles.bottomSheetSubText,
-                color: theme.text.defaultSecondary,
-              }}
-            >
+            <Text style={styles.subText}>
               You won’t be able to use this model, but you can always redownload
               the files.
             </Text>
-            <View style={{ gap: 8 }}>
+            <View style={styles.buttonGroup}>
               <PrimaryButton
                 text="Delete model files"
                 onPress={async () => {
@@ -139,32 +133,26 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
               />
               <SecondaryButton
                 text="Close"
-                onPress={() => {
-                  setStage(ModalStage.Initial);
-                }}
+                onPress={() => setStage(ModalStage.Initial)}
               />
             </View>
           </>
         );
+
       case ModalStage.RemoveModel:
         return (
           <>
-            <Text style={{ ...styles.title, color: theme.text.primary }}>
+            <Text style={styles.title}>
               Are you sure you want permanently remove this model from the app?
             </Text>
-            <Text
-              style={{
-                ...styles.bottomSheetSubText,
-                color: theme.text.defaultSecondary,
-              }}
-            >
-              It will delete the model files and stored external urls. You can
-              always add this model to the app again manually.
+            <Text style={styles.subText}>
+              It will delete the model files and stored external URLs. You can
+              always add this model again manually.
             </Text>
-            <View style={{ gap: 8 }}>
+            <View style={styles.buttonGroup}>
               <PrimaryButton
-                style={{ backgroundColor: theme.bg.errorPrimary }}
                 text="Delete model files"
+                style={styles.buttonDestructive}
                 onPress={async () => {
                   await removeModel(model.id);
                   Toast.show({
@@ -176,13 +164,12 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
               />
               <SecondaryButton
                 text="Close"
-                onPress={() => {
-                  setStage(ModalStage.Initial);
-                }}
+                onPress={() => setStage(ModalStage.Initial)}
               />
             </View>
           </>
         );
+
       default:
         return null;
     }
@@ -192,61 +179,74 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
     <BottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
-      enableDynamicSizing={true}
-      onChange={() => {
-        setStage(ModalStage.Initial);
-      }}
-      handleStyle={{
-        backgroundColor: theme.bg.softPrimary,
-        borderRadius: 16,
-      }}
-      handleIndicatorStyle={{
-        backgroundColor: theme.text.primary,
-        ...styles.bottomSheetIndicator,
-      }}
-      backgroundStyle={{
-        backgroundColor: theme.bg.softPrimary,
-      }}
+      enableDynamicSizing
+      onChange={() => setStage(ModalStage.Initial)}
+      handleStyle={styles.handle}
+      handleIndicatorStyle={styles.handleIndicator}
+      backgroundStyle={styles.background}
     >
-      {(props) => {
-        return (
-          <BottomSheetView
-            style={{
-              ...styles.bottomSheet,
-              backgroundColor: theme.bg.softPrimary,
-            }}
-          >
-            {renderStageContent(props.data)}
-          </BottomSheetView>
-        );
-      }}
+      {(props) => (
+        <BottomSheetView style={styles.container}>
+          {renderStageContent(props.data)}
+        </BottomSheetView>
+      )}
     </BottomSheetModal>
   );
 };
 
-const styles = StyleSheet.create({
-  title: {
-    fontSize: fontSizes.lg,
-    fontFamily: fontFamily.medium,
-  },
-  modelItemText: {
-    fontSize: 16,
-  },
-  bottomSheet: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    gap: 24,
-    paddingBottom: 36,
-  },
-  bottomSheetSubText: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSizes.md,
-  },
-  bottomSheetIndicator: {
-    width: 64,
-    height: 4,
-    borderRadius: 20,
-  },
-});
-
 export default ModelManagementSheet;
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      paddingBottom: 36,
+      gap: 24,
+      backgroundColor: theme.bg.softPrimary,
+    },
+    title: {
+      fontSize: fontSizes.lg,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
+    },
+    subText: {
+      fontSize: fontSizes.md,
+      fontFamily: fontFamily.regular,
+      color: theme.text.defaultSecondary,
+    },
+    buttonGroup: {
+      gap: 8,
+    },
+    textError: {
+      color: theme.text.error,
+    },
+    iconPrimary: {
+      color: theme.text.primary,
+    },
+    iconImportant: {
+      color: theme.bg.strongPrimary,
+    },
+    iconError: {
+      color: theme.text.error,
+    },
+    buttonDestructive: {
+      backgroundColor: theme.bg.errorPrimary,
+    },
+    backdrop: {
+      backgroundColor: theme.bg.overlay,
+    },
+    handle: {
+      borderRadius: 16,
+      backgroundColor: theme.bg.softPrimary,
+    },
+    handleIndicator: {
+      backgroundColor: theme.text.primary,
+      width: 64,
+      height: 4,
+      borderRadius: 20,
+    },
+    background: {
+      backgroundColor: theme.bg.softPrimary,
+    },
+  });

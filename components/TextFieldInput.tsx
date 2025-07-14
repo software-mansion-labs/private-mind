@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { TextInput, StyleSheet, View, TextInputProps } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { fontFamily, fontSizes } from '../styles/fontFamily';
+import { Theme } from '../styles/colors';
 
 type TextFieldInputProps = TextInputProps & {
   value: string;
@@ -21,37 +22,23 @@ const TextFieldInput: React.FC<TextFieldInputProps> = ({
   const { theme } = useTheme();
   const [active, setActive] = useState(false);
 
+  const styles = useMemo(
+    () => createStyles(theme, active, !!icon, props.editable !== false),
+    [theme, active, icon, props.editable]
+  );
+
   return (
-    <View
-      style={{
-        ...styles.inputWrapper,
-        borderColor: active ? theme.bg.strongPrimary : theme.border.soft,
-        borderWidth: active ? 2 : 1,
-      }}
-    >
+    <View style={styles.inputWrapper}>
       {icon}
       <TextInput
-        style={
-          icon
-            ? {
-                ...styles.input,
-                color: theme.text.primary,
-                opacity: props.editable !== false ? 1 : 0.4,
-              }
-            : {
-                ...styles.input,
-                color: theme.text.primary,
-                width: '100%',
-                opacity: props.editable !== false ? 1 : 0.4,
-              }
-        }
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={theme.text.defaultTertiary}
+        style={styles.input}
         onFocus={() => {
-          onFocus?.();
           setActive(true);
+          onFocus?.();
         }}
         onBlur={() => setActive(false)}
         {...props}
@@ -60,23 +47,31 @@ const TextFieldInput: React.FC<TextFieldInputProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  inputWrapper: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  input: {
-    fontSize: fontSizes.md,
-    fontFamily: fontFamily.regular,
-    width: '90%',
-    lineHeight: 22,
-  },
-});
-
 export default TextFieldInput;
+
+const createStyles = (
+  theme: Theme,
+  active: boolean,
+  hasIcon: boolean,
+  isEditable: boolean = true
+) =>
+  StyleSheet.create({
+    inputWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderWidth: active ? 2 : 1,
+      borderColor: active ? theme.bg.strongPrimary : theme.border.soft,
+    },
+    input: {
+      width: hasIcon ? '90%' : '100%',
+      fontSize: fontSizes.md,
+      fontFamily: fontFamily.regular,
+      color: theme.text.primary,
+      opacity: isEditable ? 1 : 0.4,
+      lineHeight: 22,
+    },
+  });

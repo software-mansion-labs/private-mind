@@ -10,12 +10,14 @@ import { useModelStore } from '../../store/modelStore';
 import { getChatMessages, Message } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import WithDrawerGesture from '../../components/WithDrawerGesture';
+import { useSQLiteContext } from 'expo-sqlite';
 
 export default function ChatScreenWrapper() {
   useDefaultHeader();
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const chatId = parseInt(rawId);
-  const { db, activeChatId, activeChatMessages } = useLLMStore();
+  const db = useSQLiteContext();
+  const { activeChatId, activeChatMessages } = useLLMStore();
   const { getChatById } = useChatStore();
   const { getModelById } = useModelStore();
 
@@ -30,13 +32,13 @@ export default function ChatScreenWrapper() {
 
   useEffect(() => {
     (async () => {
-      if (!db || !chatId) return;
+      if (!chatId) return;
       if (chatId != activeChatId) {
         const history = await getChatMessages(db, chatId);
         setMessageHistory(history);
       }
     })();
-  }, [chatId, db]);
+  }, [chatId]);
 
   useEffect(() => {
     if (activeChatId === chatId && activeChatMessages.length > 0) {

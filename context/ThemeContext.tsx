@@ -1,9 +1,8 @@
-// ThemeContext.tsx
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { Appearance } from 'react-native';
-import { darkTheme, lightTheme, ThemeType } from '../styles/colors';
+import { darkTheme, lightTheme, Theme } from '../styles/colors';
 
-const ThemeContext = createContext<{ theme: ThemeType }>({ theme: lightTheme });
+const ThemeContext = createContext<{ theme: Theme }>({ theme: lightTheme });
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const colorScheme = Appearance.getColorScheme();

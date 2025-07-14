@@ -1,12 +1,13 @@
-import React, { RefObject, useCallback } from 'react';
+import React, { RefObject, useCallback, useMemo } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
 import { StyleSheet, Text, View } from 'react-native';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
 import { useTheme } from '../../context/ThemeContext';
+import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { Theme } from '../../styles/colors';
 import { router } from 'expo-router';
 import EntryButton from '../EntryButton';
 import LinkAltIcon from '../../assets/icons/link-alt.svg';
@@ -18,6 +19,7 @@ interface Props {
 
 const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -26,61 +28,35 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
         disappearsOnIndex={-1}
         appearsOnIndex={0}
         opacity={1}
-        style={{
-          backgroundColor: theme.bg.overlay,
-        }}
+        style={styles.backdrop}
       />
     ),
-    []
+    [styles.backdrop]
   );
 
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
-      enableDynamicSizing={true}
-      handleStyle={{
-        backgroundColor: theme.bg.softPrimary,
-        borderRadius: 16,
-      }}
-      handleIndicatorStyle={{
-        backgroundColor: theme.text.primary,
-        ...styles.bottomSheetIndicator,
-      }}
-      backgroundStyle={{
-        backgroundColor: theme.bg.softPrimary,
-      }}
+      enableDynamicSizing
+      handleStyle={styles.handleStyle}
+      handleIndicatorStyle={styles.handleIndicatorStyle}
+      backgroundStyle={styles.sheetBackground}
     >
-      <BottomSheetView
-        style={{ ...styles.bottomSheet, backgroundColor: theme.bg.softPrimary }}
-      >
-        <Text style={{ ...styles.title, color: theme.text.primary }}>
-          Add model
-        </Text>
-        <View style={{ gap: 8 }}>
+      <BottomSheetView style={styles.sheetContent}>
+        <Text style={styles.title}>Add model</Text>
+        <View style={styles.buttonGroup}>
           <EntryButton
-            icon={
-              <LinkAltIcon
-                width={22}
-                height={22}
-                style={{ color: theme.text.primary }}
-              />
-            }
-            text={'From external URLs'}
+            icon={<LinkAltIcon width={22} height={22} style={styles.icon} />}
+            text="From external URLs"
             onPress={() => {
               router.push('/modal/add-remote-model');
               bottomSheetModalRef.current?.close();
             }}
           />
           <EntryButton
-            icon={
-              <FolderIcon
-                width={20}
-                height={17}
-                style={{ color: theme.text.primary }}
-              />
-            }
-            text={'From local files'}
+            icon={<FolderIcon width={20} height={17} style={styles.icon} />}
+            text="From local files"
             onPress={() => {
               router.push('/modal/add-local-model');
               bottomSheetModalRef.current?.close();
@@ -92,22 +68,42 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
   );
 };
 
-const styles = StyleSheet.create({
-  title: {
-    fontSize: fontSizes.lg,
-    fontFamily: fontFamily.medium,
-  },
-  bottomSheet: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    gap: 24,
-    paddingBottom: 36,
-  },
-  bottomSheetIndicator: {
-    width: 64,
-    height: 4,
-    borderRadius: 20,
-  },
-});
-
 export default AddModelSheet;
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    sheetContent: {
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      paddingBottom: 36,
+      gap: 24,
+      backgroundColor: theme.bg.softPrimary,
+    },
+    title: {
+      fontSize: fontSizes.lg,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
+    },
+    buttonGroup: {
+      gap: 8,
+    },
+    icon: {
+      color: theme.text.primary,
+    },
+    backdrop: {
+      backgroundColor: theme.bg.overlay,
+    },
+    handleStyle: {
+      backgroundColor: theme.bg.softPrimary,
+      borderRadius: 16,
+    },
+    handleIndicatorStyle: {
+      width: 64,
+      height: 4,
+      borderRadius: 20,
+      backgroundColor: theme.text.primary,
+    },
+    sheetBackground: {
+      backgroundColor: theme.bg.softPrimary,
+    },
+  });

@@ -1,9 +1,18 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useSQLiteContext } from 'expo-sqlite';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useDefaultHeader } from '../hooks/useDefaultHeader';
 import { useLLMStore } from '../store/llmStore';
 import { useModelStore } from '../store/modelStore';
-import { Model } from '../database/modelRepository';
+import { useTheme } from '../context/ThemeContext';
+import { Theme } from '../styles/colors';
 import {
   BenchmarkResult,
   BenchmarkResultPerformanceNumbers,
@@ -11,14 +20,12 @@ import {
   getAllBenchmarks,
   insertBenchmark,
 } from '../database/benchmarkRepository';
+import { Model } from '../database/modelRepository';
 import WithDrawerGesture from '../components/WithDrawerGesture';
 import { ModelSelector } from '../components/benchmark/ModelSelector';
 import PrimaryButton from '../components/PrimaryButton';
-import { useTheme } from '../context/ThemeContext';
-import BenchmarkResultSheet from '../components/bottomSheets/BenchmarkResultSheet';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useSQLiteContext } from 'expo-sqlite';
 import { BenchmarkModal } from '../components/benchmark/BenchmarkModal';
+import BenchmarkResultSheet from '../components/bottomSheets/BenchmarkResultSheet';
 import BenchmarkHistory from '../components/benchmark/BenchmarkHistory';
 
 const calculateAverageBenchmark = (
@@ -38,7 +45,6 @@ const calculateAverageBenchmark = (
   averageResult.tokensGenerated /= iterations;
   averageResult.peakMemory =
     Math.max(...results.map((r) => r.peakMemory)) / 1024 / 1024 / 1024;
-
   return averageResult;
 };
 
@@ -47,9 +53,10 @@ const BenchmarkScreen = () => {
   const isBenchmarkCancelled = useRef(false);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const db = useSQLiteContext();
   const { runBenchmark, loadModel, interrupt } = useLLMStore();
-  const { downloadedModels: models, getModelById } = useModelStore();
+  const { getModelById } = useModelStore();
 
   const [selectedModel, setSelectedModel] = useState<Model | undefined>();
   const [benchmarkList, setBenchmarkList] = useState<BenchmarkResult[]>([]);
@@ -68,13 +75,13 @@ const BenchmarkScreen = () => {
 
   const runBenchmarks = async () => {
     if (!selectedModel) return;
-    setIsBenchmarkModalVisible(true);
 
-    const interval = setInterval(() => {
-      setTimer((prev) => prev + 1);
-    }, 1000);
+    setIsBenchmarkModalVisible(true);
+    const interval = setInterval(() => setTimer((prev) => prev + 1), 1000);
     const iterations = 1;
+
     await loadModel(selectedModel);
+
     const results: BenchmarkResultPerformanceNumbers[] = [];
 
     for (let i = 0; i < iterations; i++) {
@@ -85,14 +92,12 @@ const BenchmarkScreen = () => {
         isBenchmarkCancelled.current = false;
         return;
       }
-      const result = await runBenchmark(selectedModel!);
-      if (result) {
-        results.push(result);
-      }
+
+      const result = await runBenchmark(selectedModel);
+      if (result) results.push(result);
     }
 
     const averageResult = calculateAverageBenchmark(results, iterations);
-
     const benchmarkId = await insertBenchmark(db, {
       ...averageResult,
       modelId: selectedModel.id,
@@ -108,13 +113,14 @@ const BenchmarkScreen = () => {
     };
 
     await loadBenchmarks();
-    clearInterval(interval!);
+    clearInterval(interval);
     setShowSuccess(true);
     setTimer(0);
     setTimeout(() => {
       setIsBenchmarkModalVisible(false);
       setShowSuccess(false);
     }, 2000);
+
     bottomSheetModalRef.current?.present({
       ...newBenchmark,
       model: await getModelById(newBenchmark.modelId!),
@@ -134,9 +140,7 @@ const BenchmarkScreen = () => {
   return (
     <>
       <WithDrawerGesture>
-        <View
-          style={{ ...styles.container, backgroundColor: theme.bg.softPrimary }}
-        >
+        <View style={styles.container}>
           <ModelSelector
             model={selectedModel}
             setSelectedModel={setSelectedModel}
@@ -152,6 +156,7 @@ const BenchmarkScreen = () => {
           />
         </View>
       </WithDrawerGesture>
+
       <BenchmarkModal
         isVisible={isBenchmarkModalVisible}
         timer={timer}
@@ -159,6 +164,7 @@ const BenchmarkScreen = () => {
         showSuccess={showSuccess}
         handleCancel={handleCancel}
       />
+
       <BenchmarkResultSheet
         bottomSheetModalRef={bottomSheetModalRef}
         handleDelete={handleDelete}
@@ -169,10 +175,12 @@ const BenchmarkScreen = () => {
 
 export default BenchmarkScreen;
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    gap: 16,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      padding: 16,
+      gap: 16,
+      backgroundColor: theme.bg.softPrimary,
+    },
+  });

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { useDefaultHeader } from '../hooks/useDefaultHeader';
 import { ModelState, useModelStore } from '../store/modelStore';
@@ -11,21 +11,24 @@ import ModelManagementSheet from '../components/bottomSheets/ModelManagementShee
 import { fontFamily, fontSizes } from '../styles/fontFamily';
 import TextFieldInput from '../components/TextFieldInput';
 import SearchIcon from '../assets/icons/search.svg';
-import { useTheme } from '../context/ThemeContext';
 import SecondaryButton from '../components/SecondaryButton';
 import QuestionIcon from '../assets/icons/question.svg';
 import AddModelSheet from '../components/bottomSheets/AddModelSheet';
 import MemoryWarningSheet from '../components/bottomSheets/MemoryWarningSheet';
 import SortingTag from '../components/model-hub/SortingTag';
+import { useTheme } from '../context/ThemeContext';
+import { Theme } from '../styles/colors';
 
 const ModelHubScreen = () => {
+  useDefaultHeader();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
   const addModelSheetRef = useRef<BottomSheetModal | null>(null);
   const memoryWarningSheetRef = useRef<BottomSheetModal | null>(null);
-  const { models, downloadStates } = useModelStore();
-  const { theme } = useTheme();
 
-  useDefaultHeader();
+  const { models, downloadStates } = useModelStore();
 
   const [search, setSearch] = useState('');
   const [activeFilters, setActiveFilters] = useState<Set<string>>(
@@ -33,25 +36,9 @@ const ModelHubScreen = () => {
   );
   const [groupByModel, setGroupByModel] = useState(false);
 
-  const groupModelsByPrefix = (models: typeof filteredModels) => {
-    return models.reduce<Record<string, typeof filteredModels>>(
-      (acc, model) => {
-        const prefix = model.modelName.split('-')[0].toLowerCase();
-        if (!acc[prefix]) acc[prefix] = [];
-        acc[prefix].push(model);
-        return acc;
-      },
-      {}
-    );
-  };
-
   const toggleFilter = (filter: string) => {
     const newFilters = new Set(activeFilters);
-    if (newFilters.has(filter)) {
-      newFilters.delete(filter);
-    } else {
-      newFilters.add(filter);
-    }
+    newFilters.has(filter) ? newFilters.delete(filter) : newFilters.add(filter);
     setActiveFilters(newFilters);
   };
 
@@ -59,6 +46,7 @@ const ModelHubScreen = () => {
     const matchesSearch = model.modelName
       .toLowerCase()
       .includes(search.toLowerCase());
+
     const matchesFilter =
       activeFilters.has('featured') && model.source === 'built-in'
         ? model.featured
@@ -73,7 +61,6 @@ const ModelHubScreen = () => {
   availableModels.sort((a, b) => {
     const aState = downloadStates[a.id]?.status;
     const bState = downloadStates[b.id]?.status;
-
     if (aState === ModelState.Downloading && bState !== ModelState.Downloading)
       return -1;
     if (bState === ModelState.Downloading && aState !== ModelState.Downloading)
@@ -86,31 +73,33 @@ const ModelHubScreen = () => {
     return a.modelName.localeCompare(b.modelName);
   });
 
+  const groupModelsByPrefix = (models: typeof filteredModels) => {
+    return models.reduce<Record<string, typeof filteredModels>>(
+      (acc, model) => {
+        const prefix = model.modelName.split('-')[0].toLowerCase();
+        if (!acc[prefix]) acc[prefix] = [];
+        acc[prefix].push(model);
+        return acc;
+      },
+      {}
+    );
+  };
+
   const renderGroupedModels = (models: typeof filteredModels) => {
     const grouped = groupModelsByPrefix(models);
     return (
       <>
         {Object.entries(grouped).map(([prefix, group]) => (
           <React.Fragment key={prefix}>
-            <Text
-              style={[
-                styles.sectionHeader,
-                {
-                  color: theme.text.defaultSecondary,
-                  textTransform: 'capitalize',
-                },
-              ]}
-            >
-              {prefix}
-            </Text>
-            <View style={{ gap: 8 }}>
+            <Text style={styles.sectionHeader}>{prefix}</Text>
+            <View style={styles.modelList}>
               {group.map((model) => (
                 <ModelCard
                   key={model.id}
                   model={model}
-                  onPress={() => {
-                    modelManagementSheetRef.current?.present(model);
-                  }}
+                  onPress={() =>
+                    modelManagementSheetRef.current?.present(model)
+                  }
                 />
               ))}
             </View>
@@ -120,12 +109,29 @@ const ModelHubScreen = () => {
     );
   };
 
+  const renderEmptyState = () => (
+    <View style={styles.noModelsContainer}>
+      <View style={styles.emptyIconWrapper}>
+        <QuestionIcon
+          width={12}
+          height={21.33}
+          style={{ color: theme.text.primary }}
+        />
+      </View>
+      <View style={styles.emptyTextContainer}>
+        <Text style={styles.emptyTitle}>No models found</Text>
+        <Text style={styles.emptySubtitle}>
+          Adjust your search or add new model.
+        </Text>
+      </View>
+      <SecondaryButton text="Clear Search" onPress={() => setSearch('')} />
+    </View>
+  );
+
   return (
     <>
       <WithDrawerGesture>
-        <View
-          style={{ ...styles.container, backgroundColor: theme.bg.softPrimary }}
-        >
+        <View style={styles.container}>
           <TextFieldInput
             value={search}
             onChangeText={setSearch}
@@ -140,16 +146,14 @@ const ModelHubScreen = () => {
           />
           <View>
             <ScrollView
-              horizontal={true}
-              contentContainerStyle={{ gap: 8 }}
+              horizontal
+              contentContainerStyle={styles.tagContainer}
               showsHorizontalScrollIndicator={false}
             >
               <SortingTag
                 text="Featured"
                 selected={activeFilters.has('featured')}
-                onPress={() => {
-                  toggleFilter('featured');
-                }}
+                onPress={() => toggleFilter('featured')}
               />
               <SortingTag
                 text="Group by model"
@@ -158,103 +162,43 @@ const ModelHubScreen = () => {
               />
             </ScrollView>
           </View>
-          {downloadedModels.length + availableModels.length === 0 ? (
-            <View style={styles.noModelsContainer}>
-              <View
-                style={{
-                  backgroundColor: theme.bg.softSecondary,
-                  width: 64,
-                  height: 64,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  borderRadius: 9999,
-                }}
-              >
-                <QuestionIcon
-                  width={12}
-                  height={21.33}
-                  style={{ color: theme.text.primary }}
-                />
-              </View>
-              <View style={{ alignItems: 'center', gap: 8 }}>
-                <Text
-                  style={{
-                    fontFamily: fontFamily.medium,
-                    fontSize: fontSizes.lg,
-                    color: theme.text.primary,
-                  }}
-                >
-                  No models found
-                </Text>
-                <Text
-                  style={{
-                    color: theme.text.defaultTertiary,
-                    fontFamily: fontFamily.regular,
-                    fontSize: fontSizes.sm,
-                  }}
-                >
-                  Adjust your search or add new model.
-                </Text>
-              </View>
-              <SecondaryButton
-                text="Clear Search"
-                onPress={() => {
-                  setSearch('');
-                }}
-              />
-            </View>
+          {filteredModels.length === 0 ? (
+            renderEmptyState()
           ) : (
-            <ScrollView contentContainerStyle={{ gap: 16 }}>
+            <ScrollView contentContainerStyle={styles.modelScrollContent}>
               {groupByModel ? (
-                <>
-                  {renderGroupedModels([
-                    ...downloadedModels,
-                    ...availableModels,
-                  ])}
-                </>
+                renderGroupedModels([...downloadedModels, ...availableModels])
               ) : (
                 <>
                   {downloadedModels.length > 0 && (
                     <>
-                      <Text
-                        style={[
-                          styles.sectionHeader,
-                          { color: theme.text.defaultSecondary },
-                        ]}
-                      >
-                        Ready to Use
-                      </Text>
-                      <View style={{ gap: 8 }}>
+                      <Text style={styles.sectionHeader}>Ready to Use</Text>
+                      <View style={styles.modelList}>
                         {downloadedModels.map((model) => (
                           <ModelCard
                             key={model.id}
                             model={model}
                             bottomSheetModalRef={memoryWarningSheetRef}
-                            onPress={() => {
-                              modelManagementSheetRef.current?.present(model);
-                            }}
+                            onPress={() =>
+                              modelManagementSheetRef.current?.present(model)
+                            }
                           />
                         ))}
                       </View>
                     </>
                   )}
-                  <Text
-                    style={[
-                      styles.sectionHeader,
-                      { color: theme.text.defaultSecondary },
-                    ]}
-                  >
+                  <Text style={styles.sectionHeader}>
                     Available to Download
                   </Text>
-                  <View style={{ gap: 8, paddingBottom: 60 }}>
+                  <View style={styles.downloadList}>
                     {availableModels.map((model) => (
                       <ModelCard
                         key={model.id}
                         model={model}
                         bottomSheetModalRef={memoryWarningSheetRef}
-                        onPress={() => {
-                          modelManagementSheetRef.current?.present(model);
-                        }}
+                        onPress={() =>
+                          modelManagementSheetRef.current?.present(model)
+                        }
                       />
                     ))}
                   </View>
@@ -263,13 +207,10 @@ const ModelHubScreen = () => {
             </ScrollView>
           )}
           <FloatingActionButton
-            onPress={() => {
-              addModelSheetRef.current?.present();
-            }}
+            onPress={() => addModelSheetRef.current?.present()}
           />
         </View>
       </WithDrawerGesture>
-
       <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
       <AddModelSheet bottomSheetModalRef={addModelSheetRef} />
       <MemoryWarningSheet bottomSheetModalRef={memoryWarningSheetRef} />
@@ -279,27 +220,62 @@ const ModelHubScreen = () => {
 
 export default ModelHubScreen;
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    gap: 16,
-    padding: 16,
-    backgroundColor: '#fff',
-  },
-  noModelsContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 24,
-  },
-  sectionHeader: {
-    fontSize: fontSizes.sm,
-    fontFamily: fontFamily.medium,
-  },
-  tagContainer: {
-    gap: 8,
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingRight: 8,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      gap: 16,
+      padding: 16,
+      backgroundColor: theme.bg.softPrimary,
+    },
+    noModelsContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 24,
+    },
+    emptyIconWrapper: {
+      backgroundColor: theme.bg.softSecondary,
+      width: 64,
+      height: 64,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRadius: 9999,
+    },
+    emptyTextContainer: {
+      alignItems: 'center',
+      gap: 8,
+    },
+    emptyTitle: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.lg,
+      color: theme.text.primary,
+    },
+    emptySubtitle: {
+      fontSize: fontSizes.sm,
+      fontFamily: fontFamily.regular,
+      color: theme.text.defaultTertiary,
+    },
+    sectionHeader: {
+      fontSize: fontSizes.sm,
+      fontFamily: fontFamily.medium,
+      color: theme.text.defaultSecondary,
+      textTransform: 'capitalize',
+    },
+    modelList: {
+      gap: 8,
+    },
+    downloadList: {
+      gap: 8,
+      paddingBottom: 60,
+    },
+    modelScrollContent: {
+      gap: 16,
+    },
+    tagContainer: {
+      gap: 8,
+      alignItems: 'center',
+      paddingVertical: 8,
+      paddingRight: 8,
+    },
+  });
