@@ -21,21 +21,8 @@ const ChatTitle = ({ title, modelName }: Props) => {
           <Text style={styles.modelName}>{modelName}</Text>
         </>
       ) : (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          <Text
-            style={{
-              color: theme.text.primary,
-              fontFamily: fontFamily.medium,
-            }}
-          >
-            {modelName}
-          </Text>
+        <View style={styles.modelNameTitleContainer}>
+          <Text style={styles.modelNameTitle}>{modelName}</Text>
         </View>
       )}
     </View>
@@ -62,5 +49,14 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultSecondary,
       width: '100%',
       textAlign: 'center',
+    },
+    modelNameTitle: {
+      color: theme.text.primary,
+      fontFamily: fontFamily.medium,
+    },
+    modelNameTitleContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
   });

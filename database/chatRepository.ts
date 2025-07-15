@@ -188,7 +188,6 @@ export const setChatModel = async (
   id: number,
   model: number
 ) => {
-  console.log('Setting chat model', id, model);
   await db.runAsync(`UPDATE chats SET modelId = ? WHERE id = ?`, [model, id]);
   return;
 };

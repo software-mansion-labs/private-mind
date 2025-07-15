@@ -82,7 +82,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   db: null,
   generatingForChatId: null,
   activeChatId: null,
-  modelChatId: null,
   model: null,
   performance: {
     tokenCount: 0,
