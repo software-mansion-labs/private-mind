@@ -37,6 +37,7 @@ export default function ChatSettingsScreen() {
 
   const { settings, setSetting, chat } = useChatSettings(chatId);
   const model = chat?.modelId ? getModelById(chat?.modelId) : undefined;
+
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handleSave = async () => {
