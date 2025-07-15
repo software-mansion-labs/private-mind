@@ -53,14 +53,14 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
   const router = useRouter();
   const pathname = usePathname();
   const { chats } = useChatStore();
-  const { isGenerating, interrupt } = useLLMStore();
+  const { interrupt } = useLLMStore();
 
   const groupedChats = groupChatsByDate(
     [...chats].sort((a, b) => b.lastUsed - a.lastUsed)
   );
 
   const navigate = (path: string) => {
-    if (isGenerating) interrupt();
+    interrupt();
     pathname === path ? router.replace(path) : router.push(path);
     onNavigate();
   };

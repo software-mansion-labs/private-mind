@@ -3,6 +3,7 @@ import { LLMModule } from 'react-native-executorch';
 import { Model } from '../database/modelRepository';
 import { SQLiteDatabase } from 'expo-sqlite';
 import {
+  getChatMessages,
   getChatSettings,
   Message,
   persistMessage,
@@ -18,24 +19,20 @@ interface LLMStore {
   isGenerating: boolean;
   isProcessingPrompt: boolean;
   db: SQLiteDatabase | null;
-  response: string;
   model: Model | null;
-  tokenCount: number;
-  firstTokenTime: number;
+  performance: {
+    tokenCount: number;
+    firstTokenTime: number;
+  };
   activeChatId: number | null;
+  generatingForChatId: number | null;
   activeChatMessages: Message[];
 
-  sendChatMessage: (
-    messages: Message[],
-    newMessage: string,
-    chatId: number,
-    modelName: string
-  ) => Promise<void>;
   setDB: (db: SQLiteDatabase) => void;
-  loadModel: (model: Model) => Promise<void>;
-  runBenchmark: (
-    selectedModel: Model
-  ) => Promise<BenchmarkResultPerformanceNumbers | undefined>;
+  loadModel: (model: Model, hardReload?: boolean) => Promise<void>;
+  setActiveChatId: (chatId: number) => Promise<void>;
+  sendChatMessage: (newMessage: string, chatId: number) => Promise<void>;
+  runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   interrupt: () => void;
 }
 
@@ -59,109 +56,145 @@ const calculatePerformanceMetrics = (
   };
 };
 
+const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
+  if (Platform.OS !== 'ios') {
+    return { start: () => {}, stop: () => {} };
+  }
+  let trackerId: NodeJS.Timeout;
+  return {
+    start: () => {
+      trackerId = setInterval(async () => {
+        try {
+          onUpdate(await DeviceInfo.getUsedMemory());
+        } catch (e) {
+          console.warn('Unable to read memory:', e);
+        }
+      }, 3000);
+    },
+    stop: () => clearInterval(trackerId),
+  };
+};
+
 export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
   isGenerating: false,
   isProcessingPrompt: false,
   db: null,
-  response: '',
-  model: null,
-  tokenCount: 0,
-  firstTokenTime: 0,
+  generatingForChatId: null,
   activeChatId: null,
+  modelChatId: null,
+  model: null,
+  performance: {
+    tokenCount: 0,
+    firstTokenTime: 0,
+  },
   activeChatMessages: [],
 
   setDB: (db) => set({ db }),
 
-  loadModel: async (model) => {
-    if (model.id === get().model?.id || get().isLoading) {
+  setActiveChatId: async (chatId: number) => {
+    //Once the user selects a chat room, we load the messages for that chat and set it as the active chat.
+    const messageHistory = await getChatMessages(get().db!, chatId);
+    set({ activeChatId: chatId, activeChatMessages: messageHistory });
+  },
+
+  loadModel: async (model, hardReload: boolean = false) => {
+    const { model: currentModel } = get();
+    if (model.id === currentModel?.id && !hardReload) {
       return;
     }
-    if (get().model) {
+    if (currentModel) {
       LLMModule.delete();
     }
 
-    set({ isLoading: true });
+    set({ isLoading: true, model: model });
 
-    await LLMModule.load({
-      modelSource: model.modelPath,
-      tokenizerSource: model.tokenizerPath,
-      tokenizerConfigSource: model.tokenizerConfigPath,
-      responseCallback: (response) => {
-        if (response != '') {
-          const messages = get().activeChatMessages;
-          if (messages[messages.length - 1]) {
-            messages[messages.length - 1].content = response;
-          }
-
+    try {
+      await LLMModule.load({
+        modelSource: model.modelPath,
+        tokenizerSource: model.tokenizerPath,
+        tokenizerConfigSource: model.tokenizerConfigPath,
+        responseCallback: (response) => {
+          // The first callback is called with an empty string when we load the model, we ignore it.
+          if (response === '') return;
+          const isFirstToken = get().performance.tokenCount === 0;
           set({
-            response,
-            activeChatMessages: messages,
-            tokenCount: get().tokenCount + 1,
+            isProcessingPrompt: false,
+            performance: {
+              tokenCount: get().performance.tokenCount + 1,
+              firstTokenTime: isFirstToken
+                ? performance.now()
+                : get().performance.firstTokenTime,
+            },
           });
-          if (get().tokenCount === 1) {
+          /* This check ensures that after we leave the chat, 
+          new messags history won't be overwritten by token send after interrupt.
+          */
+          if (get().generatingForChatId === get().activeChatId) {
             set({
-              firstTokenTime: performance.now(),
-              isProcessingPrompt: false,
+              activeChatMessages: get().activeChatMessages.map((msg, index) =>
+                index === get().activeChatMessages.length - 1
+                  ? { ...msg, content: response }
+                  : msg
+              ),
             });
           }
-        }
-      },
-    });
+        },
+      });
 
-    set({ model, isLoading: false });
+      set({ isLoading: false });
+    } catch (e) {
+      console.error('Error loading model:', e);
+      set({ isLoading: false, model: null });
+    }
   },
 
-  sendChatMessage: async (
-    messages: Message[],
-    newMessage: string,
-    chatId: number,
-    modelName: string
-  ) => {
-    const { db } = get();
-    if (!db) return;
+  sendChatMessage: async (newMessage: string, chatId: number) => {
+    const { db, model: currentModel, activeChatMessages } = get();
+    if (!db || !currentModel) {
+      console.warn('LLM not ready or DB not set');
+      return;
+    }
+
     set({
       isProcessingPrompt: true,
-      activeChatId: chatId,
+      generatingForChatId: chatId,
     });
-    try {
-      const userMessageId = await persistMessage(db, {
-        chatId: chatId,
-        role: 'user',
-        content: newMessage,
-        timeToFirstToken: 0,
-        tokensPerSecond: 0,
-      });
 
-      messages.push({
+    try {
+      const userMessage: Omit<Message, 'id'> = {
         role: 'user',
         content: newMessage,
-        chatId: chatId,
+        chatId,
         timestamp: Date.now(),
-        id: userMessageId,
-      });
-      messages.push({
+      };
+      const assistantPlaceholder: Message = {
         role: 'assistant',
         content: '',
-        modelName: modelName,
+        modelName: currentModel.modelName,
         chatId: chatId,
         timestamp: Date.now(),
         id: -1,
+      };
+      const userMessageId = await persistMessage(db, {
+        ...userMessage,
       });
-
       set({
-        activeChatMessages: messages,
+        activeChatMessages: [
+          ...activeChatMessages,
+          { ...userMessage, id: userMessageId },
+          assistantPlaceholder,
+        ],
       });
 
-      const chatSettings = await getChatSettings(db, chatId);
-      const systemPrompt = chatSettings.systemPrompt;
-      const contextWindow = chatSettings.contextWindow;
-
+      const settings = await getChatSettings(db, chatId);
+      const systemPrompt = settings.systemPrompt;
+      const contextWindow = settings.contextWindow;
       const messagesWithSystemPrompt: ExecutorchMessage[] = [
         { role: 'system', content: systemPrompt },
-        ...messages.slice(-contextWindow),
+        ...get().activeChatMessages.slice(-contextWindow, -1),
       ];
-
+      // Polling to wait for the model to load and display dots until the first token is generated.
       if (get().isLoading) {
         await new Promise((resolve) => {
           const interval = setInterval(() => {
@@ -173,73 +206,74 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         });
       }
 
+      // If the user interrupts when the model is loading
       if (!get().isProcessingPrompt) {
-        messages.pop();
         return;
       }
 
       set({
         isGenerating: true,
-        response: '',
-        activeChatMessages: messages,
-        tokenCount: 0,
+        performance: {
+          tokenCount: 0,
+          firstTokenTime: 0,
+        },
       });
 
       const startTime = performance.now();
-      const generatedResponse = await LLMModule.generate(
-        messagesWithSystemPrompt
-      );
+      const finalResponse = await LLMModule.generate(messagesWithSystemPrompt);
       const endTime = performance.now();
-      const { timeToFirstToken, tokensPerSecond } = calculatePerformanceMetrics(
-        startTime,
-        endTime,
-        get().firstTokenTime,
-        get().tokenCount
-      );
-      if (generatedResponse) {
+
+      if (finalResponse) {
+        const { timeToFirstToken, tokensPerSecond } =
+          calculatePerformanceMetrics(
+            startTime,
+            endTime,
+            get().performance.firstTokenTime,
+            get().performance.tokenCount
+          );
         await persistMessage(db, {
-          role: 'assistant',
-          modelName: get().model?.modelName,
-          content: generatedResponse,
-          tokensPerSecond: tokensPerSecond,
-          timeToFirstToken: timeToFirstToken,
-          chatId: chatId,
+          ...assistantPlaceholder,
+          content: finalResponse,
+          tokensPerSecond,
+          timeToFirstToken,
         });
-
-        messages[messages.length - 1].timeToFirstToken = timeToFirstToken;
-        messages[messages.length - 1].tokensPerSecond = tokensPerSecond;
-
-        set({
-          activeChatMessages: messages,
-        });
+        if (get().activeChatId === chatId) {
+          set((state) => ({
+            activeChatMessages: state.activeChatMessages.map((msg, index) =>
+              index === state.activeChatMessages.length - 1
+                ? { ...msg, timeToFirstToken, tokensPerSecond }
+                : msg
+            ),
+          }));
+        }
       }
     } catch (e) {
       console.error('Chat sendMessage failed', e);
     } finally {
-      set({ isGenerating: false, isProcessingPrompt: false });
+      set({
+        isGenerating: false,
+        generatingForChatId: null,
+        isProcessingPrompt: false,
+      });
     }
   },
 
-  runBenchmark: async (selectedModel) => {
-    set({ tokenCount: 0, firstTokenTime: 0, isGenerating: true });
-
+  runBenchmark: async () => {
+    set({
+      performance: { tokenCount: 0, firstTokenTime: 0 },
+      isGenerating: true,
+    });
     let runPeakMemory = 0;
-    let memoryUsageTracker: NodeJS.Timeout | undefined;
-    if (Platform.OS === 'ios') {
-      memoryUsageTracker = setInterval(async () => {
-        try {
-          const usedMemory = await DeviceInfo.getUsedMemory();
-          if (usedMemory > runPeakMemory) {
-            runPeakMemory = usedMemory;
-          }
-        } catch (e) {
-          console.warn('Unable to read memory:', e);
-        }
-      }, 3000);
-    }
+    const memoryTracker = createMemoryTracker((usedMemory) => {
+      if (usedMemory > runPeakMemory) runPeakMemory = usedMemory;
+    });
 
     try {
-      await get().loadModel(selectedModel);
+      set({
+        isGenerating: true,
+        performance: { tokenCount: 0, firstTokenTime: 0 },
+      });
+      memoryTracker.start();
 
       const startTime = performance.now();
       await LLMModule.generate([
@@ -251,33 +285,32 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         { role: 'user', content: BENCHMARK_PROMPT },
       ]);
       const endTime = performance.now();
+      memoryTracker.stop();
 
-      if (Platform.OS === 'ios') clearInterval(memoryUsageTracker);
-
-      const generatedTokens = get().tokenCount;
-      const firstTokenTime = get().firstTokenTime;
-
+      const { tokenCount, firstTokenTime } = get().performance;
       const { totalTime, timeToFirstToken, tokensPerSecond } =
         calculatePerformanceMetrics(
           startTime,
           endTime,
           firstTokenTime,
-          generatedTokens
+          tokenCount
         );
 
       return {
         totalTime,
         timeToFirstToken,
         tokensPerSecond,
-        tokensGenerated: generatedTokens,
-        peakMemory: Platform.OS === 'ios' ? runPeakMemory : 0,
+        tokensGenerated: tokenCount,
+        peakMemory: runPeakMemory,
       };
     } catch (e) {
       console.error(`Benchmark failed`, e);
+      memoryTracker.stop();
     } finally {
-      set({ isGenerating: false, isProcessingPrompt: false });
+      set({ isGenerating: false });
     }
   },
+
   interrupt: () => {
     if (get().isGenerating) {
       LLMModule.interrupt();

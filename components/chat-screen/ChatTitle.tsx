@@ -15,8 +15,29 @@ const ChatTitle = ({ title, modelName }: Props) => {
 
   return (
     <View style={styles.titleContainer}>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.modelName}>{modelName}</Text>
+      {title !== '' ? (
+        <>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.modelName}>{modelName}</Text>
+        </>
+      ) : (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Text
+            style={{
+              color: theme.text.primary,
+              fontFamily: fontFamily.medium,
+            }}
+          >
+            {modelName}
+          </Text>
+        </View>
+      )}
     </View>
   );
 };

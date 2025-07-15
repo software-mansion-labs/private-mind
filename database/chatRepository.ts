@@ -181,6 +181,25 @@ export const setChatModel = async (
   id: number,
   model: number
 ) => {
-  await db.runAsync(`UPDATE chats SET model = ? WHERE id = ?`, [model, id]);
+  console.log('Setting chat model', id, model);
+  await db.runAsync(`UPDATE chats SET modelId = ? WHERE id = ?`, [model, id]);
   return;
+};
+
+export const getNextChatId = async (db: SQLiteDatabase): Promise<number> => {
+  const result = await db.getFirstAsync<{ seq: number }>(
+    `SELECT seq FROM sqlite_sequence WHERE name = 'chats'`
+  );
+  return (result?.seq ?? 0) + 1;
+};
+
+export const checkIfChatExists = async (
+  db: SQLiteDatabase,
+  chatId: number
+): Promise<boolean> => {
+  const result = await db.getFirstAsync<{ id: number }>(
+    `SELECT id FROM chats WHERE id = ?`,
+    [chatId]
+  );
+  return !!result;
 };

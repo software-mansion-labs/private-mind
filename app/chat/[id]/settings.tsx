@@ -47,9 +47,7 @@ export default function ChatSettingsScreen() {
   const chat = getChatById(chatId as number);
   const model = chat?.modelId ? getModelById(chat?.modelId) : undefined;
 
-  const [chatTitle, setChatTitle] = useState(
-    chat ? chat.title : `Chat #${chatId}`
-  );
+  const [chatTitle, setChatTitle] = useState(chat ? chat.title : ``);
   const [systemPrompt, setSystemPrompt] = useState('');
   const [contextWindow, setContextWindow] = useState('6');
 
@@ -128,7 +126,7 @@ export default function ChatSettingsScreen() {
           showsVerticalScrollIndicator={false}
           ref={scrollViewRef}
         >
-          {chatId !== null && (
+          {chat && (
             <View style={styles.textFieldSection}>
               <Text style={styles.label}>Chat name</Text>
               <TextFieldInput
@@ -178,12 +176,12 @@ export default function ChatSettingsScreen() {
               onFocus={() => scrollToInput()}
             />
           </View>
-          {chatId && (
+          {chat && (
             <View style={styles.buttonSection}>
               <SecondaryButton
                 text={'Export Chat'}
                 onPress={async () => {
-                  await exportChatRoom(db, chatId, chatTitle);
+                  await exportChatRoom(db, chatId!, chatTitle);
                 }}
               />
               <SecondaryButton
@@ -208,7 +206,7 @@ export default function ChatSettingsScreen() {
               />
             </View>
           )}
-          {!chatId && (
+          {!chat && (
             <View style={{ gap: 12 }}>
               <EntryButton
                 text={'App Info'}

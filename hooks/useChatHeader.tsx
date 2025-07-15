@@ -14,7 +14,7 @@ const useChatHeader = ({ chatId, chatModel }: Props) => {
   const navigation = useNavigation();
   const { getChatById } = useChatStore();
   const chat = getChatById(chatId);
-  const chatTitle = chat ? chat.title : `Chat #${chatId}`;
+  const chatTitle = chat ? chat.title : ``;
 
   useLayoutEffect(() => {
     navigation.setOptions({

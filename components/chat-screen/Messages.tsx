@@ -9,22 +9,18 @@ import {
   Alert,
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSQLiteContext } from 'expo-sqlite';
 import { router } from 'expo-router';
-
 import AnimatedChatLoading from './AnimatedChatLoading';
 import MessageItem from './MessageItem';
 import PrimaryButton from '../PrimaryButton';
 import TextButton from '../TextButton';
-
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
 import { importMessages, Message } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import { importChatRoom } from '../../database/exportImportRepository';
-
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontFamily';
 import { Theme } from '../../styles/colors';
 

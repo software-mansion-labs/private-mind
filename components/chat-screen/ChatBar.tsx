@@ -55,7 +55,11 @@ const ChatBar = ({
       {chatId && !model && (
         <TouchableOpacity style={styles.modelSelection} onPress={onSelectModel}>
           <Text style={styles.selectedModel}>Select Model</Text>
-          <RotateLeft width={20} height={20} />
+          <RotateLeft
+            width={20}
+            height={20}
+            style={{ color: theme.text.primary }}
+          />
         </TouchableOpacity>
       )}
 
@@ -121,8 +125,7 @@ const createStyles = (theme: Theme) =>
       height: 52,
       borderWidth: 1,
       borderColor: theme.border.soft,
-      borderBottomLeftRadius: 8,
-      borderBottomRightRadius: 8,
+      borderRadius: 12,
       paddingHorizontal: 16,
       paddingVertical: 12,
     },
