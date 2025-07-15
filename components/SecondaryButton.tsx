@@ -41,9 +41,7 @@ const SecondaryButton = ({
       style={[styles.button, style]}
     >
       {icon}
-      <Text style={[styles.text, textStyle]}>
-        {text}
-      </Text>
+      <Text style={[styles.text, textStyle]}>{text}</Text>
     </TouchableOpacity>
   );
 };
@@ -61,6 +59,7 @@ const createStyles = (theme: Theme, disabled: boolean) =>
       borderRadius: 12,
       borderColor: theme.bg.strongPrimary,
       opacity: disabled ? 0.4 : 1,
+      flexDirection: 'row',
     },
     text: {
       fontFamily: fontFamily.medium,
