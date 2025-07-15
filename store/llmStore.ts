@@ -204,12 +204,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           }, 100);
         });
       }
-
       // If the user interrupts when the model is loading
       if (!get().isProcessingPrompt) {
         return;
       }
-
       set({
         isGenerating: true,
         performance: {
@@ -258,10 +256,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   },
 
   runBenchmark: async () => {
-    set({
-      performance: { tokenCount: 0, firstTokenTime: 0 },
-      isGenerating: true,
-    });
     let runPeakMemory = 0;
     const memoryTracker = createMemoryTracker((usedMemory) => {
       if (usedMemory > runPeakMemory) runPeakMemory = usedMemory;
@@ -313,6 +307,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   interrupt: () => {
     if (get().isGenerating) {
       LLMModule.interrupt();
+      set({ isGenerating: false, isProcessingPrompt: false });
     } else if (get().isProcessingPrompt) {
       set({ isProcessingPrompt: false });
     }
