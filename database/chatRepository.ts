@@ -151,19 +151,26 @@ export const getChatSettings = async (
 
 export const setChatSettings = async (
   db: SQLiteDatabase,
-  chatId: number,
+  chatId: number | null,
   settings: ChatSettings
 ): Promise<void> => {
-  await db.runAsync(
-    `
+  if (chatId === null) {
+    await AsyncStorage.setItem(
+      'default_chat_settings',
+      JSON.stringify(settings)
+    );
+  } else {
+    await db.runAsync(
+      `
     INSERT INTO chatSettings (chatId, systemPrompt, contextWindow)
     VALUES (?, ?, ?)
     ON CONFLICT(chatId) DO UPDATE SET
       systemPrompt = excluded.systemPrompt,
       contextWindow = excluded.contextWindow
   `,
-    [chatId, settings.systemPrompt, settings.contextWindow]
-  );
+      [chatId, settings.systemPrompt, settings.contextWindow]
+    );
+  }
 };
 
 export const renameChat = async (
