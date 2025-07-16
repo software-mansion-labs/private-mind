@@ -7,7 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Model } from '../../database/modelRepository';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
 import { ScrollView } from 'react-native-gesture-handler';

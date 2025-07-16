@@ -1,7 +1,7 @@
 import React, { RefObject } from 'react';
 import { View, Text, ScrollView, StyleSheet, Platform } from 'react-native';
 import { Theme } from '../../styles/colors';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import InfoCircleIcon from '../../assets/icons/info-circle.svg';
 import TextFieldInput from '../TextFieldInput';
 import { useTheme } from '../../context/ThemeContext';

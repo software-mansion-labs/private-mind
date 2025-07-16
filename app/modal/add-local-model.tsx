@@ -10,7 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useModelStore } from '../../store/modelStore';
 import ModalHeader from '../../components/ModalHeader';
-import { fontSizes, fontFamily } from '../../styles/fontFamily';
+import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import PrimaryButton from '../../components/PrimaryButton';
 import { ScrollView } from 'react-native-gesture-handler';
@@ -24,17 +24,36 @@ type LocalFile = {
   uri: string;
 };
 
+export interface LocalModelFormState {
+  localModelPath: LocalFile | null;
+  localTokenizerPath: LocalFile | null;
+  localTokenizerConfigPath: LocalFile | null;
+}
+
 export default function AddLocalModelScreen() {
   const router = useRouter();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { addModelToDB } = useModelStore();
 
-  const [localModelPath, setLocalModelPath] = useState<LocalFile | null>(null);
-  const [localTokenizerPath, setLocalTokenizerPath] =
-    useState<LocalFile | null>(null);
-  const [localTokenizerConfigPath, setLocalTokenizerConfigPath] =
-    useState<LocalFile | null>(null);
+  const [
+    { localModelPath, localTokenizerPath, localTokenizerConfigPath },
+    setFormState,
+  ] = useState<LocalModelFormState>({
+    localModelPath: null,
+    localTokenizerPath: null,
+    localTokenizerConfigPath: null,
+  });
+
+  const setFormField = <K extends keyof LocalModelFormState>(
+    field: K,
+    value: LocalModelFormState[K]
+  ) => {
+    setFormState((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
   const handleSave = async () => {
     if (!localModelPath || !localTokenizerPath || !localTokenizerConfigPath) {
@@ -77,21 +96,23 @@ export default function AddLocalModelScreen() {
             <Text style={styles.label}>Model URL</Text>
             <UploadInput
               fileInfo={localModelPath}
-              onChange={setLocalModelPath}
+              onChange={(file) => setFormField('localModelPath', file)}
             />
           </View>
           <View style={styles.textFieldSection}>
             <Text style={styles.label}>Tokenizer URL</Text>
             <UploadInput
               fileInfo={localTokenizerPath}
-              onChange={setLocalTokenizerPath}
+              onChange={(file) => setFormField('localTokenizerPath', file)}
             />
           </View>
           <View style={styles.textFieldSection}>
             <Text style={styles.label}>Tokenizer Config URL</Text>
             <UploadInput
               fileInfo={localTokenizerConfigPath}
-              onChange={setLocalTokenizerConfigPath}
+              onChange={(file) =>
+                setFormField('localTokenizerConfigPath', file)
+              }
             />
           </View>
         </ScrollView>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../components/chat-screen/ChatScreen';
-import { useDefaultHeader } from '../../hooks/useDefaultHeader';
+import useDefaultHeader from '../../hooks/useDefaultHeader';
 import { useEffect, useState } from 'react';
 import { useLLMStore } from '../../store/llmStore';
 import useChatHeader from '../../hooks/useChatHeader';
@@ -9,21 +9,23 @@ import { useModelStore } from '../../store/modelStore';
 import { Model } from '../../database/modelRepository';
 import WithDrawerGesture from '../../components/WithDrawerGesture';
 import { useChatStore } from '../../store/chatStore';
-import { useSQLiteContext } from 'expo-sqlite';
 
 export default function ChatScreenWrapper() {
   useDefaultHeader();
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
-  const chatId = parseInt(rawId);
+  const { modelId }: { modelId: string } = useLocalSearchParams();
+
   const { activeChatMessages, setActiveChatId } = useLLMStore();
   const { getModelById } = useModelStore();
-  const { modelId }: { modelId: string } = useLocalSearchParams();
   const { getChatById, setChatModel, loadChats } = useChatStore();
+
+  const chatId = parseInt(rawId);
   const chat = getChatById(chatId);
   const resolvedModelId = modelId ?? chat?.modelId;
   const chatModel = resolvedModelId
     ? getModelById(parseInt(resolvedModelId.toString()))
     : undefined;
+
   const [model, setModel] = useState<Model | undefined>(chatModel);
   const [isLoading, setIsLoading] = useState(true);
 

@@ -1,11 +1,9 @@
 import React, { memo, useMemo, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
-
 import MarkdownComponent from './MarkdownComponent';
-
 import ChevronDown from '../../assets/icons/chevron-down.svg';
 import ChevronUp from '../../assets/icons/chevron-up.svg';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';

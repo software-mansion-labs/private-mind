@@ -1,14 +1,13 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-import { useDefaultHeader } from '../hooks/useDefaultHeader';
-import { ModelState, useModelStore } from '../store/modelStore';
-import ModelCard from '../components/model-hub/ModelCard';
+import useDefaultHeader from '../hooks/useDefaultHeader';
+import { useModelStore } from '../store/modelStore';
 import FloatingActionButton from '../components/model-hub/FloatingActionButton';
 import WithDrawerGesture from '../components/WithDrawerGesture';
 import { ScrollView } from 'react-native-gesture-handler';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import ModelManagementSheet from '../components/bottomSheets/ModelManagementSheet';
-import { fontFamily, fontSizes } from '../styles/fontFamily';
+import { fontFamily, fontSizes } from '../styles/fontStyles';
 import TextFieldInput from '../components/TextFieldInput';
 import SearchIcon from '../assets/icons/search.svg';
 import SecondaryButton from '../components/SecondaryButton';
@@ -18,6 +17,10 @@ import MemoryWarningSheet from '../components/bottomSheets/MemoryWarningSheet';
 import SortingTag from '../components/model-hub/SortingTag';
 import { useTheme } from '../context/ThemeContext';
 import { Theme } from '../styles/colors';
+import { useModelHubData } from '../hooks/useModelHubData';
+import { Model } from '../database/modelRepository';
+import GroupedModelList from '../components/model-hub/GroupedModelList';
+import StandardModelList from '../components/model-hub/StandardModelList';
 
 const ModelHubScreen = () => {
   useDefaultHeader();
@@ -27,14 +30,21 @@ const ModelHubScreen = () => {
   const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
   const addModelSheetRef = useRef<BottomSheetModal | null>(null);
   const memoryWarningSheetRef = useRef<BottomSheetModal | null>(null);
-
   const { models, downloadStates } = useModelStore();
-
   const [search, setSearch] = useState('');
   const [activeFilters, setActiveFilters] = useState<Set<string>>(
     new Set(['featured'])
   );
   const [groupByModel, setGroupByModel] = useState(false);
+
+  const { downloadedModels, availableModels, groupedModels, isEmpty } =
+    useModelHubData({
+      models,
+      downloadStates,
+      search,
+      activeFilters,
+      groupByModel,
+    });
 
   const toggleFilter = (filter: string) => {
     const newFilters = new Set(activeFilters);
@@ -42,72 +52,9 @@ const ModelHubScreen = () => {
     setActiveFilters(newFilters);
   };
 
-  const filteredModels = models.filter((model) => {
-    const matchesSearch = model.modelName
-      .toLowerCase()
-      .includes(search.toLowerCase());
-
-    const matchesFilter =
-      activeFilters.has('featured') && model.source === 'built-in'
-        ? model.featured
-        : true;
-
-    return matchesSearch && matchesFilter;
-  });
-
-  const downloadedModels = filteredModels.filter((m) => m.isDownloaded);
-  const availableModels = filteredModels.filter((m) => !m.isDownloaded);
-
-  availableModels.sort((a, b) => {
-    const aState = downloadStates[a.id]?.status;
-    const bState = downloadStates[b.id]?.status;
-    if (aState === ModelState.Downloading && bState !== ModelState.Downloading)
-      return -1;
-    if (bState === ModelState.Downloading && aState !== ModelState.Downloading)
-      return 1;
-
-    if (a.parameters !== b.parameters && a.parameters && b.parameters) {
-      return a.parameters! - b.parameters;
-    }
-
-    return a.modelName.localeCompare(b.modelName);
-  });
-
-  const groupModelsByPrefix = (models: typeof filteredModels) => {
-    return models.reduce<Record<string, typeof filteredModels>>(
-      (acc, model) => {
-        const prefix = model.modelName.split('-')[0].toLowerCase();
-        if (!acc[prefix]) acc[prefix] = [];
-        acc[prefix].push(model);
-        return acc;
-      },
-      {}
-    );
-  };
-
-  const renderGroupedModels = (models: typeof filteredModels) => {
-    const grouped = groupModelsByPrefix(models);
-    return (
-      <>
-        {Object.entries(grouped).map(([prefix, group]) => (
-          <React.Fragment key={prefix}>
-            <Text style={styles.sectionHeader}>{prefix}</Text>
-            <View style={styles.modelList}>
-              {group.map((model) => (
-                <ModelCard
-                  key={model.id}
-                  model={model}
-                  onPress={() =>
-                    modelManagementSheetRef.current?.present(model)
-                  }
-                />
-              ))}
-            </View>
-          </React.Fragment>
-        ))}
-      </>
-    );
-  };
+  const handleModelPress = useCallback((model: Model) => {
+    modelManagementSheetRef.current?.present(model);
+  }, []);
 
   const renderEmptyState = () => (
     <View style={styles.noModelsContainer}>
@@ -162,47 +109,22 @@ const ModelHubScreen = () => {
               />
             </ScrollView>
           </View>
-          {filteredModels.length === 0 ? (
+          {isEmpty ? (
             renderEmptyState()
           ) : (
             <ScrollView contentContainerStyle={styles.modelScrollContent}>
-              {groupByModel ? (
-                renderGroupedModels([...downloadedModels, ...availableModels])
+              {groupByModel && groupedModels ? (
+                <GroupedModelList
+                  groupedModels={groupedModels}
+                  onModelPress={handleModelPress}
+                />
               ) : (
-                <>
-                  {downloadedModels.length > 0 && (
-                    <>
-                      <Text style={styles.sectionHeader}>Ready to Use</Text>
-                      <View style={styles.modelList}>
-                        {downloadedModels.map((model) => (
-                          <ModelCard
-                            key={model.id}
-                            model={model}
-                            bottomSheetModalRef={memoryWarningSheetRef}
-                            onPress={() =>
-                              modelManagementSheetRef.current?.present(model)
-                            }
-                          />
-                        ))}
-                      </View>
-                    </>
-                  )}
-                  <Text style={styles.sectionHeader}>
-                    Available to Download
-                  </Text>
-                  <View style={styles.downloadList}>
-                    {availableModels.map((model) => (
-                      <ModelCard
-                        key={model.id}
-                        model={model}
-                        bottomSheetModalRef={memoryWarningSheetRef}
-                        onPress={() =>
-                          modelManagementSheetRef.current?.present(model)
-                        }
-                      />
-                    ))}
-                  </View>
-                </>
+                <StandardModelList
+                  downloadedModels={downloadedModels}
+                  availableModels={availableModels}
+                  onModelPress={handleModelPress}
+                  memoryWarningSheetRef={memoryWarningSheetRef}
+                />
               )}
             </ScrollView>
           )}
@@ -255,19 +177,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.sm,
       fontFamily: fontFamily.regular,
       color: theme.text.defaultTertiary,
-    },
-    sectionHeader: {
-      fontSize: fontSizes.sm,
-      fontFamily: fontFamily.medium,
-      color: theme.text.defaultSecondary,
-      textTransform: 'capitalize',
-    },
-    modelList: {
-      gap: 8,
-    },
-    downloadList: {
-      gap: 8,
-      paddingBottom: 60,
     },
     modelScrollContent: {
       gap: 16,

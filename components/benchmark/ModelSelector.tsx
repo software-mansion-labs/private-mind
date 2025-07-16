@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Model } from '../../database/modelRepository';
 import ModelCard from '../model-hub/ModelCard';
 import { useTheme } from '../../context/ThemeContext';
-import { fontSizes, fontFamily } from '../../styles/fontFamily';
+import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';

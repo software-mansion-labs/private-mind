@@ -10,7 +10,7 @@ import { router } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
 import { useTheme } from '../../context/ThemeContext';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';
 import ModelCard from '../model-hub/ModelCard';
