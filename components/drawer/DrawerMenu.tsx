@@ -10,7 +10,7 @@ import ChatIcon from '../../assets/icons/chat.svg';
 import ModelsIcon from '../../assets/icons/models.svg';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
 import { DrawerItem } from './DrawerItem';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 
 const getRelativeDateSection = (date: Date): string => {

@@ -10,7 +10,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useModelStore } from '../../../store/modelStore';
 import ModalHeader from '../../../components/ModalHeader';
-import { fontSizes, fontFamily } from '../../../styles/fontFamily';
+import { fontSizes, fontFamily } from '../../../styles/fontStyles';
 import { useTheme } from '../../../context/ThemeContext';
 import PrimaryButton from '../../../components/PrimaryButton';
 import { ScrollView } from 'react-native-gesture-handler';
@@ -19,6 +19,7 @@ import { InfoAlert } from '../../../components/InfoAlert';
 import TextFieldInput from '../../../components/TextFieldInput';
 import Toast from 'react-native-toast-message';
 import { Theme } from '../../../styles/colors';
+import { LocalModelFormState } from '../add-local-model';
 
 type LocalFile = {
   name: string;
@@ -26,33 +27,49 @@ type LocalFile = {
   uri: string;
 };
 
+interface EditModelFormState extends LocalModelFormState {
+  modelName: string;
+}
+
+const parsePathToLocalFile = (path?: string): LocalFile | null => {
+  if (!path) return null;
+  return {
+    name: path.split('/').pop() || '',
+    size: null,
+    uri: path.replace('file://', ''),
+  };
+};
+
 export default function EditLocalModelScreen() {
   const { modelId: rawModelId } = useLocalSearchParams<{ modelId: string }>();
   const modelId = parseInt(rawModelId);
+
   const router = useRouter();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const { getModelById, editModel } = useModelStore();
   const model = getModelById(modelId);
-  const [modelName, setModelName] = useState(model?.modelName || '');
-  const [localModelPath, setLocalModelPath] = useState<LocalFile | null>({
-    name: model?.modelPath.split('/').pop() || '',
-    size: null,
-    uri: model?.modelPath.replace('file://', '') || '',
+
+  const [
+    { modelName, localModelPath, localTokenizerPath, localTokenizerConfigPath },
+    setFormState,
+  ] = useState<EditModelFormState>({
+    modelName: model?.modelName || '',
+    localModelPath: parsePathToLocalFile(model?.modelPath),
+    localTokenizerPath: parsePathToLocalFile(model?.tokenizerPath),
+    localTokenizerConfigPath: parsePathToLocalFile(model?.tokenizerConfigPath),
   });
-  const [localTokenizerPath, setLocalTokenizerPath] =
-    useState<LocalFile | null>({
-      name: model?.tokenizerPath.split('/').pop() || '',
-      size: null,
-      uri: model?.tokenizerPath.replace('file://', '') || '',
-    });
-  const [localTokenizerConfigPath, setLocalTokenizerConfigPath] =
-    useState<LocalFile | null>({
-      name: model?.tokenizerConfigPath.split('/').pop() || '',
-      size: null,
-      uri: model?.tokenizerConfigPath.replace('file://', '') || '',
-    });
+
+  const setFormField = <K extends keyof EditModelFormState>(
+    field: K,
+    value: EditModelFormState[K]
+  ) => {
+    setFormState((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
   const handleSave = async () => {
     if (!localModelPath || !localTokenizerPath || !localTokenizerConfigPath) {
@@ -86,13 +103,16 @@ export default function EditLocalModelScreen() {
         >
           <View style={styles.textFieldSection}>
             <Text style={styles.label}>Model Name</Text>
-            <TextFieldInput value={modelName} onChangeText={setModelName} />
+            <TextFieldInput
+              value={modelName}
+              onChangeText={(text) => setFormField('modelName', text)}
+            />
           </View>
           <View style={styles.textFieldSection}>
             <Text style={styles.label}>Model URL</Text>
             <UploadInput
               fileInfo={localModelPath}
-              onChange={setLocalModelPath}
+              onChange={(file) => setFormField('localModelPath', file)}
               disabled
             />
             <InfoAlert text="Model file is permanently linked to this model and cannot be changed" />
@@ -101,14 +121,16 @@ export default function EditLocalModelScreen() {
             <Text style={styles.label}>Tokenizer URL</Text>
             <UploadInput
               fileInfo={localTokenizerPath}
-              onChange={setLocalTokenizerPath}
+              onChange={(file) => setFormField('localTokenizerPath', file)}
             />
           </View>
           <View style={styles.textFieldSection}>
             <Text style={styles.label}>Tokenizer Config URL</Text>
             <UploadInput
               fileInfo={localTokenizerConfigPath}
-              onChange={setLocalTokenizerConfigPath}
+              onChange={(file) =>
+                setFormField('localTokenizerConfigPath', file)
+              }
             />
           </View>
         </ScrollView>

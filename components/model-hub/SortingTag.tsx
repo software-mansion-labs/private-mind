@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { fontSizes, fontFamily } from '../../styles/fontFamily';
+import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import CheckIcon from '../../assets/icons/check.svg';
 

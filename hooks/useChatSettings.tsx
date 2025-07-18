@@ -9,7 +9,7 @@ interface ChatSettingsState {
   contextWindow: string;
 }
 
-export function useChatSettings(chatId: number | null) {
+export default function useChatSettings(chatId: number | null) {
   const db = useSQLiteContext();
   const { getChatById } = useChatStore();
   const chat = useMemo(

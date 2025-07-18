@@ -11,7 +11,7 @@ import Folder from '../assets/icons/folder.svg';
 import TrashIcon from '../assets/icons/trash.svg';
 import AttachmentIcon from '../assets/icons/attachment.svg';
 import { useTheme } from '../context/ThemeContext';
-import { fontFamily, fontSizes } from '../styles/fontFamily';
+import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
 
 interface Props {

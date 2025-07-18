@@ -10,7 +10,7 @@ interface Props {
   chatModel: Model | undefined;
 }
 
-const useChatHeader = ({ chatId, chatModel }: Props) => {
+export default function useChatHeader({ chatId, chatModel }: Props) {
   const navigation = useNavigation();
   const { getChatById } = useChatStore();
   const chat = getChatById(chatId);
@@ -27,6 +27,4 @@ const useChatHeader = ({ chatId, chatModel }: Props) => {
       headerRight: () => <SettingsHeaderButton chatId={chatId} />,
     });
   }, [navigation, chatId, chatTitle, chatModel]);
-};
-
-export default useChatHeader;
+}

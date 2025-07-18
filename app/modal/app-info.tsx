@@ -10,7 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import Clipboard from '@react-native-clipboard/clipboard';
 import Toast from 'react-native-toast-message';
-import { fontSizes, fontFamily } from '../../styles/fontFamily';
+import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import ModalHeader from '../../components/ModalHeader';
 import SecondaryButton from '../../components/SecondaryButton';
@@ -19,7 +19,7 @@ import GithubIcon from '../../assets/icons/github.svg';
 import CopyIcon from '../../assets/icons/copy.svg';
 import FooterIcon from '../../assets/icons/footer.svg';
 
-const APP_VERSION = 'v.1.0.1';
+const APP_VERSION = 'v.1.0.2';
 
 const GITHUB_LINKS: { text: string; url: string }[] = [
   {

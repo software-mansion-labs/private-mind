@@ -11,13 +11,19 @@ import { useRouter } from 'expo-router';
 import { useModelStore } from '../../store/modelStore';
 import ModalHeader from '../../components/ModalHeader';
 import TextFieldInput from '../../components/TextFieldInput';
-import { fontSizes, fontFamily } from '../../styles/fontFamily';
+import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import PrimaryButton from '../../components/PrimaryButton';
 import { ScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Theme } from '../../styles/colors';
+
+export interface RemoteModelFormState {
+  remoteModelPath: string;
+  remoteTokenizerPath: string;
+  remoteTokenizerConfigPath: string;
+}
 
 export default function AddRemoteModelScreen() {
   const router = useRouter();
@@ -27,10 +33,24 @@ export default function AddRemoteModelScreen() {
   const { addModelToDB } = useModelStore();
   const insets = useSafeAreaInsets();
 
-  const [remoteModelPath, setRemoteModelPath] = useState('');
-  const [remoteTokenizerPath, setRemoteTokenizerPath] = useState('');
-  const [remoteTokenizerConfigPath, setRemoteTokenizerConfigPath] =
-    useState('');
+  const [
+    { remoteModelPath, remoteTokenizerPath, remoteTokenizerConfigPath },
+    setFormState,
+  ] = useState<RemoteModelFormState>({
+    remoteModelPath: '',
+    remoteTokenizerPath: '',
+    remoteTokenizerConfigPath: '',
+  });
+
+  const setFormField = <K extends keyof RemoteModelFormState>(
+    field: K,
+    value: RemoteModelFormState[K]
+  ) => {
+    setFormState((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
   const handleSave = async () => {
     if (
@@ -92,7 +112,7 @@ export default function AddRemoteModelScreen() {
             <TextFieldInput
               value={remoteModelPath}
               multiline={true}
-              onChangeText={setRemoteModelPath}
+              onChangeText={(text) => setFormField('remoteModelPath', text)}
               placeholder="Enter external model URL"
             />
           </View>
@@ -102,7 +122,7 @@ export default function AddRemoteModelScreen() {
             <TextFieldInput
               value={remoteTokenizerPath}
               multiline={true}
-              onChangeText={setRemoteTokenizerPath}
+              onChangeText={(text) => setFormField('remoteTokenizerPath', text)}
               placeholder="Enter external tokenizer URL"
               onFocus={scrollToBottom}
             />
@@ -113,7 +133,9 @@ export default function AddRemoteModelScreen() {
             <TextFieldInput
               value={remoteTokenizerConfigPath}
               multiline={true}
-              onChangeText={setRemoteTokenizerConfigPath}
+              onChangeText={(text) =>
+                setFormField('remoteTokenizerConfigPath', text)
+              }
               placeholder="Enter external config URL"
               onFocus={scrollToBottom}
             />

@@ -6,7 +6,7 @@ import { useModelStore } from '../../store/modelStore';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
 import BenchmarkItem from './BenchmarkItem';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 
 interface Props {

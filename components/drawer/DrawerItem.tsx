@@ -1,7 +1,7 @@
 import React, { memo, useMemo } from 'react';
 import { Pressable, View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 
 interface Props {

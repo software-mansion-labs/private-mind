@@ -20,13 +20,12 @@ import Toast from 'react-native-toast-message';
 import { exportChatRoom } from '../../../database/exportImportRepository';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Theme } from '../../../styles/colors';
-import { useChatSettings } from '../../../hooks/useChatSettings';
+import useChatSettings from '../../../hooks/useChatSettings';
 import ChatSettingsForm from '../../../components/settings/ChatSettingsForm';
 
 export default function ChatSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const chatId = Number(id) || null;
-  const isDefaultSettings = chatId === null;
 
   const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
@@ -36,6 +35,8 @@ export default function ChatSettingsScreen() {
   const { renameChat, deleteChat } = useChatStore();
 
   const { settings, setSetting, chat } = useChatSettings(chatId);
+  const isDefaultSettings = chat === undefined;
+
   const model = chat?.modelId ? getModelById(chat?.modelId) : undefined;
 
   const styles = useMemo(() => createStyles(theme), [theme]);

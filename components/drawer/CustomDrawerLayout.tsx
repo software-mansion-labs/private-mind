@@ -14,7 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DrawerProvider } from '../../context/DrawerContext';
 import { useTheme } from '../../context/ThemeContext';
-import { fontSizes, fontFamily } from '../../styles/fontFamily';
+import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { Easing } from 'react-native-reanimated/src/Easing';
 import Toast from 'react-native-toast-message';

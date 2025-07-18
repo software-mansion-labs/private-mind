@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Text, StyleSheet, View } from 'react-native';
 import InfoCircleIcon from '../assets/icons/info-circle.svg';
-import { fontFamily, fontSizes } from '../styles/fontFamily';
+import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { useTheme } from '../context/ThemeContext';
 import { Theme } from '../styles/colors';
 

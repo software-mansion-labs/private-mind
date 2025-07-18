@@ -9,6 +9,18 @@
     "userInterfaceStyle": "automatic",
     "plugins": [
       [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "image": "./assets/icons/icon.png",
+          "dark": {
+            "image": "./assets/icons/icon.png",
+            "backgroundColor": "#020F3C"
+          },
+          "imageWidth": 200
+        }
+      ],
+      [
         "expo-font",
         {
           "fonts": [
@@ -40,11 +52,6 @@
       ]
     ],
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/icons/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.swmansion.privatemind",
@@ -52,13 +59,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icons/adaptive-icon.png",
+        "foregroundImage": "./assets/icons/icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.swmansion.privatemind"
-    },
-    "web": {
-      "favicon": "./assets/icons/favicon.png"
     }
   }
 }

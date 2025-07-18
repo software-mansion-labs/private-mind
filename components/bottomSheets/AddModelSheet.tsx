@@ -6,7 +6,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { router } from 'expo-router';
 import EntryButton from '../EntryButton';

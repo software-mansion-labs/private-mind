@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { TextInput, StyleSheet, View, TextInputProps } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import { fontFamily, fontSizes } from '../styles/fontFamily';
+import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
 
 type TextFieldInputProps = TextInputProps & {
