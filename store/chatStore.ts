@@ -26,10 +26,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   chats: [],
   settings: {},
   db: null,
+
   setDB: (db) => {
     set({ db });
     get().loadChats();
   },
+
   loadChats: async () => {
     const db = get().db;
     if (!db) return;
@@ -39,6 +41,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       chats,
     });
   },
+
   updateLastUsed: (id: number) => {
     get().chats.forEach((chat) => {
       if (chat.id === id) {
@@ -50,10 +53,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       chats: state.chats.sort((a, b) => b.lastUsed - a.lastUsed),
     }));
   },
+
   getChatById: (id: number) => {
     const chats = get().chats;
     return chats.find((chat) => chat.id === id);
   },
+
   addChat: async (title: string, modelId: number) => {
     const db = get().db;
     if (!db) return;
@@ -70,6 +75,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     return newChatId;
   },
+
   renameChat: async (id: number, newTitle: string) => {
     const db = get().db;
     if (!db) return;
@@ -82,17 +88,18 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       ),
     }));
   },
+
   setChatModel: async (id: number, modelId: number) => {
     const db = get().db;
     if (!db) return;
     await setChatModel(db, id, modelId);
-
     set((state) => ({
       chats: state.chats.map((chat) =>
         chat.id === id ? { ...chat, model: modelId } : chat
       ),
     }));
   },
+
   deleteChat: async (id: number) => {
     const db = get().db;
     if (!db) return;

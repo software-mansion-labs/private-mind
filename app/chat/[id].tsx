@@ -5,26 +5,28 @@ import { useDefaultHeader } from '../../hooks/useDefaultHeader';
 import { useEffect, useState } from 'react';
 import { useLLMStore } from '../../store/llmStore';
 import useChatHeader from '../../hooks/useChatHeader';
-import { useChatStore } from '../../store/chatStore';
 import { useModelStore } from '../../store/modelStore';
-import { getChatMessages, Message } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import WithDrawerGesture from '../../components/WithDrawerGesture';
+import { useChatStore } from '../../store/chatStore';
 import { useSQLiteContext } from 'expo-sqlite';
 
 export default function ChatScreenWrapper() {
   useDefaultHeader();
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const chatId = parseInt(rawId);
-  const db = useSQLiteContext();
-  const { activeChatId, activeChatMessages } = useLLMStore();
-  const { getChatById } = useChatStore();
+  const { activeChatMessages, setActiveChatId } = useLLMStore();
   const { getModelById } = useModelStore();
-
+  const { modelId }: { modelId: string } = useLocalSearchParams();
+  const { getChatById, setChatModel, loadChats } = useChatStore();
   const chat = getChatById(chatId);
-  const chatModel = chat?.modelId ? getModelById(chat?.modelId) : undefined;
-  const [messageHistory, setMessageHistory] = useState<Message[]>([]);
+  const resolvedModelId = modelId ?? chat?.modelId;
+  const chatModel = resolvedModelId
+    ? getModelById(parseInt(resolvedModelId.toString()))
+    : undefined;
   const [model, setModel] = useState<Model | undefined>(chatModel);
+  const [isLoading, setIsLoading] = useState(true);
+
   useChatHeader({
     chatId: chatId,
     chatModel: model,
@@ -32,27 +34,24 @@ export default function ChatScreenWrapper() {
 
   useEffect(() => {
     (async () => {
-      if (!chatId) return;
-      if (chatId != activeChatId) {
-        const history = await getChatMessages(db, chatId);
-        setMessageHistory(history);
-      }
+      await setActiveChatId(chatId);
+      setIsLoading(false);
     })();
   }, [chatId]);
 
-  useEffect(() => {
-    if (activeChatId === chatId && activeChatMessages.length > 0) {
-      setMessageHistory(activeChatMessages);
-    }
-  }, [activeChatMessages, activeChatId, chatId]);
+  const handleSetModel = async (model: Model) => {
+    setChatModel(chatId, model.id);
+    loadChats();
+    setModel(model);
+  };
 
   return (
     <WithDrawerGesture>
       <ChatScreen
         chatId={chatId}
-        messageHistory={messageHistory}
+        messageHistory={isLoading ? [] : activeChatMessages}
         model={model}
-        selectModel={setModel}
+        selectModel={handleSetModel}
       />
     </WithDrawerGesture>
   );

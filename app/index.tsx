@@ -1,57 +1,45 @@
-import React, { useState } from 'react';
+import React from 'react';
 import ChatScreen from '../components/chat-screen/ChatScreen';
 import { useDefaultHeader } from '../hooks/useDefaultHeader';
-import { useNavigation } from 'expo-router';
+import { useNavigation, router } from 'expo-router';
 import { useLayoutEffect } from 'react';
 import SettingsHeaderButton from '../components/SettingsHeaderButton';
 import { configureReanimatedLogger } from 'react-native-reanimated';
-import { Text, View } from 'react-native';
 import { Model } from '../database/modelRepository';
 import WithDrawerGesture from '../components/WithDrawerGesture';
-import { useTheme } from '../context/ThemeContext';
-import { fontFamily } from '../styles/fontFamily';
+import { getNextChatId } from '../database/chatRepository';
+import { useSQLiteContext } from 'expo-sqlite';
 
 export default function App() {
   const navigation = useNavigation();
-  const [model, setModel] = useState<Model | undefined>();
-  const { theme } = useTheme();
+  const db = useSQLiteContext();
   useDefaultHeader();
 
   configureReanimatedLogger({
     strict: false,
   });
 
+  const handleSetModel = async (model: Model) => {
+    const nextChatId = await getNextChatId(db);
+    router.push({
+      pathname: `/chat/${nextChatId}`,
+      params: { modelId: model.id },
+    });
+  };
+
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => <SettingsHeaderButton chatId={null} />,
-      headerTitle: () => (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          <Text
-            style={{
-              color: theme.text.primary,
-              fontFamily: fontFamily.medium,
-            }}
-          >
-            {model ? model.modelName : ''}
-          </Text>
-        </View>
-      ),
     });
-  }, [navigation, model]);
+  }, [navigation]);
 
   return (
     <WithDrawerGesture>
       <ChatScreen
         chatId={null}
         messageHistory={[]}
-        model={model}
-        selectModel={setModel}
+        model={undefined}
+        selectModel={handleSetModel}
       />
     </WithDrawerGesture>
   );
