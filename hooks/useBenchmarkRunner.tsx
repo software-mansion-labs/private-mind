@@ -7,6 +7,8 @@ import {
   BenchmarkResultPerformanceNumbers,
 } from '../database/benchmarkRepository';
 
+const BENCHMARK_ITERATIONS = 3;
+
 const calculateAverageBenchmark = (
   results: BenchmarkResultPerformanceNumbers[],
   iterations: number
@@ -31,7 +33,9 @@ interface UseBenchmarkRunnerParams {
   onComplete: (newBenchmarkId: number) => void;
 }
 
-export function useBenchmarkRunner({ onComplete }: UseBenchmarkRunnerParams) {
+export default function useBenchmarkRunner({
+  onComplete,
+}: UseBenchmarkRunnerParams) {
   const db = useSQLiteContext();
   const { runBenchmark, loadModel, interrupt } = useLLMStore();
 
@@ -57,7 +61,7 @@ export function useBenchmarkRunner({ onComplete }: UseBenchmarkRunnerParams) {
       try {
         await loadModel(selectedModel, true);
 
-        const iterations = 3;
+        const iterations = BENCHMARK_ITERATIONS;
         const results: BenchmarkResultPerformanceNumbers[] = [];
 
         for (let i = 0; i < iterations; i++) {

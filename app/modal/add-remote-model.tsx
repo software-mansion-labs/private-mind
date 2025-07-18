@@ -85,7 +85,7 @@ export default function AddRemoteModelScreen() {
   const scrollToBottom = async () => {
     if (Platform.OS === 'ios') {
       await new Promise((resolve) => setTimeout(resolve, 25));
-      scrollViewRef.current?.scrollToEnd({ animated: true });
+      scrollViewRef.current?.scrollTo({ y: 500, animated: true });
     }
   };
 

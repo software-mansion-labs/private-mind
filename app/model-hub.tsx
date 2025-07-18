@@ -17,7 +17,7 @@ import MemoryWarningSheet from '../components/bottomSheets/MemoryWarningSheet';
 import SortingTag from '../components/model-hub/SortingTag';
 import { useTheme } from '../context/ThemeContext';
 import { Theme } from '../styles/colors';
-import { useModelHubData } from '../hooks/useModelHubData';
+import useModelHubData from '../hooks/useModelHubData';
 import { Model } from '../database/modelRepository';
 import GroupedModelList from '../components/model-hub/GroupedModelList';
 import StandardModelList from '../components/model-hub/StandardModelList';

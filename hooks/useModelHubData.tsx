@@ -19,7 +19,7 @@ const groupModelsByPrefix = (models: Model[]) => {
   }, {});
 };
 
-export function useModelHubData({
+export default function useModelHubData({
   models,
   downloadStates,
   search,

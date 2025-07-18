@@ -24,7 +24,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import { BenchmarkModal } from '../components/benchmark/BenchmarkModal';
 import BenchmarkResultSheet from '../components/bottomSheets/BenchmarkResultSheet';
 import BenchmarkHistory from '../components/benchmark/BenchmarkHistory';
-import { useBenchmarkRunner } from '../hooks/useBenchmarkRunner';
+import useBenchmarkRunner from '../hooks/useBenchmarkRunner';
 import useDefaultHeader from '../hooks/useDefaultHeader';
 
 const BenchmarkScreen = () => {
