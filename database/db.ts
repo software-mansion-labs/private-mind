@@ -4,6 +4,7 @@ import { useChatStore } from '../store/chatStore';
 import { useLLMStore } from '../store/llmStore';
 import { useModelStore } from '../store/modelStore';
 import { addModel } from './modelRepository';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const runMigrations = async (db: SQLiteDatabase) => {
   const tableInfo = await db.getAllAsync<{ name: string }>(
@@ -106,6 +107,15 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   useChatStore.getState().setDB(db);
   useModelStore.getState().setDB(db);
   useLLMStore.getState().setDB(db);
+
+  await AsyncStorage.setItem(
+    'default_chat_settings',
+    JSON.stringify({
+      systemPrompt:
+        'You are a helpful assistant. Answer user questions concisely.',
+      contextWindow: 6,
+    })
+  );
 
   await db.withTransactionAsync(async () => {
     for (const model of DEFAULT_MODELS) {

@@ -7,7 +7,7 @@ import {
   BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
 import { router } from 'expo-router';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
 import { useTheme } from '../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../styles/fontFamily';
@@ -55,34 +55,36 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
       handleStyle={styles.handle}
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.background}
-      keyboardBehavior="interactive"
+      keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
       keyboardBlurBehavior="restore"
     >
       {downloadedModels.length > 0 ? (
         <View style={styles.content}>
           <Text style={styles.title}>Select a Model</Text>
-          <View
-            style={[
-              styles.inputWrapper,
-              {
-                borderColor: active
-                  ? theme.bg.strongPrimary
-                  : theme.border.soft,
-                borderWidth: active ? 2 : 1,
-              },
-            ]}
-          >
-            <SearchIcon width={20} height={20} style={styles.searchIcon} />
-            <BottomSheetTextInput
-              style={styles.input}
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search Models..."
-              placeholderTextColor={theme.text.defaultTertiary}
-              onFocus={() => setActive(true)}
-              onBlur={() => setActive(false)}
-            />
-          </View>
+          {Platform.OS === 'ios' && (
+            <View
+              style={[
+                styles.inputWrapper,
+                {
+                  borderColor: active
+                    ? theme.bg.strongPrimary
+                    : theme.border.soft,
+                  borderWidth: active ? 2 : 1,
+                },
+              ]}
+            >
+              <SearchIcon width={20} height={20} style={styles.searchIcon} />
+              <BottomSheetTextInput
+                style={styles.input}
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search Models..."
+                placeholderTextColor={theme.text.defaultTertiary}
+                onFocus={() => setActive(true)}
+                onBlur={() => setActive(false)}
+              />
+            </View>
+          )}
 
           <BottomSheetFlatList
             data={filteredModels}

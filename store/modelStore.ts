@@ -127,7 +127,6 @@ export const useModelStore = create<ModelStore>((set, get) => ({
   },
 
   cancelDownload: async (model: Model) => {
-    console.log('Cancelling download for model:', model.modelName);
     await ResourceFetcher.cancelFetching(
       model.modelPath,
       model.tokenizerPath,

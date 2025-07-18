@@ -80,7 +80,7 @@ const BenchmarkScreen = () => {
     const interval = setInterval(() => setTimer((prev) => prev + 1), 1000);
     const iterations = 1;
 
-    await loadModel(selectedModel);
+    await loadModel(selectedModel, true);
 
     const results: BenchmarkResultPerformanceNumbers[] = [];
 
@@ -93,7 +93,7 @@ const BenchmarkScreen = () => {
         return;
       }
 
-      const result = await runBenchmark(selectedModel);
+      const result = await runBenchmark();
       if (result) results.push(result);
     }
 
