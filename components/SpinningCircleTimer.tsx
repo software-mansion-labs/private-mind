@@ -9,7 +9,7 @@ import Animated, {
   withRepeat,
 } from 'react-native-reanimated';
 import { useTheme } from '../context/ThemeContext';
-import { fontFamily, fontSizes } from '../styles/fontFamily';
+import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
 
 interface SpinningCircleProps {

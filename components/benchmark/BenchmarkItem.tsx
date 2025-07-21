@@ -4,7 +4,7 @@ import { BenchmarkResult } from '../../database/benchmarkRepository';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 
 interface Props {
   entry: BenchmarkResult;

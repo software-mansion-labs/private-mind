@@ -13,7 +13,7 @@ import {
   DMSans_500Medium_Italic,
   DMSans_600SemiBold_Italic,
 } from '@expo-google-fonts/dm-sans';
-import { fontFamily } from '../styles/fontFamily';
+import { fontFamily } from '../styles/fontStyles';
 import { ThemeProvider } from '../context/ThemeContext';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 

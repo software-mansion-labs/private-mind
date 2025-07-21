@@ -59,3 +59,15 @@ export const deleteBenchmark = async (
 ): Promise<void> => {
   await db.runAsync(`DELETE FROM benchmarks WHERE id = ?`, [id]);
 };
+
+export const getBenchmarkById = async (
+  db: SQLiteDatabase,
+  id: number
+): Promise<BenchmarkResult | null> => {
+  const row = await db.getFirstAsync<BenchmarkResult>(
+    `SELECT * FROM benchmarks WHERE id = ?`,
+    [id]
+  );
+
+  return row || null;
+};

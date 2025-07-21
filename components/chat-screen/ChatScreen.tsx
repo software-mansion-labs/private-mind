@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -73,6 +74,8 @@ export default function ChatScreen({
     }
 
     inputRef.current?.clear();
+    Keyboard.dismiss();
+
     setUserInput('');
     updateLastUsed(chatId!);
 
@@ -104,8 +107,6 @@ export default function ChatScreen({
       <View style={styles.messagesContainer}>
         <Messages
           chatHistory={messageHistory}
-          model={model}
-          onSelectModel={handlePresentModalPress}
           ref={scrollRef}
           isAtBottom={isAtBottom}
           setIsAtBottom={setIsAtBottom}

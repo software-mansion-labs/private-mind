@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, Text, Alert } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Text } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import DeviceInfo from 'react-native-device-info';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';

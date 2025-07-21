@@ -5,7 +5,7 @@ import {
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
 import { StyleSheet, Text, View } from 'react-native';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import PrimaryButton from '../PrimaryButton';

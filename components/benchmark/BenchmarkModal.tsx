@@ -3,7 +3,7 @@ import { Modal, View, Text, StyleSheet } from 'react-native';
 import ModelCard from '../model-hub/ModelCard';
 import SecondaryButton from '../SecondaryButton';
 import { SpinningCircleTimer } from '../SpinningCircleTimer';
-import { fontSizes, fontFamily } from '../../styles/fontFamily';
+import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';

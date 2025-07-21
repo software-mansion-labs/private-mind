@@ -3,9 +3,9 @@ import { useNavigation } from 'expo-router';
 import { useLayoutEffect } from 'react';
 import DrawerToggleButton from '../components/drawer/DrawerToggleButton';
 import { useTheme } from '../context/ThemeContext';
-import { fontFamily, fontSizes } from '../styles/fontFamily';
+import { fontFamily, fontSizes } from '../styles/fontStyles';
 
-export const useDefaultHeader = () => {
+export default function useDefaultHeader() {
   const navigation = useNavigation();
   const { theme } = useTheme();
 
@@ -22,4 +22,4 @@ export const useDefaultHeader = () => {
       },
     });
   }, [navigation, theme]);
-};
+}

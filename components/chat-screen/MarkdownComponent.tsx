@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import Markdown from 'react-native-markdown-display';
 import { Platform } from 'react-native';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontFamily';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 
 interface Props {
