@@ -2,7 +2,7 @@ import React, { memo, useMemo, useRef } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -103,7 +103,6 @@ const MessageItem = memo(
               contentParts.normalAfterThink.trim() && (
                 <TouchableOpacity
                   onLongPress={() => {
-                    console.log('Long press on message');
                     messageManagementSheetRef.current?.present(content);
                   }}
                 >

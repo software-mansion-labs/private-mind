@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import CloseIcon from '../assets/icons/close.svg';
 import { useTheme } from '../context/ThemeContext';
 import { Theme } from '../styles/colors';
-import { fontFamily, fontSizes } from '../styles/fontFamily';
+import { fontFamily, fontSizes } from '../styles/fontStyles';
 
 interface Props {
   title: string;

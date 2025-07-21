@@ -11,7 +11,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useModelStore } from '../../../store/modelStore';
 import ModalHeader from '../../../components/ModalHeader';
 import TextFieldInput from '../../../components/TextFieldInput';
-import { fontSizes, fontFamily } from '../../../styles/fontFamily';
+import { fontSizes, fontFamily } from '../../../styles/fontStyles';
 import { useTheme } from '../../../context/ThemeContext';
 import PrimaryButton from '../../../components/PrimaryButton';
 import { ScrollView } from 'react-native-gesture-handler';
@@ -19,6 +19,11 @@ import Toast from 'react-native-toast-message';
 import { InfoAlert } from '../../../components/InfoAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Theme } from '../../../styles/colors';
+import { RemoteModelFormState } from '../add-remote-model';
+
+interface EditModelFormState extends RemoteModelFormState {
+  modelName: string;
+}
 
 export default function EditRemoteModelScreen() {
   const { modelId: rawModelId } = useLocalSearchParams<{ modelId: string }>();
@@ -26,31 +31,51 @@ export default function EditRemoteModelScreen() {
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
   const router = useRouter();
+
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const { getModelById, editModel } = useModelStore();
   const model = getModelById(modelId);
 
-  const [modelName, setModelName] = useState(model?.modelName || '');
-  const [localModelPath, setLocalModelPath] = useState<string>(
-    model?.modelPath || ''
-  );
-  const [localTokenizerPath, setLocalTokenizerPath] = useState<string>(
-    model?.tokenizerPath || ''
-  );
-  const [localTokenizerConfigPath, setLocalTokenizerConfigPath] =
-    useState<string>(model?.tokenizerConfigPath || '');
+  const [
+    {
+      modelName,
+      remoteModelPath,
+      remoteTokenizerPath,
+      remoteTokenizerConfigPath,
+    },
+    setFormState,
+  ] = useState<EditModelFormState>({
+    modelName: model?.modelName || '',
+    remoteModelPath: model?.modelPath || '',
+    remoteTokenizerPath: model?.tokenizerPath || '',
+    remoteTokenizerConfigPath: model?.tokenizerConfigPath || '',
+  });
+
+  const setFormField = <K extends keyof EditModelFormState>(
+    field: K,
+    value: EditModelFormState[K]
+  ) => {
+    setFormState((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
   const handleSave = async () => {
-    if (!localModelPath || !localTokenizerPath || !localTokenizerConfigPath) {
+    if (
+      !remoteModelPath ||
+      !remoteTokenizerPath ||
+      !remoteTokenizerConfigPath
+    ) {
       Alert.alert('Missing Fields', 'Please select all necessary files.');
       return;
     }
     await editModel(
       modelId,
-      localTokenizerPath,
-      localTokenizerConfigPath,
+      remoteTokenizerPath,
+      remoteTokenizerConfigPath,
       modelName
     );
     Toast.show({
@@ -82,15 +107,18 @@ export default function EditRemoteModelScreen() {
         >
           <View style={styles.textFieldSection}>
             <Text style={styles.label}>Model Name</Text>
-            <TextFieldInput value={modelName} onChangeText={setModelName} />
+            <TextFieldInput
+              value={modelName}
+              onChangeText={(text) => setFormField('modelName', text)}
+            />
           </View>
           <View style={styles.textFieldSection}>
             <Text style={styles.label}>Model URL</Text>
             <TextFieldInput
               editable={false}
-              value={localModelPath}
+              value={remoteModelPath}
               multiline={true}
-              onChangeText={setLocalModelPath}
+              onChangeText={(text) => setFormField('remoteModelPath', text)}
               placeholder="Enter external model URL"
             />
             <InfoAlert text="Model file is permanently linked to this model and cannot be changed" />
@@ -98,9 +126,9 @@ export default function EditRemoteModelScreen() {
           <View style={styles.textFieldSection}>
             <Text style={styles.label}>Tokenizer URL</Text>
             <TextFieldInput
-              value={localTokenizerPath}
+              value={remoteTokenizerPath}
               multiline={true}
-              onChangeText={setLocalTokenizerPath}
+              onChangeText={(text) => setFormField('remoteTokenizerPath', text)}
               placeholder="Enter external tokenizer URL"
               onFocus={scrollToBottom}
             />
@@ -108,9 +136,11 @@ export default function EditRemoteModelScreen() {
           <View style={styles.textFieldSection}>
             <Text style={styles.label}>Tokenizer Config URL</Text>
             <TextFieldInput
-              value={localTokenizerConfigPath}
+              value={remoteTokenizerConfigPath}
               multiline={true}
-              onChangeText={setLocalTokenizerConfigPath}
+              onChangeText={(text) =>
+                setFormField('remoteTokenizerConfigPath', text)
+              }
               placeholder="Enter external config URL"
               onFocus={scrollToBottom}
             />

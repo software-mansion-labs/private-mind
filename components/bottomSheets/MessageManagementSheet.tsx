@@ -6,7 +6,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { StyleSheet } from 'react-native';
 import { Theme } from '../../styles/colors';
-import { fontSizes, fontFamily } from '../../styles/fontFamily';
+import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import EntryButton from '../EntryButton';
 import CopyIcon from '../../assets/icons/copy.svg';

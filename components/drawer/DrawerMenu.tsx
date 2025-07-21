@@ -10,7 +10,7 @@ import ChatIcon from '../../assets/icons/chat.svg';
 import ModelsIcon from '../../assets/icons/models.svg';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
 import { DrawerItem } from './DrawerItem';
-import { fontFamily, fontSizes } from '../../styles/fontFamily';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 
 const getRelativeDateSection = (date: Date): string => {
@@ -53,14 +53,14 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
   const router = useRouter();
   const pathname = usePathname();
   const { chats } = useChatStore();
-  const { isGenerating, interrupt } = useLLMStore();
+  const { interrupt } = useLLMStore();
 
   const groupedChats = groupChatsByDate(
     [...chats].sort((a, b) => b.lastUsed - a.lastUsed)
   );
 
   const navigate = (path: string) => {
-    if (isGenerating) interrupt();
+    interrupt();
     pathname === path ? router.replace(path) : router.push(path);
     onNavigate();
   };

@@ -1,6 +1,4 @@
 import React, {
-  Dispatch,
-  SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -8,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -17,23 +16,23 @@ import {
 import { ScrollView } from 'react-native-gesture-handler';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import { useModelStore } from '../../store/modelStore';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
 import { useTheme } from '../../context/ThemeContext';
-import { type Message } from '../../database/chatRepository';
+import { checkIfChatExists, type Message } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
 import ChatBar from './ChatBar';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
+import { useSQLiteContext } from 'expo-sqlite';
 
 interface Props {
   chatId: number | null;
   messageHistory: Message[];
   model: Model | undefined;
-  selectModel?: Dispatch<SetStateAction<Model | undefined>>;
+  selectModel?: (model: Model) => Promise<void>;
 }
 
 export default function ChatScreen({
@@ -44,8 +43,8 @@ export default function ChatScreen({
 }: Props) {
   const inputRef = useRef<TextInput>(null);
   const scrollRef = useRef<ScrollView>(null);
-  const chatIdRef = useRef<number | null>(chatId);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const db = useSQLiteContext();
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -68,34 +67,27 @@ export default function ChatScreen({
 
   const handleSendMessage = async () => {
     if (!userInput.trim() || isGenerating) return;
-
-    if (!chatIdRef.current) {
+    if (!(await checkIfChatExists(db, chatId!))) {
       const newChatTitle =
         userInput.length > 25 ? userInput.slice(0, 25) + '...' : userInput;
-
-      const newChatId = await addChat(newChatTitle, model!.id);
-      chatIdRef.current = newChatId!;
-      router.replace(`/chat/${newChatId}`);
+      await addChat(newChatTitle, model!.id);
     }
 
     inputRef.current?.clear();
-    setUserInput('');
-    updateLastUsed(chatIdRef.current);
+    Keyboard.dismiss();
 
-    await sendChatMessage(
-      messageHistory,
-      userInput,
-      chatIdRef.current!,
-      model!.modelName
-    );
+    setUserInput('');
+    updateLastUsed(chatId!);
+
+    await sendChatMessage(userInput, chatId!);
   };
 
   const handleSelectModel = async (selectedModel: Model) => {
     try {
       loadModel(selectedModel);
 
-      if (chatIdRef.current && !model) {
-        await setChatModel(chatIdRef.current, selectedModel.id);
+      if (chatId && !model) {
+        await setChatModel(chatId, selectedModel.id);
       }
 
       selectModel?.(selectedModel);
@@ -115,8 +107,6 @@ export default function ChatScreen({
       <View style={styles.messagesContainer}>
         <Messages
           chatHistory={messageHistory}
-          model={model}
-          onSelectModel={handlePresentModalPress}
           ref={scrollRef}
           isAtBottom={isAtBottom}
           setIsAtBottom={setIsAtBottom}

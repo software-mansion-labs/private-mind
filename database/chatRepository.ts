@@ -151,19 +151,26 @@ export const getChatSettings = async (
 
 export const setChatSettings = async (
   db: SQLiteDatabase,
-  chatId: number,
+  chatId: number | null,
   settings: ChatSettings
 ): Promise<void> => {
-  await db.runAsync(
-    `
+  if (chatId === null) {
+    await AsyncStorage.setItem(
+      'default_chat_settings',
+      JSON.stringify(settings)
+    );
+  } else {
+    await db.runAsync(
+      `
     INSERT INTO chatSettings (chatId, systemPrompt, contextWindow)
     VALUES (?, ?, ?)
     ON CONFLICT(chatId) DO UPDATE SET
       systemPrompt = excluded.systemPrompt,
       contextWindow = excluded.contextWindow
   `,
-    [chatId, settings.systemPrompt, settings.contextWindow]
-  );
+      [chatId, settings.systemPrompt, settings.contextWindow]
+    );
+  }
 };
 
 export const renameChat = async (
@@ -181,6 +188,24 @@ export const setChatModel = async (
   id: number,
   model: number
 ) => {
-  await db.runAsync(`UPDATE chats SET model = ? WHERE id = ?`, [model, id]);
+  await db.runAsync(`UPDATE chats SET modelId = ? WHERE id = ?`, [model, id]);
   return;
+};
+
+export const getNextChatId = async (db: SQLiteDatabase): Promise<number> => {
+  const result = await db.getFirstAsync<{ seq: number }>(
+    `SELECT seq FROM sqlite_sequence WHERE name = 'chats'`
+  );
+  return (result?.seq ?? 0) + 1;
+};
+
+export const checkIfChatExists = async (
+  db: SQLiteDatabase,
+  chatId: number
+): Promise<boolean> => {
+  const result = await db.getFirstAsync<{ id: number }>(
+    `SELECT id FROM chats WHERE id = ?`,
+    [chatId]
+  );
+  return !!result;
 };

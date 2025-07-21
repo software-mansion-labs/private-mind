@@ -1,58 +1,156 @@
-import React, { useState } from 'react';
-import ChatScreen from '../components/chat-screen/ChatScreen';
-import { useDefaultHeader } from '../hooks/useDefaultHeader';
-import { useNavigation } from 'expo-router';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { useNavigation, router } from 'expo-router';
 import { useLayoutEffect } from 'react';
 import SettingsHeaderButton from '../components/SettingsHeaderButton';
 import { configureReanimatedLogger } from 'react-native-reanimated';
-import { Text, View } from 'react-native';
 import { Model } from '../database/modelRepository';
 import WithDrawerGesture from '../components/WithDrawerGesture';
+import { getNextChatId, importMessages } from '../database/chatRepository';
+import { useSQLiteContext } from 'expo-sqlite';
+import useDefaultHeader from '../hooks/useDefaultHeader';
+import { View, Image, Text, StyleSheet, Platform, Alert } from 'react-native';
+import PrimaryButton from '../components/PrimaryButton';
+import TextButton from '../components/TextButton';
+import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
+import { Theme } from '../styles/colors';
 import { useTheme } from '../context/ThemeContext';
-import { fontFamily } from '../styles/fontFamily';
+import { importChatRoom } from '../database/exportImportRepository';
+import { useChatStore } from '../store/chatStore';
+import ModelSelectSheet from '../components/bottomSheets/ModelSelectSheet';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { useModelStore } from '../store/modelStore';
 
 export default function App() {
   const navigation = useNavigation();
-  const [model, setModel] = useState<Model | undefined>();
-  const { theme } = useTheme();
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const { loadModels } = useModelStore();
+  const db = useSQLiteContext();
   useDefaultHeader();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { addChat } = useChatStore();
 
   configureReanimatedLogger({
     strict: false,
   });
 
+  const handleSetModel = async (model: Model) => {
+    const nextChatId = await getNextChatId(db);
+    router.push({
+      pathname: `/chat/${nextChatId}`,
+      params: { modelId: model.id },
+    });
+  };
+
+  const handleImport = async () => {
+    const importedChat = await importChatRoom();
+    if (importedChat) {
+      try {
+        const newChatId = await addChat(importedChat.title, -1);
+        if (newChatId) {
+          await importMessages(db!, newChatId, importedChat.messages);
+          router.replace(`/chat/${newChatId}`);
+        }
+      } catch (error) {
+        console.error('Error importing chat:', error);
+        Alert.alert('Error', 'Failed to import chat. Please try again.');
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadModels();
+  }, [loadModels]);
+
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => <SettingsHeaderButton chatId={null} />,
-      headerTitle: () => (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          <Text
-            style={{
-              color: theme.text.primary,
-              fontFamily: fontFamily.medium,
-            }}
-          >
-            {model ? model.modelName : ''}
-          </Text>
-        </View>
-      ),
     });
-  }, [navigation, model]);
+  }, [navigation]);
 
   return (
-    <WithDrawerGesture>
-      <ChatScreen
-        chatId={null}
-        messageHistory={[]}
-        model={model}
-        selectModel={setModel}
+    <>
+      <WithDrawerGesture>
+        <View style={styles.container}>
+          <View style={styles.emptyContainer}>
+            <Image
+              source={require('../assets/icons/icon.png')}
+              style={styles.icon}
+            />
+            <View style={styles.emptyTextContainer}>
+              <Text style={styles.emptyMessageTitle}>
+                Select a model to start chatting
+              </Text>
+              <Text style={styles.emptyMessage}>
+                Use default models or upload custom ones from your local files
+                or external URLs.
+              </Text>
+            </View>
+            <View style={styles.buttonGroup}>
+              <PrimaryButton
+                text="Open a models list"
+                onPress={() => {
+                  bottomSheetModalRef.current?.present();
+                }}
+              />
+              <TextButton
+                text="Import chat"
+                onPress={handleImport}
+                style={styles.flatButton}
+              />
+            </View>
+          </View>
+        </View>
+      </WithDrawerGesture>
+      <ModelSelectSheet
+        bottomSheetModalRef={bottomSheetModalRef}
+        selectModel={handleSetModel}
       />
-    </WithDrawerGesture>
+    </>
   );
 }
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.bg.softPrimary,
+      paddingBottom: Platform.OS === 'android' ? 20 : 0,
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 36,
+      gap: 24,
+    },
+    icon: {
+      width: 64,
+      height: 64,
+      borderRadius: 12,
+    },
+    emptyTextContainer: {
+      gap: 8,
+    },
+    emptyMessage: {
+      textAlign: 'center',
+      color: theme.text.defaultSecondary,
+      fontSize: fontSizes.sm,
+      fontFamily: fontFamily.regular,
+      lineHeight: lineHeights.sm,
+    },
+    emptyMessageTitle: {
+      textAlign: 'center',
+      color: theme.text.primary,
+      fontSize: fontSizes.lg,
+      fontFamily: fontFamily.medium,
+      lineHeight: lineHeights.lg,
+    },
+    buttonGroup: {
+      gap: 8,
+      width: '100%',
+    },
+    flatButton: {
+      borderWidth: 0,
+    },
+  });
