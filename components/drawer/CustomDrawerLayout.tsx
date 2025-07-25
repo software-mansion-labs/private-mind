@@ -17,7 +17,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { Easing } from 'react-native-reanimated/src/Easing';
-import Toast from 'react-native-toast-message';
+import Toast, { ToastConfig } from 'react-native-toast-message';
 
 import DrawerMenu from './DrawerMenu';
 import CloseIcon from '../../assets/icons/close.svg';
@@ -54,8 +54,8 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
-  const toastConfig = {
-    defaultToast: ({ text1 }: any) => (
+  const toastConfig: ToastConfig = {
+    defaultToast: ({ text1 }) => (
       <View style={styles.toastContainer}>
         <Text style={styles.toastText}>{text1}</Text>
         <TouchableOpacity
@@ -113,7 +113,7 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
         </Animated.View>
       </View>
 
-      <Toast config={toastConfig} />
+      <Toast config={toastConfig} topOffset={insets.top + 16} />
     </DrawerProvider>
   );
 };
