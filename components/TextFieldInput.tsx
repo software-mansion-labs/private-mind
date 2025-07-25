@@ -3,6 +3,7 @@ import { TextInput, StyleSheet, View, TextInputProps } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
+import TextInputBorder from './TextInputBorder';
 
 type TextFieldInputProps = TextInputProps & {
   value: string;
@@ -23,12 +24,13 @@ const TextFieldInput: React.FC<TextFieldInputProps> = ({
   const [active, setActive] = useState(false);
 
   const styles = useMemo(
-    () => createStyles(theme, active, !!icon, props.editable !== false),
-    [theme, active, icon, props.editable]
+    () => createStyles(theme, !!icon, props.editable !== false),
+    [theme, icon, props.editable]
   );
 
   return (
     <View style={styles.inputWrapper}>
+      <TextInputBorder active={active} />
       {icon}
       <TextInput
         value={value}
@@ -51,7 +53,6 @@ export default TextFieldInput;
 
 const createStyles = (
   theme: Theme,
-  active: boolean,
   hasIcon: boolean,
   isEditable: boolean = true
 ) =>
@@ -60,11 +61,8 @@ const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      borderRadius: 12,
       paddingHorizontal: 16,
       paddingVertical: 12,
-      borderWidth: active ? 2 : 1,
-      borderColor: active ? theme.bg.strongPrimary : theme.border.soft,
     },
     input: {
       width: hasIcon ? '90%' : '100%',

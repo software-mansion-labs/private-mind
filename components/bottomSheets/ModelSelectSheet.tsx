@@ -16,6 +16,7 @@ import { Model } from '../../database/modelRepository';
 import ModelCard from '../model-hub/ModelCard';
 import PrimaryButton from '../PrimaryButton';
 import SearchIcon from '../../assets/icons/search.svg';
+import TextInputBorder from '../TextInputBorder';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -62,17 +63,8 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
         <View style={styles.content}>
           <Text style={styles.title}>Select a Model</Text>
           {Platform.OS === 'ios' && (
-            <View
-              style={[
-                styles.inputWrapper,
-                {
-                  borderColor: active
-                    ? theme.bg.strongPrimary
-                    : theme.border.soft,
-                  borderWidth: active ? 2 : 1,
-                },
-              ]}
-            >
+            <View style={styles.inputWrapper}>
+              <TextInputBorder active={active} />
               <SearchIcon width={20} height={20} style={styles.searchIcon} />
               <BottomSheetTextInput
                 style={styles.input}
@@ -159,7 +151,6 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultSecondary,
     },
     inputWrapper: {
-      borderRadius: 12,
       paddingHorizontal: 16,
       paddingVertical: 12,
       flexDirection: 'row',
