@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import Clipboard from '@react-native-clipboard/clipboard';
 import Toast from 'react-native-toast-message';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import ModalHeader from '../../components/ModalHeader';
@@ -125,10 +126,11 @@ const VersionInfo = () => {
 export default function AppInfoScreen() {
   const router = useRouter();
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.softPrimary }]}>
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingBottom: insets.bottom }]}>
         <ModalHeader title="App info" onClose={() => router.back()} />
         <AppHeader />
         <LearnMoreSection />
@@ -148,7 +150,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 16 : 0,
     gap: 16,
   },
   card: {

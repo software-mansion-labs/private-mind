@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { FlatList, View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useTheme } from '../../context/ThemeContext';
 import { useModelStore } from '../../store/modelStore';
@@ -8,6 +8,7 @@ import BenchmarkItem from './BenchmarkItem';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import { FlatList } from 'react-native-gesture-handler';
 
 interface Props {
   modalRef: React.RefObject<BottomSheetModal | null>;
@@ -58,9 +59,12 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.md,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
+      paddingHorizontal: 16,
     },
     listContent: {
       gap: 8,
+      paddingHorizontal: 16,
+      paddingBottom: theme.insets.bottom + 16,
     },
     noDataContainer: {
       alignItems: 'center',

@@ -1,12 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  View,
-  Alert,
-} from 'react-native';
+import { Text, StyleSheet, View, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useModelStore } from '../../../store/modelStore';
 import ModalHeader from '../../../components/ModalHeader';
@@ -20,6 +13,7 @@ import TextFieldInput from '../../../components/TextFieldInput';
 import Toast from 'react-native-toast-message';
 import { Theme } from '../../../styles/colors';
 import { LocalModelFormState } from '../add-local-model';
+import { CustomKeyboardAvoidingView } from '../../../components/CustomKeyboardAvoidingView';
 
 type LocalFile = {
   name: string;
@@ -90,10 +84,9 @@ export default function EditLocalModelScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
+    <CustomKeyboardAvoidingView
+      isModalScreen
       style={styles.keyboardAvoidingView}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
     >
       <View style={styles.container}>
         <ModalHeader title="Edit Local Model" onClose={() => router.back()} />
@@ -136,7 +129,7 @@ export default function EditLocalModelScreen() {
         </ScrollView>
         <PrimaryButton text="Save changes" onPress={handleSave} />
       </View>
-    </KeyboardAvoidingView>
+    </CustomKeyboardAvoidingView>
   );
 }
 
@@ -149,7 +142,7 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       padding: 16,
-      paddingBottom: 32,
+      paddingBottom: theme.insets.bottom + 16,
       justifyContent: 'space-between',
     },
     scrollViewContent: {

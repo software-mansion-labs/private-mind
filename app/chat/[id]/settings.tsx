@@ -1,13 +1,5 @@
 import React, { RefObject, useMemo, useRef } from 'react';
-import {
-  Text,
-  StyleSheet,
-  ScrollView,
-  View,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-} from 'react-native';
+import { StyleSheet, ScrollView, View, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { setChatSettings } from '../../../database/chatRepository';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -18,17 +10,16 @@ import { useChatStore } from '../../../store/chatStore';
 import ModalHeader from '../../../components/ModalHeader';
 import Toast from 'react-native-toast-message';
 import { exportChatRoom } from '../../../database/exportImportRepository';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Theme } from '../../../styles/colors';
 import useChatSettings from '../../../hooks/useChatSettings';
 import ChatSettingsForm from '../../../components/settings/ChatSettingsForm';
+import { CustomKeyboardAvoidingView } from '../../../components/CustomKeyboardAvoidingView';
 
 export default function ChatSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const chatId = Number(id) || null;
 
   const scrollViewRef = useRef<ScrollView>(null);
-  const insets = useSafeAreaInsets();
   const db = useSQLiteContext();
   const { theme } = useTheme();
   const { getModelById } = useModelStore();
@@ -100,10 +91,9 @@ export default function ChatSettingsScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
+    <CustomKeyboardAvoidingView
+      isModalScreen
       style={styles.keyboardAvoidingView}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 16 + insets.bottom : 0}
     >
       <View style={styles.container}>
         <ModalHeader title="Chat Settings" onClose={() => router.back()} />
@@ -119,7 +109,7 @@ export default function ChatSettingsScreen() {
         />
         <PrimaryButton text="Save changes" onPress={handleSave} />
       </View>
-    </KeyboardAvoidingView>
+    </CustomKeyboardAvoidingView>
   );
 }
 
@@ -132,7 +122,7 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       padding: 16,
+      paddingBottom: theme.insets.bottom + 16,
       justifyContent: 'space-between',
-      paddingBottom: Platform.OS === 'ios' ? 24 : 0,
     },
   });

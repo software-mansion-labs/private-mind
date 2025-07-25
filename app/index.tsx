@@ -115,7 +115,7 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
-      paddingBottom: Platform.OS === 'android' ? 20 : 0,
+      paddingBottom: 16 + theme.insets.bottom,
     },
     emptyContainer: {
       flex: 1,
