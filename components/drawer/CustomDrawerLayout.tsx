@@ -27,7 +27,7 @@ const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
 
 const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const translateX = useState(new Animated.Value(-DRAWER_WIDTH))[0];
+  const openProgress = useState(new Animated.Value(0))[0];
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -35,8 +35,8 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
   const openDrawer = () => {
     Keyboard.dismiss();
     setIsOpen(true);
-    Animated.timing(translateX, {
-      toValue: 0,
+    Animated.timing(openProgress, {
+      toValue: 1,
       duration: 200,
       useNativeDriver: true,
       easing: Easing.out(Easing.cubic),
@@ -44,8 +44,8 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
   };
 
   const closeDrawer = () => {
-    Animated.timing(translateX, {
-      toValue: -DRAWER_WIDTH,
+    Animated.timing(openProgress, {
+      toValue: 0,
       duration: 200,
       useNativeDriver: true,
       easing: Easing.out(Easing.cubic),
@@ -82,8 +82,8 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
             {
               transform: [
                 {
-                  translateX: translateX.interpolate({
-                    inputRange: [-DRAWER_WIDTH, 0],
+                  translateX: openProgress.interpolate({
+                    inputRange: [0, 1],
                     outputRange: [0, DRAWER_WIDTH],
                     extrapolate: 'clamp',
                   }),
@@ -98,13 +98,25 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
           </SafeAreaView>
         </Animated.View>
 
-        {isOpen && <Pressable style={styles.backdrop} onPress={closeDrawer} />}
+        {isOpen && (
+          <Animated.View style={[styles.backdrop, { opacity: openProgress }]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeDrawer} />
+          </Animated.View>
+        )}
 
         <Animated.View
           style={[
             styles.drawer,
             {
-              transform: [{ translateX }],
+              transform: [
+                {
+                  translateX: openProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-DRAWER_WIDTH, 0],
+                    extrapolate: 'clamp',
+                  }),
+                },
+              ],
               paddingTop: insets.top,
             },
           ]}
