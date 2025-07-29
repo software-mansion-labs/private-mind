@@ -20,7 +20,6 @@ import { Theme } from '../styles/colors';
 import useModelHubData from '../hooks/useModelHubData';
 import { Model } from '../database/modelRepository';
 import GroupedModelList from '../components/model-hub/GroupedModelList';
-import StandardModelList from '../components/model-hub/StandardModelList';
 import { CustomKeyboardAvoidingView } from '../components/CustomKeyboardAvoidingView';
 
 const ModelHubScreen = () => {
@@ -30,7 +29,7 @@ const ModelHubScreen = () => {
 
   const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
   const addModelSheetRef = useRef<BottomSheetModal | null>(null);
-  const memoryWarningSheetRef = useRef<BottomSheetModal | null>(null);
+  const memoryWarningSheetRef = useRef<BottomSheetModal<Model> | null>(null);
   const { models, downloadStates } = useModelStore();
   const [search, setSearch] = useState('');
   const [activeFilters, setActiveFilters] = useState<Set<string>>(
@@ -38,14 +37,13 @@ const ModelHubScreen = () => {
   );
   const [groupByModel, setGroupByModel] = useState(false);
 
-  const { downloadedModels, availableModels, groupedModels, isEmpty } =
-    useModelHubData({
-      models,
-      downloadStates,
-      search,
-      activeFilters,
-      groupByModel,
-    });
+  const { groupedModels, isEmpty } = useModelHubData({
+    models,
+    downloadStates,
+    search,
+    activeFilters,
+    groupByModel,
+  });
 
   const toggleFilter = (filter: string) => {
     const newFilters = new Set(activeFilters);
@@ -118,26 +116,15 @@ const ModelHubScreen = () => {
           {isEmpty ? (
             renderEmptyState()
           ) : (
-            <ScrollView
+            <GroupedModelList
+              groupedModels={groupedModels}
+              onModelPress={handleModelPress}
+              memoryWarningSheetRef={memoryWarningSheetRef}
               contentContainerStyle={[
                 styles.modelScrollContent,
                 styles.horizontalInset,
               ]}
-            >
-              {groupByModel && groupedModels ? (
-                <GroupedModelList
-                  groupedModels={groupedModels}
-                  onModelPress={handleModelPress}
-                />
-              ) : (
-                <StandardModelList
-                  downloadedModels={downloadedModels}
-                  availableModels={availableModels}
-                  onModelPress={handleModelPress}
-                  memoryWarningSheetRef={memoryWarningSheetRef}
-                />
-              )}
-            </ScrollView>
+            />
           )}
           <FloatingActionButton
             onPress={() => addModelSheetRef.current?.present()}
@@ -197,7 +184,6 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultTertiary,
     },
     modelScrollContent: {
-      gap: 16,
       // 56 is the FAB size
       paddingBottom: theme.insets.bottom + 16 + 56,
     },

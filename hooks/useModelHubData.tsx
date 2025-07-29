@@ -69,13 +69,17 @@ export default function useModelHubData({
   }, [filteredModels, downloadStates]);
 
   const groupedModels = useMemo(() => {
-    if (!groupByModel) return null;
-    return groupModelsByPrefix([...downloadedModels, ...availableModels]);
+    return groupByModel
+      ? Object.entries(
+          groupModelsByPrefix([...downloadedModels, ...availableModels])
+        ).map(([label, models]) => ({ label, models }))
+      : [
+          { label: 'Ready to Use', models: downloadedModels },
+          { label: 'Available to Download', models: availableModels },
+        ];
   }, [groupByModel, downloadedModels, availableModels]);
 
   return {
-    downloadedModels,
-    availableModels,
     groupedModels,
     isEmpty: filteredModels.length === 0,
   };

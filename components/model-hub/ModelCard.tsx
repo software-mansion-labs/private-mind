@@ -3,6 +3,7 @@ import { StyleSheet, TouchableOpacity, View, Text } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import DeviceInfo from 'react-native-device-info';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
@@ -22,10 +23,10 @@ const TOTAL_MEMORY = DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024; // in
 interface Props {
   model: Model;
   onPress: (model: Model) => void;
-  bottomSheetModalRef?: React.RefObject<any>;
+  memoryWarningSheetRef?: React.RefObject<BottomSheetModal<Model> | null>;
 }
 
-const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
+const ModelCard = ({ model, onPress, memoryWarningSheetRef }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -42,8 +43,8 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
     isDownloading
       ? ModelState.Downloading
       : !model.isDownloaded
-      ? ModelState.NotStarted
-      : ModelState.Downloaded
+        ? ModelState.NotStarted
+        : ModelState.Downloaded
   );
 
   useEffect(() => {
@@ -71,9 +72,9 @@ const ModelCard = ({ model, onPress, bottomSheetModalRef }: Props) => {
     if (
       estimatedRequiredMemory &&
       estimatedRequiredMemory > TOTAL_MEMORY &&
-      bottomSheetModalRef?.current
+      memoryWarningSheetRef?.current
     ) {
-      bottomSheetModalRef.current?.present(model);
+      memoryWarningSheetRef.current?.present(model);
     } else {
       await downloadModel(model);
     }

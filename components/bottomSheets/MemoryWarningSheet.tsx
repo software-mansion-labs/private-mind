@@ -11,9 +11,10 @@ import { Theme } from '../../styles/colors';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
 import { useModelStore } from '../../store/modelStore';
+import { Model } from '../../database/modelRepository';
 
 interface Props {
-  bottomSheetModalRef: RefObject<BottomSheetModal | null>;
+  bottomSheetModalRef: RefObject<BottomSheetModal<Model> | null>;
 }
 
 const MemoryWarningSheet = ({ bottomSheetModalRef }: Props) => {
@@ -55,7 +56,7 @@ const MemoryWarningSheet = ({ bottomSheetModalRef }: Props) => {
               style={styles.downloadButton}
               text="Download anyway"
               onPress={async () => {
-                downloadModel(props.data);
+                if (props.data) downloadModel(props.data);
                 bottomSheetModalRef.current?.dismiss();
               }}
             />
