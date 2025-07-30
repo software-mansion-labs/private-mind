@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { Model } from '../../database/modelRepository';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -82,6 +83,7 @@ const ChatBar = ({
             placeholderTextColor={theme.text.contrastTertiary}
             value={userInput}
             onChangeText={setUserInput}
+            numberOfLines={3}
           />
           <View style={styles.buttonBar}>
             {userInput && !isGenerating && !isProcessingPrompt ? (
@@ -138,26 +140,26 @@ const createStyles = (theme: Theme) =>
     content: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
       width: '100%',
       height: 68,
       borderRadius: 18,
-      padding: 16,
+      paddingHorizontal: 16,
+      paddingVertical: Platform.select({ ios: 8, default: 0 }),
+      gap: 16,
       backgroundColor: theme.bg.strongPrimary,
     },
     input: {
+      flex: 1,
       fontSize: fontSizes.md,
-      lineHeight: 30,
-      height: 48,
+      lineHeight: 24,
+      paddingVertical: 8,
       fontFamily: fontFamily.regular,
-      width: '80%',
       textAlignVertical: 'center',
       color: theme.text.contrastPrimary,
     },
     buttonBar: {
       justifyContent: 'center',
       alignItems: 'flex-end',
-      width: '20%',
     },
     sendButton: {
       width: 36,
