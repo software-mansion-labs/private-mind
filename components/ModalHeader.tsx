@@ -1,5 +1,11 @@
 import React, { useMemo } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import {
+  View,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  Platform,
+} from 'react-native';
 import CloseIcon from '../assets/icons/close.svg';
 import { useTheme } from '../context/ThemeContext';
 import { Theme } from '../styles/colors';
@@ -36,6 +42,8 @@ const createStyles = (theme: Theme) =>
       position: 'relative',
       height: 56,
       marginBottom: 16,
+      marginTop:
+        Platform.OS === 'android' ? Math.max(0, theme.insets.top - 16) : 0,
     },
     iconWrap: {
       position: 'absolute',

@@ -1,3 +1,5 @@
+import { EdgeInsets } from 'react-native-safe-area-context';
+
 export const lightTheme = {
   bg: {
     main: '#3D61D6',
@@ -44,4 +46,5 @@ export const darkTheme = {
   },
 };
 
-export type Theme = typeof lightTheme;
+export type ThemeColors = typeof lightTheme;
+export type Theme = ThemeColors & { insets: EdgeInsets };

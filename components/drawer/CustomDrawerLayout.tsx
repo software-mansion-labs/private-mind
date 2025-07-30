@@ -5,13 +5,13 @@ import {
   Animated,
   Dimensions,
   Pressable,
-  StatusBar,
   Text,
-  SafeAreaView,
   TouchableOpacity,
   Keyboard,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { DrawerProvider } from '../../context/DrawerContext';
 import { useTheme } from '../../context/ThemeContext';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
@@ -92,10 +92,8 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
             },
           ]}
         >
-          <SafeAreaView style={styles.safeArea}>
-            <StatusBar backgroundColor={theme.bg.softPrimary} />
-            {children}
-          </SafeAreaView>
+          {Platform.OS === 'android' && <StatusBar style="auto" />}
+          {children}
         </Animated.View>
 
         {isOpen && (
@@ -135,10 +133,6 @@ export default CustomDrawerLayout;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      flex: 1,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    safeArea: {
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
     },

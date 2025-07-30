@@ -21,6 +21,7 @@ import useModelHubData from '../hooks/useModelHubData';
 import { Model } from '../database/modelRepository';
 import GroupedModelList from '../components/model-hub/GroupedModelList';
 import StandardModelList from '../components/model-hub/StandardModelList';
+import { CustomKeyboardAvoidingView } from '../components/CustomKeyboardAvoidingView';
 
 const ModelHubScreen = () => {
   useDefaultHeader();
@@ -76,7 +77,7 @@ const ModelHubScreen = () => {
   );
 
   return (
-    <>
+    <CustomKeyboardAvoidingView style={styles.keyboardAvoidingView}>
       <WithDrawerGesture>
         <View style={styles.container}>
           <View style={styles.horizontalInset}>
@@ -146,7 +147,7 @@ const ModelHubScreen = () => {
       <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
       <AddModelSheet bottomSheetModalRef={addModelSheetRef} />
       <MemoryWarningSheet bottomSheetModalRef={memoryWarningSheetRef} />
-    </>
+    </CustomKeyboardAvoidingView>
   );
 };
 
@@ -154,11 +155,14 @@ export default ModelHubScreen;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
+    keyboardAvoidingView: {
+      flex: 1,
+      backgroundColor: theme.bg.softPrimary,
+    },
     container: {
       flex: 1,
       gap: 24,
       paddingTop: 16,
-      backgroundColor: theme.bg.softPrimary,
     },
     horizontalInset: {
       paddingHorizontal: 16,
@@ -194,6 +198,8 @@ const createStyles = (theme: Theme) =>
     },
     modelScrollContent: {
       gap: 16,
+      // 56 is the FAB size
+      paddingBottom: theme.insets.bottom + 16 + 56,
     },
     tagContainer: {
       gap: 8,

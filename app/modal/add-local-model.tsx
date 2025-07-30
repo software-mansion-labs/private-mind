@@ -1,12 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Text,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  View,
-} from 'react-native';
+import { Text, StyleSheet, Alert, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useModelStore } from '../../store/modelStore';
 import ModalHeader from '../../components/ModalHeader';
@@ -17,6 +10,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 import UploadInput from '../../components/UploadInput';
 import Toast from 'react-native-toast-message';
 import { Theme } from '../../styles/colors';
+import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
 
 type LocalFile = {
   name: string;
@@ -78,10 +72,9 @@ export default function AddLocalModelScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
+    <CustomKeyboardAvoidingView
+      isModalScreen
       style={styles.keyboardAvoidingView}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 50 : 0}
     >
       <View style={styles.container}>
         <ModalHeader title="Add Local Model" onClose={() => router.back()} />
@@ -118,7 +111,7 @@ export default function AddLocalModelScreen() {
         </ScrollView>
         <PrimaryButton text="Add model" onPress={handleSave} />
       </View>
-    </KeyboardAvoidingView>
+    </CustomKeyboardAvoidingView>
   );
 }
 
@@ -131,7 +124,7 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       padding: 16,
-      paddingBottom: Platform.OS === 'ios' ? 24 : 0,
+      paddingBottom: theme.insets.bottom + 16,
       justifyContent: 'space-between',
     },
     scrollViewContent: {

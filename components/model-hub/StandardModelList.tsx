@@ -69,6 +69,5 @@ const createStyles = (theme: Theme) =>
     },
     downloadList: {
       gap: 8,
-      paddingBottom: 60,
     },
   });

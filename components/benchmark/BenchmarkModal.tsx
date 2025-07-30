@@ -33,6 +33,8 @@ export const BenchmarkModal = ({
       transparent
       animationType="fade"
       onRequestClose={handleCancel}
+      statusBarTranslucent
+      navigationBarTranslucent
     >
       <View style={styles.modalOverlay}>
         {!showSuccess ? (

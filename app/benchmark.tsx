@@ -74,15 +74,17 @@ const BenchmarkScreen = () => {
     <>
       <WithDrawerGesture>
         <View style={styles.container}>
-          <ModelSelector
-            model={selectedModel}
-            setSelectedModel={setSelectedModel}
-          />
-          <PrimaryButton
-            disabled={!selectedModel || isRunning}
-            text="Run benchmark"
-            onPress={() => startBenchmark(selectedModel)}
-          />
+          <View style={styles.controls}>
+            <ModelSelector
+              model={selectedModel}
+              setSelectedModel={setSelectedModel}
+            />
+            <PrimaryButton
+              disabled={!selectedModel || isRunning}
+              text="Run benchmark"
+              onPress={() => startBenchmark(selectedModel)}
+            />
+          </View>
           <BenchmarkHistory
             modalRef={bottomSheetModalRef}
             benchmarkList={benchmarkList}
@@ -112,8 +114,11 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      padding: 16,
       gap: 16,
       backgroundColor: theme.bg.softPrimary,
+    },
+    controls: {
+      paddingHorizontal: 16,
+      gap: 16,
     },
   });
