@@ -62,7 +62,8 @@
         "foregroundImage": "./assets/icons/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.swmansion.privatemind"
+      "package": "com.swmansion.privatemind",
+      "edgeToEdgeEnabled": true
     }
   }
 }

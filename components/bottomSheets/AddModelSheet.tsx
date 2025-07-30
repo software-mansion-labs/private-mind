@@ -75,7 +75,7 @@ const createStyles = (theme: Theme) =>
     sheetContent: {
       paddingVertical: 16,
       paddingHorizontal: 24,
-      paddingBottom: 36,
+      paddingBottom: theme.insets.bottom + 16,
       gap: 24,
       backgroundColor: theme.bg.softPrimary,
     },

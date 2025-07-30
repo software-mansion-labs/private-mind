@@ -21,6 +21,7 @@ import useModelHubData from '../hooks/useModelHubData';
 import { Model } from '../database/modelRepository';
 import GroupedModelList from '../components/model-hub/GroupedModelList';
 import StandardModelList from '../components/model-hub/StandardModelList';
+import { CustomKeyboardAvoidingView } from '../components/CustomKeyboardAvoidingView';
 
 const ModelHubScreen = () => {
   useDefaultHeader();
@@ -76,25 +77,30 @@ const ModelHubScreen = () => {
   );
 
   return (
-    <>
+    <CustomKeyboardAvoidingView style={styles.keyboardAvoidingView}>
       <WithDrawerGesture>
         <View style={styles.container}>
-          <TextFieldInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search Models..."
-            icon={
-              <SearchIcon
-                width={20}
-                height={20}
-                style={{ color: theme.text.primary }}
-              />
-            }
-          />
+          <View style={styles.horizontalInset}>
+            <TextFieldInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search Models..."
+              icon={
+                <SearchIcon
+                  width={20}
+                  height={20}
+                  style={{ color: theme.text.primary }}
+                />
+              }
+            />
+          </View>
           <View>
             <ScrollView
               horizontal
-              contentContainerStyle={styles.tagContainer}
+              contentContainerStyle={[
+                styles.tagContainer,
+                styles.horizontalInset,
+              ]}
               showsHorizontalScrollIndicator={false}
             >
               <SortingTag
@@ -112,7 +118,12 @@ const ModelHubScreen = () => {
           {isEmpty ? (
             renderEmptyState()
           ) : (
-            <ScrollView contentContainerStyle={styles.modelScrollContent}>
+            <ScrollView
+              contentContainerStyle={[
+                styles.modelScrollContent,
+                styles.horizontalInset,
+              ]}
+            >
               {groupByModel && groupedModels ? (
                 <GroupedModelList
                   groupedModels={groupedModels}
@@ -136,7 +147,7 @@ const ModelHubScreen = () => {
       <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
       <AddModelSheet bottomSheetModalRef={addModelSheetRef} />
       <MemoryWarningSheet bottomSheetModalRef={memoryWarningSheetRef} />
-    </>
+    </CustomKeyboardAvoidingView>
   );
 };
 
@@ -144,17 +155,24 @@ export default ModelHubScreen;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
+    keyboardAvoidingView: {
+      flex: 1,
+      backgroundColor: theme.bg.softPrimary,
+    },
     container: {
       flex: 1,
-      gap: 16,
-      padding: 16,
-      backgroundColor: theme.bg.softPrimary,
+      gap: 24,
+      paddingTop: 16,
+    },
+    horizontalInset: {
+      paddingHorizontal: 16,
     },
     noModelsContainer: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
       gap: 24,
+      padding: 16,
     },
     emptyIconWrapper: {
       backgroundColor: theme.bg.softSecondary,
@@ -180,11 +198,11 @@ const createStyles = (theme: Theme) =>
     },
     modelScrollContent: {
       gap: 16,
+      // 56 is the FAB size
+      paddingBottom: theme.insets.bottom + 16 + 56,
     },
     tagContainer: {
       gap: 8,
       alignItems: 'center',
-      paddingVertical: 8,
-      paddingRight: 8,
     },
   });

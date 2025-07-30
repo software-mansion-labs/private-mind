@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -22,6 +22,7 @@ const SortingTag = ({ text, selected, onPress }: Props) => {
     <TouchableOpacity style={styles.container} onPress={onPress}>
       <Text style={styles.text}>{text}</Text>
       {selected && <CheckIcon width={20} height={20} style={styles.icon} />}
+      <View style={styles.border} />
     </TouchableOpacity>
   );
 };
@@ -32,21 +33,28 @@ const createStyles = (theme: Theme, selected: boolean) =>
   StyleSheet.create({
     container: {
       gap: 8,
-      padding: 12,
+      paddingHorizontal: 12,
       justifyContent: 'center',
       alignItems: 'center',
       borderRadius: 9999,
-      borderWidth: selected ? 2 : 1,
-      borderColor: selected ? theme.bg.strongPrimary : theme.border.soft,
       flexDirection: 'row',
       maxHeight: 44,
+      minHeight: 20,
     },
     text: {
       fontFamily: selected ? fontFamily.medium : fontFamily.regular,
       fontSize: fontSizes.sm,
       color: theme.text.primary,
+      marginVertical: 12,
     },
     icon: {
       color: theme.text.primary,
+    },
+    border: {
+      pointerEvents: 'none',
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: 9999,
+      borderWidth: selected ? 2 : 1,
+      borderColor: selected ? theme.bg.strongPrimary : theme.border.soft,
     },
   });

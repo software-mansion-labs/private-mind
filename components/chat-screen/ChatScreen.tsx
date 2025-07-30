@@ -5,17 +5,9 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import { Keyboard, StyleSheet, TextInput, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useModelStore } from '../../store/modelStore';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
@@ -27,6 +19,7 @@ import ChatBar from './ChatBar';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
 import { useSQLiteContext } from 'expo-sqlite';
+import { CustomKeyboardAvoidingView } from '../CustomKeyboardAvoidingView';
 
 interface Props {
   chatId: number | null;
@@ -48,7 +41,6 @@ export default function ChatScreen({
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
 
   const { loadModels } = useModelStore();
   const { isGenerating, sendChatMessage, loadModel } = useLLMStore();
@@ -98,12 +90,7 @@ export default function ChatScreen({
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 85 + insets.bottom : 40}
-      collapsable={false}
-    >
+    <CustomKeyboardAvoidingView style={styles.container} collapsable={false}>
       <View style={styles.messagesContainer}>
         <Messages
           chatHistory={messageHistory}
@@ -113,23 +100,25 @@ export default function ChatScreen({
         />
       </View>
 
-      <ChatBar
-        chatId={chatId}
-        userInput={userInput}
-        setUserInput={setUserInput}
-        onSend={handleSendMessage}
-        onSelectModel={handlePresentModalPress}
-        inputRef={inputRef}
-        model={model}
-        scrollRef={scrollRef}
-        isAtBottom={isAtBottom}
-      />
+      <View style={styles.barContainer}>
+        <ChatBar
+          chatId={chatId}
+          userInput={userInput}
+          setUserInput={setUserInput}
+          onSend={handleSendMessage}
+          onSelectModel={handlePresentModalPress}
+          inputRef={inputRef}
+          model={model}
+          scrollRef={scrollRef}
+          isAtBottom={isAtBottom}
+        />
+      </View>
 
       <ModelSelectSheet
         bottomSheetModalRef={bottomSheetModalRef}
         selectModel={handleSelectModel}
       />
-    </KeyboardAvoidingView>
+    </CustomKeyboardAvoidingView>
   );
 }
 
@@ -138,12 +127,14 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
-      paddingBottom: Platform.OS === 'android' ? 20 : 0,
     },
     messagesContainer: {
       flex: 1,
       paddingHorizontal: 12,
       paddingVertical: 8,
       backgroundColor: theme.bg.softPrimary,
+    },
+    barContainer: {
+      paddingBottom: theme.insets.bottom + 16,
     },
   });

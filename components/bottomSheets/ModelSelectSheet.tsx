@@ -8,6 +8,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { router } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useModelStore } from '../../store/modelStore';
 import { useTheme } from '../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -16,6 +17,7 @@ import { Model } from '../../database/modelRepository';
 import ModelCard from '../model-hub/ModelCard';
 import PrimaryButton from '../PrimaryButton';
 import SearchIcon from '../../assets/icons/search.svg';
+import TextInputBorder from '../TextInputBorder';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -45,6 +47,8 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
     [styles.backdrop]
   );
 
+  const insets = useSafeAreaInsets();
+
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
@@ -60,36 +64,39 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
     >
       {downloadedModels.length > 0 ? (
         <View style={styles.content}>
-          <Text style={styles.title}>Select a Model</Text>
+          <Text style={[styles.title, styles.horizontalInset]}>
+            Select a Model
+          </Text>
           {Platform.OS === 'ios' && (
-            <View
-              style={[
-                styles.inputWrapper,
-                {
-                  borderColor: active
-                    ? theme.bg.strongPrimary
-                    : theme.border.soft,
-                  borderWidth: active ? 2 : 1,
-                },
-              ]}
-            >
-              <SearchIcon width={20} height={20} style={styles.searchIcon} />
-              <BottomSheetTextInput
-                style={styles.input}
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search Models..."
-                placeholderTextColor={theme.text.defaultTertiary}
-                onFocus={() => setActive(true)}
-                onBlur={() => setActive(false)}
-              />
+            <View style={styles.horizontalInset}>
+              <View style={styles.inputWrapper}>
+                <TextInputBorder active={active} />
+                <SearchIcon width={20} height={20} style={styles.searchIcon} />
+                <BottomSheetTextInput
+                  style={styles.input}
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder="Search Models..."
+                  placeholderTextColor={theme.text.defaultTertiary}
+                  onFocus={() => setActive(true)}
+                  onBlur={() => setActive(false)}
+                />
+              </View>
             </View>
           )}
 
           <BottomSheetFlatList
             data={filteredModels}
             keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={styles.modelList}
+            // only frist two styles appear to be forwarded, so the array is
+            // nested to make all styles be part of the first item
+            contentContainerStyle={[
+              [
+                styles.modelList,
+                styles.horizontalInset,
+                { paddingBottom: insets.bottom + 16 },
+              ],
+            ]}
             renderItem={({ item }) => (
               <ModelCard
                 model={item}
@@ -102,7 +109,7 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
           />
         </View>
       ) : (
-        <BottomSheetView style={styles.content}>
+        <BottomSheetView style={[styles.content, styles.horizontalInset]}>
           <Text style={styles.title}>You have no available models yet</Text>
           <Text style={styles.subText}>
             To use Private Mind you need to have at least one model downloaded
@@ -144,9 +151,12 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bg.overlay,
     },
     content: {
-      paddingVertical: 16,
-      paddingHorizontal: 24,
+      flex: 1,
+      paddingTop: 16,
       gap: 24,
+    },
+    horizontalInset: {
+      paddingHorizontal: 24,
     },
     title: {
       fontSize: fontSizes.lg,
@@ -159,7 +169,6 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultSecondary,
     },
     inputWrapper: {
-      borderRadius: 12,
       paddingHorizontal: 16,
       paddingVertical: 12,
       flexDirection: 'row',
@@ -178,6 +187,5 @@ const createStyles = (theme: Theme) =>
     },
     modelList: {
       gap: 8,
-      paddingBottom: 120,
     },
   });

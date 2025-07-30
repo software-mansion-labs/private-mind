@@ -102,6 +102,7 @@ const createStyles = (theme: Theme) =>
       gap: 24,
       paddingVertical: 16,
       paddingHorizontal: 24,
+      paddingBottom: theme.insets.bottom + 16,
     },
     header: {
       fontSize: fontSizes.lg,

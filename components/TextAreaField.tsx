@@ -3,6 +3,7 @@ import { TextInput, StyleSheet, View, TextInputProps } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
+import TextInputBorder from './TextInputBorder';
 
 type TextAreaFieldProps = TextInputProps & {
   value: string;
@@ -19,10 +20,11 @@ const TextAreaField: React.FC<TextAreaFieldProps> = ({
 }) => {
   const { theme } = useTheme();
   const [active, setActive] = useState(false);
-  const styles = useMemo(() => createStyles(theme, active), [theme, active]);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <View style={styles.inputWrapper}>
+      <TextInputBorder active={active} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -44,14 +46,11 @@ const TextAreaField: React.FC<TextAreaFieldProps> = ({
 
 export default TextAreaField;
 
-const createStyles = (theme: Theme, active: boolean) =>
+const createStyles = (theme: Theme) =>
   StyleSheet.create({
     inputWrapper: {
-      borderRadius: 12,
       paddingHorizontal: 16,
       paddingVertical: 12,
-      borderWidth: active ? 2 : 1,
-      borderColor: active ? theme.bg.strongPrimary : theme.border.soft,
     },
     textArea: {
       height: 120,

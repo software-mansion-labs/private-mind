@@ -5,19 +5,19 @@ import {
   Animated,
   Dimensions,
   Pressable,
-  StatusBar,
   Text,
-  SafeAreaView,
   TouchableOpacity,
   Keyboard,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { DrawerProvider } from '../../context/DrawerContext';
 import { useTheme } from '../../context/ThemeContext';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { Easing } from 'react-native-reanimated';
-import Toast from 'react-native-toast-message';
+import Toast, { ToastConfig } from 'react-native-toast-message';
 
 import DrawerMenu from './DrawerMenu';
 import CloseIcon from '../../assets/icons/close.svg';
@@ -27,7 +27,7 @@ const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
 
 const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const translateX = useState(new Animated.Value(-DRAWER_WIDTH))[0];
+  const openProgress = useState(new Animated.Value(0))[0];
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -35,8 +35,8 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
   const openDrawer = () => {
     Keyboard.dismiss();
     setIsOpen(true);
-    Animated.timing(translateX, {
-      toValue: 0,
+    Animated.timing(openProgress, {
+      toValue: 1,
       duration: 200,
       useNativeDriver: true,
       easing: Easing.out(Easing.cubic),
@@ -44,8 +44,8 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
   };
 
   const closeDrawer = () => {
-    Animated.timing(translateX, {
-      toValue: -DRAWER_WIDTH,
+    Animated.timing(openProgress, {
+      toValue: 0,
       duration: 200,
       useNativeDriver: true,
       easing: Easing.out(Easing.cubic),
@@ -54,8 +54,8 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
-  const toastConfig = {
-    defaultToast: ({ text1 }: any) => (
+  const toastConfig: ToastConfig = {
+    defaultToast: ({ text1 }) => (
       <View style={styles.toastContainer}>
         <Text style={styles.toastText}>{text1}</Text>
         <TouchableOpacity
@@ -82,8 +82,8 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
             {
               transform: [
                 {
-                  translateX: translateX.interpolate({
-                    inputRange: [-DRAWER_WIDTH, 0],
+                  translateX: openProgress.interpolate({
+                    inputRange: [0, 1],
                     outputRange: [0, DRAWER_WIDTH],
                     extrapolate: 'clamp',
                   }),
@@ -92,19 +92,29 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
             },
           ]}
         >
-          <SafeAreaView style={styles.safeArea}>
-            <StatusBar backgroundColor={theme.bg.softPrimary} />
-            {children}
-          </SafeAreaView>
+          {Platform.OS === 'android' && <StatusBar style="auto" />}
+          {children}
         </Animated.View>
 
-        {isOpen && <Pressable style={styles.backdrop} onPress={closeDrawer} />}
+        {isOpen && (
+          <Animated.View style={[styles.backdrop, { opacity: openProgress }]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeDrawer} />
+          </Animated.View>
+        )}
 
         <Animated.View
           style={[
             styles.drawer,
             {
-              transform: [{ translateX }],
+              transform: [
+                {
+                  translateX: openProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-DRAWER_WIDTH, 0],
+                    extrapolate: 'clamp',
+                  }),
+                },
+              ],
               paddingTop: insets.top,
             },
           ]}
@@ -113,7 +123,7 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
         </Animated.View>
       </View>
 
-      <Toast config={toastConfig} />
+      <Toast config={toastConfig} topOffset={insets.top + 16} />
     </DrawerProvider>
   );
 };
@@ -123,10 +133,6 @@ export default CustomDrawerLayout;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      flex: 1,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    safeArea: {
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
     },
