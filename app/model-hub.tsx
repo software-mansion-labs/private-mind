@@ -30,7 +30,7 @@ const ModelHubScreen = () => {
   const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
   const addModelSheetRef = useRef<BottomSheetModal | null>(null);
   const memoryWarningSheetRef = useRef<BottomSheetModal<Model> | null>(null);
-  const { models, downloadStates } = useModelStore();
+  const { models } = useModelStore();
   const [search, setSearch] = useState('');
   const [activeFilters, setActiveFilters] = useState<Set<string>>(
     new Set(['featured'])
@@ -39,7 +39,6 @@ const ModelHubScreen = () => {
 
   const { groupedModels, isEmpty } = useModelHubData({
     models,
-    downloadStates,
     search,
     activeFilters,
     groupByModel,
