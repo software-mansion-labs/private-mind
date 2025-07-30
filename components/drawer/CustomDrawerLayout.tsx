@@ -16,7 +16,7 @@ import { DrawerProvider } from '../../context/DrawerContext';
 import { useTheme } from '../../context/ThemeContext';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
-import { Easing } from 'react-native-reanimated/src/Easing';
+import { Easing } from 'react-native-reanimated';
 import Toast, { ToastConfig } from 'react-native-toast-message';
 
 import DrawerMenu from './DrawerMenu';
