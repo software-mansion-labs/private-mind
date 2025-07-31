@@ -84,6 +84,8 @@ const MessageItem = memo(
                 onLongPress={() => {
                   messageManagementSheetRef.current?.present(content);
                 }}
+                delayPressIn={50}
+                activeOpacity={0.4}
               >
                 <MarkdownComponent text={contentParts.normalContent} />
               </TouchableOpacity>
