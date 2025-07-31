@@ -5,22 +5,17 @@ import {
   Animated,
   Dimensions,
   Pressable,
-  Text,
-  TouchableOpacity,
   Keyboard,
   Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { DrawerProvider } from '../../context/DrawerContext';
 import { useTheme } from '../../context/ThemeContext';
-import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { Easing } from 'react-native-reanimated';
-import Toast, { ToastConfig } from 'react-native-toast-message';
 
 import DrawerMenu from './DrawerMenu';
-import CloseIcon from '../../assets/icons/close.svg';
+import AppToast from '../AppToast';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
@@ -28,7 +23,6 @@ const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
 const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
   const [isOpen, setIsOpen] = useState(false);
   const openProgress = useState(new Animated.Value(0))[0];
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -54,28 +48,9 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
-  const toastConfig: ToastConfig = {
-    defaultToast: ({ text1 }) => (
-      <View style={styles.toastContainer}>
-        <Text style={styles.toastText}>{text1}</Text>
-        <TouchableOpacity
-          onPress={() => Toast.hide()}
-          style={styles.toastCloseButton}
-        >
-          <CloseIcon width={13.33} height={13.33} style={styles.toastIcon} />
-        </TouchableOpacity>
-      </View>
-    ),
-  };
-
   return (
     <DrawerProvider openDrawer={openDrawer} closeDrawer={closeDrawer}>
-      <View
-        style={[
-          styles.container,
-          { paddingBottom: insets.bottom === 0 ? 16 : 0 },
-        ]}
-      >
+      <View style={styles.container}>
         <Animated.View
           style={[
             styles.content,
@@ -115,7 +90,6 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
                   }),
                 },
               ],
-              paddingTop: insets.top,
             },
           ]}
         >
@@ -123,7 +97,7 @@ const CustomDrawerLayout = ({ children }: { children: React.ReactNode }) => {
         </Animated.View>
       </View>
 
-      <Toast config={toastConfig} topOffset={insets.top + 16} />
+      <AppToast />
     </DrawerProvider>
   );
 };
@@ -135,6 +109,7 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
+      paddingBottom: theme.insets.bottom === 0 ? 16 : 0,
     },
     content: {
       flex: 1,
@@ -148,31 +123,11 @@ const createStyles = (theme: Theme) =>
       zIndex: 3,
       elevation: 8,
       backgroundColor: theme.bg.softPrimary,
+      paddingTop: theme.insets.top,
     },
     backdrop: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: theme.bg.overlay,
       zIndex: 2,
-    },
-    toastContainer: {
-      width: '90%',
-      backgroundColor: theme.bg.softSecondary,
-      borderRadius: 12,
-      padding: 16,
-      flexDirection: 'row',
-    },
-    toastText: {
-      color: theme.text.primary,
-      fontFamily: fontFamily.bold,
-      fontSize: fontSizes.sm,
-      width: '80%',
-    },
-    toastCloseButton: {
-      width: '20%',
-      alignItems: 'flex-end',
-      marginTop: 3.33,
-    },
-    toastIcon: {
-      color: theme.text.primary,
     },
   });
