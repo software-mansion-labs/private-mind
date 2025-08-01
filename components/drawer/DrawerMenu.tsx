@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import { Text, StyleSheet, View } from 'react-native';
-import { useRouter, usePathname } from 'expo-router';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { Text, StyleSheet, View, BackHandler } from 'react-native';
+import { useRouter, usePathname, useNavigation } from 'expo-router';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useTheme } from '../../context/ThemeContext';
 import { useChatStore } from '../../store/chatStore';
@@ -52,6 +52,8 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
 
   const router = useRouter();
   const pathname = usePathname();
+  const navigation = useNavigation();
+
   const { chats } = useChatStore();
   const { interrupt } = useLLMStore();
 
@@ -59,11 +61,50 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
     [...chats].sort((a, b) => b.lastUsed - a.lastUsed)
   );
 
+  const history = useRef<string[]>(['/']);
+
   const navigate = (path: string) => {
     interrupt();
-    pathname === path ? router.replace(path) : router.push(path);
+    if (history.current.at(-1) !== pathname) {
+      history.current.push(pathname);
+    }
+
+    // If <DrawerMenu> is visible and there is more than one route in the stack, some
+    // screens were opened not via the menu. Flatten the stack again if that happens.
+    const stackSize =
+      navigation.getState()?.routes[0]?.state?.routes?.length ?? 0;
+    if (stackSize > 1) {
+      router.dismissAll();
+    }
+
+    router.replace(path);
     onNavigate();
   };
+
+  // handles back button on Android to mimic the older implementation, which was
+  // pushing routes on the stack when switching screens
+  useEffect(() => {
+    const handleBackPress = () => {
+      const lastHistoryItem = history.current.at(-1);
+
+      if (!router.canGoBack() && lastHistoryItem !== undefined) {
+        router.replace(lastHistoryItem);
+        history.current.pop();
+        return true;
+      } else {
+        return false;
+      }
+    };
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackPress
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
