@@ -86,21 +86,21 @@ export default function AddLocalModelScreen() {
             Add a model using an existing files in your phone storage.
           </Text>
           <View style={styles.textFieldSection}>
-            <Text style={styles.label}>Model URL</Text>
+            <Text style={styles.label}>Model file</Text>
             <UploadInput
               fileInfo={localModelPath}
               onChange={(file) => setFormField('localModelPath', file)}
             />
           </View>
           <View style={styles.textFieldSection}>
-            <Text style={styles.label}>Tokenizer URL</Text>
+            <Text style={styles.label}>Tokenizer file</Text>
             <UploadInput
               fileInfo={localTokenizerPath}
               onChange={(file) => setFormField('localTokenizerPath', file)}
             />
           </View>
           <View style={styles.textFieldSection}>
-            <Text style={styles.label}>Tokenizer Config URL</Text>
+            <Text style={styles.label}>Tokenizer Config file</Text>
             <UploadInput
               fileInfo={localTokenizerConfigPath}
               onChange={(file) =>
