@@ -109,7 +109,6 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
-      paddingBottom: theme.insets.bottom === 0 ? 16 : 0,
     },
     content: {
       flex: 1,
