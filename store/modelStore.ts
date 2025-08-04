@@ -43,6 +43,8 @@ interface ModelStore {
   ) => Promise<void>;
 }
 
+const MS_PER_FRAME = 16 // ~60 fps
+
 export const useModelStore = create<ModelStore>((set, get) => ({
   db: null,
   models: [],
@@ -88,6 +90,13 @@ export const useModelStore = create<ModelStore>((set, get) => ({
 
     let lastReportedPercent = -1;
 
+    // used for avoiding updates more frequent than 60 per second, which can cause
+    // glitches due to the UI becoming out of sync with the actual progress
+    let lastReportTime = Date.now();
+
+    // prevent race condition where for fast responses last progress updates happen after
+    // its finished and make the download state appear stuck on "downloading"
+    let downloadDone = false;
     setDownloading(0, ModelState.Downloading);
 
     try {
@@ -96,8 +105,13 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       const result = await ResourceFetcher.fetch(
         (p: number) => {
           const currentPercent = Math.floor(p * 100);
-          if (currentPercent !== lastReportedPercent) {
+          if (
+            !downloadDone &&
+            currentPercent !== lastReportedPercent &&
+            lastReportTime + MS_PER_FRAME < Date.now()
+          ) {
             lastReportedPercent = currentPercent;
+            lastReportTime = Date.now();
             setDownloading(p, ModelState.Downloading);
           }
         },
@@ -116,6 +130,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         await get().loadModels();
       }
 
+      downloadDone = true;
       setDownloading(1, ModelState.Downloaded);
       Toast.show({
         type: 'defaultToast',
