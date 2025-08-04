@@ -208,17 +208,27 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     if (!model) return;
 
     try {
-      if (model.source === 'remote') {
-        await ResourceFetcher.deleteResources(
-          model.tokenizerPath,
-          model.tokenizerConfigPath
-        );
+      if (model.source === 'remote' && model.isDownloaded) {
+        const oldPaths = [];
+        const newPaths = [];
 
-        await ResourceFetcher.deleteResources(
-          () => {},
-          localTokenizerPath,
-          localTokenizerConfigPath
-        );
+        if (model.tokenizerPath !== localTokenizerPath) {
+          oldPaths.push(model.tokenizerPath);
+          newPaths.push(localTokenizerPath);
+        }
+
+        if (model.tokenizerConfigPath !== localTokenizerConfigPath) {
+          oldPaths.push(model.tokenizerConfigPath);
+          newPaths.push(localTokenizerConfigPath);
+        }
+
+        if (oldPaths.length > 0) {
+          await ResourceFetcher.deleteResources(...oldPaths);
+        }
+
+        if (newPaths.length > 0) {
+          await ResourceFetcher.fetch(() => {}, ...newPaths);
+        }
       }
 
       await updateModel(db, {
