@@ -117,6 +117,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: theme.bg.softPrimary,
+      paddingHorizontal: 16,
     },
     modelSelection: {
       width: '100%',

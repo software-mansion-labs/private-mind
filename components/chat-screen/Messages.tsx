@@ -40,6 +40,7 @@ const Messages = ({ chatHistory, ref, isAtBottom, setIsAtBottom }: Props) => {
         onScroll={handleScroll}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="never"
+        contentContainerStyle={{ paddingHorizontal: 16 }}
         onContentSizeChange={() => {
           if (
             isAtBottom ||
