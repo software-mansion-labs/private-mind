@@ -21,9 +21,7 @@ export default React.memo(DrawerToggleButton);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    button: {
-      paddingHorizontal: 16,
-    },
+    button: { justifyContent: 'center', alignItems: 'center' },
     icon: {
       color: theme.text.primary,
     },

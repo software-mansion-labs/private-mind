@@ -100,8 +100,8 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     contentContainer: {
       gap: 24,
-      paddingVertical: 16,
-      paddingHorizontal: 24,
+      paddingVertical: 24,
+      paddingHorizontal: 16,
       paddingBottom: theme.insets.bottom + 16,
     },
     header: {

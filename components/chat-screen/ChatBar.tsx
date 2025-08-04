@@ -116,7 +116,6 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'column',
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 16,
       backgroundColor: theme.bg.softPrimary,
     },
     modelSelection: {

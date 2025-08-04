@@ -199,8 +199,8 @@ export default ModelManagementSheet;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      paddingVertical: 16,
-      paddingHorizontal: 24,
+      paddingVertical: 24,
+      paddingHorizontal: 16,
       paddingBottom: theme.insets.bottom + 16,
       gap: 24,
       backgroundColor: theme.bg.softPrimary,

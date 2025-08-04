@@ -25,7 +25,9 @@ export const DrawerItem = memo(({ label, active, onPress, icon }: Props) => {
     >
       <View style={styles.content}>
         {icon && icon}
-        <Text style={styles.label}>{label}</Text>
+        <Text numberOfLines={1} style={styles.label}>
+          {label}
+        </Text>
       </View>
     </Pressable>
   );

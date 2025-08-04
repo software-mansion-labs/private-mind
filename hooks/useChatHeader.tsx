@@ -4,6 +4,7 @@ import { useChatStore } from '../store/chatStore';
 import SettingsHeaderButton from '../components/SettingsHeaderButton';
 import { Model } from '../database/modelRepository';
 import ChatTitle from '../components/chat-screen/ChatTitle';
+import DrawerToggleButton from '../components/drawer/DrawerToggleButton';
 
 interface Props {
   chatId: number;
@@ -18,6 +19,7 @@ export default function useChatHeader({ chatId, chatModel }: Props) {
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      headerLeft: () => <DrawerToggleButton />,
       headerTitle: () => (
         <ChatTitle
           title={chatTitle}

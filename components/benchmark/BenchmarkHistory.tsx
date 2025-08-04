@@ -59,11 +59,9 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.md,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
-      paddingHorizontal: 16,
     },
     listContent: {
       gap: 8,
-      paddingHorizontal: 16,
       paddingBottom: theme.insets.bottom + 16,
     },
     noDataContainer: {

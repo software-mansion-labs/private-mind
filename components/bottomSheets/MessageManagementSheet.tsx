@@ -6,7 +6,6 @@ import {
 } from '@gorhom/bottom-sheet';
 import { StyleSheet } from 'react-native';
 import { Theme } from '../../styles/colors';
-import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import EntryButton from '../EntryButton';
 import CopyIcon from '../../assets/icons/copy.svg';
@@ -66,8 +65,8 @@ export default MessageManagementSheet;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     content: {
-      paddingVertical: 16,
-      paddingHorizontal: 24,
+      paddingVertical: 24,
+      paddingHorizontal: 16,
       paddingBottom: theme.insets.bottom + 16,
       gap: 24,
       backgroundColor: theme.bg.softPrimary,

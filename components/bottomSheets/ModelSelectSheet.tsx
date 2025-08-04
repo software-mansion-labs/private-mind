@@ -156,7 +156,7 @@ const createStyles = (theme: Theme) =>
       gap: 24,
     },
     horizontalInset: {
-      paddingHorizontal: 24,
+      paddingHorizontal: 16,
     },
     title: {
       fontSize: fontSizes.lg,

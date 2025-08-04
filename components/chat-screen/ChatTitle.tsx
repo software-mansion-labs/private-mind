@@ -17,7 +17,9 @@ const ChatTitle = ({ title, modelName }: Props) => {
     <View style={styles.titleContainer}>
       {title !== '' ? (
         <>
-          <Text style={styles.title}>{title}</Text>
+          <Text numberOfLines={1} style={styles.title}>
+            {title}
+          </Text>
           <Text style={styles.modelName}>{modelName}</Text>
         </>
       ) : (

@@ -127,11 +127,12 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
+      paddingHorizontal: 16,
     },
     messagesContainer: {
       flex: 1,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingTop: 16,
+      paddingBottom: 8,
       backgroundColor: theme.bg.softPrimary,
     },
     barContainer: {
