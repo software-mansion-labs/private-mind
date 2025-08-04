@@ -36,6 +36,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
 
   const { removeModel, removeModelFiles } = useModelStore();
   const [stage, setStage] = useState<ModalStage>(ModalStage.Initial);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -121,9 +122,16 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
             </Text>
             <View style={styles.buttonGroup}>
               <PrimaryButton
-                text="Delete model files"
+                text={
+                  isProcessing
+                    ? 'Deleting model files...'
+                    : 'Delete model files'
+                }
+                disabled={isProcessing}
                 onPress={async () => {
+                  setIsProcessing(true);
                   await removeModelFiles(model.id);
+                  setIsProcessing(false);
                   Toast.show({
                     type: 'defaultToast',
                     text1: `${model.modelName} has been successfully deleted`,
@@ -134,6 +142,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
               <SecondaryButton
                 text="Close"
                 onPress={() => setStage(ModalStage.Initial)}
+                disabled={isProcessing}
               />
             </View>
           </>
@@ -151,10 +160,15 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
             </Text>
             <View style={styles.buttonGroup}>
               <PrimaryButton
-                text="Delete model files"
+                text={
+                  isProcessing ? 'Removing model...' : 'Remove from the app'
+                }
+                disabled={isProcessing}
                 style={styles.buttonDestructive}
                 onPress={async () => {
+                  setIsProcessing(true);
                   await removeModel(model.id);
+                  setIsProcessing(false);
                   Toast.show({
                     type: 'defaultToast',
                     text1: `${model.modelName} has been successfully deleted`,
@@ -165,6 +179,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
               <SecondaryButton
                 text="Close"
                 onPress={() => setStage(ModalStage.Initial)}
+                disabled={isProcessing}
               />
             </View>
           </>
