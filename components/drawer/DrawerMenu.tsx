@@ -61,13 +61,8 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
     [...chats].sort((a, b) => b.lastUsed - a.lastUsed)
   );
 
-  const history = useRef<string[]>(['/']);
-
   const navigate = (path: string) => {
     interrupt();
-    if (history.current.at(-1) !== pathname) {
-      history.current.push(pathname);
-    }
 
     // If <DrawerMenu> is visible and there is more than one route in the stack, some
     // screens were opened not via the menu. Flatten the stack again if that happens.
@@ -81,15 +76,16 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
     onNavigate();
   };
 
-  // handles back button on Android to mimic the older implementation, which was
-  // pushing routes on the stack when switching screens
+  // pass this check via a ref so the BackHandler callback does not have to be
+  // unnecessarily recreated on navigation, which could interfere with more specific
+  // listeners added later.
+  const isAtIndexRef = useRef(false);
+  isAtIndexRef.current = pathname === '/';
+
   useEffect(() => {
     const handleBackPress = () => {
-      const lastHistoryItem = history.current.at(-1);
-
-      if (!router.canGoBack() && lastHistoryItem !== undefined) {
-        router.replace(lastHistoryItem);
-        history.current.pop();
+      if (!router.canGoBack() && !isAtIndexRef.current) {
+        router.replace('/');
         return true;
       } else {
         return false;
