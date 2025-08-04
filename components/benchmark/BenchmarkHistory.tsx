@@ -59,10 +59,12 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.md,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
+      paddingHorizontal: 16,
     },
     listContent: {
       gap: 8,
       paddingBottom: theme.insets.bottom + 16,
+      paddingHorizontal: 16,
     },
     noDataContainer: {
       alignItems: 'center',

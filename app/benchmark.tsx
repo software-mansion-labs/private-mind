@@ -117,9 +117,9 @@ const createStyles = (theme: Theme) =>
       gap: 16,
       backgroundColor: theme.bg.softPrimary,
       paddingTop: 16,
-      paddingHorizontal: 16,
     },
     controls: {
       gap: 16,
+      paddingHorizontal: 16,
     },
   });
