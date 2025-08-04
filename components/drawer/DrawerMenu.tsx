@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import { Text, StyleSheet, View } from 'react-native';
-import { useRouter, usePathname } from 'expo-router';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { Text, StyleSheet, View, BackHandler } from 'react-native';
+import { useRouter, usePathname, useNavigation } from 'expo-router';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useTheme } from '../../context/ThemeContext';
 import { useChatStore } from '../../store/chatStore';
@@ -52,6 +52,8 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
 
   const router = useRouter();
   const pathname = usePathname();
+  const navigation = useNavigation();
+
   const { chats } = useChatStore();
   const { interrupt } = useLLMStore();
 
@@ -61,9 +63,44 @@ const DrawerMenu = ({ onNavigate }: { onNavigate: () => void }) => {
 
   const navigate = (path: string) => {
     interrupt();
-    pathname === path ? router.replace(path) : router.push(path);
+
+    // If <DrawerMenu> is visible and there is more than one route in the stack, some
+    // screens were opened not via the menu. Flatten the stack again if that happens.
+    const stackSize =
+      navigation.getState()?.routes[0]?.state?.routes?.length ?? 0;
+    if (stackSize > 1) {
+      router.dismissAll();
+    }
+
+    router.replace(path);
     onNavigate();
   };
+
+  // pass this check via a ref so the BackHandler callback does not have to be
+  // unnecessarily recreated on navigation, which could interfere with more specific
+  // listeners added later.
+  const isAtIndexRef = useRef(false);
+  isAtIndexRef.current = pathname === '/';
+
+  useEffect(() => {
+    const handleBackPress = () => {
+      if (!router.canGoBack() && !isAtIndexRef.current) {
+        router.replace('/');
+        return true;
+      } else {
+        return false;
+      }
+    };
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackPress
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
