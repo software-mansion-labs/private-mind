@@ -102,7 +102,7 @@ export default function EditLocalModelScreen() {
             />
           </View>
           <View style={styles.textFieldSection}>
-            <Text style={styles.label}>Model URL</Text>
+            <Text style={styles.label}>Model File</Text>
             <UploadInput
               fileInfo={localModelPath}
               onChange={(file) => setFormField('localModelPath', file)}
@@ -111,14 +111,14 @@ export default function EditLocalModelScreen() {
             <InfoAlert text="Model file is permanently linked to this model and cannot be changed" />
           </View>
           <View style={styles.textFieldSection}>
-            <Text style={styles.label}>Tokenizer URL</Text>
+            <Text style={styles.label}>Tokenizer File</Text>
             <UploadInput
               fileInfo={localTokenizerPath}
               onChange={(file) => setFormField('localTokenizerPath', file)}
             />
           </View>
           <View style={styles.textFieldSection}>
-            <Text style={styles.label}>Tokenizer Config URL</Text>
+            <Text style={styles.label}>Tokenizer Config File</Text>
             <UploadInput
               fileInfo={localTokenizerConfigPath}
               onChange={(file) =>
