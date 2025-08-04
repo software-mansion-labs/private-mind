@@ -30,7 +30,6 @@ export default SettingsHeaderButton;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     button: {
-      paddingHorizontal: 16,
       justifyContent: 'center',
       alignItems: 'center',
     },

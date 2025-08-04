@@ -116,9 +116,10 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       gap: 16,
       backgroundColor: theme.bg.softPrimary,
+      paddingTop: 16,
     },
     controls: {
-      paddingHorizontal: 16,
       gap: 16,
+      paddingHorizontal: 16,
     },
   });

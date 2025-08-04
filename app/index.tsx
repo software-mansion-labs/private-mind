@@ -8,7 +8,7 @@ import WithDrawerGesture from '../components/WithDrawerGesture';
 import { getNextChatId, importMessages } from '../database/chatRepository';
 import { useSQLiteContext } from 'expo-sqlite';
 import useDefaultHeader from '../hooks/useDefaultHeader';
-import { View, Image, Text, StyleSheet, Platform, Alert } from 'react-native';
+import { View, Image, Text, StyleSheet, Alert } from 'react-native';
 import PrimaryButton from '../components/PrimaryButton';
 import TextButton from '../components/TextButton';
 import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
@@ -121,7 +121,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 36,
+      paddingHorizontal: 16,
       gap: 24,
     },
     icon: {

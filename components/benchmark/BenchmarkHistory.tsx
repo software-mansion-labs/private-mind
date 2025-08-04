@@ -63,8 +63,8 @@ const createStyles = (theme: Theme) =>
     },
     listContent: {
       gap: 8,
-      paddingHorizontal: 16,
       paddingBottom: theme.insets.bottom + 16,
+      paddingHorizontal: 16,
     },
     noDataContainer: {
       alignItems: 'center',

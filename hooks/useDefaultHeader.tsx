@@ -15,6 +15,7 @@ export default function useDefaultHeader() {
       headerStyle: {
         backgroundColor: theme.bg.softPrimary,
       },
+      headerTitleAlign: 'center',
       headerTitleStyle: {
         color: theme.text.primary,
         fontFamily: fontFamily.medium,
