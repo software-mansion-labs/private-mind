@@ -4,23 +4,20 @@ import useDefaultHeader from '../hooks/useDefaultHeader';
 import { useModelStore } from '../store/modelStore';
 import FloatingActionButton from '../components/model-hub/FloatingActionButton';
 import WithDrawerGesture from '../components/WithDrawerGesture';
-import { ScrollView } from 'react-native-gesture-handler';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import ModelManagementSheet from '../components/bottomSheets/ModelManagementSheet';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
-import TextFieldInput from '../components/TextFieldInput';
-import SearchIcon from '../assets/icons/search.svg';
 import SecondaryButton from '../components/SecondaryButton';
 import QuestionIcon from '../assets/icons/question.svg';
 import AddModelSheet from '../components/bottomSheets/AddModelSheet';
 import MemoryWarningSheet from '../components/bottomSheets/MemoryWarningSheet';
-import SortingTag from '../components/model-hub/SortingTag';
 import { useTheme } from '../context/ThemeContext';
 import { Theme } from '../styles/colors';
-import useModelHubData from '../hooks/useModelHubData';
+import useModelHubData, { ModelHubFilter } from '../hooks/useModelHubData';
 import { Model } from '../database/modelRepository';
 import GroupedModelList from '../components/model-hub/GroupedModelList';
 import { CustomKeyboardAvoidingView } from '../components/CustomKeyboardAvoidingView';
+import ModelListFilters from '../components/model-hub/ModelListFilters';
 
 const ModelHubScreen = () => {
   useDefaultHeader();
@@ -32,8 +29,8 @@ const ModelHubScreen = () => {
   const memoryWarningSheetRef = useRef<BottomSheetModal<Model> | null>(null);
   const { models } = useModelStore();
   const [search, setSearch] = useState('');
-  const [activeFilters, setActiveFilters] = useState<Set<string>>(
-    new Set(['featured'])
+  const [activeFilters, setActiveFilters] = useState<Set<ModelHubFilter>>(
+    new Set([ModelHubFilter.Featured])
   );
   const [groupByModel, setGroupByModel] = useState(false);
 
@@ -43,12 +40,6 @@ const ModelHubScreen = () => {
     activeFilters,
     groupByModel,
   });
-
-  const toggleFilter = (filter: string) => {
-    const newFilters = new Set(activeFilters);
-    newFilters.has(filter) ? newFilters.delete(filter) : newFilters.add(filter);
-    setActiveFilters(newFilters);
-  };
 
   const handleModelPress = useCallback((model: Model) => {
     modelManagementSheetRef.current?.present(model);
@@ -77,41 +68,14 @@ const ModelHubScreen = () => {
     <CustomKeyboardAvoidingView style={styles.keyboardAvoidingView}>
       <WithDrawerGesture>
         <View style={styles.container}>
-          <View style={styles.horizontalInset}>
-            <TextFieldInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search Models..."
-              icon={
-                <SearchIcon
-                  width={20}
-                  height={20}
-                  style={{ color: theme.text.primary }}
-                />
-              }
-            />
-          </View>
-          <View>
-            <ScrollView
-              horizontal
-              contentContainerStyle={[
-                styles.tagContainer,
-                styles.horizontalInset,
-              ]}
-              showsHorizontalScrollIndicator={false}
-            >
-              <SortingTag
-                text="Featured"
-                selected={activeFilters.has('featured')}
-                onPress={() => toggleFilter('featured')}
-              />
-              <SortingTag
-                text="Group by model"
-                selected={groupByModel}
-                onPress={() => setGroupByModel(!groupByModel)}
-              />
-            </ScrollView>
-          </View>
+          <ModelListFilters
+            search={search}
+            onSearchChange={setSearch}
+            activeFilters={activeFilters}
+            onFiltersChange={setActiveFilters}
+            groupByModel={groupByModel}
+            onGroupByModelChange={setGroupByModel}
+          />
           {isEmpty ? (
             renderEmptyState()
           ) : (
@@ -185,9 +149,5 @@ const createStyles = (theme: Theme) =>
     modelScrollContent: {
       // 56 is the FAB size
       paddingBottom: theme.insets.bottom + 16 + 56,
-    },
-    tagContainer: {
-      gap: 8,
-      alignItems: 'center',
     },
   });

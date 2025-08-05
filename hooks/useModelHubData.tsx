@@ -2,10 +2,14 @@ import { useMemo } from 'react';
 import { ModelState } from '../store/modelStore';
 import { Model } from '../database/modelRepository';
 
+export enum ModelHubFilter {
+  Featured = 'featured',
+}
+
 interface UseModelHubDataParams {
   models: Model[];
   search: string;
-  activeFilters: Set<string>;
+  activeFilters: Set<ModelHubFilter>;
   groupByModel: boolean;
 }
 
@@ -31,7 +35,7 @@ export default function useModelHubData({
         .includes(search.toLowerCase());
       if (!matchesSearch) return false;
 
-      if (activeFilters.has('featured') && model.source === 'built-in') {
+      if (activeFilters.has(ModelHubFilter.Featured) && model.source === 'built-in') {
         return model.featured;
       }
       return true;
