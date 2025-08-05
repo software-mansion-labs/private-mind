@@ -15,7 +15,7 @@ const SettingsHeaderButton = ({ chatId }: Props) => {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handlePress = () => {
-    router.push(`/chat/${chatId}/settings`);
+    router.push(`/(modals)/chat/${chatId}/settings`);
   };
 
   return (

@@ -38,47 +38,11 @@ export default function Layout() {
             <BottomSheetModalProvider>
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(drawer)" />
-
                 <Stack.Screen
-                  name="(modals)/chat/[id]/settings"
+                  name="(modals)"
                   options={{
-                    headerShown: false,
                     presentation: 'modal',
-                  }}
-                />
-                <Stack.Screen
-                  name="(modals)/add-local-model"
-                  options={{
                     headerShown: false,
-                    presentation: 'modal',
-                  }}
-                />
-                <Stack.Screen
-                  name="(modals)/add-remote-model"
-                  options={{
-                    headerShown: false,
-                    presentation: 'modal',
-                  }}
-                />
-                <Stack.Screen
-                  name="(modals)/edit-local-model/[modelId]"
-                  options={{
-                    headerShown: false,
-                    presentation: 'modal',
-                  }}
-                />
-                <Stack.Screen
-                  name="(modals)/edit-remote-model/[modelId]"
-                  options={{
-                    headerShown: false,
-                    presentation: 'modal',
-                  }}
-                />
-                <Stack.Screen
-                  name="(modals)/app-info"
-                  options={{
-                    headerShown: false,
-                    presentation: 'modal',
                   }}
                 />
               </Stack>
