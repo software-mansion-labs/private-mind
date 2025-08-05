@@ -1,26 +1,24 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
-import useDefaultHeader from '../hooks/useDefaultHeader';
-import { useModelStore } from '../store/modelStore';
-import FloatingActionButton from '../components/model-hub/FloatingActionButton';
-import WithDrawerGesture from '../components/WithDrawerGesture';
-import { ScrollView } from 'react-native-gesture-handler';
+import { View, StyleSheet, Text, ScrollView } from 'react-native';
+import useDefaultHeader from '../../hooks/useDefaultHeader';
+import { useModelStore } from '../../store/modelStore';
+import { useTheme } from '../../context/ThemeContext';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import ModelManagementSheet from '../components/bottomSheets/ModelManagementSheet';
-import { fontFamily, fontSizes } from '../styles/fontStyles';
-import TextFieldInput from '../components/TextFieldInput';
-import SearchIcon from '../assets/icons/search.svg';
-import SecondaryButton from '../components/SecondaryButton';
-import QuestionIcon from '../assets/icons/question.svg';
-import AddModelSheet from '../components/bottomSheets/AddModelSheet';
-import MemoryWarningSheet from '../components/bottomSheets/MemoryWarningSheet';
-import SortingTag from '../components/model-hub/SortingTag';
-import { useTheme } from '../context/ThemeContext';
-import { Theme } from '../styles/colors';
-import useModelHubData from '../hooks/useModelHubData';
-import { Model } from '../database/modelRepository';
-import GroupedModelList from '../components/model-hub/GroupedModelList';
-import { CustomKeyboardAvoidingView } from '../components/CustomKeyboardAvoidingView';
+import AddModelSheet from '../../components/bottomSheets/AddModelSheet';
+import MemoryWarningSheet from '../../components/bottomSheets/MemoryWarningSheet';
+import ModelManagementSheet from '../../components/bottomSheets/ModelManagementSheet';
+import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
+import FloatingActionButton from '../../components/model-hub/FloatingActionButton';
+import GroupedModelList from '../../components/model-hub/GroupedModelList';
+import SortingTag from '../../components/model-hub/SortingTag';
+import SecondaryButton from '../../components/SecondaryButton';
+import TextFieldInput from '../../components/TextFieldInput';
+import { Model } from '../../database/modelRepository';
+import useModelHubData from '../../hooks/useModelHubData';
+import { Theme } from '../../styles/colors';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import QuestionIcon from '../../assets/icons/question.svg';
+import SearchIcon from '../../assets/icons/search.svg';
 
 const ModelHubScreen = () => {
   useDefaultHeader();
@@ -75,61 +73,59 @@ const ModelHubScreen = () => {
 
   return (
     <CustomKeyboardAvoidingView style={styles.keyboardAvoidingView}>
-      <WithDrawerGesture>
-        <View style={styles.container}>
-          <View style={styles.horizontalInset}>
-            <TextFieldInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search Models..."
-              icon={
-                <SearchIcon
-                  width={20}
-                  height={20}
-                  style={{ color: theme.text.primary }}
-                />
-              }
-            />
-          </View>
-          <View>
-            <ScrollView
-              horizontal
-              contentContainerStyle={[
-                styles.tagContainer,
-                styles.horizontalInset,
-              ]}
-              showsHorizontalScrollIndicator={false}
-            >
-              <SortingTag
-                text="Featured"
-                selected={activeFilters.has('featured')}
-                onPress={() => toggleFilter('featured')}
+      <View style={styles.container}>
+        <View style={styles.horizontalInset}>
+          <TextFieldInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search Models..."
+            icon={
+              <SearchIcon
+                width={20}
+                height={20}
+                style={{ color: theme.text.primary }}
               />
-              <SortingTag
-                text="Group by model"
-                selected={groupByModel}
-                onPress={() => setGroupByModel(!groupByModel)}
-              />
-            </ScrollView>
-          </View>
-          {isEmpty ? (
-            renderEmptyState()
-          ) : (
-            <GroupedModelList
-              groupedModels={groupedModels}
-              onModelPress={handleModelPress}
-              memoryWarningSheetRef={memoryWarningSheetRef}
-              contentContainerStyle={[
-                styles.modelScrollContent,
-                styles.horizontalInset,
-              ]}
-            />
-          )}
-          <FloatingActionButton
-            onPress={() => addModelSheetRef.current?.present()}
+            }
           />
         </View>
-      </WithDrawerGesture>
+        <View>
+          <ScrollView
+            horizontal
+            contentContainerStyle={[
+              styles.tagContainer,
+              styles.horizontalInset,
+            ]}
+            showsHorizontalScrollIndicator={false}
+          >
+            <SortingTag
+              text="Featured"
+              selected={activeFilters.has('featured')}
+              onPress={() => toggleFilter('featured')}
+            />
+            <SortingTag
+              text="Group by model"
+              selected={groupByModel}
+              onPress={() => setGroupByModel(!groupByModel)}
+            />
+          </ScrollView>
+        </View>
+        {isEmpty ? (
+          renderEmptyState()
+        ) : (
+          <GroupedModelList
+            groupedModels={groupedModels}
+            onModelPress={handleModelPress}
+            memoryWarningSheetRef={memoryWarningSheetRef}
+            contentContainerStyle={[
+              styles.modelScrollContent,
+              styles.horizontalInset,
+            ]}
+          />
+        )}
+        <FloatingActionButton
+          onPress={() => addModelSheetRef.current?.present()}
+        />
+      </View>
       <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
       <AddModelSheet bottomSheetModalRef={addModelSheetRef} />
       <MemoryWarningSheet bottomSheetModalRef={memoryWarningSheetRef} />

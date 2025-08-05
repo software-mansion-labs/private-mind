@@ -1,14 +1,13 @@
 import React from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import ChatScreen from '../../components/chat-screen/ChatScreen';
-import useDefaultHeader from '../../hooks/useDefaultHeader';
+import ChatScreen from '../../../components/chat-screen/ChatScreen';
+import useDefaultHeader from '../../../hooks/useDefaultHeader';
 import { useEffect, useState } from 'react';
-import { useLLMStore } from '../../store/llmStore';
-import useChatHeader from '../../hooks/useChatHeader';
-import { useModelStore } from '../../store/modelStore';
-import { Model } from '../../database/modelRepository';
-import WithDrawerGesture from '../../components/WithDrawerGesture';
-import { useChatStore } from '../../store/chatStore';
+import { useLLMStore } from '../../../store/llmStore';
+import useChatHeader from '../../../hooks/useChatHeader';
+import { useModelStore } from '../../../store/modelStore';
+import { Model } from '../../../database/modelRepository';
+import { useChatStore } from '../../../store/chatStore';
 
 export default function ChatScreenWrapper() {
   useDefaultHeader();
@@ -48,13 +47,11 @@ export default function ChatScreenWrapper() {
   };
 
   return (
-    <WithDrawerGesture>
-      <ChatScreen
-        chatId={chatId}
-        messageHistory={isLoading ? [] : activeChatMessages}
-        model={model}
-        selectModel={handleSetModel}
-      />
-    </WithDrawerGesture>
+    <ChatScreen
+      chatId={chatId}
+      messageHistory={isLoading ? [] : activeChatMessages}
+      model={model}
+      selectModel={handleSetModel}
+    />
   );
 }

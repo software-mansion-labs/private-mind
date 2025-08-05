@@ -8,24 +8,23 @@ import React, {
 import { View, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useModelStore } from '../store/modelStore';
-import { useTheme } from '../context/ThemeContext';
-import { Theme } from '../styles/colors';
+import { useModelStore } from '../../store/modelStore';
+import { useTheme } from '../../context/ThemeContext';
+import { Theme } from '../../styles/colors';
 import {
   BenchmarkResult,
   deleteBenchmark,
   getAllBenchmarks,
   getBenchmarkById,
-} from '../database/benchmarkRepository';
-import { Model } from '../database/modelRepository';
-import WithDrawerGesture from '../components/WithDrawerGesture';
-import { ModelSelector } from '../components/benchmark/ModelSelector';
-import PrimaryButton from '../components/PrimaryButton';
-import { BenchmarkModal } from '../components/benchmark/BenchmarkModal';
-import BenchmarkResultSheet from '../components/bottomSheets/BenchmarkResultSheet';
-import BenchmarkHistory from '../components/benchmark/BenchmarkHistory';
-import useBenchmarkRunner from '../hooks/useBenchmarkRunner';
-import useDefaultHeader from '../hooks/useDefaultHeader';
+} from '../../database/benchmarkRepository';
+import { Model } from '../../database/modelRepository';
+import { ModelSelector } from '../../components/benchmark/ModelSelector';
+import PrimaryButton from '../../components/PrimaryButton';
+import { BenchmarkModal } from '../../components/benchmark/BenchmarkModal';
+import BenchmarkResultSheet from '../../components/bottomSheets/BenchmarkResultSheet';
+import BenchmarkHistory from '../../components/benchmark/BenchmarkHistory';
+import useBenchmarkRunner from '../../hooks/useBenchmarkRunner';
+import useDefaultHeader from '../../hooks/useDefaultHeader';
 
 const BenchmarkScreen = () => {
   useDefaultHeader();
@@ -72,25 +71,23 @@ const BenchmarkScreen = () => {
 
   return (
     <>
-      <WithDrawerGesture>
-        <View style={styles.container}>
-          <View style={styles.controls}>
-            <ModelSelector
-              model={selectedModel}
-              setSelectedModel={setSelectedModel}
-            />
-            <PrimaryButton
-              disabled={!selectedModel || isRunning}
-              text="Run benchmark"
-              onPress={() => startBenchmark(selectedModel)}
-            />
-          </View>
-          <BenchmarkHistory
-            modalRef={bottomSheetModalRef}
-            benchmarkList={benchmarkList}
+      <View style={styles.container}>
+        <View style={styles.controls}>
+          <ModelSelector
+            model={selectedModel}
+            setSelectedModel={setSelectedModel}
+          />
+          <PrimaryButton
+            disabled={!selectedModel || isRunning}
+            text="Run benchmark"
+            onPress={() => startBenchmark(selectedModel)}
           />
         </View>
-      </WithDrawerGesture>
+        <BenchmarkHistory
+          modalRef={bottomSheetModalRef}
+          benchmarkList={benchmarkList}
+        />
+      </View>
 
       <BenchmarkModal
         isVisible={isRunning}

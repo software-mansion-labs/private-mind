@@ -15,7 +15,7 @@ const SettingsHeaderButton = ({ chatId }: Props) => {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handlePress = () => {
-    router.push(`/chat/${chatId}/settings`);
+    router.push(`/(modals)/chat/${chatId}/settings`);
   };
 
   return (
@@ -32,6 +32,7 @@ const createStyles = (theme: Theme) =>
     button: {
       justifyContent: 'center',
       alignItems: 'center',
+      marginRight: 16,
     },
     icon: {
       color: theme.text.primary,

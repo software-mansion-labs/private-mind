@@ -1,19 +1,19 @@
 import React, { RefObject, useMemo, useRef } from 'react';
 import { StyleSheet, ScrollView, View, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { setChatSettings } from '../../../database/chatRepository';
+import { setChatSettings } from '../../../../database/chatRepository';
 import { useSQLiteContext } from 'expo-sqlite';
-import PrimaryButton from '../../../components/PrimaryButton';
-import { useTheme } from '../../../context/ThemeContext';
-import { useModelStore } from '../../../store/modelStore';
-import { useChatStore } from '../../../store/chatStore';
-import ModalHeader from '../../../components/ModalHeader';
+import PrimaryButton from '../../../../components/PrimaryButton';
+import { useTheme } from '../../../../context/ThemeContext';
+import { useModelStore } from '../../../../store/modelStore';
+import { useChatStore } from '../../../../store/chatStore';
+import ModalHeader from '../../../../components/ModalHeader';
 import Toast from 'react-native-toast-message';
-import { exportChatRoom } from '../../../database/exportImportRepository';
-import { Theme } from '../../../styles/colors';
-import useChatSettings from '../../../hooks/useChatSettings';
-import ChatSettingsForm from '../../../components/settings/ChatSettingsForm';
-import { CustomKeyboardAvoidingView } from '../../../components/CustomKeyboardAvoidingView';
+import { exportChatRoom } from '../../../../database/exportImportRepository';
+import { Theme } from '../../../../styles/colors';
+import useChatSettings from '../../../../hooks/useChatSettings';
+import ChatSettingsForm from '../../../../components/settings/ChatSettingsForm';
+import { CustomKeyboardAvoidingView } from '../../../../components/CustomKeyboardAvoidingView';
 
 export default function ChatSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -87,7 +87,7 @@ export default function ChatSettingsScreen() {
   };
 
   const handleAppInfo = () => {
-    router.push('/modal/app-info');
+    router.push('/(modals)/app-info');
   };
 
   return (

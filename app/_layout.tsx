@@ -1,8 +1,6 @@
 import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Stack } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
-import CustomDrawerLayout from '../components/drawer/CustomDrawerLayout';
 import { initDatabase } from '../database/db';
 import {
   useFonts,
@@ -17,6 +15,10 @@ import { fontFamily } from '../styles/fontStyles';
 import { ThemeProvider } from '../context/ThemeContext';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import AppToast from '../components/AppToast';
+import { Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { Stack } from 'expo-router';
 
 export default function Layout() {
   useFonts({
@@ -34,86 +36,19 @@ export default function Layout() {
         <ThemeProvider>
           <KeyboardProvider>
             <BottomSheetModalProvider>
-              <CustomDrawerLayout>
-                <Stack
-                  screenOptions={{
-                    headerShadowVisible: false,
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(drawer)" />
+
+                <Stack.Screen
+                  name="(modals)"
+                  options={{
+                    presentation: 'modal',
+                    headerShown: false,
                   }}
-                >
-                  <Stack.Screen
-                    name="model-hub"
-                    options={{
-                      title: 'Models',
-                      gestureEnabled: false,
-                      animation: 'none',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="index"
-                    options={{
-                      title: '',
-                      animation: 'none',
-                      gestureEnabled: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="benchmark"
-                    options={{
-                      title: 'Benchmark',
-                      gestureEnabled: false,
-                      animation: 'none',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="chat/[id]"
-                    options={{ animation: 'none', gestureEnabled: false }}
-                  />
-                  <Stack.Screen
-                    name="chat/[id]/settings"
-                    options={{
-                      title: 'Chat Settings',
-                      presentation: 'modal',
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="modal/add-local-model"
-                    options={{
-                      presentation: 'modal',
-                      title: 'Add Model',
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="modal/add-remote-model"
-                    options={{
-                      presentation: 'modal',
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="modal/edit-local-model/[modelId]"
-                    options={{
-                      presentation: 'modal',
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="modal/edit-remote-model/[modelId]"
-                    options={{
-                      presentation: 'modal',
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="modal/app-info"
-                    options={{
-                      presentation: 'modal',
-                      headerShown: false,
-                    }}
-                  />
-                </Stack>
-              </CustomDrawerLayout>
+                />
+              </Stack>
+              {Platform.OS === 'android' && <StatusBar style="auto" />}
+              <AppToast />
             </BottomSheetModalProvider>
           </KeyboardProvider>
         </ThemeProvider>

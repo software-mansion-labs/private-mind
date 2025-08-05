@@ -11,6 +11,7 @@ export default function useDefaultHeader() {
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      headerShadowVisible: false,
       headerLeft: () => <DrawerToggleButton />,
       headerStyle: {
         backgroundColor: theme.bg.softPrimary,
