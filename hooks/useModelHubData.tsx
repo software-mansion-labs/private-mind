@@ -4,6 +4,7 @@ import { Model } from '../database/modelRepository';
 
 export enum ModelHubFilter {
   Featured = 'featured',
+  Downloaded = 'downloaded',
 }
 
 interface UseModelHubDataParams {
@@ -35,9 +36,16 @@ export default function useModelHubData({
         .includes(search.toLowerCase());
       if (!matchesSearch) return false;
 
-      if (activeFilters.has(ModelHubFilter.Featured) && model.source === 'built-in') {
-        return model.featured;
-      }
+      const matchesFeatured =
+        model.featured ||
+        model.source !== 'built-in' ||
+        !activeFilters.has(ModelHubFilter.Featured);
+      if (!matchesFeatured) return false;
+
+      const matchesDownloaded =
+        model.isDownloaded || !activeFilters.has(ModelHubFilter.Downloaded);
+      if (!matchesDownloaded) return false;
+
       return true;
     });
   }, [models, search, activeFilters]);

@@ -64,6 +64,11 @@ const ModelListFilters: React.FC<Props> = ({
           selected={groupByModel}
           onPress={() => onGroupByModelChange(!groupByModel)}
         />
+        <SortingTag
+          text="Ready to use"
+          selected={activeFilters.has(ModelHubFilter.Downloaded)}
+          onPress={() => toggleFilter(ModelHubFilter.Downloaded)}
+        />
       </ScrollView>
     </View>
   );
