@@ -4,7 +4,6 @@ import { Model } from '../database/modelRepository';
 
 interface UseModelHubDataParams {
   models: Model[];
-  downloadStates: Record<number, { status: ModelState }>;
   search: string;
   activeFilters: Set<string>;
   groupByModel: boolean;
@@ -21,7 +20,6 @@ const groupModelsByPrefix = (models: Model[]) => {
 
 export default function useModelHubData({
   models,
-  downloadStates,
   search,
   activeFilters,
   groupByModel,
@@ -49,33 +47,25 @@ export default function useModelHubData({
     const unsorted = filteredModels.filter((m) => !m.isDownloaded);
 
     return [...unsorted].sort((a, b) => {
-      const aState = downloadStates[a.id]?.status;
-      const bState = downloadStates[b.id]?.status;
-      if (
-        aState === ModelState.Downloading &&
-        bState !== ModelState.Downloading
-      )
-        return -1;
-      if (
-        bState === ModelState.Downloading &&
-        aState !== ModelState.Downloading
-      )
-        return 1;
       if (a.parameters && b.parameters && a.parameters !== b.parameters) {
         return a.parameters - b.parameters;
       }
       return a.modelName.localeCompare(b.modelName);
     });
-  }, [filteredModels, downloadStates]);
+  }, [filteredModels]);
 
   const groupedModels = useMemo(() => {
-    if (!groupByModel) return null;
-    return groupModelsByPrefix([...downloadedModels, ...availableModels]);
+    return groupByModel
+      ? Object.entries(
+          groupModelsByPrefix([...downloadedModels, ...availableModels])
+        ).map(([label, models]) => ({ label, models }))
+      : [
+          { label: 'Ready to Use', models: downloadedModels },
+          { label: 'Available to Download', models: availableModels },
+        ];
   }, [groupByModel, downloadedModels, availableModels]);
 
   return {
-    downloadedModels,
-    availableModels,
     groupedModels,
     isEmpty: filteredModels.length === 0,
   };
