@@ -376,7 +376,11 @@ export class ResourceFetcher {
       sourceExtended.cacheFileUri,
       { sessionType: FileSystemSessionType.BACKGROUND },
       ({ totalBytesWritten, totalBytesExpectedToWrite }) => {
-        sourceExtended.callback!(totalBytesWritten / totalBytesExpectedToWrite);
+        if (totalBytesExpectedToWrite !== -1) {
+          sourceExtended.callback!(
+            totalBytesWritten / totalBytesExpectedToWrite
+          );
+        }
       }
     );
     //create value for the this.download Map
