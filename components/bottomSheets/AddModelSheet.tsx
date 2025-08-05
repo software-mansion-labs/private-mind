@@ -50,7 +50,7 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
             icon={<LinkAltIcon width={22} height={22} style={styles.icon} />}
             text="From external URLs"
             onPress={() => {
-              router.push('/(modals)/add-remote-model');
+              router.push('/add-remote-model');
               bottomSheetModalRef.current?.close();
             }}
           />
@@ -58,7 +58,7 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
             icon={<FolderIcon width={20} height={17} style={styles.icon} />}
             text="From local files"
             onPress={() => {
-              router.push('/(modals)/add-local-model');
+              router.push('/add-local-model');
               bottomSheetModalRef.current?.close();
             }}
           />

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Text, StyleSheet, View, BackHandler } from 'react-native';
+import React, { useMemo } from 'react';
+import { Text, StyleSheet, View } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useTheme } from '../../context/ThemeContext';
@@ -64,32 +64,6 @@ const DrawerMenu = () => {
     interrupt();
     router.replace(path);
   };
-
-  // pass this check via a ref so the BackHandler callback does not have to be
-  // unnecessarily recreated on navigation, which could interfere with more specific
-  // listeners added later.
-  const isAtIndexRef = useRef(false);
-  isAtIndexRef.current = pathname === '/';
-
-  useEffect(() => {
-    const handleBackPress = () => {
-      if (!router.canGoBack() && !isAtIndexRef.current) {
-        router.replace('/');
-        return true;
-      } else {
-        return false;
-      }
-    };
-
-    const subscription = BackHandler.addEventListener(
-      'hardwareBackPress',
-      handleBackPress
-    );
-
-    return () => {
-      subscription.remove();
-    };
-  }, [router]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

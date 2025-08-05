@@ -87,7 +87,7 @@ export default function ChatSettingsScreen() {
   };
 
   const handleAppInfo = () => {
-    router.push('/(modals)/app-info');
+    router.push('/app-info');
   };
 
   return (
