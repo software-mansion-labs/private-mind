@@ -70,8 +70,8 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
                   onPress={() => {
                     router.push(
                       model.source === 'remote'
-                        ? `modal/edit-remote-model/${model.id}`
-                        : `modal/edit-local-model/${model.id}`
+                        ? `edit-remote-model/${model.id}`
+                        : `edit-local-model/${model.id}`
                     );
                     bottomSheetModalRef.current?.dismiss();
                   }}
