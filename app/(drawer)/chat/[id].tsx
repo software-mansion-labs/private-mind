@@ -1,16 +1,14 @@
 import React from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
-import useDefaultHeader from '../../../hooks/useDefaultHeader';
 import { useEffect, useState } from 'react';
 import { useLLMStore } from '../../../store/llmStore';
-import useChatHeader from '../../../hooks/useChatHeader';
 import { useModelStore } from '../../../store/modelStore';
 import { Model } from '../../../database/modelRepository';
 import { useChatStore } from '../../../store/chatStore';
+import useChatHeader from '../../../hooks/useChatHeader';
 
 export default function ChatScreenWrapper() {
-  useDefaultHeader();
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const { modelId }: { modelId: string } = useLocalSearchParams();
 
