@@ -1,20 +1,26 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import DrawerMenu from './DrawerMenu';
+import { Feedback } from '../../utils/Feedback';
 import {
   DrawerContentComponentProps,
   useDrawerStatus,
 } from '@react-navigation/drawer';
-import { Feedback } from '../../utils/Feedback';
 
 const CustomDrawer = (props: DrawerContentComponentProps) => {
+  const isFirstRender = useRef(true);
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const status = useDrawerStatus();
 
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
     Feedback.light();
   }, [status]);
 
