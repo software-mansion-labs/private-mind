@@ -7,41 +7,41 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0057A326789C4E61B1326838 /* DMSans_600SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CD300927EF074A0E92BAB96D /* DMSans_600SemiBold.ttf */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		1DD3C14872AA4DC2B325CC9C /* DMSans_500Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 46F1D31590F24EB3B559E0E6 /* DMSans_500Medium.ttf */; };
+		181020E34FAC47FDBE94E101 /* DMSans_400Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 96748D01ECDF4B3099FF248F /* DMSans_400Regular.ttf */; };
+		35E7235E59D5487D9998B937 /* DMSans_600SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 13B5F01123674B31B41FDA8C /* DMSans_600SemiBold.ttf */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		404991C304F9CB2FABB8D482 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C515BC4708FE997FC3B3BE79 /* ExpoModulesProvider.swift */; };
-		67C6C771B0994909B8FBAA68 /* DMSans_500Medium_Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5DBB0C8EAF8541EBB30BB5AF /* DMSans_500Medium_Italic.ttf */; };
-		8FEBE25E00FF415A97632BB0 /* DMSans_400Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8F8D27D8D9F44EBE9F11FBA8 /* DMSans_400Regular.ttf */; };
-		90A0CC0DAC83255C9214600C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 93524D511EECD3A7F331D10C /* PrivacyInfo.xcprivacy */; };
-		95D14F2B22F64C308B4FB6E9 /* DMSans_600SemiBold_Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D4BEA997AE844E1496A315B1 /* DMSans_600SemiBold_Italic.ttf */; };
+		584D3E197B794CC894374E7C /* DMSans_600SemiBold_Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FFC34D7A7B5441A6BECB484A /* DMSans_600SemiBold_Italic.ttf */; };
+		5C0E7D1112D44607A5B0743D /* DMSans_500Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3F21C35054FC47DF864039D7 /* DMSans_500Medium.ttf */; };
+		65906A2ADB31443082C140F1 /* DMSans_400Regular_Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 51B8F5DFB6384211AEDB2B80 /* DMSans_400Regular_Italic.ttf */; };
+		7B3868BA120747BAA4BB57D3 /* DMSans_500Medium_Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 096861DDA65D46179411EF28 /* DMSans_500Medium_Italic.ttf */; };
+		A24FEA76A1B4853FB3001D09 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32208A42ED6072198C69146 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		D4195A34448547419EC72877 /* DMSans_400Regular_Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F84F49F4AF04440A8CD8CF4F /* DMSans_400Regular_Italic.ttf */; };
-		E9665C68DAA173909DEBF81D /* libPods-PrivateMind.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C49DAA9434A176FD32457223 /* libPods-PrivateMind.a */; };
+		C05C1E3FCBAF2C8879F54AE1 /* libPods-PrivateMind.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9CF25895DD0EEC760D7FA956 /* libPods-PrivateMind.a */; };
+		DC2971AEAF607AE6CFF6D410 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5AB3A7850773907570A5C422 /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		096861DDA65D46179411EF28 /* DMSans_500Medium_Italic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DMSans_500Medium_Italic.ttf; path = "../node_modules/@expo-google-fonts/dm-sans/500Medium_Italic/DMSans_500Medium_Italic.ttf"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* PrivateMind.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrivateMind.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = PrivateMind/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = PrivateMind/Info.plist; sourceTree = "<group>"; };
-		46F1D31590F24EB3B559E0E6 /* DMSans_500Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DMSans_500Medium.ttf; path = "../node_modules/@expo-google-fonts/dm-sans/500Medium/DMSans_500Medium.ttf"; sourceTree = "<group>"; };
-		5DBB0C8EAF8541EBB30BB5AF /* DMSans_500Medium_Italic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DMSans_500Medium_Italic.ttf; path = "../node_modules/@expo-google-fonts/dm-sans/500Medium_Italic/DMSans_500Medium_Italic.ttf"; sourceTree = "<group>"; };
-		88CF1CB0AD3B6D86D7802864 /* Pods-PrivateMind.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PrivateMind.release.xcconfig"; path = "Target Support Files/Pods-PrivateMind/Pods-PrivateMind.release.xcconfig"; sourceTree = "<group>"; };
-		8F8D27D8D9F44EBE9F11FBA8 /* DMSans_400Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DMSans_400Regular.ttf; path = "../node_modules/@expo-google-fonts/dm-sans/400Regular/DMSans_400Regular.ttf"; sourceTree = "<group>"; };
-		93524D511EECD3A7F331D10C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = PrivateMind/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		13B5F01123674B31B41FDA8C /* DMSans_600SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DMSans_600SemiBold.ttf; path = "../node_modules/@expo-google-fonts/dm-sans/600SemiBold/DMSans_600SemiBold.ttf"; sourceTree = "<group>"; };
+		14963DF2C31DD9E05F227869 /* Pods-PrivateMind.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PrivateMind.release.xcconfig"; path = "Target Support Files/Pods-PrivateMind/Pods-PrivateMind.release.xcconfig"; sourceTree = "<group>"; };
+		3F21C35054FC47DF864039D7 /* DMSans_500Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DMSans_500Medium.ttf; path = "../node_modules/@expo-google-fonts/dm-sans/500Medium/DMSans_500Medium.ttf"; sourceTree = "<group>"; };
+		51B8F5DFB6384211AEDB2B80 /* DMSans_400Regular_Italic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DMSans_400Regular_Italic.ttf; path = "../node_modules/@expo-google-fonts/dm-sans/400Regular_Italic/DMSans_400Regular_Italic.ttf"; sourceTree = "<group>"; };
+		5AB3A7850773907570A5C422 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = PrivateMind/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		96748D01ECDF4B3099FF248F /* DMSans_400Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DMSans_400Regular.ttf; path = "../node_modules/@expo-google-fonts/dm-sans/400Regular/DMSans_400Regular.ttf"; sourceTree = "<group>"; };
+		9CF25895DD0EEC760D7FA956 /* libPods-PrivateMind.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PrivateMind.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A32208A42ED6072198C69146 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-PrivateMind/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = PrivateMind/SplashScreen.storyboard; sourceTree = "<group>"; };
+		AF9D48B1FEF6247C702CEB1A /* Pods-PrivateMind.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PrivateMind.debug.xcconfig"; path = "Target Support Files/Pods-PrivateMind/Pods-PrivateMind.debug.xcconfig"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C49DAA9434A176FD32457223 /* libPods-PrivateMind.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PrivateMind.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		C515BC4708FE997FC3B3BE79 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-PrivateMind/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		CD300927EF074A0E92BAB96D /* DMSans_600SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DMSans_600SemiBold.ttf; path = "../node_modules/@expo-google-fonts/dm-sans/600SemiBold/DMSans_600SemiBold.ttf"; sourceTree = "<group>"; };
-		D4BEA997AE844E1496A315B1 /* DMSans_600SemiBold_Italic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DMSans_600SemiBold_Italic.ttf; path = "../node_modules/@expo-google-fonts/dm-sans/600SemiBold_Italic/DMSans_600SemiBold_Italic.ttf"; sourceTree = "<group>"; };
-		DFED0950AA572D1901084A67 /* Pods-PrivateMind.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PrivateMind.debug.xcconfig"; path = "Target Support Files/Pods-PrivateMind/Pods-PrivateMind.debug.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = PrivateMind/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* PrivateMind-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "PrivateMind-Bridging-Header.h"; path = "PrivateMind/PrivateMind-Bridging-Header.h"; sourceTree = "<group>"; };
-		F84F49F4AF04440A8CD8CF4F /* DMSans_400Regular_Italic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DMSans_400Regular_Italic.ttf; path = "../node_modules/@expo-google-fonts/dm-sans/400Regular_Italic/DMSans_400Regular_Italic.ttf"; sourceTree = "<group>"; };
+		FFC34D7A7B5441A6BECB484A /* DMSans_600SemiBold_Italic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DMSans_600SemiBold_Italic.ttf; path = "../node_modules/@expo-google-fonts/dm-sans/600SemiBold_Italic/DMSans_600SemiBold_Italic.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -49,7 +49,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E9665C68DAA173909DEBF81D /* libPods-PrivateMind.a in Frameworks */,
+				C05C1E3FCBAF2C8879F54AE1 /* libPods-PrivateMind.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,7 +65,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				93524D511EECD3A7F331D10C /* PrivacyInfo.xcprivacy */,
+				5AB3A7850773907570A5C422 /* PrivacyInfo.xcprivacy */,
 			);
 			name = PrivateMind;
 			sourceTree = "<group>";
@@ -74,9 +74,22 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				C49DAA9434A176FD32457223 /* libPods-PrivateMind.a */,
+				9CF25895DD0EEC760D7FA956 /* libPods-PrivateMind.a */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		7DF030E63F7E4A2A8930250F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				96748D01ECDF4B3099FF248F /* DMSans_400Regular.ttf */,
+				3F21C35054FC47DF864039D7 /* DMSans_500Medium.ttf */,
+				13B5F01123674B31B41FDA8C /* DMSans_600SemiBold.ttf */,
+				51B8F5DFB6384211AEDB2B80 /* DMSans_400Regular_Italic.ttf */,
+				096861DDA65D46179411EF28 /* DMSans_500Medium_Italic.ttf */,
+				FFC34D7A7B5441A6BECB484A /* DMSans_600SemiBold_Italic.ttf */,
+			);
+			name = Resources;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -93,9 +106,9 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				DD958AAED2EA47009C0404E7 /* Resources */,
-				CC18AEF0DF45E59D15C42F1A /* Pods */,
-				CD771D45FFFBE760ACE0D047 /* ExpoModulesProviders */,
+				7DF030E63F7E4A2A8930250F /* Resources */,
+				A18706103F33DBC9A5C42C49 /* Pods */,
+				E26D8691E9BD663FF5F65CF0 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -110,6 +123,23 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		973D16C963916AC9F238D932 /* PrivateMind */ = {
+			isa = PBXGroup;
+			children = (
+				A32208A42ED6072198C69146 /* ExpoModulesProvider.swift */,
+			);
+			name = PrivateMind;
+			sourceTree = "<group>";
+		};
+		A18706103F33DBC9A5C42C49 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				AF9D48B1FEF6247C702CEB1A /* Pods-PrivateMind.debug.xcconfig */,
+				14963DF2C31DD9E05F227869 /* Pods-PrivateMind.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -119,42 +149,12 @@
 			path = PrivateMind/Supporting;
 			sourceTree = "<group>";
 		};
-		CC18AEF0DF45E59D15C42F1A /* Pods */ = {
+		E26D8691E9BD663FF5F65CF0 /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
-				DFED0950AA572D1901084A67 /* Pods-PrivateMind.debug.xcconfig */,
-				88CF1CB0AD3B6D86D7802864 /* Pods-PrivateMind.release.xcconfig */,
-			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
-		CC90F5FC425A84CA373D63A9 /* PrivateMind */ = {
-			isa = PBXGroup;
-			children = (
-				C515BC4708FE997FC3B3BE79 /* ExpoModulesProvider.swift */,
-			);
-			name = PrivateMind;
-			sourceTree = "<group>";
-		};
-		CD771D45FFFBE760ACE0D047 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				CC90F5FC425A84CA373D63A9 /* PrivateMind */,
+				973D16C963916AC9F238D932 /* PrivateMind */,
 			);
 			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
-		DD958AAED2EA47009C0404E7 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				8F8D27D8D9F44EBE9F11FBA8 /* DMSans_400Regular.ttf */,
-				46F1D31590F24EB3B559E0E6 /* DMSans_500Medium.ttf */,
-				CD300927EF074A0E92BAB96D /* DMSans_600SemiBold.ttf */,
-				F84F49F4AF04440A8CD8CF4F /* DMSans_400Regular_Italic.ttf */,
-				5DBB0C8EAF8541EBB30BB5AF /* DMSans_500Medium_Italic.ttf */,
-				D4BEA997AE844E1496A315B1 /* DMSans_600SemiBold_Italic.ttf */,
-			);
-			name = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -165,13 +165,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "PrivateMind" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				1E8FCC2AB810B7D3BA832E34 /* [Expo] Configure project */,
+				D6B46D5F03187945961D7B27 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				E695144DA5CBACA5F65392CB /* [CP] Embed Pods Frameworks */,
+				358AC613BB032F96AF49532E /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -221,13 +221,13 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				8FEBE25E00FF415A97632BB0 /* DMSans_400Regular.ttf in Resources */,
-				1DD3C14872AA4DC2B325CC9C /* DMSans_500Medium.ttf in Resources */,
-				0057A326789C4E61B1326838 /* DMSans_600SemiBold.ttf in Resources */,
-				D4195A34448547419EC72877 /* DMSans_400Regular_Italic.ttf in Resources */,
-				67C6C771B0994909B8FBAA68 /* DMSans_500Medium_Italic.ttf in Resources */,
-				95D14F2B22F64C308B4FB6E9 /* DMSans_600SemiBold_Italic.ttf in Resources */,
-				90A0CC0DAC83255C9214600C /* PrivacyInfo.xcprivacy in Resources */,
+				181020E34FAC47FDBE94E101 /* DMSans_400Regular.ttf in Resources */,
+				5C0E7D1112D44607A5B0743D /* DMSans_500Medium.ttf in Resources */,
+				35E7235E59D5487D9998B937 /* DMSans_600SemiBold.ttf in Resources */,
+				65906A2ADB31443082C140F1 /* DMSans_400Regular_Italic.ttf in Resources */,
+				7B3868BA120747BAA4BB57D3 /* DMSans_500Medium_Italic.ttf in Resources */,
+				584D3E197B794CC894374E7C /* DMSans_600SemiBold_Italic.ttf in Resources */,
+				DC2971AEAF607AE6CFF6D410 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -271,24 +271,25 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		1E8FCC2AB810B7D3BA832E34 /* [Expo] Configure project */ = {
+		358AC613BB032F96AF49532E /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputFileListPaths = (
-			);
 			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-PrivateMind/Pods-PrivateMind-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/react-native-executorch/ExecutorchLib.framework/ExecutorchLib",
 			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
+			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ExecutorchLib.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-PrivateMind/expo-configure-project.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PrivateMind/Pods-PrivateMind-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -330,25 +331,24 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PrivateMind/Pods-PrivateMind-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		E695144DA5CBACA5F65392CB /* [CP] Embed Pods Frameworks */ = {
+		D6B46D5F03187945961D7B27 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PrivateMind/Pods-PrivateMind-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/react-native-executorch/ExecutorchLib.framework/ExecutorchLib",
+			inputFileListPaths = (
 			);
-			name = "[CP] Embed Pods Frameworks";
+			inputPaths = (
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
 			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ExecutorchLib.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PrivateMind/Pods-PrivateMind-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-PrivateMind/expo-configure-project.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -358,7 +358,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				404991C304F9CB2FABB8D482 /* ExpoModulesProvider.swift in Sources */,
+				A24FEA76A1B4853FB3001D09 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -367,7 +367,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = DFED0950AA572D1901084A67 /* Pods-PrivateMind.debug.xcconfig */;
+			baseConfigurationReference = AF9D48B1FEF6247C702CEB1A /* Pods-PrivateMind.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -396,6 +396,9 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.swmansion.privatemind;
 				PRODUCT_NAME = PrivateMind;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "PrivateMind/PrivateMind-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -406,7 +409,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 88CF1CB0AD3B6D86D7802864 /* Pods-PrivateMind.release.xcconfig */;
+			baseConfigurationReference = 14963DF2C31DD9E05F227869 /* Pods-PrivateMind.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -430,6 +433,9 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.swmansion.privatemind;
 				PRODUCT_NAME = PrivateMind;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "PrivateMind/PrivateMind-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
