@@ -3,7 +3,7 @@
     "scheme": "private-mind",
     "name": "Private Mind",
     "slug": "private-mind",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/icons/icon.png",
     "userInterfaceStyle": "automatic",
