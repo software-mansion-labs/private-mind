@@ -16,6 +16,7 @@
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native-menu/menu": "^1.2.3",
     "@react-native/metro-config": "^0.76.3",
+    "@react-navigation/drawer": "^7.5.6",
     "expo": "53.0.19",
     "expo-constants": "~17.1.7",
     "expo-device": "~7.1.4",

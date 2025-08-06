@@ -91,7 +91,6 @@ const createStyles = (theme: Theme) =>
       maxWidth: '85%',
       alignSelf: 'flex-start',
       marginVertical: 8,
-      marginHorizontal: 12,
     },
     loadingWrapper: {
       height: 20,

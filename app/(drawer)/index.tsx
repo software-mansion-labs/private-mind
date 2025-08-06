@@ -1,24 +1,23 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { useNavigation, router } from 'expo-router';
 import { useLayoutEffect } from 'react';
-import SettingsHeaderButton from '../components/SettingsHeaderButton';
+import SettingsHeaderButton from '../../components/SettingsHeaderButton';
 import { configureReanimatedLogger } from 'react-native-reanimated';
-import { Model } from '../database/modelRepository';
-import WithDrawerGesture from '../components/WithDrawerGesture';
-import { getNextChatId, importMessages } from '../database/chatRepository';
+import { Model } from '../../database/modelRepository';
+import { getNextChatId, importMessages } from '../../database/chatRepository';
 import { useSQLiteContext } from 'expo-sqlite';
-import useDefaultHeader from '../hooks/useDefaultHeader';
+import useDefaultHeader from '../../hooks/useDefaultHeader';
 import { View, Image, Text, StyleSheet, Alert } from 'react-native';
-import PrimaryButton from '../components/PrimaryButton';
-import TextButton from '../components/TextButton';
-import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
-import { Theme } from '../styles/colors';
-import { useTheme } from '../context/ThemeContext';
-import { importChatRoom } from '../database/exportImportRepository';
-import { useChatStore } from '../store/chatStore';
-import ModelSelectSheet from '../components/bottomSheets/ModelSelectSheet';
+import PrimaryButton from '../../components/PrimaryButton';
+import TextButton from '../../components/TextButton';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { Theme } from '../../styles/colors';
+import { useTheme } from '../../context/ThemeContext';
+import { importChatRoom } from '../../database/exportImportRepository';
+import { useChatStore } from '../../store/chatStore';
+import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useModelStore } from '../store/modelStore';
+import { useModelStore } from '../../store/modelStore';
 
 export default function App() {
   const navigation = useNavigation();
@@ -70,38 +69,36 @@ export default function App() {
 
   return (
     <>
-      <WithDrawerGesture>
-        <View style={styles.container}>
-          <View style={styles.emptyContainer}>
-            <Image
-              source={require('../assets/icons/icon.png')}
-              style={styles.icon}
+      <View style={styles.container}>
+        <View style={styles.emptyContainer}>
+          <Image
+            source={require('../../assets/icons/icon.png')}
+            style={styles.icon}
+          />
+          <View style={styles.emptyTextContainer}>
+            <Text style={styles.emptyMessageTitle}>
+              Select a model to start chatting
+            </Text>
+            <Text style={styles.emptyMessage}>
+              Use default models or upload custom ones from your local files or
+              external URLs.
+            </Text>
+          </View>
+          <View style={styles.buttonGroup}>
+            <PrimaryButton
+              text="Open a models list"
+              onPress={() => {
+                bottomSheetModalRef.current?.present();
+              }}
             />
-            <View style={styles.emptyTextContainer}>
-              <Text style={styles.emptyMessageTitle}>
-                Select a model to start chatting
-              </Text>
-              <Text style={styles.emptyMessage}>
-                Use default models or upload custom ones from your local files
-                or external URLs.
-              </Text>
-            </View>
-            <View style={styles.buttonGroup}>
-              <PrimaryButton
-                text="Open a models list"
-                onPress={() => {
-                  bottomSheetModalRef.current?.present();
-                }}
-              />
-              <TextButton
-                text="Import chat"
-                onPress={handleImport}
-                style={styles.flatButton}
-              />
-            </View>
+            <TextButton
+              text="Import chat"
+              onPress={handleImport}
+              style={styles.flatButton}
+            />
           </View>
         </View>
-      </WithDrawerGesture>
+      </View>
       <ModelSelectSheet
         bottomSheetModalRef={bottomSheetModalRef}
         selectModel={handleSetModel}

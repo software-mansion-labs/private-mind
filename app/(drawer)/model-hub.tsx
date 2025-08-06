@@ -1,23 +1,22 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-import useDefaultHeader from '../hooks/useDefaultHeader';
-import { useModelStore } from '../store/modelStore';
-import FloatingActionButton from '../components/model-hub/FloatingActionButton';
-import WithDrawerGesture from '../components/WithDrawerGesture';
+import useDefaultHeader from '../../hooks/useDefaultHeader';
+import { useModelStore } from '../../store/modelStore';
+import FloatingActionButton from '../../components/model-hub/FloatingActionButton';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import ModelManagementSheet from '../components/bottomSheets/ModelManagementSheet';
-import { fontFamily, fontSizes } from '../styles/fontStyles';
-import SecondaryButton from '../components/SecondaryButton';
-import QuestionIcon from '../assets/icons/question.svg';
-import AddModelSheet from '../components/bottomSheets/AddModelSheet';
-import MemoryWarningSheet from '../components/bottomSheets/MemoryWarningSheet';
-import { useTheme } from '../context/ThemeContext';
-import { Theme } from '../styles/colors';
-import useModelHubData, { ModelHubFilter } from '../hooks/useModelHubData';
-import { Model } from '../database/modelRepository';
-import GroupedModelList from '../components/model-hub/GroupedModelList';
-import { CustomKeyboardAvoidingView } from '../components/CustomKeyboardAvoidingView';
-import ModelListFilters from '../components/model-hub/ModelListFilters';
+import ModelManagementSheet from '../../components/bottomSheets/ModelManagementSheet';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import SecondaryButton from '../../components/SecondaryButton';
+import QuestionIcon from '../../assets/icons/question.svg';
+import AddModelSheet from '../../components/bottomSheets/AddModelSheet';
+import MemoryWarningSheet from '../../components/bottomSheets/MemoryWarningSheet';
+import { useTheme } from '../../context/ThemeContext';
+import { Theme } from '../../styles/colors';
+import useModelHubData, { ModelHubFilter } from '../../hooks/useModelHubData';
+import { Model } from '../../database/modelRepository';
+import GroupedModelList from '../../components/model-hub/GroupedModelList';
+import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
+import ModelListFilters from '../../components/model-hub/ModelListFilters';
 
 const ModelHubScreen = () => {
   useDefaultHeader();
@@ -66,34 +65,32 @@ const ModelHubScreen = () => {
 
   return (
     <CustomKeyboardAvoidingView style={styles.keyboardAvoidingView}>
-      <WithDrawerGesture>
-        <View style={styles.container}>
-          <ModelListFilters
-            search={search}
-            onSearchChange={setSearch}
-            activeFilters={activeFilters}
-            onFiltersChange={setActiveFilters}
-            groupByModel={groupByModel}
-            onGroupByModelChange={setGroupByModel}
+      <View style={styles.container}>
+        <ModelListFilters
+          search={search}
+          onSearchChange={setSearch}
+          activeFilters={activeFilters}
+          onFiltersChange={setActiveFilters}
+          groupByModel={groupByModel}
+          onGroupByModelChange={setGroupByModel}
+        />
+        {isEmpty ? (
+          renderEmptyState()
+        ) : (
+          <GroupedModelList
+            groupedModels={groupedModels}
+            onModelPress={handleModelPress}
+            memoryWarningSheetRef={memoryWarningSheetRef}
+            contentContainerStyle={[
+              styles.modelScrollContent,
+              styles.horizontalInset,
+            ]}
           />
-          {isEmpty ? (
-            renderEmptyState()
-          ) : (
-            <GroupedModelList
-              groupedModels={groupedModels}
-              onModelPress={handleModelPress}
-              memoryWarningSheetRef={memoryWarningSheetRef}
-              contentContainerStyle={[
-                styles.modelScrollContent,
-                styles.horizontalInset,
-              ]}
-            />
-          )}
-          <FloatingActionButton
-            onPress={() => addModelSheetRef.current?.present()}
-          />
-        </View>
-      </WithDrawerGesture>
+        )}
+        <FloatingActionButton
+          onPress={() => addModelSheetRef.current?.present()}
+        />
+      </View>
       <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
       <AddModelSheet bottomSheetModalRef={addModelSheetRef} />
       <MemoryWarningSheet bottomSheetModalRef={memoryWarningSheetRef} />

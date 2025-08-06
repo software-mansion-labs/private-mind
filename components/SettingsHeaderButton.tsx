@@ -32,6 +32,7 @@ const createStyles = (theme: Theme) =>
     button: {
       justifyContent: 'center',
       alignItems: 'center',
+      marginRight: 16,
     },
     icon: {
       color: theme.text.primary,
