@@ -92,8 +92,8 @@ android {
         applicationId 'com.swmansion.privatemind'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 9
-        versionName "1.0.3"
+        versionCode 10
+        versionName "1.0.4"
     }
     signingConfigs {
         debug {

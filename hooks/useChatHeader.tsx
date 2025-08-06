@@ -1,10 +1,10 @@
 import React, { useLayoutEffect } from 'react';
-import { useNavigation } from '@react-navigation/native';
 import { useChatStore } from '../store/chatStore';
 import SettingsHeaderButton from '../components/SettingsHeaderButton';
 import { Model } from '../database/modelRepository';
 import ChatTitle from '../components/chat-screen/ChatTitle';
 import DrawerToggleButton from '../components/drawer/DrawerToggleButton';
+import { useNavigation } from 'expo-router';
 
 interface Props {
   chatId: number;
@@ -20,13 +20,13 @@ export default function useChatHeader({ chatId, chatModel }: Props) {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerLeft: () => <DrawerToggleButton />,
+      headerRight: () => <SettingsHeaderButton chatId={chatId} />,
       headerTitle: () => (
         <ChatTitle
           title={chatTitle}
           modelName={chatModel?.modelName || 'No model selected'}
         />
       ),
-      headerRight: () => <SettingsHeaderButton chatId={chatId} />,
     });
   }, [navigation, chatId, chatTitle, chatModel]);
 }
