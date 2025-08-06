@@ -13,11 +13,13 @@ import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
 import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
+import { Feedback } from '../utils/Feedback';
 
 interface LLMStore {
   isLoading: boolean;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
+  isBenchmarking: boolean;
   db: SQLiteDatabase | null;
   model: Model | null;
   performance: {
@@ -79,6 +81,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
   isGenerating: false,
   isProcessingPrompt: false,
+  isBenchmarking: false,
   db: null,
   generatingForChatId: null,
   activeChatId: null,
@@ -117,6 +120,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           // The first callback is called with an empty string when we load the model, we ignore it.
           if (response === '') return;
           const isFirstToken = get().performance.tokenCount === 0;
+          if (isFirstToken && !get().isBenchmarking) {
+            Feedback.success();
+          }
           set({
             isProcessingPrompt: false,
             performance: {
@@ -265,6 +271,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       set({
         isGenerating: true,
         performance: { tokenCount: 0, firstTokenTime: 0 },
+        isBenchmarking: true,
       });
       memoryTracker.start();
 
@@ -300,7 +307,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       console.error(`Benchmark failed`, e);
       memoryTracker.stop();
     } finally {
-      set({ isGenerating: false });
+      set({ isGenerating: false, isBenchmarking: false });
     }
   },
 

@@ -38,7 +38,6 @@ export default function Layout() {
             <BottomSheetModalProvider>
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(drawer)" />
-
                 <Stack.Screen
                   name="(modals)/chat/[id]/settings"
                   options={{
