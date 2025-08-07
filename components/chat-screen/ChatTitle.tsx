@@ -12,7 +12,6 @@ interface Props {
 const ChatTitle = ({ title, modelName }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-
   return (
     <View style={styles.titleContainer}>
       {title !== '' ? (
@@ -23,9 +22,7 @@ const ChatTitle = ({ title, modelName }: Props) => {
           <Text style={styles.modelName}>{modelName}</Text>
         </>
       ) : (
-        <View style={styles.modelNameTitleContainer}>
-          <Text style={styles.modelNameTitle}>{modelName}</Text>
-        </View>
+        <Text style={styles.modelNameTitle}>{modelName}</Text>
       )}
     </View>
   );
@@ -53,12 +50,7 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
     },
     modelNameTitle: {
-      color: theme.text.primary,
+      color: theme.text.defaultSecondary,
       fontFamily: fontFamily.medium,
-    },
-    modelNameTitleContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
     },
   });
