@@ -15,6 +15,7 @@ const DrawerToggleButton = () => {
     <TouchableOpacity
       onPress={() => navigation.openDrawer()}
       style={styles.button}
+      hitSlop={15}
     >
       <Menu width={16} height={14} style={styles.icon} />
     </TouchableOpacity>
