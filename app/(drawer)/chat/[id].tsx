@@ -18,18 +18,22 @@ export default function ChatScreenWrapper() {
 
   const chatId = parseInt(rawId);
   const chat = getChatById(chatId);
-  const resolvedModelId = modelId ?? chat?.modelId;
-  const chatModel = resolvedModelId
-    ? getModelById(parseInt(resolvedModelId.toString()))
-    : undefined;
 
-  const [model, setModel] = useState<Model | undefined>(chatModel);
+  const [model, setModel] = useState<Model | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
 
   useChatHeader({
     chatId: chatId,
     chatModel: model,
   });
+
+  useEffect(() => {
+    const resolvedModelId = modelId ?? chat?.modelId;
+    if (resolvedModelId) {
+      const newModel = getModelById(parseInt(resolvedModelId.toString()));
+      setModel(newModel);
+    }
+  }, [modelId, chat?.modelId, getModelById]);
 
   useEffect(() => {
     (async () => {
