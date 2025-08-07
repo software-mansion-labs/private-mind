@@ -87,16 +87,14 @@ export namespace ResourceFetcherUtils {
             console.warn(
               `Failed to fetch HEAD for ${source}: ${response.status}`
             );
-            continue;
+          } else {
+            const contentLength = response.headers.get('content-length');
+            length = contentLength ? parseInt(contentLength, 10) : 0;
+            previousFilesTotalLength = totalLength;
+            totalLength += length;
           }
-
-          const contentLength = response.headers.get('content-length');
-          length = contentLength ? parseInt(contentLength, 10) : 0;
-          previousFilesTotalLength = totalLength;
-          totalLength += length;
         } catch (error) {
           console.warn(`Error fetching HEAD for ${source}:`, error);
-          continue;
         }
       }
       results.push({ source, type, length, previousFilesTotalLength });
