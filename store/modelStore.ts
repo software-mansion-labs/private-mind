@@ -43,7 +43,7 @@ interface ModelStore {
   ) => Promise<void>;
 }
 
-const MS_PER_FRAME = 16 // ~60 fps
+const MS_PER_FRAME = 16; // ~60 fps
 
 export const useModelStore = create<ModelStore>((set, get) => ({
   db: null,
@@ -138,6 +138,11 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       });
     } catch (err) {
       console.error('Failed:', err);
+      setDownloading(0, ModelState.NotStarted);
+      Toast.show({
+        type: 'defaultToast',
+        text1: "The model could not be downloaded",
+      });
     }
   },
 
