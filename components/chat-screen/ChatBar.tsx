@@ -1,4 +1,4 @@
-import React, { Ref, RefObject, useMemo } from 'react';
+import React, { Ref, RefObject, useEffect, useMemo } from 'react';
 import {
   View,
   TextInput,
@@ -16,6 +16,7 @@ import SendIcon from '../../assets/icons/send_icon.svg';
 import PauseIcon from '../../assets/icons/pause_icon.svg';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import { Theme } from '../../styles/colors';
+import { useRecordSpeechToText } from '../../hooks/useRecordSpeechToText';
 
 interface Props {
   chatId: number | null;
@@ -51,6 +52,75 @@ const ChatBar = ({
     model: loadedModel,
   } = useLLMStore();
 
+  const speechToText = useRecordSpeechToText();
+
+  const renderButtons = () => {
+    if (isGenerating || isProcessingPrompt) {
+      return (
+        <TouchableOpacity style={styles.sendButton} onPress={interrupt}>
+          <PauseIcon height={13.33} width={13.33} style={styles.iconContrast} />
+        </TouchableOpacity>
+      );
+    }
+
+    if (userInput) {
+      return (
+        <TouchableOpacity style={styles.sendButton} onPress={onSend}>
+          <SendIcon width={20} height={20} style={styles.iconContrast} />
+        </TouchableOpacity>
+      );
+    }
+
+    const handleRecordPress = async () => {
+      if (speechToText.status === 'idle') {
+        speechToText.start();
+      } else if (speechToText.status === 'listening') {
+        const text = await speechToText.stop();
+      }
+    };
+
+    const renderSTTBUttonContent = () => {
+      if (speechToText.status === 'idle') {
+        return '🎤';
+      }
+
+      if (speechToText.status === 'listening') {
+        return (
+          <PauseIcon height={13.33} width={13.33} style={styles.iconContrast} />
+        );
+      }
+
+      if (speechToText.status === 'processing') {
+        return '⏳';
+      }
+    };
+
+    return (
+      <TouchableOpacity
+        style={[styles.sendButton, { opacity: speechToText.isReady ? 1 : 0.5 }]}
+        onPress={handleRecordPress}
+      >
+        <Text
+          style={{
+            fontSize: fontSizes.md,
+            fontFamily: fontFamily.regular,
+            color: theme.text.contrastPrimary,
+          }}
+        >
+          {renderSTTBUttonContent()}
+        </Text>
+      </TouchableOpacity>
+    );
+
+    return null;
+  };
+
+  useEffect(() => {
+    if (speechToText.error) {
+      console.error('Speech to text error:', speechToText.error);
+    }
+  }, [speechToText.error]);
+
   return (
     <View style={styles.container}>
       {chatId && !model && (
@@ -85,25 +155,23 @@ const ChatBar = ({
             onChangeText={setUserInput}
             numberOfLines={3}
           />
-          <View style={styles.buttonBar}>
-            {userInput && !isGenerating && !isProcessingPrompt ? (
-              <TouchableOpacity style={styles.sendButton} onPress={onSend}>
-                <SendIcon width={20} height={20} style={styles.iconContrast} />
-              </TouchableOpacity>
-            ) : null}
-
-            {(isGenerating || isProcessingPrompt) && (
-              <TouchableOpacity style={styles.sendButton} onPress={interrupt}>
-                <PauseIcon
-                  height={13.33}
-                  width={13.33}
-                  style={styles.iconContrast}
-                />
-              </TouchableOpacity>
-            )}
-          </View>
+          <View style={styles.buttonBar}>{renderButtons()}</View>
         </View>
       )}
+
+      <Text
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 90,
+          backgroundColor: 'hsl(0, 0%, 90%)',
+          padding: 16,
+          color: speechToText.error ? 'red' : 'black',
+        }}
+      >
+        {speechToText.error?.toString() ?? speechToText.sequence}
+      </Text>
     </View>
   );
 };
