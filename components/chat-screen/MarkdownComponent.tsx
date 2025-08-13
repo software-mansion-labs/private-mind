@@ -1,8 +1,11 @@
 import React, { memo } from 'react';
 import Markdown from 'react-native-markdown-display';
-import { Platform } from 'react-native';
+import { Platform, View, TouchableOpacity, Text, TextStyle, ViewStyle } from 'react-native';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
+import CopyIcon from '../../assets/icons/copy.svg';
+import Clipboard from '@react-native-clipboard/clipboard';
+import Toast from 'react-native-toast-message';
 
 interface Props {
   text: string;
@@ -10,14 +13,94 @@ interface Props {
   isThinking?: boolean;
 }
 
+interface MarkdownNode {
+  content?: string;
+  literal?: string;
+  key: string;
+}
+
+interface CodeBlockProps {
+  style: TextStyle;
+  isUser: boolean;
+  rawText: string;
+}
+
+const CodeBlockWithCopy = memo(({ style, isUser, rawText }: CodeBlockProps) => {
+  const { theme } = useTheme();
+  
+  const handleCopy = () => {
+    if (rawText) {
+      Clipboard.setString(rawText);
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Code copied to clipboard',
+      });
+    }
+  };
+
+  const copyButtonStyle: ViewStyle = {
+    position: 'absolute',
+    bottom: 15,
+    right: 8,
+    padding: 6,
+    backgroundColor: isUser 
+      ? theme.bg.overlay 
+      : theme.bg.overlay,
+    borderRadius: 4,
+  };
+
+  const iconStyle = { 
+    color: isUser ? theme.text.contrastPrimary : theme.text.defaultSecondary
+  };
+
+  return (
+    <View style={{ position: 'relative' }}>
+      <Text style={style}>{rawText}</Text>
+      <TouchableOpacity onPress={handleCopy} style={copyButtonStyle}>
+        <CopyIcon 
+          width={14} 
+          height={14} 
+          style={iconStyle} 
+        />
+      </TouchableOpacity>
+    </View>
+  );
+});
+
 const MarkdownComponent = memo(
   ({ text, isUser = false, isThinking = false }: Props) => {
     const { theme } = useTheme();
     const baseColor = isUser ? theme.text.primary : theme.text.primary;
     const baseFontSize = isThinking ? fontSizes.sm : fontSizes.md;
 
+    const customRules = {
+      code_block: (node: MarkdownNode, _children: React.ReactNode, _parent: unknown, styles: any) => {
+        const rawText = node.content || node.literal || '';
+        return (
+          <CodeBlockWithCopy
+            key={node.key}
+            style={styles.code_block}
+            isUser={isUser}
+            rawText={rawText}
+          />
+        );
+      },
+      fence: (node: MarkdownNode, _children: React.ReactNode, _parent: unknown, styles: any) => {
+        const rawText = node.content || node.literal || '';
+        return (
+          <CodeBlockWithCopy
+            key={node.key}
+            style={styles.fence}
+            isUser={isUser}
+            rawText={rawText}
+          />
+        );
+      },
+    };
+
     return (
       <Markdown
+        rules={customRules}
         style={{
           body: {
             color: baseColor,
