@@ -22,7 +22,7 @@ const ModalHeader = ({ title, onClose }: Props) => {
 
   return (
     <View style={styles.headerContainer}>
-      <TouchableOpacity style={styles.iconWrap} onPress={onClose}>
+      <TouchableOpacity style={styles.iconWrap} onPress={onClose} hitSlop={15}>
         <CloseIcon width={16} height={16} style={styles.icon} />
       </TouchableOpacity>
       <Text style={styles.title}>{title}</Text>

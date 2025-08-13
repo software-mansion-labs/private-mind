@@ -19,7 +19,7 @@ const SettingsHeaderButton = ({ chatId }: Props) => {
   };
 
   return (
-    <TouchableOpacity onPress={handlePress} style={styles.button}>
+    <TouchableOpacity onPress={handlePress} style={styles.button} hitSlop={15}>
       <Settings width={18} height={20} style={styles.icon} />
     </TouchableOpacity>
   );
