@@ -47,6 +47,12 @@ const DrawerLayout = () => {
           title: 'Benchmark',
         }}
       />
+      <Drawer.Screen
+        name="sources"
+        options={{
+          title: 'Sources',
+        }}
+      />
       <Drawer.Screen name="chat/[id]" />
     </Drawer>
   );

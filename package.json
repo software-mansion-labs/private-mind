@@ -8,13 +8,20 @@
     "ios": "expo run:ios",
     "web": "expo start --web"
   },
+  "op-sqlite": {
+    "libsql": true,
+    "sqliteVec": true
+  },
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.0",
     "@gorhom/bottom-sheet": "^5",
+    "@op-engineering/op-sqlite": "^14.1.4",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-clipboard/clipboard": "^1.16.2",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native-menu/menu": "^1.2.3",
+    "@react-native-rag/executorch": "^0.1.1",
+    "@react-native-rag/op-sqlite": "^0.1.1",
     "@react-native/metro-config": "^0.76.3",
     "@react-navigation/drawer": "^7.5.6",
     "expo": "53.0.19",
@@ -38,6 +45,8 @@
     "react-native-keyboard-controller": "^1.18.1",
     "react-native-loading-spinner-overlay": "^3.0.1",
     "react-native-markdown-display": "^7.0.2",
+    "react-native-pdfium": "file:/Users/norbertklockiewicz/Desktop/work/swm_ai/react-native-pdfium/packages/react-native-pdfium/react-native-pdfium-0.1.0.tgz",
+    "react-native-rag": "^0.1.1",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",

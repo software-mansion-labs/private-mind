@@ -14,6 +14,7 @@ import { Theme } from '../styles/colors';
 interface Props {
   text: string;
   onPress: (event: GestureResponderEvent) => void;
+  icon?: React.ReactNode;
   disabled?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
@@ -22,6 +23,7 @@ interface Props {
 const PrimaryButton = ({
   text,
   onPress,
+  icon,
   disabled = false,
   style,
   textStyle,
@@ -38,6 +40,7 @@ const PrimaryButton = ({
       disabled={disabled}
       style={[styles.button, style]}
     >
+      {icon}
       <Text style={[styles.text, textStyle]}>{text}</Text>
     </TouchableOpacity>
   );
@@ -56,6 +59,8 @@ const createStyles = (theme: Theme, disabled: boolean) =>
       alignItems: 'center',
       backgroundColor: theme.bg.main,
       opacity: disabled ? 0.4 : 1,
+      flexDirection: 'row',
+      gap: 2,
     },
     text: {
       fontFamily: fontFamily.medium,

@@ -60,10 +60,12 @@ const createStyles = (theme: Theme, disabled: boolean) =>
       borderColor: theme.bg.strongPrimary,
       opacity: disabled ? 0.4 : 1,
       flexDirection: 'row',
+      gap: 2,
     },
     text: {
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.sm,
       color: theme.text.primary,
+      lineHeight: 20,
     },
   });

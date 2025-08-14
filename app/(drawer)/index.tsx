@@ -18,11 +18,13 @@ import { useChatStore } from '../../store/chatStore';
 import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
+import { useSourceStore } from '../../store/sourceStore';
 
 export default function App() {
   const navigation = useNavigation();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { loadModels } = useModelStore();
+  const { loadSources } = useSourceStore();
   const db = useSQLiteContext();
   useDefaultHeader();
   const { theme } = useTheme();
@@ -59,7 +61,8 @@ export default function App() {
 
   useEffect(() => {
     loadModels();
-  }, [loadModels]);
+    loadSources();
+  }, [loadModels, loadSources]);
 
   useLayoutEffect(() => {
     navigation.setOptions({

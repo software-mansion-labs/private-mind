@@ -55,7 +55,6 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
       backdropComponent={renderBackdrop}
       snapPoints={['30%', '50%']}
       enableDynamicSizing={false}
-      style={styles.sheet}
       handleStyle={styles.handle}
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.background}
@@ -131,9 +130,6 @@ export default ModelSelectSheet;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    sheet: {
-      backgroundColor: theme.bg.softPrimary,
-    },
     handle: {
       backgroundColor: theme.bg.softPrimary,
       borderRadius: 16,

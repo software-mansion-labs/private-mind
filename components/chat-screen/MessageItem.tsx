@@ -11,7 +11,7 @@ import { Theme } from '../../styles/colors';
 
 interface MessageItemProps {
   content: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'event';
   modelName?: string;
   tokensPerSecond?: number;
   timeToFirstToken?: number;
@@ -28,6 +28,7 @@ const MessageItem = memo(
     isLastMessage = false,
   }: MessageItemProps) => {
     const isAssistant = role === 'assistant';
+    const isEvent = role === 'event';
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
     const { isGenerating } = useLLMStore();
@@ -76,54 +77,90 @@ const MessageItem = memo(
 
     return (
       <>
-        <View style={isAssistant ? styles.aiMessage : styles.userMessage}>
-          <View style={styles.bubbleContent}>
-            {isAssistant && <Text style={styles.modelName}>{modelName}</Text>}
-            {contentParts.normalContent.trim() && (
-              <TouchableOpacity
-                onLongPress={() => {
-                  messageManagementSheetRef.current?.present(content);
+        {isEvent ? (
+          <View
+            style={{
+              paddingHorizontal: 16,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: 24,
+              flexDirection: 'row',
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: fontFamily.medium,
+                fontSize: fontSizes.sm,
+                color: theme.text.defaultSecondary,
+                textAlign: 'center',
+              }}
+            >
+              {content.split(' ')[0]}{' '}
+              <Text
+                style={{
+                  fontFamily: fontFamily.regular,
+                  fontSize: fontSizes.sm,
+                  color: theme.text.defaultTertiary,
                 }}
-                delayPressIn={50}
-                activeOpacity={0.4}
               >
-                <MarkdownComponent text={contentParts.normalContent} />
-              </TouchableOpacity>
-            )}
-            {contentParts.hasThinking && (
-              <ThinkingBlock
-                content={contentParts.thinkingContent || ''}
-                isComplete={contentParts.isThinkingComplete}
-                inProgress={
-                  isLastMessage &&
-                  isGenerating &&
-                  !contentParts.isThinkingComplete
-                }
-              />
-            )}
-            {contentParts.normalAfterThink &&
-              contentParts.normalAfterThink.trim() && (
-                <TouchableOpacity
-                  onLongPress={() => {
-                    messageManagementSheetRef.current?.present(content);
-                  }}
-                >
-                  <MarkdownComponent text={contentParts.normalAfterThink} />
-                </TouchableOpacity>
-              )}
-            {isAssistant &&
-              tokensPerSecond !== undefined &&
-              tokensPerSecond !== 0 && (
-                <Text style={styles.metadata}>
-                  ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
-                  {tokensPerSecond?.toFixed(2)} tok/s
-                </Text>
-              )}
+                {content.slice(content.indexOf(' ') + 1)}
+              </Text>
+            </Text>
           </View>
-        </View>
-        <MessageManagementSheet
-          bottomSheetModalRef={messageManagementSheetRef}
-        />
+        ) : (
+          <>
+            <View style={isAssistant ? styles.aiMessage : styles.userMessage}>
+              <View style={styles.bubbleContent}>
+                {isAssistant && (
+                  <Text style={styles.modelName}>{modelName}</Text>
+                )}
+                {contentParts.normalContent.trim() && (
+                  <TouchableOpacity
+                    onLongPress={() => {
+                      messageManagementSheetRef.current?.present(content);
+                    }}
+                    delayPressIn={50}
+                    activeOpacity={0.4}
+                  >
+                    <MarkdownComponent text={contentParts.normalContent} />
+                  </TouchableOpacity>
+                )}
+                {contentParts.hasThinking && (
+                  <ThinkingBlock
+                    content={contentParts.thinkingContent || ''}
+                    isComplete={contentParts.isThinkingComplete}
+                    inProgress={
+                      isLastMessage &&
+                      isGenerating &&
+                      !contentParts.isThinkingComplete
+                    }
+                  />
+                )}
+                {contentParts.normalAfterThink &&
+                  contentParts.normalAfterThink.trim() && (
+                    <TouchableOpacity
+                      onLongPress={() => {
+                        messageManagementSheetRef.current?.present(content);
+                      }}
+                    >
+                      <MarkdownComponent text={contentParts.normalAfterThink} />
+                    </TouchableOpacity>
+                  )}
+                {isAssistant &&
+                  tokensPerSecond !== undefined &&
+                  tokensPerSecond !== 0 && (
+                    <Text style={styles.metadata}>
+                      ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
+                      {tokensPerSecond?.toFixed(2)} tok/s
+                    </Text>
+                  )}
+              </View>
+            </View>
+            <MessageManagementSheet
+              bottomSheetModalRef={messageManagementSheetRef}
+            />
+          </>
+        )}
       </>
     );
   }
@@ -136,7 +173,7 @@ const createStyles = (theme: Theme) =>
     aiMessage: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      marginBottom: 12,
+      marginBottom: 24,
       width: '90%',
       alignSelf: 'flex-start',
     },
@@ -144,7 +181,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row-reverse',
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 12,
+      marginBottom: 24,
       maxWidth: '65%',
       alignSelf: 'flex-end',
       paddingHorizontal: 12,

@@ -20,6 +20,10 @@ import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
 import { useSQLiteContext } from 'expo-sqlite';
 import { CustomKeyboardAvoidingView } from '../CustomKeyboardAvoidingView';
+import { useVectorStore } from '../../context/VectorStoreContext';
+import SourceSelectSheet from '../bottomSheets/SourceSelectSheet';
+import { getSourcesEnabledInChat } from '../../database/sourcesRepository';
+import { useSourceStore } from '../../store/sourceStore';
 
 interface Props {
   chatId: number | null;
@@ -36,9 +40,11 @@ export default function ChatScreen({
 }: Props) {
   const inputRef = useRef<TextInput>(null);
   const scrollRef = useRef<ScrollView>(null);
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const sourceBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const db = useSQLiteContext();
-
+  const { sources } = useSourceStore();
+  const { vectorStore } = useVectorStore();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -48,13 +54,28 @@ export default function ChatScreen({
 
   const [userInput, setUserInput] = useState('');
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [activeSourcesCount, setActiveSourcesCount] = useState(0);
+
+  useEffect(() => {
+    const loadInitialSourceCount = async () => {
+      if (chatId) {
+        const enabledIds = await getSourcesEnabledInChat(db, chatId);
+        setActiveSourcesCount(enabledIds.length);
+      }
+    };
+    loadInitialSourceCount();
+  }, [chatId, db, sources]);
 
   useEffect(() => {
     loadModels();
   }, [chatId, loadModels]);
 
-  const handlePresentModalPress = useCallback(() => {
-    bottomSheetModalRef.current?.present();
+  const handlePresentModelSheet = useCallback(() => {
+    modelBottomSheetModalRef.current?.present();
+  }, []);
+
+  const handlePresentSourceSheet = useCallback(() => {
+    sourceBottomSheetModalRef.current?.present();
   }, []);
 
   const handleSendMessage = async () => {
@@ -70,8 +91,12 @@ export default function ChatScreen({
 
     setUserInput('');
     updateLastUsed(chatId!);
-
-    await sendChatMessage(userInput, chatId!);
+    const enabledSourcesIds = await getSourcesEnabledInChat(db, chatId!);
+    let context = await vectorStore?.similaritySearch(userInput);
+    context = context?.filter((item) => {
+      return enabledSourcesIds.includes(item.metadata?.documentId);
+    });
+    await sendChatMessage(userInput, chatId!, vectorStore!);
   };
 
   const handleSelectModel = async (selectedModel: Model) => {
@@ -83,7 +108,7 @@ export default function ChatScreen({
       }
 
       selectModel?.(selectedModel);
-      bottomSheetModalRef.current?.dismiss();
+      modelBottomSheetModalRef.current?.dismiss();
     } catch (error) {
       console.error('Error loading model:', error);
     }
@@ -106,17 +131,24 @@ export default function ChatScreen({
           userInput={userInput}
           setUserInput={setUserInput}
           onSend={handleSendMessage}
-          onSelectModel={handlePresentModalPress}
+          onSelectModel={handlePresentModelSheet}
+          onSelectSource={handlePresentSourceSheet}
           inputRef={inputRef}
           model={model}
           scrollRef={scrollRef}
           isAtBottom={isAtBottom}
+          activeSourcesCount={activeSourcesCount}
         />
       </View>
 
       <ModelSelectSheet
-        bottomSheetModalRef={bottomSheetModalRef}
+        bottomSheetModalRef={modelBottomSheetModalRef}
         selectModel={handleSelectModel}
+      />
+      <SourceSelectSheet
+        bottomSheetModalRef={sourceBottomSheetModalRef}
+        chatId={chatId}
+        onSourcesChanged={setActiveSourcesCount}
       />
     </CustomKeyboardAvoidingView>
   );

@@ -7,7 +7,13 @@ import {
   renameChat,
   deleteChat,
   setChatModel,
+  persistMessage,
+  Message,
 } from '../database/chatRepository';
+import {
+  activateSource,
+  deactivateSource,
+} from '../database/sourcesRepository';
 
 interface ChatStore {
   chats: Chat[];
@@ -20,6 +26,9 @@ interface ChatStore {
   renameChat: (id: number, newTitle: string) => Promise<void>;
   setChatModel: (id: number, modelId: number) => Promise<void>;
   deleteChat: (id: number) => Promise<void>;
+  enableSource: (chatId: number, sourceId: number) => Promise<void>;
+  disableSource: (chatId: number, sourceId: number) => Promise<void>;
+  sendEventMessage: (chatId: number, content: string) => Promise<void>;
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -37,6 +46,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (!db) return;
 
     const chats = await getAllChats(db);
+
     set({
       chats,
     });
@@ -109,5 +119,51 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set((state) => ({
       chats: state.chats.filter((chat) => chat.id !== id),
     }));
+  },
+
+  enableSource: async (chatId: number, sourceId: number) => {
+    const db = get().db;
+    if (!db) return;
+
+    await activateSource(db, chatId, sourceId);
+
+    set((state) => {
+      const chat = state.chats.find((chat) => chat.id === chatId);
+      if (chat) {
+        chat.enabledSources = [...(chat.enabledSources || []), sourceId];
+      }
+      return { chats: [...state.chats] };
+    });
+  },
+
+  disableSource: async (chatId: number, sourceId: number) => {
+    const db = get().db;
+    if (!db) return;
+
+    await deactivateSource(db, chatId, sourceId);
+
+    set((state) => {
+      const chat = state.chats.find((chat) => chat.id === chatId);
+      if (chat) {
+        chat.enabledSources = chat.enabledSources?.filter(
+          (id) => id !== sourceId
+        );
+      }
+      return { chats: [...state.chats] };
+    });
+  },
+
+  sendEventMessage: async (chatId: number, content: string) => {
+    const db = get().db;
+    if (!db) return;
+
+    const eventMessage: Omit<Message, 'id'> = {
+      role: 'event',
+      content: content,
+      chatId,
+      timestamp: Date.now(),
+    };
+
+    await persistMessage(db, eventMessage);
   },
 }));

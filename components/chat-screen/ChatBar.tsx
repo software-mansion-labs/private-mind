@@ -5,10 +5,9 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
-  Platform,
 } from 'react-native';
 import { Model } from '../../database/modelRepository';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
 import { ScrollView } from 'react-native-gesture-handler';
@@ -24,10 +23,12 @@ interface Props {
   setUserInput: (text: string) => void;
   onSend: () => void;
   onSelectModel: () => void;
+  onSelectSource: () => void;
   inputRef: Ref<TextInput>;
   model: Model | undefined;
   scrollRef: RefObject<ScrollView | null>;
   isAtBottom: boolean;
+  activeSourcesCount: number;
 }
 
 const ChatBar = ({
@@ -36,10 +37,12 @@ const ChatBar = ({
   setUserInput,
   onSend,
   onSelectModel,
+  onSelectSource,
   inputRef,
   model,
   scrollRef,
   isAtBottom,
+  activeSourcesCount,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -66,27 +69,91 @@ const ChatBar = ({
       )}
 
       {model?.isDownloaded && (
-        <View style={styles.content}>
-          <TextInput
-            ref={inputRef}
-            style={styles.input}
-            multiline
-            onFocus={async () => {
-              if (!isAtBottom) return;
-              if (loadedModel?.id !== model.id) {
-                await loadModel(model);
-              }
-              setTimeout(() => {
-                scrollRef.current?.scrollToEnd({ animated: true });
-              }, 25);
+        <View
+          style={{
+            flexDirection: 'column',
+            backgroundColor: theme.bg.strongPrimary,
+            borderRadius: 18,
+            padding: 16,
+            gap: 16,
+            justifyContent: 'center',
+          }}
+        >
+          <View style={styles.content}>
+            <TextInput
+              ref={inputRef}
+              style={styles.input}
+              multiline
+              onFocus={async () => {
+                if (!isAtBottom) return;
+                if (loadedModel?.id !== model.id) {
+                  await loadModel(model);
+                }
+                setTimeout(() => {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                }, 25);
+              }}
+              placeholder="Ask about anything..."
+              placeholderTextColor={theme.text.contrastTertiary}
+              value={userInput}
+              onChangeText={setUserInput}
+              numberOfLines={3}
+            />
+            <View style={styles.buttonBar}></View>
+          </View>
+          <View
+            style={{
+              flexDirection: 'row',
+              width: '100%',
+              justifyContent: 'space-between',
             }}
-            placeholder="Ask about anything..."
-            placeholderTextColor={theme.text.contrastTertiary}
-            value={userInput}
-            onChangeText={setUserInput}
-            numberOfLines={3}
-          />
-          <View style={styles.buttonBar}>
+          >
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                onPress={onSelectSource}
+                style={{
+                  padding: 8,
+                  borderRadius: 9999,
+                  borderWidth: 1,
+                  borderColor: theme.border.contrast,
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                {activeSourcesCount > 0 && (
+                  <View
+                    style={{
+                      borderRadius: 9999,
+                      width: 20,
+                      height: 20,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      backgroundColor: theme.bg.main,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: fontSizes.sm,
+                        fontFamily: fontFamily.medium,
+                        color: theme.text.contrastPrimary,
+                      }}
+                    >
+                      {activeSourcesCount}
+                    </Text>
+                  </View>
+                )}
+                <Text
+                  style={{
+                    color: theme.text.contrastPrimary,
+                    lineHeight: lineHeights.sm,
+                  }}
+                >
+                  Sources
+                </Text>
+              </TouchableOpacity>
+            </View>
             {userInput && !isGenerating && !isProcessingPrompt ? (
               <CircleButton
                 icon={SendIcon}
@@ -143,20 +210,12 @@ const createStyles = (theme: Theme) =>
     },
     content: {
       flexDirection: 'row',
-      alignItems: 'center',
       width: '100%',
-      height: 68,
-      borderRadius: 18,
-      paddingHorizontal: 16,
-      paddingVertical: Platform.select({ ios: 8, default: 0 }),
-      gap: 16,
-      backgroundColor: theme.bg.strongPrimary,
     },
     input: {
       flex: 1,
       fontSize: fontSizes.md,
-      lineHeight: 24,
-      paddingVertical: 8,
+      lineHeight: lineHeights.md,
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
       color: theme.text.contrastPrimary,
