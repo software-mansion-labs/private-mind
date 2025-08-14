@@ -14,6 +14,8 @@ import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkReposito
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
 import { Feedback } from '../utils/Feedback';
+import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
+import { getSourcesEnabledInChat } from '../database/sourcesRepository';
 
 interface LLMStore {
   isLoading: boolean;
@@ -33,10 +35,17 @@ interface LLMStore {
   setDB: (db: SQLiteDatabase) => void;
   loadModel: (model: Model, hardReload?: boolean) => Promise<void>;
   setActiveChatId: (chatId: number) => Promise<void>;
-  sendChatMessage: (newMessage: string, chatId: number) => Promise<void>;
+  sendChatMessage: (
+    newMessage: string,
+    chatId: number,
+    vectorStore: OPSQLiteVectorStore
+  ) => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   interrupt: () => void;
+  sendEventMessage: (chatId: number, message: string) => Promise<void>;
 }
+
+const K_DOCUMENTS_RETRIEVED = 5;
 
 const calculatePerformanceMetrics = (
   startTime: number,
@@ -75,6 +84,28 @@ const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
     },
     stop: () => clearInterval(trackerId),
   };
+};
+
+const prepareContext = async (
+  db: SQLiteDatabase,
+  prompt: string,
+  chatId: number,
+  vectorStore: OPSQLiteVectorStore
+) => {
+  let context = await vectorStore.similaritySearch(
+    prompt,
+    K_DOCUMENTS_RETRIEVED
+  );
+  const enabledSources = await getSourcesEnabledInChat(db, chatId);
+  context = context.filter((item) => {
+    return enabledSources.includes(item.metadata?.documentId);
+  });
+
+  const preparedContext = context.map((item) => {
+    return `${item.content}`;
+  });
+
+  return preparedContext;
 };
 
 export const useLLMStore = create<LLMStore>((set, get) => ({
@@ -154,7 +185,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
-  sendChatMessage: async (newMessage: string, chatId: number) => {
+  sendChatMessage: async (newMessage, chatId, vectorStore) => {
     const { db, model: currentModel, activeChatMessages } = get();
     if (!db || !currentModel) {
       console.warn('LLM not ready or DB not set');
@@ -193,11 +224,28 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       });
 
       const settings = await getChatSettings(db, chatId);
-      const systemPrompt = settings.systemPrompt;
+      const llmContext = await prepareContext(
+        db,
+        newMessage,
+        chatId,
+        vectorStore
+      );
+      console.log(llmContext);
+      const systemPrompt = settings.systemPrompt.concat(
+        `Context: ${llmContext.join(', ')}`
+      );
+      const filteredMessages: ExecutorchMessage[] =
+        get().activeChatMessages.reduce((acc: ExecutorchMessage[], msg) => {
+          if (msg.role !== 'event') {
+            acc.push({ role: msg.role, content: msg.content });
+          }
+          return acc;
+        }, []);
+
       const contextWindow = settings.contextWindow;
       const messagesWithSystemPrompt: ExecutorchMessage[] = [
         { role: 'system', content: systemPrompt },
-        ...get().activeChatMessages.slice(-contextWindow, -1),
+        ...filteredMessages.slice(-contextWindow, -1),
       ];
       // Polling to wait for the model to load and display dots until the first token is generated.
       if (get().isLoading) {
@@ -318,5 +366,26 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     } else if (get().isProcessingPrompt) {
       set({ isProcessingPrompt: false });
     }
+  },
+
+  sendEventMessage: async (chatId: number, content: string) => {
+    const db = get().db;
+    if (!db) return;
+
+    const eventMessage: Omit<Message, 'id'> = {
+      role: 'event',
+      content: content,
+      chatId,
+      timestamp: Date.now(),
+    };
+
+    const eventMessageId = await persistMessage(db, eventMessage);
+
+    set((state) => ({
+      activeChatMessages: [
+        ...state.activeChatMessages,
+        { ...eventMessage, id: eventMessageId },
+      ],
+    }));
   },
 }));

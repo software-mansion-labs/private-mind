@@ -43,8 +43,8 @@ const ModelCard = ({ model, onPress, memoryWarningSheetRef }: Props) => {
     isDownloading
       ? ModelState.Downloading
       : !model.isDownloaded
-        ? ModelState.NotStarted
-        : ModelState.Downloaded
+      ? ModelState.NotStarted
+      : ModelState.Downloaded
   );
 
   useEffect(() => {
@@ -85,7 +85,7 @@ const ModelCard = ({ model, onPress, memoryWarningSheetRef }: Props) => {
 
   return (
     <TouchableOpacity
-      style={[styles.card, { borderColor: theme.border.soft }]}
+      style={styles.card}
       onPress={() => onPress(model)}
       disabled={disabled}
     >
@@ -194,6 +194,7 @@ const createStyles = (theme: Theme) =>
       padding: 16,
       borderWidth: 1,
       borderRadius: 12,
+      borderColor: theme.border.soft,
       flexDirection: 'column',
       gap: 16,
     },
