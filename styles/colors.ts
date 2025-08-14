@@ -20,6 +20,7 @@ export const lightTheme = {
   },
   border: {
     soft: 'rgba(2, 15, 60, 0.2)',
+    contrast: '#fff',
   },
 };
 
@@ -43,6 +44,7 @@ export const darkTheme = {
   },
   border: {
     soft: 'rgba(255, 255, 255, 0.2)',
+    contrast: '#020F3C',
   },
 };
 

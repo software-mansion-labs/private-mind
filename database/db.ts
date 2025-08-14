@@ -5,6 +5,7 @@ import { useLLMStore } from '../store/llmStore';
 import { useModelStore } from '../store/modelStore';
 import { addModel } from './modelRepository';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSourceStore } from '../store/sourceStore';
 
 const runMigrations = async (db: SQLiteDatabase) => {
   const tableInfo = await db.getAllAsync<{ name: string }>(
@@ -102,11 +103,31 @@ export const initDatabase = async (db: SQLiteDatabase) => {
     );
   `);
 
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS sources (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      size INTEGER,
+      type TEXT NOT NULL
+    );
+  `);
+
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS chat_sources (
+      chatId INTEGER NOT NULL,
+      sourceId INTEGER NOT NULL,
+      PRIMARY KEY (chatId, sourceId),
+      FOREIGN KEY(chatId) REFERENCES chats(id) ON DELETE CASCADE,
+      FOREIGN KEY(sourceId) REFERENCES sources(id) ON DELETE CASCADE
+    );
+  `);
+
   // Run migration before inserting default models
 
   useChatStore.getState().setDB(db);
   useModelStore.getState().setDB(db);
   useLLMStore.getState().setDB(db);
+  useSourceStore.getState().setDB(db);
 
   await AsyncStorage.setItem(
     'default_chat_settings',
