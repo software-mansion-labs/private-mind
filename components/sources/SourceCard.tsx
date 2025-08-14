@@ -47,6 +47,7 @@ const createStyles = (theme: Theme) =>
       padding: 16,
       borderWidth: 1,
       borderRadius: 12,
+      borderColor: theme.border.soft,
       flexDirection: 'row',
       gap: 16,
       justifyContent: 'space-between',
