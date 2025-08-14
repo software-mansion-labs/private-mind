@@ -1411,7 +1411,7 @@ PODS:
     - React-jsiexecutor
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
-  - react-native-executorch (0.4.7):
+  - react-native-executorch (0.4.8):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2644,7 +2644,7 @@ SPEC CHECKSUMS:
   React-logger: 85fa3509931497c72ccd2547fcc91e7299d8591e
   React-Mapbuffer: 96a2f2a176268581733be182fa6eebab1c0193be
   React-microtasksnativemodule: bda561d2648e1e52bd9e5a87f8889836bdbde2e2
-  react-native-executorch: 4ff1b81fddc6d4ddb22289436f71c67519baafb0
+  react-native-executorch: c7045aad34403b22ca410fa4c959b095d7262ae2
   react-native-keyboard-controller: af13329b118eecdbb253ca09e30308c782cdf13f
   react-native-menu: be9bce4eb201a4d13734744763d36d56e6df8b4a
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
