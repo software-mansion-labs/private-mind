@@ -6,6 +6,7 @@ export type Chat = {
   modelId: number;
   title: string;
   lastUsed: number;
+  enabledSources?: number[];
 };
 
 export type ChatSettings = {
@@ -17,7 +18,7 @@ export type Message = {
   id: number;
   chatId: number;
   modelName?: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'event';
   content: string;
   tokensPerSecond?: number;
   timeToFirstToken?: number;
@@ -89,12 +90,13 @@ export const persistMessage = async (
     ]
   );
 
-  const timestamp = Date.now();
-  await db.runAsync(`UPDATE chats SET lastUsed = ? WHERE id = ?`, [
-    timestamp,
-    message.chatId,
-  ]);
-
+  if (message.role !== 'event') {
+    const timestamp = Date.now();
+    await db.runAsync(`UPDATE chats SET lastUsed = ? WHERE id = ?`, [
+      timestamp,
+      message.chatId,
+    ]);
+  }
   return result.lastInsertRowId;
 };
 
