@@ -100,4 +100,6 @@ export const deleteSourceFromChats = async (
       >);
     })
   );
+
+  await db.runAsync(`DELETE FROM chat_sources WHERE sourceId = ?`, [source.id]);
 };
