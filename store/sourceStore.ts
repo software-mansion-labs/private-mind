@@ -10,8 +10,8 @@ import {
 import { SQLiteDatabase } from 'expo-sqlite';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { RecursiveCharacterTextSplitter } from 'react-native-rag';
-import { Platform } from 'react-native';
 import { readPDF } from 'react-native-pdfium';
+import { useLLMStore } from './llmStore';
 
 interface SourceStore {
   sources: Source[];
@@ -26,6 +26,9 @@ interface SourceStore {
   deleteSource: (source: Source) => Promise<void>;
   renameSource: (id: number, newName: string) => Promise<void>;
 }
+
+const TEXT_SPLITTER_CHUNK_SIZE = 1000;
+const TEXT_SPLITTER_CHUNK_OVERLAP = 100;
 
 export const useSourceStore = create<SourceStore>((set, get) => ({
   sources: [],
@@ -47,23 +50,26 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     const db = get().db;
     if (!db) return;
 
-    const normalizedUri =
-      Platform.OS === 'ios' ? sourceUri.replace('file://', '') : sourceUri;
+    const normalizedUri = sourceUri.replace('file://', '');
     const sourceId = await insertSource(db, source);
     get().loadSources();
 
     if (sourceId) {
       const sourceTextContent = readPDF(normalizedUri);
       const textSplitter = new RecursiveCharacterTextSplitter({
-        chunkSize: 500,
-        chunkOverlap: 100,
+        chunkSize: TEXT_SPLITTER_CHUNK_SIZE,
+        chunkOverlap: TEXT_SPLITTER_CHUNK_OVERLAP,
       });
 
-      const chunks = await textSplitter.splitText(sourceTextContent);
+      try {
+        const chunks = await textSplitter.splitText(sourceTextContent);
 
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i]!;
-        await vectorStore?.add(chunk, { documentId: sourceId });
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i]!;
+          await vectorStore?.add(chunk, { documentId: sourceId });
+        }
+      } catch (e) {
+        console.error(e);
       }
     }
   },
@@ -75,6 +81,8 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     await deleteSource(db, source.id);
     await deleteSourceFromChats(db, source);
     get().loadSources();
+
+    useLLMStore.getState().refreshActiveChatMessages();
   },
 
   renameSource: async (id, newName) => {

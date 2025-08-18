@@ -43,9 +43,10 @@ interface LLMStore {
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   interrupt: () => void;
   sendEventMessage: (chatId: number, message: string) => Promise<void>;
+  refreshActiveChatMessages: () => Promise<void>;
 }
 
-const K_DOCUMENTS_RETRIEVED = 5;
+const K_DOCUMENTS_TO_RETRIEVE = 5;
 const llmInstance = new LLMModule();
 
 const calculatePerformanceMetrics = (
@@ -95,7 +96,7 @@ const prepareContext = async (
 ) => {
   let context = await vectorStore.similaritySearch(
     prompt,
-    K_DOCUMENTS_RETRIEVED
+    K_DOCUMENTS_TO_RETRIEVE
   );
   const enabledSources = await getSourcesEnabledInChat(db, chatId);
   context = context.filter((item) => {
@@ -232,10 +233,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         chatId,
         vectorStore
       );
-      console.log(llmContext);
+
       const systemPrompt = settings.systemPrompt.concat(
         `Context: ${llmContext.join(', ')}`
       );
+
       const filteredMessages: ExecutorchMessage[] =
         get().activeChatMessages.reduce((acc: ExecutorchMessage[], msg) => {
           if (msg.role !== 'event') {
@@ -260,10 +262,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           }, 100);
         });
       }
+
       // If the user interrupts when the model is loading
       if (!get().isProcessingPrompt) {
         return;
       }
+
       set({
         isGenerating: true,
         performance: {
@@ -286,12 +290,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             get().performance.firstTokenTime,
             get().performance.tokenCount
           );
+
         await persistMessage(db, {
           ...assistantPlaceholder,
           content: finalResponse,
           tokensPerSecond,
           timeToFirstToken,
         });
+
         if (get().activeChatId === chatId) {
           set((state) => ({
             activeChatMessages: state.activeChatMessages.map((msg, index) =>
@@ -356,7 +362,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         peakMemory: runPeakMemory,
       };
     } catch (e) {
-      console.error(`Benchmark failed`, e);
       memoryTracker.stop();
     } finally {
       set({ isGenerating: false, isBenchmarking: false });
@@ -391,5 +396,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         { ...eventMessage, id: eventMessageId },
       ],
     }));
+  },
+
+  refreshActiveChatMessages: async () => {
+    const { db, activeChatId } = get();
+    if (!db || !activeChatId) return;
+
+    const messageHistory = await getChatMessages(db, activeChatId);
+    set({ activeChatMessages: messageHistory });
   },
 }));

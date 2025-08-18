@@ -18,13 +18,15 @@ const SourceCard = ({ source, actionButton }: Props) => {
 
   return (
     <View style={styles.card}>
-      <View style={{ gap: 4 }}>
+      <View style={styles.content}>
         <Text style={styles.name}>{source.name}</Text>
         <View style={styles.chipContainer}>
-          <Chip
-            borderColor={theme.border.soft}
-            title={`${(source.size! / 1_000_000).toFixed(2)} MB`}
-          />
+          {source.size && (
+            <Chip
+              borderColor={theme.border.soft}
+              title={`${(source.size / 1_000_000).toFixed(2)} MB`}
+            />
+          )}
           <Chip
             borderColor={theme.border.soft}
             title={`${source.type.toUpperCase()}`}
@@ -53,6 +55,9 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'space-between',
       alignItems: 'center',
     },
+    content: {
+      gap: 4,
+    },
     name: {
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
@@ -65,10 +70,5 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-    },
-    topRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
     },
   });

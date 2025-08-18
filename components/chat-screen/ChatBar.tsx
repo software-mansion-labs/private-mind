@@ -11,11 +11,9 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
 import { ScrollView } from 'react-native-gesture-handler';
-import SendIcon from '../../assets/icons/send_icon.svg';
-import PauseIcon from '../../assets/icons/pause_icon.svg';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import { Theme } from '../../styles/colors';
-import CircleButton from '../CircleButton';
+import ChatBarActions from './ChatBarActions';
 
 interface Props {
   chatId: number | null;
@@ -69,16 +67,7 @@ const ChatBar = ({
       )}
 
       {model?.isDownloaded && (
-        <View
-          style={{
-            flexDirection: 'column',
-            backgroundColor: theme.bg.strongPrimary,
-            borderRadius: 18,
-            padding: 16,
-            gap: 16,
-            justifyContent: 'center',
-          }}
-        >
+        <View style={styles.inputContainer}>
           <View style={styles.content}>
             <TextInput
               ref={inputRef}
@@ -99,80 +88,16 @@ const ChatBar = ({
               onChangeText={setUserInput}
               numberOfLines={3}
             />
-            <View style={styles.buttonBar}></View>
           </View>
-          <View
-            style={{
-              flexDirection: 'row',
-              width: '100%',
-              justifyContent: 'space-between',
-            }}
-          >
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
-                onPress={onSelectSource}
-                style={{
-                  padding: 8,
-                  borderRadius: 9999,
-                  borderWidth: 1,
-                  borderColor: theme.border.contrast,
-                  flexDirection: 'row',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-              >
-                {activeSourcesCount > 0 && (
-                  <View
-                    style={{
-                      borderRadius: 9999,
-                      width: 20,
-                      height: 20,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      backgroundColor: theme.bg.main,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: fontSizes.sm,
-                        fontFamily: fontFamily.medium,
-                        color: theme.text.contrastPrimary,
-                      }}
-                    >
-                      {activeSourcesCount}
-                    </Text>
-                  </View>
-                )}
-                <Text
-                  style={{
-                    color: theme.text.contrastPrimary,
-                    lineHeight: lineHeights.sm,
-                  }}
-                >
-                  Sources
-                </Text>
-              </TouchableOpacity>
-            </View>
-            {userInput && !isGenerating && !isProcessingPrompt ? (
-              <CircleButton
-                icon={SendIcon}
-                onPress={onSend}
-                backgroundColor={theme.bg.main}
-                color={theme.text.contrastPrimary}
-              />
-            ) : null}
-
-            {(isGenerating || isProcessingPrompt) && (
-              <CircleButton
-                icon={PauseIcon}
-                size={13.33}
-                onPress={interrupt}
-                backgroundColor={theme.bg.main}
-                color={theme.text.contrastPrimary}
-              />
-            )}
-          </View>
+          <ChatBarActions
+            onSelectSource={onSelectSource}
+            activeSourcesCount={activeSourcesCount}
+            userInput={userInput}
+            onSend={onSend}
+            isGenerating={isGenerating}
+            isProcessingPrompt={isProcessingPrompt}
+            onInterrupt={interrupt}
+          />
         </View>
       )}
     </View>
@@ -211,6 +136,14 @@ const createStyles = (theme: Theme) =>
     content: {
       flexDirection: 'row',
       width: '100%',
+    },
+    inputContainer: {
+      flexDirection: 'column',
+      backgroundColor: theme.bg.strongPrimary,
+      borderRadius: 18,
+      padding: 16,
+      gap: 16,
+      justifyContent: 'center',
     },
     input: {
       flex: 1,

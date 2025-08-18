@@ -91,11 +91,7 @@ export default function ChatScreen({
 
     setUserInput('');
     updateLastUsed(chatId!);
-    const enabledSourcesIds = await getSourcesEnabledInChat(db, chatId!);
-    let context = await vectorStore?.similaritySearch(userInput);
-    context = context?.filter((item) => {
-      return enabledSourcesIds.includes(item.metadata?.documentId);
-    });
+
     await sendChatMessage(userInput, chatId!, vectorStore!);
   };
 
