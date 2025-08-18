@@ -5842,6 +5842,7 @@ __metadata:
     metro-config: ^0.81.0
     react: 19.0.0
     react-native: 0.79.5
+    react-native-audio-api: ^0.7.1
     react-native-device-info: ^14.0.4
     react-native-executorch: 0.4.7
     react-native-gesture-handler: ~2.24.0
@@ -7404,6 +7405,18 @@ __metadata:
   version: 19.1.0
   resolution: "react-is@npm:19.1.0"
   checksum: 3eb4eac7f09bf178bdc6fa98d384f5f243b85de7c99679a88b0154ead4d818ad94386ccb00ea31ec52409ffd13299057f5ec6ca2eaec06f9f7eddc1ad4832332
+  languageName: node
+  linkType: hard
+
+"react-native-audio-api@npm:^0.7.1":
+  version: 0.7.1
+  resolution: "react-native-audio-api@npm:0.7.1"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  bin:
+    setup-rn-audio-api-web: scripts/setup-rn-audio-api-web.js
+  checksum: c7394baf5df3238a122e87605ff8035273ea68d87bcbfec055857e9b999d82e32e9380fc06fb5e66a36bc5d85117cb1791a3e7226a2016e94e58f6c4a102f93b
   languageName: node
   linkType: hard
 

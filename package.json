@@ -32,6 +32,7 @@
     "metro-config": "^0.81.0",
     "react": "19.0.0",
     "react-native": "0.79.5",
+    "react-native-audio-api": "^0.7.1",
     "react-native-device-info": "^14.0.4",
     "react-native-executorch": "0.4.7",
     "react-native-gesture-handler": "~2.24.0",
