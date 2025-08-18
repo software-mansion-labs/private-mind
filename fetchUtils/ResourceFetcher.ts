@@ -62,40 +62,37 @@ export class ResourceFetcher {
     const { results: info, totalLength } =
       await ResourceFetcherUtils.getFilesSizes(sources);
 
-    const head: ResourceSourceExtended = {
-      source: info[0]!.source,
-      sourceType: info[0]!.type,
-      callback:
-        info[0]!.type === SourceType.REMOTE_FILE
-          ? ResourceFetcherUtils.calculateDownloadProgress(
-              totalLength,
-              info[0]!.previousFilesTotalLength,
-              info[0]!.length,
-              callback
-            )
-          : () => {},
-      results: [],
-    };
+    let node: ResourceSourceExtended | undefined;
 
-    let node = head;
-    for (let idx = 1; idx < sources.length; idx++) {
-      node.next = {
-        source: info[idx]!.source,
-        sourceType: info[idx]!.type,
+    for (let idx = sources.length - 1; idx >= 0; idx--) {
+      if (!info[idx]) {
+        continue;
+      }
+
+      const prevNode: ResourceSourceExtended = {
+        source: info[idx].source,
+        sourceType: info[idx].type,
         callback:
-          info[idx]!.type === SourceType.REMOTE_FILE
+          info[idx].type === SourceType.REMOTE_FILE && info[idx].length > 0
             ? ResourceFetcherUtils.calculateDownloadProgress(
                 totalLength,
-                info[idx]!.previousFilesTotalLength,
-                info[idx]!.length,
+                info[idx].previousFilesTotalLength,
+                info[idx].length,
                 callback
               )
             : () => {},
         results: [],
+        next: node,
       };
-      node = node.next;
+
+      node = prevNode;
     }
-    return this.singleFetch(head);
+
+    if (!node) {
+      throw new Error('Failed to prepare for fetching. No valid source');
+    }
+
+    return this.singleFetch(node);
   }
 
   private static async singleFetch(
@@ -389,25 +386,36 @@ export class ResourceFetcher {
       status: DownloadStatus.ONGOING,
       extendedInfo: sourceExtended,
     };
-    //add key-value pair to map
-    this.downloads.set(source, downloadResource);
-    const result = await downloadResumable.downloadAsync();
-    if (
-      !this.downloads.has(source) ||
-      this.downloads.get(source)!.status === DownloadStatus.PAUSED
-    ) {
-      // if canceled or paused during the download
-      return null;
+
+    try {
+      //add key-value pair to map
+      this.downloads.set(source, downloadResource);
+      const result = await downloadResumable.downloadAsync();
+
+      if (
+        !this.downloads.has(source) ||
+        this.downloads.get(source)!.status === DownloadStatus.PAUSED
+      ) {
+        // if canceled or paused during the download
+        return null;
+      }
+      if (!result || result.status !== HTTP_CODE.OK) {
+        throw new Error(`Failed to fetch resource from '${source}'`);
+      }
+      await moveAsync({
+        from: sourceExtended.cacheFileUri,
+        to: sourceExtended.fileUri,
+      });
+      this.downloads.delete(source);
+      ResourceFetcherUtils.triggerHuggingFaceDownloadCounter(uri);
+      return ResourceFetcherUtils.removeFilePrefix(sourceExtended.fileUri);
+    } catch (error) {
+      // clean up only if it's the `downloadResource` created in this call,
+      // and not e.g. cancelled and recreated elsewhere.
+      if (this.downloads.get(source) === downloadResource) {
+        this.downloads.delete(source);
+      }
+      throw error;
     }
-    if (!result || result.status !== HTTP_CODE.OK) {
-      throw new Error(`Failed to fetch resource from '${source}'`);
-    }
-    await moveAsync({
-      from: sourceExtended.cacheFileUri,
-      to: sourceExtended.fileUri,
-    });
-    this.downloads.delete(source);
-    ResourceFetcherUtils.triggerHuggingFaceDownloadCounter(uri);
-    return ResourceFetcherUtils.removeFilePrefix(sourceExtended.fileUri);
   }
 }
