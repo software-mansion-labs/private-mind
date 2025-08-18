@@ -38,7 +38,6 @@ const SourcesScreen = () => {
     sourceManagementSheetRef.current?.present(source);
   }, []);
 
-
   const renderEmptyState = () => (
     <View style={styles.noSourcesContainer}>
       <Text style={styles.emptyTitle}>
@@ -86,15 +85,7 @@ const SourcesScreen = () => {
                 <TouchableOpacity
                   onPress={() => handleSourcePress(item)}
                   hitSlop={15}
-                  style={{
-                    borderRadius: 9999,
-                    backgroundColor: theme.bg.softSecondary,
-                    padding: 8,
-                    width: 36,
-                    height: 36,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
+                  style={styles.actionButton}
                 >
                   <MoreVerticalIcon style={{ color: theme.text.primary }} />
                 </TouchableOpacity>
@@ -143,5 +134,14 @@ const createStyles = (theme: Theme) =>
     modelScrollContent: {
       // 56 is the FAB size
       paddingBottom: theme.insets.bottom + 16 + 56,
+    },
+    actionButton: {
+      borderRadius: 9999,
+      backgroundColor: theme.bg.softSecondary,
+      padding: 8,
+      width: 36,
+      height: 36,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
   });
