@@ -11,21 +11,20 @@ import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
 import TextFieldInput from '../../components/TextFieldInput';
-import * as DocumentPicker from 'expo-document-picker';
 import { Source } from '../../database/sourcesRepository';
 import { FlatList } from 'react-native-gesture-handler';
 import SourceCard from '../../components/sources/SourceCard';
 import SourceManagementSheet from '../../components/bottomSheets/SourceManagementSheet';
-import { useVectorStore } from '../../context/VectorStoreContext';
 import { useSourceStore } from '../../store/sourceStore';
+import { useSourceUpload } from '../../hooks/useSourceUpload';
 import MoreVerticalIcon from '../../assets/icons/more_vertical.svg';
 
 const SourcesScreen = () => {
   useDefaultHeader();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { vectorStore } = useVectorStore();
-  const { sources, addSource } = useSourceStore();
+  const { sources } = useSourceStore();
+  const { uploadSource } = useSourceUpload();
   const sourceManagementSheetRef = useRef<BottomSheetModal | null>(null);
   const [search, setSearch] = useState('');
 
@@ -39,27 +38,6 @@ const SourcesScreen = () => {
     sourceManagementSheetRef.current?.present(source);
   }, []);
 
-  const uploadSource = async () => {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: 'application/pdf',
-      copyToCacheDirectory: true,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      const uri = asset.uri || '';
-      const newSource: Omit<Source, 'id'> = {
-        name:
-          asset.name.split('.')[0] ||
-          asset.uri.split('/').pop()?.split('.')[0] ||
-          'Unnamed',
-        type: asset.uri.split('.').pop() || '',
-        size: asset.size || null,
-      };
-
-      await addSource(newSource, uri, vectorStore!);
-    }
-  };
 
   const renderEmptyState = () => (
     <View style={styles.noSourcesContainer}>

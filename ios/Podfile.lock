@@ -114,6 +114,7 @@ PODS:
     - Yoga
   - opencv-rne (4.11.0)
   - Pdfium (0.1.0):
+  - Pdfium (0.1.1):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2601,8 +2602,12 @@ SPEC CHECKSUMS:
 =======
   op-sqlite: 6826f241267eca7963134db588b4bbb3a7a6b97d
   opencv-rne: 63e933ae2373fc91351f9a348dc46c3f523c2d3f
+<<<<<<< HEAD
   Pdfium: 4079449fb5f4277f82c0c1b26308b40a13169766
 >>>>>>> e65f446 (feat: rag implementation)
+=======
+  Pdfium: 28e240531cba356d3f3f1a378000a8f4ae60ce74
+>>>>>>> 242073a (reafactor: code releated to rag implementation)
   RCT-Folly: e78785aa9ba2ed998ea4151e314036f6c49e6d82
   RCTDeprecation: 5f638f65935e273753b1f31a365db6a8d6dc53b5
   RCTRequired: 8b46a520ea9071e2bc47d474aa9ca31b4a935bd8
@@ -2634,7 +2639,11 @@ SPEC CHECKSUMS:
   React-logger: 85fa3509931497c72ccd2547fcc91e7299d8591e
   React-Mapbuffer: 96a2f2a176268581733be182fa6eebab1c0193be
   React-microtasksnativemodule: bda561d2648e1e52bd9e5a87f8889836bdbde2e2
+<<<<<<< HEAD
   react-native-executorch: c8842c76917ed86e372526869f76a2b686afcf0e
+=======
+  react-native-executorch: c7045aad34403b22ca410fa4c959b095d7262ae2
+>>>>>>> 242073a (reafactor: code releated to rag implementation)
   react-native-keyboard-controller: af13329b118eecdbb253ca09e30308c782cdf13f
   react-native-menu: be9bce4eb201a4d13734744763d36d56e6df8b4a
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187

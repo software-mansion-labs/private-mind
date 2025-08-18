@@ -21,7 +21,7 @@ const CustomDrawer = (props: DrawerContentComponentProps) => {
       return;
     }
 
-    Feedback.light();
+    Feedback.soft();
   }, [status]);
 
   return (

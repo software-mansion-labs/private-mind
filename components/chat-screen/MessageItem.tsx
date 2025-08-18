@@ -27,8 +27,6 @@ const MessageItem = memo(
     timeToFirstToken,
     isLastMessage = false,
   }: MessageItemProps) => {
-    const isAssistant = role === 'assistant';
-    const isEvent = role === 'event';
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
     const { isGenerating } = useLLMStore();
@@ -77,41 +75,22 @@ const MessageItem = memo(
 
     return (
       <>
-        {isEvent ? (
-          <View
-            style={{
-              paddingHorizontal: 16,
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginBottom: 24,
-              flexDirection: 'row',
-            }}
-          >
-            <Text
-              style={{
-                fontFamily: fontFamily.medium,
-                fontSize: fontSizes.sm,
-                color: theme.text.defaultSecondary,
-                textAlign: 'center',
-              }}
-            >
+        {role === 'event' ? (
+          <View style={styles.eventMessage}>
+            <Text style={styles.eventMessageText}>
               {content.split(' ')[0]}{' '}
-              <Text
-                style={{
-                  fontFamily: fontFamily.regular,
-                  fontSize: fontSizes.sm,
-                  color: theme.text.defaultTertiary,
-                }}
-              >
-                {content.slice(content.indexOf(' ') + 1)}
-              </Text>
+              <Text style={{}}>{content.slice(content.indexOf(' ') + 1)}</Text>
             </Text>
           </View>
         ) : (
           <>
-            <View style={isAssistant ? styles.aiMessage : styles.userMessage}>
+            <View
+              style={
+                role === 'assistant' ? styles.aiMessage : styles.userMessage
+              }
+            >
               <View style={styles.bubbleContent}>
-                {isAssistant && (
+                {role === 'assistant' && (
                   <Text style={styles.modelName}>{modelName}</Text>
                 )}
                 {contentParts.normalContent.trim() && (
@@ -146,7 +125,7 @@ const MessageItem = memo(
                       <MarkdownComponent text={contentParts.normalAfterThink} />
                     </TouchableOpacity>
                   )}
-                {isAssistant &&
+                {role === 'assistant' &&
                   tokensPerSecond !== undefined &&
                   tokensPerSecond !== 0 && (
                     <Text style={styles.metadata}>
@@ -188,6 +167,18 @@ const createStyles = (theme: Theme) =>
       paddingVertical: 8,
       borderRadius: 12,
       backgroundColor: theme.bg.softSecondary,
+    },
+    eventMessage: {
+      paddingHorizontal: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 24,
+      flexDirection: 'row',
+    },
+    eventMessageText: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      color: theme.text.defaultTertiary,
     },
     bubbleContent: {
       width: '100%',

@@ -41,6 +41,10 @@ export const VectorStoreProvider = ({
     };
 
     initialize();
+
+    return () => {
+      setVectorStore(null);
+    };
   }, []);
 
   return (

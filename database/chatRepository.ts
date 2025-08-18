@@ -90,6 +90,7 @@ export const persistMessage = async (
     ]
   );
 
+  //If the message is event type, we don't update the lastUsed timestamp so the chat won't be elevated on the chat list
   if (message.role !== 'event') {
     const timestamp = Date.now();
     await db.runAsync(`UPDATE chats SET lastUsed = ? WHERE id = ?`, [
@@ -97,6 +98,7 @@ export const persistMessage = async (
       message.chatId,
     ]);
   }
+
   return result.lastInsertRowId;
 };
 

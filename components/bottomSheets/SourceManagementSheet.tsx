@@ -26,7 +26,6 @@ import { Source } from '../../database/sourcesRepository';
 import { useSQLiteContext } from 'expo-sqlite';
 import TextInputBorder from '../TextInputBorder';
 import { useSourceStore } from '../../store/sourceStore';
-import { useVectorStore } from '../../context/VectorStoreContext';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -48,7 +47,6 @@ const SheetContent = ({
   const { theme } = useTheme();
   const { deleteSource, renameSource } = useSourceStore();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { vectorStore } = useVectorStore();
   const db = useSQLiteContext();
 
   const [stage, setStage] = useState<SourceStage>(SourceStage.Initial);

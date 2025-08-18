@@ -6005,12 +6005,16 @@ __metadata:
     react: 19.0.0
     react-native: 0.79.5
     react-native-device-info: ^14.0.4
+<<<<<<< HEAD
     react-native-executorch: 0.5.1
+=======
+    react-native-executorch: 0.4.8
+>>>>>>> 242073a (reafactor: code releated to rag implementation)
     react-native-gesture-handler: ~2.24.0
     react-native-keyboard-controller: ^1.18.1
     react-native-loading-spinner-overlay: ^3.0.1
     react-native-markdown-display: ^7.0.2
-    react-native-pdfium: "file:/Users/norbertklockiewicz/Desktop/work/swm_ai/react-native-pdfium/packages/react-native-pdfium/react-native-pdfium-0.1.0.tgz"
+    react-native-pdfium: "file:./react-native-pdfium-0.1.1.tgz"
     react-native-rag: ^0.1.1
     react-native-reanimated: ~3.17.4
     react-native-safe-area-context: 5.4.0
@@ -7649,9 +7653,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+<<<<<<< HEAD
 "react-native-executorch@npm:0.5.1":
   version: 0.5.1
   resolution: "react-native-executorch@npm:0.5.1"
+=======
+"react-native-executorch@npm:0.4.8":
+  version: 0.4.8
+  resolution: "react-native-executorch@npm:0.4.8"
+>>>>>>> 242073a (reafactor: code releated to rag implementation)
   dependencies:
     "@huggingface/jinja": ^0.5.0
     expo: ^53.0.7
@@ -7663,7 +7673,11 @@ __metadata:
   peerDependencies:
     react: "*"
     react-native: "*"
+<<<<<<< HEAD
   checksum: 63bac8781d71b5488512a35cd96c7ff4cb63e4018bd49ce9e47a5a00f6b735269e0d09e5fe6b6207c9931cb0b667082bf769b22e859b0c069afb3b10e58f29a4
+=======
+  checksum: cfaa538d06aaef9efebf26ac3f7a27843f849a40763c5bb7c1f85a2c23561d3dce31273c4b8793cb450b3c05701b51bc055c4b20db3ae3b81bcca59b6a457960
+>>>>>>> 242073a (reafactor: code releated to rag implementation)
   languageName: node
   linkType: hard
 
@@ -7748,13 +7762,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-pdfium@file:/Users/norbertklockiewicz/Desktop/work/swm_ai/react-native-pdfium/packages/react-native-pdfium/react-native-pdfium-0.1.0.tgz::locator=local-mind%40workspace%3A.":
-  version: 0.1.0
-  resolution: "react-native-pdfium@file:/Users/norbertklockiewicz/Desktop/work/swm_ai/react-native-pdfium/packages/react-native-pdfium/react-native-pdfium-0.1.0.tgz::locator=local-mind%40workspace%3A."
+"react-native-pdfium@file:./react-native-pdfium-0.1.1.tgz::locator=local-mind%40workspace%3A.":
+  version: 0.1.1
+  resolution: "react-native-pdfium@file:./react-native-pdfium-0.1.1.tgz::locator=local-mind%40workspace%3A."
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: be3c59d2b2951ffc8a7c48816c03d3cb1cf6e9c8800e346ae75005cc871101856c068d203df8edd1d6985cb411a176e4e9de87e1a1ddd819fef0f9565356c4c8
+  checksum: 40505306513ab56e5f7e7ad1a07e86aadc7761f9a2d24b8d653fab648fc01602639d79c5fd200b0baceee18b02d07f84326be56396b839735bc9e663a2bb7369
   languageName: node
   linkType: hard
 

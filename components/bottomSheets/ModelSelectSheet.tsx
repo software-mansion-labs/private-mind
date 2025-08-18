@@ -4,11 +4,9 @@ import {
   BottomSheetFlatList,
   BottomSheetView,
   BottomSheetBackdrop,
-  BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
 import { router } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useModelStore } from '../../store/modelStore';
 import { useTheme } from '../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -16,8 +14,7 @@ import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';
 import ModelCard from '../model-hub/ModelCard';
 import PrimaryButton from '../PrimaryButton';
-import SearchIcon from '../../assets/icons/search.svg';
-import TextInputBorder from '../TextInputBorder';
+import BottomSheetSearchInput from './BottomSheetSearchInput';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -29,7 +26,6 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { downloadedModels } = useModelStore();
   const [search, setSearch] = useState('');
-  const [active, setActive] = useState(false);
 
   const filteredModels = downloadedModels.filter((model) =>
     model.modelName.toLowerCase().includes(search.toLowerCase())
@@ -46,8 +42,6 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
     ),
     [styles.backdrop]
   );
-
-  const insets = useSafeAreaInsets();
 
   return (
     <BottomSheetModal
@@ -66,23 +60,11 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
           <Text style={[styles.title, styles.horizontalInset]}>
             Select a Model
           </Text>
-          {Platform.OS === 'ios' && (
-            <View style={styles.horizontalInset}>
-              <View style={styles.inputWrapper}>
-                <TextInputBorder active={active} />
-                <SearchIcon width={20} height={20} style={styles.searchIcon} />
-                <BottomSheetTextInput
-                  style={styles.input}
-                  value={search}
-                  onChangeText={setSearch}
-                  placeholder="Search Models..."
-                  placeholderTextColor={theme.text.defaultTertiary}
-                  onFocus={() => setActive(true)}
-                  onBlur={() => setActive(false)}
-                />
-              </View>
-            </View>
-          )}
+          <BottomSheetSearchInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search Models..."
+          />
 
           <BottomSheetFlatList
             data={filteredModels}
@@ -93,7 +75,7 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
               [
                 styles.modelList,
                 styles.horizontalInset,
-                { paddingBottom: insets.bottom + 16 },
+                { paddingBottom: theme.insets.bottom + 16 },
               ],
             ]}
             renderItem={({ item }) => (
@@ -163,23 +145,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.md,
       fontFamily: fontFamily.regular,
       color: theme.text.defaultSecondary,
-    },
-    inputWrapper: {
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    input: {
-      width: '90%',
-      fontSize: fontSizes.md,
-      fontFamily: fontFamily.regular,
-      color: theme.text.primary,
-      lineHeight: 22,
-    },
-    searchIcon: {
-      color: theme.text.primary,
     },
     modelList: {
       gap: 8,
