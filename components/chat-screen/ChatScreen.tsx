@@ -1,18 +1,15 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Keyboard, StyleSheet, TextInput, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useModelStore } from '../../store/modelStore';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
 import { useTheme } from '../../context/ThemeContext';
-import { checkIfChatExists, type Message } from '../../database/chatRepository';
+import {
+  Chat,
+  checkIfChatExists,
+  type Message,
+} from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
 import ChatBar from './ChatBar';
@@ -22,18 +19,41 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { CustomKeyboardAvoidingView } from '../CustomKeyboardAvoidingView';
 import { useVectorStore } from '../../context/VectorStoreContext';
 import SourceSelectSheet from '../bottomSheets/SourceSelectSheet';
-import { getSourcesEnabledInChat } from '../../database/sourcesRepository';
-import { useSourceStore } from '../../store/sourceStore';
+import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 
 interface Props {
-  chatId: number | null;
+  chatId: number;
+  chat: Chat | undefined;
   messageHistory: Message[];
   model: Model | undefined;
   selectModel?: (model: Model) => Promise<void>;
 }
 
+const K_DOCUMENTS_TO_RETRIEVE = 5;
+
+const prepareContext = async (
+  prompt: string,
+  enabledSources: number[],
+  vectorStore: OPSQLiteVectorStore
+) => {
+  let context = await vectorStore.similaritySearch(
+    prompt,
+    K_DOCUMENTS_TO_RETRIEVE
+  );
+  context = context.filter((item) => {
+    return enabledSources.includes(item.metadata?.documentId);
+  });
+
+  const preparedContext = context.map((item) => {
+    return `${item.content}`;
+  });
+
+  return preparedContext;
+};
+
 export default function ChatScreen({
   chatId,
+  chat,
   messageHistory,
   model,
   selectModel,
@@ -43,32 +63,19 @@ export default function ChatScreen({
   const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const sourceBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const db = useSQLiteContext();
-  const { sources } = useSourceStore();
+
   const { vectorStore } = useVectorStore();
+  const { isGenerating, sendChatMessage, loadModel } = useLLMStore();
+  const { addChat, updateLastUsed, setChatModel, phantomChat } = useChatStore();
+
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const { loadModels } = useModelStore();
-  const { isGenerating, sendChatMessage, loadModel } = useLLMStore();
-  const { addChat, updateLastUsed, setChatModel } = useChatStore();
-
   const [userInput, setUserInput] = useState('');
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const [activeSourcesCount, setActiveSourcesCount] = useState(0);
 
-  useEffect(() => {
-    const loadInitialSourceCount = async () => {
-      if (chatId) {
-        const enabledIds = await getSourcesEnabledInChat(db, chatId);
-        setActiveSourcesCount(enabledIds.length);
-      }
-    };
-    loadInitialSourceCount();
-  }, [chatId, db, sources]);
-
-  useEffect(() => {
-    loadModels();
-  }, [chatId, loadModels]);
+  const enabledSources =
+    chat?.enabledSources || phantomChat?.enabledSources || [];
 
   const handlePresentModelSheet = useCallback(() => {
     modelBottomSheetModalRef.current?.present();
@@ -91,8 +98,13 @@ export default function ChatScreen({
 
     setUserInput('');
     updateLastUsed(chatId!);
+    const context = await prepareContext(
+      userInput,
+      enabledSources,
+      vectorStore!
+    );
 
-    await sendChatMessage(userInput, chatId!, vectorStore!);
+    await sendChatMessage(userInput, chatId!, context);
   };
 
   const handleSelectModel = async (selectedModel: Model) => {
@@ -133,7 +145,7 @@ export default function ChatScreen({
           model={model}
           scrollRef={scrollRef}
           isAtBottom={isAtBottom}
-          activeSourcesCount={activeSourcesCount}
+          activeSourcesCount={enabledSources.length}
         />
       </View>
 
@@ -143,8 +155,8 @@ export default function ChatScreen({
       />
       <SourceSelectSheet
         bottomSheetModalRef={sourceBottomSheetModalRef}
+        enabledSources={enabledSources}
         chatId={chatId}
-        onSourcesChanged={setActiveSourcesCount}
       />
     </CustomKeyboardAvoidingView>
   );

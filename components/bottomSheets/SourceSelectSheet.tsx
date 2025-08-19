@@ -28,14 +28,14 @@ import EmptySourcesView from './source-select/EmptySourcesView';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
+  enabledSources: number[];
   chatId: number | null;
-  onSourcesChanged: (count: number) => void;
 }
 
 const SourceSelectSheet = ({
   bottomSheetModalRef,
+  enabledSources,
   chatId,
-  onSourcesChanged,
 }: Props) => {
   const { theme } = useTheme();
   const { sources } = useSourceStore();
@@ -51,11 +51,9 @@ const SourceSelectSheet = ({
   const filteredSources = deactivatedSources.filter((source) =>
     source.name.toLowerCase().includes(search.toLowerCase())
   );
-
   useEffect(() => {
     const loadSources = async () => {
       if (chatId) {
-        const enabledSources = await getSourcesEnabledInChat(db, chatId);
         const activeSources = sources.filter((source) =>
           enabledSources.includes(source.id)
         );
@@ -68,7 +66,7 @@ const SourceSelectSheet = ({
     };
 
     loadSources();
-  }, [chatId, sources]);
+  }, [chatId, enabledSources, sources]);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -101,7 +99,6 @@ const SourceSelectSheet = ({
       setDeactivatedSources((prev) =>
         prev.filter((source) => source.id !== enabledSource.id)
       );
-      onSourcesChanged(updatedActiveSources.length);
     }
   };
 

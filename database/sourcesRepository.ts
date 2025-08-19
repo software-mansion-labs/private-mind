@@ -46,7 +46,7 @@ export const getSourcesEnabledInChat = async (
   chatId: number
 ) => {
   const result = await db.getAllAsync<{ chatId: number; sourceId: number }>(
-    `SELECT * FROM chat_sources WHERE chatId = ?`,
+    `SELECT * FROM chatSources WHERE chatId = ?`,
     [chatId]
   );
 
@@ -59,7 +59,7 @@ export const deactivateSource = async (
   sourceId: number
 ) => {
   await db.runAsync(
-    `DELETE FROM chat_sources WHERE chatId = ? AND sourceId = ?`,
+    `DELETE FROM chatSources WHERE chatId = ? AND sourceId = ?`,
     [chatId, sourceId]
   );
 };
@@ -70,7 +70,7 @@ export const activateSource = async (
   sourceId: number
 ) => {
   await db.runAsync(
-    `INSERT INTO chat_sources (chatId, sourceId) VALUES (?, ?)`,
+    `INSERT INTO chatSources (chatId, sourceId) VALUES (?, ?)`,
     [chatId, sourceId]
   );
 };
@@ -80,7 +80,7 @@ export const deleteSourceFromChats = async (
   source: Source
 ) => {
   const chats = await db.getAllAsync<{ chatId: number }>(
-    `SELECT chatId FROM chat_sources WHERE sourceId = ?`,
+    `SELECT chatId FROM chatSources WHERE sourceId = ?`,
     [source.id]
   );
 
@@ -101,5 +101,9 @@ export const deleteSourceFromChats = async (
     })
   );
 
-  await db.runAsync(`DELETE FROM chat_sources WHERE sourceId = ?`, [source.id]);
+  await db.runAsync(`DELETE FROM chatSources WHERE sourceId = ?`, [source.id]);
+};
+
+export const clearPhantomChat = async (db: SQLiteDatabase, chatId: number) => {
+  await db.runAsync(`DELETE FROM messages WHERE chatId = ?`, [chatId]);
 };

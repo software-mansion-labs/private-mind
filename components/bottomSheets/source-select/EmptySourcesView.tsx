@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../../styles/fontStyles';
 import { Theme } from '../../../styles/colors';
@@ -14,14 +13,13 @@ interface Props {
 const EmptySourcesView = ({ onUploadSource }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingBottom: 16 + insets.bottom }]}>
+    <View style={styles.container}>
       <Text style={styles.title}>Use source files</Text>
       <Text style={styles.subText}>
-        Add text documents the model will use to extend the knowledge used
-        for responses.
+        Add text documents the model will use to extend the knowledge used for
+        responses.
       </Text>
       <PrimaryButton
         text="Upload source files"
@@ -45,6 +43,7 @@ const createStyles = (theme: Theme) =>
     container: {
       gap: 24,
       paddingHorizontal: 16,
+      paddingBottom: theme.insets.bottom + 16,
     },
     title: {
       fontSize: fontSizes.lg,

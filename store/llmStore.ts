@@ -14,8 +14,6 @@ import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkReposito
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
 import { Feedback } from '../utils/Feedback';
-import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
-import { getSourcesEnabledInChat } from '../database/sourcesRepository';
 
 interface LLMStore {
   isLoading: boolean;
@@ -38,7 +36,7 @@ interface LLMStore {
   sendChatMessage: (
     newMessage: string,
     chatId: number,
-    vectorStore: OPSQLiteVectorStore
+    context: string[]
   ) => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   interrupt: () => void;
@@ -88,28 +86,6 @@ const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
   };
 };
 
-const prepareContext = async (
-  db: SQLiteDatabase,
-  prompt: string,
-  chatId: number,
-  vectorStore: OPSQLiteVectorStore
-) => {
-  let context = await vectorStore.similaritySearch(
-    prompt,
-    K_DOCUMENTS_TO_RETRIEVE
-  );
-  const enabledSources = await getSourcesEnabledInChat(db, chatId);
-  context = context.filter((item) => {
-    return enabledSources.includes(item.metadata?.documentId);
-  });
-
-  const preparedContext = context.map((item) => {
-    return `${item.content}`;
-  });
-
-  return preparedContext;
-};
-
 export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
   isGenerating: false,
@@ -128,8 +104,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   setDB: (db) => set({ db }),
 
   setActiveChatId: async (chatId: number) => {
+    const db = get().db;
+    if (!db) {
+      console.warn('Database not initialized');
+      return;
+    }
     //Once the user selects a chat room, we load the messages for that chat and set it as the active chat.
-    const messageHistory = await getChatMessages(get().db!, chatId);
+    const messageHistory = await getChatMessages(db, chatId);
     set({ activeChatId: chatId, activeChatMessages: messageHistory });
   },
 
@@ -188,7 +169,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
-  sendChatMessage: async (newMessage, chatId, vectorStore) => {
+  sendChatMessage: async (newMessage, chatId, context) => {
     const { db, model: currentModel, activeChatMessages } = get();
     if (!db || !currentModel) {
       console.warn('LLM not ready or DB not set');
@@ -227,15 +208,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       });
 
       const settings = await getChatSettings(db, chatId);
-      const llmContext = await prepareContext(
-        db,
-        newMessage,
-        chatId,
-        vectorStore
-      );
 
       const systemPrompt = settings.systemPrompt.concat(
-        `Context: ${llmContext.join(', ')}`
+        `Context: ${context.join(', ')}`
       );
 
       const filteredMessages: ExecutorchMessage[] =
@@ -245,7 +220,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           }
           return acc;
         }, []);
-
       const contextWindow = settings.contextWindow;
       const messagesWithSystemPrompt: ExecutorchMessage[] = [
         { role: 'system', content: systemPrompt },

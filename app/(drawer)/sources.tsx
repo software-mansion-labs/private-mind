@@ -44,7 +44,7 @@ const SourcesScreen = () => {
         There are no source files to display yet
       </Text>
       <SecondaryButton
-        style={{ width: '100%', height: 40 }}
+        style={styles.emptyButton}
         icon={
           <UploadIcon
             width={18}
@@ -76,7 +76,7 @@ const SourcesScreen = () => {
         <FlatList
           data={filteredSources}
           keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={{ gap: 8 }}
+          contentContainerStyle={styles.listContainerStyle}
           ListEmptyComponent={renderEmptyState}
           renderItem={({ item }) => (
             <SourceCard
@@ -114,8 +114,8 @@ const createStyles = (theme: Theme) =>
       paddingTop: 16,
       paddingHorizontal: 16,
     },
-    horizontalInset: {
-      paddingHorizontal: 16,
+    listContainerStyle: {
+      gap: 8,
     },
     noSourcesContainer: {
       justifyContent: 'center',
@@ -131,9 +131,9 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.sm,
       color: theme.text.defaultTertiary,
     },
-    modelScrollContent: {
-      // 56 is the FAB size
-      paddingBottom: theme.insets.bottom + 16 + 56,
+    emptyButton: {
+      width: '100%',
+      height: 40,
     },
     actionButton: {
       borderRadius: 9999,

@@ -113,7 +113,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   `);
 
   await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS chat_sources (
+    CREATE TABLE IF NOT EXISTS chatSources (
       chatId INTEGER NOT NULL,
       sourceId INTEGER NOT NULL,
       PRIMARY KEY (chatId, sourceId),
