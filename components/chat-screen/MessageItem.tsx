@@ -77,9 +77,11 @@ const MessageItem = memo(
       <>
         {role === 'event' ? (
           <View style={styles.eventMessage}>
-            <Text style={styles.eventMessageText}>
+            <Text style={styles.eventMessageFileName}>
               {content.split(' ')[0]}{' '}
-              <Text style={{}}>{content.slice(content.indexOf(' ') + 1)}</Text>
+              <Text style={styles.eventMessageText}>
+                {content.slice(content.indexOf(' ') + 1)}
+              </Text>
             </Text>
           </View>
         ) : (
@@ -175,10 +177,17 @@ const createStyles = (theme: Theme) =>
       marginBottom: 24,
       flexDirection: 'row',
     },
+    eventMessageFileName: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.xs,
+      color: theme.text.defaultSecondary,
+      textAlign: 'center',
+    },
     eventMessageText: {
       fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
+      fontSize: fontSizes.xs,
       color: theme.text.defaultTertiary,
+      textAlign: 'center',
     },
     bubbleContent: {
       width: '100%',

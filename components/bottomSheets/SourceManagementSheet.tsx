@@ -26,6 +26,7 @@ import { Source } from '../../database/sourcesRepository';
 import { useSQLiteContext } from 'expo-sqlite';
 import TextInputBorder from '../TextInputBorder';
 import { useSourceStore } from '../../store/sourceStore';
+import { useChatStore } from '../../store/chatStore';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -46,6 +47,7 @@ const SheetContent = ({
 }) => {
   const { theme } = useTheme();
   const { deleteSource, renameSource } = useSourceStore();
+  const { loadChats } = useChatStore();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const db = useSQLiteContext();
 
@@ -69,6 +71,8 @@ const SheetContent = ({
 
   const handleDeleteSource = useCallback(async () => {
     await deleteSource(source);
+    await loadChats();
+
     Toast.show({
       type: 'defaultToast',
       text1: `Source file has been successfully removed`,

@@ -41,9 +41,12 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
   loadSources: async () => {
     const db = get().db;
     if (!db) return;
-
-    const sources = await getAllSources(db);
-    set({ sources });
+    try {
+      const sources = await getAllSources(db);
+      set({ sources });
+    } catch (e) {
+      console.error(e);
+    }
   },
 
   addSource: async (source, sourceUri, vectorStore) => {
@@ -55,13 +58,13 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     get().loadSources();
 
     if (sourceId) {
-      const sourceTextContent = readPDF(normalizedUri);
-      const textSplitter = new RecursiveCharacterTextSplitter({
-        chunkSize: TEXT_SPLITTER_CHUNK_SIZE,
-        chunkOverlap: TEXT_SPLITTER_CHUNK_OVERLAP,
-      });
-
       try {
+        const sourceTextContent = readPDF(normalizedUri);
+        const textSplitter = new RecursiveCharacterTextSplitter({
+          chunkSize: TEXT_SPLITTER_CHUNK_SIZE,
+          chunkOverlap: TEXT_SPLITTER_CHUNK_OVERLAP,
+        });
+
         const chunks = await textSplitter.splitText(sourceTextContent);
 
         for (let i = 0; i < chunks.length; i++) {
@@ -77,9 +80,12 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
   deleteSource: async (source: Source) => {
     const db = get().db;
     if (!db) return;
-
-    await deleteSource(db, source.id);
-    await deleteSourceFromChats(db, source);
+    try {
+      await deleteSource(db, source.id);
+      await deleteSourceFromChats(db, source);
+    } catch (e) {
+      console.error(e);
+    }
     get().loadSources();
 
     useLLMStore.getState().refreshActiveChatMessages();
@@ -88,8 +94,11 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
   renameSource: async (id, newName) => {
     const db = get().db;
     if (!db) return;
-
-    await renameSource(db, id, newName);
+    try {
+      await renameSource(db, id, newName);
+    } catch (e) {
+      console.error(e);
+    }
     get().loadSources();
   },
 }));

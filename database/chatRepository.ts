@@ -56,7 +56,21 @@ export const createChat = async (
 };
 
 export const getAllChats = async (db: SQLiteDatabase): Promise<Chat[]> => {
-  return await db.getAllAsync<Chat>(`SELECT * FROM chats ORDER BY id DESC`);
+  const chats = await db.getAllAsync<Chat & { enabledSources: string | null }>(
+    `SELECT c.*, 
+            GROUP_CONCAT(cs.sourceId) as enabledSources
+     FROM chats c
+     LEFT JOIN chatSources cs ON c.id = cs.chatId
+     GROUP BY c.id
+     ORDER BY c.id DESC`
+  );
+
+  return chats.map((chat) => ({
+    ...chat,
+    enabledSources: chat.enabledSources
+      ? chat.enabledSources.split(',').map((id) => parseInt(id, 10))
+      : [],
+  }));
 };
 
 export const getChatMessages = async (

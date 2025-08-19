@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../../styles/fontStyles';
 import { Theme } from '../../../styles/colors';
@@ -33,18 +32,17 @@ const SourceListSection = ({
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
 
   return (
     <>
       <Text style={styles.title}>Select source files</Text>
-      
+
       <BottomSheetSearchInput
         value={search}
         onChangeText={onSearchChange}
         placeholder="Search source files..."
       />
-      
+
       <BottomSheetFlatList
         data={filteredSources}
         keyExtractor={(item) => item.id.toString()}
@@ -68,8 +66,8 @@ const SourceListSection = ({
           />
         )}
       />
-      
-      <View style={[styles.actionButtons, { paddingBottom: insets.bottom + 16 }]}>
+
+      <View style={styles.actionButtons}>
         <SecondaryButton
           icon={
             <UploadIcon
@@ -119,6 +117,7 @@ const createStyles = (theme: Theme) =>
     },
     actionButtons: {
       paddingHorizontal: 16,
+      paddingBottom: theme.insets.bottom + 16,
       gap: 8,
     },
     manageButton: {
