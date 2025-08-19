@@ -13,7 +13,7 @@ interface ModelGroup {
 }
 
 interface Props
-  extends Pick<React.ComponentProps<typeof ModelCard>, 'memoryWarningSheetRef'>,
+  extends Pick<React.ComponentProps<typeof ModelCard>, 'memoryWarningSheetRef' | 'wifiWarningSheetRef'>,
     Pick<ScrollViewProps, 'contentContainerStyle'> {
   groupedModels: ModelGroup[];
   onModelPress: (model: Model) => void;
@@ -23,6 +23,7 @@ const GroupedModelList = ({
   groupedModels,
   onModelPress,
   memoryWarningSheetRef,
+  wifiWarningSheetRef,
   contentContainerStyle,
 }: Props) => {
   const { theme } = useTheme();
@@ -44,6 +45,7 @@ const GroupedModelList = ({
                   model={model}
                   onPress={() => onModelPress(model)}
                   memoryWarningSheetRef={memoryWarningSheetRef}
+                  wifiWarningSheetRef={wifiWarningSheetRef}
                 />
               ))}
             </View>

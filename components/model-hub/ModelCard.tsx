@@ -24,9 +24,10 @@ interface Props {
   model: Model;
   onPress: (model: Model) => void;
   memoryWarningSheetRef?: React.RefObject<BottomSheetModal<Model> | null>;
+  wifiWarningSheetRef?: React.RefObject<BottomSheetModal | null>;
 }
 
-const ModelCard = ({ model, onPress, memoryWarningSheetRef }: Props) => {
+const ModelCard = ({ model, onPress, memoryWarningSheetRef, wifiWarningSheetRef }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -51,6 +52,21 @@ const ModelCard = ({ model, onPress, memoryWarningSheetRef }: Props) => {
     setModelState(downloadState.status);
   }, [downloadState.status]);
 
+  const handleDownloadWithMemoryCheck = async () => {
+    const estimatedRequiredMemory =
+      model.parameters && model.parameters * MEMORY_TO_PARAMETERS_RATIO;
+
+    if (
+      estimatedRequiredMemory &&
+      estimatedRequiredMemory > TOTAL_MEMORY &&
+      memoryWarningSheetRef?.current
+    ) {
+      memoryWarningSheetRef.current?.present(model);
+    } else {
+      await downloadModel(model);
+    }
+  };
+
   const handlePress = async () => {
     if (isDownloading) {
       await cancelDownload(model);
@@ -66,18 +82,15 @@ const ModelCard = ({ model, onPress, memoryWarningSheetRef }: Props) => {
       return;
     }
 
-    const estimatedRequiredMemory =
-      model.parameters && model.parameters * MEMORY_TO_PARAMETERS_RATIO;
-
-    if (
-      estimatedRequiredMemory &&
-      estimatedRequiredMemory > TOTAL_MEMORY &&
-      memoryWarningSheetRef?.current
-    ) {
-      memoryWarningSheetRef.current?.present(model);
-    } else {
-      await downloadModel(model);
+    if (networkState.isConnected && networkState.type !== 'wifi' && wifiWarningSheetRef?.current) {
+      wifiWarningSheetRef.current?.present({
+        model,
+        onDownloadAnyway: handleDownloadWithMemoryCheck,
+      });
+      return;
     }
+
+    await handleDownloadWithMemoryCheck();
   };
 
   const disabled =

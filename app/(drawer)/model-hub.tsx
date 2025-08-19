@@ -10,6 +10,7 @@ import SecondaryButton from '../../components/SecondaryButton';
 import QuestionIcon from '../../assets/icons/question.svg';
 import AddModelSheet from '../../components/bottomSheets/AddModelSheet';
 import MemoryWarningSheet from '../../components/bottomSheets/MemoryWarningSheet';
+import WiFiWarningSheet from '../../components/bottomSheets/WiFiWarningSheet';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import useModelHubData, { ModelHubFilter } from '../../hooks/useModelHubData';
@@ -26,6 +27,7 @@ const ModelHubScreen = () => {
   const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
   const addModelSheetRef = useRef<BottomSheetModal | null>(null);
   const memoryWarningSheetRef = useRef<BottomSheetModal<Model> | null>(null);
+  const wifiWarningSheetRef = useRef<BottomSheetModal | null>(null);
   const { models } = useModelStore();
   const [search, setSearch] = useState('');
   const [activeFilters, setActiveFilters] = useState<Set<ModelHubFilter>>(
@@ -81,6 +83,7 @@ const ModelHubScreen = () => {
             groupedModels={groupedModels}
             onModelPress={handleModelPress}
             memoryWarningSheetRef={memoryWarningSheetRef}
+            wifiWarningSheetRef={wifiWarningSheetRef}
             contentContainerStyle={[
               styles.modelScrollContent,
               styles.horizontalInset,
@@ -94,6 +97,7 @@ const ModelHubScreen = () => {
       <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
       <AddModelSheet bottomSheetModalRef={addModelSheetRef} />
       <MemoryWarningSheet bottomSheetModalRef={memoryWarningSheetRef} />
+      <WiFiWarningSheet bottomSheetModalRef={wifiWarningSheetRef} />
     </CustomKeyboardAvoidingView>
   );
 };
