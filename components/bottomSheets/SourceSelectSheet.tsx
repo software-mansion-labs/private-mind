@@ -13,10 +13,7 @@ import {
 import { View, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
-import {
-  getSourcesEnabledInChat,
-  Source,
-} from '../../database/sourcesRepository';
+import { Source } from '../../database/sourcesRepository';
 import { useSourceStore } from '../../store/sourceStore';
 import { useChatStore } from '../../store/chatStore';
 import { useSQLiteContext } from 'expo-sqlite';
