@@ -10,13 +10,19 @@ import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
-import { Model } from '../../database/modelRepository';
 
-interface Props {
-  bottomSheetModalRef: RefObject<BottomSheetModal<{ model: Model; onDownloadAnyway: () => void }> | null>;
+export interface WarningSheetData {
+  title: string;
+  subtitle: string;
+  buttonTitle?: string;
+  onDownloadAnyway: () => void;
 }
 
-const WiFiWarningSheet = ({ bottomSheetModalRef }: Props) => {
+interface Props {
+  bottomSheetModalRef: RefObject<BottomSheetModal<WarningSheetData> | null>;
+}
+
+const WarningSheet = ({ bottomSheetModalRef }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -43,14 +49,12 @@ const WiFiWarningSheet = ({ bottomSheetModalRef }: Props) => {
     >
       {(props) => (
         <BottomSheetView style={styles.sheet}>
-          <Text style={styles.title}>No WiFi Connection Detected.</Text>
-          <Text style={styles.subText}>
-            Downloading models will use your mobile data, which may incur additional charges from your carrier. We recommend connecting to WiFi for the best experience.
-          </Text>
+          <Text style={styles.title}>{props.data?.title}</Text>
+          <Text style={styles.subText}>{props.data?.subtitle}</Text>
           <View style={styles.buttonGroup}>
             <PrimaryButton
               style={styles.downloadButton}
-              text="Download anyway"
+              text={props.data?.buttonTitle || 'Download anyway'}
               onPress={() => {
                 if (props.data?.onDownloadAnyway) {
                   props.data.onDownloadAnyway();
@@ -71,7 +75,7 @@ const WiFiWarningSheet = ({ bottomSheetModalRef }: Props) => {
   );
 };
 
-export default WiFiWarningSheet;
+export default WarningSheet;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({

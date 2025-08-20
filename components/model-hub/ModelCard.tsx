@@ -9,6 +9,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
+import { WarningSheetData } from '../bottomSheets/WarningSheet';
 import Chip from '../Chip';
 import CircleButton from '../CircleButton';
 import ProcessorIcon from '../../assets/icons/processor.svg';
@@ -23,8 +24,8 @@ const TOTAL_MEMORY = DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024; // in
 interface Props {
   model: Model;
   onPress: (model: Model) => void;
-  memoryWarningSheetRef?: React.RefObject<BottomSheetModal<Model> | null>;
-  wifiWarningSheetRef?: React.RefObject<BottomSheetModal | null>;
+  memoryWarningSheetRef?: React.RefObject<BottomSheetModal<WarningSheetData> | null>;
+  wifiWarningSheetRef?: React.RefObject<BottomSheetModal<WarningSheetData> | null>;
 }
 
 const ModelCard = ({ model, onPress, memoryWarningSheetRef, wifiWarningSheetRef }: Props) => {
@@ -61,7 +62,14 @@ const ModelCard = ({ model, onPress, memoryWarningSheetRef, wifiWarningSheetRef 
       estimatedRequiredMemory > TOTAL_MEMORY &&
       memoryWarningSheetRef?.current
     ) {
-      memoryWarningSheetRef.current?.present(model);
+      memoryWarningSheetRef.current?.present({
+        title: 'Not enough memory to run this model.',
+        subtitle: 'Your device may not have enough RAM to run this model smoothly. In some cases, using quantized models might be a solution due to their smaller size and lower memory requirements.',
+        buttonTitle: 'Download anyway',
+        onDownloadAnyway: async () => {
+          await downloadModel(model);
+        },
+      });
     } else {
       await downloadModel(model);
     }
@@ -84,7 +92,9 @@ const ModelCard = ({ model, onPress, memoryWarningSheetRef, wifiWarningSheetRef 
 
     if (networkState.isConnected && networkState.type !== 'wifi' && wifiWarningSheetRef?.current) {
       wifiWarningSheetRef.current?.present({
-        model,
+        title: 'No WiFi Connection Detected.',
+        subtitle: 'Downloading models will use your mobile data, which may incur additional charges from your carrier. We recommend connecting to WiFi for the best experience.',
+        buttonTitle: 'Download anyway',
         onDownloadAnyway: handleDownloadWithMemoryCheck,
       });
       return;
