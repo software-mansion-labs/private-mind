@@ -9,6 +9,17 @@ import { useChatStore } from '../../../store/chatStore';
 import useChatHeader from '../../../hooks/useChatHeader';
 
 export default function ChatScreenWrapper() {
+  const { id, modelId } = useLocalSearchParams<{
+    id: string;
+    modelId?: string;
+  }>();
+
+  const key = `${id}-${modelId || 'default'}`;
+
+  return <ChatScreenInner key={key} />;
+}
+
+function ChatScreenInner() {
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const { modelId }: { modelId: string } = useLocalSearchParams();
 
@@ -18,12 +29,12 @@ export default function ChatScreenWrapper() {
 
   const chatId = parseInt(rawId);
   const chat = getChatById(chatId);
+
   const resolvedModelId = modelId ?? chat?.modelId;
-  const chatModel = resolvedModelId
+  const resolvedModel = resolvedModelId
     ? getModelById(parseInt(resolvedModelId.toString()))
     : undefined;
-
-  const [model, setModel] = useState<Model | undefined>(chatModel);
+  const [model, setModel] = useState<Model | undefined>(resolvedModel);
   const [isLoading, setIsLoading] = useState(true);
 
   useChatHeader({
