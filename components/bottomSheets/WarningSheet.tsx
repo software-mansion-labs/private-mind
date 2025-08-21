@@ -10,17 +10,21 @@ import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
-import { useModelStore } from '../../store/modelStore';
-import { Model } from '../../database/modelRepository';
 
-interface Props {
-  bottomSheetModalRef: RefObject<BottomSheetModal<Model> | null>;
+export interface WarningSheetData {
+  title: string;
+  subtitle: string;
+  buttonTitle?: string;
+  onDownloadAnyway: () => void;
 }
 
-const MemoryWarningSheet = ({ bottomSheetModalRef }: Props) => {
+interface Props {
+  bottomSheetModalRef: RefObject<BottomSheetModal<WarningSheetData> | null>;
+}
+
+const WarningSheet = ({ bottomSheetModalRef }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { downloadModel } = useModelStore();
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -45,18 +49,16 @@ const MemoryWarningSheet = ({ bottomSheetModalRef }: Props) => {
     >
       {(props) => (
         <BottomSheetView style={styles.sheet}>
-          <Text style={styles.title}>Not enough memory to run this model.</Text>
-          <Text style={styles.subText}>
-            Your device may not have enough RAM to run this model smoothly. In
-            some cases, using quantized models might be a solution due to their
-            smaller size and lower memory requirements.
-          </Text>
+          <Text style={styles.title}>{props.data?.title}</Text>
+          <Text style={styles.subText}>{props.data?.subtitle}</Text>
           <View style={styles.buttonGroup}>
             <PrimaryButton
               style={styles.downloadButton}
-              text="Download anyway"
-              onPress={async () => {
-                if (props.data) downloadModel(props.data);
+              text={props.data?.buttonTitle || 'Download anyway'}
+              onPress={() => {
+                if (props.data?.onDownloadAnyway) {
+                  props.data.onDownloadAnyway();
+                }
                 bottomSheetModalRef.current?.dismiss();
               }}
             />
@@ -73,7 +75,7 @@ const MemoryWarningSheet = ({ bottomSheetModalRef }: Props) => {
   );
 };
 
-export default MemoryWarningSheet;
+export default WarningSheet;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
