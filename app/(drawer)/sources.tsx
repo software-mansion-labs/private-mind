@@ -61,22 +61,27 @@ const SourcesScreen = () => {
   return (
     <CustomKeyboardAvoidingView style={styles.keyboardAvoidingView}>
       <View style={styles.container}>
-        <TextFieldInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search source files..."
-          icon={
-            <SearchIcon
-              width={20}
-              height={20}
-              style={{ color: theme.text.primary }}
-            />
-          }
-        />
+        <View style={styles.horizontalInset}>
+          <TextFieldInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search source files..."
+            icon={
+              <SearchIcon
+                width={20}
+                height={20}
+                style={{ color: theme.text.primary }}
+              />
+            }
+          />
+        </View>
         <FlatList
           data={filteredSources}
           keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContainerStyle}
+          contentContainerStyle={[
+            styles.listContainerStyle,
+            styles.horizontalInset,
+          ]}
           ListEmptyComponent={renderEmptyState}
           renderItem={({ item }) => (
             <SourceCard
@@ -112,10 +117,13 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       gap: 16,
       paddingTop: 16,
+    },
+    horizontalInset: {
       paddingHorizontal: 16,
     },
     listContainerStyle: {
       gap: 8,
+      paddingBottom: theme.insets.bottom + 16 + 56,
     },
     noSourcesContainer: {
       justifyContent: 'center',
