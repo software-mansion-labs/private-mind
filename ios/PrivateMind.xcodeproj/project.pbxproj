@@ -394,7 +394,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.swmansion.privatemind325434234434532332fe;
+				PRODUCT_BUNDLE_IDENTIFIER = com.swmansion.privatemind;
 				PRODUCT_NAME = PrivateMind;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -431,7 +431,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.swmansion.privatemind325434234434532332fe;
+				PRODUCT_BUNDLE_IDENTIFIER = com.swmansion.privatemind;
 				PRODUCT_NAME = PrivateMind;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

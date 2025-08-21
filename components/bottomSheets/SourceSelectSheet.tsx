@@ -1,7 +1,6 @@
 import React, {
   RefObject,
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -16,7 +15,6 @@ import { Theme } from '../../styles/colors';
 import { Source } from '../../database/sourcesRepository';
 import { useSourceStore } from '../../store/sourceStore';
 import { useChatStore } from '../../store/chatStore';
-import { useSQLiteContext } from 'expo-sqlite';
 import { useLLMStore } from '../../store/llmStore';
 import { useSourceUpload } from '../../hooks/useSourceUpload';
 import ActiveSourcesSection from './source-select/ActiveSourcesSection';
@@ -38,32 +36,19 @@ const SourceSelectSheet = ({
   const { sources } = useSourceStore();
   const { enableSource } = useChatStore();
   const { sendEventMessage } = useLLMStore();
-  const db = useSQLiteContext();
   const { uploadSource } = useSourceUpload();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [search, setSearch] = useState('');
-  const [activeSources, setActiveSources] = useState<Source[]>([]);
-  const [deactivatedSources, setDeactivatedSources] = useState<Source[]>([]);
 
+  const activeSources = sources.filter((source) =>
+    enabledSources.includes(source.id)
+  );
+  const deactivatedSources = sources.filter(
+    (source) => !enabledSources.includes(source.id)
+  );
   const filteredSources = deactivatedSources.filter((source) =>
     source.name.toLowerCase().includes(search.toLowerCase())
   );
-  useEffect(() => {
-    const loadSources = async () => {
-      if (chatId) {
-        const activeSources = sources.filter((source) =>
-          enabledSources.includes(source.id)
-        );
-        const deactivatedSources = sources.filter(
-          (source) => !enabledSources.includes(source.id)
-        );
-        setActiveSources(activeSources);
-        setDeactivatedSources(deactivatedSources);
-      }
-    };
-
-    loadSources();
-  }, [chatId, enabledSources, sources]);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -83,18 +68,6 @@ const SourceSelectSheet = ({
       await sendEventMessage(
         chatId,
         `${enabledSource.name} has been added as a source file`
-      );
-      const updatedActiveSources = activeSources.some(
-        (source) => source.id === enabledSource.id
-      )
-        ? activeSources.filter((source) => source.id !== enabledSource.id)
-        : [
-            ...activeSources,
-            sources.find((source) => source.id === enabledSource.id)!,
-          ];
-      setActiveSources(updatedActiveSources);
-      setDeactivatedSources((prev) =>
-        prev.filter((source) => source.id !== enabledSource.id)
       );
     }
   };
