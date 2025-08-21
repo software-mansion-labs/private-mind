@@ -10,7 +10,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import EntryButton from '../EntryButton';
 import ModelCard from '../model-hub/ModelCard';
-import ThrashIcon from '../../assets/icons/trash.svg';
+import TrashIcon from '../../assets/icons/trash.svg';
 import EditIcon from '../../assets/icons/edit.svg';
 import CrossCircleIcon from '../../assets/icons/cross-circle.svg';
 import { useModelStore } from '../../store/modelStore';
@@ -82,9 +82,9 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
                 <EntryButton
                   text="Delete downloaded files"
                   icon={
-                    <ThrashIcon
-                      width={18}
-                      height={19}
+                    <TrashIcon
+                      width={24}
+                      height={24}
                       style={styles.iconImportant}
                     />
                   }
