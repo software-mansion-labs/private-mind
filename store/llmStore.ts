@@ -77,6 +77,8 @@ const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
   };
 };
 
+const llmInstance = new LLMModule();
+
 export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
   isGenerating: false,
@@ -106,19 +108,20 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       return;
     }
     if (currentModel) {
-      LLMModule.delete();
+      llmInstance.delete();
     }
 
     set({ isLoading: true, model: model });
 
     try {
-      await LLMModule.load({
+      await llmInstance.load({
         modelSource: model.modelPath,
         tokenizerSource: model.tokenizerPath,
         tokenizerConfigSource: model.tokenizerConfigPath,
-        responseCallback: (response) => {
-          // The first callback is called with an empty string when we load the model, we ignore it.
-          if (response === '') return;
+      });
+
+      llmInstance.setTokenCallback({
+        tokenCallback: (token) => {
           const isFirstToken = get().performance.tokenCount === 0;
           if (isFirstToken && !get().isBenchmarking) {
             Feedback.success();
@@ -132,14 +135,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
                 : get().performance.firstTokenTime,
             },
           });
-          /* This check ensures that after we leave the chat, 
+          /* This check ensures that after we leave the chat,
           new messags history won't be overwritten by token send after interrupt.
           */
           if (get().generatingForChatId === get().activeChatId) {
             set({
               activeChatMessages: get().activeChatMessages.map((msg, index) =>
                 index === get().activeChatMessages.length - 1
-                  ? { ...msg, content: response }
+                  ? { ...msg, content: msg.content + token }
                   : msg
               ),
             });
@@ -223,7 +226,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       });
 
       const startTime = performance.now();
-      const finalResponse = await LLMModule.generate(messagesWithSystemPrompt);
+      const finalResponse = await llmInstance.generate(messagesWithSystemPrompt);
       const endTime = performance.now();
 
       if (finalResponse) {
@@ -276,7 +279,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       memoryTracker.start();
 
       const startTime = performance.now();
-      await LLMModule.generate([
+      await llmInstance.generate([
         {
           role: 'system',
           content:
@@ -313,7 +316,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
   interrupt: () => {
     if (get().isGenerating) {
-      LLMModule.interrupt();
+      llmInstance.interrupt();
       set({ isGenerating: false, isProcessingPrompt: false });
     } else if (get().isProcessingPrompt) {
       set({ isProcessingPrompt: false });
