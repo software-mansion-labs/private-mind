@@ -21,8 +21,10 @@ import { ScrollView } from 'react-native-gesture-handler';
 import SendIcon from '../../assets/icons/send_icon.svg';
 import PauseIcon from '../../assets/icons/pause_icon.svg';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
+import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import { Theme } from '../../styles/colors';
 import CircleButton from '../CircleButton';
+import ChatSpeechInput from './ChatSpeechInput';
 
 interface Props {
   chatId: number | null;
@@ -59,6 +61,14 @@ const ChatBar = ({
     model: loadedModel,
   } = useLLMStore();
 
+  const loadSelectedModel = async () => {
+    if (model?.isDownloaded && loadedModel?.id !== model.id) {
+      return loadModel(model);
+    }
+  };
+
+  const [showSpeechInput, setShowSpeechInput] = React.useState(false);
+
   const renderButtons = () => {
     if (isGenerating || isProcessingPrompt) {
       return (
@@ -83,8 +93,36 @@ const ChatBar = ({
       );
     }
 
-    return null
+    return (
+      <TouchableOpacity
+        style={styles.barButton}
+        onPress={() => {
+          loadSelectedModel();
+          setShowSpeechInput(true);
+        }}
+      >
+        <SoundwaveIcon width={20} height={20} style={styles.iconContrast} />
+      </TouchableOpacity>
+    );
   };
+
+  if (showSpeechInput) {
+    const handleSubmit = (transcript: string) => {
+      setShowSpeechInput(false);
+      if (transcript) {
+        onSend(transcript);
+      }
+    };
+
+    return (
+      <View style={styles.container}>
+        <ChatSpeechInput
+          onSubmit={handleSubmit}
+          onCancel={() => setShowSpeechInput(false)}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -106,9 +144,7 @@ const ChatBar = ({
             multiline
             onFocus={async () => {
               if (!isAtBottom) return;
-              if (loadedModel?.id !== model.id) {
-                await loadModel(model);
-              }
+              await loadSelectedModel();
               setTimeout(() => {
                 scrollRef.current?.scrollToEnd({ animated: true });
               }, 25);
@@ -174,5 +210,14 @@ const createStyles = (theme: Theme) =>
     buttonBar: {
       justifyContent: 'center',
       alignItems: 'flex-end',
+    },
+    barButton: {
+      width: 36,
+      height: 36,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    iconContrast: {
+      color: theme.text.contrastPrimary,
     },
   });
