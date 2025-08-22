@@ -1,4 +1,10 @@
-import React, { Ref, RefObject, useMemo } from 'react';
+import React, {
+  Ref,
+  RefObject,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from 'react';
 import {
   View,
   TextInput,
@@ -20,11 +26,9 @@ import CircleButton from '../CircleButton';
 
 interface Props {
   chatId: number | null;
-  userInput: string;
-  setUserInput: (text: string) => void;
-  onSend: () => void;
+  onSend: (userInput: string) => void;
   onSelectModel: () => void;
-  inputRef: Ref<TextInput>;
+  ref: Ref<{ clear: () => void }>;
   model: Model | undefined;
   scrollRef: RefObject<ScrollView | null>;
   isAtBottom: boolean;
@@ -32,17 +36,20 @@ interface Props {
 
 const ChatBar = ({
   chatId,
-  userInput,
-  setUserInput,
   onSend,
   onSelectModel,
-  inputRef,
+  ref,
   model,
   scrollRef,
   isAtBottom,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const textInputRef = React.useRef<TextInput>(null);
+  const [userInput, setUserInput] = useState('');
+
+  useImperativeHandle(ref, () => ({ clear: () => setUserInput('') }), []);
 
   const {
     isGenerating,
@@ -51,6 +58,33 @@ const ChatBar = ({
     loadModel,
     model: loadedModel,
   } = useLLMStore();
+
+  const renderButtons = () => {
+    if (isGenerating || isProcessingPrompt) {
+      return (
+        <CircleButton
+          icon={PauseIcon}
+          size={13.33}
+          onPress={interrupt}
+          backgroundColor={theme.bg.main}
+          color={theme.text.contrastPrimary}
+        />
+      );
+    }
+
+    if (userInput) {
+      return (
+        <CircleButton
+          icon={SendIcon}
+          onPress={() => onSend(userInput)}
+          backgroundColor={theme.bg.main}
+          color={theme.text.contrastPrimary}
+        />
+      );
+    }
+
+    return null
+  };
 
   return (
     <View style={styles.container}>
@@ -68,7 +102,6 @@ const ChatBar = ({
       {model?.isDownloaded && (
         <View style={styles.content}>
           <TextInput
-            ref={inputRef}
             style={styles.input}
             multiline
             onFocus={async () => {
@@ -86,26 +119,7 @@ const ChatBar = ({
             onChangeText={setUserInput}
             numberOfLines={3}
           />
-          <View style={styles.buttonBar}>
-            {userInput && !isGenerating && !isProcessingPrompt ? (
-              <CircleButton
-                icon={SendIcon}
-                onPress={onSend}
-                backgroundColor={theme.bg.main}
-                color={theme.text.contrastPrimary}
-              />
-            ) : null}
-
-            {(isGenerating || isProcessingPrompt) && (
-              <CircleButton
-                icon={PauseIcon}
-                size={13.33}
-                onPress={interrupt}
-                backgroundColor={theme.bg.main}
-                color={theme.text.contrastPrimary}
-              />
-            )}
-          </View>
+          <View style={styles.buttonBar}>{renderButtons()}</View>
         </View>
       )}
     </View>
@@ -119,12 +133,9 @@ const createStyles = (theme: Theme) =>
     container: {
       flexDirection: 'column',
       justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: theme.bg.softPrimary,
       paddingHorizontal: 16,
     },
     modelSelection: {
-      width: '100%',
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
@@ -144,7 +155,6 @@ const createStyles = (theme: Theme) =>
     content: {
       flexDirection: 'row',
       alignItems: 'center',
-      width: '100%',
       height: 68,
       borderRadius: 18,
       paddingHorizontal: 16,
