@@ -1,4 +1,10 @@
-import React, { Ref, RefObject, useMemo } from 'react';
+import React, {
+  Ref,
+  RefObject,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from 'react';
 import {
   View,
   TextInput,
@@ -17,12 +23,10 @@ import ChatBarActions from './ChatBarActions';
 
 interface Props {
   chatId: number | null;
-  userInput: string;
-  setUserInput: (text: string) => void;
-  onSend: () => void;
+  onSend: (userInput: string) => void;
   onSelectModel: () => void;
   onSelectSource: () => void;
-  inputRef: Ref<TextInput>;
+  ref: Ref<{ clear: () => void }>;
   model: Model | undefined;
   scrollRef: RefObject<ScrollView | null>;
   isAtBottom: boolean;
@@ -31,12 +35,10 @@ interface Props {
 
 const ChatBar = ({
   chatId,
-  userInput,
-  setUserInput,
   onSend,
   onSelectModel,
   onSelectSource,
-  inputRef,
+  ref,
   model,
   scrollRef,
   isAtBottom,
@@ -44,6 +46,11 @@ const ChatBar = ({
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const textInputRef = React.useRef<TextInput>(null);
+  const [userInput, setUserInput] = useState('');
+
+  useImperativeHandle(ref, () => ({ clear: () => setUserInput('') }), []);
 
   const {
     isGenerating,
@@ -70,7 +77,6 @@ const ChatBar = ({
         <View style={styles.inputContainer}>
           <View style={styles.content}>
             <TextInput
-              ref={inputRef}
               style={styles.input}
               multiline
               onFocus={async () => {
@@ -93,7 +99,7 @@ const ChatBar = ({
             onSelectSource={onSelectSource}
             activeSourcesCount={activeSourcesCount}
             userInput={userInput}
-            onSend={onSend}
+            onSend={() => onSend(userInput)}
             isGenerating={isGenerating}
             isProcessingPrompt={isProcessingPrompt}
             onInterrupt={interrupt}

@@ -90,7 +90,7 @@ export default function ChatScreen({
     sourceBottomSheetModalRef.current?.present();
   }, []);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (userInput: string) => {
     if (!userInput.trim() || isGenerating) return;
     if (!(await checkIfChatExists(db, chatId!))) {
       const newChatTitle =
@@ -101,7 +101,6 @@ export default function ChatScreen({
     inputRef.current?.clear();
     Keyboard.dismiss();
 
-    setUserInput('');
     updateLastUsed(chatId!);
     const context = await prepareContext(
       userInput,
@@ -141,12 +140,10 @@ export default function ChatScreen({
       <View style={styles.barContainer}>
         <ChatBar
           chatId={chatId}
-          userInput={userInput}
-          setUserInput={setUserInput}
           onSend={handleSendMessage}
           onSelectModel={handlePresentModelSheet}
           onSelectSource={handlePresentSourceSheet}
-          inputRef={inputRef}
+          ref={inputRef}
           model={model}
           scrollRef={scrollRef}
           isAtBottom={isAtBottom}
