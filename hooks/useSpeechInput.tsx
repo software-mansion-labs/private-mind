@@ -1,6 +1,9 @@
 import { useCallback, useRef, useState } from 'react';
 import { AudioManager, AudioRecorder } from 'react-native-audio-api';
-import { useSpeechToText, WHISPER_TINY_EN } from 'react-native-executorch';
+import {
+  SpeechToTextModelConfig,
+  useSpeechToText,
+} from 'react-native-executorch';
 import { OnAudioReadyEventType } from 'react-native-audio-api/lib/typescript/events/types';
 import { useStableCallback } from './useStableCallback';
 
@@ -25,6 +28,13 @@ const SAMPLE_RATE = 16000;
 const AUDIO_LENGTH_SECONDS = 0.15;
 const BUFFER_LENGTH = Math.floor(SAMPLE_RATE * AUDIO_LENGTH_SECONDS);
 
+const WHISPER_TINY_EN_ASSETS: SpeechToTextModelConfig = {
+  decoderSource: require('../assets/models/whisper-tiny-en/whisper_tiny_en_decoder_xnnpack.pte'),
+  encoderSource: require('../assets/models/whisper-tiny-en/whisper_tiny_en_encoder_xnnpack.pte'),
+  tokenizerSource: require('../assets/models/whisper-tiny-en/tokenizer.json'),
+  isMultilingual: false,
+};
+
 export function useSpeechInput({ onAudioData }: Options = {}): Result {
   const [listeningStatus, setListeningStatus] =
     useState<Result['status']>('idle');
@@ -37,7 +47,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
     });
   }
 
-  const stt = useSpeechToText({ model: WHISPER_TINY_EN });
+  const stt = useSpeechToText({ model: WHISPER_TINY_EN_ASSETS });
   const status = stt.isReady ? listeningStatus : 'loading';
 
   const handleAudioData = useStableCallback(
