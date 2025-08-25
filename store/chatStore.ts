@@ -107,6 +107,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         },
         ...state.chats,
       ],
+      phantomChat: undefined,
     }));
 
     return newChatId;
