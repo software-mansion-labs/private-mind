@@ -44,7 +44,6 @@ interface LLMStore {
   refreshActiveChatMessages: () => Promise<void>;
 }
 
-const K_DOCUMENTS_TO_RETRIEVE = 5;
 const llmInstance = new LLMModule();
 
 const calculatePerformanceMetrics = (
