@@ -5647,6 +5647,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"jsonrepair@npm:^3.12.0":
+  version: 3.13.0
+  resolution: "jsonrepair@npm:3.13.0"
+  bin:
+    jsonrepair: bin/cli.js
+  checksum: 509a9d9341e941d97ba4577a5877e4fe405e624857ed4c82d877557af99e8869c945139a8d0c2ccbf5fb835419daad4f908cba28ee95b707e02703e1634192f3
+  languageName: node
+  linkType: hard
+
+"jsonschema@npm:^1.5.0":
+  version: 1.5.0
+  resolution: "jsonschema@npm:1.5.0"
+  checksum: 170b9c375967bc135f4d029fedc31f5686f2c3bb07e7472cebddbb907b5369bf75a1a50287d6af9c31f61c76fe0b7786e78044c188aaddd329b77d856475e6db
+  languageName: node
+  linkType: hard
+
 "kind-of@npm:^6.0.2":
   version: 6.0.3
   resolution: "kind-of@npm:6.0.3"
@@ -5843,7 +5859,7 @@ __metadata:
     react: 19.0.0
     react-native: 0.79.5
     react-native-device-info: ^14.0.4
-    react-native-executorch: 0.4.7
+    react-native-executorch: 0.5.1
     react-native-gesture-handler: ~2.24.0
     react-native-keyboard-controller: ^1.18.1
     react-native-loading-spinner-overlay: ^3.0.1
@@ -7440,19 +7456,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-executorch@npm:0.4.7":
-  version: 0.4.7
-  resolution: "react-native-executorch@npm:0.4.7"
+"react-native-executorch@npm:0.5.1":
+  version: 0.5.1
+  resolution: "react-native-executorch@npm:0.5.1"
   dependencies:
     "@huggingface/jinja": ^0.5.0
     expo: ^53.0.7
     expo-asset: ~11.1.5
     expo-file-system: ~18.1.10
-    react-native-live-audio-stream: ^1.1.1
+    jsonrepair: ^3.12.0
+    jsonschema: ^1.5.0
+    zod: ^3.25.0
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 8fcc8e7382e2a545faafa8c45cb42a97c6669d595d5b42d3a4d31871fdb4e6e0055b7e8aa362da859497c7eb6439ed7a4251a97b5abe37d48772d9c93ff75132
+  checksum: 63bac8781d71b5488512a35cd96c7ff4cb63e4018bd49ce9e47a5a00f6b735269e0d09e5fe6b6207c9931cb0b667082bf769b22e859b0c069afb3b10e58f29a4
   languageName: node
   linkType: hard
 
@@ -7509,13 +7527,6 @@ __metadata:
     react-native: "*"
     react-native-reanimated: ">=3.0.0"
   checksum: b2f59af84ed422c2af088c9abde07be11cb88489e3aa34c26d08262fb5092f2ae1df6a2db785d506ec61c4b159b54fda4fa3dc11a6a035c7645524e0931610bb
-  languageName: node
-  linkType: hard
-
-"react-native-live-audio-stream@npm:^1.1.1":
-  version: 1.1.1
-  resolution: "react-native-live-audio-stream@npm:1.1.1"
-  checksum: 1503fb1d9e2df58bf31bfa9ee3cf5167802a659ec64e3a6ca8ba2401b6388af158f9e04895699152e91eec66bcc949a3f35ae38fb63435ae28959b5be56bbd2e
   languageName: node
   linkType: hard
 
@@ -9080,6 +9091,13 @@ __metadata:
   version: 0.1.0
   resolution: "yocto-queue@npm:0.1.0"
   checksum: f77b3d8d00310def622123df93d4ee654fc6a0096182af8bd60679ddcdfb3474c56c6c7190817c84a2785648cdee9d721c0154eb45698c62176c322fb46fc700
+  languageName: node
+  linkType: hard
+
+"zod@npm:^3.25.0":
+  version: 3.25.76
+  resolution: "zod@npm:3.25.76"
+  checksum: c9a403a62b329188a5f6bd24d5d935d2bba345f7ab8151d1baa1505b5da9f227fb139354b043711490c798e91f3df75991395e40142e6510a4b16409f302b849
   languageName: node
   linkType: hard
 
