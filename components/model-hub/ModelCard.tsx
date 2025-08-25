@@ -161,13 +161,9 @@ const ModelCard = ({ model, onPress, memoryWarningSheetRef, wifiWarningSheetRef 
           <CircleButton
             onPress={handlePress}
             backgroundColor={theme.bg.errorSecondary}
-            icon={
-              <CloseIcon
-                width={13.33}
-                height={13.33}
-                style={styles.iconPrimary}
-              />
-            }
+            color={theme.text.primary}
+            icon={CloseIcon}
+            size={13.33}
           />
         )}
 
@@ -175,9 +171,9 @@ const ModelCard = ({ model, onPress, memoryWarningSheetRef, wifiWarningSheetRef 
           <CircleButton
             onPress={handlePress}
             backgroundColor={theme.bg.softSecondary}
-            icon={
-              <DownloadIcon width={15} height={15} style={styles.iconPrimary} />
-            }
+            color={theme.text.primary}
+            icon={DownloadIcon}
+            size={15}
           />
         )}
       </View>
@@ -223,9 +219,6 @@ const createStyles = (theme: Theme) =>
     name: {
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
-      color: theme.text.primary,
-    },
-    iconPrimary: {
       color: theme.text.primary,
     },
     iconSecondary: {

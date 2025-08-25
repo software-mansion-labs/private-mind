@@ -1,13 +1,22 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, TouchableOpacity } from 'react-native';
+import { SvgComponent } from '../utils/SvgComponent';
 
 interface Props {
-  icon: React.ReactNode;
+  icon: SvgComponent;
+  size?: number;
   backgroundColor: string;
+  color: string;
   onPress: () => void;
 }
 
-const CircleButton = ({ icon, backgroundColor, onPress }: Props) => {
+const CircleButton = ({
+  icon: Icon,
+  size = 20,
+  backgroundColor,
+  color,
+  onPress,
+}: Props) => {
   const styles = useMemo(
     () => createStyles(backgroundColor),
     [backgroundColor]
@@ -15,7 +24,7 @@ const CircleButton = ({ icon, backgroundColor, onPress }: Props) => {
 
   return (
     <TouchableOpacity onPress={onPress} style={styles.circle}>
-      {icon}
+      <Icon width={size} height={size} color={color} />
     </TouchableOpacity>
   );
 };
