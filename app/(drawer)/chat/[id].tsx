@@ -1,7 +1,7 @@
-import React from 'react';
-import { useLocalSearchParams } from 'expo-router';
+import React, { useCallback } from 'react';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useLLMStore } from '../../../store/llmStore';
 import { useModelStore } from '../../../store/modelStore';
 import { Model } from '../../../database/modelRepository';
@@ -22,11 +22,10 @@ export default function ChatScreenWrapper() {
 function ChatScreenInner() {
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const { modelId }: { modelId: string } = useLocalSearchParams();
-
   const { activeChatMessages, setActiveChatId } = useLLMStore();
   const { getModelById } = useModelStore();
-  const { getChatById, setChatModel, loadChats } = useChatStore();
-
+  const { getChatById, setChatModel, loadChats, initPhantomChat } =
+    useChatStore();
   const chatId = parseInt(rawId);
   const chat = getChatById(chatId);
 
@@ -42,12 +41,20 @@ function ChatScreenInner() {
     chatModel: model,
   });
 
-  useEffect(() => {
-    (async () => {
-      await setActiveChatId(chatId);
-      setIsLoading(false);
-    })();
-  }, [chatId]);
+  useFocusEffect(
+    useCallback(() => {
+      const initChat = async () => {
+        setIsLoading(true);
+        if (!chat) {
+          await initPhantomChat(chatId);
+        }
+        await setActiveChatId(chatId);
+        setIsLoading(false);
+      };
+
+      initChat();
+    }, [chatId])
+  );
 
   const handleSetModel = async (model: Model) => {
     setChatModel(chatId, model.id);
@@ -58,6 +65,7 @@ function ChatScreenInner() {
   return (
     <ChatScreen
       chatId={chatId}
+      chat={chat}
       messageHistory={isLoading ? [] : activeChatMessages}
       model={model}
       selectModel={handleSetModel}

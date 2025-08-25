@@ -8,10 +8,15 @@ import {
   deleteChat,
   setChatModel,
 } from '../database/chatRepository';
+import {
+  activateSource,
+  clearPhantomChat,
+} from '../database/sourcesRepository';
 
 interface ChatStore {
   chats: Chat[];
   db: SQLiteDatabase | null;
+  phantomChat: Chat | null;
   setDB: (db: SQLiteDatabase) => void;
   loadChats: () => Promise<void>;
   updateLastUsed: (id: number) => void;
@@ -20,12 +25,15 @@ interface ChatStore {
   renameChat: (id: number, newTitle: string) => Promise<void>;
   setChatModel: (id: number, modelId: number) => Promise<void>;
   deleteChat: (id: number) => Promise<void>;
+  enableSource: (chatId: number, sourceId: number) => Promise<void>;
+  initPhantomChat: (chatId: number) => Promise<void>;
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
   chats: [],
   settings: {},
   db: null,
+  phantomChat: null,
 
   setDB: (db) => {
     set({ db });
@@ -39,6 +47,23 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const chats = await getAllChats(db);
     set({
       chats,
+    });
+  },
+
+  initPhantomChat: async (chatId: number) => {
+    const db = get().db;
+    if (!db) return;
+
+    await clearPhantomChat(db, chatId);
+
+    set({
+      phantomChat: {
+        id: chatId,
+        title: '',
+        lastUsed: Date.now(),
+        modelId: -1,
+        enabledSources: [],
+      },
     });
   },
 
@@ -56,6 +81,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   getChatById: (id: number) => {
     const chats = get().chats;
+
     return chats.find((chat) => chat.id === id);
   },
 
@@ -65,12 +91,23 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     const newChatId = await createChat(db, title, modelId);
     if (newChatId === undefined) return;
+    const enabledSources = get().phantomChat?.enabledSources || [];
+    for (const enabledSource of enabledSources) {
+      await activateSource(db, newChatId, enabledSource);
+    }
 
     set((state) => ({
       chats: [
-        { id: newChatId, title: title, lastUsed: Date.now(), modelId: modelId },
+        {
+          id: newChatId,
+          title: title,
+          lastUsed: Date.now(),
+          modelId: modelId,
+          enabledSources: enabledSources,
+        },
         ...state.chats,
       ],
+      phantomChat: undefined,
     }));
 
     return newChatId;
@@ -109,5 +146,31 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set((state) => ({
       chats: state.chats.filter((chat) => chat.id !== id),
     }));
+  },
+
+  enableSource: async (chatId: number, sourceId: number) => {
+    const db = get().db;
+    if (!db) return;
+    const phantomChat = get().phantomChat;
+    if (chatId === phantomChat?.id) {
+      set({
+        phantomChat: {
+          ...phantomChat,
+          enabledSources: [...(phantomChat.enabledSources || []), sourceId],
+        },
+      });
+
+      return;
+    }
+
+    await activateSource(db, chatId, sourceId);
+
+    set((state) => {
+      const chat = state.chats.find((chat) => chat.id === chatId);
+      if (chat) {
+        chat.enabledSources = [...(chat.enabledSources || []), sourceId];
+      }
+      return { chats: [...state.chats] };
+    });
   },
 }));

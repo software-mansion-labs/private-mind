@@ -9,6 +9,7 @@ import { Chat } from '../../database/chatRepository';
 import ChatIcon from '../../assets/icons/chat.svg';
 import ModelsIcon from '../../assets/icons/models.svg';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
+import SourceIcon from '../../assets/icons/source.svg';
 import { DrawerItem } from './DrawerItem';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -85,6 +86,12 @@ const DrawerMenu = () => {
           label="Benchmark"
           active={pathname === '/benchmark'}
           onPress={() => navigate('/benchmark')}
+        />
+        <DrawerItem
+          icon={<SourceIcon width={18} height={18} style={styles.icon} />}
+          label="Sources"
+          active={pathname === '/sources'}
+          onPress={() => navigate('/sources')}
         />
       </View>
 

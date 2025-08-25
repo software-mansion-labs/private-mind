@@ -5,17 +5,15 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
-  Platform,
 } from 'react-native';
 import { Model } from '../../database/modelRepository';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
 import { ScrollView } from 'react-native-gesture-handler';
-import SendIcon from '../../assets/icons/send_icon.svg';
-import PauseIcon from '../../assets/icons/pause_icon.svg';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import { Theme } from '../../styles/colors';
+import ChatBarActions from './ChatBarActions';
 
 interface Props {
   chatId: number | null;
@@ -23,10 +21,12 @@ interface Props {
   setUserInput: (text: string) => void;
   onSend: () => void;
   onSelectModel: () => void;
+  onSelectSource: () => void;
   inputRef: Ref<TextInput>;
   model: Model | undefined;
   scrollRef: RefObject<ScrollView | null>;
   isAtBottom: boolean;
+  activeSourcesCount: number;
 }
 
 const ChatBar = ({
@@ -35,10 +35,12 @@ const ChatBar = ({
   setUserInput,
   onSend,
   onSelectModel,
+  onSelectSource,
   inputRef,
   model,
   scrollRef,
   isAtBottom,
+  activeSourcesCount,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -65,43 +67,37 @@ const ChatBar = ({
       )}
 
       {model?.isDownloaded && (
-        <View style={styles.content}>
-          <TextInput
-            ref={inputRef}
-            style={styles.input}
-            multiline
-            onFocus={async () => {
-              if (!isAtBottom) return;
-              if (loadedModel?.id !== model.id) {
-                await loadModel(model);
-              }
-              setTimeout(() => {
-                scrollRef.current?.scrollToEnd({ animated: true });
-              }, 25);
-            }}
-            placeholder="Ask about anything..."
-            placeholderTextColor={theme.text.contrastTertiary}
-            value={userInput}
-            onChangeText={setUserInput}
-            numberOfLines={3}
-          />
-          <View style={styles.buttonBar}>
-            {userInput && !isGenerating && !isProcessingPrompt ? (
-              <TouchableOpacity style={styles.sendButton} onPress={onSend}>
-                <SendIcon width={20} height={20} style={styles.iconContrast} />
-              </TouchableOpacity>
-            ) : null}
-
-            {(isGenerating || isProcessingPrompt) && (
-              <TouchableOpacity style={styles.sendButton} onPress={interrupt}>
-                <PauseIcon
-                  height={13.33}
-                  width={13.33}
-                  style={styles.iconContrast}
-                />
-              </TouchableOpacity>
-            )}
+        <View style={styles.inputContainer}>
+          <View style={styles.content}>
+            <TextInput
+              ref={inputRef}
+              style={styles.input}
+              multiline
+              onFocus={async () => {
+                if (!isAtBottom) return;
+                if (loadedModel?.id !== model.id) {
+                  await loadModel(model);
+                }
+                setTimeout(() => {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                }, 25);
+              }}
+              placeholder="Ask about anything..."
+              placeholderTextColor={theme.text.contrastTertiary}
+              value={userInput}
+              onChangeText={setUserInput}
+              numberOfLines={3}
+            />
           </View>
+          <ChatBarActions
+            onSelectSource={onSelectSource}
+            activeSourcesCount={activeSourcesCount}
+            userInput={userInput}
+            onSend={onSend}
+            isGenerating={isGenerating}
+            isProcessingPrompt={isProcessingPrompt}
+            onInterrupt={interrupt}
+          />
         </View>
       )}
     </View>
@@ -139,20 +135,20 @@ const createStyles = (theme: Theme) =>
     },
     content: {
       flexDirection: 'row',
-      alignItems: 'center',
       width: '100%',
-      height: 68,
-      borderRadius: 18,
-      paddingHorizontal: 16,
-      paddingVertical: Platform.select({ ios: 8, default: 0 }),
-      gap: 16,
+    },
+    inputContainer: {
+      flexDirection: 'column',
       backgroundColor: theme.bg.strongPrimary,
+      borderRadius: 18,
+      padding: 16,
+      gap: 16,
+      justifyContent: 'center',
     },
     input: {
       flex: 1,
       fontSize: fontSizes.md,
-      lineHeight: 24,
-      paddingVertical: 8,
+      lineHeight: lineHeights.md,
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
       color: theme.text.contrastPrimary,
@@ -160,16 +156,5 @@ const createStyles = (theme: Theme) =>
     buttonBar: {
       justifyContent: 'center',
       alignItems: 'flex-end',
-    },
-    sendButton: {
-      width: 36,
-      height: 36,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: 18,
-      backgroundColor: theme.bg.main,
-    },
-    iconContrast: {
-      color: theme.text.contrastPrimary,
     },
   });
