@@ -2172,13 +2172,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native-rag/executorch@npm:^0.1.1":
-  version: 0.1.1
-  resolution: "@react-native-rag/executorch@npm:0.1.1"
+"@react-native-rag/executorch@npm:^0.1.2":
+  version: 0.1.2
+  resolution: "@react-native-rag/executorch@npm:0.1.2"
   peerDependencies:
-    react-native-executorch: 0.4.5
+    react-native-executorch: ^0.5.1
     react-native-rag: ^0.1.0
-  checksum: ef9bb19f4f0d150623efb383ffe19fae5ea5fdecbea9307f6a98c9b2c194377395c7dc072cad31a5f9aeb2b6499ae0be9a54cae2cc3b794cce330606745eb8d4
+  checksum: e83026a872970a388521a0798d3555495730012590daf0ad4cd1950d78f91c17aeba5f68ec2bbe5b1e564c5dd757d4d600e68e5981fb3d4ca029c43d071f1db8
   languageName: node
   linkType: hard
 
@@ -5984,7 +5984,7 @@ __metadata:
     "@react-native-clipboard/clipboard": ^1.16.2
     "@react-native-community/netinfo": ^11.4.1
     "@react-native-menu/menu": ^1.2.3
-    "@react-native-rag/executorch": ^0.1.1
+    "@react-native-rag/executorch": ^0.1.2
     "@react-native-rag/op-sqlite": ^0.1.1
     "@react-native/metro-config": ^0.76.3
     "@react-navigation/drawer": ^7.5.6

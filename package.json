@@ -20,7 +20,7 @@
     "@react-native-clipboard/clipboard": "^1.16.2",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native-menu/menu": "^1.2.3",
-    "@react-native-rag/executorch": "^0.1.1",
+    "@react-native-rag/executorch": "^0.1.2",
     "@react-native-rag/op-sqlite": "^0.1.1",
     "@react-native/metro-config": "^0.76.3",
     "@react-navigation/drawer": "^7.5.6",
