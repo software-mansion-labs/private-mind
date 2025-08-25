@@ -6005,11 +6005,7 @@ __metadata:
     react: 19.0.0
     react-native: 0.79.5
     react-native-device-info: ^14.0.4
-<<<<<<< HEAD
     react-native-executorch: 0.5.1
-=======
-    react-native-executorch: 0.4.8
->>>>>>> 242073a (reafactor: code releated to rag implementation)
     react-native-gesture-handler: ~2.24.0
     react-native-keyboard-controller: ^1.18.1
     react-native-loading-spinner-overlay: ^3.0.1
@@ -7653,15 +7649,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-<<<<<<< HEAD
 "react-native-executorch@npm:0.5.1":
   version: 0.5.1
   resolution: "react-native-executorch@npm:0.5.1"
-=======
-"react-native-executorch@npm:0.4.8":
-  version: 0.4.8
-  resolution: "react-native-executorch@npm:0.4.8"
->>>>>>> 242073a (reafactor: code releated to rag implementation)
   dependencies:
     "@huggingface/jinja": ^0.5.0
     expo: ^53.0.7
@@ -7673,11 +7663,7 @@ __metadata:
   peerDependencies:
     react: "*"
     react-native: "*"
-<<<<<<< HEAD
   checksum: 63bac8781d71b5488512a35cd96c7ff4cb63e4018bd49ce9e47a5a00f6b735269e0d09e5fe6b6207c9931cb0b667082bf769b22e859b0c069afb3b10e58f29a4
-=======
-  checksum: cfaa538d06aaef9efebf26ac3f7a27843f849a40763c5bb7c1f85a2c23561d3dce31273c4b8793cb450b3c05701b51bc055c4b20db3ae3b81bcca59b6a457960
->>>>>>> 242073a (reafactor: code releated to rag implementation)
   languageName: node
   linkType: hard
 
