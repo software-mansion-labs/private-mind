@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "download-models": "node ./assets/models/download-models.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.0",
@@ -32,6 +33,7 @@
     "metro-config": "^0.81.0",
     "react": "19.0.0",
     "react-native": "0.79.5",
+    "react-native-audio-api": "^0.7.1",
     "react-native-device-info": "^14.0.4",
     "react-native-executorch": "0.5.1",
     "react-native-gesture-handler": "~2.24.0",

@@ -1,4 +1,10 @@
-import React, { Ref, RefObject, useMemo } from 'react';
+import React, {
+  Ref,
+  RefObject,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from 'react';
 import {
   View,
   TextInput,
@@ -15,16 +21,16 @@ import { ScrollView } from 'react-native-gesture-handler';
 import SendIcon from '../../assets/icons/send_icon.svg';
 import PauseIcon from '../../assets/icons/pause_icon.svg';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
+import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import { Theme } from '../../styles/colors';
 import CircleButton from '../CircleButton';
+import ChatSpeechInput from './ChatSpeechInput';
 
 interface Props {
   chatId: number | null;
-  userInput: string;
-  setUserInput: (text: string) => void;
-  onSend: () => void;
+  onSend: (userInput: string) => void;
   onSelectModel: () => void;
-  inputRef: Ref<TextInput>;
+  ref: Ref<{ clear: () => void }>;
   model: Model | undefined;
   scrollRef: RefObject<ScrollView | null>;
   isAtBottom: boolean;
@@ -32,17 +38,20 @@ interface Props {
 
 const ChatBar = ({
   chatId,
-  userInput,
-  setUserInput,
   onSend,
   onSelectModel,
-  inputRef,
+  ref,
   model,
   scrollRef,
   isAtBottom,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const textInputRef = React.useRef<TextInput>(null);
+  const [userInput, setUserInput] = useState('');
+
+  useImperativeHandle(ref, () => ({ clear: () => setUserInput('') }), []);
 
   const {
     isGenerating,
@@ -51,6 +60,69 @@ const ChatBar = ({
     loadModel,
     model: loadedModel,
   } = useLLMStore();
+
+  const loadSelectedModel = async () => {
+    if (model?.isDownloaded && loadedModel?.id !== model.id) {
+      return loadModel(model);
+    }
+  };
+
+  const [showSpeechInput, setShowSpeechInput] = React.useState(false);
+
+  const renderButtons = () => {
+    if (isGenerating || isProcessingPrompt) {
+      return (
+        <CircleButton
+          icon={PauseIcon}
+          size={13.33}
+          onPress={interrupt}
+          backgroundColor={theme.bg.main}
+          color={theme.text.contrastPrimary}
+        />
+      );
+    }
+
+    if (userInput) {
+      return (
+        <CircleButton
+          icon={SendIcon}
+          onPress={() => onSend(userInput)}
+          backgroundColor={theme.bg.main}
+          color={theme.text.contrastPrimary}
+        />
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        style={styles.barButton}
+        onPress={() => {
+          loadSelectedModel();
+          setShowSpeechInput(true);
+        }}
+      >
+        <SoundwaveIcon width={20} height={20} style={styles.iconContrast} />
+      </TouchableOpacity>
+    );
+  };
+
+  if (showSpeechInput) {
+    const handleSubmit = (transcript: string) => {
+      setShowSpeechInput(false);
+      if (transcript) {
+        onSend(transcript);
+      }
+    };
+
+    return (
+      <View style={styles.container}>
+        <ChatSpeechInput
+          onSubmit={handleSubmit}
+          onCancel={() => setShowSpeechInput(false)}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -68,14 +140,11 @@ const ChatBar = ({
       {model?.isDownloaded && (
         <View style={styles.content}>
           <TextInput
-            ref={inputRef}
             style={styles.input}
             multiline
             onFocus={async () => {
               if (!isAtBottom) return;
-              if (loadedModel?.id !== model.id) {
-                await loadModel(model);
-              }
+              await loadSelectedModel();
               setTimeout(() => {
                 scrollRef.current?.scrollToEnd({ animated: true });
               }, 25);
@@ -86,26 +155,7 @@ const ChatBar = ({
             onChangeText={setUserInput}
             numberOfLines={3}
           />
-          <View style={styles.buttonBar}>
-            {userInput && !isGenerating && !isProcessingPrompt ? (
-              <CircleButton
-                icon={SendIcon}
-                onPress={onSend}
-                backgroundColor={theme.bg.main}
-                color={theme.text.contrastPrimary}
-              />
-            ) : null}
-
-            {(isGenerating || isProcessingPrompt) && (
-              <CircleButton
-                icon={PauseIcon}
-                size={13.33}
-                onPress={interrupt}
-                backgroundColor={theme.bg.main}
-                color={theme.text.contrastPrimary}
-              />
-            )}
-          </View>
+          <View style={styles.buttonBar}>{renderButtons()}</View>
         </View>
       )}
     </View>
@@ -119,12 +169,9 @@ const createStyles = (theme: Theme) =>
     container: {
       flexDirection: 'column',
       justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: theme.bg.softPrimary,
       paddingHorizontal: 16,
     },
     modelSelection: {
-      width: '100%',
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
@@ -144,7 +191,6 @@ const createStyles = (theme: Theme) =>
     content: {
       flexDirection: 'row',
       alignItems: 'center',
-      width: '100%',
       height: 68,
       borderRadius: 18,
       paddingHorizontal: 16,
@@ -164,5 +210,14 @@ const createStyles = (theme: Theme) =>
     buttonBar: {
       justifyContent: 'center',
       alignItems: 'flex-end',
+    },
+    barButton: {
+      width: 36,
+      height: 36,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    iconContrast: {
+      color: theme.text.contrastPrimary,
     },
   });

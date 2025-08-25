@@ -46,7 +46,6 @@ export default function ChatScreen({
   const { isGenerating, sendChatMessage, loadModel } = useLLMStore();
   const { addChat, updateLastUsed, setChatModel } = useChatStore();
 
-  const [userInput, setUserInput] = useState('');
   const [isAtBottom, setIsAtBottom] = useState(true);
 
   useEffect(() => {
@@ -57,7 +56,7 @@ export default function ChatScreen({
     bottomSheetModalRef.current?.present();
   }, []);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (userInput: string) => {
     if (!userInput.trim() || isGenerating) return;
     if (!(await checkIfChatExists(db, chatId!))) {
       const newChatTitle =
@@ -68,7 +67,6 @@ export default function ChatScreen({
     inputRef.current?.clear();
     Keyboard.dismiss();
 
-    setUserInput('');
     updateLastUsed(chatId!);
 
     await sendChatMessage(userInput, chatId!);
@@ -103,11 +101,9 @@ export default function ChatScreen({
       <View style={styles.barContainer}>
         <ChatBar
           chatId={chatId}
-          userInput={userInput}
-          setUserInput={setUserInput}
           onSend={handleSendMessage}
           onSelectModel={handlePresentModalPress}
-          inputRef={inputRef}
+          ref={inputRef}
           model={model}
           scrollRef={scrollRef}
           isAtBottom={isAtBottom}
