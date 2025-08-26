@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { ModelState } from '../store/modelStore';
 import { Model } from '../database/modelRepository';
 
 export enum ModelHubFilter {

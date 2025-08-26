@@ -6,6 +6,7 @@ export type Chat = {
   modelId: number;
   title: string;
   lastUsed: number;
+  enabledSources?: number[];
 };
 
 export type ChatSettings = {
@@ -17,7 +18,7 @@ export type Message = {
   id: number;
   chatId: number;
   modelName?: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'event';
   content: string;
   tokensPerSecond?: number;
   timeToFirstToken?: number;
@@ -55,7 +56,21 @@ export const createChat = async (
 };
 
 export const getAllChats = async (db: SQLiteDatabase): Promise<Chat[]> => {
-  return await db.getAllAsync<Chat>(`SELECT * FROM chats ORDER BY id DESC`);
+  const chats = await db.getAllAsync<Chat & { enabledSources: string | null }>(
+    `SELECT c.*, 
+            GROUP_CONCAT(cs.sourceId) as enabledSources
+     FROM chats c
+     LEFT JOIN chatSources cs ON c.id = cs.chatId
+     GROUP BY c.id
+     ORDER BY c.id DESC`
+  );
+
+  return chats.map((chat) => ({
+    ...chat,
+    enabledSources: chat.enabledSources
+      ? chat.enabledSources.split(',').map((id) => parseInt(id, 10))
+      : [],
+  }));
 };
 
 export const getChatMessages = async (
@@ -89,11 +104,14 @@ export const persistMessage = async (
     ]
   );
 
-  const timestamp = Date.now();
-  await db.runAsync(`UPDATE chats SET lastUsed = ? WHERE id = ?`, [
-    timestamp,
-    message.chatId,
-  ]);
+  //If the message is event type, we don't update the lastUsed timestamp so the chat won't be elevated on the chat list
+  if (message.role !== 'event') {
+    const timestamp = Date.now();
+    await db.runAsync(`UPDATE chats SET lastUsed = ? WHERE id = ?`, [
+      timestamp,
+      message.chatId,
+    ]);
+  }
 
   return result.lastInsertRowId;
 };

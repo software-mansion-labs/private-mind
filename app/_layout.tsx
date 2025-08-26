@@ -19,6 +19,7 @@ import AppToast from '../components/AppToast';
 import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Stack } from 'expo-router';
+import { VectorStoreProvider } from '../context/VectorStoreContext';
 
 export default function Layout() {
   useFonts({
@@ -34,57 +35,59 @@ export default function Layout() {
     <GestureHandlerRootView>
       <SQLiteProvider databaseName="executorch.db" onInit={initDatabase}>
         <ThemeProvider>
-          <KeyboardProvider>
-            <BottomSheetModalProvider>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(drawer)" />
-                <Stack.Screen
-                  name="(modals)/chat/[id]/settings"
-                  options={{
-                    headerShown: false,
-                    presentation: 'modal',
-                  }}
-                />
-                <Stack.Screen
-                  name="(modals)/add-local-model"
-                  options={{
-                    headerShown: false,
-                    presentation: 'modal',
-                  }}
-                />
-                <Stack.Screen
-                  name="(modals)/add-remote-model"
-                  options={{
-                    headerShown: false,
-                    presentation: 'modal',
-                  }}
-                />
-                <Stack.Screen
-                  name="(modals)/edit-local-model/[modelId]"
-                  options={{
-                    headerShown: false,
-                    presentation: 'modal',
-                  }}
-                />
-                <Stack.Screen
-                  name="(modals)/edit-remote-model/[modelId]"
-                  options={{
-                    headerShown: false,
-                    presentation: 'modal',
-                  }}
-                />
-                <Stack.Screen
-                  name="(modals)/app-info"
-                  options={{
-                    headerShown: false,
-                    presentation: 'modal',
-                  }}
-                />
-              </Stack>
-              {Platform.OS === 'android' && <StatusBar style="auto" />}
-              <AppToast />
-            </BottomSheetModalProvider>
-          </KeyboardProvider>
+          <VectorStoreProvider>
+            <KeyboardProvider>
+              <BottomSheetModalProvider>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(drawer)" />
+                  <Stack.Screen
+                    name="(modals)/chat/[id]/settings"
+                    options={{
+                      headerShown: false,
+                      presentation: 'modal',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="(modals)/add-local-model"
+                    options={{
+                      headerShown: false,
+                      presentation: 'modal',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="(modals)/add-remote-model"
+                    options={{
+                      headerShown: false,
+                      presentation: 'modal',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="(modals)/edit-local-model/[modelId]"
+                    options={{
+                      headerShown: false,
+                      presentation: 'modal',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="(modals)/edit-remote-model/[modelId]"
+                    options={{
+                      headerShown: false,
+                      presentation: 'modal',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="(modals)/app-info"
+                    options={{
+                      headerShown: false,
+                      presentation: 'modal',
+                    }}
+                  />
+                </Stack>
+                {Platform.OS === 'android' && <StatusBar style="auto" />}
+                <AppToast />
+              </BottomSheetModalProvider>
+            </KeyboardProvider>
+          </VectorStoreProvider>
         </ThemeProvider>
       </SQLiteProvider>
     </GestureHandlerRootView>

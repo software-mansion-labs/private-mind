@@ -33,10 +33,18 @@ interface LLMStore {
   setDB: (db: SQLiteDatabase) => void;
   loadModel: (model: Model, hardReload?: boolean) => Promise<void>;
   setActiveChatId: (chatId: number) => Promise<void>;
-  sendChatMessage: (newMessage: string, chatId: number) => Promise<void>;
+  sendChatMessage: (
+    newMessage: string,
+    chatId: number,
+    context: string[]
+  ) => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   interrupt: () => void;
+  sendEventMessage: (chatId: number, message: string) => Promise<void>;
+  refreshActiveChatMessages: () => Promise<void>;
 }
+
+const llmInstance = new LLMModule();
 
 const calculatePerformanceMetrics = (
   startTime: number,
@@ -77,8 +85,6 @@ const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
   };
 };
 
-const llmInstance = new LLMModule();
-
 export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
   isGenerating: false,
@@ -97,8 +103,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   setDB: (db) => set({ db }),
 
   setActiveChatId: async (chatId: number) => {
+    const db = get().db;
+    if (!db) {
+      console.warn('Database not initialized');
+      return;
+    }
     //Once the user selects a chat room, we load the messages for that chat and set it as the active chat.
-    const messageHistory = await getChatMessages(get().db!, chatId);
+    const messageHistory = await getChatMessages(db, chatId);
     set({ activeChatId: chatId, activeChatMessages: messageHistory });
   },
 
@@ -157,7 +168,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
-  sendChatMessage: async (newMessage: string, chatId: number) => {
+  sendChatMessage: async (newMessage, chatId, context) => {
     const { db, model: currentModel, activeChatMessages } = get();
     if (!db || !currentModel) {
       console.warn('LLM not ready or DB not set');
@@ -196,11 +207,22 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       });
 
       const settings = await getChatSettings(db, chatId);
-      const systemPrompt = settings.systemPrompt;
+
+      const systemPrompt = settings.systemPrompt.concat(
+        `Context: ${context.join(', ')}`
+      );
+
+      const filteredMessages: ExecutorchMessage[] =
+        get().activeChatMessages.reduce((acc: ExecutorchMessage[], msg) => {
+          if (msg.role !== 'event') {
+            acc.push({ role: msg.role, content: msg.content });
+          }
+          return acc;
+        }, []);
       const contextWindow = settings.contextWindow;
       const messagesWithSystemPrompt: ExecutorchMessage[] = [
         { role: 'system', content: systemPrompt },
-        ...get().activeChatMessages.slice(-contextWindow, -1),
+        ...filteredMessages.slice(-contextWindow, -1),
       ];
       // Polling to wait for the model to load and display dots until the first token is generated.
       if (get().isLoading) {
@@ -213,10 +235,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           }, 100);
         });
       }
+
       // If the user interrupts when the model is loading
       if (!get().isProcessingPrompt) {
         return;
       }
+
       set({
         isGenerating: true,
         performance: {
@@ -226,7 +250,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       });
 
       const startTime = performance.now();
-      const finalResponse = await llmInstance.generate(messagesWithSystemPrompt);
+      const finalResponse = await llmInstance.generate(
+        messagesWithSystemPrompt
+      );
       const endTime = performance.now();
 
       if (finalResponse) {
@@ -237,12 +263,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             get().performance.firstTokenTime,
             get().performance.tokenCount
           );
+
         await persistMessage(db, {
           ...assistantPlaceholder,
           content: finalResponse,
           tokensPerSecond,
           timeToFirstToken,
         });
+
         if (get().activeChatId === chatId) {
           set((state) => ({
             activeChatMessages: state.activeChatMessages.map((msg, index) =>
@@ -307,7 +335,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         peakMemory: runPeakMemory,
       };
     } catch (e) {
-      console.error(`Benchmark failed`, e);
       memoryTracker.stop();
     } finally {
       set({ isGenerating: false, isBenchmarking: false });
@@ -321,5 +348,34 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     } else if (get().isProcessingPrompt) {
       set({ isProcessingPrompt: false });
     }
+  },
+
+  sendEventMessage: async (chatId: number, content: string) => {
+    const db = get().db;
+    if (!db) return;
+
+    const eventMessage: Omit<Message, 'id'> = {
+      role: 'event',
+      content: content,
+      chatId,
+      timestamp: Date.now(),
+    };
+
+    const eventMessageId = await persistMessage(db, eventMessage);
+
+    set((state) => ({
+      activeChatMessages: [
+        ...state.activeChatMessages,
+        { ...eventMessage, id: eventMessageId },
+      ],
+    }));
+  },
+
+  refreshActiveChatMessages: async () => {
+    const { db, activeChatId } = get();
+    if (!db || !activeChatId) return;
+
+    const messageHistory = await getChatMessages(db, activeChatId);
+    set({ activeChatMessages: messageHistory });
   },
 }));
