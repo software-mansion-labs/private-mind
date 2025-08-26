@@ -20,6 +20,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
+import ChatSpeechInput from './ChatSpeechInput';
 
 interface Props {
   chatId: number | null;
@@ -60,9 +61,35 @@ const ChatBar = ({
     model: loadedModel,
   } = useLLMStore();
 
-  return (
-    <View style={styles.container}>
-      {chatId && !model && (
+  const loadSelectedModel = async () => {
+    if (model?.isDownloaded && loadedModel?.id !== model.id) {
+      return loadModel(model);
+    }
+  };
+
+  const [showSpeechInput, setShowSpeechInput] = React.useState(false);
+
+  if (showSpeechInput) {
+    const handleSubmit = (transcript: string) => {
+      setShowSpeechInput(false);
+      if (transcript) {
+        onSend(transcript);
+      }
+    };
+
+    return (
+      <View style={styles.container}>
+        <ChatSpeechInput
+          onSubmit={handleSubmit}
+          onCancel={() => setShowSpeechInput(false)}
+        />
+      </View>
+    );
+  }
+
+  if (chatId && !model) {
+    return (
+      <View style={styles.container}>
         <TouchableOpacity style={styles.modelSelection} onPress={onSelectModel}>
           <Text style={styles.selectedModel}>Select Model</Text>
           <RotateLeft
@@ -71,8 +98,12 @@ const ChatBar = ({
             style={{ color: theme.text.primary }}
           />
         </TouchableOpacity>
-      )}
+      </View>
+    );
+  }
 
+  return (
+    <View style={styles.container}>
       {model?.isDownloaded && (
         <View style={styles.inputContainer}>
           <View style={styles.content}>
@@ -81,9 +112,7 @@ const ChatBar = ({
               multiline
               onFocus={async () => {
                 if (!isAtBottom) return;
-                if (loadedModel?.id !== model.id) {
-                  await loadModel(model);
-                }
+                await loadSelectedModel();
                 setTimeout(() => {
                   scrollRef.current?.scrollToEnd({ animated: true });
                 }, 25);
@@ -103,6 +132,10 @@ const ChatBar = ({
             isGenerating={isGenerating}
             isProcessingPrompt={isProcessingPrompt}
             onInterrupt={interrupt}
+            onSpeechInput={() => {
+              loadSelectedModel();
+              setShowSpeechInput(true);
+            }}
           />
         </View>
       )}
@@ -117,12 +150,9 @@ const createStyles = (theme: Theme) =>
     container: {
       flexDirection: 'column',
       justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: theme.bg.softPrimary,
       paddingHorizontal: 16,
     },
     modelSelection: {
-      width: '100%',
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
@@ -136,7 +166,6 @@ const createStyles = (theme: Theme) =>
     selectedModel: {
       fontSize: 14,
       fontFamily: fontFamily.regular,
-      width: '80%',
       color: theme.text.primary,
     },
     content: {
@@ -162,5 +191,14 @@ const createStyles = (theme: Theme) =>
     buttonBar: {
       justifyContent: 'center',
       alignItems: 'flex-end',
+    },
+    barButton: {
+      width: 36,
+      height: 36,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    iconContrast: {
+      color: theme.text.contrastPrimary,
     },
   });
