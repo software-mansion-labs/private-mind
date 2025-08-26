@@ -36,19 +36,24 @@ const prepareContext = async (
   enabledSources: number[],
   vectorStore: OPSQLiteVectorStore
 ) => {
-  let context = await vectorStore.similaritySearch(
-    prompt,
-    K_DOCUMENTS_TO_RETRIEVE
-  );
-  context = context.filter((item) => {
-    return enabledSources.includes(item.metadata?.documentId);
-  });
+  try {
+    let context = await vectorStore.similaritySearch(
+      prompt,
+      K_DOCUMENTS_TO_RETRIEVE
+    );
+    context = context.filter((item) => {
+      return enabledSources.includes(item.metadata?.documentId);
+    });
 
-  const preparedContext = context.map((item) => {
-    return `${item.content}`;
-  });
+    const preparedContext = context.map((item) => {
+      return `${item.content}`;
+    });
 
-  return preparedContext;
+    return preparedContext;
+  } catch (error) {
+    console.error('Error preparing context:', error);
+    return [];
+  }
 };
 
 export default function ChatScreen({
