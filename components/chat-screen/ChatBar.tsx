@@ -16,6 +16,7 @@ import SendIcon from '../../assets/icons/send_icon.svg';
 import PauseIcon from '../../assets/icons/pause_icon.svg';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import { Theme } from '../../styles/colors';
+import CircleButton from '../CircleButton';
 
 interface Props {
   chatId: number | null;
@@ -87,19 +88,22 @@ const ChatBar = ({
           />
           <View style={styles.buttonBar}>
             {userInput && !isGenerating && !isProcessingPrompt ? (
-              <TouchableOpacity style={styles.sendButton} onPress={onSend}>
-                <SendIcon width={20} height={20} style={styles.iconContrast} />
-              </TouchableOpacity>
+              <CircleButton
+                icon={SendIcon}
+                onPress={onSend}
+                backgroundColor={theme.bg.main}
+                color={theme.text.contrastPrimary}
+              />
             ) : null}
 
             {(isGenerating || isProcessingPrompt) && (
-              <TouchableOpacity style={styles.sendButton} onPress={interrupt}>
-                <PauseIcon
-                  height={13.33}
-                  width={13.33}
-                  style={styles.iconContrast}
-                />
-              </TouchableOpacity>
+              <CircleButton
+                icon={PauseIcon}
+                size={13.33}
+                onPress={interrupt}
+                backgroundColor={theme.bg.main}
+                color={theme.text.contrastPrimary}
+              />
             )}
           </View>
         </View>
@@ -160,16 +164,5 @@ const createStyles = (theme: Theme) =>
     buttonBar: {
       justifyContent: 'center',
       alignItems: 'flex-end',
-    },
-    sendButton: {
-      width: 36,
-      height: 36,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: 18,
-      backgroundColor: theme.bg.main,
-    },
-    iconContrast: {
-      color: theme.text.contrastPrimary,
     },
   });
