@@ -14,6 +14,10 @@ import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkReposito
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
 import { Feedback } from '../utils/Feedback';
+import {
+  ResourceFetcherUtils,
+  RNEDirectory,
+} from '../fetchUtils/ResourceFetcherUtils';
 
 interface LLMStore {
   isLoading: boolean;
@@ -70,7 +74,7 @@ const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
   if (Platform.OS !== 'ios') {
     return { start: () => {}, stop: () => {} };
   }
-  let trackerId: NodeJS.Timeout;
+  let trackerId: number;
   return {
     start: () => {
       trackerId = setInterval(async () => {
@@ -83,6 +87,14 @@ const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
     },
     stop: () => clearInterval(trackerId),
   };
+};
+
+const getFileSourceToLoad = async (uri: string) => {
+  const fileName = ResourceFetcherUtils.getFilenameFromUri(uri);
+  const localFileUri = `${RNEDirectory}${fileName}`;
+  return (await ResourceFetcherUtils.checkFileExists(localFileUri))
+    ? localFileUri
+    : uri;
 };
 
 export const useLLMStore = create<LLMStore>((set, get) => ({
@@ -126,9 +138,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
     try {
       await llmInstance.load({
-        modelSource: model.modelPath,
-        tokenizerSource: model.tokenizerPath,
-        tokenizerConfigSource: model.tokenizerConfigPath,
+        modelSource: await getFileSourceToLoad(model.modelPath),
+        tokenizerSource: await getFileSourceToLoad(model.tokenizerPath),
+        tokenizerConfigSource: await getFileSourceToLoad(
+          model.tokenizerConfigPath
+        ),
       });
 
       llmInstance.setTokenCallback({
