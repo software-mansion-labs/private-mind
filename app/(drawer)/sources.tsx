@@ -18,13 +18,14 @@ import SourceManagementSheet from '../../components/bottomSheets/SourceManagemen
 import { useSourceStore } from '../../store/sourceStore';
 import { useSourceUpload } from '../../hooks/useSourceUpload';
 import MoreVerticalIcon from '../../assets/icons/more_vertical.svg';
+import WarningSheet from '../../components/bottomSheets/WarningSheet';
 
 const SourcesScreen = () => {
   useDefaultHeader();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { sources } = useSourceStore();
-  const { uploadSource } = useSourceUpload();
+  const { uploadSource, isReading, warningSheetRef } = useSourceUpload();
   const sourceManagementSheetRef = useRef<BottomSheetModal | null>(null);
   const [search, setSearch] = useState('');
 
@@ -54,6 +55,7 @@ const SourcesScreen = () => {
         }
         text="Add source files"
         onPress={uploadSource}
+        disabled={isReading}
       />
     </View>
   );
@@ -98,9 +100,10 @@ const SourcesScreen = () => {
             />
           )}
         />
-        <FloatingActionButton onPress={uploadSource} />
+        <FloatingActionButton onPress={uploadSource} disabled={isReading} />
       </View>
       <SourceManagementSheet bottomSheetModalRef={sourceManagementSheetRef} />
+      <WarningSheet bottomSheetModalRef={warningSheetRef} />
     </CustomKeyboardAvoidingView>
   );
 };

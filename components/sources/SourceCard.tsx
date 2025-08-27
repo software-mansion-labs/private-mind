@@ -6,6 +6,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import Chip from '../Chip';
 import SourceIcon from '../../assets/icons/source.svg';
+import SpinningCircle from '../SpinningCircle';
 
 interface Props {
   source: Source;
@@ -36,7 +37,13 @@ const SourceCard = ({ source, actionButton }: Props) => {
           />
         </View>
       </View>
-      {actionButton && <>{actionButton}</>}
+      {source.isProcessing ? (
+        <View style={styles.processingContainer}>
+          <SpinningCircle size={24} strokeWidth={2} />
+        </View>
+      ) : (
+        actionButton && <>{actionButton}</>
+      )}
     </View>
   );
 };
@@ -70,5 +77,11 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
+    },
+    processingContainer: {
+      width: 36,
+      height: 36,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
   });

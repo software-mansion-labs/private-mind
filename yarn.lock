@@ -6010,7 +6010,7 @@ __metadata:
     react-native-keyboard-controller: ^1.18.1
     react-native-loading-spinner-overlay: ^3.0.1
     react-native-markdown-display: ^7.0.2
-    react-native-pdfium: "file:./react-native-pdfium-0.1.1.tgz"
+    react-native-pdfium: "file:./react-native-pdfium-0.1.2.tgz"
     react-native-rag: ^0.1.1
     react-native-reanimated: ~3.17.4
     react-native-safe-area-context: 5.4.0
@@ -7748,13 +7748,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-pdfium@file:./react-native-pdfium-0.1.1.tgz::locator=local-mind%40workspace%3A.":
-  version: 0.1.1
-  resolution: "react-native-pdfium@file:./react-native-pdfium-0.1.1.tgz::locator=local-mind%40workspace%3A."
+"react-native-pdfium@file:./react-native-pdfium-0.1.2.tgz::locator=local-mind%40workspace%3A.":
+  version: 0.1.2
+  resolution: "react-native-pdfium@file:./react-native-pdfium-0.1.2.tgz::locator=local-mind%40workspace%3A."
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 40505306513ab56e5f7e7ad1a07e86aadc7761f9a2d24b8d653fab648fc01602639d79c5fd200b0baceee18b02d07f84326be56396b839735bc9e663a2bb7369
+  checksum: 8d12c504f760b5926594f77ab8bb52bc18fdd7e61cc5605a10f9f047a26bb41d90495389c181c2ffea51910ac47db972b7a04c0fb318b5c7d4c0273bce0a82da
   languageName: node
   linkType: hard
 

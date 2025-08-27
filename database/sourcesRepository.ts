@@ -6,6 +6,7 @@ export interface Source {
   name: string;
   type: string;
   size: number | null;
+  isProcessing?: boolean;
 }
 
 export const insertSource = async (

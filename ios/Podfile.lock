@@ -113,7 +113,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - Yoga
   - opencv-rne (4.11.0)
-  - Pdfium (0.1.1):
+  - Pdfium (0.1.2):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2598,7 +2598,7 @@ SPEC CHECKSUMS:
   hermes-engine: f03b0e06d3882d71e67e45b073bb827da1a21aae
   op-sqlite: 6826f241267eca7963134db588b4bbb3a7a6b97d
   opencv-rne: 2305807573b6e29c8c87e3416ab096d09047a7a0
-  Pdfium: 28e240531cba356d3f3f1a378000a8f4ae60ce74
+  Pdfium: d8e07101b135cbec0d6a23b144929125be7fbb29
   RCT-Folly: e78785aa9ba2ed998ea4151e314036f6c49e6d82
   RCTDeprecation: 5f638f65935e273753b1f31a365db6a8d6dc53b5
   RCTRequired: 8b46a520ea9071e2bc47d474aa9ca31b4a935bd8

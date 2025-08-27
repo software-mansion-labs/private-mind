@@ -6,14 +6,19 @@ import { Theme } from '../../styles/colors';
 
 interface Props {
   onPress: () => void;
+  disabled?: boolean;
 }
 
-const FloatingActionButton = ({ onPress }: Props) => {
+const FloatingActionButton = ({ onPress, disabled = false }: Props) => {
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, disabled), [theme, disabled]);
 
   return (
-    <TouchableOpacity style={styles.button} onPress={onPress}>
+    <TouchableOpacity 
+      style={styles.button} 
+      onPress={onPress}
+      disabled={disabled}
+    >
       <PlusIcon width={18} height={18} style={styles.icon} />
     </TouchableOpacity>
   );
@@ -21,7 +26,7 @@ const FloatingActionButton = ({ onPress }: Props) => {
 
 export default FloatingActionButton;
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, disabled: boolean) =>
   StyleSheet.create({
     button: {
       position: 'absolute',
@@ -33,6 +38,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.bg.main,
+      opacity: disabled ? 0.4 : 1,
     },
     icon: {
       color: theme.text.contrastPrimary,

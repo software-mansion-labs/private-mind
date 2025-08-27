@@ -66,7 +66,7 @@ const ModelCard = ({ model, onPress, memoryWarningSheetRef, wifiWarningSheetRef 
         title: 'Not enough memory to run this model.',
         subtitle: 'Your device may not have enough RAM to run this model smoothly. In some cases, using quantized models might be a solution due to their smaller size and lower memory requirements.',
         buttonTitle: 'Download anyway',
-        onDownloadAnyway: async () => {
+        onConfirm: async () => {
           await downloadModel(model);
         },
       });
@@ -95,7 +95,7 @@ const ModelCard = ({ model, onPress, memoryWarningSheetRef, wifiWarningSheetRef 
         title: 'No WiFi Connection Detected.',
         subtitle: 'Downloading models will use your mobile data, which may incur additional charges from your carrier. We recommend connecting to WiFi for the best experience.',
         buttonTitle: 'Download anyway',
-        onDownloadAnyway: handleDownloadWithMemoryCheck,
+        onConfirm: handleDownloadWithMemoryCheck,
       });
       return;
     }
