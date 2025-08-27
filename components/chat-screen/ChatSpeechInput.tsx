@@ -16,7 +16,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
-import { AudioManager } from 'react-native-audio-api';
 import { useStableCallback } from '../../hooks/useStableCallback';
 
 interface Props {
@@ -63,15 +62,6 @@ const ChatSpeechInput: React.FC<Props> = ({
 
   useEffect(() => {
     const startListening = async () => {
-      const permissionStatus = await AudioManager.requestRecordingPermissions();
-      if (permissionStatus !== 'Granted') {
-        Toast.show({
-          type: 'defaultToast',
-          text1: 'Microphone permission is required to record messages.',
-        });
-        return false;
-      }
-
       recordingStartTimeRef.current = Date.now();
       const transcription = await start();
       if (transcription && recordingActionRef.current === 'submit') {

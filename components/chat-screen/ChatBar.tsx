@@ -21,6 +21,8 @@ import RotateLeft from '../../assets/icons/rotate_left.svg';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
+import { AudioManager } from 'react-native-audio-api';
+import Toast from 'react-native-toast-message';
 
 interface Props {
   chatId: number | null;
@@ -67,6 +69,20 @@ const ChatBar = ({
   };
 
   const [showSpeechInput, setShowSpeechInput] = React.useState(false);
+
+  const openSpeechInput = async () => {
+    const permissionStatus = await AudioManager.requestRecordingPermissions();
+    if (permissionStatus !== 'Granted') {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Microphone permission is required to record messages.',
+      });
+      return;
+    }
+
+    loadSelectedModel();
+    setShowSpeechInput(true);
+  };
 
   if (showSpeechInput) {
     const handleSubmit = (transcript: string) => {
@@ -131,10 +147,7 @@ const ChatBar = ({
             isGenerating={isGenerating}
             isProcessingPrompt={isProcessingPrompt}
             onInterrupt={interrupt}
-            onSpeechInput={() => {
-              loadSelectedModel();
-              setShowSpeechInput(true);
-            }}
+            onSpeechInput={openSpeechInput}
           />
         </View>
       )}
