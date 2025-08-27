@@ -9,7 +9,7 @@ import {
   updateModel,
 } from '../database/modelRepository';
 import Toast from 'react-native-toast-message';
-import { ResourceFetcher } from '../fetchUtils/ResourceFetcher';
+import { ResourceFetcher } from 'react-native-executorch';
 
 export enum ModelState {
   Downloaded = 'downloaded',
@@ -141,7 +141,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       setDownloading(0, ModelState.NotStarted);
       Toast.show({
         type: 'defaultToast',
-        text1: "The model could not be downloaded",
+        text1: 'The model could not be downloaded',
       });
     }
   },
