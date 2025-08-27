@@ -1,9 +1,4 @@
-import React, {
-  RefObject,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react';
+import React, { RefObject, useCallback, useMemo, useState } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -34,10 +29,10 @@ const SourceSelectSheet = ({
   chatId,
 }: Props) => {
   const { theme } = useTheme();
-  const { sources } = useSourceStore();
+  const { sources, isReading } = useSourceStore();
   const { enableSource } = useChatStore();
   const { sendEventMessage } = useLLMStore();
-  const { uploadSource, isReading, warningSheetRef } = useSourceUpload();
+  const { uploadSource, warningSheetRef } = useSourceUpload();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [search, setSearch] = useState('');
 
@@ -101,7 +96,10 @@ const SourceSelectSheet = ({
           </View>
         ) : (
           <BottomSheetView style={[styles.content]}>
-            <EmptySourcesView onUploadSource={uploadSource} isUploading={isReading} />
+            <EmptySourcesView
+              onUploadSource={uploadSource}
+              isUploading={isReading}
+            />
           </BottomSheetView>
         )}
       </BottomSheetModal>

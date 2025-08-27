@@ -24,8 +24,8 @@ const SourcesScreen = () => {
   useDefaultHeader();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { sources } = useSourceStore();
-  const { uploadSource, isReading, warningSheetRef } = useSourceUpload();
+  const { sources, isReading } = useSourceStore();
+  const { uploadSource, warningSheetRef } = useSourceUpload();
   const sourceManagementSheetRef = useRef<BottomSheetModal | null>(null);
   const [search, setSearch] = useState('');
 

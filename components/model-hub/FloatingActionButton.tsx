@@ -37,10 +37,9 @@ const createStyles = (theme: Theme, disabled: boolean) =>
       borderRadius: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.bg.main,
-      opacity: disabled ? 0.4 : 1,
+      backgroundColor: disabled ? theme.text.defaultTertiary : theme.bg.main,
     },
     icon: {
-      color: theme.text.contrastPrimary,
+      color: disabled ? theme.text.defaultSecondary : theme.text.contrastPrimary,
     },
   });

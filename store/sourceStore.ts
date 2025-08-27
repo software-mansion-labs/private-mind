@@ -16,6 +16,7 @@ import { useLLMStore } from './llmStore';
 interface SourceStore {
   sources: Source[];
   db: SQLiteDatabase | null;
+  isReading: boolean;
   setDB: (db: SQLiteDatabase) => void;
   loadSources: () => Promise<void>;
   addSource: (
@@ -34,6 +35,7 @@ const TEXT_SPLITTER_CHUNK_OVERLAP = 100;
 export const useSourceStore = create<SourceStore>((set, get) => ({
   sources: [],
   db: null,
+  isReading: false,
 
   setDB: (db) => {
     set({ db });
@@ -55,29 +57,25 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     if (!db) return { success: false };
 
     const normalizedUri = sourceUri.replace('file://', '');
-    let sourceId: number | undefined;
+    const tempId = -Date.now();
+
+    set({ isReading: true });
 
     try {
       const sourceTextContent = await readPDF(normalizedUri);
 
       if (!sourceTextContent || sourceTextContent.trim().length === 0) {
+        set({ isReading: false });
         return { success: false, isEmpty: true };
       }
 
-      // Add source to database immediately with processing state
-      sourceId = await insertSource(db, source);
-      if (!sourceId) {
-        return { success: false };
-      }
-
-      // Add source to local state immediately with processing indicator
-      const newSource: Source = {
+      const tempSource: Source = {
         ...source,
-        id: sourceId,
+        id: tempId,
         isProcessing: true,
       };
       set((state) => ({
-        sources: [...state.sources, newSource],
+        sources: [...state.sources, tempSource],
       }));
 
       const textSplitter = new RecursiveCharacterTextSplitter({
@@ -87,31 +85,35 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
 
       const chunks = await textSplitter.splitText(sourceTextContent);
 
+      const sourceId = await insertSource(db, source);
+      if (!sourceId) {
+        set((state) => ({
+          sources: state.sources.filter((s) => s.id !== tempId),
+        }));
+        set({ isReading: false });
+        return { success: false };
+      }
+
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i]!;
         await vectorStore?.add(chunk, { documentId: sourceId });
       }
 
-      // Remove processing state when done
-      get().setSourceProcessing(sourceId, false);
+      set((state) => ({
+        sources: state.sources.map((s) =>
+          s.id === tempId ? { ...s, id: sourceId, isProcessing: false } : s
+        ),
+      }));
+
+      set({ isReading: false });
       return { success: true };
     } catch (e) {
       console.error(e);
-      // If vector processing fails, remove the source from database and local state
-      if (sourceId) {
-        try {
-          await deleteSource(db, sourceId);
-          set((state) => ({
-            sources: state.sources.filter((s) => s.id !== sourceId),
-          }));
-        } catch (deleteError) {
-          console.error(
-            'Failed to cleanup source after vector processing error:',
-            deleteError
-          );
-        }
-      }
-      return { success: false, isEmpty: true };
+      set((state) => ({
+        sources: state.sources.filter((s) => s.id !== tempId),
+      }));
+      set({ isReading: false });
+      return { success: false };
     }
   },
 

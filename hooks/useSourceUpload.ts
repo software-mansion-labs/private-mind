@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import * as DocumentPicker from 'expo-document-picker';
 import { useSourceStore } from '../store/sourceStore';
 import { useVectorStore } from '../context/VectorStoreContext';
@@ -10,19 +10,18 @@ import Toast from 'react-native-toast-message';
 export const useSourceUpload = () => {
   const { addSource } = useSourceStore();
   const { vectorStore } = useVectorStore();
-  const [isReading, setIsReading] = useState(false);
   const warningSheetRef = useRef<BottomSheetModal<WarningSheetData> | null>(
     null
   );
 
   const uploadSource = useCallback(async () => {
-    const result = await DocumentPicker.getDocumentAsync({
+    const pickedFileResult = await DocumentPicker.getDocumentAsync({
       type: 'application/pdf',
       copyToCacheDirectory: true,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
+    if (!pickedFileResult.canceled && pickedFileResult.assets[0]) {
+      const asset = pickedFileResult.assets[0];
       const uri = asset.uri || '';
       const newSource: Omit<Source, 'id'> = {
         name:
@@ -33,28 +32,30 @@ export const useSourceUpload = () => {
         size: asset.size || null,
       };
 
-      setIsReading(true);
-      try {
-        const result = await addSource(newSource, uri, vectorStore!);
+      const result = await addSource(newSource, uri, vectorStore!);
 
-        if (result.success) {
-          Toast.show({
-            type: 'defaultToast',
-            text1: `${newSource.name} has been successfully added`,
-          });
-        } else if (result.isEmpty) {
-          warningSheetRef.current?.present({
-            title: "Can't read PDF",
-            subtitle: `The PDF "${newSource.name}" appears to be empty or unreadable. It won't be added to your sources.`,
-            buttonTitle: 'OK',
-            onConfirm: () => {},
-          });
-        }
-      } finally {
-        setIsReading(false);
+      if (result.success) {
+        Toast.show({
+          type: 'defaultToast',
+          text1: `${newSource.name} has been successfully added`,
+        });
+      } else if (result.isEmpty) {
+        warningSheetRef.current?.present({
+          title: "Can't read PDF",
+          subtitle: `The PDF "${newSource.name}" appears to be empty or unreadable. It won't be added to your sources.`,
+          buttonTitle: 'OK',
+          onConfirm: () => {},
+        });
+      } else {
+        warningSheetRef.current?.present({
+          title: "Can't read PDF",
+          subtitle: `There was an error processing the PDF "${newSource.name}". Please try again.`,
+          buttonTitle: 'OK',
+          onConfirm: () => {},
+        });
       }
     }
   }, [addSource, vectorStore]);
 
-  return { uploadSource, isReading, warningSheetRef };
+  return { uploadSource, warningSheetRef };
 };
