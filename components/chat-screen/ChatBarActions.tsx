@@ -64,8 +64,6 @@ const ChatBarActions = ({
         color={theme.text.contrastPrimary}
       />
     );
-
-    return null;
   };
 
   return (

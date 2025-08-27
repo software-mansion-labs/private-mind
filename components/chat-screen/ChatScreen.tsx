@@ -76,7 +76,6 @@ export default function ChatScreen({
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const [userInput, setUserInput] = useState('');
   const [isAtBottom, setIsAtBottom] = useState(true);
 
   const enabledSources =

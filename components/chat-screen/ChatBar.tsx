@@ -48,7 +48,6 @@ const ChatBar = ({
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const textInputRef = React.useRef<TextInput>(null);
   const [userInput, setUserInput] = useState('');
 
   useImperativeHandle(ref, () => ({ clear: () => setUserInput('') }), []);
