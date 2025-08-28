@@ -15,7 +15,7 @@ export interface WarningSheetData {
   title: string;
   subtitle: string;
   buttonTitle?: string;
-  onDownloadAnyway: () => void;
+  onConfirm: () => void;
 }
 
 interface Props {
@@ -54,10 +54,10 @@ const WarningSheet = ({ bottomSheetModalRef }: Props) => {
           <View style={styles.buttonGroup}>
             <PrimaryButton
               style={styles.downloadButton}
-              text={props.data?.buttonTitle || 'Download anyway'}
+              text={props.data?.buttonTitle || 'OK'}
               onPress={() => {
-                if (props.data?.onDownloadAnyway) {
-                  props.data.onDownloadAnyway();
+                if (props.data?.onConfirm) {
+                  props.data.onConfirm();
                 }
                 bottomSheetModalRef.current?.dismiss();
               }}

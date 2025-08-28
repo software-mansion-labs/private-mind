@@ -1,9 +1,4 @@
-import React, {
-  RefObject,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react';
+import React, { RefObject, useCallback, useMemo, useState } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -17,6 +12,7 @@ import { useSourceStore } from '../../store/sourceStore';
 import { useChatStore } from '../../store/chatStore';
 import { useLLMStore } from '../../store/llmStore';
 import { useSourceUpload } from '../../hooks/useSourceUpload';
+import WarningSheet from './WarningSheet';
 import ActiveSourcesSection from './source-select/ActiveSourcesSection';
 import SourceListSection from './source-select/SourceListSection';
 import EmptySourcesView from './source-select/EmptySourcesView';
@@ -33,10 +29,10 @@ const SourceSelectSheet = ({
   chatId,
 }: Props) => {
   const { theme } = useTheme();
-  const { sources } = useSourceStore();
+  const { sources, isReading } = useSourceStore();
   const { enableSource } = useChatStore();
   const { sendEventMessage } = useLLMStore();
-  const { uploadSource } = useSourceUpload();
+  const { uploadSource, warningSheetRef } = useSourceUpload();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [search, setSearch] = useState('');
 
@@ -73,35 +69,42 @@ const SourceSelectSheet = ({
   };
 
   return (
-    <BottomSheetModal
-      ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
-      snapPoints={sources.length == 0 ? [] : ['90%']}
-      enableDynamicSizing={sources.length == 0}
-      handleStyle={styles.handle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}
-      keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
-      keyboardBlurBehavior="restore"
-    >
-      {sources.length > 0 ? (
-        <View style={styles.content}>
-          <ActiveSourcesSection activeSources={activeSources} />
-          <SourceListSection
-            filteredSources={filteredSources}
-            search={search}
-            onSearchChange={setSearch}
-            onSourceToggle={handleSourceToggle}
-            onUploadSource={uploadSource}
-            onDismiss={() => bottomSheetModalRef.current?.dismiss()}
-          />
-        </View>
-      ) : (
-        <BottomSheetView style={[styles.content]}>
-          <EmptySourcesView onUploadSource={uploadSource} />
-        </BottomSheetView>
-      )}
-    </BottomSheetModal>
+    <>
+      <BottomSheetModal
+        ref={bottomSheetModalRef}
+        backdropComponent={renderBackdrop}
+        snapPoints={sources.length == 0 ? [] : ['90%']}
+        enableDynamicSizing={sources.length == 0}
+        handleStyle={styles.handle}
+        handleIndicatorStyle={styles.handleIndicator}
+        backgroundStyle={styles.background}
+        keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
+        keyboardBlurBehavior="restore"
+      >
+        {sources.length > 0 ? (
+          <View style={styles.content}>
+            <ActiveSourcesSection activeSources={activeSources} />
+            <SourceListSection
+              filteredSources={filteredSources}
+              search={search}
+              onSearchChange={setSearch}
+              onSourceToggle={handleSourceToggle}
+              onUploadSource={uploadSource}
+              onDismiss={() => bottomSheetModalRef.current?.dismiss()}
+              isUploading={isReading}
+            />
+          </View>
+        ) : (
+          <BottomSheetView style={[styles.content]}>
+            <EmptySourcesView
+              onUploadSource={uploadSource}
+              isUploading={isReading}
+            />
+          </BottomSheetView>
+        )}
+      </BottomSheetModal>
+      <WarningSheet bottomSheetModalRef={warningSheetRef} />
+    </>
   );
 };
 

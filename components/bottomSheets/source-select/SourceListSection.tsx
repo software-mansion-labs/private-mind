@@ -20,6 +20,7 @@ interface Props {
   onSourceToggle: (source: Source) => void;
   onUploadSource: () => void;
   onDismiss: () => void;
+  isUploading?: boolean;
 }
 
 const SourceListSection = ({
@@ -29,6 +30,7 @@ const SourceListSection = ({
   onSourceToggle,
   onUploadSource,
   onDismiss,
+  isUploading = false,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -78,6 +80,7 @@ const SourceListSection = ({
           }
           text="Upload source files"
           onPress={onUploadSource}
+          disabled={isUploading}
         />
         <TextButton
           text="Manage reference documents"

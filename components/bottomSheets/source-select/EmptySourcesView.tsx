@@ -8,9 +8,10 @@ import UploadIcon from '../../../assets/icons/upload.svg';
 
 interface Props {
   onUploadSource: () => void;
+  isUploading?: boolean;
 }
 
-const EmptySourcesView = ({ onUploadSource }: Props) => {
+const EmptySourcesView = ({ onUploadSource, isUploading = false }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -31,6 +32,7 @@ const EmptySourcesView = ({ onUploadSource }: Props) => {
           />
         }
         onPress={onUploadSource}
+        disabled={isUploading}
       />
     </View>
   );

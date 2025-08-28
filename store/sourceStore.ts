@@ -16,13 +16,15 @@ import { useLLMStore } from './llmStore';
 interface SourceStore {
   sources: Source[];
   db: SQLiteDatabase | null;
+  isReading: boolean;
   setDB: (db: SQLiteDatabase) => void;
   loadSources: () => Promise<void>;
   addSource: (
     source: Omit<Source, 'id'>,
     sourceUri: string,
     vectorStore: OPSQLiteVectorStore
-  ) => Promise<void>;
+  ) => Promise<{ success: boolean; isEmpty?: boolean }>;
+  setSourceProcessing: (id: number, isProcessing: boolean) => void;
   deleteSource: (source: Source) => Promise<void>;
   renameSource: (id: number, newName: string) => Promise<void>;
 }
@@ -33,6 +35,7 @@ const TEXT_SPLITTER_CHUNK_OVERLAP = 100;
 export const useSourceStore = create<SourceStore>((set, get) => ({
   sources: [],
   db: null,
+  isReading: false,
 
   setDB: (db) => {
     set({ db });
@@ -51,30 +54,75 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
 
   addSource: async (source, sourceUri, vectorStore) => {
     const db = get().db;
-    if (!db) return;
+    if (!db) return { success: false };
 
     const normalizedUri = sourceUri.replace('file://', '');
-    const sourceId = await insertSource(db, source);
-    get().loadSources();
+    const tempId = -Date.now();
 
-    if (sourceId) {
-      try {
-        const sourceTextContent = readPDF(normalizedUri);
-        const textSplitter = new RecursiveCharacterTextSplitter({
-          chunkSize: TEXT_SPLITTER_CHUNK_SIZE,
-          chunkOverlap: TEXT_SPLITTER_CHUNK_OVERLAP,
-        });
+    set({ isReading: true });
 
-        const chunks = await textSplitter.splitText(sourceTextContent);
+    try {
+      const sourceTextContent = await readPDF(normalizedUri);
 
-        for (let i = 0; i < chunks.length; i++) {
-          const chunk = chunks[i]!;
-          await vectorStore?.add(chunk, { documentId: sourceId });
-        }
-      } catch (e) {
-        console.error(e);
+      if (!sourceTextContent || sourceTextContent.trim().length === 0) {
+        set({ isReading: false });
+        return { success: false, isEmpty: true };
       }
+
+      const tempSource: Source = {
+        ...source,
+        id: tempId,
+        isProcessing: true,
+      };
+      set((state) => ({
+        sources: [...state.sources, tempSource],
+      }));
+
+      const textSplitter = new RecursiveCharacterTextSplitter({
+        chunkSize: TEXT_SPLITTER_CHUNK_SIZE,
+        chunkOverlap: TEXT_SPLITTER_CHUNK_OVERLAP,
+      });
+
+      const chunks = await textSplitter.splitText(sourceTextContent);
+
+      const sourceId = await insertSource(db, source);
+      if (!sourceId) {
+        set((state) => ({
+          sources: state.sources.filter((s) => s.id !== tempId),
+        }));
+        set({ isReading: false });
+        return { success: false };
+      }
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i]!;
+        await vectorStore?.add(chunk, { documentId: sourceId });
+      }
+
+      set((state) => ({
+        sources: state.sources.map((s) =>
+          s.id === tempId ? { ...s, id: sourceId, isProcessing: false } : s
+        ),
+      }));
+
+      set({ isReading: false });
+      return { success: true };
+    } catch (e) {
+      console.error(e);
+      set((state) => ({
+        sources: state.sources.filter((s) => s.id !== tempId),
+      }));
+      set({ isReading: false });
+      return { success: false };
     }
+  },
+
+  setSourceProcessing: (id, isProcessing) => {
+    set((state) => ({
+      sources: state.sources.map((source) =>
+        source.id === id ? { ...source, isProcessing } : source
+      ),
+    }));
   },
 
   deleteSource: async (source: Source) => {
