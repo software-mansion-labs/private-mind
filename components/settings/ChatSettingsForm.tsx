@@ -97,7 +97,7 @@ const ChatSettingsForm = ({
         <TextAreaField
           value={settings.systemPrompt}
           onChangeText={(val) => setSetting('systemPrompt', val)}
-          placeholder="ex. Act as a IT support consultant and reply using only 1 sentence."
+          placeholder="ex. You are a technical expert. When answering questions, provide detailed explanations with examples. If you have access to relevant documents, reference them to support your answers."
           placeholderTextColor={theme.text.defaultTertiary}
           onFocus={scrollToInput}
           editable={isDefaultSettings || isPhantomChat}

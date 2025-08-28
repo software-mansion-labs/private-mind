@@ -135,7 +135,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       'default_chat_settings',
       JSON.stringify({
         systemPrompt:
-          'You are a helpful assistant. Answer user questions concisely.',
+          'You are a knowledgeable and helpful assistant. Provide clear, accurate, and well-structured responses. When given context from documents, use that information to give comprehensive answers while being concise and relevant.',
         contextWindow: 6,
       })
     );
