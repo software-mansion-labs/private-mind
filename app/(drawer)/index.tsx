@@ -89,7 +89,7 @@ export default function App() {
           </View>
           <View style={styles.buttonGroup}>
             <PrimaryButton
-              text="Open a models list"
+              text="Choose a model"
               onPress={() => {
                 bottomSheetModalRef.current?.present();
               }}
