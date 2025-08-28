@@ -7,6 +7,7 @@ export type Chat = {
   title: string;
   lastUsed: number;
   enabledSources?: number[];
+  settings?: ChatSettings;
 };
 
 export type ChatSettings = {

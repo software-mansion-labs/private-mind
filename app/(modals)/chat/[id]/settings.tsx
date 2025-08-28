@@ -23,11 +23,12 @@ export default function ChatSettingsScreen() {
   const db = useSQLiteContext();
   const { theme } = useTheme();
   const { getModelById } = useModelStore();
-  const { renameChat, deleteChat } = useChatStore();
+  const { renameChat, deleteChat, phantomChat, setPhantomChatSettings } =
+    useChatStore();
 
   const { settings, setSetting, chat } = useChatSettings(chatId);
   const isDefaultSettings = chat === undefined;
-
+  const isPhantomChat = chatId === phantomChat?.id;
   const model = chat?.modelId ? getModelById(chat?.modelId) : undefined;
 
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -38,16 +39,19 @@ export default function ChatSettingsScreen() {
       contextWindow: Number(settings.contextWindow) || 6,
     };
 
-    await setChatSettings(db, chatId, newSettings);
+    if (isPhantomChat) {
+      await setPhantomChatSettings(newSettings);
+    } else {
+      await setChatSettings(db, isDefaultSettings ? null : chatId, newSettings);
 
-    if (chatId !== null) {
-      const newChatTitle =
-        settings.title.length > 25
-          ? settings.title.slice(0, 25) + '...'
-          : settings.title;
-      await renameChat(chatId, newChatTitle);
+      if (chatId !== null && !isDefaultSettings) {
+        const newChatTitle =
+          settings.title.length > 25
+            ? settings.title.slice(0, 25) + '...'
+            : settings.title;
+        await renameChat(chatId, newChatTitle);
+      }
     }
-
     router.back();
     Toast.show({
       type: 'defaultToast',
@@ -102,6 +106,7 @@ export default function ChatSettingsScreen() {
           setSetting={setSetting}
           model={model}
           isDefaultSettings={isDefaultSettings}
+          isPhantomChat={isPhantomChat}
           scrollViewRef={scrollViewRef as RefObject<ScrollView>}
           onDelete={handleDelete}
           onExport={handleExport}

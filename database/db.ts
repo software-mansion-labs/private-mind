@@ -129,14 +129,17 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   useLLMStore.getState().setDB(db);
   useSourceStore.getState().setDB(db);
 
-  await AsyncStorage.setItem(
-    'default_chat_settings',
-    JSON.stringify({
-      systemPrompt:
-        'You are a helpful assistant. Answer user questions concisely.',
-      contextWindow: 6,
-    })
-  );
+  const defaultSettings = await AsyncStorage.getItem('default_chat_settings');
+  if (!defaultSettings) {
+    await AsyncStorage.setItem(
+      'default_chat_settings',
+      JSON.stringify({
+        systemPrompt:
+          'You are a helpful assistant. Answer user questions concisely.',
+        contextWindow: 6,
+      })
+    );
+  }
 
   await db.withTransactionAsync(async () => {
     for (const model of DEFAULT_MODELS) {

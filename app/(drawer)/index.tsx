@@ -19,6 +19,7 @@ import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
 import { useSourceStore } from '../../store/sourceStore';
+import { useLLMStore } from '../../store/llmStore';
 
 export default function App() {
   const navigation = useNavigation();
@@ -29,7 +30,8 @@ export default function App() {
   useDefaultHeader();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { addChat } = useChatStore();
+  const { addChat, initPhantomChat } = useChatStore();
+  const { setActiveChatId } = useLLMStore();
 
   configureReanimatedLogger({
     strict: false,
@@ -37,6 +39,8 @@ export default function App() {
 
   const handleSetModel = async (model: Model) => {
     const nextChatId = await getNextChatId(db);
+    await initPhantomChat(nextChatId);
+    await setActiveChatId(null);
     router.push({
       pathname: `/chat/${nextChatId}`,
       params: { modelId: model.id },

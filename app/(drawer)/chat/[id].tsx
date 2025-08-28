@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
 import { useState } from 'react';
@@ -24,8 +24,7 @@ function ChatScreenInner() {
   const { modelId }: { modelId: string } = useLocalSearchParams();
   const { activeChatMessages, setActiveChatId } = useLLMStore();
   const { getModelById } = useModelStore();
-  const { getChatById, setChatModel, loadChats, initPhantomChat } =
-    useChatStore();
+  const { getChatById, setChatModel, loadChats } = useChatStore();
   const chatId = parseInt(rawId);
   const chat = getChatById(chatId);
 
@@ -45,9 +44,6 @@ function ChatScreenInner() {
     useCallback(() => {
       const initChat = async () => {
         setIsLoading(true);
-        if (!chat) {
-          await initPhantomChat(chatId);
-        }
         await setActiveChatId(chatId);
         setIsLoading(false);
       };
