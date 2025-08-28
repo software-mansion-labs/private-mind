@@ -39,3 +39,7 @@ yarn-error.*
 .yarn/install-state.gz
 
 android/app/release
+
+# model assets
+assets/models/*/*.pte
+assets/models/*/*.json

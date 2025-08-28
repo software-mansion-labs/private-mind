@@ -6,6 +6,7 @@ import { Theme } from '../../styles/colors';
 import SendIcon from '../../assets/icons/send_icon.svg';
 import PauseIcon from '../../assets/icons/pause_icon.svg';
 import CircleButton from '../CircleButton';
+import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 
 interface Props {
   onSelectSource: () => void;
@@ -15,6 +16,7 @@ interface Props {
   isGenerating: boolean;
   isProcessingPrompt: boolean;
   onInterrupt: () => void;
+  onSpeechInput: () => void;
 }
 
 const ChatBarActions = ({
@@ -25,12 +27,44 @@ const ChatBarActions = ({
   isGenerating,
   isProcessingPrompt,
   onInterrupt,
+  onSpeechInput,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const showSendButton = userInput && !isGenerating && !isProcessingPrompt;
-  const showPauseButton = isGenerating || isProcessingPrompt;
+  const renderButton = () => {
+    if (isGenerating || isProcessingPrompt) {
+      return (
+        <CircleButton
+          icon={PauseIcon}
+          size={13.33}
+          onPress={onInterrupt}
+          backgroundColor={theme.bg.main}
+          color={theme.text.contrastPrimary}
+        />
+      );
+    }
+
+    if (userInput) {
+      return (
+        <CircleButton
+          icon={SendIcon}
+          onPress={onSend}
+          backgroundColor={theme.bg.main}
+          color={theme.text.contrastPrimary}
+        />
+      );
+    }
+
+    return (
+      <CircleButton
+        icon={SoundwaveIcon}
+        onPress={onSpeechInput}
+        backgroundColor="transparent"
+        color={theme.text.contrastPrimary}
+      />
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -45,24 +79,7 @@ const ChatBarActions = ({
         </TouchableOpacity>
       </View>
 
-      {showSendButton && (
-        <CircleButton
-          icon={SendIcon}
-          onPress={onSend}
-          backgroundColor={theme.bg.main}
-          color={theme.text.contrastPrimary}
-        />
-      )}
-
-      {showPauseButton && (
-        <CircleButton
-          icon={PauseIcon}
-          size={13.33}
-          onPress={onInterrupt}
-          backgroundColor={theme.bg.main}
-          color={theme.text.contrastPrimary}
-        />
-      )}
+      {renderButton()}
     </View>
   );
 };
@@ -106,16 +123,5 @@ const createStyles = (theme: Theme) =>
     sourceText: {
       color: theme.text.contrastPrimary,
       lineHeight: lineHeights.sm,
-    },
-    sendButton: {
-      width: 36,
-      height: 36,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: 18,
-      backgroundColor: theme.bg.main,
-    },
-    iconContrast: {
-      color: theme.text.contrastPrimary,
     },
   });

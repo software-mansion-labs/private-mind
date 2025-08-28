@@ -1,4 +1,10 @@
-import React, { Ref, RefObject, useMemo } from 'react';
+import React, {
+  Ref,
+  RefObject,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from 'react';
 import {
   View,
   TextInput,
@@ -14,15 +20,16 @@ import { ScrollView } from 'react-native-gesture-handler';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
+import ChatSpeechInput from './ChatSpeechInput';
+import { AudioManager } from 'react-native-audio-api';
+import Toast from 'react-native-toast-message';
 
 interface Props {
   chatId: number | null;
-  userInput: string;
-  setUserInput: (text: string) => void;
-  onSend: () => void;
+  onSend: (userInput: string) => void;
   onSelectModel: () => void;
   onSelectSource: () => void;
-  inputRef: Ref<TextInput>;
+  ref: Ref<{ clear: () => void }>;
   model: Model | undefined;
   scrollRef: RefObject<ScrollView | null>;
   isAtBottom: boolean;
@@ -31,12 +38,10 @@ interface Props {
 
 const ChatBar = ({
   chatId,
-  userInput,
-  setUserInput,
   onSend,
   onSelectModel,
   onSelectSource,
-  inputRef,
+  ref,
   model,
   scrollRef,
   isAtBottom,
@@ -44,6 +49,10 @@ const ChatBar = ({
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const [userInput, setUserInput] = useState('');
+
+  useImperativeHandle(ref, () => ({ clear: () => setUserInput('') }), []);
 
   const {
     isGenerating,
@@ -53,9 +62,49 @@ const ChatBar = ({
     model: loadedModel,
   } = useLLMStore();
 
-  return (
-    <View style={styles.container}>
-      {chatId && !model && (
+  const loadSelectedModel = async () => {
+    if (model?.isDownloaded && loadedModel?.id !== model.id) {
+      return loadModel(model);
+    }
+  };
+
+  const [showSpeechInput, setShowSpeechInput] = React.useState(false);
+
+  const openSpeechInput = async () => {
+    const permissionStatus = await AudioManager.requestRecordingPermissions();
+    if (permissionStatus !== 'Granted') {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Microphone permission is required to record messages.',
+      });
+      return;
+    }
+
+    loadSelectedModel();
+    setShowSpeechInput(true);
+  };
+
+  if (showSpeechInput) {
+    const handleSubmit = (transcript: string) => {
+      setShowSpeechInput(false);
+      if (transcript) {
+        onSend(transcript);
+      }
+    };
+
+    return (
+      <View style={styles.container}>
+        <ChatSpeechInput
+          onSubmit={handleSubmit}
+          onCancel={() => setShowSpeechInput(false)}
+        />
+      </View>
+    );
+  }
+
+  if (chatId && !model) {
+    return (
+      <View style={styles.container}>
         <TouchableOpacity style={styles.modelSelection} onPress={onSelectModel}>
           <Text style={styles.selectedModel}>Select Model</Text>
           <RotateLeft
@@ -64,20 +113,21 @@ const ChatBar = ({
             style={{ color: theme.text.primary }}
           />
         </TouchableOpacity>
-      )}
+      </View>
+    );
+  }
 
+  return (
+    <View style={styles.container}>
       {model?.isDownloaded && (
         <View style={styles.inputContainer}>
           <View style={styles.content}>
             <TextInput
-              ref={inputRef}
               style={styles.input}
               multiline
               onFocus={async () => {
                 if (!isAtBottom) return;
-                if (loadedModel?.id !== model.id) {
-                  await loadModel(model);
-                }
+                await loadSelectedModel();
                 setTimeout(() => {
                   scrollRef.current?.scrollToEnd({ animated: true });
                 }, 25);
@@ -93,10 +143,11 @@ const ChatBar = ({
             onSelectSource={onSelectSource}
             activeSourcesCount={activeSourcesCount}
             userInput={userInput}
-            onSend={onSend}
+            onSend={() => onSend(userInput)}
             isGenerating={isGenerating}
             isProcessingPrompt={isProcessingPrompt}
             onInterrupt={interrupt}
+            onSpeechInput={openSpeechInput}
           />
         </View>
       )}
@@ -111,12 +162,9 @@ const createStyles = (theme: Theme) =>
     container: {
       flexDirection: 'column',
       justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: theme.bg.softPrimary,
       paddingHorizontal: 16,
     },
     modelSelection: {
-      width: '100%',
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
@@ -130,7 +178,6 @@ const createStyles = (theme: Theme) =>
     selectedModel: {
       fontSize: 14,
       fontFamily: fontFamily.regular,
-      width: '80%',
       color: theme.text.primary,
     },
     content: {
@@ -156,5 +203,14 @@ const createStyles = (theme: Theme) =>
     buttonBar: {
       justifyContent: 'center',
       alignItems: 'flex-end',
+    },
+    barButton: {
+      width: 36,
+      height: 36,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    iconContrast: {
+      color: theme.text.contrastPrimary,
     },
   });

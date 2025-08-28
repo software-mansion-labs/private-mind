@@ -90,7 +90,7 @@ const UploadInput = ({ fileInfo, onChange, disabled = false }: Props) => {
           </View>
           {!disabled && (
             <TouchableOpacity onPress={() => onChange(null)}>
-              <TrashIcon width={15} height={15.83} style={styles.iconPrimary} />
+              <TrashIcon width={20} height={20} style={styles.iconPrimary} />
             </TouchableOpacity>
           )}
         </View>
