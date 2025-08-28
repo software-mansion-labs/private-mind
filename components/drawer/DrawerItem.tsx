@@ -51,5 +51,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.md,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
+      flex: 1,
     },
   });
