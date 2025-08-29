@@ -3,8 +3,8 @@ import { LLMModule } from 'react-native-executorch';
 import { Model } from '../database/modelRepository';
 import { SQLiteDatabase } from 'expo-sqlite';
 import {
+  ChatSettings,
   getChatMessages,
-  getChatSettings,
   Message,
   persistMessage,
 } from '../database/chatRepository';
@@ -32,11 +32,12 @@ interface LLMStore {
 
   setDB: (db: SQLiteDatabase) => void;
   loadModel: (model: Model, hardReload?: boolean) => Promise<void>;
-  setActiveChatId: (chatId: number) => Promise<void>;
+  setActiveChatId: (chatId: number | null) => Promise<void>;
   sendChatMessage: (
     newMessage: string,
     chatId: number,
-    context: string[]
+    context: string[],
+    settings: ChatSettings
   ) => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   interrupt: () => void;
@@ -70,7 +71,7 @@ const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
   if (Platform.OS !== 'ios') {
     return { start: () => {}, stop: () => {} };
   }
-  let trackerId: NodeJS.Timeout;
+  let trackerId: number;
   return {
     start: () => {
       trackerId = setInterval(async () => {
@@ -102,15 +103,19 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
   setDB: (db) => set({ db }),
 
-  setActiveChatId: async (chatId: number) => {
+  setActiveChatId: async (chatId) => {
     const db = get().db;
     if (!db) {
       console.warn('Database not initialized');
       return;
     }
     //Once the user selects a chat room, we load the messages for that chat and set it as the active chat.
-    const messageHistory = await getChatMessages(db, chatId);
-    set({ activeChatId: chatId, activeChatMessages: messageHistory });
+    if (chatId !== null) {
+      const messageHistory = await getChatMessages(db, chatId);
+      set({ activeChatId: chatId, activeChatMessages: messageHistory });
+    } else {
+      set({ activeChatId: null, activeChatMessages: [] });
+    }
   },
 
   loadModel: async (model, hardReload: boolean = false) => {
@@ -168,7 +173,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
-  sendChatMessage: async (newMessage, chatId, context) => {
+  sendChatMessage: async (newMessage, chatId, context, settings) => {
     const { db, model: currentModel, activeChatMessages } = get();
     if (!db || !currentModel) {
       console.warn('LLM not ready or DB not set');
@@ -206,11 +211,24 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         ],
       });
 
-      const settings = await getChatSettings(db, chatId);
+      let systemPrompt = settings.systemPrompt;
 
-      const systemPrompt = settings.systemPrompt.concat(
-        `Context: ${context.join(', ')}`
-      );
+      if (context.length > 0) {
+        const contextInstructions = `
+          IMPORTANT CONTEXT INFORMATION:
+          You have access to relevant information from the user's document sources. Use this context to provide accurate, well-informed responses. Always prioritize information from the provided context when it's relevant to the user's question.
+
+          Available Context Sources: ${context.join(', ')}
+
+          Instructions for using context:
+          - Refer to the context information when answering questions
+          - If the context directly addresses the user's question, use that information as the primary basis for your response
+          - If information from context conflicts with your general knowledge, prioritize the context
+          - If the context doesn't contain relevant information for the question, you may use your general knowledge but mention this limitation
+          - When citing information from context, you can reference it naturally without formal citations`;
+
+        systemPrompt = systemPrompt + contextInstructions;
+      }
 
       const filteredMessages: ExecutorchMessage[] =
         get().activeChatMessages.reduce((acc: ExecutorchMessage[], msg) => {
@@ -224,6 +242,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         { role: 'system', content: systemPrompt },
         ...filteredMessages.slice(-contextWindow, -1),
       ];
+
       // Polling to wait for the model to load and display dots until the first token is generated.
       if (get().isLoading) {
         await new Promise((resolve) => {

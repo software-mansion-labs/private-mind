@@ -7,6 +7,10 @@ import {
   renameChat,
   deleteChat,
   setChatModel,
+  ChatSettings,
+  getChatSettings,
+  getNextChatId,
+  setChatSettings,
 } from '../database/chatRepository';
 import {
   activateSource,
@@ -26,12 +30,12 @@ interface ChatStore {
   setChatModel: (id: number, modelId: number) => Promise<void>;
   deleteChat: (id: number) => Promise<void>;
   enableSource: (chatId: number, sourceId: number) => Promise<void>;
-  initPhantomChat: (chatId: number) => Promise<void>;
+  initPhantomChat: (phantomChatId: number) => Promise<void>;
+  setPhantomChatSettings: (settings: ChatSettings) => Promise<void>;
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
   chats: [],
-  settings: {},
   db: null,
   phantomChat: null,
 
@@ -50,21 +54,36 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     });
   },
 
-  initPhantomChat: async (chatId: number) => {
+  initPhantomChat: async (phantomChatId) => {
     const db = get().db;
     if (!db) return;
-
-    await clearPhantomChat(db, chatId);
-
+    await clearPhantomChat(db, phantomChatId);
+    const defaultSettings = await getChatSettings(db, null);
     set({
       phantomChat: {
-        id: chatId,
+        id: phantomChatId,
         title: '',
         lastUsed: Date.now(),
         modelId: -1,
         enabledSources: [],
+        settings: defaultSettings,
       },
     });
+  },
+
+  setPhantomChatSettings: async (newSettings) => {
+    const db = get().db;
+    if (!db) return;
+
+    const phantomChat = get().phantomChat;
+    if (phantomChat) {
+      set({
+        phantomChat: {
+          ...phantomChat,
+          settings: newSettings,
+        },
+      });
+    }
   },
 
   updateLastUsed: (id: number) => {
@@ -88,12 +107,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   addChat: async (title: string, modelId: number) => {
     const db = get().db;
     if (!db) return;
-
+    const phantomChat = get().phantomChat;
     const newChatId = await createChat(db, title, modelId);
     if (newChatId === undefined) return;
-    const enabledSources = get().phantomChat?.enabledSources || [];
+    const enabledSources = phantomChat?.enabledSources || [];
     for (const enabledSource of enabledSources) {
       await activateSource(db, newChatId, enabledSource);
+    }
+
+    if (phantomChat?.settings) {
+      await setChatSettings(db, newChatId, phantomChat?.settings);
     }
 
     set((state) => ({

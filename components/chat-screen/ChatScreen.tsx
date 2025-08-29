@@ -7,7 +7,9 @@ import { useChatStore } from '../../store/chatStore';
 import { useTheme } from '../../context/ThemeContext';
 import {
   Chat,
+  ChatSettings,
   checkIfChatExists,
+  getChatSettings,
   type Message,
 } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
@@ -106,8 +108,14 @@ export default function ChatScreen({
       enabledSources,
       vectorStore!
     );
+    let settings: ChatSettings;
+    if (phantomChat?.id === chatId) {
+      settings = phantomChat.settings!;
+    } else {
+      settings = await getChatSettings(db, chatId);
+    }
 
-    await sendChatMessage(userInput, chatId!, context);
+    await sendChatMessage(userInput, chatId!, context, settings);
   };
 
   const handleSelectModel = async (selectedModel: Model) => {

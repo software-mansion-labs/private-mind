@@ -19,6 +19,7 @@ interface Props {
   ) => void;
   model?: Model;
   isDefaultSettings: boolean;
+  isPhantomChat?: boolean;
   scrollViewRef: RefObject<ScrollView>;
   onDelete: () => void;
   onExport: () => void;
@@ -30,6 +31,7 @@ const ChatSettingsForm = ({
   setSetting,
   model,
   isDefaultSettings,
+  isPhantomChat = false,
   scrollViewRef,
   onDelete,
   onExport,
@@ -51,7 +53,7 @@ const ChatSettingsForm = ({
       showsVerticalScrollIndicator={false}
       ref={scrollViewRef}
     >
-      {!isDefaultSettings && (
+      {!isDefaultSettings && !isPhantomChat && (
         <View style={styles.textFieldSection}>
           <Text style={styles.label}>Chat name</Text>
           <TextFieldInput
@@ -90,18 +92,20 @@ const ChatSettingsForm = ({
         <Text style={styles.label}>System Prompt</Text>
         <Text style={styles.subLabel}>
           Instruction defining the behavior of the model.
+          {!isDefaultSettings && !isPhantomChat && " This cannot be changed after the chat is created."}
         </Text>
         <TextAreaField
           value={settings.systemPrompt}
           onChangeText={(val) => setSetting('systemPrompt', val)}
-          placeholder="ex. Act as a IT support consultant and reply using only 1 sentence."
+          placeholder="ex. You are a technical expert. When answering questions, provide detailed explanations with examples. If you have access to relevant documents, reference them to support your answers."
           placeholderTextColor={theme.text.defaultTertiary}
           onFocus={scrollToInput}
+          editable={isDefaultSettings || isPhantomChat}
         />
       </View>
 
       <View style={styles.buttonSection}>
-        {!isDefaultSettings && (
+        {!isDefaultSettings && !isPhantomChat && (
           <>
             <SecondaryButton text={'Export Chat'} onPress={onExport} />
             <SecondaryButton
