@@ -229,7 +229,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
         systemPrompt = systemPrompt + contextInstructions;
       }
-      console.log(systemPrompt);
+
       const filteredMessages: ExecutorchMessage[] =
         get().activeChatMessages.reduce((acc: ExecutorchMessage[], msg) => {
           if (msg.role !== 'event') {
