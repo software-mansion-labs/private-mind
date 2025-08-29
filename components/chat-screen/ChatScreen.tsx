@@ -90,8 +90,14 @@ export default function ChatScreen({
     loadModel,
     model: loadedModel,
   } = useLLMStore();
-  const { addChat, updateLastUsed, setChatModel, phantomChat, setPhantomChatSettings } = useChatStore();
   const { getModelById } = useModelStore();
+  const {
+    addChat,
+    updateLastUsed,
+    setChatModel,
+    phantomChat,
+    setPhantomChatSettings,
+  } = useChatStore();
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);

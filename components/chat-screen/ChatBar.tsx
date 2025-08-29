@@ -4,6 +4,7 @@ import React, {
   useImperativeHandle,
   useMemo,
   useState,
+  useCallback,
 } from 'react';
 import {
   View,
@@ -13,6 +14,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Model } from '../../database/modelRepository';
+import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
