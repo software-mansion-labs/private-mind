@@ -7,6 +7,7 @@ interface ChatSettingsState {
   title: string;
   systemPrompt: string;
   contextWindow: string;
+  thinkingEnabled: boolean;
 }
 
 export default function useChatSettings(chatId: number | null) {
@@ -23,6 +24,7 @@ export default function useChatSettings(chatId: number | null) {
     title: chat?.title || '',
     systemPrompt: '',
     contextWindow: '6',
+    thinkingEnabled: false,
   });
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export default function useChatSettings(chatId: number | null) {
               ...prev,
               systemPrompt: phantomChat.settings!.systemPrompt,
               contextWindow: String(phantomChat.settings!.contextWindow),
+              thinkingEnabled: phantomChat.settings!.thinkingEnabled ?? false,
             }));
           }
         } else {
@@ -46,6 +49,7 @@ export default function useChatSettings(chatId: number | null) {
               ...prev,
               systemPrompt: dbSettings.systemPrompt,
               contextWindow: String(dbSettings.contextWindow),
+              thinkingEnabled: dbSettings.thinkingEnabled ?? false,
             }));
           }
         }
@@ -58,7 +62,10 @@ export default function useChatSettings(chatId: number | null) {
     };
   }, [db, chatId, phantomChat?.settings]);
 
-  const setSetting = (key: keyof ChatSettingsState, value: string) => {
+  const setSetting = (
+    key: keyof ChatSettingsState,
+    value: string | boolean
+  ) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
 

@@ -9,6 +9,7 @@ export type Model = {
   tokenizerPath: string;
   tokenizerConfigPath: string;
   featured?: boolean;
+  thinking?: boolean;
   parameters?: number;
   modelSize?: number;
 };
@@ -27,8 +28,10 @@ export const addModel = async (
       tokenizerPath,
       tokenizerConfigPath,
       parameters,
-      modelSize
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      modelSize,
+      featured,
+      thinking
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
     [
       model.modelName,
@@ -39,6 +42,8 @@ export const addModel = async (
       model.tokenizerConfigPath,
       model.parameters || null,
       model.modelSize || null,
+      model.featured ? 1 : 0,
+      model.thinking ? 1 : 0,
     ]
   );
 
@@ -66,9 +71,10 @@ export const removeModelFiles = async (db: SQLiteDatabase, id: number) => {
 
 export const getAllModels = async (db: SQLiteDatabase): Promise<Model[]> => {
   const rawModels = await db.getAllAsync<
-    Omit<Model, 'isDownloaded' | 'featured'> & {
+    Omit<Model, 'isDownloaded' | 'featured' | 'thinking'> & {
       isDownloaded: number;
       featured: number;
+      thinking: number;
     }
   >(`SELECT * FROM models ORDER BY featured DESC`);
 
@@ -76,6 +82,7 @@ export const getAllModels = async (db: SQLiteDatabase): Promise<Model[]> => {
     ...model,
     isDownloaded: model.isDownloaded === 1,
     featured: model.featured === 1,
+    thinking: model.thinking === 1,
   }));
 
   return models;
