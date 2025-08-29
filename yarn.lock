@@ -6006,7 +6006,7 @@ __metadata:
     react-native: 0.79.5
     react-native-audio-api: ^0.7.1
     react-native-device-info: ^14.0.4
-    react-native-executorch: 0.5.1
+    react-native-executorch: 0.5.2
     react-native-gesture-handler: ~2.24.0
     react-native-keyboard-controller: ^1.18.1
     react-native-loading-spinner-overlay: ^3.0.1
@@ -7662,9 +7662,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-executorch@npm:0.5.1":
-  version: 0.5.1
-  resolution: "react-native-executorch@npm:0.5.1"
+"react-native-executorch@npm:0.5.2":
+  version: 0.5.2
+  resolution: "react-native-executorch@npm:0.5.2"
   dependencies:
     "@huggingface/jinja": ^0.5.0
     expo: ^53.0.7
@@ -7676,7 +7676,7 @@ __metadata:
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 63bac8781d71b5488512a35cd96c7ff4cb63e4018bd49ce9e47a5a00f6b735269e0d09e5fe6b6207c9931cb0b667082bf769b22e859b0c069afb3b10e58f29a4
+  checksum: 2fb32f670e6a3ca0c2233d8b7c1029f850891695118d9ba3c9301592bd184059a7fa26cb26043227cf168cd6d410857eb6ccd371dd5a10cc20a5e0c4bd6a494f
   languageName: node
   linkType: hard
 
