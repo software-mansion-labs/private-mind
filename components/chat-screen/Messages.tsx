@@ -13,7 +13,6 @@ import {
   NativeScrollEvent,
   ListRenderItem,
 } from 'react-native';
-import AnimatedChatLoading from './AnimatedChatLoading';
 import MessageItem from './MessageItem';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
@@ -44,27 +43,17 @@ const Messages = ({ chatHistory, ref, isAtBottom, setIsAtBottom }: Props) => {
   );
   const isUserScrolling = useRef(false);
 
-  // Prepare data for FlatList - reverse messages and add loading indicator (inverted style)
+  // Prepare data for FlatList - reverse messages (inverted style)
   const flatListData = useMemo(() => {
-    const messages: MessageWithType[] = [...safeHistory].reverse().map((msg) => ({
-      ...msg,
-      type: 'message' as const,
-    }));
-
-    // Add loading indicator at the beginning (will appear at bottom due to inversion)
-    if (isProcessingPrompt) {
-      messages.unshift({
-        id: -999999, // Unique ID for loading
-        role: 'assistant' as const,
-        content: '',
-        chatId: 0,
-        timestamp: 0,
-        type: 'loading' as const,
-      });
-    }
+    const messages: MessageWithType[] = [...safeHistory]
+      .reverse()
+      .map((msg) => ({
+        ...msg,
+        type: 'message' as const,
+      }));
 
     return messages;
-  }, [safeHistory, isProcessingPrompt]);
+  }, [safeHistory]);
 
   // Auto-scroll behavior like standard chat apps
   useEffect(() => {
@@ -118,20 +107,12 @@ const Messages = ({ chatHistory, ref, isAtBottom, setIsAtBottom }: Props) => {
 
   const renderMessage: ListRenderItem<MessageWithType> = useCallback(
     ({ item, index }) => {
-      if (item.type === 'loading') {
-        return (
-          <View style={styles.aiRow}>
-            <View style={styles.loadingWrapper}>
-              <AnimatedChatLoading />
-            </View>
-          </View>
-        );
-      }
+      // For inverted FlatList, the first index (0) is the last message
+      const isLastMessage = index === 0;
 
-      // Calculate original index for isLastMessage (inverted list)
-      const reversedIndex = isProcessingPrompt ? index - 1 : index;
-      const originalIndex = safeHistory.length - 1 - reversedIndex;
-      const isLastMessage = originalIndex === safeHistory.length - 1;
+      // Check if this is the last message and we're processing (loading state)
+      const isLoading =
+        isLastMessage && isProcessingPrompt && item.role === 'assistant';
 
       return (
         <MessageItem
@@ -141,15 +122,14 @@ const Messages = ({ chatHistory, ref, isAtBottom, setIsAtBottom }: Props) => {
           tokensPerSecond={item.tokensPerSecond}
           timeToFirstToken={item.timeToFirstToken}
           isLastMessage={isLastMessage}
+          isLoading={isLoading}
         />
       );
     },
     [safeHistory.length, isProcessingPrompt]
   );
 
-
   const keyExtractor = useCallback((item: MessageWithType, index: number) => {
-    if (item.type === 'loading') return 'loading';
     return `${item.role}-${item.id}-${index}`;
   }, []);
 
@@ -161,24 +141,17 @@ const Messages = ({ chatHistory, ref, isAtBottom, setIsAtBottom }: Props) => {
         renderItem={renderMessage}
         keyExtractor={keyExtractor}
         onScroll={handleScroll}
-        scrollEventThrottle={16}
-        contentContainerStyle={[
-          styles.scrollContent,
-          isProcessingPrompt && styles.scrollContentWithLoading,
-        ]}
-        inverted
+        contentContainerStyle={styles.scrollContent}
+        style={styles.flatList}
         keyboardShouldPersistTaps="never"
         showsVerticalScrollIndicator={true}
-        // Performance optimizations
-        removeClippedSubviews={false} // Keep this false for chat to prevent visual issues
-        maxToRenderPerBatch={10}
-        windowSize={10}
-        initialNumToRender={15}
-        // This helps prevent jumping when content changes
+        inverted
         maintainVisibleContentPosition={{
           minIndexForVisible: 0,
           autoscrollToTopThreshold: 10,
         }}
+        // Performance optimizations
+        removeClippedSubviews={false} // Keep this false for chat to prevent visual issues
       />
     </View>
   );
@@ -191,24 +164,13 @@ const createStyles = (_theme: Theme) =>
     container: {
       flex: 1,
       width: '100%',
+      justifyContent: 'flex-start', // Start from top
+    },
+    flatList: {
+      flexGrow: 0, // Don't grow to fill container
+      flexShrink: 1, // Allow shrinking if needed
     },
     scrollContent: {
       paddingHorizontal: 16,
-      // For inverted FlatList, we want content to grow from bottom
-      flexGrow: 1,
-    },
-    scrollContentWithLoading: {
-      paddingBottom: 24, // Extra padding when loading dots are shown
-    },
-    aiRow: {
-      flexDirection: 'row',
-      maxWidth: '85%',
-      alignSelf: 'flex-start',
-      marginVertical: 8,
-    },
-    loadingWrapper: {
-      height: 20,
-      justifyContent: 'center',
-      paddingTop: 4,
     },
   });
