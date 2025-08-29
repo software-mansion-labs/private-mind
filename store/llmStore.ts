@@ -242,7 +242,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         { role: 'system', content: systemPrompt },
         ...filteredMessages.slice(-contextWindow, -1),
       ];
-
+      if (settings.thinkingEnabled) {
+        messagesWithSystemPrompt.at(-1)!.content += ' /think';
+      } else {
+        messagesWithSystemPrompt.at(-1)!.content += ' /no_think';
+      }
       // Polling to wait for the model to load and display dots until the first token is generated.
       if (get().isLoading) {
         await new Promise((resolve) => {

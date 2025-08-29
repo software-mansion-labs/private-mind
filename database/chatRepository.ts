@@ -13,6 +13,7 @@ export type Chat = {
 export type ChatSettings = {
   systemPrompt: string;
   contextWindow: number;
+  thinkingEnabled?: boolean;
 };
 
 export type Message = {
@@ -148,8 +149,12 @@ export const getChatSettings = async (
   db: SQLiteDatabase,
   chatId: number | null
 ): Promise<ChatSettings> => {
-  const result = await db.getFirstAsync<ChatSettings>(
-    'SELECT systemPrompt, contextWindow FROM chatSettings WHERE chatId = ?',
+  const result = await db.getFirstAsync<{
+    systemPrompt: string;
+    contextWindow: number;
+    thinkingEnabled: number | null;
+  }>(
+    'SELECT systemPrompt, contextWindow, thinkingEnabled FROM chatSettings WHERE chatId = ?',
     [chatId]
   );
 
@@ -161,7 +166,11 @@ export const getChatSettings = async (
   }
 
   return (
-    result ?? {
+    result ? {
+      systemPrompt: result.systemPrompt,
+      contextWindow: result.contextWindow,
+      thinkingEnabled: result.thinkingEnabled === 1 ? true : result.thinkingEnabled === 0 ? false : undefined,
+    } : {
       systemPrompt: '',
       contextWindow: 6,
     }
@@ -179,15 +188,18 @@ export const setChatSettings = async (
       JSON.stringify(settings)
     );
   } else {
+    const thinkingValue = settings.thinkingEnabled === undefined ? null : (settings.thinkingEnabled ? 1 : 0);
+    
     await db.runAsync(
       `
-    INSERT INTO chatSettings (chatId, systemPrompt, contextWindow)
-    VALUES (?, ?, ?)
+    INSERT INTO chatSettings (chatId, systemPrompt, contextWindow, thinkingEnabled)
+    VALUES (?, ?, ?, ?)
     ON CONFLICT(chatId) DO UPDATE SET
       systemPrompt = excluded.systemPrompt,
-      contextWindow = excluded.contextWindow
+      contextWindow = excluded.contextWindow,
+      thinkingEnabled = excluded.thinkingEnabled
   `,
-      [chatId, settings.systemPrompt, settings.contextWindow]
+      [chatId, settings.systemPrompt, settings.contextWindow, thinkingValue]
     );
   }
 };
