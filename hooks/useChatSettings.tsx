@@ -16,9 +16,9 @@ export default function useChatSettings(chatId: number | null) {
 
   // Determine which chat we're working with
   const isPhantomChat = chatId === phantomChat?.id;
-  const chat: Chat | undefined = isPhantomChat
-    ? phantomChat
-    : useMemo(() => getChatById(chatId as number), [chatId, getChatById]);
+  const chat: Chat | undefined = useMemo(() => {
+    return isPhantomChat ? phantomChat : getChatById(chatId as number);
+  }, [isPhantomChat, phantomChat, chatId, getChatById]);
 
   const [settings, setSettings] = useState<ChatSettingsState>({
     title: chat?.title || '',
