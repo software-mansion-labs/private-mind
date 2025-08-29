@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Keyboard, StyleSheet, TextInput, View } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import { FlatList } from 'react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
@@ -64,7 +64,7 @@ export default function ChatScreen({
   selectModel,
 }: Props) {
   const inputRef = useRef<TextInput>(null);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<FlatList>(null);
   const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const sourceBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const db = useSQLiteContext();
