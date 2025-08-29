@@ -2,6 +2,7 @@ import React, { memo, useMemo, useRef } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
+import AnimatedChatLoading from './AnimatedChatLoading';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
@@ -16,6 +17,7 @@ interface MessageItemProps {
   tokensPerSecond?: number;
   timeToFirstToken?: number;
   isLastMessage: boolean;
+  isLoading?: boolean;
 }
 
 const MessageItem = memo(
@@ -26,6 +28,7 @@ const MessageItem = memo(
     tokensPerSecond,
     timeToFirstToken,
     isLastMessage = false,
+    isLoading = false,
   }: MessageItemProps) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
@@ -72,6 +75,17 @@ const MessageItem = memo(
     };
 
     const contentParts = parseThinkingContent(content);
+
+    // Handle loading state
+    if (isLoading) {
+      return (
+        <View style={styles.aiMessage}>
+          <View style={styles.bubbleContent}>
+            <AnimatedChatLoading />
+          </View>
+        </View>
+      );
+    }
 
     return (
       <>
