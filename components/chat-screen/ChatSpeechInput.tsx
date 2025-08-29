@@ -34,21 +34,29 @@ const ChatSpeechInput: React.FC<Props> = ({
 
   const recordingAttemptedRef = React.useRef(false);
   const recordingStartTimeRef = React.useRef(0);
-  const recordingActionRef = React.useRef<'cancel' | 'submit' | null>(null);
   /** in seconds */
   const [recordingDuration, setRecordingDuration] = React.useState(0);
+  const [transcription, setTranscription] = React.useState<{
+    committed: string;
+    nonCommitted: string;
+  }>({ committed: '', nonCommitted: '' });
+
   const animationRef =
     React.useRef<React.ComponentRef<typeof RecordingAnimation>>(null);
+  const exitStateRef = React.useRef<null | 'pending_submit' | 'exited'>(null);
 
-  const {
-    downloadProgress,
-    status,
-    error,
-    start,
-    stop,
-    committedTranscription,
-    nonCommittedTranscription,
-  } = useSpeechInput({
+  const onSubmit = useStableCallback((result: string) => {
+    if (exitStateRef.current === 'exited') return;
+    exitStateRef.current = 'exited';
+    onSubmitProp(result);
+  });
+  const onCancel = useStableCallback(() => {
+    if (exitStateRef.current === 'exited') return;
+    exitStateRef.current = 'exited';
+    onCancelProp();
+  });
+
+  const { loadProgress, status, start, stop } = useSpeechInput({
     onAudioData: (data) => {
       setRecordingDuration(
         Math.floor((Date.now() - recordingStartTimeRef.current) / 1000)
@@ -57,37 +65,44 @@ const ChatSpeechInput: React.FC<Props> = ({
     },
   });
 
-  const onSubmit = useStableCallback(onSubmitProp);
-  const onCancel = useStableCallback(onCancelProp);
-
   useEffect(() => {
     const startListening = async () => {
-      recordingStartTimeRef.current = Date.now();
-      const transcription = await start();
-      if (transcription && recordingActionRef.current === 'submit') {
-        onSubmit(transcription);
-      } else if (recordingActionRef.current === 'cancel') {
+      try {
+        const streamGenerator = await start();
+        if (!streamGenerator) {
+          onCancel();
+          return;
+        }
+
+        recordingStartTimeRef.current = Date.now();
+        let text = '';
+        for await (const { committed, nonCommitted } of streamGenerator) {
+          text = text + committed;
+          setTranscription({ committed: text, nonCommitted });
+        }
+
+        if (exitStateRef.current === 'pending_submit') {
+          if (text) {
+            onSubmit(text);
+          } else {
+            onCancel();
+          }
+        }
+      } catch (error) {
+        Toast.show({
+          type: 'defaultToast',
+          text1: 'Could not start live transcript',
+        });
         onCancel();
+        return;
       }
     };
 
-    if (status === 'idle' && !recordingAttemptedRef.current) {
+    if (!recordingAttemptedRef.current) {
       recordingAttemptedRef.current = true;
       startListening();
     }
-  }, [status, onCancel, onSubmit]);
-
-  const handledSpeechErrorRef = React.useRef(false);
-  useEffect(() => {
-    if (error && !handledSpeechErrorRef.current) {
-      handledSpeechErrorRef.current = true;
-      Toast.show({
-        type: 'defaultToast',
-        text1: 'Could not start live transcript',
-      });
-      onCancel();
-    }
-  }, [error, onCancel]);
+  }, [onCancel, onSubmit]);
 
   const animationWrapperRef = React.useRef<View | null>(null);
   const [animationWidth, setAnimationWidth] = React.useState(0);
@@ -121,15 +136,15 @@ const ChatSpeechInput: React.FC<Props> = ({
   };
 
   const handleSend = async () => {
-    recordingActionRef.current = 'submit';
+    exitStateRef.current = 'pending_submit';
     stop();
   };
 
   const renderTopNote = () => {
     const fullTranscription = (
-      committedTranscription.trim() +
+      transcription.committed.trim() +
       ' ' +
-      nonCommittedTranscription.trim()
+      transcription.nonCommitted.trim()
     ).trim();
 
     if (fullTranscription) {
@@ -148,10 +163,10 @@ const ChatSpeechInput: React.FC<Props> = ({
       return <Text style={styles.secondaryNote}>Processing...</Text>;
     }
 
-    const progressPercentage = Math.round(downloadProgress * 100);
+    const progressPercentage = Math.round(loadProgress * 100);
     return (
       <Text style={styles.secondaryNote}>
-        Loading... ({progressPercentage}%)
+        Loading...{status === 'loading' ? ` (${progressPercentage}%)` : ''}
       </Text>
     );
   };
