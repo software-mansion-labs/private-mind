@@ -82,6 +82,14 @@ export default function Layout() {
                       presentation: 'modal',
                     }}
                   />
+                  <Stack.Screen
+                    name="(modals)/onboarding"
+                    options={{
+                      headerShown: false,
+                      gestureEnabled: false,
+                      animation: 'none',
+                    }}
+                  />
                 </Stack>
                 {Platform.OS === 'android' && <StatusBar style="auto" />}
                 <AppToast />

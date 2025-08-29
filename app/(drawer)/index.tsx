@@ -20,8 +20,11 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
 import { useSourceStore } from '../../store/sourceStore';
 import { useLLMStore } from '../../store/llmStore';
+import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
 
 export default function App() {
+  useOnboardingRedirect();
+
   const navigation = useNavigation();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { loadModels } = useModelStore();

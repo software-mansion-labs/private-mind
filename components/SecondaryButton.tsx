@@ -41,7 +41,7 @@ const SecondaryButton = ({
       style={[styles.button, style]}
     >
       {icon}
-      <Text style={[styles.text, textStyle]}>{text}</Text>
+      {!!text && <Text style={[styles.text, textStyle]}>{text}</Text>}
     </TouchableOpacity>
   );
 };
