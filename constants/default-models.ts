@@ -11,6 +11,7 @@ export const DEFAULT_MODELS = [
     modelSize: 0.94,
     featured: true,
     thinking: true,
+    labels: ['Fast', 'Quantized', 'Reasoning'],
   },
   {
     modelName: 'Qwen 3 - 0.6B',
@@ -24,6 +25,7 @@ export const DEFAULT_MODELS = [
     modelSize: 1.19,
     featured: true,
     thinking: true,
+    labels: ['Balanced', 'Reasoning'],
   },
   {
     modelName: 'Qwen 3 - 1.7B',
@@ -37,6 +39,7 @@ export const DEFAULT_MODELS = [
     modelSize: 3.44,
     featured: true,
     thinking: true,
+    labels: ['Smart', 'Reasoning'],
   },
   {
     modelName: 'Qwen 3 - 1.7B - Quantized',
@@ -50,6 +53,7 @@ export const DEFAULT_MODELS = [
     modelSize: 2.16,
     featured: true,
     thinking: true,
+    labels: ['Smart', 'Quantized', 'Reasoning'],
   },
   {
     modelName: 'Qwen 3 - 4B',
@@ -62,6 +66,7 @@ export const DEFAULT_MODELS = [
     parameters: 4.02,
     modelSize: 8.05,
     thinking: true,
+    labels: ['Smart', 'Reasoning'],
   },
   {
     modelName: 'Qwen 3 - 4B - Quantized',
@@ -74,6 +79,7 @@ export const DEFAULT_MODELS = [
     parameters: 4.02,
     modelSize: 3.7,
     thinking: true,
+    labels: ['Smart', 'Quantized', 'Reasoning'],
   },
   {
     modelName: 'LLaMA 3.2 - 1B',
@@ -86,6 +92,7 @@ export const DEFAULT_MODELS = [
     parameters: 1.24,
     modelSize: 2.47,
     featured: true,
+    labels: ['Balanced'],
   },
   {
     modelName: 'LLaMA 3.2 - 1B - QLoRa',
@@ -98,6 +105,7 @@ export const DEFAULT_MODELS = [
     parameters: 1.24,
     modelSize: 1.18,
     featured: true,
+    labels: ['Good at coding', 'Quantized'],
   },
   {
     modelName: 'LLaMA 3.2 - 1B - SpinQuant',
@@ -110,6 +118,7 @@ export const DEFAULT_MODELS = [
     parameters: 1.24,
     modelSize: 1.14,
     featured: true,
+    labels: ['Good at coding', 'Fast', 'Great first model', 'Quantized'],
   },
   {
     modelName: 'LLaMA 3.2 - 3B',
@@ -121,6 +130,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer_config.json',
     parameters: 3.21,
     modelSize: 6.43,
+    labels: ['Good at coding'],
   },
   {
     modelName: 'LLaMA 3.2 - 3B - QLoRa',
@@ -132,6 +142,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer_config.json',
     parameters: 3.21,
     modelSize: 2.65,
+    labels: ['Good at coding', 'Quantized'],
   },
   {
     modelName: 'LLaMA 3.2 - 3B - SpinQuant',
@@ -143,6 +154,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer_config.json',
     parameters: 3.21,
     modelSize: 2.55,
+    labels: ['Good at coding', 'Fast', 'Quantized'],
   },
   {
     modelName: 'Hammer 2.1 - 0.5B',
@@ -154,6 +166,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer_config.json',
     parameters: 0.49,
     modelSize: 0.99,
+    labels: ['Fast', 'Function calling'],
   },
   {
     modelName: 'Hammer 2.1 - 0.5B - Quantized',
@@ -165,6 +178,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer_config.json',
     parameters: 0.49,
     modelSize: 0.81,
+    labels: ['Fast', 'Function calling', 'Quantized'],
   },
   {
     modelName: 'Hammer 2.1 - 1.5B',
@@ -176,6 +190,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer_config.json',
     parameters: 1.54,
     modelSize: 3.09,
+    labels: ['Balanced', 'Function calling'],
   },
   {
     modelName: 'Hammer 2.1 - 1.5B - Quantized',
@@ -187,6 +202,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer_config.json',
     parameters: 1.54,
     modelSize: 1.76,
+    labels: ['Balanced', 'Function calling', 'Quantized'],
   },
   {
     modelName: 'Hammer 2.1 - 3B',
@@ -198,6 +214,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer_config.json',
     parameters: 3.09,
     modelSize: 6.17,
+    labels: ['Powerful', 'Function calling'],
   },
   {
     modelName: 'Hammer 2.1 - 3B - Quantized',
@@ -209,6 +226,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer_config.json',
     parameters: 3.09,
     modelSize: 2.89,
+    labels: ['Powerful', 'Function calling', 'Quantized'],
   },
   {
     modelName: 'Qwen 2.5 - 0.5B',
@@ -220,6 +238,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer_config.json',
     parameters: 0.49,
     modelSize: 0.99,
+    labels: ['Fast', 'Small'],
   },
   {
     modelName: 'Qwen 2.5 - 0.5B - Quantized',
@@ -231,6 +250,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer_config.json',
     parameters: 0.49,
     modelSize: 0.81,
+    labels: ['Fast', 'Small'],
   },
   {
     modelName: 'Qwen 2.5 - 1.5B',
@@ -242,6 +262,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer_config.json',
     parameters: 1.54,
     modelSize: 3.09,
+    labels: ['Balanced'],
   },
   {
     modelName: 'Qwen 2.5 - 1.5B - Quantized',
@@ -253,6 +274,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer_config.json',
     parameters: 1.54,
     modelSize: 1.76,
+    labels: ['Balanced', 'Quantized'],
   },
   {
     modelName: 'Qwen 2.5 - 3B',
@@ -264,6 +286,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer_config.json',
     parameters: 3.09,
     modelSize: 6.17,
+    labels: ['Powerful'],
   },
   {
     modelName: 'Qwen 2.5 - 3B - Quantized',
@@ -275,6 +298,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer_config.json',
     parameters: 3.09,
     modelSize: 2.89,
+    labels: ['Powerful', 'Quantized'],
   },
   {
     modelName: 'PHI 4 MINI',
@@ -286,6 +310,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-phi-4-mini/resolve/v0.4.0/tokenizer_config.json',
     parameters: 3.84,
     modelSize: 7.67,
+    labels: ['Good at coding', 'Smart'],
   },
   {
     modelName: 'PHI 4 MINI - Quantized',
@@ -297,5 +322,6 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-phi-4-mini/resolve/v0.4.0/tokenizer_config.json',
     parameters: 3.84,
     modelSize: 4.5,
+    labels: ['Good at coding', 'Quantized'],
   },
 ];
