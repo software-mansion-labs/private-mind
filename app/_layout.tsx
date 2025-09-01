@@ -20,6 +20,11 @@ import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Stack } from 'expo-router';
 import { VectorStoreProvider } from '../context/VectorStoreContext';
+import * as SplashScreen from 'expo-splash-screen';
+import SplashScreenAnimation from '../components/SplashScreenAnimation';
+
+SplashScreen.preventAutoHideAsync();
+SplashScreen.setOptions({ fade: false, duration: 0 })
 
 export default function Layout() {
   useFonts({
@@ -96,6 +101,7 @@ export default function Layout() {
               </BottomSheetModalProvider>
             </KeyboardProvider>
           </VectorStoreProvider>
+          <SplashScreenAnimation />
         </ThemeProvider>
       </SQLiteProvider>
     </GestureHandlerRootView>
