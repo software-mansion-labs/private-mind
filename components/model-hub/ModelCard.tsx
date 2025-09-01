@@ -23,6 +23,7 @@ const TOTAL_MEMORY = DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024; // in
 
 interface Props {
   model: Model;
+  compactView?: boolean;
   onPress: (model: Model) => void;
   memoryWarningSheetRef?: React.RefObject<BottomSheetModal<WarningSheetData> | null>;
   wifiWarningSheetRef?: React.RefObject<BottomSheetModal<WarningSheetData> | null>;
@@ -30,6 +31,7 @@ interface Props {
 
 const ModelCard = ({
   model,
+  compactView = true,
   onPress,
   memoryWarningSheetRef,
   wifiWarningSheetRef,
@@ -124,7 +126,9 @@ const ModelCard = ({
       disabled={disabled}
     >
       <View style={styles.topRow}>
-        <View style={styles.titleSection}>
+        <View
+          style={[styles.titleSection, compactView && { maxWidth: '100%' }]}
+        >
           <Text style={styles.name}>{model.modelName}</Text>
           <View style={styles.chipContainer}>
             {model.parameters && (
@@ -165,9 +169,14 @@ const ModelCard = ({
                 borderColor={theme.border.soft}
               />
             )}
-            {model.labels?.map((label) => (
-              <Chip key={label} title={label} borderColor={theme.border.soft} />
-            ))}
+            {!compactView &&
+              model.labels?.map((label) => (
+                <Chip
+                  key={label}
+                  title={label}
+                  borderColor={theme.border.soft}
+                />
+              ))}
           </View>
         </View>
 
