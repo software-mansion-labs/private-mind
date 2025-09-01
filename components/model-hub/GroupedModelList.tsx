@@ -13,7 +13,10 @@ interface ModelGroup {
 }
 
 interface Props
-  extends Pick<React.ComponentProps<typeof ModelCard>, 'memoryWarningSheetRef' | 'wifiWarningSheetRef'>,
+  extends Pick<
+      React.ComponentProps<typeof ModelCard>,
+      'memoryWarningSheetRef' | 'wifiWarningSheetRef'
+    >,
     Pick<ScrollViewProps, 'contentContainerStyle'> {
   groupedModels: ModelGroup[];
   onModelPress: (model: Model) => void;
@@ -43,6 +46,7 @@ const GroupedModelList = ({
                 <ModelCard
                   key={model.id}
                   model={model}
+                  compactView={false}
                   onPress={() => onModelPress(model)}
                   memoryWarningSheetRef={memoryWarningSheetRef}
                   wifiWarningSheetRef={wifiWarningSheetRef}
