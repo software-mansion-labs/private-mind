@@ -28,7 +28,12 @@ interface Props {
   wifiWarningSheetRef?: React.RefObject<BottomSheetModal<WarningSheetData> | null>;
 }
 
-const ModelCard = ({ model, onPress, memoryWarningSheetRef, wifiWarningSheetRef }: Props) => {
+const ModelCard = ({
+  model,
+  onPress,
+  memoryWarningSheetRef,
+  wifiWarningSheetRef,
+}: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -64,7 +69,8 @@ const ModelCard = ({ model, onPress, memoryWarningSheetRef, wifiWarningSheetRef 
     ) {
       memoryWarningSheetRef.current?.present({
         title: 'Not enough memory to run this model.',
-        subtitle: 'Your device may not have enough RAM to run this model smoothly. In some cases, using quantized models might be a solution due to their smaller size and lower memory requirements.',
+        subtitle:
+          'Your device may not have enough RAM to run this model smoothly. In some cases, using quantized models might be a solution due to their smaller size and lower memory requirements.',
         buttonTitle: 'Download anyway',
         onConfirm: async () => {
           await downloadModel(model);
@@ -90,10 +96,15 @@ const ModelCard = ({ model, onPress, memoryWarningSheetRef, wifiWarningSheetRef 
       return;
     }
 
-    if (networkState.isConnected && networkState.type !== 'wifi' && wifiWarningSheetRef?.current) {
+    if (
+      networkState.isConnected &&
+      networkState.type !== 'wifi' &&
+      wifiWarningSheetRef?.current
+    ) {
       wifiWarningSheetRef.current?.present({
         title: 'No WiFi Connection Detected.',
-        subtitle: 'Downloading models will use your mobile data, which may incur additional charges from your carrier. We recommend connecting to WiFi for the best experience.',
+        subtitle:
+          'Downloading models will use your mobile data, which may incur additional charges from your carrier. We recommend connecting to WiFi for the best experience.',
         buttonTitle: 'Download anyway',
         onConfirm: handleDownloadWithMemoryCheck,
       });
@@ -154,6 +165,9 @@ const ModelCard = ({ model, onPress, memoryWarningSheetRef, wifiWarningSheetRef 
                 borderColor={theme.border.soft}
               />
             )}
+            {model.labels?.map((label) => (
+              <Chip key={label} title={label} borderColor={theme.border.soft} />
+            ))}
           </View>
         </View>
 
@@ -227,16 +241,17 @@ const createStyles = (theme: Theme) =>
     },
     titleSection: {
       gap: 4,
+      maxWidth: '85%',
     },
     chipContainer: {
       flexDirection: 'row',
       alignItems: 'center',
+      flexWrap: 'wrap',
       gap: 4,
     },
     topRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center',
     },
     progressRow: {
       flexDirection: 'row',
