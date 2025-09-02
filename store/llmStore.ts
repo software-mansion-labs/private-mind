@@ -95,16 +95,13 @@ const prepareMessagesForLLM = (
   let systemPrompt = settings.systemPrompt;
 
   if (context.length > 0) {
-    const contextInstructions = `
-          IMPORTANT CONTEXT INFORMATION:
-          You have access to relevant information from the user's document sources. Use this context to provide accurate, well-informed responses. Always prioritize information from the provided context when it's relevant to the user's question.
-          
-          Instructions for using context:
-          - Refer to the context information when answering questions
-          - If the context directly addresses the user's question, use that information as the primary basis for your response
-          - If information from context conflicts with your general knowledge, prioritize the context
-          - If the context doesn't contain relevant information for the question, you may use your general knowledge but mention this limitation
-          - When citing information from context, you can reference it naturally without formal citations`;
+    const contextInstructions = `IMPORTANT CONTEXT INFORMATION: You have access to relevant information from the user's document sources provided in <context></context> tags. Use this context to provide accurate, well-informed responses. Always prioritize information from the provided context when it's relevant to the user's question. Instructions for using context:
+    - The context information is provided within <context></context> tags in the user's message
+    - Refer to the context information when answering questions
+    - If the context directly addresses the user's question, use that information as the primary basis for your response
+    - If information from context conflicts with your general knowledge, prioritize the context
+    - If the context doesn't contain relevant information for the question, you may use your general knowledge but mention this limitation
+    - When citing information from context, you can reference it naturally without formal citations`;
 
     systemPrompt = systemPrompt + contextInstructions;
   }
