@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import TextFieldInput from '../TextFieldInput';
 import SortingTag from './SortingTag';
 import { useTheme } from '../../context/ThemeContext';
@@ -7,6 +7,7 @@ import { useMemo } from 'react';
 import { Theme } from '../../styles/colors';
 import SearchIcon from '../../assets/icons/search.svg';
 import { ModelHubFilter } from '../../hooks/useModelHubData';
+import { ScrollView } from 'react-native-gesture-handler';
 
 interface Props {
   search: string;
