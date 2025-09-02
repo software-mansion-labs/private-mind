@@ -1,10 +1,17 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useEffect,
+} from 'react';
 import {
   Dimensions,
   Image,
   ImageSourcePropType,
   StyleSheet,
   View,
+  BackHandler,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
@@ -86,21 +93,44 @@ const STEPS: (PanelStepProps & {
 function OnboardingScreen({}: Props) {
   const router = useRouter();
   const closeOnboarding = () => {
-  markOnboardingComplete()
+    markOnboardingComplete();
     router.dismissTo('/');
-  }
+  };
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const bgSpillProgress = useSharedValue(0);
 
   const [stepNumber, setStepNumber] = useState(0);
   const step = stepNumber > 0 ? STEPS[stepNumber - 1] : null;
+
+  // Handle Android back button
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        if (stepNumber > 1) {
+          // Go to previous onboarding step
+          setStepNumber(stepNumber - 1);
+          return true; // Prevent default back action
+        } else if (stepNumber === 1) {
+          // Go back to intro panel
+          bgSpillProgress.value = withTiming(0, { duration: 500 });
+          setTimeout(() => setStepNumber(0), 500);
+          return true; // Prevent default back action
+        }
+        // stepNumber === 0 (intro panel) - allow default back action
+        return false;
+      }
+    );
+
+    return () => backHandler.remove();
+  }, [stepNumber, bgSpillProgress]);
 
   const introPanel = useMeasureHeight();
   const stepPanel = useMeasureHeight();
 
   const initialBgBottom = introPanel.height + 16;
-  const bgSpillProgress = useSharedValue(0);
   const bgDistance = useDerivedValue(() =>
     interpolate(bgSpillProgress.value, [0, 1], [0, initialBgBottom])
   );
