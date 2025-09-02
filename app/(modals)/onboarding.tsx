@@ -82,8 +82,7 @@ const STEPS: (PanelStepProps & {
   {
     label: 'Custom models',
     title: 'Upload extra models',
-    description:
-      'Add custom AI models like DeepSeek, OpenAI, or your custom ones.',
+    description: 'Add your own custom models compatible with ExecuTorch.',
     buttonLabel: 'Start chatting',
     image: require('../../assets/onboarding/step_models.png'),
     alignment: 'center',
