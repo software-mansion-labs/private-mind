@@ -29,8 +29,8 @@ interface SourceStore {
   renameSource: (id: number, newName: string) => Promise<void>;
 }
 
-const TEXT_SPLITTER_CHUNK_SIZE = 1000;
-const TEXT_SPLITTER_CHUNK_OVERLAP = 100;
+const TEXT_SPLITTER_CHUNK_SIZE = 500;
+const TEXT_SPLITTER_CHUNK_OVERLAP = 50;
 
 export const useSourceStore = create<SourceStore>((set, get) => ({
   sources: [],
