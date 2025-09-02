@@ -106,7 +106,7 @@ const MessageItem = memo(
                     <MarkdownComponent text={contentParts.normalContent} />
                   </TouchableOpacity>
                 )}
-                {contentParts.hasThinking && (
+                {contentParts.hasThinking && contentParts.thinkingContent?.trim() && (
                   <ThinkingBlock
                     content={contentParts.thinkingContent || ''}
                     isComplete={contentParts.isThinkingComplete}

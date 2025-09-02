@@ -10,6 +10,7 @@ export const DEFAULT_MODELS = [
     parameters: 0.75,
     modelSize: 0.94,
     featured: true,
+    thinking: true,
   },
   {
     modelName: 'Qwen 3 - 0.6B',
@@ -22,6 +23,7 @@ export const DEFAULT_MODELS = [
     parameters: 0.75,
     modelSize: 1.19,
     featured: true,
+    thinking: true,
   },
   {
     modelName: 'Qwen 3 - 1.7B',
@@ -34,6 +36,7 @@ export const DEFAULT_MODELS = [
     parameters: 2.03,
     modelSize: 3.44,
     featured: true,
+    thinking: true,
   },
   {
     modelName: 'Qwen 3 - 1.7B - Quantized',
@@ -46,6 +49,7 @@ export const DEFAULT_MODELS = [
     parameters: 2.03,
     modelSize: 2.16,
     featured: true,
+    thinking: true,
   },
   {
     modelName: 'Qwen 3 - 4B',
@@ -57,6 +61,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/tokenizer_config.json',
     parameters: 4.02,
     modelSize: 8.05,
+    thinking: true,
   },
   {
     modelName: 'Qwen 3 - 4B - Quantized',
@@ -68,6 +73,7 @@ export const DEFAULT_MODELS = [
       'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/tokenizer_config.json',
     parameters: 4.02,
     modelSize: 3.7,
+    thinking: true,
   },
   {
     modelName: 'LLaMA 3.2 - 1B',
