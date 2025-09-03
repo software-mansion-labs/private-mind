@@ -16,7 +16,7 @@ import { Model } from '../../database/modelRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
-import { ScrollView } from 'react-native-gesture-handler';
+import { FlatList } from 'react-native';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
@@ -31,7 +31,7 @@ interface Props {
   onSelectSource: () => void;
   ref: Ref<{ clear: () => void }>;
   model: Model | undefined;
-  scrollRef: RefObject<ScrollView | null>;
+  scrollRef: RefObject<FlatList | null>;
   isAtBottom: boolean;
   activeSourcesCount: number;
 }
@@ -129,7 +129,7 @@ const ChatBar = ({
                 if (!isAtBottom) return;
                 await loadSelectedModel();
                 setTimeout(() => {
-                  scrollRef.current?.scrollToEnd({ animated: true });
+                  scrollRef.current?.scrollToOffset({ offset: 0, animated: true });
                 }, 25);
               }}
               placeholder="Ask about anything..."
