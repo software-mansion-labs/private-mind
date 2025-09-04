@@ -21,6 +21,7 @@ import RotateLeft from '../../assets/icons/rotate_left.svg';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
+import PromptSuggestions from './PromptSuggestions';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
 
@@ -29,11 +30,16 @@ interface Props {
   onSend: (userInput: string) => void;
   onSelectModel: () => void;
   onSelectSource: () => void;
-  ref: Ref<{ clear: () => void }>;
+  onSelectPrompt: (prompt: string) => void;
+  ref: Ref<{
+    clear: () => void;
+    setInput: (text: string) => void;
+  }>;
   model: Model | undefined;
   scrollRef: RefObject<ScrollView | null>;
   isAtBottom: boolean;
   activeSourcesCount: number;
+  hasMessages: boolean;
 }
 
 const ChatBar = ({
@@ -41,18 +47,27 @@ const ChatBar = ({
   onSend,
   onSelectModel,
   onSelectSource,
+  onSelectPrompt,
   ref,
   model,
   scrollRef,
   isAtBottom,
   activeSourcesCount,
+  hasMessages,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [userInput, setUserInput] = useState('');
 
-  useImperativeHandle(ref, () => ({ clear: () => setUserInput('') }), []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      clear: () => setUserInput(''),
+      setInput: (text: string) => setUserInput(text),
+    }),
+    []
+  );
 
   const {
     isGenerating,
@@ -120,36 +135,43 @@ const ChatBar = ({
   return (
     <View style={styles.container}>
       {model?.isDownloaded && (
-        <View style={styles.inputContainer}>
-          <View style={styles.content}>
-            <TextInput
-              style={styles.input}
-              multiline
-              onFocus={async () => {
-                if (!isAtBottom) return;
-                await loadSelectedModel();
-                setTimeout(() => {
-                  scrollRef.current?.scrollToEnd({ animated: true });
-                }, 25);
-              }}
-              placeholder="Ask about anything..."
-              placeholderTextColor={theme.text.contrastTertiary}
-              value={userInput}
-              onChangeText={setUserInput}
-              numberOfLines={3}
+        <>
+          {!hasMessages && (
+            <View style={styles.suggestionsContainer}>
+              <PromptSuggestions onSelectPrompt={onSelectPrompt} />
+            </View>
+          )}
+          <View style={styles.inputContainer}>
+            <View style={styles.content}>
+              <TextInput
+                style={styles.input}
+                multiline
+                onFocus={async () => {
+                  if (!isAtBottom) return;
+                  await loadSelectedModel();
+                  setTimeout(() => {
+                    scrollRef.current?.scrollToEnd({ animated: true });
+                  }, 25);
+                }}
+                placeholder="Ask about anything..."
+                placeholderTextColor={theme.text.contrastTertiary}
+                value={userInput}
+                onChangeText={setUserInput}
+                numberOfLines={3}
+              />
+            </View>
+            <ChatBarActions
+              onSelectSource={onSelectSource}
+              activeSourcesCount={activeSourcesCount}
+              userInput={userInput}
+              onSend={() => onSend(userInput)}
+              isGenerating={isGenerating}
+              isProcessingPrompt={isProcessingPrompt}
+              onInterrupt={interrupt}
+              onSpeechInput={openSpeechInput}
             />
           </View>
-          <ChatBarActions
-            onSelectSource={onSelectSource}
-            activeSourcesCount={activeSourcesCount}
-            userInput={userInput}
-            onSend={() => onSend(userInput)}
-            isGenerating={isGenerating}
-            isProcessingPrompt={isProcessingPrompt}
-            onInterrupt={interrupt}
-            onSpeechInput={openSpeechInput}
-          />
-        </View>
+        </>
       )}
     </View>
   );
@@ -163,6 +185,9 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'column',
       justifyContent: 'center',
       paddingHorizontal: 16,
+    },
+    suggestionsContainer: {
+      marginBottom: 12,
     },
     modelSelection: {
       flexDirection: 'row',
