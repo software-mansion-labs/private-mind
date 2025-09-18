@@ -1,4 +1,10 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  useEffect,
+} from 'react';
 import { Keyboard, StyleSheet, TextInput, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -10,7 +16,7 @@ import {
   Chat,
   ChatSettings,
   checkIfChatExists,
-  getChatSettings,
+  setChatSettings,
   type Message,
 } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
@@ -23,6 +29,8 @@ import { CustomKeyboardAvoidingView } from '../CustomKeyboardAvoidingView';
 import { useVectorStore } from '../../context/VectorStoreContext';
 import SourceSelectSheet from '../bottomSheets/SourceSelectSheet';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
+import useChatSettings from '../../hooks/useChatSettings';
+import Toast from 'react-native-toast-message';
 
 interface Props {
   chatId: number;
@@ -82,13 +90,14 @@ export default function ChatScreen({
     loadModel,
     model: loadedModel,
   } = useLLMStore();
-  const { addChat, updateLastUsed, setChatModel, phantomChat } = useChatStore();
+  const { addChat, updateLastUsed, setChatModel, phantomChat, setPhantomChatSettings } = useChatStore();
   const { getModelById } = useModelStore();
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const { settings: chatSettings, setSetting } = useChatSettings(chatId);
 
   const enabledSources =
     chat?.enabledSources || phantomChat?.enabledSources || [];
@@ -118,12 +127,11 @@ export default function ChatScreen({
       enabledSources,
       vectorStore!
     );
-    let settings: ChatSettings;
-    if (phantomChat?.id === chatId) {
-      settings = phantomChat.settings!;
-    } else {
-      settings = await getChatSettings(db, chatId);
-    }
+    const settings: ChatSettings = {
+      systemPrompt: chatSettings.systemPrompt,
+      contextWindow: parseInt(chatSettings.contextWindow),
+      thinkingEnabled: chatSettings.thinkingEnabled,
+    };
 
     await sendChatMessage(userInput, chatId!, context, settings);
   };
@@ -140,6 +148,37 @@ export default function ChatScreen({
       modelBottomSheetModalRef.current?.dismiss();
     } catch (error) {
       console.error('Error loading model:', error);
+    }
+  };
+
+  const handleThinkingToggle = async () => {
+    if (!model?.thinking) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Thinking cannot be enabled for this model.',
+      });
+      return;
+    }
+
+    const newSettings: ChatSettings = {
+      systemPrompt: chatSettings?.systemPrompt || '',
+      contextWindow: chatSettings?.contextWindow
+        ? parseInt(chatSettings.contextWindow)
+        : 6,
+      thinkingEnabled: !chatSettings?.thinkingEnabled,
+    };
+
+    setSetting('thinkingEnabled', !chatSettings?.thinkingEnabled);
+
+    try {
+      if (phantomChat?.id === chatId) {
+        await setPhantomChatSettings(newSettings);
+      } else {
+        await setChatSettings(db, chatId, newSettings);
+      }
+    } catch (error) {
+      setSetting('thinkingEnabled', !chatSettings?.thinkingEnabled);
+      console.error('Failed to update thinking setting:', error);
     }
   };
 
@@ -182,6 +221,8 @@ export default function ChatScreen({
           scrollRef={scrollRef}
           isAtBottom={isAtBottom}
           activeSourcesCount={enabledSources.length}
+          thinkingEnabled={chatSettings?.thinkingEnabled || false}
+          onThinkingToggle={handleThinkingToggle}
           hasMessages={messageHistory.length > 0}
         />
       </View>

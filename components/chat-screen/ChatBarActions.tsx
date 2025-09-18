@@ -7,6 +7,8 @@ import SendIcon from '../../assets/icons/send_icon.svg';
 import PauseIcon from '../../assets/icons/pause_icon.svg';
 import CircleButton from '../CircleButton';
 import SoundwaveIcon from '../../assets/icons/soundwave.svg';
+import LightBulbCrossedIcon from '../../assets/icons/light_bulb_crossed.svg';
+import LightBulbIcon from '../../assets/icons/light_bulb.svg';
 
 interface Props {
   onSelectSource: () => void;
@@ -17,6 +19,8 @@ interface Props {
   isProcessingPrompt: boolean;
   onInterrupt: () => void;
   onSpeechInput: () => void;
+  thinkingEnabled: boolean;
+  onThinkingToggle?: () => void;
 }
 
 const ChatBarActions = ({
@@ -28,6 +32,8 @@ const ChatBarActions = ({
   isProcessingPrompt,
   onInterrupt,
   onSpeechInput,
+  thinkingEnabled = false,
+  onThinkingToggle,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -76,6 +82,25 @@ const ChatBarActions = ({
             </View>
           )}
           <Text style={styles.sourceText}>Sources</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onThinkingToggle}
+          style={[styles.sourceButton, !thinkingEnabled && { opacity: 0.4 }]}
+        >
+          {!thinkingEnabled ? (
+            <LightBulbCrossedIcon
+              style={{ color: theme.text.contrastPrimary }}
+              width={20}
+              height={20}
+            />
+          ) : (
+            <LightBulbIcon
+              style={{ color: theme.text.contrastPrimary }}
+              width={20}
+              height={20}
+            />
+          )}
+          <Text style={styles.sourceText}>Think</Text>
         </TouchableOpacity>
       </View>
 
