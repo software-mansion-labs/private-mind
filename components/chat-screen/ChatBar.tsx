@@ -4,7 +4,6 @@ import React, {
   useImperativeHandle,
   useMemo,
   useState,
-  useCallback,
 } from 'react';
 import {
   View,
@@ -14,7 +13,6 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Model } from '../../database/modelRepository';
-import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
@@ -59,7 +57,7 @@ const ChatBar = ({
   activeSourcesCount,
   thinkingEnabled,
   onThinkingToggle,
-  hasMessages
+  hasMessages,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -174,21 +172,10 @@ const ChatBar = ({
               isProcessingPrompt={isProcessingPrompt}
               onInterrupt={interrupt}
               onSpeechInput={openSpeechInput}
+              thinkingEnabled={thinkingEnabled}
+              onThinkingToggle={onThinkingToggle}
             />
           </View>
-          <ChatBarActions
-            onSelectSource={onSelectSource}
-            activeSourcesCount={activeSourcesCount}
-            userInput={userInput}
-            onSend={() => onSend(userInput)}
-            isGenerating={isGenerating}
-            isProcessingPrompt={isProcessingPrompt}
-            onInterrupt={interrupt}
-            onSpeechInput={openSpeechInput}
-            thinkingEnabled={thinkingEnabled}
-            onThinkingToggle={onThinkingToggle}
-          />
-        </View>
         </>
       )}
     </View>
