@@ -13,6 +13,7 @@ const runMigrations = async (db: SQLiteDatabase) => {
   );
   const hasFeatured = modelsTableInfo.some((col) => col.name === 'featured');
   const hasThinking = modelsTableInfo.some((col) => col.name === 'thinking');
+  const hasLabels = modelsTableInfo.some((col) => col.name === 'labels');
 
   if (!hasFeatured) {
     await db.execAsync(
@@ -23,6 +24,12 @@ const runMigrations = async (db: SQLiteDatabase) => {
   if (!hasThinking) {
     await db.execAsync(
       `ALTER TABLE models ADD COLUMN thinking INTEGER DEFAULT 0`
+    );
+  }
+
+  if (!hasLabels) {
+    await db.execAsync(
+      `ALTER TABLE models ADD COLUMN labels TEXT DEFAULT NULL`
     );
   }
 
@@ -53,9 +60,10 @@ const runMigrations = async (db: SQLiteDatabase) => {
 
   for (const model of DEFAULT_MODELS) {
     await db.runAsync(
-      `UPDATE models SET featured = ?, thinking = ? WHERE modelName = ?`,
+      `UPDATE models SET featured = ?, thinking = ?, labels = ? WHERE modelName = ?`,
       model.featured ? 1 : 0,
       model.thinking ? 1 : 0,
+      model.labels ? JSON.stringify(model.labels) : null,
       model.modelName
     );
   }
@@ -75,7 +83,8 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       tokenizerPath TEXT,
       tokenizerConfigPath TEXT,
       thinking INTEGER DEFAULT 0,
-      featured INTEGER DEFAULT 0
+      featured INTEGER DEFAULT 0,
+      labels TEXT DEFAULT NULL
     );
   `);
 
@@ -148,6 +157,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   `);
 
   // Run migration before inserting default models
+  await runMigrations(db);
 
   useChatStore.getState().setDB(db);
   useModelStore.getState().setDB(db);
@@ -188,9 +198,8 @@ export const initDatabase = async (db: SQLiteDatabase) => {
         modelSize: model.modelSize,
         featured: !!featured,
         thinking: !!thinking,
+        labels: model.labels,
       });
     }
   });
-
-  await runMigrations(db);
 };
