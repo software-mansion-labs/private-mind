@@ -4,6 +4,7 @@ import React, {
   useImperativeHandle,
   useMemo,
   useState,
+  useCallback,
 } from 'react';
 import {
   View,
@@ -13,6 +14,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Model } from '../../database/modelRepository';
+import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
@@ -39,6 +41,8 @@ interface Props {
   scrollRef: RefObject<ScrollView | null>;
   isAtBottom: boolean;
   activeSourcesCount: number;
+  thinkingEnabled: boolean;
+  onThinkingToggle: () => void;
   hasMessages: boolean;
 }
 
@@ -53,6 +57,8 @@ const ChatBar = ({
   scrollRef,
   isAtBottom,
   activeSourcesCount,
+  thinkingEnabled,
+  onThinkingToggle,
   hasMessages,
 }: Props) => {
   const { theme } = useTheme();
@@ -76,7 +82,6 @@ const ChatBar = ({
     loadModel,
     model: loadedModel,
   } = useLLMStore();
-
   const loadSelectedModel = async () => {
     if (model?.isDownloaded && loadedModel?.id !== model.id) {
       return loadModel(model);
@@ -169,6 +174,8 @@ const ChatBar = ({
               isProcessingPrompt={isProcessingPrompt}
               onInterrupt={interrupt}
               onSpeechInput={openSpeechInput}
+              thinkingEnabled={thinkingEnabled}
+              onThinkingToggle={onThinkingToggle}
             />
           </View>
         </>

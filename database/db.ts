@@ -8,14 +8,42 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSourceStore } from '../store/sourceStore';
 
 const runMigrations = async (db: SQLiteDatabase) => {
-  const tableInfo = await db.getAllAsync<{ name: string }>(
+  const modelsTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(models)`
   );
-  const hasFeatured = tableInfo.some((col) => col.name === 'featured');
+  const hasFeatured = modelsTableInfo.some((col) => col.name === 'featured');
+  const hasThinking = modelsTableInfo.some((col) => col.name === 'thinking');
+  const hasLabels = modelsTableInfo.some((col) => col.name === 'labels');
 
   if (!hasFeatured) {
     await db.execAsync(
       `ALTER TABLE models ADD COLUMN featured INTEGER DEFAULT 0`
+    );
+  }
+
+  if (!hasThinking) {
+    await db.execAsync(
+      `ALTER TABLE models ADD COLUMN thinking INTEGER DEFAULT 0`
+    );
+  }
+
+  if (!hasLabels) {
+    await db.execAsync(
+      `ALTER TABLE models ADD COLUMN labels TEXT DEFAULT NULL`
+    );
+  }
+
+  // Check and add thinkingEnabled to chatSettings
+  const chatSettingsTableInfo = await db.getAllAsync<{ name: string }>(
+    `PRAGMA table_info(chatSettings)`
+  );
+  const hasThinkingEnabled = chatSettingsTableInfo.some(
+    (col) => col.name === 'thinkingEnabled'
+  );
+
+  if (!hasThinkingEnabled) {
+    await db.execAsync(
+      `ALTER TABLE chatSettings ADD COLUMN thinkingEnabled INTEGER DEFAULT NULL`
     );
   }
 
@@ -32,8 +60,10 @@ const runMigrations = async (db: SQLiteDatabase) => {
 
   for (const model of DEFAULT_MODELS) {
     await db.runAsync(
-      `UPDATE models SET featured = ? WHERE modelName = ?`,
+      `UPDATE models SET featured = ?, thinking = ?, labels = ? WHERE modelName = ?`,
       model.featured ? 1 : 0,
+      model.thinking ? 1 : 0,
+      model.labels ? JSON.stringify(model.labels) : null,
       model.modelName
     );
   }
@@ -51,7 +81,10 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       isDownloaded INTEGER DEFAULT 0,
       modelPath TEXT,
       tokenizerPath TEXT,
-      tokenizerConfigPath TEXT
+      tokenizerConfigPath TEXT,
+      thinking INTEGER DEFAULT 0,
+      featured INTEGER DEFAULT 0,
+      labels TEXT DEFAULT NULL
     );
   `);
 
@@ -84,6 +117,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       chatId INTEGER PRIMARY KEY NOT NULL,
       systemPrompt TEXT DEFAULT '',
       contextWindow INTEGER DEFAULT 10,
+      thinkingEnabled INTEGER DEFAULT NULL,
       FOREIGN KEY(chatId) REFERENCES chats(id) ON DELETE CASCADE
     );
   `);
@@ -123,6 +157,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   `);
 
   // Run migration before inserting default models
+  await runMigrations(db);
 
   useChatStore.getState().setDB(db);
   useModelStore.getState().setDB(db);
@@ -149,6 +184,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
         tokenizerPath,
         tokenizerConfigPath,
         featured,
+        thinking,
       } = model;
 
       await addModel(db, {
@@ -161,9 +197,9 @@ export const initDatabase = async (db: SQLiteDatabase) => {
         parameters: model.parameters,
         modelSize: model.modelSize,
         featured: !!featured,
+        thinking: !!thinking,
+        labels: model.labels,
       });
     }
   });
-
-  await runMigrations(db);
 };
