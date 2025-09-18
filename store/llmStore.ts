@@ -86,6 +86,164 @@ const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
   };
 };
 
+const prepareMessagesForLLM = (
+  activeChatMessages: Message[],
+  context: string[],
+  settings: ChatSettings,
+  model: Model
+): ExecutorchMessage[] => {
+  let systemPrompt = settings.systemPrompt;
+
+  if (context.length > 0) {
+    const contextInstructions = `IMPORTANT CONTEXT INFORMATION: You have access to relevant information from the user's document sources provided in <context></context> tags. Use this context to provide accurate, well-informed responses. Always prioritize information from the provided context when it's relevant to the user's question. Instructions for using context:
+    - The context information is provided within <context></context> tags in the user's message
+    - Refer to the context information when answering questions
+    - If the context directly addresses the user's question, use that information as the primary basis for your response
+    - If information from context conflicts with your general knowledge, prioritize the context
+    - If the context doesn't contain relevant information for the question, you may use your general knowledge but mention this limitation
+    - When citing information from context, you can reference it naturally without formal citations`;
+
+    systemPrompt = systemPrompt + contextInstructions;
+  }
+
+  const filteredMessages: ExecutorchMessage[] = activeChatMessages.reduce(
+    (acc: ExecutorchMessage[], msg) => {
+      if (msg.role !== 'event') {
+        acc.push({ role: msg.role, content: msg.content });
+      }
+      return acc;
+    },
+    []
+  );
+
+  const contextWindow = settings.contextWindow;
+  const messagesWithSystemPrompt: ExecutorchMessage[] = [
+    { role: 'system', content: systemPrompt },
+    ...filteredMessages.slice(-contextWindow, -1),
+  ];
+
+  if (settings.thinkingEnabled) {
+    messagesWithSystemPrompt.at(-1)!.content += ' /think';
+  } else if (model.thinking) {
+    messagesWithSystemPrompt.at(-1)!.content += ' /no_think';
+  }
+
+  if (context.length > 0) {
+    messagesWithSystemPrompt.at(-1)!.content = `<context>${context.join(
+      ' '
+    )}</context>
+        ${messagesWithSystemPrompt.at(-1)!.content}
+        `;
+  }
+
+  return messagesWithSystemPrompt;
+};
+
+const waitForModelLoad = async (get: () => LLMStore): Promise<void> => {
+  if (get().isLoading) {
+    await new Promise((resolve) => {
+      const interval = setInterval(() => {
+        if (!get().isLoading || !get().isProcessingPrompt) {
+          clearInterval(interval);
+          resolve(null);
+        }
+      }, 100);
+    });
+  }
+};
+
+const updateChatStateForGeneration = (
+  set: (
+    partial: Partial<LLMStore> | ((state: LLMStore) => Partial<LLMStore>)
+  ) => void,
+  phase: 'start' | 'generating' | 'complete',
+  data?: {
+    chatId?: number;
+    activeChatMessages?: Message[];
+    userMessage?: Message;
+    assistantPlaceholder?: Message;
+    timeToFirstToken?: number;
+    tokensPerSecond?: number;
+  }
+) => {
+  switch (phase) {
+    case 'start':
+      set({
+        isProcessingPrompt: true,
+        generatingForChatId: data?.chatId,
+        activeChatMessages: data?.activeChatMessages,
+      });
+      break;
+    case 'generating':
+      set({
+        isGenerating: true,
+        performance: {
+          tokenCount: 0,
+          firstTokenTime: 0,
+        },
+      });
+      break;
+    case 'complete':
+      if (
+        data?.timeToFirstToken !== undefined &&
+        data?.tokensPerSecond !== undefined
+      ) {
+        set((state) => ({
+          activeChatMessages: state.activeChatMessages.map((msg, index) =>
+            index === state.activeChatMessages.length - 1
+              ? {
+                  ...msg,
+                  timeToFirstToken: data.timeToFirstToken!,
+                  tokensPerSecond: data.tokensPerSecond!,
+                }
+              : msg
+          ),
+          isGenerating: false,
+          generatingForChatId: null,
+          isProcessingPrompt: false,
+        }));
+      } else {
+        set({
+          isGenerating: false,
+          generatingForChatId: null,
+          isProcessingPrompt: false,
+        });
+      }
+      break;
+  }
+};
+
+const generateLLMResponse = async (
+  messages: ExecutorchMessage[],
+  get: () => LLMStore
+): Promise<{
+  response: string | null;
+  performance: { timeToFirstToken: number; tokensPerSecond: number };
+}> => {
+  const startTime = performance.now();
+  const finalResponse = await llmInstance.generate(messages);
+  const endTime = performance.now();
+
+  if (finalResponse) {
+    const { timeToFirstToken, tokensPerSecond } = calculatePerformanceMetrics(
+      startTime,
+      endTime,
+      get().performance.firstTokenTime,
+      get().performance.tokenCount
+    );
+
+    return {
+      response: finalResponse,
+      performance: { timeToFirstToken, tokensPerSecond },
+    };
+  }
+
+  return {
+    response: null,
+    performance: { timeToFirstToken: 0, tokensPerSecond: 0 },
+  };
+};
+
 export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
   isGenerating: false,
@@ -180,11 +338,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       return;
     }
 
-    set({
-      isProcessingPrompt: true,
-      generatingForChatId: chatId,
-    });
-
     try {
       const userMessage: Omit<Message, 'id'> = {
         role: 'user',
@@ -200,118 +353,61 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         timestamp: Date.now(),
         id: -1,
       };
-      const userMessageId = await persistMessage(db, {
-        ...userMessage,
-      });
-      set({
-        activeChatMessages: [
-          ...activeChatMessages,
-          { ...userMessage, id: userMessageId },
-          assistantPlaceholder,
-        ],
-      });
 
-      let systemPrompt = settings.systemPrompt;
-
-      if (context.length > 0) {
-        const contextInstructions = `
-          IMPORTANT CONTEXT INFORMATION:
-          You have access to relevant information from the user's document sources. Use this context to provide accurate, well-informed responses. Always prioritize information from the provided context when it's relevant to the user's question.
-
-          Available Context Sources: ${context.join(', ')}
-
-          Instructions for using context:
-          - Refer to the context information when answering questions
-          - If the context directly addresses the user's question, use that information as the primary basis for your response
-          - If information from context conflicts with your general knowledge, prioritize the context
-          - If the context doesn't contain relevant information for the question, you may use your general knowledge but mention this limitation
-          - When citing information from context, you can reference it naturally without formal citations`;
-
-        systemPrompt = systemPrompt + contextInstructions;
-      }
-
-      const filteredMessages: ExecutorchMessage[] =
-        get().activeChatMessages.reduce((acc: ExecutorchMessage[], msg) => {
-          if (msg.role !== 'event') {
-            acc.push({ role: msg.role, content: msg.content });
-          }
-          return acc;
-        }, []);
-      const contextWindow = settings.contextWindow;
-      const messagesWithSystemPrompt: ExecutorchMessage[] = [
-        { role: 'system', content: systemPrompt },
-        ...filteredMessages.slice(-contextWindow, -1),
+      const userMessageId = await persistMessage(db, userMessage);
+      const updatedChatMessages = [
+        ...activeChatMessages,
+        { ...userMessage, id: userMessageId },
+        assistantPlaceholder,
       ];
-      if (settings.thinkingEnabled) {
-        messagesWithSystemPrompt.at(-1)!.content += ' /think';
-      } else {
-        messagesWithSystemPrompt.at(-1)!.content += ' /no_think';
-      }
-      // Polling to wait for the model to load and display dots until the first token is generated.
-      if (get().isLoading) {
-        await new Promise((resolve) => {
-          const interval = setInterval(() => {
-            if (!get().isLoading || !get().isProcessingPrompt) {
-              clearInterval(interval);
-              resolve(null);
-            }
-          }, 100);
-        });
-      }
 
-      // If the user interrupts when the model is loading
+      updateChatStateForGeneration(set, 'start', {
+        chatId,
+        activeChatMessages: updatedChatMessages,
+      });
+
+      const messagesWithSystemPrompt = prepareMessagesForLLM(
+        get().activeChatMessages,
+        context,
+        settings,
+        currentModel
+      );
+
+      await waitForModelLoad(get);
+
+      // Check if user interrupted during model loading
       if (!get().isProcessingPrompt) {
         return;
       }
 
-      set({
-        isGenerating: true,
-        performance: {
-          tokenCount: 0,
-          firstTokenTime: 0,
-        },
-      });
+      // Set generation state and generate response
+      updateChatStateForGeneration(set, 'generating');
+      const { response: finalResponse, performance: responsePerformance } =
+        await generateLLMResponse(messagesWithSystemPrompt, get);
 
-      const startTime = performance.now();
-      const finalResponse = await llmInstance.generate(
-        messagesWithSystemPrompt
-      );
-      const endTime = performance.now();
-
+      // Handle successful response
       if (finalResponse) {
-        const { timeToFirstToken, tokensPerSecond } =
-          calculatePerformanceMetrics(
-            startTime,
-            endTime,
-            get().performance.firstTokenTime,
-            get().performance.tokenCount
-          );
-
         await persistMessage(db, {
           ...assistantPlaceholder,
           content: finalResponse,
-          tokensPerSecond,
-          timeToFirstToken,
+          tokensPerSecond: responsePerformance.tokensPerSecond,
+          timeToFirstToken: responsePerformance.timeToFirstToken,
         });
 
         if (get().activeChatId === chatId) {
-          set((state) => ({
-            activeChatMessages: state.activeChatMessages.map((msg, index) =>
-              index === state.activeChatMessages.length - 1
-                ? { ...msg, timeToFirstToken, tokensPerSecond }
-                : msg
-            ),
-          }));
+          updateChatStateForGeneration(set, 'complete', {
+            timeToFirstToken: responsePerformance.timeToFirstToken,
+            tokensPerSecond: responsePerformance.tokensPerSecond,
+          });
+        } else {
+          updateChatStateForGeneration(set, 'complete');
         }
+      } else {
+        updateChatStateForGeneration(set, 'complete');
       }
     } catch (e) {
       console.error('Chat sendMessage failed', e);
-    } finally {
-      set({
-        isGenerating: false,
-        generatingForChatId: null,
-        isProcessingPrompt: false,
-      });
+      updateChatStateForGeneration(set, 'complete');
     }
   },
 

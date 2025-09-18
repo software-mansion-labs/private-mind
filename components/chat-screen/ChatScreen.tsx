@@ -52,12 +52,26 @@ const prepareContext = async (
       prompt,
       K_DOCUMENTS_TO_RETRIEVE
     );
+
     context = context.filter((item) => {
       return enabledSources.includes(item.metadata?.documentId);
     });
 
-    const preparedContext = context.map((item) => {
-      return `${item.content}`;
+    context.sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
+
+    const preparedContext = context.map((item, index) => {
+      const documentName =
+        item.metadata?.name ||
+        `Document ${item.metadata?.documentId || 'Unknown'}`;
+      const relevanceScore = item.similarity
+        ? `(Relevance: ${(item.similarity * 100).toFixed(1)}%)`
+        : '';
+
+      return `\n --- Source ${
+        index + 1
+      }: ${documentName} ${relevanceScore} --- \n ${item.content.trim()} \n --- End of Source ${
+        index + 1
+      } ---`;
     });
 
     return preparedContext;
@@ -90,8 +104,14 @@ export default function ChatScreen({
     loadModel,
     model: loadedModel,
   } = useLLMStore();
-  const { addChat, updateLastUsed, setChatModel, phantomChat, setPhantomChatSettings } = useChatStore();
   const { getModelById } = useModelStore();
+  const {
+    addChat,
+    updateLastUsed,
+    setChatModel,
+    phantomChat,
+    setPhantomChatSettings,
+  } = useChatStore();
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
