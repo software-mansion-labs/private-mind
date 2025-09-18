@@ -7,7 +7,8 @@ interface Props {
   size?: number;
   backgroundColor: string;
   color: string;
-  onPress: () => void;
+  onPress?: () => void;
+  disabled?: boolean;
 }
 
 const CircleButton = ({
@@ -16,6 +17,7 @@ const CircleButton = ({
   backgroundColor,
   color,
   onPress,
+  disabled = false,
 }: Props) => {
   const styles = useMemo(
     () => createStyles(backgroundColor),
@@ -23,7 +25,11 @@ const CircleButton = ({
   );
 
   return (
-    <TouchableOpacity onPress={onPress} style={styles.circle}>
+    <TouchableOpacity
+      onPress={disabled ? undefined : onPress}
+      style={styles.circle}
+      disabled={disabled}
+    >
       <Icon width={size} height={size} color={color} />
     </TouchableOpacity>
   );
