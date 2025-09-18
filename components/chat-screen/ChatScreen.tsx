@@ -29,6 +29,7 @@ import { CustomKeyboardAvoidingView } from '../CustomKeyboardAvoidingView';
 import { useVectorStore } from '../../context/VectorStoreContext';
 import SourceSelectSheet from '../bottomSheets/SourceSelectSheet';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
+import { SearchResult } from 'react-native-rag';
 import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
 
@@ -50,7 +51,9 @@ const prepareContext = async (
   try {
     let context = await vectorStore.similaritySearch(
       prompt,
-      K_DOCUMENTS_TO_RETRIEVE
+      K_DOCUMENTS_TO_RETRIEVE,
+      (value: SearchResult) =>
+        enabledSources.includes(value.metadata?.documentId)
     );
 
     context = context.filter((item) => {

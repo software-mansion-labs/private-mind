@@ -2182,13 +2182,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native-rag/op-sqlite@npm:^0.1.1":
-  version: 0.1.1
-  resolution: "@react-native-rag/op-sqlite@npm:0.1.1"
+"@react-native-rag/op-sqlite@file:./react-native-rag-op-sqlite-0.1.2.tgz::locator=local-mind%40workspace%3A.":
+  version: 0.1.2
+  resolution: "@react-native-rag/op-sqlite@file:./react-native-rag-op-sqlite-0.1.2.tgz::locator=local-mind%40workspace%3A."
   peerDependencies:
     "@op-engineering/op-sqlite": ^14.0.4
     react-native-rag: ^0.1.0
-  checksum: ba52dcbd1965ed5ba0c1c650f6eb7a83afb045228b4a62a1c9450c199fc24824091f650d104b0d4db037b8403a20196d77576f2b4fba807a5ca1cfd79a515b18
+  checksum: cdec0a8fc7154d01df44d3ef9f279850c1d6559b9adbbce6f371b22f7dd24bad96ebabbcaee49a89355b50fa8afe350c355649d7e28b7276dede28e47f0cd8f2
   languageName: node
   linkType: hard
 
@@ -5985,7 +5985,7 @@ __metadata:
     "@react-native-community/netinfo": ^11.4.1
     "@react-native-menu/menu": ^1.2.3
     "@react-native-rag/executorch": ^0.1.2
-    "@react-native-rag/op-sqlite": ^0.1.1
+    "@react-native-rag/op-sqlite": "file:./react-native-rag-op-sqlite-0.1.2.tgz"
     "@react-native/metro-config": ^0.76.3
     "@react-navigation/drawer": ^7.5.6
     "@types/react": ~19.0.10
@@ -7772,15 +7772,15 @@ __metadata:
   linkType: hard
 
 "react-native-rag@npm:^0.1.1":
-  version: 0.1.1
-  resolution: "react-native-rag@npm:0.1.1"
+  version: 0.1.2
+  resolution: "react-native-rag@npm:0.1.2"
   dependencies:
     "@langchain/core": ^0.3.57
     "@langchain/textsplitters": ^0.1.0
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: a241421fefcdee7ed40c69d7a82ef2ab485edbb1aac113d623ba3446f311fc0fadebfa9bdffd308b4cebdf1612db975ee8fe5b5668eb82690f5673e585b8cd57
+  checksum: bdc97f9c6d7e6dd2bd08ce2525aa5479db2f814dd77dca8db7a446aee7a8f09a8f13795e949a6eefed7eab2dea687d1116b3b533b694fd0e52f522f76851d9b2
   languageName: node
   linkType: hard
 
