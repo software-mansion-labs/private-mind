@@ -49,16 +49,12 @@ const prepareContext = async (
   vectorStore: OPSQLiteVectorStore
 ) => {
   try {
-    let context = await vectorStore.similaritySearch(
+    const context = await vectorStore.similaritySearch(
       prompt,
       K_DOCUMENTS_TO_RETRIEVE,
       (value: SearchResult) =>
         enabledSources.includes(value.metadata?.documentId)
     );
-
-    context = context.filter((item) => {
-      return enabledSources.includes(item.metadata?.documentId);
-    });
 
     context.sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
 
