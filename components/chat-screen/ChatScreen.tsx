@@ -10,6 +10,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
+import { useModelStore } from '../../store/modelStore';
 import { useTheme } from '../../context/ThemeContext';
 import {
   Chat,
@@ -73,21 +74,24 @@ export default function ChatScreen({
   model,
   selectModel,
 }: Props) {
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<{
+    clear: () => void;
+    setInput: (text: string) => void;
+  }>(null);
   const scrollRef = useRef<ScrollView>(null);
   const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const sourceBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const db = useSQLiteContext();
 
   const { vectorStore } = useVectorStore();
-  const { isGenerating, sendChatMessage, loadModel } = useLLMStore();
   const {
-    addChat,
-    updateLastUsed,
-    setChatModel,
-    phantomChat,
-    setPhantomChatSettings,
-  } = useChatStore();
+    isGenerating,
+    sendChatMessage,
+    loadModel,
+    model: loadedModel,
+  } = useLLMStore();
+  const { addChat, updateLastUsed, setChatModel, phantomChat, setPhantomChatSettings } = useChatStore();
+  const { getModelById } = useModelStore();
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -178,6 +182,22 @@ export default function ChatScreen({
     }
   };
 
+  const handleSelectPrompt = useCallback(
+    async (prompt: string) => {
+      inputRef.current?.setInput(prompt);
+
+      const currentModel = model || (chatId ? getModelById(chatId) : undefined);
+      if (currentModel?.isDownloaded && loadedModel?.id !== currentModel.id) {
+        try {
+          await loadModel(currentModel);
+        } catch (error) {
+          console.error('Error loading model on prompt selection:', error);
+        }
+      }
+    },
+    [model, loadedModel, loadModel, getModelById, chatId]
+  );
+
   return (
     <CustomKeyboardAvoidingView style={styles.container} collapsable={false}>
       <View style={styles.messagesContainer}>
@@ -195,6 +215,7 @@ export default function ChatScreen({
           onSend={handleSendMessage}
           onSelectModel={handlePresentModelSheet}
           onSelectSource={handlePresentSourceSheet}
+          onSelectPrompt={handleSelectPrompt}
           ref={inputRef}
           model={model}
           scrollRef={scrollRef}
@@ -202,6 +223,7 @@ export default function ChatScreen({
           activeSourcesCount={enabledSources.length}
           thinkingEnabled={chatSettings?.thinkingEnabled || false}
           onThinkingToggle={handleThinkingToggle}
+          hasMessages={messageHistory.length > 0}
         />
       </View>
 

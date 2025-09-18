@@ -64,6 +64,7 @@ const createStyles = (theme: Theme) =>
     },
     content: {
       gap: 4,
+      maxWidth: '80%',
     },
     name: {
       fontFamily: fontFamily.medium,
