@@ -21,9 +21,11 @@ import { useModelStore } from '../../store/modelStore';
 import { useSourceStore } from '../../store/sourceStore';
 import { useLLMStore } from '../../store/llmStore';
 import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
+import useSelectStartingModelRedirect from '../../hooks/useSelectStartingModelRedirect';
 
 export default function App() {
   useOnboardingRedirect();
+  useSelectStartingModelRedirect();
 
   const navigation = useNavigation();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);

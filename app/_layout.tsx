@@ -24,7 +24,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import SplashScreenAnimation from '../components/SplashScreenAnimation';
 
 SplashScreen.preventAutoHideAsync();
-SplashScreen.setOptions({ fade: false, duration: 0 })
+SplashScreen.setOptions({ fade: false, duration: 0 });
 
 export default function Layout() {
   useFonts({
@@ -93,6 +93,14 @@ export default function Layout() {
                       headerShown: false,
                       gestureEnabled: false,
                       animation: 'none',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="(modals)/select-starting-model"
+                    options={{
+                      headerShown: false,
+                      gestureEnabled: false,
+                      presentation: 'modal',
                     }}
                   />
                 </Stack>

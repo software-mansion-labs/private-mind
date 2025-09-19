@@ -65,22 +65,22 @@ const createStyles = (theme: Theme) =>
     },
     suggestionCard: {
       width: 160,
-      backgroundColor: theme.bg.strongPrimary,
+      backgroundColor: theme.bg.softSecondary,
       borderRadius: 10,
       padding: 12,
       borderWidth: 1,
-      borderColor: theme.border.soft,
+      borderColor: theme.bg.softSecondary,
     },
     suggestionTitle: {
       fontSize: fontSizes.xs,
       fontFamily: fontFamily.medium,
-      color: theme.text.contrastPrimary,
+      color: theme.text.primary,
       marginBottom: 6,
     },
     suggestionPrompt: {
       fontSize: fontSizes.xs,
       fontFamily: fontFamily.regular,
-      color: theme.text.contrastTertiary,
+      color: theme.text.defaultSecondary,
       lineHeight: lineHeights.xs,
     },
   });

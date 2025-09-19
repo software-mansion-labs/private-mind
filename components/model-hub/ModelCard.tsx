@@ -24,6 +24,7 @@ const TOTAL_MEMORY = DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024; // in
 interface Props {
   model: Model;
   compactView?: boolean;
+  selected?: boolean;
   onPress: (model: Model) => void;
   memoryWarningSheetRef?: React.RefObject<BottomSheetModal<WarningSheetData> | null>;
   wifiWarningSheetRef?: React.RefObject<BottomSheetModal<WarningSheetData> | null>;
@@ -32,6 +33,7 @@ interface Props {
 const ModelCard = ({
   model,
   compactView = true,
+  selected = false,
   onPress,
   memoryWarningSheetRef,
   wifiWarningSheetRef,
@@ -121,7 +123,7 @@ const ModelCard = ({
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, selected && { borderColor: theme.bg.strongPrimary }]}
       onPress={() => onPress(model)}
       disabled={disabled}
     >
