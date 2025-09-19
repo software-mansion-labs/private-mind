@@ -100,10 +100,11 @@ const prepareMessagesForLLM = (
           You have access to relevant information from the user's document sources. Use this context to provide accurate, well-informed responses. Always prioritize information from the provided context when it's relevant to the user's question.
           
           Instructions for using context:
+          - The context is delimited by <context> and </context> tags
           - Refer to the context information when answering questions
           - If the context directly addresses the user's question, use that information as the primary basis for your response
           - If information from context conflicts with your general knowledge, prioritize the context
-          - If the context doesn't contain relevant information for the question, you may use your general knowledge but mention this limitation
+          - If the context doesn't contain relevant information say "I don't know" or "The provided context does not contain the information"
           - When citing information from context, you can reference it naturally without formal citations`;
 
     systemPrompt = systemPrompt + contextInstructions;
@@ -303,6 +304,18 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           if (isFirstToken && !get().isBenchmarking) {
             Feedback.success();
           }
+
+          /* Temporary solution to handle interrupt during prefill, needs to be fixed in the
+          react-native-executorch library
+          */
+          if (
+            isFirstToken &&
+            !get().isProcessingPrompt &&
+            !get().isGenerating
+          ) {
+            llmInstance.interrupt();
+            return;
+          }
           set({
             isProcessingPrompt: false,
             performance: {
@@ -313,7 +326,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             },
           });
           /* This check ensures that after we leave the chat,
-          new messags history won't be overwritten by token send after interrupt.
+          new messages history won't be overwritten by tokens sent after interrupt.
           */
           if (get().generatingForChatId === get().activeChatId) {
             set({
@@ -356,14 +369,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         timestamp: Date.now(),
         id: -1,
       };
-
       const userMessageId = await persistMessage(db, userMessage);
       const updatedChatMessages = [
         ...activeChatMessages,
         { ...userMessage, id: userMessageId },
         assistantPlaceholder,
       ];
-
       updateChatStateForGeneration(set, 'start', {
         chatId,
         activeChatMessages: updatedChatMessages,
@@ -387,7 +398,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       updateChatStateForGeneration(set, 'generating');
       const { response: finalResponse, performance: responsePerformance } =
         await generateLLMResponse(messagesWithSystemPrompt, get);
-
       // Handle successful response
       if (finalResponse) {
         await persistMessage(db, {
@@ -464,11 +474,16 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   },
 
   interrupt: () => {
-    if (get().isGenerating) {
+    const state = get();
+    if (state.isGenerating) {
       llmInstance.interrupt();
-      set({ isGenerating: false, isProcessingPrompt: false });
-    } else if (get().isProcessingPrompt) {
-      set({ isProcessingPrompt: false });
+    }
+
+    if (state.isGenerating || state.isProcessingPrompt) {
+      set({
+        isGenerating: false,
+        isProcessingPrompt: false,
+      });
     }
   },
 
