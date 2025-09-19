@@ -43,15 +43,19 @@ export const prepareMessagesForLLM = (
 
   const lastMessage = messagesWithSystemPrompt.at(-1);
 
+  if (!lastMessage) {
+    return messagesWithSystemPrompt;
+  }
+
   if (settings.thinkingEnabled) {
-    lastMessage!.content += ' /think';
+    lastMessage.content += ' /think';
   } else if (model.thinking) {
-    lastMessage!.content += ' /no_think';
+    lastMessage.content += ' /no_think';
   }
 
   if (context.length > 0) {
-    lastMessage!.content = `<context>${context.join(' ')}</context>
-        ${lastMessage!.content}
+    lastMessage.content = `<context>${context.join(' ')}</context>
+        ${lastMessage.content}
         `;
   }
 
