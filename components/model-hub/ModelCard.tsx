@@ -39,7 +39,10 @@ const ModelCard = ({
   wifiWarningSheetRef,
 }: Props) => {
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(
+    () => createStyles(theme, selected),
+    [theme, selected]
+  );
 
   const { downloadStates, downloadModel, cancelDownload } = useModelStore();
 
@@ -123,7 +126,7 @@ const ModelCard = ({
 
   return (
     <TouchableOpacity
-      style={[styles.card, selected && { borderColor: theme.bg.strongPrimary }]}
+      style={styles.card}
       onPress={() => onPress(model)}
       disabled={disabled}
     >
@@ -232,13 +235,13 @@ const ModelCard = ({
 
 export default ModelCard;
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, selected: boolean) =>
   StyleSheet.create({
     card: {
       padding: 16,
       borderWidth: 1,
       borderRadius: 12,
-      borderColor: theme.border.soft,
+      borderColor: selected ? theme.bg.strongPrimary : theme.border.soft,
       flexDirection: 'column',
       gap: 16,
     },
