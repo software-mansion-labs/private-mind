@@ -29,7 +29,7 @@ function SelectStartingModelScreen() {
   }, [db]);
 
   useEffect(() => {
-    if (downloadedModels.length === 1) setSelectedModel(downloadedModels[0]);
+    if (downloadedModels.length > 0) setSelectedModel(downloadedModels[0]);
   }, [downloadedModels]);
 
   const handleContinue = async () => {
@@ -65,8 +65,10 @@ function SelectStartingModelScreen() {
                 key={model.id}
                 model={model}
                 onPress={
-                  downloadedModels.includes(model)
-                    ? (model) => setSelectedModel(model)
+                  downloadedModels.find((m) => m.id === model.id)
+                    ? (model) => {
+                        setSelectedModel(model);
+                      }
                     : () => {}
                 }
                 compactView={false}
