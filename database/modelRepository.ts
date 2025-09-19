@@ -1,4 +1,5 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
+import { startingModels } from '../constants/default-models';
 
 export type Model = {
   id: number;
@@ -126,7 +127,9 @@ export const getStartingModels = async (db: SQLiteDatabase) => {
       labels: string | null;
     }
   >(
-    `SELECT * FROM models WHERE modelName IN ('LLaMA 3.2 - 1B - SpinQuant', 'Qwen 3 - 0.6B - Quantized', 'Qwen 3 - 1.7B - Quantized')`
+    `SELECT * FROM models WHERE modelName IN (${startingModels
+      .map((model) => `'${model}'`)
+      .join(', ')})`
   );
 
   const models: Model[] = rawModels.map((model) => ({

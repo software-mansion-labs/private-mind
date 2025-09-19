@@ -40,7 +40,7 @@ function SelectStartingModelScreen() {
     await setActiveChatId(null);
     router.replace({
       pathname: `/chat/${nextChatId}`,
-      params: { modelId: downloadedModels[0].id },
+      params: { modelId: selectedModel.id },
     });
   };
 
@@ -64,7 +64,11 @@ function SelectStartingModelScreen() {
               <ModelCard
                 key={model.id}
                 model={model}
-                onPress={() => {}}
+                onPress={
+                  downloadedModels.includes(model)
+                    ? (model) => setSelectedModel(model)
+                    : () => {}
+                }
                 compactView={false}
                 selected={selectedModel?.id === model.id}
               />
