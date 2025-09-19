@@ -6,8 +6,9 @@ const TOTAL_MEMORY_GB = DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024; //
 const NON_QUANTIZED_MEMORY_MULTIPLIER = 2.5;
 const QUANTIZED_MEMORY_MULTIPLIER = 1.75;
 
+const quantizedKeywords = ['quantized', 'qlora', 'spinquant'];
+
 const isModelQuantized = (modelName: string): boolean => {
-  const quantizedKeywords = ['quantized', 'qlora', 'spinquant'];
   const lowerModelName = modelName.toLowerCase();
   return quantizedKeywords.some((keyword) => lowerModelName.includes(keyword));
 };
