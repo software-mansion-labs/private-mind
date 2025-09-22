@@ -1,3 +1,9 @@
+export const startingModels = [
+  'LLaMA 3.2 - 1B - SpinQuant',
+  'Qwen 3 - 0.6B - Quantized',
+  'Qwen 3 - 1.7B - Quantized',
+];
+
 export const DEFAULT_MODELS = [
   {
     modelName: 'Qwen 3 - 0.6B - Quantized',
