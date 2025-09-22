@@ -17,7 +17,6 @@ import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import OnboardingIntroPanel from '../../components/onboarding/OnboardingIntroPanel';
 import Animated, {
-  Extrapolation,
   FadeIn,
   FadeInDown,
   interpolate,
@@ -93,7 +92,7 @@ function OnboardingScreen({}: Props) {
   const router = useRouter();
   const closeOnboarding = () => {
     markOnboardingComplete();
-    router.dismissTo('/');
+    router.replace('/(modals)/select-starting-model');
   };
 
   const { theme } = useTheme();
