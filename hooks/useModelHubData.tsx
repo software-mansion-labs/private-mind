@@ -1,9 +1,11 @@
 import { useMemo } from 'react';
 import { Model } from '../database/modelRepository';
+import { isModelCompatible } from '../utils/modelCompatibility';
 
 export enum ModelHubFilter {
   Featured = 'featured',
   Downloaded = 'downloaded',
+  Compatible = 'compatible',
 }
 
 interface UseModelHubDataParams {
@@ -44,6 +46,10 @@ export default function useModelHubData({
       const matchesDownloaded =
         model.isDownloaded || !activeFilters.has(ModelHubFilter.Downloaded);
       if (!matchesDownloaded) return false;
+
+      const matchesCompatible =
+        isModelCompatible(model) || !activeFilters.has(ModelHubFilter.Compatible);
+      if (!matchesCompatible) return false;
 
       return true;
     });

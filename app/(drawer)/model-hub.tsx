@@ -9,7 +9,9 @@ import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import SecondaryButton from '../../components/SecondaryButton';
 import QuestionIcon from '../../assets/icons/question.svg';
 import AddModelSheet from '../../components/bottomSheets/AddModelSheet';
-import WarningSheet, { WarningSheetData } from '../../components/bottomSheets/WarningSheet';
+import WarningSheet, {
+  WarningSheetData,
+} from '../../components/bottomSheets/WarningSheet';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import useModelHubData, { ModelHubFilter } from '../../hooks/useModelHubData';
@@ -25,12 +27,13 @@ const ModelHubScreen = () => {
 
   const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
   const addModelSheetRef = useRef<BottomSheetModal | null>(null);
-  const memoryWarningSheetRef = useRef<BottomSheetModal<WarningSheetData> | null>(null);
-  const wifiWarningSheetRef = useRef<BottomSheetModal<WarningSheetData> | null>(null);
+  const wifiWarningSheetRef = useRef<BottomSheetModal<WarningSheetData> | null>(
+    null
+  );
   const { models } = useModelStore();
   const [search, setSearch] = useState('');
   const [activeFilters, setActiveFilters] = useState<Set<ModelHubFilter>>(
-    new Set([ModelHubFilter.Featured])
+    new Set([ModelHubFilter.Featured, ModelHubFilter.Compatible])
   );
   const [groupByModel, setGroupByModel] = useState(false);
 
@@ -81,7 +84,6 @@ const ModelHubScreen = () => {
           <GroupedModelList
             groupedModels={groupedModels}
             onModelPress={handleModelPress}
-            memoryWarningSheetRef={memoryWarningSheetRef}
             wifiWarningSheetRef={wifiWarningSheetRef}
             contentContainerStyle={[
               styles.modelScrollContent,
@@ -95,7 +97,6 @@ const ModelHubScreen = () => {
       </View>
       <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
       <AddModelSheet bottomSheetModalRef={addModelSheetRef} />
-      <WarningSheet bottomSheetModalRef={memoryWarningSheetRef} />
       <WarningSheet bottomSheetModalRef={wifiWarningSheetRef} />
     </CustomKeyboardAvoidingView>
   );

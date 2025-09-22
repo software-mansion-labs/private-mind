@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, Text } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
-import DeviceInfo from 'react-native-device-info';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
@@ -10,6 +9,7 @@ import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
 import { WarningSheetData } from '../bottomSheets/WarningSheet';
+import { isModelCompatible } from '../../utils/modelCompatibility';
 import Chip from '../Chip';
 import CircleButton from '../CircleButton';
 import ProcessorIcon from '../../assets/icons/processor.svg';
@@ -18,14 +18,10 @@ import DownloadIcon from '../../assets/icons/download.svg';
 import StarIcon from '../../assets/icons/star.svg';
 import CloseIcon from '../../assets/icons/close.svg';
 
-const MEMORY_TO_PARAMETERS_RATIO = 2.5;
-const TOTAL_MEMORY = DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024; // in GB
-
 interface Props {
   model: Model;
   compactView?: boolean;
   onPress: (model: Model) => void;
-  memoryWarningSheetRef?: React.RefObject<BottomSheetModal<WarningSheetData> | null>;
   wifiWarningSheetRef?: React.RefObject<BottomSheetModal<WarningSheetData> | null>;
 }
 
@@ -33,7 +29,6 @@ const ModelCard = ({
   model,
   compactView = true,
   onPress,
-  memoryWarningSheetRef,
   wifiWarningSheetRef,
 }: Props) => {
   const { theme } = useTheme();
@@ -60,29 +55,6 @@ const ModelCard = ({
     setModelState(downloadState.status);
   }, [downloadState.status]);
 
-  const handleDownloadWithMemoryCheck = async () => {
-    const estimatedRequiredMemory =
-      model.parameters && model.parameters * MEMORY_TO_PARAMETERS_RATIO;
-
-    if (
-      estimatedRequiredMemory &&
-      estimatedRequiredMemory > TOTAL_MEMORY &&
-      memoryWarningSheetRef?.current
-    ) {
-      memoryWarningSheetRef.current?.present({
-        title: 'Not enough memory to run this model.',
-        subtitle:
-          'Your device may not have enough RAM to run this model smoothly. In some cases, using quantized models might be a solution due to their smaller size and lower memory requirements.',
-        buttonTitle: 'Download anyway',
-        onConfirm: async () => {
-          await downloadModel(model);
-        },
-      });
-    } else {
-      await downloadModel(model);
-    }
-  };
-
   const handlePress = async () => {
     if (isDownloading) {
       await cancelDownload(model);
@@ -108,20 +80,23 @@ const ModelCard = ({
         subtitle:
           'Downloading models will use your mobile data, which may incur additional charges from your carrier. We recommend connecting to WiFi for the best experience.',
         buttonTitle: 'Download anyway',
-        onConfirm: handleDownloadWithMemoryCheck,
+        onConfirm: async () => {
+          await downloadModel(model);
+        },
       });
       return;
     }
 
-    await handleDownloadWithMemoryCheck();
+    await downloadModel(model);
   };
 
+  const isCompatible = isModelCompatible(model);
   const disabled =
     modelState !== ModelState.Downloaded && model.source === 'built-in';
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, !isCompatible && styles.incompatibleCard]}
       onPress={() => onPress(model)}
       disabled={disabled}
     >
@@ -129,8 +104,18 @@ const ModelCard = ({
         <View
           style={[styles.titleSection, compactView && { maxWidth: '100%' }]}
         >
-          <Text style={styles.name}>{model.modelName}</Text>
+          <Text style={[styles.name, !isCompatible && styles.incompatibleText]}>
+            {model.modelName}
+          </Text>
           <View style={styles.chipContainer}>
+            {!isCompatible && (
+              <Chip
+                title="Incompatible"
+                borderColor={theme.text.error}
+                backgroundColor={theme.bg.errorSecondary}
+                textColor={theme.text.error}
+              />
+            )}
             {model.parameters && (
               <Chip
                 title={`${model.parameters.toFixed(2)} B`}
@@ -192,11 +177,16 @@ const ModelCard = ({
 
         {modelState === ModelState.NotStarted && (
           <CircleButton
-            onPress={handlePress}
-            backgroundColor={theme.bg.softSecondary}
-            color={theme.text.primary}
+            onPress={!isCompatible ? undefined : handlePress}
+            backgroundColor={
+              !isCompatible ? theme.border.soft : theme.bg.softSecondary
+            }
+            color={
+              !isCompatible ? theme.text.defaultTertiary : theme.text.primary
+            }
             icon={DownloadIcon}
             size={15}
+            disabled={!isCompatible}
           />
         )}
       </View>
@@ -280,5 +270,12 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.xs,
       fontFamily: fontFamily.regular,
       color: theme.text.defaultSecondary,
+    },
+    incompatibleCard: {
+      opacity: 0.5,
+      borderColor: theme.border.soft,
+    },
+    incompatibleText: {
+      color: theme.text.defaultTertiary,
     },
   });
