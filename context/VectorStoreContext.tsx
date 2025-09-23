@@ -1,7 +1,11 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { ExecuTorchEmbeddings } from '@react-native-rag/executorch';
-import { ALL_MINILM_L6_V2 } from 'react-native-executorch';
+
+const ALL_MINILM_L6_V2_ASSETS = {
+  modelSource: require('../assets/models/all-minilm-l6-v2/all-MiniLM-L6-v2_xnnpack.pte'),
+  tokenizerSource: require('../assets/models/all-minilm-l6-v2/tokenizer.json'),
+};
 
 const VectorStoreContext = createContext<{
   vectorStore: OPSQLiteVectorStore | null;
@@ -21,7 +25,7 @@ export const VectorStoreProvider = ({
   useEffect(() => {
     const initialize = async () => {
       try {
-        const embeddings = new ExecuTorchEmbeddings(ALL_MINILM_L6_V2);
+        const embeddings = new ExecuTorchEmbeddings(ALL_MINILM_L6_V2_ASSETS);
 
         const store = await new OPSQLiteVectorStore({
           name: 'private-mind-rag',

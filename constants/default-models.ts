@@ -1,12 +1,44 @@
+import {
+  QWEN3_0_6B_QUANTIZED,
+  QWEN3_0_6B,
+  QWEN3_1_7B,
+  QWEN3_1_7B_QUANTIZED,
+  QWEN3_4B,
+  QWEN3_4B_QUANTIZED,
+  LLAMA3_2_1B,
+  LLAMA3_2_1B_QLORA,
+  LLAMA3_2_1B_SPINQUANT,
+  LLAMA3_2_3B,
+  LLAMA3_2_3B_QLORA,
+  LLAMA3_2_3B_SPINQUANT,
+  HAMMER2_1_0_5B,
+  HAMMER2_1_0_5B_QUANTIZED,
+  HAMMER2_1_1_5B,
+  HAMMER2_1_1_5B_QUANTIZED,
+  HAMMER2_1_3B,
+  HAMMER2_1_3B_QUANTIZED,
+  QWEN2_5_0_5B,
+  QWEN2_5_0_5B_QUANTIZED,
+  QWEN2_5_1_5B,
+  QWEN2_5_1_5B_QUANTIZED,
+  QWEN2_5_3B,
+  QWEN2_5_3B_QUANTIZED,
+  PHI_4_MINI_4B,
+  PHI_4_MINI_4B_QUANTIZED,
+} from 'react-native-executorch';
+
+export const startingModels = [
+  'LLaMA 3.2 - 1B - SpinQuant',
+  'Qwen 3 - 0.6B - Quantized',
+  'Qwen 3 - 1.7B - Quantized',
+];
+
 export const DEFAULT_MODELS = [
   {
     modelName: 'Qwen 3 - 0.6B - Quantized',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/qwen-3-0.6B/quantized/qwen3_0_6b_8da4w.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: QWEN3_0_6B_QUANTIZED.modelSource,
+    tokenizerPath: QWEN3_0_6B_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: QWEN3_0_6B_QUANTIZED.tokenizerConfigSource,
     parameters: 0.75,
     modelSize: 0.94,
     featured: true,
@@ -15,12 +47,9 @@ export const DEFAULT_MODELS = [
   },
   {
     modelName: 'Qwen 3 - 0.6B',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/qwen-3-0.6B/original/qwen3_0_6b_bf16.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: QWEN3_0_6B.modelSource,
+    tokenizerPath: QWEN3_0_6B.tokenizerSource,
+    tokenizerConfigPath: QWEN3_0_6B.tokenizerConfigSource,
     parameters: 0.75,
     modelSize: 1.19,
     featured: true,
@@ -29,12 +58,9 @@ export const DEFAULT_MODELS = [
   },
   {
     modelName: 'Qwen 3 - 1.7B',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/qwen-3-1.7B/original/qwen3_1_7b_bf16.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: QWEN3_1_7B.modelSource,
+    tokenizerPath: QWEN3_1_7B.tokenizerSource,
+    tokenizerConfigPath: QWEN3_1_7B.tokenizerConfigSource,
     parameters: 2.03,
     modelSize: 3.44,
     featured: true,
@@ -43,12 +69,9 @@ export const DEFAULT_MODELS = [
   },
   {
     modelName: 'Qwen 3 - 1.7B - Quantized',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/qwen-3-1.7B/quantized/qwen3_1_7b_8da4w.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: QWEN3_1_7B_QUANTIZED.modelSource,
+    tokenizerPath: QWEN3_1_7B_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: QWEN3_1_7B_QUANTIZED.tokenizerConfigSource,
     parameters: 2.03,
     modelSize: 2.16,
     featured: true,
@@ -57,12 +80,9 @@ export const DEFAULT_MODELS = [
   },
   {
     modelName: 'Qwen 3 - 4B',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/qwen-3-4B/original/qwen3_4b_bf16.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: QWEN3_4B.modelSource,
+    tokenizerPath: QWEN3_4B.tokenizerSource,
+    tokenizerConfigPath: QWEN3_4B.tokenizerConfigSource,
     parameters: 4.02,
     modelSize: 8.05,
     thinking: true,
@@ -70,12 +90,9 @@ export const DEFAULT_MODELS = [
   },
   {
     modelName: 'Qwen 3 - 4B - Quantized',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/qwen-3-4B/quantized/qwen3_4b_8da4w.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: QWEN3_4B_QUANTIZED.modelSource,
+    tokenizerPath: QWEN3_4B_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: QWEN3_4B_QUANTIZED.tokenizerConfigSource,
     parameters: 4.02,
     modelSize: 3.7,
     thinking: true,
@@ -83,12 +100,9 @@ export const DEFAULT_MODELS = [
   },
   {
     modelName: 'LLaMA 3.2 - 1B',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/llama-3.2-1B/original/llama3_2_bf16.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: LLAMA3_2_1B.modelSource,
+    tokenizerPath: LLAMA3_2_1B.tokenizerSource,
+    tokenizerConfigPath: LLAMA3_2_1B.tokenizerConfigSource,
     parameters: 1.24,
     modelSize: 2.47,
     featured: true,
@@ -96,12 +110,9 @@ export const DEFAULT_MODELS = [
   },
   {
     modelName: 'LLaMA 3.2 - 1B - QLoRa',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/llama-3.2-1B/QLoRA/llama3_2_qat_lora.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: LLAMA3_2_1B_QLORA.modelSource,
+    tokenizerPath: LLAMA3_2_1B_QLORA.tokenizerSource,
+    tokenizerConfigPath: LLAMA3_2_1B_QLORA.tokenizerConfigSource,
     parameters: 1.24,
     modelSize: 1.18,
     featured: true,
@@ -109,12 +120,9 @@ export const DEFAULT_MODELS = [
   },
   {
     modelName: 'LLaMA 3.2 - 1B - SpinQuant',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/llama-3.2-1B/spinquant/llama3_2_spinquant.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: LLAMA3_2_1B_SPINQUANT.modelSource,
+    tokenizerPath: LLAMA3_2_1B_SPINQUANT.tokenizerSource,
+    tokenizerConfigPath: LLAMA3_2_1B_SPINQUANT.tokenizerConfigSource,
     parameters: 1.24,
     modelSize: 1.14,
     featured: true,
@@ -122,204 +130,153 @@ export const DEFAULT_MODELS = [
   },
   {
     modelName: 'LLaMA 3.2 - 3B',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/llama-3.2-3B/original/llama3_2_3B_bf16.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: LLAMA3_2_3B.modelSource,
+    tokenizerPath: LLAMA3_2_3B.tokenizerSource,
+    tokenizerConfigPath: LLAMA3_2_3B.tokenizerConfigSource,
     parameters: 3.21,
     modelSize: 6.43,
     labels: ['Good at coding'],
   },
   {
     modelName: 'LLaMA 3.2 - 3B - QLoRa',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/llama-3.2-3B/QLoRA/llama3_2_3B_qat_lora.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: LLAMA3_2_3B_QLORA.modelSource,
+    tokenizerPath: LLAMA3_2_3B_QLORA.tokenizerSource,
+    tokenizerConfigPath: LLAMA3_2_3B_QLORA.tokenizerConfigSource,
     parameters: 3.21,
     modelSize: 2.65,
     labels: ['Good at coding', 'Quantized'],
   },
   {
     modelName: 'LLaMA 3.2 - 3B - SpinQuant',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/llama-3.2-3B/spinquant/llama3_2_3B_spinquant.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: LLAMA3_2_3B_SPINQUANT.modelSource,
+    tokenizerPath: LLAMA3_2_3B_SPINQUANT.tokenizerSource,
+    tokenizerConfigPath: LLAMA3_2_3B_SPINQUANT.tokenizerConfigSource,
     parameters: 3.21,
     modelSize: 2.55,
     labels: ['Good at coding', 'Fast', 'Quantized'],
   },
   {
     modelName: 'Hammer 2.1 - 0.5B',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/hammer-2.1-0.5B/original/hammer2_1_0_5B_bf16.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: HAMMER2_1_0_5B.modelSource,
+    tokenizerPath: HAMMER2_1_0_5B.tokenizerSource,
+    tokenizerConfigPath: HAMMER2_1_0_5B.tokenizerConfigSource,
     parameters: 0.49,
     modelSize: 0.99,
     labels: ['Fast', 'Function calling'],
   },
   {
     modelName: 'Hammer 2.1 - 0.5B - Quantized',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/hammer-2.1-0.5B/quantized/hammer2_1_0_5B_8da4w.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: HAMMER2_1_0_5B_QUANTIZED.modelSource,
+    tokenizerPath: HAMMER2_1_0_5B_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: HAMMER2_1_0_5B_QUANTIZED.tokenizerConfigSource,
     parameters: 0.49,
     modelSize: 0.81,
     labels: ['Fast', 'Function calling', 'Quantized'],
   },
   {
     modelName: 'Hammer 2.1 - 1.5B',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/hammer-2.1-1.5B/original/hammer2_1_1_5B_bf16.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: HAMMER2_1_1_5B.modelSource,
+    tokenizerPath: HAMMER2_1_1_5B.tokenizerSource,
+    tokenizerConfigPath: HAMMER2_1_1_5B.tokenizerConfigSource,
     parameters: 1.54,
     modelSize: 3.09,
     labels: ['Balanced', 'Function calling'],
   },
   {
     modelName: 'Hammer 2.1 - 1.5B - Quantized',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/hammer-2.1-1.5B/quantized/hammer2_1_1_5B_8da4w.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: HAMMER2_1_1_5B_QUANTIZED.modelSource,
+    tokenizerPath: HAMMER2_1_1_5B_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: HAMMER2_1_1_5B_QUANTIZED.tokenizerConfigSource,
     parameters: 1.54,
     modelSize: 1.76,
     labels: ['Balanced', 'Function calling', 'Quantized'],
   },
   {
     modelName: 'Hammer 2.1 - 3B',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/hammer-2.1-3B/original/hammer2_1_3B_bf16.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: HAMMER2_1_3B.modelSource,
+    tokenizerPath: HAMMER2_1_3B.tokenizerSource,
+    tokenizerConfigPath: HAMMER2_1_3B.tokenizerConfigSource,
     parameters: 3.09,
     modelSize: 6.17,
     labels: ['Powerful', 'Function calling'],
   },
   {
     modelName: 'Hammer 2.1 - 3B - Quantized',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/hammer-2.1-3B/quantized/hammer2_1_3B_8da4w.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-hammer-2.1/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: HAMMER2_1_3B_QUANTIZED.modelSource,
+    tokenizerPath: HAMMER2_1_3B_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: HAMMER2_1_3B_QUANTIZED.tokenizerConfigSource,
     parameters: 3.09,
     modelSize: 2.89,
     labels: ['Powerful', 'Function calling', 'Quantized'],
   },
   {
     modelName: 'Qwen 2.5 - 0.5B',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/qwen-2.5-0.5B/original/qwen2_5_0_5b_bf16.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: QWEN2_5_0_5B.modelSource,
+    tokenizerPath: QWEN2_5_0_5B.tokenizerSource,
+    tokenizerConfigPath: QWEN2_5_0_5B.tokenizerConfigSource,
     parameters: 0.49,
     modelSize: 0.99,
     labels: ['Fast', 'Small'],
   },
   {
     modelName: 'Qwen 2.5 - 0.5B - Quantized',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/qwen-2.5-0.5B/quantized/qwen2_5_0_5b_8da4w.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: QWEN2_5_0_5B_QUANTIZED.modelSource,
+    tokenizerPath: QWEN2_5_0_5B_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: QWEN2_5_0_5B_QUANTIZED.tokenizerConfigSource,
     parameters: 0.49,
     modelSize: 0.81,
     labels: ['Fast', 'Small'],
   },
   {
     modelName: 'Qwen 2.5 - 1.5B',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/qwen-2.5-1.5B/original/qwen2_5_1_5b_bf16.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: QWEN2_5_1_5B.modelSource,
+    tokenizerPath: QWEN2_5_1_5B.tokenizerSource,
+    tokenizerConfigPath: QWEN2_5_1_5B.tokenizerConfigSource,
     parameters: 1.54,
     modelSize: 3.09,
     labels: ['Balanced'],
   },
   {
     modelName: 'Qwen 2.5 - 1.5B - Quantized',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/qwen-2.5-1.5B/quantized/qwen2_5_1_5b_8da4w.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: QWEN2_5_1_5B_QUANTIZED.modelSource,
+    tokenizerPath: QWEN2_5_1_5B_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: QWEN2_5_1_5B_QUANTIZED.tokenizerConfigSource,
     parameters: 1.54,
     modelSize: 1.76,
     labels: ['Balanced', 'Quantized'],
   },
   {
     modelName: 'Qwen 2.5 - 3B',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/qwen-2.5-3B/original/qwen2_5_3b_bf16.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: QWEN2_5_3B.modelSource,
+    tokenizerPath: QWEN2_5_3B.tokenizerSource,
+    tokenizerConfigPath: QWEN2_5_3B.tokenizerConfigSource,
     parameters: 3.09,
     modelSize: 6.17,
     labels: ['Powerful'],
   },
   {
     modelName: 'Qwen 2.5 - 3B - Quantized',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/qwen-2.5-3B/quantized/qwen2_5_3b_8da4w.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-qwen-2.5/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: QWEN2_5_3B_QUANTIZED.modelSource,
+    tokenizerPath: QWEN2_5_3B_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: QWEN2_5_3B_QUANTIZED.tokenizerConfigSource,
     parameters: 3.09,
     modelSize: 2.89,
     labels: ['Powerful', 'Quantized'],
   },
   {
     modelName: 'PHI 4 MINI',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-phi-4-mini/resolve/v0.4.0/original/phi-4-mini_bf16.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-phi-4-mini/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-phi-4-mini/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: PHI_4_MINI_4B.modelSource,
+    tokenizerPath: PHI_4_MINI_4B.tokenizerSource,
+    tokenizerConfigPath: PHI_4_MINI_4B.tokenizerConfigSource,
     parameters: 3.84,
     modelSize: 7.67,
     labels: ['Good at coding', 'Smart'],
   },
   {
     modelName: 'PHI 4 MINI - Quantized',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-phi-4-mini/resolve/v0.4.0/quantized/phi-4-mini_8da4w.pte',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-phi-4-mini/resolve/v0.4.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-phi-4-mini/resolve/v0.4.0/tokenizer_config.json',
+    modelPath: PHI_4_MINI_4B_QUANTIZED.modelSource,
+    tokenizerPath: PHI_4_MINI_4B_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: PHI_4_MINI_4B_QUANTIZED.tokenizerConfigSource,
     parameters: 3.84,
     modelSize: 4.5,
     labels: ['Good at coding', 'Quantized'],
