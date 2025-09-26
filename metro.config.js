@@ -1,8 +1,10 @@
 const { getDefaultConfig } = require('expo/metro-config');
-const { ensureModelAssets } = require('./assets/models/download-models.mjs');
+const { ensureModelAssets } = require('./assets/models/download-models.js');
 
 module.exports = (async () => {
-  await ensureModelAssets();
+  if (process.env.NODE_ENV !== 'production') {
+    await ensureModelAssets();
+  }
 
   const config = getDefaultConfig(__dirname);
 

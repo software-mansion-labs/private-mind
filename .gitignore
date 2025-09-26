@@ -41,5 +41,9 @@ yarn-error.*
 android/app/release
 
 # model assets
-assets/models/*/*.pte
-assets/models/*/*.json
+assets/models/**/*.pte
+assets/models/**/*.json
+
+
+key_local_mind
+android/local.properties

@@ -3,12 +3,16 @@ import {
   SpeechToTextModule,
 } from 'react-native-executorch';
 import { create } from 'zustand';
+import { getModelConfig, WHISPER_TINY_EN_MODEL } from '../utils/modelConfig';
 
-const WHISPER_TINY_EN_ASSETS: SpeechToTextModelConfig = {
-  decoderSource: require('../assets/models/whisper-tiny-en/whisper_tiny_en_decoder_xnnpack.pte'),
-  encoderSource: require('../assets/models/whisper-tiny-en/whisper_tiny_en_encoder_xnnpack.pte'),
-  tokenizerSource: require('../assets/models/whisper-tiny-en/tokenizer.json'),
-  isMultilingual: false,
+const getWhisperAssets = async (): Promise<SpeechToTextModelConfig> => {
+  const config = await getModelConfig(WHISPER_TINY_EN_MODEL);
+  return {
+    decoderSource: config.decoderSource!,
+    encoderSource: config.encoderSource!,
+    tokenizerSource: config.tokenizerSource!,
+    isMultilingual: false,
+  };
 };
 
 export interface STTStore {
@@ -41,10 +45,12 @@ export const useSTTStore = create<STTStore>((set, get) => {
         loadProgress: 0,
       });
 
-      return (modelLoadPromise = get()
-        .module.load(WHISPER_TINY_EN_ASSETS, (progress) => {
-          set({ loadProgress: progress });
-        })
+      return (modelLoadPromise = getWhisperAssets()
+        .then((assets) =>
+          get().module.load(assets, (progress) => {
+            set({ loadProgress: progress });
+          })
+        )
         .then(() => {
           set({
             isReady: true,
