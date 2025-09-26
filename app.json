@@ -1,5 +1,6 @@
 {
   "expo": {
+    "associatedDomains": ["applinks:norbert-org.godetour.link"],
     "scheme": "private-mind",
     "name": "Private Mind",
     "slug": "private-mind",

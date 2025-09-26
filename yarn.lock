@@ -2889,6 +2889,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@swmansion/react-native-detour@npm:^0.2.1":
+  version: 0.2.1
+  resolution: "@swmansion/react-native-detour@npm:0.2.1"
+  peerDependencies:
+    "@react-native-async-storage/async-storage": ">=2.0.0"
+    expo-application: ">=6.1.5"
+    expo-clipboard: ">=6.0.0"
+    expo-localization: ">=15.0.0"
+    react: ">=18"
+    react-native: ">=0.72"
+    react-native-device-info: ">=14.0.0"
+  checksum: dc940c72086166edebc673556ed71e8d8237a0686ecf3d4774ce255d1a32b9f389d9cdc5dc74089709e8c22a95266d0302f1aa1ee50f9445e0bb96be319f6a9a
+  languageName: node
+  linkType: hard
+
 "@trysound/sax@npm:0.2.0":
   version: 0.2.0
   resolution: "@trysound/sax@npm:0.2.0"
@@ -4483,6 +4498,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-application@npm:^7.0.7":
+  version: 7.0.7
+  resolution: "expo-application@npm:7.0.7"
+  peerDependencies:
+    expo: "*"
+  checksum: e2b34ec2b85567e84130effa54d6f6beb3d7c493ef51e3c0551b76bb9bd2b979773c8134fb4bf68a051e581198ad54367625891dbafd0a7d6615f09ad365f4f5
+  languageName: node
+  linkType: hard
+
 "expo-asset@npm:~11.1.5":
   version: 11.1.5
   resolution: "expo-asset@npm:11.1.5"
@@ -4508,6 +4532,17 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: fcbd7b1c1ab665757b3fb8f11592f35f252ada7f093eb70c17461c611347161a4bdd74a4e9717970f62ef191a400e9080426ed199c89042d020abe85007a8c79
+  languageName: node
+  linkType: hard
+
+"expo-clipboard@npm:^8.0.7":
+  version: 8.0.7
+  resolution: "expo-clipboard@npm:8.0.7"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+  checksum: 0c674c9b9cab8cbb39dc284e37712995f8caedd6c52265a4ca1424f50e5669d1e9129cfad3576e80fe66f0f0ab75053a5d7c396a9b5220da165239df26335002
   languageName: node
   linkType: hard
 
@@ -4630,6 +4665,18 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: a595b6a8f2097334aa98f7efb44e554ecc0ee05955bdc85e32fec951363670ae731d75ec67d7c6909e29de094dcba1fa11548398ca01a267619f9eadbeba2966
+  languageName: node
+  linkType: hard
+
+"expo-localization@npm:^17.0.7":
+  version: 17.0.7
+  resolution: "expo-localization@npm:17.0.7"
+  dependencies:
+    rtl-detect: ^1.0.2
+  peerDependencies:
+    expo: "*"
+    react: "*"
+  checksum: 24754465d74bfb12d1a99c1ad15cae10739d815fe254d4295fc5093dda52dc9f8b303ab17d59b5003d5338f346c6c04177291970c3bd6b1032a41cf11c0c7992
   languageName: node
   linkType: hard
 
@@ -5988,14 +6035,18 @@ __metadata:
     "@react-native-rag/op-sqlite": "file:./react-native-rag-op-sqlite-0.1.2.tgz"
     "@react-native/metro-config": ^0.76.3
     "@react-navigation/drawer": ^7.5.6
+    "@swmansion/react-native-detour": ^0.2.1
     "@types/react": ~19.0.10
     expo: 53.0.19
+    expo-application: ^7.0.7
+    expo-clipboard: ^8.0.7
     expo-constants: ~17.1.7
     expo-device: ~7.1.4
     expo-document-picker: ~13.1.6
     expo-font: ~13.3.2
     expo-haptics: ~14.1.4
     expo-linking: ~7.1.7
+    expo-localization: ^17.0.7
     expo-router: ~5.1.3
     expo-sharing: ~13.1.5
     expo-splash-screen: ~0.30.10
@@ -8164,6 +8215,13 @@ __metadata:
   bin:
     rimraf: ./bin.js
   checksum: 3ea587b981a19016297edb96d1ffe48af7e6af69660e3b371dbfc73722a73a0b0e9be5c88089fbeeb866c389c1098e07f64929c7414290504b855f54f901ab10
+  languageName: node
+  linkType: hard
+
+"rtl-detect@npm:^1.0.2":
+  version: 1.1.2
+  resolution: "rtl-detect@npm:1.1.2"
+  checksum: 4a43a1e5df0617eb86d5485640b318787d12b86acf53d840a3b2ff701ee941e95479d4e9ae97e907569ec763d1c47218cb87639bc87bcdad60a85747e5270cf0
   languageName: node
   linkType: hard
 
