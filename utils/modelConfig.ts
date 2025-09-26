@@ -14,7 +14,7 @@ export interface ModelSourceConfig {
 
 export interface ModelDefinition {
   assetPackName: string;
-  assetFiles: ModelSourceConfig;
+  bundledAssets: ModelSourceConfig;
   assetPackFiles: ModelSourceConfig;
 }
 
@@ -25,7 +25,7 @@ export enum ModelSourceStrategy {
 
 export const WHISPER_TINY_EN_MODEL: ModelDefinition = {
   assetPackName: 'whisper-tiny-en',
-  assetFiles: {
+  bundledAssets: {
     decoderSource: require('../assets/models/whisper-tiny-en/whisper_tiny_en_decoder_xnnpack.pte'),
     encoderSource: require('../assets/models/whisper-tiny-en/whisper_tiny_en_encoder_xnnpack.pte'),
     tokenizerSource: require('../assets/models/whisper-tiny-en/tokenizer.json'),
@@ -39,7 +39,7 @@ export const WHISPER_TINY_EN_MODEL: ModelDefinition = {
 
 export const ALL_MINI_LM_MODEL: ModelDefinition = {
   assetPackName: 'all-mini-lm',
-  assetFiles: {
+  bundledAssets: {
     modelSource: require('../assets/models/all-mini-lm/all-MiniLM-L6-v2_xnnpack.pte'),
     tokenizerSource: require('../assets/models/all-mini-lm/tokenizer.json'),
   },
@@ -82,19 +82,19 @@ export async function getModelConfig(
 
 function getBundledAssetConfig(modelDef: ModelDefinition): ModelSourceConfig {
   const config: ModelSourceConfig = {
-    tokenizerSource: modelDef.assetFiles.tokenizerSource,
+    tokenizerSource: modelDef.bundledAssets.tokenizerSource,
   };
 
-  if (modelDef.assetFiles.decoderSource) {
-    config.decoderSource = modelDef.assetFiles.decoderSource;
+  if (modelDef.bundledAssets.decoderSource) {
+    config.decoderSource = modelDef.bundledAssets.decoderSource;
   }
 
-  if (modelDef.assetFiles.encoderSource) {
-    config.encoderSource = modelDef.assetFiles.encoderSource;
+  if (modelDef.bundledAssets.encoderSource) {
+    config.encoderSource = modelDef.bundledAssets.encoderSource;
   }
 
-  if (modelDef.assetFiles.modelSource) {
-    config.modelSource = modelDef.assetFiles.modelSource;
+  if (modelDef.bundledAssets.modelSource) {
+    config.modelSource = modelDef.bundledAssets.modelSource;
   }
 
   return config;
