@@ -41,5 +41,5 @@ yarn-error.*
 android/app/release
 
 # model assets
-assets/models/*/*.pte
-assets/models/*/*.json
+assets/models/whisper-tiny-en/*.pte
+assets/models/whisper-tiny-en/*.json
