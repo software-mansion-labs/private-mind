@@ -4,15 +4,17 @@ const path = require('path');
 const fs = require('fs');
 const { Readable } = require('stream');
 
+const VERSION_TAG = 'v0.5.0';
+
 const WHISPER_TINY_EN_FILES = [
-  'https://huggingface.co/software-mansion/react-native-executorch-whisper-tiny.en/resolve/v0.5.0/tokenizer.json',
-  'https://huggingface.co/software-mansion/react-native-executorch-whisper-tiny.en/resolve/v0.5.0/xnnpack/whisper_tiny_en_decoder_xnnpack.pte',
-  'https://huggingface.co/software-mansion/react-native-executorch-whisper-tiny.en/resolve/v0.5.0/xnnpack/whisper_tiny_en_encoder_xnnpack.pte',
+  `https://huggingface.co/software-mansion/react-native-executorch-whisper-tiny.en/resolve/${VERSION_TAG}/tokenizer.json`,
+  `https://huggingface.co/software-mansion/react-native-executorch-whisper-tiny.en/resolve/${VERSION_TAG}/xnnpack/whisper_tiny_en_decoder_xnnpack.pte`,
+  `https://huggingface.co/software-mansion/react-native-executorch-whisper-tiny.en/resolve/${VERSION_TAG}/xnnpack/whisper_tiny_en_encoder_xnnpack.pte`,
 ];
 
 const ALL_MINI_LM_FILES = [
-  'https://huggingface.co/software-mansion/react-native-executorch-all-MiniLM-L6-v2/resolve/main/all-MiniLM-L6-v2_xnnpack.pte',
-  'https://huggingface.co/software-mansion/react-native-executorch-all-MiniLM-L6-v2/resolve/main/tokenizer.json',
+  `https://huggingface.co/software-mansion/react-native-executorch-all-MiniLM-L6-v2/resolve/${VERSION_TAG}/all-MiniLM-L6-v2_xnnpack.pte`,
+  `https://huggingface.co/software-mansion/react-native-executorch-all-MiniLM-L6-v2/resolve/${VERSION_TAG}/tokenizer.json`,
 ];
 
 async function ensureModelAssets() {
