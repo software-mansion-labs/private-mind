@@ -63,5 +63,5 @@ export const DEFAULT_PROMPT_SUGGESTIONS: PromptSuggestion[] = [
 ];
 
 export const PROMPT_SUGGESTIONS_TEXT = {
-  title: 'Get started with these suggestions',
+  title: 'Suggested messages',
 } as const;
