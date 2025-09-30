@@ -53,14 +53,20 @@ export const BenchmarkModal = ({
           </View>
         ) : (
           <View style={styles.benchmarkCardSuccess}>
-            <View style={styles.successIcon}>
-              <CheckIcon
-                width={48}
-                height={48}
-                style={styles.successIconCheck}
-              />
+            <View style={styles.successSpacer} />
+            <View style={styles.successContent}>
+              <View style={styles.successIcon}>
+                <CheckIcon
+                  width={48}
+                  height={48}
+                  style={styles.successIconCheck}
+                />
+              </View>
+              <View style={styles.textWrapper}>
+                <Text style={styles.statusText}>Your benchmark is ready!</Text>
+              </View>
             </View>
-            <Text style={styles.statusText}>Your benchmark is ready!</Text>
+            <View style={styles.successSpacer} />
           </View>
         )}
       </View>
@@ -78,17 +84,16 @@ const createStyles = (theme: Theme) =>
     },
     benchmarkCard: {
       width: '90%',
-      height: 368,
       borderRadius: 18,
       paddingVertical: 16,
       paddingHorizontal: 24,
       backgroundColor: theme.bg.softPrimary,
       alignItems: 'center',
       gap: 24,
+      minHeight: 368,
     },
     benchmarkCardSuccess: {
       width: '90%',
-      height: 368,
       borderRadius: 18,
       paddingVertical: 16,
       paddingHorizontal: 24,
@@ -96,6 +101,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       alignItems: 'center',
       gap: 24,
+      minHeight: 368,
     },
     statusText: {
       fontSize: fontSizes.lg,
@@ -127,5 +133,14 @@ const createStyles = (theme: Theme) =>
     },
     successIconCheck: {
       color: theme.text.contrastPrimary,
+    },
+    successContent: {
+      alignItems: 'center',
+      gap: 24,
+    },
+    successSpacer: {
+      // Split the bottom section height in half to center the content
+      // Half of bottomSection height: ~68px
+      height: 68,
     },
   });

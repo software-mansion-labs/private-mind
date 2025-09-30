@@ -8,7 +8,7 @@ export const fontFamily = {
 };
 
 export const fontSizes = {
-  xxl: 34,
+  xxl: 28,
   xl: 22,
   lg: 18,
   md: 16,

@@ -42,7 +42,7 @@ const AppHeader = () => {
   return (
     <View style={[styles.card, { borderColor: theme.border.soft }]}>
       <View style={styles.logoContainer}>
-        <Logo width={32} height={32} />
+        <Logo width={28} height={28} />
         <Text style={[styles.appName, { color: theme.text.primary }]}>
           Private Mind
         </Text>
