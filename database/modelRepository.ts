@@ -1,4 +1,5 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
+import { startingModels } from '../constants/default-models';
 
 export type Model = {
   id: number;
@@ -93,30 +94,6 @@ export const getAllModels = async (db: SQLiteDatabase): Promise<Model[]> => {
   return models;
 };
 
-export const getDownloadedModels = async (
-  db: SQLiteDatabase
-): Promise<Model[]> => {
-  const rawModels = await db.getAllAsync<
-    Omit<Model, 'isDownloaded'> & {
-      isDownloaded: number;
-    }
-  >(
-    `
-    SELECT * FROM models
-    WHERE modelPath IS NOT NULL
-      AND tokenizerPath IS NOT NULL
-      AND tokenizerConfigPath IS NOT NULL
-  `
-  );
-
-  const models: Model[] = rawModels.map((model) => ({
-    ...model,
-    isDownloaded: model.isDownloaded === 1,
-  }));
-
-  return models;
-};
-
 export const updateModel = async (
   db: SQLiteDatabase,
   {
@@ -139,4 +116,29 @@ export const updateModel = async (
   `,
     [newModelName, tokenizerPath, tokenizerConfigPath, modelId]
   );
+};
+
+export const getStartingModels = async (db: SQLiteDatabase) => {
+  const rawModels = await db.getAllAsync<
+    Omit<Model, 'isDownloaded' | 'featured' | 'thinking' | 'labels'> & {
+      isDownloaded: number;
+      featured: number;
+      thinking: number;
+      labels: string | null;
+    }
+  >(
+    `SELECT * FROM models WHERE modelName IN (${startingModels
+      .map((model) => `'${model}'`)
+      .join(', ')})`
+  );
+
+  const models: Model[] = rawModels.map((model) => ({
+    ...model,
+    isDownloaded: model.isDownloaded === 1,
+    featured: model.featured === 1,
+    thinking: model.thinking === 1,
+    labels: model.labels ? JSON.parse(model.labels) : undefined,
+  }));
+
+  return models;
 };
