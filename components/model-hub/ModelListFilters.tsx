@@ -61,6 +61,11 @@ const ModelListFilters: React.FC<Props> = ({
           onPress={() => toggleFilter(ModelHubFilter.Featured)}
         />
         <SortingTag
+          text="Compatible"
+          selected={activeFilters.has(ModelHubFilter.Compatible)}
+          onPress={() => toggleFilter(ModelHubFilter.Compatible)}
+        />
+        <SortingTag
           text="Group by model"
           selected={groupByModel}
           onPress={() => onGroupByModelChange(!groupByModel)}
