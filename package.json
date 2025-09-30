@@ -13,6 +13,7 @@
     "sqliteVec": true
   },
   "dependencies": {
+    "@dr.pogodin/react-native-fs": "^2.35.1",
     "@expo-google-fonts/dm-sans": "^0.4.0",
     "@gorhom/bottom-sheet": "^5",
     "@op-engineering/op-sqlite": "^14.1.4",
@@ -41,7 +42,7 @@
     "react-native": "0.79.5",
     "react-native-audio-api": "^0.7.1",
     "react-native-device-info": "^14.0.4",
-    "react-native-executorch": "0.5.2",
+    "react-native-executorch": "0.5.6",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-keyboard-controller": "^1.18.1",
     "react-native-loading-spinner-overlay": "^3.0.1",

@@ -1959,6 +1959,30 @@ PODS:
     - React-logger (= 0.79.5)
     - React-perflogger (= 0.79.5)
     - React-utils (= 0.79.5)
+  - ReactNativeFs (2.35.1):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - RNAudioAPI (0.7.1):
     - DoubleConversion
     - glog
@@ -2431,6 +2455,7 @@ DEPENDENCIES:
   - ReactAppDependencyProvider (from `build/generated/ios`)
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
+  - "ReactNativeFs (from `../node_modules/@dr.pogodin/react-native-fs`)"
   - RNAudioAPI (from `../node_modules/react-native-audio-api`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
@@ -2631,6 +2656,8 @@ EXTERNAL SOURCES:
     :path: build/generated/ios
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
+  ReactNativeFs:
+    :path: "../node_modules/@dr.pogodin/react-native-fs"
   RNAudioAPI:
     :path: "../node_modules/react-native-audio-api"
   RNCAsyncStorage:
@@ -2743,6 +2770,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: f3e842e6cb5a825b6918a74a38402ba1409411f8
   ReactCodegen: 6cb6e0d0b52471abc883541c76589d1c367c64c7
   ReactCommon: 1ab5451fc5da87c4cc4c3046e19a8054624ca763
+  ReactNativeFs: c33f29eb0ec21fe9e91f33abfaf703a95a9f319f
   RNAudioAPI: 99ed120b28fcf8aacb4efc0d7d4f4ad6b895b430
   RNCAsyncStorage: 39c42c1e478e1f5166d1db52b5055e090e85ad66
   RNCClipboard: 37de6995ef72dc869422879e51a46a520d3f08b3
