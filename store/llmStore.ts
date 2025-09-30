@@ -14,6 +14,7 @@ import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkReposito
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
 import { Feedback } from '../utils/Feedback';
+import { prepareMessagesForLLM } from '../utils/promptUtils';
 
 interface LLMStore {
   isLoading: boolean;
@@ -84,62 +85,6 @@ const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
     },
     stop: () => clearInterval(trackerId),
   };
-};
-
-const prepareMessagesForLLM = (
-  activeChatMessages: Message[],
-  context: string[],
-  settings: ChatSettings,
-  model: Model
-): ExecutorchMessage[] => {
-  let systemPrompt = settings.systemPrompt;
-
-  if (context.length > 0) {
-    const contextInstructions = `
-          IMPORTANT CONTEXT INFORMATION:
-          You have access to relevant information from the user's document sources. Use this context to provide accurate, well-informed responses. Always prioritize information from the provided context when it's relevant to the user's question.
-          
-          Instructions for using context:
-          - Refer to the context information when answering questions
-          - If the context directly addresses the user's question, use that information as the primary basis for your response
-          - If information from context conflicts with your general knowledge, prioritize the context
-          - If the context doesn't contain relevant information for the question, you may use your general knowledge but mention this limitation
-          - When citing information from context, you can reference it naturally without formal citations`;
-
-    systemPrompt = systemPrompt + contextInstructions;
-  }
-
-  const filteredMessages: ExecutorchMessage[] = activeChatMessages.reduce(
-    (acc: ExecutorchMessage[], msg) => {
-      if (msg.role !== 'event') {
-        acc.push({ role: msg.role, content: msg.content });
-      }
-      return acc;
-    },
-    []
-  );
-
-  const contextWindow = settings.contextWindow;
-  const messagesWithSystemPrompt: ExecutorchMessage[] = [
-    { role: 'system', content: systemPrompt },
-    ...filteredMessages.slice(-contextWindow, -1),
-  ];
-
-  if (settings.thinkingEnabled) {
-    messagesWithSystemPrompt.at(-1)!.content += ' /think';
-  } else if (model.thinking) {
-    messagesWithSystemPrompt.at(-1)!.content += ' /no_think';
-  }
-
-  if (context.length > 0) {
-    messagesWithSystemPrompt.at(-1)!.content = `<context>${context.join(
-      ' '
-    )}</context>
-        ${messagesWithSystemPrompt.at(-1)!.content}
-        `;
-  }
-
-  return messagesWithSystemPrompt;
 };
 
 const waitForModelLoad = async (get: () => LLMStore): Promise<void> => {
@@ -303,6 +248,18 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           if (isFirstToken && !get().isBenchmarking) {
             Feedback.success();
           }
+
+          /* Temporary solution to handle interrupt during prefill, needs to be fixed in the
+          react-native-executorch library
+          */
+          if (
+            isFirstToken &&
+            !get().isProcessingPrompt &&
+            !get().isGenerating
+          ) {
+            llmInstance.interrupt();
+            return;
+          }
           set({
             isProcessingPrompt: false,
             performance: {
@@ -313,7 +270,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             },
           });
           /* This check ensures that after we leave the chat,
-          new messags history won't be overwritten by token send after interrupt.
+          new messages history won't be overwritten by tokens sent after interrupt.
           */
           if (get().generatingForChatId === get().activeChatId) {
             set({
@@ -356,7 +313,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         timestamp: Date.now(),
         id: -1,
       };
-
       const userMessageId = await persistMessage(db, userMessage);
       const updatedChatMessages = [
         ...activeChatMessages,
@@ -387,7 +343,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       updateChatStateForGeneration(set, 'generating');
       const { response: finalResponse, performance: responsePerformance } =
         await generateLLMResponse(messagesWithSystemPrompt, get);
-
       // Handle successful response
       if (finalResponse) {
         await persistMessage(db, {
@@ -412,6 +367,27 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       console.error('Chat sendMessage failed', e);
       updateChatStateForGeneration(set, 'complete');
     }
+  },
+
+  sendEventMessage: async (chatId: number, content: string) => {
+    const db = get().db;
+    if (!db) return;
+
+    const eventMessage: Omit<Message, 'id'> = {
+      role: 'event',
+      content: content,
+      chatId,
+      timestamp: Date.now(),
+    };
+
+    const eventMessageId = await persistMessage(db, eventMessage);
+
+    set((state) => ({
+      activeChatMessages: [
+        ...state.activeChatMessages,
+        { ...eventMessage, id: eventMessageId },
+      ],
+    }));
   },
 
   runBenchmark: async () => {
@@ -464,33 +440,17 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   },
 
   interrupt: () => {
-    if (get().isGenerating) {
+    const state = get();
+    if (state.isGenerating) {
       llmInstance.interrupt();
-      set({ isGenerating: false, isProcessingPrompt: false });
-    } else if (get().isProcessingPrompt) {
-      set({ isProcessingPrompt: false });
     }
-  },
 
-  sendEventMessage: async (chatId: number, content: string) => {
-    const db = get().db;
-    if (!db) return;
-
-    const eventMessage: Omit<Message, 'id'> = {
-      role: 'event',
-      content: content,
-      chatId,
-      timestamp: Date.now(),
-    };
-
-    const eventMessageId = await persistMessage(db, eventMessage);
-
-    set((state) => ({
-      activeChatMessages: [
-        ...state.activeChatMessages,
-        { ...eventMessage, id: eventMessageId },
-      ],
-    }));
+    if (state.isGenerating || state.isProcessingPrompt) {
+      set({
+        isGenerating: false,
+        isProcessingPrompt: false,
+      });
+    }
   },
 
   refreshActiveChatMessages: async () => {
