@@ -1461,7 +1461,7 @@ PODS:
     - React-jsiexecutor
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
-  - react-native-executorch (0.5.2):
+  - react-native-executorch (0.5.8):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1485,7 +1485,6 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - sqlite3
     - Yoga
   - react-native-keyboard-controller (1.18.1):
     - DoubleConversion
@@ -2356,9 +2355,6 @@ PODS:
     - ReactCommon/turbomodule/core
     - Yoga
   - SocketRocket (0.7.1)
-  - sqlite3 (3.50.4):
-    - sqlite3/common (= 3.50.4)
-  - sqlite3/common (3.50.4)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -2470,7 +2466,6 @@ SPEC REPOS:
   trunk:
     - opencv-rne
     - SocketRocket
-    - sqlite3
 
 EXTERNAL SOURCES:
   boost:
@@ -2734,7 +2729,7 @@ SPEC CHECKSUMS:
   React-logger: 85fa3509931497c72ccd2547fcc91e7299d8591e
   React-Mapbuffer: 96a2f2a176268581733be182fa6eebab1c0193be
   React-microtasksnativemodule: bda561d2648e1e52bd9e5a87f8889836bdbde2e2
-  react-native-executorch: 7d61d976183cf8613b0e227f7f1269d364d347a7
+  react-native-executorch: 794e02b54fd4a74b60cc6dea6f94392e6cb8869c
   react-native-keyboard-controller: af13329b118eecdbb253ca09e30308c782cdf13f
   react-native-menu: be9bce4eb201a4d13734744763d36d56e6df8b4a
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
@@ -2780,7 +2775,6 @@ SPEC CHECKSUMS:
   RNScreens: 482e9707f9826230810c92e765751af53826d509
   RNSVG: 794f269526df9ddc1f79b3d1a202b619df0368e3
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
-  sqlite3: 73513155ec6979715d3904ef53a8d68892d4032b
   Yoga: adb397651e1c00672c12e9495babca70777e411e
 
 PODFILE CHECKSUM: 3f3c7b364a560775124a1d731bac02497263761d

@@ -19,7 +19,7 @@ import GithubIcon from '../../assets/icons/github.svg';
 import CopyIcon from '../../assets/icons/copy.svg';
 import FooterIcon from '../../assets/icons/footer.svg';
 
-const APP_VERSION = 'v.1.0.4';
+const APP_VERSION = 'v.1.1.0';
 
 const GITHUB_LINKS: { text: string; url: string }[] = [
   {
