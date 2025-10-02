@@ -177,7 +177,7 @@ const generateLLMResponse = async (
       startTime,
       endTime,
       get().performance.firstTokenTime,
-      get().performance.tokenCount
+      llmInstance.getGeneratedTokenCount()
     );
 
     return {
@@ -416,20 +416,20 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const endTime = performance.now();
       memoryTracker.stop();
 
-      const { tokenCount, firstTokenTime } = get().performance;
+      const { firstTokenTime } = get().performance;
       const { totalTime, timeToFirstToken, tokensPerSecond } =
         calculatePerformanceMetrics(
           startTime,
           endTime,
           firstTokenTime,
-          tokenCount
+          llmInstance.getGeneratedTokenCount()
         );
 
       return {
         totalTime,
         timeToFirstToken,
         tokensPerSecond,
-        tokensGenerated: tokenCount,
+        tokensGenerated: llmInstance.getGeneratedTokenCount(),
         peakMemory: runPeakMemory,
       };
     } catch (e) {
