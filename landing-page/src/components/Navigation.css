@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: row;
   max-width: 1360px;
-  width: 80vw;
+  width: 100%;
   margin: auto;
   padding: 28px 0px;
 }

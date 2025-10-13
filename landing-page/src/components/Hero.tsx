@@ -1,8 +1,9 @@
 import React, { useRef, useState } from 'react';
 import SWMLogo from 'assets/SoftwareMansionContour.svg';
-import GooglePlay from 'assets/googleplay.svg'
-import AppStore from 'assets/appstore.svg'
+import GooglePlay from 'assets/googleplay.svg';
+import AppStore from 'assets/appstore.svg';
 import VideoFile from 'assets/PM_promo.webm';
+import PosterFile from 'assets/PM_promo.png';
 import './Hero.css';
 
 function Hero() {
@@ -52,6 +53,7 @@ function Hero() {
         <video
           ref={videoRef}
           src={VideoFile}
+          poster={PosterFile}
           loop
           muted
           playsInline

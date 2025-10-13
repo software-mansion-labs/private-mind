@@ -16,6 +16,12 @@
 
 .footer-logo-section {
   padding: 0 0 16px 0;
+  text-decoration: none;
+  color: var(--color-dark);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
 }
 
 .footer-logo-section img {
@@ -49,6 +55,9 @@
 }
 
 @media (min-width: 1280px) {
+  .footer-logo-section {
+    align-items: start;
+  }
   .footer-container {
     display: flex;
     flex-direction: row;

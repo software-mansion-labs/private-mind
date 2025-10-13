@@ -18,10 +18,10 @@ function Footer() {
     <div className="footer-container">
       <div className="footer-left">
         <div>
-          <div className="footer-logo-section">
-            <img alt='' src={swmLogo} />
-          </div>
-          © 2025 Software Mansion
+          <a href="https://swmansion.com/" target='_blank' rel="noopener noreferrer" className="footer-logo-section">
+            <img src={swmLogo} alt="" />
+            © 2025 Software Mansion
+          </a>
         </div>
         <div className="footer-social-links">
           <a href="https://twitter.com/swmansion" target='_blank' rel="noopener noreferrer">
