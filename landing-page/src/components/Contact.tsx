@@ -1,4 +1,3 @@
-import React from 'react';
 import ETLogo from 'assets/ETLogo.svg';
 import RagLogo from 'assets/RagLogo.svg';
 import ReanimatedLogo from 'assets/ReanimatedLogo.svg';
@@ -36,16 +35,16 @@ function Contact() {
         </div>
       </a>
       <div id="technology" className="contact-technologies">
-        <a href="https://docs.swmansion.com/react-native-executorch/" target='_blank'>
+        <a href="https://docs.swmansion.com/react-native-executorch/" target='_blank' rel="noopener noreferrer">
           <img alt='' src={ETLogo} className='contact-technologies-logos'/>
         </a>
-        <a href="https://github.com/software-mansion-labs/react-native-rag" target='_blank'>
+        <a href="https://github.com/software-mansion-labs/react-native-rag" target='_blank' rel="noopener noreferrer">
           <img alt='' src={RagLogo} className='contact-technologies-logos'/>
         </a>
-        <a href="https://docs.swmansion.com/react-native-reanimated/" target='_blank'>
+        <a href="https://docs.swmansion.com/react-native-reanimated/" target='_blank' rel="noopener noreferrer">
           <img alt='' src={ReanimatedLogo} className='contact-technologies-logos'/>
         </a>
-        <a href="https://docs.swmansion.com/react-native-audio-api/" target='_blank'>
+        <a href="https://docs.swmansion.com/react-native-audio-api/" target='_blank' rel="noopener noreferrer">
           <img alt='' src={AudioAPILogo} className='contact-technologies-logos'/>
         </a>
       </div>

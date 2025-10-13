@@ -24,7 +24,7 @@ function Hero() {
   return (
     <div className="hero-container">
       <div className="hero-content">
-        <a href="https://swmansion.com/" target='_blank' className="hero-attribution">
+        <a href="https://swmansion.com/" target='_blank' rel="noopener noreferrer" className="hero-attribution">
           <p>Created by</p>
           <img src={SWMLogo} alt="" />
         </a>
@@ -40,10 +40,10 @@ function Hero() {
           A new era of AI is here - powerful, personal, and completely offline - stored and performed on your mobile device.
         </p>
         <div className="hero-download-buttons">
-          <a href="https://play.google.com/store/apps/details?id=com.swmansion.privatemind" target='_blank'>
+          <a href="https://play.google.com/store/apps/details?id=com.swmansion.privatemind" target='_blank' rel="noopener noreferrer">
             <img alt='' src={GooglePlay} />
           </a>
-          <a href="https://apps.apple.com/app/private-mind/id6746713439" target='_blank'>
+          <a href="https://apps.apple.com/app/private-mind/id6746713439" target='_blank' rel="noopener noreferrer">
             <img alt='' src={AppStore} />
           </a>
         </div>

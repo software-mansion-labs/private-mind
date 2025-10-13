@@ -1,5 +1,3 @@
-import React, { useRef } from 'react';
-import logo from './logo.svg';
 import './App.css';
 import Hero from './components/Hero';
 import Navigation from './components/Navigation';

@@ -31,7 +31,7 @@ function Navigation() {
         </div>
       </div>
       <div className="navigation-github">
-        <a href="https://github.com/software-mansion-labs/private-mind" target='_blank'>
+        <a href="https://github.com/software-mansion-labs/private-mind" target='_blank' rel="noopener noreferrer">
           <img alt='' src={ghLogo}/>
         </a>
       </div>

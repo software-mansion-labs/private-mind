@@ -36,7 +36,7 @@ function Highlights() {
           </>)}
         </div>
         <div className="highlights-image-container">
-          <img src={IPhoneChat} className="highlights-phone"/>
+          <img src={IPhoneChat} className="highlights-phone" alt=''/>
         </div>
         <div className="highlights-column">
           {features.filter((_, idx) => idx%2===1).map(feature => <>
