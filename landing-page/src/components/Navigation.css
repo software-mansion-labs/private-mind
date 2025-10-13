@@ -1,0 +1,41 @@
+.navigation-container {
+  display: flex;
+  flex-direction: row;
+  max-width: 1360px;
+  width: 80vw;
+  margin: auto;
+  padding: 28px 0px;
+}
+
+.navigation-menu {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .navigation-menu {
+    display: flex;
+    flex-direction: row;
+    margin: auto;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+.navigation-menu-item {
+  padding: 0rem 1rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.navigation-menu-item:hover {
+  opacity: 0.7;
+}
+
+.navigation-github {
+  margin-left: auto;
+}
+
+.navigation-github img {
+  margin-right: 8px;
+}

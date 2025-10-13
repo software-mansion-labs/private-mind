@@ -1,0 +1,18 @@
+[
+  {
+    "question": "Does Private Mind require an internet connection?",
+    "answer": "You only need the internet once—to download the chosen AI model files. After that, you can use the app completely offline—no connection required."
+  },
+  {
+    "question": "I have my own model exported to ExecuTorch—can I use it with your app?",
+    "answer": "Yes! You can add custom models to Private Mind. The only requirement is that your model must be exported to the .pte format."
+  },
+  {
+    "question": "What model is used for speech recognition?",
+    "answer": "We use OpenAI's Whisper model for speech recognition, specifically the tiny version optimized for on-device performance."
+  },
+  {
+    "question": "Are vision models supported?",
+    "answer": "Not yet. ExecuTorch (the technology behind Private Mind) currently doesn't support vision models that can run efficiently on mobile devices. However, we're actively monitoring developments and plan to add vision capabilities in the future."
+  }
+]

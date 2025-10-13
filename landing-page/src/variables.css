@@ -1,0 +1,49 @@
+:root {
+  /* Primary colors */
+  --color-primary: #3D61D6;
+  --color-dark: #020f3c;
+  --color-dark-80: #020F3CCC;
+  --color-dark-15: #020f3c26;
+  --color-dark-10: #020F3C1A;
+  --color-white: white;
+
+  /* Font sizes - Mobile first (default) */
+  --font-size-hero: 32px;
+  --font-size-section-title: 32px;
+  --font-size-large: 16px;
+  --font-size-medium: 14px;
+  --font-size-small: 8pt;
+}
+
+/* Tablet breakpoint (768px and up) */
+@media (min-width: 800px) {
+  :root {
+    --font-size-hero: 28px;
+    --font-size-section-title: 22px;
+    --font-size-large: 16px;
+    --font-size-medium: 14px;
+    --font-size-small: 12pt;
+  }
+}
+
+
+@media (min-width: 1280px) {
+  :root {
+    --font-size-hero: 42px;
+    --font-size-section-title: 33px;
+    --font-size-large: 16px;
+    --font-size-medium: 14px;
+    --font-size-small: 12pt;
+  }
+}
+
+/* Desktop breakpoint (1024px and up) */
+@media (min-width: 1920px) {
+  :root {
+    --font-size-hero: 64px;
+    --font-size-section-title: 52px;
+    --font-size-large: 20px;
+    --font-size-medium: 16px;
+    --font-size-small: 12pt;
+  }
+}

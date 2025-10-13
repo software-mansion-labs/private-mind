@@ -1,0 +1,32 @@
+[
+  {
+    "title": "Privacy first",
+    "text": "All processing happens on your device—no data ever leaves your phone. Your conversations, documents, and personal information remain private and secure.",
+    "icon": "PrivacyIcon"
+  },
+  {
+    "title": "Context-aware chats",
+    "text": "Upload any PDF and chat with AI based on its content. Ask questions, extract insights, and get summaries without switching between apps.",
+    "icon": "ContextIcon"
+  },
+  {
+    "title": "Local speech-to-text",
+    "text": "Speak naturally to your AI assistant with on-device speech recognition. Your voice is transcribed locally, keeping your conversations completely private.",
+    "icon": "SpeechIcon"
+  },
+  {
+    "title": "Platform agnostic",
+    "text": "Private Mind is available on iOS and Android. Enjoy the same features and smooth performance regardless of the system.",
+    "icon": "PlatformIcon"
+  },
+  {
+    "title": "Customizable prompts",
+    "text": "Create custom system prompts to shape how your AI responds. Whether you need a coding assistant, creative partner, or study buddy—make it yours.",
+    "icon": "CustomizationIcon"
+  },
+  {
+    "title": "Truly offline",
+    "text": "No internet? No problem. Use your AI assistant anywhere—on flights, in remote areas, or underground. Full functionality, zero connectivity required.",
+    "icon": "OfflineIcon"
+  }
+]
