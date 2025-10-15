@@ -46,6 +46,14 @@
 
 .contact-button-link {
   text-decoration: none;
+  display: flex;
+  margin: auto;
+  width: fit-content;
+}
+
+.contact-button-link:hover {
+  margin-top: 2px;
+  margin-bottom: -2px;
 }
 
 .contact-button {
@@ -57,6 +65,10 @@
   color: var(--color-white);
   border-radius: 12px;
   gap: 12px;
+}
+
+.contact-button:hover{
+  background-color: var(--color-primary-dark);
 }
 
 .contact-button img {

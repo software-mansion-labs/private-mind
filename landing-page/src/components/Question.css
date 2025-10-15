@@ -5,6 +5,10 @@
   border-radius: 18px;
 }
 
+.question-container:hover {
+  cursor: pointer;
+}
+
 .question-container-active {
   background-color: var(--color-primary);
 }
@@ -13,12 +17,21 @@
   background-color: var(--color-dark-10);
 }
 
+.question-container-active:hover {
+  background-color: var(--color-primary-dark);
+}
+
+.question-container-inactive:hover {
+  background-color: var(--color-dark-15);
+}
+
 .question-content {
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 4px 32px 4px 0;
   margin: auto 0;
+  margin-top: 12.5px;
 }
 
 .question-title {

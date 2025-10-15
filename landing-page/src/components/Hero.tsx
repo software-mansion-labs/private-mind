@@ -8,7 +8,7 @@ import './Hero.css';
 
 function Hero() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
 
   const handleVideoClick = () => {
     if (videoRef.current) {
@@ -41,10 +41,10 @@ function Hero() {
           A new era of AI is here - powerful, personal, and completely offline - stored and performed on your mobile device.
         </p>
         <div className="hero-download-buttons">
-          <a href="https://play.google.com/store/apps/details?id=com.swmansion.privatemind" target='_blank' rel="noopener noreferrer">
+          <a href="https://play.google.com/store/apps/details?id=com.swmansion.privatemind" target='_blank' rel="noopener noreferrer" className='hero-download-button'>
             <img alt='' src={GooglePlay} />
           </a>
-          <a href="https://apps.apple.com/app/private-mind/id6746713439" target='_blank' rel="noopener noreferrer">
+          <a href="https://apps.apple.com/app/private-mind/id6746713439" target='_blank' rel="noopener noreferrer" className='hero-download-button'>
             <img alt='' src={AppStore} />
           </a>
         </div>
@@ -56,6 +56,7 @@ function Hero() {
           poster={PosterFile}
           loop
           muted
+          autoPlay
           playsInline
           className="hero-video"
         />

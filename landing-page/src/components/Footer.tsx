@@ -24,28 +24,28 @@ function Footer() {
           </a>
         </div>
         <div className="footer-social-links">
-          <a href="https://twitter.com/swmansion" target='_blank' rel="noopener noreferrer">
+          <a href="https://twitter.com/swmansion" target='_blank' rel="noopener noreferrer" className='footer-social-logo'>
             <img alt='' src={twitterLogo} />
           </a>
-          <a href="https://www.facebook.com/SoftwareMansion/" target='_blank' rel="noopener noreferrer">
+          <a href="https://www.facebook.com/SoftwareMansion/" target='_blank' rel="noopener noreferrer" className='footer-social-logo'>
             <img alt='' src={facebookLogo} />
           </a>
-          <a href="https://github.com/software-mansion" target='_blank' rel="noopener noreferrer">
+          <a href="https://github.com/software-mansion" target='_blank' rel="noopener noreferrer" className='footer-social-logo'>
             <img alt='' src={ghLogo} />
           </a>
-          <a href="https://www.instagram.com/swmansion/" target='_blank' rel="noopener noreferrer">
+          <a href="https://www.instagram.com/swmansion/" target='_blank' rel="noopener noreferrer" className='footer-social-logo'>
             <img alt='' src={instaLogo} />
           </a>
-          <a href="https://www.youtube.com/c/SoftwareMansion" target='_blank' rel="noopener noreferrer">
+          <a href="https://www.youtube.com/c/SoftwareMansion" target='_blank' rel="noopener noreferrer" className='footer-social-logo'>
             <img alt='' src={ytLogo} />
           </a>
-          <a href="https://www.linkedin.com/company/software-mansion/" target='_blank' rel="noopener noreferrer">
+          <a href="https://www.linkedin.com/company/software-mansion/" target='_blank' rel="noopener noreferrer" className='footer-social-logo'>
             <img alt='' src={linkedLogo} />
           </a>
-          <a href="https://dribbble.com/softwaremansion" target='_blank' rel="noopener noreferrer">
+          <a href="https://dribbble.com/softwaremansion" target='_blank' rel="noopener noreferrer" className='footer-social-logo'>
             <img alt='' src={dribbleLogo} />
           </a>
-          <a href="https://discord.com/invite/2gjSqPQc9Q" target='_blank' rel="noopener noreferrer">
+          <a href="https://discord.com/invite/2gjSqPQc9Q" target='_blank' rel="noopener noreferrer" className='footer-social-logo'>
             <img alt='' src={discordLogo} />
           </a>
         </div>
@@ -57,10 +57,10 @@ function Footer() {
         <div>
           Download our app
           <div className="footer-download">
-            <a href="https://play.google.com/store/apps/details?id=com.swmansion.privatemind" target='_blank' rel="noopener noreferrer">
+            <a href="https://play.google.com/store/apps/details?id=com.swmansion.privatemind" target='_blank' rel="noopener noreferrer" className='footer-social-logo'>
               <img alt='' src={googlePlayLogo} />
             </a>
-            <a href="https://apps.apple.com/app/private-mind/id6746713439" target='_blank' rel="noopener noreferrer">
+            <a href="https://apps.apple.com/app/private-mind/id6746713439" target='_blank' rel="noopener noreferrer" className='footer-social-logo'>
               <img alt='' src={appstoreLog} />
             </a>
           </div>

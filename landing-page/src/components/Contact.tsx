@@ -26,14 +26,16 @@ function Contact() {
           If you'd like to introduce on-device AI models to your own app, make sure to let us know—we can help you with this whole journey from the very beginning.
         </p>
       </div>
-      <a href="mailto:ai@swmansion.com" className="contact-button-link">
-        <div className="contact-button">
-          <img alt='' src={Message} />
-          <div>
-            Get in touch
+      <div>
+        <a href="mailto:ai@swmansion.com" className="contact-button-link">
+          <div className="contact-button">
+            <img alt='' src={Message} />
+            <div>
+              Get in touch
+            </div>
           </div>
-        </div>
-      </a>
+        </a>
+      </div>
       <div id="technology" className="contact-technologies">
         <a href="https://docs.swmansion.com/react-native-executorch/" target='_blank' rel="noopener noreferrer">
           <img alt='' src={ETLogo} className='contact-technologies-logos'/>

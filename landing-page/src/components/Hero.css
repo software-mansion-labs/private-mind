@@ -26,6 +26,10 @@
   padding: 0 1rem;
   color: var(--color-dark);
 }
+.hero-download-button:hover {
+  margin-top: 2px;
+  margin-bottom: -2px;
+}
 
 .hero-heading-wrapper {
   font-size: var(--font-size-hero);
