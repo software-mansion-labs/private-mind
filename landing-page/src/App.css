@@ -1,14 +1,18 @@
 .app-container {
-  /* max-width: 1360px; */
   display: flex;
   margin: auto;
   flex-direction: column;
   font-family: "DM Sans";
-  width: 327px;
+  padding-left: 24px;
+  padding-right: 24px;
+  width: calc(100%-48px);
 }
 
 @media (min-width: 600px) {
   .app-container {
+    display: flex;
+    padding-left: 0px;
+    padding-right: 0px;
     width: 552px;
   }
 }

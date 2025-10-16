@@ -30,7 +30,6 @@
 .contact-description {
   display: flex;
   flex-direction: column;
-  /* width: 327px; */
   width: 100%;
   text-align: center;
   margin: auto;
