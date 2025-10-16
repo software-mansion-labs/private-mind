@@ -11,7 +11,7 @@
   display: none;
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   .navigation-menu {
     display: flex;
     flex-direction: row;

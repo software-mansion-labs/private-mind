@@ -18,12 +18,12 @@
 }
 
 .faq-title-primary {
-  font-size: var(--font-size-section-title);
+  font-size: var(--fontsize-xl);
   color: var(--color-dark);
 }
 
 .faq-title-secondary {
-  font-size: var(--font-size-section-title);
+  font-size: var(--fontsize-xl);
   color: var(--color-primary);
 }
 
@@ -33,7 +33,7 @@
   gap: 32px;
 }
 
-@media (min-width: 800px) {
+@media (min-width: 600px) {
   .faq-title-wrapper {
     flex-direction: row;
   }

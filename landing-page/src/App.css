@@ -4,28 +4,23 @@
   margin: auto;
   flex-direction: column;
   font-family: "DM Sans";
-  padding-left: 24px;
-  padding-right: 24px;
+  width: 327px;
 }
 
-@media (min-width: 800px) {
+@media (min-width: 600px) {
   .app-container {
-    padding-left: 124px;
-    padding-right: 124px;
+    width: 552px;
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   .app-container {
-    padding-left: 172px;
-    padding-right: 172px;
+    width: 936px;
   }
 }
 
-@media (min-width: 1920px) {
+@media (min-width: 1441px) {
   .app-container {
-    padding-left: 280px;
-    padding-right: 280px;
-    max-width: 1360px;
+    width: 1360px;
   }
 }

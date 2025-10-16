@@ -1,5 +1,4 @@
 :root {
-  /* Primary colors */
   --color-primary: #3D61D6;
   --color-dark: #020f3c;
   --color-primary-dark: #122B7D;
@@ -8,43 +7,46 @@
   --color-dark-10: #020F3C1A;
   --color-white: white;
 
-  /* Font sizes - Mobile first (default) */
-  --font-size-hero: 32px;
-  --font-size-section-title: 32px;
-  --font-size-large: 16px;
-  --font-size-medium: 14px;
-  --font-size-small: 8pt;
+  --fontsize-2xl: 28px;
+  --fontsize-xl: 22px;
+  --fontsize-lg: 18px;
+  --fontsize-md: 16px;
+  --fontsize-sm: 14px;
+  --fontsize-xs: 12px;
 }
 
-/* Tablet breakpoint (768px and up) */
-@media (min-width: 800px) {
+@media (min-width: 600px) {
   :root {
-    --font-size-hero: 28px;
-    --font-size-section-title: 22px;
-    --font-size-large: 16px;
-    --font-size-medium: 14px;
-    --font-size-small: 12pt;
+    --fontsize-2xl: 28px;
+    --fontsize-xl: 22px;
+    --fontsize-lg: 18px;
+    --fontsize-md: 16px;
+    --fontsize-sm: 14px;
+    --fontsize-xs: 12px;
+    --fontsize-xxs: 10px;
   }
 }
 
-
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   :root {
-    --font-size-hero: 42px;
-    --font-size-section-title: 33px;
-    --font-size-large: 16px;
-    --font-size-medium: 14px;
-    --font-size-small: 12pt;
+    --fontsize-2xl: 42px;
+    --fontsize-xl: 33px;
+    --fontsize-lg: 27px;
+    --fontsize-md: 16px;
+    --fontsize-sm: 14px;
+    --fontsize-xs: 12px;
+    --fontsize-xxs: 10px;
   }
 }
 
-/* Desktop breakpoint (1024px and up) */
-@media (min-width: 1920px) {
+@media (min-width: 1441px) {
   :root {
-    --font-size-hero: 64px;
-    --font-size-section-title: 52px;
-    --font-size-large: 20px;
-    --font-size-medium: 16px;
-    --font-size-small: 12pt;
+    --fontsize-2xl: 64px;
+    --fontsize-xl: 52px;
+    --fontsize-lg: 44px;
+    --fontsize-md: 20px;
+    --fontsize-sm: 16px;
+    --fontsize-xs: 12px;
+    --fontsize-xxs: 10px;
   }
 }

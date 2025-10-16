@@ -35,7 +35,7 @@
 }
 
 .question-title {
-  font-size: var(--font-size-large);
+  font-size: var(--fontsize-md);
   font-weight: 500;
 }
 
@@ -48,7 +48,7 @@
 }
 
 .question-answer {
-  font-size: var(--font-size-medium);
+  font-size: var(--fontsize-sm);
   color: var(--color-white);
 }
 

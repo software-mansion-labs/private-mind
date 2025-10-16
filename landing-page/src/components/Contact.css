@@ -18,24 +18,25 @@
 }
 
 .contact-title-primary {
-  font-size: var(--font-size-section-title);
+  font-size: var(--fontsize-xl);
   color: var(--color-dark);
 }
 
 .contact-title-secondary {
-  font-size: var(--font-size-section-title);
+  font-size: var(--fontsize-xl);
   color: var(--color-primary);
 }
 
 .contact-description {
   display: flex;
   flex-direction: column;
-  width: 327px;
+  /* width: 327px; */
+  width: 100%;
   text-align: center;
   margin: auto;
   line-height: 30px;
   gap: 16px;
-  font-size: var(--font-size-large);
+  font-size: var(--fontsize-md);
   font-weight: 400;
   color: var(--color-dark);
 }
@@ -84,21 +85,24 @@
 
 .contact-technologies-logos {
   max-width: calc(50vw - 24px);
+  display: flex;
+  margin: auto;
+  width: 100%;
 }
 
-@media (min-width: 800px) {
-  .contact-description {
+@media (min-width: 600px) {
+  /* .contact-description {
     width: 552px;
-  }
+  } */
   .contact-title-wrapper {
     flex-direction: row;
   }
 }
 
-@media (min-width: 1280px) {
-  .contact-description {
+@media (min-width: 1024px) {
+  /* .contact-description {
     width: 800px;
-  }
+  } */
   .contact-technologies {
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: 1fr;

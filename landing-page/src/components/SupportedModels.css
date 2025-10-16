@@ -17,12 +17,12 @@
 }
 
 .supported-models-title-primary {
-  font-size: var(--font-size-section-title);
+  font-size: var(--fontsize-xl);
   color: var(--color-dark);
 }
 
 .supported-models-title-secondary {
-  font-size: var(--font-size-section-title);
+  font-size: var(--fontsize-xl);
   color: var(--color-primary);
 }
 
@@ -42,15 +42,16 @@
 }
 
 .supported-models-footer p {
-  font-size: var(--font-size-large);
+  font-size: var(--fontsize-md);
   color: var(--color-dark-80);
 }
 
 .supported-models-logo {
-  max-width: calc(50vw - 24px);
+  width: 100%;
+  display: flex;
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   .supported-models-logos {
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: 1fr;
