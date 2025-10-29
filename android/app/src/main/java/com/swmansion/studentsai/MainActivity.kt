@@ -1,4 +1,4 @@
-package com.swmansion.privatemind
+package com.swmansion.studentsai
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

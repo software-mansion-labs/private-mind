@@ -91,7 +91,7 @@ const ChatSettingsForm = ({
       <View style={styles.textFieldSection}>
         <Text style={styles.label}>System Prompt</Text>
         <Text style={styles.subLabel}>
-          Instruction defining the behavior of the model.
+          Instruction defining the behaviour of the model.
           {!isDefaultSettings && !isPhantomChat && " This cannot be changed after the chat is created."}
         </Text>
         <TextAreaField

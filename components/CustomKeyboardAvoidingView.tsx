@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 interface Props
   extends Omit<
     KeyboardAvoidingViewProps,
-    'behavior' | 'contentContainerStyle'
+    'behaviour' | 'contentContainerStyle'
   > {
   isModalScreen?: boolean;
 }
@@ -34,7 +34,7 @@ export const CustomKeyboardAvoidingView: React.FC<Props> = ({
 
   return (
     <KeyboardAvoidingView
-      behavior="padding"
+      behaviour="padding"
       // subtracting bottom inset makes the keyboard cover the safe are padding
       // present on the screen
       keyboardVerticalOffset={topOffset - insets.bottom}

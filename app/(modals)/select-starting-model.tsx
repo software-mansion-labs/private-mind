@@ -54,7 +54,7 @@ function SelectStartingModelScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Choose a starting model</Text>
           <Text style={styles.description}>
-            Download your first model to get started with Private Mind.
+            Download your first model to get started with StudentsAI.
           </Text>
         </View>
 

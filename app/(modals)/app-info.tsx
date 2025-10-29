@@ -27,7 +27,7 @@ const GITHUB_LINKS: { text: string; url: string }[] = [
     url: 'https://github.com/software-mansion/react-native-executorch',
   },
   {
-    text: 'Check Private Mind repo',
+    text: 'Check StudentsAI repo',
     url: 'https://github.com/software-mansion-labs/private-mind',
   },
   {
@@ -44,7 +44,7 @@ const AppHeader = () => {
       <View style={styles.logoContainer}>
         <Logo width={28} height={28} />
         <Text style={[styles.appName, { color: theme.text.primary }]}>
-          Private Mind
+          StudentsAI
         </Text>
       </View>
       <Text style={[styles.appDescription, { color: theme.text.primary }]}>

@@ -1,4 +1,4 @@
-package com.swmansion.privatemind
+package com.swmansion.studentsai
 import com.facebook.react.common.assets.ReactFontManager
 
 import android.app.Application

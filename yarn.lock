@@ -2195,9 +2195,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native-rag/op-sqlite@file:./react-native-rag-op-sqlite-0.1.2.tgz::locator=local-mind%40workspace%3A.":
+"@react-native-rag/op-sqlite@file:./react-native-rag-op-sqlite-0.1.2.tgz::locator=students-ai%40workspace%3A.":
   version: 0.1.2
-  resolution: "@react-native-rag/op-sqlite@file:./react-native-rag-op-sqlite-0.1.2.tgz::locator=local-mind%40workspace%3A."
+  resolution: "@react-native-rag/op-sqlite@file:./react-native-rag-op-sqlite-0.1.2.tgz::locator=students-ai%40workspace%3A."
   peerDependencies:
     "@op-engineering/op-sqlite": ^14.0.4
     react-native-rag: ^0.1.0
@@ -6002,9 +6002,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"local-mind@workspace:.":
+"students-ai@workspace:.":
   version: 0.0.0-use.local
-  resolution: "local-mind@workspace:."
+  resolution: "students-ai@workspace:."
   dependencies:
     "@babel/core": ^7.25.2
     "@dr.pogodin/react-native-fs": ^2.35.1
@@ -7792,9 +7792,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-pdfium@file:./react-native-pdfium-0.1.2.tgz::locator=local-mind%40workspace%3A.":
+"react-native-pdfium@file:./react-native-pdfium-0.1.2.tgz::locator=students-ai%40workspace%3A.":
   version: 0.1.2
-  resolution: "react-native-pdfium@file:./react-native-pdfium-0.1.2.tgz::locator=local-mind%40workspace%3A."
+  resolution: "react-native-pdfium@file:./react-native-pdfium-0.1.2.tgz::locator=students-ai%40workspace%3A."
   peerDependencies:
     react: "*"
     react-native: "*"

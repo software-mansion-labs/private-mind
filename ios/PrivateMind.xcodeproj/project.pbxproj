@@ -382,7 +382,7 @@
 					"FB_SONARKIT_ENABLED=1",
 				);
 				INFOPLIST_FILE = PrivateMind/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Private Mind";
+				INFOPLIST_KEY_CFBundleDisplayName = "StudentsAI";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -396,7 +396,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.swmansion.privatemind;
+				PRODUCT_BUNDLE_IDENTIFIER = com.swmansion.studentsai;
 				PRODUCT_NAME = PrivateMind;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -419,7 +419,7 @@
 				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = J5FM626PE2;
 				INFOPLIST_FILE = PrivateMind/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Private Mind";
+				INFOPLIST_KEY_CFBundleDisplayName = "StudentsAI";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -433,7 +433,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.swmansion.privatemind;
+				PRODUCT_BUNDLE_IDENTIFIER = com.swmansion.studentsai;
 				PRODUCT_NAME = PrivateMind;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

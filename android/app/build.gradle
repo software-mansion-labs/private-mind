@@ -94,9 +94,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.swmansion.privatemind'
+    namespace 'com.swmansion.studentsai'
     defaultConfig {
-        applicationId 'com.swmansion.privatemind'
+        applicationId 'com.swmansion.studentsai'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 36

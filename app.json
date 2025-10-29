@@ -1,8 +1,8 @@
 {
   "expo": {
     "scheme": "private-mind",
-    "name": "Private Mind",
-    "slug": "private-mind",
+    "name": "StudentsAI",
+    "slug": "students-ai",
     "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/icons/icon.png",
@@ -59,7 +59,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.swmansion.privatemind",
+      "bundleIdentifier": "com.swmansion.studentsai",
       "appleTeamId": "B357MU264T"
     },
     "android": {
@@ -67,7 +67,7 @@
         "foregroundImage": "./assets/icons/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.swmansion.privatemind",
+      "package": "com.swmansion.studentsai",
       "edgeToEdgeEnabled": true
     }
   }

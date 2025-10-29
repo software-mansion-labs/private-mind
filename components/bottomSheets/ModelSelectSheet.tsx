@@ -93,7 +93,7 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
         <BottomSheetView style={[styles.content, styles.horizontalInset]}>
           <Text style={styles.title}>You have no available models yet</Text>
           <Text style={styles.subText}>
-            To use Private Mind you need to have at least one model downloaded
+            To use StudentsAI you need to have at least one model downloaded
           </Text>
           <PrimaryButton
             text="Download a Model"
