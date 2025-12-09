@@ -21,6 +21,7 @@ import { useModelStore } from '../../store/modelStore';
 import { useSourceStore } from '../../store/sourceStore';
 import { useLLMStore } from '../../store/llmStore';
 import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
+import { useDetourContext } from '@swmansion/react-native-detour';
 
 export default function App() {
   useOnboardingRedirect();
@@ -39,6 +40,9 @@ export default function App() {
   configureReanimatedLogger({
     strict: false,
   });
+
+  const detourContext = useDetourContext();
+  console.log('Detour context:', detourContext);
 
   const handleSetModel = async (model: Model) => {
     const nextChatId = await getNextChatId(db);
