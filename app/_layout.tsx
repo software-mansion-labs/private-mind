@@ -22,6 +22,8 @@ import { Stack } from 'expo-router';
 import { VectorStoreProvider } from '../context/VectorStoreContext';
 import * as SplashScreen from 'expo-splash-screen';
 import SplashScreenAnimation from '../components/SplashScreenAnimation';
+import { DetourProvider } from '@swmansion/react-native-detour';
+import { detourConfig } from '../utils/detourConfig';
 
 SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ fade: false, duration: 0 });
@@ -38,80 +40,82 @@ export default function Layout() {
 
   return (
     <GestureHandlerRootView>
-      <SQLiteProvider databaseName="executorch.db" onInit={initDatabase}>
-        <ThemeProvider>
-          <VectorStoreProvider>
-            <KeyboardProvider>
-              <BottomSheetModalProvider>
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="(drawer)" />
-                  <Stack.Screen
-                    name="(modals)/chat/[id]/settings"
-                    options={{
-                      headerShown: false,
-                      presentation: 'modal',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="(modals)/add-local-model"
-                    options={{
-                      headerShown: false,
-                      presentation: 'modal',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="(modals)/add-remote-model"
-                    options={{
-                      headerShown: false,
-                      presentation: 'modal',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="(modals)/edit-local-model/[modelId]"
-                    options={{
-                      headerShown: false,
-                      presentation: 'modal',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="(modals)/edit-remote-model/[modelId]"
-                    options={{
-                      headerShown: false,
-                      presentation: 'modal',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="(modals)/app-info"
-                    options={{
-                      headerShown: false,
-                      presentation: 'modal',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="(modals)/onboarding"
-                    options={{
-                      headerShown: false,
-                      gestureEnabled: false,
-                      animation: 'none',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="(modals)/select-starting-model"
-                    options={{
-                      headerShown: false,
-                      gestureEnabled: false,
-                      presentation: 'modal',
-                    }}
-                  />
-                </Stack>
-                {Platform.OS === 'android' && <StatusBar style="auto" />}
-                <AppToast />
-              </BottomSheetModalProvider>
-            </KeyboardProvider>
-          </VectorStoreProvider>
-          <SplashScreenAnimation />
-        </ThemeProvider>
-      </SQLiteProvider>
+      <DetourProvider config={detourConfig}>
+        <SQLiteProvider databaseName="executorch.db" onInit={initDatabase}>
+          <ThemeProvider>
+            <VectorStoreProvider>
+              <KeyboardProvider>
+                <BottomSheetModalProvider>
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="(drawer)" />
+                    <Stack.Screen
+                      name="(modals)/chat/[id]/settings"
+                      options={{
+                        headerShown: false,
+                        presentation: 'modal',
+                      }}
+                    />
+                    <Stack.Screen
+                      name="(modals)/add-local-model"
+                      options={{
+                        headerShown: false,
+                        presentation: 'modal',
+                      }}
+                    />
+                    <Stack.Screen
+                      name="(modals)/add-remote-model"
+                      options={{
+                        headerShown: false,
+                        presentation: 'modal',
+                      }}
+                    />
+                    <Stack.Screen
+                      name="(modals)/edit-local-model/[modelId]"
+                      options={{
+                        headerShown: false,
+                        presentation: 'modal',
+                      }}
+                    />
+                    <Stack.Screen
+                      name="(modals)/edit-remote-model/[modelId]"
+                      options={{
+                        headerShown: false,
+                        presentation: 'modal',
+                      }}
+                    />
+                    <Stack.Screen
+                      name="(modals)/app-info"
+                      options={{
+                        headerShown: false,
+                        presentation: 'modal',
+                      }}
+                    />
+                    <Stack.Screen
+                      name="(modals)/onboarding"
+                      options={{
+                        headerShown: false,
+                        gestureEnabled: false,
+                        animation: 'none',
+                      }}
+                    />
+                    <Stack.Screen
+                      name="(modals)/select-starting-model"
+                      options={{
+                        headerShown: false,
+                        gestureEnabled: false,
+                        presentation: 'modal',
+                      }}
+                    />
+                  </Stack>
+                  {Platform.OS === 'android' && <StatusBar style="auto" />}
+                  <AppToast />
+                </BottomSheetModalProvider>
+              </KeyboardProvider>
+            </VectorStoreProvider>
+            <SplashScreenAnimation />
+          </ThemeProvider>
+        </SQLiteProvider>
+      </DetourProvider>
     </GestureHandlerRootView>
   );
 }
