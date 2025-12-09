@@ -42,7 +42,9 @@ export default function App() {
   });
 
   const detourContext = useDetourContext();
-  console.log('Detour context:', detourContext);
+  useEffect(() => {
+    console.log('Detour context: ', detourContext);
+  }, [detourContext]);
 
   const handleSetModel = async (model: Model) => {
     const nextChatId = await getNextChatId(db);
