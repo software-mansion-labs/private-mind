@@ -4,23 +4,10 @@ import { useWindowDimensions } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import CustomDrawer from '../../components/drawer/CustomDrawer';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
-// Example: Using Detour context to access deferred links
-// import { useDetourContext } from '@swmansion/react-native-detour';
 
 const DrawerLayout = () => {
   const { width } = useWindowDimensions();
   const { theme } = useTheme();
-
-  // Example: Access deferred link information
-  // const { deferredLinkProcessed, deferredLink, route } = useDetourContext();
-
-  // Example: Show UI based on deferred link status
-  // useEffect(() => {
-  //   if (deferredLinkProcessed && deferredLink) {
-  //     console.log('App opened via deferred link:', deferredLink);
-  //     // You could show a toast, badge, or special UI here
-  //   }
-  // }, [deferredLinkProcessed, deferredLink]);
 
   return (
     <Drawer
