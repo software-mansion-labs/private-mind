@@ -1,6 +1,8 @@
 PODS:
   - boost (1.84.0)
   - DoubleConversion (1.1.6)
+  - EXApplication (7.0.8):
+    - ExpoModulesCore
   - EXConstants (17.1.7):
     - ExpoModulesCore
   - Expo (53.0.19):
@@ -32,6 +34,8 @@ PODS:
     - Yoga
   - ExpoAsset (11.1.7):
     - ExpoModulesCore
+  - ExpoClipboard (8.0.8):
+    - ExpoModulesCore
   - ExpoDevice (7.1.4):
     - ExpoModulesCore
   - ExpoDocumentPicker (13.1.6):
@@ -47,6 +51,8 @@ PODS:
   - ExpoKeepAwake (14.1.4):
     - ExpoModulesCore
   - ExpoLinking (7.1.7):
+    - ExpoModulesCore
+  - ExpoLocalization (17.0.8):
     - ExpoModulesCore
   - ExpoModulesCore (2.4.2):
     - DoubleConversion
@@ -1461,7 +1467,7 @@ PODS:
     - React-jsiexecutor
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
-  - react-native-executorch (0.5.2):
+  - react-native-executorch (0.5.6):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2057,7 +2063,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - RNCAsyncStorage (2.1.2):
+  - RNCAsyncStorage (2.2.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2105,7 +2111,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - RNDeviceInfo (14.0.4):
+  - RNDeviceInfo (15.0.1):
     - React-Core
   - RNGestureHandler (2.24.0):
     - DoubleConversion
@@ -2356,17 +2362,19 @@ PODS:
     - ReactCommon/turbomodule/core
     - Yoga
   - SocketRocket (0.7.1)
-  - sqlite3 (3.50.4):
-    - sqlite3/common (= 3.50.4)
-  - sqlite3/common (3.50.4)
+  - sqlite3 (3.51.1):
+    - sqlite3/common (= 3.51.1)
+  - sqlite3/common (3.51.1)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
   - boost (from `../node_modules/react-native/third-party-podspecs/boost.podspec`)
   - DoubleConversion (from `../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)
+  - EXApplication (from `../node_modules/expo-application/ios`)
   - EXConstants (from `../node_modules/expo-constants/ios`)
   - Expo (from `../node_modules/expo`)
   - ExpoAsset (from `../node_modules/expo-asset/ios`)
+  - ExpoClipboard (from `../node_modules/expo-clipboard/ios`)
   - ExpoDevice (from `../node_modules/expo-device/ios`)
   - ExpoDocumentPicker (from `../node_modules/expo-document-picker/ios`)
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
@@ -2375,6 +2383,7 @@ DEPENDENCIES:
   - ExpoHead (from `../node_modules/expo-router/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
+  - ExpoLocalization (from `../node_modules/expo-localization/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoSharing (from `../node_modules/expo-sharing/ios`)
   - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
@@ -2477,12 +2486,16 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/boost.podspec"
   DoubleConversion:
     :podspec: "../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec"
+  EXApplication:
+    :path: "../node_modules/expo-application/ios"
   EXConstants:
     :path: "../node_modules/expo-constants/ios"
   Expo:
     :path: "../node_modules/expo"
   ExpoAsset:
     :path: "../node_modules/expo-asset/ios"
+  ExpoClipboard:
+    :path: "../node_modules/expo-clipboard/ios"
   ExpoDevice:
     :path: "../node_modules/expo-device/ios"
   ExpoDocumentPicker:
@@ -2499,6 +2512,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-keep-awake/ios"
   ExpoLinking:
     :path: "../node_modules/expo-linking/ios"
+  ExpoLocalization:
+    :path: "../node_modules/expo-localization/ios"
   ExpoModulesCore:
     :path: "../node_modules/expo-modules-core"
   ExpoSharing:
@@ -2680,9 +2695,11 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
+  EXApplication: 1e98d4b1dccdf30627f92917f4b2c5a53c330e5f
   EXConstants: 98bcf0f22b820f9b28f9fee55ff2daededadd2f8
   Expo: cd501e0be567d779626d89da336c8103bbcb74de
   ExpoAsset: ef06e880126c375f580d4923fdd1cdf4ee6ee7d6
+  ExpoClipboard: b36b287d8356887844bb08ed5c84b5979bb4dd1e
   ExpoDevice: 7082f03af1c588333ef1417d5aa8287081d94b24
   ExpoDocumentPicker: b263a279685b6640b8c8bc70d71c83067aeaae55
   ExpoFileSystem: 7f92f7be2f5c5ed40a7c9efc8fa30821181d9d63
@@ -2691,6 +2708,7 @@ SPEC CHECKSUMS:
   ExpoHead: 9efbc31e85b2a6b3df1fcbd7595659873bb06c81
   ExpoKeepAwake: bf0811570c8da182bfb879169437d4de298376e7
   ExpoLinking: d5c183998ca6ada66ff45e407e0f965b398a8902
+  ExpoLocalization: d9168d5300a5b03e5e78b986124d11fb6ec3ebbd
   ExpoModulesCore: e0409d8c674a651a183e941be663e1966b49e2a2
   ExpoSharing: b0377be82430d07398c6a4cd60b5a15696accbd3
   ExpoSplashScreen: 0ad5acac1b5d2953c6e00d4319f16d616f70d4dd
@@ -2702,7 +2720,7 @@ SPEC CHECKSUMS:
   hermes-engine: f03b0e06d3882d71e67e45b073bb827da1a21aae
   op-sqlite: 6826f241267eca7963134db588b4bbb3a7a6b97d
   opencv-rne: 2305807573b6e29c8c87e3416ab096d09047a7a0
-  Pdfium: d8e07101b135cbec0d6a23b144929125be7fbb29
+  Pdfium: 5539666886276d0a130c38b83577e1138720a9b1
   RCT-Folly: e78785aa9ba2ed998ea4151e314036f6c49e6d82
   RCTDeprecation: 5f638f65935e273753b1f31a365db6a8d6dc53b5
   RCTRequired: 8b46a520ea9071e2bc47d474aa9ca31b4a935bd8
@@ -2734,7 +2752,7 @@ SPEC CHECKSUMS:
   React-logger: 85fa3509931497c72ccd2547fcc91e7299d8591e
   React-Mapbuffer: 96a2f2a176268581733be182fa6eebab1c0193be
   React-microtasksnativemodule: bda561d2648e1e52bd9e5a87f8889836bdbde2e2
-  react-native-executorch: 7d61d976183cf8613b0e227f7f1269d364d347a7
+  react-native-executorch: 9112acbb09781fc5a88e95d822275ef991341ef0
   react-native-keyboard-controller: af13329b118eecdbb253ca09e30308c782cdf13f
   react-native-menu: be9bce4eb201a4d13734744763d36d56e6df8b4a
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
@@ -2771,16 +2789,16 @@ SPEC CHECKSUMS:
   ReactCodegen: 6cb6e0d0b52471abc883541c76589d1c367c64c7
   ReactCommon: 1ab5451fc5da87c4cc4c3046e19a8054624ca763
   ReactNativeFs: c33f29eb0ec21fe9e91f33abfaf703a95a9f319f
-  RNAudioAPI: 99ed120b28fcf8aacb4efc0d7d4f4ad6b895b430
-  RNCAsyncStorage: 39c42c1e478e1f5166d1db52b5055e090e85ad66
+  RNAudioAPI: cca44e089ff15501f274cb4f79fd637fda53701d
+  RNCAsyncStorage: a1c8cc8a99c32de1244a9cf707bf9d83d0de0f71
   RNCClipboard: 37de6995ef72dc869422879e51a46a520d3f08b3
-  RNDeviceInfo: d863506092aef7e7af3a1c350c913d867d795047
+  RNDeviceInfo: 36d7f232bfe7c9b5c494cb7793230424ed32c388
   RNGestureHandler: 7d0931a61d7ba0259f32db0ba7d0963c3ed15d2b
   RNReanimated: 2313402fe27fecb7237619e9c6fcee3177f08a65
   RNScreens: 482e9707f9826230810c92e765751af53826d509
   RNSVG: 794f269526df9ddc1f79b3d1a202b619df0368e3
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
-  sqlite3: 73513155ec6979715d3904ef53a8d68892d4032b
+  sqlite3: 8d708bc63e9f4ce48f0ad9d6269e478c5ced1d9b
   Yoga: adb397651e1c00672c12e9495babca70777e411e
 
 PODFILE CHECKSUM: 3f3c7b364a560775124a1d731bac02497263761d
