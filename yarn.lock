@@ -2138,14 +2138,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native-async-storage/async-storage@npm:2.1.2":
-  version: 2.1.2
-  resolution: "@react-native-async-storage/async-storage@npm:2.1.2"
+"@react-native-async-storage/async-storage@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "@react-native-async-storage/async-storage@npm:2.2.0"
   dependencies:
     merge-options: ^3.0.4
   peerDependencies:
     react-native: ^0.0.0-0 || >=0.65 <1.0
-  checksum: a5c4d486e7e64067ab523b980b76cc2de5bf4b86ed410de09f2a95c3410e0c5b5be46c638a74cf5b7ed6dce10031ebac54350b498a2cb17f1a1c59347e671a73
+  checksum: efbb9c801fb7eecfad1568d6a5e9d247db420b8ba8f1789d5b783e679432567a53cf54c7e7b5e6f315276f33d1df297253549e0cefef2e683539df346d2a1f2d
   languageName: node
   linkType: hard
 
@@ -2899,6 +2899,21 @@ __metadata:
   peerDependencies:
     "@svgr/core": "*"
   checksum: 59d9d214cebaacca9ca71a561f463d8b7e5a68ca9443e4792a42d903acd52259b1790c0680bc6afecc3f00a255a6cbd7ea278a9f625bac443620ea58a590c2d0
+  languageName: node
+  linkType: hard
+
+"@swmansion/react-native-detour@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@swmansion/react-native-detour@npm:0.3.0"
+  peerDependencies:
+    "@react-native-async-storage/async-storage": ">=2.0.0"
+    expo-application: ">=6.1.5"
+    expo-clipboard: ">=6.0.0"
+    expo-localization: ">=15.0.0"
+    react: ">=18"
+    react-native: ">=0.72"
+    react-native-device-info: ">=14.0.0"
+  checksum: 47e8b1a51ec2864f246a5368c4b0e6a2e1a7a783f45b62b832fe7b08fc1756df47357192f3866b42520d7a29c70a03c2e7a311a19fb19679f28c53790b0fa581
   languageName: node
   linkType: hard
 
@@ -4506,6 +4521,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-application@npm:^7.0.8":
+  version: 7.0.8
+  resolution: "expo-application@npm:7.0.8"
+  peerDependencies:
+    expo: "*"
+  checksum: 15b6db7b4854b50a396e54e143b57187711788aa45e1719e4b4b4c5b9d29b7f97efe2d1256ced47d8c2ad95fe88a367b1f2be27e06a8dd17b38251b403fb8585
+  languageName: node
+  linkType: hard
+
 "expo-asset@npm:~11.1.5":
   version: 11.1.5
   resolution: "expo-asset@npm:11.1.5"
@@ -4531,6 +4555,17 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: fcbd7b1c1ab665757b3fb8f11592f35f252ada7f093eb70c17461c611347161a4bdd74a4e9717970f62ef191a400e9080426ed199c89042d020abe85007a8c79
+  languageName: node
+  linkType: hard
+
+"expo-clipboard@npm:^8.0.8":
+  version: 8.0.8
+  resolution: "expo-clipboard@npm:8.0.8"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+  checksum: 697ffebd5891ef9226747c48172175e4e75c85328ef0cb81831ce3b78a482a66ef46f2d3185a1726b1be945624ba6ca2733713fd8531239c92aff6095ee1bef6
   languageName: node
   linkType: hard
 
@@ -4653,6 +4688,18 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: a595b6a8f2097334aa98f7efb44e554ecc0ee05955bdc85e32fec951363670ae731d75ec67d7c6909e29de094dcba1fa11548398ca01a267619f9eadbeba2966
+  languageName: node
+  linkType: hard
+
+"expo-localization@npm:^17.0.8":
+  version: 17.0.8
+  resolution: "expo-localization@npm:17.0.8"
+  dependencies:
+    rtl-detect: ^1.0.2
+  peerDependencies:
+    expo: "*"
+    react: "*"
+  checksum: 70ddc37ec97392c7c2b783135695a2b06e5b38c7397989a0986632e91e75b36a87579267322910ac5edf53975440ad17b62f270206ce246df5a30881e4933aa5
   languageName: node
   linkType: hard
 
@@ -6011,7 +6058,7 @@ __metadata:
     "@expo-google-fonts/dm-sans": ^0.4.0
     "@gorhom/bottom-sheet": ^5
     "@op-engineering/op-sqlite": ^14.1.4
-    "@react-native-async-storage/async-storage": 2.1.2
+    "@react-native-async-storage/async-storage": ^2.2.0
     "@react-native-clipboard/clipboard": ^1.16.2
     "@react-native-community/netinfo": ^11.4.1
     "@react-native-menu/menu": ^1.2.3
@@ -6019,14 +6066,18 @@ __metadata:
     "@react-native-rag/op-sqlite": "file:./react-native-rag-op-sqlite-0.1.2.tgz"
     "@react-native/metro-config": ^0.76.3
     "@react-navigation/drawer": ^7.5.6
+    "@swmansion/react-native-detour": ^0.3.0
     "@types/react": ~19.0.10
     expo: 53.0.19
+    expo-application: ^7.0.8
+    expo-clipboard: ^8.0.8
     expo-constants: ~17.1.7
     expo-device: ~7.1.4
     expo-document-picker: ~13.1.6
     expo-font: ~13.3.2
     expo-haptics: ~14.1.4
     expo-linking: ~7.1.7
+    expo-localization: ^17.0.8
     expo-router: ~5.1.3
     expo-sharing: ~13.1.5
     expo-splash-screen: ~0.30.10
@@ -6036,8 +6087,8 @@ __metadata:
     react: 19.0.0
     react-native: 0.79.5
     react-native-audio-api: ^0.7.1
-    react-native-device-info: ^14.0.4
     react-native-executorch: 0.5.8
+    react-native-device-info: ^15.0.1
     react-native-gesture-handler: ~2.24.0
     react-native-keyboard-controller: ^1.18.1
     react-native-loading-spinner-overlay: ^3.0.1
@@ -7660,12 +7711,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-device-info@npm:^14.0.4":
-  version: 14.0.4
-  resolution: "react-native-device-info@npm:14.0.4"
+"react-native-device-info@npm:^15.0.1":
+  version: 15.0.1
+  resolution: "react-native-device-info@npm:15.0.1"
   peerDependencies:
     react-native: "*"
-  checksum: aa839dbe7df1246a4b5f9bcfeb3d4cc4be585f13a0d3ff6a03f57a0c2cfe7590291ac292dda4c51fd8765f94c870857676463e8e2f1660b057f3ae2b4335db29
+  checksum: e7c20006db07758fcf820e891b979b9d7e87c10b6a38066402d60d85ff1dc8e1ac47e8b57209bf394f20516fb49600cde6688cd6f7cfe7210f285555960a74e4
   languageName: node
   linkType: hard
 
@@ -8195,6 +8246,13 @@ __metadata:
   bin:
     rimraf: ./bin.js
   checksum: 3ea587b981a19016297edb96d1ffe48af7e6af69660e3b371dbfc73722a73a0b0e9be5c88089fbeeb866c389c1098e07f64929c7414290504b855f54f901ab10
+  languageName: node
+  linkType: hard
+
+"rtl-detect@npm:^1.0.2":
+  version: 1.1.2
+  resolution: "rtl-detect@npm:1.1.2"
+  checksum: 4a43a1e5df0617eb86d5485640b318787d12b86acf53d840a3b2ff701ee941e95479d4e9ae97e907569ec763d1c47218cb87639bc87bcdad60a85747e5270cf0
   languageName: node
   linkType: hard
 
