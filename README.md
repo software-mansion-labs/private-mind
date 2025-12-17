@@ -39,6 +39,7 @@ Private Mind is available in App Store and Google Play:
 ```
 git clone https://github.com/software-mansion-labs/private-mind.git
 cd private-mind
+node assets/models/download-models.js
 yarn
 yarn expo run:ios | yarn expo run:android
 ```
