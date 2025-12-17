@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const { Readable } = require('stream');
 
-const VERSION_TAG = 'v0.5.0';
+const VERSION_TAG = 'v0.6.0';
 
 const WHISPER_TINY_EN_FILES = [
   `https://huggingface.co/software-mansion/react-native-executorch-whisper-tiny.en/resolve/${VERSION_TAG}/tokenizer.json`,
