@@ -79,7 +79,8 @@
           "data": [
             {
               "scheme": "https",
-              "host": "privatemind.godetour.link"
+              "host": "privatemind.godetour.link",
+              "pathPrefix": "/SneWQjYDGD"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]

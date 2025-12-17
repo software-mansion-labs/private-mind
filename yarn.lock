@@ -2902,9 +2902,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@swmansion/react-native-detour@npm:^0.3.0":
-  version: 0.3.0
-  resolution: "@swmansion/react-native-detour@npm:0.3.0"
+"@swmansion/react-native-detour@npm:^0.4.0":
+  version: 0.4.0
+  resolution: "@swmansion/react-native-detour@npm:0.4.0"
   peerDependencies:
     "@react-native-async-storage/async-storage": ">=2.0.0"
     expo-application: ">=6.1.5"
@@ -2913,7 +2913,10 @@ __metadata:
     react: ">=18"
     react-native: ">=0.72"
     react-native-device-info: ">=14.0.0"
-  checksum: 47e8b1a51ec2864f246a5368c4b0e6a2e1a7a783f45b62b832fe7b08fc1756df47357192f3866b42520d7a29c70a03c2e7a311a19fb19679f28c53790b0fa581
+  peerDependenciesMeta:
+    "@react-native-async-storage/async-storage":
+      optional: true
+  checksum: 0b72643336a600c4dc03a4b6b69289e5e9114d4ea9d20dc1003fd46fcc919e79588de94231a5d8098434e63f3491eef8016ae91d94988920cf9fe309aa1b9611
   languageName: node
   linkType: hard
 
@@ -6066,7 +6069,7 @@ __metadata:
     "@react-native-rag/op-sqlite": "file:./react-native-rag-op-sqlite-0.1.2.tgz"
     "@react-native/metro-config": ^0.76.3
     "@react-navigation/drawer": ^7.5.6
-    "@swmansion/react-native-detour": ^0.3.0
+    "@swmansion/react-native-detour": ^0.4.0
     "@types/react": ~19.0.10
     expo: 53.0.19
     expo-application: ^7.0.8

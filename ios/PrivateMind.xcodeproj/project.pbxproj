@@ -377,7 +377,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = PrivateMind/PrivateMind.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = J5FM626PE2;
+				DEVELOPMENT_TEAM = B357MU264T;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -419,7 +419,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = PrivateMind/PrivateMind.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = J5FM626PE2;
+				DEVELOPMENT_TEAM = B357MU264T;
 				INFOPLIST_FILE = PrivateMind/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Private Mind";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
