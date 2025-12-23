@@ -52,9 +52,13 @@
           "iosBackgroundMode": false,
           "iosMicrophonePermission": "This app requires access to the microphone to record audio.",
           "androidForegroundService": false,
-          "androidPermissions": ["android.permission.RECORD_AUDIO"]
+          "androidPermissions": [
+            "android.permission.RECORD_AUDIO"
+          ]
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-localization"
     ],
     "newArchEnabled": true,
     "ios": {
@@ -83,7 +87,10 @@
               "pathPrefix": "/SneWQjYDGD"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     }
