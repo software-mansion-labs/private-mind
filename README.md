@@ -17,6 +17,7 @@ All conversations happen locally, with no data sent to the cloud and no internet
 ## Installation
 
 Private Mind is available in App Store and Google Play:
+
 - [App Store](https://apps.apple.com/pl/app/private-mind/id6746713439?l=pl)
 - [Google Play](https://play.google.com/store/apps/details?id=com.swmansion.privatemind)
 
@@ -39,7 +40,7 @@ Private Mind is available in App Store and Google Play:
 ```
 git clone https://github.com/software-mansion-labs/private-mind.git
 cd private-mind
-node assets/models/download-models.js
+node -e "require('./scripts/download-models.js').ensureModelAssets()"
 yarn
 yarn expo run:ios | yarn expo run:android
 ```

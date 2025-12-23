@@ -18,8 +18,20 @@ const ALL_MINI_LM_FILES = [
 ];
 
 async function ensureModelAssets() {
-  const whisperDir = path.join(__dirname, 'whisper-tiny-en');
-  const allMinilmDir = path.join(__dirname, 'all-mini-lm');
+  const whisperDir = path.join(
+    __dirname,
+    '..',
+    'assets',
+    'models',
+    'whisper-tiny-en'
+  );
+  const allMinilmDir = path.join(
+    __dirname,
+    '..',
+    'assets',
+    'models',
+    'all-mini-lm'
+  );
   fs.mkdirSync(whisperDir, { recursive: true });
   fs.mkdirSync(allMinilmDir, { recursive: true });
 

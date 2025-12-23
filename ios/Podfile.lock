@@ -2632,7 +2632,7 @@ SPEC CHECKSUMS:
   hermes-engine: 9f4dfe93326146a1c99eb535b1cb0b857a3cd172
   op-sqlite: a0744d1ff162f647a1d3b5c5e1760311365ef18e
   opencv-rne: 2305807573b6e29c8c87e3416ab096d09047a7a0
-  Pdfium: c99a6b86a620346e637772388f6b60641239df06
+  Pdfium: 1acccce105f393e570ab31d90d73afc0b6d60043
   RCTDeprecation: 943572d4be82d480a48f4884f670135ae30bf990
   RCTRequired: 8f3cfc90cc25cf6e420ddb3e7caaaabc57df6043
   RCTTypeSafety: 16a4144ca3f959583ab019b57d5633df10b5e97c
@@ -2666,7 +2666,7 @@ SPEC CHECKSUMS:
   React-logger: 50fdb9a8236da90c0b1072da5c32ee03aeb5bf28
   React-Mapbuffer: 9050ee10c19f4f7fca8963d0211b2854d624973e
   React-microtasksnativemodule: f775db9e991c6f3b8ccbc02bfcde22770f96e23b
-  react-native-executorch: 2a1f85d6f6ee5a0134fd8b9978f16b829f65442d
+  react-native-executorch: 80a9d0f81f935eed35c3b8f22878683aad1215cd
   react-native-keyboard-controller: 1ad78688f744e0ebdf3b04007b91089a254b80f9
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
   react-native-safe-area-context: 37e680fc4cace3c0030ee46e8987d24f5d3bdab2
@@ -2702,7 +2702,7 @@ SPEC CHECKSUMS:
   ReactCommon: 08810150b1206cc44aecf5f6ae19af32f29151a8
   ReactNativeDependencies: 71ce9c28beb282aa720ea7b46980fff9669f428a
   ReactNativeFs: 1bbd20020179cbaeddcda3ca2bf91e71647a1f23
-  RNAudioAPI: 02d8070e399dbe74930b2514c8be009d91de6a13
+  RNAudioAPI: 6ca346ac79b49b93e2c4089a4c3a97c4567533b2
   RNCAsyncStorage: 3a4f5e2777dae1688b781a487923a08569e27fe4
   RNCClipboard: 74cc34f95a13ea964d57e12293918f99e7f911d7
   RNDeviceInfo: 36d7f232bfe7c9b5c494cb7793230424ed32c388

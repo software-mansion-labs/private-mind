@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "download-models": "node -e \"require('./scripts/download-models.js').ensureModelAssets()\""
   },
   "op-sqlite": {
     "libsql": true,
@@ -15,7 +16,7 @@
   "dependencies": {
     "@dr.pogodin/react-native-fs": "^2.35.1",
     "@expo-google-fonts/dm-sans": "^0.4.0",
-    "@gorhom/bottom-sheet": "^5",
+    "@gorhom/bottom-sheet": "^5.2.8",
     "@op-engineering/op-sqlite": "^14.1.4",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-clipboard/clipboard": "^1.16.2",
