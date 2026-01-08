@@ -30,6 +30,13 @@ jobs:
       - name: Download model assets
         run: node -e "require('./scripts/download-models.js').ensureModelAssets()"
 
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          EXPO_PUBLIC_DETOUR_API_KEY=${{ secrets.EXPO_PUBLIC_DETOUR_API_KEY }}
+          EXPO_PUBLIC_DETOUR_APP_ID=${{ secrets.EXPO_PUBLIC_DETOUR_APP_ID }}
+          EOF
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
