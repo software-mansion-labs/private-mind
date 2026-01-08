@@ -1,0 +1,15 @@
+# Android Release Signing Configuration
+# Copy this file to local.properties and fill in the values
+# NEVER commit local.properties to git!
+
+# Path to your release keystore (relative to android/app directory)
+MYAPP_UPLOAD_STORE_FILE=../path/to/your-keystore.jks
+
+# Keystore password
+MYAPP_UPLOAD_STORE_PASSWORD=your_keystore_password
+
+# Key alias
+MYAPP_UPLOAD_KEY_ALIAS=your_key_alias
+
+# Key password
+MYAPP_UPLOAD_KEY_PASSWORD=your_key_password

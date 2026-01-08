@@ -1,0 +1,82 @@
+name: Android Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      increment_version:
+        description: 'Auto-increment versionCode'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Download model assets
+        run: node -e "require('./scripts/download-models.js').ensureModelAssets()"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+          echo "Keystore decoded successfully"
+
+      - name: Create local.properties
+        run: |
+          cat > android/local.properties << EOF
+          MYAPP_UPLOAD_STORE_FILE=release.keystore
+          MYAPP_UPLOAD_STORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          MYAPP_UPLOAD_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}
+          MYAPP_UPLOAD_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
+      - name: Increment version code (optional)
+        if: ${{ github.event.inputs.increment_version == 'true' }}
+        run: |
+          cd android
+          CURRENT_VERSION=$(grep "versionCode" app/build.gradle | awk '{print $2}')
+          NEW_VERSION=$((CURRENT_VERSION + 1))
+          sed -i "s/versionCode $CURRENT_VERSION/versionCode $NEW_VERSION/" app/build.gradle
+          echo "Version code incremented from $CURRENT_VERSION to $NEW_VERSION"
+
+      - name: Make build script executable
+        run: chmod +x ./scripts/build-release.sh
+
+      - name: Build Android App Bundle
+        run: ./scripts/build-release.sh
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-${{ github.run_number }}.aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f android/app/release.keystore
