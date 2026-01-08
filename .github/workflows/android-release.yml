@@ -55,11 +55,15 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Decode keystore
-        env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
-          echo "Keystore decoded successfully"
+          # Decode keystore from base64 (secret is accessed directly, never echoed)
+          echo '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' | tr -d '\n\r\t ' | base64 --decode > android/app/release.keystore
+          if [ -f android/app/release.keystore ]; then
+            echo "✓ Keystore decoded successfully"
+          else
+            echo "✗ Failed to decode keystore"
+            exit 1
+          fi
 
       - name: Create local.properties
         run: |

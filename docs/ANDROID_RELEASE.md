@@ -2,7 +2,37 @@
 
 This document outlines the process for building and preparing Android App Bundles (AAB) for Google Play Console distribution.
 
-## Prerequisites
+## Recommended: GitHub Actions (CI/CD)
+
+**The preferred method is to build via GitHub Actions**, which handles all setup automatically and produces a downloadable AAB artifact.
+
+### Steps:
+
+1. Ensure version numbers are updated (see [RELEASE.md](./RELEASE.md))
+2. Go to **GitHub** → **Actions** → **"Android Release"**
+3. Click **"Run workflow"**
+4. Wait for the build to complete (~10-15 minutes)
+5. Download the AAB from **Artifacts** section at the bottom of the workflow run page
+6. Upload to Google Play Console manually
+
+### Required GitHub Secrets
+
+The following secrets must be configured in your repository (Settings → Secrets and variables → Actions):
+
+- `ANDROID_KEYSTORE_BASE64` - Your release keystore file (base64 encoded)
+- `ANDROID_KEYSTORE_PASSWORD` - Keystore password
+- `ANDROID_KEY_ALIAS` - Key alias
+- `ANDROID_KEY_PASSWORD` - Key password
+- `EXPO_PUBLIC_DETOUR_API_KEY` - Detour SDK API key
+- `EXPO_PUBLIC_DETOUR_APP_ID` - Detour SDK App ID
+
+---
+
+## Alternative: Local Build
+
+If you need to build locally instead of using GitHub Actions, follow these instructions.
+
+### Prerequisites
 
 ### 1. Development Environment
 
