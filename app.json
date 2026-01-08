@@ -3,7 +3,7 @@
     "scheme": "private-mind",
     "name": "Private Mind",
     "slug": "private-mind",
-    "version": "1.0.4",
+    "version": "1.1.3",
     "orientation": "portrait",
     "icon": "./assets/icons/icon.png",
     "userInterfaceStyle": "automatic",
@@ -52,9 +52,7 @@
           "iosBackgroundMode": false,
           "iosMicrophonePermission": "This app requires access to the microphone to record audio.",
           "androidForegroundService": false,
-          "androidPermissions": [
-            "android.permission.RECORD_AUDIO"
-          ]
+          "androidPermissions": ["android.permission.RECORD_AUDIO"]
         }
       ],
       "expo-asset",
@@ -65,9 +63,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.swmansion.privatemind",
       "appleTeamId": "B357MU264T",
-      "associatedDomains": [
-        "applinks:privatemind.godetour.link"
-      ]
+      "associatedDomains": ["applinks:privatemind.godetour.link"]
     },
     "android": {
       "adaptiveIcon": {
@@ -87,10 +83,7 @@
               "pathPrefix": "/SneWQjYDGD"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
     }

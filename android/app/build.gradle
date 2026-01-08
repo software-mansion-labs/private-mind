@@ -100,8 +100,8 @@ android {
         applicationId 'com.swmansion.privatemind'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.4"
+        versionCode 59
+        versionName "1.1.3"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -112,6 +112,22 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (localProperties.getProperty('MYAPP_UPLOAD_STORE_FILE')) {
+                println "Using release keystore: ${localProperties.getProperty('MYAPP_UPLOAD_STORE_FILE')}"
+                storeFile file(localProperties.getProperty('MYAPP_UPLOAD_STORE_FILE'))
+                storePassword localProperties.getProperty('MYAPP_UPLOAD_STORE_PASSWORD')
+                keyAlias localProperties.getProperty('MYAPP_UPLOAD_KEY_ALIAS')
+                keyPassword localProperties.getProperty('MYAPP_UPLOAD_KEY_PASSWORD')
+            } else {
+                println "No release keystore found in local.properties, using debug keystore"
+                // Fallback to debug keystore if release signing is not configured
+                storeFile file('debug.keystore')
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
+            }
+        }
     }
     buildTypes {
         debug {
@@ -120,7 +136,7 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds
