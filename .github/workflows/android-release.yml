@@ -2,12 +2,6 @@ name: Android Release
 
 on:
   workflow_dispatch:
-    inputs:
-      increment_version:
-        description: 'Auto-increment versionCode'
-        required: false
-        type: boolean
-        default: false
 
 jobs:
   build:
@@ -20,15 +14,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'yarn'
+          node-version: "20"
+          cache: "yarn"
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
+          distribution: "temurin"
+          java-version: "17"
+          cache: "gradle"
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
@@ -54,15 +48,6 @@ jobs:
           MYAPP_UPLOAD_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}
           MYAPP_UPLOAD_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}
           EOF
-
-      - name: Increment version code (optional)
-        if: ${{ github.event.inputs.increment_version == 'true' }}
-        run: |
-          cd android
-          CURRENT_VERSION=$(grep "versionCode" app/build.gradle | awk '{print $2}')
-          NEW_VERSION=$((CURRENT_VERSION + 1))
-          sed -i "s/versionCode $CURRENT_VERSION/versionCode $NEW_VERSION/" app/build.gradle
-          echo "Version code incremented from $CURRENT_VERSION to $NEW_VERSION"
 
       - name: Make build script executable
         run: chmod +x ./scripts/build-release.sh
