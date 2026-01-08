@@ -57,7 +57,7 @@ jobs:
       - name: Decode keystore
         run: |
           # Decode keystore from base64 (secret is accessed directly, never echoed)
-          echo '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' | tr -d '\n\r\t ' | base64 --decode > android/app/release.keystore
+          echo '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' | base64 --decode > android/app/release.keystore
           if [ -f android/app/release.keystore ]; then
             echo "✓ Keystore decoded successfully"
           else
