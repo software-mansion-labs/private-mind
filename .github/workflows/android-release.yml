@@ -73,25 +73,6 @@ jobs:
             exit 1
           fi
 
-      - name: Create gradle.properties with signing config
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          # Create gradle.properties with signing configuration
-          cat >> android/gradle.properties <<EOF
-          MYAPP_UPLOAD_STORE_FILE=release.keystore
-          MYAPP_UPLOAD_STORE_PASSWORD=${KEYSTORE_PASSWORD}
-          MYAPP_UPLOAD_KEY_ALIAS=${KEY_ALIAS}
-          MYAPP_UPLOAD_KEY_PASSWORD=${KEY_PASSWORD}
-          EOF
-
-          echo "✓ gradle.properties updated with signing config"
-          echo "Key alias: ${KEY_ALIAS}"
-          echo "Keystore path check:"
-          ls -lh android/app/release.keystore
-
       - name: Make build script executable
         run: chmod +x ./scripts/build-release.sh
 
@@ -163,7 +144,29 @@ jobs:
           fi
 
       - name: Build Android App Bundle
-        run: ./scripts/build-release.sh
+        env:
+          ORG_GRADLE_PROJECT_MYAPP_UPLOAD_STORE_FILE: release.keystore
+          ORG_GRADLE_PROJECT_MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          ./scripts/build-release.sh || {
+            echo "Build failed, checking for detailed errors..."
+            if [ -f gradle-build.log ]; then
+              echo "Last 100 lines of gradle output:"
+              tail -100 gradle-build.log
+            fi
+            exit 1
+          }
+
+          # Check if bundle was created
+          if [ -f android/app/build/outputs/bundle/release/app-release.aab ]; then
+            echo "✓ Bundle created successfully"
+            ls -lh android/app/build/outputs/bundle/release/app-release.aab
+          else
+            echo "✗ Bundle was not created"
+            exit 1
+          fi
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

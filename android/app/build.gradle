@@ -125,6 +125,10 @@ android {
         release {
             if (keystoreProperties.getProperty('MYAPP_UPLOAD_STORE_FILE')) {
                 println "Using release keystore: ${keystoreProperties.getProperty('MYAPP_UPLOAD_STORE_FILE')}"
+                println "Key alias: ${keystoreProperties.getProperty('MYAPP_UPLOAD_KEY_ALIAS')}"
+                println "Keystore password length: ${keystoreProperties.getProperty('MYAPP_UPLOAD_STORE_PASSWORD')?.length()}"
+                println "Key password length: ${keystoreProperties.getProperty('MYAPP_UPLOAD_KEY_PASSWORD')?.length()}"
+
                 storeFile file(keystoreProperties.getProperty('MYAPP_UPLOAD_STORE_FILE'))
                 storePassword keystoreProperties.getProperty('MYAPP_UPLOAD_STORE_PASSWORD')
                 keyAlias keystoreProperties.getProperty('MYAPP_UPLOAD_KEY_ALIAS')
