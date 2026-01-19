@@ -150,11 +150,35 @@ jobs:
           ORG_GRADLE_PROJECT_MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          # Verify keystore exists before build
+          echo "Verifying keystore before build..."
+          if [ ! -f android/app/release.keystore ]; then
+            echo "✗ Keystore file missing!"
+            exit 1
+          fi
+          ls -lh android/app/release.keystore
+
+          # Verify environment variables are set
+          echo "Environment variables check:"
+          echo "ORG_GRADLE_PROJECT_MYAPP_UPLOAD_STORE_FILE=${ORG_GRADLE_PROJECT_MYAPP_UPLOAD_STORE_FILE}"
+          echo "ORG_GRADLE_PROJECT_MYAPP_UPLOAD_KEY_ALIAS=${ORG_GRADLE_PROJECT_MYAPP_UPLOAD_KEY_ALIAS}"
+          echo "Store password length: ${#ORG_GRADLE_PROJECT_MYAPP_UPLOAD_STORE_PASSWORD}"
+          echo "Key password length: ${#ORG_GRADLE_PROJECT_MYAPP_UPLOAD_KEY_PASSWORD}"
+
+          # Run build
           ./scripts/build-release.sh || {
             echo "Build failed, checking for detailed errors..."
             if [ -f gradle-build.log ]; then
-              echo "Last 100 lines of gradle output:"
-              tail -100 gradle-build.log
+              echo "Last 200 lines of gradle output:"
+              tail -200 gradle-build.log | grep -A 20 -B 20 "sign\|Sign\|SIGN\|keystore\|Keystore" || tail -200 gradle-build.log
+            fi
+
+            # Check if keystore still exists
+            if [ -f android/app/release.keystore ]; then
+              echo "Keystore still exists after build failure"
+              ls -lh android/app/release.keystore
+            else
+              echo "✗ Keystore was deleted during build!"
             fi
             exit 1
           }
