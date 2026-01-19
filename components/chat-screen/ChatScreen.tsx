@@ -23,7 +23,6 @@ import { CustomKeyboardAvoidingView } from '../CustomKeyboardAvoidingView';
 import { useVectorStore } from '../../context/VectorStoreContext';
 import SourceSelectSheet from '../bottomSheets/SourceSelectSheet';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
-import { SearchResult } from 'react-native-rag';
 import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
 
@@ -43,13 +42,12 @@ const prepareContext = async (
   vectorStore: OPSQLiteVectorStore
 ) => {
   try {
-    const context = await vectorStore.similaritySearch(
-      prompt,
-      K_DOCUMENTS_TO_RETRIEVE,
-      (value: SearchResult) =>
-        enabledSources.includes(value.metadata?.documentId)
-    );
-
+    const context = await vectorStore.query({
+      queryText: prompt,
+      nResults: K_DOCUMENTS_TO_RETRIEVE,
+      predicate: (r) => enabledSources.includes(r.metadata?.documentId),
+    });
+    console.log(context);
     context.sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
 
     const preparedContext = context.map((item, index) => {
@@ -60,9 +58,11 @@ const prepareContext = async (
         ? `(Relevance: ${(item.similarity * 100).toFixed(1)}%)`
         : '';
 
+      console.log(item.document);
+
       return `\n --- Source ${
         index + 1
-      }: ${documentName} ${relevanceScore} --- \n ${item.content.trim()} \n --- End of Source ${
+      }: ${documentName} ${relevanceScore} --- \n ${item.document.trim()} \n --- End of Source ${
         index + 1
       } ---`;
     });

@@ -109,7 +109,7 @@ PODS:
     - ReactNativeDependencies
     - Yoga
   - opencv-rne (4.11.0)
-  - Pdfium (0.1.2):
+  - Pdfium (0.1.3):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1921,7 +1921,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNAudioAPI (0.7.1):
+  - RNAudioAPI (0.8.4):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1942,9 +1942,9 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNAudioAPI/audioapi (= 0.7.1)
+    - RNAudioAPI/audioapi (= 0.8.4)
     - Yoga
-  - RNAudioAPI/audioapi (0.7.1):
+  - RNAudioAPI/audioapi (0.8.4):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1965,9 +1965,9 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNAudioAPI/audioapi/ios (= 0.7.1)
+    - RNAudioAPI/audioapi/ios (= 0.8.4)
     - Yoga
-  - RNAudioAPI/audioapi/ios (0.7.1):
+  - RNAudioAPI/audioapi/ios (0.8.4):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2632,7 +2632,7 @@ SPEC CHECKSUMS:
   hermes-engine: 9f4dfe93326146a1c99eb535b1cb0b857a3cd172
   op-sqlite: a0744d1ff162f647a1d3b5c5e1760311365ef18e
   opencv-rne: 2305807573b6e29c8c87e3416ab096d09047a7a0
-  Pdfium: 1acccce105f393e570ab31d90d73afc0b6d60043
+  Pdfium: 4a0412b69bb0172892aaed9254b430289a99f1c8
   RCTDeprecation: 943572d4be82d480a48f4884f670135ae30bf990
   RCTRequired: 8f3cfc90cc25cf6e420ddb3e7caaaabc57df6043
   RCTTypeSafety: 16a4144ca3f959583ab019b57d5633df10b5e97c
@@ -2702,7 +2702,7 @@ SPEC CHECKSUMS:
   ReactCommon: 08810150b1206cc44aecf5f6ae19af32f29151a8
   ReactNativeDependencies: 71ce9c28beb282aa720ea7b46980fff9669f428a
   ReactNativeFs: 1bbd20020179cbaeddcda3ca2bf91e71647a1f23
-  RNAudioAPI: 6ca346ac79b49b93e2c4089a4c3a97c4567533b2
+  RNAudioAPI: 59086ae1493659df19c4eefa4eee32406d470489
   RNCAsyncStorage: 3a4f5e2777dae1688b781a487923a08569e27fe4
   RNCClipboard: 74cc34f95a13ea964d57e12293918f99e7f911d7
   RNDeviceInfo: 36d7f232bfe7c9b5c494cb7793230424ed32c388
