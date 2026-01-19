@@ -112,17 +112,26 @@ jobs:
           fi
           echo "✓ Key alias verified"
 
-          # Test actual key password by trying to export
-          echo "Testing key password by attempting key export..."
-          keytool -keypasswd -keystore android/app/release.keystore \
+          # Test actual key password by trying to export certificate
+          echo "Testing key password by attempting certificate export..."
+          keytool -exportcert -keystore android/app/release.keystore \
             -alias '${{ secrets.ANDROID_KEY_ALIAS }}' \
             -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' \
             -keypass '${{ secrets.ANDROID_KEY_PASSWORD }}' \
-            -new '${{ secrets.ANDROID_KEY_PASSWORD }}' > /dev/null 2>&1
-          if [ $? -eq 0 ]; then
+            -file /tmp/test.crt 2>&1
+
+          EXPORT_RESULT=$?
+          if [ $EXPORT_RESULT -eq 0 ]; then
             echo "✓ Key password verified"
+            rm -f /tmp/test.crt
           else
-            echo "✗ Key password is incorrect"
+            echo "✗ Key password is incorrect or there's an issue accessing the private key"
+            echo "Attempting to show detailed error..."
+            keytool -exportcert -keystore android/app/release.keystore \
+              -alias '${{ secrets.ANDROID_KEY_ALIAS }}' \
+              -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' \
+              -keypass '${{ secrets.ANDROID_KEY_PASSWORD }}' \
+              -file /tmp/test.crt
             exit 1
           fi
 
