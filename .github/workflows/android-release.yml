@@ -81,9 +81,25 @@ jobs:
           MYAPP_UPLOAD_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}
           MYAPP_UPLOAD_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}
           EOF
+          echo "✓ local.properties created"
+          echo "Key alias: ${{ secrets.ANDROID_KEY_ALIAS }}"
 
       - name: Make build script executable
         run: chmod +x ./scripts/build-release.sh
+
+      - name: Verify signing before build
+        run: |
+          echo "Verifying keystore one more time before build..."
+          keytool -list -keystore android/app/release.keystore \
+            -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' \
+            -alias '${{ secrets.ANDROID_KEY_ALIAS }}' \
+            -keypass '${{ secrets.ANDROID_KEY_PASSWORD }}' > /dev/null 2>&1
+          if [ $? -eq 0 ]; then
+            echo "✓ Signing configuration verified"
+          else
+            echo "✗ Signing verification failed"
+            exit 1
+          fi
 
       - name: Build Android App Bundle
         run: ./scripts/build-release.sh
