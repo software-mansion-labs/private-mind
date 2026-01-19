@@ -153,7 +153,7 @@ export default function Layout() {
         <SQLiteProvider databaseName="executorch.db" onInit={initDatabase}>
           <ThemeProvider>
             <VectorStoreProvider>
-              <KeyboardProvider>
+              <KeyboardProvider enabled={true}>
                 <BottomSheetModalProvider>
                   <RootNavigator />
                   {Platform.OS === 'android' && <StatusBar style="auto" />}

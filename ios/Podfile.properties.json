@@ -4,5 +4,6 @@
   "newArchEnabled": "true",
   "expo.sqlite.customBuildFlags": "-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1",
   "expo.sqlite.enableFTS": "true",
-  "expo.sqlite.useSQLCipher": "true"
+  "expo.sqlite.useSQLCipher": "true",
+  "ios.buildReactNativeFromSource": "true"
 }

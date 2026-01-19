@@ -72,7 +72,7 @@ const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
   if (Platform.OS !== 'ios') {
     return { start: () => {}, stop: () => {} };
   }
-  let trackerId: number;
+  let trackerId: NodeJS.Timeout;
   return {
     start: () => {
       trackerId = setInterval(async () => {

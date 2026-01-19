@@ -4,7 +4,6 @@ import React, {
   useImperativeHandle,
   useMemo,
   useState,
-  useCallback,
 } from 'react';
 import {
   View,
@@ -14,11 +13,9 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Model } from '../../database/modelRepository';
-import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
-import { ScrollView } from 'react-native-gesture-handler';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
@@ -26,6 +23,9 @@ import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
+import { useMessageListContext } from '../../context/MessageListContext';
+import { LegendListRef } from '@legendapp/list';
+import Animated from 'react-native-reanimated';
 
 interface Props {
   chatId: number | null;
@@ -37,8 +37,9 @@ interface Props {
     clear: () => void;
     setInput: (text: string) => void;
   }>;
+  chatListRef: RefObject<LegendListRef>;
   model: Model | undefined;
-  scrollRef: RefObject<ScrollView | null>;
+  isLoading: boolean;
   isAtBottom: boolean;
   activeSourcesCount: number;
   thinkingEnabled: boolean;
@@ -53,8 +54,9 @@ const ChatBar = ({
   onSelectSource,
   onSelectPrompt,
   ref,
+  chatListRef,
+  isLoading,
   model,
-  scrollRef,
   isAtBottom,
   activeSourcesCount,
   thinkingEnabled,
@@ -63,7 +65,7 @@ const ChatBar = ({
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-
+  const { hasMessageBeenSent } = useMessageListContext();
   const [userInput, setUserInput] = useState('');
 
   useImperativeHandle(
@@ -108,7 +110,11 @@ const ChatBar = ({
     const handleSubmit = (transcript: string) => {
       setShowSpeechInput(false);
       if (transcript) {
+        hasMessageBeenSent.value = true;
         onSend(transcript);
+        setTimeout(() => {
+          chatListRef.current?.scrollToEnd({ animated: false });
+        }, 300);
       }
     };
 
@@ -138,10 +144,17 @@ const ChatBar = ({
   }
 
   return (
-    <View style={styles.container}>
+    <Animated.View
+      style={styles.container}
+      onLayout={() => {
+        if (isAtBottom) {
+          chatListRef.current.scrollToEnd({ animated: false });
+        }
+      }}
+    >
       {model?.isDownloaded && (
         <>
-          {!hasMessages && (
+          {!hasMessages && !isLoading && (
             <View style={styles.suggestionsContainer}>
               <PromptSuggestions onSelectPrompt={onSelectPrompt} />
             </View>
@@ -154,9 +167,6 @@ const ChatBar = ({
                 onFocus={async () => {
                   if (!isAtBottom) return;
                   await loadSelectedModel();
-                  setTimeout(() => {
-                    scrollRef.current?.scrollToEnd({ animated: true });
-                  }, 25);
                 }}
                 placeholder="Ask about anything..."
                 placeholderTextColor={theme.text.contrastTertiary}
@@ -169,7 +179,13 @@ const ChatBar = ({
               onSelectSource={onSelectSource}
               activeSourcesCount={activeSourcesCount}
               userInput={userInput}
-              onSend={() => onSend(userInput)}
+              onSend={() => {
+                hasMessageBeenSent.value = true;
+                onSend(userInput);
+                setTimeout(() => {
+                  chatListRef.current?.scrollToEnd({ animated: false });
+                }, 300);
+              }}
               isGenerating={isGenerating}
               isProcessingPrompt={isProcessingPrompt}
               onInterrupt={interrupt}
@@ -180,7 +196,7 @@ const ChatBar = ({
           </View>
         </>
       )}
-    </View>
+    </Animated.View>
   );
 };
 

@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Keyboard, StyleSheet, View } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
@@ -26,11 +25,14 @@ import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { SearchResult } from 'react-native-rag';
 import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
+import { MessageListProvider } from '../../context/MessageListContext';
+import { useAnimatedRef } from 'react-native-reanimated';
 
 interface Props {
   chatId: number;
   chat: Chat | undefined;
   messageHistory: Message[];
+  isLoading: boolean;
   model: Model | undefined;
   selectModel?: (model: Model) => Promise<void>;
 }
@@ -78,6 +80,7 @@ export default function ChatScreen({
   chatId,
   chat,
   messageHistory,
+  isLoading,
   model,
   selectModel,
 }: Props) {
@@ -85,9 +88,10 @@ export default function ChatScreen({
     clear: () => void;
     setInput: (text: string) => void;
   }>(null);
-  const scrollRef = useRef<ScrollView>(null);
+
   const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const sourceBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const chatListRef = useAnimatedRef<any>();
   const db = useSQLiteContext();
 
   const { vectorStore } = useVectorStore();
@@ -107,6 +111,8 @@ export default function ChatScreen({
   } = useChatStore();
 
   const { theme } = useTheme();
+  console.log('ChatBar container padding:', theme.insets.bottom);
+
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [isAtBottom, setIsAtBottom] = useState(true);
@@ -213,42 +219,45 @@ export default function ChatScreen({
 
   return (
     <CustomKeyboardAvoidingView style={styles.container} collapsable={false}>
-      <View style={styles.messagesContainer}>
-        <Messages
-          chatHistory={messageHistory}
-          ref={scrollRef}
-          isAtBottom={isAtBottom}
-          setIsAtBottom={setIsAtBottom}
-        />
-      </View>
+      <MessageListProvider>
+        <View style={styles.messagesContainer}>
+          <Messages
+            isLoading={isLoading}
+            chatHistory={messageHistory}
+            chatListRef={chatListRef}
+            isAtBottom={isAtBottom}
+            setIsAtBottom={setIsAtBottom}
+          />
+        </View>
 
-      <View style={styles.barContainer}>
-        <ChatBar
+        <View style={styles.barContainer}>
+          <ChatBar
+            chatId={chatId}
+            onSend={handleSendMessage}
+            onSelectModel={handlePresentModelSheet}
+            onSelectSource={handlePresentSourceSheet}
+            onSelectPrompt={handleSelectPrompt}
+            isLoading={isLoading}
+            ref={inputRef}
+            chatListRef={chatListRef}
+            model={model}
+            isAtBottom={isAtBottom}
+            activeSourcesCount={enabledSources.length}
+            thinkingEnabled={chatSettings?.thinkingEnabled || false}
+            onThinkingToggle={handleThinkingToggle}
+            hasMessages={messageHistory.length > 0}
+          />
+        </View>
+        <ModelSelectSheet
+          bottomSheetModalRef={modelBottomSheetModalRef}
+          selectModel={handleSelectModel}
+        />
+        <SourceSelectSheet
+          bottomSheetModalRef={sourceBottomSheetModalRef}
+          enabledSources={enabledSources}
           chatId={chatId}
-          onSend={handleSendMessage}
-          onSelectModel={handlePresentModelSheet}
-          onSelectSource={handlePresentSourceSheet}
-          onSelectPrompt={handleSelectPrompt}
-          ref={inputRef}
-          model={model}
-          scrollRef={scrollRef}
-          isAtBottom={isAtBottom}
-          activeSourcesCount={enabledSources.length}
-          thinkingEnabled={chatSettings?.thinkingEnabled || false}
-          onThinkingToggle={handleThinkingToggle}
-          hasMessages={messageHistory.length > 0}
         />
-      </View>
-
-      <ModelSelectSheet
-        bottomSheetModalRef={modelBottomSheetModalRef}
-        selectModel={handleSelectModel}
-      />
-      <SourceSelectSheet
-        bottomSheetModalRef={sourceBottomSheetModalRef}
-        enabledSources={enabledSources}
-        chatId={chatId}
-      />
+      </MessageListProvider>
     </CustomKeyboardAvoidingView>
   );
 }

@@ -1,0 +1,13 @@
+diff --git a/node_modules/react-native/React/Fabric/Mounting/ComponentViews/ScrollView/RCTScrollViewComponentView.mm b/node_modules/react-native/React/Fabric/Mounting/ComponentViews/ScrollView/RCTScrollViewComponentView.mm
+index 1494fd2..71cf4c3 100644
+--- a/node_modules/react-native/React/Fabric/Mounting/ComponentViews/ScrollView/RCTScrollViewComponentView.mm
++++ b/node_modules/react-native/React/Fabric/Mounting/ComponentViews/ScrollView/RCTScrollViewComponentView.mm
+@@ -507,7 +507,7 @@ static inline UIViewAnimationOptions animationOptionsWithCurve(UIViewAnimationCu
+     }
+   }
+ 
+-  return isPointInside ? self : nil;
++  return isPointInside ? _scrollView : nil;
+ }
+ 
+ /*
