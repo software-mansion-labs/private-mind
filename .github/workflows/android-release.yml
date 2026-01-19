@@ -89,15 +89,40 @@ jobs:
 
       - name: Verify signing before build
         run: |
-          echo "Verifying keystore one more time before build..."
+          echo "Verifying keystore passwords..."
+
+          # Test keystore password
+          keytool -list -keystore android/app/release.keystore \
+            -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' > /dev/null 2>&1
+          if [ $? -ne 0 ]; then
+            echo "✗ Keystore password is incorrect"
+            exit 1
+          fi
+          echo "✓ Keystore password verified"
+
+          # Test key alias and key password separately
           keytool -list -keystore android/app/release.keystore \
             -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' \
+            -alias '${{ secrets.ANDROID_KEY_ALIAS }}' > /dev/null 2>&1
+          if [ $? -ne 0 ]; then
+            echo "✗ Key alias not found in keystore"
+            keytool -list -keystore android/app/release.keystore \
+              -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}'
+            exit 1
+          fi
+          echo "✓ Key alias verified"
+
+          # Test actual key password by trying to export
+          echo "Testing key password by attempting key export..."
+          keytool -keypasswd -keystore android/app/release.keystore \
             -alias '${{ secrets.ANDROID_KEY_ALIAS }}' \
-            -keypass '${{ secrets.ANDROID_KEY_PASSWORD }}' > /dev/null 2>&1
+            -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' \
+            -keypass '${{ secrets.ANDROID_KEY_PASSWORD }}' \
+            -new '${{ secrets.ANDROID_KEY_PASSWORD }}' > /dev/null 2>&1
           if [ $? -eq 0 ]; then
-            echo "✓ Signing configuration verified"
+            echo "✓ Key password verified"
           else
-            echo "✗ Signing verification failed"
+            echo "✗ Key password is incorrect"
             exit 1
           fi
 
