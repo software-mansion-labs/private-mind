@@ -60,6 +60,14 @@ jobs:
           echo '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' | base64 --decode > android/app/release.keystore
           if [ -f android/app/release.keystore ]; then
             echo "✓ Keystore decoded successfully"
+            # Verify keystore is valid
+            keytool -list -keystore android/app/release.keystore -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' > /dev/null 2>&1
+            if [ $? -eq 0 ]; then
+              echo "✓ Keystore is valid"
+            else
+              echo "✗ Keystore is invalid or password is incorrect"
+              exit 1
+            fi
           else
             echo "✗ Failed to decode keystore"
             exit 1
