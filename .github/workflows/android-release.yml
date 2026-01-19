@@ -73,24 +73,24 @@ jobs:
             exit 1
           fi
 
-      - name: Create local.properties
+      - name: Create gradle.properties with signing config
         env:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          cat > android/local.properties <<'EOF'
+          # Create gradle.properties with signing configuration
+          cat >> android/gradle.properties <<EOF
           MYAPP_UPLOAD_STORE_FILE=release.keystore
+          MYAPP_UPLOAD_STORE_PASSWORD=${KEYSTORE_PASSWORD}
+          MYAPP_UPLOAD_KEY_ALIAS=${KEY_ALIAS}
+          MYAPP_UPLOAD_KEY_PASSWORD=${KEY_PASSWORD}
           EOF
-          echo "MYAPP_UPLOAD_STORE_PASSWORD=${KEYSTORE_PASSWORD}" >> android/local.properties
-          echo "MYAPP_UPLOAD_KEY_ALIAS=${KEY_ALIAS}" >> android/local.properties
-          echo "MYAPP_UPLOAD_KEY_PASSWORD=${KEY_PASSWORD}" >> android/local.properties
 
-          echo "✓ local.properties created"
+          echo "✓ gradle.properties updated with signing config"
           echo "Key alias: ${KEY_ALIAS}"
           echo "Keystore path check:"
           ls -lh android/app/release.keystore
-          echo "Property count: $(cat android/local.properties | wc -l) lines"
 
       - name: Make build script executable
         run: chmod +x ./scripts/build-release.sh
