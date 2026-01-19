@@ -130,7 +130,7 @@ jobs:
 
           EXPORT_RESULT=$?
           if [ $EXPORT_RESULT -eq 0 ]; then
-            echo "✓ Key password verified"
+            echo "✓ Key password verified with keytool"
             rm -f /tmp/test.crt
           else
             echo "✗ Key password is incorrect or there's an issue accessing the private key"
@@ -140,6 +140,25 @@ jobs:
               -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' \
               -keypass '${{ secrets.ANDROID_KEY_PASSWORD }}' \
               -file /tmp/test.crt
+            exit 1
+          fi
+
+          # Test with jarsigner as well (this is what gradle uses internally)
+          echo "Testing with jarsigner (gradle's signing tool)..."
+          # Create a dummy jar to test signing
+          echo "test" > /tmp/test.txt
+          jar cf /tmp/test.jar /tmp/test.txt
+          jarsigner -keystore android/app/release.keystore \
+            -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' \
+            -keypass '${{ secrets.ANDROID_KEY_PASSWORD }}' \
+            /tmp/test.jar '${{ secrets.ANDROID_KEY_ALIAS }}' 2>&1
+
+          JARSIGNER_RESULT=$?
+          if [ $JARSIGNER_RESULT -eq 0 ]; then
+            echo "✓ Signing test with jarsigner successful"
+            rm -f /tmp/test.jar /tmp/test.txt
+          else
+            echo "✗ jarsigner test failed - this is likely the same error gradle encounters"
             exit 1
           fi
 
