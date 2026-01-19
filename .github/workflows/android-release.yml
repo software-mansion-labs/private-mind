@@ -36,7 +36,16 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Download model assets
-        run: node -e "require('./scripts/download-models.js').ensureModelAssets()"
+        run: |
+          echo "Downloading model assets..."
+          node -e "require('./scripts/download-models.js').ensureModelAssets()"
+
+          echo "Verifying downloaded files:"
+          ls -lh assets/models/
+          find assets/models/ -type f -exec ls -lh {} \;
+
+          echo "Total size of assets:"
+          du -sh assets/models/
 
       - name: Clean up after model download
         run: |
