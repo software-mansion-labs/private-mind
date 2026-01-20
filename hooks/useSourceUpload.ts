@@ -16,7 +16,7 @@ export const useSourceUpload = () => {
 
   const uploadSource = useCallback(async () => {
     const pickedFileResult = await DocumentPicker.getDocumentAsync({
-      type: 'application/pdf',
+      type: ['application/pdf', 'text/plain', 'text/markdown', 'text/html'],
       copyToCacheDirectory: true,
     });
 
@@ -41,15 +41,15 @@ export const useSourceUpload = () => {
         });
       } else if (result.isEmpty) {
         warningSheetRef.current?.present({
-          title: "Can't read PDF",
-          subtitle: `The PDF "${newSource.name}" appears to be empty or unreadable. It won't be added to your sources.`,
+          title: "Can't read document",
+          subtitle: `The document "${newSource.name}" appears to be empty or unreadable. It won't be added to your sources.`,
           buttonTitle: 'OK',
           onConfirm: () => {},
         });
       } else {
         warningSheetRef.current?.present({
-          title: "Can't read PDF",
-          subtitle: `There was an error processing the PDF "${newSource.name}". Please try again.`,
+          title: "Can't read document",
+          subtitle: `There was an error processing the document "${newSource.name}". Please try again.`,
           buttonTitle: 'OK',
           onConfirm: () => {},
         });

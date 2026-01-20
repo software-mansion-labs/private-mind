@@ -10,7 +10,7 @@ import {
 import { SQLiteDatabase } from 'expo-sqlite';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { RecursiveCharacterTextSplitter } from 'react-native-rag';
-import { readPDF } from 'react-native-pdfium';
+import { readDocumentText } from '../utils/fileReaders';
 import { useLLMStore } from './llmStore';
 
 interface SourceStore {
@@ -56,13 +56,12 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     const db = get().db;
     if (!db) return { success: false };
 
-    const normalizedUri = sourceUri.replace('file://', '');
     const tempId = -Date.now();
 
     set({ isReading: true });
 
     try {
-      const sourceTextContent = await readPDF(normalizedUri);
+      const sourceTextContent = await readDocumentText(sourceUri, source.type);
 
       if (!sourceTextContent || sourceTextContent.trim().length === 0) {
         set({ isReading: false });

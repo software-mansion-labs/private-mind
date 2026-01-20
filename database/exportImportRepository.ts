@@ -1,6 +1,6 @@
 import { SQLiteDatabase } from 'expo-sqlite';
 import { getChatMessages, Message } from './chatRepository';
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { Alert } from 'react-native';
@@ -20,11 +20,9 @@ export const exportChatRoom = async (
     });
 
     const fileName = `chat-${Date.now()}.json`;
-    const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-
-    await FileSystem.writeAsStringAsync(fileUri, jsonData, {
-      encoding: FileSystem.EncodingType.UTF8,
-    });
+    const file = new File(Paths.document, fileName);
+    await file.write(jsonData);
+    const fileUri = file.uri;
 
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(fileUri, {
@@ -54,7 +52,8 @@ export async function importChatRoom(): Promise<
     });
     if (result.canceled || !result.assets[0]?.uri) return;
     const uri = result.assets[0].uri;
-    const fileContent = await FileSystem.readAsStringAsync(uri);
+    const file = new File(uri);
+    const fileContent = await file.text();
 
     const chatData = JSON.parse(fileContent);
     const chat = {
@@ -67,7 +66,7 @@ export async function importChatRoom(): Promise<
     };
     return chat;
   } catch (error) {
-    console.error('❌ Failed to import chat room JSON:', error);
+    console.error('Failed to import chat room JSON:', error);
     return;
   }
 }
