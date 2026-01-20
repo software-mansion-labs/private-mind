@@ -73,9 +73,9 @@ const SheetContent = ({
 
   const handleDeleteSource = useCallback(async () => {
     await deleteSource(source);
-    await vectorStore?.deleteMany(
-      (value) => value.metadata?.documentId === source.id
-    );
+    await vectorStore?.delete({
+      predicate: (value) => value.metadata?.documentId === source.id,
+    });
     await loadChats();
 
     Toast.show({
