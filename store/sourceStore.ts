@@ -96,12 +96,10 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i]!;
-        console.log(
-          await vectorStore?.add({
-            document: chunk,
-            metadata: { documentId: sourceId },
-          })
-        );
+        await vectorStore?.add({
+          document: chunk,
+          metadata: { documentId: sourceId },
+        });
       }
 
       set((state) => ({

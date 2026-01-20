@@ -47,7 +47,7 @@ const prepareContext = async (
       nResults: K_DOCUMENTS_TO_RETRIEVE,
       predicate: (r) => enabledSources.includes(r.metadata?.documentId),
     });
-    console.log(context);
+
     context.sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
 
     const preparedContext = context.map((item, index) => {
@@ -58,11 +58,9 @@ const prepareContext = async (
         ? `(Relevance: ${(item.similarity * 100).toFixed(1)}%)`
         : '';
 
-      console.log(item.document);
-
       return `\n --- Source ${
         index + 1
-      }: ${documentName} ${relevanceScore} --- \n ${item.document.trim()} \n --- End of Source ${
+      }: ${documentName} ${relevanceScore} --- \n ${item.document?.trim()} \n --- End of Source ${
         index + 1
       } ---`;
     });
