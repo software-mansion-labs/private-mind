@@ -38,12 +38,6 @@ jobs:
       - name: Download model assets
         run: node -e "require('./scripts/download-models.js').ensureModelAssets()"
 
-      - name: Clean up after model download
-        run: |
-          rm -rf ~/.npm
-          yarn cache clean
-          df -h
-
       - name: Create .env file
         run: |
           cat > .env << EOF
