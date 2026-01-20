@@ -58,12 +58,8 @@ find "$ASSETS_DIR" -type f -exec ls -lh {} \;
 echo "Building Release AAB..."
 echo "NODE_ENV is set to: $NODE_ENV"
 cd android
-ls -l
-cd ..
-cd assets/models/all-mini-lm
-ls -l
 echo "Running gradle bundleRelease with stacktrace..."
-# ./gradlew bundleRelease --stacktrace --info 2>&1 | tee ../gradle-build.log
+./gradlew bundleRelease --stacktrace --info 2>&1 | tee ../gradle-build.log
 cd ..
 
 if [ -f "$AAB_OUTPUT" ]; then
