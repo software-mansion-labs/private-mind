@@ -36,16 +36,7 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Download model assets
-        run: |
-          echo "Downloading model assets..."
-          node -e "require('./scripts/download-models.js').ensureModelAssets()"
-
-          echo "Verifying downloaded files:"
-          ls -lh assets/models/
-          find assets/models/ -type f -exec ls -lh {} \;
-
-          echo "Total size of assets:"
-          du -sh assets/models/
+        run: node -e "require('./scripts/download-models.js').ensureModelAssets()"
 
       - name: Clean up after model download
         run: |
@@ -65,141 +56,28 @@ jobs:
 
       - name: Decode keystore
         run: |
-          # Decode keystore from base64 (secret is accessed directly, never echoed)
           echo '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' | base64 --decode > android/app/release.keystore
           if [ -f android/app/release.keystore ]; then
             echo "✓ Keystore decoded successfully"
-            # Verify keystore is valid
-            keytool -list -keystore android/app/release.keystore -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' > /dev/null 2>&1
-            if [ $? -eq 0 ]; then
-              echo "✓ Keystore is valid"
-            else
-              echo "✗ Keystore is invalid or password is incorrect"
-              exit 1
-            fi
           else
             echo "✗ Failed to decode keystore"
             exit 1
           fi
 
+      - name: Create local.properties
+        run: |
+          cat > android/local.properties << EOF
+          MYAPP_UPLOAD_STORE_FILE=release.keystore
+          MYAPP_UPLOAD_STORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          MYAPP_UPLOAD_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}
+          MYAPP_UPLOAD_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
       - name: Make build script executable
         run: chmod +x ./scripts/build-release.sh
 
-      - name: Verify signing before build
-        run: |
-          echo "Verifying keystore passwords..."
-
-          # Test keystore password
-          keytool -list -keystore android/app/release.keystore \
-            -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' > /dev/null 2>&1
-          if [ $? -ne 0 ]; then
-            echo "✗ Keystore password is incorrect"
-            exit 1
-          fi
-          echo "✓ Keystore password verified"
-
-          # Test key alias and key password separately
-          keytool -list -keystore android/app/release.keystore \
-            -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' \
-            -alias '${{ secrets.ANDROID_KEY_ALIAS }}' > /dev/null 2>&1
-          if [ $? -ne 0 ]; then
-            echo "✗ Key alias not found in keystore"
-            keytool -list -keystore android/app/release.keystore \
-              -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}'
-            exit 1
-          fi
-          echo "✓ Key alias verified"
-
-          # Test actual key password by trying to export certificate
-          echo "Testing key password by attempting certificate export..."
-          keytool -exportcert -keystore android/app/release.keystore \
-            -alias '${{ secrets.ANDROID_KEY_ALIAS }}' \
-            -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' \
-            -keypass '${{ secrets.ANDROID_KEY_PASSWORD }}' \
-            -file /tmp/test.crt 2>&1
-
-          EXPORT_RESULT=$?
-          if [ $EXPORT_RESULT -eq 0 ]; then
-            echo "✓ Key password verified with keytool"
-            rm -f /tmp/test.crt
-          else
-            echo "✗ Key password is incorrect or there's an issue accessing the private key"
-            echo "Attempting to show detailed error..."
-            keytool -exportcert -keystore android/app/release.keystore \
-              -alias '${{ secrets.ANDROID_KEY_ALIAS }}' \
-              -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' \
-              -keypass '${{ secrets.ANDROID_KEY_PASSWORD }}' \
-              -file /tmp/test.crt
-            exit 1
-          fi
-
-          # Test with jarsigner as well (this is what gradle uses internally)
-          echo "Testing with jarsigner (gradle's signing tool)..."
-          # Create a dummy jar to test signing
-          echo "test" > /tmp/test.txt
-          jar cf /tmp/test.jar /tmp/test.txt
-          jarsigner -keystore android/app/release.keystore \
-            -storepass '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' \
-            -keypass '${{ secrets.ANDROID_KEY_PASSWORD }}' \
-            /tmp/test.jar '${{ secrets.ANDROID_KEY_ALIAS }}' 2>&1
-
-          JARSIGNER_RESULT=$?
-          if [ $JARSIGNER_RESULT -eq 0 ]; then
-            echo "✓ Signing test with jarsigner successful"
-            rm -f /tmp/test.jar /tmp/test.txt
-          else
-            echo "✗ jarsigner test failed - this is likely the same error gradle encounters"
-            exit 1
-          fi
-
       - name: Build Android App Bundle
-        env:
-          ORG_GRADLE_PROJECT_MYAPP_UPLOAD_STORE_FILE: release.keystore
-          ORG_GRADLE_PROJECT_MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ORG_GRADLE_PROJECT_MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ORG_GRADLE_PROJECT_MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          # Verify keystore exists before build
-          echo "Verifying keystore before build..."
-          if [ ! -f android/app/release.keystore ]; then
-            echo "✗ Keystore file missing!"
-            exit 1
-          fi
-          ls -lh android/app/release.keystore
-
-          # Verify environment variables are set
-          echo "Environment variables check:"
-          echo "ORG_GRADLE_PROJECT_MYAPP_UPLOAD_STORE_FILE=${ORG_GRADLE_PROJECT_MYAPP_UPLOAD_STORE_FILE}"
-          echo "ORG_GRADLE_PROJECT_MYAPP_UPLOAD_KEY_ALIAS=${ORG_GRADLE_PROJECT_MYAPP_UPLOAD_KEY_ALIAS}"
-          echo "Store password length: ${#ORG_GRADLE_PROJECT_MYAPP_UPLOAD_STORE_PASSWORD}"
-          echo "Key password length: ${#ORG_GRADLE_PROJECT_MYAPP_UPLOAD_KEY_PASSWORD}"
-
-          # Run build
-          ./scripts/build-release.sh || {
-            echo "Build failed, checking for detailed errors..."
-            if [ -f gradle-build.log ]; then
-              echo "Last 200 lines of gradle output:"
-              tail -200 gradle-build.log | grep -A 20 -B 20 "sign\|Sign\|SIGN\|keystore\|Keystore" || tail -200 gradle-build.log
-            fi
-
-            # Check if keystore still exists
-            if [ -f android/app/release.keystore ]; then
-              echo "Keystore still exists after build failure"
-              ls -lh android/app/release.keystore
-            else
-              echo "✗ Keystore was deleted during build!"
-            fi
-            exit 1
-          }
-
-          # Check if bundle was created
-          if [ -f android/app/build/outputs/bundle/release/app-release.aab ]; then
-            echo "✓ Bundle created successfully"
-            ls -lh android/app/build/outputs/bundle/release/app-release.aab
-          else
-            echo "✗ Bundle was not created"
-            exit 1
-          fi
+        run: ./scripts/build-release.sh
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

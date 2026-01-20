@@ -29,16 +29,8 @@ trap cleanup EXIT
 echo "Copying model files to Android asset packs..."
 mkdir -p "$ANDROID_ASSETS_DIR"
 if [ -d "$ASSETS_DIR" ]; then
-    echo "Source assets directory contents:"
-    ls -lh "$ASSETS_DIR"
-    find "$ASSETS_DIR" -type f -exec ls -lh {} \; | head -20
-
     cp -r "$ASSETS_DIR"/* "$ANDROID_ASSETS_DIR"/ 2>/dev/null || true
     echo "Files copied to Android asset packs"
-
-    echo "Android asset packs contents:"
-    ls -lh "$ANDROID_ASSETS_DIR"
-    find "$ANDROID_ASSETS_DIR" -type f -exec ls -lh {} \; | head -20
 fi
 
 echo "Replacing model files with minimal placeholder files..."
@@ -52,23 +44,16 @@ find "$ASSETS_DIR" -name "*.json" ! -name "tokenizer.json" -exec sh -c 'echo "{}
 # Replace .pte files with minimal content (just a null byte)
 find "$ASSETS_DIR" -name "*.pte" -exec sh -c 'printf "\0" > "$1"' _ {} \;
 
-echo "Placeholder files created:"
-find "$ASSETS_DIR" -type f -exec ls -lh {} \;
-
 echo "Building Release AAB..."
 echo "NODE_ENV is set to: $NODE_ENV"
 cd android
-echo "Running gradle bundleRelease with stacktrace..."
-./gradlew bundleRelease --stacktrace --info 2>&1 | tee ../gradle-build.log
+echo "Running gradle bundleRelease..."
+./gradlew bundleRelease
 cd ..
 
 if [ -f "$AAB_OUTPUT" ]; then
     echo "AAB built successfully: $AAB_OUTPUT"
     ls -lh "$AAB_OUTPUT"
-
-    # Check bundle size
-    AAB_SIZE=$(stat -f%z "$AAB_OUTPUT" 2>/dev/null || stat -c%s "$AAB_OUTPUT" 2>/dev/null)
-    echo "Bundle size: $(echo "scale=2; $AAB_SIZE / 1024 / 1024" | bc 2>/dev/null || echo "$AAB_SIZE bytes") MB"
 else
     echo "AAB build failed"
     exit 1
