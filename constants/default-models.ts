@@ -35,6 +35,36 @@ export const startingModels = [
 
 export const DEFAULT_MODELS = [
   {
+    modelName: 'Bielik - v3.0 - Quantized',
+    tokenizerPath:
+      'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/tokenizer.json',
+    modelPath:
+      'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/bielik-v3.0-1.5B/quantized/bielik-1.5b-v3-instruct-8da4w.pte',
+    tokenizerConfigPath:
+      'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/tokenizer_config.json',
+    source: 'remote',
+    parameters: 1.5,
+    modelSize: 1.65,
+    featured: true,
+    thinking: false,
+    labels: ['Fast', 'Quantized', 'Polish'],
+  },
+  {
+    modelName: 'Bielik - v3.0',
+    tokenizerPath:
+      'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/tokenizer.json',
+    modelPath:
+      'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/bielik-v3.0-1.5B/original/bielik-1.5b-v3-instruct-bf16.pte',
+    tokenizerConfigPath:
+      'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/tokenizer_config.json',
+    source: 'remote',
+    parameters: 1.5,
+    modelSize: 3.2,
+    featured: true,
+    thinking: false,
+    labels: ['Polish'],
+  },
+  {
     modelName: 'Qwen 3 - 0.6B - Quantized',
     tokenizerPath: QWEN3_0_6B_QUANTIZED.tokenizerSource,
     modelPath: QWEN3_0_6B_QUANTIZED.modelSource,
