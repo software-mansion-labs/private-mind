@@ -20,7 +20,7 @@ function Footer() {
         <div>
           <a href="https://swmansion.com/" target='_blank' rel="noopener noreferrer" className="footer-logo-section">
             <img src={swmLogo} alt="" />
-            © 2025 Software Mansion
+            © {new Date().getFullYear()} Software Mansion
           </a>
         </div>
         <div className="footer-social-links">
