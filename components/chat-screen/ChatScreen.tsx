@@ -1,7 +1,8 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Keyboard, StyleSheet, View } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { useSharedValue } from 'react-native-reanimated';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
 import { useModelStore } from '../../store/modelStore';
@@ -19,7 +20,6 @@ import ChatBar from './ChatBar';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
 import { useSQLiteContext } from 'expo-sqlite';
-import { CustomKeyboardAvoidingView } from '../CustomKeyboardAvoidingView';
 import { useVectorStore } from '../../context/VectorStoreContext';
 import SourceSelectSheet from '../bottomSheets/SourceSelectSheet';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
@@ -83,7 +83,6 @@ export default function ChatScreen({
     clear: () => void;
     setInput: (text: string) => void;
   }>(null);
-  const scrollRef = useRef<ScrollView>(null);
   const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const sourceBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const db = useSQLiteContext();
@@ -91,6 +90,7 @@ export default function ChatScreen({
   const { vectorStore } = useVectorStore();
   const {
     isGenerating,
+    isProcessingPrompt,
     sendChatMessage,
     loadModel,
     model: loadedModel,
@@ -107,11 +107,50 @@ export default function ChatScreen({
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const [isAtBottom, setIsAtBottom] = useState(true);
   const { settings: chatSettings, setSetting } = useChatSettings(chatId);
 
   const enabledSources =
     chat?.enabledSources || phantomChat?.enabledSources || [];
+
+  const { height: screenHeight } = useWindowDimensions();
+
+  // Shared values for KeyboardChatScrollView
+  const extraContentPadding = useSharedValue(0);
+  const blankSpace = useSharedValue(0);
+  const contentHeightAtReservation = useRef(0);
+  const reservedSpace = useRef(0);
+
+  // Reserve blank space when user sends a message (isProcessingPrompt = true)
+  useEffect(() => {
+    if (isProcessingPrompt) {
+      reservedSpace.current = screenHeight * 0.5;
+      blankSpace.value = reservedSpace.current;
+    }
+  }, [isProcessingPrompt, screenHeight, blankSpace]);
+
+  // Shrink blank space as AI response streams in
+  const handleContentSizeChange = useCallback(
+    (_w: number, h: number) => {
+      if (reservedSpace.current > 0) {
+        // On first call after reservation, capture baseline height
+        if (contentHeightAtReservation.current === 0) {
+          contentHeightAtReservation.current = h;
+          return;
+        }
+        // Shrink by how much content has grown since reservation
+        const growth = h - contentHeightAtReservation.current;
+        blankSpace.value = Math.max(0, reservedSpace.current - growth);
+
+        // Once fully consumed, clean up
+        if (growth >= reservedSpace.current) {
+          reservedSpace.current = 0;
+          contentHeightAtReservation.current = 0;
+          blankSpace.value = 0;
+        }
+      }
+    },
+    [blankSpace]
+  );
 
   const handlePresentModelSheet = useCallback(() => {
     modelBottomSheetModalRef.current?.present();
@@ -210,17 +249,15 @@ export default function ChatScreen({
   );
 
   return (
-    <CustomKeyboardAvoidingView style={styles.container} collapsable={false}>
-      <View style={styles.messagesContainer}>
-        <Messages
-          chatHistory={messageHistory}
-          ref={scrollRef}
-          isAtBottom={isAtBottom}
-          setIsAtBottom={setIsAtBottom}
-        />
-      </View>
+    <View style={styles.container} collapsable={false}>
+      <Messages
+        chatHistory={messageHistory}
+        extraContentPadding={extraContentPadding}
+        blankSpace={blankSpace}
+        onContentSizeChange={handleContentSizeChange}
+      />
 
-      <View style={styles.barContainer}>
+      <KeyboardStickyView>
         <ChatBar
           chatId={chatId}
           onSend={handleSendMessage}
@@ -229,14 +266,13 @@ export default function ChatScreen({
           onSelectPrompt={handleSelectPrompt}
           ref={inputRef}
           model={model}
-          scrollRef={scrollRef}
-          isAtBottom={isAtBottom}
+          extraContentPadding={extraContentPadding}
           activeSourcesCount={enabledSources.length}
           thinkingEnabled={chatSettings?.thinkingEnabled || false}
           onThinkingToggle={handleThinkingToggle}
           hasMessages={messageHistory.length > 0}
         />
-      </View>
+      </KeyboardStickyView>
 
       <ModelSelectSheet
         bottomSheetModalRef={modelBottomSheetModalRef}
@@ -247,7 +283,7 @@ export default function ChatScreen({
         enabledSources={enabledSources}
         chatId={chatId}
       />
-    </CustomKeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -256,14 +292,5 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
-    },
-    messagesContainer: {
-      flex: 1,
-      paddingTop: 16,
-      paddingBottom: 8,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    barContainer: {
-      paddingBottom: theme.insets.bottom + 16,
     },
   });
