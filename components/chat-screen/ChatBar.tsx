@@ -1,10 +1,10 @@
 import React, {
   Ref,
-  RefObject,
   useImperativeHandle,
   useMemo,
   useState,
   useCallback,
+  useRef,
 } from 'react';
 import {
   View,
@@ -14,14 +14,13 @@ import {
   StyleSheet,
   Keyboard,
 } from 'react-native';
+import { SharedValue } from 'react-native-reanimated';
 import AttachmentSheet from '../bottomSheets/AttachmentSheet';
 import { useAttachment, Attachment } from '../../hooks/useAttachment';
 import { Model } from '../../database/modelRepository';
-import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
-import { ScrollView } from 'react-native-gesture-handler';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
@@ -41,9 +40,8 @@ interface Props {
     setInput: (text: string) => void;
   }>;
   model: Model | undefined;
-  scrollRef: RefObject<ScrollView | null>;
-  isAtBottom: boolean;
   isVisionModel: boolean;
+  extraContentPadding: SharedValue<number>;
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
   hasMessages: boolean;
@@ -56,9 +54,8 @@ const ChatBar = ({
   onSelectPrompt,
   ref,
   model,
-  scrollRef,
-  isAtBottom,
   isVisionModel,
+  extraContentPadding,
   thinkingEnabled,
   onThinkingToggle,
   hasMessages,
@@ -78,13 +75,35 @@ const ChatBar = ({
     openSheet,
   } = useAttachment();
 
+  const defaultInputHeight = useRef(0);
+
   useImperativeHandle(
     ref,
     () => ({
-      clear: () => { setUserInput(''); clearAll(); },
+      clear: () => {
+        setUserInput('');
+        clearAll();
+        extraContentPadding.value = 0;
+        defaultInputHeight.current = 0;
+      },
       setInput: (text: string) => setUserInput(text),
     }),
-    [clearAll]
+    [clearAll, extraContentPadding]
+  );
+
+  const handleInputContentSizeChange = useCallback(
+    (e: { nativeEvent: { contentSize: { height: number } } }) => {
+      const newHeight = e.nativeEvent.contentSize.height;
+      if (defaultInputHeight.current === 0) {
+        defaultInputHeight.current = newHeight;
+        return;
+      }
+      extraContentPadding.value = Math.max(
+        0,
+        newHeight - defaultInputHeight.current
+      );
+    },
+    [extraContentPadding]
   );
 
   const {
@@ -194,12 +213,9 @@ const ChatBar = ({
                 style={styles.input}
                 multiline
                 onFocus={async () => {
-                  if (!isAtBottom) return;
                   await loadSelectedModel();
-                  setTimeout(() => {
-                    scrollRef.current?.scrollToEnd({ animated: true });
-                  }, 25);
                 }}
+                onContentSizeChange={handleInputContentSizeChange}
                 placeholder="Ask about anything..."
                 placeholderTextColor={theme.text.contrastTertiary}
                 value={userInput}
@@ -242,6 +258,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'column',
       justifyContent: 'center',
       paddingHorizontal: 16,
+      paddingBottom: theme.insets.bottom + 16,
     },
     suggestionsContainer: {
       marginBottom: 12,

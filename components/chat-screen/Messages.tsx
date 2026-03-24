@@ -1,11 +1,13 @@
-import React, { RefObject, useMemo } from 'react';
+import React, { useRef, useMemo, useCallback, useState } from 'react';
 import {
-  StyleSheet,
-  View,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  StyleSheet,
+  View,
 } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import { KeyboardChatScrollView } from 'react-native-keyboard-controller';
+import Reanimated from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import AnimatedChatLoading from './AnimatedChatLoading';
 import MessageItem from './MessageItem';
 import { useTheme } from '../../context/ThemeContext';
@@ -15,68 +17,85 @@ import { Theme } from '../../styles/colors';
 
 interface Props {
   chatHistory: Message[];
-  ref: RefObject<ScrollView | null>;
-  isAtBottom: boolean;
-  setIsAtBottom: (value: boolean) => void;
+  extraContentPadding: SharedValue<number>;
+  blankSpace: SharedValue<number>;
+  onContentSizeChange?: (w: number, h: number) => void;
 }
 
-const Messages = ({ chatHistory, ref, isAtBottom, setIsAtBottom }: Props) => {
+const Messages = ({
+  chatHistory,
+  extraContentPadding,
+  blankSpace,
+  onContentSizeChange,
+}: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const scrollRef = useRef<Reanimated.ScrollView>(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
   const { isProcessingPrompt } = useLLMStore();
 
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const distanceFromBottom =
-      contentSize.height - (contentOffset.y + layoutMeasurement.height);
-    setIsAtBottom(distanceFromBottom < 50);
-  };
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, contentSize, layoutMeasurement } =
+        event.nativeEvent;
+      const distanceFromBottom =
+        contentSize.height - (contentOffset.y + layoutMeasurement.height);
+      setIsAtBottom(distanceFromBottom < 50);
+    },
+    []
+  );
+
+  const handleContentSizeChange = useCallback(
+    (w: number, h: number) => {
+      onContentSizeChange?.(w, h);
+
+      if (isAtBottom) {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }
+    },
+    [isAtBottom, onContentSizeChange]
+  );
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        ref={ref}
-        onScroll={handleScroll}
-        contentInsetAdjustmentBehavior="automatic"
-        keyboardShouldPersistTaps="never"
-        contentContainerStyle={{ paddingHorizontal: 16 }}
-        onContentSizeChange={() => {
-          if (
-            isAtBottom ||
-            chatHistory[chatHistory.length - 1]?.content === ''
-          ) {
-            ref.current?.scrollToEnd({ animated: true });
-          }
-        }}
-      >
-        <View onStartShouldSetResponder={() => true}>
-          {chatHistory.map((message, index) => {
-            const isLastMessage = index === chatHistory.length - 1;
-            return (
-              <MessageItem
-                key={`${message.role}-${index}`}
-                content={message.content}
-                modelName={message.modelName}
-                role={message.role}
-                tokensPerSecond={message.tokensPerSecond}
-                timeToFirstToken={message.timeToFirstToken}
-                isLastMessage={isLastMessage}
-                imagePath={message.imagePath}
-                documentName={message.documentName}
-              />
-            );
-          })}
-          {isProcessingPrompt && (
-            <View style={styles.aiRow}>
-              <View style={styles.loadingWrapper}>
-                <AnimatedChatLoading />
-              </View>
-            </View>
-          )}
+    <KeyboardChatScrollView
+      ref={scrollRef}
+      keyboardLiftBehavior="whenAtEnd"
+      extraContentPadding={extraContentPadding}
+      blankSpace={blankSpace}
+      applyWorkaroundForContentInsetHitTestBug
+      keyboardDismissMode="interactive"
+      keyboardShouldPersistTaps="never"
+      contentContainerStyle={styles.contentContainer}
+      onScroll={handleScroll}
+      onContentSizeChange={handleContentSizeChange}
+      scrollEventThrottle={16}
+      style={styles.container}
+    >
+      {chatHistory.map((message, index) => {
+        const isLastMessage = index === chatHistory.length - 1;
+        return (
+          <MessageItem
+            key={`${message.role}-${index}`}
+            content={message.content}
+            modelName={message.modelName}
+            role={message.role}
+            tokensPerSecond={message.tokensPerSecond}
+            timeToFirstToken={message.timeToFirstToken}
+            isLastMessage={isLastMessage}
+            imagePath={message.imagePath}
+            documentName={message.documentName}
+          />
+        );
+      })}
+      {isProcessingPrompt && (
+        <View style={styles.aiRow}>
+          <View style={styles.loadingWrapper}>
+            <AnimatedChatLoading />
+          </View>
         </View>
-      </ScrollView>
-    </View>
+      )}
+    </KeyboardChatScrollView>
   );
 };
 
@@ -87,6 +106,11 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       width: '100%',
+    },
+    contentContainer: {
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 8,
     },
     aiRow: {
       flexDirection: 'row',
