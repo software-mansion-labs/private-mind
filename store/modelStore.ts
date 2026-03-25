@@ -10,6 +10,7 @@ import {
 } from '../database/modelRepository';
 import Toast from 'react-native-toast-message';
 import { ResourceFetcher } from 'react-native-executorch';
+import { unlink, exists } from '@dr.pogodin/react-native-fs';
 
 export enum ModelState {
   Downloaded = 'downloaded',
@@ -44,6 +45,21 @@ interface ModelStore {
 }
 
 const MS_PER_FRAME = 16; // ~60 fps
+
+// Track local file paths returned by ResourceFetcher.fetch for cleanup
+const downloadedPaths = new Map<number, string[]>();
+
+async function deleteLocalFiles(paths: string[]) {
+  for (const filePath of paths) {
+    try {
+      if (await exists(filePath)) {
+        await unlink(filePath);
+      }
+    } catch (e) {
+      console.warn('Failed to delete file:', filePath, e);
+    }
+  }
+}
 
 export const useModelStore = create<ModelStore>((set, get) => ({
   db: null,
@@ -124,6 +140,8 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         return;
       }
 
+      downloadedPaths.set(model.id, result);
+
       const db = get().db;
       if (db) {
         await updateModelDownloaded(db, model.id, 1);
@@ -147,20 +165,15 @@ export const useModelStore = create<ModelStore>((set, get) => ({
   },
 
   cancelDownload: async (model: Model) => {
-    await ResourceFetcher.cancelFetching(
-      model.modelPath,
-      model.tokenizerPath,
-      model.tokenizerConfigPath
-    );
-
+    // Note: the new ResourceFetcher API does not support explicit cancellation.
+    // We reset the UI state; the in-progress fetch will resolve but its result
+    // won't be acted upon because the download state is already reset.
     set((state) => ({
       downloadStates: {
         ...state.downloadStates,
         [model.id]: { progress: 0, status: ModelState.NotStarted },
       },
     }));
-
-    return;
   },
 
   removeModel: async (modelId: number) => {
@@ -172,11 +185,9 @@ export const useModelStore = create<ModelStore>((set, get) => ({
 
     try {
       if (model.source === 'remote') {
-        await ResourceFetcher.deleteResources(
-          model.modelPath,
-          model.tokenizerPath,
-          model.tokenizerConfigPath
-        );
+        const paths = downloadedPaths.get(modelId) || [];
+        await deleteLocalFiles(paths);
+        downloadedPaths.delete(modelId);
         await updateModelDownloaded(db, modelId, 0);
         set((state) => {
           const { [modelId]: _, ...rest } = state.downloadStates;
@@ -199,11 +210,9 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     if (!model) return;
 
     try {
-      await ResourceFetcher.deleteResources(
-        model.modelPath,
-        model.tokenizerPath,
-        model.tokenizerConfigPath
-      );
+      const paths = downloadedPaths.get(modelId) || [];
+      await deleteLocalFiles(paths);
+      downloadedPaths.delete(modelId);
       await updateModelDownloaded(db, modelId, 0);
       await get().loadModels();
       set((state) => {
@@ -243,11 +252,16 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         }
 
         if (oldPaths.length > 0) {
-          await ResourceFetcher.deleteResources(...oldPaths);
+          // Delete the old local files corresponding to these source paths
+          const cachedPaths = downloadedPaths.get(modelId) || [];
+          await deleteLocalFiles(cachedPaths);
         }
 
         if (newPaths.length > 0) {
-          await ResourceFetcher.fetch(() => {}, ...newPaths);
+          const result = await ResourceFetcher.fetch(() => {}, ...newPaths);
+          if (result) {
+            downloadedPaths.set(modelId, result);
+          }
         }
       }
 

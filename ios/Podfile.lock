@@ -84,6 +84,7 @@ PODS:
   - hermes-engine (0.81.5):
     - hermes-engine/Pre-built (= 0.81.5)
   - hermes-engine/Pre-built (0.81.5)
+  - iosMath (0.9.4)
   - op-sqlite (14.1.4):
     - hermes-engine
     - RCTRequired
@@ -1410,7 +1411,7 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-  - react-native-executorch (0.6.0):
+  - react-native-executorch (0.8.0-nightly-48610bf-20260324):
     - hermes-engine
     - opencv-rne (~> 4.11.0)
     - RCTRequired
@@ -1433,7 +1434,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-keyboard-controller (1.18.5):
+  - react-native-keyboard-controller (1.21.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1445,7 +1446,7 @@ PODS:
     - React-graphics
     - React-ImageManager
     - React-jsi
-    - react-native-keyboard-controller/common (= 1.18.5)
+    - react-native-keyboard-controller/common (= 1.21.1)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-renderercss
@@ -1456,7 +1457,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-keyboard-controller/common (1.18.5):
+  - react-native-keyboard-controller/common (1.21.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1899,6 +1900,29 @@ PODS:
     - React-utils (= 0.81.5)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.81.5)
+  - ReactNativeEnrichedMarkdown (0.4.1):
+    - hermes-engine
+    - iosMath (~> 0.9)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - ReactNativeFs (2.35.1):
     - hermes-engine
     - RCTRequired
@@ -2388,6 +2412,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
+  - ReactNativeEnrichedMarkdown (from `../node_modules/react-native-enriched-markdown`)
   - "ReactNativeFs (from `../node_modules/@dr.pogodin/react-native-fs`)"
   - RNAudioAPI (from `../node_modules/react-native-audio-api`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
@@ -2402,6 +2427,7 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - iosMath
     - opencv-rne
 
 EXTERNAL SOURCES:
@@ -2586,6 +2612,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   ReactNativeDependencies:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
+  ReactNativeEnrichedMarkdown:
+    :path: "../node_modules/react-native-enriched-markdown"
   ReactNativeFs:
     :path: "../node_modules/@dr.pogodin/react-native-fs"
   RNAudioAPI:
@@ -2630,6 +2658,7 @@ SPEC CHECKSUMS:
   ExpoSQLite: 4a8ebaa9c1b01af90b4c59f181369cb570fb343a
   FBLazyVector: e95a291ad2dadb88e42b06e0c5fb8262de53ec12
   hermes-engine: 9f4dfe93326146a1c99eb535b1cb0b857a3cd172
+  iosMath: f7a6cbadf9d836d2149c2a84c435b1effc244cba
   op-sqlite: a0744d1ff162f647a1d3b5c5e1760311365ef18e
   opencv-rne: 2305807573b6e29c8c87e3416ab096d09047a7a0
   Pdfium: 4a0412b69bb0172892aaed9254b430289a99f1c8
@@ -2666,8 +2695,8 @@ SPEC CHECKSUMS:
   React-logger: 50fdb9a8236da90c0b1072da5c32ee03aeb5bf28
   React-Mapbuffer: 9050ee10c19f4f7fca8963d0211b2854d624973e
   React-microtasksnativemodule: f775db9e991c6f3b8ccbc02bfcde22770f96e23b
-  react-native-executorch: 80a9d0f81f935eed35c3b8f22878683aad1215cd
-  react-native-keyboard-controller: 1ad78688f744e0ebdf3b04007b91089a254b80f9
+  react-native-executorch: 149e7b4927e8f4b2449b3db84033ea57b25d2033
+  react-native-keyboard-controller: 6b4bc1ef1ad46ace3842f49ed03815a96a99b139
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
   react-native-safe-area-context: 37e680fc4cace3c0030ee46e8987d24f5d3bdab2
   React-NativeModulesApple: 8969913947d5b576de4ed371a939455a8daf28aa
@@ -2701,6 +2730,7 @@ SPEC CHECKSUMS:
   ReactCodegen: 7d4593f7591f002d137fe40cef3f6c11f13c88cc
   ReactCommon: 08810150b1206cc44aecf5f6ae19af32f29151a8
   ReactNativeDependencies: 71ce9c28beb282aa720ea7b46980fff9669f428a
+  ReactNativeEnrichedMarkdown: 27a73f8df1bc304c35b7bd922c9885a4dfec3dc5
   ReactNativeFs: 1bbd20020179cbaeddcda3ca2bf91e71647a1f23
   RNAudioAPI: 59086ae1493659df19c4eefa4eee32406d470489
   RNCAsyncStorage: 3a4f5e2777dae1688b781a487923a08569e27fe4

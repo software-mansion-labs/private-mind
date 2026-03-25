@@ -77,8 +77,8 @@ const ChatSpeechInput: React.FC<Props> = ({
         recordingStartTimeRef.current = Date.now();
         let text = '';
         for await (const { committed, nonCommitted } of streamGenerator) {
-          text = text + committed;
-          setTranscription({ committed: text, nonCommitted });
+          text = text + committed.text;
+          setTranscription({ committed: text, nonCommitted: nonCommitted.text });
         }
 
         if (exitStateRef.current === 'pending_submit') {
