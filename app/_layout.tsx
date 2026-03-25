@@ -25,6 +25,10 @@ import * as SplashScreen from 'expo-splash-screen';
 import SplashScreenAnimation from '../components/SplashScreenAnimation';
 import { DetourProvider } from '@swmansion/react-native-detour';
 import { detourConfig } from '../utils/detourConfig';
+import { initExecutorch } from 'react-native-executorch';
+import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
+
+initExecutorch({ resourceFetcher: ExpoResourceFetcher });
 
 SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ fade: false, duration: 0 });

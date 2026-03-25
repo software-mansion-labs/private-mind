@@ -2546,13 +2546,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native-rag/executorch@npm:^0.2.0":
+"@react-native-rag/executorch@file:./react-native-rag-executorch-0.2.0.tgz::locator=local-mind%40workspace%3A.":
   version: 0.2.0
-  resolution: "@react-native-rag/executorch@npm:0.2.0"
+  resolution: "@react-native-rag/executorch@file:./react-native-rag-executorch-0.2.0.tgz::locator=local-mind%40workspace%3A."
   peerDependencies:
-    react-native-executorch: ^0.5.1
+    react-native-executorch: 0.8.0-nightly-48610bf-20260324
     react-native-rag: ^0.2.0
-  checksum: c17a04d1349f41daec2fbbf5a42ab3910f3ef70a0d1714ca825049b781f02c86afeebfb5d818f2f1ced1614f154d4699032a1c73182142d2bcbdd99af6534d86
+  checksum: 6071fc27dfd6d476746264a67eedbce47b04f59f91cec0951f7ad92085105f2aa08ca7f01217c2534975c2266e7b672637df9cfaffc7284363d312b90246e821
   languageName: node
   linkType: hard
 
@@ -6289,7 +6289,7 @@ __metadata:
     "@react-native-async-storage/async-storage": 2.2.0
     "@react-native-clipboard/clipboard": ^1.16.2
     "@react-native-community/netinfo": ^11.4.1
-    "@react-native-rag/executorch": ^0.2.0
+    "@react-native-rag/executorch": "file:./react-native-rag-executorch-0.2.0.tgz"
     "@react-native-rag/op-sqlite": "file:./react-native-rag-op-sqlite-0.2.1.tgz"
     "@react-native/metro-config": ^0.76.3
     "@react-navigation/drawer": ^7.5.6
@@ -6317,7 +6317,8 @@ __metadata:
     react-native: 0.81.5
     react-native-audio-api: ^0.8.3
     react-native-device-info: ^15.0.1
-    react-native-executorch: ^0.6.0
+    react-native-executorch: 0.8.0-nightly-48610bf-20260324
+    react-native-executorch-expo-resource-fetcher: 0.8.0-rc3-nightly-48610bf-20260324
     react-native-gesture-handler: ~2.28.0
     react-native-keyboard-controller: 1.21.1
     react-native-loading-spinner-overlay: ^3.0.1
@@ -8010,6 +8011,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"pngjs@npm:^7.0.0":
+  version: 7.0.0
+  resolution: "pngjs@npm:7.0.0"
+  checksum: b19a018930d27de26229c1b3ff250b3a25d09caa22cbb0b0459987d91eb0a560a18ab5d67da45a38ed7514140f26d1db58de83c31159ec101f2bb270a3c707f1
+  languageName: node
+  linkType: hard
+
 "postcss-value-parser@npm:^4.0.2":
   version: 4.2.0
   resolution: "postcss-value-parser@npm:4.2.0"
@@ -8248,21 +8256,32 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-executorch@npm:^0.6.0":
-  version: 0.6.0
-  resolution: "react-native-executorch@npm:0.6.0"
+"react-native-executorch-expo-resource-fetcher@npm:0.8.0-rc3-nightly-48610bf-20260324":
+  version: 0.8.0-rc3-nightly-48610bf-20260324
+  resolution: "react-native-executorch-expo-resource-fetcher@npm:0.8.0-rc3-nightly-48610bf-20260324"
+  peerDependencies:
+    expo: ">=54.0.0"
+    expo-asset: ">=12.0.0"
+    expo-file-system: ">=19.0.0"
+    react-native: "*"
+    react-native-executorch: "*"
+  checksum: d2c960872f581ccb5ab51e764e48574959e653b2de168f80de2ffc325d6d44fc58606c53329388cdac07800af4e86a5f5075b0962f3c44bc1b883c03bb10629b
+  languageName: node
+  linkType: hard
+
+"react-native-executorch@npm:0.8.0-nightly-48610bf-20260324":
+  version: 0.8.0-nightly-48610bf-20260324
+  resolution: "react-native-executorch@npm:0.8.0-nightly-48610bf-20260324"
   dependencies:
     "@huggingface/jinja": ^0.5.0
     jsonrepair: ^3.12.0
     jsonschema: ^1.5.0
-    zod: ^3.25.0
+    pngjs: ^7.0.0
+    zod: ^4.3.6
   peerDependencies:
-    expo: ">=54.0.0"
-    expo-asset: ^12.0.0
-    expo-file-system: ^19.0.0
     react: "*"
     react-native: "*"
-  checksum: 90f7b9ae889791aeb3f3cdf4e35bcb2ff8c9bcbfcc00150b6e02312897e2f60a0471a0387dd93893071e3e579801048345553edab56f93dc352e27a3ffe1c4f9
+  checksum: e7e08c00aca0c30fad6a68323be4e334d333f86907df03dd1fd510d0f8cf8f932b498e59259cb17fc9f1cc5f3eb5d25b82de8afe8abe59170b76629798db6d32
   languageName: node
   linkType: hard
 
@@ -10106,10 +10125,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod@npm:^3.25.0, zod@npm:^3.25.32":
+"zod@npm:^3.25.32":
   version: 3.25.76
   resolution: "zod@npm:3.25.76"
   checksum: c9a403a62b329188a5f6bd24d5d935d2bba345f7ab8151d1baa1505b5da9f227fb139354b043711490c798e91f3df75991395e40142e6510a4b16409f302b849
+  languageName: node
+  linkType: hard
+
+"zod@npm:^4.3.6":
+  version: 4.3.6
+  resolution: "zod@npm:4.3.6"
+  checksum: 19cec761b46bae4b6e7e861ea740f3f248e50a6671825afc8a5758e27b35d6f20ccde9942422fd5cf6f8b697f18bd05ef8bb33f5f2db112ab25cc628de2fae47
   languageName: node
   linkType: hard
 

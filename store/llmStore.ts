@@ -46,7 +46,7 @@ interface LLMStore {
   refreshActiveChatMessages: () => Promise<void>;
 }
 
-const llmInstance = new LLMModule();
+let llmInstance: LLMModule | null = null;
 
 const calculatePerformanceMetrics = (
   startTime: number,
@@ -168,6 +168,13 @@ const generateLLMResponse = async (
   response: string | null;
   performance: { timeToFirstToken: number; tokensPerSecond: number };
 }> => {
+  if (!llmInstance) {
+    return {
+      response: null,
+      performance: { timeToFirstToken: 0, tokensPerSecond: 0 },
+    };
+  }
+
   const startTime = performance.now();
   const finalResponse = await llmInstance.generate(messages);
   const endTime = performance.now();
@@ -229,21 +236,20 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     if (model.id === currentModel?.id && !hardReload) {
       return;
     }
-    if (currentModel) {
+    if (currentModel && llmInstance) {
       llmInstance.delete();
+      llmInstance = null;
     }
 
     set({ isLoading: true, model: model });
 
     try {
-      await llmInstance.load({
-        modelSource: model.modelPath,
-        tokenizerSource: model.tokenizerPath,
-        tokenizerConfigSource: model.tokenizerConfigPath,
-      });
-
-      llmInstance.setTokenCallback({
-        tokenCallback: (token) => {
+      llmInstance = await LLMModule.fromCustomModel(
+        model.modelPath,
+        model.tokenizerPath,
+        model.tokenizerConfigPath,
+        () => {},
+        (token) => {
           const isFirstToken = get().performance.tokenCount === 0;
           if (isFirstToken && !get().isBenchmarking) {
             Feedback.success();
@@ -257,7 +263,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             !get().isProcessingPrompt &&
             !get().isGenerating
           ) {
-            llmInstance.interrupt();
+            llmInstance?.interrupt();
             return;
           }
           set({
@@ -282,7 +288,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             });
           }
         },
-      });
+      );
 
       set({ isLoading: false });
     } catch (e) {
@@ -404,6 +410,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       });
       memoryTracker.start();
 
+      if (!llmInstance) {
+        return;
+      }
+
       const startTime = performance.now();
       await llmInstance.generate([
         {
@@ -441,7 +451,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
   interrupt: () => {
     const state = get();
-    if (state.isGenerating) {
+    if (state.isGenerating && llmInstance) {
       llmInstance.interrupt();
     }
 
