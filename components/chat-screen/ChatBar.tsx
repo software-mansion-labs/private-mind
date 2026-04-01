@@ -12,7 +12,12 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
+  Image,
+  ActionSheetIOS,
+  Platform,
+  Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Model } from '../../database/modelRepository';
 import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -29,7 +34,7 @@ import Toast from 'react-native-toast-message';
 
 interface Props {
   chatId: number | null;
-  onSend: (userInput: string) => void;
+  onSend: (userInput: string, imagePath?: string) => void;
   onSelectModel: () => void;
   onSelectSource: () => void;
   onSelectPrompt: (prompt: string) => void;
@@ -65,6 +70,7 @@ const ChatBar = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [userInput, setUserInput] = useState('');
+  const [imagePath, setImagePath] = useState<string | undefined>(undefined);
 
   useImperativeHandle(
     ref,
@@ -86,6 +92,56 @@ const ChatBar = ({
     if (model?.isDownloaded && loadedModel?.id !== model.id) {
       return loadModel(model);
     }
+  };
+
+  const isVisionModel = loadedModel?.vision === true;
+
+  const pickFromLibrary = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 1,
+    });
+    if (!result.canceled) {
+      setImagePath(result.assets[0].uri);
+    }
+  };
+
+  const pickFromCamera = async () => {
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 1,
+    });
+    if (!result.canceled) {
+      setImagePath(result.assets[0].uri);
+    }
+  };
+
+  const handleAttachImage = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Photo Library', 'Camera'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) pickFromLibrary();
+          else if (buttonIndex === 2) pickFromCamera();
+        }
+      );
+    } else {
+      Alert.alert('Attach Image', 'Choose source', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Photo Library', onPress: pickFromLibrary },
+        { text: 'Camera', onPress: pickFromCamera },
+      ]);
+    }
+  };
+
+  const handleSend = () => {
+    onSend(userInput, imagePath);
+    setImagePath(undefined);
   };
 
   const [showSpeechInput, setShowSpeechInput] = React.useState(false);
@@ -147,7 +203,37 @@ const ChatBar = ({
             </View>
           )}
           <View style={styles.inputContainer}>
+            {imagePath && (
+              <>
+                <View style={styles.previewRow}>
+                  <View style={styles.thumbnailWrapper}>
+                    <Image
+                      source={{ uri: imagePath }}
+                      style={styles.thumbnail}
+                      testID="image-preview"
+                    />
+                    <TouchableOpacity
+                      style={styles.dismissButton}
+                      onPress={() => setImagePath(undefined)}
+                      testID="dismiss-image-btn"
+                    >
+                      <Text style={styles.dismissText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <View style={styles.divider} />
+              </>
+            )}
             <View style={styles.content}>
+              {isVisionModel && (
+                <TouchableOpacity
+                  style={styles.attachButton}
+                  onPress={handleAttachImage}
+                  testID="attach-image-btn"
+                >
+                  <Text style={styles.attachText}>+</Text>
+                </TouchableOpacity>
+              )}
               <TextInput
                 style={styles.input}
                 multiline
@@ -169,7 +255,7 @@ const ChatBar = ({
               onSelectSource={onSelectSource}
               activeSourcesCount={activeSourcesCount}
               userInput={userInput}
-              onSend={() => onSend(userInput)}
+              onSend={handleSend}
               isGenerating={isGenerating}
               isProcessingPrompt={isProcessingPrompt}
               onInterrupt={interrupt}
@@ -231,6 +317,52 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
       color: theme.text.contrastPrimary,
+    },
+    attachButton: {
+      width: 32,
+      height: 32,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 8,
+    },
+    attachText: {
+      fontSize: 24,
+      lineHeight: 28,
+      color: theme.text.contrastPrimary,
+      fontFamily: fontFamily.regular,
+    },
+    previewRow: {
+      flexDirection: 'row',
+      paddingBottom: 8,
+    },
+    thumbnailWrapper: {
+      position: 'relative',
+    },
+    thumbnail: {
+      width: 72,
+      height: 72,
+      borderRadius: 8,
+    },
+    dismissButton: {
+      position: 'absolute',
+      top: -6,
+      right: -6,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    dismissText: {
+      color: '#fff',
+      fontSize: 10,
+      lineHeight: 12,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.border.soft,
+      marginBottom: 8,
     },
     buttonBar: {
       justifyContent: 'center',

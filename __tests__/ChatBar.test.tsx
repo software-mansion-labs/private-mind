@@ -22,6 +22,11 @@ jest.mock('../store/llmStore', () => ({
   })),
 }));
 
+jest.mock('expo-image-picker', () => ({
+  launchImageLibraryAsync: jest.fn(),
+  launchCameraAsync: jest.fn(),
+}));
+
 jest.mock('../components/chat-screen/ChatSpeechInput', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
   return ({ onSubmit, onCancel }: any) => (
@@ -174,7 +179,7 @@ describe('downloaded model — text input', () => {
     renderBar({ onSend });
     fireEvent.changeText(screen.getByPlaceholderText('Ask about anything...'), 'Hello');
     fireEvent.press(screen.getByTestId('send-btn'));
-    expect(onSend).toHaveBeenCalledWith('Hello');
+    expect(onSend).toHaveBeenCalledWith('Hello', undefined);
   });
 
   it('shows prompt suggestions when hasMessages is false', () => {
@@ -314,5 +319,45 @@ describe('speech input', () => {
     // With the module-level mock, transcript = 'voice transcript' (non-empty), so we
     // verify the guard by checking the original mock behavior
     expect(screen.queryByTestId('speech-input')).toBeNull();
+  });
+});
+
+// ─── vision model attachment button ──────────────────────────────────────────
+
+describe('vision model attachment', () => {
+  it('shows + button when loaded model has vision === true', () => {
+    mockUseLLMStore.mockReturnValue({
+      isGenerating: false,
+      isProcessingPrompt: false,
+      interrupt: jest.fn(),
+      loadModel: jest.fn(),
+      model: { ...downloadedModel, vision: true },
+    });
+    renderBar();
+    expect(screen.getByTestId('attach-image-btn')).toBeTruthy();
+  });
+
+  it('does not show + button when loaded model has vision === false', () => {
+    mockUseLLMStore.mockReturnValue({
+      isGenerating: false,
+      isProcessingPrompt: false,
+      interrupt: jest.fn(),
+      loadModel: jest.fn(),
+      model: { ...downloadedModel, vision: false },
+    });
+    renderBar();
+    expect(screen.queryByTestId('attach-image-btn')).toBeNull();
+  });
+
+  it('does not show + button when loaded model is null', () => {
+    mockUseLLMStore.mockReturnValue({
+      isGenerating: false,
+      isProcessingPrompt: false,
+      interrupt: jest.fn(),
+      loadModel: jest.fn(),
+      model: null,
+    });
+    renderBar();
+    expect(screen.queryByTestId('attach-image-btn')).toBeNull();
   });
 });

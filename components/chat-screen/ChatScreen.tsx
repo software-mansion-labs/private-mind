@@ -121,7 +121,7 @@ export default function ChatScreen({
     sourceBottomSheetModalRef.current?.present();
   }, []);
 
-  const handleSendMessage = async (userInput: string) => {
+  const handleSendMessage = async (userInput: string, imagePath?: string) => {
     if (!userInput.trim() || isGenerating) return;
     if (!(await checkIfChatExists(db, chatId!))) {
       const newChatTitle =
@@ -144,7 +144,7 @@ export default function ChatScreen({
       thinkingEnabled: chatSettings.thinkingEnabled,
     };
 
-    await sendChatMessage(userInput, chatId!, context, settings);
+    await sendChatMessage(userInput, chatId!, context, settings, imagePath);
   };
 
   const handleSelectModel = async (selectedModel: Model) => {
