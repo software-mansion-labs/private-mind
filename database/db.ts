@@ -14,6 +14,7 @@ const runMigrations = async (db: SQLiteDatabase) => {
   const hasFeatured = modelsTableInfo.some((col) => col.name === 'featured');
   const hasThinking = modelsTableInfo.some((col) => col.name === 'thinking');
   const hasLabels = modelsTableInfo.some((col) => col.name === 'labels');
+  const hasVision = modelsTableInfo.some((col) => col.name === 'vision');
 
   if (!hasFeatured) {
     await db.execAsync(
@@ -30,6 +31,12 @@ const runMigrations = async (db: SQLiteDatabase) => {
   if (!hasLabels) {
     await db.execAsync(
       `ALTER TABLE models ADD COLUMN labels TEXT DEFAULT NULL`
+    );
+  }
+
+  if (!hasVision) {
+    await db.execAsync(
+      `ALTER TABLE models ADD COLUMN vision INTEGER DEFAULT 0`
     );
   }
 
@@ -60,9 +67,10 @@ const runMigrations = async (db: SQLiteDatabase) => {
 
   for (const model of DEFAULT_MODELS) {
     await db.runAsync(
-      `UPDATE models SET featured = ?, thinking = ?, labels = ? WHERE modelName = ?`,
+      `UPDATE models SET featured = ?, thinking = ?, vision = ?, labels = ? WHERE modelName = ?`,
       model.featured ? 1 : 0,
       model.thinking ? 1 : 0,
+      (model as typeof model & { vision?: boolean }).vision ? 1 : 0,
       model.labels ? JSON.stringify(model.labels) : null,
       model.modelName
     );
@@ -83,6 +91,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       tokenizerPath TEXT,
       tokenizerConfigPath TEXT,
       thinking INTEGER DEFAULT 0,
+      vision INTEGER DEFAULT 0,
       featured INTEGER DEFAULT 0,
       labels TEXT DEFAULT NULL
     );
@@ -198,6 +207,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
         modelSize: model.modelSize,
         featured: !!featured,
         thinking: !!thinking,
+        vision: !!(model as typeof model & { vision?: boolean }).vision,
         labels: model.labels,
       });
     }

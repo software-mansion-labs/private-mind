@@ -11,6 +11,7 @@ export type Model = {
   tokenizerConfigPath: string;
   featured?: boolean;
   thinking?: boolean;
+  vision?: boolean;
   labels?: string[];
   parameters?: number;
   modelSize?: number;
@@ -33,8 +34,9 @@ export const addModel = async (
       modelSize,
       featured,
       thinking,
+      vision,
       labels
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
     [
       model.modelName,
@@ -47,6 +49,7 @@ export const addModel = async (
       model.modelSize || null,
       model.featured ? 1 : 0,
       model.thinking ? 1 : 0,
+      model.vision ? 1 : 0,
       model.labels ? JSON.stringify(model.labels) : null,
     ]
   );
@@ -75,10 +78,11 @@ export const removeModelFiles = async (db: SQLiteDatabase, id: number) => {
 
 export const getAllModels = async (db: SQLiteDatabase): Promise<Model[]> => {
   const rawModels = await db.getAllAsync<
-    Omit<Model, 'isDownloaded' | 'featured' | 'thinking' | 'labels'> & {
+    Omit<Model, 'isDownloaded' | 'featured' | 'thinking' | 'vision' | 'labels'> & {
       isDownloaded: number;
       featured: number;
       thinking: number;
+      vision: number;
       labels: string | null;
     }
   >(`SELECT * FROM models ORDER BY featured DESC`);
@@ -88,6 +92,7 @@ export const getAllModels = async (db: SQLiteDatabase): Promise<Model[]> => {
     isDownloaded: model.isDownloaded === 1,
     featured: model.featured === 1,
     thinking: model.thinking === 1,
+    vision: model.vision === 1,
     labels: model.labels ? JSON.parse(model.labels) : undefined,
   }));
 
@@ -120,10 +125,11 @@ export const updateModel = async (
 
 export const getStartingModels = async (db: SQLiteDatabase) => {
   const rawModels = await db.getAllAsync<
-    Omit<Model, 'isDownloaded' | 'featured' | 'thinking' | 'labels'> & {
+    Omit<Model, 'isDownloaded' | 'featured' | 'thinking' | 'vision' | 'labels'> & {
       isDownloaded: number;
       featured: number;
       thinking: number;
+      vision: number;
       labels: string | null;
     }
   >(
@@ -137,6 +143,7 @@ export const getStartingModels = async (db: SQLiteDatabase) => {
     isDownloaded: model.isDownloaded === 1,
     featured: model.featured === 1,
     thinking: model.thinking === 1,
+    vision: model.vision === 1,
     labels: model.labels ? JSON.parse(model.labels) : undefined,
   }));
 
