@@ -255,10 +255,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     set({ isLoading: true, model: model });
 
     try {
-      llmInstance = await LLMModule.fromCustomModel(
-        model.modelPath,
-        model.tokenizerPath,
-        model.tokenizerConfigPath,
+      llmInstance = await LLMModule.fromModelName(
+        {
+          modelName: 'custom' as Parameters<typeof LLMModule.fromModelName>[0]['modelName'],
+          modelSource: model.modelPath,
+          tokenizerSource: model.tokenizerPath,
+          tokenizerConfigSource: model.tokenizerConfigPath,
+          capabilities: model.vision ? (['vision'] as const) : undefined,
+        },
         () => {},
         (token) => {
           const isFirstToken = get().performance.tokenCount === 0;

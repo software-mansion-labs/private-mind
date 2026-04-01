@@ -37,6 +37,7 @@ export const WHISPER_TINY_EN = 'whisper-tiny-en';
 
 export const LLMModule = {
   fromCustomModel: jest.fn(),
+  fromModelName: jest.fn(),
 };
 
 export const SpeechToTextModule = {
