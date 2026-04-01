@@ -337,7 +337,7 @@ export const DEFAULT_MODELS = [
     tokenizerConfigPath: LFM2_VL_1_6B_QUANTIZED.tokenizerConfigSource,
     source: 'remote',
     parameters: 1.6,
-    modelSize: 1.0,
+    modelSize: 2.43,
     featured: true,
     thinking: false,
     vision: true,

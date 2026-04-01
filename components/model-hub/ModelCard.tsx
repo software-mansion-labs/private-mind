@@ -17,6 +17,7 @@ import DownloadCloudIcon from '../../assets/icons/download_cloud.svg';
 import DownloadIcon from '../../assets/icons/download.svg';
 import StarIcon from '../../assets/icons/star.svg';
 import CloseIcon from '../../assets/icons/close.svg';
+import EyeIcon from '../../assets/icons/eye.svg';
 
 interface Props {
   model: Model;
@@ -164,6 +165,15 @@ const ModelCard = ({
                 <Chip
                   key={label}
                   title={label}
+                  icon={
+                    label === 'Vision' ? (
+                      <EyeIcon
+                        width={16}
+                        height={16}
+                        style={styles.iconSecondary}
+                      />
+                    ) : undefined
+                  }
                   borderColor={theme.border.soft}
                 />
               ))}
