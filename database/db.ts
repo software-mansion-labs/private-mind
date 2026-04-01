@@ -40,6 +40,16 @@ const runMigrations = async (db: SQLiteDatabase) => {
     );
   }
 
+  const messagesTableInfo = await db.getAllAsync<{ name: string }>(
+    `PRAGMA table_info(messages)`
+  );
+  const hasImagePath = messagesTableInfo.some((col) => col.name === 'imagePath');
+  if (!hasImagePath) {
+    await db.execAsync(
+      `ALTER TABLE messages ADD COLUMN imagePath TEXT DEFAULT NULL`
+    );
+  }
+
   // Check and add thinkingEnabled to chatSettings
   const chatSettingsTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(chatSettings)`
@@ -117,6 +127,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       content TEXT,
       tokensPerSecond INTEGER DEFAULT 0,
       timeToFirstToken INTEGER DEFAULT 0,
+      imagePath TEXT DEFAULT NULL,
       FOREIGN KEY (chatId) REFERENCES chats (id) ON DELETE CASCADE
     );
   `);
