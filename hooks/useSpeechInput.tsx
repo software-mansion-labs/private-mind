@@ -69,6 +69,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
         iosCategory: 'playAndRecord',
         iosMode: 'spokenAudio',
       });
+      await AudioManager.setAudioSessionActivity(true);
       await stt.ensureLoaded();
 
       if (isStartCanceled.current) {
@@ -76,7 +77,8 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       }
 
       changeStatus('listening');
-      const streamGenerator = stt.module!.stream();
+      const module = useSTTStore.getState().module;
+      const streamGenerator = module!.stream();
       recorder.current!.onAudioReady(
         { sampleRate: SAMPLE_RATE, bufferLength: BUFFER_LENGTH, channelCount: 1 },
         handleAudioData
@@ -103,6 +105,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       changeStatus('processing');
       recorder.current!.stop();
       stt.module?.streamStop();
+      AudioManager.setAudioSessionActivity(false);
     } catch (error) {
       console.error('Error finishing audio recording:', error);
       changeStatus('idle');
