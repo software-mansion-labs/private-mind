@@ -40,10 +40,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
 
   const recorder = useRef<null | AudioRecorder>(null);
   if (!recorder.current) {
-    recorder.current = new AudioRecorder({
-      sampleRate: SAMPLE_RATE,
-      bufferLengthInSamples: BUFFER_LENGTH,
-    });
+    recorder.current = new AudioRecorder();
   }
 
   const stt = useSTTStore();
@@ -80,7 +77,10 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
 
       changeStatus('listening');
       const streamGenerator = stt.module!.stream();
-      recorder.current!.onAudioReady(handleAudioData);
+      recorder.current!.onAudioReady(
+        { sampleRate: SAMPLE_RATE, bufferLength: BUFFER_LENGTH, channelCount: 1 },
+        handleAudioData
+      );
       recorder.current!.start();
 
       return onGeneratorEnd(streamGenerator, () => changeStatus('idle'));
