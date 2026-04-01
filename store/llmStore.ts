@@ -38,7 +38,8 @@ interface LLMStore {
     newMessage: string,
     chatId: number,
     context: string[],
-    settings: ChatSettings
+    settings: ChatSettings,
+    imagePath?: string
   ) => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   interrupt: () => void;
@@ -163,7 +164,8 @@ const updateChatStateForGeneration = (
 
 const generateLLMResponse = async (
   messages: ExecutorchMessage[],
-  get: () => LLMStore
+  get: () => LLMStore,
+  imagePath?: string
 ): Promise<{
   response: string | null;
   performance: { timeToFirstToken: number; tokensPerSecond: number };
@@ -175,8 +177,17 @@ const generateLLMResponse = async (
     };
   }
 
+  // Attach image to last user message if provided
+  const messagesWithMedia: ExecutorchMessage[] = imagePath
+    ? messages.map((msg, i) =>
+        i === messages.length - 1 && msg.role === 'user'
+          ? { ...msg, mediaPath: imagePath }
+          : msg
+      )
+    : messages;
+
   const startTime = performance.now();
-  const finalResponse = await llmInstance.generate(messages);
+  const finalResponse = await llmInstance.generate(messagesWithMedia);
   const endTime = performance.now();
 
   if (finalResponse) {
@@ -297,7 +308,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
-  sendChatMessage: async (newMessage, chatId, context, settings) => {
+  sendChatMessage: async (newMessage, chatId, context, settings, imagePath) => {
     const { db, model: currentModel, activeChatMessages } = get();
     if (!db || !currentModel) {
       console.warn('LLM not ready or DB not set');
@@ -310,6 +321,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         content: newMessage,
         chatId,
         timestamp: Date.now(),
+        imagePath,
       };
       const assistantPlaceholder: Message = {
         role: 'assistant',
@@ -348,7 +360,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       // Set generation state and generate response
       updateChatStateForGeneration(set, 'generating');
       const { response: finalResponse, performance: responsePerformance } =
-        await generateLLMResponse(messagesWithSystemPrompt, get);
+        await generateLLMResponse(messagesWithSystemPrompt, get, imagePath);
       // Handle successful response
       if (finalResponse) {
         await persistMessage(db, {

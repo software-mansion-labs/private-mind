@@ -456,6 +456,50 @@ describe('refreshActiveChatMessages', () => {
   });
 });
 
+// ─── sendChatMessage imagePath ────────────────────────────────────────────────
+
+describe('sendChatMessage imagePath', () => {
+  const settings = { systemPrompt: '', contextWindow: 6 };
+
+  beforeEach(async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    mockGetChatMessages.mockResolvedValue([]);
+    useLLMStore.setState({
+      model: { ...baseModel, modelName: 'LFM VL', vision: true, featured: true } as any,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+  });
+
+  it('passes imagePath to persistMessage for user message when provided', async () => {
+    await useLLMStore.getState().sendChatMessage(
+      'What is this?', 1, [], settings,
+      '/local/image.jpg'
+    );
+
+    expect(mockPersistMessage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ imagePath: '/local/image.jpg', role: 'user' })
+    );
+  });
+
+  it('passes undefined imagePath to persistMessage when not provided', async () => {
+    await useLLMStore.getState().sendChatMessage(
+      'Hello', 1, [], settings
+    );
+
+    expect(mockPersistMessage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ role: 'user' })
+    );
+    const userMessageCall = mockPersistMessage.mock.calls.find(
+      (call) => call[1].role === 'user'
+    );
+    expect(userMessageCall[1].imagePath).toBeUndefined();
+  });
+});
+
 // ─── runBenchmark ─────────────────────────────────────────────────────────────
 
 describe('runBenchmark', () => {
