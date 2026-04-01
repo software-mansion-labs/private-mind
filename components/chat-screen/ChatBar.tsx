@@ -1,6 +1,7 @@
 import React, {
   Ref,
   RefObject,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useState,
@@ -75,7 +76,7 @@ const ChatBar = ({
   useImperativeHandle(
     ref,
     () => ({
-      clear: () => setUserInput(''),
+      clear: () => { setUserInput(''); setImagePath(undefined); },
       setInput: (text: string) => setUserInput(text),
     }),
     []
@@ -95,6 +96,12 @@ const ChatBar = ({
   };
 
   const isVisionModel = loadedModel?.vision === true;
+
+  useEffect(() => {
+    if (!isVisionModel) {
+      setImagePath(undefined);
+    }
+  }, [isVisionModel]);
 
   const pickFromLibrary = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
