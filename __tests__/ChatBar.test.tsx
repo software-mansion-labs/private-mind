@@ -100,6 +100,7 @@ const downloadedModel = {
   tokenizerConfigPath: '',
   thinking: false,
   featured: false,
+  vision: false,
 };
 
 const defaultProps = {
@@ -328,38 +329,17 @@ describe('speech input', () => {
 
 describe('vision model attachment', () => {
   it('shows + button when loaded model has vision === true', () => {
-    mockUseLLMStore.mockReturnValue({
-      isGenerating: false,
-      isProcessingPrompt: false,
-      interrupt: jest.fn(),
-      loadModel: jest.fn(),
-      model: { ...downloadedModel, vision: true },
-    });
-    renderBar();
+    renderBar({ model: { ...downloadedModel, vision: true } });
     expect(screen.getByTestId('attach-image-btn')).toBeTruthy();
   });
 
   it('does not show + button when loaded model has vision === false', () => {
-    mockUseLLMStore.mockReturnValue({
-      isGenerating: false,
-      isProcessingPrompt: false,
-      interrupt: jest.fn(),
-      loadModel: jest.fn(),
-      model: { ...downloadedModel, vision: false },
-    });
-    renderBar();
+    renderBar({ model: { ...downloadedModel, vision: false } });
     expect(screen.queryByTestId('attach-image-btn')).toBeNull();
   });
 
-  it('does not show + button when loaded model is null', () => {
-    mockUseLLMStore.mockReturnValue({
-      isGenerating: false,
-      isProcessingPrompt: false,
-      interrupt: jest.fn(),
-      loadModel: jest.fn(),
-      model: null,
-    });
-    renderBar();
+  it('does not show + button when model has no vision flag', () => {
+    renderBar({ model: downloadedModel });
     expect(screen.queryByTestId('attach-image-btn')).toBeNull();
   });
 
@@ -386,15 +366,8 @@ describe('vision model attachment', () => {
       }
     );
 
-    mockUseLLMStore.mockReturnValue({
-      isGenerating: false,
-      isProcessingPrompt: false,
-      interrupt: jest.fn(),
-      loadModel: jest.fn(),
-      model: { ...downloadedModel, vision: true },
-    });
     const onSend = jest.fn();
-    renderBar({ onSend });
+    renderBar({ onSend, model: { ...downloadedModel, vision: true } });
 
     await act(async () => {
       fireEvent.press(screen.getByTestId('attach-image-btn'));

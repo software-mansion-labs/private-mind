@@ -95,7 +95,7 @@ const ChatBar = ({
     }
   };
 
-  const isVisionModel = loadedModel?.vision === true;
+  const isVisionModel = model?.vision === true;
 
   useEffect(() => {
     if (!isVisionModel) {
