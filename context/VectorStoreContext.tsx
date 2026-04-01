@@ -33,10 +33,20 @@ export const VectorStoreProvider = ({
         const assets = await getAllMiniLMAssets();
         const embeddings = new ExecuTorchEmbeddings(assets);
 
-        const store = await new OPSQLiteVectorStore({
+        const store = new OPSQLiteVectorStore({
           name: 'private-mind-rag',
           embeddings,
-        }).load();
+        });
+
+        // Migrate: drop stale vectors table from older schema versions
+        // that lacks the `document` column. Users will need to re-add documents.
+        try {
+          await store.db.execute("SELECT document FROM vectors LIMIT 0");
+        } catch {
+          await store.db.execute("DROP TABLE IF EXISTS vectors");
+        }
+
+        await store.load();
 
         setVectorStore(store);
       } catch (error) {

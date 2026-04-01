@@ -84,12 +84,11 @@ PODS:
   - hermes-engine (0.81.5):
     - hermes-engine/Pre-built (= 0.81.5)
   - hermes-engine/Pre-built (0.81.5)
-  - op-sqlite (14.1.4):
+  - iosMath (0.9.4)
+  - op-sqlite (15.2.7):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
-    - React
-    - React-callinvoker
     - React-Core
     - React-Core-prebuilt
     - React-debug
@@ -1410,7 +1409,7 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-  - react-native-executorch (0.6.0):
+  - react-native-executorch (0.8.0):
     - hermes-engine
     - opencv-rne (~> 4.11.0)
     - RCTRequired
@@ -1899,6 +1898,29 @@ PODS:
     - React-utils (= 0.81.5)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.81.5)
+  - ReactNativeEnrichedMarkdown (0.4.1):
+    - hermes-engine
+    - iosMath (~> 0.9)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - ReactNativeFs (2.35.1):
     - hermes-engine
     - RCTRequired
@@ -1921,7 +1943,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNAudioAPI (0.8.4):
+  - RNAudioAPI (0.11.7):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1942,9 +1964,9 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNAudioAPI/audioapi (= 0.8.4)
+    - RNAudioAPI/audioapi (= 0.11.7)
     - Yoga
-  - RNAudioAPI/audioapi (0.8.4):
+  - RNAudioAPI/audioapi (0.11.7):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1965,9 +1987,32 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNAudioAPI/audioapi/ios (= 0.8.4)
+    - RNAudioAPI/audioapi/audioapi_dsp (= 0.11.7)
+    - RNAudioAPI/audioapi/ios (= 0.11.7)
     - Yoga
-  - RNAudioAPI/audioapi/ios (0.8.4):
+  - RNAudioAPI/audioapi/audioapi_dsp (0.11.7):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - RNAudioAPI/audioapi/ios (0.11.7):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2388,6 +2433,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
+  - ReactNativeEnrichedMarkdown (from `../node_modules/react-native-enriched-markdown`)
   - "ReactNativeFs (from `../node_modules/@dr.pogodin/react-native-fs`)"
   - RNAudioAPI (from `../node_modules/react-native-audio-api`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
@@ -2402,6 +2448,7 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - iosMath
     - opencv-rne
 
 EXTERNAL SOURCES:
@@ -2586,6 +2633,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   ReactNativeDependencies:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
+  ReactNativeEnrichedMarkdown:
+    :path: "../node_modules/react-native-enriched-markdown"
   ReactNativeFs:
     :path: "../node_modules/@dr.pogodin/react-native-fs"
   RNAudioAPI:
@@ -2630,7 +2679,8 @@ SPEC CHECKSUMS:
   ExpoSQLite: 4a8ebaa9c1b01af90b4c59f181369cb570fb343a
   FBLazyVector: e95a291ad2dadb88e42b06e0c5fb8262de53ec12
   hermes-engine: 9f4dfe93326146a1c99eb535b1cb0b857a3cd172
-  op-sqlite: a0744d1ff162f647a1d3b5c5e1760311365ef18e
+  iosMath: f7a6cbadf9d836d2149c2a84c435b1effc244cba
+  op-sqlite: d9827bbb015ca71c44763d6b447afe2c12d20261
   opencv-rne: 2305807573b6e29c8c87e3416ab096d09047a7a0
   Pdfium: 4a0412b69bb0172892aaed9254b430289a99f1c8
   RCTDeprecation: 943572d4be82d480a48f4884f670135ae30bf990
@@ -2666,7 +2716,7 @@ SPEC CHECKSUMS:
   React-logger: 50fdb9a8236da90c0b1072da5c32ee03aeb5bf28
   React-Mapbuffer: 9050ee10c19f4f7fca8963d0211b2854d624973e
   React-microtasksnativemodule: f775db9e991c6f3b8ccbc02bfcde22770f96e23b
-  react-native-executorch: 80a9d0f81f935eed35c3b8f22878683aad1215cd
+  react-native-executorch: ddc323dfac5b3af44d4211c7ec81522578689983
   react-native-keyboard-controller: 1ad78688f744e0ebdf3b04007b91089a254b80f9
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
   react-native-safe-area-context: 37e680fc4cace3c0030ee46e8987d24f5d3bdab2
@@ -2701,8 +2751,9 @@ SPEC CHECKSUMS:
   ReactCodegen: 7d4593f7591f002d137fe40cef3f6c11f13c88cc
   ReactCommon: 08810150b1206cc44aecf5f6ae19af32f29151a8
   ReactNativeDependencies: 71ce9c28beb282aa720ea7b46980fff9669f428a
+  ReactNativeEnrichedMarkdown: 27a73f8df1bc304c35b7bd922c9885a4dfec3dc5
   ReactNativeFs: 1bbd20020179cbaeddcda3ca2bf91e71647a1f23
-  RNAudioAPI: 59086ae1493659df19c4eefa4eee32406d470489
+  RNAudioAPI: 9f0145224e76e40396b77e502f462948d712bcf9
   RNCAsyncStorage: 3a4f5e2777dae1688b781a487923a08569e27fe4
   RNCClipboard: 74cc34f95a13ea964d57e12293918f99e7f911d7
   RNDeviceInfo: 36d7f232bfe7c9b5c494cb7793230424ed32c388

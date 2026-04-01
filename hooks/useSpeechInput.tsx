@@ -3,13 +3,14 @@ import { AudioManager, AudioRecorder } from 'react-native-audio-api';
 import { OnAudioReadyEventType } from 'react-native-audio-api/lib/typescript/events/types';
 import { useStableCallback } from './useStableCallback';
 import { STTStore, useSTTStore } from '../store/sttStore';
+import { type TranscriptionResult } from 'react-native-executorch';
 
 interface Options {
   onAudioData?: (data: number[]) => void;
 }
 
 type StartReturnType = Promise<AsyncGenerator<
-  { committed: string; nonCommitted: string },
+  { committed: TranscriptionResult; nonCommitted: TranscriptionResult },
   void,
   unknown
 > | null>;
@@ -39,10 +40,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
 
   const recorder = useRef<null | AudioRecorder>(null);
   if (!recorder.current) {
-    recorder.current = new AudioRecorder({
-      sampleRate: SAMPLE_RATE,
-      bufferLengthInSamples: BUFFER_LENGTH,
-    });
+    recorder.current = new AudioRecorder();
   }
 
   const stt = useSTTStore();
@@ -50,9 +48,9 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
   const handleAudioData = useStableCallback(
     async ({ buffer }: OnAudioReadyEventType) => {
       try {
-        const bufferArray = Array.from(buffer.getChannelData(0));
-        stt.module.streamInsert(bufferArray);
-        onAudioData?.(bufferArray);
+        const channelData = buffer.getChannelData(0);
+        stt.module?.streamInsert(channelData);
+        onAudioData?.(Array.from(channelData));
       } catch (error) {
         console.error('Error handling audio data:', error);
       }
@@ -71,6 +69,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
         iosCategory: 'playAndRecord',
         iosMode: 'spokenAudio',
       });
+      await AudioManager.setAudioSessionActivity(true);
       await stt.ensureLoaded();
 
       if (isStartCanceled.current) {
@@ -78,8 +77,12 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       }
 
       changeStatus('listening');
-      const streamGenerator = stt.module.stream();
-      recorder.current!.onAudioReady(handleAudioData);
+      const module = useSTTStore.getState().module;
+      const streamGenerator = module!.stream();
+      recorder.current!.onAudioReady(
+        { sampleRate: SAMPLE_RATE, bufferLength: BUFFER_LENGTH, channelCount: 1 },
+        handleAudioData
+      );
       recorder.current!.start();
 
       return onGeneratorEnd(streamGenerator, () => changeStatus('idle'));
@@ -101,7 +104,8 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
     try {
       changeStatus('processing');
       recorder.current!.stop();
-      stt.module.streamStop();
+      stt.module?.streamStop();
+      AudioManager.setAudioSessionActivity(false);
     } catch (error) {
       console.error('Error finishing audio recording:', error);
       changeStatus('idle');

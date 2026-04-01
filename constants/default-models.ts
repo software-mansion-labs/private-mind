@@ -25,6 +25,8 @@ import {
   QWEN2_5_3B_QUANTIZED,
   PHI_4_MINI_4B,
   PHI_4_MINI_4B_QUANTIZED,
+  LFM2_5_1_2B_INSTRUCT,
+  LFM2_5_1_2B_INSTRUCT_QUANTIZED,
 } from 'react-native-executorch';
 
 export const startingModels = [
@@ -306,5 +308,25 @@ export const DEFAULT_MODELS = [
     parameters: 3.84,
     modelSize: 4.5,
     labels: ['Good at coding', 'Quantized'],
+  },
+  {
+    modelName: 'LFM 2.5 - 1.2B',
+    tokenizerPath: LFM2_5_1_2B_INSTRUCT.tokenizerSource,
+    modelPath: LFM2_5_1_2B_INSTRUCT.modelSource,
+    tokenizerConfigPath: LFM2_5_1_2B_INSTRUCT.tokenizerConfigSource,
+    source: 'remote',
+    parameters: 1.2,
+    modelSize: 2.61,
+    labels: ['Balanced'],
+  },
+  {
+    modelName: 'LFM 2.5 - 1.2B - Quantized',
+    tokenizerPath: LFM2_5_1_2B_INSTRUCT_QUANTIZED.tokenizerSource,
+    modelPath: LFM2_5_1_2B_INSTRUCT_QUANTIZED.modelSource,
+    tokenizerConfigPath: LFM2_5_1_2B_INSTRUCT_QUANTIZED.tokenizerConfigSource,
+    source: 'remote',
+    parameters: 1.2,
+    modelSize: 1.14,
+    labels: ['Balanced', 'Quantized'],
   },
 ];
