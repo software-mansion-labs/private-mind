@@ -255,6 +255,7 @@ const ChatBar = ({
               onSelectSource={onSelectSource}
               activeSourcesCount={activeSourcesCount}
               userInput={userInput}
+              imagePath={imagePath}
               onSend={handleSend}
               isGenerating={isGenerating}
               isProcessingPrompt={isProcessingPrompt}

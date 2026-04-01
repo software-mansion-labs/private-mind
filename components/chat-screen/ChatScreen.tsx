@@ -122,7 +122,7 @@ export default function ChatScreen({
   }, []);
 
   const handleSendMessage = async (userInput: string, imagePath?: string) => {
-    if (!userInput.trim() || isGenerating) return;
+    if ((!userInput.trim() && !imagePath) || isGenerating) return;
     if (!(await checkIfChatExists(db, chatId!))) {
       const newChatTitle =
         userInput.length > 25 ? userInput.slice(0, 25) + '...' : userInput;

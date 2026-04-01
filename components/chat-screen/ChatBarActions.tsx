@@ -14,6 +14,7 @@ interface Props {
   onSelectSource: () => void;
   activeSourcesCount: number;
   userInput: string;
+  imagePath?: string;
   onSend: () => void;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -27,6 +28,7 @@ const ChatBarActions = ({
   onSelectSource,
   activeSourcesCount,
   userInput,
+  imagePath,
   onSend,
   isGenerating,
   isProcessingPrompt,
@@ -51,7 +53,7 @@ const ChatBarActions = ({
       );
     }
 
-    if (userInput) {
+    if (userInput || imagePath) {
       return (
         <CircleButton
           icon={SendIcon}

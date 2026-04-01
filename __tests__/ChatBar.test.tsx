@@ -27,6 +27,7 @@ jest.mock('expo-image-picker', () => ({
   launchCameraAsync: jest.fn(),
 }));
 
+
 jest.mock('../components/chat-screen/ChatSpeechInput', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
   return ({ onSubmit, onCancel }: any) => (
@@ -50,6 +51,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
   return ({
     userInput,
+    imagePath,
     onSend,
     isGenerating,
     isProcessingPrompt,
@@ -63,7 +65,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     <View testID="chat-bar-actions">
       {(isGenerating || isProcessingPrompt) ? (
         <TouchableOpacity testID="interrupt-btn" onPress={onInterrupt}><Text>Stop</Text></TouchableOpacity>
-      ) : userInput ? (
+      ) : (userInput || imagePath) ? (
         <TouchableOpacity testID="send-btn" onPress={onSend}><Text>Send</Text></TouchableOpacity>
       ) : (
         <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}><Text>Mic</Text></TouchableOpacity>
@@ -359,5 +361,50 @@ describe('vision model attachment', () => {
     });
     renderBar();
     expect(screen.queryByTestId('attach-image-btn')).toBeNull();
+  });
+
+  it('calls onSend with empty userInput and imagePath when send is pressed after attaching an image with no text', async () => {
+    const { launchImageLibraryAsync } = require('expo-image-picker');
+    const { ActionSheetIOS, Alert } = require('react-native');
+
+    launchImageLibraryAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file://test-image.jpg' }],
+    });
+
+    // Intercept ActionSheetIOS (iOS) and immediately invoke "Photo Library" (index 1)
+    const actionSheetSpy = jest
+      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
+      .mockImplementation(((_opts: any, callback: (idx: number) => void) => {
+        callback(1); // 1 = Photo Library
+      }) as any);
+    // Also intercept Alert.alert in case the Android path runs
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(
+      (_title: any, _msg: any, buttons: any) => {
+        const btn = (buttons as any[]).find((b: any) => b.text === 'Photo Library');
+        btn?.onPress?.();
+      }
+    );
+
+    mockUseLLMStore.mockReturnValue({
+      isGenerating: false,
+      isProcessingPrompt: false,
+      interrupt: jest.fn(),
+      loadModel: jest.fn(),
+      model: { ...downloadedModel, vision: true },
+    });
+    const onSend = jest.fn();
+    renderBar({ onSend });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('attach-image-btn'));
+    });
+
+    // send button appears because imagePath is set (userInput is empty)
+    fireEvent.press(screen.getByTestId('send-btn'));
+    expect(onSend).toHaveBeenCalledWith('', 'file://test-image.jpg');
+
+    actionSheetSpy.mockRestore();
+    alertSpy.mockRestore();
   });
 });
