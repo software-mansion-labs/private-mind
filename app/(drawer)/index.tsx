@@ -41,6 +41,7 @@ export default function App() {
   });
 
   const handleSetModel = async (model: Model) => {
+    bottomSheetModalRef.current?.dismiss();
     const nextChatId = await getNextChatId(db);
     await initPhantomChat(nextChatId);
     await setActiveChatId(null);
