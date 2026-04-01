@@ -1,7 +1,7 @@
 import DeviceInfo from 'react-native-device-info';
 import { Model } from '../database/modelRepository';
 
-const TOTAL_MEMORY_GB = DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024; // in GB
+const getTotalMemoryGB = () => DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024;
 
 const NON_QUANTIZED_MEMORY_MULTIPLIER = 2.5;
 const QUANTIZED_MEMORY_MULTIPLIER = 1.75;
@@ -34,9 +34,9 @@ export const isModelCompatible = (model: Model): boolean => {
     return true;
   }
 
-  return memoryRequirement <= TOTAL_MEMORY_GB;
+  return memoryRequirement <= getTotalMemoryGB();
 };
 
 export const getDeviceMemoryGB = (): number => {
-  return TOTAL_MEMORY_GB;
+  return getTotalMemoryGB();
 };
