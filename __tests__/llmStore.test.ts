@@ -2,6 +2,7 @@ import { useLLMStore } from '../store/llmStore';
 import { LLMModule } from 'react-native-executorch';
 import * as chatRepository from '../database/chatRepository';
 import * as Feedback from '../utils/Feedback';
+import { prepareMessagesForLLM } from '../utils/promptUtils';
 
 jest.mock('../database/chatRepository');
 jest.mock('../utils/Feedback', () => ({
@@ -497,6 +498,27 @@ describe('sendChatMessage imagePath', () => {
       (call) => call[1].role === 'user'
     );
     expect(userMessageCall[1].imagePath).toBeUndefined();
+  });
+
+  it('passes mediaPath to llmInstance.generate when imagePath is provided', async () => {
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'user', content: 'What is this?' },
+    ]);
+
+    await useLLMStore.getState().sendChatMessage(
+      'What is this?',
+      1,
+      [],
+      settings,
+      '/local/image.jpg'
+    );
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(1);
+    const calledMessages = mockInstance.generate.mock.calls[0][0];
+    expect(calledMessages[calledMessages.length - 1]).toMatchObject({
+      role: 'user',
+      mediaPath: '/local/image.jpg',
+    });
   });
 });
 
