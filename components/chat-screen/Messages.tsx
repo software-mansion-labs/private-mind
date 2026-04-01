@@ -62,6 +62,7 @@ const Messages = ({ chatHistory, ref, isAtBottom, setIsAtBottom }: Props) => {
                 tokensPerSecond={message.tokensPerSecond}
                 timeToFirstToken={message.timeToFirstToken}
                 isLastMessage={isLastMessage}
+                imagePath={message.imagePath}
               />
             );
           })}

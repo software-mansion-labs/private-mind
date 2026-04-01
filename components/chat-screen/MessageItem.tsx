@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useRef } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Image } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -16,6 +16,7 @@ interface MessageItemProps {
   tokensPerSecond?: number;
   timeToFirstToken?: number;
   isLastMessage: boolean;
+  imagePath?: string;
 }
 
 const MessageItem = memo(
@@ -26,6 +27,7 @@ const MessageItem = memo(
     tokensPerSecond,
     timeToFirstToken,
     isLastMessage = false,
+    imagePath,
   }: MessageItemProps) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
@@ -91,7 +93,15 @@ const MessageItem = memo(
                 role === 'assistant' ? styles.aiMessage : styles.userMessage
               }
             >
-              <View style={styles.bubbleContent}>
+              {imagePath && role === 'user' && (
+                <Image
+                  source={{ uri: imagePath }}
+                  style={styles.messageImage}
+                  resizeMode="cover"
+                  testID="message-image"
+                />
+              )}
+              <View style={[styles.bubbleContent, role === 'user' && styles.userMessageContent]}>
                 {role === 'assistant' && (
                   <Text style={styles.modelName}>{modelName}</Text>
                 )}
@@ -159,16 +169,26 @@ const createStyles = (theme: Theme) =>
       alignSelf: 'flex-start',
     },
     userMessage: {
-      flexDirection: 'row-reverse',
-      alignItems: 'center',
+      flexDirection: 'column',
+      alignItems: 'flex-start',
       justifyContent: 'center',
       marginBottom: 24,
       maxWidth: '65%',
       alignSelf: 'flex-end',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
       borderRadius: 12,
       backgroundColor: theme.bg.softSecondary,
+      overflow: 'hidden',
+    },
+    userMessageContent: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      width: '100%',
+    },
+    messageImage: {
+      width: '100%',
+      height: 200,
+      borderTopLeftRadius: 12,
+      borderTopRightRadius: 12,
     },
     eventMessage: {
       paddingHorizontal: 16,
