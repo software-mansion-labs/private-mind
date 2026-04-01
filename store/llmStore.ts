@@ -408,11 +408,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         performance: { tokenCount: 0, firstTokenTime: 0 },
         isBenchmarking: true,
       });
-      memoryTracker.start();
-
-      if (!llmInstance) {
+      if (!llmInstance || !get().model) {
         return;
       }
+
+      memoryTracker.start();
 
       const startTime = performance.now();
       await llmInstance.generate([

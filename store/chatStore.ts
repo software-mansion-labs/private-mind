@@ -155,7 +155,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     await setChatModel(db, id, modelId);
     set((state) => ({
       chats: state.chats.map((chat) =>
-        chat.id === id ? { ...chat, model: modelId } : chat
+        chat.id === id ? { ...chat, modelId } : chat
       ),
     }));
   },
@@ -188,12 +188,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     await activateSource(db, chatId, sourceId);
 
-    set((state) => {
-      const chat = state.chats.find((chat) => chat.id === chatId);
-      if (chat) {
-        chat.enabledSources = [...(chat.enabledSources || []), sourceId];
-      }
-      return { chats: [...state.chats] };
-    });
+    set((state) => ({
+      chats: state.chats.map((chat) =>
+        chat.id === chatId
+          ? { ...chat, enabledSources: [...(chat.enabledSources || []), sourceId] }
+          : chat
+      ),
+    }));
   },
 }));

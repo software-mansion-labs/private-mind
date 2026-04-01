@@ -48,3 +48,6 @@ assets/models/**/*.json
 
 key_local_mind
 android/local.properties
+
+
+coverage/
