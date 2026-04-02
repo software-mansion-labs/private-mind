@@ -19,7 +19,7 @@ import {
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { File, Paths } from 'expo-file-system';
+import { UIImagePickerPreferredAssetRepresentationMode } from 'expo-image-picker';
 import { Model } from '../../database/modelRepository';
 import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -104,20 +104,16 @@ const ChatBar = ({
     }
   }, [isVisionModel]);
 
-  const toJpegCacheUri = (uri: string): string => {
-    const dest = new File(Paths.cache, `vlm_input_${Date.now()}.jpg`);
-    new File(uri).copy(dest);
-    return dest.uri;
-  };
-
   const pickFromLibrary = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: false,
       quality: 0.9,
+      preferredAssetRepresentationMode:
+        UIImagePickerPreferredAssetRepresentationMode.Compatible,
     });
     if (!result.canceled) {
-      setImagePath(toJpegCacheUri(result.assets[0].uri));
+      setImagePath(result.assets[0].uri);
     }
   };
 
@@ -128,7 +124,7 @@ const ChatBar = ({
       quality: 0.9,
     });
     if (!result.canceled) {
-      setImagePath(toJpegCacheUri(result.assets[0].uri));
+      setImagePath(result.assets[0].uri);
     }
   };
 

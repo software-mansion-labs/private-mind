@@ -25,6 +25,7 @@ jest.mock('../store/llmStore', () => ({
 jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(),
   launchCameraAsync: jest.fn(),
+  UIImagePickerPreferredAssetRepresentationMode: { Compatible: 'compatible' },
 }));
 
 
@@ -375,7 +376,7 @@ describe('vision model attachment', () => {
 
     // send button appears because imagePath is set (userInput is empty)
     fireEvent.press(screen.getByTestId('send-btn'));
-    expect(onSend).toHaveBeenCalledWith('', expect.stringContaining('.jpg'));
+    expect(onSend).toHaveBeenCalledWith('', 'file://test-image.jpg');
 
     actionSheetSpy.mockRestore();
     alertSpy.mockRestore();
