@@ -27,6 +27,16 @@ jest.mock('react-native-image-picker', () => ({
   launchCamera: jest.fn(),
 }));
 
+jest.mock('../components/bottomSheets/ImageSourceSheet', () => {
+  const { View, TouchableOpacity, Text } = require('react-native');
+  return ({ onPickFromLibrary, onPickFromCamera }: any) => (
+    <View testID="image-source-sheet">
+      <TouchableOpacity testID="pick-library-btn" onPress={onPickFromLibrary}><Text>Library</Text></TouchableOpacity>
+      <TouchableOpacity testID="pick-camera-btn" onPress={onPickFromCamera}><Text>Camera</Text></TouchableOpacity>
+    </View>
+  );
+});
+
 
 jest.mock('../components/chat-screen/ChatSpeechInput', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
@@ -61,8 +71,13 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     thinkingEnabled,
     activeSourcesCount,
     onSelectSource,
+    isVisionModel,
+    onAttachImage,
   }: any) => (
     <View testID="chat-bar-actions">
+      {isVisionModel && (
+        <TouchableOpacity testID="attach-image-btn" onPress={onAttachImage}><Text>+</Text></TouchableOpacity>
+      )}
       {(isGenerating || isProcessingPrompt) ? (
         <TouchableOpacity testID="interrupt-btn" onPress={onInterrupt}><Text>Stop</Text></TouchableOpacity>
       ) : (userInput || imagePath) ? (
@@ -345,38 +360,20 @@ describe('vision model attachment', () => {
 
   it('calls onSend with empty userInput and imagePath when send is pressed after attaching an image with no text', async () => {
     const { launchImageLibrary } = require('react-native-image-picker');
-    const { ActionSheetIOS, Alert } = require('react-native');
 
     launchImageLibrary.mockResolvedValue({
       assets: [{ uri: 'file://test-image.jpg' }],
     });
 
-    // Intercept ActionSheetIOS (iOS) and immediately invoke "Photo Library" (index 1)
-    const actionSheetSpy = jest
-      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
-      .mockImplementation(((_opts: any, callback: (idx: number) => void) => {
-        callback(1); // 1 = Photo Library
-      }) as any);
-    // Also intercept Alert.alert in case the Android path runs
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(
-      (_title: any, _msg: any, buttons: any) => {
-        const btn = (buttons as any[]).find((b: any) => b.text === 'Photo Library');
-        btn?.onPress?.();
-      }
-    );
-
     const onSend = jest.fn();
     renderBar({ onSend, model: { ...downloadedModel, vision: true } });
 
     await act(async () => {
-      fireEvent.press(screen.getByTestId('attach-image-btn'));
+      fireEvent.press(screen.getByTestId('pick-library-btn'));
     });
 
     // send button appears because imagePath is set (userInput is empty)
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(onSend).toHaveBeenCalledWith('', 'file://test-image.jpg');
-
-    actionSheetSpy.mockRestore();
-    alertSpy.mockRestore();
   });
 });

@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
   useCallback,
 } from 'react';
@@ -14,11 +15,11 @@ import {
   Text,
   StyleSheet,
   Image,
-  ActionSheetIOS,
-  Platform,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import ImageSourceSheet from '../bottomSheets/ImageSourceSheet';
 import { Model } from '../../database/modelRepository';
 import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -26,6 +27,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
 import { ScrollView } from 'react-native-gesture-handler';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
+import CloseIcon from '../../assets/icons/close.svg';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
@@ -72,6 +74,7 @@ const ChatBar = ({
 
   const [userInput, setUserInput] = useState('');
   const [imagePath, setImagePath] = useState<string | undefined>(undefined);
+  const [isLoadingImage, setIsLoadingImage] = useState(false);
 
   useImperativeHandle(
     ref,
@@ -104,40 +107,29 @@ const ChatBar = ({
   }, [isVisionModel]);
 
   const pickFromLibrary = async () => {
-    const result = await launchImageLibrary({ mediaType: 'photo' });
+    setIsLoadingImage(true);
+    const result = await launchImageLibrary({ mediaType: 'photo', quality: 1 });
     if (result.assets && result.assets.length > 0) {
       const uri = result.assets[0].uri;
       if (uri) setImagePath(uri);
     }
+    setIsLoadingImage(false);
   };
 
   const pickFromCamera = async () => {
-    const result = await launchCamera({ mediaType: 'photo' });
+    setIsLoadingImage(true);
+    const result = await launchCamera({ mediaType: 'photo', quality: 1 });
     if (result.assets && result.assets.length > 0) {
       const uri = result.assets[0].uri;
       if (uri) setImagePath(uri);
     }
+    setIsLoadingImage(false);
   };
 
+  const imageSourceSheetRef = useRef<BottomSheetModal>(null);
+
   const handleAttachImage = () => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Cancel', 'Photo Library', 'Camera'],
-          cancelButtonIndex: 0,
-        },
-        (buttonIndex) => {
-          if (buttonIndex === 1) pickFromLibrary();
-          else if (buttonIndex === 2) pickFromCamera();
-        }
-      );
-    } else {
-      Alert.alert('Attach Image', 'Choose source', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Photo Library', onPress: pickFromLibrary },
-        { text: 'Camera', onPress: pickFromCamera },
-      ]);
-    }
+    imageSourceSheetRef.current?.present();
   };
 
   const handleSend = () => {
@@ -204,21 +196,27 @@ const ChatBar = ({
             </View>
           )}
           <View style={styles.inputContainer}>
-            {imagePath && (
+            {(imagePath || isLoadingImage) && (
               <>
                 <View style={styles.previewRow}>
                   <View style={styles.thumbnailWrapper}>
-                    <Image
-                      source={{ uri: imagePath }}
-                      style={styles.thumbnail}
-                      testID="image-preview"
-                    />
+                    {imagePath ? (
+                      <Image
+                        source={{ uri: imagePath }}
+                        style={styles.thumbnail}
+                        testID="image-preview"
+                      />
+                    ) : (
+                      <View style={styles.thumbnailPlaceholder}>
+                        <ActivityIndicator color={theme.text.contrastPrimary} />
+                      </View>
+                    )}
                     <TouchableOpacity
                       style={styles.dismissButton}
                       onPress={() => setImagePath(undefined)}
                       testID="dismiss-image-btn"
                     >
-                      <Text style={styles.dismissText}>✕</Text>
+                      <CloseIcon width={8} height={8} style={styles.dismissIcon} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -226,15 +224,6 @@ const ChatBar = ({
               </>
             )}
             <View style={styles.content}>
-              {isVisionModel && (
-                <TouchableOpacity
-                  style={styles.attachButton}
-                  onPress={handleAttachImage}
-                  testID="attach-image-btn"
-                >
-                  <Text style={styles.attachText}>+</Text>
-                </TouchableOpacity>
-              )}
               <TextInput
                 style={styles.input}
                 multiline
@@ -264,10 +253,17 @@ const ChatBar = ({
               onSpeechInput={openSpeechInput}
               thinkingEnabled={thinkingEnabled}
               onThinkingToggle={onThinkingToggle}
+              isVisionModel={isVisionModel}
+              onAttachImage={handleAttachImage}
             />
           </View>
         </>
       )}
+      <ImageSourceSheet
+        bottomSheetModalRef={imageSourceSheetRef}
+        onPickFromLibrary={pickFromLibrary}
+        onPickFromCamera={pickFromCamera}
+      />
     </View>
   );
 };
@@ -309,7 +305,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bg.strongPrimary,
       borderRadius: 18,
       padding: 16,
-      gap: 16,
+      gap: 8,
       justifyContent: 'center',
     },
     input: {
@@ -335,10 +331,17 @@ const createStyles = (theme: Theme) =>
     },
     previewRow: {
       flexDirection: 'row',
-      paddingBottom: 8,
     },
     thumbnailWrapper: {
       position: 'relative',
+    },
+    thumbnailPlaceholder: {
+      width: 72,
+      height: 72,
+      borderRadius: 8,
+      backgroundColor: theme.bg.softSecondary,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     thumbnail: {
       width: 72,
@@ -352,19 +355,16 @@ const createStyles = (theme: Theme) =>
       width: 20,
       height: 20,
       borderRadius: 10,
-      backgroundColor: 'rgba(0,0,0,0.6)',
+      backgroundColor: theme.bg.softSecondary,
       justifyContent: 'center',
       alignItems: 'center',
     },
-    dismissText: {
-      color: '#fff',
-      fontSize: 10,
-      lineHeight: 12,
+    dismissIcon: {
+      color: theme.text.primary,
     },
     divider: {
       height: 1,
       backgroundColor: theme.border.soft,
-      marginBottom: 8,
     },
     buttonBar: {
       justifyContent: 'center',

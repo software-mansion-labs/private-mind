@@ -147,7 +147,7 @@ const ModelCard = ({
                 borderColor={theme.border.soft}
               />
             )}
-            {model.featured && (
+            {model.featured && !compactView && (
               <Chip
                 title="Featured"
                 icon={
@@ -160,20 +160,24 @@ const ModelCard = ({
                 borderColor={theme.border.soft}
               />
             )}
+            {model.vision && (
+              <Chip
+                title="Vision"
+                icon={
+                  <EyeIcon
+                    width={16}
+                    height={16}
+                    style={styles.iconSecondary}
+                  />
+                }
+                borderColor={theme.border.soft}
+              />
+            )}
             {!compactView &&
-              model.labels?.map((label) => (
+              model.labels?.filter((label) => label !== 'Vision').map((label) => (
                 <Chip
                   key={label}
                   title={label}
-                  icon={
-                    label === 'Vision' ? (
-                      <EyeIcon
-                        width={16}
-                        height={16}
-                        style={styles.iconSecondary}
-                      />
-                    ) : undefined
-                  }
                   borderColor={theme.border.soft}
                 />
               ))}
