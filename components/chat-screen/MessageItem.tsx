@@ -1,5 +1,5 @@
-import React, { memo, useMemo, useRef } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Image } from 'react-native';
+import React, { memo, useMemo, useRef, useState } from 'react';
+import { View, StyleSheet, Text, TouchableOpacity, Image, Modal, StatusBar } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -33,6 +33,7 @@ const MessageItem = memo(
     const styles = useMemo(() => createStyles(theme), [theme]);
     const { isGenerating } = useLLMStore();
     const messageManagementSheetRef = useRef<BottomSheetModal | null>(null);
+    const [lightboxVisible, setLightboxVisible] = useState(false);
 
     const parseThinkingContent = (text: string) => {
       const thinkStartIndex = text.indexOf('<think>');
@@ -94,12 +95,39 @@ const MessageItem = memo(
               }
             >
               {imagePath && role === 'user' && (
-                <Image
-                  source={{ uri: imagePath }}
-                  style={styles.messageImage}
-                  resizeMode="cover"
-                  testID="message-image"
-                />
+                <>
+                  <TouchableOpacity
+                    onPress={() => setLightboxVisible(true)}
+                    activeOpacity={0.9}
+                  >
+                    <Image
+                      source={{ uri: imagePath }}
+                      style={styles.messageImage}
+                      resizeMode="cover"
+                      testID="message-image"
+                    />
+                  </TouchableOpacity>
+                  <Modal
+                    visible={lightboxVisible}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setLightboxVisible(false)}
+                    statusBarTranslucent
+                  >
+                    <StatusBar hidden />
+                    <TouchableOpacity
+                      style={styles.lightboxBackdrop}
+                      activeOpacity={1}
+                      onPress={() => setLightboxVisible(false)}
+                    >
+                      <Image
+                        source={{ uri: imagePath }}
+                        style={styles.lightboxImage}
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
+                  </Modal>
+                </>
               )}
               <View style={[styles.bubbleContent, role === 'user' && styles.userMessageContent]}>
                 {role === 'assistant' && (
@@ -189,6 +217,16 @@ const createStyles = (theme: Theme) =>
       aspectRatio: 4 / 3,
       borderTopLeftRadius: 12,
       borderTopRightRadius: 12,
+    },
+    lightboxBackdrop: {
+      flex: 1,
+      backgroundColor: 'black',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    lightboxImage: {
+      width: '100%',
+      height: '100%',
     },
     eventMessage: {
       paddingHorizontal: 16,
