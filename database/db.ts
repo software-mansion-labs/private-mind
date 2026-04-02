@@ -80,7 +80,7 @@ const runMigrations = async (db: SQLiteDatabase) => {
       `UPDATE models SET featured = ?, thinking = ?, vision = ?, labels = ? WHERE modelName = ?`,
       model.featured ? 1 : 0,
       model.thinking ? 1 : 0,
-      (model as typeof model & { vision?: boolean }).vision ? 1 : 0,
+      model.vision ? 1 : 0,
       model.labels ? JSON.stringify(model.labels) : null,
       model.modelName
     );
@@ -218,7 +218,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
         modelSize: model.modelSize,
         featured: !!featured,
         thinking: !!thinking,
-        vision: !!(model as typeof model & { vision?: boolean }).vision,
+        vision: !!model.vision,
         labels: model.labels,
       });
     }

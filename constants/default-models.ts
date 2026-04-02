@@ -1,3 +1,4 @@
+import { type Model } from '../database/modelRepository';
 import {
   QWEN3_0_6B_QUANTIZED,
   QWEN3_0_6B,
@@ -36,7 +37,7 @@ export const startingModels = [
   'Qwen 3 - 1.7B - Quantized',
 ];
 
-export const DEFAULT_MODELS = [
+export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
   {
     modelName: 'Qwen 3 - 0.6B - Quantized',
     tokenizerPath: QWEN3_0_6B_QUANTIZED.tokenizerSource,

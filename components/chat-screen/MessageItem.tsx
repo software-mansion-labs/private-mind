@@ -1,4 +1,5 @@
 import React, { memo, useMemo, useRef, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, StyleSheet, Text, TouchableOpacity, Image, Modal, StatusBar } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
@@ -31,7 +32,8 @@ const MessageItem = memo(
     imagePath,
   }: MessageItemProps) => {
     const { theme } = useTheme();
-    const styles = useMemo(() => createStyles(theme), [theme]);
+    const insets = useSafeAreaInsets();
+    const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
     const { isGenerating } = useLLMStore();
     const messageManagementSheetRef = useRef<BottomSheetModal | null>(null);
     const [lightboxVisible, setLightboxVisible] = useState(false);
@@ -195,7 +197,7 @@ const MessageItem = memo(
 
 export default MessageItem;
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, safeAreaTop: number) =>
   StyleSheet.create({
     aiMessage: {
       flexDirection: 'row',
@@ -238,7 +240,7 @@ const createStyles = (theme: Theme) =>
     },
     lightboxClose: {
       position: 'absolute',
-      top: 56,
+      top: safeAreaTop + 12,
       right: 20,
       width: 36,
       height: 36,

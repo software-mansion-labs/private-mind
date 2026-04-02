@@ -36,7 +36,8 @@
       "^react-native-audio-api$": "<rootDir>/__mocks__/react-native-audio-api.ts",
       "^@react-native-clipboard/clipboard$": "<rootDir>/__mocks__/@react-native-clipboard/clipboard.ts",
       "^react-native-markdown-display$": "<rootDir>/__mocks__/react-native-markdown-display.tsx",
-      "^@gorhom/bottom-sheet$": "<rootDir>/__mocks__/@gorhom/bottom-sheet.tsx"
+      "^@gorhom/bottom-sheet$": "<rootDir>/__mocks__/@gorhom/bottom-sheet.tsx",
+      "^react-native-safe-area-context$": "<rootDir>/__mocks__/react-native-safe-area-context.ts"
     }
   },
   "op-sqlite": {
@@ -65,8 +66,6 @@
     "expo-file-system": "~19.0.21",
     "expo-font": "~14.0.10",
     "expo-haptics": "~15.0.8",
-    "expo-image-manipulator": "~14.0.8",
-    "expo-image-picker": "^55.0.14",
     "expo-linking": "~8.0.10",
     "expo-localization": "~17.0.8",
     "expo-router": "~6.0.20",

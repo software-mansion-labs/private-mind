@@ -6215,46 +6215,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-image-loader@npm:~55.0.0":
-  version: 55.0.0
-  resolution: "expo-image-loader@npm:55.0.0"
-  peerDependencies:
-    expo: "*"
-  checksum: 7c2fce06850bcca5f8b616a782729849d4c858a8e0e0785dcb704461c6acb6212931cefd50aef357eee03511b45b132df68f043449c5e2bfcd0a94a03c16fd51
-  languageName: node
-  linkType: hard
-
-"expo-image-loader@npm:~6.0.0":
-  version: 6.0.0
-  resolution: "expo-image-loader@npm:6.0.0"
-  peerDependencies:
-    expo: "*"
-  checksum: 564f4930a4d688571ed61bfc84aa0a38adf550fd01d4d40cf76e8cc315e52a8e32b59dcaf6527231765888e25d8bea829f1953b8c50580fefb3ab0e647067a33
-  languageName: node
-  linkType: hard
-
-"expo-image-manipulator@npm:~14.0.8":
-  version: 14.0.8
-  resolution: "expo-image-manipulator@npm:14.0.8"
-  dependencies:
-    expo-image-loader: ~6.0.0
-  peerDependencies:
-    expo: "*"
-  checksum: ae00d2a5f45016c290e8318c785ba4f4d08bb23acfb25f85f0782af85dc62731484886b21f44f7995ee78e7a53317df6d0d2dc72cd1c62ffa44eccc06400218e
-  languageName: node
-  linkType: hard
-
-"expo-image-picker@npm:^55.0.14":
-  version: 55.0.14
-  resolution: "expo-image-picker@npm:55.0.14"
-  dependencies:
-    expo-image-loader: ~55.0.0
-  peerDependencies:
-    expo: "*"
-  checksum: 769a02ffad1dc9d98759195e54fa0d671518c61d8e447d4d4d7132318d20f71b849f2b8dfd50d5ac1a872470ef3b1328f97bfd11478bbcc4650c0758ba2dedad
-  languageName: node
-  linkType: hard
-
 "expo-keep-awake@npm:~15.0.8":
   version: 15.0.8
   resolution: "expo-keep-awake@npm:15.0.8"
@@ -10351,8 +10311,6 @@ __metadata:
     expo-file-system: ~19.0.21
     expo-font: ~14.0.10
     expo-haptics: ~15.0.8
-    expo-image-manipulator: ~14.0.8
-    expo-image-picker: ^55.0.14
     expo-linking: ~8.0.10
     expo-localization: ~17.0.8
     expo-router: ~6.0.20

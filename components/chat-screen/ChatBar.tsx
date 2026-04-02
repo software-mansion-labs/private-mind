@@ -106,36 +106,42 @@ const ChatBar = ({
     }
   }, [isVisionModel]);
 
-  const pickFromLibrary = async () => {
+  const pickFromLibrary = useCallback(async () => {
     setIsLoadingImage(true);
-    const result = await launchImageLibrary({ mediaType: 'photo', quality: 1 });
-    if (result.assets && result.assets.length > 0) {
-      const uri = result.assets[0].uri;
-      if (uri) setImagePath(uri);
+    try {
+      const result = await launchImageLibrary({ mediaType: 'photo', quality: 1 });
+      if (!result.didCancel && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        if (uri) setImagePath(uri);
+      }
+    } finally {
+      setIsLoadingImage(false);
     }
-    setIsLoadingImage(false);
-  };
+  }, []);
 
-  const pickFromCamera = async () => {
+  const pickFromCamera = useCallback(async () => {
     setIsLoadingImage(true);
-    const result = await launchCamera({ mediaType: 'photo', quality: 1 });
-    if (result.assets && result.assets.length > 0) {
-      const uri = result.assets[0].uri;
-      if (uri) setImagePath(uri);
+    try {
+      const result = await launchCamera({ mediaType: 'photo', quality: 1 });
+      if (!result.didCancel && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        if (uri) setImagePath(uri);
+      }
+    } finally {
+      setIsLoadingImage(false);
     }
-    setIsLoadingImage(false);
-  };
+  }, []);
 
   const imageSourceSheetRef = useRef<BottomSheetModal>(null);
 
-  const handleAttachImage = () => {
+  const handleAttachImage = useCallback(() => {
     imageSourceSheetRef.current?.present();
-  };
+  }, []);
 
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     onSend(userInput, imagePath);
     setImagePath(undefined);
-  };
+  }, [onSend, userInput, imagePath]);
 
   const [showSpeechInput, setShowSpeechInput] = React.useState(false);
 
@@ -257,13 +263,13 @@ const ChatBar = ({
               onAttachImage={handleAttachImage}
             />
           </View>
+          <ImageSourceSheet
+            bottomSheetModalRef={imageSourceSheetRef}
+            onPickFromLibrary={pickFromLibrary}
+            onPickFromCamera={pickFromCamera}
+          />
         </>
       )}
-      <ImageSourceSheet
-        bottomSheetModalRef={imageSourceSheetRef}
-        onPickFromLibrary={pickFromLibrary}
-        onPickFromCamera={pickFromCamera}
-      />
     </View>
   );
 };
@@ -315,19 +321,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
       color: theme.text.contrastPrimary,
-    },
-    attachButton: {
-      width: 32,
-      height: 32,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 8,
-    },
-    attachText: {
-      fontSize: 24,
-      lineHeight: 28,
-      color: theme.text.contrastPrimary,
-      fontFamily: fontFamily.regular,
     },
     previewRow: {
       flexDirection: 'row',
