@@ -1,6 +1,5 @@
 import React, { memo, useMemo, useRef, useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, StyleSheet, Text, TouchableOpacity, Image, Modal, StatusBar } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Image } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -9,7 +8,7 @@ import { useLLMStore } from '../../store/llmStore';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import MessageManagementSheet from '../bottomSheets/MessageManagementSheet';
 import { Theme } from '../../styles/colors';
-import CloseIcon from '../../assets/icons/close.svg';
+import ImageLightbox from './ImageLightbox';
 
 interface MessageItemProps {
   content: string;
@@ -32,8 +31,7 @@ const MessageItem = memo(
     imagePath,
   }: MessageItemProps) => {
     const { theme } = useTheme();
-    const insets = useSafeAreaInsets();
-    const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
+    const styles = useMemo(() => createStyles(theme), [theme]);
     const { isGenerating } = useLLMStore();
     const messageManagementSheetRef = useRef<BottomSheetModal | null>(null);
     const [lightboxVisible, setLightboxVisible] = useState(false);
@@ -110,33 +108,11 @@ const MessageItem = memo(
                       testID="message-image"
                     />
                   </TouchableOpacity>
-                  <Modal
+                  <ImageLightbox
+                    uri={imagePath}
                     visible={lightboxVisible}
-                    transparent
-                    animationType="fade"
-                    onRequestClose={() => setLightboxVisible(false)}
-                    statusBarTranslucent
-                  >
-                    <StatusBar hidden />
-                    <TouchableOpacity
-                      style={styles.lightboxBackdrop}
-                      activeOpacity={1}
-                      onPress={() => setLightboxVisible(false)}
-                    >
-                      <Image
-                        source={{ uri: imagePath }}
-                        style={styles.lightboxImage}
-                        resizeMode="contain"
-                      />
-                      <TouchableOpacity
-                        style={styles.lightboxClose}
-                        onPress={() => setLightboxVisible(false)}
-                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                      >
-                        <CloseIcon width={24} height={24} style={styles.lightboxCloseIcon} />
-                      </TouchableOpacity>
-                    </TouchableOpacity>
-                  </Modal>
+                    onClose={() => setLightboxVisible(false)}
+                  />
                 </>
               )}
               <View style={[styles.bubbleContent, role === 'user' && styles.userMessageContent]}>
@@ -197,7 +173,7 @@ const MessageItem = memo(
 
 export default MessageItem;
 
-const createStyles = (theme: Theme, safeAreaTop: number) =>
+const createStyles = (theme: Theme) =>
   StyleSheet.create({
     aiMessage: {
       flexDirection: 'row',
@@ -227,30 +203,6 @@ const createStyles = (theme: Theme, safeAreaTop: number) =>
       aspectRatio: 4 / 3,
       borderTopLeftRadius: 12,
       borderTopRightRadius: 12,
-    },
-    lightboxBackdrop: {
-      flex: 1,
-      backgroundColor: 'black',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    lightboxImage: {
-      width: '100%',
-      height: '100%',
-    },
-    lightboxClose: {
-      position: 'absolute',
-      top: safeAreaTop + 12,
-      right: 20,
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    lightboxCloseIcon: {
-      color: 'white',
     },
     eventMessage: {
       paddingHorizontal: 16,

@@ -4,7 +4,6 @@ import React, {
   useEffect,
   useImperativeHandle,
   useMemo,
-  useRef,
   useState,
   useCallback,
 } from 'react';
@@ -17,9 +16,8 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import ImageSourceSheet from '../bottomSheets/ImageSourceSheet';
+import { useImageAttachment } from '../../hooks/useImageAttachment';
 import { Model } from '../../database/modelRepository';
 import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -73,16 +71,23 @@ const ChatBar = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [userInput, setUserInput] = useState('');
-  const [imagePath, setImagePath] = useState<string | undefined>(undefined);
-  const [isLoadingImage, setIsLoadingImage] = useState(false);
+  const {
+    imagePath,
+    isLoadingImage,
+    imageSourceSheetRef,
+    pickFromLibrary,
+    pickFromCamera,
+    openSourceSheet: handleAttachImage,
+    clearImage,
+  } = useImageAttachment();
 
   useImperativeHandle(
     ref,
     () => ({
-      clear: () => { setUserInput(''); setImagePath(undefined); },
+      clear: () => { setUserInput(''); clearImage(); },
       setInput: (text: string) => setUserInput(text),
     }),
-    []
+    [clearImage]
   );
 
   const {
@@ -102,46 +107,14 @@ const ChatBar = ({
 
   useEffect(() => {
     if (!isVisionModel) {
-      setImagePath(undefined);
+      clearImage();
     }
   }, [isVisionModel]);
 
-  const pickFromLibrary = useCallback(async () => {
-    setIsLoadingImage(true);
-    try {
-      const result = await launchImageLibrary({ mediaType: 'photo', quality: 1 });
-      if (!result.didCancel && result.assets && result.assets.length > 0) {
-        const uri = result.assets[0].uri;
-        if (uri) setImagePath(uri);
-      }
-    } finally {
-      setIsLoadingImage(false);
-    }
-  }, []);
-
-  const pickFromCamera = useCallback(async () => {
-    setIsLoadingImage(true);
-    try {
-      const result = await launchCamera({ mediaType: 'photo', quality: 1 });
-      if (!result.didCancel && result.assets && result.assets.length > 0) {
-        const uri = result.assets[0].uri;
-        if (uri) setImagePath(uri);
-      }
-    } finally {
-      setIsLoadingImage(false);
-    }
-  }, []);
-
-  const imageSourceSheetRef = useRef<BottomSheetModal>(null);
-
-  const handleAttachImage = useCallback(() => {
-    imageSourceSheetRef.current?.present();
-  }, []);
-
   const handleSend = useCallback(() => {
     onSend(userInput, imagePath);
-    setImagePath(undefined);
-  }, [onSend, userInput, imagePath]);
+    clearImage();
+  }, [onSend, userInput, imagePath, clearImage]);
 
   const [showSpeechInput, setShowSpeechInput] = React.useState(false);
 
@@ -219,7 +192,7 @@ const ChatBar = ({
                     )}
                     <TouchableOpacity
                       style={styles.dismissButton}
-                      onPress={() => setImagePath(undefined)}
+                      onPress={clearImage}
                       testID="dismiss-image-btn"
                     >
                       <CloseIcon width={8} height={8} style={styles.dismissIcon} />
