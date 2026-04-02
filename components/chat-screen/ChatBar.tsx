@@ -107,7 +107,7 @@ const ChatBar = ({
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: false,
-      quality: 1,
+      quality: 0.9,
     });
     if (!result.canceled) {
       setImagePath(result.assets[0].uri);
@@ -118,7 +118,7 @@ const ChatBar = ({
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
       allowsEditing: false,
-      quality: 1,
+      quality: 0.9,
     });
     if (!result.canceled) {
       setImagePath(result.assets[0].uri);
