@@ -177,11 +177,20 @@ const generateLLMResponse = async (
     };
   }
 
-  // Attach image to last user message if provided
+  // Attach image to last user message if provided.
+  // When mediaPath is set, content must be converted to the multimodal array form
+  // so that applyChatTemplate inserts the <image> placeholder the native runner expects.
   const messagesWithMedia: ExecutorchMessage[] = imagePath
     ? messages.map((msg, i) =>
         i === messages.length - 1 && msg.role === 'user'
-          ? { ...msg, mediaPath: imagePath }
+          ? {
+              ...msg,
+              mediaPath: imagePath,
+              content: [
+                { type: 'image' },
+                { type: 'text', text: msg.content },
+              ] as any,
+            }
           : msg
       )
     : messages;
