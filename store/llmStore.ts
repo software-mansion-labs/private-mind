@@ -175,11 +175,6 @@ const generateLLMResponse = async (
       performance: { timeToFirstToken: 0, tokensPerSecond: 0 },
     };
   }
-
-  // applyChatTemplate (called inside generate) requires content to be the
-  // multimodal array form for messages with images so the Jinja template
-  // can insert the <image> placeholder. generate() collects imagePaths from
-  // mediaPath but does NOT transform content — that's only done in sendMessage.
   const preparedMessages = messages.map((msg) =>
     msg.mediaPath
       ? {
@@ -263,7 +258,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     try {
       llmInstance = await LLMModule.fromModelName(
         {
-          modelName: 'custom' as Parameters<typeof LLMModule.fromModelName>[0]['modelName'],
+          modelName: 'custom' as Parameters<
+            typeof LLMModule.fromModelName
+          >[0]['modelName'],
           modelSource: model.modelPath,
           tokenizerSource: model.tokenizerPath,
           tokenizerConfigSource: model.tokenizerConfigPath,
@@ -308,7 +305,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               ),
             });
           }
-        },
+        }
       );
 
       set({ isLoading: false });
