@@ -375,7 +375,7 @@ describe('vision model attachment', () => {
 
     // send button appears because imagePath is set (userInput is empty)
     fireEvent.press(screen.getByTestId('send-btn'));
-    expect(onSend).toHaveBeenCalledWith('', 'file://test-image.jpg');
+    expect(onSend).toHaveBeenCalledWith('', expect.stringContaining('.jpg'));
 
     actionSheetSpy.mockRestore();
     alertSpy.mockRestore();

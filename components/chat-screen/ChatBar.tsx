@@ -19,6 +19,7 @@ import {
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { Model } from '../../database/modelRepository';
 import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -103,19 +104,20 @@ const ChatBar = ({
     }
   }, [isVisionModel]);
 
+  const toJpegCacheUri = async (uri: string): Promise<string> => {
+    const dest = `${FileSystem.cacheDirectory}vlm_input_${Date.now()}.jpg`;
+    await FileSystem.copyAsync({ from: uri, to: dest });
+    return dest;
+  };
+
   const pickFromLibrary = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: false,
       quality: 0.9,
-      base64: true,
     });
     if (!result.canceled) {
-      const asset = result.assets[0];
-      const uri = asset.base64
-        ? `data:image/jpeg;base64,${asset.base64}`
-        : asset.uri;
-      setImagePath(uri);
+      setImagePath(await toJpegCacheUri(result.assets[0].uri));
     }
   };
 
@@ -124,14 +126,9 @@ const ChatBar = ({
       mediaTypes: ['images'],
       allowsEditing: false,
       quality: 0.9,
-      base64: true,
     });
     if (!result.canceled) {
-      const asset = result.assets[0];
-      const uri = asset.base64
-        ? `data:image/jpeg;base64,${asset.base64}`
-        : asset.uri;
-      setImagePath(uri);
+      setImagePath(await toJpegCacheUri(result.assets[0].uri));
     }
   };
 
