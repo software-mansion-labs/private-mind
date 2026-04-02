@@ -108,9 +108,14 @@ const ChatBar = ({
       mediaTypes: ['images'],
       allowsEditing: false,
       quality: 0.9,
+      base64: true,
     });
     if (!result.canceled) {
-      setImagePath(result.assets[0].uri);
+      const asset = result.assets[0];
+      const uri = asset.base64
+        ? `data:image/jpeg;base64,${asset.base64}`
+        : asset.uri;
+      setImagePath(uri);
     }
   };
 
@@ -119,9 +124,14 @@ const ChatBar = ({
       mediaTypes: ['images'],
       allowsEditing: false,
       quality: 0.9,
+      base64: true,
     });
     if (!result.canceled) {
-      setImagePath(result.assets[0].uri);
+      const asset = result.assets[0];
+      const uri = asset.base64
+        ? `data:image/jpeg;base64,${asset.base64}`
+        : asset.uri;
+      setImagePath(uri);
     }
   };
 
