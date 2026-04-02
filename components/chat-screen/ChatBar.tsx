@@ -18,7 +18,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { Model } from '../../database/modelRepository';
 import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -103,34 +103,19 @@ const ChatBar = ({
     }
   }, [isVisionModel]);
 
-  const asDataUri = (asset: ImagePicker.ImagePickerAsset): string => {
-    if (asset.base64) {
-      return `data:image/jpeg;base64,${asset.base64}`;
-    }
-    return asset.uri;
-  };
-
   const pickFromLibrary = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: false,
-      quality: 0.5,
-      base64: true,
-    });
-    if (!result.canceled) {
-      setImagePath(asDataUri(result.assets[0]));
+    const result = await launchImageLibrary({ mediaType: 'photo' });
+    if (result.assets && result.assets.length > 0) {
+      const uri = result.assets[0].uri;
+      if (uri) setImagePath(uri);
     }
   };
 
   const pickFromCamera = async () => {
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      allowsEditing: false,
-      quality: 0.5,
-      base64: true,
-    });
-    if (!result.canceled) {
-      setImagePath(asDataUri(result.assets[0]));
+    const result = await launchCamera({ mediaType: 'photo' });
+    if (result.assets && result.assets.length > 0) {
+      const uri = result.assets[0].uri;
+      if (uri) setImagePath(uri);
     }
   };
 

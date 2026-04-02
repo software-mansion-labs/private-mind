@@ -6224,6 +6224,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-image-loader@npm:~6.0.0":
+  version: 6.0.0
+  resolution: "expo-image-loader@npm:6.0.0"
+  peerDependencies:
+    expo: "*"
+  checksum: 564f4930a4d688571ed61bfc84aa0a38adf550fd01d4d40cf76e8cc315e52a8e32b59dcaf6527231765888e25d8bea829f1953b8c50580fefb3ab0e647067a33
+  languageName: node
+  linkType: hard
+
+"expo-image-manipulator@npm:~14.0.8":
+  version: 14.0.8
+  resolution: "expo-image-manipulator@npm:14.0.8"
+  dependencies:
+    expo-image-loader: ~6.0.0
+  peerDependencies:
+    expo: "*"
+  checksum: ae00d2a5f45016c290e8318c785ba4f4d08bb23acfb25f85f0782af85dc62731484886b21f44f7995ee78e7a53317df6d0d2dc72cd1c62ffa44eccc06400218e
+  languageName: node
+  linkType: hard
+
 "expo-image-picker@npm:^55.0.14":
   version: 55.0.14
   resolution: "expo-image-picker@npm:55.0.14"
@@ -10331,6 +10351,7 @@ __metadata:
     expo-file-system: ~19.0.21
     expo-font: ~14.0.10
     expo-haptics: ~15.0.8
+    expo-image-manipulator: ~14.0.8
     expo-image-picker: ^55.0.14
     expo-linking: ~8.0.10
     expo-localization: ~17.0.8
@@ -10350,6 +10371,7 @@ __metadata:
     react-native-executorch: ^0.8.1
     react-native-executorch-expo-resource-fetcher: ^0.8.0
     react-native-gesture-handler: ~2.28.0
+    react-native-image-picker: ^8.2.1
     react-native-keyboard-controller: 1.18.5
     react-native-loading-spinner-overlay: ^3.0.1
     react-native-markdown-display: ^7.0.2
@@ -10666,6 +10688,16 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 7bcd7db784b12565fdd5916bbebc2d3511a63159ca553d33e430008940ba7d209f1e85ef02968a920ed19c414fabe7d2c18cc0e967dd4889aae266788562d1e9
+  languageName: node
+  linkType: hard
+
+"react-native-image-picker@npm:^8.2.1":
+  version: 8.2.1
+  resolution: "react-native-image-picker@npm:8.2.1"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: fc85bc278c0ba5ccef8cbacfce3001e994b34b0895be34e0c884021d2215802c2e553c5e97ff7f21a30e502be60000f90cf9555e9c2a19c71fdc76120d30e158
   languageName: node
   linkType: hard
 

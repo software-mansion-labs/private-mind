@@ -22,9 +22,9 @@ jest.mock('../store/llmStore', () => ({
   })),
 }));
 
-jest.mock('expo-image-picker', () => ({
-  launchImageLibraryAsync: jest.fn(),
-  launchCameraAsync: jest.fn(),
+jest.mock('react-native-image-picker', () => ({
+  launchImageLibrary: jest.fn(),
+  launchCamera: jest.fn(),
 }));
 
 
@@ -344,12 +344,11 @@ describe('vision model attachment', () => {
   });
 
   it('calls onSend with empty userInput and imagePath when send is pressed after attaching an image with no text', async () => {
-    const { launchImageLibraryAsync } = require('expo-image-picker');
+    const { launchImageLibrary } = require('react-native-image-picker');
     const { ActionSheetIOS, Alert } = require('react-native');
 
-    launchImageLibraryAsync.mockResolvedValue({
-      canceled: false,
-      assets: [{ uri: 'file://test-image.jpg', base64: 'abc123' }],
+    launchImageLibrary.mockResolvedValue({
+      assets: [{ uri: 'file://test-image.jpg' }],
     });
 
     // Intercept ActionSheetIOS (iOS) and immediately invoke "Photo Library" (index 1)
@@ -375,7 +374,7 @@ describe('vision model attachment', () => {
 
     // send button appears because imagePath is set (userInput is empty)
     fireEvent.press(screen.getByTestId('send-btn'));
-    expect(onSend).toHaveBeenCalledWith('', 'data:image/jpeg;base64,abc123');
+    expect(onSend).toHaveBeenCalledWith('', 'file://test-image.jpg');
 
     actionSheetSpy.mockRestore();
     alertSpy.mockRestore();
