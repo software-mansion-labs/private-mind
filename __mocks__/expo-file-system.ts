@@ -1,8 +1,14 @@
-export const File = jest.fn().mockImplementation(() => ({
-  text: jest.fn(),
-}));
+export const Paths = {
+  cache: { uri: 'file:///cache/' },
+};
 
-export const cacheDirectory = 'file:///cache/';
-export const copyAsync = jest.fn(({ to }: { from: string; to: string }) =>
-  Promise.resolve(to)
-);
+export const File = jest.fn().mockImplementation((uriOrDir: any, name?: string) => {
+  const uri = name
+    ? `${typeof uriOrDir === 'string' ? uriOrDir : uriOrDir.uri}${name}`
+    : typeof uriOrDir === 'string' ? uriOrDir : uriOrDir.uri;
+  return {
+    uri,
+    text: jest.fn(),
+    copy: jest.fn(),
+  };
+});

@@ -19,7 +19,7 @@ import {
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import { Model } from '../../database/modelRepository';
 import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -104,10 +104,10 @@ const ChatBar = ({
     }
   }, [isVisionModel]);
 
-  const toJpegCacheUri = async (uri: string): Promise<string> => {
-    const dest = `${FileSystem.cacheDirectory}vlm_input_${Date.now()}.jpg`;
-    await FileSystem.copyAsync({ from: uri, to: dest });
-    return dest;
+  const toJpegCacheUri = (uri: string): string => {
+    const dest = new File(Paths.cache, `vlm_input_${Date.now()}.jpg`);
+    new File(uri).copy(dest);
+    return dest.uri;
   };
 
   const pickFromLibrary = async () => {
@@ -117,7 +117,7 @@ const ChatBar = ({
       quality: 0.9,
     });
     if (!result.canceled) {
-      setImagePath(await toJpegCacheUri(result.assets[0].uri));
+      setImagePath(toJpegCacheUri(result.assets[0].uri));
     }
   };
 
@@ -128,7 +128,7 @@ const ChatBar = ({
       quality: 0.9,
     });
     if (!result.canceled) {
-      setImagePath(await toJpegCacheUri(result.assets[0].uri));
+      setImagePath(toJpegCacheUri(result.assets[0].uri));
     }
   };
 
