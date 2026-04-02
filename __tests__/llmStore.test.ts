@@ -502,7 +502,7 @@ describe('sendChatMessage imagePath', () => {
 
   it('passes mediaPath to llmInstance.generate when imagePath is provided', async () => {
     (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
-      { role: 'user', content: 'What is this?' },
+      { role: 'user', content: 'What is this?', mediaPath: '/local/image.jpg' },
     ]);
 
     await useLLMStore.getState().sendChatMessage(

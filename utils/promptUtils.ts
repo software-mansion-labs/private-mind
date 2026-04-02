@@ -29,7 +29,11 @@ export const prepareMessagesForLLM = (
   const filteredMessages: ExecutorchMessage[] = activeChatMessages.reduce(
     (acc: ExecutorchMessage[], msg) => {
       if (msg.role !== 'event') {
-        acc.push({ role: msg.role, content: msg.content });
+        acc.push({
+          role: msg.role,
+          content: msg.content,
+          ...(msg.mediaPath ? { mediaPath: msg.mediaPath } : {}),
+        });
       }
       return acc;
     },

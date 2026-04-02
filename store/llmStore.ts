@@ -164,8 +164,7 @@ const updateChatStateForGeneration = (
 
 const generateLLMResponse = async (
   messages: ExecutorchMessage[],
-  get: () => LLMStore,
-  imagePath?: string
+  get: () => LLMStore
 ): Promise<{
   response: string | null;
   performance: { timeToFirstToken: number; tokensPerSecond: number };
@@ -177,28 +176,8 @@ const generateLLMResponse = async (
     };
   }
 
-  // Attach image to last user message if provided.
-  // The content must be converted to the multimodal array form so that
-  // applyChatTemplate inserts the <image> placeholder the native runner expects.
-  // mediaPath alone is insufficient — the library requires the array form to know
-  // where to inject the placeholder relative to the text.
-  const messagesWithMedia: ExecutorchMessage[] = imagePath
-    ? messages.map((msg, i) =>
-        i === messages.length - 1 && msg.role === 'user'
-          ? {
-              ...msg,
-              mediaPath: imagePath,
-              content: [
-                { type: 'image' },
-                { type: 'text', text: msg.content as string },
-              ] as any,
-            }
-          : msg
-      )
-    : messages;
-
   const startTime = performance.now();
-  const finalResponse = await llmInstance.generate(messagesWithMedia);
+  const finalResponse = await llmInstance.generate(messages);
   const endTime = performance.now();
 
   if (finalResponse) {
@@ -375,7 +354,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       // Set generation state and generate response
       updateChatStateForGeneration(set, 'generating');
       const { response: finalResponse, performance: responsePerformance } =
-        await generateLLMResponse(messagesWithSystemPrompt, get, imagePath);
+        await generateLLMResponse(messagesWithSystemPrompt, get);
       // Handle successful response
       if (finalResponse) {
         await persistMessage(db, {
