@@ -19,7 +19,6 @@ import {
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { UIImagePickerPreferredAssetRepresentationMode } from 'expo-image-picker';
 import { Model } from '../../database/modelRepository';
 import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -104,16 +103,22 @@ const ChatBar = ({
     }
   }, [isVisionModel]);
 
+  const asDataUri = (asset: ImagePicker.ImagePickerAsset): string => {
+    if (asset.base64) {
+      return `data:image/jpeg;base64,${asset.base64}`;
+    }
+    return asset.uri;
+  };
+
   const pickFromLibrary = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: false,
-      quality: 0.9,
-      preferredAssetRepresentationMode:
-        UIImagePickerPreferredAssetRepresentationMode.Compatible,
+      quality: 0.5,
+      base64: true,
     });
     if (!result.canceled) {
-      setImagePath(result.assets[0].uri);
+      setImagePath(asDataUri(result.assets[0]));
     }
   };
 
@@ -121,10 +126,11 @@ const ChatBar = ({
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
       allowsEditing: false,
-      quality: 0.9,
+      quality: 0.5,
+      base64: true,
     });
     if (!result.canceled) {
-      setImagePath(result.assets[0].uri);
+      setImagePath(asDataUri(result.assets[0]));
     }
   };
 

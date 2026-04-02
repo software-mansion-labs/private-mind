@@ -25,7 +25,6 @@ jest.mock('../store/llmStore', () => ({
 jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(),
   launchCameraAsync: jest.fn(),
-  UIImagePickerPreferredAssetRepresentationMode: { Compatible: 'compatible' },
 }));
 
 
@@ -350,7 +349,7 @@ describe('vision model attachment', () => {
 
     launchImageLibraryAsync.mockResolvedValue({
       canceled: false,
-      assets: [{ uri: 'file://test-image.jpg' }],
+      assets: [{ uri: 'file://test-image.jpg', base64: 'abc123' }],
     });
 
     // Intercept ActionSheetIOS (iOS) and immediately invoke "Photo Library" (index 1)
@@ -376,7 +375,7 @@ describe('vision model attachment', () => {
 
     // send button appears because imagePath is set (userInput is empty)
     fireEvent.press(screen.getByTestId('send-btn'));
-    expect(onSend).toHaveBeenCalledWith('', 'file://test-image.jpg');
+    expect(onSend).toHaveBeenCalledWith('', 'data:image/jpeg;base64,abc123');
 
     actionSheetSpy.mockRestore();
     alertSpy.mockRestore();
