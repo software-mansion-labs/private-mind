@@ -8,6 +8,7 @@ import { useLLMStore } from '../../store/llmStore';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import MessageManagementSheet from '../bottomSheets/MessageManagementSheet';
 import { Theme } from '../../styles/colors';
+import CloseIcon from '../../assets/icons/close.svg';
 
 interface MessageItemProps {
   content: string;
@@ -125,6 +126,13 @@ const MessageItem = memo(
                         style={styles.lightboxImage}
                         resizeMode="contain"
                       />
+                      <TouchableOpacity
+                        style={styles.lightboxClose}
+                        onPress={() => setLightboxVisible(false)}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      >
+                        <CloseIcon width={24} height={24} style={styles.lightboxCloseIcon} />
+                      </TouchableOpacity>
                     </TouchableOpacity>
                   </Modal>
                 </>
@@ -227,6 +235,20 @@ const createStyles = (theme: Theme) =>
     lightboxImage: {
       width: '100%',
       height: '100%',
+    },
+    lightboxClose: {
+      position: 'absolute',
+      top: 56,
+      right: 20,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    lightboxCloseIcon: {
+      color: 'white',
     },
     eventMessage: {
       paddingHorizontal: 16,
