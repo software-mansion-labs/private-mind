@@ -176,8 +176,24 @@ const generateLLMResponse = async (
     };
   }
 
+  // applyChatTemplate (called inside generate) requires content to be the
+  // multimodal array form for messages with images so the Jinja template
+  // can insert the <image> placeholder. generate() collects imagePaths from
+  // mediaPath but does NOT transform content — that's only done in sendMessage.
+  const preparedMessages = messages.map((msg) =>
+    msg.mediaPath
+      ? {
+          ...msg,
+          content: [
+            { type: 'image' },
+            { type: 'text', text: msg.content as string },
+          ] as any,
+        }
+      : msg
+  );
+
   const startTime = performance.now();
-  const finalResponse = await llmInstance.generate(messages);
+  const finalResponse = await llmInstance.generate(preparedMessages);
   const endTime = performance.now();
 
   if (finalResponse) {
