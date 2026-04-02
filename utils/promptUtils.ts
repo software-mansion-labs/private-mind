@@ -32,7 +32,7 @@ export const prepareMessagesForLLM = (
         acc.push({
           role: msg.role,
           content: msg.content,
-          ...(msg.mediaPath ? { mediaPath: msg.mediaPath } : {}),
+          ...(msg.imagePath ? { mediaPath: msg.imagePath } : {}),
         });
       }
       return acc;
