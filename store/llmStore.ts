@@ -178,12 +178,21 @@ const generateLLMResponse = async (
   }
 
   // Attach image to last user message if provided.
-  // mediaPath drives <image> placeholder injection in applyChatTemplate;
-  // content remains a plain string as the ExecutorchMessage type requires.
+  // The content must be converted to the multimodal array form so that
+  // applyChatTemplate inserts the <image> placeholder the native runner expects.
+  // mediaPath alone is insufficient — the library requires the array form to know
+  // where to inject the placeholder relative to the text.
   const messagesWithMedia: ExecutorchMessage[] = imagePath
     ? messages.map((msg, i) =>
         i === messages.length - 1 && msg.role === 'user'
-          ? { ...msg, mediaPath: imagePath }
+          ? {
+              ...msg,
+              mediaPath: imagePath,
+              content: [
+                { type: 'image' },
+                { type: 'text', text: msg.content as string },
+              ] as any,
+            }
           : msg
       )
     : messages;
