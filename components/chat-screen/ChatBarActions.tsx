@@ -9,11 +9,13 @@ import CircleButton from '../CircleButton';
 import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import LightBulbCrossedIcon from '../../assets/icons/light_bulb_crossed.svg';
 import LightBulbIcon from '../../assets/icons/light_bulb.svg';
+import PlusIcon from '../../assets/icons/plus.svg';
 
 interface Props {
   onSelectSource: () => void;
   activeSourcesCount: number;
   userInput: string;
+  imagePath?: string;
   onSend: () => void;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -21,12 +23,15 @@ interface Props {
   onSpeechInput: () => void;
   thinkingEnabled: boolean;
   onThinkingToggle?: () => void;
+  isVisionModel?: boolean;
+  onAttachImage?: () => void;
 }
 
 const ChatBarActions = ({
   onSelectSource,
   activeSourcesCount,
   userInput,
+  imagePath,
   onSend,
   isGenerating,
   isProcessingPrompt,
@@ -34,6 +39,8 @@ const ChatBarActions = ({
   onSpeechInput,
   thinkingEnabled = false,
   onThinkingToggle,
+  isVisionModel = false,
+  onAttachImage,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -51,7 +58,7 @@ const ChatBarActions = ({
       );
     }
 
-    if (userInput) {
+    if (userInput || imagePath) {
       return (
         <CircleButton
           icon={SendIcon}
@@ -75,6 +82,16 @@ const ChatBarActions = ({
   return (
     <View style={styles.container}>
       <View style={styles.leftActions}>
+        {isVisionModel && (
+          <CircleButton
+            icon={PlusIcon}
+            size={14}
+            onPress={onAttachImage}
+            backgroundColor={theme.bg.softPrimary}
+            color={theme.text.primary}
+            testID="attach-image-btn"
+          />
+        )}
         <TouchableOpacity onPress={onSelectSource} style={styles.sourceButton}>
           {activeSourcesCount > 0 && (
             <View style={styles.countBadge}>
@@ -131,6 +148,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       alignItems: 'center',
       gap: 4,
+      height: 36,
     },
     countBadge: {
       borderRadius: 9999,
@@ -147,6 +165,7 @@ const createStyles = (theme: Theme) =>
     },
     sourceText: {
       color: theme.text.contrastPrimary,
+      fontSize: fontSizes.sm,
       lineHeight: lineHeights.sm,
     },
   });

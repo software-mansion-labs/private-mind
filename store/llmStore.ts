@@ -38,7 +38,8 @@ interface LLMStore {
     newMessage: string,
     chatId: number,
     context: string[],
-    settings: ChatSettings
+    settings: ChatSettings,
+    imagePath?: string
   ) => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   interrupt: () => void;
@@ -174,9 +175,20 @@ const generateLLMResponse = async (
       performance: { timeToFirstToken: 0, tokensPerSecond: 0 },
     };
   }
+  const preparedMessages = messages.map((msg) =>
+    msg.mediaPath
+      ? {
+          ...msg,
+          content: [
+            { type: 'image' },
+            { type: 'text', text: msg.content as string },
+          ] as any,
+        }
+      : msg
+  );
 
   const startTime = performance.now();
-  const finalResponse = await llmInstance.generate(messages);
+  const finalResponse = await llmInstance.generate(preparedMessages);
   const endTime = performance.now();
 
   if (finalResponse) {
@@ -244,10 +256,16 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     set({ isLoading: true, model: model });
 
     try {
-      llmInstance = await LLMModule.fromCustomModel(
-        model.modelPath,
-        model.tokenizerPath,
-        model.tokenizerConfigPath,
+      llmInstance = await LLMModule.fromModelName(
+        {
+          modelName: 'custom' as Parameters<
+            typeof LLMModule.fromModelName
+          >[0]['modelName'],
+          modelSource: model.modelPath,
+          tokenizerSource: model.tokenizerPath,
+          tokenizerConfigSource: model.tokenizerConfigPath,
+          capabilities: model.vision ? (['vision'] as const) : undefined,
+        },
         () => {},
         (token) => {
           const isFirstToken = get().performance.tokenCount === 0;
@@ -287,7 +305,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               ),
             });
           }
-        },
+        }
       );
 
       set({ isLoading: false });
@@ -297,7 +315,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
-  sendChatMessage: async (newMessage, chatId, context, settings) => {
+  sendChatMessage: async (newMessage, chatId, context, settings, imagePath) => {
     const { db, model: currentModel, activeChatMessages } = get();
     if (!db || !currentModel) {
       console.warn('LLM not ready or DB not set');
@@ -310,6 +328,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         content: newMessage,
         chatId,
         timestamp: Date.now(),
+        imagePath,
       };
       const assistantPlaceholder: Message = {
         role: 'assistant',

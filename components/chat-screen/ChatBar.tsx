@@ -1,6 +1,7 @@
 import React, {
   Ref,
   RefObject,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useState,
@@ -12,7 +13,11 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
+import ImageSourceSheet from '../bottomSheets/ImageSourceSheet';
+import { useImageAttachment } from '../../hooks/useImageAttachment';
 import { Model } from '../../database/modelRepository';
 import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -20,6 +25,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
 import { ScrollView } from 'react-native-gesture-handler';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
+import CloseIcon from '../../assets/icons/close.svg';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
@@ -29,7 +35,7 @@ import Toast from 'react-native-toast-message';
 
 interface Props {
   chatId: number | null;
-  onSend: (userInput: string) => void;
+  onSend: (userInput: string, imagePath?: string) => void;
   onSelectModel: () => void;
   onSelectSource: () => void;
   onSelectPrompt: (prompt: string) => void;
@@ -65,14 +71,23 @@ const ChatBar = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [userInput, setUserInput] = useState('');
+  const {
+    imagePath,
+    isLoadingImage,
+    imageSourceSheetRef,
+    pickFromLibrary,
+    pickFromCamera,
+    openSourceSheet: handleAttachImage,
+    clearImage,
+  } = useImageAttachment();
 
   useImperativeHandle(
     ref,
     () => ({
-      clear: () => setUserInput(''),
+      clear: () => { setUserInput(''); clearImage(); },
       setInput: (text: string) => setUserInput(text),
     }),
-    []
+    [clearImage]
   );
 
   const {
@@ -87,6 +102,19 @@ const ChatBar = ({
       return loadModel(model);
     }
   };
+
+  const isVisionModel = model?.vision === true;
+
+  useEffect(() => {
+    if (!isVisionModel) {
+      clearImage();
+    }
+  }, [isVisionModel]);
+
+  const handleSend = useCallback(() => {
+    onSend(userInput, imagePath);
+    clearImage();
+  }, [onSend, userInput, imagePath, clearImage]);
 
   const [showSpeechInput, setShowSpeechInput] = React.useState(false);
 
@@ -147,6 +175,33 @@ const ChatBar = ({
             </View>
           )}
           <View style={styles.inputContainer}>
+            {(imagePath || isLoadingImage) && (
+              <>
+                <View style={styles.previewRow}>
+                  <View style={styles.thumbnailWrapper}>
+                    {imagePath ? (
+                      <Image
+                        source={{ uri: imagePath }}
+                        style={styles.thumbnail}
+                        testID="image-preview"
+                      />
+                    ) : (
+                      <View style={styles.thumbnailPlaceholder}>
+                        <ActivityIndicator color={theme.text.contrastPrimary} />
+                      </View>
+                    )}
+                    <TouchableOpacity
+                      style={styles.dismissButton}
+                      onPress={clearImage}
+                      testID="dismiss-image-btn"
+                    >
+                      <CloseIcon width={8} height={8} style={styles.dismissIcon} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <View style={styles.divider} />
+              </>
+            )}
             <View style={styles.content}>
               <TextInput
                 style={styles.input}
@@ -169,15 +224,23 @@ const ChatBar = ({
               onSelectSource={onSelectSource}
               activeSourcesCount={activeSourcesCount}
               userInput={userInput}
-              onSend={() => onSend(userInput)}
+              imagePath={imagePath}
+              onSend={handleSend}
               isGenerating={isGenerating}
               isProcessingPrompt={isProcessingPrompt}
               onInterrupt={interrupt}
               onSpeechInput={openSpeechInput}
               thinkingEnabled={thinkingEnabled}
               onThinkingToggle={onThinkingToggle}
+              isVisionModel={isVisionModel}
+              onAttachImage={handleAttachImage}
             />
           </View>
+          <ImageSourceSheet
+            bottomSheetModalRef={imageSourceSheetRef}
+            onPickFromLibrary={pickFromLibrary}
+            onPickFromCamera={pickFromCamera}
+          />
         </>
       )}
     </View>
@@ -221,7 +284,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bg.strongPrimary,
       borderRadius: 18,
       padding: 16,
-      gap: 16,
+      gap: 8,
       justifyContent: 'center',
     },
     input: {
@@ -231,6 +294,43 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
       color: theme.text.contrastPrimary,
+    },
+    previewRow: {
+      flexDirection: 'row',
+    },
+    thumbnailWrapper: {
+      position: 'relative',
+    },
+    thumbnailPlaceholder: {
+      width: 72,
+      height: 72,
+      borderRadius: 8,
+      backgroundColor: theme.bg.softSecondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    thumbnail: {
+      width: 72,
+      height: 72,
+      borderRadius: 8,
+    },
+    dismissButton: {
+      position: 'absolute',
+      top: -6,
+      right: -6,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: theme.bg.softSecondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    dismissIcon: {
+      color: theme.text.primary,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.border.soft,
     },
     buttonBar: {
       justifyContent: 'center',
