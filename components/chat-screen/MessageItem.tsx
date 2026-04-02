@@ -186,7 +186,7 @@ const createStyles = (theme: Theme) =>
     },
     messageImage: {
       width: '100%',
-      height: 200,
+      aspectRatio: 4 / 3,
       borderTopLeftRadius: 12,
       borderTopRightRadius: 12,
     },
