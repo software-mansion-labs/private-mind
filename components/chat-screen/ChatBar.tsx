@@ -105,11 +105,6 @@ const ChatBar = ({
   }, [model, loadedModel, loadModel]);
 
   const handleAttachImage = useCallback(() => {
-    loadSelectedModel();
-    openImageSourceSheet();
-  }, [loadSelectedModel, openImageSourceSheet]);
-
-  const handleAttachImage = useCallback(() => {
     Keyboard.dismiss();
     loadSelectedModel();
     openImageSourceSheet();
