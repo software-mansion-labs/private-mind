@@ -81,7 +81,12 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
       {(isGenerating || isProcessingPrompt) ? (
         <TouchableOpacity testID="interrupt-btn" onPress={onInterrupt}><Text>Stop</Text></TouchableOpacity>
       ) : (userInput || imagePath) ? (
-        <TouchableOpacity testID="send-btn" onPress={onSend}><Text>Send</Text></TouchableOpacity>
+        <>
+          {imagePath && !userInput && (
+            <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}><Text>Mic</Text></TouchableOpacity>
+          )}
+          <TouchableOpacity testID="send-btn" onPress={onSend}><Text>Send</Text></TouchableOpacity>
+        </>
       ) : (
         <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}><Text>Mic</Text></TouchableOpacity>
       )}
@@ -316,6 +321,8 @@ describe('speech input', () => {
     await act(async () => {
       fireEvent.press(screen.getByTestId('pick-library-btn'));
     });
+
+    // speech-btn is shown alongside send-btn when image is attached with no text
     await act(async () => {
       fireEvent.press(screen.getByTestId('speech-btn'));
     });
@@ -375,7 +382,7 @@ describe('vision model attachment', () => {
     expect(screen.queryByTestId('attach-image-btn')).toBeNull();
   });
 
-  it('does not show send button when image is attached but userInput is empty', async () => {
+  it('calls onSend with empty userInput and imagePath when send is pressed after attaching an image with no text', async () => {
     const { launchImageLibrary } = require('react-native-image-picker');
 
     launchImageLibrary.mockResolvedValue({
@@ -389,7 +396,7 @@ describe('vision model attachment', () => {
       fireEvent.press(screen.getByTestId('pick-library-btn'));
     });
 
-    expect(screen.queryByTestId('send-btn')).toBeNull();
-    expect(onSend).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByTestId('send-btn'));
+    expect(onSend).toHaveBeenCalledWith('', 'file://test-image.jpg');
   });
 });

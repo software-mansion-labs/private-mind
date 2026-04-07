@@ -133,11 +133,9 @@ export default function ChatScreen({
     Keyboard.dismiss();
 
     updateLastUsed(chatId!);
-    const context = await prepareContext(
-      userInput,
-      enabledSources,
-      vectorStore!
-    );
+    const context = userInput.trim()
+      ? await prepareContext(userInput, enabledSources, vectorStore!)
+      : [];
     const settings: ChatSettings = {
       systemPrompt: chatSettings.systemPrompt,
       contextWindow: parseInt(chatSettings.contextWindow),

@@ -15,6 +15,7 @@ interface Props {
   onSelectSource: () => void;
   activeSourcesCount: number;
   userInput: string;
+  imagePath?: string;
   onSend: () => void;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -30,6 +31,7 @@ const ChatBarActions = ({
   onSelectSource,
   activeSourcesCount,
   userInput,
+  imagePath,
   onSend,
   isGenerating,
   isProcessingPrompt,
@@ -56,14 +58,24 @@ const ChatBarActions = ({
       );
     }
 
-    if (userInput) {
+    if (userInput || imagePath) {
       return (
-        <CircleButton
-          icon={SendIcon}
-          onPress={onSend}
-          backgroundColor={theme.bg.main}
-          color={theme.text.contrastPrimary}
-        />
+        <View style={styles.rightActions}>
+          {imagePath && !userInput && (
+            <CircleButton
+              icon={SoundwaveIcon}
+              onPress={onSpeechInput}
+              backgroundColor="transparent"
+              color={theme.text.contrastPrimary}
+            />
+          )}
+          <CircleButton
+            icon={SendIcon}
+            onPress={onSend}
+            backgroundColor={theme.bg.main}
+            color={theme.text.contrastPrimary}
+          />
+        </View>
       );
     }
 
@@ -136,6 +148,11 @@ const createStyles = (theme: Theme) =>
     leftActions: {
       flexDirection: 'row',
       gap: 8,
+    },
+    rightActions: {
+      flexDirection: 'row',
+      gap: 8,
+      alignItems: 'center',
     },
     sourceButton: {
       padding: 8,

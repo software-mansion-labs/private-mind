@@ -77,7 +77,7 @@ const ChatBar = ({
     imageSourceSheetRef,
     pickFromLibrary,
     pickFromCamera,
-    openSourceSheet: handleAttachImage,
+    openSourceSheet: openImageSourceSheet,
     clearImage,
   } = useImageAttachment();
 
@@ -97,11 +97,16 @@ const ChatBar = ({
     loadModel,
     model: loadedModel,
   } = useLLMStore();
-  const loadSelectedModel = async () => {
+  const loadSelectedModel = useCallback(async () => {
     if (model?.isDownloaded && loadedModel?.id !== model.id) {
       return loadModel(model);
     }
-  };
+  }, [model, loadedModel, loadModel]);
+
+  const handleAttachImage = useCallback(() => {
+    loadSelectedModel();
+    openImageSourceSheet();
+  }, [loadSelectedModel, openImageSourceSheet]);
 
   const isVisionModel = model?.vision === true;
 
@@ -225,6 +230,7 @@ const ChatBar = ({
               onSelectSource={onSelectSource}
               activeSourcesCount={activeSourcesCount}
               userInput={userInput}
+              imagePath={imagePath}
               onSend={handleSend}
               isGenerating={isGenerating}
               isProcessingPrompt={isProcessingPrompt}
