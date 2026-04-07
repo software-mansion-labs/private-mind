@@ -121,8 +121,8 @@ export default function ChatScreen({
     sourceBottomSheetModalRef.current?.present();
   }, []);
 
-  const handleSendMessage = async (userInput: string) => {
-    if (!userInput.trim() || isGenerating) return;
+  const handleSendMessage = async (userInput: string, imagePath?: string) => {
+    if ((!userInput.trim() && !imagePath) || isGenerating) return;
     if (!(await checkIfChatExists(db, chatId!))) {
       const newChatTitle =
         userInput.length > 25 ? userInput.slice(0, 25) + '...' : userInput;
@@ -133,18 +133,16 @@ export default function ChatScreen({
     Keyboard.dismiss();
 
     updateLastUsed(chatId!);
-    const context = await prepareContext(
-      userInput,
-      enabledSources,
-      vectorStore!
-    );
+    const context = userInput.trim()
+      ? await prepareContext(userInput, enabledSources, vectorStore!)
+      : [];
     const settings: ChatSettings = {
       systemPrompt: chatSettings.systemPrompt,
       contextWindow: parseInt(chatSettings.contextWindow),
       thinkingEnabled: chatSettings.thinkingEnabled,
     };
 
-    await sendChatMessage(userInput, chatId!, context, settings);
+    await sendChatMessage(userInput, chatId!, context, settings, imagePath);
   };
 
   const handleSelectModel = async (selectedModel: Model) => {

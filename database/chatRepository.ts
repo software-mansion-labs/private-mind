@@ -22,6 +22,7 @@ export type Message = {
   modelName?: string;
   role: 'user' | 'assistant' | 'system' | 'event';
   content: string;
+  imagePath?: string;
   tokensPerSecond?: number;
   timeToFirstToken?: number;
   timestamp: number;
@@ -95,7 +96,7 @@ export const persistMessage = async (
   }
 
   const result = await db.runAsync(
-    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken) VALUES (?, ?, ?, ?, ?, ?);`,
+    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath) VALUES (?, ?, ?, ?, ?, ?, ?);`,
     [
       message.chatId,
       message.role,
@@ -103,6 +104,7 @@ export const persistMessage = async (
       message.modelName || '',
       message.tokensPerSecond,
       message.timeToFirstToken,
+      message.imagePath || null,
     ]
   );
 

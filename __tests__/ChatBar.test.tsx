@@ -22,6 +22,22 @@ jest.mock('../store/llmStore', () => ({
   })),
 }));
 
+jest.mock('react-native-image-picker', () => ({
+  launchImageLibrary: jest.fn(),
+  launchCamera: jest.fn(),
+}));
+
+jest.mock('../components/bottomSheets/ImageSourceSheet', () => {
+  const { View, TouchableOpacity, Text } = require('react-native');
+  return ({ onPickFromLibrary, onPickFromCamera }: any) => (
+    <View testID="image-source-sheet">
+      <TouchableOpacity testID="pick-library-btn" onPress={onPickFromLibrary}><Text>Library</Text></TouchableOpacity>
+      <TouchableOpacity testID="pick-camera-btn" onPress={onPickFromCamera}><Text>Camera</Text></TouchableOpacity>
+    </View>
+  );
+});
+
+
 jest.mock('../components/chat-screen/ChatSpeechInput', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
   return ({ onSubmit, onCancel }: any) => (
@@ -45,6 +61,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
   return ({
     userInput,
+    imagePath,
     onSend,
     isGenerating,
     isProcessingPrompt,
@@ -54,12 +71,22 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     thinkingEnabled,
     activeSourcesCount,
     onSelectSource,
+    isVisionModel,
+    onAttachImage,
   }: any) => (
     <View testID="chat-bar-actions">
+      {isVisionModel && (
+        <TouchableOpacity testID="attach-image-btn" onPress={onAttachImage}><Text>+</Text></TouchableOpacity>
+      )}
       {(isGenerating || isProcessingPrompt) ? (
         <TouchableOpacity testID="interrupt-btn" onPress={onInterrupt}><Text>Stop</Text></TouchableOpacity>
-      ) : userInput ? (
-        <TouchableOpacity testID="send-btn" onPress={onSend}><Text>Send</Text></TouchableOpacity>
+      ) : (userInput || imagePath) ? (
+        <>
+          {imagePath && !userInput && (
+            <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}><Text>Mic</Text></TouchableOpacity>
+          )}
+          <TouchableOpacity testID="send-btn" onPress={onSend}><Text>Send</Text></TouchableOpacity>
+        </>
       ) : (
         <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}><Text>Mic</Text></TouchableOpacity>
       )}
@@ -93,6 +120,7 @@ const downloadedModel = {
   tokenizerConfigPath: '',
   thinking: false,
   featured: false,
+  vision: false,
 };
 
 const defaultProps = {
@@ -174,7 +202,7 @@ describe('downloaded model — text input', () => {
     renderBar({ onSend });
     fireEvent.changeText(screen.getByPlaceholderText('Ask about anything...'), 'Hello');
     fireEvent.press(screen.getByTestId('send-btn'));
-    expect(onSend).toHaveBeenCalledWith('Hello');
+    expect(onSend).toHaveBeenCalledWith('Hello', undefined);
   });
 
   it('shows prompt suggestions when hasMessages is false', () => {
@@ -279,8 +307,27 @@ describe('speech input', () => {
       fireEvent.press(screen.getByTestId('speech-btn'));
     });
     fireEvent.press(screen.getByTestId('speech-submit'));
-    expect(onSend).toHaveBeenCalledWith('voice transcript');
+    expect(onSend).toHaveBeenCalledWith('voice transcript', undefined);
     expect(screen.queryByTestId('speech-input')).toBeNull();
+  });
+
+  it('forwards attached imagePath when submitting speech transcript', async () => {
+    const { launchImageLibrary } = require('react-native-image-picker');
+    launchImageLibrary.mockResolvedValue({ assets: [{ uri: 'file://test-image.jpg' }] });
+
+    const onSend = jest.fn();
+    renderBar({ onSend, model: { ...downloadedModel, vision: true } });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('pick-library-btn'));
+    });
+
+    // speech-btn is shown alongside send-btn when image is attached with no text
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+    fireEvent.press(screen.getByTestId('speech-submit'));
+    expect(onSend).toHaveBeenCalledWith('voice transcript', 'file://test-image.jpg');
   });
 
   it('hides speech input without calling onSend when cancelled', async () => {
@@ -314,5 +361,42 @@ describe('speech input', () => {
     // With the module-level mock, transcript = 'voice transcript' (non-empty), so we
     // verify the guard by checking the original mock behavior
     expect(screen.queryByTestId('speech-input')).toBeNull();
+  });
+});
+
+// ─── vision model attachment button ──────────────────────────────────────────
+
+describe('vision model attachment', () => {
+  it('shows + button when loaded model has vision === true', () => {
+    renderBar({ model: { ...downloadedModel, vision: true } });
+    expect(screen.getByTestId('attach-image-btn')).toBeTruthy();
+  });
+
+  it('does not show + button when loaded model has vision === false', () => {
+    renderBar({ model: { ...downloadedModel, vision: false } });
+    expect(screen.queryByTestId('attach-image-btn')).toBeNull();
+  });
+
+  it('does not show + button when model has no vision flag', () => {
+    renderBar({ model: downloadedModel });
+    expect(screen.queryByTestId('attach-image-btn')).toBeNull();
+  });
+
+  it('calls onSend with empty userInput and imagePath when send is pressed after attaching an image with no text', async () => {
+    const { launchImageLibrary } = require('react-native-image-picker');
+
+    launchImageLibrary.mockResolvedValue({
+      assets: [{ uri: 'file://test-image.jpg' }],
+    });
+
+    const onSend = jest.fn();
+    renderBar({ onSend, model: { ...downloadedModel, vision: true } });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('pick-library-btn'));
+    });
+
+    fireEvent.press(screen.getByTestId('send-btn'));
+    expect(onSend).toHaveBeenCalledWith('', 'file://test-image.jpg');
   });
 });

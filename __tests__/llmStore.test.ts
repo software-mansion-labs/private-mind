@@ -2,6 +2,7 @@ import { useLLMStore } from '../store/llmStore';
 import { LLMModule } from 'react-native-executorch';
 import * as chatRepository from '../database/chatRepository';
 import * as Feedback from '../utils/Feedback';
+import { prepareMessagesForLLM } from '../utils/promptUtils';
 
 jest.mock('../database/chatRepository');
 jest.mock('../utils/Feedback', () => ({
@@ -54,8 +55,8 @@ beforeEach(() => {
   capturedTokenCallback = null;
   mockInstance = makeMockInstance();
 
-  mockLLMModule.fromCustomModel.mockImplementation(
-    async (_modelPath, _tokenizerPath, _tokenizerConfigPath, _onProgress, onToken) => {
+  mockLLMModule.fromModelName.mockImplementation(
+    async (_namedSources, _onProgress, onToken) => {
       capturedTokenCallback = onToken;
       return mockInstance as any;
     }
@@ -78,9 +79,9 @@ beforeEach(() => {
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-  // Re-apply the fromCustomModel mock after clearAllMocks
-  mockLLMModule.fromCustomModel.mockImplementation(
-    async (_modelPath, _tokenizerPath, _tokenizerConfigPath, _onProgress, onToken) => {
+  // Re-apply the fromModelName mock after clearAllMocks
+  mockLLMModule.fromModelName.mockImplementation(
+    async (_namedSources, _onProgress, onToken) => {
       capturedTokenCallback = onToken;
       return mockInstance as any;
     }
@@ -102,7 +103,7 @@ const loadModel = async (model = baseModel) => {
 describe('loadModel', () => {
   it('sets isLoading during load then clears it', async () => {
     let wasLoading = false;
-    mockLLMModule.fromCustomModel.mockImplementation(async (...args) => {
+    mockLLMModule.fromModelName.mockImplementation(async (...args) => {
       wasLoading = useLLMStore.getState().isLoading;
       capturedTokenCallback = args[4];
       return mockInstance as any;
@@ -117,13 +118,13 @@ describe('loadModel', () => {
   it('skips reload for the same model id without hardReload', async () => {
     useLLMStore.setState({ model: baseModel });
     await useLLMStore.getState().loadModel(baseModel);
-    expect(mockLLMModule.fromCustomModel).not.toHaveBeenCalled();
+    expect(mockLLMModule.fromModelName).not.toHaveBeenCalled();
   });
 
   it('reloads same model when hardReload=true', async () => {
     useLLMStore.setState({ model: baseModel });
     await useLLMStore.getState().loadModel(baseModel, true);
-    expect(mockLLMModule.fromCustomModel).toHaveBeenCalled();
+    expect(mockLLMModule.fromModelName).toHaveBeenCalled();
   });
 
   it('calls delete on previous instance before loading new model', async () => {
@@ -133,7 +134,7 @@ describe('loadModel', () => {
 
     // Load a different model
     mockInstance = makeMockInstance();
-    mockLLMModule.fromCustomModel.mockImplementation(async (...args) => {
+    mockLLMModule.fromModelName.mockImplementation(async (...args) => {
       capturedTokenCallback = args[4];
       return mockInstance as any;
     });
@@ -143,7 +144,7 @@ describe('loadModel', () => {
   });
 
   it('clears model and isLoading on load failure', async () => {
-    mockLLMModule.fromCustomModel.mockRejectedValue(new Error('load failed'));
+    mockLLMModule.fromModelName.mockRejectedValue(new Error('load failed'));
     await useLLMStore.getState().loadModel(baseModel);
     expect(useLLMStore.getState().isLoading).toBe(false);
     expect(useLLMStore.getState().model).toBeNull();
@@ -453,6 +454,71 @@ describe('refreshActiveChatMessages', () => {
     useLLMStore.setState({ db: mockDb, activeChatId: null });
     await useLLMStore.getState().refreshActiveChatMessages();
     expect(mockGetChatMessages).not.toHaveBeenCalled();
+  });
+});
+
+// ─── sendChatMessage imagePath ────────────────────────────────────────────────
+
+describe('sendChatMessage imagePath', () => {
+  const settings = { systemPrompt: '', contextWindow: 6 };
+
+  beforeEach(async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    mockGetChatMessages.mockResolvedValue([]);
+    useLLMStore.setState({
+      model: { ...baseModel, modelName: 'LFM VL', vision: true, featured: true } as any,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+  });
+
+  it('passes imagePath to persistMessage for user message when provided', async () => {
+    await useLLMStore.getState().sendChatMessage(
+      'What is this?', 1, [], settings,
+      '/local/image.jpg'
+    );
+
+    expect(mockPersistMessage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ imagePath: '/local/image.jpg', role: 'user' })
+    );
+  });
+
+  it('passes undefined imagePath to persistMessage when not provided', async () => {
+    await useLLMStore.getState().sendChatMessage(
+      'Hello', 1, [], settings
+    );
+
+    expect(mockPersistMessage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ role: 'user' })
+    );
+    const userMessageCall = mockPersistMessage.mock.calls.find(
+      (call) => call[1].role === 'user'
+    );
+    expect(userMessageCall[1].imagePath).toBeUndefined();
+  });
+
+  it('passes mediaPath to llmInstance.generate when imagePath is provided', async () => {
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'user', content: 'What is this?', mediaPath: '/local/image.jpg' },
+    ]);
+
+    await useLLMStore.getState().sendChatMessage(
+      'What is this?',
+      1,
+      [],
+      settings,
+      '/local/image.jpg'
+    );
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(1);
+    const calledMessages = mockInstance.generate.mock.calls[0][0];
+    expect(calledMessages[calledMessages.length - 1]).toMatchObject({
+      role: 'user',
+      mediaPath: '/local/image.jpg',
+    });
   });
 });
 

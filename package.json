@@ -36,7 +36,8 @@
       "^react-native-audio-api$": "<rootDir>/__mocks__/react-native-audio-api.ts",
       "^@react-native-clipboard/clipboard$": "<rootDir>/__mocks__/@react-native-clipboard/clipboard.ts",
       "^react-native-markdown-display$": "<rootDir>/__mocks__/react-native-markdown-display.tsx",
-      "^@gorhom/bottom-sheet$": "<rootDir>/__mocks__/@gorhom/bottom-sheet.tsx"
+      "^@gorhom/bottom-sheet$": "<rootDir>/__mocks__/@gorhom/bottom-sheet.tsx",
+      "^react-native-safe-area-context$": "<rootDir>/__mocks__/react-native-safe-area-context.ts"
     }
   },
   "op-sqlite": {
@@ -78,9 +79,10 @@
     "react-native-audio-api": "^0.11.7",
     "react-native-device-info": "^15.0.1",
     "react-native-enriched-markdown": "^0.4.1",
-    "react-native-executorch": "^0.8.0",
+    "react-native-executorch": "^0.8.1",
     "react-native-executorch-expo-resource-fetcher": "^0.8.0",
     "react-native-gesture-handler": "~2.28.0",
+    "react-native-image-picker": "^8.2.1",
     "react-native-keyboard-controller": "1.18.5",
     "react-native-loading-spinner-overlay": "^3.0.1",
     "react-native-markdown-display": "^7.0.2",

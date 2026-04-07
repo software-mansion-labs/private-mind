@@ -32,10 +32,12 @@ export const PHI_4_MINI_4B = makeModelConstants('phi4-mini-4b');
 export const PHI_4_MINI_4B_QUANTIZED = makeModelConstants('phi4-mini-4b-quantized');
 export const LFM2_5_1_2B_INSTRUCT = makeModelConstants('lfm2.5-1.2b-instruct');
 export const LFM2_5_1_2B_INSTRUCT_QUANTIZED = makeModelConstants('lfm2.5-1.2b-instruct-quantized');
+export const LFM2_VL_1_6B_QUANTIZED = makeModelConstants('lfm2-vl-1.6b-quantized');
 export const WHISPER_TINY_EN = 'whisper-tiny-en';
 
 export const LLMModule = {
   fromCustomModel: jest.fn(),
+  fromModelName: jest.fn(),
 };
 
 export const SpeechToTextModule = {

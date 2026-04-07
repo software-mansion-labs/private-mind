@@ -1,5 +1,5 @@
-import React, { memo, useMemo, useRef } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import React, { memo, useMemo, useRef, useState } from 'react';
+import { View, StyleSheet, Text, TouchableOpacity, Image } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -8,6 +8,7 @@ import { useLLMStore } from '../../store/llmStore';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import MessageManagementSheet from '../bottomSheets/MessageManagementSheet';
 import { Theme } from '../../styles/colors';
+import ImageLightbox from './ImageLightbox';
 
 interface MessageItemProps {
   content: string;
@@ -16,6 +17,7 @@ interface MessageItemProps {
   tokensPerSecond?: number;
   timeToFirstToken?: number;
   isLastMessage: boolean;
+  imagePath?: string;
 }
 
 const MessageItem = memo(
@@ -26,11 +28,13 @@ const MessageItem = memo(
     tokensPerSecond,
     timeToFirstToken,
     isLastMessage = false,
+    imagePath,
   }: MessageItemProps) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
     const { isGenerating } = useLLMStore();
     const messageManagementSheetRef = useRef<BottomSheetModal | null>(null);
+    const [lightboxVisible, setLightboxVisible] = useState(false);
 
     const parseThinkingContent = (text: string) => {
       const thinkStartIndex = text.indexOf('<think>');
@@ -91,7 +95,27 @@ const MessageItem = memo(
                 role === 'assistant' ? styles.aiMessage : styles.userMessage
               }
             >
-              <View style={styles.bubbleContent}>
+              {imagePath && role === 'user' && (
+                <>
+                  <TouchableOpacity
+                    onPress={() => setLightboxVisible(true)}
+                    activeOpacity={0.9}
+                  >
+                    <Image
+                      source={{ uri: imagePath }}
+                      style={styles.messageImage}
+                      resizeMode="cover"
+                      testID="message-image"
+                    />
+                  </TouchableOpacity>
+                  <ImageLightbox
+                    uri={imagePath}
+                    visible={lightboxVisible}
+                    onClose={() => setLightboxVisible(false)}
+                  />
+                </>
+              )}
+              <View style={[styles.bubbleContent, role === 'user' && styles.userMessageContent]}>
                 {role === 'assistant' && (
                   <Text style={styles.modelName}>{modelName}</Text>
                 )}
@@ -159,16 +183,26 @@ const createStyles = (theme: Theme) =>
       alignSelf: 'flex-start',
     },
     userMessage: {
-      flexDirection: 'row-reverse',
-      alignItems: 'center',
+      flexDirection: 'column',
+      alignItems: 'flex-start',
       justifyContent: 'center',
       marginBottom: 24,
       maxWidth: '65%',
       alignSelf: 'flex-end',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
       borderRadius: 12,
       backgroundColor: theme.bg.softSecondary,
+      overflow: 'hidden',
+    },
+    userMessageContent: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      width: '100%',
+    },
+    messageImage: {
+      width: '100%',
+      aspectRatio: 4 / 3,
+      borderTopLeftRadius: 12,
+      borderTopRightRadius: 12,
     },
     eventMessage: {
       paddingHorizontal: 16,

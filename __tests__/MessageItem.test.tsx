@@ -117,6 +117,28 @@ describe('user messages', () => {
   });
 });
 
+// ─── user messages with image ─────────────────────────────────────────────────
+
+describe('user messages with image', () => {
+  it('renders image above text for user messages with imagePath', () => {
+    renderItem({ role: 'user', content: 'Check this out', imagePath: 'file://test.jpg' });
+    const image = screen.getByTestId('message-image');
+    expect(image.props.source).toEqual({ uri: 'file://test.jpg' });
+    expect(screen.getByText('Check this out')).toBeTruthy();
+  });
+
+  it('renders text-only bubble when imagePath is absent', () => {
+    renderItem({ role: 'user', content: 'Hello there' });
+    expect(screen.queryByTestId('message-image')).toBeNull();
+    expect(screen.getByText('Hello there')).toBeTruthy();
+  });
+
+  it('does not render image for assistant messages even if imagePath is provided', () => {
+    renderItem({ role: 'assistant', content: 'Response', imagePath: 'file://test.jpg' });
+    expect(screen.queryByTestId('message-image')).toBeNull();
+  });
+});
+
 // ─── thinking block parsing ───────────────────────────────────────────────────
 
 describe('thinking block parsing', () => {

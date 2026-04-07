@@ -1,3 +1,4 @@
+import { type Model } from '../database/modelRepository';
 import {
   QWEN3_0_6B_QUANTIZED,
   QWEN3_0_6B,
@@ -27,6 +28,7 @@ import {
   PHI_4_MINI_4B_QUANTIZED,
   LFM2_5_1_2B_INSTRUCT,
   LFM2_5_1_2B_INSTRUCT_QUANTIZED,
+  LFM2_VL_1_6B_QUANTIZED,
 } from 'react-native-executorch';
 
 export const startingModels = [
@@ -35,7 +37,7 @@ export const startingModels = [
   'Qwen 3 - 1.7B - Quantized',
 ];
 
-export const DEFAULT_MODELS = [
+export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
   {
     modelName: 'Qwen 3 - 0.6B - Quantized',
     tokenizerPath: QWEN3_0_6B_QUANTIZED.tokenizerSource,
@@ -328,5 +330,18 @@ export const DEFAULT_MODELS = [
     parameters: 1.2,
     modelSize: 1.14,
     labels: ['Balanced', 'Quantized'],
+  },
+  {
+    modelName: 'LFM 2.5 VL - 1.6B - Quantized',
+    modelPath: LFM2_VL_1_6B_QUANTIZED.modelSource,
+    tokenizerPath: LFM2_VL_1_6B_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: LFM2_VL_1_6B_QUANTIZED.tokenizerConfigSource,
+    source: 'remote',
+    parameters: 1.6,
+    modelSize: 2.43,
+    featured: true,
+    thinking: false,
+    vision: true,
+    labels: ['Vision'],
   },
 ];
