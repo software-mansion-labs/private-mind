@@ -38,14 +38,6 @@ export const VectorStoreProvider = ({
           embeddings,
         });
 
-        // Migrate: drop stale vectors table from older schema versions
-        // that lacks the `document` column. Users will need to re-add documents.
-        try {
-          await store.db.execute("SELECT document FROM vectors LIMIT 0");
-        } catch {
-          await store.db.execute("DROP TABLE IF EXISTS vectors");
-        }
-
         await store.load();
 
         setVectorStore(store);

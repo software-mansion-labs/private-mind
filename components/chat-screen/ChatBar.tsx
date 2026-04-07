@@ -15,6 +15,7 @@ import {
   StyleSheet,
   Image,
   ActivityIndicator,
+  Keyboard,
 } from 'react-native';
 import ImageSourceSheet from '../bottomSheets/ImageSourceSheet';
 import { useImageAttachment } from '../../hooks/useImageAttachment';
@@ -104,6 +105,7 @@ const ChatBar = ({
   }, [model, loadedModel, loadModel]);
 
   const handleAttachImage = useCallback(() => {
+    Keyboard.dismiss();
     loadSelectedModel();
     openImageSourceSheet();
   }, [loadSelectedModel, openImageSourceSheet]);
