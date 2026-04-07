@@ -302,8 +302,25 @@ describe('speech input', () => {
       fireEvent.press(screen.getByTestId('speech-btn'));
     });
     fireEvent.press(screen.getByTestId('speech-submit'));
-    expect(onSend).toHaveBeenCalledWith('voice transcript');
+    expect(onSend).toHaveBeenCalledWith('voice transcript', undefined);
     expect(screen.queryByTestId('speech-input')).toBeNull();
+  });
+
+  it('forwards attached imagePath when submitting speech transcript', async () => {
+    const { launchImageLibrary } = require('react-native-image-picker');
+    launchImageLibrary.mockResolvedValue({ assets: [{ uri: 'file://test-image.jpg' }] });
+
+    const onSend = jest.fn();
+    renderBar({ onSend, model: { ...downloadedModel, vision: true } });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('pick-library-btn'));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+    fireEvent.press(screen.getByTestId('speech-submit'));
+    expect(onSend).toHaveBeenCalledWith('voice transcript', 'file://test-image.jpg');
   });
 
   it('hides speech input without calling onSend when cancelled', async () => {
@@ -358,7 +375,7 @@ describe('vision model attachment', () => {
     expect(screen.queryByTestId('attach-image-btn')).toBeNull();
   });
 
-  it('calls onSend with empty userInput and imagePath when send is pressed after attaching an image with no text', async () => {
+  it('does not show send button when image is attached but userInput is empty', async () => {
     const { launchImageLibrary } = require('react-native-image-picker');
 
     launchImageLibrary.mockResolvedValue({
@@ -372,8 +389,7 @@ describe('vision model attachment', () => {
       fireEvent.press(screen.getByTestId('pick-library-btn'));
     });
 
-    // send button appears because imagePath is set (userInput is empty)
-    fireEvent.press(screen.getByTestId('send-btn'));
-    expect(onSend).toHaveBeenCalledWith('', 'file://test-image.jpg');
+    expect(screen.queryByTestId('send-btn')).toBeNull();
+    expect(onSend).not.toHaveBeenCalled();
   });
 });

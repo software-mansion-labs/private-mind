@@ -136,7 +136,8 @@ const ChatBar = ({
     const handleSubmit = (transcript: string) => {
       setShowSpeechInput(false);
       if (transcript) {
-        onSend(transcript);
+        onSend(transcript, imagePath);
+        clearImage();
       }
     };
 
@@ -224,7 +225,6 @@ const ChatBar = ({
               onSelectSource={onSelectSource}
               activeSourcesCount={activeSourcesCount}
               userInput={userInput}
-              imagePath={imagePath}
               onSend={handleSend}
               isGenerating={isGenerating}
               isProcessingPrompt={isProcessingPrompt}
