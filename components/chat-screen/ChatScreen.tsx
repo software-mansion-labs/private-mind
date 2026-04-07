@@ -114,10 +114,12 @@ export default function ChatScreen({
     chat?.enabledSources || phantomChat?.enabledSources || [];
 
   const handlePresentModelSheet = useCallback(() => {
+    Keyboard.dismiss();
     modelBottomSheetModalRef.current?.present();
   }, []);
 
   const handlePresentSourceSheet = useCallback(() => {
+    Keyboard.dismiss();
     sourceBottomSheetModalRef.current?.present();
   }, []);
 
