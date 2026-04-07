@@ -64,6 +64,17 @@ const runMigrations = async (db: SQLiteDatabase) => {
     );
   }
 
+  // Migrate: if the vector store's vectors table lacks the `document` column,
+  // drop it so it gets recreated on next load. Clear sources since their
+  // backing vector data is gone and they can no longer be queried against.
+  try {
+    await db.execAsync(`SELECT document FROM vectors LIMIT 0`);
+  } catch {
+    await db.execAsync(`DROP TABLE IF EXISTS vectors`);
+    await db.runAsync(`DELETE FROM chatSources`);
+    await db.runAsync(`DELETE FROM sources`);
+  }
+
   const defaultModelNames = DEFAULT_MODELS.map((m) => m.modelName);
   const placeholders = defaultModelNames.map(() => '?').join(',');
 
