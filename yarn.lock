@@ -3820,24 +3820,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@swmansion/react-native-detour@npm:^0.4.0":
-  version: 0.4.0
-  resolution: "@swmansion/react-native-detour@npm:0.4.0"
-  peerDependencies:
-    "@react-native-async-storage/async-storage": ">=2.0.0"
-    expo-application: ">=6.1.5"
-    expo-clipboard: ">=6.0.0"
-    expo-localization: ">=15.0.0"
-    react: ">=18"
-    react-native: ">=0.72"
-    react-native-device-info: ">=14.0.0"
-  peerDependenciesMeta:
-    "@react-native-async-storage/async-storage":
-      optional: true
-  checksum: 0b72643336a600c4dc03a4b6b69289e5e9114d4ea9d20dc1003fd46fcc919e79588de94231a5d8098434e63f3491eef8016ae91d94988920cf9fe309aa1b9611
-  languageName: node
-  linkType: hard
-
 "@testing-library/jest-native@npm:^5.4.3":
   version: 5.4.3
   resolution: "@testing-library/jest-native@npm:5.4.3"
@@ -10226,7 +10208,6 @@ __metadata:
     "@react-native-rag/op-sqlite": ^0.8.0
     "@react-native/metro-config": ^0.76.3
     "@react-navigation/drawer": ^7.5.6
-    "@swmansion/react-native-detour": ^0.4.0
     "@testing-library/jest-native": ^5.4.3
     "@testing-library/react-native": ^13.3.3
     "@types/jest": ^30.0.0

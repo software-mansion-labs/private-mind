@@ -63,7 +63,6 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.swmansion.privatemind",
       "appleTeamId": "B357MU264T",
-      "associatedDomains": ["applinks:privatemind.godetour.link"]
     },
     "android": {
       "adaptiveIcon": {
@@ -71,21 +70,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.swmansion.privatemind",
-      "edgeToEdgeEnabled": true,
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "privatemind.godetour.link",
-              "pathPrefix": "/SneWQjYDGD"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        }
-      ]
+      "edgeToEdgeEnabled": true
     }
   }
 }
