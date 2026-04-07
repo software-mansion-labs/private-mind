@@ -2,7 +2,7 @@ import React, { memo, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, Image } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -127,7 +127,11 @@ const MessageItem = memo(
                     delayPressIn={50}
                     activeOpacity={0.4}
                   >
-                    <MarkdownComponent text={contentParts.normalContent} />
+                    {role === 'user' ? (
+                      <Text style={styles.userText}>{contentParts.normalContent}</Text>
+                    ) : (
+                      <MarkdownComponent text={contentParts.normalContent} />
+                    )}
                   </TouchableOpacity>
                 )}
                 {contentParts.hasThinking && contentParts.thinkingContent?.trim() && (
@@ -226,6 +230,12 @@ const createStyles = (theme: Theme) =>
     bubbleContent: {
       width: '100%',
       gap: 4,
+    },
+    userText: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.md,
+      color: theme.text.primary,
+      lineHeight: lineHeights.md,
     },
     modelName: {
       fontSize: fontSizes.xs,
