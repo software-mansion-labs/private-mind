@@ -39,3 +39,37 @@ describe('vision flag', () => {
     expect(models[0].vision).toBe(false);
   });
 });
+
+describe('systemPrompt field', () => {
+  it('maps systemPrompt string from DB row', async () => {
+    const mockDb = {
+      getAllAsync: jest.fn().mockResolvedValue([
+        {
+          id: 1, modelName: 'Bielik', source: 'remote', isDownloaded: 0,
+          modelPath: '', tokenizerPath: '', tokenizerConfigPath: '',
+          featured: 1, thinking: 0, vision: 0, labels: null,
+          parameters: 1.5, modelSize: 1.65, systemPrompt: 'Polish prompt',
+        },
+      ]),
+    } as any;
+
+    const models = await getAllModels(mockDb);
+    expect(models[0].systemPrompt).toBe('Polish prompt');
+  });
+
+  it('maps null systemPrompt from DB row', async () => {
+    const mockDb = {
+      getAllAsync: jest.fn().mockResolvedValue([
+        {
+          id: 1, modelName: 'Qwen', source: 'remote', isDownloaded: 0,
+          modelPath: '', tokenizerPath: '', tokenizerConfigPath: '',
+          featured: 1, thinking: 0, vision: 0, labels: null,
+          parameters: 0.75, modelSize: 0.94, systemPrompt: null,
+        },
+      ]),
+    } as any;
+
+    const models = await getAllModels(mockDb);
+    expect(models[0].systemPrompt).toBeNull();
+  });
+});
