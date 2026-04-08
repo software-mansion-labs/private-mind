@@ -1,7 +1,6 @@
 import React, {
   Ref,
   RefObject,
-  useEffect,
   useImperativeHandle,
   useMemo,
   useState,
@@ -13,12 +12,10 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
-  Image,
-  ActivityIndicator,
   Keyboard,
 } from 'react-native';
-import ImageSourceSheet from '../bottomSheets/ImageSourceSheet';
-import { useImageAttachment } from '../../hooks/useImageAttachment';
+import AttachmentSheet from '../bottomSheets/AttachmentSheet';
+import { useAttachment, Attachment } from '../../hooks/useAttachment';
 import { Model } from '../../database/modelRepository';
 import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -26,19 +23,18 @@ import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
 import { ScrollView } from 'react-native-gesture-handler';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
-import CloseIcon from '../../assets/icons/close.svg';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
+import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
 
 interface Props {
   chatId: number | null;
-  onSend: (userInput: string, imagePath?: string) => void;
+  onSend: (userInput: string, imagePath?: string, attachments?: Attachment[]) => void;
   onSelectModel: () => void;
-  onSelectSource: () => void;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
     clear: () => void;
@@ -47,7 +43,7 @@ interface Props {
   model: Model | undefined;
   scrollRef: RefObject<ScrollView | null>;
   isAtBottom: boolean;
-  activeSourcesCount: number;
+  isVisionModel: boolean;
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
   hasMessages: boolean;
@@ -57,13 +53,12 @@ const ChatBar = ({
   chatId,
   onSend,
   onSelectModel,
-  onSelectSource,
   onSelectPrompt,
   ref,
   model,
   scrollRef,
   isAtBottom,
-  activeSourcesCount,
+  isVisionModel,
   thinkingEnabled,
   onThinkingToggle,
   hasMessages,
@@ -73,22 +68,23 @@ const ChatBar = ({
 
   const [userInput, setUserInput] = useState('');
   const {
-    imagePath,
-    isLoadingImage,
-    imageSourceSheetRef,
+    attachments,
+    sheetRef,
     pickFromLibrary,
     pickFromCamera,
-    openSourceSheet: openImageSourceSheet,
-    clearImage,
-  } = useImageAttachment();
+    pickDocument,
+    removeAttachment,
+    clearAll,
+    openSheet,
+  } = useAttachment();
 
   useImperativeHandle(
     ref,
     () => ({
-      clear: () => { setUserInput(''); clearImage(); },
+      clear: () => { setUserInput(''); clearAll(); },
       setInput: (text: string) => setUserInput(text),
     }),
-    [clearImage]
+    [clearAll]
   );
 
   const {
@@ -104,24 +100,20 @@ const ChatBar = ({
     }
   }, [model, loadedModel, loadModel]);
 
-  const handleAttachImage = useCallback(() => {
+  const handleAttach = useCallback(() => {
     Keyboard.dismiss();
     loadSelectedModel();
-    openImageSourceSheet();
-  }, [loadSelectedModel, openImageSourceSheet]);
+    openSheet();
+  }, [loadSelectedModel, openSheet]);
 
-  const isVisionModel = model?.vision === true;
-
-  useEffect(() => {
-    if (!isVisionModel) {
-      clearImage();
-    }
-  }, [isVisionModel]);
+  const imageAttachment = attachments.find((a) => a.type === 'image');
+  const hasLoadingAttachment = attachments.some((a) => a.status === 'loading');
 
   const handleSend = useCallback(() => {
-    onSend(userInput, imagePath);
-    clearImage();
-  }, [onSend, userInput, imagePath, clearImage]);
+    if (hasLoadingAttachment) return;
+    onSend(userInput, imageAttachment?.uri, attachments);
+    clearAll();
+  }, [onSend, userInput, imageAttachment, attachments, clearAll, hasLoadingAttachment]);
 
   const [showSpeechInput, setShowSpeechInput] = React.useState(false);
 
@@ -143,8 +135,8 @@ const ChatBar = ({
     const handleSubmit = (transcript: string) => {
       setShowSpeechInput(false);
       if (transcript) {
-        onSend(transcript, imagePath);
-        clearImage();
+        onSend(transcript, imageAttachment?.uri, attachments);
+        clearAll();
       }
     };
 
@@ -183,29 +175,16 @@ const ChatBar = ({
             </View>
           )}
           <View style={styles.inputContainer}>
-            {(imagePath || isLoadingImage) && (
+            {attachments.length > 0 && (
               <>
                 <View style={styles.previewRow}>
-                  <View style={styles.thumbnailWrapper}>
-                    {imagePath ? (
-                      <Image
-                        source={{ uri: imagePath }}
-                        style={styles.thumbnail}
-                        testID="image-preview"
-                      />
-                    ) : (
-                      <View style={styles.thumbnailPlaceholder}>
-                        <ActivityIndicator color={theme.text.contrastPrimary} />
-                      </View>
-                    )}
-                    <TouchableOpacity
-                      style={styles.dismissButton}
-                      onPress={clearImage}
-                      testID="dismiss-image-btn"
-                    >
-                      <CloseIcon width={8} height={8} style={styles.dismissIcon} />
-                    </TouchableOpacity>
-                  </View>
+                  {attachments.map((attachment) => (
+                    <AttachmentThumbnail
+                      key={attachment.id}
+                      attachment={attachment}
+                      onRemove={() => removeAttachment(attachment.id)}
+                    />
+                  ))}
                 </View>
                 <View style={styles.divider} />
               </>
@@ -229,10 +208,10 @@ const ChatBar = ({
               />
             </View>
             <ChatBarActions
-              onSelectSource={onSelectSource}
-              activeSourcesCount={activeSourcesCount}
+              onAttach={handleAttach}
+              hasAttachments={attachments.length > 0}
+              isLoadingAttachment={hasLoadingAttachment}
               userInput={userInput}
-              imagePath={imagePath}
               onSend={handleSend}
               isGenerating={isGenerating}
               isProcessingPrompt={isProcessingPrompt}
@@ -240,14 +219,14 @@ const ChatBar = ({
               onSpeechInput={openSpeechInput}
               thinkingEnabled={thinkingEnabled}
               onThinkingToggle={onThinkingToggle}
-              isVisionModel={isVisionModel}
-              onAttachImage={handleAttachImage}
             />
           </View>
-          <ImageSourceSheet
-            bottomSheetModalRef={imageSourceSheetRef}
+          <AttachmentSheet
+            bottomSheetModalRef={sheetRef}
+            isVisionModel={isVisionModel}
             onPickFromLibrary={pickFromLibrary}
             onPickFromCamera={pickFromCamera}
+            onPickDocument={pickDocument}
           />
         </>
       )}
@@ -305,36 +284,7 @@ const createStyles = (theme: Theme) =>
     },
     previewRow: {
       flexDirection: 'row',
-    },
-    thumbnailWrapper: {
-      position: 'relative',
-    },
-    thumbnailPlaceholder: {
-      width: 72,
-      height: 72,
-      borderRadius: 8,
-      backgroundColor: theme.bg.softSecondary,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    thumbnail: {
-      width: 72,
-      height: 72,
-      borderRadius: 8,
-    },
-    dismissButton: {
-      position: 'absolute',
-      top: -6,
-      right: -6,
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      backgroundColor: theme.bg.softSecondary,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    dismissIcon: {
-      color: theme.text.primary,
+      gap: 8,
     },
     divider: {
       height: 1,

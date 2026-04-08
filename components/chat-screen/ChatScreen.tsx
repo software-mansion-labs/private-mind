@@ -21,8 +21,10 @@ import { Theme } from '../../styles/colors';
 import { useSQLiteContext } from 'expo-sqlite';
 import { CustomKeyboardAvoidingView } from '../CustomKeyboardAvoidingView';
 import { useVectorStore } from '../../context/VectorStoreContext';
-import SourceSelectSheet from '../bottomSheets/SourceSelectSheet';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
+import { Attachment } from '../../hooks/useAttachment';
+import { filterAndFormatContext, formatFirstChunks } from '../../utils/contextUtils';
+import { useSourceStore } from '../../store/sourceStore';
 import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
 
@@ -34,8 +36,6 @@ interface Props {
   selectModel?: (model: Model) => Promise<void>;
 }
 
-const K_DOCUMENTS_TO_RETRIEVE = 5;
-
 const prepareContext = async (
   prompt: string,
   enabledSources: number[],
@@ -44,28 +44,9 @@ const prepareContext = async (
   try {
     const context = await vectorStore.query({
       queryText: prompt,
-      nResults: K_DOCUMENTS_TO_RETRIEVE,
       predicate: (r) => enabledSources.includes(r.metadata?.documentId),
     });
-
-    context.sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
-
-    const preparedContext = context.map((item, index) => {
-      const documentName =
-        item.metadata?.name ||
-        `Document ${item.metadata?.documentId || 'Unknown'}`;
-      const relevanceScore = item.similarity
-        ? `(Relevance: ${(item.similarity * 100).toFixed(1)}%)`
-        : '';
-
-      return `\n --- Source ${
-        index + 1
-      }: ${documentName} ${relevanceScore} --- \n ${item.document?.trim()} \n --- End of Source ${
-        index + 1
-      } ---`;
-    });
-
-    return preparedContext;
+    return filterAndFormatContext(context);
   } catch (error) {
     console.error('Error preparing context:', error);
     return [];
@@ -85,13 +66,13 @@ export default function ChatScreen({
   }>(null);
   const scrollRef = useRef<ScrollView>(null);
   const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const sourceBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const db = useSQLiteContext();
 
   const { vectorStore } = useVectorStore();
   const {
     isGenerating,
     sendChatMessage,
+    sendEventMessage,
     loadModel,
     model: loadedModel,
   } = useLLMStore();
@@ -100,6 +81,7 @@ export default function ChatScreen({
     addChat,
     updateLastUsed,
     setChatModel,
+    enableSource,
     phantomChat,
     setPhantomChatSettings,
   } = useChatStore();
@@ -118,33 +100,94 @@ export default function ChatScreen({
     modelBottomSheetModalRef.current?.present();
   }, []);
 
-  const handlePresentSourceSheet = useCallback(() => {
-    Keyboard.dismiss();
-    sourceBottomSheetModalRef.current?.present();
-  }, []);
-
-  const handleSendMessage = async (userInput: string, imagePath?: string) => {
-    if ((!userInput.trim() && !imagePath) || isGenerating) return;
+  const handleSendMessage = async (
+    userInput: string,
+    imagePath?: string,
+    attachments?: Attachment[]
+  ) => {
+    const hasDocuments = attachments?.some((a) => a.type === 'document');
+    if (
+      (!userInput.trim() && !imagePath && !hasDocuments) ||
+      isGenerating
+    )
+      return;
     if (!(await checkIfChatExists(db, chatId!))) {
+      const docName = attachments?.find((a) => a.type === 'document')?.name;
+      const titleSource = userInput.trim() || docName || 'New chat';
       const newChatTitle =
-        userInput.length > 25 ? userInput.slice(0, 25) + '...' : userInput;
+        titleSource.length > 25
+          ? titleSource.slice(0, 25) + '...'
+          : titleSource;
       await addChat(newChatTitle, model!.id);
     }
 
     inputRef.current?.clear();
     Keyboard.dismiss();
-
     updateLastUsed(chatId!);
-    const context = userInput.trim()
-      ? await prepareContext(userInput, enabledSources, vectorStore!)
-      : [];
+
+    // Build context from attachments + persisted sources
+    const context: string[] = [];
+
+    // Collect all source IDs: from attachments + already enabled on chat
+    const attachmentSourceIds = (attachments || [])
+      .filter((a) => a.type === 'document' && a.strategy === 'rag' && a.sourceId)
+      .map((a) => a.sourceId!);
+    const allSourceIds = [
+      ...new Set([...enabledSources, ...attachmentSourceIds]),
+    ];
+
+    // Inline documents: inject full text
+    if (attachments) {
+      for (const att of attachments) {
+        if (
+          att.type === 'document' &&
+          att.strategy === 'inline' &&
+          att.inlineText
+        ) {
+          context.push(
+            `\n --- Source: ${att.name || 'Document'} (Full Text) --- \n ${att.inlineText} \n --- End of Source ---`
+          );
+        }
+      }
+    }
+
+    // RAG context from all sources (persisted + newly attached)
+    if (allSourceIds.length > 0) {
+      const allSources = useSourceStore.getState().sources;
+      const activeSources = allSources.filter((s) =>
+        allSourceIds.includes(s.id)
+      );
+      const firstChunkContext = formatFirstChunks(activeSources);
+      context.push(...firstChunkContext);
+
+      if (userInput.trim()) {
+        const ragContext = await prepareContext(
+          userInput,
+          allSourceIds,
+          vectorStore!
+        );
+        context.push(...ragContext);
+      }
+    }
+
+    // Enable new sources for this chat (persists for future messages)
+    for (const sourceId of attachmentSourceIds) {
+      if (!enabledSources.includes(sourceId)) {
+        await enableSource(chatId!, sourceId);
+      }
+    }
+
     const settings: ChatSettings = {
       systemPrompt: chatSettings.systemPrompt,
       contextWindow: parseInt(chatSettings.contextWindow),
       thinkingEnabled: chatSettings.thinkingEnabled,
     };
 
-    await sendChatMessage(userInput, chatId!, context, settings, imagePath);
+    const docAttachment = attachments?.find((a) => a.type === 'document');
+    await sendChatMessage(
+      userInput, chatId!, context, settings, imagePath,
+      docAttachment?.name, docAttachment?.uri
+    );
   };
 
   const handleSelectModel = async (selectedModel: Model) => {
@@ -225,13 +268,12 @@ export default function ChatScreen({
           chatId={chatId}
           onSend={handleSendMessage}
           onSelectModel={handlePresentModelSheet}
-          onSelectSource={handlePresentSourceSheet}
           onSelectPrompt={handleSelectPrompt}
           ref={inputRef}
           model={model}
           scrollRef={scrollRef}
           isAtBottom={isAtBottom}
-          activeSourcesCount={enabledSources.length}
+          isVisionModel={model?.vision === true}
           thinkingEnabled={chatSettings?.thinkingEnabled || false}
           onThinkingToggle={handleThinkingToggle}
           hasMessages={messageHistory.length > 0}
@@ -241,11 +283,6 @@ export default function ChatScreen({
       <ModelSelectSheet
         bottomSheetModalRef={modelBottomSheetModalRef}
         selectModel={handleSelectModel}
-      />
-      <SourceSelectSheet
-        bottomSheetModalRef={sourceBottomSheetModalRef}
-        enabledSources={enabledSources}
-        chatId={chatId}
       />
     </CustomKeyboardAvoidingView>
   );
