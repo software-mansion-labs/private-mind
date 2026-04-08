@@ -115,7 +115,12 @@ const MessageItem = memo(
                   />
                 </>
               )}
-              <View style={[styles.bubbleContent, role === 'user' && styles.userMessageContent]}>
+              <View
+                style={[
+                  styles.bubbleContent,
+                  role === 'user' && styles.userMessageContent,
+                ]}
+              >
                 {role === 'assistant' && (
                   <Text style={styles.modelName}>{modelName}</Text>
                 )}
@@ -128,23 +133,26 @@ const MessageItem = memo(
                     activeOpacity={0.4}
                   >
                     {role === 'user' ? (
-                      <Text style={styles.userText}>{contentParts.normalContent}</Text>
+                      <Text style={styles.userText}>
+                        {contentParts.normalContent}
+                      </Text>
                     ) : (
                       <MarkdownComponent text={contentParts.normalContent} />
                     )}
                   </TouchableOpacity>
                 )}
-                {contentParts.hasThinking && contentParts.thinkingContent?.trim() && (
-                  <ThinkingBlock
-                    content={contentParts.thinkingContent || ''}
-                    isComplete={contentParts.isThinkingComplete}
-                    inProgress={
-                      isLastMessage &&
-                      isGenerating &&
-                      !contentParts.isThinkingComplete
-                    }
-                  />
-                )}
+                {contentParts.hasThinking &&
+                  contentParts.thinkingContent?.trim() && (
+                    <ThinkingBlock
+                      content={contentParts.thinkingContent || ''}
+                      isComplete={contentParts.isThinkingComplete}
+                      inProgress={
+                        isLastMessage &&
+                        isGenerating &&
+                        !contentParts.isThinkingComplete
+                      }
+                    />
+                  )}
                 {contentParts.normalAfterThink &&
                   contentParts.normalAfterThink.trim() && (
                     <TouchableOpacity

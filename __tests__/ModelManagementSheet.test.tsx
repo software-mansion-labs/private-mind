@@ -1,5 +1,10 @@
 import React, { createRef } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react-native';
 
 // ── mocks ─────────────────────────────────────────────────────────────────────
 
@@ -38,11 +43,15 @@ jest.mock('@gorhom/bottom-sheet', () => {
     return <View>{props.children({ data: _injectedData })}</View>;
   });
   // Attach a way for tests to set the data before rendering
-  (BottomSheetModal as any).__setData = (d: any) => { _injectedData = d; };
+  (BottomSheetModal as any).__setData = (d: any) => {
+    _injectedData = d;
+  };
 
   return {
     BottomSheetModal,
-    BottomSheetView: ({ children, style }: any) => <View style={style}>{children}</View>,
+    BottomSheetView: ({ children, style }: any) => (
+      <View style={style}>{children}</View>
+    ),
     BottomSheetBackdrop: () => null,
   };
 });
@@ -133,7 +142,9 @@ describe('RemoveFiles stage', () => {
   it('transitions to RemoveFiles stage on "Delete downloaded files" press', () => {
     renderSheet();
     fireEvent.press(screen.getByText('Delete downloaded files'));
-    expect(screen.getByText(/Are you sure you want to delete files/)).toBeTruthy();
+    expect(
+      screen.getByText(/Are you sure you want to delete files/)
+    ).toBeTruthy();
   });
 
   it('shows "Delete model files" confirm button', () => {
@@ -144,13 +155,18 @@ describe('RemoveFiles stage', () => {
 
   it('calls removeModelFiles and shows success toast on confirm', async () => {
     const removeModelFiles = jest.fn().mockResolvedValue(undefined);
-    mockUseModelStore.mockReturnValue({ removeModel: jest.fn(), removeModelFiles });
+    mockUseModelStore.mockReturnValue({
+      removeModel: jest.fn(),
+      removeModelFiles,
+    });
     renderSheet();
 
     fireEvent.press(screen.getByText('Delete downloaded files'));
     fireEvent.press(screen.getByText('Delete model files'));
 
-    await waitFor(() => expect(removeModelFiles).toHaveBeenCalledWith(baseModel.id));
+    await waitFor(() =>
+      expect(removeModelFiles).toHaveBeenCalledWith(baseModel.id)
+    );
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({ text1: expect.stringContaining('Test Model') })
     );
@@ -175,7 +191,10 @@ describe('RemoveModel stage', () => {
 
   it('calls removeModel and shows success toast on confirm', async () => {
     const removeModel = jest.fn().mockResolvedValue(undefined);
-    mockUseModelStore.mockReturnValue({ removeModel, removeModelFiles: jest.fn() });
+    mockUseModelStore.mockReturnValue({
+      removeModel,
+      removeModelFiles: jest.fn(),
+    });
     renderSheet();
 
     fireEvent.press(screen.getByText('Remove from the app'));

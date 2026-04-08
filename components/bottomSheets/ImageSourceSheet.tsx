@@ -50,7 +50,11 @@ const ImageSourceSheet = ({
           onPress={() => handleOption(onPickFromCamera)}
         >
           <View style={styles.iconWrapper}>
-            <CameraIcon width={24} height={24} style={{ color: theme.text.primary }} />
+            <CameraIcon
+              width={24}
+              height={24}
+              style={{ color: theme.text.primary }}
+            />
           </View>
           <Text style={styles.optionText}>Camera</Text>
         </TouchableOpacity>
@@ -59,7 +63,11 @@ const ImageSourceSheet = ({
           onPress={() => handleOption(onPickFromLibrary)}
         >
           <View style={styles.iconWrapper}>
-            <ImageIcon width={24} height={24} style={{ color: theme.text.primary }} />
+            <ImageIcon
+              width={24}
+              height={24}
+              style={{ color: theme.text.primary }}
+            />
           </View>
           <Text style={styles.optionText}>Photo Library</Text>
         </TouchableOpacity>

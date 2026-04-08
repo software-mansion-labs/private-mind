@@ -13,7 +13,8 @@ interface ModelGroup {
 }
 
 interface Props
-  extends Pick<React.ComponentProps<typeof ModelCard>, 'wifiWarningSheetRef'>,
+  extends
+    Pick<React.ComponentProps<typeof ModelCard>, 'wifiWarningSheetRef'>,
     Pick<ScrollViewProps, 'contentContainerStyle'> {
   groupedModels: ModelGroup[];
   onModelPress: (model: Model) => void;

@@ -11,10 +11,19 @@ describe('vision flag', () => {
     const mockDb = {
       getAllAsync: jest.fn().mockResolvedValue([
         {
-          id: 1, modelName: 'Test VLM', source: 'remote', isDownloaded: 1,
-          modelPath: '', tokenizerPath: '', tokenizerConfigPath: '',
-          featured: 0, thinking: 0, vision: 1, labels: null,
-          parameters: null, modelSize: null,
+          id: 1,
+          modelName: 'Test VLM',
+          source: 'remote',
+          isDownloaded: 1,
+          modelPath: '',
+          tokenizerPath: '',
+          tokenizerConfigPath: '',
+          featured: 0,
+          thinking: 0,
+          vision: 1,
+          labels: null,
+          parameters: null,
+          modelSize: null,
         },
       ]),
     } as any;
@@ -27,10 +36,19 @@ describe('vision flag', () => {
     const mockDb = {
       getAllAsync: jest.fn().mockResolvedValue([
         {
-          id: 1, modelName: 'Text Model', source: 'remote', isDownloaded: 1,
-          modelPath: '', tokenizerPath: '', tokenizerConfigPath: '',
-          featured: 0, thinking: 0, vision: 0, labels: null,
-          parameters: null, modelSize: null,
+          id: 1,
+          modelName: 'Text Model',
+          source: 'remote',
+          isDownloaded: 1,
+          modelPath: '',
+          tokenizerPath: '',
+          tokenizerConfigPath: '',
+          featured: 0,
+          thinking: 0,
+          vision: 0,
+          labels: null,
+          parameters: null,
+          modelSize: null,
         },
       ]),
     } as any;
@@ -45,10 +63,20 @@ describe('systemPrompt field', () => {
     const mockDb = {
       getAllAsync: jest.fn().mockResolvedValue([
         {
-          id: 1, modelName: 'Bielik', source: 'remote', isDownloaded: 0,
-          modelPath: '', tokenizerPath: '', tokenizerConfigPath: '',
-          featured: 1, thinking: 0, vision: 0, labels: null,
-          parameters: 1.5, modelSize: 1.65, systemPrompt: 'Polish prompt',
+          id: 1,
+          modelName: 'Bielik',
+          source: 'remote',
+          isDownloaded: 0,
+          modelPath: '',
+          tokenizerPath: '',
+          tokenizerConfigPath: '',
+          featured: 1,
+          thinking: 0,
+          vision: 0,
+          labels: null,
+          parameters: 1.5,
+          modelSize: 1.65,
+          systemPrompt: 'Polish prompt',
         },
       ]),
     } as any;
@@ -61,10 +89,20 @@ describe('systemPrompt field', () => {
     const mockDb = {
       getAllAsync: jest.fn().mockResolvedValue([
         {
-          id: 1, modelName: 'Qwen', source: 'remote', isDownloaded: 0,
-          modelPath: '', tokenizerPath: '', tokenizerConfigPath: '',
-          featured: 1, thinking: 0, vision: 0, labels: null,
-          parameters: 0.75, modelSize: 0.94, systemPrompt: null,
+          id: 1,
+          modelName: 'Qwen',
+          source: 'remote',
+          isDownloaded: 0,
+          modelPath: '',
+          tokenizerPath: '',
+          tokenizerConfigPath: '',
+          featured: 1,
+          thinking: 0,
+          vision: 0,
+          labels: null,
+          parameters: 0.75,
+          modelSize: 0.94,
+          systemPrompt: null,
         },
       ]),
     } as any;

@@ -48,7 +48,8 @@ export default function useModelHubData({
       if (!matchesDownloaded) return false;
 
       const matchesCompatible =
-        isModelCompatible(model) || !activeFilters.has(ModelHubFilter.Compatible);
+        isModelCompatible(model) ||
+        !activeFilters.has(ModelHubFilter.Compatible);
       if (!matchesCompatible) return false;
 
       return true;

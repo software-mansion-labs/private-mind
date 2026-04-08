@@ -34,17 +34,29 @@ describe('getModelMemoryRequirement', () => {
   });
 
   it('uses 1.75x multiplier for quantized models', () => {
-    const model = { ...baseModel, modelName: 'Llama-3.2-1B-quantized', parameters: 1 };
+    const model = {
+      ...baseModel,
+      modelName: 'Llama-3.2-1B-quantized',
+      parameters: 1,
+    };
     expect(getModelMemoryRequirement(model)).toBeCloseTo(1.75);
   });
 
   it('detects quantized keyword case-insensitively', () => {
-    const model = { ...baseModel, modelName: 'Llama-QUANTIZED-1B', parameters: 2 };
+    const model = {
+      ...baseModel,
+      modelName: 'Llama-QUANTIZED-1B',
+      parameters: 2,
+    };
     expect(getModelMemoryRequirement(model)).toBeCloseTo(3.5);
   });
 
   it('detects spinquant keyword', () => {
-    const model = { ...baseModel, modelName: 'Llama-SpinQuant-1B', parameters: 1 };
+    const model = {
+      ...baseModel,
+      modelName: 'Llama-SpinQuant-1B',
+      parameters: 1,
+    };
     expect(getModelMemoryRequirement(model)).toBeCloseTo(1.75);
   });
 

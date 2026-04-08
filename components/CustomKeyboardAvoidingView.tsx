@@ -6,11 +6,10 @@ import {
 } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-interface Props
-  extends Omit<
-    KeyboardAvoidingViewProps,
-    'behavior' | 'contentContainerStyle'
-  > {
+interface Props extends Omit<
+  KeyboardAvoidingViewProps,
+  'behavior' | 'contentContainerStyle'
+> {
   isModalScreen?: boolean;
 }
 

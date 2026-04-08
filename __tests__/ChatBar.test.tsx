@@ -31,18 +31,24 @@ jest.mock('../components/bottomSheets/ImageSourceSheet', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
   return ({ onPickFromLibrary, onPickFromCamera }: any) => (
     <View testID="image-source-sheet">
-      <TouchableOpacity testID="pick-library-btn" onPress={onPickFromLibrary}><Text>Library</Text></TouchableOpacity>
-      <TouchableOpacity testID="pick-camera-btn" onPress={onPickFromCamera}><Text>Camera</Text></TouchableOpacity>
+      <TouchableOpacity testID="pick-library-btn" onPress={onPickFromLibrary}>
+        <Text>Library</Text>
+      </TouchableOpacity>
+      <TouchableOpacity testID="pick-camera-btn" onPress={onPickFromCamera}>
+        <Text>Camera</Text>
+      </TouchableOpacity>
     </View>
   );
 });
-
 
 jest.mock('../components/chat-screen/ChatSpeechInput', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
   return ({ onSubmit, onCancel }: any) => (
     <View testID="speech-input">
-      <TouchableOpacity testID="speech-submit" onPress={() => onSubmit('voice transcript')} />
+      <TouchableOpacity
+        testID="speech-submit"
+        onPress={() => onSubmit('voice transcript')}
+      />
       <TouchableOpacity testID="speech-cancel" onPress={onCancel} />
     </View>
   );
@@ -51,7 +57,10 @@ jest.mock('../components/chat-screen/ChatSpeechInput', () => {
 jest.mock('../components/chat-screen/PromptSuggestions', () => {
   const { TouchableOpacity, Text } = require('react-native');
   return ({ onSelectPrompt }: any) => (
-    <TouchableOpacity testID="prompt-suggestion" onPress={() => onSelectPrompt('Suggested prompt')}>
+    <TouchableOpacity
+      testID="prompt-suggestion"
+      onPress={() => onSelectPrompt('Suggested prompt')}
+    >
       <Text>Suggest something</Text>
     </TouchableOpacity>
   );
@@ -76,22 +85,36 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
   }: any) => (
     <View testID="chat-bar-actions">
       {isVisionModel && (
-        <TouchableOpacity testID="attach-image-btn" onPress={onAttachImage}><Text>+</Text></TouchableOpacity>
+        <TouchableOpacity testID="attach-image-btn" onPress={onAttachImage}>
+          <Text>+</Text>
+        </TouchableOpacity>
       )}
-      {(isGenerating || isProcessingPrompt) ? (
-        <TouchableOpacity testID="interrupt-btn" onPress={onInterrupt}><Text>Stop</Text></TouchableOpacity>
-      ) : (userInput || imagePath) ? (
+      {isGenerating || isProcessingPrompt ? (
+        <TouchableOpacity testID="interrupt-btn" onPress={onInterrupt}>
+          <Text>Stop</Text>
+        </TouchableOpacity>
+      ) : userInput || imagePath ? (
         <>
           {imagePath && !userInput && (
-            <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}><Text>Mic</Text></TouchableOpacity>
+            <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}>
+              <Text>Mic</Text>
+            </TouchableOpacity>
           )}
-          <TouchableOpacity testID="send-btn" onPress={onSend}><Text>Send</Text></TouchableOpacity>
+          <TouchableOpacity testID="send-btn" onPress={onSend}>
+            <Text>Send</Text>
+          </TouchableOpacity>
         </>
       ) : (
-        <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}><Text>Mic</Text></TouchableOpacity>
+        <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}>
+          <Text>Mic</Text>
+        </TouchableOpacity>
       )}
       <TouchableOpacity testID="source-btn" onPress={onSelectSource}>
-        <Text>{activeSourcesCount > 0 ? `Sources (${activeSourcesCount})` : 'Sources'}</Text>
+        <Text>
+          {activeSourcesCount > 0
+            ? `Sources (${activeSourcesCount})`
+            : 'Sources'}
+        </Text>
       </TouchableOpacity>
       <TouchableOpacity testID="thinking-btn" onPress={onThinkingToggle}>
         <Text>{thinkingEnabled ? 'Think ON' : 'Think OFF'}</Text>
@@ -153,7 +176,9 @@ beforeEach(() => {
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
   // Default: permission granted
-  mockAudioManager.requestRecordingPermissions.mockResolvedValue('Granted' as any);
+  mockAudioManager.requestRecordingPermissions.mockResolvedValue(
+    'Granted' as any
+  );
 });
 
 afterEach(() => jest.restoreAllMocks());
@@ -200,7 +225,10 @@ describe('downloaded model — text input', () => {
   it('calls onSend with current input when send button is pressed', () => {
     const onSend = jest.fn();
     renderBar({ onSend });
-    fireEvent.changeText(screen.getByPlaceholderText('Ask about anything...'), 'Hello');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'Hello'
+    );
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(onSend).toHaveBeenCalledWith('Hello', undefined);
   });
@@ -289,13 +317,17 @@ describe('speech input', () => {
   });
 
   it('shows toast and stays in text mode when microphone permission is denied', async () => {
-    mockAudioManager.requestRecordingPermissions.mockResolvedValue('Denied' as any);
+    mockAudioManager.requestRecordingPermissions.mockResolvedValue(
+      'Denied' as any
+    );
     renderBar();
     await act(async () => {
       fireEvent.press(screen.getByTestId('speech-btn'));
     });
     expect(Toast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ text1: expect.stringContaining('Microphone permission') })
+      expect.objectContaining({
+        text1: expect.stringContaining('Microphone permission'),
+      })
     );
     expect(screen.queryByTestId('speech-input')).toBeNull();
   });
@@ -313,7 +345,9 @@ describe('speech input', () => {
 
   it('forwards attached imagePath when submitting speech transcript', async () => {
     const { launchImageLibrary } = require('react-native-image-picker');
-    launchImageLibrary.mockResolvedValue({ assets: [{ uri: 'file://test-image.jpg' }] });
+    launchImageLibrary.mockResolvedValue({
+      assets: [{ uri: 'file://test-image.jpg' }],
+    });
 
     const onSend = jest.fn();
     renderBar({ onSend, model: { ...downloadedModel, vision: true } });
@@ -327,7 +361,10 @@ describe('speech input', () => {
       fireEvent.press(screen.getByTestId('speech-btn'));
     });
     fireEvent.press(screen.getByTestId('speech-submit'));
-    expect(onSend).toHaveBeenCalledWith('voice transcript', 'file://test-image.jpg');
+    expect(onSend).toHaveBeenCalledWith(
+      'voice transcript',
+      'file://test-image.jpg'
+    );
   });
 
   it('hides speech input without calling onSend when cancelled', async () => {
@@ -348,7 +385,10 @@ describe('speech input', () => {
       const { View, TouchableOpacity } = require('react-native');
       return ({ onSubmit }: any) => (
         <View testID="speech-input">
-          <TouchableOpacity testID="speech-submit" onPress={() => onSubmit('')} />
+          <TouchableOpacity
+            testID="speech-submit"
+            onPress={() => onSubmit('')}
+          />
         </View>
       );
     });

@@ -4,7 +4,10 @@ import { render, screen, fireEvent } from '@testing-library/react-native';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
-    theme: { ...require('../styles/colors').lightTheme, insets: { top: 0, bottom: 0, left: 0, right: 0 } },
+    theme: {
+      ...require('../styles/colors').lightTheme,
+      insets: { top: 0, bottom: 0, left: 0, right: 0 },
+    },
   }),
 }));
 
@@ -13,7 +16,11 @@ jest.mock('../components/CircleButton', () => {
   const { TouchableOpacity } = require('react-native');
   // Expose onPress so tests can trigger it
   return ({ onPress, disabled }: any) => (
-    <TouchableOpacity testID="circle-btn" onPress={onPress} disabled={disabled} />
+    <TouchableOpacity
+      testID="circle-btn"
+      onPress={onPress}
+      disabled={disabled}
+    />
   );
 });
 
@@ -45,7 +52,11 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('action button', () => {
   it('calls onSpeechInput when idle with no input', () => {
-    renderActions({ userInput: '', isGenerating: false, isProcessingPrompt: false });
+    renderActions({
+      userInput: '',
+      isGenerating: false,
+      isProcessingPrompt: false,
+    });
     pressActionBtn(screen.getByTestId);
     expect(defaultProps.onSpeechInput).toHaveBeenCalled();
   });

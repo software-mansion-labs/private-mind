@@ -1,7 +1,8 @@
 import DeviceInfo from 'react-native-device-info';
 import { Model } from '../database/modelRepository';
 
-const getTotalMemoryGB = () => DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024;
+const getTotalMemoryGB = () =>
+  DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024;
 
 const NON_QUANTIZED_MEMORY_MULTIPLIER = 2.5;
 const QUANTIZED_MEMORY_MULTIPLIER = 1.75;

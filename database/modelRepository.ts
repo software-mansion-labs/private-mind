@@ -81,7 +81,10 @@ export const removeModelFiles = async (db: SQLiteDatabase, id: number) => {
 
 export const getAllModels = async (db: SQLiteDatabase): Promise<Model[]> => {
   const rawModels = await db.getAllAsync<
-    Omit<Model, 'isDownloaded' | 'featured' | 'thinking' | 'vision' | 'labels'> & {
+    Omit<
+      Model,
+      'isDownloaded' | 'featured' | 'thinking' | 'vision' | 'labels'
+    > & {
       isDownloaded: number;
       featured: number;
       thinking: number;
@@ -130,7 +133,10 @@ export const updateModel = async (
 
 export const getStartingModels = async (db: SQLiteDatabase) => {
   const rawModels = await db.getAllAsync<
-    Omit<Model, 'isDownloaded' | 'featured' | 'thinking' | 'vision' | 'labels'> & {
+    Omit<
+      Model,
+      'isDownloaded' | 'featured' | 'thinking' | 'vision' | 'labels'
+    > & {
       isDownloaded: number;
       featured: number;
       thinking: number;

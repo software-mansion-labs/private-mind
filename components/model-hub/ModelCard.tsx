@@ -53,8 +53,8 @@ const ModelCard = ({
     isDownloading
       ? ModelState.Downloading
       : !model.isDownloaded
-      ? ModelState.NotStarted
-      : ModelState.Downloaded
+        ? ModelState.NotStarted
+        : ModelState.Downloaded
   );
 
   useEffect(() => {
@@ -174,13 +174,15 @@ const ModelCard = ({
               />
             )}
             {!compactView &&
-              model.labels?.filter((label) => label !== 'Vision').map((label) => (
-                <Chip
-                  key={label}
-                  title={label}
-                  borderColor={theme.border.soft}
-                />
-              ))}
+              model.labels
+                ?.filter((label) => label !== 'Vision')
+                .map((label) => (
+                  <Chip
+                    key={label}
+                    title={label}
+                    borderColor={theme.border.soft}
+                  />
+                ))}
           </View>
         </View>
 

@@ -15,7 +15,10 @@ interface SpinningCircleProps {
   strokeWidth?: number;
 }
 
-const SpinningCircle = ({ size = 20, strokeWidth = 2 }: SpinningCircleProps) => {
+const SpinningCircle = ({
+  size = 20,
+  strokeWidth = 2,
+}: SpinningCircleProps) => {
   const { theme } = useTheme();
   const rotation = useSharedValue(0);
 
@@ -38,7 +41,14 @@ const SpinningCircle = ({ size = 20, strokeWidth = 2 }: SpinningCircleProps) => 
   }));
 
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
       <Svg width={size} height={size}>
         <Circle
           cx={cx}
@@ -50,7 +60,11 @@ const SpinningCircle = ({ size = 20, strokeWidth = 2 }: SpinningCircleProps) => 
         />
       </Svg>
       <Animated.View
-        style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }, animatedStyle]}
+        style={[
+          StyleSheet.absoluteFill,
+          { justifyContent: 'center', alignItems: 'center' },
+          animatedStyle,
+        ]}
       >
         <Svg height={size} width={size}>
           <Circle

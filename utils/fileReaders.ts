@@ -14,19 +14,21 @@ export async function readDocumentText(
   const lowerFileType = fileType.toLowerCase();
 
   switch (lowerFileType) {
-    case 'pdf':
+    case 'pdf': {
       // PDF reader needs path without file:// prefix
       const normalizedPath = filePath.replace('file://', '');
       return await readPDF(normalizedPath);
+    }
 
     case 'txt':
     case 'md':
-    case 'markdown':
+    case 'markdown': {
       const textFile = new File(filePath);
       return await textFile.text();
+    }
 
     case 'html':
-    case 'htm':
+    case 'htm': {
       const htmlFile = new File(filePath);
       const htmlContent = await htmlFile.text();
       // Basic HTML tag stripping - removes all HTML tags
@@ -42,6 +44,7 @@ export async function readDocumentText(
         .replace(/&#39;/g, "'")
         .replace(/\s+/g, ' ') // Normalize whitespace
         .trim();
+    }
 
     default:
       throw new Error(`Unsupported file type: ${fileType}`);

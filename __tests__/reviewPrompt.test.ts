@@ -11,14 +11,20 @@ describe('incrementChatCount', () => {
   it('initializes count to 1 when no prior value', async () => {
     const count = await incrementChatCount();
     expect(count).toBe(1);
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith('total_chats_created', '1');
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+      'total_chats_created',
+      '1'
+    );
   });
 
   it('increments existing count', async () => {
     (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce('4');
     const count = await incrementChatCount();
     expect(count).toBe(5);
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith('total_chats_created', '5');
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+      'total_chats_created',
+      '5'
+    );
   });
 });
 
