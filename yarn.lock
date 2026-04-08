@@ -3275,7 +3275,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-navigation/drawer@npm:^7.5.0":
+"@react-navigation/drawer@npm:^7.9.8":
   version: 7.9.8
   resolution: "@react-navigation/drawer@npm:7.9.8"
   dependencies:
@@ -9222,7 +9222,7 @@ __metadata:
     "@react-native-rag/executorch": ^0.8.0
     "@react-native-rag/op-sqlite": ^0.8.0
     "@react-native/metro-config": ^0.76.3
-    "@react-navigation/drawer": ^7.5.0
+    "@react-navigation/drawer": ^7.9.8
     "@testing-library/jest-native": ^5.4.3
     "@testing-library/react-native": ^13.3.3
     "@types/jest": 29.5.14
