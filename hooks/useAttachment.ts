@@ -132,17 +132,29 @@ export const useAttachment = () => {
     }
   }, [vectorStore]);
 
-  const removeAttachment = useCallback((id: string) => {
-    setAttachments((prev) => prev.filter((a) => a.id !== id));
-  }, []);
+  const removeAttachment = useCallback(
+    (id: string) => {
+      const attachment = attachments.find((a) => a.id === id);
+      setAttachments((prev) => prev.filter((a) => a.id !== id));
 
-  const clearImages = useCallback(() => {
-    setAttachments((prev) => prev.filter((a) => a.type !== 'image'));
-  }, []);
+      // Clean up source + embeddings if document was processed but not yet linked to a chat
+      if (attachment?.sourceId && vectorStore) {
+        useSourceStore
+          .getState()
+          .cleanupOrphanedSources(vectorStore);
+      }
+    },
+    [attachments, vectorStore]
+  );
 
   const clearAll = useCallback(() => {
+    const hadDocuments = attachments.some((a) => a.sourceId);
     setAttachments([]);
-  }, []);
+
+    if (hadDocuments && vectorStore) {
+      useSourceStore.getState().cleanupOrphanedSources(vectorStore);
+    }
+  }, [attachments, vectorStore]);
 
   const openSheet = useCallback(() => {
     sheetRef.current?.present();

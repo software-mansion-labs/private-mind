@@ -107,6 +107,16 @@ export const deleteSourceFromChats = async (
   await db.runAsync(`DELETE FROM chatSources WHERE sourceId = ?`, [source.id]);
 };
 
+export const getOrphanedSources = async (
+  db: SQLiteDatabase
+): Promise<Source[]> => {
+  return db.getAllAsync<Source>(
+    `SELECT s.* FROM sources s
+     LEFT JOIN chatSources cs ON s.id = cs.sourceId
+     WHERE cs.sourceId IS NULL`
+  );
+};
+
 export const clearPhantomChat = async (db: SQLiteDatabase, chatId: number) => {
   await db.runAsync(`DELETE FROM messages WHERE chatId = ?`, [chatId]);
 };

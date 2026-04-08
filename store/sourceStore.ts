@@ -3,6 +3,7 @@ import {
   deleteSource,
   deleteSourceFromChats,
   getAllSources,
+  getOrphanedSources,
   insertSource,
   renameSource,
   Source,
@@ -27,6 +28,7 @@ interface SourceStore {
   setSourceProcessing: (id: number, isProcessing: boolean) => void;
   deleteSource: (source: Source) => Promise<void>;
   renameSource: (id: number, newName: string) => Promise<void>;
+  cleanupOrphanedSources: (vectorStore: OPSQLiteVectorStore) => Promise<void>;
 }
 
 const TEXT_SPLITTER_CHUNK_SIZE = 1000;
@@ -156,5 +158,24 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
       console.error(e);
     }
     get().loadSources();
+  },
+
+  cleanupOrphanedSources: async (vectorStore) => {
+    const db = get().db;
+    if (!db) return;
+    try {
+      const orphaned = await getOrphanedSources(db);
+      for (const source of orphaned) {
+        await vectorStore.delete({
+          predicate: (value) => value.metadata?.documentId === source.id,
+        });
+        await deleteSource(db, source.id);
+      }
+      if (orphaned.length > 0) {
+        get().loadSources();
+      }
+    } catch (e) {
+      console.error(e);
+    }
   },
 }));
