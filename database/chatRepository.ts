@@ -23,6 +23,7 @@ export type Message = {
   role: 'user' | 'assistant' | 'system' | 'event';
   content: string;
   imagePath?: string;
+  documentName?: string;
   tokensPerSecond?: number;
   timeToFirstToken?: number;
   timestamp: number;
@@ -97,7 +98,7 @@ export const persistMessage = async (
   }
 
   const result = await db.runAsync(
-    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath) VALUES (?, ?, ?, ?, ?, ?, ?);`,
+    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
     [
       message.chatId,
       message.role,
@@ -106,6 +107,7 @@ export const persistMessage = async (
       message.tokensPerSecond,
       message.timeToFirstToken,
       message.imagePath || null,
+      message.documentName || null,
     ]
   );
 
@@ -168,16 +170,21 @@ export const getChatSettings = async (
     }
   }
 
-  return (
-    result ? {
-      systemPrompt: result.systemPrompt,
-      contextWindow: result.contextWindow,
-      thinkingEnabled: result.thinkingEnabled === 1 ? true : result.thinkingEnabled === 0 ? false : undefined,
-    } : {
-      systemPrompt: '',
-      contextWindow: 6,
-    }
-  );
+  return result
+    ? {
+        systemPrompt: result.systemPrompt,
+        contextWindow: result.contextWindow,
+        thinkingEnabled:
+          result.thinkingEnabled === 1
+            ? true
+            : result.thinkingEnabled === 0
+              ? false
+              : undefined,
+      }
+    : {
+        systemPrompt: '',
+        contextWindow: 6,
+      };
 };
 
 export const setChatSettings = async (
@@ -191,8 +198,13 @@ export const setChatSettings = async (
       JSON.stringify(settings)
     );
   } else {
-    const thinkingValue = settings.thinkingEnabled === undefined ? null : (settings.thinkingEnabled ? 1 : 0);
-    
+    const thinkingValue =
+      settings.thinkingEnabled === undefined
+        ? null
+        : settings.thinkingEnabled
+          ? 1
+          : 0;
+
     await db.runAsync(
       `
     INSERT INTO chatSettings (chatId, systemPrompt, contextWindow, thinkingEnabled)

@@ -10,17 +10,22 @@ import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import CameraIcon from '../../assets/icons/camera.svg';
 import ImageIcon from '../../assets/icons/image.svg';
+import AttachmentIcon from '../../assets/icons/attachment.svg';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
+  isVisionModel: boolean;
   onPickFromLibrary: () => void;
   onPickFromCamera: () => void;
+  onPickDocument: () => void;
 }
 
-const ImageSourceSheet = ({
+const AttachmentSheet = ({
   bottomSheetModalRef,
+  isVisionModel,
   onPickFromLibrary,
   onPickFromCamera,
+  onPickDocument,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -45,30 +50,58 @@ const ImageSourceSheet = ({
       handleIndicatorStyle={{ backgroundColor: theme.border.soft }}
     >
       <BottomSheetView style={styles.container}>
+        {isVisionModel && (
+          <>
+            <TouchableOpacity
+              style={styles.option}
+              onPress={() => handleOption(onPickFromCamera)}
+              testID="attachment-camera"
+            >
+              <View style={styles.iconWrapper}>
+                <CameraIcon
+                  width={24}
+                  height={24}
+                  style={{ color: theme.text.primary }}
+                />
+              </View>
+              <Text style={styles.optionText}>Camera</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.option}
+              onPress={() => handleOption(onPickFromLibrary)}
+              testID="attachment-library"
+            >
+              <View style={styles.iconWrapper}>
+                <ImageIcon
+                  width={24}
+                  height={24}
+                  style={{ color: theme.text.primary }}
+                />
+              </View>
+              <Text style={styles.optionText}>Photo Library</Text>
+            </TouchableOpacity>
+          </>
+        )}
         <TouchableOpacity
           style={styles.option}
-          onPress={() => handleOption(onPickFromCamera)}
+          onPress={() => handleOption(onPickDocument)}
+          testID="attachment-document"
         >
           <View style={styles.iconWrapper}>
-            <CameraIcon width={24} height={24} style={{ color: theme.text.primary }} />
+            <AttachmentIcon
+              width={24}
+              height={24}
+              style={{ color: theme.text.primary }}
+            />
           </View>
-          <Text style={styles.optionText}>Camera</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.option}
-          onPress={() => handleOption(onPickFromLibrary)}
-        >
-          <View style={styles.iconWrapper}>
-            <ImageIcon width={24} height={24} style={{ color: theme.text.primary }} />
-          </View>
-          <Text style={styles.optionText}>Photo Library</Text>
+          <Text style={styles.optionText}>Document</Text>
         </TouchableOpacity>
       </BottomSheetView>
     </BottomSheetModal>
   );
 };
 
-export default ImageSourceSheet;
+export default AttachmentSheet;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({

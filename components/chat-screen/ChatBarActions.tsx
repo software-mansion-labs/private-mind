@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import SendIcon from '../../assets/icons/send_icon.svg';
 import PauseIcon from '../../assets/icons/pause_icon.svg';
@@ -12,10 +12,10 @@ import LightBulbIcon from '../../assets/icons/light_bulb.svg';
 import PlusIcon from '../../assets/icons/plus.svg';
 
 interface Props {
-  onSelectSource: () => void;
-  activeSourcesCount: number;
+  onAttach: () => void;
   userInput: string;
-  imagePath?: string;
+  hasAttachments?: boolean;
+  isLoadingAttachment?: boolean;
   onSend: () => void;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -23,15 +23,13 @@ interface Props {
   onSpeechInput: () => void;
   thinkingEnabled: boolean;
   onThinkingToggle?: () => void;
-  isVisionModel?: boolean;
-  onAttachImage?: () => void;
 }
 
 const ChatBarActions = ({
-  onSelectSource,
-  activeSourcesCount,
+  onAttach,
   userInput,
-  imagePath,
+  hasAttachments = false,
+  isLoadingAttachment = false,
   onSend,
   isGenerating,
   isProcessingPrompt,
@@ -39,8 +37,6 @@ const ChatBarActions = ({
   onSpeechInput,
   thinkingEnabled = false,
   onThinkingToggle,
-  isVisionModel = false,
-  onAttachImage,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -58,10 +54,10 @@ const ChatBarActions = ({
       );
     }
 
-    if (userInput || imagePath) {
+    if ((userInput || hasAttachments) && !isLoadingAttachment) {
       return (
         <View style={styles.rightActions}>
-          {imagePath && !userInput && (
+          {hasAttachments && !userInput && (
             <CircleButton
               icon={SoundwaveIcon}
               onPress={onSpeechInput}
@@ -92,27 +88,17 @@ const ChatBarActions = ({
   return (
     <View style={styles.container}>
       <View style={styles.leftActions}>
-        {isVisionModel && (
-          <CircleButton
-            icon={PlusIcon}
-            size={14}
-            onPress={onAttachImage}
-            backgroundColor={theme.bg.softPrimary}
-            color={theme.text.primary}
-            testID="attach-image-btn"
-          />
-        )}
-        <TouchableOpacity onPress={onSelectSource} style={styles.sourceButton}>
-          {activeSourcesCount > 0 && (
-            <View style={styles.countBadge}>
-              <Text style={styles.countText}>{activeSourcesCount}</Text>
-            </View>
-          )}
-          <Text style={styles.sourceText}>Sources</Text>
-        </TouchableOpacity>
+        <CircleButton
+          icon={PlusIcon}
+          size={14}
+          onPress={onAttach}
+          backgroundColor={theme.bg.softPrimary}
+          color={theme.text.primary}
+          testID="attach-btn"
+        />
         <TouchableOpacity
           onPress={onThinkingToggle}
-          style={[styles.sourceButton, !thinkingEnabled && { opacity: 0.4 }]}
+          style={[styles.toggleButton, !thinkingEnabled && { opacity: 0.4 }]}
         >
           {!thinkingEnabled ? (
             <LightBulbCrossedIcon
@@ -127,7 +113,7 @@ const ChatBarActions = ({
               height={20}
             />
           )}
-          <Text style={styles.sourceText}>Think</Text>
+          <Text style={styles.toggleText}>Think</Text>
         </TouchableOpacity>
       </View>
 
@@ -154,7 +140,7 @@ const createStyles = (theme: Theme) =>
       gap: 8,
       alignItems: 'center',
     },
-    sourceButton: {
+    toggleButton: {
       padding: 8,
       borderRadius: 9999,
       borderWidth: 1,
@@ -165,20 +151,7 @@ const createStyles = (theme: Theme) =>
       gap: 4,
       height: 36,
     },
-    countBadge: {
-      borderRadius: 9999,
-      width: 20,
-      height: 20,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: theme.bg.main,
-    },
-    countText: {
-      fontSize: fontSizes.sm,
-      fontFamily: fontFamily.medium,
-      color: theme.text.contrastPrimary,
-    },
-    sourceText: {
+    toggleText: {
       color: theme.text.contrastPrimary,
       fontSize: fontSizes.sm,
       lineHeight: lineHeights.sm,

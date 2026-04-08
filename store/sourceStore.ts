@@ -3,6 +3,7 @@ import {
   deleteSource,
   deleteSourceFromChats,
   getAllSources,
+  getOrphanedSources,
   insertSource,
   renameSource,
   Source,
@@ -23,10 +24,11 @@ interface SourceStore {
     source: Omit<Source, 'id'>,
     sourceUri: string,
     vectorStore: OPSQLiteVectorStore
-  ) => Promise<{ success: boolean; isEmpty?: boolean }>;
+  ) => Promise<{ success: boolean; isEmpty?: boolean; sourceId?: number }>;
   setSourceProcessing: (id: number, isProcessing: boolean) => void;
   deleteSource: (source: Source) => Promise<void>;
   renameSource: (id: number, newName: string) => Promise<void>;
+  cleanupOrphanedSources: (vectorStore: OPSQLiteVectorStore) => Promise<void>;
 }
 
 const TEXT_SPLITTER_CHUNK_SIZE = 1000;
@@ -84,7 +86,11 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
 
       const chunks = await textSplitter.splitText(sourceTextContent);
 
-      const sourceId = await insertSource(db, source);
+      const sourceWithFirstChunk = {
+        ...source,
+        firstChunk: chunks[0] || undefined,
+      };
+      const sourceId = await insertSource(db, sourceWithFirstChunk);
       if (!sourceId) {
         set((state) => ({
           sources: state.sources.filter((s) => s.id !== tempId),
@@ -97,18 +103,20 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         const chunk = chunks[i]!;
         await vectorStore?.add({
           document: chunk,
-          metadata: { documentId: sourceId },
+          metadata: { documentId: sourceId, isFirstChunk: i === 0 },
         });
       }
 
       set((state) => ({
         sources: state.sources.map((s) =>
-          s.id === tempId ? { ...s, id: sourceId, isProcessing: false } : s
+          s.id === tempId
+            ? { ...s, id: sourceId, isProcessing: false, firstChunk: chunks[0] }
+            : s
         ),
       }));
 
       set({ isReading: false });
-      return { success: true };
+      return { success: true, sourceId };
     } catch (e) {
       console.error(e);
       set((state) => ({
@@ -150,5 +158,24 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
       console.error(e);
     }
     get().loadSources();
+  },
+
+  cleanupOrphanedSources: async (vectorStore) => {
+    const db = get().db;
+    if (!db) return;
+    try {
+      const orphaned = await getOrphanedSources(db);
+      for (const source of orphaned) {
+        await vectorStore.delete({
+          predicate: (value) => value.metadata?.documentId === source.id,
+        });
+        await deleteSource(db, source.id);
+      }
+      if (orphaned.length > 0) {
+        get().loadSources();
+      }
+    } catch (e) {
+      console.error(e);
+    }
   },
 }));

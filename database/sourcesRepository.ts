@@ -6,6 +6,7 @@ export interface Source {
   name: string;
   type: string;
   size: number | null;
+  firstChunk?: string;
   isProcessing?: boolean;
 }
 
@@ -17,9 +18,10 @@ export const insertSource = async (
     `INSERT INTO sources (
       name,
       type,
-      size
-    ) VALUES (?, ?, ?)`,
-    [source.name, source.type, source.size]
+      size,
+      firstChunk
+    ) VALUES (?, ?, ?, ?)`,
+    [source.name, source.type, source.size, source.firstChunk || null]
   );
 
   return result.lastInsertRowId!;
@@ -103,6 +105,16 @@ export const deleteSourceFromChats = async (
   );
 
   await db.runAsync(`DELETE FROM chatSources WHERE sourceId = ?`, [source.id]);
+};
+
+export const getOrphanedSources = async (
+  db: SQLiteDatabase
+): Promise<Source[]> => {
+  return db.getAllAsync<Source>(
+    `SELECT s.* FROM sources s
+     LEFT JOIN chatSources cs ON s.id = cs.sourceId
+     WHERE cs.sourceId IS NULL`
+  );
 };
 
 export const clearPhantomChat = async (db: SQLiteDatabase, chatId: number) => {
