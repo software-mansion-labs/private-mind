@@ -56,11 +56,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     });
   },
 
-  initPhantomChat: async (phantomChatId) => {
+  initPhantomChat: async (phantomChatId, model) => {
     const db = get().db;
     if (!db) return;
     await clearPhantomChat(db, phantomChatId);
     const defaultSettings = await getChatSettings(db, null);
+
+    // Use model-specific system prompt if available, otherwise global default
+    const systemPrompt = model?.systemPrompt ?? defaultSettings.systemPrompt;
+
     set({
       phantomChat: {
         id: phantomChatId,
@@ -68,7 +72,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         lastUsed: Date.now(),
         modelId: -1,
         enabledSources: [],
-        settings: defaultSettings,
+        settings: {
+          ...defaultSettings,
+          systemPrompt,
+        },
       },
     });
   },

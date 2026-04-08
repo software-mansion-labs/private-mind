@@ -43,7 +43,7 @@ export default function App() {
   const handleSetModel = async (model: Model) => {
     bottomSheetModalRef.current?.dismiss();
     const nextChatId = await getNextChatId(db);
-    await initPhantomChat(nextChatId);
+    await initPhantomChat(nextChatId, model);
     await setActiveChatId(null);
     router.push({
       pathname: `/chat/${nextChatId}`,
