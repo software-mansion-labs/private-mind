@@ -8,8 +8,7 @@ const VERSION_TAG = 'v0.8.0';
 
 const WHISPER_TINY_EN_FILES = [
   `https://huggingface.co/software-mansion/react-native-executorch-whisper-tiny.en/resolve/${VERSION_TAG}/tokenizer.json`,
-  `https://huggingface.co/software-mansion/react-native-executorch-whisper-tiny.en/resolve/${VERSION_TAG}/xnnpack/whisper_tiny_en_decoder_xnnpack.pte`,
-  `https://huggingface.co/software-mansion/react-native-executorch-whisper-tiny.en/resolve/${VERSION_TAG}/xnnpack/whisper_tiny_en_encoder_xnnpack.pte`,
+  `https://huggingface.co/software-mansion/react-native-executorch-whisper-tiny.en/resolve/${VERSION_TAG}/xnnpack/whisper_tiny_en_xnnpack.pte`,
 ];
 
 const ALL_MINI_LM_FILES = [

@@ -217,3 +217,42 @@ describe('setPhantomChatSettings', () => {
     ).resolves.not.toThrow();
   });
 });
+
+describe('initPhantomChat with model system prompt', () => {
+  it('uses model systemPrompt when available', async () => {
+    const modelPrompt = 'Polish system prompt';
+    (chatRepository.getChatSettings as jest.Mock).mockResolvedValue({
+      systemPrompt: 'global default',
+      contextWindow: 6,
+    });
+
+    await useChatStore.getState().initPhantomChat(99, { systemPrompt: modelPrompt } as any);
+
+    const phantom = useChatStore.getState().phantomChat;
+    expect(phantom?.settings?.systemPrompt).toBe(modelPrompt);
+  });
+
+  it('falls back to global default when model systemPrompt is null', async () => {
+    (chatRepository.getChatSettings as jest.Mock).mockResolvedValue({
+      systemPrompt: 'global default',
+      contextWindow: 6,
+    });
+
+    await useChatStore.getState().initPhantomChat(99, { systemPrompt: null } as any);
+
+    const phantom = useChatStore.getState().phantomChat;
+    expect(phantom?.settings?.systemPrompt).toBe('global default');
+  });
+
+  it('falls back to global default when no model provided', async () => {
+    (chatRepository.getChatSettings as jest.Mock).mockResolvedValue({
+      systemPrompt: 'global default',
+      contextWindow: 6,
+    });
+
+    await useChatStore.getState().initPhantomChat(99);
+
+    const phantom = useChatStore.getState().phantomChat;
+    expect(phantom?.settings?.systemPrompt).toBe('global default');
+  });
+});

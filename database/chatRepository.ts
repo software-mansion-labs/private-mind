@@ -31,7 +31,8 @@ export type Message = {
 export const createChat = async (
   db: SQLiteDatabase,
   title: string,
-  modelId: number
+  modelId: number,
+  modelSystemPrompt?: string | null
 ): Promise<number | void> => {
   try {
     const result = await db.runAsync(
@@ -46,7 +47,7 @@ export const createChat = async (
       if (defaultSettings) {
         const parsedSettings: ChatSettings = JSON.parse(defaultSettings);
         await setChatSettings(db, result.lastInsertRowId, {
-          systemPrompt: parsedSettings.systemPrompt,
+          systemPrompt: modelSystemPrompt ?? parsedSettings.systemPrompt,
           contextWindow: parsedSettings.contextWindow,
         });
       }

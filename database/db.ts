@@ -15,6 +15,7 @@ const runMigrations = async (db: SQLiteDatabase) => {
   const hasThinking = modelsTableInfo.some((col) => col.name === 'thinking');
   const hasLabels = modelsTableInfo.some((col) => col.name === 'labels');
   const hasVision = modelsTableInfo.some((col) => col.name === 'vision');
+  const hasSystemPrompt = modelsTableInfo.some((col) => col.name === 'systemPrompt');
 
   if (!hasFeatured) {
     await db.execAsync(
@@ -38,6 +39,10 @@ const runMigrations = async (db: SQLiteDatabase) => {
     await db.execAsync(
       `ALTER TABLE models ADD COLUMN vision INTEGER DEFAULT 0`
     );
+  }
+
+  if (!hasSystemPrompt) {
+    await db.execAsync(`ALTER TABLE models ADD COLUMN systemPrompt TEXT DEFAULT NULL`);
   }
 
   const messagesTableInfo = await db.getAllAsync<{ name: string }>(
@@ -88,11 +93,12 @@ const runMigrations = async (db: SQLiteDatabase) => {
 
   for (const model of DEFAULT_MODELS) {
     await db.runAsync(
-      `UPDATE models SET featured = ?, thinking = ?, vision = ?, labels = ? WHERE modelName = ?`,
+      `UPDATE models SET featured = ?, thinking = ?, vision = ?, labels = ?, systemPrompt = ? WHERE modelName = ?`,
       model.featured ? 1 : 0,
       model.thinking ? 1 : 0,
       model.vision ? 1 : 0,
       model.labels ? JSON.stringify(model.labels) : null,
+      model.systemPrompt || null,
       model.modelName
     );
   }
@@ -114,7 +120,8 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       thinking INTEGER DEFAULT 0,
       vision INTEGER DEFAULT 0,
       featured INTEGER DEFAULT 0,
-      labels TEXT DEFAULT NULL
+      labels TEXT DEFAULT NULL,
+      systemPrompt TEXT DEFAULT NULL
     );
   `);
 
@@ -216,6 +223,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
         tokenizerConfigPath,
         featured,
         thinking,
+        systemPrompt,
       } = model;
 
       await addModel(db, {
@@ -231,6 +239,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
         thinking: !!thinking,
         vision: !!model.vision,
         labels: model.labels,
+        systemPrompt,
       });
     }
   });

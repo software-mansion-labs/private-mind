@@ -1,7 +1,6 @@
 {
   "expo.jsEngine": "hermes",
   "EX_DEV_CLIENT_NETWORK_INSPECTOR": "true",
-  "newArchEnabled": "true",
   "expo.sqlite.customBuildFlags": "-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1",
   "expo.sqlite.enableFTS": "true",
   "expo.sqlite.useSQLCipher": "true"

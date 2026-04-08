@@ -15,6 +15,7 @@ export type Model = {
   labels?: string[];
   parameters?: number;
   modelSize?: number;
+  systemPrompt?: string | null;
 };
 
 export const addModel = async (
@@ -35,8 +36,9 @@ export const addModel = async (
       featured,
       thinking,
       vision,
-      labels
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      labels,
+      systemPrompt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `,
     [
       model.modelName,
@@ -51,6 +53,7 @@ export const addModel = async (
       model.thinking ? 1 : 0,
       model.vision ? 1 : 0,
       model.labels ? JSON.stringify(model.labels) : null,
+      model.systemPrompt || null,
     ]
   );
 
@@ -84,6 +87,7 @@ export const getAllModels = async (db: SQLiteDatabase): Promise<Model[]> => {
       thinking: number;
       vision: number;
       labels: string | null;
+      systemPrompt: string | null;
     }
   >(`SELECT * FROM models ORDER BY featured DESC`);
 
@@ -94,6 +98,7 @@ export const getAllModels = async (db: SQLiteDatabase): Promise<Model[]> => {
     thinking: model.thinking === 1,
     vision: model.vision === 1,
     labels: model.labels ? JSON.parse(model.labels) : undefined,
+    systemPrompt: model.systemPrompt ?? null,
   }));
 
   return models;
@@ -131,6 +136,7 @@ export const getStartingModels = async (db: SQLiteDatabase) => {
       thinking: number;
       vision: number;
       labels: string | null;
+      systemPrompt: string | null;
     }
   >(
     `SELECT * FROM models WHERE modelName IN (${startingModels
@@ -145,6 +151,7 @@ export const getStartingModels = async (db: SQLiteDatabase) => {
     thinking: model.thinking === 1,
     vision: model.vision === 1,
     labels: model.labels ? JSON.parse(model.labels) : undefined,
+    systemPrompt: model.systemPrompt ?? null,
   }));
 
   return models;
