@@ -1,7 +1,6 @@
 import { SQLiteDatabase } from 'expo-sqlite';
 import { create } from 'zustand';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
-import { useSourceStore } from './sourceStore';
 import { Model } from '../database/modelRepository';
 import {
   Chat,
@@ -184,6 +183,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }));
 
     if (vectorStore) {
+      // Lazy import to avoid circular dependency / transitive ESM issues in tests
+      const { useSourceStore } = require('./sourceStore');
       await useSourceStore.getState().cleanupOrphanedSources(vectorStore);
     }
   },
