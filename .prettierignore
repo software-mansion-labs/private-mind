@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.expo/
+web-build/
+android/
+ios/
+patches/
+yarn.lock
