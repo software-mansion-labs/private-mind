@@ -120,16 +120,20 @@ describe('user messages', () => {
 // ─── user messages with image ─────────────────────────────────────────────────
 
 describe('user messages with image', () => {
-  it('renders image above text for user messages with imagePath', () => {
+  it('renders image as a separate bubble from text', () => {
     renderItem({ role: 'user', content: 'Check this out', imagePath: 'file://test.jpg' });
     const image = screen.getByTestId('message-image');
     expect(image.props.source).toEqual({ uri: 'file://test.jpg' });
     expect(screen.getByText('Check this out')).toBeTruthy();
+    // Image bubble and text bubble should be separate Views
+    expect(screen.getByTestId('image-bubble')).toBeTruthy();
+    expect(screen.getByTestId('text-bubble')).toBeTruthy();
   });
 
   it('renders text-only bubble when imagePath is absent', () => {
     renderItem({ role: 'user', content: 'Hello there' });
     expect(screen.queryByTestId('message-image')).toBeNull();
+    expect(screen.queryByTestId('image-bubble')).toBeNull();
     expect(screen.getByText('Hello there')).toBeTruthy();
   });
 
@@ -142,27 +146,46 @@ describe('user messages with image', () => {
 // ─── user messages with document ──────────────────────────────────────────────
 
 describe('user messages with document', () => {
-  it('renders document tile above text for user messages with documentName', () => {
+  it('renders document as a separate bubble from text', () => {
     renderItem({ role: 'user', content: 'Summarize this', documentName: 'report.pdf' });
     expect(screen.getByTestId('message-document')).toBeTruthy();
+    expect(screen.getByTestId('document-bubble')).toBeTruthy();
+    expect(screen.getByTestId('text-bubble')).toBeTruthy();
     expect(screen.getByText('report.pdf')).toBeTruthy();
     expect(screen.getByText('Summarize this')).toBeTruthy();
   });
 
-  it('does not render document tile when documentName is absent', () => {
+  it('does not render document bubble when documentName is absent', () => {
     renderItem({ role: 'user', content: 'Hello' });
     expect(screen.queryByTestId('message-document')).toBeNull();
+    expect(screen.queryByTestId('document-bubble')).toBeNull();
   });
 
-  it('renders document tile without text when content is empty', () => {
+  it('renders document bubble without text bubble when content is empty', () => {
     renderItem({ role: 'user', content: '', documentName: 'notes.txt' });
-    expect(screen.getByTestId('message-document')).toBeTruthy();
-    expect(screen.getByText('notes.txt')).toBeTruthy();
+    expect(screen.getByTestId('document-bubble')).toBeTruthy();
+    expect(screen.queryByTestId('text-bubble')).toBeNull();
   });
 
-  it('does not render document tile for assistant messages', () => {
+  it('does not render document bubble for assistant messages', () => {
     renderItem({ role: 'assistant', content: 'Response', documentName: 'doc.pdf' });
     expect(screen.queryByTestId('message-document')).toBeNull();
+  });
+});
+
+// ─── user messages with both image and document ──────────────────────────────
+
+describe('user messages with image and document', () => {
+  it('renders image bubble, document bubble, and text bubble separately', () => {
+    renderItem({
+      role: 'user',
+      content: 'Analyze both',
+      imagePath: 'file://photo.jpg',
+      documentName: 'data.pdf',
+    });
+    expect(screen.getByTestId('image-bubble')).toBeTruthy();
+    expect(screen.getByTestId('document-bubble')).toBeTruthy();
+    expect(screen.getByTestId('text-bubble')).toBeTruthy();
   });
 });
 

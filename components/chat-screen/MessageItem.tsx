@@ -93,34 +93,30 @@ const MessageItem = memo(
               </Text>
             </Text>
           </View>
-        ) : (
-          <>
-            <View
-              style={
-                role === 'assistant' ? styles.aiMessage : styles.userMessage
-              }
-            >
-              {imagePath && role === 'user' && (
-                <>
-                  <TouchableOpacity
-                    onPress={() => setLightboxVisible(true)}
-                    activeOpacity={0.9}
-                  >
-                    <Image
-                      source={{ uri: imagePath }}
-                      style={styles.messageImage}
-                      resizeMode="cover"
-                      testID="message-image"
-                    />
-                  </TouchableOpacity>
-                  <ImageLightbox
-                    uri={imagePath}
-                    visible={lightboxVisible}
-                    onClose={() => setLightboxVisible(false)}
+        ) : role === 'user' ? (
+          <View style={styles.userMessageGroup}>
+            {imagePath && (
+              <View style={styles.userBubble} testID="image-bubble">
+                <TouchableOpacity
+                  onPress={() => setLightboxVisible(true)}
+                  activeOpacity={0.9}
+                >
+                  <Image
+                    source={{ uri: imagePath }}
+                    style={styles.messageImage}
+                    resizeMode="cover"
+                    testID="message-image"
                   />
-                </>
-              )}
-              {documentName && role === 'user' && (
+                </TouchableOpacity>
+                <ImageLightbox
+                  uri={imagePath}
+                  visible={lightboxVisible}
+                  onClose={() => setLightboxVisible(false)}
+                />
+              </View>
+            )}
+            {documentName && (
+              <View style={styles.userBubble} testID="document-bubble">
                 <View style={styles.documentTile} testID="message-document">
                   <AttachmentIcon
                     width={28}
@@ -131,11 +127,32 @@ const MessageItem = memo(
                     {documentName}
                   </Text>
                 </View>
-              )}
-              <View style={[styles.bubbleContent, role === 'user' && styles.userMessageContent]}>
-                {role === 'assistant' && (
-                  <Text style={styles.modelName}>{modelName}</Text>
-                )}
+              </View>
+            )}
+            {contentParts.normalContent.trim() && (
+              <View style={styles.userBubble} testID="text-bubble">
+                <View style={styles.userMessageContent}>
+                  <TouchableOpacity
+                    onLongPress={() => {
+                      messageManagementSheetRef.current?.present(content);
+                    }}
+                    delayPressIn={50}
+                    activeOpacity={0.4}
+                  >
+                    <Text style={styles.userText}>{contentParts.normalContent}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+            <MessageManagementSheet
+              bottomSheetModalRef={messageManagementSheetRef}
+            />
+          </View>
+        ) : (
+          <>
+            <View style={styles.aiMessage}>
+              <View style={styles.bubbleContent}>
+                <Text style={styles.modelName}>{modelName}</Text>
                 {contentParts.normalContent.trim() && (
                   <TouchableOpacity
                     onLongPress={() => {
@@ -144,11 +161,7 @@ const MessageItem = memo(
                     delayPressIn={50}
                     activeOpacity={0.4}
                   >
-                    {role === 'user' ? (
-                      <Text style={styles.userText}>{contentParts.normalContent}</Text>
-                    ) : (
-                      <MarkdownComponent text={contentParts.normalContent} />
-                    )}
+                    <MarkdownComponent text={contentParts.normalContent} />
                   </TouchableOpacity>
                 )}
                 {contentParts.hasThinking && contentParts.thinkingContent?.trim() && (
@@ -172,8 +185,7 @@ const MessageItem = memo(
                       <MarkdownComponent text={contentParts.normalAfterThink} />
                     </TouchableOpacity>
                   )}
-                {role === 'assistant' &&
-                  tokensPerSecond !== undefined &&
+                {tokensPerSecond !== undefined &&
                   tokensPerSecond !== 0 && (
                     <Text style={styles.metadata}>
                       ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
@@ -203,13 +215,16 @@ const createStyles = (theme: Theme) =>
       width: '90%',
       alignSelf: 'flex-start',
     },
-    userMessage: {
+    userMessageGroup: {
+      alignItems: 'flex-end',
+      marginBottom: 24,
+      gap: 4,
+    },
+    userBubble: {
       flexDirection: 'column',
       alignItems: 'flex-start',
       justifyContent: 'center',
-      marginBottom: 24,
       maxWidth: '65%',
-      alignSelf: 'flex-end',
       borderRadius: 12,
       backgroundColor: theme.bg.softSecondary,
       overflow: 'hidden',
@@ -222,8 +237,6 @@ const createStyles = (theme: Theme) =>
     messageImage: {
       width: '100%',
       aspectRatio: 4 / 3,
-      borderTopLeftRadius: 12,
-      borderTopRightRadius: 12,
     },
     documentTile: {
       width: '100%',
