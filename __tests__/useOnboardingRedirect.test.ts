@@ -9,7 +9,8 @@ jest.mock('../database/modelRepository');
 jest.mock('expo-sqlite', () => ({ useSQLiteContext: jest.fn(() => ({})) }));
 jest.mock('expo-router', () => ({ useRouter: jest.fn() }));
 
-const mockIsOnboardingComplete = onboardingStatus.isOnboardingComplete as jest.Mock;
+const mockIsOnboardingComplete =
+  onboardingStatus.isOnboardingComplete as jest.Mock;
 const mockGetAllModels = modelRepository.getAllModels as jest.Mock;
 const mockUseRouter = useRouter as jest.Mock;
 
@@ -20,7 +21,11 @@ const makeModel = (isDownloaded: boolean) => ({
   modelName: 'Test',
   isDownloaded,
   source: 'remote' as const,
-  modelPath: '', tokenizerPath: '', tokenizerConfigPath: '', thinking: false, featured: false,
+  modelPath: '',
+  tokenizerPath: '',
+  tokenizerConfigPath: '',
+  thinking: false,
+  featured: false,
 });
 
 beforeEach(() => {

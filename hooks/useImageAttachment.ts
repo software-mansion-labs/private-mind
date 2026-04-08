@@ -35,7 +35,10 @@ export const useImageAttachment = () => {
     }
     setIsLoadingImage(true);
     try {
-      const result = await launchImageLibrary({ mediaType: 'photo', quality: 1 });
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 1,
+      });
       if (!result.didCancel && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
         if (uri) setImagePath(uri);

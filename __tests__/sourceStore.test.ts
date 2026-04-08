@@ -25,7 +25,8 @@ const mockVectorStore = { add: jest.fn() } as any;
 const mockReadDocumentText = fileReaders.readDocumentText as jest.Mock;
 const mockInsertSource = sourcesRepository.insertSource as jest.Mock;
 const mockDeleteSource = sourcesRepository.deleteSource as jest.Mock;
-const mockDeleteSourceFromChats = sourcesRepository.deleteSourceFromChats as jest.Mock;
+const mockDeleteSourceFromChats =
+  sourcesRepository.deleteSourceFromChats as jest.Mock;
 const mockGetAllSources = sourcesRepository.getAllSources as jest.Mock;
 const mockRenameSource = sourcesRepository.renameSource as jest.Mock;
 const mockRefreshActiveChatMessages = jest.fn();
@@ -38,7 +39,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(console, 'error').mockImplementation(() => {});
   mockGetAllSources.mockResolvedValue([]);
-  ;(useLLMStore.getState as jest.Mock).mockReturnValue({
+  (useLLMStore.getState as jest.Mock).mockReturnValue({
     refreshActiveChatMessages: mockRefreshActiveChatMessages,
   });
 });

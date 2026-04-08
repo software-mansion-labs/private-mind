@@ -100,8 +100,10 @@ export default RecordingAnimation;
 function prepareBars(data: number[], groupSize: number): number[] {
   const chunkCount = Math.ceil(data.length / groupSize);
   return Array.from({ length: chunkCount }, (_, i) => {
-    const absData = data.slice(i * groupSize, (i + 1) * groupSize).map(Math.abs);
-    return Math.max(...absData)
+    const absData = data
+      .slice(i * groupSize, (i + 1) * groupSize)
+      .map(Math.abs);
+    return Math.max(...absData);
   });
 }
 

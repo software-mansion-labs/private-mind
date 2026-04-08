@@ -32,8 +32,6 @@ import OnboardingStepPanel, {
 import { useRouter } from 'expo-router';
 import { markOnboardingComplete } from '../../utils/onboardingStatus';
 
-interface Props {}
-
 const SCREEN_HEIGHT = Dimensions.get('screen').height;
 
 type PanelStepProps = Omit<
@@ -88,7 +86,7 @@ const STEPS: (PanelStepProps & {
   },
 ];
 
-function OnboardingScreen({}: Props) {
+function OnboardingScreen() {
   const router = useRouter();
   const closeOnboarding = () => {
     markOnboardingComplete();

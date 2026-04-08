@@ -1,7 +1,4 @@
-import {
-  SpeechToTextModule,
-  WHISPER_TINY_EN,
-} from 'react-native-executorch';
+import { SpeechToTextModule, WHISPER_TINY_EN } from 'react-native-executorch';
 import { create } from 'zustand';
 
 export interface STTStore {

@@ -52,7 +52,9 @@ afterEach(() => {
 
 describe('initial state', () => {
   it('starts idle', () => {
-    const { result } = renderHook(() => useBenchmarkRunner({ onComplete: jest.fn() }));
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
     expect(result.current.isRunning).toBe(false);
     expect(result.current.isSuccess).toBe(false);
     expect(result.current.timer).toBe(0);
@@ -63,7 +65,9 @@ describe('initial state', () => {
 
 describe('startBenchmark', () => {
   it('does nothing when no model is selected', async () => {
-    const { result } = renderHook(() => useBenchmarkRunner({ onComplete: jest.fn() }));
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
     await act(async () => {
       await result.current.startBenchmark(undefined);
     });
@@ -73,15 +77,24 @@ describe('startBenchmark', () => {
   it('sets isRunning=true during benchmark', async () => {
     let resolveRunBenchmark!: (v: any) => void;
     mockUseLLMStore.mockReturnValue({
-      runBenchmark: jest.fn(() => new Promise((r) => { resolveRunBenchmark = r; })),
+      runBenchmark: jest.fn(
+        () =>
+          new Promise((r) => {
+            resolveRunBenchmark = r;
+          })
+      ),
       loadModel: jest.fn().mockResolvedValue(undefined),
       interrupt: jest.fn(),
     });
 
-    const { result } = renderHook(() => useBenchmarkRunner({ onComplete: jest.fn() }));
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
 
     // startBenchmark sets isRunning synchronously before any awaits
-    act(() => { result.current.startBenchmark(baseModel); });
+    act(() => {
+      result.current.startBenchmark(baseModel);
+    });
 
     expect(result.current.isRunning).toBe(true);
 
@@ -95,9 +108,15 @@ describe('startBenchmark', () => {
   it('calls loadModel with hardReload=true before running', async () => {
     const loadModel = jest.fn().mockResolvedValue(undefined);
     const runBenchmark = jest.fn().mockResolvedValue(perfResult);
-    mockUseLLMStore.mockReturnValue({ loadModel, runBenchmark, interrupt: jest.fn() });
+    mockUseLLMStore.mockReturnValue({
+      loadModel,
+      runBenchmark,
+      interrupt: jest.fn(),
+    });
 
-    const { result } = renderHook(() => useBenchmarkRunner({ onComplete: jest.fn() }));
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
     await act(async () => {
       await result.current.startBenchmark(baseModel);
       jest.runAllTimers();
@@ -114,7 +133,9 @@ describe('startBenchmark', () => {
       interrupt: jest.fn(),
     });
 
-    const { result } = renderHook(() => useBenchmarkRunner({ onComplete: jest.fn() }));
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
     await act(async () => {
       await result.current.startBenchmark(baseModel);
       jest.runAllTimers();
@@ -138,7 +159,9 @@ describe('startBenchmark', () => {
   });
 
   it('sets isSuccess=true after successful run', async () => {
-    const { result } = renderHook(() => useBenchmarkRunner({ onComplete: jest.fn() }));
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
     await act(async () => {
       await result.current.startBenchmark(baseModel);
       jest.runAllTimers();
@@ -154,7 +177,9 @@ describe('startBenchmark', () => {
       interrupt: jest.fn(),
     });
 
-    const { result } = renderHook(() => useBenchmarkRunner({ onComplete: jest.fn() }));
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
     await act(async () => {
       await result.current.startBenchmark(baseModel);
     });
@@ -164,7 +189,9 @@ describe('startBenchmark', () => {
 
   it('increments timer every second while running', async () => {
     let resolveAll!: () => void;
-    const waitForIt = new Promise<void>((r) => { resolveAll = r; });
+    const waitForIt = new Promise<void>((r) => {
+      resolveAll = r;
+    });
 
     mockUseLLMStore.mockReturnValue({
       runBenchmark: jest.fn(() => waitForIt.then(() => perfResult)),
@@ -172,10 +199,16 @@ describe('startBenchmark', () => {
       interrupt: jest.fn(),
     });
 
-    const { result } = renderHook(() => useBenchmarkRunner({ onComplete: jest.fn() }));
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
 
-    act(() => { result.current.startBenchmark(baseModel); });
-    act(() => { jest.advanceTimersByTime(3000); });
+    act(() => {
+      result.current.startBenchmark(baseModel);
+    });
+    act(() => {
+      jest.advanceTimersByTime(3000);
+    });
 
     expect(result.current.timer).toBeGreaterThanOrEqual(3);
     resolveAll();
@@ -193,10 +226,16 @@ describe('cancelBenchmark', () => {
       interrupt,
     });
 
-    const { result } = renderHook(() => useBenchmarkRunner({ onComplete: jest.fn() }));
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
 
-    act(() => { result.current.startBenchmark(baseModel); });
-    act(() => { result.current.cancelBenchmark(); });
+    act(() => {
+      result.current.startBenchmark(baseModel);
+    });
+    act(() => {
+      result.current.cancelBenchmark();
+    });
 
     expect(interrupt).toHaveBeenCalled();
     expect(result.current.isRunning).toBe(false);
@@ -210,7 +249,9 @@ describe('cancelBenchmark', () => {
       interrupt: jest.fn(),
     });
 
-    const { result } = renderHook(() => useBenchmarkRunner({ onComplete: jest.fn() }));
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
 
     // Start benchmark and cancel mid-way through first iteration
     let startPromise: Promise<void>;
@@ -219,7 +260,9 @@ describe('cancelBenchmark', () => {
       result.current.cancelBenchmark();
     });
 
-    await act(async () => { await startPromise; });
+    await act(async () => {
+      await startPromise;
+    });
 
     // With cancel, should not complete all 3 iterations
     expect(runBenchmark.mock.calls.length).toBeLessThan(3);

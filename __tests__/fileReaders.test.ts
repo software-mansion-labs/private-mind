@@ -76,9 +76,9 @@ describe('readDocumentText — HTML', () => {
   });
 
   it('removes <script> blocks entirely', async () => {
-    const mockText = jest.fn().mockResolvedValue(
-      '<script>alert("xss")</script><p>content</p>'
-    );
+    const mockText = jest
+      .fn()
+      .mockResolvedValue('<script>alert("xss")</script><p>content</p>');
     MockFile.mockImplementation(() => ({ text: mockText }));
 
     const result = await readDocumentText('/page.html', 'html');
@@ -87,9 +87,9 @@ describe('readDocumentText — HTML', () => {
   });
 
   it('removes <style> blocks entirely', async () => {
-    const mockText = jest.fn().mockResolvedValue(
-      '<style>.foo { color: red; }</style><p>text</p>'
-    );
+    const mockText = jest
+      .fn()
+      .mockResolvedValue('<style>.foo { color: red; }</style><p>text</p>');
     MockFile.mockImplementation(() => ({ text: mockText }));
 
     const result = await readDocumentText('/page.html', 'html');
@@ -98,9 +98,11 @@ describe('readDocumentText — HTML', () => {
   });
 
   it('decodes HTML entities', async () => {
-    const mockText = jest.fn().mockResolvedValue(
-      '<p>a &amp; b &lt;c&gt; &quot;d&quot; &#39;e&#39; f&nbsp;g</p>'
-    );
+    const mockText = jest
+      .fn()
+      .mockResolvedValue(
+        '<p>a &amp; b &lt;c&gt; &quot;d&quot; &#39;e&#39; f&nbsp;g</p>'
+      );
     MockFile.mockImplementation(() => ({ text: mockText }));
 
     const result = await readDocumentText('/page.html', 'html');

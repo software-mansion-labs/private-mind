@@ -15,7 +15,9 @@ const runMigrations = async (db: SQLiteDatabase) => {
   const hasThinking = modelsTableInfo.some((col) => col.name === 'thinking');
   const hasLabels = modelsTableInfo.some((col) => col.name === 'labels');
   const hasVision = modelsTableInfo.some((col) => col.name === 'vision');
-  const hasSystemPrompt = modelsTableInfo.some((col) => col.name === 'systemPrompt');
+  const hasSystemPrompt = modelsTableInfo.some(
+    (col) => col.name === 'systemPrompt'
+  );
 
   if (!hasFeatured) {
     await db.execAsync(
@@ -42,13 +44,17 @@ const runMigrations = async (db: SQLiteDatabase) => {
   }
 
   if (!hasSystemPrompt) {
-    await db.execAsync(`ALTER TABLE models ADD COLUMN systemPrompt TEXT DEFAULT NULL`);
+    await db.execAsync(
+      `ALTER TABLE models ADD COLUMN systemPrompt TEXT DEFAULT NULL`
+    );
   }
 
   const messagesTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(messages)`
   );
-  const hasImagePath = messagesTableInfo.some((col) => col.name === 'imagePath');
+  const hasImagePath = messagesTableInfo.some(
+    (col) => col.name === 'imagePath'
+  );
   if (!hasImagePath) {
     await db.execAsync(
       `ALTER TABLE messages ADD COLUMN imagePath TEXT DEFAULT NULL`

@@ -110,7 +110,9 @@ describe('addChat', () => {
 
   it('copies phantom chat sources to the new chat', async () => {
     (chatRepository.createChat as jest.Mock).mockResolvedValue(10);
-    (sourcesRepository.activateSource as jest.Mock).mockResolvedValue(undefined);
+    (sourcesRepository.activateSource as jest.Mock).mockResolvedValue(
+      undefined
+    );
     useChatStore.setState({
       chats: [],
       phantomChat: {
@@ -125,14 +127,28 @@ describe('addChat', () => {
     await useChatStore.getState().addChat('Chat', 1);
 
     expect(sourcesRepository.activateSource).toHaveBeenCalledTimes(2);
-    expect(sourcesRepository.activateSource).toHaveBeenCalledWith(mockDb, 10, 3);
-    expect(sourcesRepository.activateSource).toHaveBeenCalledWith(mockDb, 10, 7);
+    expect(sourcesRepository.activateSource).toHaveBeenCalledWith(
+      mockDb,
+      10,
+      3
+    );
+    expect(sourcesRepository.activateSource).toHaveBeenCalledWith(
+      mockDb,
+      10,
+      7
+    );
   });
 
   it('clears phantomChat after adding', async () => {
     (chatRepository.createChat as jest.Mock).mockResolvedValue(1);
     useChatStore.setState({
-      phantomChat: { id: -1, title: '', modelId: -1, lastUsed: 0, enabledSources: [] },
+      phantomChat: {
+        id: -1,
+        title: '',
+        modelId: -1,
+        lastUsed: 0,
+        enabledSources: [],
+      },
     });
 
     await useChatStore.getState().addChat('Chat', 1);
@@ -175,7 +191,13 @@ describe('setChatModel', () => {
 describe('enableSource', () => {
   it('adds sourceId to phantomChat without hitting the db', async () => {
     useChatStore.setState({
-      phantomChat: { id: 99, title: '', modelId: -1, lastUsed: 0, enabledSources: [1] },
+      phantomChat: {
+        id: 99,
+        title: '',
+        modelId: -1,
+        lastUsed: 0,
+        enabledSources: [1],
+      },
     });
 
     await useChatStore.getState().enableSource(99, 5);
@@ -185,7 +207,9 @@ describe('enableSource', () => {
   });
 
   it('calls activateSource and updates state for a real chat', async () => {
-    (sourcesRepository.activateSource as jest.Mock).mockResolvedValue(undefined);
+    (sourcesRepository.activateSource as jest.Mock).mockResolvedValue(
+      undefined
+    );
     useChatStore.setState({
       chats: [{ ...mockChat(1), enabledSources: [2] }],
       phantomChat: null,
@@ -201,7 +225,13 @@ describe('enableSource', () => {
 describe('setPhantomChatSettings', () => {
   it('updates settings on phantomChat', async () => {
     useChatStore.setState({
-      phantomChat: { id: -1, title: '', modelId: -1, lastUsed: 0, enabledSources: [] },
+      phantomChat: {
+        id: -1,
+        title: '',
+        modelId: -1,
+        lastUsed: 0,
+        enabledSources: [],
+      },
     });
     const newSettings = { systemPrompt: 'Be concise.', contextWindow: 5 };
 
@@ -213,7 +243,9 @@ describe('setPhantomChatSettings', () => {
   it('does nothing when phantomChat is null', async () => {
     useChatStore.setState({ phantomChat: null });
     await expect(
-      useChatStore.getState().setPhantomChatSettings({ systemPrompt: 'x', contextWindow: 1 })
+      useChatStore
+        .getState()
+        .setPhantomChatSettings({ systemPrompt: 'x', contextWindow: 1 })
     ).resolves.not.toThrow();
   });
 });
@@ -226,7 +258,9 @@ describe('initPhantomChat with model system prompt', () => {
       contextWindow: 6,
     });
 
-    await useChatStore.getState().initPhantomChat(99, { systemPrompt: modelPrompt } as any);
+    await useChatStore
+      .getState()
+      .initPhantomChat(99, { systemPrompt: modelPrompt } as any);
 
     const phantom = useChatStore.getState().phantomChat;
     expect(phantom?.settings?.systemPrompt).toBe(modelPrompt);
@@ -238,7 +272,9 @@ describe('initPhantomChat with model system prompt', () => {
       contextWindow: 6,
     });
 
-    await useChatStore.getState().initPhantomChat(99, { systemPrompt: null } as any);
+    await useChatStore
+      .getState()
+      .initPhantomChat(99, { systemPrompt: null } as any);
 
     const phantom = useChatStore.getState().phantomChat;
     expect(phantom?.settings?.systemPrompt).toBe('global default');

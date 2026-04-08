@@ -85,7 +85,10 @@ const ChatBar = ({
   useImperativeHandle(
     ref,
     () => ({
-      clear: () => { setUserInput(''); clearImage(); },
+      clear: () => {
+        setUserInput('');
+        clearImage();
+      },
       setInput: (text: string) => setUserInput(text),
     }),
     [clearImage]
@@ -203,7 +206,11 @@ const ChatBar = ({
                       onPress={clearImage}
                       testID="dismiss-image-btn"
                     >
-                      <CloseIcon width={8} height={8} style={styles.dismissIcon} />
+                      <CloseIcon
+                        width={8}
+                        height={8}
+                        style={styles.dismissIcon}
+                      />
                     </TouchableOpacity>
                   </View>
                 </View>

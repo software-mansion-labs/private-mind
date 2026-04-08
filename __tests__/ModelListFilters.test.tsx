@@ -4,7 +4,10 @@ import { ModelHubFilter } from '../hooks/useModelHubData';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
-    theme: { ...require('../styles/colors').lightTheme, insets: { top: 0, bottom: 0, left: 0, right: 0 } },
+    theme: {
+      ...require('../styles/colors').lightTheme,
+      insets: { top: 0, bottom: 0, left: 0, right: 0 },
+    },
   }),
 }));
 
@@ -86,7 +89,10 @@ describe('filter tags', () => {
 
   it('toggles Featured filter on press — removes when active', () => {
     const onFiltersChange = jest.fn();
-    renderFilters({ onFiltersChange, activeFilters: new Set([ModelHubFilter.Featured]) });
+    renderFilters({
+      onFiltersChange,
+      activeFilters: new Set([ModelHubFilter.Featured]),
+    });
     fireEvent.press(screen.getByTestId('tag-Featured'));
     const passed = onFiltersChange.mock.calls[0][0] as Set<ModelHubFilter>;
     expect(passed.has(ModelHubFilter.Featured)).toBe(false);
@@ -94,7 +100,10 @@ describe('filter tags', () => {
 
   it('toggles Compatible filter independently', () => {
     const onFiltersChange = jest.fn();
-    renderFilters({ onFiltersChange, activeFilters: new Set([ModelHubFilter.Featured]) });
+    renderFilters({
+      onFiltersChange,
+      activeFilters: new Set([ModelHubFilter.Featured]),
+    });
     fireEvent.press(screen.getByTestId('tag-Compatible'));
     const passed = onFiltersChange.mock.calls[0][0] as Set<ModelHubFilter>;
     expect(passed.has(ModelHubFilter.Compatible)).toBe(true);

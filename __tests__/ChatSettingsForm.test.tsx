@@ -3,7 +3,10 @@ import { render, screen, fireEvent } from '@testing-library/react-native';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
-    theme: { ...require('../styles/colors').lightTheme, insets: { top: 0, bottom: 0, left: 0, right: 0 } },
+    theme: {
+      ...require('../styles/colors').lightTheme,
+      insets: { top: 0, bottom: 0, left: 0, right: 0 },
+    },
   }),
 }));
 
@@ -15,28 +18,43 @@ jest.mock('../components/model-hub/ModelCard', () => {
 jest.mock('../components/TextFieldInput', () => {
   const { TextInput } = require('react-native');
   return ({ value, onChangeText, placeholder, testID }: any) => (
-    <TextInput testID={testID || placeholder || 'text-input'} value={value} onChangeText={onChangeText} placeholder={placeholder} />
+    <TextInput
+      testID={testID || placeholder || 'text-input'}
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+    />
   );
 });
 
 jest.mock('../components/TextAreaField', () => {
   const { TextInput } = require('react-native');
   return ({ value, onChangeText, placeholder, editable }: any) => (
-    <TextInput testID="system-prompt-input" value={value} onChangeText={onChangeText} placeholder={placeholder} editable={editable} />
+    <TextInput
+      testID="system-prompt-input"
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      editable={editable}
+    />
   );
 });
 
 jest.mock('../components/EntryButton', () => {
   const { TouchableOpacity, Text } = require('react-native');
   return ({ text, onPress }: any) => (
-    <TouchableOpacity testID={`entry-${text}`} onPress={onPress}><Text>{text}</Text></TouchableOpacity>
+    <TouchableOpacity testID={`entry-${text}`} onPress={onPress}>
+      <Text>{text}</Text>
+    </TouchableOpacity>
   );
 });
 
 jest.mock('../components/SecondaryButton', () => {
   const { TouchableOpacity, Text } = require('react-native');
   return ({ text, onPress }: any) => (
-    <TouchableOpacity testID={`secondary-${text}`} onPress={onPress}><Text>{text}</Text></TouchableOpacity>
+    <TouchableOpacity testID={`secondary-${text}`} onPress={onPress}>
+      <Text>{text}</Text>
+    </TouchableOpacity>
   );
 });
 
@@ -85,8 +103,15 @@ describe('field visibility', () => {
   it('shows model card when model is provided', () => {
     renderForm({
       model: {
-        id: 1, modelName: 'Llama-3B', source: 'remote', isDownloaded: true,
-        modelPath: '', tokenizerPath: '', tokenizerConfigPath: '', thinking: false, featured: false,
+        id: 1,
+        modelName: 'Llama-3B',
+        source: 'remote',
+        isDownloaded: true,
+        modelPath: '',
+        tokenizerPath: '',
+        tokenizerConfigPath: '',
+        thinking: false,
+        featured: false,
       },
     });
     expect(screen.getByTestId('model-card')).toBeTruthy();
