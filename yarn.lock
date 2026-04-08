@@ -6341,13 +6341,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-store-review@npm:~9.0.9":
-  version: 9.0.9
-  resolution: "expo-store-review@npm:9.0.9"
+"expo-store-review@npm:~55.0.12":
+  version: 55.0.12
+  resolution: "expo-store-review@npm:55.0.12"
   peerDependencies:
     expo: "*"
     react-native: "*"
-  checksum: fc58fa02825d89e9c0cf31b6b1f8f384cb473519e06ddc1fe3f3cfee4126fbe03e24fbec3bd0db3d5d51120ad731625fb2578150c81eab9bb5c38564d7cd33db
+  checksum: 2b7446f0e2edf3b7e5747c1178545fe4c31f30453b1fbe3b49043f2c22cbf78472d8b3d46a7a65225e50298606511cad660172046b2664a848eff8596a567c97
   languageName: node
   linkType: hard
 
@@ -10239,7 +10239,7 @@ __metadata:
     expo-splash-screen: ~31.0.12
     expo-sqlite: ~16.0.10
     expo-status-bar: ~3.0.9
-    expo-store-review: ~9.0.9
+    expo-store-review: ~55.0.12
     jest: ^30.3.0
     jest-expo: ^55.0.11
     metro-config: ^0.81.0
