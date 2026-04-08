@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as StoreReview from 'expo-store-review';
-import Toast from 'react-native-toast-message';
 
 const TOTAL_CHATS_KEY = 'total_chats_created';
 const LAST_PROMPT_KEY = 'last_review_prompt_count';
@@ -37,17 +36,9 @@ export async function maybePromptReview(): Promise<void> {
     await AsyncStorage.setItem(LAST_PROMPT_KEY, String(totalChats));
 
     const isAvailable = await StoreReview.isAvailableAsync();
-
-    Toast.show({
-      type: 'defaultToast',
-      text1: 'Enjoying Private Mind? Tap to rate us!',
-      onPress: async () => {
-        Toast.hide();
-        if (isAvailable) {
-          await StoreReview.requestReview();
-        }
-      },
-    });
+    if (isAvailable) {
+      await StoreReview.requestReview();
+    }
   } catch (error) {
     // Silently fail — rating prompt is non-critical
     console.warn('Review prompt failed:', error);
