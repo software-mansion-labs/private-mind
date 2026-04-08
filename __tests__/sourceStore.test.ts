@@ -114,10 +114,27 @@ describe('addSource', () => {
       .addSource(baseSource, '/path/doc.txt', mockVectorStore);
 
     const sources = useSourceStore.getState().sources;
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({ success: true, sourceId: 99 });
     expect(sources).toHaveLength(1);
     expect(sources[0].id).toBe(99);
     expect(sources[0].isProcessing).toBe(false);
+  });
+
+  it('passes firstChunk to insertSource', async () => {
+    mockReadDocumentText.mockResolvedValue('content');
+    mockInsertSource.mockResolvedValue(1);
+    MockSplitter.mockImplementation(() => ({
+      splitText: jest.fn().mockResolvedValue(['first chunk text', 'second chunk']),
+    }));
+
+    await useSourceStore
+      .getState()
+      .addSource(baseSource, '/path/doc.txt', mockVectorStore);
+
+    expect(mockInsertSource).toHaveBeenCalledWith(
+      mockDb,
+      expect.objectContaining({ firstChunk: 'first chunk text' })
+    );
   });
 
   it('calls vectorStore.add once per chunk', async () => {
@@ -134,7 +151,11 @@ describe('addSource', () => {
     expect(mockVectorStore.add).toHaveBeenCalledTimes(3);
     expect(mockVectorStore.add).toHaveBeenCalledWith({
       document: 'a',
-      metadata: { documentId: 1 },
+      metadata: { documentId: 1, isFirstChunk: true },
+    });
+    expect(mockVectorStore.add).toHaveBeenCalledWith({
+      document: 'b',
+      metadata: { documentId: 1, isFirstChunk: false },
     });
   });
 

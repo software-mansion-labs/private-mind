@@ -6,6 +6,7 @@ export interface Source {
   name: string;
   type: string;
   size: number | null;
+  firstChunk?: string;
   isProcessing?: boolean;
 }
 
@@ -17,9 +18,10 @@ export const insertSource = async (
     `INSERT INTO sources (
       name,
       type,
-      size
-    ) VALUES (?, ?, ?)`,
-    [source.name, source.type, source.size]
+      size,
+      firstChunk
+    ) VALUES (?, ?, ?, ?)`,
+    [source.name, source.type, source.size, source.firstChunk || null]
   );
 
   return result.lastInsertRowId!;

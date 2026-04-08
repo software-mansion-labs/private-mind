@@ -23,7 +23,7 @@ interface SourceStore {
     source: Omit<Source, 'id'>,
     sourceUri: string,
     vectorStore: OPSQLiteVectorStore
-  ) => Promise<{ success: boolean; isEmpty?: boolean }>;
+  ) => Promise<{ success: boolean; isEmpty?: boolean; sourceId?: number }>;
   setSourceProcessing: (id: number, isProcessing: boolean) => void;
   deleteSource: (source: Source) => Promise<void>;
   renameSource: (id: number, newName: string) => Promise<void>;
@@ -84,7 +84,11 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
 
       const chunks = await textSplitter.splitText(sourceTextContent);
 
-      const sourceId = await insertSource(db, source);
+      const sourceWithFirstChunk = {
+        ...source,
+        firstChunk: chunks[0] || undefined,
+      };
+      const sourceId = await insertSource(db, sourceWithFirstChunk);
       if (!sourceId) {
         set((state) => ({
           sources: state.sources.filter((s) => s.id !== tempId),
@@ -97,18 +101,20 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         const chunk = chunks[i]!;
         await vectorStore?.add({
           document: chunk,
-          metadata: { documentId: sourceId },
+          metadata: { documentId: sourceId, isFirstChunk: i === 0 },
         });
       }
 
       set((state) => ({
         sources: state.sources.map((s) =>
-          s.id === tempId ? { ...s, id: sourceId, isProcessing: false } : s
+          s.id === tempId
+            ? { ...s, id: sourceId, isProcessing: false, firstChunk: chunks[0] }
+            : s
         ),
       }));
 
       set({ isReading: false });
-      return { success: true };
+      return { success: true, sourceId };
     } catch (e) {
       console.error(e);
       set((state) => ({
