@@ -36,7 +36,8 @@
       "^react-native-audio-api$": "<rootDir>/__mocks__/react-native-audio-api.ts",
       "^@react-native-clipboard/clipboard$": "<rootDir>/__mocks__/@react-native-clipboard/clipboard.ts",
       "^@gorhom/bottom-sheet$": "<rootDir>/__mocks__/@gorhom/bottom-sheet.tsx",
-      "^react-native-safe-area-context$": "<rootDir>/__mocks__/react-native-safe-area-context.ts"
+      "^react-native-safe-area-context$": "<rootDir>/__mocks__/react-native-safe-area-context.ts",
+      "^expo-store-review$": "<rootDir>/__mocks__/expo-store-review.ts"
     }
   },
   "op-sqlite": {
