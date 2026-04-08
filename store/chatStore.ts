@@ -1,5 +1,6 @@
 import { SQLiteDatabase } from 'expo-sqlite';
 import { create } from 'zustand';
+import { Model } from '../database/modelRepository';
 import {
   Chat,
   getAllChats,
@@ -16,6 +17,7 @@ import {
   activateSource,
   clearPhantomChat,
 } from '../database/sourcesRepository';
+import { maybePromptReview } from '../utils/reviewPrompt';
 
 interface ChatStore {
   chats: Chat[];
@@ -30,7 +32,7 @@ interface ChatStore {
   setChatModel: (id: number, modelId: number) => Promise<void>;
   deleteChat: (id: number) => Promise<void>;
   enableSource: (chatId: number, sourceId: number) => Promise<void>;
-  initPhantomChat: (phantomChatId: number) => Promise<void>;
+  initPhantomChat: (phantomChatId: number, model?: Model) => Promise<void>;
   setPhantomChatSettings: (settings: ChatSettings) => Promise<void>;
 }
 
@@ -132,6 +134,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       ],
       phantomChat: undefined,
     }));
+
+    maybePromptReview();
 
     return newChatId;
   },
