@@ -64,7 +64,6 @@ const Messages = ({ chatHistory, ref, isAtBottom, setIsAtBottom }: Props) => {
                 isLastMessage={isLastMessage}
                 imagePath={message.imagePath}
                 documentName={message.documentName}
-                documentUri={message.documentUri}
               />
             );
           })}

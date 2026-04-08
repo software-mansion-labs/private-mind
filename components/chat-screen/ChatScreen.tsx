@@ -72,7 +72,6 @@ export default function ChatScreen({
   const {
     isGenerating,
     sendChatMessage,
-    sendEventMessage,
     loadModel,
     model: loadedModel,
   } = useLLMStore();
@@ -137,7 +136,7 @@ export default function ChatScreen({
     ];
 
     // RAG context from all sources (persisted + newly attached)
-    if (allSourceIds.length > 0) {
+    if (allSourceIds.length > 0 && vectorStore) {
       const allSources = useSourceStore.getState().sources;
       const activeSources = allSources.filter((s) =>
         allSourceIds.includes(s.id)
@@ -149,7 +148,7 @@ export default function ChatScreen({
         const ragContext = await prepareContext(
           userInput,
           allSourceIds,
-          vectorStore!
+          vectorStore
         );
         context.push(...ragContext);
       }
@@ -168,10 +167,12 @@ export default function ChatScreen({
       thinkingEnabled: chatSettings.thinkingEnabled,
     };
 
-    const docAttachment = attachments?.find((a) => a.type === 'document');
+    const docAttachments = attachments?.filter((a) => a.type === 'document') || [];
+    const docName = docAttachments.map((a) => a.name).filter(Boolean).join(', ') || undefined;
+    const docUri = docAttachments[0]?.uri;
     await sendChatMessage(
       userInput, chatId!, context, settings, imagePath,
-      docAttachment?.name, docAttachment?.uri
+      docName, docUri
     );
   };
 

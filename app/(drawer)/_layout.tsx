@@ -47,7 +47,7 @@ const DrawerLayout = () => {
           title: 'Benchmark',
         }}
       />
-<Drawer.Screen name="chat/[id]" />
+      <Drawer.Screen name="chat/[id]" />
     </Drawer>
   );
 };

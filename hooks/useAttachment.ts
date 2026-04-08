@@ -134,27 +134,30 @@ export const useAttachment = () => {
 
   const removeAttachment = useCallback(
     (id: string) => {
-      const attachment = attachments.find((a) => a.id === id);
-      setAttachments((prev) => prev.filter((a) => a.id !== id));
+      let hadSourceId = false;
+      setAttachments((prev) => {
+        hadSourceId = prev.some((a) => a.id === id && a.sourceId);
+        return prev.filter((a) => a.id !== id);
+      });
 
-      // Clean up source + embeddings if document was processed but not yet linked to a chat
-      if (attachment?.sourceId && vectorStore) {
-        useSourceStore
-          .getState()
-          .cleanupOrphanedSources(vectorStore);
+      if (hadSourceId && vectorStore) {
+        useSourceStore.getState().cleanupOrphanedSources(vectorStore);
       }
     },
-    [attachments, vectorStore]
+    [vectorStore]
   );
 
   const clearAll = useCallback(() => {
-    const hadDocuments = attachments.some((a) => a.sourceId);
-    setAttachments([]);
+    let hadDocuments = false;
+    setAttachments((prev) => {
+      hadDocuments = prev.some((a) => a.sourceId);
+      return [];
+    });
 
     if (hadDocuments && vectorStore) {
       useSourceStore.getState().cleanupOrphanedSources(vectorStore);
     }
-  }, [attachments, vectorStore]);
+  }, [vectorStore]);
 
   const openSheet = useCallback(() => {
     sheetRef.current?.present();

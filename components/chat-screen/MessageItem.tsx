@@ -20,7 +20,6 @@ interface MessageItemProps {
   isLastMessage: boolean;
   imagePath?: string;
   documentName?: string;
-  documentUri?: string;
 }
 
 const MessageItem = memo(
@@ -33,7 +32,6 @@ const MessageItem = memo(
     isLastMessage = false,
     imagePath,
     documentName,
-    documentUri,
   }: MessageItemProps) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
@@ -139,7 +137,9 @@ const MessageItem = memo(
                     delayPressIn={50}
                     activeOpacity={0.4}
                   >
-                    <Text style={styles.userText}>{contentParts.normalContent}</Text>
+                    <Text style={styles.userText}>
+                      {contentParts.normalContent}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -164,17 +164,18 @@ const MessageItem = memo(
                     <MarkdownComponent text={contentParts.normalContent} />
                   </TouchableOpacity>
                 )}
-                {contentParts.hasThinking && contentParts.thinkingContent?.trim() && (
-                  <ThinkingBlock
-                    content={contentParts.thinkingContent || ''}
-                    isComplete={contentParts.isThinkingComplete}
-                    inProgress={
-                      isLastMessage &&
-                      isGenerating &&
-                      !contentParts.isThinkingComplete
-                    }
-                  />
-                )}
+                {contentParts.hasThinking &&
+                  contentParts.thinkingContent?.trim() && (
+                    <ThinkingBlock
+                      content={contentParts.thinkingContent || ''}
+                      isComplete={contentParts.isThinkingComplete}
+                      inProgress={
+                        isLastMessage &&
+                        isGenerating &&
+                        !contentParts.isThinkingComplete
+                      }
+                    />
+                  )}
                 {contentParts.normalAfterThink &&
                   contentParts.normalAfterThink.trim() && (
                     <TouchableOpacity
@@ -185,13 +186,12 @@ const MessageItem = memo(
                       <MarkdownComponent text={contentParts.normalAfterThink} />
                     </TouchableOpacity>
                   )}
-                {tokensPerSecond !== undefined &&
-                  tokensPerSecond !== 0 && (
-                    <Text style={styles.metadata}>
-                      ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
-                      {tokensPerSecond?.toFixed(2)} tok/s
-                    </Text>
-                  )}
+                {tokensPerSecond !== undefined && tokensPerSecond !== 0 && (
+                  <Text style={styles.metadata}>
+                    ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
+                    {tokensPerSecond?.toFixed(2)} tok/s
+                  </Text>
+                )}
               </View>
             </View>
             <MessageManagementSheet
@@ -241,7 +241,7 @@ const createStyles = (theme: Theme) =>
     documentTile: {
       width: '100%',
       paddingVertical: 20,
-      backgroundColor: 'rgba(0, 0, 0, 0.15)',
+      backgroundColor: theme.bg.overlay,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
