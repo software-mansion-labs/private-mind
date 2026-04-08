@@ -139,6 +139,33 @@ describe('user messages with image', () => {
   });
 });
 
+// ─── user messages with document ──────────────────────────────────────────────
+
+describe('user messages with document', () => {
+  it('renders document tile above text for user messages with documentName', () => {
+    renderItem({ role: 'user', content: 'Summarize this', documentName: 'report.pdf' });
+    expect(screen.getByTestId('message-document')).toBeTruthy();
+    expect(screen.getByText('report.pdf')).toBeTruthy();
+    expect(screen.getByText('Summarize this')).toBeTruthy();
+  });
+
+  it('does not render document tile when documentName is absent', () => {
+    renderItem({ role: 'user', content: 'Hello' });
+    expect(screen.queryByTestId('message-document')).toBeNull();
+  });
+
+  it('renders document tile without text when content is empty', () => {
+    renderItem({ role: 'user', content: '', documentName: 'notes.txt' });
+    expect(screen.getByTestId('message-document')).toBeTruthy();
+    expect(screen.getByText('notes.txt')).toBeTruthy();
+  });
+
+  it('does not render document tile for assistant messages', () => {
+    renderItem({ role: 'assistant', content: 'Response', documentName: 'doc.pdf' });
+    expect(screen.queryByTestId('message-document')).toBeNull();
+  });
+});
+
 // ─── thinking block parsing ───────────────────────────────────────────────────
 
 describe('thinking block parsing', () => {

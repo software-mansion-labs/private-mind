@@ -130,26 +130,11 @@ export default function ChatScreen({
 
     // Collect all source IDs: from attachments + already enabled on chat
     const attachmentSourceIds = (attachments || [])
-      .filter((a) => a.type === 'document' && a.strategy === 'rag' && a.sourceId)
+      .filter((a) => a.type === 'document' && a.sourceId)
       .map((a) => a.sourceId!);
     const allSourceIds = [
       ...new Set([...enabledSources, ...attachmentSourceIds]),
     ];
-
-    // Inline documents: inject full text
-    if (attachments) {
-      for (const att of attachments) {
-        if (
-          att.type === 'document' &&
-          att.strategy === 'inline' &&
-          att.inlineText
-        ) {
-          context.push(
-            `\n --- Source: ${att.name || 'Document'} (Full Text) --- \n ${att.inlineText} \n --- End of Source ---`
-          );
-        }
-      }
-    }
 
     // RAG context from all sources (persisted + newly attached)
     if (allSourceIds.length > 0) {

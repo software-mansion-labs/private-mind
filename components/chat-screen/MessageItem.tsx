@@ -9,6 +9,7 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import MessageManagementSheet from '../bottomSheets/MessageManagementSheet';
 import { Theme } from '../../styles/colors';
 import ImageLightbox from './ImageLightbox';
+import AttachmentIcon from '../../assets/icons/attachment.svg';
 
 interface MessageItemProps {
   content: string;
@@ -18,6 +19,8 @@ interface MessageItemProps {
   timeToFirstToken?: number;
   isLastMessage: boolean;
   imagePath?: string;
+  documentName?: string;
+  documentUri?: string;
 }
 
 const MessageItem = memo(
@@ -29,6 +32,8 @@ const MessageItem = memo(
     timeToFirstToken,
     isLastMessage = false,
     imagePath,
+    documentName,
+    documentUri,
   }: MessageItemProps) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
@@ -114,6 +119,18 @@ const MessageItem = memo(
                     onClose={() => setLightboxVisible(false)}
                   />
                 </>
+              )}
+              {documentName && role === 'user' && (
+                <View style={styles.documentTile} testID="message-document">
+                  <AttachmentIcon
+                    width={28}
+                    height={28}
+                    style={{ color: theme.text.primary }}
+                  />
+                  <Text style={styles.documentName} numberOfLines={2}>
+                    {documentName}
+                  </Text>
+                </View>
               )}
               <View style={[styles.bubbleContent, role === 'user' && styles.userMessageContent]}>
                 {role === 'assistant' && (
@@ -207,6 +224,21 @@ const createStyles = (theme: Theme) =>
       aspectRatio: 4 / 3,
       borderTopLeftRadius: 12,
       borderTopRightRadius: 12,
+    },
+    documentTile: {
+      width: '100%',
+      paddingVertical: 20,
+      backgroundColor: 'rgba(0, 0, 0, 0.15)',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 12,
+    },
+    documentName: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.sm,
+      color: theme.text.primary,
+      flex: 1,
     },
     eventMessage: {
       paddingHorizontal: 16,

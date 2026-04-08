@@ -4,11 +4,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { Platform, PermissionsAndroid } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { readDocumentText } from '../utils/fileReaders';
 import { useSourceStore } from '../store/sourceStore';
 import { useVectorStore } from '../context/VectorStoreContext';
-
-const INLINE_THRESHOLD = 4096;
 
 export interface Attachment {
   id: string;
@@ -16,10 +13,7 @@ export interface Attachment {
   uri: string;
   name?: string;
   status: 'loading' | 'ready';
-  strategy?: 'inline' | 'rag';
-  inlineText?: string;
   sourceId?: number;
-  firstChunk?: string;
 }
 
 const requestAndroidGalleryPermission = async (): Promise<boolean> => {
@@ -104,56 +98,30 @@ export const useAttachment = () => {
     ]);
 
     try {
-      const text = await readDocumentText(asset.uri, fileType);
+      const newSource = {
+        name: fileName,
+        type: fileType,
+        size: asset.size || null,
+      };
+      const { addSource } = useSourceStore.getState();
+      const result = await addSource(newSource, asset.uri, vectorStore!);
 
-      if (!text || text.trim().length === 0) {
-        setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
-        Toast.show({
-          type: 'defaultToast',
-          text1: 'Document appears to be empty.',
-        });
-        return;
-      }
-
-      if (text.length <= INLINE_THRESHOLD) {
+      if (result.success) {
         setAttachments((prev) =>
           prev.map((a) =>
             a.id === attachmentId
-              ? { ...a, status: 'ready', strategy: 'inline', inlineText: text }
+              ? { ...a, status: 'ready', sourceId: result.sourceId }
               : a
           )
         );
       } else {
-        const firstChunk = text.slice(0, 1000);
-        const newSource = {
-          name: fileName,
-          type: fileType,
-          size: asset.size || null,
-        };
-        const { addSource } = useSourceStore.getState();
-        const result = await addSource(newSource, asset.uri, vectorStore!);
-
-        if (result.success) {
-          setAttachments((prev) =>
-            prev.map((a) =>
-              a.id === attachmentId
-                ? {
-                    ...a,
-                    status: 'ready',
-                    strategy: 'rag',
-                    firstChunk,
-                    sourceId: result.sourceId,
-                  }
-                : a
-            )
-          );
-        } else {
-          setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
-          Toast.show({
-            type: 'defaultToast',
-            text1: 'Failed to process document.',
-          });
-        }
+        setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+        Toast.show({
+          type: 'defaultToast',
+          text1: result.isEmpty
+            ? 'Document appears to be empty.'
+            : 'Failed to process document.',
+        });
       }
     } catch {
       setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
