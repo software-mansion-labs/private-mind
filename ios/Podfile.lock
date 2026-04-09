@@ -1564,7 +1564,7 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-  - react-native-executorch (0.8.1):
+  - react-native-executorch (0.9.0):
     - hermes-engine
     - opencv-rne (~> 4.11.0)
     - RCTRequired
@@ -3048,7 +3048,7 @@ SPEC CHECKSUMS:
   React-logger: d0632d799fbd3507cdd5406f72489a83ed5f9163
   React-Mapbuffer: 274cb203819492f7fb594bbb3a1f3f5061fa794d
   React-microtasksnativemodule: 563b4dcc8b8570814d6de4fc1196f48d2944acd4
-  react-native-executorch: 41b4bc927366039f280b696a972c4a832cceae08
+  react-native-executorch: 6b939cfa959b26138c13b171797919d57a05be90
   react-native-image-picker: 48d850454b4a389753053e1d7378b624d3b47d77
   react-native-keyboard-controller: c872321fc580f8d815e9e2ad5558b24c26c18b4f
   react-native-netinfo: f852c868bf5175e46165c7e4db48a204a95c3800
