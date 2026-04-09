@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Keyboard, StyleSheet, View } from 'react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSharedValue } from 'react-native-reanimated';
+import type { MessagesHandle } from './Messages';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
 import { useModelStore } from '../../store/modelStore';
@@ -64,13 +65,13 @@ export default function ChatScreen({
     clear: () => void;
     setInput: (text: string) => void;
   }>(null);
+  const messagesRef = useRef<MessagesHandle>(null);
   const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const db = useSQLiteContext();
 
   const { vectorStore } = useVectorStore();
   const {
     isGenerating,
-    isProcessingPrompt,
     sendChatMessage,
     loadModel,
     model: loadedModel,
@@ -93,45 +94,16 @@ export default function ChatScreen({
   const enabledSources =
     chat?.enabledSources || phantomChat?.enabledSources || [];
 
-  const { height: screenHeight } = useWindowDimensions();
-
   // Shared values for KeyboardChatScrollView
   const extraContentPadding = useSharedValue(0);
   const blankSpace = useSharedValue(0);
-  const contentHeightAtReservation = useRef(0);
-  const reservedSpace = useRef(0);
 
-  // Reserve blank space when user sends a message (isProcessingPrompt = true)
-  useEffect(() => {
-    if (isProcessingPrompt) {
-      reservedSpace.current = screenHeight * 0.5;
-      blankSpace.value = reservedSpace.current;
-    }
-  }, [isProcessingPrompt, screenHeight, blankSpace]);
-
-  // Shrink blank space as AI response streams in
-  const handleContentSizeChange = useCallback(
-    (_w: number, h: number) => {
-      if (reservedSpace.current > 0) {
-        // On first call after reservation, capture baseline height
-        if (contentHeightAtReservation.current === 0) {
-          contentHeightAtReservation.current = h;
-          return;
-        }
-        // Shrink by how much content has grown since reservation
-        const growth = h - contentHeightAtReservation.current;
-        blankSpace.value = Math.max(0, reservedSpace.current - growth);
-
-        // Once fully consumed, clean up
-        if (growth >= reservedSpace.current) {
-          reservedSpace.current = 0;
-          contentHeightAtReservation.current = 0;
-          blankSpace.value = 0;
-        }
-      }
-    },
-    [blankSpace]
-  );
+  // Freeze the scroll view's layout whenever any overlay (model picker,
+  // attachment sheet) is presented so keyboard dismiss → sheet open doesn't
+  // cause an intermediate content jump.
+  const [modelSheetOpen, setModelSheetOpen] = useState(false);
+  const [attachmentSheetOpen, setAttachmentSheetOpen] = useState(false);
+  const overlayOpen = modelSheetOpen || attachmentSheetOpen;
 
   const handlePresentModelSheet = useCallback(() => {
     Keyboard.dismiss();
@@ -162,6 +134,13 @@ export default function ChatScreen({
     inputRef.current?.clear();
     Keyboard.dismiss();
     updateLastUsed(chatId!);
+
+    // Notify Messages that a send is in flight. It will seed blankSpace to
+    // the full container height, then derive the final value from measured
+    // heights as the new user row and assistant placeholder lay out. See
+    // the v0 iOS app technique:
+    // https://vercel.com/blog/how-we-built-the-v0-ios-app
+    messagesRef.current?.onMessageSent();
 
     // Build context from attachments + persisted sources
     const context: string[] = [];
@@ -280,10 +259,12 @@ export default function ChatScreen({
   return (
     <View style={styles.container} collapsable={false}>
       <Messages
+        ref={messagesRef}
         chatHistory={messageHistory}
         extraContentPadding={extraContentPadding}
         blankSpace={blankSpace}
-        onContentSizeChange={handleContentSizeChange}
+        isGenerating={isGenerating}
+        freeze={overlayOpen}
       />
 
       <KeyboardStickyView>
@@ -299,12 +280,14 @@ export default function ChatScreen({
           thinkingEnabled={chatSettings?.thinkingEnabled || false}
           onThinkingToggle={handleThinkingToggle}
           hasMessages={messageHistory.length > 0}
+          onAttachmentSheetStateChange={setAttachmentSheetOpen}
         />
       </KeyboardStickyView>
 
       <ModelSelectSheet
         bottomSheetModalRef={modelBottomSheetModalRef}
         selectModel={handleSelectModel}
+        onSheetStateChange={setModelSheetOpen}
       />
     </View>
   );

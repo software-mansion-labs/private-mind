@@ -45,6 +45,7 @@ interface Props {
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
   hasMessages: boolean;
+  onAttachmentSheetStateChange?: (isOpen: boolean) => void;
 }
 
 const ChatBar = ({
@@ -59,6 +60,7 @@ const ChatBar = ({
   thinkingEnabled,
   onThinkingToggle,
   hasMessages,
+  onAttachmentSheetStateChange,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -75,7 +77,15 @@ const ChatBar = ({
     openSheet,
   } = useAttachment();
 
+  // Captured once from the first TextInput onLayout (empty single-line height)
+  // and never reset — see feedback #6 on the rebase plan. Re-capturing from
+  // onContentSizeChange after clear() races the iOS text-clear and can freeze
+  // the composer at its multi-line height.
   const defaultInputHeight = useRef(0);
+  // JS-managed height so clearing the text actually shrinks the composer
+  // back to a single line. Without this, the TextInput's intrinsic height
+  // on iOS sticks at the tallest measured contentSize even after value=''.
+  const [inputHeight, setInputHeight] = useState<number | undefined>(undefined);
 
   useImperativeHandle(
     ref,
@@ -84,24 +94,29 @@ const ChatBar = ({
         setUserInput('');
         clearAll();
         extraContentPadding.value = 0;
-        defaultInputHeight.current = 0;
+        setInputHeight(defaultInputHeight.current || undefined);
       },
       setInput: (text: string) => setUserInput(text),
     }),
     [clearAll, extraContentPadding]
   );
 
+  const handleInputLayout = useCallback(
+    (e: { nativeEvent: { layout: { height: number } } }) => {
+      if (defaultInputHeight.current === 0) {
+        defaultInputHeight.current = e.nativeEvent.layout.height;
+      }
+    },
+    []
+  );
+
   const handleInputContentSizeChange = useCallback(
     (e: { nativeEvent: { contentSize: { height: number } } }) => {
+      const baseline = defaultInputHeight.current;
       const newHeight = e.nativeEvent.contentSize.height;
-      if (defaultInputHeight.current === 0) {
-        defaultInputHeight.current = newHeight;
-        return;
-      }
-      extraContentPadding.value = Math.max(
-        0,
-        newHeight - defaultInputHeight.current
-      );
+      setInputHeight(newHeight);
+      if (baseline === 0) return;
+      extraContentPadding.value = Math.max(0, newHeight - baseline);
     },
     [extraContentPadding]
   );
@@ -210,11 +225,12 @@ const ChatBar = ({
             )}
             <View style={styles.content}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, inputHeight ? { height: inputHeight } : null]}
                 multiline
                 onFocus={async () => {
                   await loadSelectedModel();
                 }}
+                onLayout={handleInputLayout}
                 onContentSizeChange={handleInputContentSizeChange}
                 placeholder="Ask about anything..."
                 placeholderTextColor={theme.text.contrastTertiary}
@@ -243,6 +259,7 @@ const ChatBar = ({
             onPickFromLibrary={pickFromLibrary}
             onPickFromCamera={pickFromCamera}
             onPickDocument={pickDocument}
+            onSheetStateChange={onAttachmentSheetStateChange}
           />
         </>
       )}

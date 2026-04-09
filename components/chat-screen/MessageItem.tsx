@@ -2,6 +2,7 @@ import React, { memo, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, Image } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
+import AnimatedChatLoading from './AnimatedChatLoading';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
@@ -35,7 +36,7 @@ const MessageItem = memo(
   }: MessageItemProps) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
-    const { isGenerating } = useLLMStore();
+    const { isGenerating, isProcessingPrompt } = useLLMStore();
     const messageManagementSheetRef = useRef<BottomSheetModal | null>(null);
     const [lightboxVisible, setLightboxVisible] = useState(false);
 
@@ -152,7 +153,11 @@ const MessageItem = memo(
           <>
             <View style={styles.aiMessage}>
               <View style={styles.bubbleContent}>
-                <Text style={styles.modelName}>{modelName}</Text>
+                {content.trim() ? (
+                  <Text style={styles.modelName}>{modelName}</Text>
+                ) : isLastMessage && isProcessingPrompt ? (
+                  <AnimatedChatLoading />
+                ) : null}
                 {contentParts.normalContent.trim() && (
                   <TouchableOpacity
                     onLongPress={() => {
