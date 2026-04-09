@@ -9253,7 +9253,7 @@ __metadata:
     react-native-audio-api: 0.12.0-nightly-f7c925b-20260402
     react-native-device-info: ^15.0.1
     react-native-enriched-markdown: ^0.4.1
-    react-native-executorch: ^0.8.1
+    react-native-executorch: ./react-native-executorch-0.9.0.tgz
     react-native-executorch-expo-resource-fetcher: ^0.8.0
     react-native-gesture-handler: ~2.30.0
     react-native-image-picker: ^8.2.1
@@ -9502,9 +9502,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-executorch@npm:^0.8.1":
-  version: 0.8.1
-  resolution: "react-native-executorch@npm:0.8.1"
+"react-native-executorch@file:./react-native-executorch-0.9.0.tgz::locator=private-mind%40workspace%3A.":
+  version: 0.9.0
+  resolution: "react-native-executorch@file:./react-native-executorch-0.9.0.tgz::locator=private-mind%40workspace%3A."
   dependencies:
     "@huggingface/jinja": ^0.5.0
     jsonrepair: ^3.12.0
@@ -9514,7 +9514,7 @@ __metadata:
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 426ef62f638374c443fc3697244f7ffb163c74a92eb70116351ba358a6a9ace2058eff42ad577a750b2dab231be59bdae55fd046e9834f4d150a57b5fff9686f
+  checksum: 3ee30a525cb9c588ede6385cc9cd924b62666a9a17ebdec557723fad60c1ec3ae103486950da585c36b225646a614490cd648d4946db0c5817e451802245ae40
   languageName: node
   linkType: hard
 
