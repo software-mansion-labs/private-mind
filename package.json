@@ -79,7 +79,7 @@
     "react-native-audio-api": "0.12.0-nightly-f7c925b-20260402",
     "react-native-device-info": "^15.0.1",
     "react-native-enriched-markdown": "^0.4.1",
-    "react-native-executorch": "^0.8.1",
+    "react-native-executorch": "./react-native-executorch-0.9.0.tgz",
     "react-native-executorch-expo-resource-fetcher": "^0.8.0",
     "react-native-gesture-handler": "~2.30.0",
     "react-native-image-picker": "^8.2.1",
