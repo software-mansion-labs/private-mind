@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useRef, useState } from 'react';
+import React, { memo, useMemo, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, Image } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
@@ -6,8 +6,6 @@ import AnimatedChatLoading from './AnimatedChatLoading';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import MessageManagementSheet from '../bottomSheets/MessageManagementSheet';
 import { Theme } from '../../styles/colors';
 import ImageLightbox from './ImageLightbox';
 import AttachmentIcon from '../../assets/icons/attachment.svg';
@@ -37,7 +35,6 @@ const MessageItem = memo(
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
     const { isGenerating, isProcessingPrompt } = useLLMStore();
-    const messageManagementSheetRef = useRef<BottomSheetModal | null>(null);
     const [lightboxVisible, setLightboxVisible] = useState(false);
 
     const parseThinkingContent = (text: string) => {
@@ -131,23 +128,12 @@ const MessageItem = memo(
             {contentParts.normalContent.trim() && (
               <View style={styles.userBubble} testID="text-bubble">
                 <View style={styles.userMessageContent}>
-                  <TouchableOpacity
-                    onLongPress={() => {
-                      messageManagementSheetRef.current?.present(content);
-                    }}
-                    delayPressIn={50}
-                    activeOpacity={0.4}
-                  >
-                    <Text style={styles.userText}>
-                      {contentParts.normalContent}
-                    </Text>
-                  </TouchableOpacity>
+                  <Text style={styles.userText} selectable>
+                    {contentParts.normalContent}
+                  </Text>
                 </View>
               </View>
             )}
-            <MessageManagementSheet
-              bottomSheetModalRef={messageManagementSheetRef}
-            />
           </View>
         ) : (
           <>
@@ -159,15 +145,7 @@ const MessageItem = memo(
                   <AnimatedChatLoading />
                 ) : null}
                 {contentParts.normalContent.trim() && (
-                  <TouchableOpacity
-                    onLongPress={() => {
-                      messageManagementSheetRef.current?.present(content);
-                    }}
-                    delayPressIn={50}
-                    activeOpacity={0.4}
-                  >
-                    <MarkdownComponent text={contentParts.normalContent} />
-                  </TouchableOpacity>
+                  <MarkdownComponent text={contentParts.normalContent} />
                 )}
                 {contentParts.hasThinking &&
                   contentParts.thinkingContent?.trim() && (
@@ -183,13 +161,7 @@ const MessageItem = memo(
                   )}
                 {contentParts.normalAfterThink &&
                   contentParts.normalAfterThink.trim() && (
-                    <TouchableOpacity
-                      onLongPress={() => {
-                        messageManagementSheetRef.current?.present(content);
-                      }}
-                    >
-                      <MarkdownComponent text={contentParts.normalAfterThink} />
-                    </TouchableOpacity>
+                    <MarkdownComponent text={contentParts.normalAfterThink} />
                   )}
                 {tokensPerSecond !== undefined && tokensPerSecond !== 0 && (
                   <Text style={styles.metadata}>
@@ -199,9 +171,6 @@ const MessageItem = memo(
                 )}
               </View>
             </View>
-            <MessageManagementSheet
-              bottomSheetModalRef={messageManagementSheetRef}
-            />
           </>
         )}
       </>
