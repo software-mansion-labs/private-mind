@@ -9,7 +9,7 @@ import { Theme } from '../../styles/colors';
 import { useTheme } from '../../context/ThemeContext';
 import EntryButton from '../EntryButton';
 import CopyIcon from '../../assets/icons/copy.svg';
-import Clipboard from '@react-native-clipboard/clipboard';
+import * as Clipboard from 'expo-clipboard';
 import Toast from 'react-native-toast-message';
 
 interface Props {
@@ -46,8 +46,8 @@ const MessageManagementSheet = ({ bottomSheetModalRef }: Props) => {
           <EntryButton
             text="Copy to clipboard"
             icon={<CopyIcon width={19} height={20} style={styles.icon} />}
-            onPress={() => {
-              Clipboard.setString(props.data);
+            onPress={async () => {
+              await Clipboard.setStringAsync(props.data);
               Toast.show({
                 type: 'defaultToast',
                 text1: 'Message copied to clipboard',

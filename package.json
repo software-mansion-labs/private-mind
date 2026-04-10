@@ -34,7 +34,6 @@
       "^react-native-toast-message$": "<rootDir>/__mocks__/react-native-toast-message.ts",
       "^react-native-reanimated$": "<rootDir>/__mocks__/react-native-reanimated.ts",
       "^react-native-audio-api$": "<rootDir>/__mocks__/react-native-audio-api.ts",
-      "^@react-native-clipboard/clipboard$": "<rootDir>/__mocks__/@react-native-clipboard/clipboard.ts",
       "^@gorhom/bottom-sheet$": "<rootDir>/__mocks__/@gorhom/bottom-sheet.tsx",
       "^react-native-safe-area-context$": "<rootDir>/__mocks__/react-native-safe-area-context.ts",
       "^expo-store-review$": "<rootDir>/__mocks__/expo-store-review.ts"
@@ -49,7 +48,6 @@
     "@gorhom/bottom-sheet": "^5.2.8",
     "@op-engineering/op-sqlite": "^15.2.7",
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@react-native-clipboard/clipboard": "^1.16.2",
     "@react-native-community/netinfo": "11.5.2",
     "@react-native-rag/executorch": "^0.8.0",
     "@react-native-rag/op-sqlite": "^0.8.0",
@@ -67,6 +65,7 @@
     "expo-haptics": "~55.0.13",
     "expo-linking": "~55.0.11",
     "expo-localization": "~55.0.12",
+    "expo-paste-input": "^0.1.15",
     "expo-router": "~55.0.11",
     "expo-sharing": "~55.0.17",
     "expo-splash-screen": "~55.0.16",

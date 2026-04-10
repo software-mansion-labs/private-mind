@@ -2891,23 +2891,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native-clipboard/clipboard@npm:^1.16.2":
-  version: 1.16.2
-  resolution: "@react-native-clipboard/clipboard@npm:1.16.2"
-  peerDependencies:
-    react: ">= 16.9.0"
-    react-native: ">= 0.61.5"
-    react-native-macos: ">= 0.61.0"
-    react-native-windows: ">= 0.61.0"
-  peerDependenciesMeta:
-    react-native-macos:
-      optional: true
-    react-native-windows:
-      optional: true
-  checksum: 4b5b2d9cdd3f1540af6cd8d1596a2e4acc85cb6bcad5778dd1b1eeb78265e326aec1f624efc8e1113cf36293902a84c5c6afa155a1e1434916c79eef6d09da3d
-  languageName: node
-  linkType: hard
-
 "@react-native-community/netinfo@npm:11.5.2":
   version: 11.5.2
   resolution: "@react-native-community/netinfo@npm:11.5.2"
@@ -5670,6 +5653,17 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 3f1dc12d9dde206e11e5ae2ddb944016ad5f8c25a5b2672d98cf38ee925099cafc5202c1d9c0e8c922c88ec32277acca2aa0798f7f498ef1371dade468bfc365
+  languageName: node
+  linkType: hard
+
+"expo-paste-input@npm:^0.1.15":
+  version: 0.1.15
+  resolution: "expo-paste-input@npm:0.1.15"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+  checksum: 2a116c8f2cd63d0b9e8e3d4f34ab250a7ff6e56e0dcab0db94dec7e1c236e68d7daa02d3947611aaf7ce6e8232a5e988f50344aac24eea921ac913fd123478e5
   languageName: node
   linkType: hard
 
@@ -9217,7 +9211,6 @@ __metadata:
     "@gorhom/bottom-sheet": ^5.2.8
     "@op-engineering/op-sqlite": ^15.2.7
     "@react-native-async-storage/async-storage": 2.2.0
-    "@react-native-clipboard/clipboard": ^1.16.2
     "@react-native-community/netinfo": 11.5.2
     "@react-native-rag/executorch": ^0.8.0
     "@react-native-rag/op-sqlite": ^0.8.0
@@ -9239,6 +9232,7 @@ __metadata:
     expo-haptics: ~55.0.13
     expo-linking: ~55.0.11
     expo-localization: ~55.0.12
+    expo-paste-input: ^0.1.15
     expo-router: ~55.0.11
     expo-sharing: ~55.0.17
     expo-splash-screen: ~55.0.16
