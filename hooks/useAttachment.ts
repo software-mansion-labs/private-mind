@@ -31,6 +31,12 @@ const requestAndroidGalleryPermission = async (): Promise<boolean> => {
   return result === PermissionsAndroid.RESULTS.GRANTED;
 };
 
+const isImageUri = (uri: string): boolean => {
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.heic', '.heif'];
+  const lowerUri = uri.toLowerCase();
+  return imageExtensions.some((ext) => lowerUri.includes(ext));
+};
+
 export const useAttachment = () => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const sheetRef = useRef<BottomSheetModal>(null);
@@ -163,6 +169,28 @@ export const useAttachment = () => {
     sheetRef.current?.present();
   }, []);
 
+  const addPastedAttachment = useCallback(
+    (uri: string) => {
+      if (!uri || typeof uri !== 'string') {
+        return;
+      }
+
+      if (!isImageUri(uri)) {
+        Toast.show({
+          type: 'defaultToast',
+          text1: 'Only images can be pasted. Use the + button for documents.',
+        });
+        return;
+      }
+
+      setAttachments((prev) => [
+        ...prev,
+        { id: `img-${Date.now()}`, type: 'image', uri, status: 'ready' },
+      ]);
+    },
+    []
+  );
+
   return {
     attachments,
     sheetRef,
@@ -172,5 +200,6 @@ export const useAttachment = () => {
     removeAttachment,
     clearAll,
     openSheet,
+    addPastedAttachment,
   };
 };

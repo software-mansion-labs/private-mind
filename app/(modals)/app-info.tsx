@@ -7,7 +7,7 @@ import {
   Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import Clipboard from '@react-native-clipboard/clipboard';
+import * as Clipboard from 'expo-clipboard';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
@@ -93,8 +93,8 @@ const LearnMoreSection = () => {
 const VersionInfo = () => {
   const { theme } = useTheme();
 
-  const handleCopyVersion = () => {
-    Clipboard.setString(APP_VERSION);
+  const handleCopyVersion = async () => {
+    await Clipboard.setStringAsync(APP_VERSION);
     Toast.show({
       type: 'defaultToast',
       text1: 'Successfully copied version to clipboard',

@@ -8,12 +8,13 @@ import React, {
 } from 'react';
 import {
   View,
-  TextInput,
+  TextInput as RNTextInput,
   TouchableOpacity,
   Text,
   StyleSheet,
   Keyboard,
 } from 'react-native';
+import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
 import AttachmentSheet from '../bottomSheets/AttachmentSheet';
 import { useAttachment, Attachment } from '../../hooks/useAttachment';
 import { Model } from '../../database/modelRepository';
@@ -33,7 +34,11 @@ import Toast from 'react-native-toast-message';
 
 interface Props {
   chatId: number | null;
-  onSend: (userInput: string, imagePath?: string, attachments?: Attachment[]) => void;
+  onSend: (
+    userInput: string,
+    imagePath?: string,
+    attachments?: Attachment[]
+  ) => void;
   onSelectModel: () => void;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
@@ -76,12 +81,16 @@ const ChatBar = ({
     removeAttachment,
     clearAll,
     openSheet,
+    addPastedAttachment,
   } = useAttachment();
 
   useImperativeHandle(
     ref,
     () => ({
-      clear: () => { setUserInput(''); clearAll(); },
+      clear: () => {
+        setUserInput('');
+        clearAll();
+      },
       setInput: (text: string) => setUserInput(text),
     }),
     [clearAll]
@@ -113,7 +122,49 @@ const ChatBar = ({
     if (hasLoadingAttachment) return;
     onSend(userInput, imageAttachment?.uri, attachments);
     clearAll();
-  }, [onSend, userInput, imageAttachment, attachments, clearAll, hasLoadingAttachment]);
+  }, [
+    onSend,
+    userInput,
+    imageAttachment,
+    attachments,
+    clearAll,
+    hasLoadingAttachment,
+  ]);
+
+  const onPaste = useCallback(
+    (payload: PasteEventPayload) => {
+      try {
+        if (payload.type === 'text') {
+          return;
+        }
+
+        if (payload.type === 'images' && payload.uris?.length > 0) {
+          if (!isVisionModel) {
+            Toast.show({
+              type: 'defaultToast',
+              text1: 'This model does not support images',
+            });
+            return;
+          }
+          payload.uris.forEach((uri) => addPastedAttachment(uri));
+          return;
+        }
+
+        if (payload.type === 'unsupported') {
+          Toast.show({
+            type: 'defaultToast',
+            text1: 'Unsupported clipboard content',
+          });
+        }
+      } catch {
+        Toast.show({
+          type: 'defaultToast',
+          text1: 'Error processing pasted content',
+        });
+      }
+    },
+    [addPastedAttachment, isVisionModel]
+  );
 
   const [showSpeechInput, setShowSpeechInput] = React.useState(false);
 
@@ -190,22 +241,27 @@ const ChatBar = ({
               </>
             )}
             <View style={styles.content}>
-              <TextInput
-                style={styles.input}
-                multiline
-                onFocus={async () => {
-                  if (!isAtBottom) return;
-                  await loadSelectedModel();
-                  setTimeout(() => {
-                    scrollRef.current?.scrollToEnd({ animated: true });
-                  }, 25);
-                }}
-                placeholder="Ask about anything..."
-                placeholderTextColor={theme.text.contrastTertiary}
-                value={userInput}
-                onChangeText={setUserInput}
-                numberOfLines={3}
-              />
+              <TextInputWrapper
+                onPaste={onPaste}
+                style={styles.textInputWrapper}
+              >
+                <RNTextInput
+                  style={styles.input}
+                  multiline
+                  onFocus={async () => {
+                    if (!isAtBottom) return;
+                    await loadSelectedModel();
+                    setTimeout(() => {
+                      scrollRef.current?.scrollToEnd({ animated: true });
+                    }, 25);
+                  }}
+                  placeholder="Ask about anything..."
+                  placeholderTextColor={theme.text.contrastTertiary}
+                  value={userInput}
+                  onChangeText={setUserInput}
+                  numberOfLines={3}
+                />
+              </TextInputWrapper>
             </View>
             <ChatBarActions
               onAttach={handleAttach}
@@ -274,13 +330,18 @@ const createStyles = (theme: Theme) =>
       gap: 8,
       justifyContent: 'center',
     },
+    textInputWrapper: {
+      flex: 1,
+      minHeight: 40,
+    },
     input: {
       flex: 1,
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
+      fontSize: fontSizes.lg,
+      lineHeight: lineHeights.lg,
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
       color: theme.text.contrastPrimary,
+      minHeight: 40,
     },
     previewRow: {
       flexDirection: 'row',
