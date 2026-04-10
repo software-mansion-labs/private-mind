@@ -1,5 +1,6 @@
 import { SQLiteDatabase } from 'expo-sqlite';
 import { create } from 'zustand';
+import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { Model } from '../database/modelRepository';
 import {
   Chat,
@@ -30,7 +31,7 @@ interface ChatStore {
   addChat: (title: string, modelId: number) => Promise<number | undefined>;
   renameChat: (id: number, newTitle: string) => Promise<void>;
   setChatModel: (id: number, modelId: number) => Promise<void>;
-  deleteChat: (id: number) => Promise<void>;
+  deleteChat: (id: number, vectorStore?: OPSQLiteVectorStore) => Promise<void>;
   enableSource: (chatId: number, sourceId: number) => Promise<void>;
   initPhantomChat: (phantomChatId: number, model?: Model) => Promise<void>;
   setPhantomChatSettings: (settings: ChatSettings) => Promise<void>;
@@ -171,7 +172,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }));
   },
 
-  deleteChat: async (id: number) => {
+  deleteChat: async (id: number, vectorStore?: OPSQLiteVectorStore) => {
     const db = get().db;
     if (!db) return;
 
@@ -180,6 +181,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set((state) => ({
       chats: state.chats.filter((chat) => chat.id !== id),
     }));
+
+    if (vectorStore) {
+      // Lazy import to avoid circular dependency / transitive ESM issues in tests
+      const { useSourceStore } = require('./sourceStore');
+      await useSourceStore.getState().cleanupOrphanedSources(vectorStore);
+    }
   },
 
   enableSource: async (chatId: number, sourceId: number) => {
