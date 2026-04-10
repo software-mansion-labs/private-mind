@@ -15,7 +15,11 @@ import {
   View,
 } from 'react-native';
 import { KeyboardChatScrollView } from 'react-native-keyboard-controller';
-import Reanimated from 'react-native-reanimated';
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import MessageItem from './MessageItem';
 import { Message } from '../../database/chatRepository';
@@ -58,6 +62,15 @@ const Messages = ({
   const scrollRef = useRef<Reanimated.ScrollView>(null);
   const isAtBottomRef = useRef(true);
 
+  // v0-style initial scroll: hide the view until we've snapped to
+  // the bottom, then fade in so the user never sees content flying by.
+  // https://vercel.com/blog/how-we-built-the-v0-ios-app
+  const opacity = useSharedValue(0);
+  const hasScrolledToEnd = useRef(false);
+  const animatedContainerStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
   // Heights that drive blankSpace. All in JS refs because updates are
   // driven by layout events and we only need to write the derived value
   // into the shared value once per change.
@@ -98,6 +111,13 @@ const Messages = ({
     ref,
     () => ({
       onMessageSent: () => {
+        // Ensure the view is visible (covers new-chat case where the
+        // initial-scroll effect hasn't fired because there were no
+        // messages yet).
+        if (!hasScrolledToEnd.current) {
+          hasScrolledToEnd.current = true;
+          opacity.value = 1;
+        }
         // The new user message hasn't laid out yet, and the streaming
         // assistant placeholder is empty → both heights are effectively
         // unknown. Reset the assistant height so the first recompute
@@ -158,26 +178,57 @@ const Messages = ({
     []
   );
 
-  const handleContentSizeChange = useCallback(() => {
-    // On iOS, while streaming AND blankSpace hasn't saturated to 0, the
-    // contentInset technique handles positioning — leave scroll alone.
-    // On Android, ClippingScrollView doesn't auto-pin the same way, so
-    // we always scroll during streaming.
-    if (
-      Platform.OS === 'ios' &&
-      streamingActive.current &&
-      blankSpace.value > 0
-    ) {
-      return;
-    }
-    // Follow the bottom: during streaming force the scroll regardless
-    // of isAtBottomRef because the native scroll position hasn't been
-    // updated since the initial scrollToEnd at send time. Once streaming
-    // ends, defer to whether the user is at the bottom.
-    if (streamingActive.current || isAtBottomRef.current) {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }
-  }, [blankSpace]);
+  const handleContentSizeChange = useCallback(
+    (_w: number, h: number) => {
+      // Initial reveal: content has been laid out for the first time.
+      // Snap to bottom then fade in. This is the most reliable place to
+      // scroll because the native content size is already committed.
+      if (!hasScrolledToEnd.current) {
+        // Wait until messages have actually rendered — the first
+        // onContentSizeChange fires with just padding (~24px) before
+        // the message items have laid out. Scrolling at that point is
+        // a no-op since there's nothing to scroll to.
+        const CONTENT_PADDING = 24;
+        if (h <= CONTENT_PADDING) return;
+
+        hasScrolledToEnd.current = true;
+        const snap = () =>
+          scrollRef.current?.scrollToEnd({ animated: false });
+        snap();
+        requestAnimationFrame(() => {
+          snap();
+          setTimeout(() => {
+            snap();
+            requestAnimationFrame(() => {
+              snap();
+              opacity.value = withTiming(1, { duration: 350 });
+            });
+          }, 16);
+        });
+        return;
+      }
+
+      // On iOS, while streaming AND blankSpace hasn't saturated to 0, the
+      // contentInset technique handles positioning — leave scroll alone.
+      // On Android, ClippingScrollView doesn't auto-pin the same way, so
+      // we always scroll during streaming.
+      if (
+        Platform.OS === 'ios' &&
+        streamingActive.current &&
+        blankSpace.value > 0
+      ) {
+        return;
+      }
+      // Follow the bottom: during streaming force the scroll regardless
+      // of isAtBottomRef because the native scroll position hasn't been
+      // updated since the initial scrollToEnd at send time. Once streaming
+      // ends, defer to whether the user is at the bottom.
+      if (streamingActive.current || isAtBottomRef.current) {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }
+    },
+    [blankSpace, opacity]
+  );
 
   // Identify the last user and last assistant indices so we can wrap
   // those specific rows in onLayout measurement Views.
@@ -194,6 +245,7 @@ const Messages = ({
   }
 
   return (
+    <Reanimated.View style={[styles.container, animatedContainerStyle]}>
     <KeyboardChatScrollView
       ref={scrollRef}
       keyboardLiftBehavior="whenAtEnd"
@@ -249,6 +301,7 @@ const Messages = ({
         return <React.Fragment key={key}>{item}</React.Fragment>;
       })}
     </KeyboardChatScrollView>
+    </Reanimated.View>
   );
 };
 
