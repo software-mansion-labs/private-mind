@@ -31,6 +31,7 @@ const mockUseAttachment = {
   removeAttachment: jest.fn(),
   clearAll: jest.fn(),
   openSheet: jest.fn(),
+  addPastedAttachment: jest.fn(),
 };
 
 jest.mock('../hooks/useAttachment', () => ({
@@ -432,5 +433,144 @@ describe('attachment', () => {
     expect(screen.queryByTestId('pick-library-btn')).toBeNull();
     expect(screen.queryByTestId('pick-camera-btn')).toBeNull();
     expect(screen.getByTestId('pick-document-btn')).toBeTruthy();
+  });
+});
+
+// ─── paste functionality ─────────────────────────────────────────────────────
+
+describe('paste functionality', () => {
+  it('calls addPastedAttachment when image is pasted to vision model', () => {
+    const { UNSAFE_getByType } = renderBar({ isVisionModel: true });
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    // Simulate paste event with image
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'images',
+        uris: ['file://test-pasted-image.jpg'],
+      });
+    });
+
+    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith('file://test-pasted-image.jpg');
+  });
+
+  it('calls addPastedAttachment for multiple pasted images', () => {
+    const { UNSAFE_getByType } = renderBar({ isVisionModel: true });
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'images',
+        uris: ['file://image1.jpg', 'file://image2.png'],
+      });
+    });
+
+    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledTimes(2);
+    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith('file://image1.jpg');
+    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith('file://image2.png');
+  });
+
+  it('does not call addPastedAttachment when text is pasted', () => {
+    const { UNSAFE_getByType } = renderBar();
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'text',
+        text: 'Hello world',
+      });
+    });
+
+    expect(mockUseAttachment.addPastedAttachment).not.toHaveBeenCalled();
+  });
+
+  it('shows toast when unsupported content is pasted', () => {
+    const { UNSAFE_getByType } = renderBar();
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'unsupported',
+      });
+    });
+
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ text1: 'Unsupported clipboard content' })
+    );
+  });
+
+  it('shows error toast when paste processing fails', () => {
+    mockUseAttachment.addPastedAttachment.mockImplementation(() => {
+      throw new Error('Test error');
+    });
+
+    const { UNSAFE_getByType } = renderBar({ isVisionModel: true });
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'images',
+        uris: ['file://test.jpg'],
+      });
+    });
+
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ text1: 'Error processing pasted content' })
+    );
+  });
+
+  it('handles empty uris array gracefully', () => {
+    const { UNSAFE_getByType } = renderBar();
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'images',
+        uris: [],
+      });
+    });
+
+    expect(mockUseAttachment.addPastedAttachment).not.toHaveBeenCalled();
+  });
+
+  it('blocks image paste for non-vision models', () => {
+    const { UNSAFE_getByType } = renderBar({ isVisionModel: false });
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'images',
+        uris: ['file://test.jpg'],
+      });
+    });
+
+    expect(mockUseAttachment.addPastedAttachment).not.toHaveBeenCalled();
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: 'This model does not support images',
+      })
+    );
+  });
+
+  it('allows image paste for vision models', () => {
+    const { UNSAFE_getByType } = renderBar({ isVisionModel: true });
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'images',
+        uris: ['file://test.jpg'],
+      });
+    });
+
+    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith('file://test.jpg');
   });
 });

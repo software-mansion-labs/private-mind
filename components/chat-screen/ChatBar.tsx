@@ -139,6 +139,13 @@ const ChatBar = ({
         }
 
         if (payload.type === 'images' && payload.uris?.length > 0) {
+          if (!isVisionModel) {
+            Toast.show({
+              type: 'defaultToast',
+              text1: 'This model does not support images',
+            });
+            return;
+          }
           payload.uris.forEach((uri) => addPastedAttachment(uri));
           return;
         }
@@ -156,7 +163,7 @@ const ChatBar = ({
         });
       }
     },
-    [addPastedAttachment]
+    [addPastedAttachment, isVisionModel]
   );
 
   const [showSpeechInput, setShowSpeechInput] = React.useState(false);

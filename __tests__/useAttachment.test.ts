@@ -109,4 +109,85 @@ describe('useAttachment', () => {
     act(() => { result.current.clearAll(); });
     expect(result.current.attachments).toEqual([]);
   });
+
+  describe('addPastedAttachment', () => {
+    it('adds pasted image attachment for valid image URI', () => {
+      const { result } = renderHook(() => useAttachment());
+      act(() => {
+        result.current.addPastedAttachment('file://pasted-image.jpg');
+      });
+      expect(result.current.attachments).toHaveLength(1);
+      expect(result.current.attachments[0].type).toBe('image');
+      expect(result.current.attachments[0].uri).toBe('file://pasted-image.jpg');
+      expect(result.current.attachments[0].status).toBe('ready');
+    });
+
+    it('supports multiple image formats', () => {
+      const { result } = renderHook(() => useAttachment());
+      const formats = [
+        'file://image.jpg',
+        'file://image.jpeg',
+        'file://image.png',
+        'file://image.gif',
+        'file://image.webp',
+        'file://image.heic',
+      ];
+
+      formats.forEach(uri => {
+        act(() => {
+          result.current.addPastedAttachment(uri);
+        });
+      });
+
+      expect(result.current.attachments).toHaveLength(formats.length);
+      result.current.attachments.forEach(att => {
+        expect(att.type).toBe('image');
+        expect(att.status).toBe('ready');
+      });
+    });
+
+    it('shows toast and does not add attachment for non-image URI', () => {
+      const Toast = require('react-native-toast-message');
+      const { result } = renderHook(() => useAttachment());
+
+      act(() => {
+        result.current.addPastedAttachment('file://document.pdf');
+      });
+
+      expect(result.current.attachments).toHaveLength(0);
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text1: expect.stringContaining('Only images can be pasted'),
+        })
+      );
+    });
+
+    it('handles empty URI gracefully', () => {
+      const { result } = renderHook(() => useAttachment());
+      act(() => {
+        result.current.addPastedAttachment('');
+      });
+      expect(result.current.attachments).toHaveLength(0);
+    });
+
+    it('handles invalid URI type gracefully', () => {
+      const { result } = renderHook(() => useAttachment());
+      act(() => {
+        // @ts-expect-error testing invalid input
+        result.current.addPastedAttachment(null);
+      });
+      expect(result.current.attachments).toHaveLength(0);
+    });
+
+    it('generates IDs for pasted attachments', () => {
+      const { result } = renderHook(() => useAttachment());
+
+      act(() => {
+        result.current.addPastedAttachment('file://image1.jpg');
+      });
+
+      expect(result.current.attachments).toHaveLength(1);
+      expect(result.current.attachments[0].id).toMatch(/^img-\d+$/);
+    });
+  });
 });

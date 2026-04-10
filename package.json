@@ -34,6 +34,8 @@
       "^react-native-toast-message$": "<rootDir>/__mocks__/react-native-toast-message.ts",
       "^react-native-reanimated$": "<rootDir>/__mocks__/react-native-reanimated.ts",
       "^react-native-audio-api$": "<rootDir>/__mocks__/react-native-audio-api.ts",
+      "^expo-clipboard$": "<rootDir>/__mocks__/expo-clipboard.ts",
+      "^expo-paste-input$": "<rootDir>/__mocks__/expo-paste-input.tsx",
       "^@gorhom/bottom-sheet$": "<rootDir>/__mocks__/@gorhom/bottom-sheet.tsx",
       "^react-native-safe-area-context$": "<rootDir>/__mocks__/react-native-safe-area-context.ts",
       "^expo-store-review$": "<rootDir>/__mocks__/expo-store-review.ts"
