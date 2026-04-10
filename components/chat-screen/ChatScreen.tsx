@@ -267,7 +267,9 @@ export default function ChatScreen({
         freeze={overlayOpen}
       />
 
-      <KeyboardStickyView>
+      <KeyboardStickyView
+        offset={{ opened: theme.insets.bottom }}
+      >
         <ChatBar
           chatId={chatId}
           onSend={handleSendMessage}

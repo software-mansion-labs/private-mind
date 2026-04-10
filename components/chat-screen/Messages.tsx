@@ -10,6 +10,7 @@ import {
   LayoutChangeEvent,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Platform,
   StyleSheet,
   View,
 } from 'react-native';
@@ -17,9 +18,7 @@ import { KeyboardChatScrollView } from 'react-native-keyboard-controller';
 import Reanimated from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import MessageItem from './MessageItem';
-import { useTheme } from '../../context/ThemeContext';
 import { Message } from '../../database/chatRepository';
-import { Theme } from '../../styles/colors';
 
 export interface MessagesHandle {
   /**
@@ -55,8 +54,7 @@ const Messages = ({
   freeze = false,
   ref,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(), []);
   const scrollRef = useRef<Reanimated.ScrollView>(null);
   const isAtBottomRef = useRef(true);
 
@@ -67,16 +65,10 @@ const Messages = ({
   const lastUserHeight = useRef(0);
   const lastAssistantHeight = useRef(0);
 
-  // The derived blankSpace formula stays active from send onward so
-  // layout changes after generation (e.g. the ttft/tps stats row
-  // mounting in the assistant bubble) shrink blankSpace in lockstep
-  // with the assistant row growing — keeping the user message visually
-  // steady. Cleared only when the user switches chats (component
-  // unmounts) or when a fresh send reseeds it.
-  const pinSessionActive = useRef(false);
-  // Separate flag that only stays true during streaming. Gates the
-  // force-scroll-to-bottom behaviour in handleContentSizeChange so we
-  // don't keep force-scrolling after generation ends.
+  // True while the LLM is streaming a response. Gates both the
+  // blankSpace formula (recomputeBlankSpace) and the force-scroll
+  // in handleContentSizeChange. Flipped off via useLayoutEffect when
+  // generation ends, before the stats-row layout event commits.
   const streamingActive = useRef(false);
   const pendingScrollToEnd = useRef(false);
 
@@ -90,7 +82,7 @@ const Messages = ({
   }, [isGenerating]);
 
   const recomputeBlankSpace = useCallback(() => {
-    if (!pinSessionActive.current) return;
+    if (!streamingActive.current) return;
     const CONTAINER_PADDING = 16 + 8;
     const next = Math.max(
       0,
@@ -111,7 +103,6 @@ const Messages = ({
         // unknown. Reset the assistant height so the first recompute
         // (triggered by the user-message onLayout) maximises blankSpace.
         lastAssistantHeight.current = 0;
-        pinSessionActive.current = true;
         streamingActive.current = true;
         pendingScrollToEnd.current = true;
         // Seed blankSpace to the full container height immediately so the
@@ -142,9 +133,7 @@ const Messages = ({
       // at the top of the visible area.
       if (pendingScrollToEnd.current) {
         pendingScrollToEnd.current = false;
-        requestAnimationFrame(() => {
-          scrollRef.current?.scrollToEnd({ animated: true });
-        });
+        scrollRef.current?.scrollToEnd({ animated: false });
       }
     },
     [recomputeBlankSpace]
@@ -170,14 +159,21 @@ const Messages = ({
   );
 
   const handleContentSizeChange = useCallback(() => {
-    // While streaming AND blankSpace hasn't saturated to 0, the v0
-    // technique handles positioning via contentInset — leave scroll alone.
-    if (streamingActive.current && blankSpace.value > 0) return;
-    // Otherwise, follow the bottom. During streaming that has just
-    // saturated (response outgrew the pinned region), force the scroll
-    // regardless of isAtBottomRef because the native scroll position
-    // hasn't been updated since the initial scrollToEnd at send time.
-    // Once streaming ends, defer to whether the user is at the bottom.
+    // On iOS, while streaming AND blankSpace hasn't saturated to 0, the
+    // contentInset technique handles positioning — leave scroll alone.
+    // On Android, ClippingScrollView doesn't auto-pin the same way, so
+    // we always scroll during streaming.
+    if (
+      Platform.OS === 'ios' &&
+      streamingActive.current &&
+      blankSpace.value > 0
+    ) {
+      return;
+    }
+    // Follow the bottom: during streaming force the scroll regardless
+    // of isAtBottomRef because the native scroll position hasn't been
+    // updated since the initial scrollToEnd at send time. Once streaming
+    // ends, defer to whether the user is at the bottom.
     if (streamingActive.current || isAtBottomRef.current) {
       scrollRef.current?.scrollToEnd({ animated: true });
     }
@@ -258,7 +254,7 @@ const Messages = ({
 
 export default Messages;
 
-const createStyles = (theme: Theme) =>
+const createStyles = () =>
   StyleSheet.create({
     container: {
       flex: 1,

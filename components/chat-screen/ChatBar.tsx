@@ -96,7 +96,12 @@ const ChatBar = ({
         extraContentPadding.value = 0;
         setInputHeight(defaultInputHeight.current || undefined);
       },
-      setInput: (text: string) => setUserInput(text),
+      setInput: (text: string) => {
+        setUserInput(text);
+        // Clear the explicit height so the TextInput auto-sizes to the
+        // new content. onContentSizeChange will re-capture the height.
+        setInputHeight(undefined);
+      },
     }),
     [clearAll, extraContentPadding]
   );
