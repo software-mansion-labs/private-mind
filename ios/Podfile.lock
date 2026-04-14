@@ -1564,7 +1564,7 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-  - react-native-executorch (0.8.1):
+  - react-native-executorch (0.9.0):
     - hermes-engine
     - opencv-rne (~> 4.11.0)
     - RCTRequired
@@ -3011,7 +3011,6 @@ SPEC CHECKSUMS:
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   op-sqlite: d9827bbb015ca71c44763d6b447afe2c12d20261
   opencv-rne: 2305807573b6e29c8c87e3416ab096d09047a7a0
-<<<<<<< HEAD
   Pdfium: 4a0412b69bb0172892aaed9254b430289a99f1c8
   RCTDeprecation: 5045f20b2cc1239bf422764004338c720684a22f
   RCTRequired: b6b9724225dd780ac2989d2e575d5513c50fe04b
@@ -3050,7 +3049,6 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 274cb203819492f7fb594bbb3a1f3f5061fa794d
   React-microtasksnativemodule: 563b4dcc8b8570814d6de4fc1196f48d2944acd4
   react-native-executorch: 41b4bc927366039f280b696a972c4a832cceae08
-=======
   Pdfium: 98523f87c89566d777ffc3ca0a787b990d51064c
   RCTDeprecation: 943572d4be82d480a48f4884f670135ae30bf990
   RCTRequired: 8f3cfc90cc25cf6e420ddb3e7caaaabc57df6043
@@ -3086,7 +3084,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 9050ee10c19f4f7fca8963d0211b2854d624973e
   React-microtasksnativemodule: f775db9e991c6f3b8ccbc02bfcde22770f96e23b
   react-native-executorch: c02a5a1a66609ca24e9eaf86b15c83b7af4425cc
->>>>>>> 985af21 (deps: update Podfile.lock)
+  react-native-executorch: 6b939cfa959b26138c13b171797919d57a05be90
   react-native-image-picker: 48d850454b4a389753053e1d7378b624d3b47d77
   react-native-keyboard-controller: c872321fc580f8d815e9e2ad5558b24c26c18b4f
   react-native-netinfo: f852c868bf5175e46165c7e4db48a204a95c3800
