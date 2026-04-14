@@ -15,10 +15,7 @@ import {
   Keyboard,
   Platform,
 } from 'react-native';
-import Reanimated, {
-  SharedValue,
-  useAnimatedStyle,
-} from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
 import AttachmentSheet from '../bottomSheets/AttachmentSheet';
 import { useAttachment, Attachment } from '../../hooks/useAttachment';
@@ -69,14 +66,10 @@ const ChatBar = ({
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-
-  // On iOS, animate paddingBottom from insets.bottom + 16 (keyboard closed)
-  // to 16 (keyboard open) so the gap between the last message and the
-  // input stays visually consistent. Android doesn't have a home indicator
-  // inset, so a static padding is fine.
-  const animatedContainerStyle = useAnimatedStyle(() => ({
-    paddingBottom: theme.insets.bottom + 16,
-  }));
+  const containerStyle = useMemo(
+    () => [styles.container, { paddingBottom: theme.insets.bottom + 16 }],
+    [styles.container, theme.insets.bottom]
+  );
 
   const [userInput, setUserInput] = useState('');
   const {
@@ -222,18 +215,18 @@ const ChatBar = ({
     };
 
     return (
-      <Reanimated.View style={[styles.container, animatedContainerStyle]}>
+      <View style={containerStyle}>
         <ChatSpeechInput
           onSubmit={handleSubmit}
           onCancel={() => setShowSpeechInput(false)}
         />
-      </Reanimated.View>
+      </View>
     );
   }
 
   if (chatId && !model) {
     return (
-      <Reanimated.View style={[styles.container, animatedContainerStyle]}>
+      <View style={containerStyle}>
         <TouchableOpacity style={styles.modelSelection} onPress={onSelectModel}>
           <Text style={styles.selectedModel}>Select Model</Text>
           <RotateLeft
@@ -242,12 +235,12 @@ const ChatBar = ({
             style={{ color: theme.text.primary }}
           />
         </TouchableOpacity>
-      </Reanimated.View>
+      </View>
     );
   }
 
   return (
-    <Reanimated.View style={[styles.container, animatedContainerStyle]}>
+    <View style={containerStyle}>
       {model?.isDownloaded && (
         <>
           {!hasMessages && (
@@ -315,7 +308,7 @@ const ChatBar = ({
           />
         </>
       )}
-    </Reanimated.View>
+    </View>
   );
 };
 
@@ -327,7 +320,6 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'column',
       justifyContent: 'center',
       paddingHorizontal: 16,
-      // paddingBottom is animated via animatedContainerStyle
     },
     suggestionsContainer: {
       marginBottom: 12,

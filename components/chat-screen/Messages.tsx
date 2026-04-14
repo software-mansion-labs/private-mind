@@ -32,10 +32,10 @@ import ChevronDown from '../../assets/icons/chevron-down.svg';
 
 export interface MessagesHandle {
   /**
-   * Called synchronously from the send handler. Scrolls the newly-sent user
-   * message to the top of the viewport once it lays out. The blankSpace
-   * shared value is derived continuously from measured heights, so no
-   * explicit "reservation amount" is needed — see the v0 iOS app blog post:
+   * Called synchronously from the send handler. On iOS, seeds blankSpace
+   * and scrolls to end after a short delay. On Android, arms a pending
+   * pin that's consumed on the next onContentSizeChange (after the new
+   * row renders) to avoid a 1-frame flick. See the v0 iOS app blog post:
    * https://vercel.com/blog/how-we-built-the-v0-ios-app
    */
   onMessageSent: () => void;
@@ -95,15 +95,17 @@ const Messages = ({
   // messageHistory to [] while reloading). This ensures that returning
   // from Settings lands at the bottom of the chat instead of the top.
   const prevChatLengthRef = useRef(chatHistory.length);
-  if (
-    prevChatLengthRef.current > 0 &&
-    chatHistory.length === 0 &&
-    hasScrolledToEnd.current
-  ) {
-    hasScrolledToEnd.current = false;
-    opacity.value = 0;
-  }
-  prevChatLengthRef.current = chatHistory.length;
+  useLayoutEffect(() => {
+    if (
+      prevChatLengthRef.current > 0 &&
+      chatHistory.length === 0 &&
+      hasScrolledToEnd.current
+    ) {
+      hasScrolledToEnd.current = false;
+      opacity.value = 0;
+    }
+    prevChatLengthRef.current = chatHistory.length;
+  }, [chatHistory.length, opacity]);
 
   // Heights that drive blankSpace. All in JS refs because updates are
   // driven by layout events and we only need to write the derived value
@@ -120,22 +122,24 @@ const Messages = ({
   const wasAtTopDuringKeyboard = useRef(false);
   useLayoutEffect(() => {
     if (Platform.OS !== 'android') return;
+    let snapTimer: ReturnType<typeof setTimeout> | null = null;
     const showSub = Keyboard.addListener('keyboardDidShow', () => {
       wasAtBottomDuringKeyboard.current = isAtBottomRef.current;
       wasAtTopDuringKeyboard.current = lastScrollOffset.current < 10;
     });
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       if (wasAtBottomDuringKeyboard.current) {
-        setTimeout(() => {
+        snapTimer = setTimeout(() => {
           scrollRef.current?.scrollToEnd({ animated: false });
         }, 300);
       } else if (wasAtTopDuringKeyboard.current) {
-        setTimeout(() => {
+        snapTimer = setTimeout(() => {
           scrollRef.current?.scrollTo({ y: 0, animated: false });
         }, 300);
       }
     });
     return () => {
+      if (snapTimer) clearTimeout(snapTimer);
       showSub.remove();
       hideSub.remove();
     };
