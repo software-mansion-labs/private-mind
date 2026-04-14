@@ -29,11 +29,12 @@ import {
   LFM2_5_1_2B_INSTRUCT,
   LFM2_5_1_2B_INSTRUCT_QUANTIZED,
   LFM2_VL_1_6B_QUANTIZED,
+  LFM2_VL_450M_QUANTIZED,
 } from 'react-native-executorch';
 
 export const startingModels = [
-  'LLaMA 3.2 - 1B - SpinQuant',
-  'Qwen 3 - 0.6B - Quantized',
+  'LFM 2.5 - 1.2B - Quantized',
+  'LFM 2.5 VL - 450M - Quantized',
   'Qwen 3 - 1.7B - Quantized',
 ];
 
@@ -343,6 +344,21 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     thinking: false,
     vision: true,
     labels: ['Vision'],
+    systemPrompt:
+      'You are a helpful vision assistant. When the user shares an image, analyze it carefully and provide detailed, accurate descriptions and answers about its content. When no image is provided, respond as a knowledgeable and helpful general assistant.',
+  },
+  {
+    modelName: 'LFM 2.5 VL - 450M - Quantized',
+    modelPath: LFM2_VL_450M_QUANTIZED.modelSource,
+    tokenizerPath: LFM2_VL_450M_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: LFM2_VL_450M_QUANTIZED.tokenizerConfigSource,
+    source: 'remote',
+    parameters: 0.45,
+    modelSize: 0.65,
+    featured: true,
+    thinking: false,
+    vision: true,
+    labels: ['Fast', 'Vision', 'Quantized'],
     systemPrompt:
       'You are a helpful vision assistant. When the user shares an image, analyze it carefully and provide detailed, accurate descriptions and answers about its content. When no image is provided, respond as a knowledgeable and helpful general assistant.',
   },
