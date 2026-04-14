@@ -1564,7 +1564,7 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-  - react-native-executorch (0.9.0):
+  - react-native-executorch (0.9.0-nightly-31bdd99-20260414):
     - hermes-engine
     - opencv-rne (~> 4.11.0)
     - RCTRequired
@@ -2315,28 +2315,6 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNCClipboard (1.16.2):
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - Yoga
   - RNDeviceInfo (15.0.1):
     - React-Core
   - RNGestureHandler (2.30.1):
@@ -2721,7 +2699,6 @@ DEPENDENCIES:
   - "ReactNativeFs (from `../node_modules/@dr.pogodin/react-native-fs`)"
   - RNAudioAPI (from `../node_modules/react-native-audio-api`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
-  - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
   - RNDeviceInfo (from `../node_modules/react-native-device-info`)
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
@@ -2960,8 +2937,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-audio-api"
   RNCAsyncStorage:
     :path: "../node_modules/@react-native-async-storage/async-storage"
-  RNCClipboard:
-    :path: "../node_modules/@react-native-clipboard/clipboard"
   RNDeviceInfo:
     :path: "../node_modules/react-native-device-info"
   RNGestureHandler:
@@ -3048,43 +3023,7 @@ SPEC CHECKSUMS:
   React-logger: d0632d799fbd3507cdd5406f72489a83ed5f9163
   React-Mapbuffer: 274cb203819492f7fb594bbb3a1f3f5061fa794d
   React-microtasksnativemodule: 563b4dcc8b8570814d6de4fc1196f48d2944acd4
-  react-native-executorch: 41b4bc927366039f280b696a972c4a832cceae08
-  Pdfium: 98523f87c89566d777ffc3ca0a787b990d51064c
-  RCTDeprecation: 943572d4be82d480a48f4884f670135ae30bf990
-  RCTRequired: 8f3cfc90cc25cf6e420ddb3e7caaaabc57df6043
-  RCTTypeSafety: 16a4144ca3f959583ab019b57d5633df10b5e97c
-  React: 914f8695f9bf38e6418228c2ffb70021e559f92f
-  React-callinvoker: 1c0808402aee0c6d4a0d8e7220ce6547af9fba71
-  React-Core: c61410ef0ca6055e204a963992e363227e0fd1c5
-  React-Core-prebuilt: 02f0ad625ddd47463c009c2d0c5dd35c0d982599
-  React-CoreModules: 1f6d1744b5f9f2ec684a4bb5ced25370f87e5382
-  React-cxxreact: 3af79478e8187b63ffc22b794cd42d3fc1f1f2da
-  React-debug: 6328c2228e268846161f10082e80dc69eac2e90a
-  React-defaultsnativemodule: d635ef36d755321e5d6fc065bd166b2c5a0e9833
-  React-domnativemodule: dd28f6d96cd21236e020be2eff6fe0b7d4ec3b66
-  React-Fabric: 2e32c3fdbb1fbcf5fde54607e3abe453c6652ce2
-  React-FabricComponents: 5ed0cdb81f6b91656cb4d3be432feaa28a58071a
-  React-FabricImage: 2bc714f818cb24e454f5d3961864373271b2faf8
-  React-featureflags: 847642f41fa71ad4eec5e0351badebcad4fe6171
-  React-featureflagsnativemodule: c868a544b2c626fa337bcbd364b1befe749f0d3f
-  React-graphics: 192ec701def5b3f2a07db2814dfba5a44986cff6
-  React-hermes: e875778b496c86d07ab2ccaa36a9505d248a254b
-  React-idlecallbacksnativemodule: 4d57965cdf82c14ee3b337189836cd8491632b76
-  React-ImageManager: bd0b99e370b13de82c9cd15f0f08144ff3de079e
-  React-jserrorhandler: a2fdef4cbcfdcdf3fa9f5d1f7190f7fd4535248d
-  React-jsi: 89d43d1e7d4d0663f8ba67e0b39eb4e4672c27de
-  React-jsiexecutor: abe4874aaab90dfee5dec480680220b2f8af07e3
-  React-jsinspector: a0b3e051aef842b0b2be2353790ae2b2a5a65a8f
-  React-jsinspectorcdp: 6346013b2247c6263fbf5199adf4a8751e53bd89
-  React-jsinspectornetwork: 26281aa50d49fc1ec93abf981d934698fa95714f
-  React-jsinspectortracing: 55eedf6d57540507570259a778663b90060bbd6e
-  React-jsitooling: 0e001113fa56d8498aa8ac28437ac0d36348e51a
-  React-jsitracing: b713793eb8a5bbc4d86a84e9d9e5023c0f58cbaf
-  React-logger: 50fdb9a8236da90c0b1072da5c32ee03aeb5bf28
-  React-Mapbuffer: 9050ee10c19f4f7fca8963d0211b2854d624973e
-  React-microtasksnativemodule: f775db9e991c6f3b8ccbc02bfcde22770f96e23b
-  react-native-executorch: c02a5a1a66609ca24e9eaf86b15c83b7af4425cc
-  react-native-executorch: 6b939cfa959b26138c13b171797919d57a05be90
+  react-native-executorch: d4f5b91a556124313c1f0eab1cd4846dcc936f2e
   react-native-image-picker: 48d850454b4a389753053e1d7378b624d3b47d77
   react-native-keyboard-controller: c872321fc580f8d815e9e2ad5558b24c26c18b4f
   react-native-netinfo: f852c868bf5175e46165c7e4db48a204a95c3800
@@ -3127,7 +3066,6 @@ SPEC CHECKSUMS:
   ReactNativeFs: 1bbd20020179cbaeddcda3ca2bf91e71647a1f23
   RNAudioAPI: 3d33d52e97246706f7bc844af8f547a0f364e80b
   RNCAsyncStorage: 3a4f5e2777dae1688b781a487923a08569e27fe4
-  RNCClipboard: 74cc34f95a13ea964d57e12293918f99e7f911d7
   RNDeviceInfo: 36d7f232bfe7c9b5c494cb7793230424ed32c388
   RNGestureHandler: 0ea8153746a92b3744d4eaadade647debedf646e
   RNReanimated: 86e5991396f1aa514db90d6c79d4c3e37a37bb10
