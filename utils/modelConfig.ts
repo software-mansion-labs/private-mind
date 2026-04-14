@@ -23,20 +23,6 @@ export enum ModelSourceStrategy {
   ASSET_PACK_COPY = 'asset_pack_copy',
 }
 
-export const WHISPER_TINY_EN_MODEL: ModelDefinition = {
-  assetPackName: 'whisper-tiny-en',
-  bundledAssets: {
-    decoderSource: require('../assets/models/whisper-tiny-en/whisper_tiny_en_decoder_xnnpack.pte'),
-    encoderSource: require('../assets/models/whisper-tiny-en/whisper_tiny_en_encoder_xnnpack.pte'),
-    tokenizerSource: require('../assets/models/whisper-tiny-en/tokenizer.json'),
-  },
-  assetPackFiles: {
-    decoderSource: 'whisper_tiny_en_decoder_xnnpack.pte',
-    encoderSource: 'whisper_tiny_en_encoder_xnnpack.pte',
-    tokenizerSource: 'tokenizer.json',
-  },
-};
-
 export const ALL_MINI_LM_MODEL: ModelDefinition = {
   assetPackName: 'all-mini-lm',
   bundledAssets: {
