@@ -34,16 +34,27 @@ jest.mock('@gorhom/bottom-sheet', () => {
   const { View } = require('react-native');
   let _data: any = null;
 
-  const BottomSheetModal = React.forwardRef((props: any, _ref: any) => (
-    <View>{props.children}</View>
-  ));
+  const BottomSheetModal = React.forwardRef((props: any, _ref: any) => {
+    React.useEffect(() => {
+      props.onChange?.(0);
+    }, []);
+    return <View>{props.children}</View>;
+  });
   const BottomSheetFlatList = ({ data, renderItem }: any) => (
     <View>{data.map((item: any, i: number) => <View key={i}>{renderItem({ item })}</View>)}</View>
   );
   const BottomSheetView = ({ children, style }: any) => <View style={style}>{children}</View>;
   const BottomSheetBackdrop = () => null;
 
-  return { BottomSheetModal, BottomSheetFlatList, BottomSheetView, BottomSheetBackdrop };
+  const useBottomSheetTimingConfigs = () => ({});
+
+  return {
+    BottomSheetModal,
+    BottomSheetFlatList,
+    BottomSheetView,
+    BottomSheetBackdrop,
+    useBottomSheetTimingConfigs,
+  };
 });
 
 import ModelSelectSheet from '../components/bottomSheets/ModelSelectSheet';
