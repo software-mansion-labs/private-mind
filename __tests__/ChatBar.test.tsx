@@ -22,21 +22,46 @@ jest.mock('../store/llmStore', () => ({
   })),
 }));
 
-jest.mock('react-native-image-picker', () => ({
-  launchImageLibrary: jest.fn(),
-  launchCamera: jest.fn(),
+const mockUseAttachment = {
+  attachments: [] as any[],
+  sheetRef: { current: null },
+  pickFromLibrary: jest.fn(),
+  pickFromCamera: jest.fn(),
+  pickDocument: jest.fn(),
+  removeAttachment: jest.fn(),
+  clearAll: jest.fn(),
+  openSheet: jest.fn(),
+  addPastedAttachment: jest.fn(),
+};
+
+jest.mock('../hooks/useAttachment', () => ({
+  useAttachment: () => mockUseAttachment,
 }));
 
-jest.mock('../components/bottomSheets/ImageSourceSheet', () => {
+jest.mock('../components/bottomSheets/AttachmentSheet', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
-  return ({ onPickFromLibrary, onPickFromCamera }: any) => (
-    <View testID="image-source-sheet">
-      <TouchableOpacity testID="pick-library-btn" onPress={onPickFromLibrary}><Text>Library</Text></TouchableOpacity>
-      <TouchableOpacity testID="pick-camera-btn" onPress={onPickFromCamera}><Text>Camera</Text></TouchableOpacity>
+  return ({ onPickFromLibrary, onPickFromCamera, onPickDocument, isVisionModel }: any) => (
+    <View testID="attachment-sheet">
+      {isVisionModel && (
+        <>
+          <TouchableOpacity testID="pick-library-btn" onPress={onPickFromLibrary}><Text>Library</Text></TouchableOpacity>
+          <TouchableOpacity testID="pick-camera-btn" onPress={onPickFromCamera}><Text>Camera</Text></TouchableOpacity>
+        </>
+      )}
+      <TouchableOpacity testID="pick-document-btn" onPress={onPickDocument}><Text>Document</Text></TouchableOpacity>
     </View>
   );
 });
 
+jest.mock('../components/chat-screen/AttachmentThumbnail', () => {
+  const { View, TouchableOpacity, Text } = require('react-native');
+  return ({ attachment, onRemove }: any) => (
+    <View testID={`attachment-thumb-${attachment.id}`}>
+      <Text>{attachment.name || attachment.uri}</Text>
+      <TouchableOpacity testID={`attachment-dismiss-${attachment.id}`} onPress={onRemove}><Text>X</Text></TouchableOpacity>
+    </View>
+  );
+});
 
 jest.mock('../components/chat-screen/ChatSpeechInput', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
@@ -61,7 +86,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
   return ({
     userInput,
-    imagePath,
+    hasAttachments,
     onSend,
     isGenerating,
     isProcessingPrompt,
@@ -69,20 +94,15 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onSpeechInput,
     onThinkingToggle,
     thinkingEnabled,
-    activeSourcesCount,
-    onSelectSource,
-    isVisionModel,
-    onAttachImage,
+    onAttach,
   }: any) => (
     <View testID="chat-bar-actions">
-      {isVisionModel && (
-        <TouchableOpacity testID="attach-image-btn" onPress={onAttachImage}><Text>+</Text></TouchableOpacity>
-      )}
+      <TouchableOpacity testID="attach-btn" onPress={onAttach}><Text>+</Text></TouchableOpacity>
       {(isGenerating || isProcessingPrompt) ? (
         <TouchableOpacity testID="interrupt-btn" onPress={onInterrupt}><Text>Stop</Text></TouchableOpacity>
-      ) : (userInput || imagePath) ? (
+      ) : (userInput || hasAttachments) ? (
         <>
-          {imagePath && !userInput && (
+          {hasAttachments && !userInput && (
             <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}><Text>Mic</Text></TouchableOpacity>
           )}
           <TouchableOpacity testID="send-btn" onPress={onSend}><Text>Send</Text></TouchableOpacity>
@@ -90,9 +110,6 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
       ) : (
         <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}><Text>Mic</Text></TouchableOpacity>
       )}
-      <TouchableOpacity testID="source-btn" onPress={onSelectSource}>
-        <Text>{activeSourcesCount > 0 ? `Sources (${activeSourcesCount})` : 'Sources'}</Text>
-      </TouchableOpacity>
       <TouchableOpacity testID="thinking-btn" onPress={onThinkingToggle}>
         <Text>{thinkingEnabled ? 'Think ON' : 'Think OFF'}</Text>
       </TouchableOpacity>
@@ -127,12 +144,11 @@ const defaultProps = {
   chatId: 1,
   onSend: jest.fn(),
   onSelectModel: jest.fn(),
-  onSelectSource: jest.fn(),
   onSelectPrompt: jest.fn(),
   model: downloadedModel,
   scrollRef: { current: null } as any,
   isAtBottom: true,
-  activeSourcesCount: 0,
+  isVisionModel: false,
   thinkingEnabled: false,
   onThinkingToggle: jest.fn(),
   hasMessages: false,
@@ -149,6 +165,10 @@ beforeEach(() => {
     loadModel: jest.fn(),
     model: null,
   });
+  mockUseAttachment.attachments = [];
+  mockUseAttachment.openSheet.mockClear();
+  mockUseAttachment.clearAll.mockClear();
+  mockUseAttachment.removeAttachment.mockClear();
   jest.clearAllMocks();
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -202,7 +222,7 @@ describe('downloaded model — text input', () => {
     renderBar({ onSend });
     fireEvent.changeText(screen.getByPlaceholderText('Ask about anything...'), 'Hello');
     fireEvent.press(screen.getByTestId('send-btn'));
-    expect(onSend).toHaveBeenCalledWith('Hello', undefined);
+    expect(onSend).toHaveBeenCalledWith('Hello', undefined, []);
   });
 
   it('shows prompt suggestions when hasMessages is false', () => {
@@ -222,11 +242,6 @@ describe('downloaded model — text input', () => {
     expect(onSelectPrompt).toHaveBeenCalledWith('Suggested prompt');
   });
 
-  it('passes activeSourcesCount to ChatBarActions', () => {
-    renderBar({ activeSourcesCount: 3 });
-    expect(screen.getByText('Sources (3)')).toBeTruthy();
-  });
-
   it('passes thinkingEnabled to ChatBarActions', () => {
     renderBar({ thinkingEnabled: true });
     expect(screen.getByText('Think ON')).toBeTruthy();
@@ -237,13 +252,6 @@ describe('downloaded model — text input', () => {
     renderBar({ onThinkingToggle });
     fireEvent.press(screen.getByTestId('thinking-btn'));
     expect(onThinkingToggle).toHaveBeenCalled();
-  });
-
-  it('calls onSelectSource when source button is pressed', () => {
-    const onSelectSource = jest.fn();
-    renderBar({ onSelectSource });
-    fireEvent.press(screen.getByTestId('source-btn'));
-    expect(onSelectSource).toHaveBeenCalled();
   });
 });
 
@@ -307,27 +315,28 @@ describe('speech input', () => {
       fireEvent.press(screen.getByTestId('speech-btn'));
     });
     fireEvent.press(screen.getByTestId('speech-submit'));
-    expect(onSend).toHaveBeenCalledWith('voice transcript', undefined);
+    expect(onSend).toHaveBeenCalledWith('voice transcript', undefined, []);
     expect(screen.queryByTestId('speech-input')).toBeNull();
   });
 
   it('forwards attached imagePath when submitting speech transcript', async () => {
-    const { launchImageLibrary } = require('react-native-image-picker');
-    launchImageLibrary.mockResolvedValue({ assets: [{ uri: 'file://test-image.jpg' }] });
+    mockUseAttachment.attachments = [
+      { id: 'img-1', type: 'image', uri: 'file://test-image.jpg', status: 'ready' },
+    ];
 
     const onSend = jest.fn();
-    renderBar({ onSend, model: { ...downloadedModel, vision: true } });
+    renderBar({ onSend, isVisionModel: true });
 
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('pick-library-btn'));
-    });
-
-    // speech-btn is shown alongside send-btn when image is attached with no text
+    // speech-btn is shown alongside send-btn when attachments exist with no text
     await act(async () => {
       fireEvent.press(screen.getByTestId('speech-btn'));
     });
     fireEvent.press(screen.getByTestId('speech-submit'));
-    expect(onSend).toHaveBeenCalledWith('voice transcript', 'file://test-image.jpg');
+    expect(onSend).toHaveBeenCalledWith(
+      'voice transcript',
+      'file://test-image.jpg',
+      [{ id: 'img-1', type: 'image', uri: 'file://test-image.jpg', status: 'ready' }]
+    );
   });
 
   it('hides speech input without calling onSend when cancelled', async () => {
@@ -364,39 +373,204 @@ describe('speech input', () => {
   });
 });
 
-// ─── vision model attachment button ──────────────────────────────────────────
+// ─── attachment ─────────────────────────────────────────────────────────────
 
-describe('vision model attachment', () => {
-  it('shows + button when loaded model has vision === true', () => {
-    renderBar({ model: { ...downloadedModel, vision: true } });
-    expect(screen.getByTestId('attach-image-btn')).toBeTruthy();
+describe('attachment', () => {
+  it('always shows + button regardless of vision model', () => {
+    renderBar({ isVisionModel: false });
+    expect(screen.getByTestId('attach-btn')).toBeTruthy();
   });
 
-  it('does not show + button when loaded model has vision === false', () => {
-    renderBar({ model: { ...downloadedModel, vision: false } });
-    expect(screen.queryByTestId('attach-image-btn')).toBeNull();
+  it('opens attachment sheet when + button is pressed', () => {
+    renderBar();
+    fireEvent.press(screen.getByTestId('attach-btn'));
+    expect(mockUseAttachment.openSheet).toHaveBeenCalled();
   });
 
-  it('does not show + button when model has no vision flag', () => {
-    renderBar({ model: downloadedModel });
-    expect(screen.queryByTestId('attach-image-btn')).toBeNull();
+  it('renders attachment thumbnails when attachments exist', () => {
+    mockUseAttachment.attachments = [
+      { id: 'img-1', type: 'image', uri: 'file://test-image.jpg', status: 'ready' },
+      { id: 'doc-1', type: 'document', uri: 'file://test.pdf', name: 'test.pdf', status: 'ready' },
+    ];
+    renderBar();
+    expect(screen.getByTestId('attachment-thumb-img-1')).toBeTruthy();
+    expect(screen.getByTestId('attachment-thumb-doc-1')).toBeTruthy();
   });
 
-  it('calls onSend with empty userInput and imagePath when send is pressed after attaching an image with no text', async () => {
-    const { launchImageLibrary } = require('react-native-image-picker');
+  it('calls removeAttachment when dismiss button on thumbnail is pressed', () => {
+    mockUseAttachment.attachments = [
+      { id: 'img-1', type: 'image', uri: 'file://test-image.jpg', status: 'ready' },
+    ];
+    renderBar();
+    fireEvent.press(screen.getByTestId('attachment-dismiss-img-1'));
+    expect(mockUseAttachment.removeAttachment).toHaveBeenCalledWith('img-1');
+  });
 
-    launchImageLibrary.mockResolvedValue({
-      assets: [{ uri: 'file://test-image.jpg' }],
-    });
+  it('calls onSend with image path and attachments when send is pressed after attaching an image with no text', () => {
+    mockUseAttachment.attachments = [
+      { id: 'img-1', type: 'image', uri: 'file://test-image.jpg', status: 'ready' },
+    ];
 
     const onSend = jest.fn();
-    renderBar({ onSend, model: { ...downloadedModel, vision: true } });
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('pick-library-btn'));
-    });
+    renderBar({ onSend, isVisionModel: true });
 
     fireEvent.press(screen.getByTestId('send-btn'));
-    expect(onSend).toHaveBeenCalledWith('', 'file://test-image.jpg');
+    expect(onSend).toHaveBeenCalledWith(
+      '',
+      'file://test-image.jpg',
+      [{ id: 'img-1', type: 'image', uri: 'file://test-image.jpg', status: 'ready' }]
+    );
+  });
+
+  it('passes isVisionModel to AttachmentSheet', () => {
+    renderBar({ isVisionModel: true });
+    expect(screen.getByTestId('pick-library-btn')).toBeTruthy();
+    expect(screen.getByTestId('pick-camera-btn')).toBeTruthy();
+  });
+
+  it('hides image options in AttachmentSheet when not a vision model', () => {
+    renderBar({ isVisionModel: false });
+    expect(screen.queryByTestId('pick-library-btn')).toBeNull();
+    expect(screen.queryByTestId('pick-camera-btn')).toBeNull();
+    expect(screen.getByTestId('pick-document-btn')).toBeTruthy();
+  });
+});
+
+// ─── paste functionality ─────────────────────────────────────────────────────
+
+describe('paste functionality', () => {
+  it('calls addPastedAttachment when image is pasted to vision model', () => {
+    const { UNSAFE_getByType } = renderBar({ isVisionModel: true });
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    // Simulate paste event with image
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'images',
+        uris: ['file://test-pasted-image.jpg'],
+      });
+    });
+
+    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith('file://test-pasted-image.jpg');
+  });
+
+  it('calls addPastedAttachment for multiple pasted images', () => {
+    const { UNSAFE_getByType } = renderBar({ isVisionModel: true });
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'images',
+        uris: ['file://image1.jpg', 'file://image2.png'],
+      });
+    });
+
+    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledTimes(2);
+    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith('file://image1.jpg');
+    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith('file://image2.png');
+  });
+
+  it('does not call addPastedAttachment when text is pasted', () => {
+    const { UNSAFE_getByType } = renderBar();
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'text',
+        text: 'Hello world',
+      });
+    });
+
+    expect(mockUseAttachment.addPastedAttachment).not.toHaveBeenCalled();
+  });
+
+  it('shows toast when unsupported content is pasted', () => {
+    const { UNSAFE_getByType } = renderBar();
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'unsupported',
+      });
+    });
+
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ text1: 'Unsupported clipboard content' })
+    );
+  });
+
+  it('shows error toast when paste processing fails', () => {
+    mockUseAttachment.addPastedAttachment.mockImplementation(() => {
+      throw new Error('Test error');
+    });
+
+    const { UNSAFE_getByType } = renderBar({ isVisionModel: true });
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'images',
+        uris: ['file://test.jpg'],
+      });
+    });
+
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ text1: 'Error processing pasted content' })
+    );
+  });
+
+  it('handles empty uris array gracefully', () => {
+    const { UNSAFE_getByType } = renderBar();
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'images',
+        uris: [],
+      });
+    });
+
+    expect(mockUseAttachment.addPastedAttachment).not.toHaveBeenCalled();
+  });
+
+  it('blocks image paste for non-vision models', () => {
+    const { UNSAFE_getByType } = renderBar({ isVisionModel: false });
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'images',
+        uris: ['file://test.jpg'],
+      });
+    });
+
+    expect(mockUseAttachment.addPastedAttachment).not.toHaveBeenCalled();
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: 'This model does not support images',
+      })
+    );
+  });
+
+  it('allows image paste for vision models', () => {
+    const { UNSAFE_getByType } = renderBar({ isVisionModel: true });
+    const TextInputWrapper = require('expo-paste-input').TextInputWrapper;
+    const wrapper = UNSAFE_getByType(TextInputWrapper);
+
+    act(() => {
+      wrapper.props.onPaste({
+        type: 'images',
+        uris: ['file://test.jpg'],
+      });
+    });
+
+    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith('file://test.jpg');
   });
 });

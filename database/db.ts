@@ -55,6 +55,15 @@ const runMigrations = async (db: SQLiteDatabase) => {
     );
   }
 
+  const hasDocumentName = messagesTableInfo.some(
+    (col) => col.name === 'documentName'
+  );
+  if (!hasDocumentName) {
+    await db.execAsync(
+      `ALTER TABLE messages ADD COLUMN documentName TEXT DEFAULT NULL`
+    );
+  }
+
   // Check and add thinkingEnabled to chatSettings
   const chatSettingsTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(chatSettings)`
@@ -66,6 +75,19 @@ const runMigrations = async (db: SQLiteDatabase) => {
   if (!hasThinkingEnabled) {
     await db.execAsync(
       `ALTER TABLE chatSettings ADD COLUMN thinkingEnabled INTEGER DEFAULT NULL`
+    );
+  }
+
+  // Add firstChunk column to sources
+  const sourcesTableInfo = await db.getAllAsync<{ name: string }>(
+    `PRAGMA table_info(sources)`
+  );
+  const hasFirstChunk = sourcesTableInfo.some(
+    (col) => col.name === 'firstChunk'
+  );
+  if (!hasFirstChunk) {
+    await db.execAsync(
+      `ALTER TABLE sources ADD COLUMN firstChunk TEXT DEFAULT NULL`
     );
   }
 

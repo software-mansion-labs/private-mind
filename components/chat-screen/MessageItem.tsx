@@ -9,6 +9,7 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import MessageManagementSheet from '../bottomSheets/MessageManagementSheet';
 import { Theme } from '../../styles/colors';
 import ImageLightbox from './ImageLightbox';
+import AttachmentIcon from '../../assets/icons/attachment.svg';
 
 interface MessageItemProps {
   content: string;
@@ -18,6 +19,7 @@ interface MessageItemProps {
   timeToFirstToken?: number;
   isLastMessage: boolean;
   imagePath?: string;
+  documentName?: string;
 }
 
 const MessageItem = memo(
@@ -29,6 +31,7 @@ const MessageItem = memo(
     timeToFirstToken,
     isLastMessage = false,
     imagePath,
+    documentName,
   }: MessageItemProps) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
@@ -88,37 +91,68 @@ const MessageItem = memo(
               </Text>
             </Text>
           </View>
+        ) : role === 'user' ? (
+          <View style={styles.userMessageGroup}>
+            {imagePath && (
+              <View style={styles.userBubble} testID="image-bubble">
+                <TouchableOpacity
+                  onPress={() => setLightboxVisible(true)}
+                  activeOpacity={0.9}
+                >
+                  <Image
+                    source={{ uri: imagePath }}
+                    style={styles.messageImage}
+                    resizeMode="cover"
+                    testID="message-image"
+                  />
+                </TouchableOpacity>
+                <ImageLightbox
+                  uri={imagePath}
+                  visible={lightboxVisible}
+                  onClose={() => setLightboxVisible(false)}
+                />
+              </View>
+            )}
+            {documentName && (
+              <View style={styles.userBubble} testID="document-bubble">
+                <View style={styles.documentTile} testID="message-document">
+                  <AttachmentIcon
+                    width={28}
+                    height={28}
+                    style={{ color: theme.text.primary }}
+                  />
+                  <Text style={styles.documentName} numberOfLines={2}>
+                    {documentName}
+                  </Text>
+                </View>
+              </View>
+            )}
+            {contentParts.normalContent.trim() && (
+              <View style={styles.userBubble} testID="text-bubble">
+                <View style={styles.userMessageContent}>
+                  <TouchableOpacity
+                    onLongPress={() => {
+                      messageManagementSheetRef.current?.present(content);
+                    }}
+                    delayPressIn={50}
+                    activeOpacity={0.4}
+                  >
+                    <Text style={styles.userText}>
+                      {contentParts.normalContent}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+            <MessageManagementSheet
+              bottomSheetModalRef={messageManagementSheetRef}
+            />
+          </View>
         ) : (
           <>
-            <View
-              style={
-                role === 'assistant' ? styles.aiMessage : styles.userMessage
-              }
-            >
-              {imagePath && role === 'user' && (
-                <>
-                  <TouchableOpacity
-                    onPress={() => setLightboxVisible(true)}
-                    activeOpacity={0.9}
-                  >
-                    <Image
-                      source={{ uri: imagePath }}
-                      style={styles.messageImage}
-                      resizeMode="cover"
-                      testID="message-image"
-                    />
-                  </TouchableOpacity>
-                  <ImageLightbox
-                    uri={imagePath}
-                    visible={lightboxVisible}
-                    onClose={() => setLightboxVisible(false)}
-                  />
-                </>
-              )}
-              <View style={[styles.bubbleContent, role === 'user' && styles.userMessageContent]}>
-                {role === 'assistant' && (
-                  <Text style={styles.modelName}>{modelName}</Text>
-                )}
+            <View style={styles.aiMessage}>
+              <View style={styles.bubbleContent}>
+                <Text style={styles.modelName}>{modelName}</Text>
                 {contentParts.normalContent.trim() && (
                   <TouchableOpacity
                     onLongPress={() => {
@@ -127,24 +161,21 @@ const MessageItem = memo(
                     delayPressIn={50}
                     activeOpacity={0.4}
                   >
-                    {role === 'user' ? (
-                      <Text style={styles.userText}>{contentParts.normalContent}</Text>
-                    ) : (
-                      <MarkdownComponent text={contentParts.normalContent} />
-                    )}
+                    <MarkdownComponent text={contentParts.normalContent} />
                   </TouchableOpacity>
                 )}
-                {contentParts.hasThinking && contentParts.thinkingContent?.trim() && (
-                  <ThinkingBlock
-                    content={contentParts.thinkingContent || ''}
-                    isComplete={contentParts.isThinkingComplete}
-                    inProgress={
-                      isLastMessage &&
-                      isGenerating &&
-                      !contentParts.isThinkingComplete
-                    }
-                  />
-                )}
+                {contentParts.hasThinking &&
+                  contentParts.thinkingContent?.trim() && (
+                    <ThinkingBlock
+                      content={contentParts.thinkingContent || ''}
+                      isComplete={contentParts.isThinkingComplete}
+                      inProgress={
+                        isLastMessage &&
+                        isGenerating &&
+                        !contentParts.isThinkingComplete
+                      }
+                    />
+                  )}
                 {contentParts.normalAfterThink &&
                   contentParts.normalAfterThink.trim() && (
                     <TouchableOpacity
@@ -155,14 +186,12 @@ const MessageItem = memo(
                       <MarkdownComponent text={contentParts.normalAfterThink} />
                     </TouchableOpacity>
                   )}
-                {role === 'assistant' &&
-                  tokensPerSecond !== undefined &&
-                  tokensPerSecond !== 0 && (
-                    <Text style={styles.metadata}>
-                      ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
-                      {tokensPerSecond?.toFixed(2)} tok/s
-                    </Text>
-                  )}
+                {tokensPerSecond !== undefined && tokensPerSecond !== 0 && (
+                  <Text style={styles.metadata}>
+                    ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
+                    {tokensPerSecond?.toFixed(2)} tok/s
+                  </Text>
+                )}
               </View>
             </View>
             <MessageManagementSheet
@@ -186,13 +215,16 @@ const createStyles = (theme: Theme) =>
       width: '90%',
       alignSelf: 'flex-start',
     },
-    userMessage: {
+    userMessageGroup: {
+      alignItems: 'flex-end',
+      marginBottom: 24,
+      gap: 4,
+    },
+    userBubble: {
       flexDirection: 'column',
       alignItems: 'flex-start',
       justifyContent: 'center',
-      marginBottom: 24,
       maxWidth: '65%',
-      alignSelf: 'flex-end',
       borderRadius: 12,
       backgroundColor: theme.bg.softSecondary,
       overflow: 'hidden',
@@ -205,8 +237,21 @@ const createStyles = (theme: Theme) =>
     messageImage: {
       width: '100%',
       aspectRatio: 4 / 3,
-      borderTopLeftRadius: 12,
-      borderTopRightRadius: 12,
+    },
+    documentTile: {
+      width: '100%',
+      paddingVertical: 20,
+      backgroundColor: theme.bg.overlay,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 12,
+    },
+    documentName: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.sm,
+      color: theme.text.primary,
+      flex: 1,
     },
     eventMessage: {
       paddingHorizontal: 16,

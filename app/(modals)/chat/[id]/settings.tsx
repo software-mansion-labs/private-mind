@@ -14,6 +14,7 @@ import { Theme } from '../../../../styles/colors';
 import useChatSettings from '../../../../hooks/useChatSettings';
 import ChatSettingsForm from '../../../../components/settings/ChatSettingsForm';
 import { CustomKeyboardAvoidingView } from '../../../../components/CustomKeyboardAvoidingView';
+import { useVectorStore } from '../../../../context/VectorStoreContext';
 
 export default function ChatSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,6 +26,7 @@ export default function ChatSettingsScreen() {
   const { getModelById } = useModelStore();
   const { renameChat, deleteChat, phantomChat, setPhantomChatSettings } =
     useChatStore();
+  const { vectorStore } = useVectorStore();
 
   const { settings, setSetting, chat } = useChatSettings(chatId);
   const isDefaultSettings = chat === undefined;
@@ -70,7 +72,7 @@ export default function ChatSettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await deleteChat(chatId!);
+            await deleteChat(chatId!, vectorStore ?? undefined);
             router.replace('/');
           } catch (error) {
             console.error('Error deleting chat:', error);
