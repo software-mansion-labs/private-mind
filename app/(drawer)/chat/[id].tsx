@@ -63,6 +63,7 @@ function ChatScreenInner() {
       chatId={chatId}
       chat={chat}
       messageHistory={isLoading ? [] : activeChatMessages}
+      isLoading={isLoading}
       model={model}
       selectModel={handleSetModel}
     />

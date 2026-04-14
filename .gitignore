@@ -4,6 +4,14 @@
 .worktrees/
 .superpowers/
 
+# Claude / agents / MCP / editor
+.claude/
+.agents/
+.mcp.json
+.vscode/
+skills-lock.json
+docs/chat-testing-checklist.md
+
 # dependencies
 node_modules/
 

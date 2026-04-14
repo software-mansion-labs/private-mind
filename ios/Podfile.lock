@@ -91,6 +91,8 @@ PODS:
     - React-Core
     - React-runtimescheduler
     - ReactCommon
+  - ExpoPasteInput (1.0.0):
+    - ExpoModulesCore
   - ExpoRouter (55.0.11):
     - ExpoModulesCore
     - RNScreens
@@ -1609,7 +1611,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-keyboard-controller (1.20.7):
+  - react-native-keyboard-controller (1.21.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1621,7 +1623,7 @@ PODS:
     - React-graphics
     - React-ImageManager
     - React-jsi
-    - react-native-keyboard-controller/common (= 1.20.7)
+    - react-native-keyboard-controller/common (= 1.21.1)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-renderercss
@@ -1632,7 +1634,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-keyboard-controller/common (1.20.7):
+  - react-native-keyboard-controller/common (1.21.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2196,7 +2198,6 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - RNAudioAPI/audioapi (= 0.12.0-nightly-f7c925b-20260402)
-    - RNWorklets
     - Yoga
   - RNAudioAPI/audioapi (0.12.0-nightly-f7c925b-20260402):
     - hermes-engine
@@ -2222,7 +2223,6 @@ PODS:
     - RNAudioAPI/audioapi/audioapi_dsp (= 0.12.0-nightly-f7c925b-20260402)
     - RNAudioAPI/audioapi/ios (= 0.12.0-nightly-f7c925b-20260402)
     - RNAudioAPI/audioapi/miniaudio_impl (= 0.12.0-nightly-f7c925b-20260402)
-    - RNWorklets
     - Yoga
   - RNAudioAPI/audioapi/audioapi_dsp (0.12.0-nightly-f7c925b-20260402):
     - hermes-engine
@@ -2245,7 +2245,6 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNWorklets
     - Yoga
   - RNAudioAPI/audioapi/ios (0.12.0-nightly-f7c925b-20260402):
     - hermes-engine
@@ -2268,7 +2267,6 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNWorklets
     - Yoga
   - RNAudioAPI/audioapi/miniaudio_impl (0.12.0-nightly-f7c925b-20260402):
     - hermes-engine
@@ -2291,7 +2289,6 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNWorklets
     - Yoga
   - RNCAsyncStorage (2.2.0):
     - hermes-engine
@@ -2339,7 +2336,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNReanimated (4.2.1):
+  - RNReanimated (4.3.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2361,10 +2358,11 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNReanimated/reanimated (= 4.2.1)
+    - RNReanimated/apple (= 4.3.0)
+    - RNReanimated/common (= 4.3.0)
     - RNWorklets
     - Yoga
-  - RNReanimated/reanimated (4.2.1):
+  - RNReanimated/apple (4.3.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2386,10 +2384,9 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNReanimated/reanimated/apple (= 4.2.1)
     - RNWorklets
     - Yoga
-  - RNReanimated/reanimated/apple (4.2.1):
+  - RNReanimated/common (4.3.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2505,7 +2502,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNWorklets (0.7.2):
+  - RNWorklets (0.8.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2527,9 +2524,10 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNWorklets/worklets (= 0.7.2)
+    - RNWorklets/apple (= 0.8.1)
+    - RNWorklets/common (= 0.8.1)
     - Yoga
-  - RNWorklets/worklets (0.7.2):
+  - RNWorklets/apple (0.8.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2551,9 +2549,8 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNWorklets/worklets/apple (= 0.7.2)
     - Yoga
-  - RNWorklets/worklets/apple (0.7.2):
+  - RNWorklets/common (0.8.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2609,6 +2606,7 @@ DEPENDENCIES:
   - "ExpoLogBox (from `../node_modules/@expo/log-box`)"
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoModulesJSI (from `../node_modules/expo-modules-core`)
+  - ExpoPasteInput (from `../node_modules/expo-paste-input/ios`)
   - ExpoRouter (from `../node_modules/expo-router/ios`)
   - ExpoSharing (from `../node_modules/expo-sharing/ios`)
   - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
@@ -2758,6 +2756,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-modules-core"
   ExpoModulesJSI:
     :path: "../node_modules/expo-modules-core"
+  ExpoPasteInput:
+    :path: "../node_modules/expo-paste-input/ios"
   ExpoRouter:
     :path: "../node_modules/expo-router/ios"
   ExpoSharing:
@@ -2972,6 +2972,7 @@ SPEC CHECKSUMS:
   ExpoLogBox: a3de999775d423ac9cb85d24bd47628e5392761f
   ExpoModulesCore: 964f01116faf01b68467a6c8ea06e14d65fe7b3c
   ExpoModulesJSI: 0dcd06b8d4b92826d30f52947a03a78f7590b604
+  ExpoPasteInput: e8eba5274ad513ba3e02ceb71ad6524bf2e46ce1
   ExpoRouter: a29e3a3479f33ceda0d08136bdd7931b3a7b040c
   ExpoSharing: 1bdb3d9c98cd807bb7d9130967b8805e5c13d409
   ExpoSplashScreen: 5d16d7a0ada0671b5c59080b1ce9126c987baee7
@@ -3025,7 +3026,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: 563b4dcc8b8570814d6de4fc1196f48d2944acd4
   react-native-executorch: d4f5b91a556124313c1f0eab1cd4846dcc936f2e
   react-native-image-picker: 48d850454b4a389753053e1d7378b624d3b47d77
-  react-native-keyboard-controller: c872321fc580f8d815e9e2ad5558b24c26c18b4f
+  react-native-keyboard-controller: 6b4bc1ef1ad46ace3842f49ed03815a96a99b139
   react-native-netinfo: f852c868bf5175e46165c7e4db48a204a95c3800
   react-native-safe-area-context: 37e680fc4cace3c0030ee46e8987d24f5d3bdab2
   React-NativeModulesApple: f3eb751b0ea23645a5283ed8c8bb8ebeeda32d15
@@ -3064,14 +3065,14 @@ SPEC CHECKSUMS:
   ReactNativeDependencies: 98d8290c99cc02e3e02f8a4a8354106a81edcaa3
   ReactNativeEnrichedMarkdown: 27a73f8df1bc304c35b7bd922c9885a4dfec3dc5
   ReactNativeFs: 1bbd20020179cbaeddcda3ca2bf91e71647a1f23
-  RNAudioAPI: 3d33d52e97246706f7bc844af8f547a0f364e80b
+  RNAudioAPI: a2a67b86dbd376f391252f0e249aec34a6e1ae92
   RNCAsyncStorage: 3a4f5e2777dae1688b781a487923a08569e27fe4
   RNDeviceInfo: 36d7f232bfe7c9b5c494cb7793230424ed32c388
   RNGestureHandler: 0ea8153746a92b3744d4eaadade647debedf646e
-  RNReanimated: 86e5991396f1aa514db90d6c79d4c3e37a37bb10
+  RNReanimated: 992be09c2cb476a7ce23a4a71c865cc3a457b2e2
   RNScreens: 02e62f995ceb94ea465864b3bf4d4767b87f0362
   RNSVG: 0bd149b873018bc6e0e3321e2f6435bdba294460
-  RNWorklets: 0e736f568c3c61cb3326cdcda767c4daee56a8a9
+  RNWorklets: 9e58fb4eb675a5e582cb38aee96698ae86e905c9
   SDWebImage: 1bb6a1b84b6fe87b972a102bdc77dd589df33477
   SDWebImageAVIFCoder: afe194a084e851f70228e4be35ef651df0fc5c57
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c

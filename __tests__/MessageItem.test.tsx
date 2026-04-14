@@ -28,7 +28,7 @@ jest.mock('../components/chat-screen/ThinkingBlock', () => {
   );
 });
 
-jest.mock('../components/bottomSheets/MessageManagementSheet', () => () => null);
+jest.mock('../components/chat-screen/AnimatedChatLoading', () => () => null);
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 

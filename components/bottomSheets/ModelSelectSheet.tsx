@@ -19,9 +19,14 @@ import BottomSheetSearchInput from './BottomSheetSearchInput';
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
   selectModel: (model: Model) => void;
+  onSheetStateChange?: (isOpen: boolean) => void;
 }
 
-const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
+const ModelSelectSheet = ({
+  bottomSheetModalRef,
+  selectModel,
+  onSheetStateChange,
+}: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { downloadedModels } = useModelStore();
@@ -47,6 +52,8 @@ const ModelSelectSheet = ({ bottomSheetModalRef, selectModel }: Props) => {
     <BottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
+      onChange={(index) => onSheetStateChange?.(index >= 0)}
+      onDismiss={() => onSheetStateChange?.(false)}
       snapPoints={['30%', '50%']}
       enableDynamicSizing={false}
       handleStyle={styles.handle}
