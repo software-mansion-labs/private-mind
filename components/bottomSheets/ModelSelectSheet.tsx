@@ -4,7 +4,9 @@ import {
   BottomSheetFlatList,
   BottomSheetView,
   BottomSheetBackdrop,
+  useBottomSheetTimingConfigs,
 } from '@gorhom/bottom-sheet';
+import { Easing } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
@@ -31,6 +33,11 @@ const ModelSelectSheet = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { downloadedModels } = useModelStore();
   const [search, setSearch] = useState('');
+  const [isFullyOpen, setIsFullyOpen] = useState(false);
+  const animationConfigs = useBottomSheetTimingConfigs({
+    duration: 150,
+    easing: Easing.out(Easing.cubic),
+  });
 
   const filteredModels = downloadedModels.filter((model) =>
     model.modelName.toLowerCase().includes(search.toLowerCase())
@@ -55,15 +62,18 @@ const ModelSelectSheet = ({
       onChange={(index) => onSheetStateChange?.(index >= 0)}
       onDismiss={() => onSheetStateChange?.(false)}
       snapPoints={['30%', '50%']}
+      animationConfigs={animationConfigs}
       enableDynamicSizing={false}
       handleStyle={styles.handle}
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.background}
       keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
       keyboardBlurBehavior="restore"
+      onChange={(i) => setIsFullyOpen(i >= 0)}
+      onDismiss={() => setIsFullyOpen(false)}
     >
       {downloadedModels.length > 0 ? (
-        <View style={styles.content}>
+        <View style={styles.content} pointerEvents={isFullyOpen ? 'auto' : 'none'}>
           <Text style={[styles.title, styles.horizontalInset]}>
             Select a Model
           </Text>

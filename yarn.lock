@@ -2061,9 +2061,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@gorhom/bottom-sheet@npm:^5.2.8":
-  version: 5.2.8
-  resolution: "@gorhom/bottom-sheet@npm:5.2.8"
+"@gorhom/bottom-sheet@npm:^5.2.9":
+  version: 5.2.9
+  resolution: "@gorhom/bottom-sheet@npm:5.2.9"
   dependencies:
     "@gorhom/portal": 1.0.14
     invariant: ^2.2.4
@@ -2079,7 +2079,7 @@ __metadata:
       optional: true
     "@types/react-native":
       optional: true
-  checksum: 987c07e013c423d71afc21f5a38ad02dacfc153c8eb613ac3be0fa1331a559976f0f0d02144bf80654b2fe737582c21249ff8988694cdb6d94981037a1b54001
+  checksum: 252336a263fa40241ecbab4bbd4b6647783fbad25ac59e973dc01e0f7b5dc57dc7ddff602801604822f9a9b86364860cf0d66af6184c950d0f2f64f782955ba2
   languageName: node
   linkType: hard
 
@@ -9303,7 +9303,7 @@ __metadata:
     "@babel/core": ^7.25.2
     "@dr.pogodin/react-native-fs": ^2.35.1
     "@expo-google-fonts/dm-sans": ^0.4.0
-    "@gorhom/bottom-sheet": ^5.2.8
+    "@gorhom/bottom-sheet": ^5.2.9
     "@op-engineering/op-sqlite": ^15.2.7
     "@react-native-async-storage/async-storage": 2.2.0
     "@react-native-community/netinfo": 11.5.2
