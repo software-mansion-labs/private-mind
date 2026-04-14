@@ -1,7 +1,9 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Keyboard, StyleSheet, View } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { useSharedValue } from 'react-native-reanimated';
+import type { MessagesHandle } from './Messages';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
 import { useModelStore } from '../../store/modelStore';
@@ -19,7 +21,6 @@ import ChatBar from './ChatBar';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
 import { useSQLiteContext } from 'expo-sqlite';
-import { CustomKeyboardAvoidingView } from '../CustomKeyboardAvoidingView';
 import { useVectorStore } from '../../context/VectorStoreContext';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { Attachment } from '../../hooks/useAttachment';
@@ -32,6 +33,7 @@ interface Props {
   chatId: number;
   chat: Chat | undefined;
   messageHistory: Message[];
+  isLoading?: boolean;
   model: Model | undefined;
   selectModel?: (model: Model) => Promise<void>;
 }
@@ -57,6 +59,7 @@ export default function ChatScreen({
   chatId,
   chat,
   messageHistory,
+  isLoading = false,
   model,
   selectModel,
 }: Props) {
@@ -64,7 +67,7 @@ export default function ChatScreen({
     clear: () => void;
     setInput: (text: string) => void;
   }>(null);
-  const scrollRef = useRef<ScrollView>(null);
+  const messagesRef = useRef<MessagesHandle>(null);
   const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const db = useSQLiteContext();
 
@@ -88,11 +91,21 @@ export default function ChatScreen({
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const [isAtBottom, setIsAtBottom] = useState(true);
   const { settings: chatSettings, setSetting } = useChatSettings(chatId);
 
   const enabledSources =
     chat?.enabledSources || phantomChat?.enabledSources || [];
+
+  // Shared values for KeyboardChatScrollView
+  const extraContentPadding = useSharedValue(0);
+  const blankSpace = useSharedValue(0);
+
+  // Freeze the scroll view's layout whenever any overlay (model picker,
+  // attachment sheet) is presented so keyboard dismiss → sheet open doesn't
+  // cause an intermediate content jump.
+  const [modelSheetOpen, setModelSheetOpen] = useState(false);
+  const [attachmentSheetOpen, setAttachmentSheetOpen] = useState(false);
+  const overlayOpen = modelSheetOpen || attachmentSheetOpen;
 
   const handlePresentModelSheet = useCallback(() => {
     Keyboard.dismiss();
@@ -123,6 +136,13 @@ export default function ChatScreen({
     inputRef.current?.clear();
     Keyboard.dismiss();
     updateLastUsed(chatId!);
+
+    // Notify Messages that a send is in flight. It will seed blankSpace to
+    // the full container height, then derive the final value from measured
+    // heights as the new user row and assistant placeholder lay out. See
+    // the v0 iOS app technique:
+    // https://vercel.com/blog/how-we-built-the-v0-ios-app
+    messagesRef.current?.onMessageSent();
 
     // Build context from attachments + persisted sources
     const context: string[] = [];
@@ -238,17 +258,18 @@ export default function ChatScreen({
   );
 
   return (
-    <CustomKeyboardAvoidingView style={styles.container} collapsable={false}>
-      <View style={styles.messagesContainer}>
-        <Messages
-          chatHistory={messageHistory}
-          ref={scrollRef}
-          isAtBottom={isAtBottom}
-          setIsAtBottom={setIsAtBottom}
-        />
-      </View>
+    <View style={styles.container} collapsable={false}>
+      <Messages
+        ref={messagesRef}
+        chatHistory={messageHistory}
+        extraContentPadding={extraContentPadding}
+        blankSpace={blankSpace}
+        isGenerating={isGenerating}
+        bottomOffset={0}
+        freeze={overlayOpen}
+      />
 
-      <View style={styles.barContainer}>
+      <KeyboardStickyView>
         <ChatBar
           chatId={chatId}
           onSend={handleSendMessage}
@@ -256,20 +277,21 @@ export default function ChatScreen({
           onSelectPrompt={handleSelectPrompt}
           ref={inputRef}
           model={model}
-          scrollRef={scrollRef}
-          isAtBottom={isAtBottom}
           isVisionModel={model?.vision === true}
+          extraContentPadding={extraContentPadding}
           thinkingEnabled={chatSettings?.thinkingEnabled || false}
           onThinkingToggle={handleThinkingToggle}
-          hasMessages={messageHistory.length > 0}
+          hasMessages={isLoading || messageHistory.length > 0}
+          onAttachmentSheetStateChange={setAttachmentSheetOpen}
         />
-      </View>
+      </KeyboardStickyView>
 
       <ModelSelectSheet
         bottomSheetModalRef={modelBottomSheetModalRef}
         selectModel={handleSelectModel}
+        onSheetStateChange={setModelSheetOpen}
       />
-    </CustomKeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -278,14 +300,5 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
-    },
-    messagesContainer: {
-      flex: 1,
-      paddingTop: 16,
-      paddingBottom: 8,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    barContainer: {
-      paddingBottom: theme.insets.bottom + 16,
     },
   });

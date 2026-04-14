@@ -1,10 +1,10 @@
 import React, {
   Ref,
-  RefObject,
   useImperativeHandle,
   useMemo,
   useState,
   useCallback,
+  useRef,
 } from 'react';
 import {
   View,
@@ -13,16 +13,16 @@ import {
   Text,
   StyleSheet,
   Keyboard,
+  Platform,
 } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
 import AttachmentSheet from '../bottomSheets/AttachmentSheet';
 import { useAttachment, Attachment } from '../../hooks/useAttachment';
 import { Model } from '../../database/modelRepository';
-import { ChatSettings } from '../../database/chatRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
-import { ScrollView } from 'react-native-gesture-handler';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
@@ -34,11 +34,7 @@ import Toast from 'react-native-toast-message';
 
 interface Props {
   chatId: number | null;
-  onSend: (
-    userInput: string,
-    imagePath?: string,
-    attachments?: Attachment[]
-  ) => void;
+  onSend: (userInput: string, imagePath?: string, attachments?: Attachment[]) => void;
   onSelectModel: () => void;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
@@ -46,12 +42,12 @@ interface Props {
     setInput: (text: string) => void;
   }>;
   model: Model | undefined;
-  scrollRef: RefObject<ScrollView | null>;
-  isAtBottom: boolean;
   isVisionModel: boolean;
+  extraContentPadding: SharedValue<number>;
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
   hasMessages: boolean;
+  onAttachmentSheetStateChange?: (isOpen: boolean) => void;
 }
 
 const ChatBar = ({
@@ -61,15 +57,19 @@ const ChatBar = ({
   onSelectPrompt,
   ref,
   model,
-  scrollRef,
-  isAtBottom,
   isVisionModel,
+  extraContentPadding,
   thinkingEnabled,
   onThinkingToggle,
   hasMessages,
+  onAttachmentSheetStateChange,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const containerStyle = useMemo(
+    () => [styles.container, { paddingBottom: theme.insets.bottom + 16 }],
+    [styles.container, theme.insets.bottom]
+  );
 
   const [userInput, setUserInput] = useState('');
   const {
@@ -84,16 +84,46 @@ const ChatBar = ({
     addPastedAttachment,
   } = useAttachment();
 
+  const defaultInputHeight = useRef(0);
+  // iOS-only: bump the TextInput key to force a remount when a prompt
+  // suggestion is set programmatically. iOS doesn't re-fire onLayout
+  // for content-driven height changes after the input has previously
+  // grown and shrunk, so remounting is the only reliable way to make
+  // it grow to fit the new content.
+  const [iosInputKey, setIosInputKey] = useState(0);
+
   useImperativeHandle(
     ref,
     () => ({
       clear: () => {
         setUserInput('');
         clearAll();
+        extraContentPadding.value = 0;
       },
-      setInput: (text: string) => setUserInput(text),
+      setInput: (text: string) => {
+        setUserInput(text);
+        if (Platform.OS === 'ios') {
+          setIosInputKey((k) => k + 1);
+        }
+      },
     }),
-    [clearAll]
+    [clearAll, extraContentPadding]
+  );
+
+  // Track layout height changes to update extraContentPadding for the
+  // scroll view. The native numberOfLines={3} handles the max height.
+  const handleInputLayout = useCallback(
+    (e: { nativeEvent: { layout: { height: number } } }) => {
+      const height = e.nativeEvent.layout.height;
+      if (defaultInputHeight.current === 0) {
+        defaultInputHeight.current = height;
+      }
+      extraContentPadding.value = Math.max(
+        0,
+        height - defaultInputHeight.current
+      );
+    },
+    [extraContentPadding]
   );
 
   const {
@@ -122,14 +152,7 @@ const ChatBar = ({
     if (hasLoadingAttachment) return;
     onSend(userInput, imageAttachment?.uri, attachments);
     clearAll();
-  }, [
-    onSend,
-    userInput,
-    imageAttachment,
-    attachments,
-    clearAll,
-    hasLoadingAttachment,
-  ]);
+  }, [onSend, userInput, imageAttachment, attachments, clearAll, hasLoadingAttachment]);
 
   const onPaste = useCallback(
     (payload: PasteEventPayload) => {
@@ -192,7 +215,7 @@ const ChatBar = ({
     };
 
     return (
-      <View style={styles.container}>
+      <View style={containerStyle}>
         <ChatSpeechInput
           onSubmit={handleSubmit}
           onCancel={() => setShowSpeechInput(false)}
@@ -203,7 +226,7 @@ const ChatBar = ({
 
   if (chatId && !model) {
     return (
-      <View style={styles.container}>
+      <View style={containerStyle}>
         <TouchableOpacity style={styles.modelSelection} onPress={onSelectModel}>
           <Text style={styles.selectedModel}>Select Model</Text>
           <RotateLeft
@@ -217,7 +240,7 @@ const ChatBar = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={containerStyle}>
       {model?.isDownloaded && (
         <>
           {!hasMessages && (
@@ -246,20 +269,18 @@ const ChatBar = ({
                 style={styles.textInputWrapper}
               >
                 <RNTextInput
+                  key={Platform.OS === 'ios' ? iosInputKey : undefined}
                   style={styles.input}
                   multiline
+                  numberOfLines={3}
                   onFocus={async () => {
-                    if (!isAtBottom) return;
                     await loadSelectedModel();
-                    setTimeout(() => {
-                      scrollRef.current?.scrollToEnd({ animated: true });
-                    }, 25);
                   }}
+                  onLayout={handleInputLayout}
                   placeholder="Ask about anything..."
                   placeholderTextColor={theme.text.contrastTertiary}
                   value={userInput}
                   onChangeText={setUserInput}
-                  numberOfLines={3}
                 />
               </TextInputWrapper>
             </View>
@@ -283,6 +304,7 @@ const ChatBar = ({
             onPickFromLibrary={pickFromLibrary}
             onPickFromCamera={pickFromCamera}
             onPickDocument={pickDocument}
+            onSheetStateChange={onAttachmentSheetStateChange}
           />
         </>
       )}
@@ -332,16 +354,15 @@ const createStyles = (theme: Theme) =>
     },
     textInputWrapper: {
       flex: 1,
-      minHeight: 40,
     },
     input: {
-      flex: 1,
-      fontSize: fontSizes.lg,
-      lineHeight: lineHeights.lg,
+      fontSize: fontSizes.md,
+      // lineHeight on Android causes typed text to be taller than the
+      // placeholder, making the ChatBar jump on first keystroke.
+      ...(Platform.OS === 'ios' && { lineHeight: lineHeights.md }),
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
       color: theme.text.contrastPrimary,
-      minHeight: 40,
     },
     previewRow: {
       flexDirection: 'row',

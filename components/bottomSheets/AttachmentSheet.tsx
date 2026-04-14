@@ -18,6 +18,7 @@ interface Props {
   onPickFromLibrary: () => void;
   onPickFromCamera: () => void;
   onPickDocument: () => void;
+  onSheetStateChange?: (isOpen: boolean) => void;
 }
 
 const AttachmentSheet = ({
@@ -26,6 +27,7 @@ const AttachmentSheet = ({
   onPickFromLibrary,
   onPickFromCamera,
   onPickDocument,
+  onSheetStateChange,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -39,6 +41,8 @@ const AttachmentSheet = ({
     <BottomSheetModal
       ref={bottomSheetModalRef}
       enableDynamicSizing
+      onChange={(index) => onSheetStateChange?.(index >= 0)}
+      onDismiss={() => onSheetStateChange?.(false)}
       backdropComponent={(props) => (
         <BottomSheetBackdrop
           {...props}
