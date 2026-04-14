@@ -92,7 +92,12 @@ const ChatBar = ({
   } = useAttachment();
 
   const defaultInputHeight = useRef(0);
-  const [inputKey, setInputKey] = useState(0);
+  // iOS-only: bump the TextInput key to force a remount when a prompt
+  // suggestion is set programmatically. iOS doesn't re-fire onLayout
+  // for content-driven height changes after the input has previously
+  // grown and shrunk, so remounting is the only reliable way to make
+  // it grow to fit the new content.
+  const [iosInputKey, setIosInputKey] = useState(0);
 
   useImperativeHandle(
     ref,
@@ -101,10 +106,13 @@ const ChatBar = ({
         setUserInput('');
         clearAll();
         extraContentPadding.value = 0;
-        // Force TextInput remount so iOS shrinks back to 1 line.
-        setInputKey((k) => k + 1);
       },
-      setInput: (text: string) => setUserInput(text),
+      setInput: (text: string) => {
+        setUserInput(text);
+        if (Platform.OS === 'ios') {
+          setIosInputKey((k) => k + 1);
+        }
+      },
     }),
     [clearAll, extraContentPadding]
   );
@@ -268,7 +276,7 @@ const ChatBar = ({
                 style={styles.textInputWrapper}
               >
                 <RNTextInput
-                  key={inputKey}
+                  key={Platform.OS === 'ios' ? iosInputKey : undefined}
                   style={styles.input}
                   multiline
                   numberOfLines={3}
@@ -354,10 +362,8 @@ const createStyles = (theme: Theme) =>
     },
     textInputWrapper: {
       flex: 1,
-      minHeight: 40,
     },
     input: {
-      flex: 1,
       fontSize: fontSizes.md,
       // lineHeight on Android causes typed text to be taller than the
       // placeholder, making the ChatBar jump on first keystroke.
@@ -365,7 +371,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
       color: theme.text.contrastPrimary,
-      minHeight: 40,
     },
     previewRow: {
       flexDirection: 'row',
