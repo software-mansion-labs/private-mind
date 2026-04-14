@@ -27,6 +27,7 @@ import { filterAndFormatContext, formatFirstChunks } from '../../utils/contextUt
 import { useSourceStore } from '../../store/sourceStore';
 import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
+import { persistImage } from '../../utils/persistImage';
 
 interface Props {
   chatId: number;
@@ -120,6 +121,20 @@ export default function ChatScreen({
       await addChat(newChatTitle, model!.id);
     }
 
+    let persistedImagePath: string | undefined = imagePath;
+    if (imagePath) {
+      try {
+        persistedImagePath = await persistImage(imagePath);
+      } catch (error) {
+        console.error('Failed to persist image attachment:', error);
+        Toast.show({
+          type: 'defaultToast',
+          text1: 'Failed to save image attachment.',
+        });
+        return;
+      }
+    }
+
     inputRef.current?.clear();
     Keyboard.dismiss();
     updateLastUsed(chatId!);
@@ -170,7 +185,7 @@ export default function ChatScreen({
     const docAttachments = attachments?.filter((a) => a.type === 'document') || [];
     const docName = docAttachments.map((a) => a.name).filter(Boolean).join(', ') || undefined;
     await sendChatMessage(
-      userInput, chatId!, context, settings, imagePath,
+      userInput, chatId!, context, settings, persistedImagePath,
       docName
     );
   };
