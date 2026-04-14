@@ -63,14 +63,6 @@ const runMigrations = async (db: SQLiteDatabase) => {
       `ALTER TABLE messages ADD COLUMN documentName TEXT DEFAULT NULL`
     );
   }
-  const hasDocumentUri = messagesTableInfo.some(
-    (col) => col.name === 'documentUri'
-  );
-  if (!hasDocumentUri) {
-    await db.execAsync(
-      `ALTER TABLE messages ADD COLUMN documentUri TEXT DEFAULT NULL`
-    );
-  }
 
   // Check and add thinkingEnabled to chatSettings
   const chatSettingsTableInfo = await db.getAllAsync<{ name: string }>(

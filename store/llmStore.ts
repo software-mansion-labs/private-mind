@@ -40,8 +40,7 @@ interface LLMStore {
     context: string[],
     settings: ChatSettings,
     imagePath?: string,
-    documentName?: string,
-    documentUri?: string
+    documentName?: string
   ) => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   interrupt: () => void;
@@ -317,7 +316,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
-  sendChatMessage: async (newMessage, chatId, context, settings, imagePath, documentName, documentUri) => {
+  sendChatMessage: async (newMessage, chatId, context, settings, imagePath, documentName) => {
     const { db, model: currentModel, activeChatMessages } = get();
     if (!db || !currentModel) {
       console.warn('LLM not ready or DB not set');
@@ -332,7 +331,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         timestamp: Date.now(),
         imagePath,
         documentName,
-        documentUri,
       };
       const assistantPlaceholder: Message = {
         role: 'assistant',

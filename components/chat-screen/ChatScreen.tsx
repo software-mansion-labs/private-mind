@@ -169,10 +169,9 @@ export default function ChatScreen({
 
     const docAttachments = attachments?.filter((a) => a.type === 'document') || [];
     const docName = docAttachments.map((a) => a.name).filter(Boolean).join(', ') || undefined;
-    const docUri = docAttachments[0]?.uri;
     await sendChatMessage(
       userInput, chatId!, context, settings, imagePath,
-      docName, docUri
+      docName
     );
   };
 
