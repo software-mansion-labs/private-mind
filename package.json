@@ -30,6 +30,7 @@
       "^react-native-pdfium$": "<rootDir>/__mocks__/react-native-pdfium.ts",
       "^expo-file-system$": "<rootDir>/__mocks__/expo-file-system.ts",
       "^react-native-executorch$": "<rootDir>/__mocks__/react-native-executorch.ts",
+      "^react-native-executorch-expo-resource-fetcher$": "<rootDir>/__mocks__/react-native-executorch-expo-resource-fetcher.ts",
       "^@dr.pogodin/react-native-fs$": "<rootDir>/__mocks__/react-native-fs.ts",
       "^react-native-toast-message$": "<rootDir>/__mocks__/react-native-toast-message.ts",
       "^react-native-reanimated$": "<rootDir>/__mocks__/react-native-reanimated.ts",
