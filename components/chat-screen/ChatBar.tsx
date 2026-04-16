@@ -44,6 +44,8 @@ interface Props {
   model: Model | undefined;
   isVisionModel: boolean;
   extraContentPadding: SharedValue<number>;
+  onHeightChange?: (height: number) => void;
+  onBarGrow?: () => void;
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
   hasMessages: boolean;
@@ -59,6 +61,8 @@ const ChatBar = ({
   model,
   isVisionModel,
   extraContentPadding,
+  onHeightChange,
+  onBarGrow,
   thinkingEnabled,
   onThinkingToggle,
   hasMessages,
@@ -84,12 +88,13 @@ const ChatBar = ({
     addPastedAttachment,
   } = useAttachment();
 
-  const defaultInputHeight = useRef(0);
+  const defaultBarHeight = useRef(0);
+  const textInputRef = useRef<RNTextInput>(null);
   // iOS-only: bump the TextInput key to force a remount when a prompt
   // suggestion is set programmatically. iOS doesn't re-fire onLayout
-  // for content-driven height changes after the input has previously
-  // grown and shrunk, so remounting is the only reliable way to make
-  // it grow to fit the new content.
+  // for grow after the input has previously grown and shrunk, so
+  // remounting is the only reliable way to make it grow to fit the
+  // new content.
   const [iosInputKey, setIosInputKey] = useState(0);
 
   useImperativeHandle(
@@ -99,6 +104,10 @@ const ChatBar = ({
         setUserInput('');
         clearAll();
         extraContentPadding.value = 0;
+        if (Platform.OS === 'ios') {
+          textInputRef.current?.setNativeProps({ text: ' ' });
+          textInputRef.current?.setNativeProps({ text: '' });
+        }
       },
       setInput: (text: string) => {
         setUserInput(text);
@@ -110,21 +119,22 @@ const ChatBar = ({
     [clearAll, extraContentPadding]
   );
 
-  // Track layout height changes to update extraContentPadding for the
-  // scroll view. The native numberOfLines={3} handles the max height.
-  const handleInputLayout = useCallback(
+  const handleBarLayoutForPadding = useCallback(
     (e: { nativeEvent: { layout: { height: number } } }) => {
       const height = e.nativeEvent.layout.height;
-      if (defaultInputHeight.current === 0) {
-        defaultInputHeight.current = height;
+      if (defaultBarHeight.current === 0) {
+        defaultBarHeight.current = height;
       }
-      extraContentPadding.value = Math.max(
-        0,
-        height - defaultInputHeight.current
-      );
+      const delta = height - (defaultBarHeight.current || height);
+      extraContentPadding.value = Math.max(0, height - defaultBarHeight.current);
+      onHeightChange?.(height);
+      if (delta > 0) {
+        onBarGrow?.();
+      }
     },
-    [extraContentPadding]
+    [extraContentPadding, onHeightChange]
   );
+
 
   const {
     isGenerating,
@@ -215,7 +225,7 @@ const ChatBar = ({
     };
 
     return (
-      <View style={containerStyle}>
+      <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
         <ChatSpeechInput
           onSubmit={handleSubmit}
           onCancel={() => setShowSpeechInput(false)}
@@ -226,7 +236,7 @@ const ChatBar = ({
 
   if (chatId && !model) {
     return (
-      <View style={containerStyle}>
+      <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
         <TouchableOpacity style={styles.modelSelection} onPress={onSelectModel}>
           <Text style={styles.selectedModel}>Select Model</Text>
           <RotateLeft
@@ -240,7 +250,7 @@ const ChatBar = ({
   }
 
   return (
-    <View style={containerStyle}>
+    <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
       {model?.isDownloaded && (
         <>
           {!hasMessages && (
@@ -270,13 +280,13 @@ const ChatBar = ({
               >
                 <RNTextInput
                   key={Platform.OS === 'ios' ? iosInputKey : undefined}
+                  ref={textInputRef}
                   style={styles.input}
                   multiline
                   numberOfLines={3}
                   onFocus={async () => {
                     await loadSelectedModel();
                   }}
-                  onLayout={handleInputLayout}
                   placeholder="Ask about anything..."
                   placeholderTextColor={theme.text.contrastTertiary}
                   value={userInput}

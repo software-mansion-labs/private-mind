@@ -31,14 +31,8 @@ import { Theme } from '../../styles/colors';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
 
 export interface MessagesHandle {
-  /**
-   * Called synchronously from the send handler. On iOS, seeds blankSpace
-   * and scrolls to end after a short delay. On Android, arms a pending
-   * pin that's consumed on the next onContentSizeChange (after the new
-   * row renders) to avoid a 1-frame flick. See the v0 iOS app blog post:
-   * https://vercel.com/blog/how-we-built-the-v0-ios-app
-   */
   onMessageSent: () => void;
+  scrollToEnd: () => void;
 }
 
 interface Props {
@@ -119,22 +113,16 @@ const Messages = ({
   // remembered position (top or bottom) if the user hadn't manually
   // scrolled while the keyboard was open. iOS handles this natively.
   const wasAtBottomDuringKeyboard = useRef(false);
-  const wasAtTopDuringKeyboard = useRef(false);
   useLayoutEffect(() => {
     if (Platform.OS !== 'android') return;
     let snapTimer: ReturnType<typeof setTimeout> | null = null;
     const showSub = Keyboard.addListener('keyboardDidShow', () => {
       wasAtBottomDuringKeyboard.current = isAtBottomRef.current;
-      wasAtTopDuringKeyboard.current = lastScrollOffset.current < 10;
     });
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       if (wasAtBottomDuringKeyboard.current) {
         snapTimer = setTimeout(() => {
           scrollRef.current?.scrollToEnd({ animated: false });
-        }, 300);
-      } else if (wasAtTopDuringKeyboard.current) {
-        snapTimer = setTimeout(() => {
-          scrollRef.current?.scrollTo({ y: 0, animated: false });
         }, 300);
       }
     });
@@ -176,6 +164,9 @@ const Messages = ({
   useImperativeHandle(
     ref,
     () => ({
+      scrollToEnd: () => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      },
       onMessageSent: () => {
         // Ensure the view is visible (covers new-chat case where the
         // initial-scroll effect hasn't fired because there were no
@@ -189,21 +180,11 @@ const Messages = ({
         streamingActive.current = true;
 
         if (Platform.OS === 'ios') {
-          // iOS: seed blankSpace synchronously and scroll after a
-          // short delay. The native contentInset animation handles
-          // the smooth transition.
           if (containerHeight.current > 0) {
             blankSpace.value = containerHeight.current;
           }
-          setTimeout(() => {
-            scrollRef.current?.scrollToEnd({ animated: true });
-          }, 200);
-        } else {
-          // Android: defer the pin to the next onContentSizeChange
-          // (after the new row has rendered) to avoid a 1-frame flick
-          // where the old content is briefly lifted by the new inset.
-          pendingPinRef.current = true;
         }
+        pendingPinRef.current = true;
       },
     }),
     [blankSpace, opacity]
@@ -295,7 +276,7 @@ const Messages = ({
       // blankSpace and scrollToEnd for a smooth transition.
       if (pendingPinRef.current) {
         pendingPinRef.current = false;
-        if (containerHeight.current > 0) {
+        if (Platform.OS !== 'ios' && containerHeight.current > 0) {
           blankSpace.value = withTiming(containerHeight.current, {
             duration: 300,
           });
