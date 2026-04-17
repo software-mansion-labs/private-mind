@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { useNavigation, router } from 'expo-router';
-import { useLayoutEffect } from 'react';
-import SettingsHeaderButton from '../../components/SettingsHeaderButton';
+import { router } from 'expo-router';
 import { configureReanimatedLogger } from 'react-native-reanimated';
 import { Model } from '../../database/modelRepository';
 import { getNextChatId, importMessages } from '../../database/chatRepository';
@@ -25,7 +23,6 @@ import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
 export default function App() {
   useOnboardingRedirect();
 
-  const navigation = useNavigation();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { loadModels } = useModelStore();
   const { loadSources } = useSourceStore();
@@ -71,12 +68,6 @@ export default function App() {
     loadModels();
     loadSources();
   }, [loadModels, loadSources]);
-
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => <SettingsHeaderButton chatId={null} />,
-    });
-  }, [navigation]);
 
   return (
     <>
