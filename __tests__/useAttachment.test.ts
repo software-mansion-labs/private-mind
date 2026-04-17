@@ -110,6 +110,93 @@ describe('useAttachment', () => {
     expect(result.current.attachments).toEqual([]);
   });
 
+  describe('single-attachment replacement', () => {
+    it('pickFromLibrary replaces an existing image', async () => {
+      mockLaunchImageLibrary
+        .mockResolvedValueOnce({ assets: [{ uri: 'file://first.jpg' }] })
+        .mockResolvedValueOnce({ assets: [{ uri: 'file://second.jpg' }] });
+
+      const { result } = renderHook(() => useAttachment());
+      await act(async () => { await result.current.pickFromLibrary(); });
+      await act(async () => { await result.current.pickFromLibrary(); });
+
+      expect(result.current.attachments).toHaveLength(1);
+      expect(result.current.attachments[0].uri).toBe('file://second.jpg');
+    });
+
+    it('pickFromCamera replaces an existing image', async () => {
+      mockLaunchImageLibrary.mockResolvedValue({
+        assets: [{ uri: 'file://pasted.jpg' }],
+      });
+      mockLaunchCamera.mockResolvedValue({
+        assets: [{ uri: 'file://camera.jpg' }],
+      });
+
+      const { result } = renderHook(() => useAttachment());
+      await act(async () => { await result.current.pickFromLibrary(); });
+      await act(async () => { await result.current.pickFromCamera(); });
+
+      expect(result.current.attachments).toHaveLength(1);
+      expect(result.current.attachments[0].uri).toBe('file://camera.jpg');
+    });
+
+    it('pickDocument replaces an existing image', async () => {
+      mockLaunchImageLibrary.mockResolvedValue({
+        assets: [{ uri: 'file://photo.jpg' }],
+      });
+      mockGetDocumentAsync.mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: 'file://doc.txt', name: 'doc.txt', size: 100 }],
+      });
+      const mockAddSource = jest.fn().mockResolvedValue({ success: true, sourceId: 7 });
+      const { useSourceStore } = require('../store/sourceStore');
+      useSourceStore.getState.mockReturnValue({ addSource: mockAddSource });
+
+      const { result } = renderHook(() => useAttachment());
+      await act(async () => { await result.current.pickFromLibrary(); });
+      await act(async () => { await result.current.pickDocument(); });
+
+      expect(result.current.attachments).toHaveLength(1);
+      expect(result.current.attachments[0].type).toBe('document');
+    });
+
+    it('picking an image after a document cleans up the orphaned source', async () => {
+      mockGetDocumentAsync.mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: 'file://doc.txt', name: 'doc.txt', size: 100 }],
+      });
+      mockLaunchImageLibrary.mockResolvedValue({
+        assets: [{ uri: 'file://photo.jpg' }],
+      });
+      const mockAddSource = jest.fn().mockResolvedValue({ success: true, sourceId: 99 });
+      const mockCleanup = jest.fn();
+      const { useSourceStore } = require('../store/sourceStore');
+      useSourceStore.getState.mockImplementation(() => ({
+        addSource: mockAddSource,
+        cleanupOrphanedSources: mockCleanup,
+      }));
+
+      const { result } = renderHook(() => useAttachment());
+      await act(async () => { await result.current.pickDocument(); });
+      expect(result.current.attachments[0].sourceId).toBe(99);
+
+      await act(async () => { await result.current.pickFromLibrary(); });
+
+      expect(result.current.attachments).toHaveLength(1);
+      expect(result.current.attachments[0].type).toBe('image');
+      expect(mockCleanup).toHaveBeenCalled();
+    });
+
+    it('addPastedAttachment replaces an existing image', () => {
+      const { result } = renderHook(() => useAttachment());
+      act(() => { result.current.addPastedAttachment('file://first.jpg'); });
+      act(() => { result.current.addPastedAttachment('file://second.jpg'); });
+
+      expect(result.current.attachments).toHaveLength(1);
+      expect(result.current.attachments[0].uri).toBe('file://second.jpg');
+    });
+  });
+
   describe('addPastedAttachment', () => {
     it('adds pasted image attachment for valid image URI', () => {
       const { result } = renderHook(() => useAttachment());
@@ -137,12 +224,10 @@ describe('useAttachment', () => {
         act(() => {
           result.current.addPastedAttachment(uri);
         });
-      });
-
-      expect(result.current.attachments).toHaveLength(formats.length);
-      result.current.attachments.forEach(att => {
-        expect(att.type).toBe('image');
-        expect(att.status).toBe('ready');
+        expect(result.current.attachments).toHaveLength(1);
+        expect(result.current.attachments[0].type).toBe('image');
+        expect(result.current.attachments[0].uri).toBe(uri);
+        expect(result.current.attachments[0].status).toBe('ready');
       });
     });
 
