@@ -88,14 +88,7 @@ const DrawerMenu = () => {
           onPress={() => navigate('/benchmark')}
         />
         <DrawerItem
-          icon={
-            <InfoCircleIcon
-              width={18}
-              height={18}
-              fillOpacity={1}
-              style={styles.icon}
-            />
-          }
+          icon={<InfoCircleIcon width={18} height={18} style={styles.icon} />}
           label="App Info"
           active={false}
           onPress={() => router.push('/app-info')}
