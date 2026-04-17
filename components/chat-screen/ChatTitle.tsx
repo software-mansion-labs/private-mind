@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Text, StyleSheet, View } from 'react-native';
+import { Text, StyleSheet, Pressable } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -7,13 +7,22 @@ import { Theme } from '../../styles/colors';
 interface Props {
   title: string;
   modelName: string;
+  onPress?: () => void;
 }
 
-const ChatTitle = ({ title, modelName }: Props) => {
+const ChatTitle = ({ title, modelName, onPress }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   return (
-    <View style={styles.titleContainer}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      hitSlop={8}
+      style={({ pressed }) => [
+        styles.titleContainer,
+        pressed && onPress ? styles.pressed : null,
+      ]}
+    >
       {title !== '' ? (
         <>
           <Text numberOfLines={1} style={styles.title}>
@@ -24,7 +33,7 @@ const ChatTitle = ({ title, modelName }: Props) => {
       ) : (
         <Text style={styles.modelNameTitle}>{modelName}</Text>
       )}
-    </View>
+    </Pressable>
   );
 };
 
@@ -36,6 +45,9 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    pressed: {
+      opacity: 0.6,
     },
     title: {
       fontSize: fontSizes.md,
