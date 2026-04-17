@@ -205,7 +205,6 @@ export default function ChatScreen({
 
     const settings: ChatSettings = {
       systemPrompt: chatSettings.systemPrompt,
-      contextWindow: parseInt(chatSettings.contextWindow),
       thinkingEnabled: chatSettings.thinkingEnabled,
     };
 
@@ -243,9 +242,6 @@ export default function ChatScreen({
 
     const newSettings: ChatSettings = {
       systemPrompt: chatSettings?.systemPrompt || '',
-      contextWindow: chatSettings?.contextWindow
-        ? parseInt(chatSettings.contextWindow)
-        : 6,
       thinkingEnabled: !chatSettings?.thinkingEnabled,
     };
 
