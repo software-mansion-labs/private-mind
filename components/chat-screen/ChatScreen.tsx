@@ -92,6 +92,12 @@ export default function ChatScreen({
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
+  const stickyOffset = useMemo(
+    () => ({ closed: 0, opened: theme.insets.bottom }),
+    [theme.insets.bottom]
+  );
+  const scrollBottomOffset = theme.insets.bottom;
+
   const { settings: chatSettings, setSetting } = useChatSettings(chatId);
 
   const enabledSources =
@@ -100,6 +106,7 @@ export default function ChatScreen({
   // Shared values for KeyboardChatScrollView
   const extraContentPadding = useSharedValue(0);
   const blankSpace = useSharedValue(0);
+  const [chatBarSpacerHeight, setChatBarSpacerHeight] = useState(0);
 
   // Freeze the scroll view's layout whenever any overlay (model picker,
   // attachment sheet) is presented so keyboard dismiss → sheet open doesn't
@@ -280,26 +287,41 @@ export default function ChatScreen({
         extraContentPadding={extraContentPadding}
         blankSpace={blankSpace}
         isGenerating={isGenerating}
-        bottomOffset={0}
+        bottomOffset={scrollBottomOffset}
         freeze={overlayOpen}
       />
 
-      <KeyboardStickyView>
-        <ChatBar
-          chatId={chatId}
-          onSend={handleSendMessage}
-          onSelectModel={handlePresentModelSheet}
-          onSelectPrompt={handleSelectPrompt}
-          ref={inputRef}
-          model={model}
-          isVisionModel={model?.vision === true}
-          extraContentPadding={extraContentPadding}
-          thinkingEnabled={chatSettings?.thinkingEnabled || false}
-          onThinkingToggle={handleThinkingToggle}
-          hasMessages={isLoading || messageHistory.length > 0}
-          onAttachmentSheetStateChange={setAttachmentSheetOpen}
-        />
-      </KeyboardStickyView>
+      <View
+        style={[
+          styles.chatBarSpacer,
+          chatBarSpacerHeight > 0 && { height: chatBarSpacerHeight },
+        ]}
+      >
+        <KeyboardStickyView offset={stickyOffset} style={styles.chatBarSticky}>
+          <ChatBar
+            chatId={chatId}
+            onSend={handleSendMessage}
+            onSelectModel={handlePresentModelSheet}
+            onSelectPrompt={handleSelectPrompt}
+            ref={inputRef}
+            model={model}
+            isVisionModel={model?.vision === true}
+            extraContentPadding={extraContentPadding}
+            thinkingEnabled={chatSettings?.thinkingEnabled || false}
+            onThinkingToggle={handleThinkingToggle}
+            hasMessages={isLoading || messageHistory.length > 0}
+            onAttachmentSheetStateChange={setAttachmentSheetOpen}
+            onHeightChange={(h: number) => {
+              if (chatBarSpacerHeight === 0) setChatBarSpacerHeight(h);
+            }}
+            onBarGrow={() => {
+              setTimeout(() => {
+                messagesRef.current?.scrollToEnd();
+              }, 100);
+            }}
+          />
+        </KeyboardStickyView>
+      </View>
 
       <ModelSelectSheet
         bottomSheetModalRef={modelBottomSheetModalRef}
@@ -315,5 +337,14 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
+    },
+    chatBarSpacer: {
+      overflow: 'visible',
+    },
+    chatBarSticky: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
     },
   });

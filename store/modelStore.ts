@@ -10,6 +10,7 @@ import {
 } from '../database/modelRepository';
 import Toast from 'react-native-toast-message';
 import { ResourceFetcher } from 'react-native-executorch';
+import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
 import { unlink, exists } from '@dr.pogodin/react-native-fs';
 
 export enum ModelState {
@@ -165,9 +166,16 @@ export const useModelStore = create<ModelStore>((set, get) => ({
   },
 
   cancelDownload: async (model: Model) => {
-    // Note: the new ResourceFetcher API does not support explicit cancellation.
-    // We reset the UI state; the in-progress fetch will resolve but its result
-    // won't be acted upon because the download state is already reset.
+    const { modelPath, tokenizerPath, tokenizerConfigPath } = model;
+    try {
+      await ExpoResourceFetcher.cancelFetching(
+        modelPath,
+        tokenizerPath,
+        tokenizerConfigPath
+      );
+    } catch (e) {
+      console.warn('Failed to cancel download:', e);
+    }
     set((state) => ({
       downloadStates: {
         ...state.downloadStates,

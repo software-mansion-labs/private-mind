@@ -39,8 +39,23 @@ const isImageUri = (uri: string): boolean => {
 
 export const useAttachment = () => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const attachmentsRef = useRef<Attachment[]>([]);
+  attachmentsRef.current = attachments;
   const sheetRef = useRef<BottomSheetModal>(null);
   const { vectorStore } = useVectorStore();
+
+  const replaceWithImage = useCallback(
+    (uri: string) => {
+      const hadSource = attachmentsRef.current.some((a) => a.sourceId);
+      setAttachments([
+        { id: `img-${Date.now()}`, type: 'image', uri, status: 'ready' },
+      ]);
+      if (hadSource && vectorStore) {
+        useSourceStore.getState().cleanupOrphanedSources(vectorStore);
+      }
+    },
+    [vectorStore]
+  );
 
   const pickFromLibrary = useCallback(async () => {
     const granted = await requestAndroidGalleryPermission();
@@ -55,26 +70,20 @@ export const useAttachment = () => {
     if (!result.didCancel && result.assets && result.assets.length > 0) {
       const uri = result.assets[0].uri;
       if (uri) {
-        setAttachments((prev) => [
-          ...prev,
-          { id: `img-${Date.now()}`, type: 'image', uri, status: 'ready' },
-        ]);
+        replaceWithImage(uri);
       }
     }
-  }, []);
+  }, [replaceWithImage]);
 
   const pickFromCamera = useCallback(async () => {
     const result = await launchCamera({ mediaType: 'photo', quality: 1 });
     if (!result.didCancel && result.assets && result.assets.length > 0) {
       const uri = result.assets[0].uri;
       if (uri) {
-        setAttachments((prev) => [
-          ...prev,
-          { id: `img-${Date.now()}`, type: 'image', uri, status: 'ready' },
-        ]);
+        replaceWithImage(uri);
       }
     }
-  }, []);
+  }, [replaceWithImage]);
 
   const pickDocument = useCallback(async () => {
     const pickedFileResult = await DocumentPicker.getDocumentAsync({
@@ -92,8 +101,8 @@ export const useAttachment = () => {
       'Unnamed';
     const attachmentId = `doc-${Date.now()}`;
 
-    setAttachments((prev) => [
-      ...prev,
+    const hadSource = attachmentsRef.current.some((a) => a.sourceId);
+    setAttachments([
       {
         id: attachmentId,
         type: 'document',
@@ -102,6 +111,9 @@ export const useAttachment = () => {
         status: 'loading',
       },
     ]);
+    if (hadSource && vectorStore) {
+      useSourceStore.getState().cleanupOrphanedSources(vectorStore);
+    }
 
     try {
       const newSource = {
@@ -183,12 +195,9 @@ export const useAttachment = () => {
         return;
       }
 
-      setAttachments((prev) => [
-        ...prev,
-        { id: `img-${Date.now()}`, type: 'image', uri, status: 'ready' },
-      ]);
+      replaceWithImage(uri);
     },
-    []
+    [replaceWithImage]
   );
 
   return {
