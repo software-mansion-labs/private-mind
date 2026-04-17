@@ -13,6 +13,8 @@ import ModelCard from '../model-hub/ModelCard';
 import TrashIcon from '../../assets/icons/trash.svg';
 import EditIcon from '../../assets/icons/edit.svg';
 import CrossCircleIcon from '../../assets/icons/cross-circle.svg';
+import BenchmarkIcon from '../../assets/icons/benchmark.svg';
+import { isModelCompatible } from '../../utils/modelCompatibility';
 import { useModelStore } from '../../store/modelStore';
 import { Model } from '../../database/modelRepository';
 import Toast from 'react-native-toast-message';
@@ -57,6 +59,23 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
           <>
             <ModelCard model={model} onPress={() => {}} />
             <View style={styles.buttonGroup}>
+              {model.isDownloaded && isModelCompatible(model) && (
+                <EntryButton
+                  text="Run benchmark"
+                  icon={
+                    <BenchmarkIcon
+                      width={18}
+                      height={18}
+                      style={styles.iconPrimary}
+                    />
+                  }
+                  onPress={() => {
+                    bottomSheetModalRef.current?.dismiss();
+                    router.push(`/benchmark?modelId=${model.id}`);
+                  }}
+                />
+              )}
+
               {model.source !== 'built-in' && (
                 <EntryButton
                   text="Edit model"

@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
+import { useLocalSearchParams } from 'expo-router';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
 import { useTheme } from '../../context/ThemeContext';
@@ -33,8 +34,11 @@ const BenchmarkScreen = () => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const db = useSQLiteContext();
   const { getModelById } = useModelStore();
+  const { modelId } = useLocalSearchParams<{ modelId?: string }>();
 
-  const [selectedModel, setSelectedModel] = useState<Model | undefined>();
+  const [selectedModel, setSelectedModel] = useState<Model | undefined>(() =>
+    modelId ? getModelById(Number(modelId)) : undefined
+  );
   const [benchmarkList, setBenchmarkList] = useState<BenchmarkResult[]>([]);
 
   const handleBenchmarkComplete = useCallback(
