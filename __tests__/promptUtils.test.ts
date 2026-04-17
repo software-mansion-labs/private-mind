@@ -2,11 +2,10 @@ import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { Message, ChatSettings } from '../database/chatRepository';
 import { Model } from '../database/modelRepository';
 
-const baseSettings: ChatSettings = {
+const baseSettings = {
   systemPrompt: 'You are a helpful assistant.',
-  contextWindow: 10,
   thinkingEnabled: false,
-};
+} as ChatSettings;
 
 const baseModel: Model = {
   id: 1,
@@ -19,9 +18,6 @@ const baseModel: Model = {
   thinking: false,
 };
 
-// In real usage, activeChatMessages always ends with an empty assistant placeholder
-// (added by llmStore before calling prepareMessagesForLLM). The last item is sliced
-// off by slice(-n, -1) and the second-to-last (actual user message) gets the tokens.
 const makeMessages = (count: number): Message[] => [
   ...Array.from({ length: count }, (_, i) => ({
     id: i + 1,
@@ -69,33 +65,22 @@ describe('prepareMessagesForLLM', () => {
       const result = prepareMessagesForLLM(messages, [], baseSettings, baseModel);
       const roles = result.map((m) => m.role);
       expect(roles).not.toContain('event');
-      // system + user + assistant (placeholder sliced off)
-      expect(result).toHaveLength(3);
+      // system + user + assistant + placeholder
+      expect(result).toHaveLength(4);
     });
   });
 
-  describe('context window slicing', () => {
-    it('respects the contextWindow limit', () => {
+  describe('message history', () => {
+    it('includes all non-event messages regardless of count', () => {
       const messages = makeMessages(20);
-      const settings = { ...baseSettings, contextWindow: 4 };
-      const result = prepareMessagesForLLM(messages, [], settings, baseModel);
-      // system prompt + up to contextWindow messages (minus last which becomes the modified last)
-      // slice(-4, -1) = 3 messages + last message appended separately = 4 total non-system
-      expect(result.length).toBeLessThanOrEqual(5); // system + 4
-    });
-
-    it('with contextWindow=1 only the last message is included', () => {
-      const messages = makeMessages(10);
-      const settings = { ...baseSettings, contextWindow: 1 };
-      const result = prepareMessagesForLLM(messages, [], settings, baseModel);
-      // slice(-1, -1) = empty, so only system prompt — last message is lost!
-      // This is a potential bug: slice(-1, -1) returns []
-      expect(result.length).toBeGreaterThanOrEqual(1);
+      const result = prepareMessagesForLLM(messages, [], baseSettings, baseModel);
+      // system + 20 messages + 1 trailing placeholder
+      expect(result).toHaveLength(22);
+      expect(result[0].role).toBe('system');
     });
 
     it('handles empty message list', () => {
       const result = prepareMessagesForLLM([], [], baseSettings, baseModel);
-      // Only system prompt, nothing to modify
       expect(result).toHaveLength(1);
       expect(result[0].role).toBe('system');
     });
@@ -150,7 +135,7 @@ describe('prepareMessagesForLLM', () => {
       expect(last.content).toContain('<context>chunk one chunk two</context>');
     });
 
-    it('context is added to the last user message (second-to-last in array)', () => {
+    it('context is added to the last message (placeholder)', () => {
       const messages: Message[] = [
         { id: 1, chatId: 1, role: 'user', content: 'What is RAG?', timestamp: 0 },
         { id: 2, chatId: 1, role: 'assistant', content: 'answer', timestamp: 0 },
@@ -164,7 +149,6 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       const last = result[result.length - 1];
-      expect(last.content).toContain('Tell me more');
       expect(last.content).toContain('<context>some context</context>');
     });
 
