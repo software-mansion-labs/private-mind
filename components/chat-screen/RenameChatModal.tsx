@@ -46,10 +46,11 @@ const RenameChatModal = ({ visible, initialTitle, onCancel, onSubmit }: Props) =
       visible={visible}
       transparent
       animationType="fade"
+      statusBarTranslucent
       onRequestClose={onCancel}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.overlay}
       >
         <Pressable style={styles.backdrop} onPress={onCancel} />
