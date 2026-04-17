@@ -367,7 +367,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerPath:
       'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/tokenizer.json',
     modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/bielik-v3.0-1.5B/quantized/bielik-1.5b-v3-instruct-8da4w.pte',
+      'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/bielik-v3.0-1.5B/quantized/bielik_1_5b_v3_0_instruct_xnnpack_8da4w.pte',
     tokenizerConfigPath:
       'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/tokenizer_config.json',
     source: 'remote',
@@ -384,7 +384,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerPath:
       'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/tokenizer.json',
     modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/bielik-v3.0-1.5B/original/bielik-1.5b-v3-instruct-bf16.pte',
+      'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/bielik-v3.0-1.5B/original/bielik_1_5b_v3_0_instruct_xnnpack_fp16.pte',
     tokenizerConfigPath:
       'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/tokenizer_config.json',
     source: 'remote',

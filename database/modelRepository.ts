@@ -1,5 +1,5 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
-import { startingModels } from '../constants/default-models';
+import { DEFAULT_MODELS, startingModels } from '../constants/default-models';
 
 export type Model = {
   id: number;
@@ -79,29 +79,44 @@ export const removeModelFiles = async (db: SQLiteDatabase, id: number) => {
   await db.runAsync(`DELETE FROM models WHERE id = ?`, [id]);
 };
 
-export const getAllModels = async (db: SQLiteDatabase): Promise<Model[]> => {
-  const rawModels = await db.getAllAsync<
-    Omit<Model, 'isDownloaded' | 'featured' | 'thinking' | 'vision' | 'labels'> & {
-      isDownloaded: number;
-      featured: number;
-      thinking: number;
-      vision: number;
-      labels: string | null;
-      systemPrompt: string | null;
-    }
-  >(`SELECT * FROM models ORDER BY featured DESC`);
+type RawModel = Omit<
+  Model,
+  'isDownloaded' | 'featured' | 'thinking' | 'vision' | 'labels'
+> & {
+  isDownloaded: number;
+  featured: number;
+  thinking: number;
+  vision: number;
+  labels: string | null;
+  systemPrompt: string | null;
+};
 
-  const models: Model[] = rawModels.map((model) => ({
+const hydrateModel = (model: RawModel): Model => {
+  const defaults =
+    model.source === 'built-in'
+      ? DEFAULT_MODELS.find((m) => m.modelName === model.modelName)
+      : undefined;
+
+  return {
     ...model,
+    modelPath: defaults?.modelPath ?? model.modelPath,
+    tokenizerPath: defaults?.tokenizerPath ?? model.tokenizerPath,
+    tokenizerConfigPath:
+      defaults?.tokenizerConfigPath ?? model.tokenizerConfigPath,
     isDownloaded: model.isDownloaded === 1,
     featured: model.featured === 1,
     thinking: model.thinking === 1,
     vision: model.vision === 1,
     labels: model.labels ? JSON.parse(model.labels) : undefined,
     systemPrompt: model.systemPrompt ?? null,
-  }));
+  };
+};
 
-  return models;
+export const getAllModels = async (db: SQLiteDatabase): Promise<Model[]> => {
+  const rawModels = await db.getAllAsync<RawModel>(
+    `SELECT * FROM models ORDER BY featured DESC`
+  );
+  return rawModels.map(hydrateModel);
 };
 
 export const updateModel = async (
@@ -129,30 +144,10 @@ export const updateModel = async (
 };
 
 export const getStartingModels = async (db: SQLiteDatabase) => {
-  const rawModels = await db.getAllAsync<
-    Omit<Model, 'isDownloaded' | 'featured' | 'thinking' | 'vision' | 'labels'> & {
-      isDownloaded: number;
-      featured: number;
-      thinking: number;
-      vision: number;
-      labels: string | null;
-      systemPrompt: string | null;
-    }
-  >(
+  const rawModels = await db.getAllAsync<RawModel>(
     `SELECT * FROM models WHERE modelName IN (${startingModels
       .map((model) => `'${model}'`)
       .join(', ')})`
   );
-
-  const models: Model[] = rawModels.map((model) => ({
-    ...model,
-    isDownloaded: model.isDownloaded === 1,
-    featured: model.featured === 1,
-    thinking: model.thinking === 1,
-    vision: model.vision === 1,
-    labels: model.labels ? JSON.parse(model.labels) : undefined,
-    systemPrompt: model.systemPrompt ?? null,
-  }));
-
-  return models;
+  return rawModels.map(hydrateModel);
 };
