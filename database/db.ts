@@ -78,6 +78,16 @@ const runMigrations = async (db: SQLiteDatabase) => {
     );
   }
 
+  const hasContextWindow = chatSettingsTableInfo.some(
+    (col) => col.name === 'contextWindow'
+  );
+
+  if (hasContextWindow) {
+    await db.execAsync(
+      `ALTER TABLE chatSettings DROP COLUMN contextWindow`
+    );
+  }
+
   // Add firstChunk column to sources
   const sourcesTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(sources)`
@@ -176,7 +186,6 @@ export const initDatabase = async (db: SQLiteDatabase) => {
     CREATE TABLE IF NOT EXISTS chatSettings (
       chatId INTEGER PRIMARY KEY NOT NULL,
       systemPrompt TEXT DEFAULT '',
-      contextWindow INTEGER DEFAULT 10,
       thinkingEnabled INTEGER DEFAULT NULL,
       FOREIGN KEY(chatId) REFERENCES chats(id) ON DELETE CASCADE
     );
@@ -231,7 +240,6 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       JSON.stringify({
         systemPrompt:
           'You are a knowledgeable and helpful assistant. Provide clear, accurate, and well-structured responses. When given context from documents, use that information to give comprehensive answers while being concise and relevant.',
-        contextWindow: 6,
       })
     );
   }
