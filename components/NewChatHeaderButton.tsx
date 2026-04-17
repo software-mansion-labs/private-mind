@@ -5,12 +5,17 @@ import ChatIcon from '../assets/icons/chat.svg';
 import { useTheme } from '../context/ThemeContext';
 import { Theme } from '../styles/colors';
 
-const NewChatHeaderButton = () => {
+interface Props {
+  noOp?: boolean;
+}
+
+const NewChatHeaderButton = ({ noOp = false }: Props) => {
   const router = useRouter();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handlePress = () => {
+    if (noOp) return;
     router.push('/');
   };
 

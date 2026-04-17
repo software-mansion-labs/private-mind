@@ -90,8 +90,8 @@ const DrawerMenu = () => {
         <DrawerItem
           icon={<InfoCircleIcon width={18} height={18} style={styles.icon} />}
           label="App Info"
-          active={pathname === '/app-info'}
-          onPress={() => navigate('/app-info')}
+          active={false}
+          onPress={() => router.push('/app-info')}
         />
       </View>
 

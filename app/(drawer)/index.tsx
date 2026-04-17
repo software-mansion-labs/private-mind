@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { router } from 'expo-router';
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { router, useNavigation } from 'expo-router';
 import { configureReanimatedLogger } from 'react-native-reanimated';
+import NewChatHeaderButton from '../../components/NewChatHeaderButton';
 import { Model } from '../../database/modelRepository';
 import { getNextChatId, importMessages } from '../../database/chatRepository';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -23,11 +24,18 @@ import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
 export default function App() {
   useOnboardingRedirect();
 
+  const navigation = useNavigation();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { loadModels } = useModelStore();
   const { loadSources } = useSourceStore();
   const db = useSQLiteContext();
   useDefaultHeader();
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => <NewChatHeaderButton noOp />,
+    });
+  }, [navigation]);
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { addChat, initPhantomChat } = useChatStore();
