@@ -22,14 +22,17 @@ interface Props {
 
 const MAX_TITLE_LENGTH = 25;
 
+const stripTrailingEllipsis = (title: string) =>
+  title.endsWith('...') ? title.slice(0, -3) : title;
+
 const RenameChatModal = ({ visible, initialTitle, onCancel, onSubmit }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [value, setValue] = useState(initialTitle);
+  const [value, setValue] = useState(stripTrailingEllipsis(initialTitle));
 
   useEffect(() => {
     if (visible) {
-      setValue(initialTitle);
+      setValue(stripTrailingEllipsis(initialTitle));
     }
   }, [visible, initialTitle]);
 
