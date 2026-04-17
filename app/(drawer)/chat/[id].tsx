@@ -40,7 +40,7 @@ function ChatScreenInner() {
   // reset and use the existing data.
   const [isLoading, setIsLoading] = useState(activeChatId !== chatId);
 
-  useChatHeader({
+  const { RenameModalElement } = useChatHeader({
     chatId: chatId,
     chatModel: model,
   });
@@ -67,13 +67,16 @@ function ChatScreenInner() {
   };
 
   return (
-    <ChatScreen
-      chatId={chatId}
-      chat={chat}
-      messageHistory={isLoading ? [] : activeChatMessages}
-      isLoading={isLoading}
-      model={model}
-      selectModel={handleSetModel}
-    />
+    <>
+      <ChatScreen
+        chatId={chatId}
+        chat={chat}
+        messageHistory={isLoading ? [] : activeChatMessages}
+        isLoading={isLoading}
+        model={model}
+        selectModel={handleSetModel}
+      />
+      {RenameModalElement}
+    </>
   );
 }
