@@ -2,7 +2,10 @@ import React, { useMemo, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import {
+  BottomSheetModal,
+  BottomSheetModalProvider,
+} from '@gorhom/bottom-sheet';
 import { useTheme } from '../../../context/ThemeContext';
 import { Theme } from '../../../styles/colors';
 import { fontFamily, fontSizes } from '../../../styles/fontStyles';
@@ -39,34 +42,38 @@ const FamilyScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <ModalHeader
-          title={familyName}
-          onClose={() => router.back()}
-          leftIcon="back"
-        />
-        {familyModels.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No variants available.</Text>
-          </View>
-        ) : (
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            {familyModels.map((model) => (
-              <ModelCard
-                key={model.id}
-                model={model}
-                compactView={false}
-                onPress={() => modelManagementSheetRef.current?.present(model)}
-                wifiWarningSheetRef={wifiWarningSheetRef}
-              />
-            ))}
-          </ScrollView>
-        )}
+    <BottomSheetModalProvider>
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <ModalHeader
+            title={familyName}
+            onClose={() => router.back()}
+            leftIcon="back"
+          />
+          {familyModels.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No variants available.</Text>
+            </View>
+          ) : (
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+              {familyModels.map((model) => (
+                <ModelCard
+                  key={model.id}
+                  model={model}
+                  compactView={false}
+                  onPress={() =>
+                    modelManagementSheetRef.current?.present(model)
+                  }
+                  wifiWarningSheetRef={wifiWarningSheetRef}
+                />
+              ))}
+            </ScrollView>
+          )}
+        </View>
+        <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
+        <WarningSheet bottomSheetModalRef={wifiWarningSheetRef} />
       </View>
-      <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
-      <WarningSheet bottomSheetModalRef={wifiWarningSheetRef} />
-    </View>
+    </BottomSheetModalProvider>
   );
 };
 
