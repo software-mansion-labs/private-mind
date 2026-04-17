@@ -12,7 +12,6 @@ export type Chat = {
 
 export type ChatSettings = {
   systemPrompt: string;
-  contextWindow: number;
   thinkingEnabled?: boolean;
 };
 
@@ -49,7 +48,6 @@ export const createChat = async (
         const parsedSettings: ChatSettings = JSON.parse(defaultSettings);
         await setChatSettings(db, result.lastInsertRowId, {
           systemPrompt: modelSystemPrompt ?? parsedSettings.systemPrompt,
-          contextWindow: parsedSettings.contextWindow,
         });
       }
     }
@@ -156,24 +154,24 @@ export const getChatSettings = async (
 ): Promise<ChatSettings> => {
   const result = await db.getFirstAsync<{
     systemPrompt: string;
-    contextWindow: number;
     thinkingEnabled: number | null;
   }>(
-    'SELECT systemPrompt, contextWindow, thinkingEnabled FROM chatSettings WHERE chatId = ?',
+    'SELECT systemPrompt, thinkingEnabled FROM chatSettings WHERE chatId = ?',
     [chatId]
   );
 
   if (!result) {
     const defaultSettings = await AsyncStorage.getItem('default_chat_settings');
     if (defaultSettings) {
-      return JSON.parse(defaultSettings);
+      const parsed = JSON.parse(defaultSettings) as ChatSettings & { contextWindow?: number };
+      const { contextWindow: _unused, ...clean } = parsed;
+      return clean;
     }
   }
 
   return result
     ? {
         systemPrompt: result.systemPrompt,
-        contextWindow: result.contextWindow,
         thinkingEnabled:
           result.thinkingEnabled === 1
             ? true
@@ -183,7 +181,6 @@ export const getChatSettings = async (
       }
     : {
         systemPrompt: '',
-        contextWindow: 6,
       };
 };
 
@@ -207,14 +204,13 @@ export const setChatSettings = async (
 
     await db.runAsync(
       `
-    INSERT INTO chatSettings (chatId, systemPrompt, contextWindow, thinkingEnabled)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO chatSettings (chatId, systemPrompt, thinkingEnabled)
+    VALUES (?, ?, ?)
     ON CONFLICT(chatId) DO UPDATE SET
       systemPrompt = excluded.systemPrompt,
-      contextWindow = excluded.contextWindow,
       thinkingEnabled = excluded.thinkingEnabled
   `,
-      [chatId, settings.systemPrompt, settings.contextWindow, thinkingValue]
+      [chatId, settings.systemPrompt, thinkingValue]
     );
   }
 };
