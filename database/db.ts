@@ -11,7 +11,11 @@ const runMigrations = async (db: SQLiteDatabase) => {
   const modelsTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(models)`
   );
+  const hasFamily = modelsTableInfo.some((col) => col.name === 'family');
   const hasFeatured = modelsTableInfo.some((col) => col.name === 'featured');
+  const hasExperimental = modelsTableInfo.some(
+    (col) => col.name === 'experimental'
+  );
   const hasThinking = modelsTableInfo.some((col) => col.name === 'thinking');
   const hasLabels = modelsTableInfo.some((col) => col.name === 'labels');
   const hasVision = modelsTableInfo.some((col) => col.name === 'vision');
@@ -20,6 +24,18 @@ const runMigrations = async (db: SQLiteDatabase) => {
   if (!hasFeatured) {
     await db.execAsync(
       `ALTER TABLE models ADD COLUMN featured INTEGER DEFAULT 0`
+    );
+  }
+
+  if (!hasExperimental) {
+    await db.execAsync(
+      `ALTER TABLE models ADD COLUMN experimental INTEGER DEFAULT 0`
+    );
+  }
+
+  if (!hasFamily) {
+    await db.execAsync(
+      `ALTER TABLE models ADD COLUMN family TEXT DEFAULT NULL`
     );
   }
 
@@ -125,8 +141,10 @@ const runMigrations = async (db: SQLiteDatabase) => {
 
   for (const model of DEFAULT_MODELS) {
     await db.runAsync(
-      `UPDATE models SET featured = ?, thinking = ?, vision = ?, labels = ?, systemPrompt = ? WHERE modelName = ?`,
+      `UPDATE models SET family = ?, featured = ?, experimental = ?, thinking = ?, vision = ?, labels = ?, systemPrompt = ? WHERE modelName = ?`,
+      model.family || null,
       model.featured ? 1 : 0,
+      model.experimental ? 1 : 0,
       model.thinking ? 1 : 0,
       model.vision ? 1 : 0,
       model.labels ? JSON.stringify(model.labels) : null,
@@ -152,6 +170,8 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       thinking INTEGER DEFAULT 0,
       vision INTEGER DEFAULT 0,
       featured INTEGER DEFAULT 0,
+      experimental INTEGER DEFAULT 0,
+      family TEXT DEFAULT NULL,
       labels TEXT DEFAULT NULL,
       systemPrompt TEXT DEFAULT NULL
     );
@@ -263,9 +283,11 @@ export const initDatabase = async (db: SQLiteDatabase) => {
         modelPath,
         tokenizerPath,
         tokenizerConfigPath,
+        family: model.family,
         parameters: model.parameters,
         modelSize: model.modelSize,
         featured: !!featured,
+        experimental: !!model.experimental,
         thinking: !!thinking,
         vision: !!model.vision,
         labels: model.labels,
