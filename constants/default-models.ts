@@ -32,7 +32,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     modelSize: 0.94,
     featured: true,
     thinking: true,
-    labels: ['Fast', 'Quantized', 'Reasoning'],
+    labels: ['Fast', 'Reasoning'],
   },
   {
     modelName: 'Qwen 3 - 1.7B - Quantized',
@@ -45,7 +45,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     modelSize: 2.16,
     featured: true,
     thinking: true,
-    labels: ['Smart', 'Quantized', 'Reasoning'],
+    labels: ['Smart', 'Reasoning'],
   },
   {
     modelName: 'LLaMA 3.2 - 1B - QLoRa',
@@ -57,7 +57,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     parameters: 1.24,
     modelSize: 1.18,
     featured: true,
-    labels: ['Good at coding', 'Quantized'],
+    labels: ['Good at coding'],
   },
   {
     modelName: 'LLaMA 3.2 - 1B - SpinQuant',
@@ -69,7 +69,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     parameters: 1.24,
     modelSize: 1.14,
     featured: true,
-    labels: ['Good at coding', 'Fast', 'Great first model', 'Quantized'],
+    labels: ['Good at coding', 'Fast', 'Great first model'],
   },
   {
     modelName: 'LLaMA 3.2 - 3B - QLoRa',
@@ -81,7 +81,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     parameters: 3.21,
     modelSize: 2.65,
     featured: true,
-    labels: ['Good at coding', 'Quantized'],
+    labels: ['Good at coding'],
   },
   {
     modelName: 'LLaMA 3.2 - 3B - SpinQuant',
@@ -93,7 +93,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     parameters: 3.21,
     modelSize: 2.55,
     featured: true,
-    labels: ['Good at coding', 'Fast', 'Quantized'],
+    labels: ['Good at coding', 'Fast'],
   },
   {
     modelName: 'Qwen 2.5 - 0.5B - Quantized',
@@ -117,7 +117,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     parameters: 1.54,
     modelSize: 1.76,
     featured: true,
-    labels: ['Balanced', 'Quantized'],
+    labels: ['Balanced'],
   },
   {
     modelName: 'Qwen 2.5 - 3B - Quantized',
@@ -129,7 +129,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     parameters: 3.09,
     modelSize: 2.89,
     featured: true,
-    labels: ['Powerful', 'Quantized'],
+    labels: ['Powerful'],
   },
   {
     modelName: 'LFM 2.5 - 1.2B - Quantized',
@@ -141,7 +141,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     parameters: 1.2,
     modelSize: 1.14,
     featured: true,
-    labels: ['Balanced', 'Quantized'],
+    labels: ['Balanced'],
   },
   {
     modelName: 'LFM 2.5 VL - 1.6B - Quantized',
@@ -171,7 +171,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     featured: true,
     thinking: false,
     vision: true,
-    labels: ['Fast', 'Vision', 'Quantized'],
+    labels: ['Fast', 'Vision'],
     systemPrompt:
       'You are a helpful vision assistant. When the user shares an image, analyze it carefully and provide detailed, accurate descriptions and answers about its content. When no image is provided, respond as a knowledgeable and helpful general assistant.',
   },
@@ -190,7 +190,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     featured: true,
     experimental: true,
     thinking: false,
-    labels: ['Fast', 'Quantized', 'Polish'],
+    labels: ['Fast', 'Polish'],
     systemPrompt:
       'Jesteś pomocnym asystentem. Udzielaj jasnych, dokładnych i dobrze ustrukturyzowanych odpowiedzi w języku polskim. Gdy otrzymasz kontekst z dokumentów, wykorzystaj te informacje, aby udzielać wyczerpujących odpowiedzi, będąc jednocześnie zwięzłym i rzeczowym.',
   },
