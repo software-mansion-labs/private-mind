@@ -6,7 +6,6 @@ import { Chat, getChatSettings } from '../database/chatRepository';
 interface ChatSettingsState {
   title: string;
   systemPrompt: string;
-  contextWindow: string;
   thinkingEnabled: boolean;
 }
 
@@ -14,7 +13,6 @@ export default function useChatSettings(chatId: number | null) {
   const db = useSQLiteContext();
   const { getChatById, phantomChat } = useChatStore();
 
-  // Determine which chat we're working with
   const isPhantomChat = chatId === phantomChat?.id;
   const chat: Chat | undefined = useMemo(() => {
     return isPhantomChat ? phantomChat : getChatById(chatId as number);
@@ -23,7 +21,6 @@ export default function useChatSettings(chatId: number | null) {
   const [settings, setSettings] = useState<ChatSettingsState>({
     title: chat?.title || '',
     systemPrompt: '',
-    contextWindow: '6',
     thinkingEnabled: false,
   });
 
@@ -32,23 +29,19 @@ export default function useChatSettings(chatId: number | null) {
     (async () => {
       try {
         if (isPhantomChat && phantomChat?.settings) {
-          // Phantom chat: use settings from phantom chat store
           if (isMounted) {
             setSettings((prev) => ({
               ...prev,
               systemPrompt: phantomChat.settings!.systemPrompt,
-              contextWindow: String(phantomChat.settings!.contextWindow),
               thinkingEnabled: phantomChat.settings!.thinkingEnabled ?? false,
             }));
           }
         } else {
-          // Default settings or existing chat: use getChatSettings
           const dbSettings = await getChatSettings(db, chatId);
           if (isMounted) {
             setSettings((prev) => ({
               ...prev,
               systemPrompt: dbSettings.systemPrompt,
-              contextWindow: String(dbSettings.contextWindow),
               thinkingEnabled: dbSettings.thinkingEnabled ?? false,
             }));
           }
