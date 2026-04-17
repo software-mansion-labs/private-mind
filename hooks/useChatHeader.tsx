@@ -18,7 +18,7 @@ export default function useChatHeader({ chatId, chatModel }: Props) {
   const chat = getChatById(chatId);
   const chatTitle = chat ? chat.title : ``;
 
-  const { openMenu, RenameModalElement } = useChatTitleMenu({
+  const { openMenu, MenuElements } = useChatTitleMenu({
     chatId,
     chatTitle,
   });
@@ -37,5 +37,5 @@ export default function useChatHeader({ chatId, chatModel }: Props) {
     });
   }, [navigation, chatId, chatTitle, chatModel, openMenu, chat]);
 
-  return { RenameModalElement };
+  return { MenuElements };
 }

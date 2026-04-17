@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
 import { useState } from 'react';
@@ -40,7 +40,7 @@ function ChatScreenInner() {
   // reset and use the existing data.
   const [isLoading, setIsLoading] = useState(activeChatId !== chatId);
 
-  const { RenameModalElement } = useChatHeader({
+  const { MenuElements } = useChatHeader({
     chatId: chatId,
     chatModel: model,
   });
@@ -76,7 +76,7 @@ function ChatScreenInner() {
         model={model}
         selectModel={handleSetModel}
       />
-      {RenameModalElement}
+      {MenuElements}
     </>
   );
 }

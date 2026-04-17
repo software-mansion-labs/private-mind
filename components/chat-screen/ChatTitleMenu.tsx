@@ -1,12 +1,14 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { ActionSheetIOS, Alert, Platform } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { useSQLiteContext } from 'expo-sqlite';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useChatStore } from '../../store/chatStore';
 import { useVectorStore } from '../../context/VectorStoreContext';
 import { exportChatRoom } from '../../database/exportImportRepository';
 import RenameChatModal from './RenameChatModal';
+import ChatTitleMenuSheet from './ChatTitleMenuSheet';
 
 interface Options {
   chatId: number;
@@ -20,6 +22,7 @@ export const useChatTitleMenu = ({ chatId, chatTitle }: Options) => {
   const { renameChat, deleteChat } = useChatStore();
   const { vectorStore } = useVectorStore();
   const [renameVisible, setRenameVisible] = useState(false);
+  const androidSheetRef = useRef<BottomSheetModal>(null);
 
   const handleRenameSubmit = useCallback(
     async (newTitle: string) => {
@@ -84,23 +87,28 @@ export const useChatTitleMenu = ({ chatId, chatTitle }: Options) => {
         }
       );
     } else {
-      Alert.alert(SHEET_TITLE, undefined, [
-        { text: 'Rename', onPress: () => setRenameVisible(true) },
-        { text: 'Export Chat', onPress: handleExport },
-        { text: 'Delete Chat', style: 'destructive', onPress: handleDelete },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
+      androidSheetRef.current?.present();
     }
   }, [handleExport, handleDelete]);
 
-  const RenameModalElement = (
-    <RenameChatModal
-      visible={renameVisible}
-      initialTitle={chatTitle}
-      onCancel={() => setRenameVisible(false)}
-      onSubmit={handleRenameSubmit}
-    />
+  const MenuElements = (
+    <>
+      {Platform.OS === 'android' && (
+        <ChatTitleMenuSheet
+          bottomSheetModalRef={androidSheetRef}
+          onRename={() => setRenameVisible(true)}
+          onExport={handleExport}
+          onDelete={handleDelete}
+        />
+      )}
+      <RenameChatModal
+        visible={renameVisible}
+        initialTitle={chatTitle}
+        onCancel={() => setRenameVisible(false)}
+        onSubmit={handleRenameSubmit}
+      />
+    </>
   );
 
-  return { openMenu, RenameModalElement };
+  return { openMenu, MenuElements };
 };
