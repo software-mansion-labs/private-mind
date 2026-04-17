@@ -73,6 +73,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
                   }
                   onPress={() => {
                     bottomSheetModalRef.current?.dismiss();
+                    if (router.canDismiss()) router.dismissAll();
                     router.push(`/benchmark?modelId=${model.id}`);
                   }}
                 />
