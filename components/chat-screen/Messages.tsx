@@ -157,8 +157,13 @@ const Messages = ({
       lastUserHeight.current -
       lastAssistantHeight.current -
       CONTAINER_PADDING;
-    const next = raw < 50 ? 0 : raw;
-    blankSpace.value = next;
+    if (raw < 50) {
+      if (blankSpace.value > 0) {
+        blankSpace.value = withTiming(0, { duration: 150 });
+      }
+    } else {
+      blankSpace.value = raw;
+    }
   }, [blankSpace]);
 
   useImperativeHandle(
@@ -277,9 +282,7 @@ const Messages = ({
       if (pendingPinRef.current) {
         pendingPinRef.current = false;
         if (Platform.OS !== 'ios' && containerHeight.current > 0) {
-          blankSpace.value = withTiming(containerHeight.current, {
-            duration: 300,
-          });
+          blankSpace.value = containerHeight.current;
         }
         scrollRef.current?.scrollToEnd({ animated: true });
       }
