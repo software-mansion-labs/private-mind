@@ -63,11 +63,13 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
                 <EntryButton
                   text="Run benchmark"
                   icon={
-                    <BenchmarkIcon
-                      width={18}
-                      height={18}
-                      style={styles.iconPrimary}
-                    />
+                    <View style={styles.iconSlot}>
+                      <BenchmarkIcon
+                        width={18}
+                        height={18}
+                        style={styles.iconPrimary}
+                      />
+                    </View>
                   }
                   onPress={() => {
                     bottomSheetModalRef.current?.dismiss();
@@ -257,6 +259,12 @@ const createStyles = (theme: Theme) =>
     },
     iconPrimary: {
       color: theme.text.primary,
+    },
+    iconSlot: {
+      width: 24,
+      height: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     iconImportant: {
       color: theme.bg.strongPrimary,
