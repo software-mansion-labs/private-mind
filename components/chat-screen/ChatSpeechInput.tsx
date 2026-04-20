@@ -273,7 +273,7 @@ const createStyles = (theme: Theme) =>
     },
 
     recordingRow: {
-      backgroundColor: 'rgba(2, 15, 60, 0.2)',
+      backgroundColor: theme.bg.voiceModeSurface,
       height: 40,
       borderRadius: 12,
       flexDirection: 'row',

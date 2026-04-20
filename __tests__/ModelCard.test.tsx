@@ -50,10 +50,24 @@ const mockUseModelStore = useModelStore as jest.Mock;
 const mockIsModelCompatible = isModelCompatible as jest.Mock;
 const mockNetInfoFetch = NetInfo.fetch as jest.Mock;
 
-const baseModel = {
+const baseModel: {
+  id: number;
+  modelName: string;
+  source: 'remote';
+  isDownloaded: boolean;
+  featured: boolean;
+  parameters: number;
+  modelSize: number;
+  modelPath: string;
+  tokenizerPath: string;
+  tokenizerConfigPath: string;
+  thinking: boolean;
+  vision?: boolean;
+  labels: string[];
+} = {
   id: 1,
   modelName: 'Llama-3B',
-  source: 'remote' as const,
+  source: 'remote',
   isDownloaded: false,
   featured: false,
   parameters: 3.21,
@@ -107,6 +121,27 @@ describe('display', () => {
     mockIsModelCompatible.mockReturnValue(false);
     renderCard();
     expect(screen.getByTestId('chip-Incompatible')).toBeTruthy();
+  });
+
+  it('shows Vision chip when model supports vision', () => {
+    renderCard({ vision: true });
+    expect(screen.getByTestId('chip-Vision')).toBeTruthy();
+  });
+
+  it('does not show Vision chip when model does not support vision', () => {
+    renderCard({ vision: false });
+    expect(screen.queryByTestId('chip-Vision')).toBeNull();
+  });
+
+  it('renders label chips from model.labels', () => {
+    renderCard({ compactView: false, labels: ['Fast', 'Reasoning'] });
+    expect(screen.getByTestId('chip-Fast')).toBeTruthy();
+    expect(screen.getByTestId('chip-Reasoning')).toBeTruthy();
+  });
+
+  it('omits label chips in compact view', () => {
+    renderCard({ compactView: true, labels: ['Fast'] });
+    expect(screen.queryByTestId('chip-Fast')).toBeNull();
   });
 
   it('calls onPress when card is tapped', () => {

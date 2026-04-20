@@ -9,6 +9,7 @@ export const lightTheme = {
     chatBar: '#E4E4E7',
     cardSurface: '#E4E4E7',
     attachButton: '#3D61D6',
+    voiceModeSurface: 'rgba(2, 15, 60, 0.2)',
     errorSecondary: '#F5D0D1',
     errorPrimary: '#DE595B',
     overlay: 'rgba(2, 15, 60, 0.2)',
@@ -39,6 +40,9 @@ export const darkTheme = {
     chatBar: '#FFFFFF',
     cardSurface: '#121212',
     attachButton: '#000000',
+    // Voice mode sits on `bg.main` in both themes, so use the same tint here
+    // for parity across light and dark.
+    voiceModeSurface: 'rgba(2, 15, 60, 0.2)',
     errorSecondary: '#8B2728',
     errorPrimary: '#DE595B',
     overlay: 'rgba(0, 0, 0, 0.6)',

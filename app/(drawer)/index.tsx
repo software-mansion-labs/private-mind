@@ -5,11 +5,12 @@ import React, {
   useMemo,
   useRef,
 } from 'react';
+import { startPhantomChat } from '../../utils/startPhantomChat';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { configureReanimatedLogger } from 'react-native-reanimated';
 import NewChatHeaderButton from '../../components/NewChatHeaderButton';
 import { Model } from '../../database/modelRepository';
-import { getNextChatId, importMessages } from '../../database/chatRepository';
+import { importMessages } from '../../database/chatRepository';
 import { useSQLiteContext } from 'expo-sqlite';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
 import { View, Image, StyleSheet, Alert } from 'react-native';
@@ -24,21 +25,18 @@ import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
 import { useSourceStore } from '../../store/sourceStore';
-import { useLLMStore } from '../../store/llmStore';
 import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
 import WhatsNewCard from '../../components/WhatsNewCard';
-import {
-  getLastUsedModelId,
-  setLastUsedModelId,
-} from '../../utils/lastUsedModel';
+import { setLastUsedModelId } from '../../utils/lastUsedModel';
 
 export default function App() {
   useOnboardingRedirect();
 
   const navigation = useNavigation();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const { loadModels, downloadedModels } = useModelStore();
+  const { downloadedModels } = useModelStore();
   const { loadSources } = useSourceStore();
+  const hasAutoRedirectedRef = useRef(false);
   const db = useSQLiteContext();
   useDefaultHeader();
 
@@ -49,8 +47,7 @@ export default function App() {
   }, [navigation]);
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { addChat, initPhantomChat } = useChatStore();
-  const { setActiveChatId } = useLLMStore();
+  const { addChat } = useChatStore();
 
   configureReanimatedLogger({
     strict: false,
@@ -58,19 +55,8 @@ export default function App() {
 
   const handleSetModel = async (model: Model, replace = false) => {
     bottomSheetModalRef.current?.dismiss();
-    const nextChatId = await getNextChatId(db);
-    await initPhantomChat(nextChatId, model);
-    await setActiveChatId(null);
     await setLastUsedModelId(model.id);
-    const target = {
-      pathname: `/chat/${nextChatId}`,
-      params: { modelId: model.id },
-    } as const;
-    if (replace) {
-      router.replace(target);
-    } else {
-      router.push(target);
-    }
+    await startPhantomChat(db, replace ? 'replace' : 'push', model);
   };
 
   const handleImport = async () => {
@@ -90,20 +76,24 @@ export default function App() {
   };
 
   useEffect(() => {
-    loadModels();
     loadSources();
-  }, [loadModels, loadSources]);
+  }, [loadSources]);
 
   useFocusEffect(
     useCallback(() => {
       if (downloadedModels.length === 0) return;
+      if (hasAutoRedirectedRef.current) return;
+      hasAutoRedirectedRef.current = true;
       (async () => {
-        const lastId = await getLastUsedModelId();
-        const model =
-          downloadedModels.find((m) => m.id === lastId) ?? downloadedModels[0];
-        handleSetModel(model, true);
+        try {
+          await startPhantomChat(db, 'replace');
+        } finally {
+          // Reset so this screen can redirect again on a future focus cycle
+          // (e.g. user navigates back to / from a chat).
+          hasAutoRedirectedRef.current = false;
+        }
       })();
-    }, [downloadedModels])
+    }, [db, downloadedModels])
   );
 
   const willRedirect = downloadedModels.length > 0;

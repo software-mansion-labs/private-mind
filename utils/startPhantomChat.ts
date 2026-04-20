@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import type { SQLiteDatabase } from 'expo-sqlite';
+import type { Model } from '../database/modelRepository';
 import { useChatStore } from '../store/chatStore';
 import { useLLMStore } from '../store/llmStore';
 import { useModelStore } from '../store/modelStore';
@@ -10,20 +11,23 @@ type NavMode = 'push' | 'replace';
 
 export const startPhantomChat = async (
   db: SQLiteDatabase,
-  mode: NavMode = 'push'
+  mode: NavMode = 'push',
+  explicitModel?: Model
 ) => {
   const { downloadedModels } = useModelStore.getState();
-  if (downloadedModels.length === 0) {
+  if (!explicitModel && downloadedModels.length === 0) {
     router.replace('/');
     return;
   }
 
   const [lastId, nextChatId] = await Promise.all([
-    getLastUsedModelId(),
+    explicitModel ? Promise.resolve(null) : getLastUsedModelId(),
     getNextChatId(db),
   ]);
   const model =
-    downloadedModels.find((m) => m.id === lastId) ?? downloadedModels[0];
+    explicitModel ??
+    downloadedModels.find((m) => m.id === lastId) ??
+    downloadedModels[0];
 
   await useChatStore.getState().initPhantomChat(nextChatId, model);
   // Must complete before navigating: otherwise the new phantom chat mounts

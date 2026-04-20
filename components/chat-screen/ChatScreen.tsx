@@ -1,4 +1,10 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Keyboard, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -124,9 +130,13 @@ export default function ChatScreen({
     modelBottomSheetModalRef.current?.present();
   }, []);
 
-  if (openModelSheetRef) {
+  useEffect(() => {
+    if (!openModelSheetRef) return;
     openModelSheetRef.current = handlePresentModelSheet;
-  }
+    return () => {
+      openModelSheetRef.current = null;
+    };
+  }, [openModelSheetRef, handlePresentModelSheet]);
 
   const handleSendMessage = async (
     userInput: string,
