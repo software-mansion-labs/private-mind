@@ -1,31 +1,32 @@
 import React, { useMemo } from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import Settings from '../assets/icons/settings.svg';
+import ChatIcon from '../assets/icons/chat.svg';
 import { useTheme } from '../context/ThemeContext';
 import { Theme } from '../styles/colors';
 
 interface Props {
-  chatId: number | null;
+  noOp?: boolean;
 }
 
-const SettingsHeaderButton = ({ chatId }: Props) => {
+const NewChatHeaderButton = ({ noOp = false }: Props) => {
   const router = useRouter();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handlePress = () => {
-    router.push(`/chat/${chatId}/settings`);
+    if (noOp) return;
+    router.push('/');
   };
 
   return (
     <TouchableOpacity onPress={handlePress} style={styles.button} hitSlop={15}>
-      <Settings width={18} height={20} style={styles.icon} />
+      <ChatIcon width={20} height={20} style={styles.icon} />
     </TouchableOpacity>
   );
 };
 
-export default SettingsHeaderButton;
+export default NewChatHeaderButton;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({

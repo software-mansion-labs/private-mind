@@ -1,55 +1,89 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
+import { useRouter } from 'expo-router';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
 import { useModelStore } from '../../store/modelStore';
 import FloatingActionButton from '../../components/model-hub/FloatingActionButton';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import ModelManagementSheet from '../../components/bottomSheets/ModelManagementSheet';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import SecondaryButton from '../../components/SecondaryButton';
-import QuestionIcon from '../../assets/icons/question.svg';
 import AddModelSheet from '../../components/bottomSheets/AddModelSheet';
 import WarningSheet, {
   WarningSheetData,
 } from '../../components/bottomSheets/WarningSheet';
+import ModelManagementSheet from '../../components/bottomSheets/ModelManagementSheet';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
-import useModelHubData, { ModelHubFilter } from '../../hooks/useModelHubData';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Model } from '../../database/modelRepository';
-import GroupedModelList from '../../components/model-hub/GroupedModelList';
+import TextFieldInput from '../../components/TextFieldInput';
+import SearchIcon from '../../assets/icons/search.svg';
+import QuestionIcon from '../../assets/icons/question.svg';
+import SecondaryButton from '../../components/SecondaryButton';
+import ModelHubTabs, {
+  ModelHubTab,
+} from '../../components/model-hub/ModelHubTabs';
+import FamilyCard from '../../components/model-hub/FamilyCard';
+import ModelCard from '../../components/model-hub/ModelCard';
+import {
+  groupModelsByFamily,
+  ModelFamily,
+} from '../../utils/modelFamily';
 import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
-import ModelListFilters from '../../components/model-hub/ModelListFilters';
 
 const ModelHubScreen = () => {
   useDefaultHeader();
+  const router = useRouter();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
   const addModelSheetRef = useRef<BottomSheetModal | null>(null);
   const wifiWarningSheetRef = useRef<BottomSheetModal<WarningSheetData> | null>(
     null
   );
+  const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
+
   const { models } = useModelStore();
+  const [tab, setTab] = useState<ModelHubTab>('featured');
   const [search, setSearch] = useState('');
-  const [activeFilters, setActiveFilters] = useState<Set<ModelHubFilter>>(
-    new Set([ModelHubFilter.Featured, ModelHubFilter.Compatible])
-  );
-  const [groupByModel, setGroupByModel] = useState(false);
 
-  const { groupedModels, isEmpty } = useModelHubData({
-    models,
-    search,
-    activeFilters,
-    groupByModel,
-  });
+  const { families, mineModels } = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const matchesSearch = (m: Model) =>
+      !q || m.modelName.toLowerCase().includes(q);
 
-  const handleModelPress = useCallback((model: Model) => {
-    modelManagementSheetRef.current?.present(model);
-  }, []);
+    if (tab === 'mine') {
+      const mine = models
+        .filter((m) => m.source !== 'built-in')
+        .filter(matchesSearch);
+      return { families: [] as ModelFamily[], mineModels: mine };
+    }
+
+    const builtIns = models.filter((m) => m.source === 'built-in');
+    const filtered =
+      tab === 'experimental'
+        ? builtIns.filter((m) => m.experimental)
+        : builtIns.filter((m) => !m.experimental);
+
+    const familyList = groupModelsByFamily(filtered)
+      .map((fam) => ({
+        ...fam,
+        models: fam.models.filter(matchesSearch),
+      }))
+      .filter((fam) => (q ? fam.models.length > 0 : true))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    return { families: familyList, mineModels: [] };
+  }, [models, tab, search]);
+
+  const openFamily = (family: ModelFamily) => {
+    router.push(`/model-family/${encodeURIComponent(family.name)}`);
+  };
+
+  const isEmpty =
+    tab === 'mine' ? mineModels.length === 0 : families.length === 0;
 
   const renderEmptyState = () => (
-    <View style={styles.noModelsContainer}>
+    <View style={styles.emptyContainer}>
       <View style={styles.emptyIconWrapper}>
         <QuestionIcon
           width={12}
@@ -58,46 +92,73 @@ const ModelHubScreen = () => {
         />
       </View>
       <View style={styles.emptyTextContainer}>
-        <Text style={styles.emptyTitle}>No models found</Text>
+        <Text style={styles.emptyTitle}>
+          {tab === 'mine' ? 'No custom models yet' : 'No models found'}
+        </Text>
         <Text style={styles.emptySubtitle}>
-          Adjust your search or add new model.
+          {tab === 'mine'
+            ? 'Add a remote or local model with the + button.'
+            : 'Adjust your search or switch tabs.'}
         </Text>
       </View>
-      <SecondaryButton text="Clear Search" onPress={() => setSearch('')} />
+      {search.length > 0 && (
+        <SecondaryButton text="Clear Search" onPress={() => setSearch('')} />
+      )}
     </View>
   );
 
   return (
     <CustomKeyboardAvoidingView style={styles.keyboardAvoidingView}>
       <View style={styles.container}>
-        <ModelListFilters
-          search={search}
-          onSearchChange={setSearch}
-          activeFilters={activeFilters}
-          onFiltersChange={setActiveFilters}
-          groupByModel={groupByModel}
-          onGroupByModelChange={setGroupByModel}
-        />
+        <View style={styles.header}>
+          <ModelHubTabs value={tab} onChange={setTab} />
+          <TextFieldInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search Models..."
+            icon={
+              <SearchIcon
+                width={20}
+                height={20}
+                style={{ color: theme.text.primary }}
+              />
+            }
+          />
+        </View>
+
         {isEmpty ? (
           renderEmptyState()
         ) : (
-          <GroupedModelList
-            groupedModels={groupedModels}
-            onModelPress={handleModelPress}
-            wifiWarningSheetRef={wifiWarningSheetRef}
-            contentContainerStyle={[
-              styles.modelScrollContent,
-              styles.horizontalInset,
-            ]}
-          />
+          <ScrollView contentContainerStyle={styles.scrollContent}>
+            {tab === 'mine'
+              ? mineModels.map((model) => (
+                  <ModelCard
+                    key={model.id}
+                    model={model}
+                    compactView={false}
+                    onPress={() =>
+                      modelManagementSheetRef.current?.present(model)
+                    }
+                    wifiWarningSheetRef={wifiWarningSheetRef}
+                  />
+                ))
+              : families.map((family) => (
+                  <FamilyCard
+                    key={family.name}
+                    family={family}
+                    onPress={openFamily}
+                  />
+                ))}
+          </ScrollView>
         )}
+
         <FloatingActionButton
           onPress={() => addModelSheetRef.current?.present()}
         />
       </View>
-      <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
       <AddModelSheet bottomSheetModalRef={addModelSheetRef} />
       <WarningSheet bottomSheetModalRef={wifiWarningSheetRef} />
+      <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
     </CustomKeyboardAvoidingView>
   );
 };
@@ -112,13 +173,19 @@ const createStyles = (theme: Theme) =>
     },
     container: {
       flex: 1,
-      gap: 24,
       paddingTop: 16,
     },
-    horizontalInset: {
+    header: {
+      gap: 16,
       paddingHorizontal: 16,
+      paddingBottom: 16,
     },
-    noModelsContainer: {
+    scrollContent: {
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingBottom: theme.insets.bottom + 16 + 56,
+    },
+    emptyContainer: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
@@ -146,9 +213,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.sm,
       fontFamily: fontFamily.regular,
       color: theme.text.defaultTertiary,
-    },
-    modelScrollContent: {
-      // 56 is the FAB size
-      paddingBottom: theme.insets.bottom + 16 + 56,
+      textAlign: 'center',
     },
   });

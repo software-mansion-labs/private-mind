@@ -42,7 +42,7 @@ export const prepareMessagesForLLM = (
 
   const messagesWithSystemPrompt: ExecutorchMessage[] = [
     { role: 'system', content: systemPrompt },
-    ...filteredMessages.slice(-settings.contextWindow, -1),
+    ...filteredMessages,
   ];
 
   const lastMessage = messagesWithSystemPrompt.at(-1);

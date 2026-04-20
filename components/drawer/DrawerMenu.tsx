@@ -8,7 +8,7 @@ import { useLLMStore } from '../../store/llmStore';
 import { Chat } from '../../database/chatRepository';
 import ChatIcon from '../../assets/icons/chat.svg';
 import ModelsIcon from '../../assets/icons/models.svg';
-import BenchmarkIcon from '../../assets/icons/benchmark.svg';
+import InfoCircleIcon from '../../assets/icons/info-circle.svg';
 import { DrawerItem } from './DrawerItem';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -81,10 +81,10 @@ const DrawerMenu = () => {
           onPress={() => navigate('/model-hub')}
         />
         <DrawerItem
-          icon={<BenchmarkIcon width={18} height={18} style={styles.icon} />}
-          label="Benchmark"
-          active={pathname === '/benchmark'}
-          onPress={() => navigate('/benchmark')}
+          icon={<InfoCircleIcon width={18} height={18} style={styles.icon} />}
+          label="App Info"
+          active={false}
+          onPress={() => router.push('/app-info')}
         />
       </View>
 

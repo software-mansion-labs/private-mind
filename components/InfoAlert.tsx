@@ -15,7 +15,7 @@ export const InfoAlert = ({ text }: Props) => {
 
   return (
     <View style={styles.container}>
-      <InfoCircleIcon width={20} height={20} style={styles.icon} />
+      <InfoCircleIcon width={20} height={20} fillOpacity={0.6} style={styles.icon} />
       <View style={styles.textWrapper}>
         <Text style={styles.alertText}>{text}</Text>
       </View>

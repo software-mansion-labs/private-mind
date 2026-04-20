@@ -38,7 +38,6 @@ beforeEach(() => {
   });
   mockGetChatSettings.mockResolvedValue({
     systemPrompt: 'You are helpful.',
-    contextWindow: 6,
     thinkingEnabled: false,
   });
 });
@@ -54,7 +53,6 @@ describe('initial load', () => {
     await waitFor(() =>
       expect(result.current.settings.systemPrompt).toBe('You are helpful.')
     );
-    expect(result.current.settings.contextWindow).toBe('6');
     expect(result.current.settings.thinkingEnabled).toBe(false);
   });
 
@@ -62,7 +60,7 @@ describe('initial load', () => {
     const phantomChat = {
       ...baseChat,
       id: 99,
-      settings: { systemPrompt: 'Phantom prompt', contextWindow: 4, thinkingEnabled: true },
+      settings: { systemPrompt: 'Phantom prompt', thinkingEnabled: true },
     };
     mockUseChatStore.mockReturnValue({
       getChatById: stableGetChatById,
@@ -74,25 +72,13 @@ describe('initial load', () => {
     await waitFor(() =>
       expect(result.current.settings.systemPrompt).toBe('Phantom prompt')
     );
-    expect(result.current.settings.contextWindow).toBe('4');
     expect(result.current.settings.thinkingEnabled).toBe(true);
     expect(mockGetChatSettings).not.toHaveBeenCalled();
-  });
-
-  it('converts contextWindow number to string', async () => {
-    mockGetChatSettings.mockResolvedValue({
-      systemPrompt: '',
-      contextWindow: 12,
-      thinkingEnabled: false,
-    });
-    const { result } = renderHook(() => useChatSettings(1));
-    await waitFor(() => expect(result.current.settings.contextWindow).toBe('12'));
   });
 
   it('defaults thinkingEnabled to false when not in DB result', async () => {
     mockGetChatSettings.mockResolvedValue({
       systemPrompt: '',
-      contextWindow: 6,
     });
     const { result } = renderHook(() => useChatSettings(1));
     await waitFor(() => expect(result.current.settings.thinkingEnabled).toBe(false));
@@ -106,10 +92,10 @@ describe('setSetting', () => {
     const { result } = renderHook(() => useChatSettings(1));
     await waitFor(() => expect(result.current.settings.systemPrompt).toBe('You are helpful.'));
 
-    result.current.setSetting('contextWindow', '10');
+    result.current.setSetting('systemPrompt', 'Be concise.');
 
-    await waitFor(() => expect(result.current.settings.contextWindow).toBe('10'));
-    expect(result.current.settings.systemPrompt).toBe('You are helpful.');
+    await waitFor(() => expect(result.current.settings.systemPrompt).toBe('Be concise.'));
+    expect(result.current.settings.thinkingEnabled).toBe(false);
   });
 
   it('can set boolean values for thinkingEnabled', async () => {
@@ -131,7 +117,7 @@ describe('chat reference', () => {
   });
 
   it('returns phantom chat when chatId matches', async () => {
-    const phantomChat = { ...baseChat, id: 99, settings: { systemPrompt: '', contextWindow: 6, thinkingEnabled: false } };
+    const phantomChat = { ...baseChat, id: 99, settings: { systemPrompt: '', thinkingEnabled: false } };
     mockUseChatStore.mockReturnValue({ getChatById: stableGetChatById, phantomChat });
 
     const { result } = renderHook(() => useChatSettings(99));

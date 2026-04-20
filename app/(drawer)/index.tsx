@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { useNavigation, router } from 'expo-router';
-import { useLayoutEffect } from 'react';
-import SettingsHeaderButton from '../../components/SettingsHeaderButton';
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { router, useNavigation } from 'expo-router';
 import { configureReanimatedLogger } from 'react-native-reanimated';
+import NewChatHeaderButton from '../../components/NewChatHeaderButton';
 import { Model } from '../../database/modelRepository';
 import { getNextChatId, importMessages } from '../../database/chatRepository';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -31,6 +30,12 @@ export default function App() {
   const { loadSources } = useSourceStore();
   const db = useSQLiteContext();
   useDefaultHeader();
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => <NewChatHeaderButton noOp />,
+    });
+  }, [navigation]);
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { addChat, initPhantomChat } = useChatStore();
@@ -71,12 +76,6 @@ export default function App() {
     loadModels();
     loadSources();
   }, [loadModels, loadSources]);
-
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => <SettingsHeaderButton chatId={null} />,
-    });
-  }, [navigation]);
 
   return (
     <>

@@ -3,6 +3,7 @@
 # Worktrees and superpowers
 .worktrees/
 .superpowers/
+docs/superpowers/
 
 # Claude / agents / MCP / editor
 .claude/

@@ -286,7 +286,7 @@ describe('interrupt', () => {
 // ─── sendChatMessage ──────────────────────────────────────────────────────────
 
 describe('sendChatMessage', () => {
-  const settings = { systemPrompt: 'be helpful', contextWindow: 10 };
+  const settings = { systemPrompt: 'be helpful' };
 
   beforeEach(async () => {
     await loadModel();
@@ -460,7 +460,7 @@ describe('refreshActiveChatMessages', () => {
 // ─── sendChatMessage imagePath ────────────────────────────────────────────────
 
 describe('sendChatMessage imagePath', () => {
-  const settings = { systemPrompt: '', contextWindow: 6 };
+  const settings = { systemPrompt: '' };
 
   beforeEach(async () => {
     await loadModel();

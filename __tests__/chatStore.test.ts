@@ -203,7 +203,7 @@ describe('setPhantomChatSettings', () => {
     useChatStore.setState({
       phantomChat: { id: -1, title: '', modelId: -1, lastUsed: 0, enabledSources: [] },
     });
-    const newSettings = { systemPrompt: 'Be concise.', contextWindow: 5 };
+    const newSettings = { systemPrompt: 'Be concise.' };
 
     await useChatStore.getState().setPhantomChatSettings(newSettings);
 
@@ -213,7 +213,7 @@ describe('setPhantomChatSettings', () => {
   it('does nothing when phantomChat is null', async () => {
     useChatStore.setState({ phantomChat: null });
     await expect(
-      useChatStore.getState().setPhantomChatSettings({ systemPrompt: 'x', contextWindow: 1 })
+      useChatStore.getState().setPhantomChatSettings({ systemPrompt: 'x' })
     ).resolves.not.toThrow();
   });
 });
@@ -223,7 +223,6 @@ describe('initPhantomChat with model system prompt', () => {
     const modelPrompt = 'Polish system prompt';
     (chatRepository.getChatSettings as jest.Mock).mockResolvedValue({
       systemPrompt: 'global default',
-      contextWindow: 6,
     });
 
     await useChatStore.getState().initPhantomChat(99, { systemPrompt: modelPrompt } as any);
@@ -235,7 +234,6 @@ describe('initPhantomChat with model system prompt', () => {
   it('falls back to global default when model systemPrompt is null', async () => {
     (chatRepository.getChatSettings as jest.Mock).mockResolvedValue({
       systemPrompt: 'global default',
-      contextWindow: 6,
     });
 
     await useChatStore.getState().initPhantomChat(99, { systemPrompt: null } as any);
@@ -247,7 +245,6 @@ describe('initPhantomChat with model system prompt', () => {
   it('falls back to global default when no model provided', async () => {
     (chatRepository.getChatSettings as jest.Mock).mockResolvedValue({
       systemPrompt: 'global default',
-      contextWindow: 6,
     });
 
     await useChatStore.getState().initPhantomChat(99);

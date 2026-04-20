@@ -39,13 +39,6 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(drawer)" />
       <Stack.Screen
-        name="(modals)/chat/[id]/settings"
-        options={{
-          headerShown: false,
-          presentation: 'modal',
-        }}
-      />
-      <Stack.Screen
         name="(modals)/add-local-model"
         options={{
           headerShown: false,
@@ -75,6 +68,13 @@ function RootNavigator() {
       />
       <Stack.Screen
         name="(modals)/app-info"
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
+        name="(modals)/model-family/[family]"
         options={{
           headerShown: false,
           presentation: 'modal',
