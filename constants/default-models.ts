@@ -15,14 +15,14 @@ import {
 } from 'react-native-executorch';
 
 export const startingModels = [
-  'LFM 2.5 - 1.2B - Quantized',
-  'LFM 2.5 VL - 450M - Quantized',
-  'Qwen 3 - 1.7B - Quantized',
+  'LFM 2.5 - 1.2B',
+  'LFM 2.5 VL - 450M',
+  'Qwen 3 - 1.7B',
 ];
 
 export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
   {
-    modelName: 'Qwen 3 - 0.6B - Quantized',
+    modelName: 'Qwen 3 - 0.6B',
     family: 'Qwen 3',
     tokenizerPath: QWEN3_0_6B_QUANTIZED.tokenizerSource,
     modelPath: QWEN3_0_6B_QUANTIZED.modelSource,
@@ -35,7 +35,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     labels: ['Fast', 'Reasoning'],
   },
   {
-    modelName: 'Qwen 3 - 1.7B - Quantized',
+    modelName: 'Qwen 3 - 1.7B',
     family: 'Qwen 3',
     tokenizerPath: QWEN3_1_7B_QUANTIZED.tokenizerSource,
     modelPath: QWEN3_1_7B_QUANTIZED.modelSource,
@@ -96,7 +96,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     labels: ['Good at coding', 'Fast'],
   },
   {
-    modelName: 'Qwen 2.5 - 0.5B - Quantized',
+    modelName: 'Qwen 2.5 - 0.5B',
     family: 'Qwen 2.5',
     tokenizerPath: QWEN2_5_0_5B_QUANTIZED.tokenizerSource,
     modelPath: QWEN2_5_0_5B_QUANTIZED.modelSource,
@@ -108,7 +108,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     labels: ['Fast', 'Small'],
   },
   {
-    modelName: 'Qwen 2.5 - 1.5B - Quantized',
+    modelName: 'Qwen 2.5 - 1.5B',
     family: 'Qwen 2.5',
     tokenizerPath: QWEN2_5_1_5B_QUANTIZED.tokenizerSource,
     modelPath: QWEN2_5_1_5B_QUANTIZED.modelSource,
@@ -120,7 +120,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     labels: ['Balanced'],
   },
   {
-    modelName: 'Qwen 2.5 - 3B - Quantized',
+    modelName: 'Qwen 2.5 - 3B',
     family: 'Qwen 2.5',
     tokenizerPath: QWEN2_5_3B_QUANTIZED.tokenizerSource,
     modelPath: QWEN2_5_3B_QUANTIZED.modelSource,
@@ -132,7 +132,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     labels: ['Powerful'],
   },
   {
-    modelName: 'LFM 2.5 - 1.2B - Quantized',
+    modelName: 'LFM 2.5 - 1.2B',
     family: 'LFM 2.5',
     tokenizerPath: LFM2_5_1_2B_INSTRUCT_QUANTIZED.tokenizerSource,
     modelPath: LFM2_5_1_2B_INSTRUCT_QUANTIZED.modelSource,
@@ -144,7 +144,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     labels: ['Balanced'],
   },
   {
-    modelName: 'LFM 2.5 VL - 1.6B - Quantized',
+    modelName: 'LFM 2.5 VL - 1.6B',
     family: 'LFM 2.5',
     modelPath: LFM2_VL_1_6B_QUANTIZED.modelSource,
     tokenizerPath: LFM2_VL_1_6B_QUANTIZED.tokenizerSource,
@@ -160,7 +160,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
       'You are a helpful vision assistant. When the user shares an image, analyze it carefully and provide detailed, accurate descriptions and answers about its content. When no image is provided, respond as a knowledgeable and helpful general assistant.',
   },
   {
-    modelName: 'LFM 2.5 VL - 450M - Quantized',
+    modelName: 'LFM 2.5 VL - 450M',
     family: 'LFM 2.5',
     modelPath: LFM2_VL_450M_QUANTIZED.modelSource,
     tokenizerPath: LFM2_VL_450M_QUANTIZED.tokenizerSource,
@@ -176,7 +176,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
       'You are a helpful vision assistant. When the user shares an image, analyze it carefully and provide detailed, accurate descriptions and answers about its content. When no image is provided, respond as a knowledgeable and helpful general assistant.',
   },
   {
-    modelName: 'Bielik - v3.0 - Quantized',
+    modelName: 'Bielik - v3.0',
     family: 'Bielik',
     tokenizerPath:
       'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/tokenizer.json',

@@ -218,8 +218,21 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     if (!model) return;
 
     try {
+      // Fall back to the resource-fetcher source strings when we don't have
+      // tracked paths from this session (e.g. model was downloaded previously).
       const paths = downloadedPaths.get(modelId) || [];
-      await deleteLocalFiles(paths);
+      if (paths.length > 0) {
+        await deleteLocalFiles(paths);
+      }
+      try {
+        await ExpoResourceFetcher.deleteResources(
+          model.modelPath,
+          model.tokenizerPath,
+          model.tokenizerConfigPath
+        );
+      } catch (err) {
+        console.warn('ExpoResourceFetcher.deleteResources failed:', err);
+      }
       downloadedPaths.delete(modelId);
       await updateModelDownloaded(db, modelId, 0);
       await get().loadModels();

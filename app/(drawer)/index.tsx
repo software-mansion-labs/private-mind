@@ -1,15 +1,21 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import { router, useNavigation } from 'expo-router';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from 'react';
+import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { configureReanimatedLogger } from 'react-native-reanimated';
 import NewChatHeaderButton from '../../components/NewChatHeaderButton';
 import { Model } from '../../database/modelRepository';
 import { getNextChatId, importMessages } from '../../database/chatRepository';
 import { useSQLiteContext } from 'expo-sqlite';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
-import { View, Image, Text, StyleSheet, Alert } from 'react-native';
+import { View, Image, StyleSheet, Alert } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import PrimaryButton from '../../components/PrimaryButton';
 import TextButton from '../../components/TextButton';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { useTheme } from '../../context/ThemeContext';
 import { importChatRoom } from '../../database/exportImportRepository';
@@ -20,13 +26,18 @@ import { useModelStore } from '../../store/modelStore';
 import { useSourceStore } from '../../store/sourceStore';
 import { useLLMStore } from '../../store/llmStore';
 import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
+import WhatsNewCard from '../../components/WhatsNewCard';
+import {
+  getLastUsedModelId,
+  setLastUsedModelId,
+} from '../../utils/lastUsedModel';
 
 export default function App() {
   useOnboardingRedirect();
 
   const navigation = useNavigation();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const { loadModels } = useModelStore();
+  const { loadModels, downloadedModels } = useModelStore();
   const { loadSources } = useSourceStore();
   const db = useSQLiteContext();
   useDefaultHeader();
@@ -45,15 +56,21 @@ export default function App() {
     strict: false,
   });
 
-  const handleSetModel = async (model: Model) => {
+  const handleSetModel = async (model: Model, replace = false) => {
     bottomSheetModalRef.current?.dismiss();
     const nextChatId = await getNextChatId(db);
     await initPhantomChat(nextChatId, model);
     await setActiveChatId(null);
-    router.push({
+    await setLastUsedModelId(model.id);
+    const target = {
       pathname: `/chat/${nextChatId}`,
       params: { modelId: model.id },
-    });
+    } as const;
+    if (replace) {
+      router.replace(target);
+    } else {
+      router.push(target);
+    }
   };
 
   const handleImport = async () => {
@@ -77,38 +94,49 @@ export default function App() {
     loadSources();
   }, [loadModels, loadSources]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (downloadedModels.length === 0) return;
+      (async () => {
+        const lastId = await getLastUsedModelId();
+        const model =
+          downloadedModels.find((m) => m.id === lastId) ?? downloadedModels[0];
+        handleSetModel(model, true);
+      })();
+    }, [downloadedModels])
+  );
+
+  const willRedirect = downloadedModels.length > 0;
+
   return (
     <>
-      <View style={styles.container}>
-        <View style={styles.emptyContainer}>
-          <Image
-            source={require('../../assets/icons/icon.png')}
-            style={styles.icon}
-          />
-          <View style={styles.emptyTextContainer}>
-            <Text style={styles.emptyMessageTitle}>
-              Select a model to start chatting
-            </Text>
-            <Text style={styles.emptyMessage}>
-              Use default models or upload custom ones from your local files or
-              external URLs.
-            </Text>
-          </View>
-          <View style={styles.buttonGroup}>
-            <PrimaryButton
-              text="Choose a model"
-              onPress={() => {
-                bottomSheetModalRef.current?.present();
-              }}
+      <LinearGradient
+        colors={[theme.bg.softPrimary, theme.bg.main]}
+        style={styles.container}
+      >
+        {!willRedirect && (
+          <View style={styles.emptyContainer}>
+            <Image
+              source={require('../../assets/icons/icon.png')}
+              style={styles.icon}
             />
-            <TextButton
-              text="Import chat"
-              onPress={handleImport}
-              style={styles.flatButton}
-            />
+            <WhatsNewCard />
+            <View style={styles.buttonGroup}>
+              <PrimaryButton
+                text="Choose a model"
+                onPress={() => {
+                  bottomSheetModalRef.current?.present();
+                }}
+              />
+              <TextButton
+                text="Import chat"
+                onPress={handleImport}
+                style={styles.flatButton}
+              />
+            </View>
           </View>
-        </View>
-      </View>
+        )}
+      </LinearGradient>
       <ModelSelectSheet
         bottomSheetModalRef={bottomSheetModalRef}
         selectModel={handleSetModel}
@@ -121,37 +149,20 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.bg.softPrimary,
       paddingBottom: 16 + theme.insets.bottom,
     },
     emptyContainer: {
       flex: 1,
-      justifyContent: 'center',
+      justifyContent: 'flex-start',
       alignItems: 'center',
       paddingHorizontal: 16,
+      paddingTop: 64,
       gap: 24,
     },
     icon: {
       width: 64,
       height: 64,
       borderRadius: 12,
-    },
-    emptyTextContainer: {
-      gap: 8,
-    },
-    emptyMessage: {
-      textAlign: 'center',
-      color: theme.text.defaultSecondary,
-      fontSize: fontSizes.sm,
-      fontFamily: fontFamily.regular,
-      lineHeight: lineHeights.sm,
-    },
-    emptyMessageTitle: {
-      textAlign: 'center',
-      color: theme.text.primary,
-      fontSize: fontSizes.lg,
-      fontFamily: fontFamily.medium,
-      lineHeight: lineHeights.lg,
     },
     buttonGroup: {
       gap: 8,

@@ -28,6 +28,7 @@ import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
+import WhatsNewCard from '../WhatsNewCard';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
@@ -122,17 +123,22 @@ const ChatBar = ({
   const handleBarLayoutForPadding = useCallback(
     (e: { nativeEvent: { layout: { height: number } } }) => {
       const height = e.nativeEvent.layout.height;
-      if (defaultBarHeight.current === 0) {
+      // Only capture the default height once we're in the "with messages"
+      // layout — otherwise the empty-state extras (WhatsNewCard, prompt
+      // suggestions) would bake into the baseline and squeeze the scroll
+      // view once they disappear.
+      if (defaultBarHeight.current === 0 && hasMessages) {
         defaultBarHeight.current = height;
       }
-      const delta = height - (defaultBarHeight.current || height);
-      extraContentPadding.value = Math.max(0, height - defaultBarHeight.current);
+      const baseline = defaultBarHeight.current || height;
+      const delta = height - baseline;
+      extraContentPadding.value = Math.max(0, delta);
       onHeightChange?.(height);
       if (delta > 0) {
         onBarGrow?.();
       }
     },
-    [extraContentPadding, onHeightChange]
+    [extraContentPadding, onHeightChange, hasMessages]
   );
 
 
@@ -255,6 +261,7 @@ const ChatBar = ({
         <>
           {!hasMessages && (
             <View style={styles.suggestionsContainer}>
+              <WhatsNewCard />
               <PromptSuggestions onSelectPrompt={onSelectPrompt} />
             </View>
           )}
@@ -288,7 +295,7 @@ const ChatBar = ({
                     await loadSelectedModel();
                   }}
                   placeholder="Ask about anything..."
-                  placeholderTextColor={theme.text.contrastTertiary}
+                  placeholderTextColor={theme.text.onChatBarMuted}
                   value={userInput}
                   onChangeText={setUserInput}
                 />
@@ -333,6 +340,7 @@ const createStyles = (theme: Theme) =>
     },
     suggestionsContainer: {
       marginBottom: 12,
+      gap: 12,
     },
     modelSelection: {
       flexDirection: 'row',
@@ -356,7 +364,7 @@ const createStyles = (theme: Theme) =>
     },
     inputContainer: {
       flexDirection: 'column',
-      backgroundColor: theme.bg.strongPrimary,
+      backgroundColor: theme.bg.chatBar,
       borderRadius: 18,
       padding: 16,
       gap: 8,
@@ -372,7 +380,7 @@ const createStyles = (theme: Theme) =>
       ...(Platform.OS === 'ios' && { lineHeight: lineHeights.md }),
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
-      color: theme.text.contrastPrimary,
+      color: theme.text.onChatBar,
     },
     previewRow: {
       flexDirection: 'row',
@@ -393,6 +401,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
     },
     iconContrast: {
-      color: theme.text.contrastPrimary,
+      color: theme.text.onChatBar,
     },
   });

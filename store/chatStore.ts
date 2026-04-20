@@ -60,8 +60,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   initPhantomChat: async (phantomChatId, model) => {
     const db = get().db;
     if (!db) return;
-    await clearPhantomChat(db, phantomChatId);
-    const defaultSettings = await getChatSettings(db, null);
+    const [, defaultSettings] = await Promise.all([
+      clearPhantomChat(db, phantomChatId),
+      getChatSettings(db, null),
+    ]);
 
     // Use model-specific system prompt if available, otherwise global default
     const systemPrompt = model?.systemPrompt ?? defaultSettings.systemPrompt;

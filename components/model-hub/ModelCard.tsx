@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, Text } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, View, Text } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -18,6 +18,7 @@ import DownloadIcon from '../../assets/icons/download.svg';
 import StarIcon from '../../assets/icons/star.svg';
 import CloseIcon from '../../assets/icons/close.svg';
 import EyeIcon from '../../assets/icons/eye.svg';
+import TrashIcon from '../../assets/icons/trash.svg';
 
 interface Props {
   model: Model;
@@ -25,6 +26,7 @@ interface Props {
   selected?: boolean;
   onPress: (model: Model) => void;
   wifiWarningSheetRef?: React.RefObject<BottomSheetModal<WarningSheetData> | null>;
+  showDeleteButton?: boolean;
 }
 
 const ModelCard = ({
@@ -33,6 +35,7 @@ const ModelCard = ({
   selected = false,
   onPress,
   wifiWarningSheetRef,
+  showDeleteButton = false,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(
@@ -40,7 +43,8 @@ const ModelCard = ({
     [theme, selected]
   );
 
-  const { downloadStates, downloadModel, cancelDownload } = useModelStore();
+  const { downloadStates, downloadModel, cancelDownload, removeModelFiles } =
+    useModelStore();
 
   const downloadState = downloadStates[model.id] || {
     progress: model.isDownloaded ? 1 : 0,
@@ -96,6 +100,27 @@ const ModelCard = ({
     await downloadModel(model);
   };
 
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete model files?',
+      `${model.modelName} will be removed from your device. You can redownload it later.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await removeModelFiles(model.id);
+            Toast.show({
+              type: 'defaultToast',
+              text1: `${model.modelName} has been successfully deleted`,
+            });
+          },
+        },
+      ]
+    );
+  };
+
   const isCompatible = isModelCompatible(model);
   const disabled =
     modelState !== ModelState.Downloaded && model.source === 'built-in';
@@ -141,19 +166,6 @@ const ModelCard = ({
                   <DownloadCloudIcon
                     width={16}
                     height={16}
-                    style={styles.iconSecondary}
-                  />
-                }
-                borderColor={theme.border.soft}
-              />
-            )}
-            {model.featured && !compactView && (
-              <Chip
-                title="Featured"
-                icon={
-                  <StarIcon
-                    width={13.33}
-                    height={13.33}
                     style={styles.iconSecondary}
                   />
                 }
@@ -208,6 +220,18 @@ const ModelCard = ({
             disabled={!isCompatible}
           />
         )}
+
+        {showDeleteButton &&
+          modelState === ModelState.Downloaded &&
+          model.source !== 'local' && (
+            <CircleButton
+              onPress={handleDelete}
+              backgroundColor={theme.bg.errorPrimary}
+              color={theme.text.contrastPrimary}
+              icon={TrashIcon}
+              size={16}
+            />
+          )}
       </View>
 
       {modelState === ModelState.Downloading && (

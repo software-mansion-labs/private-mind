@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
@@ -7,9 +7,13 @@ jest.mock('../context/ThemeContext', () => ({
   }),
 }));
 
-const mockPush = jest.fn();
-jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: mockPush }),
+jest.mock('expo-sqlite', () => ({
+  useSQLiteContext: () => ({}),
+}));
+
+const mockStart = jest.fn();
+jest.mock('../utils/startPhantomChat', () => ({
+  startPhantomChat: (...args: unknown[]) => mockStart(...args),
 }));
 
 import NewChatHeaderButton from '../components/NewChatHeaderButton';
@@ -24,18 +28,17 @@ describe('NewChatHeaderButton', () => {
     expect(UNSAFE_getAllByType(TouchableOpacity).length).toBeGreaterThan(0);
   });
 
-  it('calls router.push("/") when noOp is not set', () => {
-    render(<NewChatHeaderButton />);
-    const { TouchableOpacity } = require('react-native');
+  it('starts a phantom chat when noOp is not set', () => {
     const { UNSAFE_getByType } = render(<NewChatHeaderButton />);
+    const { TouchableOpacity } = require('react-native');
     fireEvent.press(UNSAFE_getByType(TouchableOpacity));
-    expect(mockPush).toHaveBeenCalledWith('/');
+    expect(mockStart).toHaveBeenCalled();
   });
 
-  it('does not call router.push when noOp=true', () => {
+  it('does nothing when noOp=true', () => {
     const { UNSAFE_getByType } = render(<NewChatHeaderButton noOp={true} />);
     const { TouchableOpacity } = require('react-native');
     fireEvent.press(UNSAFE_getByType(TouchableOpacity));
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockStart).not.toHaveBeenCalled();
   });
 });

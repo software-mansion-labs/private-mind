@@ -145,7 +145,10 @@ const MessageItem = memo(
                   <AnimatedChatLoading />
                 ) : null}
                 {contentParts.normalContent.trim() && (
-                  <MarkdownComponent text={contentParts.normalContent} />
+                  <MarkdownComponent
+                    text={contentParts.normalContent}
+                    streaming={isLastMessage && isGenerating}
+                  />
                 )}
                 {contentParts.hasThinking &&
                   contentParts.thinkingContent?.trim() && (
@@ -161,7 +164,10 @@ const MessageItem = memo(
                   )}
                 {contentParts.normalAfterThink &&
                   contentParts.normalAfterThink.trim() && (
-                    <MarkdownComponent text={contentParts.normalAfterThink} />
+                    <MarkdownComponent
+                      text={contentParts.normalAfterThink}
+                      streaming={isLastMessage && isGenerating}
+                    />
                   )}
                 {tokensPerSecond !== undefined && tokensPerSecond !== 0 && (
                   <Text style={styles.metadata}>

@@ -128,6 +128,13 @@ const runMigrations = async (db: SQLiteDatabase) => {
     await db.runAsync(`DELETE FROM sources`);
   }
 
+  // Strip legacy " - Quantized" suffix from built-in model names so existing
+  // users' downloaded-state rows line up with the current DEFAULT_MODELS list.
+  await db.runAsync(
+    `UPDATE models SET modelName = REPLACE(modelName, ' - Quantized', '')
+     WHERE source = 'built-in' AND modelName LIKE '% - Quantized'`
+  );
+
   const defaultModelNames = DEFAULT_MODELS.map((m) => m.modelName);
   const placeholders = defaultModelNames.map(() => '?').join(',');
 
@@ -252,6 +259,8 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   useModelStore.getState().setDB(db);
   useLLMStore.getState().setDB(db);
   useSourceStore.getState().setDB(db);
+
+  await useModelStore.getState().loadModels();
 
   const defaultSettings = await AsyncStorage.getItem('default_chat_settings');
   if (!defaultSettings) {

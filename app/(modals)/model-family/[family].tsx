@@ -18,6 +18,7 @@ import WarningSheet, {
   WarningSheetData,
 } from '../../../components/bottomSheets/WarningSheet';
 import ModalHeader from '../../../components/ModalHeader';
+import { FAMILY_DESCRIPTIONS } from '../../../constants/family-descriptions';
 
 const FamilyScreen = () => {
   const router = useRouter();
@@ -41,6 +42,8 @@ const FamilyScreen = () => {
     [models, familyName]
   );
 
+  const description = FAMILY_DESCRIPTIONS[familyName];
+
   return (
     <BottomSheetModalProvider>
       <View style={styles.container}>
@@ -56,6 +59,9 @@ const FamilyScreen = () => {
             </View>
           ) : (
             <ScrollView contentContainerStyle={styles.scrollContent}>
+              {description && (
+                <Text style={styles.description}>{description}</Text>
+              )}
               {familyModels.map((model) => (
                 <ModelCard
                   key={model.id}
@@ -65,6 +71,7 @@ const FamilyScreen = () => {
                     modelManagementSheetRef.current?.present(model)
                   }
                   wifiWarningSheetRef={wifiWarningSheetRef}
+                  showDeleteButton
                 />
               ))}
             </ScrollView>
@@ -104,5 +111,12 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.regular,
       fontSize: fontSizes.md,
       color: theme.text.defaultSecondary,
+    },
+    description: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      color: theme.text.defaultSecondary,
+      lineHeight: 20,
+      marginBottom: 8,
     },
   });

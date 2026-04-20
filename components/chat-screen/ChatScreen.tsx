@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Keyboard, StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSharedValue } from 'react-native-reanimated';
@@ -29,6 +30,7 @@ import { useSourceStore } from '../../store/sourceStore';
 import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
 import { persistImage } from '../../utils/persistImage';
+import { setLastUsedModelId } from '../../utils/lastUsedModel';
 
 interface Props {
   chatId: number;
@@ -37,6 +39,7 @@ interface Props {
   isLoading?: boolean;
   model: Model | undefined;
   selectModel?: (model: Model) => Promise<void>;
+  openModelSheetRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 const prepareContext = async (
@@ -63,6 +66,7 @@ export default function ChatScreen({
   isLoading = false,
   model,
   selectModel,
+  openModelSheetRef,
 }: Props) {
   const inputRef = useRef<{
     clear: () => void;
@@ -119,6 +123,10 @@ export default function ChatScreen({
     Keyboard.dismiss();
     modelBottomSheetModalRef.current?.present();
   }, []);
+
+  if (openModelSheetRef) {
+    openModelSheetRef.current = handlePresentModelSheet;
+  }
 
   const handleSendMessage = async (
     userInput: string,
@@ -224,6 +232,7 @@ export default function ChatScreen({
         await setChatModel(chatId, selectedModel.id);
       }
 
+      await setLastUsedModelId(selectedModel.id);
       selectModel?.(selectedModel);
       modelBottomSheetModalRef.current?.dismiss();
     } catch (error) {
@@ -275,8 +284,17 @@ export default function ChatScreen({
     [model, loadedModel, loadModel, getModelById, chatId]
   );
 
+  const isEmpty = !isLoading && messageHistory.length === 0;
+
   return (
     <View style={styles.container} collapsable={false}>
+      {isEmpty && (
+        <LinearGradient
+          colors={[theme.bg.softPrimary, theme.bg.main]}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      )}
       <Messages
         ref={messagesRef}
         chatHistory={messageHistory}
@@ -308,7 +326,10 @@ export default function ChatScreen({
             hasMessages={isLoading || messageHistory.length > 0}
             onAttachmentSheetStateChange={setAttachmentSheetOpen}
             onHeightChange={(h: number) => {
-              if (chatBarSpacerHeight === 0) setChatBarSpacerHeight(h);
+              const hasMessages = isLoading || messageHistory.length > 0;
+              if (chatBarSpacerHeight === 0 && hasMessages) {
+                setChatBarSpacerHeight(h);
+              }
             }}
             onBarGrow={() => {
               setTimeout(() => {

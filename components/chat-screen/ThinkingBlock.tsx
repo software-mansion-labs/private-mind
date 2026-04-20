@@ -50,7 +50,13 @@ const ThinkingBlock = memo(
             )}
           </TouchableOpacity>
         </View>
-        {expanded && <MarkdownComponent text={content} isThinking={true} />}
+        {expanded && (
+          <MarkdownComponent
+            text={content}
+            isThinking={true}
+            streaming={inProgress}
+          />
+        )}
       </View>
     );
   }

@@ -5,6 +5,7 @@ import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { ModelFamily } from '../../utils/modelFamily';
 import Chip from '../Chip';
+import { FAMILY_DESCRIPTIONS } from '../../constants/family-descriptions';
 
 interface Props {
   family: ModelFamily;
@@ -17,11 +18,15 @@ const FamilyCard = ({ family, onPress }: Props) => {
 
   const downloadedCount = family.models.filter((m) => m.isDownloaded).length;
   const variantCount = family.models.length;
+  const description = FAMILY_DESCRIPTIONS[family.name];
 
   return (
     <TouchableOpacity style={styles.card} onPress={() => onPress(family)}>
       <View style={styles.info}>
         <Text style={styles.name}>{family.name}</Text>
+        {description && (
+          <Text style={styles.description}>{description}</Text>
+        )}
         <View style={styles.chipContainer}>
           <Chip
             title={`${variantCount} ${variantCount === 1 ? 'variant' : 'variants'}`}
@@ -62,6 +67,12 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.md,
       color: theme.text.primary,
     },
+    description: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      color: theme.text.defaultSecondary,
+      lineHeight: 20,
+    },
     chipContainer: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -70,7 +81,7 @@ const createStyles = (theme: Theme) =>
     chevron: {
       fontSize: 28,
       fontFamily: fontFamily.regular,
-      color: theme.text.defaultSecondary,
+      color: theme.bg.main,
       lineHeight: 28,
     },
   });

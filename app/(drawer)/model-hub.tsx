@@ -1,7 +1,8 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Alert, View, StyleSheet, Text } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { ScrollView } from 'react-native-gesture-handler';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
 import { useModelStore } from '../../store/modelStore';
 import FloatingActionButton from '../../components/model-hub/FloatingActionButton';
@@ -42,7 +43,7 @@ const ModelHubScreen = () => {
   );
   const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
 
-  const { models } = useModelStore();
+  const { models, removeModelFiles } = useModelStore();
   const [tab, setTab] = useState<ModelHubTab>('featured');
   const [search, setSearch] = useState('');
 
@@ -75,8 +76,55 @@ const ModelHubScreen = () => {
     return { families: familyList, mineModels: [] };
   }, [models, tab, search]);
 
+  // Block a second modal push until the previous modal has finished dismissing
+  // (react-native-screens crashes when modal controllers are reshuffled).
+  const isNavigatingRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      isNavigatingRef.current = false;
+    }, [])
+  );
   const openFamily = (family: ModelFamily) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
     router.push(`/model-family/${encodeURIComponent(family.name)}`);
+  };
+
+  const deletableDownloaded = useMemo(
+    () => models.filter((m) => m.isDownloaded && m.source !== 'local'),
+    [models]
+  );
+  const totalDownloadedSizeGB = useMemo(
+    () => deletableDownloaded.reduce((sum, m) => sum + (m.modelSize ?? 0), 0),
+    [deletableDownloaded]
+  );
+
+  const handleClearAll = () => {
+    if (deletableDownloaded.length === 0) return;
+    Alert.alert(
+      'Clear all downloaded models?',
+      `This will delete ${deletableDownloaded.length} model${
+        deletableDownloaded.length === 1 ? '' : 's'
+      } (${totalDownloadedSizeGB.toFixed(
+        2
+      )} GB) from your device. You can redownload them later.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear all',
+          style: 'destructive',
+          onPress: async () => {
+            for (const m of deletableDownloaded) {
+              await removeModelFiles(m.id);
+            }
+            Toast.show({
+              type: 'defaultToast',
+              text1: 'All downloaded model files have been deleted',
+            });
+          },
+        },
+      ]
+    );
   };
 
   const isEmpty =
@@ -149,6 +197,26 @@ const ModelHubScreen = () => {
                     onPress={openFamily}
                   />
                 ))}
+
+            {tab !== 'mine' && deletableDownloaded.length > 0 && (
+              <View style={styles.storageFooter}>
+                <View style={styles.storageInfo}>
+                  <Text style={styles.storageTitle}>
+                    {totalDownloadedSizeGB.toFixed(2)} GB downloaded
+                  </Text>
+                  <Text style={styles.storageSubtitle}>
+                    Across {deletableDownloaded.length} model
+                    {deletableDownloaded.length === 1 ? '' : 's'}
+                  </Text>
+                </View>
+                <SecondaryButton
+                  text="Clear all"
+                  onPress={handleClearAll}
+                  textStyle={{ color: theme.text.error }}
+                  style={{ borderColor: theme.text.error }}
+                />
+              </View>
+            )}
           </ScrollView>
         )}
 
@@ -214,5 +282,30 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.regular,
       color: theme.text.defaultTertiary,
       textAlign: 'center',
+    },
+    storageFooter: {
+      marginTop: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderRadius: 12,
+      borderColor: theme.border.soft,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    storageInfo: {
+      flex: 1,
+      gap: 2,
+    },
+    storageTitle: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.md,
+      color: theme.text.primary,
+    },
+    storageSubtitle: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      color: theme.text.defaultSecondary,
     },
   });

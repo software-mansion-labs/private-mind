@@ -103,21 +103,6 @@ describe('display', () => {
     expect(screen.getByTestId('chip-2.50 GB')).toBeTruthy();
   });
 
-  it('shows Featured chip when model is featured and compactView is false', () => {
-    renderCard({ featured: true, compactView: false });
-    expect(screen.getByTestId('chip-Featured')).toBeTruthy();
-  });
-
-  it('does not show Featured chip in compact view even when featured', () => {
-    renderCard({ featured: true });
-    expect(screen.queryByTestId('chip-Featured')).toBeNull();
-  });
-
-  it('does not show Featured chip for non-featured model', () => {
-    renderCard({ featured: false, compactView: false });
-    expect(screen.queryByTestId('chip-Featured')).toBeNull();
-  });
-
   it('shows Incompatible chip when model is not compatible', () => {
     mockIsModelCompatible.mockReturnValue(false);
     renderCard();
