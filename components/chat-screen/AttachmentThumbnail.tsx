@@ -27,7 +27,7 @@ const AttachmentThumbnail = ({ attachment, onRemove }: Props) => {
     if (attachment.status === 'loading') {
       return (
         <View style={styles.placeholder}>
-          <ActivityIndicator color={theme.text.contrastPrimary} />
+          <ActivityIndicator color={theme.text.primary} />
         </View>
       );
     }
