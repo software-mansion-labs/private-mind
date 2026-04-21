@@ -54,15 +54,6 @@ const STEPS: (PanelStepProps & {
     alignment: 'center',
   },
   {
-    label: 'Performance tests',
-    title: 'Benchmark your models',
-    description:
-      'Easily test out how AI models perform while being benchmarked.',
-    buttonLabel: 'Nice, next',
-    image: require('../../assets/onboarding/step_benchmark.png'),
-    alignment: 'center',
-  },
-  {
     label: 'AI RAG',
     title: 'Add source documents',
     description: 'Use extra files to extend models knowledge and responses.',
