@@ -1,8 +1,10 @@
 export const LATEST_RELEASE = {
-  version: '1.1.5',
-  title: 'Model Hub redesign',
+  version: '1.1.6',
+  title: 'App-wide redesign',
   highlights: [
-    'Models grouped by family with featured, experimental, and mine tabs',
+    'Model Hub grouped by family with recommended, experimental, and mine tabs',
+    'Streaming markdown for assistant replies and thinking blocks',
+    'Tap the chat title to rename, export, or delete — no more settings screen',
     'Smoother chat input, keyboard, and scroll behavior',
   ],
 };
