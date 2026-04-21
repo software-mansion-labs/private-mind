@@ -267,18 +267,15 @@ const ChatBar = ({
           )}
           <View style={styles.inputContainer}>
             {attachments.length > 0 && (
-              <>
-                <View style={styles.previewRow}>
-                  {attachments.map((attachment) => (
-                    <AttachmentThumbnail
-                      key={attachment.id}
-                      attachment={attachment}
-                      onRemove={() => removeAttachment(attachment.id)}
-                    />
-                  ))}
-                </View>
-                <View style={styles.divider} />
-              </>
+              <View style={[styles.previewRow, { marginBottom: 8 }]}>
+                {attachments.map((attachment) => (
+                  <AttachmentThumbnail
+                    key={attachment.id}
+                    attachment={attachment}
+                    onRemove={() => removeAttachment(attachment.id)}
+                  />
+                ))}
+              </View>
             )}
             <View style={styles.content}>
               <TextInputWrapper

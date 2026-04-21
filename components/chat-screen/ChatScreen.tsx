@@ -5,11 +5,15 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Keyboard, StyleSheet, View } from 'react-native';
+import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
-import { useSharedValue } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import type { MessagesHandle } from './Messages';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
@@ -296,15 +300,29 @@ export default function ChatScreen({
 
   const isEmpty = !isLoading && messageHistory.length === 0;
 
+  const { height: windowHeight } = useWindowDimensions();
+  const gradientProgress = useSharedValue(isEmpty ? 1 : 0);
+  useEffect(() => {
+    gradientProgress.value = withTiming(isEmpty ? 1 : 0, { duration: 900 });
+  }, [isEmpty, gradientProgress]);
+  const gradientStyle = useAnimatedStyle(() => ({
+    opacity: gradientProgress.value,
+    transform: [
+      { translateY: (1 - gradientProgress.value) * windowHeight },
+    ],
+  }));
+
   return (
     <View style={styles.container} collapsable={false}>
-      {isEmpty && (
+      <Animated.View
+        style={[StyleSheet.absoluteFill, gradientStyle]}
+        pointerEvents="none"
+      >
         <LinearGradient
           colors={[theme.bg.softPrimary, theme.bg.main]}
           style={StyleSheet.absoluteFill}
-          pointerEvents="none"
         />
-      )}
+      </Animated.View>
       <Messages
         ref={messagesRef}
         chatHistory={messageHistory}
