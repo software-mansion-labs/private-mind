@@ -271,8 +271,6 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   useLLMStore.getState().setDB(db);
   useSourceStore.getState().setDB(db);
 
-  await useModelStore.getState().loadModels();
-
   const defaultSettings = await AsyncStorage.getItem('default_chat_settings');
   if (!defaultSettings) {
     await AsyncStorage.setItem(
@@ -315,4 +313,6 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       });
     }
   });
+
+  await useModelStore.getState().loadModels();
 };

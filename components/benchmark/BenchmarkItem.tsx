@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity } from 'react-native-gesture-handler';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
 import { useTheme } from '../../context/ThemeContext';
