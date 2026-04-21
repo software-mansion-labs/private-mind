@@ -62,7 +62,7 @@ const ChatBarActions = ({
               icon={SoundwaveIcon}
               onPress={onSpeechInput}
               backgroundColor="transparent"
-              color={theme.text.contrastPrimary}
+              color={theme.text.onChatBar}
             />
           )}
           <CircleButton
@@ -80,7 +80,7 @@ const ChatBarActions = ({
         icon={SoundwaveIcon}
         onPress={onSpeechInput}
         backgroundColor="transparent"
-        color={theme.text.contrastPrimary}
+        color={theme.text.onChatBar}
       />
     );
   };
@@ -92,8 +92,8 @@ const ChatBarActions = ({
           icon={PlusIcon}
           size={14}
           onPress={onAttach}
-          backgroundColor={theme.bg.softPrimary}
-          color={theme.text.primary}
+          backgroundColor={theme.bg.attachButton}
+          color={theme.text.onAttachButton}
           testID="attach-btn"
         />
         <TouchableOpacity
@@ -102,13 +102,13 @@ const ChatBarActions = ({
         >
           {!thinkingEnabled ? (
             <LightBulbCrossedIcon
-              style={{ color: theme.text.contrastPrimary }}
+              style={{ color: theme.text.onChatBar }}
               width={20}
               height={20}
             />
           ) : (
             <LightBulbIcon
-              style={{ color: theme.text.contrastPrimary }}
+              style={{ color: theme.text.onChatBar }}
               width={20}
               height={20}
             />
@@ -144,7 +144,7 @@ const createStyles = (theme: Theme) =>
       padding: 8,
       borderRadius: 9999,
       borderWidth: 1,
-      borderColor: theme.border.contrast,
+      borderColor: theme.text.onChatBar,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
@@ -152,7 +152,7 @@ const createStyles = (theme: Theme) =>
       height: 36,
     },
     toggleText: {
-      color: theme.text.contrastPrimary,
+      color: theme.text.onChatBar,
       fontSize: fontSizes.sm,
       lineHeight: lineHeights.sm,
     },

@@ -5700,6 +5700,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-linear-gradient@npm:~55.0.13":
+  version: 55.0.13
+  resolution: "expo-linear-gradient@npm:55.0.13"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+  checksum: 4a77242b3d8d12ad1c3e7254c1e95dc66f8c8552bf0d0cc5f31f716933a60242c5cf269d7958a69a05824a0f185e81a71c5a0a3181328d9029fd57c1d64aef0f
+  languageName: node
+  linkType: hard
+
 "expo-linking@npm:~55.0.11":
   version: 55.0.11
   resolution: "expo-linking@npm:55.0.11"
@@ -9325,6 +9336,7 @@ __metadata:
     expo-file-system: ~55.0.15
     expo-font: ~55.0.6
     expo-haptics: ~55.0.13
+    expo-linear-gradient: ~55.0.13
     expo-linking: ~55.0.11
     expo-localization: ~55.0.12
     expo-paste-input: ^0.1.15
@@ -9342,7 +9354,7 @@ __metadata:
     react-native-audio-api: 0.12.0-nightly-f7c925b-20260402
     react-native-device-info: ^15.0.1
     react-native-enriched-markdown: ^0.4.1
-    react-native-executorch: 0.9.0-nightly-31bdd99-20260414
+    react-native-executorch: ^0.8.3
     react-native-executorch-expo-resource-fetcher: ^0.8.0
     react-native-gesture-handler: ~2.30.0
     react-native-image-picker: ^8.2.1
@@ -9353,12 +9365,14 @@ __metadata:
     react-native-reanimated: 4.3.0
     react-native-safe-area-context: ~5.6.0
     react-native-screens: ~4.23.0
+    react-native-streamdown: 0.1.1
     react-native-svg: 15.15.3
     react-native-svg-transformer: ^1.5.0
     react-native-toast-message: ^2.3.0
     react-native-wheel-scrollview-picker: ^2.0.6
     react-native-worklets: 0.8.1
     react-test-renderer: 19.2.0
+    remend: ^1.3.0
     typescript: ~5.9.2
     zustand: ^5.0.4
   languageName: unknown
@@ -9591,9 +9605,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-executorch@npm:0.9.0-nightly-31bdd99-20260414":
-  version: 0.9.0-nightly-31bdd99-20260414
-  resolution: "react-native-executorch@npm:0.9.0-nightly-31bdd99-20260414"
+"react-native-executorch@npm:^0.8.3":
+  version: 0.8.3
+  resolution: "react-native-executorch@npm:0.8.3"
   dependencies:
     "@huggingface/jinja": ^0.5.0
     jsonrepair: ^3.12.0
@@ -9603,7 +9617,7 @@ __metadata:
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: af872b0b32ed3c6fd0b96cf4933304a388de5bea4ec3bbcaf009d9c412831bd65e79f1baefa72c2046c2a430ae70ebfb5209d8df93e0c355dfb1765edcb2a768
+  checksum: 8b81aead343458e95d1991ee9c33f17b89beab6ef8596c7f1f7b638f69ed35298a221f6bdb97761c2e1508bfd285fbbeb23722983411e936e1d0bd6455387dc2
   languageName: node
   linkType: hard
 
@@ -9731,6 +9745,19 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 9b7d4cc2aed913a68abd725c51b41ae1d3c24abe3b47285f7a397d15c2f672710fa16819a8062ced3b60fb36e623d58d929a700863e1ae6e764a7f3ff981dd58
+  languageName: node
+  linkType: hard
+
+"react-native-streamdown@npm:0.1.1":
+  version: 0.1.1
+  resolution: "react-native-streamdown@npm:0.1.1"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+    react-native-enriched-markdown: 0.4.0
+    react-native-worklets: 0.8.0-bundle-mode-preview-2
+    remend: 1.2.2
+  checksum: 4206df4efebbe19b9681fb53ae8a0833fac0540e6481245a3db1fb27c146e7f147d137671eeb38db6d4b4488366b12fea41ab3d7591709a251f72bf003a66ca1
   languageName: node
   linkType: hard
 
@@ -10012,6 +10039,13 @@ __metadata:
   bin:
     regjsparser: bin/parser
   checksum: 094b55b0ab3e1fd58f8ce5132a1d44dab08d91f7b0eea4132b0157b303ebb8ded20a9cbd893d25402d2aeddb23fac1f428ab4947b295d6fa51dd1c334a9e76f0
+  languageName: node
+  linkType: hard
+
+"remend@npm:^1.3.0":
+  version: 1.3.0
+  resolution: "remend@npm:1.3.0"
+  checksum: 3d04a2a2d8540a6c2d1469457d20f88b4590511441456c27443ea49d5572d67f2c3226e7cde09dc642d157b5150d5bd1e9ac29238e4b13731527b4208c257129
   languageName: node
   linkType: hard
 

@@ -10,9 +10,16 @@ import { useChatTitleMenu } from '../components/chat-screen/ChatTitleMenu';
 interface Props {
   chatId: number;
   chatModel: Model | undefined;
+  isEmpty: boolean;
+  onSelectModelFromTitle?: () => void;
 }
 
-export default function useChatHeader({ chatId, chatModel }: Props) {
+export default function useChatHeader({
+  chatId,
+  chatModel,
+  isEmpty,
+  onSelectModelFromTitle,
+}: Props) {
   const navigation = useNavigation();
   const { getChatById } = useChatStore();
   const chat = getChatById(chatId);
@@ -26,16 +33,28 @@ export default function useChatHeader({ chatId, chatModel }: Props) {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerLeft: () => <DrawerToggleButton />,
-      headerRight: () => <NewChatHeaderButton />,
+      headerRight: () => <NewChatHeaderButton noOp={isEmpty} />,
       headerTitle: () => (
         <ChatTitle
           title={chatTitle}
           modelName={chatModel?.modelName || 'No model selected'}
-          onPress={chat ? openMenu : undefined}
+          onPress={
+            onSelectModelFromTitle ?? (chat ? openMenu : undefined)
+          }
+          showChevron={!!onSelectModelFromTitle}
         />
       ),
     });
-  }, [navigation, chatId, chatTitle, chatModel, openMenu, chat]);
+  }, [
+    navigation,
+    chatId,
+    chatTitle,
+    chatModel,
+    openMenu,
+    chat,
+    isEmpty,
+    onSelectModelFromTitle,
+  ]);
 
   return { MenuElements };
 }

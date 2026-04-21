@@ -5,6 +5,8 @@ import { ScrollView } from 'react-native-gesture-handler';
 import { useTheme } from '../../context/ThemeContext';
 import { useChatStore } from '../../store/chatStore';
 import { useLLMStore } from '../../store/llmStore';
+import { useSQLiteContext } from 'expo-sqlite';
+import { startPhantomChat } from '../../utils/startPhantomChat';
 import { Chat } from '../../database/chatRepository';
 import ChatIcon from '../../assets/icons/chat.svg';
 import ModelsIcon from '../../assets/icons/models.svg';
@@ -53,8 +55,12 @@ const DrawerMenu = () => {
   const router = useRouter();
   const pathname = usePathname();
 
-  const { chats } = useChatStore();
+  const { chats, phantomChat } = useChatStore();
   const { interrupt } = useLLMStore();
+  const db = useSQLiteContext();
+
+  const isOnPhantomChat =
+    phantomChat != null && pathname === `/chat/${phantomChat.id}`;
 
   const groupedChats = groupChatsByDate(
     [...chats].sort((a, b) => b.lastUsed - a.lastUsed)
@@ -71,8 +77,12 @@ const DrawerMenu = () => {
         <DrawerItem
           icon={<ChatIcon width={18} height={18} style={styles.icon} />}
           label="New chat"
-          active={pathname === '/'}
-          onPress={() => navigate('/')}
+          active={pathname === '/' || isOnPhantomChat}
+          onPress={() => {
+            if (isOnPhantomChat) return;
+            interrupt();
+            startPhantomChat(db, 'replace');
+          }}
         />
         <DrawerItem
           icon={<ModelsIcon width={18} height={18} style={styles.icon} />}

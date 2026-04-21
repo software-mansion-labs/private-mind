@@ -200,7 +200,7 @@ const ChatSpeechInput: React.FC<Props> = ({
           onPress={handleCancel}
           size={20}
           color={theme.text.contrastPrimary}
-          backgroundColor={theme.bg.overlay}
+          backgroundColor="rgba(2, 15, 60, 0.2)"
         />
         <Text style={[styles.secondaryNote, styles.actionNote]}>
           Click again to send
@@ -273,7 +273,7 @@ const createStyles = (theme: Theme) =>
     },
 
     recordingRow: {
-      backgroundColor: theme.bg.overlay,
+      backgroundColor: theme.bg.voiceModeSurface,
       height: 40,
       borderRadius: 12,
       flexDirection: 'row',

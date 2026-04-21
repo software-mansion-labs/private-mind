@@ -65,11 +65,11 @@ const createStyles = (theme: Theme) =>
     },
     suggestionCard: {
       width: 160,
-      backgroundColor: theme.bg.softSecondary,
+      backgroundColor: theme.bg.cardSurface,
       borderRadius: 10,
       padding: 12,
       borderWidth: 1,
-      borderColor: theme.bg.softSecondary,
+      borderColor: theme.bg.cardSurface,
     },
     suggestionTitle: {
       fontSize: fontSizes.xs,

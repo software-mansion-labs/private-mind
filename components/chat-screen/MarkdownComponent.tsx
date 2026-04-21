@@ -3,6 +3,7 @@ import {
   EnrichedMarkdownText,
   type MarkdownStyle,
 } from 'react-native-enriched-markdown';
+import { StreamdownText } from 'react-native-streamdown';
 import { Platform } from 'react-native';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
@@ -11,10 +12,11 @@ interface Props {
   text: string;
   isUser?: boolean;
   isThinking?: boolean;
+  streaming?: boolean;
 }
 
 const MarkdownComponent = memo(
-  ({ text, isUser = false, isThinking = false }: Props) => {
+  ({ text, isUser = false, isThinking = false, streaming = false }: Props) => {
     const { theme } = useTheme();
     const baseColor = theme.text.primary;
     const baseFontSize = isThinking ? fontSizes.sm : fontSizes.md;
@@ -129,6 +131,16 @@ const MarkdownComponent = memo(
       }),
       [baseColor, baseFontSize, isUser, monoFont, theme]
     );
+
+    if (streaming) {
+      return (
+        <StreamdownText
+          markdown={text}
+          markdownStyle={markdownStyle}
+          selectable={true}
+        />
+      );
+    }
 
     return (
       <EnrichedMarkdownText

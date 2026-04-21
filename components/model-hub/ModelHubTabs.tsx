@@ -12,7 +12,7 @@ interface Props {
 }
 
 const TABS: { key: ModelHubTab; label: string }[] = [
-  { key: 'featured', label: 'Featured' },
+  { key: 'featured', label: 'Recommended' },
   { key: 'experimental', label: 'Experimental' },
   { key: 'mine', label: 'Mine' },
 ];
@@ -60,7 +60,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: 9999,
     },
     tabSelected: {
-      backgroundColor: theme.bg.softPrimary,
+      backgroundColor: theme.bg.main,
     },
     label: {
       fontFamily: fontFamily.regular,
@@ -69,6 +69,6 @@ const createStyles = (theme: Theme) =>
     },
     labelSelected: {
       fontFamily: fontFamily.medium,
-      color: theme.text.primary,
+      color: theme.text.contrastPrimary,
     },
   });

@@ -55,6 +55,8 @@ PODS:
     - SDWebImageWebPCoder (~> 0.14.6)
   - ExpoKeepAwake (55.0.6):
     - ExpoModulesCore
+  - ExpoLinearGradient (55.0.13):
+    - ExpoModulesCore
   - ExpoLinking (55.0.11):
     - ExpoModulesCore
   - ExpoLocalization (55.0.12):
@@ -1566,7 +1568,7 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-  - react-native-executorch (0.9.0-nightly-31bdd99-20260414):
+  - react-native-executorch (0.8.3):
     - hermes-engine
     - opencv-rne (~> 4.11.0)
     - RCTRequired
@@ -2601,6 +2603,7 @@ DEPENDENCIES:
   - ExpoHaptics (from `../node_modules/expo-haptics/ios`)
   - ExpoImage (from `../node_modules/expo-image/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
+  - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
   - ExpoLocalization (from `../node_modules/expo-localization/ios`)
   - "ExpoLogBox (from `../node_modules/@expo/log-box`)"
@@ -2746,6 +2749,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-image/ios"
   ExpoKeepAwake:
     :path: "../node_modules/expo-keep-awake/ios"
+  ExpoLinearGradient:
+    :path: "../node_modules/expo-linear-gradient/ios"
   ExpoLinking:
     :path: "../node_modules/expo-linking/ios"
   ExpoLocalization:
@@ -2967,6 +2972,7 @@ SPEC CHECKSUMS:
   ExpoHaptics: 0acad494faee522cfdef7521cc2cabafb9fe8a70
   ExpoImage: ef931bba1fd3e907c2262216d17eb21095c9ac2b
   ExpoKeepAwake: a1baf9810a2dee1905aa9bdd336852598f7220e9
+  ExpoLinearGradient: c654e92d726a6d64c588a0988bb22bea331d5e79
   ExpoLinking: b42fd76bdda8662ddf797b17cb4cc793adabfe98
   ExpoLocalization: 473986270d56c83f821d7ffde5c5b7689802e5cf
   ExpoLogBox: a3de999775d423ac9cb85d24bd47628e5392761f
@@ -3024,7 +3030,7 @@ SPEC CHECKSUMS:
   React-logger: d0632d799fbd3507cdd5406f72489a83ed5f9163
   React-Mapbuffer: 274cb203819492f7fb594bbb3a1f3f5061fa794d
   React-microtasksnativemodule: 563b4dcc8b8570814d6de4fc1196f48d2944acd4
-  react-native-executorch: d4f5b91a556124313c1f0eab1cd4846dcc936f2e
+  react-native-executorch: fb50d0e78bc33ae6f9d7674a054da7019f0aa9dd
   react-native-image-picker: 48d850454b4a389753053e1d7378b624d3b47d77
   react-native-keyboard-controller: 6b4bc1ef1ad46ace3842f49ed03815a96a99b139
   react-native-netinfo: f852c868bf5175e46165c7e4db48a204a95c3800

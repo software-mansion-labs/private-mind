@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
 import { useState } from 'react';
@@ -24,9 +24,10 @@ function ChatScreenInner() {
   const { modelId }: { modelId: string } = useLocalSearchParams();
   const { activeChatMessages, activeChatId, setActiveChatId } = useLLMStore();
   const { getModelById } = useModelStore();
-  const { getChatById, setChatModel, loadChats } = useChatStore();
+  const { getChatById, setChatModel, loadChats, phantomChat } = useChatStore();
   const chatId = parseInt(rawId);
   const chat = getChatById(chatId);
+  const isPhantom = phantomChat?.id === chatId;
   const resolvedModelId = modelId ?? chat?.modelId;
   const resolvedModel = resolvedModelId
     ? getModelById(parseInt(resolvedModelId.toString()))
@@ -37,27 +38,42 @@ function ChatScreenInner() {
   // from a bottom sheet), and flipping messageHistory to [] mid-session
   // causes Messages.tsx to reset its reveal animation, briefly blanking
   // the chat. If the store already has this chat active, skip the
-  // reset and use the existing data.
-  const [isLoading, setIsLoading] = useState(activeChatId !== chatId);
+  // reset and use the existing data. Phantom chats have no history, so
+  // skip loading entirely.
+  const [isLoading, setIsLoading] = useState(
+    !isPhantom && activeChatId !== chatId
+  );
+
+  const isEmpty = !isLoading && activeChatMessages.length === 0;
+  const openModelSheetRef = useRef<(() => void) | null>(null);
 
   const { MenuElements } = useChatHeader({
     chatId: chatId,
     chatModel: model,
+    isEmpty,
+    onSelectModelFromTitle: isPhantom
+      ? () => openModelSheetRef.current?.()
+      : undefined,
   });
 
   useFocusEffect(
     useCallback(() => {
-      if (activeChatId === chatId) {
+      // Read activeChatId via store to avoid re-firing this effect when the
+      // store's activeChatId changes while the screen is focused — otherwise
+      // clearing activeChatId (e.g. from startPhantomChat during navigation)
+      // would retrigger an unwanted re-fetch on the previously-focused chat.
+      const currentActiveId = useLLMStore.getState().activeChatId;
+      if (currentActiveId === chatId) {
         return;
       }
       const initChat = async () => {
-        setIsLoading(true);
+        if (!isPhantom) setIsLoading(true);
         await setActiveChatId(chatId);
         setIsLoading(false);
       };
 
       initChat();
-    }, [chatId, activeChatId])
+    }, [chatId, isPhantom])
   );
 
   const handleSetModel = async (model: Model) => {
@@ -75,6 +91,7 @@ function ChatScreenInner() {
         isLoading={isLoading}
         model={model}
         selectModel={handleSetModel}
+        openModelSheetRef={openModelSheetRef}
       />
       {MenuElements}
     </>

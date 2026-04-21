@@ -1,16 +1,18 @@
 import React, { useMemo } from 'react';
-import { Text, StyleSheet, Pressable } from 'react-native';
+import { Text, StyleSheet, View, Pressable } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import ChevronDown from '../../assets/icons/chevron-down.svg';
 
 interface Props {
   title: string;
   modelName: string;
   onPress?: () => void;
+  showChevron?: boolean;
 }
 
-const ChatTitle = ({ title, modelName, onPress }: Props) => {
+const ChatTitle = ({ title, modelName, onPress, showChevron = false }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   return (
@@ -31,7 +33,16 @@ const ChatTitle = ({ title, modelName, onPress }: Props) => {
           <Text style={styles.modelName}>{modelName}</Text>
         </>
       ) : (
-        <Text style={styles.modelNameTitle}>{modelName}</Text>
+        <View style={styles.modelRow}>
+          <Text style={styles.modelNameTitle}>{modelName}</Text>
+          {showChevron && (
+            <ChevronDown
+              width={10}
+              height={10}
+              style={styles.chevron}
+            />
+          )}
+        </View>
       )}
     </Pressable>
   );
@@ -64,5 +75,14 @@ const createStyles = (theme: Theme) =>
     modelNameTitle: {
       color: theme.text.defaultSecondary,
       fontFamily: fontFamily.medium,
+    },
+    modelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    chevron: {
+      color: theme.text.defaultSecondary,
+      transform: [{ rotate: '-90deg' }],
     },
   });

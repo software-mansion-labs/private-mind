@@ -1,22 +1,23 @@
 import React, { useMemo } from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
 import ChatIcon from '../assets/icons/chat.svg';
 import { useTheme } from '../context/ThemeContext';
 import { Theme } from '../styles/colors';
+import { startPhantomChat } from '../utils/startPhantomChat';
 
 interface Props {
   noOp?: boolean;
 }
 
 const NewChatHeaderButton = ({ noOp = false }: Props) => {
-  const router = useRouter();
+  const db = useSQLiteContext();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handlePress = () => {
     if (noOp) return;
-    router.push('/');
+    startPhantomChat(db, 'replace');
   };
 
   return (

@@ -14,7 +14,7 @@ jest.mock('../context/ThemeContext', () => ({
 describe('ModelHubTabs', () => {
   it('renders all three tabs', () => {
     render(<ModelHubTabs value="featured" onChange={jest.fn()} />);
-    expect(screen.getByText('Featured')).toBeTruthy();
+    expect(screen.getByText('Recommended')).toBeTruthy();
     expect(screen.getByText('Experimental')).toBeTruthy();
     expect(screen.getByText('Mine')).toBeTruthy();
   });

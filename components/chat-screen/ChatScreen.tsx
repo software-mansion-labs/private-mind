@@ -1,8 +1,19 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Keyboard, StyleSheet, View } from 'react-native';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
-import { useSharedValue } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import type { MessagesHandle } from './Messages';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
@@ -29,6 +40,7 @@ import { useSourceStore } from '../../store/sourceStore';
 import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
 import { persistImage } from '../../utils/persistImage';
+import { setLastUsedModelId } from '../../utils/lastUsedModel';
 
 interface Props {
   chatId: number;
@@ -37,6 +49,7 @@ interface Props {
   isLoading?: boolean;
   model: Model | undefined;
   selectModel?: (model: Model) => Promise<void>;
+  openModelSheetRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 const prepareContext = async (
@@ -63,6 +76,7 @@ export default function ChatScreen({
   isLoading = false,
   model,
   selectModel,
+  openModelSheetRef,
 }: Props) {
   const inputRef = useRef<{
     clear: () => void;
@@ -119,6 +133,14 @@ export default function ChatScreen({
     Keyboard.dismiss();
     modelBottomSheetModalRef.current?.present();
   }, []);
+
+  useEffect(() => {
+    if (!openModelSheetRef) return;
+    openModelSheetRef.current = handlePresentModelSheet;
+    return () => {
+      openModelSheetRef.current = null;
+    };
+  }, [openModelSheetRef, handlePresentModelSheet]);
 
   const handleSendMessage = async (
     userInput: string,
@@ -224,6 +246,7 @@ export default function ChatScreen({
         await setChatModel(chatId, selectedModel.id);
       }
 
+      await setLastUsedModelId(selectedModel.id);
       selectModel?.(selectedModel);
       modelBottomSheetModalRef.current?.dismiss();
     } catch (error) {
@@ -275,8 +298,31 @@ export default function ChatScreen({
     [model, loadedModel, loadModel, getModelById, chatId]
   );
 
+  const isEmpty = !isLoading && messageHistory.length === 0;
+
+  const { height: windowHeight } = useWindowDimensions();
+  const gradientProgress = useSharedValue(isEmpty ? 1 : 0);
+  useEffect(() => {
+    gradientProgress.value = withTiming(isEmpty ? 1 : 0, { duration: 900 });
+  }, [isEmpty, gradientProgress]);
+  const gradientStyle = useAnimatedStyle(() => ({
+    opacity: gradientProgress.value,
+    transform: [
+      { translateY: (1 - gradientProgress.value) * windowHeight },
+    ],
+  }));
+
   return (
     <View style={styles.container} collapsable={false}>
+      <Animated.View
+        style={[StyleSheet.absoluteFill, gradientStyle]}
+        pointerEvents="none"
+      >
+        <LinearGradient
+          colors={[theme.bg.softPrimary, theme.bg.main]}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
       <Messages
         ref={messagesRef}
         chatHistory={messageHistory}
@@ -308,7 +354,10 @@ export default function ChatScreen({
             hasMessages={isLoading || messageHistory.length > 0}
             onAttachmentSheetStateChange={setAttachmentSheetOpen}
             onHeightChange={(h: number) => {
-              if (chatBarSpacerHeight === 0) setChatBarSpacerHeight(h);
+              const hasMessages = isLoading || messageHistory.length > 0;
+              if (chatBarSpacerHeight === 0 && hasMessages) {
+                setChatBarSpacerHeight(h);
+              }
             }}
             onBarGrow={() => {
               setTimeout(() => {

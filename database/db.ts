@@ -19,7 +19,9 @@ const runMigrations = async (db: SQLiteDatabase) => {
   const hasThinking = modelsTableInfo.some((col) => col.name === 'thinking');
   const hasLabels = modelsTableInfo.some((col) => col.name === 'labels');
   const hasVision = modelsTableInfo.some((col) => col.name === 'vision');
-  const hasSystemPrompt = modelsTableInfo.some((col) => col.name === 'systemPrompt');
+  const hasSystemPrompt = modelsTableInfo.some(
+    (col) => col.name === 'systemPrompt'
+  );
 
   if (!hasFeatured) {
     await db.execAsync(
@@ -58,13 +60,17 @@ const runMigrations = async (db: SQLiteDatabase) => {
   }
 
   if (!hasSystemPrompt) {
-    await db.execAsync(`ALTER TABLE models ADD COLUMN systemPrompt TEXT DEFAULT NULL`);
+    await db.execAsync(
+      `ALTER TABLE models ADD COLUMN systemPrompt TEXT DEFAULT NULL`
+    );
   }
 
   const messagesTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(messages)`
   );
-  const hasImagePath = messagesTableInfo.some((col) => col.name === 'imagePath');
+  const hasImagePath = messagesTableInfo.some(
+    (col) => col.name === 'imagePath'
+  );
   if (!hasImagePath) {
     await db.execAsync(
       `ALTER TABLE messages ADD COLUMN imagePath TEXT DEFAULT NULL`
@@ -99,9 +105,7 @@ const runMigrations = async (db: SQLiteDatabase) => {
   );
 
   if (hasContextWindow) {
-    await db.execAsync(
-      `ALTER TABLE chatSettings DROP COLUMN contextWindow`
-    );
+    await db.execAsync(`ALTER TABLE chatSettings DROP COLUMN contextWindow`);
   }
 
   // Add firstChunk column to sources
@@ -127,6 +131,20 @@ const runMigrations = async (db: SQLiteDatabase) => {
     await db.runAsync(`DELETE FROM chatSources`);
     await db.runAsync(`DELETE FROM sources`);
   }
+
+  await db.runAsync(
+    `DELETE FROM models
+     WHERE source = 'built-in'
+       AND modelName IN (
+         SELECT REPLACE(modelName, ' - Quantized', '')
+         FROM models
+         WHERE source = 'built-in' AND modelName LIKE '% - Quantized'
+       )`
+  );
+  await db.runAsync(
+    `UPDATE models SET modelName = REPLACE(modelName, ' - Quantized', '')
+     WHERE source = 'built-in' AND modelName LIKE '% - Quantized'`
+  );
 
   const defaultModelNames = DEFAULT_MODELS.map((m) => m.modelName);
   const placeholders = defaultModelNames.map(() => '?').join(',');
@@ -252,6 +270,8 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   useModelStore.getState().setDB(db);
   useLLMStore.getState().setDB(db);
   useSourceStore.getState().setDB(db);
+
+  await useModelStore.getState().loadModels();
 
   const defaultSettings = await AsyncStorage.getItem('default_chat_settings');
   if (!defaultSettings) {
