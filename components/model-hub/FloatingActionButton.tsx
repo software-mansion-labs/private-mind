@@ -11,11 +11,14 @@ interface Props {
 
 const FloatingActionButton = ({ onPress, disabled = false }: Props) => {
   const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme, disabled), [theme, disabled]);
+  const styles = useMemo(
+    () => createStyles(theme, disabled),
+    [theme, disabled]
+  );
 
   return (
-    <TouchableOpacity 
-      style={styles.button} 
+    <TouchableOpacity
+      style={styles.button}
       onPress={onPress}
       disabled={disabled}
     >
@@ -40,6 +43,8 @@ const createStyles = (theme: Theme, disabled: boolean) =>
       backgroundColor: disabled ? theme.text.defaultTertiary : theme.bg.main,
     },
     icon: {
-      color: disabled ? theme.text.defaultSecondary : theme.text.contrastPrimary,
+      color: disabled
+        ? theme.text.defaultSecondary
+        : theme.text.contrastPrimary,
     },
   });

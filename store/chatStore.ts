@@ -211,7 +211,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set((state) => ({
       chats: state.chats.map((chat) =>
         chat.id === chatId
-          ? { ...chat, enabledSources: [...(chat.enabledSources || []), sourceId] }
+          ? {
+              ...chat,
+              enabledSources: [...(chat.enabledSources || []), sourceId],
+            }
           : chat
       ),
     }));

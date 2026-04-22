@@ -27,27 +27,51 @@ const makeMessages = (count: number): Message[] => [
     timestamp: Date.now(),
   })),
   // trailing assistant placeholder (always present in real usage)
-  { id: count + 1, chatId: 1, role: 'assistant' as Message['role'], content: '', timestamp: Date.now() },
+  {
+    id: count + 1,
+    chatId: 1,
+    role: 'assistant' as Message['role'],
+    content: '',
+    timestamp: Date.now(),
+  },
 ];
 
 describe('prepareMessagesForLLM', () => {
   describe('system prompt', () => {
     it('always prepends the system prompt', () => {
       const messages = makeMessages(2);
-      const result = prepareMessagesForLLM(messages, [], baseSettings, baseModel);
-      expect(result[0]).toEqual({ role: 'system', content: baseSettings.systemPrompt });
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0]).toEqual({
+        role: 'system',
+        content: baseSettings.systemPrompt,
+      });
     });
 
     it('appends context instructions to system prompt when context is provided', () => {
       const messages = makeMessages(2);
-      const result = prepareMessagesForLLM(messages, ['some context'], baseSettings, baseModel);
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some context'],
+        baseSettings,
+        baseModel
+      );
       expect(result[0].content).toContain('You are a helpful assistant.');
       expect(result[0].content).toContain('IMPORTANT CONTEXT INFORMATION');
     });
 
     it('does not append context instructions when context is empty', () => {
       const messages = makeMessages(2);
-      const result = prepareMessagesForLLM(messages, [], baseSettings, baseModel);
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
       expect(result[0].content).toBe(baseSettings.systemPrompt);
       expect(result[0].content).not.toContain('IMPORTANT CONTEXT INFORMATION');
     });
@@ -58,11 +82,28 @@ describe('prepareMessagesForLLM', () => {
       // Last item is the empty assistant placeholder (as per llmStore contract)
       const messages: Message[] = [
         { id: 1, chatId: 1, role: 'user', content: 'hello', timestamp: 0 },
-        { id: 2, chatId: 1, role: 'event', content: 'System: file added', timestamp: 0 },
-        { id: 3, chatId: 1, role: 'assistant', content: 'hi there', timestamp: 0 },
+        {
+          id: 2,
+          chatId: 1,
+          role: 'event',
+          content: 'System: file added',
+          timestamp: 0,
+        },
+        {
+          id: 3,
+          chatId: 1,
+          role: 'assistant',
+          content: 'hi there',
+          timestamp: 0,
+        },
         { id: 4, chatId: 1, role: 'assistant', content: '', timestamp: 0 }, // placeholder
       ];
-      const result = prepareMessagesForLLM(messages, [], baseSettings, baseModel);
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
       const roles = result.map((m) => m.role);
       expect(roles).not.toContain('event');
       // system + user + assistant + placeholder
@@ -73,7 +114,12 @@ describe('prepareMessagesForLLM', () => {
   describe('message history', () => {
     it('includes all non-event messages regardless of count', () => {
       const messages = makeMessages(20);
-      const result = prepareMessagesForLLM(messages, [], baseSettings, baseModel);
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
       // system + 20 messages + 1 trailing placeholder
       expect(result).toHaveLength(22);
       expect(result[0].role).toBe('system');
@@ -98,14 +144,24 @@ describe('prepareMessagesForLLM', () => {
     it('appends /no_think when model supports thinking but thinkingEnabled is false', () => {
       const messages = makeMessages(3);
       const thinkingModel = { ...baseModel, thinking: true };
-      const result = prepareMessagesForLLM(messages, [], baseSettings, thinkingModel);
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        thinkingModel
+      );
       const last = result[result.length - 1];
       expect(last.content).toContain('/no_think');
     });
 
     it('does not append any token when neither thinkingEnabled nor model.thinking', () => {
       const messages = makeMessages(3);
-      const result = prepareMessagesForLLM(messages, [], baseSettings, baseModel);
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
       const last = result[result.length - 1];
       expect(last.content).not.toContain('/think');
       expect(last.content).not.toContain('/no_think');
@@ -115,7 +171,12 @@ describe('prepareMessagesForLLM', () => {
       const messages = makeMessages(3);
       const thinkingModel = { ...baseModel, thinking: true };
       const settings = { ...baseSettings, thinkingEnabled: true };
-      const result = prepareMessagesForLLM(messages, [], settings, thinkingModel);
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        settings,
+        thinkingModel
+      );
       const last = result[result.length - 1];
       expect(last.content).toContain('/think');
       expect(last.content).not.toContain('/no_think');
@@ -137,9 +198,27 @@ describe('prepareMessagesForLLM', () => {
 
     it('context is added to the last message (placeholder)', () => {
       const messages: Message[] = [
-        { id: 1, chatId: 1, role: 'user', content: 'What is RAG?', timestamp: 0 },
-        { id: 2, chatId: 1, role: 'assistant', content: 'answer', timestamp: 0 },
-        { id: 3, chatId: 1, role: 'user', content: 'Tell me more', timestamp: 0 },
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'What is RAG?',
+          timestamp: 0,
+        },
+        {
+          id: 2,
+          chatId: 1,
+          role: 'assistant',
+          content: 'answer',
+          timestamp: 0,
+        },
+        {
+          id: 3,
+          chatId: 1,
+          role: 'user',
+          content: 'Tell me more',
+          timestamp: 0,
+        },
         { id: 4, chatId: 1, role: 'assistant', content: '', timestamp: 0 }, // placeholder
       ];
       const result = prepareMessagesForLLM(

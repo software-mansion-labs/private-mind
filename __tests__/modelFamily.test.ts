@@ -1,7 +1,4 @@
-import {
-  getModelFamily,
-  groupModelsByFamily,
-} from '../utils/modelFamily';
+import { getModelFamily, groupModelsByFamily } from '../utils/modelFamily';
 import { Model } from '../database/modelRepository';
 
 const makeModel = (overrides: Partial<Model>): Model => ({
@@ -38,9 +35,21 @@ describe('getModelFamily', () => {
 describe('groupModelsByFamily', () => {
   it('merges VL and non-VL variants under a shared family', () => {
     const models = [
-      makeModel({ id: 1, modelName: 'LFM 2.5 - 1.2B - Quantized', family: 'LFM 2.5' }),
-      makeModel({ id: 2, modelName: 'LFM 2.5 VL - 450M - Quantized', family: 'LFM 2.5' }),
-      makeModel({ id: 3, modelName: 'Qwen 3 - 0.6B - Quantized', family: 'Qwen 3' }),
+      makeModel({
+        id: 1,
+        modelName: 'LFM 2.5 - 1.2B - Quantized',
+        family: 'LFM 2.5',
+      }),
+      makeModel({
+        id: 2,
+        modelName: 'LFM 2.5 VL - 450M - Quantized',
+        family: 'LFM 2.5',
+      }),
+      makeModel({
+        id: 3,
+        modelName: 'Qwen 3 - 0.6B - Quantized',
+        family: 'Qwen 3',
+      }),
     ];
 
     const families = groupModelsByFamily(models);
@@ -58,8 +67,6 @@ describe('groupModelsByFamily', () => {
       makeModel({ id: 2, modelName: 'Foo - B' }),
     ];
     const families = groupModelsByFamily(models);
-    expect(families).toEqual([
-      { name: 'Foo', models: [models[0], models[1]] },
-    ]);
+    expect(families).toEqual([{ name: 'Foo', models: [models[0], models[1]] }]);
   });
 });

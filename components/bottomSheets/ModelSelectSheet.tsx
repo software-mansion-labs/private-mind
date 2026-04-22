@@ -73,7 +73,10 @@ const ModelSelectSheet = ({
       onDismiss={() => setIsFullyOpen(false)}
     >
       {downloadedModels.length > 0 ? (
-        <View style={styles.content} pointerEvents={isFullyOpen ? 'auto' : 'none'}>
+        <View
+          style={styles.content}
+          pointerEvents={isFullyOpen ? 'auto' : 'none'}
+        >
           <Text style={[styles.title, styles.horizontalInset]}>
             Select a Model
           </Text>

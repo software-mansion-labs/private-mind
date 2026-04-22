@@ -8,7 +8,7 @@ interface Props {
   onPress: () => void;
 }
 
-function CloseButton({onPress}: Props) {
+function CloseButton({ onPress }: Props) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 

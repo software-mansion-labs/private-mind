@@ -11,7 +11,8 @@ const mockFetch = ResourceFetcher.fetch as jest.Mock;
 const mockExists = exists as jest.Mock;
 const mockUnlink = unlink as jest.Mock;
 const mockGetAllModels = modelRepository.getAllModels as jest.Mock;
-const mockUpdateModelDownloaded = modelRepository.updateModelDownloaded as jest.Mock;
+const mockUpdateModelDownloaded =
+  modelRepository.updateModelDownloaded as jest.Mock;
 const mockRemoveModelFiles = modelRepository.removeModelFiles as jest.Mock;
 
 const baseModel = {
@@ -140,9 +141,15 @@ describe('downloadModel', () => {
     await useModelStore.getState().downloadModel(baseModel);
 
     const progressCalls = setStateSpy.mock.calls.filter((call) => {
-      const arg = typeof call[0] === 'function' ? call[0](useModelStore.getState()) : call[0];
-      return arg?.downloadStates?.[baseModel.id]?.status === ModelState.Downloading &&
-             arg?.downloadStates?.[baseModel.id]?.progress > 0;
+      const arg =
+        typeof call[0] === 'function'
+          ? call[0](useModelStore.getState())
+          : call[0];
+      return (
+        arg?.downloadStates?.[baseModel.id]?.status ===
+          ModelState.Downloading &&
+        arg?.downloadStates?.[baseModel.id]?.progress > 0
+      );
     });
     // Duplicate percentage should not have been reported twice
     expect(progressCalls.length).toBeLessThanOrEqual(1);
@@ -178,7 +185,11 @@ describe('cancelDownload', () => {
 
 describe('removeModel', () => {
   it('skips file deletion for local/built-in models', async () => {
-    const localModel = { ...baseModel, source: 'local' as const, isDownloaded: true };
+    const localModel = {
+      ...baseModel,
+      source: 'local' as const,
+      isDownloaded: true,
+    };
     useModelStore.setState({ models: [localModel] });
     mockRemoveModelFiles.mockResolvedValue(undefined);
 
@@ -214,7 +225,11 @@ describe('removeModel', () => {
 
     expect(mockUnlink).toHaveBeenCalledWith('/local/model.pte');
     expect(mockUnlink).toHaveBeenCalledWith('/local/tokenizer.json');
-    expect(mockUpdateModelDownloaded).toHaveBeenCalledWith(mockDb, remoteModel.id, 0);
+    expect(mockUpdateModelDownloaded).toHaveBeenCalledWith(
+      mockDb,
+      remoteModel.id,
+      0
+    );
   });
 
   it('removes download state entry after removal', async () => {
@@ -231,7 +246,9 @@ describe('removeModel', () => {
 
     await useModelStore.getState().removeModel(remoteModel.id);
 
-    expect(useModelStore.getState().downloadStates[remoteModel.id]).toBeUndefined();
+    expect(
+      useModelStore.getState().downloadStates[remoteModel.id]
+    ).toBeUndefined();
   });
 
   it('does nothing for unknown model id', async () => {
@@ -251,7 +268,11 @@ describe('removeModelFiles vs removeModel', () => {
     await useModelStore.getState().removeModelFiles(remoteModel.id);
 
     // updateModelDownloaded called but removeModelFiles (DB) NOT called
-    expect(mockUpdateModelDownloaded).toHaveBeenCalledWith(mockDb, remoteModel.id, 0);
+    expect(mockUpdateModelDownloaded).toHaveBeenCalledWith(
+      mockDb,
+      remoteModel.id,
+      0
+    );
     expect(mockRemoveModelFiles).not.toHaveBeenCalled();
   });
 

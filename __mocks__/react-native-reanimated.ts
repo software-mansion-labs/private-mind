@@ -42,8 +42,7 @@ module.exports = {
       return outputRange[outputRange.length - 1];
     return outputRange[0];
   },
-  interpolateColor: (val: any, _r: any, outputRange: any) =>
-    outputRange[0],
+  interpolateColor: (val: any, _r: any, outputRange: any) => outputRange[0],
   runOnJS: (fn: any) => fn,
   runOnUI: (fn: any) => fn,
 };

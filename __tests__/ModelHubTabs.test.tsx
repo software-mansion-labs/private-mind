@@ -29,5 +29,4 @@ describe('ModelHubTabs', () => {
     fireEvent.press(screen.getByText('Mine'));
     expect(onChange).toHaveBeenCalledWith('mine');
   });
-
 });

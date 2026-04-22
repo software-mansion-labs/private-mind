@@ -25,10 +25,12 @@ const mockVectorStore = { add: jest.fn() } as any;
 const mockReadDocumentText = fileReaders.readDocumentText as jest.Mock;
 const mockInsertSource = sourcesRepository.insertSource as jest.Mock;
 const mockDeleteSource = sourcesRepository.deleteSource as jest.Mock;
-const mockDeleteSourceFromChats = sourcesRepository.deleteSourceFromChats as jest.Mock;
+const mockDeleteSourceFromChats =
+  sourcesRepository.deleteSourceFromChats as jest.Mock;
 const mockGetAllSources = sourcesRepository.getAllSources as jest.Mock;
 const mockRenameSource = sourcesRepository.renameSource as jest.Mock;
-const mockGetOrphanedSources = sourcesRepository.getOrphanedSources as jest.Mock;
+const mockGetOrphanedSources =
+  sourcesRepository.getOrphanedSources as jest.Mock;
 const mockRefreshActiveChatMessages = jest.fn();
 
 import { RecursiveCharacterTextSplitter } from 'react-native-rag';
@@ -40,7 +42,7 @@ beforeEach(() => {
   jest.spyOn(console, 'error').mockImplementation(() => {});
   mockGetAllSources.mockResolvedValue([]);
   mockGetOrphanedSources.mockResolvedValue([]);
-  ;(useLLMStore.getState as jest.Mock).mockReturnValue({
+  (useLLMStore.getState as jest.Mock).mockReturnValue({
     refreshActiveChatMessages: mockRefreshActiveChatMessages,
   });
 });
@@ -126,7 +128,9 @@ describe('addSource', () => {
     mockReadDocumentText.mockResolvedValue('content');
     mockInsertSource.mockResolvedValue(1);
     MockSplitter.mockImplementation(() => ({
-      splitText: jest.fn().mockResolvedValue(['first chunk text', 'second chunk']),
+      splitText: jest
+        .fn()
+        .mockResolvedValue(['first chunk text', 'second chunk']),
     }));
 
     await useSourceStore
@@ -248,9 +252,7 @@ describe('setSourceProcessing', () => {
 
 describe('cleanupOrphanedSources', () => {
   it('deletes orphaned sources and their vector embeddings', async () => {
-    const orphaned = [
-      { id: 5, name: 'orphan.pdf', type: 'pdf', size: 100 },
-    ];
+    const orphaned = [{ id: 5, name: 'orphan.pdf', type: 'pdf', size: 100 }];
     mockGetOrphanedSources.mockResolvedValue(orphaned);
     mockDeleteSource.mockResolvedValue(undefined);
 
@@ -273,17 +275,13 @@ describe('cleanupOrphanedSources', () => {
   it('does nothing when there are no orphaned sources', async () => {
     mockGetOrphanedSources.mockResolvedValue([]);
 
-    await useSourceStore
-      .getState()
-      .cleanupOrphanedSources(mockVectorStore);
+    await useSourceStore.getState().cleanupOrphanedSources(mockVectorStore);
 
     expect(mockDeleteSource).not.toHaveBeenCalled();
   });
 
   it('reloads sources after cleanup', async () => {
-    const orphaned = [
-      { id: 3, name: 'old.txt', type: 'txt', size: 50 },
-    ];
+    const orphaned = [{ id: 3, name: 'old.txt', type: 'txt', size: 50 }];
     mockGetOrphanedSources.mockResolvedValue(orphaned);
     mockDeleteSource.mockResolvedValue(undefined);
     const updated = [{ id: 1, name: 'kept.txt', type: 'txt', size: 100 }];

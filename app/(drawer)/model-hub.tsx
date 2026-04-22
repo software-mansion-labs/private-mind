@@ -25,10 +25,7 @@ import ModelHubTabs, {
 } from '../../components/model-hub/ModelHubTabs';
 import FamilyCard from '../../components/model-hub/FamilyCard';
 import ModelCard from '../../components/model-hub/ModelCard';
-import {
-  groupModelsByFamily,
-  ModelFamily,
-} from '../../utils/modelFamily';
+import { groupModelsByFamily, ModelFamily } from '../../utils/modelFamily';
 import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
 
 const ModelHubScreen = () => {

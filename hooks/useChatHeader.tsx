@@ -38,9 +38,7 @@ export default function useChatHeader({
         <ChatTitle
           title={chatTitle}
           modelName={chatModel?.modelName || 'No model selected'}
-          onPress={
-            onSelectModelFromTitle ?? (chat ? openMenu : undefined)
-          }
+          onPress={onSelectModelFromTitle ?? (chat ? openMenu : undefined)}
           showChevron={!!onSelectModelFromTitle}
         />
       ),

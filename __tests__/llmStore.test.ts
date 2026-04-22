@@ -177,7 +177,11 @@ describe('token callback', () => {
 
   it('triggers Feedback.success on first token when not benchmarking', async () => {
     const onToken = await loadModel();
-    useLLMStore.setState({ isProcessingPrompt: true, isGenerating: true, isBenchmarking: false });
+    useLLMStore.setState({
+      isProcessingPrompt: true,
+      isGenerating: true,
+      isBenchmarking: false,
+    });
 
     onToken('first');
 
@@ -186,7 +190,11 @@ describe('token callback', () => {
 
   it('does not trigger Feedback.success during benchmarking', async () => {
     const onToken = await loadModel();
-    useLLMStore.setState({ isProcessingPrompt: true, isGenerating: true, isBenchmarking: true });
+    useLLMStore.setState({
+      isProcessingPrompt: true,
+      isGenerating: true,
+      isBenchmarking: true,
+    });
 
     onToken('first');
 
@@ -222,7 +230,13 @@ describe('token callback', () => {
       generatingForChatId: 5,
       performance: { tokenCount: 1, firstTokenTime: 1 },
       activeChatMessages: [
-        { id: -1, chatId: 99, role: 'assistant', content: 'other chat', timestamp: 0 },
+        {
+          id: -1,
+          chatId: 99,
+          role: 'assistant',
+          content: 'other chat',
+          timestamp: 0,
+        },
       ],
     });
 
@@ -307,7 +321,11 @@ describe('sendChatMessage', () => {
   });
 
   it('persists user message and assistant response', async () => {
-    useLLMStore.setState({ model: baseModel, activeChatId: 1, activeChatMessages: [] });
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
 
     await useLLMStore.getState().sendChatMessage('hello', 1, [], settings);
 
@@ -318,12 +336,19 @@ describe('sendChatMessage', () => {
     );
     expect(mockPersistMessage).toHaveBeenCalledWith(
       mockDb,
-      expect.objectContaining({ role: 'assistant', content: 'The answer is 42.' })
+      expect.objectContaining({
+        role: 'assistant',
+        content: 'The answer is 42.',
+      })
     );
   });
 
   it('sets isProcessingPrompt at start and clears it on complete', async () => {
-    useLLMStore.setState({ model: baseModel, activeChatId: 1, activeChatMessages: [] });
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
 
     await useLLMStore.getState().sendChatMessage('hello', 1, [], settings);
 
@@ -337,7 +362,11 @@ describe('sendChatMessage', () => {
       messagesBeforeGenerate = useLLMStore.getState().activeChatMessages;
       return 'response';
     });
-    useLLMStore.setState({ model: baseModel, activeChatId: 1, activeChatMessages: [] });
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
 
     await useLLMStore.getState().sendChatMessage('ping', 1, [], settings);
 
@@ -349,7 +378,11 @@ describe('sendChatMessage', () => {
 
   it('recovers gracefully when generation returns null', async () => {
     mockInstance.generate.mockResolvedValue(null);
-    useLLMStore.setState({ model: baseModel, activeChatId: 1, activeChatMessages: [] });
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
 
     await useLLMStore.getState().sendChatMessage('hello', 1, [], settings);
 
@@ -361,7 +394,11 @@ describe('sendChatMessage', () => {
 
   it('recovers gracefully when an exception is thrown during generation', async () => {
     mockInstance.generate.mockRejectedValue(new Error('GPU crash'));
-    useLLMStore.setState({ model: baseModel, activeChatId: 1, activeChatMessages: [] });
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
 
     await useLLMStore.getState().sendChatMessage('hello', 1, [], settings);
 
@@ -413,7 +450,9 @@ describe('sendEventMessage', () => {
 
 describe('setActiveChatId', () => {
   it('loads messages for the given chat id', async () => {
-    const messages = [{ id: 1, chatId: 5, role: 'user', content: 'hi', timestamp: 0 }];
+    const messages = [
+      { id: 1, chatId: 5, role: 'user', content: 'hi', timestamp: 0 },
+    ];
     mockGetChatMessages.mockResolvedValue(messages);
     useLLMStore.setState({ db: mockDb });
 
@@ -427,7 +466,9 @@ describe('setActiveChatId', () => {
     useLLMStore.setState({
       db: mockDb,
       activeChatId: 5,
-      activeChatMessages: [{ id: 1, chatId: 5, role: 'user', content: 'hi', timestamp: 0 }],
+      activeChatMessages: [
+        { id: 1, chatId: 5, role: 'user', content: 'hi', timestamp: 0 },
+      ],
     });
 
     await useLLMStore.getState().setActiveChatId(null);
@@ -441,7 +482,9 @@ describe('setActiveChatId', () => {
 
 describe('refreshActiveChatMessages', () => {
   it('reloads messages for the active chat', async () => {
-    const fresh = [{ id: 9, chatId: 3, role: 'assistant', content: 'updated', timestamp: 0 }];
+    const fresh = [
+      { id: 9, chatId: 3, role: 'assistant', content: 'updated', timestamp: 0 },
+    ];
     mockGetChatMessages.mockResolvedValue(fresh);
     useLLMStore.setState({ db: mockDb, activeChatId: 3 });
 
@@ -467,17 +510,21 @@ describe('sendChatMessage imagePath', () => {
     mockPersistMessage.mockResolvedValue(42);
     mockGetChatMessages.mockResolvedValue([]);
     useLLMStore.setState({
-      model: { ...baseModel, modelName: 'LFM VL', vision: true, featured: true } as any,
+      model: {
+        ...baseModel,
+        modelName: 'LFM VL',
+        vision: true,
+        featured: true,
+      } as any,
       activeChatId: 1,
       activeChatMessages: [],
     });
   });
 
   it('passes imagePath to persistMessage for user message when provided', async () => {
-    await useLLMStore.getState().sendChatMessage(
-      'What is this?', 1, [], settings,
-      '/local/image.jpg'
-    );
+    await useLLMStore
+      .getState()
+      .sendChatMessage('What is this?', 1, [], settings, '/local/image.jpg');
 
     expect(mockPersistMessage).toHaveBeenCalledWith(
       expect.anything(),
@@ -486,9 +533,7 @@ describe('sendChatMessage imagePath', () => {
   });
 
   it('passes undefined imagePath to persistMessage when not provided', async () => {
-    await useLLMStore.getState().sendChatMessage(
-      'Hello', 1, [], settings
-    );
+    await useLLMStore.getState().sendChatMessage('Hello', 1, [], settings);
 
     expect(mockPersistMessage).toHaveBeenCalledWith(
       expect.anything(),
@@ -505,13 +550,9 @@ describe('sendChatMessage imagePath', () => {
       { role: 'user', content: 'What is this?', mediaPath: '/local/image.jpg' },
     ]);
 
-    await useLLMStore.getState().sendChatMessage(
-      'What is this?',
-      1,
-      [],
-      settings,
-      '/local/image.jpg'
-    );
+    await useLLMStore
+      .getState()
+      .sendChatMessage('What is this?', 1, [], settings, '/local/image.jpg');
 
     expect(mockInstance.generate).toHaveBeenCalledTimes(1);
     const calledMessages = mockInstance.generate.mock.calls[0][0];

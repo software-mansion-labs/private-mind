@@ -36,7 +36,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
 
     // echo status as state for rendering
     setStatus(newStatus);
-  }, [])
+  }, []);
 
   const recorder = useRef<null | AudioRecorder>(null);
   if (!recorder.current) {
@@ -80,7 +80,11 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       const module = useSTTStore.getState().module;
       const streamGenerator = module!.stream();
       recorder.current!.onAudioReady(
-        { sampleRate: SAMPLE_RATE, bufferLength: BUFFER_LENGTH, channelCount: 1 },
+        {
+          sampleRate: SAMPLE_RATE,
+          bufferLength: BUFFER_LENGTH,
+          channelCount: 1,
+        },
         handleAudioData
       );
       recorder.current!.start();

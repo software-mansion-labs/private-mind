@@ -3,7 +3,10 @@ import { render, screen, fireEvent } from '@testing-library/react-native';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
-    theme: { ...require('../styles/colors').lightTheme, insets: { top: 0, bottom: 0, left: 0, right: 0 } },
+    theme: {
+      ...require('../styles/colors').lightTheme,
+      insets: { top: 0, bottom: 0, left: 0, right: 0 },
+    },
   }),
 }));
 
@@ -16,7 +19,10 @@ jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('../components/model-hub/ModelCard', () => {
   const { TouchableOpacity, Text } = require('react-native');
   return ({ model, onPress }: any) => (
-    <TouchableOpacity testID={`model-card-${model.id}`} onPress={() => onPress(model)}>
+    <TouchableOpacity
+      testID={`model-card-${model.id}`}
+      onPress={() => onPress(model)}
+    >
       <Text>{model.modelName}</Text>
     </TouchableOpacity>
   );
@@ -25,14 +31,19 @@ jest.mock('../components/model-hub/ModelCard', () => {
 jest.mock('../components/bottomSheets/BottomSheetSearchInput', () => {
   const { TextInput } = require('react-native');
   return ({ value, onChangeText, placeholder }: any) => (
-    <TextInput testID="search-input" value={value} onChangeText={onChangeText} placeholder={placeholder} />
+    <TextInput
+      testID="search-input"
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+    />
   );
 });
 
 jest.mock('@gorhom/bottom-sheet', () => {
   const React = require('react');
   const { View } = require('react-native');
-  let _data: any = null;
+  const _data: any = null;
 
   const BottomSheetModal = React.forwardRef((props: any, _ref: any) => {
     React.useEffect(() => {
@@ -41,9 +52,15 @@ jest.mock('@gorhom/bottom-sheet', () => {
     return <View>{props.children}</View>;
   });
   const BottomSheetFlatList = ({ data, renderItem }: any) => (
-    <View>{data.map((item: any, i: number) => <View key={i}>{renderItem({ item })}</View>)}</View>
+    <View>
+      {data.map((item: any, i: number) => (
+        <View key={i}>{renderItem({ item })}</View>
+      ))}
+    </View>
   );
-  const BottomSheetView = ({ children, style }: any) => <View style={style}>{children}</View>;
+  const BottomSheetView = ({ children, style }: any) => (
+    <View style={style}>{children}</View>
+  );
   const BottomSheetBackdrop = () => null;
 
   const useBottomSheetTimingConfigs = () => ({});
@@ -83,7 +100,13 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 const renderSheet = (props = {}) =>
-  render(<ModelSelectSheet bottomSheetModalRef={createRef()} selectModel={jest.fn()} {...props} />);
+  render(
+    <ModelSelectSheet
+      bottomSheetModalRef={createRef()}
+      selectModel={jest.fn()}
+      {...props}
+    />
+  );
 
 // ─── empty state ──────────────────────────────────────────────────────────────
 
@@ -129,7 +152,9 @@ describe('with downloaded models', () => {
     const selectModel = jest.fn();
     renderSheet({ selectModel });
     fireEvent.press(screen.getByTestId('model-card-1'));
-    expect(selectModel).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+    expect(selectModel).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1 })
+    );
   });
 });
 

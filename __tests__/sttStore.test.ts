@@ -10,7 +10,11 @@ jest.mock('react-native-executorch', () => ({
 
 const mockFromModelName = SpeechToTextModule.fromModelName as jest.Mock;
 
-const mockModule = { stream: jest.fn(), streamInsert: jest.fn(), streamStop: jest.fn() };
+const mockModule = {
+  stream: jest.fn(),
+  streamInsert: jest.fn(),
+  streamStop: jest.fn(),
+};
 
 beforeEach(() => {
   useSTTStore.setState({
@@ -26,7 +30,9 @@ describe('ensureLoaded', () => {
   it('sets isLoading during load and isReady after success', async () => {
     let resolveLoad!: (m: typeof mockModule) => void;
     mockFromModelName.mockReturnValue(
-      new Promise((res) => { resolveLoad = res; })
+      new Promise((res) => {
+        resolveLoad = res;
+      })
     );
 
     const loadPromise = useSTTStore.getState().ensureLoaded();
@@ -77,7 +83,9 @@ describe('ensureLoaded', () => {
   it('resets state on load failure', async () => {
     mockFromModelName.mockRejectedValue(new Error('load failed'));
 
-    await expect(useSTTStore.getState().ensureLoaded()).rejects.toThrow('load failed');
+    await expect(useSTTStore.getState().ensureLoaded()).rejects.toThrow(
+      'load failed'
+    );
 
     expect(useSTTStore.getState().isReady).toBe(false);
     expect(useSTTStore.getState().isLoading).toBe(false);

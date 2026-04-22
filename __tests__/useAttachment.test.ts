@@ -45,7 +45,9 @@ describe('useAttachment', () => {
       assets: [{ uri: 'file://photo.jpg' }],
     });
     const { result } = renderHook(() => useAttachment());
-    await act(async () => { await result.current.pickFromLibrary(); });
+    await act(async () => {
+      await result.current.pickFromLibrary();
+    });
     expect(result.current.attachments).toHaveLength(1);
     expect(result.current.attachments[0].type).toBe('image');
     expect(result.current.attachments[0].uri).toBe('file://photo.jpg');
@@ -57,7 +59,9 @@ describe('useAttachment', () => {
       assets: [{ uri: 'file://camera.jpg' }],
     });
     const { result } = renderHook(() => useAttachment());
-    await act(async () => { await result.current.pickFromCamera(); });
+    await act(async () => {
+      await result.current.pickFromCamera();
+    });
     expect(result.current.attachments).toHaveLength(1);
     expect(result.current.attachments[0].type).toBe('image');
   });
@@ -65,7 +69,9 @@ describe('useAttachment', () => {
   it('does not add attachment when image picker is cancelled', async () => {
     mockLaunchImageLibrary.mockResolvedValue({ didCancel: true });
     const { result } = renderHook(() => useAttachment());
-    await act(async () => { await result.current.pickFromLibrary(); });
+    await act(async () => {
+      await result.current.pickFromLibrary();
+    });
     expect(result.current.attachments).toEqual([]);
   });
 
@@ -75,12 +81,16 @@ describe('useAttachment', () => {
       assets: [{ uri: 'file://doc.txt', name: 'doc.txt', size: 100 }],
     });
 
-    const mockAddSource = jest.fn().mockResolvedValue({ success: true, sourceId: 42 });
+    const mockAddSource = jest
+      .fn()
+      .mockResolvedValue({ success: true, sourceId: 42 });
     const { useSourceStore } = require('../store/sourceStore');
     useSourceStore.getState.mockReturnValue({ addSource: mockAddSource });
 
     const { result } = renderHook(() => useAttachment());
-    await act(async () => { await result.current.pickDocument(); });
+    await act(async () => {
+      await result.current.pickDocument();
+    });
 
     expect(result.current.attachments).toHaveLength(1);
     const att = result.current.attachments[0];
@@ -94,9 +104,13 @@ describe('useAttachment', () => {
       assets: [{ uri: 'file://photo.jpg' }],
     });
     const { result } = renderHook(() => useAttachment());
-    await act(async () => { await result.current.pickFromLibrary(); });
+    await act(async () => {
+      await result.current.pickFromLibrary();
+    });
     const id = result.current.attachments[0].id;
-    act(() => { result.current.removeAttachment(id); });
+    act(() => {
+      result.current.removeAttachment(id);
+    });
     expect(result.current.attachments).toEqual([]);
   });
 
@@ -105,8 +119,12 @@ describe('useAttachment', () => {
       assets: [{ uri: 'file://photo.jpg' }],
     });
     const { result } = renderHook(() => useAttachment());
-    await act(async () => { await result.current.pickFromLibrary(); });
-    act(() => { result.current.clearAll(); });
+    await act(async () => {
+      await result.current.pickFromLibrary();
+    });
+    act(() => {
+      result.current.clearAll();
+    });
     expect(result.current.attachments).toEqual([]);
   });
 
@@ -117,8 +135,12 @@ describe('useAttachment', () => {
         .mockResolvedValueOnce({ assets: [{ uri: 'file://second.jpg' }] });
 
       const { result } = renderHook(() => useAttachment());
-      await act(async () => { await result.current.pickFromLibrary(); });
-      await act(async () => { await result.current.pickFromLibrary(); });
+      await act(async () => {
+        await result.current.pickFromLibrary();
+      });
+      await act(async () => {
+        await result.current.pickFromLibrary();
+      });
 
       expect(result.current.attachments).toHaveLength(1);
       expect(result.current.attachments[0].uri).toBe('file://second.jpg');
@@ -133,8 +155,12 @@ describe('useAttachment', () => {
       });
 
       const { result } = renderHook(() => useAttachment());
-      await act(async () => { await result.current.pickFromLibrary(); });
-      await act(async () => { await result.current.pickFromCamera(); });
+      await act(async () => {
+        await result.current.pickFromLibrary();
+      });
+      await act(async () => {
+        await result.current.pickFromCamera();
+      });
 
       expect(result.current.attachments).toHaveLength(1);
       expect(result.current.attachments[0].uri).toBe('file://camera.jpg');
@@ -148,13 +174,19 @@ describe('useAttachment', () => {
         canceled: false,
         assets: [{ uri: 'file://doc.txt', name: 'doc.txt', size: 100 }],
       });
-      const mockAddSource = jest.fn().mockResolvedValue({ success: true, sourceId: 7 });
+      const mockAddSource = jest
+        .fn()
+        .mockResolvedValue({ success: true, sourceId: 7 });
       const { useSourceStore } = require('../store/sourceStore');
       useSourceStore.getState.mockReturnValue({ addSource: mockAddSource });
 
       const { result } = renderHook(() => useAttachment());
-      await act(async () => { await result.current.pickFromLibrary(); });
-      await act(async () => { await result.current.pickDocument(); });
+      await act(async () => {
+        await result.current.pickFromLibrary();
+      });
+      await act(async () => {
+        await result.current.pickDocument();
+      });
 
       expect(result.current.attachments).toHaveLength(1);
       expect(result.current.attachments[0].type).toBe('document');
@@ -168,7 +200,9 @@ describe('useAttachment', () => {
       mockLaunchImageLibrary.mockResolvedValue({
         assets: [{ uri: 'file://photo.jpg' }],
       });
-      const mockAddSource = jest.fn().mockResolvedValue({ success: true, sourceId: 99 });
+      const mockAddSource = jest
+        .fn()
+        .mockResolvedValue({ success: true, sourceId: 99 });
       const mockCleanup = jest.fn();
       const { useSourceStore } = require('../store/sourceStore');
       useSourceStore.getState.mockImplementation(() => ({
@@ -177,10 +211,14 @@ describe('useAttachment', () => {
       }));
 
       const { result } = renderHook(() => useAttachment());
-      await act(async () => { await result.current.pickDocument(); });
+      await act(async () => {
+        await result.current.pickDocument();
+      });
       expect(result.current.attachments[0].sourceId).toBe(99);
 
-      await act(async () => { await result.current.pickFromLibrary(); });
+      await act(async () => {
+        await result.current.pickFromLibrary();
+      });
 
       expect(result.current.attachments).toHaveLength(1);
       expect(result.current.attachments[0].type).toBe('image');
@@ -189,8 +227,12 @@ describe('useAttachment', () => {
 
     it('addPastedAttachment replaces an existing image', () => {
       const { result } = renderHook(() => useAttachment());
-      act(() => { result.current.addPastedAttachment('file://first.jpg'); });
-      act(() => { result.current.addPastedAttachment('file://second.jpg'); });
+      act(() => {
+        result.current.addPastedAttachment('file://first.jpg');
+      });
+      act(() => {
+        result.current.addPastedAttachment('file://second.jpg');
+      });
 
       expect(result.current.attachments).toHaveLength(1);
       expect(result.current.attachments[0].uri).toBe('file://second.jpg');
@@ -220,7 +262,7 @@ describe('useAttachment', () => {
         'file://image.heic',
       ];
 
-      formats.forEach(uri => {
+      formats.forEach((uri) => {
         act(() => {
           result.current.addPastedAttachment(uri);
         });

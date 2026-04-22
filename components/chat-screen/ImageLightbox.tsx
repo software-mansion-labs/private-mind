@@ -1,5 +1,11 @@
 import React from 'react';
-import { Modal, StatusBar, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import {
+  Modal,
+  StatusBar,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CloseIcon from '../../assets/icons/close.svg';
 

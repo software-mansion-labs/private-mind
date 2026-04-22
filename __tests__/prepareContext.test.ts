@@ -1,4 +1,7 @@
-import { filterAndFormatContext, formatFirstChunks } from '../utils/contextUtils';
+import {
+  filterAndFormatContext,
+  formatFirstChunks,
+} from '../utils/contextUtils';
 
 describe('filterAndFormatContext', () => {
   const makeChunk = (
@@ -37,10 +40,7 @@ describe('filterAndFormatContext', () => {
   });
 
   it('returns empty when all below threshold', () => {
-    const chunks = [
-      makeChunk('Low 1', 0.2, 1),
-      makeChunk('Low 2', 0.1, 1),
-    ];
+    const chunks = [makeChunk('Low 1', 0.2, 1), makeChunk('Low 2', 0.1, 1)];
     expect(filterAndFormatContext(chunks)).toEqual([]);
   });
 
