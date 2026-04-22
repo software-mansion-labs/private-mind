@@ -163,7 +163,9 @@ export const getChatSettings = async (
   if (!result) {
     const defaultSettings = await AsyncStorage.getItem('default_chat_settings');
     if (defaultSettings) {
-      const parsed = JSON.parse(defaultSettings) as ChatSettings & { contextWindow?: number };
+      const parsed = JSON.parse(defaultSettings) as ChatSettings & {
+        contextWindow?: number;
+      };
       return {
         systemPrompt: parsed.systemPrompt,
         thinkingEnabled: parsed.thinkingEnabled,

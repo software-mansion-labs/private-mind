@@ -133,9 +133,24 @@ describe('onCancel', () => {
 
 describe('reset on re-open', () => {
   it('resets to the new initialTitle when visible toggles false→true with a different title', () => {
-    const { rerender } = renderModal({ initialTitle: 'Old Title', visible: true });
-    rerender(<RenameChatModal {...defaultProps} initialTitle="New Title" visible={false} />);
-    rerender(<RenameChatModal {...defaultProps} initialTitle="New Title" visible={true} />);
+    const { rerender } = renderModal({
+      initialTitle: 'Old Title',
+      visible: true,
+    });
+    rerender(
+      <RenameChatModal
+        {...defaultProps}
+        initialTitle="New Title"
+        visible={false}
+      />
+    );
+    rerender(
+      <RenameChatModal
+        {...defaultProps}
+        initialTitle="New Title"
+        visible={true}
+      />
+    );
     expect(screen.getByDisplayValue('New Title')).toBeTruthy();
   });
 });

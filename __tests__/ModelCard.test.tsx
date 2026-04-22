@@ -1,11 +1,19 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
-    theme: { ...require('../styles/colors').lightTheme, insets: { top: 0, bottom: 0, left: 0, right: 0 } },
+    theme: {
+      ...require('../styles/colors').lightTheme,
+      insets: { top: 0, bottom: 0, left: 0, right: 0 },
+    },
   }),
 }));
 
@@ -38,7 +46,11 @@ jest.mock('../components/Chip', () => {
 jest.mock('../components/CircleButton', () => {
   const { TouchableOpacity } = require('react-native');
   return ({ onPress, disabled, testID }: any) => (
-    <TouchableOpacity testID={testID || 'circle-btn'} onPress={onPress} disabled={disabled} />
+    <TouchableOpacity
+      testID={testID || 'circle-btn'}
+      onPress={onPress}
+      disabled={disabled}
+    />
   );
 });
 
@@ -79,10 +91,25 @@ const baseModel: {
   labels: [],
 };
 
-const renderCard = (props: Partial<typeof baseModel & { compactView?: boolean; selected?: boolean; onPress?: any; wifiWarningSheetRef?: any }> = {}) => {
+const renderCard = (
+  props: Partial<
+    typeof baseModel & {
+      compactView?: boolean;
+      selected?: boolean;
+      onPress?: any;
+      wifiWarningSheetRef?: any;
+    }
+  > = {}
+) => {
   const onPress = props.onPress || jest.fn();
   return render(
-    <ModelCard model={{ ...baseModel, ...props }} onPress={onPress} compactView={props.compactView} selected={props.selected} wifiWarningSheetRef={props.wifiWarningSheetRef} />
+    <ModelCard
+      model={{ ...baseModel, ...props }}
+      onPress={onPress}
+      compactView={props.compactView}
+      selected={props.selected}
+      wifiWarningSheetRef={props.wifiWarningSheetRef}
+    />
   );
 };
 
@@ -198,7 +225,11 @@ describe('download action', () => {
     });
     renderCard();
     fireEvent.press(screen.getByTestId('circle-btn'));
-    await waitFor(() => expect(downloadModel).toHaveBeenCalledWith(expect.objectContaining({ id: 1 })));
+    await waitFor(() =>
+      expect(downloadModel).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1 })
+      )
+    );
   });
 
   it('shows toast when no internet connection', async () => {
@@ -221,7 +252,11 @@ describe('download action', () => {
     });
     renderCard();
     fireEvent.press(screen.getByTestId('circle-btn'));
-    await waitFor(() => expect(cancelDownload).toHaveBeenCalledWith(expect.objectContaining({ id: 1 })));
+    await waitFor(() =>
+      expect(cancelDownload).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1 })
+      )
+    );
   });
 
   it('shows wifi warning sheet when on mobile data', async () => {

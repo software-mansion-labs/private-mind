@@ -81,7 +81,9 @@ describe('initial load', () => {
       systemPrompt: '',
     });
     const { result } = renderHook(() => useChatSettings(1));
-    await waitFor(() => expect(result.current.settings.thinkingEnabled).toBe(false));
+    await waitFor(() =>
+      expect(result.current.settings.thinkingEnabled).toBe(false)
+    );
   });
 });
 
@@ -90,20 +92,28 @@ describe('initial load', () => {
 describe('setSetting', () => {
   it('updates a single setting without affecting others', async () => {
     const { result } = renderHook(() => useChatSettings(1));
-    await waitFor(() => expect(result.current.settings.systemPrompt).toBe('You are helpful.'));
+    await waitFor(() =>
+      expect(result.current.settings.systemPrompt).toBe('You are helpful.')
+    );
 
     result.current.setSetting('systemPrompt', 'Be concise.');
 
-    await waitFor(() => expect(result.current.settings.systemPrompt).toBe('Be concise.'));
+    await waitFor(() =>
+      expect(result.current.settings.systemPrompt).toBe('Be concise.')
+    );
     expect(result.current.settings.thinkingEnabled).toBe(false);
   });
 
   it('can set boolean values for thinkingEnabled', async () => {
     const { result } = renderHook(() => useChatSettings(1));
-    await waitFor(() => expect(result.current.settings.thinkingEnabled).toBe(false));
+    await waitFor(() =>
+      expect(result.current.settings.thinkingEnabled).toBe(false)
+    );
 
     result.current.setSetting('thinkingEnabled', true);
-    await waitFor(() => expect(result.current.settings.thinkingEnabled).toBe(true));
+    await waitFor(() =>
+      expect(result.current.settings.thinkingEnabled).toBe(true)
+    );
   });
 });
 
@@ -117,8 +127,15 @@ describe('chat reference', () => {
   });
 
   it('returns phantom chat when chatId matches', async () => {
-    const phantomChat = { ...baseChat, id: 99, settings: { systemPrompt: '', thinkingEnabled: false } };
-    mockUseChatStore.mockReturnValue({ getChatById: stableGetChatById, phantomChat });
+    const phantomChat = {
+      ...baseChat,
+      id: 99,
+      settings: { systemPrompt: '', thinkingEnabled: false },
+    };
+    mockUseChatStore.mockReturnValue({
+      getChatById: stableGetChatById,
+      phantomChat,
+    });
 
     const { result } = renderHook(() => useChatSettings(99));
     await waitFor(() => expect(result.current.chat?.id).toBe(99));

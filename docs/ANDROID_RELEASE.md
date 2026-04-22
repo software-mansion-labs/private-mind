@@ -120,6 +120,7 @@ If you prefer to build manually:
    ```
 
 5. **Restore Original Model Files**
+
    ```bash
    # Copy files back from Android asset packs
    cp -r android/executorch_models/src/main/assets/* assets/models/

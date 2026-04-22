@@ -74,7 +74,6 @@ const Messages = ({
   const lastScrollOffset = useRef(0);
   const lastLayoutHeight = useRef(0);
 
-
   // v0-style initial scroll: hide the view until we've snapped to
   // the bottom, then fade in so the user never sees content flying by.
   // https://vercel.com/blog/how-we-built-the-v0-ios-app
@@ -153,7 +152,8 @@ const Messages = ({
   const recomputeBlankSpace = useCallback(() => {
     if (!streamingActive.current) return;
     const CONTAINER_PADDING = 16 + 8;
-    const raw = containerHeight.current -
+    const raw =
+      containerHeight.current -
       lastUserHeight.current -
       lastAssistantHeight.current -
       CONTAINER_PADDING;
@@ -250,8 +250,7 @@ const Messages = ({
         if (h <= CONTENT_PADDING) return;
 
         hasScrolledToEnd.current = true;
-        const snap = () =>
-          scrollRef.current?.scrollToEnd({ animated: false });
+        const snap = () => scrollRef.current?.scrollToEnd({ animated: false });
         snap();
         requestAnimationFrame(() => {
           snap();
@@ -319,61 +318,61 @@ const Messages = ({
 
   return (
     <Reanimated.View style={[styles.container, animatedContainerStyle]}>
-    <KeyboardChatScrollView
-      ref={scrollRef}
-      keyboardLiftBehavior="whenAtEnd"
-      offset={bottomOffset}
-      extraContentPadding={extraContentPadding}
-      blankSpace={blankSpace}
-      freeze={freeze}
-      applyWorkaroundForContentInsetHitTestBug
-      keyboardShouldPersistTaps="never"
-      contentContainerStyle={styles.contentContainer}
-      onLayout={handleContainerLayout}
-      onScroll={handleScroll}
-      onContentSizeChange={handleContentSizeChange}
-      scrollEventThrottle={16}
-      style={styles.container}
-    >
-      {chatHistory.map((message, index) => {
-        const isLastMessage = index === chatHistory.length - 1;
-        // Streaming assistant placeholder has id: -1 until persisted; fall
-        // back to role+index for that single in-flight row.
-        const key =
-          message.id && message.id > 0
-            ? `msg-${message.id}`
-            : `pending-${message.role}-${index}`;
+      <KeyboardChatScrollView
+        ref={scrollRef}
+        keyboardLiftBehavior="whenAtEnd"
+        offset={bottomOffset}
+        extraContentPadding={extraContentPadding}
+        blankSpace={blankSpace}
+        freeze={freeze}
+        applyWorkaroundForContentInsetHitTestBug
+        keyboardShouldPersistTaps="never"
+        contentContainerStyle={styles.contentContainer}
+        onLayout={handleContainerLayout}
+        onScroll={handleScroll}
+        onContentSizeChange={handleContentSizeChange}
+        scrollEventThrottle={16}
+        style={styles.container}
+      >
+        {chatHistory.map((message, index) => {
+          const isLastMessage = index === chatHistory.length - 1;
+          // Streaming assistant placeholder has id: -1 until persisted; fall
+          // back to role+index for that single in-flight row.
+          const key =
+            message.id && message.id > 0
+              ? `msg-${message.id}`
+              : `pending-${message.role}-${index}`;
 
-        const onLayout =
-          index === lastUserIndex
-            ? handleLastUserLayout
-            : index === lastAssistantIndex
-            ? handleLastAssistantLayout
-            : undefined;
+          const onLayout =
+            index === lastUserIndex
+              ? handleLastUserLayout
+              : index === lastAssistantIndex
+                ? handleLastAssistantLayout
+                : undefined;
 
-        const item = (
-          <MessageItem
-            content={message.content}
-            modelName={message.modelName}
-            role={message.role}
-            tokensPerSecond={message.tokensPerSecond}
-            timeToFirstToken={message.timeToFirstToken}
-            isLastMessage={isLastMessage}
-            imagePath={message.imagePath}
-            documentName={message.documentName}
-          />
-        );
-
-        if (onLayout) {
-          return (
-            <View key={key} onLayout={onLayout} collapsable={false}>
-              {item}
-            </View>
+          const item = (
+            <MessageItem
+              content={message.content}
+              modelName={message.modelName}
+              role={message.role}
+              tokensPerSecond={message.tokensPerSecond}
+              timeToFirstToken={message.timeToFirstToken}
+              isLastMessage={isLastMessage}
+              imagePath={message.imagePath}
+              documentName={message.documentName}
+            />
           );
-        }
-        return <React.Fragment key={key}>{item}</React.Fragment>;
-      })}
-    </KeyboardChatScrollView>
+
+          if (onLayout) {
+            return (
+              <View key={key} onLayout={onLayout} collapsable={false}>
+                {item}
+              </View>
+            );
+          }
+          return <React.Fragment key={key}>{item}</React.Fragment>;
+        })}
+      </KeyboardChatScrollView>
 
       {showScrollButton && (
         <TouchableOpacity

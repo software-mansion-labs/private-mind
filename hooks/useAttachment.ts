@@ -32,7 +32,16 @@ const requestAndroidGalleryPermission = async (): Promise<boolean> => {
 };
 
 const isImageUri = (uri: string): boolean => {
-  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.heic', '.heif'];
+  const imageExtensions = [
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.gif',
+    '.webp',
+    '.bmp',
+    '.heic',
+    '.heif',
+  ];
   const lowerUri = uri.toLowerCase();
   return imageExtensions.some((ext) => lowerUri.includes(ext));
 };

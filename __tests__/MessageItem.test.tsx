@@ -6,7 +6,10 @@ import { lightTheme } from '../styles/colors';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
-    theme: { ...require('../styles/colors').lightTheme, insets: { top: 0, bottom: 0, left: 0, right: 0 } },
+    theme: {
+      ...require('../styles/colors').lightTheme,
+      insets: { top: 0, bottom: 0, left: 0, right: 0 },
+    },
   }),
 }));
 
@@ -22,7 +25,10 @@ jest.mock('../components/chat-screen/MarkdownComponent', () => {
 jest.mock('../components/chat-screen/ThinkingBlock', () => {
   const { Text } = require('react-native');
   return ({ content, isComplete, inProgress }: any) => (
-    <Text testID="thinking-block" accessibilityLabel={`complete:${isComplete} inProgress:${inProgress}`}>
+    <Text
+      testID="thinking-block"
+      accessibilityLabel={`complete:${isComplete} inProgress:${inProgress}`}
+    >
       {content}
     </Text>
   );
@@ -37,7 +43,9 @@ import { useLLMStore } from '../store/llmStore';
 
 const mockUseLLMStore = useLLMStore as jest.Mock;
 
-const renderItem = (props: Partial<React.ComponentProps<typeof MessageItem>> = {}) =>
+const renderItem = (
+  props: Partial<React.ComponentProps<typeof MessageItem>> = {}
+) =>
   render(
     <MessageItem
       content="Hello world"
@@ -87,7 +95,12 @@ describe('assistant messages', () => {
   });
 
   it('renders metadata when tokensPerSecond is provided and non-zero', () => {
-    renderItem({ role: 'assistant', content: 'Hi', tokensPerSecond: 12.5, timeToFirstToken: 300 });
+    renderItem({
+      role: 'assistant',
+      content: 'Hi',
+      tokensPerSecond: 12.5,
+      timeToFirstToken: 300,
+    });
     expect(screen.getByText(/tps:/)).toBeTruthy();
     expect(screen.getByText(/ttft:/)).toBeTruthy();
   });
@@ -121,7 +134,11 @@ describe('user messages', () => {
 
 describe('user messages with image', () => {
   it('renders image as a separate bubble from text', () => {
-    renderItem({ role: 'user', content: 'Check this out', imagePath: 'file://test.jpg' });
+    renderItem({
+      role: 'user',
+      content: 'Check this out',
+      imagePath: 'file://test.jpg',
+    });
     const image = screen.getByTestId('message-image');
     expect(image.props.source).toEqual({ uri: 'file://test.jpg' });
     expect(screen.getByText('Check this out')).toBeTruthy();
@@ -138,7 +155,11 @@ describe('user messages with image', () => {
   });
 
   it('does not render image for assistant messages even if imagePath is provided', () => {
-    renderItem({ role: 'assistant', content: 'Response', imagePath: 'file://test.jpg' });
+    renderItem({
+      role: 'assistant',
+      content: 'Response',
+      imagePath: 'file://test.jpg',
+    });
     expect(screen.queryByTestId('message-image')).toBeNull();
   });
 });
@@ -147,7 +168,11 @@ describe('user messages with image', () => {
 
 describe('user messages with document', () => {
   it('renders document as a separate bubble from text', () => {
-    renderItem({ role: 'user', content: 'Summarize this', documentName: 'report.pdf' });
+    renderItem({
+      role: 'user',
+      content: 'Summarize this',
+      documentName: 'report.pdf',
+    });
     expect(screen.getByTestId('message-document')).toBeTruthy();
     expect(screen.getByTestId('document-bubble')).toBeTruthy();
     expect(screen.getByTestId('text-bubble')).toBeTruthy();
@@ -168,7 +193,11 @@ describe('user messages with document', () => {
   });
 
   it('does not render document bubble for assistant messages', () => {
-    renderItem({ role: 'assistant', content: 'Response', documentName: 'doc.pdf' });
+    renderItem({
+      role: 'assistant',
+      content: 'Response',
+      documentName: 'doc.pdf',
+    });
     expect(screen.queryByTestId('message-document')).toBeNull();
   });
 });

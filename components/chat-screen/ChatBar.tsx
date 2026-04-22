@@ -35,7 +35,11 @@ import Toast from 'react-native-toast-message';
 
 interface Props {
   chatId: number | null;
-  onSend: (userInput: string, imagePath?: string, attachments?: Attachment[]) => void;
+  onSend: (
+    userInput: string,
+    imagePath?: string,
+    attachments?: Attachment[]
+  ) => void;
   onSelectModel: () => void;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
@@ -141,7 +145,6 @@ const ChatBar = ({
     [extraContentPadding, onHeightChange, hasMessages]
   );
 
-
   const {
     isGenerating,
     isProcessingPrompt,
@@ -168,7 +171,14 @@ const ChatBar = ({
     if (hasLoadingAttachment) return;
     onSend(userInput, imageAttachment?.uri, attachments);
     clearAll();
-  }, [onSend, userInput, imageAttachment, attachments, clearAll, hasLoadingAttachment]);
+  }, [
+    onSend,
+    userInput,
+    imageAttachment,
+    attachments,
+    clearAll,
+    hasLoadingAttachment,
+  ]);
 
   const onPaste = useCallback(
     (payload: PasteEventPayload) => {

@@ -1,12 +1,19 @@
 import DeviceInfo from 'react-native-device-info';
 import { Model } from '../database/modelRepository';
 
-const getTotalMemoryGB = () => DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024;
+const getTotalMemoryGB = () =>
+  DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024;
 
 const NON_QUANTIZED_MEMORY_MULTIPLIER = 2.5;
 const QUANTIZED_MEMORY_MULTIPLIER = 1.75;
 
-const quantizedKeywords = ['quantized', 'qlora', 'spinquant', '8da4w', 'xnnpack'];
+const quantizedKeywords = [
+  'quantized',
+  'qlora',
+  'spinquant',
+  '8da4w',
+  'xnnpack',
+];
 
 const isModelQuantized = (model: Model): boolean => {
   const haystack = `${model.modelName} ${model.modelPath}`.toLowerCase();

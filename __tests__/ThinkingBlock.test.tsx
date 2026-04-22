@@ -4,7 +4,10 @@ import { render, screen, fireEvent } from '@testing-library/react-native';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
-    theme: { ...require('../styles/colors').lightTheme, insets: { top: 0, bottom: 0, left: 0, right: 0 } },
+    theme: {
+      ...require('../styles/colors').lightTheme,
+      insets: { top: 0, bottom: 0, left: 0, right: 0 },
+    },
   }),
 }));
 
@@ -15,8 +18,12 @@ jest.mock('../components/chat-screen/MarkdownComponent', () => {
 
 import ThinkingBlock from '../components/chat-screen/ThinkingBlock';
 
-const renderBlock = (props: Partial<React.ComponentProps<typeof ThinkingBlock>> = {}) =>
-  render(<ThinkingBlock content="some reasoning" inProgress={false} {...props} />);
+const renderBlock = (
+  props: Partial<React.ComponentProps<typeof ThinkingBlock>> = {}
+) =>
+  render(
+    <ThinkingBlock content="some reasoning" inProgress={false} {...props} />
+  );
 
 // ─── rendering ────────────────────────────────────────────────────────────────
 

@@ -11,9 +11,8 @@ const defaultResolver = config.resolver.resolveRequest;
 config = getBundleModeMetroConfig(config);
 const bundleModeResolveRequest = config.resolver.resolveRequest;
 
-config.transformer.babelTransformerPath = require.resolve(
-  'react-native-svg-transformer/expo'
-);
+config.transformer.babelTransformerPath =
+  require.resolve('react-native-svg-transformer/expo');
 config.resolver.assetExts = config.resolver.assetExts.filter(
   (ext) => ext !== 'svg'
 );

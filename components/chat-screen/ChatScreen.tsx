@@ -35,7 +35,10 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useVectorStore } from '../../context/VectorStoreContext';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { Attachment } from '../../hooks/useAttachment';
-import { filterAndFormatContext, formatFirstChunks } from '../../utils/contextUtils';
+import {
+  filterAndFormatContext,
+  formatFirstChunks,
+} from '../../utils/contextUtils';
 import { useSourceStore } from '../../store/sourceStore';
 import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
@@ -148,10 +151,7 @@ export default function ChatScreen({
     attachments?: Attachment[]
   ) => {
     const hasDocuments = attachments?.some((a) => a.type === 'document');
-    if (
-      (!userInput.trim() && !imagePath && !hasDocuments) ||
-      isGenerating
-    )
+    if ((!userInput.trim() && !imagePath && !hasDocuments) || isGenerating)
       return;
     if (!(await checkIfChatExists(db, chatId!))) {
       const docName = attachments?.find((a) => a.type === 'document')?.name;
@@ -230,10 +230,19 @@ export default function ChatScreen({
       thinkingEnabled: chatSettings.thinkingEnabled,
     };
 
-    const docAttachments = attachments?.filter((a) => a.type === 'document') || [];
-    const docName = docAttachments.map((a) => a.name).filter(Boolean).join(', ') || undefined;
+    const docAttachments =
+      attachments?.filter((a) => a.type === 'document') || [];
+    const docName =
+      docAttachments
+        .map((a) => a.name)
+        .filter(Boolean)
+        .join(', ') || undefined;
     await sendChatMessage(
-      userInput, chatId!, context, settings, persistedImagePath,
+      userInput,
+      chatId!,
+      context,
+      settings,
+      persistedImagePath,
       docName
     );
   };
@@ -307,9 +316,7 @@ export default function ChatScreen({
   }, [isEmpty, gradientProgress]);
   const gradientStyle = useAnimatedStyle(() => ({
     opacity: gradientProgress.value,
-    transform: [
-      { translateY: (1 - gradientProgress.value) * windowHeight },
-    ],
+    transform: [{ translateY: (1 - gradientProgress.value) * windowHeight }],
   }));
 
   return (

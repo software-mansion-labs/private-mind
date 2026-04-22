@@ -40,15 +40,29 @@ jest.mock('../hooks/useAttachment', () => ({
 
 jest.mock('../components/bottomSheets/AttachmentSheet', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
-  return ({ onPickFromLibrary, onPickFromCamera, onPickDocument, isVisionModel }: any) => (
+  return ({
+    onPickFromLibrary,
+    onPickFromCamera,
+    onPickDocument,
+    isVisionModel,
+  }: any) => (
     <View testID="attachment-sheet">
       {isVisionModel && (
         <>
-          <TouchableOpacity testID="pick-library-btn" onPress={onPickFromLibrary}><Text>Library</Text></TouchableOpacity>
-          <TouchableOpacity testID="pick-camera-btn" onPress={onPickFromCamera}><Text>Camera</Text></TouchableOpacity>
+          <TouchableOpacity
+            testID="pick-library-btn"
+            onPress={onPickFromLibrary}
+          >
+            <Text>Library</Text>
+          </TouchableOpacity>
+          <TouchableOpacity testID="pick-camera-btn" onPress={onPickFromCamera}>
+            <Text>Camera</Text>
+          </TouchableOpacity>
         </>
       )}
-      <TouchableOpacity testID="pick-document-btn" onPress={onPickDocument}><Text>Document</Text></TouchableOpacity>
+      <TouchableOpacity testID="pick-document-btn" onPress={onPickDocument}>
+        <Text>Document</Text>
+      </TouchableOpacity>
     </View>
   );
 });
@@ -58,7 +72,12 @@ jest.mock('../components/chat-screen/AttachmentThumbnail', () => {
   return ({ attachment, onRemove }: any) => (
     <View testID={`attachment-thumb-${attachment.id}`}>
       <Text>{attachment.name || attachment.uri}</Text>
-      <TouchableOpacity testID={`attachment-dismiss-${attachment.id}`} onPress={onRemove}><Text>X</Text></TouchableOpacity>
+      <TouchableOpacity
+        testID={`attachment-dismiss-${attachment.id}`}
+        onPress={onRemove}
+      >
+        <Text>X</Text>
+      </TouchableOpacity>
     </View>
   );
 });
@@ -67,7 +86,10 @@ jest.mock('../components/chat-screen/ChatSpeechInput', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
   return ({ onSubmit, onCancel }: any) => (
     <View testID="speech-input">
-      <TouchableOpacity testID="speech-submit" onPress={() => onSubmit('voice transcript')} />
+      <TouchableOpacity
+        testID="speech-submit"
+        onPress={() => onSubmit('voice transcript')}
+      />
       <TouchableOpacity testID="speech-cancel" onPress={onCancel} />
     </View>
   );
@@ -76,7 +98,10 @@ jest.mock('../components/chat-screen/ChatSpeechInput', () => {
 jest.mock('../components/chat-screen/PromptSuggestions', () => {
   const { TouchableOpacity, Text } = require('react-native');
   return ({ onSelectPrompt }: any) => (
-    <TouchableOpacity testID="prompt-suggestion" onPress={() => onSelectPrompt('Suggested prompt')}>
+    <TouchableOpacity
+      testID="prompt-suggestion"
+      onPress={() => onSelectPrompt('Suggested prompt')}
+    >
       <Text>Suggest something</Text>
     </TouchableOpacity>
   );
@@ -97,18 +122,28 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onAttach,
   }: any) => (
     <View testID="chat-bar-actions">
-      <TouchableOpacity testID="attach-btn" onPress={onAttach}><Text>+</Text></TouchableOpacity>
-      {(isGenerating || isProcessingPrompt) ? (
-        <TouchableOpacity testID="interrupt-btn" onPress={onInterrupt}><Text>Stop</Text></TouchableOpacity>
-      ) : (userInput || hasAttachments) ? (
+      <TouchableOpacity testID="attach-btn" onPress={onAttach}>
+        <Text>+</Text>
+      </TouchableOpacity>
+      {isGenerating || isProcessingPrompt ? (
+        <TouchableOpacity testID="interrupt-btn" onPress={onInterrupt}>
+          <Text>Stop</Text>
+        </TouchableOpacity>
+      ) : userInput || hasAttachments ? (
         <>
           {hasAttachments && !userInput && (
-            <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}><Text>Mic</Text></TouchableOpacity>
+            <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}>
+              <Text>Mic</Text>
+            </TouchableOpacity>
           )}
-          <TouchableOpacity testID="send-btn" onPress={onSend}><Text>Send</Text></TouchableOpacity>
+          <TouchableOpacity testID="send-btn" onPress={onSend}>
+            <Text>Send</Text>
+          </TouchableOpacity>
         </>
       ) : (
-        <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}><Text>Mic</Text></TouchableOpacity>
+        <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}>
+          <Text>Mic</Text>
+        </TouchableOpacity>
       )}
       <TouchableOpacity testID="thinking-btn" onPress={onThinkingToggle}>
         <Text>{thinkingEnabled ? 'Think ON' : 'Think OFF'}</Text>
@@ -173,7 +208,9 @@ beforeEach(() => {
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
   // Default: permission granted
-  mockAudioManager.requestRecordingPermissions.mockResolvedValue('Granted' as any);
+  mockAudioManager.requestRecordingPermissions.mockResolvedValue(
+    'Granted' as any
+  );
 });
 
 afterEach(() => jest.restoreAllMocks());
@@ -220,7 +257,10 @@ describe('downloaded model — text input', () => {
   it('calls onSend with current input when send button is pressed', () => {
     const onSend = jest.fn();
     renderBar({ onSend });
-    fireEvent.changeText(screen.getByPlaceholderText('Ask about anything...'), 'Hello');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'Hello'
+    );
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(onSend).toHaveBeenCalledWith('Hello', undefined, []);
   });
@@ -297,13 +337,17 @@ describe('speech input', () => {
   });
 
   it('shows toast and stays in text mode when microphone permission is denied', async () => {
-    mockAudioManager.requestRecordingPermissions.mockResolvedValue('Denied' as any);
+    mockAudioManager.requestRecordingPermissions.mockResolvedValue(
+      'Denied' as any
+    );
     renderBar();
     await act(async () => {
       fireEvent.press(screen.getByTestId('speech-btn'));
     });
     expect(Toast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ text1: expect.stringContaining('Microphone permission') })
+      expect.objectContaining({
+        text1: expect.stringContaining('Microphone permission'),
+      })
     );
     expect(screen.queryByTestId('speech-input')).toBeNull();
   });
@@ -321,7 +365,12 @@ describe('speech input', () => {
 
   it('forwards attached imagePath when submitting speech transcript', async () => {
     mockUseAttachment.attachments = [
-      { id: 'img-1', type: 'image', uri: 'file://test-image.jpg', status: 'ready' },
+      {
+        id: 'img-1',
+        type: 'image',
+        uri: 'file://test-image.jpg',
+        status: 'ready',
+      },
     ];
 
     const onSend = jest.fn();
@@ -335,7 +384,14 @@ describe('speech input', () => {
     expect(onSend).toHaveBeenCalledWith(
       'voice transcript',
       'file://test-image.jpg',
-      [{ id: 'img-1', type: 'image', uri: 'file://test-image.jpg', status: 'ready' }]
+      [
+        {
+          id: 'img-1',
+          type: 'image',
+          uri: 'file://test-image.jpg',
+          status: 'ready',
+        },
+      ]
     );
   });
 
@@ -357,7 +413,10 @@ describe('speech input', () => {
       const { View, TouchableOpacity } = require('react-native');
       return ({ onSubmit }: any) => (
         <View testID="speech-input">
-          <TouchableOpacity testID="speech-submit" onPress={() => onSubmit('')} />
+          <TouchableOpacity
+            testID="speech-submit"
+            onPress={() => onSubmit('')}
+          />
         </View>
       );
     });
@@ -389,8 +448,19 @@ describe('attachment', () => {
 
   it('renders attachment thumbnails when attachments exist', () => {
     mockUseAttachment.attachments = [
-      { id: 'img-1', type: 'image', uri: 'file://test-image.jpg', status: 'ready' },
-      { id: 'doc-1', type: 'document', uri: 'file://test.pdf', name: 'test.pdf', status: 'ready' },
+      {
+        id: 'img-1',
+        type: 'image',
+        uri: 'file://test-image.jpg',
+        status: 'ready',
+      },
+      {
+        id: 'doc-1',
+        type: 'document',
+        uri: 'file://test.pdf',
+        name: 'test.pdf',
+        status: 'ready',
+      },
     ];
     renderBar();
     expect(screen.getByTestId('attachment-thumb-img-1')).toBeTruthy();
@@ -399,7 +469,12 @@ describe('attachment', () => {
 
   it('calls removeAttachment when dismiss button on thumbnail is pressed', () => {
     mockUseAttachment.attachments = [
-      { id: 'img-1', type: 'image', uri: 'file://test-image.jpg', status: 'ready' },
+      {
+        id: 'img-1',
+        type: 'image',
+        uri: 'file://test-image.jpg',
+        status: 'ready',
+      },
     ];
     renderBar();
     fireEvent.press(screen.getByTestId('attachment-dismiss-img-1'));
@@ -408,18 +483,26 @@ describe('attachment', () => {
 
   it('calls onSend with image path and attachments when send is pressed after attaching an image with no text', () => {
     mockUseAttachment.attachments = [
-      { id: 'img-1', type: 'image', uri: 'file://test-image.jpg', status: 'ready' },
+      {
+        id: 'img-1',
+        type: 'image',
+        uri: 'file://test-image.jpg',
+        status: 'ready',
+      },
     ];
 
     const onSend = jest.fn();
     renderBar({ onSend, isVisionModel: true });
 
     fireEvent.press(screen.getByTestId('send-btn'));
-    expect(onSend).toHaveBeenCalledWith(
-      '',
-      'file://test-image.jpg',
-      [{ id: 'img-1', type: 'image', uri: 'file://test-image.jpg', status: 'ready' }]
-    );
+    expect(onSend).toHaveBeenCalledWith('', 'file://test-image.jpg', [
+      {
+        id: 'img-1',
+        type: 'image',
+        uri: 'file://test-image.jpg',
+        status: 'ready',
+      },
+    ]);
   });
 
   it('passes isVisionModel to AttachmentSheet', () => {
@@ -452,7 +535,9 @@ describe('paste functionality', () => {
       });
     });
 
-    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith('file://test-pasted-image.jpg');
+    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith(
+      'file://test-pasted-image.jpg'
+    );
   });
 
   it('calls addPastedAttachment for multiple pasted images', () => {
@@ -468,8 +553,12 @@ describe('paste functionality', () => {
     });
 
     expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledTimes(2);
-    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith('file://image1.jpg');
-    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith('file://image2.png');
+    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith(
+      'file://image1.jpg'
+    );
+    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith(
+      'file://image2.png'
+    );
   });
 
   it('does not call addPastedAttachment when text is pasted', () => {
@@ -571,6 +660,8 @@ describe('paste functionality', () => {
       });
     });
 
-    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith('file://test.jpg');
+    expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith(
+      'file://test.jpg'
+    );
   });
 });

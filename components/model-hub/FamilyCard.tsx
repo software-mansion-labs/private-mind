@@ -25,9 +25,7 @@ const FamilyCard = ({ family, onPress }: Props) => {
     <TouchableOpacity style={styles.card} onPress={() => onPress(family)}>
       <View style={styles.info}>
         <Text style={styles.name}>{family.name}</Text>
-        {description && (
-          <Text style={styles.description}>{description}</Text>
-        )}
+        {description && <Text style={styles.description}>{description}</Text>}
         <View style={styles.chipContainer}>
           <Chip
             title={`${variantCount} ${variantCount === 1 ? 'variant' : 'variants'}`}

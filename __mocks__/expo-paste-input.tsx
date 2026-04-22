@@ -7,7 +7,12 @@ export interface PasteEventPayload {
   uris?: string[];
 }
 
-export const TextInputWrapper = ({ children, onPaste, style, ...props }: any) => {
+export const TextInputWrapper = ({
+  children,
+  onPaste,
+  style,
+  ...props
+}: any) => {
   return (
     <View style={style} {...props}>
       {children}

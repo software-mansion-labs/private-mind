@@ -12,7 +12,12 @@ interface Props {
   showChevron?: boolean;
 }
 
-const ChatTitle = ({ title, modelName, onPress, showChevron = false }: Props) => {
+const ChatTitle = ({
+  title,
+  modelName,
+  onPress,
+  showChevron = false,
+}: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   return (
@@ -36,11 +41,7 @@ const ChatTitle = ({ title, modelName, onPress, showChevron = false }: Props) =>
         <View style={styles.modelRow}>
           <Text style={styles.modelNameTitle}>{modelName}</Text>
           {showChevron && (
-            <ChevronDown
-              width={10}
-              height={10}
-              style={styles.chevron}
-            />
+            <ChevronDown width={10} height={10} style={styles.chevron} />
           )}
         </View>
       )}
