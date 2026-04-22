@@ -59,8 +59,6 @@ const ModelSelectSheet = ({
     <BottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
-      onChange={(index) => onSheetStateChange?.(index >= 0)}
-      onDismiss={() => onSheetStateChange?.(false)}
       snapPoints={['30%', '50%']}
       animationConfigs={animationConfigs}
       enableDynamicSizing={false}
@@ -69,8 +67,14 @@ const ModelSelectSheet = ({
       backgroundStyle={styles.background}
       keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
       keyboardBlurBehavior="restore"
-      onChange={(i) => setIsFullyOpen(i >= 0)}
-      onDismiss={() => setIsFullyOpen(false)}
+      onChange={(index) => {
+        onSheetStateChange?.(index >= 0);
+        setIsFullyOpen(index >= 0);
+      }}
+      onDismiss={() => {
+        onSheetStateChange?.(false);
+        setIsFullyOpen(false);
+      }}
     >
       {downloadedModels.length > 0 ? (
         <View

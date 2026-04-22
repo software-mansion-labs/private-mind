@@ -1,9 +1,13 @@
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { FlatCompat } from '@eslint/eslintrc';
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
-import reactPlugin from 'eslint-plugin-react';
-import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import prettierConfig from 'eslint-config-prettier';
 import prettierPlugin from 'eslint-plugin-prettier';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const compat = new FlatCompat({ baseDirectory: __dirname });
 
 export default tseslint.config(
   {
@@ -24,37 +28,24 @@ export default tseslint.config(
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  ...compat.extends('@react-native'),
   {
     files: ['**/*.{ts,tsx}'],
     plugins: {
-      'react': reactPlugin,
-      'react-hooks': reactHooksPlugin,
       'prettier': prettierPlugin,
-    },
-    languageOptions: {
-      parserOptions: {
-        ecmaFeatures: {
-          jsx: true,
-        },
-      },
-    },
-    settings: {
-      react: {
-        version: 'detect',
-      },
     },
     rules: {
       'prettier/prettier': 'error',
 
-      // React
+      // Downgrade strictness from @react-native config to warnings we can live with.
+      'react-hooks/exhaustive-deps': 'warn',
+      'react-native/no-inline-styles': 'off',
+      'react/no-unstable-nested-components': 'warn',
+      '@typescript-eslint/no-shadow': 'warn',
+
+      // Project overrides
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
-
-      // React Hooks
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
-
-      // TypeScript
       '@typescript-eslint/no-unused-vars': [
         'warn',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
