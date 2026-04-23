@@ -19,3 +19,6 @@ export const markOnboardingComplete = () =>
     ONBOARDING_COMPLETE_STORE_KEY,
     OnboardingCompleteValue.TRUE
   );
+
+export const resetOnboarding = () =>
+  AsyncStorage.removeItem(ONBOARDING_COMPLETE_STORE_KEY);

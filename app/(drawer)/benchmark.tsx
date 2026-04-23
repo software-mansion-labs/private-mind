@@ -49,7 +49,7 @@ const BenchmarkScreen = () => {
       if (newResult) {
         bottomSheetModalRef.current?.present({
           ...newResult,
-          model: await getModelById(newResult.modelId!),
+          model: getModelById(newResult.modelId!),
         });
       }
     },

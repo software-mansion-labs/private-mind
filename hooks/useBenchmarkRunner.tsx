@@ -10,23 +10,33 @@ import {
 const BENCHMARK_ITERATIONS = 3;
 
 const calculateAverageBenchmark = (
-  results: BenchmarkResultPerformanceNumbers[],
-  iterations: number
+  results: BenchmarkResultPerformanceNumbers[]
 ) => {
-  const averageResult = results.reduce((acc, curr) => {
-    acc.totalTime += curr.totalTime;
-    acc.timeToFirstToken += curr.timeToFirstToken;
-    acc.tokensPerSecond += curr.tokensPerSecond;
-    acc.tokensGenerated += curr.tokensGenerated;
-    return acc;
-  });
-  averageResult.totalTime /= iterations;
-  averageResult.timeToFirstToken /= iterations;
-  averageResult.tokensPerSecond /= iterations;
-  averageResult.tokensGenerated /= iterations;
-  averageResult.peakMemory =
-    Math.max(...results.map((r) => r.peakMemory)) / 1024 / 1024 / 1024;
-  return averageResult;
+  const n = results.length;
+  const sum = results.reduce(
+    (acc, curr) => {
+      acc.totalTime += curr.totalTime;
+      acc.timeToFirstToken += curr.timeToFirstToken;
+      acc.tokensPerSecond += curr.tokensPerSecond;
+      acc.tokensGenerated += curr.tokensGenerated;
+      return acc;
+    },
+    {
+      totalTime: 0,
+      timeToFirstToken: 0,
+      tokensPerSecond: 0,
+      tokensGenerated: 0,
+    }
+  );
+
+  return {
+    totalTime: sum.totalTime / n,
+    timeToFirstToken: sum.timeToFirstToken / n,
+    tokensPerSecond: sum.tokensPerSecond / n,
+    tokensGenerated: sum.tokensGenerated / n,
+    peakMemory:
+      Math.max(...results.map((r) => r.peakMemory)) / 1024 / 1024 / 1024,
+  };
 };
 
 interface UseBenchmarkRunnerParams {
@@ -61,18 +71,17 @@ export default function useBenchmarkRunner({
       try {
         await loadModel(selectedModel, true);
 
-        const iterations = BENCHMARK_ITERATIONS;
         const results: BenchmarkResultPerformanceNumbers[] = [];
 
-        for (let i = 0; i < iterations; i++) {
+        for (let i = 0; i < BENCHMARK_ITERATIONS; i++) {
           if (isCancelled.current) break;
           const result = await runBenchmark();
           if (result) results.push(result);
         }
 
-        if (isCancelled.current) return;
+        if (isCancelled.current || results.length === 0) return;
 
-        const averageResult = calculateAverageBenchmark(results, iterations);
+        const averageResult = calculateAverageBenchmark(results);
         const benchmarkId = await insertBenchmark(db, {
           ...averageResult,
           modelId: selectedModel.id,

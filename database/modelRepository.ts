@@ -103,6 +103,16 @@ type RawModel = Omit<
   systemPrompt: string | null;
 };
 
+const parseLabels = (raw: string | null): string[] | undefined => {
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 const hydrateModel = (model: RawModel): Model => {
   const defaults =
     model.source === 'built-in'
@@ -121,7 +131,7 @@ const hydrateModel = (model: RawModel): Model => {
     experimental: model.experimental === 1,
     thinking: model.thinking === 1,
     vision: model.vision === 1,
-    labels: model.labels ? JSON.parse(model.labels) : undefined,
+    labels: parseLabels(model.labels),
     systemPrompt: model.systemPrompt ?? null,
   };
 };
@@ -158,10 +168,10 @@ export const updateModel = async (
 };
 
 export const getStartingModels = async (db: SQLiteDatabase) => {
+  const placeholders = startingModels.map(() => '?').join(', ');
   const rawModels = await db.getAllAsync<RawModel>(
-    `SELECT * FROM models WHERE modelName IN (${startingModels
-      .map((model) => `'${model}'`)
-      .join(', ')})`
+    `SELECT * FROM models WHERE modelName IN (${placeholders})`,
+    startingModels
   );
   return rawModels.map(hydrateModel);
 };

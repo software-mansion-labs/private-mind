@@ -217,7 +217,10 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       enableDynamicSizing
-      onChange={() => setStage(ModalStage.Initial)}
+      onChange={() => {
+        setStage(ModalStage.Initial);
+        setIsProcessing(false);
+      }}
       handleStyle={styles.handle}
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.background}

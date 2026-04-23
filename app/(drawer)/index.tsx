@@ -29,6 +29,10 @@ import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
 import WhatsNewCard from '../../components/WhatsNewCard';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 
+configureReanimatedLogger({
+  strict: false,
+});
+
 export default function App() {
   useOnboardingRedirect();
 
@@ -48,10 +52,6 @@ export default function App() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { addChat } = useChatStore();
-
-  configureReanimatedLogger({
-    strict: false,
-  });
 
   const handleSetModel = async (model: Model, replace = false) => {
     bottomSheetModalRef.current?.dismiss();

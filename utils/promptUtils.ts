@@ -23,22 +23,16 @@ export const prepareMessagesForLLM = (
   let systemPrompt = settings.systemPrompt;
 
   if (context.length > 0) {
-    systemPrompt = systemPrompt + CONTEXT_INSTRUCTION;
+    systemPrompt += CONTEXT_INSTRUCTION;
   }
 
-  const filteredMessages: ExecutorchMessage[] = activeChatMessages.reduce(
-    (acc: ExecutorchMessage[], msg) => {
-      if (msg.role !== 'event') {
-        acc.push({
-          role: msg.role,
-          content: msg.content,
-          ...(msg.imagePath ? { mediaPath: msg.imagePath } : {}),
-        });
-      }
-      return acc;
-    },
-    []
-  );
+  const filteredMessages: ExecutorchMessage[] = activeChatMessages
+    .filter((msg) => msg.role !== 'event')
+    .map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+      ...(msg.imagePath ? { mediaPath: msg.imagePath } : {}),
+    }));
 
   const messagesWithSystemPrompt: ExecutorchMessage[] = [
     { role: 'system', content: systemPrompt },
@@ -58,7 +52,13 @@ export const prepareMessagesForLLM = (
   }
 
   if (context.length > 0) {
-    lastMessage.content = `<context>${context.join(' ')}</context>
+    // Strip any nested </context> in source chunks — otherwise a document
+    // containing the literal closing tag (e.g. an HTML export) would close
+    // the delimiter early and the rest would be parsed as user instruction.
+    const safeContext = context
+      .map((c) => c.replace(/<\/context>/gi, ''))
+      .join(' ');
+    lastMessage.content = `<context>${safeContext}</context>
         ${lastMessage.content}
         `;
   }

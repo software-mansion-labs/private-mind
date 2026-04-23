@@ -31,19 +31,22 @@ const requestAndroidGalleryPermission = async (): Promise<boolean> => {
   return result === PermissionsAndroid.RESULTS.GRANTED;
 };
 
+const IMAGE_EXTENSIONS = [
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'webp',
+  'bmp',
+  'heic',
+  'heif',
+];
+
 const isImageUri = (uri: string): boolean => {
-  const imageExtensions = [
-    '.jpg',
-    '.jpeg',
-    '.png',
-    '.gif',
-    '.webp',
-    '.bmp',
-    '.heic',
-    '.heif',
-  ];
-  const lowerUri = uri.toLowerCase();
-  return imageExtensions.some((ext) => lowerUri.includes(ext));
+  const pathPart = uri.split('?')[0].split('#')[0];
+  const lastSegment = pathPart.split('/').pop() ?? '';
+  const ext = lastSegment.split('.').pop()?.toLowerCase() ?? '';
+  return IMAGE_EXTENSIONS.includes(ext);
 };
 
 export const useAttachment = () => {
@@ -161,12 +164,10 @@ export const useAttachment = () => {
 
   const removeAttachment = useCallback(
     (id: string) => {
-      let hadSourceId = false;
-      setAttachments((prev) => {
-        hadSourceId = prev.some((a) => a.id === id && a.sourceId);
-        return prev.filter((a) => a.id !== id);
-      });
-
+      const hadSourceId = attachmentsRef.current.some(
+        (a) => a.id === id && a.sourceId
+      );
+      setAttachments((prev) => prev.filter((a) => a.id !== id));
       if (hadSourceId && vectorStore) {
         useSourceStore.getState().cleanupOrphanedSources(vectorStore);
       }
@@ -175,12 +176,8 @@ export const useAttachment = () => {
   );
 
   const clearAll = useCallback(() => {
-    let hadDocuments = false;
-    setAttachments((prev) => {
-      hadDocuments = prev.some((a) => a.sourceId);
-      return [];
-    });
-
+    const hadDocuments = attachmentsRef.current.some((a) => a.sourceId);
+    setAttachments([]);
     if (hadDocuments && vectorStore) {
       useSourceStore.getState().cleanupOrphanedSources(vectorStore);
     }

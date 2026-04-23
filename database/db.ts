@@ -132,6 +132,17 @@ const runMigrations = async (db: SQLiteDatabase) => {
     await db.runAsync(`DELETE FROM sources`);
   }
 
+  // One-time cleanup of orphan rows from before FK enforcement was enabled.
+  await db.runAsync(
+    `DELETE FROM messages WHERE chatId NOT IN (SELECT id FROM chats)`
+  );
+  await db.runAsync(
+    `DELETE FROM chatSettings WHERE chatId NOT IN (SELECT id FROM chats)`
+  );
+  await db.runAsync(
+    `DELETE FROM chatSources WHERE chatId NOT IN (SELECT id FROM chats) OR sourceId NOT IN (SELECT id FROM sources)`
+  );
+
   await db.runAsync(
     `DELETE FROM models
      WHERE source = 'built-in'
@@ -175,6 +186,7 @@ const runMigrations = async (db: SQLiteDatabase) => {
 export const initDatabase = async (db: SQLiteDatabase) => {
   await db.execAsync(`
     PRAGMA journal_mode = 'wal';
+    PRAGMA foreign_keys = ON;
     CREATE TABLE IF NOT EXISTS models (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       modelName TEXT UNIQUE NOT NULL,
@@ -216,6 +228,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       tokensPerSecond INTEGER DEFAULT 0,
       timeToFirstToken INTEGER DEFAULT 0,
       imagePath TEXT DEFAULT NULL,
+      documentName TEXT DEFAULT NULL,
       FOREIGN KEY (chatId) REFERENCES chats (id) ON DELETE CASCADE
     );
   `);
@@ -249,7 +262,8 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       size INTEGER,
-      type TEXT NOT NULL
+      type TEXT NOT NULL,
+      firstChunk TEXT DEFAULT NULL
     );
   `);
 

@@ -59,50 +59,38 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     if (!db) return { success: false };
 
     const tempId = -Date.now();
-
     set({ isReading: true });
 
     try {
       const sourceTextContent = await readDocumentText(sourceUri, source.type);
 
       if (!sourceTextContent || sourceTextContent.trim().length === 0) {
-        set({ isReading: false });
         return { success: false, isEmpty: true };
       }
 
-      const tempSource: Source = {
-        ...source,
-        id: tempId,
-        isProcessing: true,
-      };
-      set((state) => ({
-        sources: [...state.sources, tempSource],
-      }));
+      const tempSource: Source = { ...source, id: tempId, isProcessing: true };
+      set((state) => ({ sources: [...state.sources, tempSource] }));
 
       const textSplitter = new RecursiveCharacterTextSplitter({
         chunkSize: TEXT_SPLITTER_CHUNK_SIZE,
         chunkOverlap: TEXT_SPLITTER_CHUNK_OVERLAP,
       });
-
       const chunks = await textSplitter.splitText(sourceTextContent);
 
-      const sourceWithFirstChunk = {
+      const sourceId = await insertSource(db, {
         ...source,
         firstChunk: chunks[0] || undefined,
-      };
-      const sourceId = await insertSource(db, sourceWithFirstChunk);
+      });
       if (!sourceId) {
         set((state) => ({
           sources: state.sources.filter((s) => s.id !== tempId),
         }));
-        set({ isReading: false });
         return { success: false };
       }
 
       for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i]!;
         await vectorStore?.add({
-          document: chunk,
+          document: chunks[i]!,
           metadata: { documentId: sourceId, isFirstChunk: i === 0 },
         });
       }
@@ -114,16 +102,15 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
             : s
         ),
       }));
-
-      set({ isReading: false });
       return { success: true, sourceId };
     } catch (e) {
       console.error(e);
       set((state) => ({
         sources: state.sources.filter((s) => s.id !== tempId),
       }));
-      set({ isReading: false });
       return { success: false };
+    } finally {
+      set({ isReading: false });
     }
   },
 
