@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { TouchableOpacity } from 'react-native-gesture-handler';
 import { SvgComponent } from '../utils/SvgComponent';
 
 interface Props {
@@ -50,5 +51,8 @@ const createStyles = (backgroundColor: string) =>
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor,
+    },
+    pressed: {
+      opacity: 0.6,
     },
   });
