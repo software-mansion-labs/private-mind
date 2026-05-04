@@ -1,15 +1,14 @@
 import { useModelStore, ModelState } from '../store/modelStore';
 import * as modelRepository from '../database/modelRepository';
 import { ResourceFetcher } from 'react-native-executorch';
-import { exists, unlink } from '@dr.pogodin/react-native-fs';
+import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
 import Toast from 'react-native-toast-message';
 
 jest.mock('../database/modelRepository');
 
 const mockDb = {} as any;
 const mockFetch = ResourceFetcher.fetch as jest.Mock;
-const mockExists = exists as jest.Mock;
-const mockUnlink = unlink as jest.Mock;
+const mockDeleteResources = ExpoResourceFetcher.deleteResources as jest.Mock;
 const mockGetAllModels = modelRepository.getAllModels as jest.Mock;
 const mockUpdateModelDownloaded =
   modelRepository.updateModelDownloaded as jest.Mock;
@@ -184,7 +183,7 @@ describe('cancelDownload', () => {
 });
 
 describe('removeModel', () => {
-  it('skips file deletion for local/built-in models', async () => {
+  it('skips file deletion for local models but still removes the DB row', async () => {
     const localModel = {
       ...baseModel,
       source: 'local' as const,
@@ -195,36 +194,24 @@ describe('removeModel', () => {
 
     await useModelStore.getState().removeModel(localModel.id);
 
-    expect(mockUnlink).not.toHaveBeenCalled();
-    expect(mockUpdateModelDownloaded).not.toHaveBeenCalled();
+    expect(mockDeleteResources).not.toHaveBeenCalled();
+    expect(mockRemoveModelFiles).toHaveBeenCalledWith(mockDb, localModel.id);
   });
 
-  it('deletes local files and marks not-downloaded for remote models', async () => {
+  it('deletes downloaded resources and marks not-downloaded for remote models', async () => {
     const remoteModel = { ...baseModel, isDownloaded: true };
-    mockExists.mockResolvedValue(true);
-    mockUnlink.mockResolvedValue(undefined);
+    mockDeleteResources.mockResolvedValue(undefined);
     mockUpdateModelDownloaded.mockResolvedValue(undefined);
     mockRemoveModelFiles.mockResolvedValue(undefined);
 
-    // First: download so the module-level downloadedPaths Map is populated
-    mockFetch.mockResolvedValue(['/local/model.pte', '/local/tokenizer.json']);
-    useModelStore.setState({ models: [remoteModel], db: mockDb });
-    await useModelStore.getState().downloadModel(remoteModel);
-
-    // Reset mocks so we can assert cleanly on the removeModel call
-    jest.clearAllMocks();
-    mockExists.mockResolvedValue(true);
-    mockUnlink.mockResolvedValue(undefined);
-    mockUpdateModelDownloaded.mockResolvedValue(undefined);
-    mockRemoveModelFiles.mockResolvedValue(undefined);
-    mockGetAllModels.mockResolvedValue([]);
-
-    // Still have the model in state
     useModelStore.setState({ models: [remoteModel], db: mockDb });
     await useModelStore.getState().removeModel(remoteModel.id);
 
-    expect(mockUnlink).toHaveBeenCalledWith('/local/model.pte');
-    expect(mockUnlink).toHaveBeenCalledWith('/local/tokenizer.json');
+    expect(mockDeleteResources).toHaveBeenCalledWith(
+      remoteModel.modelPath,
+      remoteModel.tokenizerPath,
+      remoteModel.tokenizerConfigPath
+    );
     expect(mockUpdateModelDownloaded).toHaveBeenCalledWith(
       mockDb,
       remoteModel.id,
@@ -240,7 +227,7 @@ describe('removeModel', () => {
         [remoteModel.id]: { progress: 1, status: ModelState.Downloaded },
       },
     });
-    mockExists.mockResolvedValue(false);
+    mockDeleteResources.mockResolvedValue(undefined);
     mockUpdateModelDownloaded.mockResolvedValue(undefined);
     mockRemoveModelFiles.mockResolvedValue(undefined);
 
@@ -262,12 +249,11 @@ describe('removeModelFiles vs removeModel', () => {
   it('removeModelFiles does not call removeModelFiles DB function (only marks not downloaded)', async () => {
     const remoteModel = { ...baseModel, isDownloaded: true };
     useModelStore.setState({ models: [remoteModel] });
-    mockExists.mockResolvedValue(false);
+    mockDeleteResources.mockResolvedValue(undefined);
     mockUpdateModelDownloaded.mockResolvedValue(undefined);
 
     await useModelStore.getState().removeModelFiles(remoteModel.id);
 
-    // updateModelDownloaded called but removeModelFiles (DB) NOT called
     expect(mockUpdateModelDownloaded).toHaveBeenCalledWith(
       mockDb,
       remoteModel.id,
@@ -279,7 +265,7 @@ describe('removeModelFiles vs removeModel', () => {
   it('removeModel calls removeModelFiles (DB) to fully delete the record', async () => {
     const remoteModel = { ...baseModel, isDownloaded: true };
     useModelStore.setState({ models: [remoteModel] });
-    mockExists.mockResolvedValue(false);
+    mockDeleteResources.mockResolvedValue(undefined);
     mockUpdateModelDownloaded.mockResolvedValue(undefined);
     mockRemoveModelFiles.mockResolvedValue(undefined);
 

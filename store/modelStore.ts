@@ -11,7 +11,6 @@ import {
 import Toast from 'react-native-toast-message';
 import { ResourceFetcher } from 'react-native-executorch';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
-import { unlink, exists } from '@dr.pogodin/react-native-fs';
 
 export enum ModelState {
   Downloaded = 'downloaded',
@@ -47,18 +46,14 @@ interface ModelStore {
 
 const MS_PER_FRAME = 16; // ~60 fps
 
-// Track local file paths returned by ResourceFetcher.fetch for cleanup
-const downloadedPaths = new Map<number, string[]>();
-
-async function deleteLocalFiles(paths: string[]) {
-  for (const filePath of paths) {
-    try {
-      if (await exists(filePath)) {
-        await unlink(filePath);
-      }
-    } catch (e) {
-      console.warn('Failed to delete file:', filePath, e);
-    }
+// Wrapper around ExpoResourceFetcher.deleteResources that swallows errors.
+// We pass model.* source paths (URLs); the fetcher derives the on-disk
+// filename and deletes only files it manages — never user-supplied local paths.
+async function deleteRemoteResources(...sources: string[]) {
+  try {
+    await ExpoResourceFetcher.deleteResources(...sources);
+  } catch (err) {
+    console.warn('ExpoResourceFetcher.deleteResources failed:', err);
   }
 }
 
@@ -141,8 +136,6 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         return;
       }
 
-      downloadedPaths.set(model.id, result);
-
       const db = get().db;
       if (db) {
         await updateModelDownloaded(db, model.id, 1);
@@ -184,32 +177,6 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     }));
   },
 
-  removeModel: async (modelId: number) => {
-    const db = get().db;
-    if (!db) return;
-
-    const model = get().models.find((m) => m.id === modelId);
-    if (!model) return;
-
-    try {
-      if (model.source === 'remote') {
-        const paths = downloadedPaths.get(modelId) || [];
-        await deleteLocalFiles(paths);
-        downloadedPaths.delete(modelId);
-        await updateModelDownloaded(db, modelId, 0);
-        set((state) => {
-          const { [modelId]: _, ...rest } = state.downloadStates;
-          return { downloadStates: rest };
-        });
-      }
-
-      await removeModelFiles(db, modelId);
-      await get().loadModels();
-    } catch (err) {
-      console.error('Failed to remove files:', err);
-    }
-  },
-
   removeModelFiles: async (modelId: number) => {
     const db = get().db;
     if (!db) return;
@@ -218,22 +185,15 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     if (!model) return;
 
     try {
-      // Fall back to the resource-fetcher source strings when we don't have
-      // tracked paths from this session (e.g. model was downloaded previously).
-      const paths = downloadedPaths.get(modelId) || [];
-      if (paths.length > 0) {
-        await deleteLocalFiles(paths);
-      }
-      try {
-        await ExpoResourceFetcher.deleteResources(
+      // Only remote-downloaded models live inside the app sandbox; local
+      // models point at user-provided files, which we must never touch.
+      if (model.source === 'remote') {
+        await deleteRemoteResources(
           model.modelPath,
           model.tokenizerPath,
           model.tokenizerConfigPath
         );
-      } catch (err) {
-        console.warn('ExpoResourceFetcher.deleteResources failed:', err);
       }
-      downloadedPaths.delete(modelId);
       await updateModelDownloaded(db, modelId, 0);
       await get().loadModels();
       set((state) => {
@@ -242,6 +202,23 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       });
     } catch (err) {
       console.error('Failed to remove model files:', err);
+    }
+  },
+
+  removeModel: async (modelId: number) => {
+    const db = get().db;
+    if (!db) return;
+
+    const model = get().models.find((m) => m.id === modelId);
+    if (!model) return;
+
+    try {
+      // Reuse removeModelFiles so file cleanup + state reset stay in one place.
+      await get().removeModelFiles(modelId);
+      await removeModelFiles(db, modelId);
+      await get().loadModels();
+    } catch (err) {
+      console.error('Failed to remove model:', err);
     }
   },
 
@@ -259,30 +236,27 @@ export const useModelStore = create<ModelStore>((set, get) => ({
 
     try {
       if (model.source === 'remote' && model.isDownloaded) {
-        const oldPaths = [];
-        const newPaths = [];
+        const oldSources: string[] = [];
+        const newSources: string[] = [];
 
         if (model.tokenizerPath !== localTokenizerPath) {
-          oldPaths.push(model.tokenizerPath);
-          newPaths.push(localTokenizerPath);
+          oldSources.push(model.tokenizerPath);
+          newSources.push(localTokenizerPath);
         }
 
         if (model.tokenizerConfigPath !== localTokenizerConfigPath) {
-          oldPaths.push(model.tokenizerConfigPath);
-          newPaths.push(localTokenizerConfigPath);
+          oldSources.push(model.tokenizerConfigPath);
+          newSources.push(localTokenizerConfigPath);
         }
 
-        if (oldPaths.length > 0) {
-          // Delete the old local files corresponding to these source paths
-          const cachedPaths = downloadedPaths.get(modelId) || [];
-          await deleteLocalFiles(cachedPaths);
+        if (oldSources.length > 0) {
+          // Delete only the on-disk copies of the changed sources, leaving
+          // the model file alone.
+          await deleteRemoteResources(...oldSources);
         }
 
-        if (newPaths.length > 0) {
-          const result = await ResourceFetcher.fetch(() => {}, ...newPaths);
-          if (result) {
-            downloadedPaths.set(modelId, result);
-          }
+        if (newSources.length > 0) {
+          await ResourceFetcher.fetch(() => {}, ...newSources);
         }
       }
 

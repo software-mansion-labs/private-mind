@@ -56,6 +56,12 @@ export const LFM2_VL_1_6B_QUANTIZED = makeModelConstants(
 export const LFM2_VL_450M_QUANTIZED = makeModelConstants(
   'lfm2-vl-450m-quantized'
 );
+export const LFM2_5_VL_1_6B_QUANTIZED = makeModelConstants(
+  'lfm2.5-vl-1.6b-quantized'
+);
+export const LFM2_5_VL_450M_QUANTIZED = makeModelConstants(
+  'lfm2.5-vl-450m-quantized'
+);
 export const WHISPER_TINY_EN = 'whisper-tiny-en';
 
 export const LLMModule = {

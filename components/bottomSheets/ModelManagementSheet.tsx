@@ -177,8 +177,9 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
               Are you sure you want permanently remove this model from the app?
             </Text>
             <Text style={styles.subText}>
-              It will delete the model files and stored external URLs. You can
-              always add this model again manually.
+              {model.source === 'local'
+                ? 'This will remove the model from the app. The original files on your device will not be touched. You can always add this model again manually.'
+                : 'It will delete the model files and stored external URLs. You can always add this model again manually.'}
             </Text>
             <View style={styles.buttonGroup}>
               <PrimaryButton

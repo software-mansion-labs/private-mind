@@ -15,6 +15,7 @@ import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
 import { Feedback } from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
+import { getGenerationConfigForModel } from '../constants/default-models';
 
 interface LLMStore {
   isLoading: boolean;
@@ -333,6 +334,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           }));
         }
       );
+
+      const generationConfig = getGenerationConfigForModel(model.modelPath);
+      if (generationConfig) {
+        llmInstance.configure({ generationConfig });
+      }
 
       set({ isLoading: false });
     } catch (e) {
