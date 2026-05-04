@@ -21,6 +21,7 @@ import Toast from 'react-native-toast-message';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
 import { router } from 'expo-router';
+import { Feedback } from '../../utils/Feedback';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -151,6 +152,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
                 }
                 disabled={isProcessing}
                 onPress={async () => {
+                  Feedback.destructive();
                   setIsProcessing(true);
                   await removeModelFiles(model.id);
                   setIsProcessing(false);
@@ -189,6 +191,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
                 disabled={isProcessing}
                 style={styles.buttonDestructive}
                 onPress={async () => {
+                  Feedback.destructive();
                   setIsProcessing(true);
                   await removeModel(model.id);
                   setIsProcessing(false);
@@ -218,10 +221,16 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       enableDynamicSizing
-      onChange={() => {
+      onChange={(index) => {
+        if (index >= 0) {
+          Feedback.sheetOpen();
+        } else {
+          Feedback.sheetClose();
+        }
         setStage(ModalStage.Initial);
         setIsProcessing(false);
       }}
+      onDismiss={() => Feedback.sheetClose()}
       handleStyle={styles.handle}
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.background}

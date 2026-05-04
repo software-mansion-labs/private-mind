@@ -288,14 +288,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         },
         () => {},
         (token) => {
-          // Snapshot once: all read decisions below must see the same state,
-          // otherwise intermediate set() calls in this callback race with
-          // concurrent updates.
           const snapshot = get();
           const isFirstToken = snapshot.performance.tokenCount === 0;
 
           if (isFirstToken && !snapshot.isBenchmarking) {
-            Feedback.success();
+            Feedback.firstToken();
           }
 
           /* Temporary solution to handle interrupt during prefill, needs to be fixed in the

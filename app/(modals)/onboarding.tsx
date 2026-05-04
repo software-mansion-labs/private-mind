@@ -31,6 +31,7 @@ import OnboardingStepPanel, {
 } from '../../components/onboarding/OnboardingStepPanel';
 import { useRouter } from 'expo-router';
 import { markOnboardingComplete } from '../../utils/onboardingStatus';
+import { Feedback } from '../../utils/Feedback';
 
 const SCREEN_HEIGHT = Dimensions.get('screen').height;
 
@@ -193,8 +194,10 @@ function OnboardingScreen() {
               }
               onNextPress={() => {
                 if (stepNumber < STEPS.length) {
+                  Feedback.listSelect();
                   setStepNumber(stepNumber + 1);
                 } else {
+                  Feedback.onboardingComplete();
                   closeOnboarding();
                 }
               }}

@@ -17,6 +17,7 @@ import { Model } from '../../database/modelRepository';
 import ModelCard from '../model-hub/ModelCard';
 import PrimaryButton from '../PrimaryButton';
 import BottomSheetSearchInput from './BottomSheetSearchInput';
+import { Feedback } from '../../utils/Feedback';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -68,10 +69,16 @@ const ModelSelectSheet = ({
       keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
       keyboardBlurBehavior="restore"
       onChange={(index) => {
+        if (index >= 0) {
+          Feedback.sheetOpen();
+        } else {
+          Feedback.sheetClose();
+        }
         onSheetStateChange?.(index >= 0);
         setIsFullyOpen(index >= 0);
       }}
       onDismiss={() => {
+        Feedback.sheetClose();
         onSheetStateChange?.(false);
         setIsFullyOpen(false);
       }}
@@ -106,6 +113,7 @@ const ModelSelectSheet = ({
               <ModelCard
                 model={item}
                 onPress={() => {
+                  Feedback.listSelect();
                   selectModel(item);
                   bottomSheetModalRef.current?.dismiss();
                 }}

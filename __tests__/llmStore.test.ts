@@ -6,7 +6,7 @@ import { prepareMessagesForLLM } from '../utils/promptUtils';
 
 jest.mock('../database/chatRepository');
 jest.mock('../utils/Feedback', () => ({
-  Feedback: { success: jest.fn() },
+  Feedback: { firstToken: jest.fn() },
 }));
 jest.mock('../utils/promptUtils', () => ({
   prepareMessagesForLLM: jest.fn(() => [
@@ -175,7 +175,7 @@ describe('token callback', () => {
     expect(useLLMStore.getState().performance.firstTokenTime).toBe(firstTime);
   });
 
-  it('triggers Feedback.success on first token when not benchmarking', async () => {
+  it('triggers Feedback.firstToken on first token when not benchmarking', async () => {
     const onToken = await loadModel();
     useLLMStore.setState({
       isProcessingPrompt: true,
@@ -185,10 +185,10 @@ describe('token callback', () => {
 
     onToken('first');
 
-    expect(Feedback.Feedback.success).toHaveBeenCalledTimes(1);
+    expect(Feedback.Feedback.firstToken).toHaveBeenCalledTimes(1);
   });
 
-  it('does not trigger Feedback.success during benchmarking', async () => {
+  it('does not trigger Feedback.firstToken during benchmarking', async () => {
     const onToken = await loadModel();
     useLLMStore.setState({
       isProcessingPrompt: true,
@@ -198,7 +198,7 @@ describe('token callback', () => {
 
     onToken('first');
 
-    expect(Feedback.Feedback.success).not.toHaveBeenCalled();
+    expect(Feedback.Feedback.firstToken).not.toHaveBeenCalled();
   });
 
   it('appends token to last active message when generating for active chat', async () => {

@@ -10,6 +10,7 @@ import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import LightBulbCrossedIcon from '../../assets/icons/light_bulb_crossed.svg';
 import LightBulbIcon from '../../assets/icons/light_bulb.svg';
 import PlusIcon from '../../assets/icons/plus.svg';
+import { Feedback } from '../../utils/Feedback';
 
 interface Props {
   onAttach: () => void;
@@ -47,7 +48,10 @@ const ChatBarActions = ({
         <CircleButton
           icon={PauseIcon}
           size={13.33}
-          onPress={onInterrupt}
+          onPress={() => {
+            Feedback.interrupt();
+            onInterrupt();
+          }}
           backgroundColor={theme.bg.main}
           color={theme.text.contrastPrimary}
         />
@@ -60,14 +64,20 @@ const ChatBarActions = ({
           {hasAttachments && !userInput && (
             <CircleButton
               icon={SoundwaveIcon}
-              onPress={onSpeechInput}
+              onPress={() => {
+                Feedback.speech();
+                onSpeechInput();
+              }}
               backgroundColor="transparent"
               color={theme.text.onChatBar}
             />
           )}
           <CircleButton
             icon={SendIcon}
-            onPress={onSend}
+            onPress={() => {
+              Feedback.send();
+              onSend();
+            }}
             backgroundColor={theme.bg.main}
             color={theme.text.contrastPrimary}
           />
@@ -78,7 +88,10 @@ const ChatBarActions = ({
     return (
       <CircleButton
         icon={SoundwaveIcon}
-        onPress={onSpeechInput}
+        onPress={() => {
+          Feedback.speech();
+          onSpeechInput();
+        }}
         backgroundColor="transparent"
         color={theme.text.onChatBar}
       />
@@ -91,13 +104,23 @@ const ChatBarActions = ({
         <CircleButton
           icon={PlusIcon}
           size={14}
-          onPress={onAttach}
+          onPress={() => {
+            Feedback.attach();
+            onAttach();
+          }}
           backgroundColor={theme.bg.attachButton}
           color={theme.text.onAttachButton}
           testID="attach-btn"
         />
         <TouchableOpacity
-          onPress={onThinkingToggle}
+          onPress={() => {
+            if (thinkingEnabled) {
+              Feedback.toggleOff();
+            } else {
+              Feedback.toggleOn();
+            }
+            onThinkingToggle?.();
+          }}
           style={[styles.toggleButton, !thinkingEnabled && { opacity: 0.4 }]}
         >
           {!thinkingEnabled ? (

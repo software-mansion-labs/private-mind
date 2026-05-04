@@ -12,6 +12,7 @@ import EditIcon from '../../assets/icons/edit.svg';
 import UploadIcon from '../../assets/icons/upload.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 import { SvgComponent } from '../../utils/SvgComponent';
+import { Feedback } from '../../utils/Feedback';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -59,6 +60,7 @@ const ChatTitleMenuSheet = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handleOption = (action: () => void) => {
+    Feedback.listSelect();
     bottomSheetModalRef.current?.dismiss();
     action();
   };
@@ -67,6 +69,14 @@ const ChatTitleMenuSheet = ({
     <BottomSheetModal
       ref={bottomSheetModalRef}
       enableDynamicSizing
+      onChange={(index) => {
+        if (index >= 0) {
+          Feedback.sheetOpen();
+        } else {
+          Feedback.sheetClose();
+        }
+      }}
+      onDismiss={() => Feedback.sheetClose()}
       backdropComponent={(props) => (
         <BottomSheetBackdrop
           {...props}
@@ -97,7 +107,10 @@ const ChatTitleMenuSheet = ({
           iconColor={theme.text.error}
           label="Delete Chat"
           labelColor={theme.text.error}
-          onPress={() => handleOption(onDelete)}
+          onPress={() => {
+            Feedback.destructive();
+            handleOption(onDelete);
+          }}
           styles={styles}
         />
       </BottomSheetView>

@@ -44,8 +44,6 @@ PODS:
     - ExpoModulesCore
   - ExpoGlassEffect (55.0.10):
     - ExpoModulesCore
-  - ExpoHaptics (55.0.13):
-    - ExpoModulesCore
   - ExpoImage (55.0.8):
     - ExpoModulesCore
     - libavif/libdav1d
@@ -154,6 +152,28 @@ PODS:
     - Yoga
   - opencv-rne (4.11.0)
   - Pdfium (0.1.3):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - Pulsar (1.4.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2600,7 +2620,6 @@ DEPENDENCIES:
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
   - ExpoFont (from `../node_modules/expo-font/ios`)
   - ExpoGlassEffect (from `../node_modules/expo-glass-effect/ios`)
-  - ExpoHaptics (from `../node_modules/expo-haptics/ios`)
   - ExpoImage (from `../node_modules/expo-image/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
@@ -2620,6 +2639,7 @@ DEPENDENCIES:
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - "op-sqlite (from `../node_modules/@op-engineering/op-sqlite`)"
   - Pdfium (from `../node_modules/react-native-pdfium`)
+  - Pulsar (from `../node_modules/react-native-pulsar`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
   - RCTRequired (from `../node_modules/react-native/Libraries/Required`)
   - RCTSwiftUI (from `../node_modules/react-native/ReactApple/RCTSwiftUI`)
@@ -2743,8 +2763,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-font/ios"
   ExpoGlassEffect:
     :path: "../node_modules/expo-glass-effect/ios"
-  ExpoHaptics:
-    :path: "../node_modules/expo-haptics/ios"
   ExpoImage:
     :path: "../node_modules/expo-image/ios"
   ExpoKeepAwake:
@@ -2784,6 +2802,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@op-engineering/op-sqlite"
   Pdfium:
     :path: "../node_modules/react-native-pdfium"
+  Pulsar:
+    :path: "../node_modules/react-native-pulsar"
   RCTDeprecation:
     :path: "../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation"
   RCTRequired:
@@ -2969,7 +2989,6 @@ SPEC CHECKSUMS:
   ExpoFileSystem: d40374bc7b6e990e2640e5dc3350fc83b1d74a40
   ExpoFont: cdd7a1d574a376fa003c713eff49e0a4df8672c7
   ExpoGlassEffect: 72bcb9dc634262c59897ff7c53c16e2ff03990d0
-  ExpoHaptics: 0acad494faee522cfdef7521cc2cabafb9fe8a70
   ExpoImage: ef931bba1fd3e907c2262216d17eb21095c9ac2b
   ExpoKeepAwake: a1baf9810a2dee1905aa9bdd336852598f7220e9
   ExpoLinearGradient: c654e92d726a6d64c588a0988bb22bea331d5e79
@@ -2986,14 +3005,15 @@ SPEC CHECKSUMS:
   ExpoStoreReview: 2350f940e81837db443aebe72c58454b6fe48289
   ExpoSymbols: 8b63e859ba013df1f2fc666f535fddb3d5270569
   FBLazyVector: 061f518bbd81677ed8a8317e2ae60b8779495808
-  hermes-engine: 6efab816e8c36910982624956b84291fafd418e6
+  hermes-engine: 29ba6dff7de8ac75171da89c6f0bb7e545b4439f
   iosMath: f7a6cbadf9d836d2149c2a84c435b1effc244cba
   libavif: 5f8e715bea24debec477006f21ef9e95432e254d
   libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   op-sqlite: d9827bbb015ca71c44763d6b447afe2c12d20261
   opencv-rne: 2305807573b6e29c8c87e3416ab096d09047a7a0
-  Pdfium: 4a0412b69bb0172892aaed9254b430289a99f1c8
+  Pdfium: 4c3d8adcc9108922a9e61f1df6ca35ac49d05557
+  Pulsar: db1cccc0a590d3dae98f2a9a3151bfc9be8785c3
   RCTDeprecation: 5045f20b2cc1239bf422764004338c720684a22f
   RCTRequired: b6b9724225dd780ac2989d2e575d5513c50fe04b
   RCTSwiftUI: 395b65655229fa2006415207adcfcb6e35dc78ed
@@ -3002,7 +3022,7 @@ SPEC CHECKSUMS:
   React: 3e14066ac707b3e369d09e2e923d8bee7f8c33ff
   React-callinvoker: bd7959a24564feaf5e4c8c11789e64884da13482
   React-Core: f060f4e14e9301685ce63ea65fbe903bf3397e45
-  React-Core-prebuilt: 42f9b01572344fe716675524de2771274177fca5
+  React-Core-prebuilt: 33f7e96253d82fd5e16c98f4b860aa92872489ed
   React-CoreModules: 89a1a544297be88ca4cdff317423f9e0d0c192a4
   React-cxxreact: 81b1bfa305b1b759cc0fe18327644816216e5993
   React-debug: 234fddb309822e13b9b442ef1bdca8d2b8c3cbf2
@@ -3068,7 +3088,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 2b19d66e5ddfe8dc7afb6338a4626156cbf2bab1
   ReactCodegen: 43f0948182edee9407c7b977fb059455dfeb9361
   ReactCommon: c6e81cc1ae185fa84863f3ea1d58caac4be741d7
-  ReactNativeDependencies: 98d8290c99cc02e3e02f8a4a8354106a81edcaa3
+  ReactNativeDependencies: 2c2634fe3013b490b9173e98d1ec1928db1b8e75
   ReactNativeEnrichedMarkdown: 27a73f8df1bc304c35b7bd922c9885a4dfec3dc5
   ReactNativeFs: 1bbd20020179cbaeddcda3ca2bf91e71647a1f23
   RNAudioAPI: a2a67b86dbd376f391252f0e249aec34a6e1ae92
