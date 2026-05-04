@@ -185,9 +185,10 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     if (!model) return;
 
     try {
-      // Only remote-downloaded models live inside the app sandbox; local
-      // models point at user-provided files, which we must never touch.
-      if (model.source === 'remote') {
+      // Only `local` models point at user-provided files we must never touch.
+      // `remote` and `built-in` both download into the app sandbox via the
+      // resource fetcher, so the same cleanup path applies to both.
+      if (model.source !== 'local') {
         await deleteRemoteResources(
           model.modelPath,
           model.tokenizerPath,

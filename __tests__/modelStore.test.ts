@@ -219,6 +219,26 @@ describe('removeModel', () => {
     );
   });
 
+  it('also deletes downloaded resources for built-in models', async () => {
+    const builtInModel = {
+      ...baseModel,
+      source: 'built-in' as const,
+      isDownloaded: true,
+    };
+    mockDeleteResources.mockResolvedValue(undefined);
+    mockUpdateModelDownloaded.mockResolvedValue(undefined);
+    mockRemoveModelFiles.mockResolvedValue(undefined);
+
+    useModelStore.setState({ models: [builtInModel], db: mockDb });
+    await useModelStore.getState().removeModel(builtInModel.id);
+
+    expect(mockDeleteResources).toHaveBeenCalledWith(
+      builtInModel.modelPath,
+      builtInModel.tokenizerPath,
+      builtInModel.tokenizerConfigPath
+    );
+  });
+
   it('removes download state entry after removal', async () => {
     const remoteModel = { ...baseModel, isDownloaded: true };
     useModelStore.setState({
