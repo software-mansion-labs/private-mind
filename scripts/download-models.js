@@ -30,12 +30,32 @@ async function ensureModelAssets() {
 
     console.log(`Downloading ${url}...`);
     const res = await fetch(url);
-    await new Promise((resolve, reject) => {
-      const fileStream = fs.createWriteStream(filePath);
-      fileStream.on('finish', resolve);
-      fileStream.on('error', reject);
-      Readable.fromWeb(res.body).pipe(fileStream);
-    });
+    if (!res.ok) {
+      throw new Error(
+        `Failed to download ${url}: ${res.status} ${res.statusText}`
+      );
+    }
+
+    // Write to a .part file first, then rename on success. Prevents a
+    // half-finished or error-body file from being treated as valid on the
+    // next run (fs.existsSync check above would skip the redownload).
+    const tempPath = `${filePath}.part`;
+    try {
+      await new Promise((resolve, reject) => {
+        const fileStream = fs.createWriteStream(tempPath);
+        fileStream.on('finish', resolve);
+        fileStream.on('error', reject);
+        Readable.fromWeb(res.body).pipe(fileStream);
+      });
+      fs.renameSync(tempPath, filePath);
+    } catch (err) {
+      try {
+        fs.unlinkSync(tempPath);
+      } catch {
+        // ignore
+      }
+      throw err;
+    }
   }
 }
 

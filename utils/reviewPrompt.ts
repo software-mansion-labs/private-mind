@@ -12,7 +12,7 @@ export function shouldPromptReview(
   lastPromptedAt: number | null
 ): boolean {
   if (totalChats < FIRST_PROMPT_AT) return false;
-  if (lastPromptedAt === null) return totalChats >= FIRST_PROMPT_AT;
+  if (lastPromptedAt === null) return true;
   return totalChats - lastPromptedAt >= RE_PROMPT_INTERVAL;
 }
 

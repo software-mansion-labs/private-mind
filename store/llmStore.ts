@@ -15,6 +15,7 @@ import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
 import { Feedback } from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
+import { getGenerationConfigForModel } from '../constants/default-models';
 
 interface LLMStore {
   isLoading: boolean;
@@ -106,7 +107,7 @@ const updateChatStateForGeneration = (
   set: (
     partial: Partial<LLMStore> | ((state: LLMStore) => Partial<LLMStore>)
   ) => void,
-  phase: 'start' | 'generating' | 'complete',
+  phase: 'start' | 'generating' | 'complete' | 'failed',
   data?: {
     chatId?: number;
     activeChatMessages?: Message[];
@@ -159,6 +160,24 @@ const updateChatStateForGeneration = (
           isProcessingPrompt: false,
         });
       }
+      break;
+    case 'failed':
+      // Drop the empty assistant placeholder left behind when generation
+      // failed, was interrupted before any tokens, or produced no response.
+      set((state) => {
+        const messages = state.activeChatMessages;
+        const last = messages[messages.length - 1];
+        const cleaned =
+          last && last.role === 'assistant' && last.id === -1 && !last.content
+            ? messages.slice(0, -1)
+            : messages;
+        return {
+          activeChatMessages: cleaned,
+          isGenerating: false,
+          generatingForChatId: null,
+          isProcessingPrompt: false,
+        };
+      });
       break;
   }
 };
@@ -269,8 +288,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         },
         () => {},
         (token) => {
-          const isFirstToken = get().performance.tokenCount === 0;
-          if (isFirstToken && !get().isBenchmarking) {
+          // Snapshot once: all read decisions below must see the same state,
+          // otherwise intermediate set() calls in this callback race with
+          // concurrent updates.
+          const snapshot = get();
+          const isFirstToken = snapshot.performance.tokenCount === 0;
+
+          if (isFirstToken && !snapshot.isBenchmarking) {
             Feedback.success();
           }
 
@@ -279,35 +303,42 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           */
           if (
             isFirstToken &&
-            !get().isProcessingPrompt &&
-            !get().isGenerating
+            !snapshot.isProcessingPrompt &&
+            !snapshot.isGenerating
           ) {
             llmInstance?.interrupt();
             return;
           }
-          set({
+
+          const shouldAppendToActiveChat =
+            snapshot.generatingForChatId === snapshot.activeChatId;
+          const firstTokenTime = isFirstToken
+            ? performance.now()
+            : snapshot.performance.firstTokenTime;
+
+          // Use functional set so tokenCount increments relative to the
+          // latest state, not the captured snapshot.
+          set((state) => ({
             isProcessingPrompt: false,
             performance: {
-              tokenCount: get().performance.tokenCount + 1,
-              firstTokenTime: isFirstToken
-                ? performance.now()
-                : get().performance.firstTokenTime,
+              tokenCount: state.performance.tokenCount + 1,
+              firstTokenTime,
             },
-          });
-          /* This check ensures that after we leave the chat,
-          new messages history won't be overwritten by tokens sent after interrupt.
-          */
-          if (get().generatingForChatId === get().activeChatId) {
-            set({
-              activeChatMessages: get().activeChatMessages.map((msg, index) =>
-                index === get().activeChatMessages.length - 1
-                  ? { ...msg, content: msg.content + token }
-                  : msg
-              ),
-            });
-          }
+            activeChatMessages: shouldAppendToActiveChat
+              ? state.activeChatMessages.map((msg, index) =>
+                  index === state.activeChatMessages.length - 1
+                    ? { ...msg, content: msg.content + token }
+                    : msg
+                )
+              : state.activeChatMessages,
+          }));
         }
       );
+
+      const generationConfig = getGenerationConfigForModel(model.modelPath);
+      if (generationConfig) {
+        llmInstance.configure({ generationConfig });
+      }
 
       set({ isLoading: false });
     } catch (e) {
@@ -370,6 +401,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       // Check if user interrupted during model loading
       if (!get().isProcessingPrompt) {
+        updateChatStateForGeneration(set, 'failed');
         return;
       }
 
@@ -395,11 +427,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           updateChatStateForGeneration(set, 'complete');
         }
       } else {
-        updateChatStateForGeneration(set, 'complete');
+        updateChatStateForGeneration(set, 'failed');
       }
     } catch (e) {
       console.error('Chat sendMessage failed', e);
-      updateChatStateForGeneration(set, 'complete');
+      updateChatStateForGeneration(set, 'failed');
     }
   },
 

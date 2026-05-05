@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, Text, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
@@ -12,6 +12,7 @@ import { useChatStore } from '../../store/chatStore';
 import { useLLMStore } from '../../store/llmStore';
 import { useSQLiteContext } from 'expo-sqlite';
 import { getStartingModels, Model } from '../../database/modelRepository';
+import { Theme } from '../../styles/colors';
 
 function SelectStartingModelScreen() {
   const router = useRouter();
@@ -32,16 +33,22 @@ function SelectStartingModelScreen() {
     if (downloadedModels.length > 0) setSelectedModel(downloadedModels[0]);
   }, [downloadedModels]);
 
+  const isContinuingRef = useRef(false);
   const handleContinue = async () => {
-    if (!selectedModel) return;
+    if (!selectedModel || isContinuingRef.current) return;
+    isContinuingRef.current = true;
 
-    const nextChatId = await getNextChatId(db);
-    await initPhantomChat(nextChatId);
-    await setActiveChatId(null);
-    router.replace({
-      pathname: `/chat/${nextChatId}`,
-      params: { modelId: selectedModel.id },
-    });
+    try {
+      const nextChatId = await getNextChatId(db);
+      await initPhantomChat(nextChatId);
+      await setActiveChatId(null);
+      router.replace({
+        pathname: `/chat/${nextChatId}`,
+        params: { modelId: String(selectedModel.id) },
+      });
+    } finally {
+      isContinuingRef.current = false;
+    }
   };
 
   const handleSkip = () => {
@@ -97,7 +104,7 @@ function SelectStartingModelScreen() {
 
 export default SelectStartingModelScreen;
 
-const createStyles = (theme: any) =>
+const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       flex: 1,

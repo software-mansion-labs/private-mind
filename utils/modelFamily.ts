@@ -23,5 +23,8 @@ export const groupModelsByFamily = (models: Model[]): ModelFamily[] => {
       map.set(family, [model]);
     }
   }
-  return Array.from(map.entries()).map(([name, models]) => ({ name, models }));
+  return Array.from(map.entries()).map(([name, familyModels]) => ({
+    name,
+    models: familyModels,
+  }));
 };

@@ -10,8 +10,8 @@ import {
   QWEN2_5_1_5B_QUANTIZED,
   QWEN2_5_3B_QUANTIZED,
   LFM2_5_1_2B_INSTRUCT_QUANTIZED,
-  LFM2_VL_1_6B_QUANTIZED,
-  LFM2_VL_450M_QUANTIZED,
+  LFM2_5_VL_1_6B_QUANTIZED,
+  LFM2_5_VL_450M_QUANTIZED,
 } from 'react-native-executorch';
 
 export const startingModels = [
@@ -19,6 +19,33 @@ export const startingModels = [
   'LFM 2.5 VL - 450M',
   'Qwen 3 - 1.7B',
 ];
+
+const RNE_MODELS = [
+  QWEN3_0_6B_QUANTIZED,
+  QWEN3_1_7B_QUANTIZED,
+  LLAMA3_2_1B_QLORA,
+  LLAMA3_2_1B_SPINQUANT,
+  LLAMA3_2_3B_QLORA,
+  LLAMA3_2_3B_SPINQUANT,
+  QWEN2_5_0_5B_QUANTIZED,
+  QWEN2_5_1_5B_QUANTIZED,
+  QWEN2_5_3B_QUANTIZED,
+  LFM2_5_1_2B_INSTRUCT_QUANTIZED,
+  LFM2_5_VL_1_6B_QUANTIZED,
+  LFM2_5_VL_450M_QUANTIZED,
+];
+
+const GENERATION_CONFIG_BY_MODEL_PATH: Record<string, object> =
+  Object.fromEntries(
+    RNE_MODELS.flatMap((m) =>
+      m && 'generationConfig' in m && m.generationConfig
+        ? [[m.modelSource, m.generationConfig]]
+        : []
+    )
+  );
+
+export const getGenerationConfigForModel = (modelPath: string) =>
+  GENERATION_CONFIG_BY_MODEL_PATH[modelPath];
 
 export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
   {
@@ -146,9 +173,9 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
   {
     modelName: 'LFM 2.5 VL - 1.6B',
     family: 'LFM 2.5',
-    modelPath: LFM2_VL_1_6B_QUANTIZED.modelSource,
-    tokenizerPath: LFM2_VL_1_6B_QUANTIZED.tokenizerSource,
-    tokenizerConfigPath: LFM2_VL_1_6B_QUANTIZED.tokenizerConfigSource,
+    modelPath: LFM2_5_VL_1_6B_QUANTIZED.modelSource,
+    tokenizerPath: LFM2_5_VL_1_6B_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: LFM2_5_VL_1_6B_QUANTIZED.tokenizerConfigSource,
     source: 'remote',
     parameters: 1.6,
     modelSize: 2.43,
@@ -162,9 +189,9 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
   {
     modelName: 'LFM 2.5 VL - 450M',
     family: 'LFM 2.5',
-    modelPath: LFM2_VL_450M_QUANTIZED.modelSource,
-    tokenizerPath: LFM2_VL_450M_QUANTIZED.tokenizerSource,
-    tokenizerConfigPath: LFM2_VL_450M_QUANTIZED.tokenizerConfigSource,
+    modelPath: LFM2_5_VL_450M_QUANTIZED.modelSource,
+    tokenizerPath: LFM2_5_VL_450M_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: LFM2_5_VL_450M_QUANTIZED.tokenizerConfigSource,
     source: 'remote',
     parameters: 0.45,
     modelSize: 0.65,

@@ -76,10 +76,10 @@ function ChatScreenInner() {
     }, [chatId, isPhantom])
   );
 
-  const handleSetModel = async (model: Model) => {
-    setChatModel(chatId, model.id);
+  const handleSetModel = async (newModel: Model) => {
+    setChatModel(chatId, newModel.id);
     loadChats();
-    setModel(model);
+    setModel(newModel);
   };
 
   return (

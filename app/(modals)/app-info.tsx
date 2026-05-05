@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
+import * as Application from 'expo-application';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
@@ -19,7 +20,7 @@ import GithubIcon from '../../assets/icons/github.svg';
 import CopyIcon from '../../assets/icons/copy.svg';
 import FooterIcon from '../../assets/icons/footer.svg';
 
-const APP_VERSION = 'v.1.1.6';
+const APP_VERSION = `v.${Application.nativeApplicationVersion ?? ''}`;
 
 const GITHUB_LINKS: { text: string; url: string }[] = [
   {

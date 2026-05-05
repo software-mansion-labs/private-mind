@@ -62,8 +62,9 @@ const DrawerMenu = () => {
   const isOnPhantomChat =
     phantomChat != null && pathname === `/chat/${phantomChat.id}`;
 
-  const groupedChats = groupChatsByDate(
-    [...chats].sort((a, b) => b.lastUsed - a.lastUsed)
+  const groupedChats = useMemo(
+    () => groupChatsByDate([...chats].sort((a, b) => b.lastUsed - a.lastUsed)),
+    [chats]
   );
 
   const navigate = (path: string) => {

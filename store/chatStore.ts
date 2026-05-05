@@ -99,14 +99,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   updateLastUsed: (id: number) => {
-    get().chats.forEach((chat) => {
-      if (chat.id === id) {
-        chat.lastUsed = Date.now();
-      }
-    });
-
+    const now = Date.now();
     set((state) => ({
-      chats: state.chats.sort((a, b) => b.lastUsed - a.lastUsed),
+      chats: state.chats
+        .map((chat) => (chat.id === id ? { ...chat, lastUsed: now } : chat))
+        .sort((a, b) => b.lastUsed - a.lastUsed),
     }));
   },
 
@@ -142,7 +139,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         },
         ...state.chats,
       ],
-      phantomChat: undefined,
+      phantomChat: null,
     }));
 
     maybePromptReview();

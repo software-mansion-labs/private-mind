@@ -215,7 +215,7 @@ const ChatBar = ({
     [addPastedAttachment, isVisionModel]
   );
 
-  const [showSpeechInput, setShowSpeechInput] = React.useState(false);
+  const [showSpeechInput, setShowSpeechInput] = useState(false);
 
   const openSpeechInput = async () => {
     const permissionStatus = await AudioManager.requestRecordingPermissions();
@@ -298,9 +298,7 @@ const ChatBar = ({
                   style={styles.input}
                   multiline
                   numberOfLines={3}
-                  onFocus={async () => {
-                    await loadSelectedModel();
-                  }}
+                  onFocus={() => loadSelectedModel()}
                   placeholder="Ask about anything..."
                   placeholderTextColor={theme.text.onChatBarMuted}
                   value={userInput}
@@ -392,22 +390,5 @@ const createStyles = (theme: Theme) =>
     previewRow: {
       flexDirection: 'row',
       gap: 8,
-    },
-    divider: {
-      height: 1,
-      backgroundColor: theme.border.soft,
-    },
-    buttonBar: {
-      justifyContent: 'center',
-      alignItems: 'flex-end',
-    },
-    barButton: {
-      width: 36,
-      height: 36,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    iconContrast: {
-      color: theme.text.onChatBar,
     },
   });

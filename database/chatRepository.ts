@@ -1,6 +1,25 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SQLiteDatabase } from 'expo-sqlite';
 
+const DEFAULT_CHAT_SETTINGS_KEY = 'default_chat_settings';
+
+const readDefaultChatSettings = async (): Promise<ChatSettings | null> => {
+  const raw = await AsyncStorage.getItem(DEFAULT_CHAT_SETTINGS_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    const settings = parsed as Partial<ChatSettings>;
+    if (typeof settings.systemPrompt !== 'string') return null;
+    return {
+      systemPrompt: settings.systemPrompt,
+      thinkingEnabled: settings.thinkingEnabled,
+    };
+  } catch {
+    return null;
+  }
+};
+
 export type Chat = {
   id: number;
   modelId: number;
@@ -41,13 +60,10 @@ export const createChat = async (
     );
 
     if (result.lastInsertRowId) {
-      const defaultSettings = await AsyncStorage.getItem(
-        'default_chat_settings'
-      );
+      const defaultSettings = await readDefaultChatSettings();
       if (defaultSettings) {
-        const parsedSettings: ChatSettings = JSON.parse(defaultSettings);
         await setChatSettings(db, result.lastInsertRowId, {
-          systemPrompt: modelSystemPrompt ?? parsedSettings.systemPrompt,
+          systemPrompt: modelSystemPrompt ?? defaultSettings.systemPrompt,
         });
       }
     }
@@ -90,11 +106,6 @@ export const persistMessage = async (
   db: SQLiteDatabase,
   message: Omit<Message, 'id' | 'timestamp'>
 ): Promise<number> => {
-  if (!message.tokensPerSecond || !message.timeToFirstToken) {
-    message.tokensPerSecond = 0;
-    message.timeToFirstToken = 0;
-  }
-
   const result = await db.runAsync(
     `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
     [
@@ -102,8 +113,8 @@ export const persistMessage = async (
       message.role,
       message.content,
       message.modelName || '',
-      message.tokensPerSecond,
-      message.timeToFirstToken,
+      message.tokensPerSecond ?? 0,
+      message.timeToFirstToken ?? 0,
       message.imagePath || null,
       message.documentName || null,
     ]
@@ -121,6 +132,10 @@ export const persistMessage = async (
   return result.lastInsertRowId;
 };
 
+// SQLite's default SQLITE_MAX_VARIABLE_NUMBER is 999 on older builds.
+// 9 params per row, so 100 rows per batch keeps us well under the limit.
+const IMPORT_BATCH_SIZE = 100;
+
 export const importMessages = async (
   db: SQLiteDatabase,
   chatId: number,
@@ -128,17 +143,27 @@ export const importMessages = async (
 ): Promise<void> => {
   if (messages.length === 0) return;
 
-  const placeholders = messages.map(() => '(?, ?, ?, ?)').join(', ');
-  const flattenedValues = messages.flatMap((msg) => [
-    chatId,
-    msg.role,
-    msg.content,
-    msg.timestamp ?? Date.now(),
-  ]);
-  await db.runAsync(
-    `INSERT INTO messages (chatId, role, content, timestamp) VALUES ${placeholders}`,
-    flattenedValues
-  );
+  for (let i = 0; i < messages.length; i += IMPORT_BATCH_SIZE) {
+    const batch = messages.slice(i, i + IMPORT_BATCH_SIZE);
+    const placeholders = batch
+      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .join(', ');
+    const flattenedValues = batch.flatMap((msg) => [
+      chatId,
+      msg.role,
+      msg.content,
+      msg.timestamp ?? Date.now(),
+      msg.modelName ?? '',
+      msg.tokensPerSecond ?? 0,
+      msg.timeToFirstToken ?? 0,
+      msg.imagePath ?? null,
+      msg.documentName ?? null,
+    ]);
+    await db.runAsync(
+      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName) VALUES ${placeholders}`,
+      flattenedValues
+    );
+  }
 };
 
 export const deleteChat = async (
@@ -161,15 +186,9 @@ export const getChatSettings = async (
   );
 
   if (!result) {
-    const defaultSettings = await AsyncStorage.getItem('default_chat_settings');
+    const defaultSettings = await readDefaultChatSettings();
     if (defaultSettings) {
-      const parsed = JSON.parse(defaultSettings) as ChatSettings & {
-        contextWindow?: number;
-      };
-      return {
-        systemPrompt: parsed.systemPrompt,
-        thinkingEnabled: parsed.thinkingEnabled,
-      };
+      return defaultSettings;
     }
   }
 
@@ -195,7 +214,7 @@ export const setChatSettings = async (
 ): Promise<void> => {
   if (chatId === null) {
     await AsyncStorage.setItem(
-      'default_chat_settings',
+      DEFAULT_CHAT_SETTINGS_KEY,
       JSON.stringify(settings)
     );
   } else {

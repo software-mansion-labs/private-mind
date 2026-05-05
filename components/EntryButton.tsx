@@ -6,7 +6,6 @@ import {
   ViewStyle,
   TextStyle,
   GestureResponderEvent,
-  View,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
@@ -38,7 +37,7 @@ const EntryButton = ({
       disabled={disabled}
       style={[styles.button, style]}
     >
-      {icon && <View>{icon}</View>}
+      {icon}
       <Text style={[styles.text, textStyle]}>{text}</Text>
     </TouchableOpacity>
   );

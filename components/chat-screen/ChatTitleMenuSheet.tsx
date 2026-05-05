@@ -11,6 +11,7 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import EditIcon from '../../assets/icons/edit.svg';
 import UploadIcon from '../../assets/icons/upload.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
+import { SvgComponent } from '../../utils/SvgComponent';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -18,6 +19,35 @@ interface Props {
   onExport: () => void;
   onDelete: () => void;
 }
+
+interface OptionProps {
+  icon: SvgComponent;
+  iconColor: string;
+  label: string;
+  labelColor?: string;
+  onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
+}
+
+const MenuOption = ({
+  icon: Icon,
+  iconColor,
+  label,
+  labelColor,
+  onPress,
+  styles,
+}: OptionProps) => (
+  <TouchableOpacity style={styles.option} onPress={onPress}>
+    <View style={styles.iconWrapper}>
+      <Icon width={24} height={24} style={{ color: iconColor }} />
+    </View>
+    <Text
+      style={[styles.optionText, labelColor ? { color: labelColor } : null]}
+    >
+      {label}
+    </Text>
+  </TouchableOpacity>
+);
 
 const ChatTitleMenuSheet = ({
   bottomSheetModalRef,
@@ -48,47 +78,28 @@ const ChatTitleMenuSheet = ({
       handleIndicatorStyle={{ backgroundColor: theme.border.soft }}
     >
       <BottomSheetView style={styles.container}>
-        <TouchableOpacity
-          style={styles.option}
+        <MenuOption
+          icon={EditIcon}
+          iconColor={theme.text.primary}
+          label="Rename"
           onPress={() => handleOption(onRename)}
-        >
-          <View style={styles.iconWrapper}>
-            <EditIcon
-              width={24}
-              height={24}
-              style={{ color: theme.text.primary }}
-            />
-          </View>
-          <Text style={styles.optionText}>Rename</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.option}
+          styles={styles}
+        />
+        <MenuOption
+          icon={UploadIcon}
+          iconColor={theme.text.primary}
+          label="Export Chat"
           onPress={() => handleOption(onExport)}
-        >
-          <View style={styles.iconWrapper}>
-            <UploadIcon
-              width={24}
-              height={24}
-              style={{ color: theme.text.primary }}
-            />
-          </View>
-          <Text style={styles.optionText}>Export Chat</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.option}
+          styles={styles}
+        />
+        <MenuOption
+          icon={TrashIcon}
+          iconColor={theme.text.error}
+          label="Delete Chat"
+          labelColor={theme.text.error}
           onPress={() => handleOption(onDelete)}
-        >
-          <View style={styles.iconWrapper}>
-            <TrashIcon
-              width={24}
-              height={24}
-              style={{ color: theme.text.error }}
-            />
-          </View>
-          <Text style={[styles.optionText, { color: theme.text.error }]}>
-            Delete Chat
-          </Text>
-        </TouchableOpacity>
+          styles={styles}
+        />
       </BottomSheetView>
     </BottomSheetModal>
   );

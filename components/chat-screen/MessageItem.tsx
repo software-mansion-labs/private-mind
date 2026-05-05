@@ -21,6 +21,38 @@ interface MessageItemProps {
   documentName?: string;
 }
 
+const THINK_OPEN = '<think>';
+const THINK_CLOSE = '</think>';
+
+const parseThinkingContent = (text: string) => {
+  const thinkStartIndex = text.indexOf(THINK_OPEN);
+  if (thinkStartIndex === -1) {
+    return { normalContent: text, thinkingContent: null, hasThinking: false };
+  }
+
+  const thinkEndIndex = text.indexOf(THINK_CLOSE);
+  const normalBeforeThink = text.slice(0, thinkStartIndex);
+  const contentStart = thinkStartIndex + THINK_OPEN.length;
+
+  if (thinkEndIndex === -1) {
+    return {
+      normalContent: normalBeforeThink,
+      thinkingContent: text.slice(contentStart),
+      hasThinking: true,
+      isThinkingComplete: false,
+      normalAfterThink: '',
+    };
+  }
+
+  return {
+    normalContent: normalBeforeThink,
+    thinkingContent: text.slice(contentStart, thinkEndIndex),
+    hasThinking: true,
+    isThinkingComplete: true,
+    normalAfterThink: text.slice(thinkEndIndex + THINK_CLOSE.length),
+  };
+};
+
 const MessageItem = memo(
   ({
     content,
@@ -36,45 +68,6 @@ const MessageItem = memo(
     const styles = useMemo(() => createStyles(theme), [theme]);
     const { isGenerating, isProcessingPrompt } = useLLMStore();
     const [lightboxVisible, setLightboxVisible] = useState(false);
-
-    const parseThinkingContent = (text: string) => {
-      const thinkStartIndex = text.indexOf('<think>');
-
-      if (thinkStartIndex === -1) {
-        // No thinking block, return all as normal content
-        return {
-          normalContent: text,
-          thinkingContent: null,
-          hasThinking: false,
-        };
-      }
-
-      const thinkEndIndex = text.indexOf('</think>');
-      const normalBeforeThink = text.slice(0, thinkStartIndex);
-
-      if (thinkEndIndex === -1) {
-        // Incomplete thinking block (still streaming)
-        const thinkingContent = text.slice(thinkStartIndex + 7); // +7 for '<think>'
-        return {
-          normalContent: normalBeforeThink,
-          thinkingContent,
-          hasThinking: true,
-          isThinkingComplete: false,
-          normalAfterThink: '',
-        };
-      } else {
-        // Complete thinking block
-        const thinkingContent = text.slice(thinkStartIndex + 7, thinkEndIndex);
-        const normalAfterThink = text.slice(thinkEndIndex + 8); // +8 for '</think>'
-        return {
-          normalContent: normalBeforeThink,
-          thinkingContent,
-          hasThinking: true,
-          isThinkingComplete: true,
-          normalAfterThink,
-        };
-      }
-    };
 
     const contentParts = parseThinkingContent(content);
 
@@ -136,48 +129,46 @@ const MessageItem = memo(
             )}
           </View>
         ) : (
-          <>
-            <View style={styles.aiMessage}>
-              <View style={styles.bubbleContent}>
-                {content.trim() ? (
-                  <Text style={styles.modelName}>{modelName}</Text>
-                ) : isLastMessage && isProcessingPrompt ? (
-                  <AnimatedChatLoading />
-                ) : null}
-                {contentParts.normalContent.trim() && (
+          <View style={styles.aiMessage}>
+            <View style={styles.bubbleContent}>
+              {content.trim() ? (
+                <Text style={styles.modelName}>{modelName}</Text>
+              ) : isLastMessage && isProcessingPrompt ? (
+                <AnimatedChatLoading />
+              ) : null}
+              {contentParts.normalContent.trim() && (
+                <MarkdownComponent
+                  text={contentParts.normalContent}
+                  streaming={isLastMessage && isGenerating}
+                />
+              )}
+              {contentParts.hasThinking &&
+                contentParts.thinkingContent?.trim() && (
+                  <ThinkingBlock
+                    content={contentParts.thinkingContent || ''}
+                    isComplete={contentParts.isThinkingComplete}
+                    inProgress={
+                      isLastMessage &&
+                      isGenerating &&
+                      !contentParts.isThinkingComplete
+                    }
+                  />
+                )}
+              {contentParts.normalAfterThink &&
+                contentParts.normalAfterThink.trim() && (
                   <MarkdownComponent
-                    text={contentParts.normalContent}
+                    text={contentParts.normalAfterThink}
                     streaming={isLastMessage && isGenerating}
                   />
                 )}
-                {contentParts.hasThinking &&
-                  contentParts.thinkingContent?.trim() && (
-                    <ThinkingBlock
-                      content={contentParts.thinkingContent || ''}
-                      isComplete={contentParts.isThinkingComplete}
-                      inProgress={
-                        isLastMessage &&
-                        isGenerating &&
-                        !contentParts.isThinkingComplete
-                      }
-                    />
-                  )}
-                {contentParts.normalAfterThink &&
-                  contentParts.normalAfterThink.trim() && (
-                    <MarkdownComponent
-                      text={contentParts.normalAfterThink}
-                      streaming={isLastMessage && isGenerating}
-                    />
-                  )}
-                {tokensPerSecond !== undefined && tokensPerSecond !== 0 && (
-                  <Text style={styles.metadata}>
-                    ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
-                    {tokensPerSecond?.toFixed(2)} tok/s
-                  </Text>
-                )}
-              </View>
+              {tokensPerSecond !== undefined && tokensPerSecond !== 0 && (
+                <Text style={styles.metadata}>
+                  ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
+                  {tokensPerSecond?.toFixed(2)} tok/s
+                </Text>
+              )}
             </View>
-          </>
+          </View>
         )}
       </>
     );

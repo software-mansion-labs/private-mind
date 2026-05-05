@@ -157,8 +157,7 @@ const Messages = ({
       lastUserHeight.current -
       lastAssistantHeight.current -
       CONTAINER_PADDING;
-    const next = raw < 50 ? 0 : raw;
-    blankSpace.value = next;
+    blankSpace.value = Math.max(0, raw);
   }, [blankSpace]);
 
   useImperativeHandle(
@@ -287,11 +286,13 @@ const Messages = ({
       // so the scroll-to-bottom button can appear without the user
       // needing to scroll manually. Use the last known scroll offset
       // (0 if user never scrolled) and the container height as a proxy
-      // for the visible area.
+      // for the visible area. Exclude blankSpace — it's an inflated
+      // inset that keeps the new row pinned, not real content, so
+      // including it would light up the button before any tokens have
+      // actually arrived.
       if (containerHeight.current > 0) {
         const layoutH = lastLayoutHeight.current || containerHeight.current;
-        const distFromBottom =
-          h + blankSpace.value - (lastScrollOffset.current + layoutH);
+        const distFromBottom = h - (lastScrollOffset.current + layoutH);
         const atBottom = distFromBottom < 100;
         if (atBottom !== isAtBottomRef.current) {
           isAtBottomRef.current = atBottom;

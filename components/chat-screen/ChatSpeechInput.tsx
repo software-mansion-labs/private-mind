@@ -1,4 +1,10 @@
-import React, { useEffect, useLayoutEffect, useMemo } from 'react';
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Theme } from '../../styles/colors';
 import { useTheme } from '../../context/ThemeContext';
@@ -32,18 +38,18 @@ const ChatSpeechInput: React.FC<Props> = ({
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const recordingAttemptedRef = React.useRef(false);
-  const recordingStartTimeRef = React.useRef(0);
+  const recordingAttemptedRef = useRef(false);
+  const recordingStartTimeRef = useRef(0);
   /** in seconds */
-  const [recordingDuration, setRecordingDuration] = React.useState(0);
-  const [transcription, setTranscription] = React.useState<{
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [transcription, setTranscription] = useState<{
     committed: string;
     nonCommitted: string;
   }>({ committed: '', nonCommitted: '' });
 
   const animationRef =
-    React.useRef<React.ComponentRef<typeof RecordingAnimation>>(null);
-  const exitStateRef = React.useRef<null | 'pending_submit' | 'exited'>(null);
+    useRef<React.ComponentRef<typeof RecordingAnimation>>(null);
+  const exitStateRef = useRef<null | 'pending_submit' | 'exited'>(null);
 
   const onSubmit = useStableCallback((result: string) => {
     if (exitStateRef.current === 'exited') return;
@@ -65,24 +71,30 @@ const ChatSpeechInput: React.FC<Props> = ({
     },
   });
 
+  const unmountedRef = useRef(false);
+  const stopRef = useRef(stop);
+  stopRef.current = stop;
   useEffect(() => {
     const startListening = async () => {
       try {
         const streamGenerator = await start();
         if (!streamGenerator) {
-          onCancel();
+          if (!unmountedRef.current) onCancel();
           return;
         }
 
         recordingStartTimeRef.current = Date.now();
         let text = '';
         for await (const { committed, nonCommitted } of streamGenerator) {
+          if (unmountedRef.current) break;
           text = text + committed.text;
           setTranscription({
             committed: text,
             nonCommitted: nonCommitted.text,
           });
         }
+
+        if (unmountedRef.current) return;
 
         if (exitStateRef.current === 'pending_submit') {
           if (text) {
@@ -91,7 +103,8 @@ const ChatSpeechInput: React.FC<Props> = ({
             onCancel();
           }
         }
-      } catch (error) {
+      } catch {
+        if (unmountedRef.current) return;
         Toast.show({
           type: 'defaultToast',
           text1: 'Could not start live transcript',
@@ -105,10 +118,17 @@ const ChatSpeechInput: React.FC<Props> = ({
       recordingAttemptedRef.current = true;
       startListening();
     }
-  }, [onCancel, onSubmit]);
 
-  const animationWrapperRef = React.useRef<View | null>(null);
-  const [animationWidth, setAnimationWidth] = React.useState(0);
+    return () => {
+      unmountedRef.current = true;
+      stopRef.current();
+    };
+    // onCancel/onSubmit are stable via useStableCallback; stop is captured via ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const animationWrapperRef = useRef<View | null>(null);
+  const [animationWidth, setAnimationWidth] = useState(0);
 
   useLayoutEffect(() => {
     if (animationWrapperRef.current) {
@@ -138,7 +158,7 @@ const ChatSpeechInput: React.FC<Props> = ({
     setTimeout(onCancel, CANCEL_ANIMATION_DURATION);
   };
 
-  const handleSend = async () => {
+  const handleSend = () => {
     exitStateRef.current = 'pending_submit';
     stop();
   };

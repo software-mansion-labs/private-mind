@@ -272,12 +272,14 @@ export default function ChatScreen({
       return;
     }
 
+    const previous = chatSettings?.thinkingEnabled;
+    const next = !previous;
     const newSettings: ChatSettings = {
       systemPrompt: chatSettings?.systemPrompt || '',
-      thinkingEnabled: !chatSettings?.thinkingEnabled,
+      thinkingEnabled: next,
     };
 
-    setSetting('thinkingEnabled', !chatSettings?.thinkingEnabled);
+    setSetting('thinkingEnabled', next);
 
     try {
       if (phantomChat?.id === chatId) {
@@ -286,7 +288,7 @@ export default function ChatScreen({
         await setChatSettings(db, chatId, newSettings);
       }
     } catch (error) {
-      setSetting('thinkingEnabled', !chatSettings?.thinkingEnabled);
+      setSetting('thinkingEnabled', previous ?? false);
       console.error('Failed to update thinking setting:', error);
     }
   };
@@ -295,7 +297,8 @@ export default function ChatScreen({
     async (prompt: string) => {
       inputRef.current?.setInput(prompt);
 
-      const currentModel = model || (chatId ? getModelById(chatId) : undefined);
+      const currentModel =
+        model || (chat?.modelId ? getModelById(chat.modelId) : undefined);
       if (currentModel?.isDownloaded && loadedModel?.id !== currentModel.id) {
         try {
           await loadModel(currentModel);
@@ -304,7 +307,7 @@ export default function ChatScreen({
         }
       }
     },
-    [model, loadedModel, loadModel, getModelById, chatId]
+    [model, loadedModel, loadModel, getModelById, chat?.modelId]
   );
 
   const isEmpty = !isLoading && messageHistory.length === 0;

@@ -30,9 +30,9 @@ const BenchmarkHistory = ({ modalRef, benchmarkList }: Props) => {
         renderItem={({ item }) => (
           <BenchmarkItem
             entry={item}
-            onPress={async () => {
+            onPress={() => {
               const model = item.modelId
-                ? await getModelById(item.modelId)
+                ? getModelById(item.modelId)
                 : undefined;
               modalRef.current?.present({ ...item, model });
             }}
