@@ -23,12 +23,4 @@ export class Feedback {
   static benchmarkComplete = () => Presets.fanfare();
   static onboardingComplete = () => Presets.bloom();
   static editSave = () => Presets.lock();
-
-  // Legacy compat
-  static light = () => Presets.snap();
-  static medium = () => Presets.ping();
-  static heavy = () => Presets.strike();
-  static soft = () => Presets.peck();
-  static success = () => Presets.lock();
-  static selection = () => Presets.snap();
 }
