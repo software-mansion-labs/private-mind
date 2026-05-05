@@ -31,7 +31,9 @@ async function ensureModelAssets() {
     console.log(`Downloading ${url}...`);
     const res = await fetch(url);
     if (!res.ok) {
-      throw new Error(`Failed to download ${url}: ${res.status} ${res.statusText}`);
+      throw new Error(
+        `Failed to download ${url}: ${res.status} ${res.statusText}`
+      );
     }
 
     // Write to a .part file first, then rename on success. Prevents a
