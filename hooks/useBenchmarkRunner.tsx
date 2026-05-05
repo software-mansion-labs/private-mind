@@ -63,7 +63,6 @@ export default function useBenchmarkRunner({
       setIsSuccess(false);
       setTimer(0);
       isCancelled.current = false;
-      Feedback.benchmarkStart();
 
       const timerInterval = setInterval(
         () => setTimer((prev) => prev + 1),

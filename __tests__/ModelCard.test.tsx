@@ -34,6 +34,14 @@ jest.mock('../utils/modelCompatibility', () => ({
   isModelCompatible: jest.fn(() => true),
 }));
 
+jest.mock('../utils/Feedback', () => ({
+  Feedback: {
+    downloadStart: jest.fn(),
+    downloadComplete: jest.fn(),
+    cancelDownload: jest.fn(),
+  },
+}));
+
 jest.mock('@react-native-community/netinfo', () => ({
   fetch: jest.fn(),
 }));

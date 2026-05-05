@@ -194,7 +194,6 @@ function OnboardingScreen() {
               }
               onNextPress={() => {
                 if (stepNumber < STEPS.length) {
-                  Feedback.listSelect();
                   setStepNumber(stepNumber + 1);
                 } else {
                   Feedback.onboardingComplete();

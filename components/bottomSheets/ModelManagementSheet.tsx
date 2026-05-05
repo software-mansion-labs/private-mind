@@ -222,15 +222,10 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
       backdropComponent={renderBackdrop}
       enableDynamicSizing
       onChange={(index) => {
-        if (index >= 0) {
-          Feedback.sheetOpen();
-        } else {
-          Feedback.sheetClose();
-        }
+        if (index >= 0) Feedback.sheetOpen();
         setStage(ModalStage.Initial);
         setIsProcessing(false);
       }}
-      onDismiss={() => Feedback.sheetClose()}
       handleStyle={styles.handle}
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.background}

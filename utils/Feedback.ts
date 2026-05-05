@@ -1,28 +1,34 @@
-import { Presets } from 'react-native-pulsar';
+import { Presets, Settings } from 'react-native-pulsar';
+
+Settings.enableSound(false);
 
 export class Feedback {
-  static drawer = () => Presets.thud();
-  static firstToken = () => Presets.chime();
-  static toggleOn = () => Presets.snap();
-  static toggleOff = () => Presets.latch();
-  static listSelect = () => Presets.ping();
-  static send = () => Presets.chip();
+  // Core interactions
+  static send = () => Presets.ripple();
   static interrupt = () => Presets.push();
-  static attach = () => Presets.peck();
-  static speech = () => Presets.murmur();
+  static cancelDownload = () => Presets.push();
+  static attach = () => Presets.dewdrop();
+  static toggleOn = () => Presets.snap();
+  static toggleOff = () => Presets.snap();
   static destructive = () => Presets.cleave();
+
+  // Navigation — barely-there
+  static sheetOpen = () => Presets.chip();
+  static drawer = () => Presets.chip();
+
+  // Async completions
+  static firstToken = () => Presets.peck();
+  static downloadStart = () => Presets.snap();
   static downloadComplete = () => Presets.lock();
-  static benchmarkStart = () => Presets.charge();
   static benchmarkComplete = () => Presets.fanfare();
   static onboardingComplete = () => Presets.bloom();
-  static sheetOpen = () => Presets.thud();
-  static sheetClose = () => Presets.fadeOut();
-  static thinkingExpand = () => Presets.push();
+  static editSave = () => Presets.lock();
 
-  static light = () => Presets.peck();
+  // Legacy compat
+  static light = () => Presets.snap();
   static medium = () => Presets.ping();
   static heavy = () => Presets.strike();
-  static soft = () => Presets.thud();
-  static success = () => Presets.chime();
+  static soft = () => Presets.peck();
+  static success = () => Presets.lock();
   static selection = () => Presets.snap();
 }

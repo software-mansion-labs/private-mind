@@ -23,7 +23,7 @@ const ThinkingBlock = memo(
 
     const toggleExpanded = () => {
       if (inProgress) return;
-      Feedback.thinkingExpand();
+      Feedback.sheetOpen();
       setExpanded((prev) => !prev);
     };
 

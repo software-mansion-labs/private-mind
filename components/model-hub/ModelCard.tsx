@@ -20,6 +20,7 @@ import StarIcon from '../../assets/icons/star.svg';
 import CloseIcon from '../../assets/icons/close.svg';
 import EyeIcon from '../../assets/icons/eye.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
+import { Feedback } from '../../utils/Feedback';
 
 interface Props {
   model: Model;
@@ -68,6 +69,7 @@ const ModelCard = ({
 
   const handlePress = async () => {
     if (isDownloading) {
+      Feedback.cancelDownload();
       await cancelDownload(model);
       return;
     }
@@ -92,12 +94,14 @@ const ModelCard = ({
           'Downloading models will use your mobile data, which may incur additional charges from your carrier. We recommend connecting to WiFi for the best experience.',
         buttonTitle: 'Download anyway',
         onConfirm: async () => {
+          Feedback.downloadStart();
           await downloadModel(model);
         },
       });
       return;
     }
 
+    Feedback.downloadStart();
     await downloadModel(model);
   };
 

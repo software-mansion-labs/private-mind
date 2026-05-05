@@ -60,7 +60,6 @@ const ChatTitleMenuSheet = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handleOption = (action: () => void) => {
-    Feedback.listSelect();
     bottomSheetModalRef.current?.dismiss();
     action();
   };
@@ -70,13 +69,8 @@ const ChatTitleMenuSheet = ({
       ref={bottomSheetModalRef}
       enableDynamicSizing
       onChange={(index) => {
-        if (index >= 0) {
-          Feedback.sheetOpen();
-        } else {
-          Feedback.sheetClose();
-        }
+        if (index >= 0) Feedback.sheetOpen();
       }}
-      onDismiss={() => Feedback.sheetClose()}
       backdropComponent={(props) => (
         <BottomSheetBackdrop
           {...props}

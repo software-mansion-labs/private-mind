@@ -70,13 +70,8 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
       backdropComponent={renderBackdrop}
       snapPoints={['50%', '90%']}
       onChange={(index) => {
-        if (index >= 0) {
-          Feedback.sheetOpen();
-        } else {
-          Feedback.sheetClose();
-        }
+        if (index >= 0) Feedback.sheetOpen();
       }}
-      onDismiss={() => Feedback.sheetClose()}
       handleStyle={styles.handleStyle}
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.sheetBackground}

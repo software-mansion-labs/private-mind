@@ -64,10 +64,7 @@ const ChatBarActions = ({
           {hasAttachments && !userInput && (
             <CircleButton
               icon={SoundwaveIcon}
-              onPress={() => {
-                Feedback.speech();
-                onSpeechInput();
-              }}
+              onPress={onSpeechInput}
               backgroundColor="transparent"
               color={theme.text.onChatBar}
             />
@@ -88,10 +85,7 @@ const ChatBarActions = ({
     return (
       <CircleButton
         icon={SoundwaveIcon}
-        onPress={() => {
-          Feedback.speech();
-          onSpeechInput();
-        }}
+        onPress={onSpeechInput}
         backgroundColor="transparent"
         color={theme.text.onChatBar}
       />

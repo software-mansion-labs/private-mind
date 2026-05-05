@@ -69,16 +69,11 @@ const ModelSelectSheet = ({
       keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
       keyboardBlurBehavior="restore"
       onChange={(index) => {
-        if (index >= 0) {
-          Feedback.sheetOpen();
-        } else {
-          Feedback.sheetClose();
-        }
+        if (index >= 0) Feedback.sheetOpen();
         onSheetStateChange?.(index >= 0);
         setIsFullyOpen(index >= 0);
       }}
       onDismiss={() => {
-        Feedback.sheetClose();
         onSheetStateChange?.(false);
         setIsFullyOpen(false);
       }}
@@ -113,7 +108,6 @@ const ModelSelectSheet = ({
               <ModelCard
                 model={item}
                 onPress={() => {
-                  Feedback.listSelect();
                   selectModel(item);
                   bottomSheetModalRef.current?.dismiss();
                 }}

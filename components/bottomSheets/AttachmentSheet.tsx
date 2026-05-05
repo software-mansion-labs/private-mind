@@ -60,7 +60,6 @@ const AttachmentSheet = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handleOption = (action: () => void) => {
-    Feedback.listSelect();
     bottomSheetModalRef.current?.dismiss();
     action();
   };
@@ -70,15 +69,10 @@ const AttachmentSheet = ({
       ref={bottomSheetModalRef}
       enableDynamicSizing
       onChange={(index) => {
-        if (index >= 0) {
-          Feedback.sheetOpen();
-        } else {
-          Feedback.sheetClose();
-        }
+        if (index >= 0) Feedback.sheetOpen();
         onSheetStateChange?.(index >= 0);
       }}
       onDismiss={() => {
-        Feedback.sheetClose();
         onSheetStateChange?.(false);
       }}
       backdropComponent={(props) => (
