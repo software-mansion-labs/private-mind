@@ -7,6 +7,7 @@ import MarkdownComponent from './MarkdownComponent';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
 import ChevronUp from '../../assets/icons/chevron-up.svg';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
+import { Feedback } from '../../utils/Feedback';
 
 interface Props {
   content: string;
@@ -22,6 +23,7 @@ const ThinkingBlock = memo(
 
     const toggleExpanded = () => {
       if (inProgress) return;
+      Feedback.sheetOpen();
       setExpanded((prev) => !prev);
     };
 

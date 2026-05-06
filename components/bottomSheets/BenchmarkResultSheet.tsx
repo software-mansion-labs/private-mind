@@ -20,6 +20,7 @@ import ModelCard from '../model-hub/ModelCard';
 import BenchmarkStatsCard from '../benchmark/BenchmarkStatsCard';
 import DeviceInfoCard from '../benchmark/DeviceInfoCard';
 import BenchmarkDateCard from '../benchmark/BenchmarkDateCard';
+import { Feedback } from '../../utils/Feedback';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -68,6 +69,9 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       snapPoints={['50%', '90%']}
+      onChange={(index) => {
+        if (index >= 0) Feedback.sheetOpen();
+      }}
       handleStyle={styles.handleStyle}
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.sheetBackground}

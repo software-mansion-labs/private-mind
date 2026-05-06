@@ -11,6 +11,7 @@ import {
 import Toast from 'react-native-toast-message';
 import { ResourceFetcher } from 'react-native-executorch';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
+import { Feedback } from '../utils/Feedback';
 
 export enum ModelState {
   Downloaded = 'downloaded',
@@ -144,6 +145,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
 
       downloadDone = true;
       setDownloading(1, ModelState.Downloaded);
+      Feedback.downloadComplete();
       Toast.show({
         type: 'defaultToast',
         text1: `${model.modelName} has been successfully downloaded`,

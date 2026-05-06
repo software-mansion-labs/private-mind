@@ -12,6 +12,7 @@ import CameraIcon from '../../assets/icons/camera.svg';
 import ImageIcon from '../../assets/icons/image.svg';
 import AttachmentIcon from '../../assets/icons/attachment.svg';
 import { SvgComponent } from '../../utils/SvgComponent';
+import { Feedback } from '../../utils/Feedback';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -67,8 +68,13 @@ const AttachmentSheet = ({
     <BottomSheetModal
       ref={bottomSheetModalRef}
       enableDynamicSizing
-      onChange={(index) => onSheetStateChange?.(index >= 0)}
-      onDismiss={() => onSheetStateChange?.(false)}
+      onChange={(index) => {
+        if (index >= 0) Feedback.sheetOpen();
+        onSheetStateChange?.(index >= 0);
+      }}
+      onDismiss={() => {
+        onSheetStateChange?.(false);
+      }}
       backdropComponent={(props) => (
         <BottomSheetBackdrop
           {...props}

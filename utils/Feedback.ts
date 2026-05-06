@@ -1,14 +1,26 @@
-import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
+import { Presets, Settings } from 'react-native-pulsar';
+
+Settings.enableSound(false);
 
 export class Feedback {
-  static soft = () => {
-    if (Platform.OS === 'ios')
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
+  // Core interactions
+  static send = () => Presets.ripple();
+  static interrupt = () => Presets.push();
+  static cancelDownload = () => Presets.push();
+  static attach = () => Presets.dewdrop();
+  static toggleOn = () => Presets.snap();
+  static toggleOff = () => Presets.snap();
+  static destructive = () => Presets.cleave();
 
-  static success = () => {
-    if (Platform.OS === 'ios')
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  };
+  // Navigation — barely-there
+  static sheetOpen = () => Presets.chip();
+  static drawer = () => Presets.chip();
+
+  // Async completions
+  static firstToken = () => Presets.peck();
+  static downloadStart = () => Presets.snap();
+  static downloadComplete = () => Presets.lock();
+  static benchmarkComplete = () => Presets.fanfare();
+  static onboardingComplete = () => Presets.bloom();
+  static editSave = () => Presets.lock();
 }

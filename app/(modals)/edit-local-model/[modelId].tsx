@@ -14,6 +14,7 @@ import Toast from 'react-native-toast-message';
 import { Theme } from '../../../styles/colors';
 import { LocalModelFormState } from '../add-local-model';
 import { CustomKeyboardAvoidingView } from '../../../components/CustomKeyboardAvoidingView';
+import { Feedback } from '../../../utils/Feedback';
 
 type LocalFile = {
   name: string;
@@ -76,6 +77,7 @@ export default function EditLocalModelScreen() {
       localTokenizerConfigPath.uri,
       modelName
     );
+    Feedback.editSave();
     Toast.show({
       type: 'defaultToast',
       text1: `${modelName} has been successfully updated`,

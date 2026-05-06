@@ -13,6 +13,7 @@ import { InfoAlert } from '../../../components/InfoAlert';
 import { Theme } from '../../../styles/colors';
 import { RemoteModelFormState } from '../add-remote-model';
 import { CustomKeyboardAvoidingView } from '../../../components/CustomKeyboardAvoidingView';
+import { Feedback } from '../../../utils/Feedback';
 
 interface EditModelFormState extends RemoteModelFormState {
   modelName: string;
@@ -70,6 +71,7 @@ export default function EditRemoteModelScreen() {
       remoteTokenizerConfigPath,
       modelName
     );
+    Feedback.editSave();
     Toast.show({
       type: 'defaultToast',
       text1: `${modelName} has been successfully updated`,

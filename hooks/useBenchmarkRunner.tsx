@@ -6,6 +6,7 @@ import {
   insertBenchmark,
   BenchmarkResultPerformanceNumbers,
 } from '../database/benchmarkRepository';
+import { Feedback } from '../utils/Feedback';
 
 const BENCHMARK_ITERATIONS = 3;
 
@@ -89,6 +90,7 @@ export default function useBenchmarkRunner({
         });
 
         setIsSuccess(true);
+        Feedback.benchmarkComplete();
         onComplete(benchmarkId);
 
         setTimeout(() => setIsRunning(false), 1500);

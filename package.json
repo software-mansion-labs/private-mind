@@ -23,7 +23,7 @@
       "**/__tests__/**/*.test.tsx"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|zustand)"
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|react-native-gesture-handler|react-native-reanimated|zustand)"
     ],
     "setupFiles": [
       "<rootDir>/jest.setup.js"
@@ -44,7 +44,8 @@
       "^expo-paste-input$": "<rootDir>/__mocks__/expo-paste-input.tsx",
       "^@gorhom/bottom-sheet$": "<rootDir>/__mocks__/@gorhom/bottom-sheet.tsx",
       "^react-native-safe-area-context$": "<rootDir>/__mocks__/react-native-safe-area-context.ts",
-      "^expo-store-review$": "<rootDir>/__mocks__/expo-store-review.ts"
+      "^expo-store-review$": "<rootDir>/__mocks__/expo-store-review.ts",
+      "^react-native-pulsar$": "<rootDir>/__mocks__/react-native-pulsar.ts"
     }
   },
   "op-sqlite": {
@@ -70,7 +71,6 @@
     "expo-document-picker": "~55.0.12",
     "expo-file-system": "~55.0.15",
     "expo-font": "~55.0.6",
-    "expo-haptics": "~55.0.13",
     "expo-linear-gradient": "~55.0.13",
     "expo-linking": "~55.0.11",
     "expo-localization": "~55.0.12",
@@ -94,6 +94,7 @@
     "react-native-keyboard-controller": "1.21.1",
     "react-native-loading-spinner-overlay": "^3.0.1",
     "react-native-pdfium": "file:./react-native-pdfium-0.1.3.tgz",
+    "react-native-pulsar": "^1.4.0",
     "react-native-rag": "^0.8.0",
     "react-native-reanimated": "4.3.0",
     "react-native-safe-area-context": "~5.6.0",
