@@ -1,6 +1,9 @@
 # Private Mind
 
 ![promo](./promo/promo.png)
+[![Ad](https://swm-delivery.com/www/images/zone-gh-private-mind-1?n=1)](https://swm-delivery.com/www/delivery/ck.php?zoneid=zone-gh-private-mind-1&n=1)
+[![Ad](https://swm-delivery.com/www/images/zone-gh-private-mind-2?n=1)](https://swm-delivery.com/www/delivery/ck.php?zoneid=zone-gh-private-mind-2&n=1)
+[![Ad](https://swm-delivery.com/www/images/zone-gh-private-mind-3?n=1)](https://swm-delivery.com/www/delivery/ck.php?zoneid=zone-gh-private-mind-3&n=1)
 
 Private Mind represents a new era of AI—powerful, personal, and completely offline. Built around the belief that AI should live entirely on your device, Private Mind opens the door to a new kind of experience: fast, secure, and fully private.
 
