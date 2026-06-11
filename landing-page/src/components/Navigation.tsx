@@ -14,25 +14,41 @@ function Navigation() {
   return (
     <div className="navigation-container">
       <div>
-        <img src={PMLogo} alt=""/>
+        <img src={PMLogo} alt="" />
       </div>
       <div className="navigation-menu">
-        <div className="navigation-menu-item" onClick={() => scrollToSection('features')}>
-            Features
+        <div
+          className="navigation-menu-item"
+          onClick={() => scrollToSection('features')}
+        >
+          Features
         </div>
-        <div className="navigation-menu-item" onClick={() => scrollToSection('models')}>
-            Models
+        <div
+          className="navigation-menu-item"
+          onClick={() => scrollToSection('models')}
+        >
+          Models
         </div>
-        <div className="navigation-menu-item" onClick={() => scrollToSection('faq')}>
-            FAQ
+        <div
+          className="navigation-menu-item"
+          onClick={() => scrollToSection('faq')}
+        >
+          FAQ
         </div>
-        <div className="navigation-menu-item" onClick={() => scrollToSection('technology')}>
-            Technology
+        <div
+          className="navigation-menu-item"
+          onClick={() => scrollToSection('technology')}
+        >
+          Technology
         </div>
       </div>
       <div className="navigation-github">
-        <a href="https://github.com/software-mansion-labs/private-mind" target='_blank' rel="noopener noreferrer">
-          <img alt='' src={ghLogo}/>
+        <a
+          href="https://github.com/software-mansion-labs/private-mind"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img alt="" src={ghLogo} />
         </a>
       </div>
     </div>

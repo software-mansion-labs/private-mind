@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   useCallback,
@@ -6,16 +6,16 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-} from "react";
+} from 'react';
 import {
   MIN_VISIBLE_HEIGHT,
   cacheKey,
   varNames,
   type BannerZone,
-} from "./shared";
+} from './shared';
 
 export type { BannerZone };
-export { topBarBannerReservationScript } from "./shared";
+export { topBarBannerReservationScript } from './shared';
 
 const DEFAULT_ROTATE_INTERVAL_MS = 4000;
 const SLIDE_MS = 700;
@@ -25,12 +25,12 @@ const rotateLeft = <T,>(arr: T[], k: number): T[] =>
 const rotateRight = <T,>(arr: T[], k: number): T[] =>
   arr.slice(arr.length - k).concat(arr.slice(0, arr.length - k));
 
-const SCRIPT_SRC = "https://swm-delivery.com/www/assets/js/lib.js";
+const SCRIPT_SRC = 'https://swm-delivery.com/www/assets/js/lib.js';
 
-const FALLBACK_BG_COLOR = "#2a47ff";
+const FALLBACK_BG_COLOR = '#2a47ff';
 
 const useIsoLayoutEffect =
-  typeof window === "undefined" ? useEffect : useLayoutEffect;
+  typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 // Cache only the banner's layout (height + bg), never banner content.
 // Revive reloads the live banner every time for its own tracking/rotation; this just
@@ -43,7 +43,7 @@ const BANNER_CONFIRM_MS = 500;
 type TopBarBannerCache = { height: number; bgColor: string; timestamp: number };
 
 const writeCache = (key: string, height: number, bgColor: string) => {
-  if (typeof window === "undefined") return;
+  if (typeof window === 'undefined') return;
   try {
     const entry: TopBarBannerCache = { height, bgColor, timestamp: Date.now() };
     window.localStorage.setItem(key, JSON.stringify(entry));
@@ -53,7 +53,7 @@ const writeCache = (key: string, height: number, bgColor: string) => {
 };
 
 const clearCache = (key: string) => {
-  if (typeof window === "undefined") return;
+  if (typeof window === 'undefined') return;
   try {
     window.localStorage.removeItem(key);
   } catch {
@@ -67,7 +67,7 @@ const setReservation = (
   height: number | null,
   bgColor?: string
 ) => {
-  if (typeof document === "undefined") return;
+  if (typeof document === 'undefined') return;
   const root = document.documentElement;
   if (height === null) {
     root.style.removeProperty(vars.height);
@@ -79,8 +79,8 @@ const setReservation = (
 
 const isTransparent = (color: string) =>
   !color ||
-  color === "transparent" ||
-  /^rgba?\([^)]*,\s*0\s*\)$/.test(color.replace(/\s+/g, " "));
+  color === 'transparent' ||
+  /^rgba?\([^)]*,\s*0\s*\)$/.test(color.replace(/\s+/g, ' '));
 
 const findOpaqueBg = (nodes: HTMLElement[]): string | null => {
   for (const node of nodes) {
@@ -96,17 +96,17 @@ const findOpaqueBg = (nodes: HTMLElement[]): string | null => {
 const extractBgColor = (root: HTMLElement): string | null => {
   const direct = findOpaqueBg([
     root,
-    ...Array.from(root.querySelectorAll<HTMLElement>("*")),
+    ...Array.from(root.querySelectorAll<HTMLElement>('*')),
   ]);
   if (direct) return direct;
 
-  for (const frame of Array.from(root.querySelectorAll("iframe"))) {
+  for (const frame of Array.from(root.querySelectorAll('iframe'))) {
     try {
       const doc = frame.contentDocument;
       if (!doc?.body) continue;
       const fromFrame = findOpaqueBg([
         doc.body,
-        ...Array.from(doc.body.querySelectorAll<HTMLElement>("*")),
+        ...Array.from(doc.body.querySelectorAll<HTMLElement>('*')),
       ]);
       if (fromFrame) return fromFrame;
     } catch {
@@ -155,7 +155,7 @@ const BannerZoneSlot = ({ zone, index, onChange }: BannerZoneSlotProps) => {
     if (!content) return;
 
     const getIns = () => {
-      const current = content.querySelector("ins");
+      const current = content.querySelector('ins');
       if (current && current !== insRef.current) {
         insRef.current = current as HTMLModElement;
       }
@@ -170,7 +170,7 @@ const BannerZoneSlot = ({ zone, index, onChange }: BannerZoneSlotProps) => {
     const updateState = () => {
       setHasBanner(detectBanner());
       // Revive stamps data-content-loaded="1" when done, even for an empty slot.
-      if (getIns()?.getAttribute("data-content-loaded") === "1") {
+      if (getIns()?.getAttribute('data-content-loaded') === '1') {
         setReviveDone(true);
       }
     };
@@ -190,7 +190,7 @@ const BannerZoneSlot = ({ zone, index, onChange }: BannerZoneSlotProps) => {
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ["data-content-loaded", "style", "class", "id"],
+        attributeFilter: ['data-content-loaded', 'style', 'class', 'id'],
       });
     }
 
@@ -215,16 +215,16 @@ const BannerZoneSlot = ({ zone, index, onChange }: BannerZoneSlotProps) => {
         // iframe's `width:100%` resolves circularly and collapses to the 300px
         // replaced-element default. Stretch the <ins> to full bar width first,
         // then the iframe's 100% has a real containing block to fill.
-        const ins = content.querySelector("ins");
+        const ins = content.querySelector('ins');
         if (ins) {
-          ins.style.display = "block";
-          ins.style.width = "100%";
+          ins.style.display = 'block';
+          ins.style.width = '100%';
         }
-        const iframe = content.querySelector("iframe");
+        const iframe = content.querySelector('iframe');
         if (iframe) {
-          iframe.style.display = "block";
-          iframe.style.width = "100%";
-          iframe.style.maxWidth = "100%";
+          iframe.style.display = 'block';
+          iframe.style.width = '100%';
+          iframe.style.maxWidth = '100%';
         }
         const height = Math.max(content.scrollHeight, content.offsetHeight);
         const bg = extractBgColor(content) ?? fallbackBgColor;
@@ -255,20 +255,20 @@ const BannerZoneSlot = ({ zone, index, onChange }: BannerZoneSlotProps) => {
     <div
       ref={contentRef}
       style={{
-        width: "100%",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        textAlign: "center",
+        width: '100%',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        textAlign: 'center',
         opacity: hasBanner ? 1 : 0,
-        transition: "opacity 200ms ease-out",
+        transition: 'opacity 200ms ease-out',
       }}
       suppressHydrationWarning
     >
       <ins
         data-content-zoneid={zone.zoneId}
         data-content-id={zone.contentId}
-        style={{ display: "block" }}
+        style={{ display: 'block' }}
         suppressHydrationWarning
       />
     </div>
@@ -301,7 +301,7 @@ export interface TopBarBannerProps {
    * next in from below; `"down"` slides downward, pulling from above. Rotation
    * is always continuous in one direction — never bounces back.
    */
-  direction?: "up" | "down";
+  direction?: 'up' | 'down';
 }
 
 // Slider view: which zone slot sits where (`order`), the current translate
@@ -333,14 +333,14 @@ export const TopBarBanner = ({
   fallbackBgColor = FALLBACK_BG_COLOR,
   setBannerHeight,
   rotateIntervalMs = DEFAULT_ROTATE_INTERVAL_MS,
-  direction = "up",
+  direction = 'up',
 }: TopBarBannerProps) => {
   const normalizedZones: BannerZone[] =
     zones && zones.length > 0
       ? zones
       : zoneId && contentId
-      ? [{ zoneId, contentId, fallbackBgColor }]
-      : [];
+        ? [{ zoneId, contentId, fallbackBgColor }]
+        : [];
 
   const [zoneStates, setZoneStates] = useState<ZoneState[]>(() =>
     normalizedZones.map(() => ({ height: 0, hasBanner: false }))
@@ -388,10 +388,10 @@ export const TopBarBanner = ({
 
   // Inject the Revive loader once; it drives every zone's <ins>.
   useEffect(() => {
-    if (typeof document === "undefined") return;
+    if (typeof document === 'undefined') return;
     if (document.querySelector(`script[src="${SCRIPT_SRC}"]`)) return;
 
-    const script = document.createElement("script");
+    const script = document.createElement('script');
     script.async = true;
     script.src = SCRIPT_SRC;
     document.body.appendChild(script);
@@ -422,7 +422,7 @@ export const TopBarBanner = ({
       const states = zoneStatesRef.current;
       const heights = v.order.map((zi) => states[zi]?.height ?? 0);
 
-      if (directionRef.current === "down") {
+      if (directionRef.current === 'down') {
         // Pull the previous banner zone in from above.
         let j = 0;
         for (let s = 1; s < n; s++) {
@@ -490,11 +490,11 @@ export const TopBarBanner = ({
   // Report the active zone height + global loaded flag. Held until at least one
   // zone reports so the flag isn't stamped "false" before any zone has settled.
   useEffect(() => {
-    if (typeof document === "undefined" || !anyReported) return;
+    if (typeof document === 'undefined' || !anyReported) return;
     const anyBanner = zoneStates.some((s) => s.hasBanner);
     document.documentElement.dataset.bannerLoaded = anyBanner
-      ? "true"
-      : "false";
+      ? 'true'
+      : 'false';
     setBannerHeight?.(zoneStates[view.active]?.height ?? 0);
   }, [zoneStates, view.active, setBannerHeight, anyReported]);
 
@@ -515,36 +515,40 @@ export const TopBarBanner = ({
   return (
     <div
       style={{
-        position: "relative",
-        width: "100%",
+        position: 'relative',
+        width: '100%',
         transition: animateIn
-          ? "height 500ms ease-in-out, background-color 200ms ease-out"
-          : "none",
+          ? 'height 500ms ease-in-out, background-color 200ms ease-out'
+          : 'none',
         height: `var(${activeVars.height}, 0px)`,
-        overflow: "hidden",
-        willChange: "height",
+        overflow: 'hidden',
+        willChange: 'height',
         backgroundColor: `var(${activeVars.bg}, ${activeFallback})`,
       }}
     >
       <div
         style={{
-          position: "absolute",
+          position: 'absolute',
           inset: 0,
-          display: "flex",
-          flexDirection: "column",
-          willChange: "transform",
+          display: 'flex',
+          flexDirection: 'column',
+          willChange: 'transform',
           transform: `translateY(${view.offset}px)`,
           transition: view.animate
             ? `transform ${SLIDE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
-            : "none",
+            : 'none',
         }}
       >
         {normalizedZones.map((zone, zi) => (
           <div
             key={`${zone.zoneId}.${zone.contentId}`}
-            style={{ order: slotOrder[zi], width: "100%", flexShrink: 0 }}
+            style={{ order: slotOrder[zi], width: '100%', flexShrink: 0 }}
           >
-            <BannerZoneSlot zone={zone} index={zi} onChange={handleZoneChange} />
+            <BannerZoneSlot
+              zone={zone}
+              index={zi}
+              onChange={handleZoneChange}
+            />
           </div>
         ))}
       </div>

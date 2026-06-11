@@ -1,16 +1,16 @@
 const MIN_VISIBLE_HEIGHT = 5;
 
-const CACHE_PREFIX = "swm.topbarbanner.v1";
+const CACHE_PREFIX = 'swm.topbarbanner.v1';
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-const VAR_HEIGHT_PREFIX = "--banner-height";
-const VAR_BG_PREFIX = "--banner-bg";
+const VAR_HEIGHT_PREFIX = '--banner-height';
+const VAR_BG_PREFIX = '--banner-bg';
 
 export const cacheKey = (zoneId: string, contentId: string) =>
   `${CACHE_PREFIX}.${zoneId}.${contentId}`;
 
 export const varNames = (zoneId: string, contentId: string) => {
-  const suffix = `${zoneId}-${contentId}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const suffix = `${zoneId}-${contentId}`.replace(/[^a-zA-Z0-9_-]/g, '_');
   return {
     height: `${VAR_HEIGHT_PREFIX}-${suffix}`,
     bg: `${VAR_BG_PREFIX}-${suffix}`,

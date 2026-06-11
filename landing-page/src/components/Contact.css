@@ -67,7 +67,7 @@
   gap: 12px;
 }
 
-.contact-button:hover{
+.contact-button:hover {
   background-color: var(--color-primary-dark);
 }
 

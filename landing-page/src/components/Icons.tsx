@@ -6,12 +6,12 @@ import SpeechIcon from 'assets/SpeechIcon.svg';
 import ContextIcon from 'assets/ContextIcon.svg';
 
 export const Icons = {
-  "OfflineIcon": OfflineIcon,
-  "PrivacyIcon": PrivacyIcon,
-  "PlatformIcon": PlatformIcon,
-  "CustomizationIcon": CustomizationIcon,
-  "SpeechIcon": SpeechIcon,
-  "ContextIcon": ContextIcon
-}
+  OfflineIcon: OfflineIcon,
+  PrivacyIcon: PrivacyIcon,
+  PlatformIcon: PlatformIcon,
+  CustomizationIcon: CustomizationIcon,
+  SpeechIcon: SpeechIcon,
+  ContextIcon: ContextIcon,
+};
 
 export type IconsType = keyof typeof Icons;

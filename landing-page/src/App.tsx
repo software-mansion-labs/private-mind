@@ -19,12 +19,12 @@ function App() {
         rotateIntervalMs={TOP_BAR_BANNER.rotateIntervalMs}
       />
       <div className="app-container">
-        <Navigation/>
-        <Hero/>
-        <Highlights/>
-        <SupportedModels/>
-        <FAQ/>
-        <Contact/>
+        <Navigation />
+        <Hero />
+        <Highlights />
+        <SupportedModels />
+        <FAQ />
+        <Contact />
         <Footer />
       </div>
     </>
