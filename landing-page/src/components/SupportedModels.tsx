@@ -19,22 +19,39 @@ function SupportedModels() {
         </div>
       </div>
       <div className="supported-models-logos">
-        <a href="https://huggingface.co/meta-llama" target='_blank' rel="noopener noreferrer">
-          <img alt='' src={LLaMA} className="supported-models-logo"/>
+        <a
+          href="https://huggingface.co/meta-llama"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img alt="" src={LLaMA} className="supported-models-logo" />
         </a>
-        <a href="https://huggingface.co/collections/HuggingFaceTB/smollm-6695016cad7167254ce15966" target='_blank' rel="noopener noreferrer">
-          <img alt='' src={SmolLM} className="supported-models-logo"/>
+        <a
+          href="https://huggingface.co/collections/HuggingFaceTB/smollm-6695016cad7167254ce15966"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img alt="" src={SmolLM} className="supported-models-logo" />
         </a>
-        <a href="https://qwen.ai/home" target='_blank' rel="noopener noreferrer">
-          <img alt='' src={Qwen} className="supported-models-logo"/>
+        <a
+          href="https://qwen.ai/home"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img alt="" src={Qwen} className="supported-models-logo" />
         </a>
-        <a href="https://huggingface.co/microsoft/phi-4" target='_blank' rel="noopener noreferrer">
-          <img alt='' src={Phi4} className="supported-models-logo"/>
+        <a
+          href="https://huggingface.co/microsoft/phi-4"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img alt="" src={Phi4} className="supported-models-logo" />
         </a>
       </div>
       <div className="supported-models-footer">
         <p>
-          + tons of custom models that you can<br />
+          + tons of custom models that you can
+          <br />
           upload into the app
         </p>
       </div>

@@ -1,17 +1,21 @@
 import './Feature.css';
 
-function Feature({icon, title, text}: {icon: any, title: string, text: string}) {
+function Feature({
+  icon,
+  title,
+  text,
+}: {
+  icon: any;
+  title: string;
+  text: string;
+}) {
   return (
     <div className="feature-container">
       <div>
-        <img src={icon} alt=''/>
+        <img src={icon} alt="" />
       </div>
-      <header className="feature-title">
-        {title}
-      </header>
-      <p className="feature-text">
-        {text}
-      </p>
+      <header className="feature-title">{title}</header>
+      <p className="feature-text">{text}</p>
     </div>
   );
 }

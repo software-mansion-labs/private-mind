@@ -31,6 +31,12 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>Private Mind - your AI assistant</title>
+    <!-- TopBarBanner reservation: reserves cached banner height on <html> before
+         the body paints so a returning visitor sees no content shift. Generated
+         from topBarBannerReservationScript() for the first zone in config.ts. -->
+    <script>
+      (function(){try{var hp=[];var p=location.pathname;if(hp.some(function(x){return p===x||p.indexOf(x+"/")===0}))return;var k="swm.topbarbanner.v1.private-mind-topbar-1.ea15c4216158c4097b65fe6504a4b3b7";var raw=localStorage.getItem(k);if(!raw)return;var c=JSON.parse(raw);if(!c||typeof c.height!=="number"||c.height<5)return;if(Date.now()-c.timestamp>=2592000000)return;var r=document.documentElement;r.style.setProperty("--banner-height-private-mind-topbar-1-ea15c4216158c4097b65fe6504a4b3b7",c.height+"px");if(typeof c.bgColor==="string")r.style.setProperty("--banner-bg-private-mind-topbar-1-ea15c4216158c4097b65fe6504a4b3b7",c.bgColor);}catch(e){}})();
+    </script>
     <!-- Google Tag Manager -->
     <script>
       (function (w, d, s, l, i) {
