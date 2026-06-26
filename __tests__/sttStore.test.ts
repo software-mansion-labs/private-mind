@@ -48,7 +48,7 @@ describe('ensureLoaded', () => {
   });
 
   it('reports progress callbacks', async () => {
-    mockFromModelName.mockImplementation((_name, onProgress) => {
+    mockFromModelName.mockImplementation((_name, _vad, onProgress) => {
       onProgress(0.5);
       onProgress(1.0);
       return Promise.resolve(mockModule);
@@ -58,6 +58,18 @@ describe('ensureLoaded', () => {
 
     // Final progress is set to 1 by the .then() handler
     expect(useSTTStore.getState().loadProgress).toBe(1);
+  });
+
+  it('passes progress callback as the third argument for react-native-executorch 0.9+', async () => {
+    mockFromModelName.mockResolvedValue(mockModule);
+
+    await useSTTStore.getState().ensureLoaded();
+
+    expect(mockFromModelName).toHaveBeenCalledWith(
+      'whisper-tiny-en',
+      undefined,
+      expect.any(Function)
+    );
   });
 
   it('returns immediately when already ready', async () => {
