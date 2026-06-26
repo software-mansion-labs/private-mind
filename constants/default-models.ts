@@ -12,6 +12,8 @@ import {
   LFM2_5_1_2B_INSTRUCT_QUANTIZED,
   LFM2_5_VL_1_6B_QUANTIZED,
   LFM2_5_VL_450M_QUANTIZED,
+  GEMMA4_E2B,
+  GEMMA4_E2B_MM,
 } from 'react-native-executorch';
 
 export const startingModels = [
@@ -33,6 +35,8 @@ const RNE_MODELS = [
   LFM2_5_1_2B_INSTRUCT_QUANTIZED,
   LFM2_5_VL_1_6B_QUANTIZED,
   LFM2_5_VL_450M_QUANTIZED,
+  GEMMA4_E2B,
+  GEMMA4_E2B_MM,
 ];
 
 const GENERATION_CONFIG_BY_MODEL_PATH: Record<string, object> =
@@ -220,5 +224,34 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     labels: ['Fast', 'Polish'],
     systemPrompt:
       'Jesteś pomocnym asystentem. Udzielaj jasnych, dokładnych i dobrze ustrukturyzowanych odpowiedzi w języku polskim. Gdy otrzymasz kontekst z dokumentów, wykorzystaj te informacje, aby udzielać wyczerpujących odpowiedzi, będąc jednocześnie zwięzłym i rzeczowym.',
+  },
+  {
+    modelName: 'Gemma 4 - 2B',
+    family: 'Gemma 4',
+    tokenizerPath: GEMMA4_E2B.tokenizerSource,
+    modelPath: GEMMA4_E2B.modelSource,
+    tokenizerConfigPath: GEMMA4_E2B.tokenizerConfigSource,
+    source: 'remote',
+    parameters: 2.0,
+    modelSize: 1.5,
+    featured: true,
+    thinking: false,
+    labels: ['Text', 'Gemma'],
+  },
+  {
+    modelName: 'Gemma 4 VL - 2B',
+    family: 'Gemma 4',
+    tokenizerPath: GEMMA4_E2B_MM.tokenizerSource,
+    modelPath: GEMMA4_E2B_MM.modelSource,
+    tokenizerConfigPath: GEMMA4_E2B_MM.tokenizerConfigSource,
+    source: 'remote',
+    parameters: 2.0,
+    modelSize: 1.8,
+    featured: true,
+    thinking: false,
+    vision: true,
+    labels: ['Vision', 'Gemma'],
+    systemPrompt:
+      'You are a helpful vision assistant. When the user shares an image, analyze it carefully and provide detailed, accurate descriptions and answers about its content. When no image is provided, respond as a knowledgeable and helpful general assistant.',
   },
 ];

@@ -10200,13 +10200,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pngjs@npm:^7.0.0":
-  version: 7.0.0
-  resolution: "pngjs@npm:7.0.0"
-  checksum: b19a018930d27de26229c1b3ff250b3a25d09caa22cbb0b0459987d91eb0a560a18ab5d67da45a38ed7514140f26d1db58de83c31159ec101f2bb270a3c707f1
-  languageName: node
-  linkType: hard
-
 "possible-typed-array-names@npm:^1.0.0":
   version: 1.1.0
   resolution: "possible-typed-array-names@npm:1.1.0"
@@ -10330,8 +10323,8 @@ __metadata:
     react-native-audio-api: 0.12.0-nightly-f7c925b-20260402
     react-native-device-info: ^15.0.1
     react-native-enriched-markdown: ^0.4.1
-    react-native-executorch: ^0.8.4
-    react-native-executorch-expo-resource-fetcher: ^0.8.0
+    react-native-executorch: ^0.9.0
+    react-native-executorch-expo-resource-fetcher: ^0.9.0
     react-native-gesture-handler: ~2.30.0
     react-native-image-picker: ^8.2.1
     react-native-keyboard-controller: 1.21.1
@@ -10564,32 +10557,31 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-executorch-expo-resource-fetcher@npm:^0.8.0":
-  version: 0.8.0
-  resolution: "react-native-executorch-expo-resource-fetcher@npm:0.8.0"
+"react-native-executorch-expo-resource-fetcher@npm:^0.9.0":
+  version: 0.9.1
+  resolution: "react-native-executorch-expo-resource-fetcher@npm:0.9.1"
   peerDependencies:
     expo: ">=54.0.0"
     expo-asset: ">=12.0.0"
     expo-file-system: ">=19.0.0"
     react-native: "*"
     react-native-executorch: "*"
-  checksum: 3ea4d1059e4cde913009bb4d6c5dd76fad27e5c1992538ebb5f65823ca349c11caad1d8209528b1f8ee5e4a438fd9bc923a61dd3f9d8feffd9ae6e3088da9cc7
+  checksum: 6c09993c252a5450e065800ce4a96849d77dbf93764ea158963d77c20dcf7c42e5af48d511262b3fef06d7e76bce8c635c3204867105e0c649da9679894a5278
   languageName: node
   linkType: hard
 
-"react-native-executorch@npm:^0.8.4":
-  version: 0.8.4
-  resolution: "react-native-executorch@npm:0.8.4"
+"react-native-executorch@npm:^0.9.0":
+  version: 0.9.2
+  resolution: "react-native-executorch@npm:0.9.2"
   dependencies:
     "@huggingface/jinja": ^0.5.0
     jsonrepair: ^3.12.0
     jsonschema: ^1.5.0
-    pngjs: ^7.0.0
     zod: ^4.3.6
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: f231d384b1743491249709c8ed6fba91390f05a63c593fa523bd1a9fd48d9c4b0020e9d493f6ecffa35dedb24c5da5d0de1708ce1acb2cb4fb15f1c1d94a3f82
+  checksum: e5c3edbc6925d25c2d9d81497a27368960c789cb487374753ad648a5570c95bf5d0af9272d327c440e431b40c7e84058baf97f8282ce089f0a866cb57ab071b8
   languageName: node
   linkType: hard
 
