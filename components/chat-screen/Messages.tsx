@@ -1,4 +1,6 @@
 import React, {
+  memo,
+  ReactNode,
   Ref,
   useLayoutEffect,
   useRef,
@@ -13,27 +15,45 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Platform,
+  Pressable,
   StyleSheet,
-  TouchableOpacity,
   View,
+  type View as ViewType,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { KeyboardChatScrollView } from 'react-native-keyboard-controller';
 import Reanimated, {
+  runOnJS,
   useSharedValue,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import MessageItem from './MessageItem';
-import { Message } from '../../database/chatRepository';
+import { Message, type ChatBranchMarker } from '../../database/chatRepository';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
+import { Feedback } from '../../utils/Feedback';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
+import BranchMarker from './BranchMarker';
+import Toast from 'react-native-toast-message';
 
 export interface MessagesHandle {
   onMessageSent: () => void;
   scrollToEnd: () => void;
 }
+
+export type UserMessageActionMenuState = {
+  isOpen: boolean;
+  anchor?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  onCopy?: () => void;
+};
 
 interface Props {
   chatHistory: Message[];
@@ -54,8 +74,51 @@ interface Props {
    * is dismissed to make room for the sheet.
    */
   freeze?: boolean;
+  revealFromTop?: boolean;
+  branchMarkers?: ChatBranchMarker[];
+  onForkMessage?: (message: Message) => void;
+  onBranchMarkerPress?: (marker: ChatBranchMarker) => void;
+  onUserActionMenuChange?: (menu: UserMessageActionMenuState) => void;
   ref?: Ref<MessagesHandle>;
 }
+
+interface MessageActionsState {
+  showActions: boolean;
+  showForkAction: boolean;
+}
+
+interface LongPressableMessageProps {
+  children: ReactNode;
+  messageId: number;
+  onLongPress: (messageId: number, target: ViewType | null) => void;
+}
+
+const LongPressableMessage = memo(
+  ({ children, messageId, onLongPress }: LongPressableMessageProps) => {
+    const targetRef = useRef<ViewType>(null);
+    const handleLongPress = useCallback(() => {
+      onLongPress(messageId, targetRef.current);
+    }, [messageId, onLongPress]);
+
+    const longPressGesture = useMemo(
+      () =>
+        Gesture.LongPress()
+          .minDuration(450)
+          .onStart(() => {
+            runOnJS(handleLongPress)();
+          }),
+      [handleLongPress]
+    );
+
+    return (
+      <GestureDetector gesture={longPressGesture}>
+        <View ref={targetRef} collapsable={false}>
+          {children}
+        </View>
+      </GestureDetector>
+    );
+  }
+);
 
 const Messages = ({
   chatHistory,
@@ -64,6 +127,11 @@ const Messages = ({
   isGenerating,
   bottomOffset,
   freeze = false,
+  revealFromTop = false,
+  branchMarkers = [],
+  onForkMessage,
+  onBranchMarkerPress,
+  onUserActionMenuChange,
   ref,
 }: Props) => {
   const { theme } = useTheme();
@@ -71,17 +139,34 @@ const Messages = ({
   const scrollRef = useRef<Reanimated.ScrollView>(null);
   const isAtBottomRef = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [activeUserActionsId, setActiveUserActionsId] = useState<number | null>(
+    null
+  );
   const lastScrollOffset = useRef(0);
   const lastLayoutHeight = useRef(0);
+  const lastContentHeight = useRef(0);
 
   // v0-style initial scroll: hide the view until we've snapped to
   // the bottom, then fade in so the user never sees content flying by.
   // https://vercel.com/blog/how-we-built-the-v0-ios-app
   const opacity = useSharedValue(0);
+  const revealTranslateY = useSharedValue(revealFromTop ? -28 : 0);
   const hasScrolledToEnd = useRef(false);
   const animatedContainerStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
+    transform: [{ translateY: revealTranslateY.value }],
   }));
+
+  const latestBranchMarkerByMessageId = useMemo(() => {
+    const byMessageId = new Map<number, ChatBranchMarker>();
+    for (const marker of branchMarkers) {
+      const current = byMessageId.get(marker.afterMessageId);
+      if (!current || marker.id > current.id) {
+        byMessageId.set(marker.afterMessageId, marker);
+      }
+    }
+    return byMessageId;
+  }, [branchMarkers]);
 
   // Re-arm the initial scroll when the chat history is cleared (e.g.
   // navigating away via useFocusEffect in the chat route sets
@@ -121,7 +206,17 @@ const Messages = ({
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       if (wasAtBottomDuringKeyboard.current) {
         snapTimer = setTimeout(() => {
-          scrollRef.current?.scrollToEnd({ animated: false });
+          const layoutHeight =
+            lastLayoutHeight.current || containerHeight.current;
+          const bottomPadding = Math.max(
+            blankSpace.value,
+            extraContentPadding.value
+          );
+          const y = Math.max(
+            lastContentHeight.current - layoutHeight + bottomPadding,
+            0
+          );
+          scrollRef.current?.scrollTo({ y, animated: false });
         }, 300);
       }
     });
@@ -130,7 +225,7 @@ const Messages = ({
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [blankSpace, extraContentPadding]);
 
   // True while the LLM is streaming a response. Gates both the
   // blankSpace formula (recomputeBlankSpace) and the force-scroll
@@ -160,11 +255,37 @@ const Messages = ({
     blankSpace.value = Math.max(0, raw);
   }, [blankSpace]);
 
+  const getBottomScrollTarget = useCallback(
+    (contentHeight = lastContentHeight.current) => {
+      const layoutHeight = lastLayoutHeight.current || containerHeight.current;
+      const bottomPadding = Math.max(
+        blankSpace.value,
+        extraContentPadding.value
+      );
+      return Math.max(contentHeight - layoutHeight + bottomPadding, 0);
+    },
+    [blankSpace, extraContentPadding]
+  );
+
+  const pinToBottom = useCallback(
+    (animated: boolean, contentHeight?: number) => {
+      const y = getBottomScrollTarget(contentHeight);
+      scrollRef.current?.scrollTo({ y, animated });
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({
+          y: getBottomScrollTarget(contentHeight),
+          animated,
+        });
+      });
+    },
+    [getBottomScrollTarget]
+  );
+
   useImperativeHandle(
     ref,
     () => ({
       scrollToEnd: () => {
-        scrollRef.current?.scrollToEnd({ animated: true });
+        pinToBottom(true);
       },
       onMessageSent: () => {
         // Ensure the view is visible (covers new-chat case where the
@@ -186,12 +307,13 @@ const Messages = ({
         pendingPinRef.current = true;
       },
     }),
-    [blankSpace, opacity]
+    [blankSpace, opacity, pinToBottom]
   );
 
   const handleContainerLayout = useCallback(
     (e: LayoutChangeEvent) => {
       containerHeight.current = e.nativeEvent.layout.height;
+      lastLayoutHeight.current = e.nativeEvent.layout.height;
       recomputeBlankSpace();
     },
     [recomputeBlankSpace]
@@ -232,11 +354,94 @@ const Messages = ({
   );
 
   const scrollToBottom = useCallback(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
-  }, []);
+    pinToBottom(true);
+  }, [pinToBottom]);
+
+  const handleCopyMessage = useCallback(
+    async (message: Message) => {
+      await Clipboard.setStringAsync(message.content);
+      if (message.role === 'user') {
+        setActiveUserActionsId(null);
+        onUserActionMenuChange?.({ isOpen: false });
+      }
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Message copied',
+      });
+    },
+    [onUserActionMenuChange]
+  );
+
+  const getMessageActionsState = useCallback(
+    (message: Message): MessageActionsState => {
+      const isPersisted = message.id > 0;
+
+      if (message.role === 'assistant') {
+        return {
+          showActions: isPersisted && message.content.trim().length > 0,
+          showForkAction: isPersisted && !!onForkMessage,
+        };
+      }
+
+      return {
+        showActions: false,
+        showForkAction: false,
+      };
+    },
+    [onForkMessage]
+  );
+
+  const handleUserLongPress = useCallback(
+    (messageId: number, target: ViewType | null) => {
+      const message = chatHistory.find((item) => item.id === messageId);
+      if (!message) return;
+
+      const shouldOpen = activeUserActionsId !== messageId;
+      setActiveUserActionsId(shouldOpen ? messageId : null);
+
+      if (shouldOpen) {
+        Feedback.longPress();
+        target?.measureInWindow((x, y, width, height) => {
+          onUserActionMenuChange?.({
+            isOpen: true,
+            anchor: { x, y, width, height },
+            onCopy: () => handleCopyMessage(message),
+          });
+        });
+      } else {
+        onUserActionMenuChange?.({ isOpen: false });
+      }
+    },
+    [
+      activeUserActionsId,
+      chatHistory,
+      handleCopyMessage,
+      onUserActionMenuChange,
+    ]
+  );
+
+  const handleScrollTouchStart = useCallback(() => {
+    if (activeUserActionsId !== null) {
+      setActiveUserActionsId(null);
+      onUserActionMenuChange?.({ isOpen: false });
+      Keyboard.dismiss();
+    }
+  }, [activeUserActionsId, onUserActionMenuChange]);
+
+  const handleForkMessage = useCallback(
+    (message: Message) => {
+      onForkMessage?.(message);
+    },
+    [onForkMessage]
+  );
 
   const handleContentSizeChange = useCallback(
     (_w: number, h: number) => {
+      const previousContentHeight = lastContentHeight.current;
+      const contentGrew = h > previousContentHeight;
+      const wasAtBottom = isAtBottomRef.current;
+      lastContentHeight.current = h;
+
       // Initial reveal: content has been laid out for the first time.
       // Snap to bottom then fade in. This is the most reliable place to
       // scroll because the native content size is already committed.
@@ -249,7 +454,7 @@ const Messages = ({
         if (h <= CONTENT_PADDING) return;
 
         hasScrolledToEnd.current = true;
-        const snap = () => scrollRef.current?.scrollToEnd({ animated: false });
+        const snap = () => pinToBottom(false, h);
         snap();
         requestAnimationFrame(() => {
           snap();
@@ -258,6 +463,7 @@ const Messages = ({
             requestAnimationFrame(() => {
               snap();
               opacity.value = withTiming(1, { duration: 350 });
+              revealTranslateY.value = withTiming(0, { duration: 350 });
             });
           }, 16);
         });
@@ -279,7 +485,9 @@ const Messages = ({
             duration: 300,
           });
         }
-        scrollRef.current?.scrollToEnd({ animated: true });
+        pinToBottom(true, h);
+      } else if (wasAtBottom && contentGrew && blankSpace.value <= 0) {
+        pinToBottom(true, h);
       }
 
       // During streaming, check if content has grown past the viewport
@@ -293,14 +501,15 @@ const Messages = ({
       if (containerHeight.current > 0) {
         const layoutH = lastLayoutHeight.current || containerHeight.current;
         const distFromBottom = h - (lastScrollOffset.current + layoutH);
-        const atBottom = distFromBottom < 100;
+        const atBottom =
+          wasAtBottom && contentGrew ? true : distFromBottom < 100;
         if (atBottom !== isAtBottomRef.current) {
           isAtBottomRef.current = atBottom;
           setShowScrollButton(!atBottom);
         }
       }
     },
-    [opacity, blankSpace]
+    [opacity, blankSpace, revealTranslateY, pinToBottom]
   );
 
   // Identify the last user and last assistant indices so we can wrap
@@ -327,10 +536,11 @@ const Messages = ({
         blankSpace={blankSpace}
         freeze={freeze}
         applyWorkaroundForContentInsetHitTestBug
-        keyboardShouldPersistTaps="never"
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.contentContainer}
         onLayout={handleContainerLayout}
         onScroll={handleScroll}
+        onTouchStart={handleScrollTouchStart}
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
         style={styles.container}
@@ -350,43 +560,94 @@ const Messages = ({
               : index === lastAssistantIndex
                 ? handleLastAssistantLayout
                 : undefined;
+          const branchMarker = latestBranchMarkerByMessageId.get(message.id);
+          const { showActions, showForkAction } =
+            getMessageActionsState(message);
 
           const item = (
-            <MessageItem
-              content={message.content}
-              modelName={message.modelName}
-              role={message.role}
-              tokensPerSecond={message.tokensPerSecond}
-              timeToFirstToken={message.timeToFirstToken}
-              isLastMessage={isLastMessage}
-              imagePath={message.imagePath}
-              documentName={message.documentName}
-            />
+            <View style={styles.messageRow} collapsable={false}>
+              <MessageItem
+                content={message.content}
+                modelName={message.modelName}
+                role={message.role}
+                tokensPerSecond={message.tokensPerSecond}
+                timeToFirstToken={message.timeToFirstToken}
+                isLastMessage={isLastMessage}
+                imagePath={message.imagePath}
+                documentName={message.documentName}
+                showActions={showActions}
+                showForkAction={showForkAction}
+                onCopy={() => handleCopyMessage(message)}
+                onFork={() => handleForkMessage(message)}
+              />
+              {branchMarker && (
+                <BranchMarker
+                  key={`branch-${branchMarker.id}`}
+                  marker={branchMarker}
+                  onPress={onBranchMarkerPress}
+                />
+              )}
+            </View>
           );
 
+          const shouldHandleUserLongPress =
+            message.role === 'user' &&
+            message.id > 0 &&
+            activeUserActionsId !== message.id;
+
           if (onLayout) {
+            if (!shouldHandleUserLongPress) {
+              return (
+                <View key={key} onLayout={onLayout} collapsable={false}>
+                  {item}
+                </View>
+              );
+            }
+
             return (
               <View key={key} onLayout={onLayout} collapsable={false}>
-                {item}
+                <LongPressableMessage
+                  messageId={message.id}
+                  onLongPress={handleUserLongPress}
+                >
+                  {item}
+                </LongPressableMessage>
               </View>
             );
           }
-          return <React.Fragment key={key}>{item}</React.Fragment>;
+
+          if (!shouldHandleUserLongPress) {
+            return <React.Fragment key={key}>{item}</React.Fragment>;
+          }
+
+          return (
+            <LongPressableMessage
+              key={key}
+              messageId={message.id}
+              onLongPress={handleUserLongPress}
+            >
+              {item}
+            </LongPressableMessage>
+          );
         })}
       </KeyboardChatScrollView>
 
       {showScrollButton && (
-        <TouchableOpacity
-          style={styles.scrollToBottomButton}
+        <Pressable
+          style={({ pressed }) => [
+            styles.scrollToBottomButton,
+            pressed && styles.scrollToBottomButtonPressed,
+          ]}
           onPress={scrollToBottom}
-          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Scroll to latest message"
         >
           <ChevronDown
             width={20}
             height={20}
             style={{ color: theme.text.primary }}
           />
-        </TouchableOpacity>
+        </Pressable>
       )}
     </Reanimated.View>
   );
@@ -405,6 +666,9 @@ const createStyles = (theme: Theme) =>
       paddingTop: 16,
       paddingBottom: 8,
     },
+    messageRow: {
+      position: 'relative',
+    },
     scrollToBottomButton: {
       position: 'absolute',
       bottom: 16,
@@ -420,5 +684,8 @@ const createStyles = (theme: Theme) =>
       shadowOpacity: 0.15,
       shadowRadius: 4,
       elevation: 4,
+    },
+    scrollToBottomButtonPressed: {
+      opacity: 0.8,
     },
   });

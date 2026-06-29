@@ -1,0 +1,2 @@
+export const USER_MESSAGE_BOTTOM_SPACING = 24;
+export const USER_ACTION_MENU_OFFSET = 6;

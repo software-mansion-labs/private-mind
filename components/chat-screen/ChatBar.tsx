@@ -137,12 +137,12 @@ const ChatBar = ({
       const baseline = defaultBarHeight.current || height;
       const delta = height - baseline;
       extraContentPadding.value = Math.max(0, delta);
-      onHeightChange?.(height);
+      onHeightChange?.(hasMessages ? baseline : 0);
       if (delta > 0) {
         onBarGrow?.();
       }
     },
-    [extraContentPadding, onHeightChange, hasMessages]
+    [extraContentPadding, onBarGrow, onHeightChange, hasMessages]
   );
 
   const {

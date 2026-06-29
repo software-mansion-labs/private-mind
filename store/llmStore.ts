@@ -113,6 +113,7 @@ const updateChatStateForGeneration = (
     activeChatMessages?: Message[];
     userMessage?: Message;
     assistantPlaceholder?: Message;
+    assistantMessage?: Message;
     timeToFirstToken?: number;
     tokensPerSecond?: number;
   }
@@ -144,6 +145,8 @@ const updateChatStateForGeneration = (
             index === state.activeChatMessages.length - 1
               ? {
                   ...msg,
+                  id: data.assistantMessage?.id ?? msg.id,
+                  content: data.assistantMessage?.content ?? msg.content,
                   timeToFirstToken: data.timeToFirstToken!,
                   tokensPerSecond: data.tokensPerSecond!,
                 }
@@ -408,7 +411,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         await generateLLMResponse(messagesWithSystemPrompt, get);
       // Handle successful response
       if (finalResponse) {
-        await persistMessage(db, {
+        const assistantMessageId = await persistMessage(db, {
           ...assistantPlaceholder,
           content: finalResponse,
           tokensPerSecond: responsePerformance.tokensPerSecond,
@@ -417,6 +420,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
         if (get().activeChatId === chatId) {
           updateChatStateForGeneration(set, 'complete', {
+            assistantMessage: {
+              ...assistantPlaceholder,
+              id: assistantMessageId,
+              content: finalResponse,
+              tokensPerSecond: responsePerformance.tokensPerSecond,
+              timeToFirstToken: responsePerformance.timeToFirstToken,
+            },
             timeToFirstToken: responsePerformance.timeToFirstToken,
             tokensPerSecond: responsePerformance.tokensPerSecond,
           });

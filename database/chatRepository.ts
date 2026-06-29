@@ -47,6 +47,17 @@ export type Message = {
   timestamp: number;
 };
 
+export type ChatBranchMarker = {
+  id: number;
+  chatId: number;
+  afterMessageId: number;
+  sourceChatId: number;
+  sourceMessageId: number;
+  sourceChatTitle: string;
+  sourceMessagePreview: string;
+  createdAt: number | string;
+};
+
 export const createChat = async (
   db: SQLiteDatabase,
   title: string,
@@ -164,6 +175,200 @@ export const importMessages = async (
       flattenedValues
     );
   }
+};
+
+const getBranchMessagePreview = (message: Message): string => {
+  const normalized = message.content.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    if (message.documentName) return message.documentName;
+    if (message.imagePath) return 'Image message';
+    return 'Message';
+  }
+
+  return normalized.length > 72 ? `${normalized.slice(0, 72)}...` : normalized;
+};
+
+const copyMessagesWithIdMap = async (
+  db: SQLiteDatabase,
+  chatId: number,
+  messages: Message[]
+): Promise<Map<number, number>> => {
+  const idMap = new Map<number, number>();
+
+  for (const msg of messages) {
+    const result = await db.runAsync(
+      `
+        INSERT INTO messages (
+          chatId,
+          role,
+          content,
+          timestamp,
+          modelName,
+          tokensPerSecond,
+          timeToFirstToken,
+          imagePath,
+          documentName
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        chatId,
+        msg.role,
+        msg.content,
+        msg.timestamp ?? Date.now(),
+        msg.modelName ?? '',
+        msg.tokensPerSecond ?? 0,
+        msg.timeToFirstToken ?? 0,
+        msg.imagePath ?? null,
+        msg.documentName ?? null,
+      ]
+    );
+    idMap.set(msg.id, result.lastInsertRowId);
+  }
+
+  return idMap;
+};
+
+export const getChatBranchMarkers = async (
+  db: SQLiteDatabase,
+  chatId: number
+): Promise<ChatBranchMarker[]> => {
+  return db.getAllAsync<ChatBranchMarker>(
+    `SELECT * FROM chatBranches WHERE chatId = ? ORDER BY afterMessageId ASC, id ASC`,
+    [chatId]
+  );
+};
+
+export const forkChat = async (
+  db: SQLiteDatabase,
+  originalChatId: number,
+  targetMessageId: number
+): Promise<number> => {
+  let newChatId: number | undefined;
+
+  await db.withTransactionAsync(async () => {
+    const originalChat = await db.getFirstAsync<Chat>(
+      `SELECT * FROM chats WHERE id = ?`,
+      [originalChatId]
+    );
+
+    if (!originalChat) {
+      throw new Error(`Chat ${originalChatId} not found`);
+    }
+
+    const messages = await getChatMessages(db, originalChatId);
+    const targetIndex = messages.findIndex(
+      (message) => message.id === targetMessageId
+    );
+
+    if (targetIndex === -1) {
+      throw new Error(
+        `Message ${targetMessageId} not found in chat ${originalChatId}`
+      );
+    }
+
+    const result = await db.runAsync(
+      `INSERT INTO chats (title, modelId, lastUsed) VALUES (?, ?, ?)`,
+      [`Branch: ${originalChat.title}`, originalChat.modelId, Date.now()]
+    );
+
+    newChatId = result.lastInsertRowId;
+    const messagesToCopy = messages.slice(0, targetIndex + 1);
+    const targetMessage = messages[targetIndex];
+
+    const messageIdMap = await copyMessagesWithIdMap(
+      db,
+      newChatId,
+      messagesToCopy
+    );
+    const copiedMessageIds = new Set(
+      messagesToCopy.map((message) => message.id)
+    );
+    const originalBranchMarkers = await getChatBranchMarkers(
+      db,
+      originalChatId
+    );
+
+    for (const marker of originalBranchMarkers) {
+      if (!copiedMessageIds.has(marker.afterMessageId)) continue;
+      if (marker.afterMessageId === targetMessageId) continue;
+
+      const copiedAfterMessageId = messageIdMap.get(marker.afterMessageId);
+      if (!copiedAfterMessageId) continue;
+
+      await db.runAsync(
+        `
+          INSERT INTO chatBranches (
+            chatId,
+            afterMessageId,
+            sourceChatId,
+            sourceMessageId,
+            sourceChatTitle,
+            sourceMessagePreview
+          ) VALUES (?, ?, ?, ?, ?, ?)
+        `,
+        [
+          newChatId,
+          copiedAfterMessageId,
+          marker.sourceChatId,
+          marker.sourceMessageId,
+          marker.sourceChatTitle,
+          marker.sourceMessagePreview,
+        ]
+      );
+    }
+
+    const copiedTargetMessageId = messageIdMap.get(targetMessageId);
+    if (!copiedTargetMessageId) {
+      throw new Error('Failed to copy branch target message');
+    }
+
+    await db.runAsync(
+      `
+        INSERT INTO chatBranches (
+          chatId,
+          afterMessageId,
+          sourceChatId,
+          sourceMessageId,
+          sourceChatTitle,
+          sourceMessagePreview
+        ) VALUES (?, ?, ?, ?, ?, ?)
+      `,
+      [
+        newChatId,
+        copiedTargetMessageId,
+        originalChatId,
+        targetMessageId,
+        originalChat.title,
+        getBranchMessagePreview(targetMessage),
+      ]
+    );
+
+    await db.runAsync(
+      `
+        INSERT INTO chatSettings (chatId, systemPrompt, thinkingEnabled)
+        SELECT ?, systemPrompt, thinkingEnabled
+        FROM chatSettings
+        WHERE chatId = ?
+      `,
+      [newChatId, originalChatId]
+    );
+
+    await db.runAsync(
+      `
+        INSERT INTO chatSources (chatId, sourceId)
+        SELECT ?, sourceId
+        FROM chatSources
+        WHERE chatId = ?
+      `,
+      [newChatId, originalChatId]
+    );
+  });
+
+  if (newChatId === undefined) {
+    throw new Error('Failed to fork chat');
+  }
+
+  return newChatId;
 };
 
 export const deleteChat = async (
