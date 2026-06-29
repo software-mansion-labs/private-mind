@@ -188,6 +188,32 @@ describe('setChatModel', () => {
   });
 });
 
+describe('forkChat', () => {
+  it('returns the new chat id and reloads chats', async () => {
+    (chatRepository.forkChat as jest.Mock).mockResolvedValue(10);
+    (chatRepository.getAllChats as jest.Mock).mockResolvedValue([
+      mockChat(10),
+      mockChat(1),
+    ]);
+
+    const newChatId = await useChatStore.getState().forkChat(1, 2);
+
+    expect(newChatId).toBe(10);
+    expect(chatRepository.forkChat).toHaveBeenCalledWith(mockDb, 1, 2);
+    expect(chatRepository.getAllChats).toHaveBeenCalledWith(mockDb);
+    expect(useChatStore.getState().chats[0].id).toBe(10);
+  });
+
+  it('returns undefined when db is not set', async () => {
+    useChatStore.setState({ db: null });
+
+    const newChatId = await useChatStore.getState().forkChat(1, 2);
+
+    expect(newChatId).toBeUndefined();
+    expect(chatRepository.forkChat).not.toHaveBeenCalled();
+  });
+});
+
 describe('enableSource', () => {
   it('adds sourceId to phantomChat without hitting the db', async () => {
     useChatStore.setState({
