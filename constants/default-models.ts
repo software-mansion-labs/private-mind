@@ -18,7 +18,7 @@ import {
 
 export const startingModels = [
   'LFM 2.5 - 1.2B',
-  'LFM 2.5 VL - 450M',
+  'Gemma 4 VL - 2B',
   'Qwen 3 - 1.7B',
 ];
 
@@ -233,10 +233,10 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: GEMMA4_E2B.tokenizerConfigSource,
     source: 'remote',
     parameters: 2.0,
-    modelSize: 1.5,
+    modelSize: 2.7,
     featured: true,
     thinking: false,
-    labels: ['Text', 'Gemma'],
+    labels: ['Balanced'],
   },
   {
     modelName: 'Gemma 4 VL - 2B',
@@ -246,11 +246,11 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: GEMMA4_E2B_MM.tokenizerConfigSource,
     source: 'remote',
     parameters: 2.0,
-    modelSize: 1.8,
+    modelSize: 4.7,
     featured: true,
     thinking: false,
     vision: true,
-    labels: ['Vision', 'Gemma'],
+    labels: ['Capable'],
     systemPrompt:
       'You are a helpful vision assistant. When the user shares an image, analyze it carefully and provide detailed, accurate descriptions and answers about its content. When no image is provided, respond as a knowledgeable and helpful general assistant.',
   },
