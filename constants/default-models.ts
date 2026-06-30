@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { type Model } from '../database/modelRepository';
 import {
   QWEN3_0_6B_QUANTIZED,
@@ -233,7 +234,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: GEMMA4_E2B.tokenizerConfigSource,
     source: 'remote',
     parameters: 2.0,
-    modelSize: Platform.OS == 'android' ? 2.5 : 2.9,
+    modelSize: Platform.OS === 'android' ? 2.5 : 2.9,
     featured: true,
     thinking: false,
     labels: ['Balanced'],
@@ -246,7 +247,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: GEMMA4_E2B_MM.tokenizerConfigSource,
     source: 'remote',
     parameters: 2.0,
-    modelSize: Platform.OS == 'android' ? 4.0 : 3.0,
+    modelSize: Platform.OS === 'android' ? 4.0 : 3.0,
     featured: true,
     thinking: false,
     vision: true,
