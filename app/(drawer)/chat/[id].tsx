@@ -76,7 +76,16 @@ function ChatScreenInner() {
       // would retrigger an unwanted re-fetch on the previously-focused chat.
       const currentActiveId = useLLMStore.getState().activeChatId;
       if (currentActiveId === chatId) {
-        return;
+        return () => {
+          const snapshot = useLLMStore.getState();
+          const isGeneratingThisChat =
+            snapshot.generatingForChatId === chatId &&
+            (snapshot.isGenerating || snapshot.isProcessingPrompt);
+
+          if (isGeneratingThisChat) {
+            snapshot.interrupt();
+          }
+        };
       }
       const initChat = async () => {
         if (!isPhantom) setIsLoading(true);
@@ -85,6 +94,17 @@ function ChatScreenInner() {
       };
 
       initChat();
+
+      return () => {
+        const snapshot = useLLMStore.getState();
+        const isGeneratingThisChat =
+          snapshot.generatingForChatId === chatId &&
+          (snapshot.isGenerating || snapshot.isProcessingPrompt);
+
+        if (isGeneratingThisChat) {
+          snapshot.interrupt();
+        }
+      };
     }, [chatId, isPhantom, setActiveChatId])
   );
 

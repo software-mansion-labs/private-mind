@@ -526,6 +526,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       set({
         isGenerating: false,
         isProcessingPrompt: false,
+        generatingForChatId: null,
       });
     }
   },
