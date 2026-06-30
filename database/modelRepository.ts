@@ -1,5 +1,5 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
-import { DEFAULT_MODELS, startingModels } from '../constants/default-models';
+import { DEFAULT_MODELS } from '../constants/default-models';
 
 export type Model = {
   id: number;
@@ -167,11 +167,23 @@ export const updateModel = async (
   );
 };
 
-export const getStartingModels = async (db: SQLiteDatabase) => {
-  const placeholders = startingModels.map(() => '?').join(', ');
+export const getModelsByNames = async (
+  db: SQLiteDatabase,
+  modelNames: string[]
+) => {
+  if (modelNames.length === 0) {
+    return [];
+  }
+
+  const placeholders = modelNames.map(() => '?').join(', ');
   const rawModels = await db.getAllAsync<RawModel>(
     `SELECT * FROM models WHERE modelName IN (${placeholders})`,
-    startingModels
+    modelNames
   );
-  return rawModels.map(hydrateModel);
+  return rawModels
+    .map(hydrateModel)
+    .sort(
+      (a, b) =>
+        modelNames.indexOf(a.modelName) - modelNames.indexOf(b.modelName)
+    );
 };

@@ -17,11 +17,17 @@ import {
   GEMMA4_E2B_MM,
 } from 'react-native-executorch';
 
-export const startingModels = [
-  'LFM 2.5 - 1.2B',
-  'Gemma 4 VL - 2B',
-  'Qwen 3 - 1.7B',
-];
+export const getStartingModels = (deviceRamInGB: number): string[] => {
+  if (deviceRamInGB < 4) {
+    return ['Qwen 3 - 0.6B', 'Qwen 2.5 - 0.5B', 'LFM 2.5 VL - 450M'];
+  }
+
+  if (deviceRamInGB <= 6) {
+    return ['LFM 2.5 - 1.2B', 'LLaMA 3.2 - 1B - SpinQuant', 'Qwen 3 - 1.7B'];
+  }
+
+  return ['Gemma 4 VL - 2B', 'Qwen 2.5 - 3B', 'LLaMA 3.2 - 3B - SpinQuant'];
+};
 
 const RNE_MODELS = [
   QWEN3_0_6B_QUANTIZED,
