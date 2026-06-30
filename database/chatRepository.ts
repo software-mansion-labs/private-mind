@@ -146,6 +146,7 @@ export const persistMessage = async (
 // SQLite's default SQLITE_MAX_VARIABLE_NUMBER is 999 on older builds.
 // 9 params per row, so 100 rows per batch keeps us well under the limit.
 const IMPORT_BATCH_SIZE = 100;
+const MAX_PREVIEW_LENGTH = 72;
 
 export const importMessages = async (
   db: SQLiteDatabase,
@@ -185,7 +186,9 @@ const getBranchMessagePreview = (message: Message): string => {
     return 'Message';
   }
 
-  return normalized.length > 72 ? `${normalized.slice(0, 72)}...` : normalized;
+  return normalized.length > MAX_PREVIEW_LENGTH
+    ? `${normalized.slice(0, MAX_PREVIEW_LENGTH)}...`
+    : normalized;
 };
 
 const copyMessagesWithIdMap = async (

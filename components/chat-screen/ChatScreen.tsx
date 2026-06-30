@@ -289,8 +289,8 @@ export default function ChatScreen({
       await setLastUsedModelId(selectedModel.id);
       selectModel?.(selectedModel);
       modelBottomSheetModalRef.current?.dismiss();
-    } catch {
-      // Keep the current UI state if loading the selected model fails.
+    } catch (error) {
+      console.error('Error loading model:', error);
     }
   };
 
@@ -338,8 +338,8 @@ export default function ChatScreen({
       if (currentModel?.isDownloaded && loadedModel?.id !== currentModel.id) {
         try {
           await loadModel(currentModel);
-        } catch {
-          // The prompt still gets inserted even if preloading the model fails.
+        } catch (error) {
+          console.error('Error loading model on prompt selection:', error);
         }
       }
     },

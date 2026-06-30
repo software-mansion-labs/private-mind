@@ -31,7 +31,7 @@ function ChatScreenInner() {
     entryAnimation,
   }: { modelId: string; entryAnimation?: ChatEntryAnimation } =
     useLocalSearchParams();
-  const { activeChatMessages, activeChatId, setActiveChatId } = useLLMStore();
+  const { activeChatMessages, activeChatId } = useLLMStore();
   const { getModelById } = useModelStore();
   const { getChatById, setChatModel, loadChats, phantomChat } = useChatStore();
   const chatId = parseInt(rawId, 10);
@@ -89,7 +89,7 @@ function ChatScreenInner() {
       }
       const initChat = async () => {
         if (!isPhantom) setIsLoading(true);
-        await setActiveChatId(chatId);
+        await useLLMStore.getState().setActiveChatId(chatId);
         setIsLoading(false);
       };
 
@@ -105,7 +105,7 @@ function ChatScreenInner() {
           snapshot.interrupt();
         }
       };
-    }, [chatId, isPhantom, setActiveChatId])
+    }, [chatId, isPhantom])
   );
 
   useFocusEffect(
