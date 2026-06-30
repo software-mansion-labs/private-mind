@@ -1,5 +1,6 @@
 import React, { useCallback, useRef } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { BackHandler } from 'react-native';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
 import { useState } from 'react';
 import { useLLMStore } from '../../../store/llmStore';
@@ -55,6 +56,7 @@ function ChatScreenInner() {
   );
 
   const isEmpty = !isLoading && activeChatMessages.length === 0;
+  const shouldExitOnBack = isPhantom && isEmpty;
   const openModelSheetRef = useRef<(() => void) | null>(null);
 
   const { MenuElements } = useChatHeader({
@@ -84,6 +86,22 @@ function ChatScreenInner() {
 
       initChat();
     }, [chatId, isPhantom, setActiveChatId])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!shouldExitOnBack) return;
+
+      const backHandler = BackHandler.addEventListener(
+        'hardwareBackPress',
+        () => {
+          BackHandler.exitApp();
+          return true;
+        }
+      );
+
+      return () => backHandler.remove();
+    }, [shouldExitOnBack])
   );
 
   const handleSetModel = async (newModel: Model) => {
