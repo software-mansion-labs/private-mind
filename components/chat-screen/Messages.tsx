@@ -227,6 +227,11 @@ const Messages = ({
   const lastUserHeight = useRef(0);
   const lastAssistantHeight = useRef(0);
 
+  const closeUserActionMenu = useCallback(() => {
+    setActiveUserActionsId(null);
+    onUserActionMenuChange?.({ isOpen: false });
+  }, [onUserActionMenuChange]);
+
   // Android-only: KeyboardChatScrollView's ClippingScrollView can
   // bounce the scroll offset on keyboard dismiss. Snap back to the
   // remembered position (top or bottom) if the user hadn't manually
@@ -241,6 +246,7 @@ const Messages = ({
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       if (wasAtBottomDuringKeyboard.current) {
         snapTimer = setTimeout(() => {
+          closeUserActionMenu();
           scrollRef.current?.scrollToEnd({ animated: false });
         }, 300);
       }
@@ -250,7 +256,7 @@ const Messages = ({
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [closeUserActionMenu]);
 
   // True while the LLM is streaming a response. Gates both the
   // blankSpace formula (recomputeBlankSpace) and the force-scroll
@@ -284,9 +290,11 @@ const Messages = ({
     ref,
     () => ({
       scrollToEnd: () => {
+        closeUserActionMenu();
         scrollRef.current?.scrollToEnd({ animated: true });
       },
       onMessageSent: () => {
+        closeUserActionMenu();
         // Ensure the view is visible (covers new-chat case where the
         // initial-scroll effect hasn't fired because there were no
         // messages yet).
@@ -306,7 +314,7 @@ const Messages = ({
         pendingPinRef.current = true;
       },
     }),
-    [blankSpace, opacity]
+    [blankSpace, closeUserActionMenu, opacity]
   );
 
   const handleContainerLayout = useCallback(
@@ -356,22 +364,22 @@ const Messages = ({
   );
 
   const scrollToBottom = useCallback(() => {
+    closeUserActionMenu();
     scrollRef.current?.scrollToEnd({ animated: true });
-  }, []);
+  }, [closeUserActionMenu]);
 
   const handleCopyMessage = useCallback(
     async (message: Message) => {
       await Clipboard.setStringAsync(message.content);
       if (message.role === 'user') {
-        setActiveUserActionsId(null);
-        onUserActionMenuChange?.({ isOpen: false });
+        closeUserActionMenu();
       }
       Toast.show({
         type: 'defaultToast',
         text1: 'Message copied',
       });
     },
-    [onUserActionMenuChange]
+    [closeUserActionMenu]
   );
 
   const getMessageActionsState = useCallback(
@@ -425,11 +433,10 @@ const Messages = ({
 
   const handleScrollTouchStart = useCallback(() => {
     if (activeUserActionsId !== null) {
-      setActiveUserActionsId(null);
-      onUserActionMenuChange?.({ isOpen: false });
+      closeUserActionMenu();
       Keyboard.dismiss();
     }
-  }, [activeUserActionsId, onUserActionMenuChange]);
+  }, [activeUserActionsId, closeUserActionMenu]);
 
   const handleForkMessage = useCallback(
     (message: Message) => {
@@ -467,6 +474,7 @@ const Messages = ({
       // blankSpace and scrollToEnd for a smooth transition.
       if (pendingPinRef.current) {
         pendingPinRef.current = false;
+        closeUserActionMenu();
         if (Platform.OS !== 'ios' && containerHeight.current > 0) {
           blankSpace.value = withTiming(containerHeight.current, {
             duration: 300,
@@ -493,7 +501,7 @@ const Messages = ({
         }
       }
     },
-    [blankSpace, scheduleInitialScrollToEnd]
+    [blankSpace, closeUserActionMenu, scheduleInitialScrollToEnd]
   );
 
   // Identify the last user and last assistant indices so we can wrap
