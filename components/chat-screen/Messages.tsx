@@ -144,7 +144,6 @@ const Messages = ({
   );
   const lastScrollOffset = useRef(0);
   const lastLayoutHeight = useRef(0);
-  const lastContentHeight = useRef(0);
 
   // v0-style initial scroll: hide the view until we've snapped to
   // the bottom, then fade in so the user never sees content flying by.
@@ -206,17 +205,7 @@ const Messages = ({
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       if (wasAtBottomDuringKeyboard.current) {
         snapTimer = setTimeout(() => {
-          const layoutHeight =
-            lastLayoutHeight.current || containerHeight.current;
-          const bottomPadding = Math.max(
-            blankSpace.value,
-            extraContentPadding.value
-          );
-          const y = Math.max(
-            lastContentHeight.current - layoutHeight + bottomPadding,
-            0
-          );
-          scrollRef.current?.scrollTo({ y, animated: false });
+          scrollRef.current?.scrollToEnd({ animated: false });
         }, 300);
       }
     });
@@ -225,7 +214,7 @@ const Messages = ({
       showSub.remove();
       hideSub.remove();
     };
-  }, [blankSpace, extraContentPadding]);
+  }, []);
 
   // True while the LLM is streaming a response. Gates both the
   // blankSpace formula (recomputeBlankSpace) and the force-scroll
@@ -255,37 +244,11 @@ const Messages = ({
     blankSpace.value = Math.max(0, raw);
   }, [blankSpace]);
 
-  const getBottomScrollTarget = useCallback(
-    (contentHeight = lastContentHeight.current) => {
-      const layoutHeight = lastLayoutHeight.current || containerHeight.current;
-      const bottomPadding = Math.max(
-        blankSpace.value,
-        extraContentPadding.value
-      );
-      return Math.max(contentHeight - layoutHeight + bottomPadding, 0);
-    },
-    [blankSpace, extraContentPadding]
-  );
-
-  const pinToBottom = useCallback(
-    (animated: boolean, contentHeight?: number) => {
-      const y = getBottomScrollTarget(contentHeight);
-      scrollRef.current?.scrollTo({ y, animated });
-      requestAnimationFrame(() => {
-        scrollRef.current?.scrollTo({
-          y: getBottomScrollTarget(contentHeight),
-          animated,
-        });
-      });
-    },
-    [getBottomScrollTarget]
-  );
-
   useImperativeHandle(
     ref,
     () => ({
       scrollToEnd: () => {
-        pinToBottom(true);
+        scrollRef.current?.scrollToEnd({ animated: true });
       },
       onMessageSent: () => {
         // Ensure the view is visible (covers new-chat case where the
@@ -307,7 +270,7 @@ const Messages = ({
         pendingPinRef.current = true;
       },
     }),
-    [blankSpace, opacity, pinToBottom]
+    [blankSpace, opacity]
   );
 
   const handleContainerLayout = useCallback(
@@ -354,8 +317,8 @@ const Messages = ({
   );
 
   const scrollToBottom = useCallback(() => {
-    pinToBottom(true);
-  }, [pinToBottom]);
+    scrollRef.current?.scrollToEnd({ animated: true });
+  }, []);
 
   const handleCopyMessage = useCallback(
     async (message: Message) => {
@@ -373,13 +336,14 @@ const Messages = ({
   );
 
   const getMessageActionsState = useCallback(
-    (message: Message): MessageActionsState => {
+    (message: Message, isLastMessage: boolean): MessageActionsState => {
       const isPersisted = message.id > 0;
+      const isStreamingMessage = isLastMessage && isGenerating;
 
       if (message.role === 'assistant') {
         return {
           showActions: isPersisted && message.content.trim().length > 0,
-          showForkAction: isPersisted && !!onForkMessage,
+          showForkAction: isPersisted && !!onForkMessage && !isStreamingMessage,
         };
       }
 
@@ -388,7 +352,7 @@ const Messages = ({
         showForkAction: false,
       };
     },
-    [onForkMessage]
+    [isGenerating, onForkMessage]
   );
 
   const handleUserLongPress = useCallback(
@@ -437,11 +401,6 @@ const Messages = ({
 
   const handleContentSizeChange = useCallback(
     (_w: number, h: number) => {
-      const previousContentHeight = lastContentHeight.current;
-      const contentGrew = h > previousContentHeight;
-      const wasAtBottom = isAtBottomRef.current;
-      lastContentHeight.current = h;
-
       // Initial reveal: content has been laid out for the first time.
       // Snap to bottom then fade in. This is the most reliable place to
       // scroll because the native content size is already committed.
@@ -454,7 +413,7 @@ const Messages = ({
         if (h <= CONTENT_PADDING) return;
 
         hasScrolledToEnd.current = true;
-        const snap = () => pinToBottom(false, h);
+        const snap = () => scrollRef.current?.scrollToEnd({ animated: false });
         snap();
         requestAnimationFrame(() => {
           snap();
@@ -485,9 +444,7 @@ const Messages = ({
             duration: 300,
           });
         }
-        pinToBottom(true, h);
-      } else if (wasAtBottom && contentGrew && blankSpace.value <= 0) {
-        pinToBottom(true, h);
+        scrollRef.current?.scrollToEnd({ animated: true });
       }
 
       // During streaming, check if content has grown past the viewport
@@ -501,15 +458,14 @@ const Messages = ({
       if (containerHeight.current > 0) {
         const layoutH = lastLayoutHeight.current || containerHeight.current;
         const distFromBottom = h - (lastScrollOffset.current + layoutH);
-        const atBottom =
-          wasAtBottom && contentGrew ? true : distFromBottom < 100;
+        const atBottom = distFromBottom < 100;
         if (atBottom !== isAtBottomRef.current) {
           isAtBottomRef.current = atBottom;
           setShowScrollButton(!atBottom);
         }
       }
     },
-    [opacity, blankSpace, revealTranslateY, pinToBottom]
+    [opacity, blankSpace, revealTranslateY]
   );
 
   // Identify the last user and last assistant indices so we can wrap
@@ -561,8 +517,10 @@ const Messages = ({
                 ? handleLastAssistantLayout
                 : undefined;
           const branchMarker = latestBranchMarkerByMessageId.get(message.id);
-          const { showActions, showForkAction } =
-            getMessageActionsState(message);
+          const { showActions, showForkAction } = getMessageActionsState(
+            message,
+            isLastMessage
+          );
 
           const item = (
             <View style={styles.messageRow} collapsable={false}>

@@ -102,7 +102,6 @@ export default function ChatScreen({
   const { vectorStore } = useVectorStore();
   const {
     isGenerating,
-    isProcessingPrompt,
     sendChatMessage,
     loadModel,
     model: loadedModel,
@@ -407,9 +406,7 @@ export default function ChatScreen({
           freeze={overlayOpen}
           revealFromTop={revealFromTop}
           branchMarkers={branchMarkers}
-          onForkMessage={
-            isGenerating || isProcessingPrompt ? undefined : handleForkMessage
-          }
+          onForkMessage={handleForkMessage}
           onBranchMarkerPress={handleBranchMarkerPress}
           onUserActionMenuChange={setUserActionMenu}
         />
