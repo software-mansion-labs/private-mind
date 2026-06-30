@@ -151,10 +151,44 @@ const Messages = ({
   const opacity = useSharedValue(0);
   const revealTranslateY = useSharedValue(revealFromTop ? -28 : 0);
   const hasScrolledToEnd = useRef(false);
+  const initialScrollSettlingUntil = useRef(0);
+  const initialScrollTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const animatedContainerStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ translateY: revealTranslateY.value }],
   }));
+
+  const clearInitialScrollTimers = useCallback(() => {
+    initialScrollTimers.current.forEach(clearTimeout);
+    initialScrollTimers.current = [];
+  }, []);
+
+  const snapToEnd = useCallback(() => {
+    scrollRef.current?.scrollToEnd({ animated: false });
+  }, []);
+
+  const scheduleInitialScrollToEnd = useCallback(() => {
+    clearInitialScrollTimers();
+    snapToEnd();
+
+    const schedule = (delay: number, action: () => void) => {
+      const timer = setTimeout(action, delay);
+      initialScrollTimers.current.push(timer);
+    };
+
+    [16, 50, 100, 180, 300, 450].forEach((delay) => {
+      schedule(delay, () => {
+        snapToEnd();
+      });
+    });
+
+    schedule(500, () => {
+      snapToEnd();
+      opacity.value = withTiming(1, { duration: 350 });
+      revealTranslateY.value = withTiming(0, { duration: 350 });
+      initialScrollTimers.current = [];
+    });
+  }, [clearInitialScrollTimers, opacity, revealTranslateY, snapToEnd]);
 
   const latestBranchMarkerByMessageId = useMemo(() => {
     const byMessageId = new Map<number, ChatBranchMarker>();
@@ -183,6 +217,8 @@ const Messages = ({
     }
     prevChatLengthRef.current = chatHistory.length;
   }, [chatHistory.length, opacity]);
+
+  useLayoutEffect(() => clearInitialScrollTimers, [clearInitialScrollTimers]);
 
   // Heights that drive blankSpace. All in JS refs because updates are
   // driven by layout events and we only need to write the derived value
@@ -278,8 +314,11 @@ const Messages = ({
       containerHeight.current = e.nativeEvent.layout.height;
       lastLayoutHeight.current = e.nativeEvent.layout.height;
       recomputeBlankSpace();
+      if (Date.now() < initialScrollSettlingUntil.current) {
+        snapToEnd();
+      }
     },
-    [recomputeBlankSpace]
+    [recomputeBlankSpace, snapToEnd]
   );
 
   const handleLastUserLayout = useCallback(
@@ -413,19 +452,8 @@ const Messages = ({
         if (h <= CONTENT_PADDING) return;
 
         hasScrolledToEnd.current = true;
-        const snap = () => scrollRef.current?.scrollToEnd({ animated: false });
-        snap();
-        requestAnimationFrame(() => {
-          snap();
-          setTimeout(() => {
-            snap();
-            requestAnimationFrame(() => {
-              snap();
-              opacity.value = withTiming(1, { duration: 350 });
-              revealTranslateY.value = withTiming(0, { duration: 350 });
-            });
-          }, 16);
-        });
+        initialScrollSettlingUntil.current = Date.now() + 650;
+        scheduleInitialScrollToEnd();
         return;
       }
 
@@ -465,7 +493,7 @@ const Messages = ({
         }
       }
     },
-    [opacity, blankSpace, revealTranslateY]
+    [blankSpace, scheduleInitialScrollToEnd]
   );
 
   // Identify the last user and last assistant indices so we can wrap
