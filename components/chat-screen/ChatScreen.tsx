@@ -47,6 +47,7 @@ import { persistImage } from '../../utils/persistImage';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import useChatBranching from '../../hooks/useChatBranching';
 import {
+  LAYOUT_HEIGHT_CHANGE_THRESHOLD,
   USER_ACTION_MENU_OFFSET,
   USER_MESSAGE_BOTTOM_SPACING,
 } from '../../constants/chat-screen';
@@ -77,8 +78,6 @@ const prepareContext = async (
     return [];
   }
 };
-
-const LAYOUT_HEIGHT_CHANGE_THRESHOLD = 0.5;
 
 export default function ChatScreen({
   chatId,
@@ -199,7 +198,8 @@ export default function ChatScreen({
     if (imagePath) {
       try {
         persistedImagePath = await persistImage(imagePath);
-      } catch {
+      } catch (error) {
+        console.error('Failed to persist image attachment:', error);
         Toast.show({
           type: 'defaultToast',
           text1: 'Failed to save image attachment.',
@@ -324,8 +324,9 @@ export default function ChatScreen({
       } else {
         await setChatSettings(db, chatId, newSettings);
       }
-    } catch {
+    } catch (error) {
       setSetting('thinkingEnabled', previous ?? false);
+      console.error('Failed to update thinking setting:', error);
     }
   };
 

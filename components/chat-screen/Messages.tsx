@@ -673,7 +673,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bg.softSecondary,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: '#000',
+      shadowColor: theme.bg.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.15,
       shadowRadius: 4,

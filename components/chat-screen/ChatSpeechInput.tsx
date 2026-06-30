@@ -223,7 +223,7 @@ const ChatSpeechInput: React.FC<Props> = ({
           onPress={handleCancel}
           size={20}
           color={theme.text.contrastPrimary}
-          backgroundColor="rgba(2, 15, 60, 0.2)"
+          backgroundColor={theme.bg.voiceModeSurface}
         />
         <Text style={[styles.secondaryNote, styles.actionNote]}>
           Click again to send

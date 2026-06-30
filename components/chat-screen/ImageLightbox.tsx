@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Modal,
   StatusBar,
@@ -8,6 +8,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CloseIcon from '../../assets/icons/close.svg';
+import { useTheme } from '../../context/ThemeContext';
+import { Theme } from '../../styles/colors';
 
 interface Props {
   uri: string;
@@ -17,6 +19,8 @@ interface Props {
 
 const ImageLightbox = ({ uri, visible, onClose }: Props) => {
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <Modal
@@ -47,28 +51,29 @@ const ImageLightbox = ({ uri, visible, onClose }: Props) => {
 
 export default ImageLightbox;
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'black',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  closeButton: {
-    position: 'absolute',
-    right: 20,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeIcon: {
-    color: 'white',
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      backgroundColor: theme.bg.lightbox,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    image: {
+      width: '100%',
+      height: '100%',
+    },
+    closeButton: {
+      position: 'absolute',
+      right: 20,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: theme.bg.lightboxControl,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    closeIcon: {
+      color: theme.text.onAttachButton,
+    },
+  });

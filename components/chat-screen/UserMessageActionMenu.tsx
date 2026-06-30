@@ -64,7 +64,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bg.chatBar,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border.soft,
-      shadowColor: '#000',
+      shadowColor: theme.bg.shadow,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.1,
       shadowRadius: 8,
