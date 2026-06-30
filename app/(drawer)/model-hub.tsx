@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Alert, View, StyleSheet, Text } from 'react-native';
+import { Alert, View, StyleSheet, Text, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -174,7 +174,12 @@ const ModelHubScreen = () => {
         {isEmpty ? (
           renderEmptyState()
         ) : (
-          <ScrollView contentContainerStyle={styles.scrollContent}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            automaticallyAdjustsScrollIndicatorInsets={false}
+            scrollIndicatorInsets={scrollIndicatorInsets}
+          >
             {tab === 'mine'
               ? mineModels.map((model) => (
                   <ModelCard
@@ -230,6 +235,11 @@ const ModelHubScreen = () => {
 
 export default ModelHubScreen;
 
+const scrollIndicatorInsets = Platform.select({
+  // iOS 17.5 can initially place the indicator on the left when auto-adjusting.
+  ios: { right: 1 },
+});
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     keyboardAvoidingView: {
@@ -244,6 +254,9 @@ const createStyles = (theme: Theme) =>
       gap: 16,
       paddingHorizontal: 16,
       paddingBottom: 16,
+    },
+    scrollView: {
+      flex: 1,
     },
     scrollContent: {
       gap: 8,

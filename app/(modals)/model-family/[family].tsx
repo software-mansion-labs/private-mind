@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -58,7 +58,12 @@ const FamilyScreen = () => {
               <Text style={styles.emptyText}>No variants available.</Text>
             </View>
           ) : (
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              automaticallyAdjustsScrollIndicatorInsets={false}
+              scrollIndicatorInsets={scrollIndicatorInsets}
+            >
               {description && (
                 <Text style={styles.description}>{description}</Text>
               )}
@@ -86,6 +91,11 @@ const FamilyScreen = () => {
 
 export default FamilyScreen;
 
+const scrollIndicatorInsets = Platform.select({
+  // iOS 17.5 can initially place the indicator on the left when auto-adjusting.
+  ios: { right: 1 },
+});
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
@@ -96,6 +106,9 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       padding: 16,
       paddingBottom: theme.insets.bottom,
+    },
+    scrollView: {
+      flex: 1,
     },
     scrollContent: {
       gap: 8,
