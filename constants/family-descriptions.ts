@@ -7,6 +7,8 @@ export const FAMILY_DESCRIPTIONS: Record<string, string> = {
     "Meta's LLaMA 3.2 family, released alongside the Llama 3 lineup and tuned for efficient on-device use. QLoRa and SpinQuant variants compress the model for faster inference with minimal quality loss. Good general chat and coding performance at a small footprint.",
   'LFM 2.5':
     "Liquid AI's second generation of Liquid Foundation Models, designed for edge devices. Uses a non-transformer architecture that delivers fast inference and low memory use. Vision variants can analyze images in addition to regular chat.",
+  'Gemma 4':
+    "Google's Gemma 4 family, adapted here for efficient on-device inference. The 2B variants keep a compact footprint while offering capable general chat, and the multimodal variant can work with images in addition to text.",
   'Bielik':
     'A Polish-language model from SpeakLeash, fine-tuned to natively understand and respond in Polish. Great for Polish-language chat, writing, and summarization tasks where other models feel clunky. Currently experimental in this app.',
 };

@@ -33,6 +33,7 @@ export const useSTTStore = create<STTStore>((set, get) => {
 
       return (modelLoadPromise = SpeechToTextModule.fromModelName(
         WHISPER_TINY_EN,
+        undefined,
         (progress) => {
           set({ loadProgress: progress });
         }

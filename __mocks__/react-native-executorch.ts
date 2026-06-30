@@ -62,6 +62,8 @@ export const LFM2_5_VL_1_6B_QUANTIZED = makeModelConstants(
 export const LFM2_5_VL_450M_QUANTIZED = makeModelConstants(
   'lfm2.5-vl-450m-quantized'
 );
+export const GEMMA4_E2B = makeModelConstants('gemma4-e2b');
+export const GEMMA4_E2B_MM = makeModelConstants('gemma4-e2b-mm');
 export const WHISPER_TINY_EN = 'whisper-tiny-en';
 
 export const LLMModule = {
