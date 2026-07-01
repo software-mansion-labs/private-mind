@@ -11,8 +11,10 @@ import { getNextChatId } from '../../database/chatRepository';
 import { useChatStore } from '../../store/chatStore';
 import { useLLMStore } from '../../store/llmStore';
 import { useSQLiteContext } from 'expo-sqlite';
-import { getStartingModels, Model } from '../../database/modelRepository';
+import { getModelsByNames, Model } from '../../database/modelRepository';
 import { Theme } from '../../styles/colors';
+import { getStartingModels } from '../../constants/default-models';
+import { getDeviceMemoryGB } from '../../utils/modelCompatibility';
 
 function SelectStartingModelScreen() {
   const router = useRouter();
@@ -24,10 +26,16 @@ function SelectStartingModelScreen() {
   const { downloadedModels } = useModelStore();
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [startingModels, setStartingModels] = useState<Model[]>([]);
+  const suggestedStartingModelNames = useMemo(
+    () => getStartingModels(getDeviceMemoryGB()),
+    []
+  );
 
   useEffect(() => {
-    getStartingModels(db).then((models) => setStartingModels(models));
-  }, [db]);
+    getModelsByNames(db, suggestedStartingModelNames).then((models) =>
+      setStartingModels(models)
+    );
+  }, [db, suggestedStartingModelNames]);
 
   useEffect(() => {
     if (downloadedModels.length > 0) setSelectedModel(downloadedModels[0]);
@@ -73,8 +81,8 @@ function SelectStartingModelScreen() {
                 model={model}
                 onPress={
                   downloadedModels.find((m) => m.id === model.id)
-                    ? (model) => {
-                        setSelectedModel(model);
+                    ? (pressedModel) => {
+                        setSelectedModel(pressedModel);
                       }
                     : () => {}
                 }
