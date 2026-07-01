@@ -19,14 +19,14 @@ import {
 
 export const getStartingModels = (deviceRamInGB: number): string[] => {
   if (deviceRamInGB < 4) {
-    return ['Qwen 3 - 0.6B', 'Qwen 2.5 - 0.5B', 'LFM 2.5 VL - 450M'];
+    return ['Qwen 3 - 0.6B', 'LFM 2.5 VL - 450M', 'LFM 2.5 - 1.2B'];
   }
 
   if (deviceRamInGB <= 6) {
-    return ['LFM 2.5 - 1.2B', 'LLaMA 3.2 - 1B - SpinQuant', 'Qwen 3 - 1.7B'];
+    return ['Qwen 3 - 1.7B', 'LFM 2.5 - 1.2B', 'LFM 2.5 VL - 1.6B'];
   }
 
-  return ['Gemma 4 VL - 2B', 'Qwen 2.5 - 3B', 'LLaMA 3.2 - 3B - SpinQuant'];
+  return ['Gemma 4 - 2B', 'Gemma 4 VL - 2B', 'Qwen 3 - 1.7B'];
 };
 
 const RNE_MODELS = [
