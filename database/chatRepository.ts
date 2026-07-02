@@ -271,7 +271,7 @@ export const forkChat = async (
 
     const result = await db.runAsync(
       `INSERT INTO chats (title, modelId, lastUsed) VALUES (?, ?, ?)`,
-      [`Branch: ${originalChat.title}`, originalChat.modelId, Date.now()]
+      [originalChat.title, originalChat.modelId, Date.now()]
     );
 
     newChatId = result.lastInsertRowId;
