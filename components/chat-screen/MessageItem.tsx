@@ -12,6 +12,7 @@ import AttachmentIcon from '../../assets/icons/attachment.svg';
 import CopyIcon from '../../assets/icons/copy.svg';
 import ForkIcon from '../../assets/icons/fork.svg';
 import MessageActionButton from './MessageActionButton';
+import { MESSAGE_ACTION_ROW_HEIGHT } from '../../constants/chat-screen';
 
 interface MessageItemProps {
   content: string;
@@ -288,7 +289,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       gap: 6,
       marginTop: 4,
-      flexWrap: 'wrap',
+      height: MESSAGE_ACTION_ROW_HEIGHT,
     },
     imagePressed: {
       opacity: 0.9,

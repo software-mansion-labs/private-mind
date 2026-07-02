@@ -62,10 +62,11 @@ interface Props {
   /** Whether the LLM is currently streaming a response. */
   isGenerating: boolean;
   /**
-   * Distance between the bottom of the screen and the scroll view
-   * (ChatBar height + safe area). Passed to KeyboardChatScrollView's
-   * offset prop so it correctly calculates the keyboard push distance
-   * and doesn't overshoot on keyboard dismiss.
+   * Bottom inset forwarded to KeyboardChatScrollView's `offset`. Only the
+   * safe-area inset stays fixed below the scroll view while the keyboard
+   * animates, because the ChatBar is pinned to the keyboard and rises with it.
+   * Using the full ChatBar height under-pads the list and clips the end of
+   * long messages.
    */
   bottomOffset: number;
   /**
@@ -214,9 +215,11 @@ const Messages = ({
     ) {
       hasScrolledToEnd.current = false;
       opacity.value = 0;
+      pinActive.current = false;
+      blankSpace.value = 0;
     }
     prevChatLengthRef.current = chatHistory.length;
-  }, [chatHistory.length, opacity]);
+  }, [chatHistory.length, opacity, blankSpace]);
 
   useLayoutEffect(() => clearInitialScrollTimers, [clearInitialScrollTimers]);
 
@@ -258,25 +261,19 @@ const Messages = ({
     };
   }, [closeUserActionMenu]);
 
-  // True while the LLM is streaming a response. Gates both the
-  // blankSpace formula (recomputeBlankSpace) and the force-scroll
-  // in handleContentSizeChange. Flipped off via useLayoutEffect when
-  // generation ends, before the stats-row layout event commits.
-  const streamingActive = useRef(false);
+  // Armed from onMessageSent until the chat is cleared; gates recomputeBlankSpace.
+  // Stays armed past end-of-stream so the final layout (once the stats row and
+  // Copy/Fork bar commit) recomputes blankSpace with the assistant's true height,
+  // instead of leaving it ~50px too large — which clips the pinned question.
+  const pinActive = useRef(false);
   // Armed in onMessageSent, consumed on the next onContentSizeChange:
   // seed blankSpace and scroll to end once the new chat row has
   // actually rendered (avoids a 1-frame flick of old content lifted
   // by the new inset).
   const pendingPinRef = useRef(false);
 
-  useLayoutEffect(() => {
-    if (!isGenerating) {
-      streamingActive.current = false;
-    }
-  }, [isGenerating]);
-
   const recomputeBlankSpace = useCallback(() => {
-    if (!streamingActive.current) return;
+    if (!pinActive.current) return;
     const CONTAINER_PADDING = 16 + 8;
     const raw =
       containerHeight.current -
@@ -304,7 +301,7 @@ const Messages = ({
         }
         lastAssistantHeight.current = 0;
         lastUserHeight.current = 0;
-        streamingActive.current = true;
+        pinActive.current = true;
 
         if (Platform.OS === 'ios') {
           if (containerHeight.current > 0) {

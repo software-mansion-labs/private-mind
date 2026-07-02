@@ -349,7 +349,7 @@ export default function ChatScreen({
 
   const isEmpty = !isLoading && messageHistory.length === 0;
   const hasMessages = isLoading || messageHistory.length > 0;
-  const scrollBottomOffset = chatBarSpacerHeight || theme.insets.bottom;
+  const scrollBottomOffset = theme.insets.bottom;
 
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const gradientProgress = useSharedValue(isEmpty ? 1 : 0);
