@@ -100,7 +100,7 @@ describe('forkChat', () => {
     expect(newChatId).toBe(10);
     expect(runAsync).toHaveBeenCalledWith(
       `INSERT INTO chats (title, modelId, lastUsed) VALUES (?, ?, ?)`,
-      ['Branch: Original', 7, expect.any(Number)]
+      ['Original', 7, expect.any(Number)]
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO messages'),
