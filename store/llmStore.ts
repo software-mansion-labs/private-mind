@@ -51,6 +51,25 @@ interface LLMStore {
 
 let llmInstance: LLMModule | null = null;
 
+// Streaming token coalescing. The executorch token callback can fire many times
+// in a single synchronous tick (notably while replaying the prompt during
+// prefill). Appending to the store on every token then schedules one React
+// update per token; a burst of them in one tick trips "Maximum update depth
+// exceeded". Instead we accumulate tokens here and flush the visible append at
+// most once per animation frame. The authoritative full text is still written
+// on generation 'complete', so a dropped/late flush never loses content.
+let streamBuffer = '';
+let streamTokenCount = 0;
+let streamFirstTokenTime = 0;
+let streamFlushScheduled = false;
+
+const resetStreamState = () => {
+  streamBuffer = '';
+  streamTokenCount = 0;
+  streamFirstTokenTime = 0;
+  streamFlushScheduled = false;
+};
+
 const calculatePerformanceMetrics = (
   startTime: number,
   endTime: number,
@@ -126,6 +145,7 @@ const updateChatStateForGeneration = (
       });
       break;
     case 'generating':
+      resetStreamState();
       set({
         isGenerating: true,
         performance: {
@@ -135,6 +155,9 @@ const updateChatStateForGeneration = (
       });
       break;
     case 'complete':
+      // The full response is written below; drop any buffered tail so a pending
+      // flush can't append it on top of the final content.
+      streamBuffer = '';
       if (
         data?.timeToFirstToken !== undefined &&
         data?.tokensPerSecond !== undefined
@@ -162,6 +185,7 @@ const updateChatStateForGeneration = (
       }
       break;
     case 'failed':
+      streamBuffer = '';
       // Drop the empty assistant placeholder left behind when generation
       // failed, was interrupted before any tokens, or produced no response.
       set((state) => {
@@ -273,7 +297,36 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       llmInstance = null;
     }
 
+    // A fresh model instance has no in-flight stream — drop any buffered tokens.
+    resetStreamState();
     set({ isLoading: true, model: model });
+
+    // Append the tokens buffered since the last frame to the streaming message
+    // in a single store update, collapsing a burst of token callbacks into one
+    // React render.
+    const flushStream = () => {
+      streamFlushScheduled = false;
+      if (!streamBuffer) return;
+      const text = streamBuffer;
+      streamBuffer = '';
+      const snapshot = get();
+      const shouldAppendToActiveChat =
+        snapshot.generatingForChatId === snapshot.activeChatId;
+      set((state) => ({
+        isProcessingPrompt: false,
+        performance: {
+          tokenCount: streamTokenCount,
+          firstTokenTime: streamFirstTokenTime,
+        },
+        activeChatMessages: shouldAppendToActiveChat
+          ? state.activeChatMessages.map((msg, index) =>
+              index === state.activeChatMessages.length - 1
+                ? { ...msg, content: msg.content + text }
+                : msg
+            )
+          : state.activeChatMessages,
+      }));
+    };
 
     try {
       llmInstance = await LLMModule.fromModelName(
@@ -288,47 +341,36 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         },
         () => {},
         (token) => {
-          const snapshot = get();
-          const isFirstToken = snapshot.performance.tokenCount === 0;
+          // First-token bookkeeping stays synchronous and per-token (it is
+          // cheap and never touches the message list). `streamTokenCount` is the
+          // authoritative in-flight counter — the store's tokenCount only
+          // updates on flush, so it can't be used to detect the first token.
+          const isFirstToken = streamTokenCount === 0;
 
-          if (isFirstToken && !snapshot.isBenchmarking) {
+          if (isFirstToken && !get().isBenchmarking) {
             Feedback.firstToken();
           }
 
           /* Temporary solution to handle interrupt during prefill, needs to be fixed in the
           react-native-executorch library
           */
-          if (
-            isFirstToken &&
-            !snapshot.isProcessingPrompt &&
-            !snapshot.isGenerating
-          ) {
-            llmInstance?.interrupt();
-            return;
+          if (isFirstToken) {
+            const snapshot = get();
+            if (!snapshot.isProcessingPrompt && !snapshot.isGenerating) {
+              llmInstance?.interrupt();
+              return;
+            }
+            streamFirstTokenTime = performance.now();
           }
 
-          const shouldAppendToActiveChat =
-            snapshot.generatingForChatId === snapshot.activeChatId;
-          const firstTokenTime = isFirstToken
-            ? performance.now()
-            : snapshot.performance.firstTokenTime;
-
-          // Use functional set so tokenCount increments relative to the
-          // latest state, not the captured snapshot.
-          set((state) => ({
-            isProcessingPrompt: false,
-            performance: {
-              tokenCount: state.performance.tokenCount + 1,
-              firstTokenTime,
-            },
-            activeChatMessages: shouldAppendToActiveChat
-              ? state.activeChatMessages.map((msg, index) =>
-                  index === state.activeChatMessages.length - 1
-                    ? { ...msg, content: msg.content + token }
-                    : msg
-                )
-              : state.activeChatMessages,
-          }));
+          // Buffer the visible content and coalesce appends to one flush per
+          // frame, so a synchronous burst of tokens becomes a single render.
+          streamTokenCount += 1;
+          streamBuffer += token;
+          if (!streamFlushScheduled) {
+            streamFlushScheduled = true;
+            requestAnimationFrame(flushStream);
+          }
         }
       );
 

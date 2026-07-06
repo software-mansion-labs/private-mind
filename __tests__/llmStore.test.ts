@@ -98,6 +98,11 @@ const loadModel = async (model = baseModel) => {
   return capturedTokenCallback!;
 };
 
+// Streaming token appends are coalesced and applied on the next animation
+// frame, so tests that assert the flushed store state await one frame.
+const flushFrame = () =>
+  new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
 // ─── loadModel ───────────────────────────────────────────────────────────────
 
 describe('loadModel', () => {
@@ -160,6 +165,7 @@ describe('token callback', () => {
 
     onToken('hello');
     onToken(' world');
+    await flushFrame();
 
     expect(useLLMStore.getState().performance.tokenCount).toBe(2);
   });
@@ -208,7 +214,7 @@ describe('token callback', () => {
       isGenerating: true,
       activeChatId: 5,
       generatingForChatId: 5,
-      performance: { tokenCount: 1, firstTokenTime: 1 }, // not first token
+      performance: { tokenCount: 1, firstTokenTime: 1 },
       activeChatMessages: [
         { id: 1, chatId: 5, role: 'user', content: 'Hi', timestamp: 0 },
         { id: -1, chatId: 5, role: 'assistant', content: '', timestamp: 0 },
@@ -216,6 +222,7 @@ describe('token callback', () => {
     });
 
     onToken(' hello');
+    await flushFrame();
 
     const messages = useLLMStore.getState().activeChatMessages;
     expect(messages[messages.length - 1].content).toBe(' hello');
