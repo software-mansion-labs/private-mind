@@ -7,6 +7,7 @@ import {
   getChatMessages,
   Message,
   persistMessage,
+  SourceDocument,
 } from '../database/chatRepository';
 import DeviceInfo from 'react-native-device-info';
 import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
@@ -41,7 +42,9 @@ interface LLMStore {
     context: string[],
     settings: ChatSettings,
     imagePath?: string,
-    documentName?: string
+    documentName?: string,
+    sourceDocuments?: SourceDocument[],
+    preferredSourceDocuments?: SourceDocument[]
   ) => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   interrupt: () => void;
@@ -75,7 +78,7 @@ const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
   if (Platform.OS !== 'ios') {
     return { start: () => {}, stop: () => {} };
   }
-  let trackerId: number;
+  let trackerId: ReturnType<typeof setInterval>;
   return {
     start: () => {
       trackerId = setInterval(async () => {
@@ -115,6 +118,7 @@ const updateChatStateForGeneration = (
     assistantPlaceholder?: Message;
     timeToFirstToken?: number;
     tokensPerSecond?: number;
+    finalAssistantMessage?: Partial<Message>;
   }
 ) => {
   switch (phase) {
@@ -144,6 +148,7 @@ const updateChatStateForGeneration = (
             index === state.activeChatMessages.length - 1
               ? {
                   ...msg,
+                  ...data.finalAssistantMessage,
                   timeToFirstToken: data.timeToFirstToken!,
                   tokensPerSecond: data.tokensPerSecond!,
                 }
@@ -350,7 +355,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     context,
     settings,
     imagePath,
-    documentName
+    documentName,
+    sourceDocuments,
+    preferredSourceDocuments
   ) => {
     const { db, model: currentModel, activeChatMessages } = get();
     if (!db || !currentModel) {
@@ -374,6 +381,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         chatId: chatId,
         timestamp: Date.now(),
         id: -1,
+        sourceDocuments,
       };
       const userMessageId = await persistMessage(db, userMessage);
       const updatedChatMessages = [
@@ -391,7 +399,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         get().activeChatMessages,
         context,
         settings,
-        currentModel
+        currentModel,
+        preferredSourceDocuments
       );
 
       await waitForModelLoad(get);
@@ -419,6 +428,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           updateChatStateForGeneration(set, 'complete', {
             timeToFirstToken: responsePerformance.timeToFirstToken,
             tokensPerSecond: responsePerformance.tokensPerSecond,
+            finalAssistantMessage: {
+              content: finalResponse,
+              sourceDocuments,
+            },
           });
         } else {
           updateChatStateForGeneration(set, 'complete');

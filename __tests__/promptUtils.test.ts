@@ -75,6 +75,23 @@ describe('prepareMessagesForLLM', () => {
       expect(result[0].content).toBe(baseSettings.systemPrompt);
       expect(result[0].content).not.toContain('IMPORTANT CONTEXT INFORMATION');
     });
+
+    it('adds current attachment priority without making it exclusive', () => {
+      const messages = makeMessages(2);
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some context'],
+        baseSettings,
+        baseModel,
+        [{ documentId: 2, name: 'current.pdf' }]
+      );
+
+      expect(result[0].content).toContain('CURRENT ATTACHMENT PRIORITY');
+      expect(result[0].content).toContain('current.pdf');
+      expect(result[0].content).toContain(
+        'You may still use earlier conversation'
+      );
+    });
   });
 
   describe('event message filtering', () => {
@@ -106,8 +123,9 @@ describe('prepareMessagesForLLM', () => {
       );
       const roles = result.map((m) => m.role);
       expect(roles).not.toContain('event');
-      // system + user + assistant + placeholder
-      expect(result).toHaveLength(4);
+      // system + user + assistant; trailing empty assistant placeholder is not
+      // sent to the model.
+      expect(result).toHaveLength(3);
     });
   });
 
@@ -120,8 +138,8 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      // system + 20 messages + 1 trailing placeholder
-      expect(result).toHaveLength(22);
+      // system + 20 messages; trailing empty assistant placeholder is not sent.
+      expect(result).toHaveLength(21);
       expect(result[0].role).toBe('system');
     });
 
@@ -184,7 +202,7 @@ describe('prepareMessagesForLLM', () => {
   });
 
   describe('context injection', () => {
-    it('wraps context in <context> tags on the last message', () => {
+    it('wraps context in <context> tags on the latest user message', () => {
       const messages = makeMessages(3);
       const result = prepareMessagesForLLM(
         messages,
@@ -193,10 +211,12 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       const last = result[result.length - 1];
+      expect(last.role).toBe('user');
       expect(last.content).toContain('<context>chunk one chunk two</context>');
+      expect(last.content).toContain('message 3');
     });
 
-    it('context is added to the last message (placeholder)', () => {
+    it('removes the assistant placeholder before adding context', () => {
       const messages: Message[] = [
         {
           id: 1,
@@ -228,7 +248,35 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       const last = result[result.length - 1];
+      expect(result).toHaveLength(4);
+      expect(last.role).toBe('user');
+      expect(last.content).toContain('Tell me more');
       expect(last.content).toContain('<context>some context</context>');
+    });
+
+    it('adds a grounding reminder next to the question when an attachment is present', () => {
+      const messages = makeMessages(3);
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some context'],
+        baseSettings,
+        baseModel,
+        [{ documentId: 2, name: 'current.pdf' }]
+      );
+      const last = result[result.length - 1];
+      expect(last.content).toMatch(/Ignore any document mentioned earlier/i);
+    });
+
+    it('omits the grounding reminder when there is no attachment', () => {
+      const messages = makeMessages(3);
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some context'],
+        baseSettings,
+        baseModel
+      );
+      const last = result[result.length - 1];
+      expect(last.content).not.toMatch(/Ignore any document mentioned earlier/i);
     });
 
     it('combines context and /think token', () => {
@@ -242,8 +290,102 @@ describe('prepareMessagesForLLM', () => {
       );
       const last = result[result.length - 1];
       // /think is appended before context wrapping
+      expect(last.role).toBe('user');
       expect(last.content).toContain('/think');
       expect(last.content).toContain('<context>');
+    });
+  });
+
+  describe('context window budget', () => {
+    const bigMessage = (id: number, role: Message['role']): Message => ({
+      id,
+      chatId: 1,
+      role,
+      content: 'x'.repeat(2000),
+      timestamp: 0,
+    });
+
+    it('drops the oldest history messages when the prompt overflows', () => {
+      const history: Message[] = Array.from({ length: 10 }, (_, i) =>
+        bigMessage(i + 1, i % 2 === 0 ? 'user' : 'assistant')
+      );
+      const messages: Message[] = [
+        ...history,
+        {
+          id: 11,
+          chatId: 1,
+          role: 'user',
+          content: 'latest question',
+          timestamp: 0,
+        },
+        { id: 12, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
+
+      expect(result[0].role).toBe('system');
+      expect(result[result.length - 1].content).toContain('latest question');
+      expect(result.length).toBeLessThan(messages.length);
+      expect(result.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('always keeps the system prompt and the latest question', () => {
+      const history: Message[] = Array.from({ length: 20 }, (_, i) =>
+        bigMessage(i + 1, i % 2 === 0 ? 'user' : 'assistant')
+      );
+      const messages: Message[] = [
+        ...history,
+        { id: 21, chatId: 1, role: 'user', content: 'keep me', timestamp: 0 },
+        { id: 22, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
+
+      expect(result[0].role).toBe('system');
+      const last = result[result.length - 1];
+      expect(last.role).toBe('user');
+      expect(last.content).toContain('keep me');
+    });
+
+    it('truncates the RAG context when it alone overflows the budget', () => {
+      const messages: Message[] = [
+        { id: 1, chatId: 1, role: 'user', content: 'question', timestamp: 0 },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const hugeContext = 'y'.repeat(20000);
+
+      const result = prepareMessagesForLLM(
+        messages,
+        [hugeContext],
+        baseSettings,
+        baseModel
+      );
+
+      const last = result[result.length - 1];
+      expect(last.content).toContain('question');
+      expect(last.content).toContain('<context>');
+      expect(last.content.length).toBeLessThan(hugeContext.length);
+    });
+
+    it('does not trim when everything comfortably fits', () => {
+      const messages = makeMessages(6);
+      const result = prepareMessagesForLLM(
+        messages,
+        ['small context'],
+        baseSettings,
+        baseModel
+      );
+      expect(result).toHaveLength(7);
     });
   });
 });

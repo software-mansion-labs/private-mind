@@ -26,6 +26,7 @@ import {
   checkIfChatExists,
   setChatSettings,
   type Message,
+  type SourceDocument,
 } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
@@ -34,12 +35,12 @@ import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useVectorStore } from '../../context/VectorStoreContext';
-import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { Attachment } from '../../hooks/useAttachment';
+import { buildMessageSources } from '../../utils/messageSources';
 import {
-  filterAndFormatContext,
-  formatFirstChunks,
-} from '../../utils/contextUtils';
+  chatPredatesSourceLinking,
+  buildLegacyChatWarningMessage,
+} from '../../utils/legacyChat';
 import { useSourceStore } from '../../store/sourceStore';
 import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
@@ -55,23 +56,6 @@ interface Props {
   selectModel?: (model: Model) => Promise<void>;
   openModelSheetRef?: React.MutableRefObject<(() => void) | null>;
 }
-
-const prepareContext = async (
-  prompt: string,
-  enabledSources: number[],
-  vectorStore: OPSQLiteVectorStore
-) => {
-  try {
-    const context = await vectorStore.query({
-      queryText: prompt,
-      predicate: (r) => enabledSources.includes(r.metadata?.documentId),
-    });
-    return filterAndFormatContext(context);
-  } catch (error) {
-    console.error('Error preparing context:', error);
-    return [];
-  }
-};
 
 export default function ChatScreen({
   chatId,
@@ -90,7 +74,7 @@ export default function ChatScreen({
   const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const db = useSQLiteContext();
 
-  const { vectorStore } = useVectorStore();
+  const { vectorStore, embeddings } = useVectorStore();
   const {
     isGenerating,
     sendChatMessage,
@@ -196,34 +180,37 @@ export default function ChatScreen({
     // https://vercel.com/blog/how-we-built-the-v0-ios-app
     messagesRef.current?.onMessageSent();
 
-    // Build context from attachments + persisted sources
-    const context: string[] = [];
-
-    // Collect all source IDs: from attachments + already enabled on chat
+    // Resolve which attachment sources actually exist, then build the RAG
+    // context + citations for this turn (see utils/messageSources).
+    const allSources = useSourceStore.getState().sources;
+    const existingSourceIds = new Set(allSources.map((source) => source.id));
     const attachmentSourceIds = (attachments || [])
       .filter((a) => a.type === 'document' && a.sourceId)
-      .map((a) => a.sourceId!);
-    const allSourceIds = [
-      ...new Set([...enabledSources, ...attachmentSourceIds]),
-    ];
+      .map((a) => a.sourceId!)
+      .filter((sourceId) => {
+        const exists = existingSourceIds.has(sourceId);
+        if (!exists) {
+          console.warn('Skipping missing attachment source before send', {
+            chatId: targetChatId,
+            sourceId,
+          });
+        }
+        return exists;
+      });
 
-    // RAG context from all sources (persisted + newly attached)
-    if (allSourceIds.length > 0 && vectorStore) {
-      const allSources = useSourceStore.getState().sources;
-      const activeSources = allSources.filter((s) =>
-        allSourceIds.includes(s.id)
-      );
-      const firstChunkContext = formatFirstChunks(activeSources);
-      context.push(...firstChunkContext);
-
-      if (userInput.trim()) {
-        const ragContext = await prepareContext(
+    let context: string[] = [];
+    let sourceDocuments: SourceDocument[] = [];
+    let preferredSourceDocuments: SourceDocument[] = [];
+    if (vectorStore) {
+      ({ context, sourceDocuments, preferredSourceDocuments } =
+        await buildMessageSources({
           userInput,
-          allSourceIds,
-          vectorStore
-        );
-        context.push(...ragContext);
-      }
+          attachmentSourceIds,
+          enabledSources,
+          sources: allSources,
+          vectorStore,
+          embeddings,
+        }));
     }
 
     // Enable new sources for this chat (persists for future messages)
@@ -251,7 +238,9 @@ export default function ChatScreen({
       context,
       settings,
       persistedImagePath,
-      docName
+      docName,
+      sourceDocuments,
+      preferredSourceDocuments
     );
   };
 
@@ -320,6 +309,17 @@ export default function ChatScreen({
 
   const isEmpty = !isLoading && messageHistory.length === 0;
 
+  // Conversations created before documents were linked to messages get a
+  // transient (unsaved) notice at the top explaining the missing source. The
+  // real history is untouched — this only affects what is rendered.
+  const displayedHistory = useMemo(
+    () =>
+      chatPredatesSourceLinking(messageHistory)
+        ? [buildLegacyChatWarningMessage(chatId), ...messageHistory]
+        : messageHistory,
+    [messageHistory, chatId]
+  );
+
   const { height: windowHeight } = useWindowDimensions();
   const gradientProgress = useSharedValue(isEmpty ? 1 : 0);
   useEffect(() => {
@@ -343,7 +343,7 @@ export default function ChatScreen({
       </Animated.View>
       <Messages
         ref={messagesRef}
-        chatHistory={messageHistory}
+        chatHistory={displayedHistory}
         extraContentPadding={extraContentPadding}
         blankSpace={blankSpace}
         isGenerating={isGenerating}
