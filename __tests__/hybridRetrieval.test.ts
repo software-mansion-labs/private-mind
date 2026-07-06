@@ -1,0 +1,229 @@
+import { hybridRetrieve } from '../utils/hybridRetrieval';
+import * as keywordIndex from '../database/keywordIndex';
+
+jest.mock('../database/keywordIndex', () => ({
+  keywordSearch: jest.fn(),
+}));
+
+const mockKeywordSearch = keywordIndex.keywordSearch as jest.Mock;
+
+const makeVectorStore = (
+  queryResults: any[],
+  vectorsById: Record<string, any>
+) =>
+  ({
+    query: jest.fn().mockResolvedValue(queryResults),
+    db: {
+      execute: jest
+        .fn()
+        .mockImplementation(async (_sql: string, ids: string[]) => ({
+          rows: ids.map((id) => vectorsById[id]).filter(Boolean),
+        })),
+    },
+  }) as any;
+
+describe('hybridRetrieve', () => {
+  beforeEach(() => {
+    mockKeywordSearch.mockReset();
+  });
+
+  it('recovers a keyword-only chunk that vector search missed', async () => {
+    const vectorResults = [
+      {
+        id: '1:0',
+        document: 'a semantic passage about felines',
+        embedding: [1, 0],
+        similarity: 0.8,
+        metadata: { documentId: 1, name: 'A' },
+      },
+    ];
+    const vectorsById = {
+      '2:5': {
+        id: '2:5',
+        document: 'the exact code E4021 is documented here',
+        embedding: [0, 1],
+        metadata: JSON.stringify({ documentId: 2, name: 'B' }),
+      },
+    };
+    mockKeywordSearch.mockResolvedValue([
+      { chunkId: '2:5', documentId: 2, score: -1.2 },
+    ]);
+
+    const result = await hybridRetrieve({
+      prompt: 'E4021',
+      enabledSourceIds: [1, 2],
+      vectorStore: makeVectorStore(vectorResults, vectorsById),
+      sourceNamesById: new Map(),
+      embeddings: null,
+    });
+
+    const names = result.map((c) => c.metadata?.name);
+    expect(names).toContain('B');
+    expect(names).toContain('A');
+  });
+
+  it('gates out low-similarity vector filler with no keyword overlap', async () => {
+    const vectorResults = [
+      {
+        id: '1:0',
+        document: 'exact code E4021 explained',
+        embedding: [1, 0],
+        similarity: 0.7,
+        metadata: { documentId: 1, name: 'Relevant' },
+      },
+      {
+        id: '1:9',
+        document: 'completely unrelated boilerplate text',
+        embedding: [0, 1],
+        similarity: 0.05,
+        metadata: { documentId: 1, name: 'Filler' },
+      },
+    ];
+    mockKeywordSearch.mockResolvedValue([]);
+
+    const result = await hybridRetrieve({
+      prompt: 'E4021',
+      enabledSourceIds: [1],
+      vectorStore: makeVectorStore(vectorResults, {}),
+      sourceNamesById: new Map(),
+      embeddings: null,
+    });
+
+    const names = result.map((c) => c.metadata?.name);
+    expect(names).toContain('Relevant');
+    expect(names).not.toContain('Filler');
+  });
+
+  it('returns an empty list when nothing qualifies', async () => {
+    mockKeywordSearch.mockResolvedValue([]);
+
+    const result = await hybridRetrieve({
+      prompt: 'xyz',
+      enabledSourceIds: [1],
+      vectorStore: makeVectorStore(
+        [
+          {
+            id: '1:0',
+            document: 'irrelevant',
+            embedding: [1, 0],
+            similarity: 0.02,
+            metadata: { documentId: 1, name: 'A' },
+          },
+        ],
+        {}
+      ),
+      sourceNamesById: new Map(),
+      embeddings: null,
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it('falls back to sourceNamesById when a chunk has no name in metadata', async () => {
+    mockKeywordSearch.mockResolvedValue([]);
+
+    const result = await hybridRetrieve({
+      prompt: 'anything relevant',
+      enabledSourceIds: [7],
+      vectorStore: makeVectorStore(
+        [
+          {
+            id: '7:0',
+            document: 'relevant content',
+            embedding: [1, 0],
+            similarity: 0.9,
+            metadata: { documentId: 7 },
+          },
+        ],
+        {}
+      ),
+      sourceNamesById: new Map([[7, 'Resolved Name']]),
+      embeddings: null,
+    });
+
+    expect(result[0]?.metadata?.name).toBe('Resolved Name');
+  });
+
+  it('ranks a freshly attached source first even when it would otherwise be gated out', async () => {
+    const vectorResults = [
+      {
+        id: '1:0',
+        document: 'older enabled document that mentions the pdf keyword',
+        embedding: [1, 0],
+        similarity: 0.2,
+        metadata: { documentId: 1, name: 'Old' },
+      },
+      {
+        id: '2:0',
+        document: 'brand new attachment about an espresso machine',
+        embedding: [0, 1],
+        similarity: 0.05,
+        metadata: { documentId: 2, name: 'Attachment' },
+      },
+    ];
+    mockKeywordSearch.mockResolvedValue([
+      { chunkId: '1:0', documentId: 1, score: -1 },
+    ]);
+
+    const result = await hybridRetrieve({
+      prompt: 'what is the pdf about',
+      enabledSourceIds: [1, 2],
+      attachmentSourceIds: [2],
+      vectorStore: makeVectorStore(vectorResults, {}),
+      sourceNamesById: new Map(),
+      embeddings: null,
+    });
+
+    const names = result.map((c) => c.metadata?.name);
+    expect(names[0]).toBe('Attachment');
+    expect(names).toContain('Old');
+  });
+
+  it('gates out a mid-similarity chunk with no lexical overlap (embedding noise floor)', async () => {
+    mockKeywordSearch.mockResolvedValue([]);
+    const result = await hybridRetrieve({
+      prompt: 'napisz wiersz o jesieni',
+      enabledSourceIds: [1],
+      vectorStore: makeVectorStore(
+        [
+          {
+            id: '1:0',
+            document: 'privacy policy: data never leaves the device',
+            embedding: [1, 0],
+            similarity: 0.45,
+            metadata: { documentId: 1, name: 'FAQ' },
+          },
+        ],
+        {}
+      ),
+      sourceNamesById: new Map(),
+      embeddings: null,
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it('keeps a mid-similarity chunk when the query shares terms with it', async () => {
+    mockKeywordSearch.mockResolvedValue([]);
+    const result = await hybridRetrieve({
+      prompt: 'does data leave the device',
+      enabledSourceIds: [1],
+      vectorStore: makeVectorStore(
+        [
+          {
+            id: '1:0',
+            document: 'privacy policy: data never leaves the device',
+            embedding: [1, 0],
+            similarity: 0.45,
+            metadata: { documentId: 1, name: 'FAQ' },
+          },
+        ],
+        {}
+      ),
+      sourceNamesById: new Map(),
+      embeddings: null,
+    });
+
+    expect(result.map((c) => c.metadata?.name)).toContain('FAQ');
+  });
+});
