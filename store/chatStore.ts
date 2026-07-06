@@ -203,7 +203,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       return;
     }
 
-    await activateSource(db, chatId, sourceId);
+    const activated = await activateSource(db, chatId, sourceId);
+    if (!activated) return;
 
     set((state) => ({
       chats: state.chats.map((chat) =>

@@ -6,6 +6,8 @@ import { useModelStore } from '../store/modelStore';
 import { addModel } from './modelRepository';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSourceStore } from '../store/sourceStore';
+import { initSourceLinkingBoundary } from '../utils/sourceLinkingBoundary';
+import { migrateLegacyVectorStore } from './vectorStoreMigration';
 
 const runMigrations = async (db: SQLiteDatabase) => {
   const modelsTableInfo = await db.getAllAsync<{ name: string }>(
@@ -86,6 +88,15 @@ const runMigrations = async (db: SQLiteDatabase) => {
     );
   }
 
+  const hasSourceDocuments = messagesTableInfo.some(
+    (col) => col.name === 'sourceDocuments'
+  );
+  if (!hasSourceDocuments) {
+    await db.execAsync(
+      `ALTER TABLE messages ADD COLUMN sourceDocuments TEXT DEFAULT NULL`
+    );
+  }
+
   // Check and add thinkingEnabled to chatSettings
   const chatSettingsTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(chatSettings)`
@@ -121,16 +132,7 @@ const runMigrations = async (db: SQLiteDatabase) => {
     );
   }
 
-  // Migrate: if the vector store's vectors table lacks the `document` column,
-  // drop it so it gets recreated on next load. Clear sources since their
-  // backing vector data is gone and they can no longer be queried against.
-  try {
-    await db.execAsync(`SELECT document FROM vectors LIMIT 0`);
-  } catch {
-    await db.execAsync(`DROP TABLE IF EXISTS vectors`);
-    await db.runAsync(`DELETE FROM chatSources`);
-    await db.runAsync(`DELETE FROM sources`);
-  }
+  await migrateLegacyVectorStore(db);
 
   // One-time cleanup of orphan rows from before FK enforcement was enabled.
   await db.runAsync(
@@ -142,6 +144,8 @@ const runMigrations = async (db: SQLiteDatabase) => {
   await db.runAsync(
     `DELETE FROM chatSources WHERE chatId NOT IN (SELECT id FROM chats) OR sourceId NOT IN (SELECT id FROM sources)`
   );
+
+  await initSourceLinkingBoundary(db);
 
   await db.runAsync(
     `DELETE FROM models
@@ -229,6 +233,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       timeToFirstToken INTEGER DEFAULT 0,
       imagePath TEXT DEFAULT NULL,
       documentName TEXT DEFAULT NULL,
+      sourceDocuments TEXT DEFAULT NULL,
       FOREIGN KEY (chatId) REFERENCES chats (id) ON DELETE CASCADE
     );
   `);

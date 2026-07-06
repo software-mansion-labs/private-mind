@@ -13,6 +13,11 @@ import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { RecursiveCharacterTextSplitter } from 'react-native-rag';
 import { readDocumentText } from '../utils/fileReaders';
 import { useLLMStore } from './llmStore';
+import { LFMEmbeddings } from '../utils/lfmEmbeddings';
+import {
+  addChunkToKeywordIndex,
+  removeDocumentFromKeywordIndex,
+} from '../database/keywordIndex';
 
 interface SourceStore {
   sources: Source[];
@@ -23,7 +28,8 @@ interface SourceStore {
   addSource: (
     source: Omit<Source, 'id'>,
     sourceUri: string,
-    vectorStore: OPSQLiteVectorStore
+    vectorStore: OPSQLiteVectorStore,
+    embeddings?: LFMEmbeddings | null
   ) => Promise<{ success: boolean; isEmpty?: boolean; sourceId?: number }>;
   setSourceProcessing: (id: number, isProcessing: boolean) => void;
   deleteSource: (source: Source) => Promise<void>;
@@ -54,7 +60,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     }
   },
 
-  addSource: async (source, sourceUri, vectorStore) => {
+  addSource: async (source, sourceUri, vectorStore, embeddings) => {
     const db = get().db;
     if (!db) return { success: false };
 
@@ -89,10 +95,29 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
       }
 
       for (let i = 0; i < chunks.length; i++) {
+        const embedding = embeddings
+          ? await embeddings.embedDocument(chunks[i]!)
+          : undefined;
+        const chunkId = `${sourceId}:${i}`;
         await vectorStore?.add({
+          id: chunkId,
           document: chunks[i]!,
-          metadata: { documentId: sourceId, isFirstChunk: i === 0 },
+          embedding,
+          metadata: {
+            documentId: sourceId,
+            name: source.name,
+            chunkIndex: i,
+            isFirstChunk: i === 0,
+          },
         });
+        if (vectorStore) {
+          await addChunkToKeywordIndex(
+            vectorStore.db,
+            chunkId,
+            sourceId,
+            chunks[i]!
+          );
+        }
       }
 
       set((state) => ({
@@ -156,6 +181,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         await vectorStore.delete({
           predicate: (value) => value.metadata?.documentId === source.id,
         });
+        await removeDocumentFromKeywordIndex(vectorStore.db, source.id);
         await deleteSource(db, source.id);
       }
       if (orphaned.length > 0) {

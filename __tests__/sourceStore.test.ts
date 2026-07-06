@@ -1,7 +1,11 @@
 import { useSourceStore } from '../store/sourceStore';
 import * as sourcesRepository from '../database/sourcesRepository';
+import type { Source } from '../database/sourcesRepository';
 import * as fileReaders from '../utils/fileReaders';
 import { useLLMStore } from '../store/llmStore';
+import type { SQLiteDatabase } from 'expo-sqlite';
+import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
+import type { LFMEmbeddings } from '../utils/lfmEmbeddings';
 
 jest.mock('../database/sourcesRepository');
 jest.mock('../utils/fileReaders');
@@ -19,8 +23,11 @@ jest.mock('react-native-rag', () => ({
 }));
 jest.mock('@react-native-rag/op-sqlite', () => ({}));
 
-const mockDb = {} as any;
-const mockVectorStore = { add: jest.fn() } as any;
+const mockDb = {} as Partial<SQLiteDatabase> as SQLiteDatabase;
+const vectorStoreAdd = jest.fn();
+const mockVectorStore = {
+  add: vectorStoreAdd,
+} as Partial<OPSQLiteVectorStore> as OPSQLiteVectorStore;
 
 const mockReadDocumentText = fileReaders.readDocumentText as jest.Mock;
 const mockInsertSource = sourcesRepository.insertSource as jest.Mock;
@@ -87,7 +94,7 @@ describe('addSource', () => {
   });
 
   it('adds a temp source with negative id and isProcessing=true before DB insert', async () => {
-    let capturedSources: any[] = [];
+    let capturedSources: Source[] = [];
     mockReadDocumentText.mockResolvedValue('content');
     mockInsertSource.mockImplementation(async () => {
       capturedSources = useSourceStore.getState().sources;
@@ -154,15 +161,52 @@ describe('addSource', () => {
       .getState()
       .addSource(baseSource, '/path/doc.txt', mockVectorStore);
 
-    expect(mockVectorStore.add).toHaveBeenCalledTimes(3);
-    expect(mockVectorStore.add).toHaveBeenCalledWith({
+    expect(vectorStoreAdd).toHaveBeenCalledTimes(3);
+    expect(vectorStoreAdd).toHaveBeenCalledWith({
+      id: '1:0',
       document: 'a',
-      metadata: { documentId: 1, isFirstChunk: true },
+      embedding: undefined,
+      metadata: {
+        documentId: 1,
+        name: 'doc.txt',
+        chunkIndex: 0,
+        isFirstChunk: true,
+      },
     });
-    expect(mockVectorStore.add).toHaveBeenCalledWith({
+    expect(vectorStoreAdd).toHaveBeenCalledWith({
+      id: '1:1',
       document: 'b',
-      metadata: { documentId: 1, isFirstChunk: false },
+      embedding: undefined,
+      metadata: {
+        documentId: 1,
+        name: 'doc.txt',
+        chunkIndex: 1,
+        isFirstChunk: false,
+      },
     });
+  });
+
+  it('embeds each chunk with the document prefix when embeddings are provided', async () => {
+    mockReadDocumentText.mockResolvedValue('content');
+    mockInsertSource.mockResolvedValue(1);
+    MockSplitter.mockImplementation(() => ({
+      splitText: jest.fn().mockResolvedValue(['a', 'b']),
+    }));
+    const embedDocument = jest
+      .fn()
+      .mockImplementation(async (text: string) => [text.length]);
+
+    await useSourceStore
+      .getState()
+      .addSource(baseSource, '/path/doc.txt', mockVectorStore, {
+        embedDocument,
+      } as Partial<LFMEmbeddings> as LFMEmbeddings);
+
+    expect(embedDocument).toHaveBeenCalledWith('a');
+    expect(embedDocument).toHaveBeenCalledWith('b');
+    expect(vectorStoreAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ document: 'a', embedding: [1] })
+    );
   });
 
   it('removes temp source and resets isReading when DB insert fails', async () => {
@@ -256,10 +300,11 @@ describe('cleanupOrphanedSources', () => {
     mockGetOrphanedSources.mockResolvedValue(orphaned);
     mockDeleteSource.mockResolvedValue(undefined);
 
+    const vectorStoreDelete = jest.fn();
     const mockVectorStoreWithDelete = {
-      ...mockVectorStore,
-      delete: jest.fn(),
-    };
+      add: vectorStoreAdd,
+      delete: vectorStoreDelete,
+    } as Partial<OPSQLiteVectorStore> as OPSQLiteVectorStore;
 
     await useSourceStore
       .getState()
@@ -267,7 +312,7 @@ describe('cleanupOrphanedSources', () => {
 
     expect(mockGetOrphanedSources).toHaveBeenCalledWith(mockDb);
     expect(mockDeleteSource).toHaveBeenCalledWith(mockDb, 5);
-    expect(mockVectorStoreWithDelete.delete).toHaveBeenCalledWith({
+    expect(vectorStoreDelete).toHaveBeenCalledWith({
       predicate: expect.any(Function),
     });
   });
@@ -288,9 +333,9 @@ describe('cleanupOrphanedSources', () => {
     mockGetAllSources.mockResolvedValue(updated);
 
     const mockVectorStoreWithDelete = {
-      ...mockVectorStore,
+      add: vectorStoreAdd,
       delete: jest.fn(),
-    };
+    } as Partial<OPSQLiteVectorStore> as OPSQLiteVectorStore;
 
     await useSourceStore
       .getState()
