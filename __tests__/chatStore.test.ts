@@ -1,12 +1,14 @@
 import { useChatStore } from '../store/chatStore';
 import * as chatRepository from '../database/chatRepository';
 import * as sourcesRepository from '../database/sourcesRepository';
+import type { SQLiteDatabase } from 'expo-sqlite';
+import type { Model } from '../database/modelRepository';
 
 // Mock all DB interactions
 jest.mock('../database/chatRepository');
 jest.mock('../database/sourcesRepository');
 
-const mockDb = {} as any;
+const mockDb = {} as Partial<SQLiteDatabase> as SQLiteDatabase;
 
 const mockChat = (id: number, lastUsed = Date.now()) => ({
   id,
@@ -207,9 +209,7 @@ describe('enableSource', () => {
   });
 
   it('calls activateSource and updates state for a real chat', async () => {
-    (sourcesRepository.activateSource as jest.Mock).mockResolvedValue(
-      undefined
-    );
+    (sourcesRepository.activateSource as jest.Mock).mockResolvedValue(true);
     useChatStore.setState({
       chats: [{ ...mockChat(1), enabledSources: [2] }],
       phantomChat: null,
@@ -219,6 +219,18 @@ describe('enableSource', () => {
 
     expect(sourcesRepository.activateSource).toHaveBeenCalledWith(mockDb, 1, 7);
     expect(useChatStore.getState().chats[0].enabledSources).toEqual([2, 7]);
+  });
+
+  it('does not update state when source activation is skipped', async () => {
+    (sourcesRepository.activateSource as jest.Mock).mockResolvedValue(false);
+    useChatStore.setState({
+      chats: [{ ...mockChat(1), enabledSources: [2] }],
+      phantomChat: null,
+    });
+
+    await useChatStore.getState().enableSource(1, 7);
+
+    expect(useChatStore.getState().chats[0].enabledSources).toEqual([2]);
   });
 });
 
@@ -257,7 +269,7 @@ describe('initPhantomChat with model system prompt', () => {
 
     await useChatStore
       .getState()
-      .initPhantomChat(99, { systemPrompt: modelPrompt } as any);
+      .initPhantomChat(99, { systemPrompt: modelPrompt } as Partial<Model> as Model);
 
     const phantom = useChatStore.getState().phantomChat;
     expect(phantom?.settings?.systemPrompt).toBe(modelPrompt);
@@ -270,7 +282,7 @@ describe('initPhantomChat with model system prompt', () => {
 
     await useChatStore
       .getState()
-      .initPhantomChat(99, { systemPrompt: null } as any);
+      .initPhantomChat(99, { systemPrompt: null } as Partial<Model> as Model);
 
     const phantom = useChatStore.getState().phantomChat;
     expect(phantom?.settings?.systemPrompt).toBe('global default');
