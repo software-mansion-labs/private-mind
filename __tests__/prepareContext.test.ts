@@ -1,65 +1,54 @@
 import {
-  filterAndFormatContext,
+  formatContextChunks,
   formatFirstChunks,
+  getSourceDocumentsFromChunks,
 } from '../utils/contextUtils';
 
-describe('filterAndFormatContext', () => {
+describe('formatContextChunks / getSourceDocumentsFromChunks', () => {
   const makeChunk = (
     document: string,
     similarity: number,
-    documentId: number
+    documentId: number,
+    name?: string
   ) => ({
     document,
     similarity,
-    metadata: { documentId },
+    metadata: { documentId, ...(name ? { name } : {}) },
   });
 
-  it('includes chunks above 0.3 similarity threshold', () => {
-    const chunks = [
-      makeChunk('Relevant', 0.5, 1),
-      makeChunk('Irrelevant', 0.2, 1),
-    ];
-    const result = filterAndFormatContext(chunks);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toContain('Relevant');
+  it('returns empty output for no chunks', () => {
+    expect(formatContextChunks([])).toEqual([]);
+    expect(getSourceDocumentsFromChunks([])).toEqual([]);
   });
 
-  it('limits to max 3 chunks', () => {
-    const chunks = [
-      makeChunk('High 1', 0.9, 1),
-      makeChunk('High 2', 0.8, 1),
-      makeChunk('High 3', 0.7, 1),
-      makeChunk('High 4', 0.6, 1),
-    ];
-    const result = filterAndFormatContext(chunks);
-    expect(result).toHaveLength(3);
-  });
-
-  it('returns empty array for no chunks', () => {
-    expect(filterAndFormatContext([])).toEqual([]);
-  });
-
-  it('returns empty when all below threshold', () => {
-    const chunks = [makeChunk('Low 1', 0.2, 1), makeChunk('Low 2', 0.1, 1)];
-    expect(filterAndFormatContext(chunks)).toEqual([]);
-  });
-
-  it('includes relevance score in formatted output', () => {
+  it('does not leak the relevance score into the LLM context', () => {
     const chunks = [makeChunk('Content', 0.85, 1)];
-    const result = filterAndFormatContext(chunks);
-    expect(result[0]).toContain('85.0%');
+    const result = formatContextChunks(chunks);
+    expect(result[0]).toContain('Content');
+    expect(result[0]).not.toMatch(/%|Relevance/);
   });
 
-  it('sorts by similarity descending', () => {
+  it('groups chunks of one document into a single source, preserving input order', () => {
     const chunks = [
-      makeChunk('Low', 0.6, 1),
-      makeChunk('High', 0.9, 1),
-      makeChunk('Mid', 0.75, 1),
+      makeChunk('a-1', 0.9, 1, 'doc-a.pdf'),
+      makeChunk('a-2', 0.85, 1, 'doc-a.pdf'),
+      makeChunk('b-1', 0.8, 2, 'doc-b.pdf'),
     ];
-    const result = filterAndFormatContext(chunks);
-    expect(result[0]).toContain('High');
-    expect(result[1]).toContain('Mid');
-    expect(result[2]).toContain('Low');
+    const context = formatContextChunks(chunks);
+    const sources = getSourceDocumentsFromChunks(chunks);
+
+    expect(sources).toHaveLength(2);
+    expect(sources[0].name).toBe('doc-a.pdf');
+    expect(sources[1].name).toBe('doc-b.pdf');
+    expect(context[0]).toContain('Source 1');
+    expect(context[0]).toContain(sources[0].name);
+    expect(context[1]).toContain('Source 2');
+    expect(context[1]).toContain(sources[1].name);
+    expect(context[0]).toContain('a-1');
+    expect(context[0]).toContain('a-2');
+    expect(sources[0].passage).toContain('a-1');
+    expect(sources[0].passage).toContain('a-2');
+    expect(sources[0].similarity).toBe(0.9);
   });
 });
 
@@ -97,4 +86,15 @@ describe('formatFirstChunks', () => {
   it('returns empty for empty input', () => {
     expect(formatFirstChunks([])).toEqual([]);
   });
+
+  it('supports a custom source label for current attachments', () => {
+    const result = formatFirstChunks(
+      [{ id: 1, name: 'latest.pdf', firstChunk: 'Fresh context' }],
+      'Current Attachment Source'
+    );
+
+    expect(result[0]).toContain('Current Attachment Source: latest.pdf');
+    expect(result[0]).toContain('End of Current Attachment Source');
+  });
 });
+
