@@ -38,7 +38,7 @@ interface SourceStore {
 }
 
 const TEXT_SPLITTER_CHUNK_SIZE = 1000;
-const TEXT_SPLITTER_CHUNK_OVERLAP = 100;
+const TEXT_SPLITTER_CHUNK_OVERLAP = 200;
 
 export const useSourceStore = create<SourceStore>((set, get) => ({
   sources: [],

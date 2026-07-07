@@ -226,4 +226,49 @@ describe('hybridRetrieve', () => {
 
     expect(result.map((c) => c.metadata?.name)).toContain('FAQ');
   });
+
+  it('expands a selected chunk with its same-document neighbors, in order', async () => {
+    const vectorResults = [
+      {
+        id: '1:2',
+        document: 'middle of the table row 3',
+        embedding: [1, 0],
+        similarity: 0.9,
+        metadata: { documentId: 1, name: 'Invoice' },
+      },
+    ];
+    const vectorsById = {
+      '1:1': {
+        id: '1:1',
+        document: 'table header and rows 1-2',
+        embedding: [1, 0],
+        metadata: JSON.stringify({ documentId: 1, name: 'Invoice' }),
+      },
+      '1:3': {
+        id: '1:3',
+        document: 'table rows 4-6 and totals',
+        embedding: [1, 0],
+        metadata: JSON.stringify({ documentId: 1, name: 'Invoice' }),
+      },
+    };
+    mockKeywordSearch.mockResolvedValue([]);
+
+    const result = await hybridRetrieve({
+      prompt: 'what is in the table',
+      enabledSourceIds: [1],
+      vectorStore: makeVectorStore(vectorResults, vectorsById),
+      sourceNamesById: new Map(),
+      embeddings: null,
+    });
+
+    expect(result.map((c) => c.document)).toEqual([
+      'table header and rows 1-2',
+      'middle of the table row 3',
+      'table rows 4-6 and totals',
+    ]);
+    expect(new Set(result.map((c) => c.metadata?.name))).toEqual(
+      new Set(['Invoice'])
+    );
+    expect(result.map((c) => c.similarity)).toEqual([0, 0.9, 0]);
+  });
 });

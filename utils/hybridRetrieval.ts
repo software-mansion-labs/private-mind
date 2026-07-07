@@ -3,7 +3,7 @@ import { type Scalar } from '@op-engineering/op-sqlite';
 import { LFMEmbeddings } from './lfmEmbeddings';
 import { extractQueryTerms, stemPrefix } from './queryTerms';
 import { keywordSearch } from '../database/keywordIndex';
-import { type ContextChunk } from './contextUtils';
+import { type ContextChunk, sourceKey } from './contextUtils';
 import {
   cosineSimilarity,
   maximalMarginalRelevance,
@@ -74,6 +74,116 @@ const hydrateChunksByIds = async (
       name: metadata?.name,
     };
   });
+};
+
+const parseChunkId = (
+  id: string
+): { documentId: number; chunkIndex: number } | null => {
+  const match = /^(\d+):(\d+)$/.exec(id);
+  return match
+    ? { documentId: Number(match[1]), chunkIndex: Number(match[2]) }
+    : null;
+};
+
+const NEIGHBOR_RADIUS = 1;
+
+const expandSelectedWithNeighbors = async (
+  selectedIds: string[],
+  byId: Map<string, Candidate>,
+  vectorStore: OPSQLiteVectorStore,
+  sourceNamesById: Map<number, string>
+): Promise<ContextChunk[]> => {
+  type Group = {
+    documentId?: number;
+    name?: string;
+    indices: Map<string, number>;
+  };
+  const groupOrder: string[] = [];
+  const groups = new Map<string, Group>();
+  const selectedSimilarity = new Map<string, number>();
+
+  for (const id of selectedIds) {
+    const candidate = byId.get(id);
+    if (!candidate) continue;
+    selectedSimilarity.set(id, candidate.similarity);
+
+    const key = sourceKey(candidate.documentId, candidate.name ?? '');
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        documentId: candidate.documentId,
+        name: candidate.name,
+        indices: new Map(),
+      };
+      groups.set(key, group);
+      groupOrder.push(key);
+    }
+
+    const parsed = parseChunkId(id);
+    group.indices.set(id, parsed ? parsed.chunkIndex : -1);
+    if (!parsed) continue;
+
+    for (let offset = -NEIGHBOR_RADIUS; offset <= NEIGHBOR_RADIUS; offset++) {
+      if (offset === 0) continue;
+      const neighborIndex = parsed.chunkIndex + offset;
+      if (neighborIndex < 0) continue;
+      const neighborId = `${parsed.documentId}:${neighborIndex}`;
+      if (!group.indices.has(neighborId)) {
+        group.indices.set(neighborId, neighborIndex);
+      }
+    }
+  }
+
+  const allIds = groupOrder.flatMap((key) => [
+    ...groups.get(key)!.indices.keys(),
+  ]);
+  const fetched = await hydrateChunksByIds(
+    vectorStore,
+    allIds.filter((id) => !byId.has(id))
+  );
+
+  const chunkById = new Map<string, HydratedRow>();
+  for (const id of allIds) {
+    const candidate = byId.get(id);
+    if (candidate) {
+      chunkById.set(id, {
+        id,
+        document: candidate.document,
+        embedding: candidate.embedding,
+        documentId: candidate.documentId,
+        name: candidate.name,
+      });
+    }
+  }
+  for (const row of fetched) {
+    chunkById.set(row.id, {
+      ...row,
+      name: resolveName(row.name, row.documentId, sourceNamesById),
+    });
+  }
+
+  const result: ContextChunk[] = [];
+  for (const key of groupOrder) {
+    const group = groups.get(key)!;
+    const orderedIds = [...group.indices.entries()]
+      .filter(([id]) => chunkById.get(id)?.document)
+      .sort((a, b) => a[1] - b[1])
+      .map(([id]) => id);
+
+    for (const id of orderedIds) {
+      const info = chunkById.get(id)!;
+      result.push({
+        document: info.document,
+        similarity: selectedSimilarity.get(id) ?? 0,
+        metadata: {
+          documentId: info.documentId ?? group.documentId,
+          name: info.name ?? group.name,
+        },
+      });
+    }
+  }
+
+  return result;
 };
 
 export type HybridRetrieveParams = {
@@ -209,15 +319,10 @@ export const hybridRetrieve = async ({
       )
     : selected;
 
-  return ordered
-    .map((item) => byId.get(item.id))
-    .filter((candidate): candidate is Candidate => candidate !== undefined)
-    .map((candidate) => ({
-      document: candidate.document,
-      similarity: candidate.similarity,
-      metadata: {
-        documentId: candidate.documentId,
-        name: candidate.name,
-      },
-    }));
+  return expandSelectedWithNeighbors(
+    ordered.map((item) => item.id),
+    byId,
+    vectorStore,
+    sourceNamesById
+  );
 };
