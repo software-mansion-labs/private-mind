@@ -303,6 +303,18 @@ const Messages = ({
     [opacity, blankSpace]
   );
 
+  // Citations are highlighted against the preceding user question.
+  const questionForAssistantAt = useMemo(() => {
+    const questions: (string | undefined)[] = new Array(chatHistory.length);
+    let lastUserContent: string | undefined;
+    for (let i = 0; i < chatHistory.length; i += 1) {
+      const message = chatHistory[i];
+      if (message.role === 'user') lastUserContent = message.content;
+      questions[i] = message.role === 'assistant' ? lastUserContent : undefined;
+    }
+    return questions;
+  }, [chatHistory]);
+
   // Identify the last user and last assistant indices so we can wrap
   // those specific rows in onLayout measurement Views.
   let lastUserIndex = -1;
@@ -337,6 +349,7 @@ const Messages = ({
       >
         {chatHistory.map((message, index) => {
           const isLastMessage = index === chatHistory.length - 1;
+          const userQuestion = questionForAssistantAt[index];
           // Streaming assistant placeholder has id: -1 until persisted; fall
           // back to role+index for that single in-flight row.
           const key =
@@ -361,6 +374,8 @@ const Messages = ({
               isLastMessage={isLastMessage}
               imagePath={message.imagePath}
               documentName={message.documentName}
+              sourceDocuments={message.sourceDocuments}
+              userQuestion={userQuestion}
             />
           );
 
