@@ -13,13 +13,16 @@ jest.mock('../context/ThemeContext', () => ({
 }));
 
 jest.mock('../store/llmStore', () => ({
-  useLLMStore: jest.fn(() => ({
-    isGenerating: false,
-    isProcessingPrompt: false,
-    interrupt: jest.fn(),
-    loadModel: jest.fn(),
-    model: null,
-  })),
+  useLLMStore: jest.fn((selector?: (s: any) => any) => {
+    const state = {
+      isGenerating: false,
+      isProcessingPrompt: false,
+      interrupt: jest.fn(),
+      loadModel: jest.fn(),
+      model: null,
+    };
+    return selector ? selector(state) : state;
+  }),
 }));
 
 const mockUseAttachment = {
@@ -193,12 +196,15 @@ const renderBar = (props: Partial<typeof defaultProps> = {}) =>
   render(<ChatBar {...defaultProps} {...props} />);
 
 beforeEach(() => {
-  mockUseLLMStore.mockReturnValue({
-    isGenerating: false,
-    isProcessingPrompt: false,
-    interrupt: jest.fn(),
-    loadModel: jest.fn(),
-    model: null,
+  mockUseLLMStore.mockImplementation((selector?: (s: any) => any) => {
+    const state = {
+      isGenerating: false,
+      isProcessingPrompt: false,
+      interrupt: jest.fn(),
+      loadModel: jest.fn(),
+      model: null,
+    };
+    return selector ? selector(state) : state;
   });
   mockUseAttachment.attachments = [];
   mockUseAttachment.openSheet.mockClear();
@@ -299,12 +305,15 @@ describe('downloaded model — text input', () => {
 
 describe('generating state', () => {
   it('shows interrupt button when isGenerating', () => {
-    mockUseLLMStore.mockReturnValue({
-      isGenerating: true,
-      isProcessingPrompt: false,
-      interrupt: jest.fn(),
-      loadModel: jest.fn(),
-      model: null,
+    mockUseLLMStore.mockImplementation((selector?: (s: any) => any) => {
+      const state = {
+        isGenerating: true,
+        isProcessingPrompt: false,
+        interrupt: jest.fn(),
+        loadModel: jest.fn(),
+        model: null,
+      };
+      return selector ? selector(state) : state;
     });
     renderBar();
     expect(screen.getByTestId('interrupt-btn')).toBeTruthy();
@@ -312,12 +321,15 @@ describe('generating state', () => {
 
   it('calls interrupt when interrupt button is pressed', () => {
     const interrupt = jest.fn();
-    mockUseLLMStore.mockReturnValue({
-      isGenerating: true,
-      isProcessingPrompt: false,
-      interrupt,
-      loadModel: jest.fn(),
-      model: null,
+    mockUseLLMStore.mockImplementation((selector?: (s: any) => any) => {
+      const state = {
+        isGenerating: true,
+        isProcessingPrompt: false,
+        interrupt,
+        loadModel: jest.fn(),
+        model: null,
+      };
+      return selector ? selector(state) : state;
     });
     renderBar();
     fireEvent.press(screen.getByTestId('interrupt-btn'));
