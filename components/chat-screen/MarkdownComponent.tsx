@@ -13,10 +13,17 @@ interface Props {
   isUser?: boolean;
   isThinking?: boolean;
   streaming?: boolean;
+  onLinkPress?: (event: { url: string }) => void;
 }
 
 const MarkdownComponent = memo(
-  ({ text, isUser = false, isThinking = false, streaming = false }: Props) => {
+  ({
+    text,
+    isUser = false,
+    isThinking = false,
+    streaming = false,
+    onLinkPress,
+  }: Props) => {
     const { theme } = useTheme();
     const baseColor = theme.text.primary;
     const baseFontSize = isThinking ? fontSizes.sm : fontSizes.md;
@@ -136,6 +143,7 @@ const MarkdownComponent = memo(
           markdown={text}
           markdownStyle={markdownStyle}
           selectable={true}
+          onLinkPress={onLinkPress}
         />
       );
     }
@@ -145,6 +153,7 @@ const MarkdownComponent = memo(
         markdown={text}
         markdownStyle={markdownStyle}
         selectable={true}
+        onLinkPress={onLinkPress}
       />
     );
   }

@@ -1,14 +1,27 @@
-import React, { memo, useMemo, useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Image } from 'react-native';
+import React, { memo, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  Image,
+  Pressable,
+  Linking,
+} from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import AnimatedChatLoading from './AnimatedChatLoading';
+import SourcesSheet, { type SourcesSheetHandle } from './SourcesSheet';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
 import { Theme } from '../../styles/colors';
 import ImageLightbox from './ImageLightbox';
 import AttachmentIcon from '../../assets/icons/attachment.svg';
+import BookIcon from '../../assets/icons/book-open.svg';
+import { type SourceDocument } from '../../database/chatRepository';
+import { stripCitations } from '../../utils/citations';
+import { sourceKey } from '../../utils/contextUtils';
 
 interface MessageItemProps {
   content: string;
@@ -19,6 +32,8 @@ interface MessageItemProps {
   isLastMessage: boolean;
   imagePath?: string;
   documentName?: string;
+  sourceDocuments?: SourceDocument[];
+  userQuestion?: string;
 }
 
 const THINK_OPEN = '<think>';
@@ -63,13 +78,52 @@ const MessageItem = memo(
     isLastMessage = false,
     imagePath,
     documentName,
+    sourceDocuments,
+    userQuestion,
   }: MessageItemProps) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
     const { isGenerating, isProcessingPrompt } = useLLMStore();
     const [lightboxVisible, setLightboxVisible] = useState(false);
+    const sourcesSheetRef = useRef<SourcesSheetHandle>(null);
 
     const contentParts = parseThinkingContent(content);
+    const hasSources = !!sourceDocuments?.length;
+    const displayedSources = useMemo(() => {
+      if (!sourceDocuments?.length) return [];
+
+      const seen = new Set<string>();
+      return sourceDocuments.filter((source) => {
+        const key = sourceKey(source.documentId, source.name);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }, [sourceDocuments]);
+
+    const handleLinkPress = useCallback(({ url }: { url: string }) => {
+      Linking.openURL(url).catch(() => {});
+    }, []);
+
+    const normalContent = useMemo(
+      () =>
+        hasSources
+          ? stripCitations(contentParts.normalContent)
+          : contentParts.normalContent,
+      [contentParts.normalContent, hasSources]
+    );
+    const normalAfterThink = useMemo(
+      () =>
+        hasSources
+          ? stripCitations(contentParts.normalAfterThink ?? '')
+          : contentParts.normalAfterThink ?? '',
+      [contentParts.normalAfterThink, hasSources]
+    );
+
+    const canShowSourcesAction =
+      !!content.trim() &&
+      displayedSources.length > 0 &&
+      !(isLastMessage && (isGenerating || isProcessingPrompt));
 
     return (
       <>
@@ -138,8 +192,9 @@ const MessageItem = memo(
               ) : null}
               {contentParts.normalContent.trim() && (
                 <MarkdownComponent
-                  text={contentParts.normalContent}
+                  text={normalContent}
                   streaming={isLastMessage && isGenerating}
+                  onLinkPress={handleLinkPress}
                 />
               )}
               {contentParts.hasThinking &&
@@ -157,8 +212,9 @@ const MessageItem = memo(
               {contentParts.normalAfterThink &&
                 contentParts.normalAfterThink.trim() && (
                   <MarkdownComponent
-                    text={contentParts.normalAfterThink}
+                    text={normalAfterThink}
                     streaming={isLastMessage && isGenerating}
+                    onLinkPress={handleLinkPress}
                   />
                 )}
               {tokensPerSecond !== undefined && tokensPerSecond !== 0 && (
@@ -167,8 +223,37 @@ const MessageItem = memo(
                   {tokensPerSecond?.toFixed(2)} tok/s
                 </Text>
               )}
+              {canShowSourcesAction && (
+                <View style={styles.messageActions} testID="message-actions">
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.sourcesButton,
+                      pressed && styles.sourcesButtonPressed,
+                    ]}
+                    onPress={() => sourcesSheetRef.current?.present()}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Sources"
+                    testID="source-action-button"
+                  >
+                    <BookIcon
+                      width={16}
+                      height={16}
+                      style={styles.sourcesButtonIcon}
+                    />
+                    <Text style={styles.sourcesButtonLabel}>Sources</Text>
+                  </Pressable>
+                </View>
+              )}
             </View>
           </View>
+        )}
+        {role === 'assistant' && canShowSourcesAction && (
+          <SourcesSheet
+            ref={sourcesSheetRef}
+            sources={displayedSources}
+            userQuestion={userQuestion}
+          />
         )}
       </>
     );
@@ -262,5 +347,28 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.xxs,
       fontFamily: fontFamily.regular,
       color: theme.text.defaultTertiary,
+    },
+    messageActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 6,
+    },
+    sourcesButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      alignSelf: 'flex-start',
+      paddingVertical: 4,
+    },
+    sourcesButtonPressed: {
+      opacity: 0.6,
+    },
+    sourcesButtonIcon: {
+      color: theme.text.primary,
+    },
+    sourcesButtonLabel: {
+      fontSize: fontSizes.sm,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
     },
   });
