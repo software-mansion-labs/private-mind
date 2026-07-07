@@ -18,6 +18,7 @@ import {
 import type { SharedValue } from 'react-native-reanimated';
 import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
 import AttachmentSheet from '../bottomSheets/AttachmentSheet';
+import EmbeddingDownloadSheet from '../bottomSheets/EmbeddingDownloadSheet';
 import { useAttachment, Attachment } from '../../hooks/useAttachment';
 import { Model } from '../../database/modelRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -84,9 +85,12 @@ const ChatBar = ({
   const {
     attachments,
     sheetRef,
+    embeddingDownloadSheetRef,
     pickFromLibrary,
     pickFromCamera,
     pickDocument,
+    downloadModelAndContinue,
+    markDownloadSheetClosed,
     removeAttachment,
     clearAll,
     openSheet,
@@ -342,6 +346,11 @@ const ChatBar = ({
             onPickFromCamera={pickFromCamera}
             onPickDocument={pickDocument}
             onSheetStateChange={onAttachmentSheetStateChange}
+          />
+          <EmbeddingDownloadSheet
+            bottomSheetModalRef={embeddingDownloadSheetRef}
+            onDownload={downloadModelAndContinue}
+            onDismiss={markDownloadSheetClosed}
           />
         </>
       )}

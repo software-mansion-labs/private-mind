@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -6,6 +6,7 @@ import { Platform, PermissionsAndroid } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSourceStore } from '../store/sourceStore';
 import { useVectorStore } from '../context/VectorStoreContext';
+import { useEmbeddingModelStore } from '../store/embeddingModelStore';
 
 export interface Attachment {
   id: string;
@@ -57,21 +58,25 @@ export const useAttachment = () => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const attachmentsRef = useRef<Attachment[]>([]);
   attachmentsRef.current = attachments;
+  const attachmentRequestRef = useRef(0);
+  const currentDocumentAttachmentIdRef = useRef<string | null>(null);
   const sheetRef = useRef<BottomSheetModal>(null);
-  const { vectorStore } = useVectorStore();
+  const embeddingDownloadSheetRef = useRef<BottomSheetModal>(null);
+  const embeddingDownloadSheetOpenRef = useRef(false);
+  const { vectorStore, embeddings } = useVectorStore();
 
-  const replaceWithImage = useCallback(
-    (uri: string) => {
-      const hadSource = attachmentsRef.current.some((a) => a.sourceId);
-      setAttachments([
-        { id: `img-${Date.now()}`, type: 'image', uri, status: 'ready' },
-      ]);
-      if (hadSource && vectorStore) {
-        useSourceStore.getState().cleanupOrphanedSources(vectorStore);
-      }
-    },
-    [vectorStore]
-  );
+  useEffect(() => {
+    return () => {
+      embeddingDownloadSheetOpenRef.current = false;
+    };
+  }, []);
+
+  const replaceWithImage = useCallback((uri: string) => {
+    currentDocumentAttachmentIdRef.current = null;
+    setAttachments([
+      { id: `img-${Date.now()}`, type: 'image', uri, status: 'ready' },
+    ]);
+  }, []);
 
   const pickFromLibrary = useCallback(async () => {
     const granted = await requestAndroidGalleryPermission();
@@ -101,23 +106,41 @@ export const useAttachment = () => {
     }
   }, [replaceWithImage]);
 
-  const pickDocument = useCallback(async () => {
+  const runDocumentPicker = useCallback(async () => {
     const pickedFileResult = await DocumentPicker.getDocumentAsync({
-      type: ['application/pdf', 'text/plain', 'text/markdown', 'text/html'],
+      type: [
+        'application/pdf',
+        'text/plain',
+        'text/markdown',
+        'text/x-markdown',
+        'text/html',
+        'text/csv',
+        'text/comma-separated-values',
+        'application/csv',
+      ],
       copyToCacheDirectory: true,
     });
 
     if (pickedFileResult.canceled || !pickedFileResult.assets[0]) return;
 
     const asset = pickedFileResult.assets[0];
-    const fileType = asset.uri.split('.').pop() || '';
+    const extFromName = asset.name?.includes('.')
+      ? asset.name.split('.').pop()
+      : undefined;
+    const fileType = (
+      extFromName ||
+      asset.uri.split('.').pop() ||
+      ''
+    ).toLowerCase();
     const fileName =
       asset.name?.split('.')[0] ||
       asset.uri.split('/').pop()?.split('.')[0] ||
       'Unnamed';
     const attachmentId = `doc-${Date.now()}`;
+    const requestId = attachmentRequestRef.current + 1;
+    attachmentRequestRef.current = requestId;
+    currentDocumentAttachmentIdRef.current = attachmentId;
 
-    const hadSource = attachmentsRef.current.some((a) => a.sourceId);
     setAttachments([
       {
         id: attachmentId,
@@ -127,20 +150,34 @@ export const useAttachment = () => {
         status: 'loading',
       },
     ]);
-    if (hadSource && vectorStore) {
-      useSourceStore.getState().cleanupOrphanedSources(vectorStore);
-    }
 
     try {
       const newSource = {
-        name: fileName,
+        name: asset.name || fileName,
         type: fileType,
         size: asset.size || null,
       };
       const { addSource } = useSourceStore.getState();
-      const result = await addSource(newSource, asset.uri, vectorStore!);
+      const result = await addSource(
+        newSource,
+        asset.uri,
+        vectorStore!,
+        embeddings
+      );
+      const isCurrentDocumentRequest =
+        attachmentRequestRef.current === requestId &&
+        currentDocumentAttachmentIdRef.current === attachmentId;
 
       if (result.success) {
+        if (!isCurrentDocumentRequest) {
+          console.warn('Ignoring stale document processing result', {
+            attachmentId,
+            sourceId: result.sourceId,
+            name: newSource.name,
+          });
+          return;
+        }
+
         setAttachments((prev) =>
           prev.map((a) =>
             a.id === attachmentId
@@ -149,6 +186,8 @@ export const useAttachment = () => {
           )
         );
       } else {
+        if (!isCurrentDocumentRequest) return;
+
         setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
         Toast.show({
           type: 'defaultToast',
@@ -157,32 +196,65 @@ export const useAttachment = () => {
             : 'Failed to process document.',
         });
       }
-    } catch {
+    } catch (error) {
+      console.error('Document attachment processing threw', {
+        attachmentId,
+        requestId,
+        name: asset.name || fileName,
+        error,
+      });
+      if (attachmentRequestRef.current !== requestId) return;
+
       setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
       Toast.show({
         type: 'defaultToast',
         text1: 'Error reading document.',
       });
     }
-  }, [vectorStore]);
+  }, [vectorStore, embeddings]);
 
-  const removeAttachment = useCallback(
-    (id: string) => {
-      const hadSourceId = attachmentsRef.current.some(
-        (a) => a.id === id && a.sourceId
-      );
-      setAttachments((prev) => prev.filter((a) => a.id !== id));
-      if (hadSourceId && vectorStore) {
-        useSourceStore.getState().cleanupOrphanedSources(vectorStore);
-      }
-    },
-    [vectorStore]
-  );
+  const markDownloadSheetClosed = useCallback(() => {
+    embeddingDownloadSheetOpenRef.current = false;
+  }, []);
+
+  const pickDocument = useCallback(async () => {
+    if (useEmbeddingModelStore.getState().status === 'ready') {
+      return runDocumentPicker();
+    }
+    embeddingDownloadSheetOpenRef.current = true;
+    embeddingDownloadSheetRef.current?.present();
+  }, [runDocumentPicker]);
+
+  const downloadModelAndContinue = useCallback(async () => {
+    if (!vectorStore) return;
+    const ready = await useEmbeddingModelStore
+      .getState()
+      .ensureReady(vectorStore);
+    if (!ready) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Failed to download the document model.',
+      });
+      return;
+    }
+    if (embeddingDownloadSheetOpenRef.current) {
+      embeddingDownloadSheetRef.current?.dismiss();
+      await runDocumentPicker();
+    }
+  }, [vectorStore, runDocumentPicker]);
+
+  const removeAttachment = useCallback((id: string) => {
+    if (currentDocumentAttachmentIdRef.current === id) {
+      currentDocumentAttachmentIdRef.current = null;
+    }
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  }, []);
 
   const clearAll = useCallback(
     (options: ClearAllOptions = {}) => {
-      const cleanupSources = options.cleanupSources ?? true;
+      const cleanupSources = options.cleanupSources ?? false;
       const hadDocuments = attachmentsRef.current.some((a) => a.sourceId);
+      currentDocumentAttachmentIdRef.current = null;
       setAttachments([]);
       if (cleanupSources && hadDocuments && vectorStore) {
         useSourceStore.getState().cleanupOrphanedSources(vectorStore);
@@ -217,9 +289,12 @@ export const useAttachment = () => {
   return {
     attachments,
     sheetRef,
+    embeddingDownloadSheetRef,
     pickFromLibrary,
     pickFromCamera,
     pickDocument,
+    downloadModelAndContinue,
+    markDownloadSheetClosed,
     removeAttachment,
     clearAll,
     openSheet,
