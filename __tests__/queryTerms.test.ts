@@ -12,7 +12,9 @@ describe('extractQueryTerms', () => {
   });
 
   it('keeps longer identifiers and years', () => {
-    const terms = extractQueryTerms('What changed in invoice FS-219039 during 2020?');
+    const terms = extractQueryTerms(
+      'What changed in invoice FS-219039 during 2020?'
+    );
     expect(terms.has('219039')).toBe(true);
     expect(terms.has('2020')).toBe(true);
     expect(terms.has('invoice')).toBe(true);

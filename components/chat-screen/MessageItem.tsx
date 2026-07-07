@@ -116,7 +116,7 @@ const MessageItem = memo(
       () =>
         hasSources
           ? stripCitations(contentParts.normalAfterThink ?? '')
-          : contentParts.normalAfterThink ?? '',
+          : (contentParts.normalAfterThink ?? ''),
       [contentParts.normalAfterThink, hasSources]
     );
 

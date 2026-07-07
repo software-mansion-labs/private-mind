@@ -10,7 +10,5 @@ export const stripCitations = (text: string): string => {
     stripped = stripped.replace(CITATION_PATTERN, '$1');
   } while (stripped !== previous);
 
-  return stripped
-    .replace(/ +([.,;:!?])/g, '$1')
-    .replace(/[ \t]{2,}/g, ' ');
+  return stripped.replace(/ +([.,;:!?])/g, '$1').replace(/[ \t]{2,}/g, ' ');
 };

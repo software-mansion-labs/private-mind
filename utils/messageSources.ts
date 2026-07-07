@@ -14,6 +14,13 @@ import { hybridRetrieve } from './hybridRetrieval';
 // `sourceDocuments` (citations for the reply) and `preferredSourceDocuments`
 // (freshly attached sources to prioritise). State-free, so it's unit-testable.
 
+const DEBUG_PREVIEW_LENGTH = 1200;
+
+const previewText = (value?: string) =>
+  value && value.length > DEBUG_PREVIEW_LENGTH
+    ? `${value.slice(0, DEBUG_PREVIEW_LENGTH)}...`
+    : value;
+
 export interface SourceRow {
   id: number;
   name: string;
@@ -110,7 +117,9 @@ export const buildMessageSources = async ({
     preferredSourceDocuments: [],
   };
 
-  const allSourceIds = [...new Set([...enabledSources, ...attachmentSourceIds])];
+  const allSourceIds = [
+    ...new Set([...enabledSources, ...attachmentSourceIds]),
+  ];
   if (allSourceIds.length === 0) return empty;
 
   const activeSources = sources.filter((s) => allSourceIds.includes(s.id));
