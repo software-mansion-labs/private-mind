@@ -12,7 +12,10 @@ const makeDb = (opts: {
     return null;
   });
   const execAsync: jest.Mock = jest.fn(async (sql: string) => {
-    if (sql.includes('SELECT document FROM vectors') && opts.documentColumnMissing) {
+    if (
+      sql.includes('SELECT document FROM vectors') &&
+      opts.documentColumnMissing
+    ) {
       throw new Error('no such column: document');
     }
   });
@@ -35,7 +38,9 @@ const deleteCalls = (runAsync: jest.Mock): string[] =>
 
 describe('migrateLegacyVectorStore', () => {
   it('does NOT wipe sources when no legacy vectors table exists (current dual-db setup)', async () => {
-    const { db, execAsync, runAsync } = makeDb({ hasLegacyVectorsTable: false });
+    const { db, execAsync, runAsync } = makeDb({
+      hasLegacyVectorsTable: false,
+    });
 
     await migrateLegacyVectorStore(db);
 

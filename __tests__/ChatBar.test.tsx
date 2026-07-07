@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react-native';
+import type { LLMStore } from '../store/llmStore';
 
 // ── mocks ─────────────────────────────────────────────────────────────────────
 
@@ -13,7 +14,7 @@ jest.mock('../context/ThemeContext', () => ({
 }));
 
 jest.mock('../store/llmStore', () => ({
-  useLLMStore: jest.fn((selector?: (s: any) => any) => {
+  useLLMStore: jest.fn((selector?: (state: Partial<LLMStore>) => unknown) => {
     const state = {
       isGenerating: false,
       isProcessingPrompt: false,
@@ -196,16 +197,18 @@ const renderBar = (props: Partial<typeof defaultProps> = {}) =>
   render(<ChatBar {...defaultProps} {...props} />);
 
 beforeEach(() => {
-  mockUseLLMStore.mockImplementation((selector?: (s: any) => any) => {
-    const state = {
-      isGenerating: false,
-      isProcessingPrompt: false,
-      interrupt: jest.fn(),
-      loadModel: jest.fn(),
-      model: null,
-    };
-    return selector ? selector(state) : state;
-  });
+  mockUseLLMStore.mockImplementation(
+    (selector?: (state: Partial<LLMStore>) => unknown) => {
+      const state = {
+        isGenerating: false,
+        isProcessingPrompt: false,
+        interrupt: jest.fn(),
+        loadModel: jest.fn(),
+        model: null,
+      };
+      return selector ? selector(state) : state;
+    }
+  );
   mockUseAttachment.attachments = [];
   mockUseAttachment.openSheet.mockClear();
   mockUseAttachment.clearAll.mockClear();
@@ -305,32 +308,36 @@ describe('downloaded model — text input', () => {
 
 describe('generating state', () => {
   it('shows interrupt button when isGenerating', () => {
-    mockUseLLMStore.mockImplementation((selector?: (s: any) => any) => {
-      const state = {
-        isGenerating: true,
-        isProcessingPrompt: false,
-        interrupt: jest.fn(),
-        loadModel: jest.fn(),
-        model: null,
-      };
-      return selector ? selector(state) : state;
-    });
+    mockUseLLMStore.mockImplementation(
+      (selector?: (state: Partial<LLMStore>) => unknown) => {
+        const state = {
+          isGenerating: true,
+          isProcessingPrompt: false,
+          interrupt: jest.fn(),
+          loadModel: jest.fn(),
+          model: null,
+        };
+        return selector ? selector(state) : state;
+      }
+    );
     renderBar();
     expect(screen.getByTestId('interrupt-btn')).toBeTruthy();
   });
 
   it('calls interrupt when interrupt button is pressed', () => {
     const interrupt = jest.fn();
-    mockUseLLMStore.mockImplementation((selector?: (s: any) => any) => {
-      const state = {
-        isGenerating: true,
-        isProcessingPrompt: false,
-        interrupt,
-        loadModel: jest.fn(),
-        model: null,
-      };
-      return selector ? selector(state) : state;
-    });
+    mockUseLLMStore.mockImplementation(
+      (selector?: (state: Partial<LLMStore>) => unknown) => {
+        const state = {
+          isGenerating: true,
+          isProcessingPrompt: false,
+          interrupt,
+          loadModel: jest.fn(),
+          model: null,
+        };
+        return selector ? selector(state) : state;
+      }
+    );
     renderBar();
     fireEvent.press(screen.getByTestId('interrupt-btn'));
     expect(interrupt).toHaveBeenCalled();

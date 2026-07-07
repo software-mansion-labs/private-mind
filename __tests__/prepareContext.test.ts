@@ -97,4 +97,3 @@ describe('formatFirstChunks', () => {
     expect(result[0]).toContain('End of Current Attachment Source');
   });
 });
-

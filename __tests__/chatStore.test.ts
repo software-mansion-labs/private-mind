@@ -267,9 +267,9 @@ describe('initPhantomChat with model system prompt', () => {
       systemPrompt: 'global default',
     });
 
-    await useChatStore
-      .getState()
-      .initPhantomChat(99, { systemPrompt: modelPrompt } as Partial<Model> as Model);
+    await useChatStore.getState().initPhantomChat(99, {
+      systemPrompt: modelPrompt,
+    } as Partial<Model> as Model);
 
     const phantom = useChatStore.getState().phantomChat;
     expect(phantom?.settings?.systemPrompt).toBe(modelPrompt);

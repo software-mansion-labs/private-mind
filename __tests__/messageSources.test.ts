@@ -9,9 +9,11 @@ const doc = (documentId: number | undefined, name: string): SourceDocument => ({
 describe('mergeAttachmentFirst', () => {
   it('leads with retrieved attachment docs, then the rest', () => {
     const retrieved = [doc(1, 'old.pdf'), doc(2, 'attachment.txt')];
-    const result = mergeAttachmentFirst(retrieved, [doc(2, 'attachment.txt')], [
-      2,
-    ]);
+    const result = mergeAttachmentFirst(
+      retrieved,
+      [doc(2, 'attachment.txt')],
+      [2]
+    );
 
     expect(result.map((d) => d.documentId)).toEqual([2, 1]);
   });

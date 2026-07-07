@@ -96,14 +96,7 @@ export const prepareMessagesForLLM = (
         ${userText}
         `;
 
-    const availableForLast = Math.max(0, budgetChars - systemChars);
-    let finalContext = safeContext;
-    if (wrap(finalContext).length > availableForLast) {
-      const overhead = wrap('').length;
-      const room = Math.max(0, availableForLast - overhead);
-      finalContext = safeContext.slice(0, room);
-    }
-    lastMessage.content = wrap(finalContext);
+    lastMessage.content = wrap(safeContext);
   }
 
   const mandatoryChars = systemChars + lastMessage.content.length;
@@ -119,9 +112,5 @@ export const prepareMessagesForLLM = (
     keptReversed.push(history[i]);
   }
 
-  return [
-    messagesWithSystemPrompt[0],
-    ...keptReversed.reverse(),
-    lastMessage,
-  ];
+  return [messagesWithSystemPrompt[0], ...keptReversed.reverse(), lastMessage];
 };

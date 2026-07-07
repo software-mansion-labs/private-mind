@@ -18,6 +18,10 @@ import {
   addChunkToKeywordIndex,
   removeDocumentFromKeywordIndex,
 } from '../database/keywordIndex';
+import {
+  TEXT_SPLITTER_CHUNK_OVERLAP,
+  TEXT_SPLITTER_CHUNK_SIZE,
+} from '../constants/retrieval';
 
 interface SourceStore {
   sources: Source[];
@@ -36,9 +40,6 @@ interface SourceStore {
   renameSource: (id: number, newName: string) => Promise<void>;
   cleanupOrphanedSources: (vectorStore: OPSQLiteVectorStore) => Promise<void>;
 }
-
-const TEXT_SPLITTER_CHUNK_SIZE = 1000;
-const TEXT_SPLITTER_CHUNK_OVERLAP = 200;
 
 export const useSourceStore = create<SourceStore>((set, get) => ({
   sources: [],

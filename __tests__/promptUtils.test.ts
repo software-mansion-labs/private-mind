@@ -276,7 +276,9 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       const last = result[result.length - 1];
-      expect(last.content).not.toMatch(/Ignore any document mentioned earlier/i);
+      expect(last.content).not.toMatch(
+        /Ignore any document mentioned earlier/i
+      );
     });
 
     it('combines context and /think token', () => {

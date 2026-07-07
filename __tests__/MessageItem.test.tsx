@@ -1,4 +1,5 @@
 import React from 'react';
+import type { ViewProps } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 type MockLLMState = {
@@ -7,6 +8,21 @@ type MockLLMState = {
 };
 
 type MockLLMSelector<T = MockLLMState> = (state: MockLLMState) => T;
+
+type ThinkingBlockMockProps = {
+  content: string;
+  isComplete: boolean;
+  inProgress: boolean;
+};
+
+type BottomSheetModalHandle = {
+  present: jest.Mock;
+  dismiss: jest.Mock;
+};
+
+type BottomSheetModalMockProps = {
+  children?: React.ReactNode;
+};
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
@@ -31,7 +47,7 @@ jest.mock('../components/chat-screen/MarkdownComponent', () => {
 
 jest.mock('../components/chat-screen/ThinkingBlock', () => {
   const { Text } = require('react-native');
-  return ({ content, isComplete, inProgress }: any) => (
+  return ({ content, isComplete, inProgress }: ThinkingBlockMockProps) => (
     <Text
       testID="thinking-block"
       accessibilityLabel={`complete:${isComplete} inProgress:${inProgress}`}
@@ -44,10 +60,14 @@ jest.mock('../components/chat-screen/ThinkingBlock', () => {
 jest.mock('../components/chat-screen/AnimatedChatLoading', () => () => null);
 
 jest.mock('@gorhom/bottom-sheet', () => {
+  const MockReact = require('react') as typeof import('react');
   const { View } = require('react-native');
 
-  const BottomSheetModal = React.forwardRef(({ children }: any, ref: any) => {
-    React.useImperativeHandle(ref, () => ({
+  const BottomSheetModal = MockReact.forwardRef<
+    BottomSheetModalHandle,
+    BottomSheetModalMockProps
+  >(({ children }, ref) => {
+    MockReact.useImperativeHandle(ref, () => ({
       present: jest.fn(),
       dismiss: jest.fn(),
     }));
@@ -55,7 +75,7 @@ jest.mock('@gorhom/bottom-sheet', () => {
   });
 
   return {
-    BottomSheetBackdrop: (props: any) => <View {...props} />,
+    BottomSheetBackdrop: (props: ViewProps) => <View {...props} />,
     BottomSheetModal,
     BottomSheetView: View,
     BottomSheetScrollView: View,

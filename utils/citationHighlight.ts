@@ -156,7 +156,10 @@ export const buildCitationExcerpt = (
 
   const remaining = maxChars - citedLength;
   let start = Math.max(0, citeStart - Math.ceil(remaining / 2));
-  let end = Math.min(source.length, citeEnd + (remaining - (citeStart - start)));
+  let end = Math.min(
+    source.length,
+    citeEnd + (remaining - (citeStart - start))
+  );
 
   if (start > 0) {
     const nextSpace = source.indexOf(' ', start);

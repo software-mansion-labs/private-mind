@@ -25,3 +25,6 @@ export const STRONG_SEMANTIC_THRESHOLD = 0.55;
 
 /** Min cosine to qualify via lexical overlap (paired with non-zero term coverage). */
 export const LEXICAL_MATCH_MIN_SIMILARITY = 0.1;
+
+export const TEXT_SPLITTER_CHUNK_SIZE = 1000;
+export const TEXT_SPLITTER_CHUNK_OVERLAP = 200;
