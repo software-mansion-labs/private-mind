@@ -20,6 +20,15 @@ export const COVERAGE_ALPHA = 0.5;
 /** Bonus that floats a freshly-attached chunk past the gate to the pool's front. */
 export const ATTACHMENT_RELEVANCE_BONUS = 10;
 
+/** Max chunks kept from one document in the final selection, applied only when ≥2 documents qualify. */
+export const MAX_CHUNKS_PER_FILE = 3;
+
+/** Adaptive-k: after MMR, drop trailing chunks once relevance falls below this fraction of the previous. */
+export const ADAPTIVE_K_DROP_RATIO = 0.45;
+
+/** Adaptive-k never trims below this many non-attachment chunks. */
+export const ADAPTIVE_K_MIN_KEEP = 1;
+
 /** Cosine floor to qualify on semantics alone; above LFM2.5's ~0.35–0.45 noise floor. */
 export const STRONG_SEMANTIC_THRESHOLD = 0.55;
 

@@ -3,6 +3,7 @@ import {
   cosineSimilarity,
   termCoverage,
   maximalMarginalRelevance,
+  adaptiveKeepCount,
 } from '../utils/rankFusion';
 
 describe('reciprocalRankFusion', () => {
@@ -121,5 +122,61 @@ describe('maximalMarginalRelevance', () => {
     );
 
     expect(selected).toHaveLength(1);
+  });
+
+  it('caps selections per group, leaving slots for other groups', () => {
+    const selected = maximalMarginalRelevance(
+      [
+        { id: 'a1', relevance: 1.0, embedding: [1, 0] },
+        { id: 'a2', relevance: 0.9, embedding: [0, 1] },
+        { id: 'a3', relevance: 0.8, embedding: [1, 1] },
+        { id: 'b1', relevance: 0.3, embedding: [1, 0.5] },
+      ],
+      4,
+      0.9,
+      { groupOf: (c) => c.id[0], maxPerGroup: 2 }
+    );
+
+    const ids = selected.map((s) => s.id);
+    expect(ids.filter((id) => id.startsWith('a'))).toHaveLength(2);
+    expect(ids).toContain('b1');
+  });
+
+  it('stops instead of overfilling when every remaining item is in a full group', () => {
+    const selected = maximalMarginalRelevance(
+      [
+        { id: 'a1', relevance: 1.0, embedding: [1, 0] },
+        { id: 'a2', relevance: 0.9, embedding: [0, 1] },
+        { id: 'a3', relevance: 0.8, embedding: [1, 1] },
+      ],
+      3,
+      0.9,
+      { groupOf: () => 'a', maxPerGroup: 2 }
+    );
+
+    expect(selected).toHaveLength(2);
+  });
+});
+
+describe('adaptiveKeepCount', () => {
+  it('keeps everything when scores decay gently', () => {
+    expect(adaptiveKeepCount([1.0, 0.8, 0.6], 1, 0.45)).toBe(3);
+  });
+
+  it('cuts at the first large relative drop', () => {
+    expect(adaptiveKeepCount([0.9, 0.85, 0.2], 1, 0.45)).toBe(2);
+  });
+
+  it('cuts to a single strong chunk when the rest fall off a cliff', () => {
+    expect(adaptiveKeepCount([0.9, 0.1, 0.05], 1, 0.45)).toBe(1);
+  });
+
+  it('never trims below minKeep', () => {
+    expect(adaptiveKeepCount([0.9, 0.1], 2, 0.45)).toBe(2);
+  });
+
+  it('never returns fewer than minKeep or more than the list', () => {
+    expect(adaptiveKeepCount([0.9], 1, 0.45)).toBe(1);
+    expect(adaptiveKeepCount([], 1, 0.45)).toBe(0);
   });
 });
