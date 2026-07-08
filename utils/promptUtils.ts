@@ -8,16 +8,11 @@ import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { getPromptCharBudget } from '../constants/context-window';
 
 const CONTEXT_INSTRUCTION = `
-IMPORTANT CONTEXT INFORMATION:
-You have access to relevant excerpts from the user's document sources. Use this context to provide accurate, well-informed responses. Always prioritize information from the provided context when it's relevant to the user's question.
 
-Instructions for using context:
-- The context is delimited by <context> and </context> tags
-- Retrieved passages are labeled "Source N: <document name>"; a freshly attached document's overview is labeled "Current Attachment Source: <document name> (Overview)"
-- The <context> block is the ONLY authoritative source for the current question. Answer strictly from the excerpts inside it.
-- Do NOT describe, summarize, or answer about any document that is not present in the current <context> block, even if it was discussed or attached in an earlier turn of this conversation. Earlier turns are for conversational continuity only, not a source of document facts.
-- If information from context conflicts with your general knowledge, prioritize the context
-- If the context doesn't contain relevant information say "I don't know" or "The provided context does not contain the information"`;
+IMPORTANT CONTEXT INFORMATION:
+The <context>…</context> block below holds excerpts from the user's documents ("Source N: <name>", or "(Overview)" for a freshly attached file). It is the ONLY authoritative source for this question — answer strictly from it and prefer it over your own knowledge.
+Do not answer about any document that is not in the current <context> block, even if it appeared earlier in the chat.
+If the block does not contain the answer, say "I don't know".`;
 
 const getPreferredSourceInstruction = (sources?: SourceDocument[]) => {
   if (!sources?.length) return '';
@@ -26,10 +21,7 @@ const getPreferredSourceInstruction = (sources?: SourceDocument[]) => {
   return `
 
 CURRENT ATTACHMENT PRIORITY:
-The user just attached these document sources to the current message: ${sourceNames}.
-They are the primary subject of the latest question. When the user says "this file", "the document", "the file", "it" or asks about a format, they mean these current attachment sources — never a document that only appeared earlier in the conversation.
-Base your answer on the documents present in the <context> block below. Only bring in another source when these attachment sources do not contain the answer, or the user's question explicitly asks about a different document.
-You may still use earlier conversation for continuity when it does not conflict with the current attachment sources.`;
+The user just attached: ${sourceNames}. Treat these as the subject of the question — "this file", "the document", "it" refer to them. Base the answer on them; bring in another source only if they lack the answer. You may still use earlier conversation for continuity.`;
 };
 
 export const prepareMessagesForLLM = (
@@ -96,7 +88,19 @@ export const prepareMessagesForLLM = (
         ${userText}
         `;
 
-    lastMessage.content = wrap(safeContext);
+    const availableForLast = Math.max(0, budgetChars - systemChars);
+    let finalContext = safeContext;
+    if (wrap(finalContext).length > availableForLast) {
+      const overhead = wrap('').length;
+      const room = Math.max(0, availableForLast - overhead);
+      const hardSlice = safeContext.slice(0, room);
+      const boundary = Math.max(
+        hardSlice.lastIndexOf('\n\n'),
+        hardSlice.lastIndexOf('\n ---')
+      );
+      finalContext = boundary > 0 ? hardSlice.slice(0, boundary) : hardSlice;
+    }
+    lastMessage.content = wrap(finalContext);
   }
 
   const mandatoryChars = systemChars + lastMessage.content.length;

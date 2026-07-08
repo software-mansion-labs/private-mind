@@ -1,6 +1,7 @@
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { Message, ChatSettings } from '../database/chatRepository';
 import { Model } from '../database/modelRepository';
+import { getPromptCharBudget } from '../constants/context-window';
 
 const baseSettings = {
   systemPrompt: 'You are a helpful assistant.',
@@ -303,7 +304,7 @@ describe('prepareMessagesForLLM', () => {
       id,
       chatId: 1,
       role,
-      content: 'x'.repeat(2000),
+      content: 'x'.repeat(getPromptCharBudget(baseModel)),
       timestamp: 0,
     });
 
@@ -364,7 +365,7 @@ describe('prepareMessagesForLLM', () => {
         { id: 1, chatId: 1, role: 'user', content: 'question', timestamp: 0 },
         { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
       ];
-      const hugeContext = 'y'.repeat(20000);
+      const hugeContext = 'y'.repeat(getPromptCharBudget(baseModel) * 2 + 10000);
 
       const result = prepareMessagesForLLM(
         messages,
@@ -377,6 +378,27 @@ describe('prepareMessagesForLLM', () => {
       expect(last.content).toContain('question');
       expect(last.content).toContain('<context>');
       expect(last.content.length).toBeLessThan(hugeContext.length);
+    });
+
+    it('cuts an over-budget context at a chunk boundary, keeping the leading section', () => {
+      const messages: Message[] = [
+        { id: 1, chatId: 1, role: 'user', content: 'question', timestamp: 0 },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const answer = 'NEEDLE_ANSWER_XYZ is the answer.';
+      const filler = 'FILLERBLOCK'.repeat(3000);
+      const context = [`${answer}\n\n${filler}`];
+
+      const result = prepareMessagesForLLM(
+        messages,
+        context,
+        baseSettings,
+        baseModel
+      );
+
+      const last = result[result.length - 1];
+      expect(last.content).toContain('NEEDLE_ANSWER_XYZ');
+      expect(last.content).not.toContain('FILLERBLOCK');
     });
 
     it('does not trim when everything comfortably fits', () => {
