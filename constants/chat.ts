@@ -1,0 +1,1 @@
+export const LEGACY_CHAT_NOTICE_TOP_OFFSET = 64;
