@@ -37,10 +37,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useVectorStore } from '../../context/VectorStoreContext';
 import { Attachment } from '../../hooks/useAttachment';
 import { buildMessageSources } from '../../utils/messageSources';
-import {
-  chatPredatesSourceLinking,
-  buildLegacyChatWarningMessage,
-} from '../../utils/legacyChat';
+import { useLegacyChatNotice } from '../../hooks/useLegacyChatNotice';
 import { useSourceStore } from '../../store/sourceStore';
 import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
@@ -309,16 +306,7 @@ export default function ChatScreen({
 
   const isEmpty = !isLoading && messageHistory.length === 0;
 
-  // Conversations created before documents were linked to messages get a
-  // transient (unsaved) notice at the top explaining the missing source. The
-  // real history is untouched — this only affects what is rendered.
-  const displayedHistory = useMemo(
-    () =>
-      chatPredatesSourceLinking(messageHistory)
-        ? [buildLegacyChatWarningMessage(chatId), ...messageHistory]
-        : messageHistory,
-    [messageHistory, chatId]
-  );
+  useLegacyChatNotice(messageHistory);
 
   const { height: windowHeight } = useWindowDimensions();
   const gradientProgress = useSharedValue(isEmpty ? 1 : 0);
@@ -343,7 +331,7 @@ export default function ChatScreen({
       </Animated.View>
       <Messages
         ref={messagesRef}
-        chatHistory={displayedHistory}
+        chatHistory={messageHistory}
         extraContentPadding={extraContentPadding}
         blankSpace={blankSpace}
         isGenerating={isGenerating}

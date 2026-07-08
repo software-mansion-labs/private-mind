@@ -1,12 +1,8 @@
-import {
-  chatPredatesSourceLinking,
-  buildLegacyChatWarningMessage,
-  LEGACY_CHAT_WARNING_MESSAGE_ID,
-} from '../utils/legacyChat';
+import { chatPredatesSourceLinking } from '../utils/legacyChat';
 import { setSourceLinkingBoundary } from '../utils/sourceLinkingBoundary';
 import { Message } from '../database/chatRepository';
 
-const BOUNDARY = 100;
+const BOUNDARY = 200;
 
 const message = (overrides: Partial<Message>): Message => ({
   id: 1,
@@ -59,6 +55,25 @@ describe('chatPredatesSourceLinking', () => {
     ).toBe(false);
   });
 
+  it('keeps flagging a legacy chat after a new-era turn retrieves a source', () => {
+    expect(
+      chatPredatesSourceLinking(
+        [
+          message({ id: 10, role: 'user', documentName: 'report.pdf' }),
+          message({ id: 11, role: 'assistant', content: 'summary' }),
+          message({ id: 204, role: 'user', documentName: 'other.pdf' }),
+          message({
+            id: 205,
+            role: 'assistant',
+            content: 'answer [1]',
+            sourceDocuments: [{ name: 'other.pdf', documentId: 9 }],
+          }),
+        ],
+        BOUNDARY
+      )
+    ).toBe(true);
+  });
+
   it('does NOT flag a new-era chat whose upload was interrupted before sourceDocuments', () => {
     expect(
       chatPredatesSourceLinking(
@@ -105,16 +120,5 @@ describe('chatPredatesSourceLinking', () => {
         0
       )
     ).toBe(false);
-  });
-});
-
-describe('buildLegacyChatWarningMessage', () => {
-  it('builds a transient event message carrying the chat id', () => {
-    const warning = buildLegacyChatWarningMessage(42);
-    expect(warning.id).toBe(LEGACY_CHAT_WARNING_MESSAGE_ID);
-    expect(warning.id).toBeLessThan(0);
-    expect(warning.chatId).toBe(42);
-    expect(warning.role).toBe('event');
-    expect(warning.content.length).toBeGreaterThan(0);
   });
 });
