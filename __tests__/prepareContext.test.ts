@@ -28,6 +28,39 @@ describe('formatContextChunks / getSourceDocumentsFromChunks', () => {
     expect(result[0]).not.toMatch(/%|Relevance/);
   });
 
+  it('stitches adjacent passages without re-printing their shared overlap', () => {
+    const chunks = [
+      makeChunk(
+        'The quarterly revenue report shows a total of 1200 units sold in Q3.',
+        0.9,
+        1,
+        'report.pdf'
+      ),
+      makeChunk(
+        'a total of 1200 units sold in Q3. The following section covers Q4 projections.',
+        0.85,
+        1,
+        'report.pdf'
+      ),
+    ];
+    const [source] = getSourceDocumentsFromChunks(chunks);
+    const passage = source.passage!;
+
+    expect(passage.split('a total of 1200 units sold in Q3')).toHaveLength(2);
+    expect(passage).toContain('The following section covers Q4 projections');
+  });
+
+  it('leaves non-overlapping passages fully intact', () => {
+    const chunks = [
+      makeChunk('completely distinct first passage', 0.9, 1, 'doc.pdf'),
+      makeChunk('an entirely separate second passage', 0.8, 1, 'doc.pdf'),
+    ];
+    const [source] = getSourceDocumentsFromChunks(chunks);
+
+    expect(source.passage).toContain('completely distinct first passage');
+    expect(source.passage).toContain('an entirely separate second passage');
+  });
+
   it('groups chunks of one document into a single source, preserving input order', () => {
     const chunks = [
       makeChunk('a-1', 0.9, 1, 'doc-a.pdf'),
