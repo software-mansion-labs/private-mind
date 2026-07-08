@@ -227,6 +227,208 @@ describe('hybridRetrieve', () => {
     expect(result.map((c) => c.metadata?.name)).toContain('FAQ');
   });
 
+  it('caps one document so a second enabled source is not fully evicted', async () => {
+    const vectorResults = [
+      {
+        id: '1:0',
+        document: 'doc a passage one',
+        embedding: [1, 0, 0, 0, 0],
+        similarity: 0.9,
+        metadata: { documentId: 1, name: 'DocA' },
+      },
+      {
+        id: '1:1',
+        document: 'doc a passage two',
+        embedding: [0, 1, 0, 0, 0],
+        similarity: 0.88,
+        metadata: { documentId: 1, name: 'DocA' },
+      },
+      {
+        id: '1:2',
+        document: 'doc a passage three',
+        embedding: [0, 0, 1, 0, 0],
+        similarity: 0.86,
+        metadata: { documentId: 1, name: 'DocA' },
+      },
+      {
+        id: '1:3',
+        document: 'doc a passage four',
+        embedding: [0, 0, 0, 1, 0],
+        similarity: 0.84,
+        metadata: { documentId: 1, name: 'DocA' },
+      },
+      {
+        id: '1:4',
+        document: 'doc a passage five',
+        embedding: [0, 0, 0, 0, 1],
+        similarity: 0.82,
+        metadata: { documentId: 1, name: 'DocA' },
+      },
+      {
+        id: '2:0',
+        document: 'doc b passage',
+        embedding: [1, 1, 0, 0, 0],
+        similarity: 0.6,
+        metadata: { documentId: 2, name: 'DocB' },
+      },
+    ];
+    mockKeywordSearch.mockResolvedValue([]);
+
+    const result = await hybridRetrieve({
+      prompt: 'zzz',
+      enabledSourceIds: [1, 2],
+      vectorStore: makeVectorStore(vectorResults, {}),
+      sourceNamesById: new Map(),
+      embeddings: null,
+    });
+
+    expect(result.map((c) => c.metadata?.name)).toContain('DocB');
+  });
+
+  it('adaptive-k drops a weak non-adjacent chunk after a large relevance gap', async () => {
+    const vectorResults = [
+      {
+        id: '1:0',
+        document: 'the exact code e4021 is here',
+        embedding: [1, 0],
+        similarity: 0.9,
+        metadata: { documentId: 1, name: 'DocA' },
+      },
+      {
+        id: '1:5',
+        document: 'unrelated filler paragraph',
+        embedding: [0, 1],
+        similarity: 0.58,
+        metadata: { documentId: 1, name: 'DocA' },
+      },
+    ];
+    mockKeywordSearch.mockResolvedValue([
+      { chunkId: '1:0', documentId: 1, score: -1 },
+    ]);
+
+    const result = await hybridRetrieve({
+      prompt: 'e4021',
+      enabledSourceIds: [1],
+      vectorStore: makeVectorStore(vectorResults, {}),
+      sourceNamesById: new Map(),
+      embeddings: null,
+    });
+
+    const docs = result.map((c) => c.document);
+    expect(docs).toContain('the exact code e4021 is here');
+    expect(docs).not.toContain('unrelated filler paragraph');
+  });
+
+  it('orders a more-relevant later chunk ahead of a less-relevant earlier one', async () => {
+    const vectorResults = [
+      {
+        id: '1:2',
+        document: 'table of contents item 14 principal accountant fees',
+        embedding: [1, 0],
+        similarity: 0.5,
+        metadata: { documentId: 1, name: 'AppleK' },
+      },
+      {
+        id: '1:20',
+        document: 'ben borders will assume the role of principal accounting officer',
+        embedding: [0, 1],
+        similarity: 0.9,
+        metadata: { documentId: 1, name: 'AppleK' },
+      },
+    ];
+    mockKeywordSearch.mockResolvedValue([
+      { chunkId: '1:20', documentId: 1, score: -1 },
+      { chunkId: '1:2', documentId: 1, score: -1.1 },
+    ]);
+
+    const result = await hybridRetrieve({
+      prompt: 'who becomes principal accounting officer',
+      enabledSourceIds: [1],
+      vectorStore: makeVectorStore(vectorResults, {}),
+      sourceNamesById: new Map(),
+      embeddings: null,
+    });
+
+    const docs = result.map((c) => c.document);
+    expect(docs).toContain(
+      'ben borders will assume the role of principal accounting officer'
+    );
+    expect(docs[0]).toContain('ben borders');
+    expect(docs.indexOf('ben borders will assume the role of principal accounting officer')).toBeLessThan(
+      docs.indexOf('table of contents item 14 principal accountant fees')
+    );
+  });
+
+  it('leads with the best seed window even when it sits late in the document (with neighbors)', async () => {
+    const vectorResults = [
+      {
+        id: '1:2',
+        document: 'toc item 14 principal accountant fees and services',
+        embedding: [1, 0],
+        similarity: 0.44,
+        metadata: { documentId: 1, name: 'AppleK' },
+      },
+      {
+        id: '1:20',
+        document: 'item 9b ben borders will assume principal accounting officer',
+        embedding: [0, 1],
+        similarity: 0.5,
+        metadata: { documentId: 1, name: 'AppleK' },
+      },
+    ];
+    const vectorsById = {
+      '1:1': {
+        id: '1:1',
+        document: 'toc neighbor before',
+        embedding: [1, 0],
+        metadata: JSON.stringify({ documentId: 1, name: 'AppleK' }),
+      },
+      '1:3': {
+        id: '1:3',
+        document: 'toc neighbor after',
+        embedding: [1, 0],
+        metadata: JSON.stringify({ documentId: 1, name: 'AppleK' }),
+      },
+      '1:19': {
+        id: '1:19',
+        document: 'item 9b neighbor before',
+        embedding: [0, 1],
+        metadata: JSON.stringify({ documentId: 1, name: 'AppleK' }),
+      },
+      '1:21': {
+        id: '1:21',
+        document: 'item 9b neighbor after',
+        embedding: [0, 1],
+        metadata: JSON.stringify({ documentId: 1, name: 'AppleK' }),
+      },
+    };
+    mockKeywordSearch.mockResolvedValue([
+      { chunkId: '1:20', documentId: 1, score: -1 },
+      { chunkId: '1:2', documentId: 1, score: -1.1 },
+    ]);
+
+    const result = await hybridRetrieve({
+      prompt: 'who becomes principal accounting officer',
+      enabledSourceIds: [1],
+      vectorStore: makeVectorStore(vectorResults, vectorsById),
+      sourceNamesById: new Map(),
+      embeddings: null,
+    });
+
+    const docs = result.map((c) => c.document);
+    const lastNine = Math.max(
+      docs.indexOf('item 9b neighbor before'),
+      docs.indexOf('item 9b ben borders will assume principal accounting officer'),
+      docs.indexOf('item 9b neighbor after')
+    );
+    const firstToc = Math.min(
+      docs.indexOf('toc neighbor before'),
+      docs.indexOf('toc item 14 principal accountant fees and services'),
+      docs.indexOf('toc neighbor after')
+    );
+    expect(lastNine).toBeLessThan(firstToc);
+  });
+
   it('expands a selected chunk with its same-document neighbors, in order', async () => {
     const vectorResults = [
       {

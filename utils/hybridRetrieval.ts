@@ -5,6 +5,7 @@ import { extractQueryTerms, stemPrefix } from './queryTerms';
 import { keywordSearch } from '../database/keywordIndex';
 import { type ContextChunk, sourceKey } from './contextUtils';
 import {
+  adaptiveKeepCount,
   cosineSimilarity,
   maximalMarginalRelevance,
   reciprocalRankFusion,
@@ -12,11 +13,13 @@ import {
   type MMRCandidate,
 } from './rankFusion';
 import {
+  ADAPTIVE_K_MIN_KEEP,
   ATTACHMENT_RELEVANCE_BONUS,
   CANDIDATE_POOL,
   COVERAGE_ALPHA,
   KEYWORD_WEIGHT,
   LEXICAL_MATCH_MIN_SIMILARITY,
+  MAX_CHUNKS_PER_FILE,
   MAX_RELEVANT_CHUNKS,
   STRONG_SEMANTIC_THRESHOLD,
   VECTOR_WEIGHT,
@@ -165,10 +168,36 @@ const expandSelectedWithNeighbors = async (
   const result: ContextChunk[] = [];
   for (const key of groupOrder) {
     const group = groups.get(key)!;
-    const orderedIds = [...group.indices.entries()]
-      .filter(([id]) => chunkById.get(id)?.document)
-      .sort((a, b) => a[1] - b[1])
-      .map(([id]) => id);
+
+    // Order chunks as relevance-ranked windows: seeds most- to least-relevant,
+    // each emitting its [seed-1, seed, seed+1] run in document order (deduped),
+    // so the matched chunk leads and a later budget truncation trims the tail.
+    const seeds = [...group.indices.entries()]
+      .filter(([id]) => selectedSimilarity.has(id))
+      .sort(
+        (a, b) =>
+          (selectedSimilarity.get(b[0]) ?? 0) -
+            (selectedSimilarity.get(a[0]) ?? 0) || a[1] - b[1]
+      );
+
+    const emitted = new Set<string>();
+    const orderedIds: string[] = [];
+    for (const [seedId, seedIndex] of seeds) {
+      const parsed = parseChunkId(seedId);
+      const documentId = parsed?.documentId ?? group.documentId;
+      const windowIds = (
+        parsed
+          ? [seedIndex - 1, seedIndex, seedIndex + 1].map(
+              (idx) => `${documentId}:${idx}`
+            )
+          : [seedId]
+      ).filter((id) => group.indices.has(id));
+      for (const id of windowIds) {
+        if (emitted.has(id) || !chunkById.get(id)?.document) continue;
+        emitted.add(id);
+        orderedIds.push(id);
+      }
+    }
 
     for (const id of orderedIds) {
       const info = chunkById.get(id)!;
@@ -219,12 +248,22 @@ export const hybridRetrieve = async ({
   const terms = extractQueryTerms(prompt);
   const coverageTerms = new Set([...terms].map(stemPrefix));
 
+  // Isolate the vector query: without a usable embedding the store re-embeds and
+  // rejects, so catch here to degrade to keyword-only instead of returning nothing.
   const [vectorResults, keywordHits] = await Promise.all([
-    vectorStore.query({
-      ...(queryEmbedding ? { queryEmbedding } : { queryText: prompt }),
-      predicate: (r) => enabledSet.has(r.metadata?.documentId),
-      nResults: CANDIDATE_POOL,
-    }),
+    vectorStore
+      .query({
+        ...(queryEmbedding ? { queryEmbedding } : { queryText: prompt }),
+        predicate: (r) => enabledSet.has(r.metadata?.documentId),
+        nResults: CANDIDATE_POOL,
+      })
+      .catch((error) => {
+        console.warn(
+          'Vector query failed; degrading to keyword-only retrieval',
+          error
+        );
+        return [] as Awaited<ReturnType<typeof vectorStore.query>>;
+      }),
     keywordSearch(vectorStore.db, [...terms], enabledSourceIds, CANDIDATE_POOL),
   ]);
   const keywordIds = new Set(keywordHits.map((hit) => hit.chunkId));
@@ -297,27 +336,70 @@ export const hybridRetrieve = async ({
     Number.EPSILON
   );
 
+  const baseRelevanceById = new Map<string, number>();
   const mmrCandidates: MMRCandidate[] = qualified.map((candidate) => {
     const base = (fused.get(candidate.id) ?? 0) / maxFused;
     const coverage = coverageOf(candidate);
+    const baseRelevance = base * (1 + COVERAGE_ALPHA * coverage);
+    baseRelevanceById.set(candidate.id, baseRelevance);
     return {
       id: candidate.id,
       relevance:
-        base * (1 + COVERAGE_ALPHA * coverage) +
+        baseRelevance +
         (isAttachment(candidate.documentId) ? ATTACHMENT_RELEVANCE_BONUS : 0),
       embedding: candidate.embedding,
     };
   });
 
-  const selected = maximalMarginalRelevance(mmrCandidates, MAX_RELEVANT_CHUNKS);
+  // Cap chunks per document only when the pool spans several documents, so one
+  // long or freshly-attached file can't evict every other enabled source.
+  const distinctDocs = new Set(qualified.map((c) => c.documentId)).size;
+  const selected = maximalMarginalRelevance(
+    mmrCandidates,
+    MAX_RELEVANT_CHUNKS,
+    undefined,
+    distinctDocs > 1
+      ? {
+          groupOf: (candidate) => {
+            const documentId = byId.get(candidate.id)?.documentId;
+            return typeof documentId === 'number'
+              ? String(documentId)
+              : undefined;
+          },
+          maxPerGroup: MAX_CHUNKS_PER_FILE,
+        }
+      : undefined
+  );
+
+  // Adaptive-k on the non-attachment tail: drop chunks past the first large
+  // relevance gap so a weak distractor never reaches the small reader.
+  // Attachment chunks are always kept — they are the explicit subject of the turn.
+  const nonAttachmentByRelevance = selected
+    .filter((item) => !isAttachment(byId.get(item.id)?.documentId))
+    .sort(
+      (a, b) =>
+        (baseRelevanceById.get(b.id) ?? 0) - (baseRelevanceById.get(a.id) ?? 0)
+    );
+  const keepCount = adaptiveKeepCount(
+    nonAttachmentByRelevance.map((item) => baseRelevanceById.get(item.id) ?? 0),
+    ADAPTIVE_K_MIN_KEEP
+  );
+  const keptNonAttachmentIds = new Set(
+    nonAttachmentByRelevance.slice(0, keepCount).map((item) => item.id)
+  );
+  const kept = selected.filter(
+    (item) =>
+      isAttachment(byId.get(item.id)?.documentId) ||
+      keptNonAttachmentIds.has(item.id)
+  );
 
   const ordered = attachmentSet.size
-    ? [...selected].sort(
+    ? [...kept].sort(
         (a, b) =>
           Number(isAttachment(byId.get(b.id)?.documentId)) -
           Number(isAttachment(byId.get(a.id)?.documentId))
       )
-    : selected;
+    : kept;
 
   return expandSelectedWithNeighbors(
     ordered.map((item) => item.id),
