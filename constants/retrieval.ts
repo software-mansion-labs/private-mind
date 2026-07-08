@@ -37,3 +37,6 @@ export const LEXICAL_MATCH_MIN_SIMILARITY = 0.1;
 
 export const TEXT_SPLITTER_CHUNK_SIZE = 1000;
 export const TEXT_SPLITTER_CHUNK_OVERLAP = 200;
+
+/** Min matched run to treat as overlap when stitching passages — below the splitter overlap, above coincidental repetition. */
+export const MIN_STITCH_OVERLAP = 24;

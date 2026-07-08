@@ -1,3 +1,5 @@
+import { MIN_STITCH_OVERLAP } from '../constants/retrieval';
+
 export type ContextChunk = {
   document?: string;
   similarity: number;
@@ -64,11 +66,30 @@ const groupChunksByDocument = (chunks: ContextChunk[]): DocumentGroup[] => {
   return order.map((key) => groups.get(key)!);
 };
 
-const joinGroupPassages = (group: DocumentGroup): string =>
-  group.chunks
+// Drop the leading part of `next` that repeats the tail of `prev`, longest match first.
+const stripLeadingOverlap = (prev: string, next: string): string => {
+  const max = Math.min(prev.length, next.length);
+  for (let len = max; len >= MIN_STITCH_OVERLAP; len--) {
+    if (prev.slice(prev.length - len) === next.slice(0, len)) {
+      return next.slice(len);
+    }
+  }
+  return next;
+};
+
+const joinGroupPassages = (group: DocumentGroup): string => {
+  const passages = group.chunks
     .map((chunk) => chunk.document?.trim() ?? '')
-    .filter(Boolean)
-    .join('\n\n');
+    .filter(Boolean);
+  if (passages.length === 0) return '';
+
+  let stitched = passages[0]!;
+  for (let i = 1; i < passages.length; i++) {
+    const deduped = stripLeadingOverlap(stitched, passages[i]!).trimStart();
+    if (deduped) stitched += `\n\n${deduped}`;
+  }
+  return stitched;
+};
 
 export const formatContextChunks = (chunks: ContextChunk[]): string[] =>
   groupChunksByDocument(chunks).map(
