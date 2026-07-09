@@ -18,7 +18,7 @@ import { Feedback } from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { getGenerationConfigForModel } from '../constants/default-models';
 
-interface LLMStore {
+export interface LLMStore {
   isLoading: boolean;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -39,12 +39,14 @@ interface LLMStore {
   sendChatMessage: (
     newMessage: string,
     chatId: number,
-    context: string[],
+    buildSources: () => Promise<{
+      context: string[];
+      sourceDocuments?: SourceDocument[];
+      preferredSourceDocuments?: SourceDocument[];
+    }>,
     settings: ChatSettings,
     imagePath?: string,
-    documentName?: string,
-    sourceDocuments?: SourceDocument[],
-    preferredSourceDocuments?: SourceDocument[]
+    documentName?: string
   ) => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   interrupt: () => void;
@@ -126,6 +128,7 @@ const updateChatStateForGeneration = (
       set({
         isProcessingPrompt: true,
         generatingForChatId: data?.chatId,
+        ...(data?.chatId !== undefined ? { activeChatId: data.chatId } : {}),
         activeChatMessages: data?.activeChatMessages,
       });
       break;
@@ -352,12 +355,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   sendChatMessage: async (
     newMessage,
     chatId,
-    context,
+    buildSources,
     settings,
     imagePath,
-    documentName,
-    sourceDocuments,
-    preferredSourceDocuments
+    documentName
   ) => {
     const { db, model: currentModel, activeChatMessages } = get();
     if (!db || !currentModel) {
@@ -365,35 +366,50 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       return;
     }
 
+    const tempUserId = -Date.now();
+    const userMessage: Message = {
+      id: tempUserId,
+      role: 'user',
+      content: newMessage,
+      chatId,
+      timestamp: Date.now(),
+      imagePath,
+      documentName,
+    };
+    const assistantPlaceholder: Message = {
+      role: 'assistant',
+      content: '',
+      modelName: currentModel.modelName,
+      chatId: chatId,
+      timestamp: Date.now(),
+      id: -1,
+    };
+
+    updateChatStateForGeneration(set, 'start', {
+      chatId,
+      activeChatMessages: [
+        ...activeChatMessages,
+        userMessage,
+        assistantPlaceholder,
+      ],
+    });
+
     try {
-      const userMessage: Omit<Message, 'id'> = {
+      const userMessageId = await persistMessage(db, {
         role: 'user',
         content: newMessage,
         chatId,
-        timestamp: Date.now(),
         imagePath,
         documentName,
-      };
-      const assistantPlaceholder: Message = {
-        role: 'assistant',
-        content: '',
-        modelName: currentModel.modelName,
-        chatId: chatId,
-        timestamp: Date.now(),
-        id: -1,
-        sourceDocuments,
-      };
-      const userMessageId = await persistMessage(db, userMessage);
-      const updatedChatMessages = [
-        ...activeChatMessages,
-        { ...userMessage, id: userMessageId },
-        assistantPlaceholder,
-      ];
-
-      updateChatStateForGeneration(set, 'start', {
-        chatId,
-        activeChatMessages: updatedChatMessages,
       });
+      set((state) => ({
+        activeChatMessages: state.activeChatMessages.map((msg) =>
+          msg.id === tempUserId ? { ...msg, id: userMessageId } : msg
+        ),
+      }));
+
+      const { context, sourceDocuments, preferredSourceDocuments } =
+        await buildSources();
 
       const messagesWithSystemPrompt = prepareMessagesForLLM(
         get().activeChatMessages,
@@ -420,6 +436,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         await persistMessage(db, {
           ...assistantPlaceholder,
           content: finalResponse,
+          sourceDocuments,
           tokensPerSecond: responsePerformance.tokensPerSecond,
           timeToFirstToken: responsePerformance.timeToFirstToken,
         });

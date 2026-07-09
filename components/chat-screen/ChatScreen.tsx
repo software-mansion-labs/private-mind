@@ -76,7 +76,6 @@ export default function ChatScreen({
     isGenerating,
     sendChatMessage,
     loadModel,
-    setActiveChatId,
     model: loadedModel,
   } = useLLMStore();
   const { getModelById } = useModelStore();
@@ -138,7 +137,8 @@ export default function ChatScreen({
       return;
 
     let targetChatId = chatId!;
-    if (!(await checkIfChatExists(db, targetChatId))) {
+    const isNewChat = !(await checkIfChatExists(db, targetChatId));
+    if (isNewChat) {
       const docName = attachments?.find((a) => a.type === 'document')?.name;
       const titleSource = userInput.trim() || docName || 'New chat';
       const newChatTitle =
@@ -147,10 +147,7 @@ export default function ChatScreen({
           : titleSource;
       const newChatId = await addChat(newChatTitle, model!.id);
       if (!newChatId) return;
-
       targetChatId = newChatId;
-      await setActiveChatId(targetChatId);
-      router.replace(`/chat/${targetChatId}`);
     }
 
     let persistedImagePath: string | undefined = imagePath;
@@ -177,51 +174,10 @@ export default function ChatScreen({
     // https://vercel.com/blog/how-we-built-the-v0-ios-app
     messagesRef.current?.onMessageSent();
 
-    // Resolve which attachment sources actually exist, then build the RAG
-    // context + citations for this turn (see utils/messageSources).
-    const allSources = useSourceStore.getState().sources;
-    const existingSourceIds = new Set(allSources.map((source) => source.id));
-    const attachmentSourceIds = (attachments || [])
-      .filter((a) => a.type === 'document' && a.sourceId)
-      .map((a) => a.sourceId!)
-      .filter((sourceId) => {
-        const exists = existingSourceIds.has(sourceId);
-        if (!exists) {
-          console.warn('Skipping missing attachment source before send', {
-            chatId: targetChatId,
-            sourceId,
-          });
-        }
-        return exists;
-      });
-
-    let context: string[] = [];
-    let sourceDocuments: SourceDocument[] = [];
-    let preferredSourceDocuments: SourceDocument[] = [];
-    if (vectorStore) {
-      ({ context, sourceDocuments, preferredSourceDocuments } =
-        await buildMessageSources({
-          userInput,
-          attachmentSourceIds,
-          enabledSources,
-          sources: allSources,
-          vectorStore,
-          embeddings,
-        }));
-    }
-
-    // Enable new sources for this chat (persists for future messages)
-    for (const sourceId of attachmentSourceIds) {
-      if (!enabledSources.includes(sourceId)) {
-        await enableSource(targetChatId, sourceId);
-      }
-    }
-
     const settings: ChatSettings = {
       systemPrompt: chatSettings.systemPrompt,
       thinkingEnabled: chatSettings.thinkingEnabled,
     };
-
     const docAttachments =
       attachments?.filter((a) => a.type === 'document') || [];
     const docName =
@@ -229,16 +185,64 @@ export default function ChatScreen({
         .map((a) => a.name)
         .filter(Boolean)
         .join(', ') || undefined;
-    await sendChatMessage(
+
+    // Deferred so retrieval runs only after the optimistic message is on screen.
+    const buildSources = async () => {
+      const allSources = useSourceStore.getState().sources;
+      const existingSourceIds = new Set(allSources.map((source) => source.id));
+      const attachmentSourceIds = (attachments || [])
+        .filter((a) => a.type === 'document' && a.sourceId)
+        .map((a) => a.sourceId!)
+        .filter((sourceId) => {
+          const exists = existingSourceIds.has(sourceId);
+          if (!exists) {
+            console.warn('Skipping missing attachment source before send', {
+              chatId: targetChatId,
+              sourceId,
+            });
+          }
+          return exists;
+        });
+
+      let context: string[] = [];
+      let sourceDocuments: SourceDocument[] = [];
+      let preferredSourceDocuments: SourceDocument[] = [];
+      if (vectorStore) {
+        ({ context, sourceDocuments, preferredSourceDocuments } =
+          await buildMessageSources({
+            userInput,
+            attachmentSourceIds,
+            enabledSources,
+            sources: allSources,
+            vectorStore,
+            embeddings,
+          }));
+      }
+
+      // Enable new sources for this chat (persists for future messages)
+      for (const sourceId of attachmentSourceIds) {
+        if (!enabledSources.includes(sourceId)) {
+          await enableSource(targetChatId, sourceId);
+        }
+      }
+
+      return { context, sourceDocuments, preferredSourceDocuments };
+    };
+
+    const generation = sendChatMessage(
       userInput,
       targetChatId,
-      context,
+      buildSources,
       settings,
       persistedImagePath,
-      docName,
-      sourceDocuments,
-      preferredSourceDocuments
+      docName
     );
+
+    if (isNewChat) {
+      router.replace(`/chat/${targetChatId}`);
+    }
+
+    await generation;
   };
 
   const handleSelectModel = async (selectedModel: Model) => {
