@@ -11,6 +11,12 @@ import {
 import { hybridRetrieve } from './hybridRetrieval';
 import { extractQueryTerms, stemPrefix } from './queryTerms';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
+import {
+  NO_ANSWER_PATTERNS_EN,
+  NO_ANSWER_PATTERNS_PL,
+  THINK_CLOSE,
+  THINK_OPEN,
+} from '../constants/citations';
 
 export interface SourceRow {
   id: number;
@@ -105,6 +111,36 @@ const overlapWithAnswer = (
   return overlap;
 };
 
+// Attribute against the visible reply only; the <think> block surveys every source and inflates overlap.
+export const visibleAnswer = (answer: string): string => {
+  const open = answer.indexOf(THINK_OPEN);
+  if (open === -1) return answer;
+  const close = answer.indexOf(THINK_CLOSE);
+  const after = close === -1 ? '' : answer.slice(close + THINK_CLOSE.length);
+  return `${answer.slice(0, open)} ${after}`;
+};
+
+const answerTermsOf = (answer: string): Set<string> =>
+  new Set([...extractQueryTerms(visibleAnswer(answer))].map(stemPrefix));
+
+// True when the visible reply is an EN/PL "no information" refusal (negation tied to a coverage noun).
+export const looksLikeNoAnswer = (visibleReply: string): boolean =>
+  [...NO_ANSWER_PATTERNS_EN, ...NO_ANSWER_PATTERNS_PL].some((pattern) =>
+    pattern.test(visibleReply)
+  );
+
+// Compact per-document overlap for logs: `name:overlap` per candidate, so a surprising citation set is diagnosable.
+export const answerCitationOverlaps = (
+  sourceDocuments: SourceDocument[],
+  answer: string
+): string[] => {
+  const answerTerms = answerTermsOf(answer);
+  return sourceDocuments.map(
+    (doc) =>
+      `${doc.name}:${overlapWithAnswer(`${doc.name} ${doc.passage ?? ''}`, answerTerms)}`
+  );
+};
+
 export const pickCitationsByAnswer = (
   sourceDocuments: SourceDocument[],
   answer: string,
@@ -112,18 +148,28 @@ export const pickCitationsByAnswer = (
 ): SourceDocument[] => {
   if (sourceDocuments.length <= 1) return sourceDocuments;
 
-  const answerTerms = new Set([...extractQueryTerms(answer)].map(stemPrefix));
-  if (answerTerms.size === 0) return sourceDocuments;
-
   const preferredNames = new Set(preferred.map((doc) => doc.name));
+
+  // A refusal cites nothing but a freshly-attached subject, even when it describes the sources.
+  if (looksLikeNoAnswer(visibleAnswer(answer))) {
+    return sourceDocuments.filter((doc) => preferredNames.has(doc.name));
+  }
+
+  const answerTerms = answerTermsOf(answer);
   const scored = sourceDocuments.map((doc) => ({
     doc,
     isPreferred: preferredNames.has(doc.name),
-    overlap: overlapWithAnswer(`${doc.name} ${doc.passage ?? ''}`, answerTerms),
+    overlap: answerTerms.size
+      ? overlapWithAnswer(`${doc.name} ${doc.passage ?? ''}`, answerTerms)
+      : 0,
   }));
 
   const maxOverlap = Math.max(0, ...scored.map((s) => s.overlap));
-  if (maxOverlap === 0) return sourceDocuments;
+
+  // Reply echoes no candidate → not grounded in any; keep only a freshly-attached source, cite nothing else.
+  if (maxOverlap === 0) {
+    return scored.filter((s) => s.isPreferred).map((s) => s.doc);
+  }
 
   return scored
     .filter(
