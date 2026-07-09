@@ -35,8 +35,13 @@ export const STRONG_SEMANTIC_THRESHOLD = 0.55;
 /** Min cosine to qualify via lexical overlap (paired with non-zero term coverage). */
 export const LEXICAL_MATCH_MIN_SIMILARITY = 0.1;
 
+/** After generation, cite a non-attachment document only if its answer↔passage term overlap is at least this fraction of the strongest cited document's — attributes the reply to the source(s) it was actually based on. */
+export const ANSWER_CITATION_OVERLAP_RATIO = 0.5;
+
 export const TEXT_SPLITTER_CHUNK_SIZE = 1000;
 export const TEXT_SPLITTER_CHUNK_OVERLAP = 200;
 
 /** Min matched run to treat as overlap when stitching passages — below the splitter overlap, above coincidental repetition. */
 export const MIN_STITCH_OVERLAP = 24;
+
+export const SOURCE_HEADER = /--- [^:]+: (.+?) ---/g;

@@ -16,6 +16,10 @@ import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
 import { Feedback } from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
+import {
+  pickCitationsByAnswer,
+  restrictCitationsToContext,
+} from '../utils/messageSources';
 import { getGenerationConfigForModel } from '../constants/default-models';
 
 export interface LLMStore {
@@ -418,6 +422,17 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         currentModel,
         preferredSourceDocuments
       );
+      const lastPreparedMessage = messagesWithSystemPrompt.at(-1);
+      const lastPreparedContent =
+        typeof lastPreparedMessage?.content === 'string'
+          ? lastPreparedMessage.content
+          : JSON.stringify(lastPreparedMessage?.content ?? '');
+
+      const seenSourceDocuments = restrictCitationsToContext(
+        sourceDocuments ?? [],
+        lastPreparedContent,
+        preferredSourceDocuments ?? []
+      );
 
       await waitForModelLoad(get);
 
@@ -433,10 +448,15 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         await generateLLMResponse(messagesWithSystemPrompt, get);
       // Handle successful response
       if (finalResponse) {
+        const citedSourceDocuments = pickCitationsByAnswer(
+          seenSourceDocuments,
+          finalResponse,
+          preferredSourceDocuments ?? []
+        );
         await persistMessage(db, {
           ...assistantPlaceholder,
           content: finalResponse,
-          sourceDocuments,
+          sourceDocuments: citedSourceDocuments,
           tokensPerSecond: responsePerformance.tokensPerSecond,
           timeToFirstToken: responsePerformance.timeToFirstToken,
         });
@@ -447,7 +467,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             tokensPerSecond: responsePerformance.tokensPerSecond,
             finalAssistantMessage: {
               content: finalResponse,
-              sourceDocuments,
+              sourceDocuments: citedSourceDocuments,
             },
           });
         } else {
