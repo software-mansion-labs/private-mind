@@ -15,6 +15,7 @@ import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
 import { Feedback } from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
+import { useSettingsStore } from './settingsStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
 
 interface LLMStore {
@@ -391,7 +392,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         get().activeChatMessages,
         context,
         settings,
-        currentModel
+        currentModel,
+        useSettingsStore.getState().customSystemPrompt
       );
 
       await waitForModelLoad(get);

@@ -1,5 +1,6 @@
 import { ChatSettings, Message } from '../database/chatRepository';
 import { Model } from '../database/modelRepository';
+import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 
 const CONTEXT_INSTRUCTION = `
@@ -18,9 +19,18 @@ export const prepareMessagesForLLM = (
   activeChatMessages: Message[],
   context: string[],
   settings: ChatSettings,
-  model: Model
+  model: Model,
+  globalSystemPrompt: string = ''
 ): ExecutorchMessage[] => {
   let systemPrompt = settings.systemPrompt;
+
+  const trimmedGlobalPrompt = globalSystemPrompt.trim();
+  if (trimmedGlobalPrompt) {
+    const guardedGlobalPrompt = `${CUSTOM_PROMPT_GUARD}\n\n${trimmedGlobalPrompt}`;
+    systemPrompt = systemPrompt
+      ? `${systemPrompt}\n\n${guardedGlobalPrompt}`
+      : guardedGlobalPrompt;
+  }
 
   if (context.length > 0) {
     systemPrompt += CONTEXT_INSTRUCTION;
