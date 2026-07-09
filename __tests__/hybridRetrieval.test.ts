@@ -330,7 +330,8 @@ describe('hybridRetrieve', () => {
       },
       {
         id: '1:20',
-        document: 'ben borders will assume the role of principal accounting officer',
+        document:
+          'ben borders will assume the role of principal accounting officer',
         embedding: [0, 1],
         similarity: 0.9,
         metadata: { documentId: 1, name: 'AppleK' },
@@ -354,7 +355,11 @@ describe('hybridRetrieve', () => {
       'ben borders will assume the role of principal accounting officer'
     );
     expect(docs[0]).toContain('ben borders');
-    expect(docs.indexOf('ben borders will assume the role of principal accounting officer')).toBeLessThan(
+    expect(
+      docs.indexOf(
+        'ben borders will assume the role of principal accounting officer'
+      )
+    ).toBeLessThan(
       docs.indexOf('table of contents item 14 principal accountant fees')
     );
   });
@@ -370,7 +375,8 @@ describe('hybridRetrieve', () => {
       },
       {
         id: '1:20',
-        document: 'item 9b ben borders will assume principal accounting officer',
+        document:
+          'item 9b ben borders will assume principal accounting officer',
         embedding: [0, 1],
         similarity: 0.5,
         metadata: { documentId: 1, name: 'AppleK' },
@@ -418,7 +424,9 @@ describe('hybridRetrieve', () => {
     const docs = result.map((c) => c.document);
     const lastNine = Math.max(
       docs.indexOf('item 9b neighbor before'),
-      docs.indexOf('item 9b ben borders will assume principal accounting officer'),
+      docs.indexOf(
+        'item 9b ben borders will assume principal accounting officer'
+      ),
       docs.indexOf('item 9b neighbor after')
     );
     const firstToc = Math.min(

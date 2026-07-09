@@ -333,7 +333,9 @@ describe('sendChatMessage', () => {
       activeChatMessages: [],
     });
 
-    await useLLMStore.getState().sendChatMessage('hello', 1, noSources, settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
 
     expect(mockPersistMessage).toHaveBeenCalledTimes(2);
     expect(mockPersistMessage).toHaveBeenCalledWith(
@@ -356,7 +358,9 @@ describe('sendChatMessage', () => {
       activeChatMessages: [],
     });
 
-    await useLLMStore.getState().sendChatMessage('hello', 1, noSources, settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
 
     expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
     expect(useLLMStore.getState().isGenerating).toBe(false);
@@ -374,7 +378,9 @@ describe('sendChatMessage', () => {
       activeChatMessages: [],
     });
 
-    await useLLMStore.getState().sendChatMessage('ping', 1, noSources, settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('ping', 1, noSources, settings);
 
     expect(messagesBeforeGenerate).toHaveLength(2);
     expect(messagesBeforeGenerate[0].role).toBe('user');
@@ -390,7 +396,9 @@ describe('sendChatMessage', () => {
       activeChatMessages: [],
     });
 
-    await useLLMStore.getState().sendChatMessage('hello', 1, noSources, settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
 
     expect(useLLMStore.getState().isGenerating).toBe(false);
     expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
@@ -406,7 +414,9 @@ describe('sendChatMessage', () => {
       activeChatMessages: [],
     });
 
-    await useLLMStore.getState().sendChatMessage('hello', 1, noSources, settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
 
     expect(useLLMStore.getState().isGenerating).toBe(false);
     expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
@@ -423,7 +433,9 @@ describe('sendChatMessage', () => {
       activeChatMessages: [],
     });
 
-    await useLLMStore.getState().sendChatMessage('hello', 1, noSources, settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
 
     // complete called without perf data — last message should not have timeToFirstToken
     const messages = useLLMStore.getState().activeChatMessages;
@@ -533,7 +545,13 @@ describe('sendChatMessage imagePath', () => {
   it('passes imagePath to persistMessage for user message when provided', async () => {
     await useLLMStore
       .getState()
-      .sendChatMessage('What is this?', 1, noSources, settings, '/local/image.jpg');
+      .sendChatMessage(
+        'What is this?',
+        1,
+        noSources,
+        settings,
+        '/local/image.jpg'
+      );
 
     expect(mockPersistMessage).toHaveBeenCalledWith(
       expect.anything(),
@@ -542,7 +560,9 @@ describe('sendChatMessage imagePath', () => {
   });
 
   it('passes undefined imagePath to persistMessage when not provided', async () => {
-    await useLLMStore.getState().sendChatMessage('Hello', 1, noSources, settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('Hello', 1, noSources, settings);
 
     expect(mockPersistMessage).toHaveBeenCalledWith(
       expect.anything(),
@@ -561,7 +581,13 @@ describe('sendChatMessage imagePath', () => {
 
     await useLLMStore
       .getState()
-      .sendChatMessage('What is this?', 1, noSources, settings, '/local/image.jpg');
+      .sendChatMessage(
+        'What is this?',
+        1,
+        noSources,
+        settings,
+        '/local/image.jpg'
+      );
 
     expect(mockInstance.generate).toHaveBeenCalledTimes(1);
     const calledMessages = mockInstance.generate.mock.calls[0][0];

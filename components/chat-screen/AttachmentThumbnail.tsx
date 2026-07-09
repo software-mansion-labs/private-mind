@@ -1,10 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Image,
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  Animated,
+  Easing,
   StyleSheet,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
@@ -13,6 +15,7 @@ import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import CloseIcon from '../../assets/icons/close.svg';
 import AttachmentIcon from '../../assets/icons/attachment.svg';
 import { Attachment } from '../../hooks/useAttachment';
+import { ATTACHMENT_PROGRESS_TRACK_WIDTH } from '../../constants/chat';
 
 interface Props {
   attachment: Attachment;
@@ -23,11 +26,40 @@ const AttachmentThumbnail = ({ attachment, onRemove }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
+  const fill = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (attachment.progress == null) return;
+    Animated.timing(fill, {
+      toValue: attachment.progress * ATTACHMENT_PROGRESS_TRACK_WIDTH,
+      duration: 250,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [attachment.progress, fill]);
+
   const renderContent = () => {
     if (attachment.status === 'loading') {
+      if (attachment.progress == null) {
+        return (
+          <View style={styles.placeholder}>
+            <ActivityIndicator color={theme.text.primary} />
+          </View>
+        );
+      }
+
       return (
-        <View style={styles.placeholder}>
-          <ActivityIndicator color={theme.text.primary} />
+        <View style={styles.docThumbnail}>
+          <AttachmentIcon
+            width={18}
+            height={18}
+            style={{ color: theme.text.primary }}
+          />
+          <Text style={styles.percentText}>
+            {Math.round(attachment.progress * 100)}%
+          </Text>
+          <View style={styles.progressTrack}>
+            <Animated.View style={[styles.progressFill, { width: fill }]} />
+          </View>
         </View>
       );
     }
@@ -106,6 +138,24 @@ const createStyles = (theme: Theme) =>
       color: theme.text.primary,
       maxWidth: 60,
       textAlign: 'center',
+    },
+    percentText: {
+      fontSize: fontSizes.sm,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
+      fontVariant: ['tabular-nums'],
+    },
+    progressTrack: {
+      width: ATTACHMENT_PROGRESS_TRACK_WIDTH,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.bg.softSecondary,
+      overflow: 'hidden',
+    },
+    progressFill: {
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.bg.strongPrimary,
     },
     dismissButton: {
       position: 'absolute',

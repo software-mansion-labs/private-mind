@@ -112,9 +112,7 @@ export const pickCitationsByAnswer = (
 ): SourceDocument[] => {
   if (sourceDocuments.length <= 1) return sourceDocuments;
 
-  const answerTerms = new Set(
-    [...extractQueryTerms(answer)].map(stemPrefix)
-  );
+  const answerTerms = new Set([...extractQueryTerms(answer)].map(stemPrefix));
   if (answerTerms.size === 0) return sourceDocuments;
 
   const preferredNames = new Set(preferred.map((doc) => doc.name));
@@ -130,8 +128,7 @@ export const pickCitationsByAnswer = (
   return scored
     .filter(
       (s) =>
-        s.isPreferred ||
-        s.overlap >= maxOverlap * ANSWER_CITATION_OVERLAP_RATIO
+        s.isPreferred || s.overlap >= maxOverlap * ANSWER_CITATION_OVERLAP_RATIO
     )
     .map((s) => s.doc);
 };
