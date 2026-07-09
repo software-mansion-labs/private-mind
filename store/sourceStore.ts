@@ -33,8 +33,14 @@ interface SourceStore {
     source: Omit<Source, 'id'>,
     sourceUri: string,
     vectorStore: OPSQLiteVectorStore,
-    embeddings?: LFMEmbeddings | null
-  ) => Promise<{ success: boolean; isEmpty?: boolean; sourceId?: number }>;
+    embeddings?: LFMEmbeddings | null,
+    onProgress?: (progress: number) => void
+  ) => Promise<{
+    success: boolean;
+    isEmpty?: boolean;
+    reason?: 'scanned_pdf';
+    sourceId?: number;
+  }>;
   setSourceProcessing: (id: number, isProcessing: boolean) => void;
   deleteSource: (source: Source) => Promise<void>;
   renameSource: (id: number, newName: string) => Promise<void>;
@@ -61,7 +67,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     }
   },
 
-  addSource: async (source, sourceUri, vectorStore, embeddings) => {
+  addSource: async (source, sourceUri, vectorStore, embeddings, onProgress) => {
     const db = get().db;
     if (!db) return { success: false };
 
@@ -72,7 +78,12 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
       const sourceTextContent = await readDocumentText(sourceUri, source.type);
 
       if (!sourceTextContent || sourceTextContent.trim().length === 0) {
-        return { success: false, isEmpty: true };
+        const isScannedPdf = source.type.toLowerCase() === 'pdf';
+        return {
+          success: false,
+          isEmpty: true,
+          ...(isScannedPdf ? { reason: 'scanned_pdf' as const } : {}),
+        };
       }
 
       const tempSource: Source = { ...source, id: tempId, isProcessing: true };
@@ -95,6 +106,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         return { success: false };
       }
 
+      onProgress?.(0);
       for (let i = 0; i < chunks.length; i++) {
         const embedding = embeddings
           ? await embeddings.embedDocument(chunks[i]!)
@@ -119,8 +131,8 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
             chunks[i]!
           );
         }
+        onProgress?.((i + 1) / chunks.length);
       }
-
       set((state) => ({
         sources: state.sources.map((s) =>
           s.id === tempId

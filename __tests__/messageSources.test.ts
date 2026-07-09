@@ -53,7 +53,11 @@ describe('mergeAttachmentFirst', () => {
 });
 
 describe('assembleSourceDocuments', () => {
-  const source = (id: number, name: string, firstChunk?: string): SourceRow => ({
+  const source = (
+    id: number,
+    name: string,
+    firstChunk?: string
+  ): SourceRow => ({
     id,
     name,
     firstChunk,
@@ -163,7 +167,11 @@ describe('pickCitationsByAnswer', () => {
 
   it('cites only the source the answer actually echoes', () => {
     const cited = [
-      withPassage(22, 'sample.html', 'The quarterly revenue report and profit summary.'),
+      withPassage(
+        22,
+        'sample.html',
+        'The quarterly revenue report and profit summary.'
+      ),
       withPassage(24, 'sample.csv', 'employee,vacation,days\nAnna,urlop,26'),
     ];
     const answer = 'Anna ma 26 dni urlopu według danych o pracownikach.';
@@ -175,7 +183,11 @@ describe('pickCitationsByAnswer', () => {
 
   it('keeps both sources when the answer draws on each', () => {
     const cited = [
-      withPassage(1, 'revenue.txt', 'Total revenue grew to five million dollars.'),
+      withPassage(
+        1,
+        'revenue.txt',
+        'Total revenue grew to five million dollars.'
+      ),
       withPassage(2, 'headcount.txt', 'The company hired forty new engineers.'),
     ];
     const answer =
@@ -189,7 +201,11 @@ describe('pickCitationsByAnswer', () => {
   it('never drops the freshly-attached source the answer does not echo', () => {
     const cited = [
       withPassage(1, 'other.txt', 'Revenue grew to five million dollars.'),
-      withPassage(2, 'attachment.txt', 'Completely unrelated attached content.'),
+      withPassage(
+        2,
+        'attachment.txt',
+        'Completely unrelated attached content.'
+      ),
     ];
     const answer = 'Revenue grew to five million dollars.';
 

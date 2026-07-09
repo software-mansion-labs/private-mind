@@ -78,6 +78,22 @@ describe('addSource', () => {
     expect(useSourceStore.getState().isReading).toBe(false);
   });
 
+  it('flags a PDF with no extractable text as scanned', async () => {
+    mockReadDocumentText.mockResolvedValue('');
+    const result = await useSourceStore
+      .getState()
+      .addSource(
+        { name: 'scan.pdf', type: 'pdf', size: 100 },
+        '/path/scan.pdf',
+        mockVectorStore
+      );
+    expect(result).toEqual({
+      success: false,
+      isEmpty: true,
+      reason: 'scanned_pdf',
+    });
+  });
+
   it('sets isReading to true during processing then false on success', async () => {
     mockReadDocumentText.mockResolvedValue('some content');
     mockInsertSource.mockResolvedValue(42);

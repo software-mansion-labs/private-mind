@@ -365,7 +365,9 @@ describe('prepareMessagesForLLM', () => {
         { id: 1, chatId: 1, role: 'user', content: 'question', timestamp: 0 },
         { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
       ];
-      const hugeContext = 'y'.repeat(getPromptCharBudget(baseModel) * 2 + 10000);
+      const hugeContext = 'y'.repeat(
+        getPromptCharBudget(baseModel) * 2 + 10000
+      );
 
       const result = prepareMessagesForLLM(
         messages,

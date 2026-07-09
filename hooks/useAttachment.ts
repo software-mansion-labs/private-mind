@@ -7,6 +7,7 @@ import Toast from 'react-native-toast-message';
 import { useSourceStore } from '../store/sourceStore';
 import { useVectorStore } from '../context/VectorStoreContext';
 import { useEmbeddingModelStore } from '../store/embeddingModelStore';
+import { documentErrorMessage } from '../utils/documentErrorMessage';
 
 export interface Attachment {
   id: string;
@@ -15,6 +16,7 @@ export interface Attachment {
   name?: string;
   status: 'loading' | 'ready';
   sourceId?: number;
+  progress?: number;
 }
 
 interface ClearAllOptions {
@@ -158,11 +160,27 @@ export const useAttachment = () => {
         size: asset.size || null,
       };
       const { addSource } = useSourceStore.getState();
+      let lastPercent = -1;
+      const handleProgress = (progress: number) => {
+        const percent = Math.round(progress * 100);
+        if (percent === lastPercent) return;
+        lastPercent = percent;
+        if (
+          attachmentRequestRef.current !== requestId ||
+          currentDocumentAttachmentIdRef.current !== attachmentId
+        ) {
+          return;
+        }
+        setAttachments((prev) =>
+          prev.map((a) => (a.id === attachmentId ? { ...a, progress } : a))
+        );
+      };
       const result = await addSource(
         newSource,
         asset.uri,
         vectorStore!,
-        embeddings
+        embeddings,
+        handleProgress
       );
       const isCurrentDocumentRequest =
         attachmentRequestRef.current === requestId &&
@@ -191,9 +209,7 @@ export const useAttachment = () => {
         setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
         Toast.show({
           type: 'defaultToast',
-          text1: result.isEmpty
-            ? 'Document appears to be empty.'
-            : 'Failed to process document.',
+          text1: documentErrorMessage(result),
         });
       }
     } catch (error) {
