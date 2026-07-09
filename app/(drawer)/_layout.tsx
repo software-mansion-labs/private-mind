@@ -42,6 +42,12 @@ const DrawerLayout = () => {
         }}
       />
       <Drawer.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+        }}
+      />
+      <Drawer.Screen
         name="benchmark"
         options={{
           title: 'Benchmark',

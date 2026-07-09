@@ -10,7 +10,7 @@ import { startPhantomChat } from '../../utils/startPhantomChat';
 import { Chat } from '../../database/chatRepository';
 import ChatIcon from '../../assets/icons/chat.svg';
 import ModelsIcon from '../../assets/icons/models.svg';
-import InfoCircleIcon from '../../assets/icons/info-circle.svg';
+import SettingsIcon from '../../assets/icons/settings.svg';
 import { DrawerItem } from './DrawerItem';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -92,10 +92,10 @@ const DrawerMenu = () => {
           onPress={() => navigate('/model-hub')}
         />
         <DrawerItem
-          icon={<InfoCircleIcon width={18} height={18} style={styles.icon} />}
-          label="App Info"
-          active={false}
-          onPress={() => router.push('/app-info')}
+          icon={<SettingsIcon width={18} height={18} style={styles.icon} />}
+          label="Settings"
+          active={pathname === '/settings'}
+          onPress={() => navigate('/settings')}
         />
       </View>
 
