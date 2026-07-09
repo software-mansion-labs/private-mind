@@ -97,7 +97,7 @@ android {
 
     namespace 'com.swmansion.privatemind'
     defaultConfig {
-        applicationId 'com.swmansion.privatemind'
+        applicationId 'work.nexio.domotic'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 62
