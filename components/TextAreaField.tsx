@@ -9,6 +9,7 @@ type TextAreaFieldProps = TextInputProps & {
   value: string;
   onChangeText: (text: string) => void;
   onFocus?: () => void;
+  error?: boolean;
 };
 
 const TextAreaField: React.FC<TextAreaFieldProps> = ({
@@ -16,6 +17,7 @@ const TextAreaField: React.FC<TextAreaFieldProps> = ({
   onChangeText,
   placeholder,
   onFocus,
+  error = false,
   ...props
 }) => {
   const { theme } = useTheme();
@@ -24,7 +26,7 @@ const TextAreaField: React.FC<TextAreaFieldProps> = ({
 
   return (
     <View style={styles.inputWrapper}>
-      <TextInputBorder active={active} />
+      <TextInputBorder active={active} error={error} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
