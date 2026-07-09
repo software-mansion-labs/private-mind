@@ -1,0 +1,28 @@
+{
+  "build": {
+    "beforeDevCommand": "cd ../web && pnpm dev",
+    "beforeBuildCommand": "cd ../web && pnpm build",
+    "devPath": "http://localhost:8080",
+    "distDir": "../web/dist"
+  },
+  "package": {
+    "productName": "Nexio",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": { "all": false }
+    },
+    "windows": [{
+      "fullscreen": false,
+      "resizable": true,
+      "title": "Nexio",
+      "width": 1200,
+      "height": 800
+    }],
+    "security": {
+      "csp": null
+    }
+  }
+}
