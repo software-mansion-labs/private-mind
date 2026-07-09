@@ -58,7 +58,7 @@ const createStyles = (theme: Theme) =>
     common: {
       borderRadius: 12,
       pointerEvents: 'none',
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     inactive: {
       borderWidth: 1,

@@ -57,7 +57,7 @@ const DIAMETER = Math.sqrt(SCREEN_WIDTH ** 2 + SCREEN_HEIGHT ** 2);
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     wrapper: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: splashColor,
