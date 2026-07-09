@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Platform, Text, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScrollView } from 'react-native-gesture-handler';
@@ -19,14 +19,26 @@ export default function CustomSystemPromptScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const { customSystemPrompt, setCustomSystemPrompt } = useSettingsStore();
+  const customSystemPrompt = useSettingsStore((s) => s.customSystemPrompt);
+  const setCustomSystemPrompt = useSettingsStore(
+    (s) => s.setCustomSystemPrompt
+  );
+  const hasHydrated = useSettingsStore((s) => s.hasHydrated);
 
   const [draft, setDraft] = useState(customSystemPrompt);
+  const [didSeed, setDidSeed] = useState(false);
+
+  useEffect(() => {
+    if (hasHydrated && !didSeed) {
+      setDraft(customSystemPrompt);
+      setDidSeed(true);
+    }
+  }, [hasHydrated, didSeed, customSystemPrompt]);
 
   const trimmedDraft = draft.trim();
   const isOverLimit = trimmedDraft.length > MAX_CUSTOM_SYSTEM_PROMPT_LENGTH;
   const isDirty = trimmedDraft !== customSystemPrompt;
-  const canSave = isDirty && !isOverLimit;
+  const canSave = didSeed && isDirty && !isOverLimit;
 
   const handleSave = () => {
     if (!canSave) return;
@@ -68,6 +80,7 @@ export default function CustomSystemPromptScreen() {
             <TextAreaField
               value={draft}
               onChangeText={setDraft}
+              editable={didSeed}
               error={isOverLimit}
               errorMessage={
                 isOverLimit
