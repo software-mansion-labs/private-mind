@@ -6,20 +6,11 @@ import {
   formatFirstChunks,
   getSourceDocumentsFromChunks,
   sourceKey,
+  sourcesPresentInContext,
 } from './contextUtils';
 import { hybridRetrieve } from './hybridRetrieval';
-
-// Builds one LLM turn's source data from the message's attachments + the chat's
-// enabled sources: `context` (the "Source N" / overview blocks for the model),
-// `sourceDocuments` (citations for the reply) and `preferredSourceDocuments`
-// (freshly attached sources to prioritise). State-free, so it's unit-testable.
-
-const DEBUG_PREVIEW_LENGTH = 1200;
-
-const previewText = (value?: string) =>
-  value && value.length > DEBUG_PREVIEW_LENGTH
-    ? `${value.slice(0, DEBUG_PREVIEW_LENGTH)}...`
-    : value;
+import { extractQueryTerms, stemPrefix } from './queryTerms';
+import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
 
 export interface SourceRow {
   id: number;
@@ -40,8 +31,6 @@ const getAttachmentSourceDocuments = (
       passage: source.firstChunk,
     }));
 
-// Order citations attachment-first: retrieved attachment docs, then attachments
-// with no retrieved chunk (cited via overview), then the remaining retrieved docs.
 export const mergeAttachmentFirst = (
   retrieved: SourceDocument[],
   preferred: SourceDocument[],
@@ -62,6 +51,89 @@ export const mergeAttachmentFirst = (
   );
 
   return [...attachmentDocs, ...missingAttachments, ...otherDocs];
+};
+
+export const assembleSourceDocuments = (
+  retrieved: SourceDocument[],
+  preferred: SourceDocument[],
+  attachmentSourceIds: number[],
+  activeSources: SourceRow[],
+  contextPresent: boolean
+): SourceDocument[] => {
+  const merged = mergeAttachmentFirst(
+    retrieved,
+    preferred,
+    attachmentSourceIds
+  );
+  if (merged.length > 0 || !contextPresent) return merged;
+
+  return activeSources.map((source) => ({
+    documentId: source.id,
+    name: source.name,
+    passage: source.firstChunk,
+  }));
+};
+
+export const restrictCitationsToContext = (
+  sourceDocuments: SourceDocument[],
+  promptContext: string,
+  preferred: SourceDocument[]
+): SourceDocument[] => {
+  if (sourceDocuments.length <= 1) return sourceDocuments;
+
+  const present = sourcesPresentInContext(promptContext);
+  const preferredNames = new Set(preferred.map((doc) => doc.name));
+
+  const survived = sourceDocuments.filter(
+    (doc) => preferredNames.has(doc.name) || present.has(doc.name)
+  );
+  return survived.length > 0 ? survived : sourceDocuments.slice(0, 1);
+};
+
+const overlapWithAnswer = (
+  passage: string,
+  answerTerms: Set<string>
+): number => {
+  let overlap = 0;
+  const seen = new Set<string>();
+  for (const term of extractQueryTerms(passage)) {
+    const stem = stemPrefix(term);
+    if (seen.has(stem)) continue;
+    seen.add(stem);
+    if (answerTerms.has(stem)) overlap++;
+  }
+  return overlap;
+};
+
+export const pickCitationsByAnswer = (
+  sourceDocuments: SourceDocument[],
+  answer: string,
+  preferred: SourceDocument[]
+): SourceDocument[] => {
+  if (sourceDocuments.length <= 1) return sourceDocuments;
+
+  const answerTerms = new Set(
+    [...extractQueryTerms(answer)].map(stemPrefix)
+  );
+  if (answerTerms.size === 0) return sourceDocuments;
+
+  const preferredNames = new Set(preferred.map((doc) => doc.name));
+  const scored = sourceDocuments.map((doc) => ({
+    doc,
+    isPreferred: preferredNames.has(doc.name),
+    overlap: overlapWithAnswer(`${doc.name} ${doc.passage ?? ''}`, answerTerms),
+  }));
+
+  const maxOverlap = Math.max(0, ...scored.map((s) => s.overlap));
+  if (maxOverlap === 0) return sourceDocuments;
+
+  return scored
+    .filter(
+      (s) =>
+        s.isPreferred ||
+        s.overlap >= maxOverlap * ANSWER_CITATION_OVERLAP_RATIO
+    )
+    .map((s) => s.doc);
 };
 
 const retrieveChunks = async (
@@ -149,14 +221,13 @@ export const buildMessageSources = async ({
     context.push(...formatContextChunks(relevantChunks));
 
     const retrieved = getSourceDocumentsFromChunks(relevantChunks);
-    sourceDocuments =
-      attachmentSourceIds.length > 0
-        ? mergeAttachmentFirst(
-            retrieved,
-            preferredSourceDocuments,
-            attachmentSourceIds
-          )
-        : retrieved;
+    sourceDocuments = assembleSourceDocuments(
+      retrieved,
+      preferredSourceDocuments,
+      attachmentSourceIds,
+      activeSources,
+      context.length > 0
+    );
   } else if (attachmentSourceIds.length > 0) {
     sourceDocuments = preferredSourceDocuments;
     context.push(...attachmentOverview());

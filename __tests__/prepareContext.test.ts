@@ -2,6 +2,7 @@ import {
   formatContextChunks,
   formatFirstChunks,
   getSourceDocumentsFromChunks,
+  sourcesPresentInContext,
 } from '../utils/contextUtils';
 
 describe('formatContextChunks / getSourceDocumentsFromChunks', () => {
@@ -128,5 +129,46 @@ describe('formatFirstChunks', () => {
 
     expect(result[0]).toContain('Current Attachment Source: latest.pdf');
     expect(result[0]).toContain('End of Current Attachment Source');
+  });
+});
+
+describe('sourcesPresentInContext', () => {
+  const chunk = (document: string, documentId: number, name: string) => ({
+    document,
+    similarity: 0.9,
+    metadata: { documentId, name },
+  });
+
+  it('extracts the names from Source blocks it is given', () => {
+    const context = formatContextChunks([
+      chunk('vacation rules', 21, 'polityka_urlopowa_2026.pdf'),
+      chunk('unrelated', 20, 'sample.htm'),
+    ]).join(' ');
+
+    expect(sourcesPresentInContext(context)).toEqual(
+      new Set(['polityka_urlopowa_2026.pdf', 'sample.htm'])
+    );
+  });
+
+  it('strips the (Overview) marker from attachment headers', () => {
+    const context = formatFirstChunks(
+      [{ id: 21, name: 'polityka_urlopowa_2026.pdf', firstChunk: 'intro' }],
+      'Current Attachment Source'
+    ).join(' ');
+
+    expect(sourcesPresentInContext(context)).toEqual(
+      new Set(['polityka_urlopowa_2026.pdf'])
+    );
+  });
+
+  it('reports only the blocks that survived truncation', () => {
+    const blocks = formatContextChunks([
+      chunk('kept', 21, 'polityka_urlopowa_2026.pdf'),
+      chunk('dropped', 20, 'sample.htm'),
+    ]);
+
+    expect(sourcesPresentInContext(blocks[0])).toEqual(
+      new Set(['polityka_urlopowa_2026.pdf'])
+    );
   });
 });

@@ -1,4 +1,4 @@
-import { MIN_STITCH_OVERLAP } from '../constants/retrieval';
+import { MIN_STITCH_OVERLAP, SOURCE_HEADER } from '../constants/retrieval';
 
 export type ContextChunk = {
   document?: string;
@@ -110,6 +110,16 @@ export const getSourceDocumentsFromChunks = (
     passage: joinGroupPassages(group),
     similarity: group.maxSimilarity,
   }));
+
+export const sourcesPresentInContext = (
+  contextContent: string
+): Set<string> => {
+  const names = new Set<string>();
+  for (const match of contextContent.matchAll(SOURCE_HEADER)) {
+    names.add(match[1]!.replace(/ \(Overview\)$/, '').trim());
+  }
+  return names;
+};
 
 export const formatFirstChunks = (
   sources: FirstChunkSource[],
