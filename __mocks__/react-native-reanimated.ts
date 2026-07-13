@@ -35,6 +35,7 @@ module.exports = {
     inOut: (fn: any) => fn,
     out: (fn: any) => fn,
     in: (fn: any) => fn,
+    bezier: () => (t: any) => t,
   },
   interpolate: (val: any, inputRange: any, outputRange: any) => {
     if (val <= inputRange[0]) return outputRange[0];
