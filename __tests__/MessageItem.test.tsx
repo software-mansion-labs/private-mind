@@ -79,6 +79,8 @@ jest.mock('@gorhom/bottom-sheet', () => {
     BottomSheetModal,
     BottomSheetView: View,
     BottomSheetScrollView: View,
+    useBottomSheet: () => ({ close: jest.fn() }),
+    useBottomSheetSpringConfigs: (config: unknown) => config,
   };
 });
 
