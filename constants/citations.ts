@@ -16,6 +16,7 @@ const NO_ANSWER_META_PL =
 
 // English "no information" refusal patterns; each negation is tied to a coverage noun.
 export const NO_ANSWER_PATTERNS_EN: RegExp[] = [
+  new RegExp(`\\bno (${NO_ANSWER_META_EN})\\b`, 'i'),
   new RegExp(`\\bthere (is|are|'s) no (${NO_ANSWER_META_EN})\\b`, 'i'),
   new RegExp(
     `\\b(does|do|did|could|can) ?n['o]?t (contain|mention|include|provide|specify|cover|have|state|say)( any| any relevant)? (${NO_ANSWER_META_EN})\\b`,
@@ -36,6 +37,8 @@ export const NO_ANSWER_PATTERNS_PL: RegExp[] = [
     `\\b(nie ma|brak|nie zawiera\\w*|nie znaleziono|nie podano|nie wymienia\\w*) (żadn\\w* )?(${NO_ANSWER_META_PL})\\b`,
     'i'
   ),
+  /\bnie wspomina\w*\b/i,
+  /\bnie odnosi si\w*\b/i,
   /\bnie wiem\b/i,
   /\bnie mog\w* (znaleźć|odpowiedzieć|okre\w*)\b/i,
 ];
