@@ -3,19 +3,30 @@ import { ActionSheetIOS, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useChatActions } from '../../hooks/useChatActions';
+import { chatLabel } from '../../utils/chatLabel';
 import RenameChatModal from './RenameChatModal';
 import ChatTitleMenuSheet from './ChatTitleMenuSheet';
+import {
+  CHAT_MENU_CANCEL_INDEX,
+  CHAT_MENU_DELETE_INDEX,
+  CHAT_MENU_EXPORT_INDEX,
+  CHAT_MENU_OPTIONS,
+  CHAT_MENU_RENAME_INDEX,
+  getChatMenuTitle,
+} from '../../constants/chat-menu';
 
 interface Options {
   chatId: number;
   chatTitle: string;
 }
 
-const SHEET_TITLE = 'Chat';
-
 export const useChatTitleMenu = ({ chatId, chatTitle }: Options) => {
   const [renameVisible, setRenameVisible] = useState(false);
   const androidSheetRef = useRef<BottomSheetModal>(null);
+
+  const menuTitle = getChatMenuTitle(
+    chatLabel({ id: chatId, title: chatTitle })
+  );
 
   const { rename, exportChat, confirmDelete } = useChatActions({
     onDeleted: () => router.replace('/'),
@@ -43,27 +54,28 @@ export const useChatTitleMenu = ({ chatId, chatTitle }: Options) => {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          title: SHEET_TITLE,
-          options: ['Rename', 'Export Chat', 'Delete Chat', 'Cancel'],
-          destructiveButtonIndex: 2,
-          cancelButtonIndex: 3,
+          title: menuTitle,
+          options: CHAT_MENU_OPTIONS,
+          destructiveButtonIndex: CHAT_MENU_DELETE_INDEX,
+          cancelButtonIndex: CHAT_MENU_CANCEL_INDEX,
         },
         (index) => {
-          if (index === 0) setRenameVisible(true);
-          else if (index === 1) handleExport();
-          else if (index === 2) handleDelete();
+          if (index === CHAT_MENU_RENAME_INDEX) setRenameVisible(true);
+          else if (index === CHAT_MENU_EXPORT_INDEX) handleExport();
+          else if (index === CHAT_MENU_DELETE_INDEX) handleDelete();
         }
       );
     } else {
       androidSheetRef.current?.present();
     }
-  }, [handleExport, handleDelete]);
+  }, [menuTitle, handleExport, handleDelete]);
 
   const MenuElements = (
     <>
       {Platform.OS === 'android' && (
         <ChatTitleMenuSheet
           bottomSheetModalRef={androidSheetRef}
+          title={menuTitle}
           onRename={() => setRenameVisible(true)}
           onExport={handleExport}
           onDelete={handleDelete}
