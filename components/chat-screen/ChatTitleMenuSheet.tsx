@@ -1,10 +1,9 @@
-import React, { RefObject, useMemo } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
+import React, { type RefObject, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  AppBottomSheet,
+  type AppBottomSheetRef,
+} from '../bottomSheets/AppBottomSheet';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -15,7 +14,7 @@ import { SvgComponent } from '../../utils/SvgComponent';
 import { Feedback } from '../../utils/Feedback';
 
 interface Props {
-  bottomSheetModalRef: RefObject<BottomSheetModal | null>;
+  bottomSheetModalRef: RefObject<AppBottomSheetRef | null>;
   onRename: () => void;
   onExport: () => void;
   onDelete: () => void;
@@ -65,23 +64,15 @@ const ChatTitleMenuSheet = ({
   };
 
   return (
-    <BottomSheetModal
+    <AppBottomSheet
       ref={bottomSheetModalRef}
-      enableDynamicSizing
+      dynamic
+      handleColor={theme.border.soft}
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
       }}
-      backdropComponent={(props) => (
-        <BottomSheetBackdrop
-          {...props}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-        />
-      )}
-      backgroundStyle={{ backgroundColor: theme.bg.softPrimary }}
-      handleIndicatorStyle={{ backgroundColor: theme.border.soft }}
     >
-      <BottomSheetView style={styles.container}>
+      <View style={styles.container}>
         <MenuOption
           icon={EditIcon}
           iconColor={theme.text.primary}
@@ -107,8 +98,8 @@ const ChatTitleMenuSheet = ({
           }}
           styles={styles}
         />
-      </BottomSheetView>
-    </BottomSheetModal>
+      </View>
+    </AppBottomSheet>
   );
 };
 

@@ -7,7 +7,7 @@ import React, {
 } from 'react';
 import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { AppBottomSheetRef } from '../bottomSheets/AppBottomSheet';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import Animated, {
   useAnimatedStyle,
@@ -86,7 +86,7 @@ export default function ChatScreen({
     setInput: (text: string) => void;
   }>(null);
   const messagesRef = useRef<MessagesHandle>(null);
-  const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const modelBottomSheetModalRef = useRef<AppBottomSheetRef>(null);
   const db = useSQLiteContext();
 
   const { vectorStore } = useVectorStore();

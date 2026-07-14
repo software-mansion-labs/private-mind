@@ -40,38 +40,25 @@ jest.mock('../components/bottomSheets/BottomSheetSearchInput', () => {
   );
 });
 
-jest.mock('@gorhom/bottom-sheet', () => {
+jest.mock('../components/bottomSheets/AppBottomSheet', () => {
   const React = require('react');
   const { View } = require('react-native');
-  const _data: any = null;
 
-  const BottomSheetModal = React.forwardRef((props: any, _ref: any) => {
+  const AppBottomSheet = React.forwardRef((props: any, _ref: any) => {
     React.useEffect(() => {
       props.onChange?.(0);
     }, []);
-    return <View>{props.children}</View>;
+    const { children } = props;
+    return (
+      <View>
+        {typeof children === 'function'
+          ? children({ data: undefined })
+          : children}
+      </View>
+    );
   });
-  const BottomSheetFlatList = ({ data, renderItem }: any) => (
-    <View>
-      {data.map((item: any, i: number) => (
-        <View key={i}>{renderItem({ item })}</View>
-      ))}
-    </View>
-  );
-  const BottomSheetView = ({ children, style }: any) => (
-    <View style={style}>{children}</View>
-  );
-  const BottomSheetBackdrop = () => null;
 
-  const useBottomSheetTimingConfigs = () => ({});
-
-  return {
-    BottomSheetModal,
-    BottomSheetFlatList,
-    BottomSheetView,
-    BottomSheetBackdrop,
-    useBottomSheetTimingConfigs,
-  };
+  return { __esModule: true, AppBottomSheet };
 });
 
 import ModelSelectSheet from '../components/bottomSheets/ModelSelectSheet';

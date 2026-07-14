@@ -3,7 +3,7 @@ import { ActionSheetIOS, Alert, Platform } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { useSQLiteContext } from 'expo-sqlite';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { AppBottomSheetRef } from '../bottomSheets/AppBottomSheet';
 import { useChatStore } from '../../store/chatStore';
 import { useVectorStore } from '../../context/VectorStoreContext';
 import { exportChatRoom } from '../../database/exportImportRepository';
@@ -22,7 +22,7 @@ export const useChatTitleMenu = ({ chatId, chatTitle }: Options) => {
   const { renameChat, deleteChat } = useChatStore();
   const { vectorStore } = useVectorStore();
   const [renameVisible, setRenameVisible] = useState(false);
-  const androidSheetRef = useRef<BottomSheetModal>(null);
+  const androidSheetRef = useRef<AppBottomSheetRef>(null);
 
   const handleRenameSubmit = useCallback(
     async (newTitle: string) => {

@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { AppBottomSheetRef } from '../components/bottomSheets/AppBottomSheet';
 import { Platform, PermissionsAndroid } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSourceStore } from '../store/sourceStore';
@@ -53,7 +53,7 @@ export const useAttachment = () => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const attachmentsRef = useRef<Attachment[]>([]);
   attachmentsRef.current = attachments;
-  const sheetRef = useRef<BottomSheetModal>(null);
+  const sheetRef = useRef<AppBottomSheetRef>(null);
   const { vectorStore } = useVectorStore();
 
   const replaceWithImage = useCallback(

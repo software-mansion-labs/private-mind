@@ -17,9 +17,6 @@ jest.mock('../store/sourceStore', () => ({
 jest.mock('../context/VectorStoreContext', () => ({
   useVectorStore: jest.fn(() => ({ vectorStore: {} })),
 }));
-jest.mock('@gorhom/bottom-sheet', () => ({
-  BottomSheetModal: jest.fn(),
-}));
 jest.mock('react-native-toast-message', () => ({
   show: jest.fn(),
 }));

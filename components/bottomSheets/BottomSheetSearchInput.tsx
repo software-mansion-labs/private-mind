@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
-import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
+import { View, StyleSheet, Platform, TextInput } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -33,7 +32,7 @@ const BottomSheetSearchInput = ({
       <View style={styles.inputWrapper}>
         <TextInputBorder active={active} />
         <SearchIcon width={20} height={20} style={styles.searchIcon} />
-        <BottomSheetTextInput
+        <TextInput
           style={styles.input}
           value={value}
           onChangeText={onChangeText}

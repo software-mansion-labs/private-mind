@@ -6,7 +6,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { AppBottomSheetRef } from '../bottomSheets/AppBottomSheet';
 import { Theme } from '../../styles/colors';
 
 interface Props {
@@ -15,7 +15,7 @@ interface Props {
 }
 
 export const ModelSelector = ({ model, setSelectedModel }: Props) => {
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const bottomSheetModalRef = useRef<AppBottomSheetRef>(null);
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 

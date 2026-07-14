@@ -2,10 +2,8 @@ import React, { useMemo, useRef } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  BottomSheetModal,
-  BottomSheetModalProvider,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetProvider } from '@swmansion/react-native-bottom-sheet';
+import type { AppBottomSheetRef } from '../../../components/bottomSheets/AppBottomSheet';
 import { useTheme } from '../../../context/ThemeContext';
 import { Theme } from '../../../styles/colors';
 import { fontFamily, fontSizes } from '../../../styles/fontStyles';
@@ -15,7 +13,7 @@ import { getModelFamily } from '../../../utils/modelFamily';
 import ModelCard from '../../../components/model-hub/ModelCard';
 import ModelManagementSheet from '../../../components/bottomSheets/ModelManagementSheet';
 import WarningSheet, {
-  WarningSheetData,
+  type WarningSheetData,
 } from '../../../components/bottomSheets/WarningSheet';
 import ModalHeader from '../../../components/ModalHeader';
 import { FAMILY_DESCRIPTIONS } from '../../../constants/family-descriptions';
@@ -29,10 +27,9 @@ const FamilyScreen = () => {
 
   const { models } = useModelStore();
 
-  const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
-  const wifiWarningSheetRef = useRef<BottomSheetModal<WarningSheetData> | null>(
-    null
-  );
+  const modelManagementSheetRef = useRef<AppBottomSheetRef<Model> | null>(null);
+  const wifiWarningSheetRef =
+    useRef<AppBottomSheetRef<WarningSheetData> | null>(null);
 
   const familyModels = useMemo(
     () =>
@@ -45,7 +42,7 @@ const FamilyScreen = () => {
   const description = FAMILY_DESCRIPTIONS[familyName];
 
   return (
-    <BottomSheetModalProvider>
+    <BottomSheetProvider>
       <View style={styles.container}>
         <View style={styles.content}>
           <ModalHeader
@@ -85,7 +82,7 @@ const FamilyScreen = () => {
         <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
         <WarningSheet bottomSheetModalRef={wifiWarningSheetRef} />
       </View>
-    </BottomSheetModalProvider>
+    </BottomSheetProvider>
   );
 };
 

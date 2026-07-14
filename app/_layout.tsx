@@ -13,7 +13,7 @@ import {
 } from '@expo-google-fonts/dm-sans';
 import { fontFamily } from '../styles/fontStyles';
 import { ThemeProvider } from '../context/ThemeContext';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { BottomSheetProvider } from '@swmansion/react-native-bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import AppToast from '../components/AppToast';
 import { Platform } from 'react-native';
@@ -116,11 +116,11 @@ export default function Layout() {
         <ThemeProvider>
           <VectorStoreProvider>
             <KeyboardProvider>
-              <BottomSheetModalProvider>
+              <BottomSheetProvider>
                 <RootNavigator />
                 {Platform.OS === 'android' && <StatusBar style="auto" />}
                 <AppToast />
-              </BottomSheetModalProvider>
+              </BottomSheetProvider>
             </KeyboardProvider>
           </VectorStoreProvider>
           <SplashScreenAnimation />

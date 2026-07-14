@@ -1,9 +1,5 @@
-import React, { RefObject, useCallback, useMemo, useState } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
+import React, { type RefObject, useMemo, useState } from 'react';
+import { AppBottomSheet, type AppBottomSheetRef } from './AppBottomSheet';
 import { StyleSheet, Text, View } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
@@ -24,7 +20,7 @@ import { router } from 'expo-router';
 import { Feedback } from '../../utils/Feedback';
 
 interface Props {
-  bottomSheetModalRef: RefObject<BottomSheetModal | null>;
+  bottomSheetModalRef: RefObject<AppBottomSheetRef<Model> | null>;
 }
 
 enum ModalStage {
@@ -40,18 +36,6 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
   const { removeModel, removeModelFiles } = useModelStore();
   const [stage, setStage] = useState<ModalStage>(ModalStage.Initial);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
 
   const renderStageContent = (model: Model) => {
     switch (stage) {
@@ -217,25 +201,21 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
   };
 
   return (
-    <BottomSheetModal
+    <AppBottomSheet<Model>
       ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
-      enableDynamicSizing
+      dynamic
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
         setStage(ModalStage.Initial);
         setIsProcessing(false);
       }}
-      handleStyle={styles.handle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}
     >
-      {(props) => (
-        <BottomSheetView style={styles.container}>
-          {renderStageContent(props.data)}
-        </BottomSheetView>
+      {({ data }) => (
+        <View style={styles.container}>
+          {data ? renderStageContent(data) : null}
+        </View>
       )}
-    </BottomSheetModal>
+    </AppBottomSheet>
   );
 };
 
@@ -283,21 +263,5 @@ const createStyles = (theme: Theme) =>
     },
     buttonDestructive: {
       backgroundColor: theme.bg.errorPrimary,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
-    handle: {
-      borderRadius: 16,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    handleIndicator: {
-      backgroundColor: theme.text.primary,
-      width: 64,
-      height: 4,
-      borderRadius: 20,
-    },
-    background: {
-      backgroundColor: theme.bg.softPrimary,
     },
   });

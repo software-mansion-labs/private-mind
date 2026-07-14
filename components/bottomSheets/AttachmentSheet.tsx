@@ -1,10 +1,6 @@
-import React, { RefObject, useMemo } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
+import React, { type RefObject, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { AppBottomSheet, type AppBottomSheetRef } from './AppBottomSheet';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -15,7 +11,7 @@ import { SvgComponent } from '../../utils/SvgComponent';
 import { Feedback } from '../../utils/Feedback';
 
 interface Props {
-  bottomSheetModalRef: RefObject<BottomSheetModal | null>;
+  bottomSheetModalRef: RefObject<AppBottomSheetRef | null>;
   isVisionModel: boolean;
   onPickFromLibrary: () => void;
   onPickFromCamera: () => void;
@@ -65,9 +61,10 @@ const AttachmentSheet = ({
   };
 
   return (
-    <BottomSheetModal
+    <AppBottomSheet
       ref={bottomSheetModalRef}
-      enableDynamicSizing
+      dynamic
+      handleColor={theme.border.soft}
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
         onSheetStateChange?.(index >= 0);
@@ -75,17 +72,8 @@ const AttachmentSheet = ({
       onDismiss={() => {
         onSheetStateChange?.(false);
       }}
-      backdropComponent={(props) => (
-        <BottomSheetBackdrop
-          {...props}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-        />
-      )}
-      backgroundStyle={{ backgroundColor: theme.bg.softPrimary }}
-      handleIndicatorStyle={{ backgroundColor: theme.border.soft }}
     >
-      <BottomSheetView style={styles.container}>
+      <View style={styles.container}>
         {isVisionModel && (
           <>
             <AttachmentOption
@@ -114,8 +102,8 @@ const AttachmentSheet = ({
           testID="attachment-document"
           styles={styles}
         />
-      </BottomSheetView>
-    </BottomSheetModal>
+      </View>
+    </AppBottomSheet>
   );
 };
 

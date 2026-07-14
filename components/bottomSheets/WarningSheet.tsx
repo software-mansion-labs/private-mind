@@ -1,10 +1,6 @@
-import React, { RefObject, useCallback, useMemo } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
+import React, { type RefObject, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { AppBottomSheet, type AppBottomSheetRef } from './AppBottomSheet';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
@@ -19,45 +15,26 @@ export interface WarningSheetData {
 }
 
 interface Props {
-  bottomSheetModalRef: RefObject<BottomSheetModal<WarningSheetData> | null>;
+  bottomSheetModalRef: RefObject<AppBottomSheetRef<WarningSheetData> | null>;
 }
 
 const WarningSheet = ({ bottomSheetModalRef }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
-
   return (
-    <BottomSheetModal
-      ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
-      enableDynamicSizing
-      handleStyle={styles.handleStyle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}
-    >
-      {(props) => (
-        <BottomSheetView style={styles.sheet}>
-          <Text style={styles.title}>{props.data?.title}</Text>
-          <Text style={styles.subText}>{props.data?.subtitle}</Text>
+    <AppBottomSheet<WarningSheetData> ref={bottomSheetModalRef} dynamic>
+      {({ data }) => (
+        <View style={styles.sheet}>
+          <Text style={styles.title}>{data?.title}</Text>
+          <Text style={styles.subText}>{data?.subtitle}</Text>
           <View style={styles.buttonGroup}>
             <PrimaryButton
               style={styles.downloadButton}
-              text={props.data?.buttonTitle || 'OK'}
+              text={data?.buttonTitle || 'OK'}
               onPress={() => {
-                if (props.data?.onConfirm) {
-                  props.data.onConfirm();
+                if (data?.onConfirm) {
+                  data.onConfirm();
                 }
                 bottomSheetModalRef.current?.dismiss();
               }}
@@ -69,9 +46,9 @@ const WarningSheet = ({ bottomSheetModalRef }: Props) => {
               }}
             />
           </View>
-        </BottomSheetView>
+        </View>
       )}
-    </BottomSheetModal>
+    </AppBottomSheet>
   );
 };
 
@@ -84,22 +61,6 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: 16,
       paddingBottom: theme.insets.bottom + 16,
       gap: 24,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
-    handleStyle: {
-      backgroundColor: theme.bg.softPrimary,
-      borderRadius: 16,
-    },
-    handleIndicator: {
-      width: 64,
-      height: 4,
-      borderRadius: 20,
-      backgroundColor: theme.text.primary,
-    },
-    background: {
       backgroundColor: theme.bg.softPrimary,
     },
     title: {

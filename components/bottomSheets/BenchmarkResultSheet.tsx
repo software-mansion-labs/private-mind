@@ -1,19 +1,11 @@
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetBackdrop,
-  BottomSheetScrollView,
-} from '@gorhom/bottom-sheet';
-import { StyleSheet, Text } from 'react-native';
+import React, { type RefObject, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, ScrollView, View } from 'react-native';
+import { AppBottomSheet, type AppBottomSheetRef } from './AppBottomSheet';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
+import type { BenchmarkResult } from '../../database/benchmarkRepository';
+import type { Model } from '../../database/modelRepository';
 import DeviceInfo from 'react-native-device-info';
 import SecondaryButton from '../SecondaryButton';
 import ModelCard from '../model-hub/ModelCard';
@@ -22,8 +14,10 @@ import DeviceInfoCard from '../benchmark/DeviceInfoCard';
 import BenchmarkDateCard from '../benchmark/BenchmarkDateCard';
 import { Feedback } from '../../utils/Feedback';
 
+export type BenchmarkResultData = BenchmarkResult & { model?: Model };
+
 interface Props {
-  bottomSheetModalRef: RefObject<BottomSheetModal | null>;
+  bottomSheetModalRef: RefObject<AppBottomSheetRef<BenchmarkResultData> | null>;
   handleDelete: (benchmarkId: number) => Promise<void>;
 }
 
@@ -36,18 +30,6 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
     systemVersion: '',
     memory: '',
   });
-
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
 
   useEffect(() => {
     const fetchDeviceInfo = async () => {
@@ -65,36 +47,38 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
   }, []);
 
   return (
-    <BottomSheetModal
+    <AppBottomSheet<BenchmarkResultData>
       ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
       snapPoints={['50%', '90%']}
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
       }}
-      handleStyle={styles.handleStyle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.sheetBackground}
     >
-      {(props) => (
-        <BottomSheetScrollView contentContainerStyle={styles.contentContainer}>
-          <Text style={styles.header}>Benchmark results</Text>
-          <ModelCard model={props.data.model} onPress={() => {}} />
-          <BenchmarkStatsCard data={props.data} />
-          <DeviceInfoCard deviceInfo={deviceInfo} />
-          <BenchmarkDateCard timestamp={props.data.timestamp} />
-          <SecondaryButton
-            text="Delete this benchmark"
-            style={styles.deleteButton}
-            textStyle={styles.deleteText}
-            onPress={async () => {
-              await handleDelete(props.data.id);
-              bottomSheetModalRef.current?.dismiss();
-            }}
-          />
-        </BottomSheetScrollView>
-      )}
-    </BottomSheetModal>
+      {({ data }) =>
+        data ? (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.contentContainer}
+          >
+            <Text style={styles.header}>Benchmark results</Text>
+            <ModelCard model={data.model as Model} onPress={() => {}} />
+            <BenchmarkStatsCard data={data} />
+            <DeviceInfoCard deviceInfo={deviceInfo} />
+            <BenchmarkDateCard timestamp={data.timestamp} />
+            <SecondaryButton
+              text="Delete this benchmark"
+              style={styles.deleteButton}
+              textStyle={styles.deleteText}
+              onPress={async () => {
+                await handleDelete(data.id);
+                bottomSheetModalRef.current?.dismiss();
+              }}
+            />
+            <View style={styles.bottomSpacer} />
+          </ScrollView>
+        ) : null
+      }
+    </AppBottomSheet>
   );
 };
 
@@ -102,31 +86,21 @@ export default BenchmarkResultSheet;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
+    scrollView: {
+      flex: 1,
+    },
     contentContainer: {
       gap: 24,
-      paddingVertical: 24,
+      paddingTop: 24,
       paddingHorizontal: 16,
-      paddingBottom: theme.insets.bottom + 16,
+    },
+    bottomSpacer: {
+      height: theme.insets.bottom + 32,
     },
     header: {
       fontSize: fontSizes.lg,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
-    },
-    handleStyle: {
-      borderRadius: 16,
-    },
-    handleIndicator: {
-      width: 64,
-      height: 4,
-      borderRadius: 20,
-      backgroundColor: theme.text.primary,
-    },
-    sheetBackground: {
-      backgroundColor: theme.bg.softPrimary,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
     },
     deleteButton: {
       borderColor: theme.text.error,

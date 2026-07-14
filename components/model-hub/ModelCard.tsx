@@ -3,13 +3,13 @@ import { Alert, StyleSheet, View, Text } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { AppBottomSheetRef } from '../bottomSheets/AppBottomSheet';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
-import { WarningSheetData } from '../bottomSheets/WarningSheet';
+import type { WarningSheetData } from '../bottomSheets/WarningSheet';
 import { isModelCompatible } from '../../utils/modelCompatibility';
 import Chip from '../Chip';
 import CircleButton from '../CircleButton';
@@ -27,7 +27,7 @@ interface Props {
   compactView?: boolean;
   selected?: boolean;
   onPress: (model: Model) => void;
-  wifiWarningSheetRef?: React.RefObject<BottomSheetModal<WarningSheetData> | null>;
+  wifiWarningSheetRef?: React.RefObject<AppBottomSheetRef<WarningSheetData> | null>;
   showDeleteButton?: boolean;
 }
 

@@ -22,7 +22,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { importChatRoom } from '../../database/exportImportRepository';
 import { useChatStore } from '../../store/chatStore';
 import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { AppBottomSheetRef } from '../../components/bottomSheets/AppBottomSheet';
 import { useModelStore } from '../../store/modelStore';
 import { useSourceStore } from '../../store/sourceStore';
 import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
@@ -37,7 +37,7 @@ export default function App() {
   useOnboardingRedirect();
 
   const navigation = useNavigation();
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const bottomSheetModalRef = useRef<AppBottomSheetRef>(null);
   const { downloadedModels } = useModelStore();
   const { loadSources } = useSourceStore();
   const hasAutoRedirectedRef = useRef(false);
