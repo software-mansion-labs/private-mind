@@ -19,6 +19,7 @@ import {
   removeDocumentFromKeywordIndex,
 } from '../database/keywordIndex';
 import {
+  MAX_SOURCE_CHUNKS,
   TEXT_SPLITTER_CHUNK_OVERLAP,
   TEXT_SPLITTER_CHUNK_SIZE,
 } from '../constants/retrieval';
@@ -34,12 +35,15 @@ interface SourceStore {
     sourceUri: string,
     vectorStore: OPSQLiteVectorStore,
     embeddings?: LFMEmbeddings | null,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    signal?: AbortSignal
   ) => Promise<{
     success: boolean;
     isEmpty?: boolean;
     reason?: 'scanned_pdf';
     sourceId?: number;
+    cancelled?: boolean;
+    truncated?: boolean;
   }>;
   setSourceProcessing: (id: number, isProcessing: boolean) => void;
   deleteSource: (source: Source) => Promise<void>;
@@ -67,7 +71,14 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     }
   },
 
-  addSource: async (source, sourceUri, vectorStore, embeddings, onProgress) => {
+  addSource: async (
+    source,
+    sourceUri,
+    vectorStore,
+    embeddings,
+    onProgress,
+    signal
+  ) => {
     const db = get().db;
     if (!db) return { success: false };
 
@@ -93,7 +104,11 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         chunkSize: TEXT_SPLITTER_CHUNK_SIZE,
         chunkOverlap: TEXT_SPLITTER_CHUNK_OVERLAP,
       });
-      const chunks = await textSplitter.splitText(sourceTextContent);
+      const allChunks = await textSplitter.splitText(sourceTextContent);
+      const truncated = allChunks.length > MAX_SOURCE_CHUNKS;
+      const chunks = truncated
+        ? allChunks.slice(0, MAX_SOURCE_CHUNKS)
+        : allChunks;
 
       const sourceId = await insertSource(db, {
         ...source,
@@ -106,8 +121,25 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         return { success: false };
       }
 
+      const rollbackPartialSource = async () => {
+        if (vectorStore) {
+          await vectorStore.delete({
+            predicate: (value) => value.metadata?.documentId === sourceId,
+          });
+          await removeDocumentFromKeywordIndex(vectorStore.db, sourceId);
+        }
+        await deleteSource(db, sourceId);
+        set((state) => ({
+          sources: state.sources.filter((s) => s.id !== tempId),
+        }));
+      };
+
       onProgress?.(0);
       for (let i = 0; i < chunks.length; i++) {
+        if (signal?.aborted) {
+          await rollbackPartialSource();
+          return { success: false, cancelled: true };
+        }
         const embedding = embeddings
           ? await embeddings.embedDocument(chunks[i]!)
           : undefined;
@@ -133,6 +165,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         }
         onProgress?.((i + 1) / chunks.length);
       }
+
       set((state) => ({
         sources: state.sources.map((s) =>
           s.id === tempId
@@ -140,7 +173,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
             : s
         ),
       }));
-      return { success: true, sourceId };
+      return { success: true, sourceId, truncated };
     } catch (e) {
       console.error(e);
       set((state) => ({

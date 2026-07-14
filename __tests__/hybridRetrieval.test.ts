@@ -1,5 +1,6 @@
 import { hybridRetrieve } from '../utils/hybridRetrieval';
 import * as keywordIndex from '../database/keywordIndex';
+import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 
 jest.mock('../database/keywordIndex', () => ({
   keywordSearch: jest.fn(),
@@ -8,8 +9,8 @@ jest.mock('../database/keywordIndex', () => ({
 const mockKeywordSearch = keywordIndex.keywordSearch as jest.Mock;
 
 const makeVectorStore = (
-  queryResults: any[],
-  vectorsById: Record<string, any>
+  queryResults: unknown[],
+  vectorsById: Record<string, unknown>
 ) =>
   ({
     query: jest.fn().mockResolvedValue(queryResults),
@@ -20,7 +21,7 @@ const makeVectorStore = (
           rows: ids.map((id) => vectorsById[id]).filter(Boolean),
         })),
     },
-  }) as any;
+  }) as unknown as OPSQLiteVectorStore;
 
 describe('hybridRetrieve', () => {
   beforeEach(() => {

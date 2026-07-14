@@ -62,6 +62,7 @@ export const useAttachment = () => {
   attachmentsRef.current = attachments;
   const attachmentRequestRef = useRef(0);
   const currentDocumentAttachmentIdRef = useRef<string | null>(null);
+  const documentAbortRef = useRef<AbortController | null>(null);
   const sheetRef = useRef<BottomSheetModal>(null);
   const embeddingDownloadSheetRef = useRef<BottomSheetModal>(null);
   const embeddingDownloadSheetOpenRef = useRef(false);
@@ -143,6 +144,10 @@ export const useAttachment = () => {
     attachmentRequestRef.current = requestId;
     currentDocumentAttachmentIdRef.current = attachmentId;
 
+    documentAbortRef.current?.abort();
+    const abortController = new AbortController();
+    documentAbortRef.current = abortController;
+
     setAttachments([
       {
         id: attachmentId,
@@ -180,8 +185,10 @@ export const useAttachment = () => {
         asset.uri,
         vectorStore!,
         embeddings,
-        handleProgress
+        handleProgress,
+        abortController.signal
       );
+      if (result.cancelled) return;
       const isCurrentDocumentRequest =
         attachmentRequestRef.current === requestId &&
         currentDocumentAttachmentIdRef.current === attachmentId;
@@ -203,6 +210,13 @@ export const useAttachment = () => {
               : a
           )
         );
+        if (result.truncated) {
+          Toast.show({
+            type: 'defaultToast',
+            text1:
+              'This document is large — only the first part was indexed for search.',
+          });
+        }
       } else {
         if (!isCurrentDocumentRequest) return;
 
@@ -262,6 +276,7 @@ export const useAttachment = () => {
   const removeAttachment = useCallback((id: string) => {
     if (currentDocumentAttachmentIdRef.current === id) {
       currentDocumentAttachmentIdRef.current = null;
+      documentAbortRef.current?.abort();
     }
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   }, []);
@@ -271,6 +286,7 @@ export const useAttachment = () => {
       const cleanupSources = options.cleanupSources ?? false;
       const hadDocuments = attachmentsRef.current.some((a) => a.sourceId);
       currentDocumentAttachmentIdRef.current = null;
+      documentAbortRef.current?.abort();
       setAttachments([]);
       if (cleanupSources && hadDocuments && vectorStore) {
         useSourceStore.getState().cleanupOrphanedSources(vectorStore);

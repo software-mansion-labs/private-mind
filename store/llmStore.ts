@@ -214,7 +214,7 @@ const generateLLMResponse = async (
           content: [
             { type: 'image' },
             { type: 'text', text: msg.content as string },
-          ] as any,
+          ] as unknown as string,
         }
       : msg
   );
@@ -549,7 +549,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         tokensGenerated: llmInstance.getGeneratedTokenCount(),
         peakMemory: runPeakMemory,
       };
-    } catch (e) {
+    } catch {
       memoryTracker.stop();
     } finally {
       set({ isGenerating: false, isBenchmarking: false });

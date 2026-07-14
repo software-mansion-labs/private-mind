@@ -11,7 +11,6 @@ import {
   setChatModel,
   ChatSettings,
   getChatSettings,
-  getNextChatId,
   setChatSettings,
 } from '../database/chatRepository';
 import {

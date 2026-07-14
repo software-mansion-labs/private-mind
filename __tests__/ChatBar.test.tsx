@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import type { LLMStore } from '../store/llmStore';
+import type { Attachment } from '../hooks/useAttachment';
+import type { PermissionStatus } from 'react-native-audio-api';
 
 // ── mocks ─────────────────────────────────────────────────────────────────────
 
@@ -27,7 +29,7 @@ jest.mock('../store/llmStore', () => ({
 }));
 
 const mockUseAttachment = {
-  attachments: [] as any[],
+  attachments: [] as Attachment[],
   sheetRef: { current: null },
   pickFromLibrary: jest.fn(),
   pickFromCamera: jest.fn(),
@@ -49,7 +51,12 @@ jest.mock('../components/bottomSheets/AttachmentSheet', () => {
     onPickFromCamera,
     onPickDocument,
     isVisionModel,
-  }: any) => (
+  }: {
+    onPickFromLibrary: () => void;
+    onPickFromCamera: () => void;
+    onPickDocument: () => void;
+    isVisionModel: boolean;
+  }) => (
     <View testID="attachment-sheet">
       {isVisionModel && (
         <>
@@ -73,7 +80,13 @@ jest.mock('../components/bottomSheets/AttachmentSheet', () => {
 
 jest.mock('../components/chat-screen/AttachmentThumbnail', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
-  return ({ attachment, onRemove }: any) => (
+  return ({
+    attachment,
+    onRemove,
+  }: {
+    attachment: Attachment;
+    onRemove: () => void;
+  }) => (
     <View testID={`attachment-thumb-${attachment.id}`}>
       <Text>{attachment.name || attachment.uri}</Text>
       <TouchableOpacity
@@ -87,8 +100,14 @@ jest.mock('../components/chat-screen/AttachmentThumbnail', () => {
 });
 
 jest.mock('../components/chat-screen/ChatSpeechInput', () => {
-  const { View, TouchableOpacity, Text } = require('react-native');
-  return ({ onSubmit, onCancel }: any) => (
+  const { View, TouchableOpacity } = require('react-native');
+  return ({
+    onSubmit,
+    onCancel,
+  }: {
+    onSubmit: (transcript: string) => void;
+    onCancel: () => void;
+  }) => (
     <View testID="speech-input">
       <TouchableOpacity
         testID="speech-submit"
@@ -101,7 +120,7 @@ jest.mock('../components/chat-screen/ChatSpeechInput', () => {
 
 jest.mock('../components/chat-screen/PromptSuggestions', () => {
   const { TouchableOpacity, Text } = require('react-native');
-  return ({ onSelectPrompt }: any) => (
+  return ({ onSelectPrompt }: { onSelectPrompt: (prompt: string) => void }) => (
     <TouchableOpacity
       testID="prompt-suggestion"
       onPress={() => onSelectPrompt('Suggested prompt')}
@@ -124,7 +143,18 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onThinkingToggle,
     thinkingEnabled,
     onAttach,
-  }: any) => (
+  }: {
+    userInput: string;
+    hasAttachments: boolean;
+    onSend: () => void;
+    isGenerating: boolean;
+    isProcessingPrompt: boolean;
+    onInterrupt: () => void;
+    onSpeechInput: () => void;
+    onThinkingToggle: () => void;
+    thinkingEnabled: boolean;
+    onAttach: () => void;
+  }) => (
     <View testID="chat-bar-actions">
       <TouchableOpacity testID="attach-btn" onPress={onAttach}>
         <Text>+</Text>
@@ -185,7 +215,7 @@ const defaultProps = {
   onSelectModel: jest.fn(),
   onSelectPrompt: jest.fn(),
   model: downloadedModel,
-  scrollRef: { current: null } as any,
+  scrollRef: { current: null },
   isAtBottom: true,
   isVisionModel: false,
   thinkingEnabled: false,
@@ -218,7 +248,7 @@ beforeEach(() => {
   jest.spyOn(console, 'warn').mockImplementation(() => {});
   // Default: permission granted
   mockAudioManager.requestRecordingPermissions.mockResolvedValue(
-    'Granted' as any
+    'Granted' as PermissionStatus
   );
 });
 
@@ -357,7 +387,7 @@ describe('speech input', () => {
 
   it('shows toast and stays in text mode when microphone permission is denied', async () => {
     mockAudioManager.requestRecordingPermissions.mockResolvedValue(
-      'Denied' as any
+      'Denied' as PermissionStatus
     );
     renderBar();
     await act(async () => {
@@ -430,7 +460,7 @@ describe('speech input', () => {
     // Override speech mock to submit empty string
     jest.mock('../components/chat-screen/ChatSpeechInput', () => {
       const { View, TouchableOpacity } = require('react-native');
-      return ({ onSubmit }: any) => (
+      return ({ onSubmit }: { onSubmit: (transcript: string) => void }) => (
         <View testID="speech-input">
           <TouchableOpacity
             testID="speech-submit"
