@@ -19,6 +19,7 @@ interface Props {
   onRename: () => void;
   onExport: () => void;
   onDelete: () => void;
+  onDismiss?: () => void;
 }
 
 interface OptionProps {
@@ -55,6 +56,7 @@ const ChatTitleMenuSheet = ({
   onRename,
   onExport,
   onDelete,
+  onDismiss,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -68,6 +70,7 @@ const ChatTitleMenuSheet = ({
     <BottomSheetModal
       ref={bottomSheetModalRef}
       enableDynamicSizing
+      onDismiss={onDismiss}
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
       }}
