@@ -1,6 +1,9 @@
 import { useLLMStore } from '../store/llmStore';
 import { LLMModule } from 'react-native-executorch';
 import * as chatRepository from '../database/chatRepository';
+import type { Message } from '../database/chatRepository';
+import type { Model } from '../database/modelRepository';
+import type { SQLiteDatabase } from 'expo-sqlite';
 import * as Feedback from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 
@@ -29,7 +32,7 @@ const noSources = async () => ({
   preferredSourceDocuments: [],
 });
 
-const mockDb = {} as any;
+const mockDb = {} as unknown as SQLiteDatabase;
 
 const baseModel = {
   id: 1,
@@ -64,7 +67,7 @@ beforeEach(() => {
   mockLLMModule.fromModelName.mockImplementation(
     async (_namedSources, _onProgress, onToken) => {
       capturedTokenCallback = onToken;
-      return mockInstance as any;
+      return mockInstance as unknown as LLMModule;
     }
   );
 
@@ -89,7 +92,7 @@ beforeEach(() => {
   mockLLMModule.fromModelName.mockImplementation(
     async (_namedSources, _onProgress, onToken) => {
       capturedTokenCallback = onToken;
-      return mockInstance as any;
+      return mockInstance as unknown as LLMModule;
     }
   );
 });
@@ -112,7 +115,7 @@ describe('loadModel', () => {
     mockLLMModule.fromModelName.mockImplementation(async (...args) => {
       wasLoading = useLLMStore.getState().isLoading;
       capturedTokenCallback = args[4];
-      return mockInstance as any;
+      return mockInstance as unknown as LLMModule;
     });
 
     await useLLMStore.getState().loadModel(baseModel);
@@ -142,7 +145,7 @@ describe('loadModel', () => {
     mockInstance = makeMockInstance();
     mockLLMModule.fromModelName.mockImplementation(async (...args) => {
       capturedTokenCallback = args[4];
-      return mockInstance as any;
+      return mockInstance as unknown as LLMModule;
     });
     await useLLMStore.getState().loadModel({ ...baseModel, id: 2 });
 
@@ -367,7 +370,7 @@ describe('sendChatMessage', () => {
   });
 
   it('adds user message and assistant placeholder to activeChatMessages before generating', async () => {
-    let messagesBeforeGenerate: any[] = [];
+    let messagesBeforeGenerate: Message[] = [];
     mockInstance.generate.mockImplementation(async () => {
       messagesBeforeGenerate = useLLMStore.getState().activeChatMessages;
       return 'response';
@@ -536,7 +539,7 @@ describe('sendChatMessage imagePath', () => {
         modelName: 'LFM VL',
         vision: true,
         featured: true,
-      } as any,
+      } as Model,
       activeChatId: 1,
       activeChatMessages: [],
     });

@@ -6,6 +6,7 @@ import { useLLMStore } from '../store/llmStore';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import type { LFMEmbeddings } from '../utils/lfmEmbeddings';
+import { MAX_SOURCE_CHUNKS } from '../constants/retrieval';
 
 jest.mock('../database/sourcesRepository');
 jest.mock('../utils/fileReaders');
@@ -25,8 +26,10 @@ jest.mock('@react-native-rag/op-sqlite', () => ({}));
 
 const mockDb = {} as Partial<SQLiteDatabase> as SQLiteDatabase;
 const vectorStoreAdd = jest.fn();
+const vectorStoreDelete = jest.fn();
 const mockVectorStore = {
   add: vectorStoreAdd,
+  delete: vectorStoreDelete,
 } as Partial<OPSQLiteVectorStore> as OPSQLiteVectorStore;
 
 const mockReadDocumentText = fileReaders.readDocumentText as jest.Mock;
@@ -141,10 +144,56 @@ describe('addSource', () => {
       .addSource(baseSource, '/path/doc.txt', mockVectorStore);
 
     const sources = useSourceStore.getState().sources;
-    expect(result).toEqual({ success: true, sourceId: 99 });
+    expect(result).toEqual({ success: true, sourceId: 99, truncated: false });
     expect(sources).toHaveLength(1);
     expect(sources[0].id).toBe(99);
     expect(sources[0].isProcessing).toBe(false);
+  });
+
+  it('caps embedded chunks at MAX_SOURCE_CHUNKS and flags the result truncated', async () => {
+    mockReadDocumentText.mockResolvedValue('content');
+    mockInsertSource.mockResolvedValue(99);
+    const manyChunks = Array.from(
+      { length: MAX_SOURCE_CHUNKS + 1 },
+      (_, i) => `chunk-${i}`
+    );
+    MockSplitter.mockImplementation(() => ({
+      splitText: jest.fn().mockResolvedValue(manyChunks),
+    }));
+
+    const result = await useSourceStore
+      .getState()
+      .addSource(baseSource, '/path/doc.txt', mockVectorStore);
+
+    expect(result).toEqual({ success: true, sourceId: 99, truncated: true });
+    expect(vectorStoreAdd).toHaveBeenCalledTimes(MAX_SOURCE_CHUNKS);
+  });
+
+  it('aborts embedding and rolls back the partial source when the signal is aborted', async () => {
+    mockReadDocumentText.mockResolvedValue('content');
+    mockInsertSource.mockResolvedValue(99);
+    MockSplitter.mockImplementation(() => ({
+      splitText: jest.fn().mockResolvedValue(['chunk-a', 'chunk-b']),
+    }));
+    const controller = new AbortController();
+    controller.abort();
+
+    const result = await useSourceStore
+      .getState()
+      .addSource(
+        baseSource,
+        '/path/doc.txt',
+        mockVectorStore,
+        undefined,
+        undefined,
+        controller.signal
+      );
+
+    expect(result).toEqual({ success: false, cancelled: true });
+    expect(vectorStoreAdd).not.toHaveBeenCalled();
+    expect(vectorStoreDelete).toHaveBeenCalledTimes(1);
+    expect(mockDeleteSource).toHaveBeenCalledWith(mockDb, 99);
+    expect(useSourceStore.getState().sources).toHaveLength(0);
   });
 
   it('passes firstChunk to insertSource', async () => {
@@ -316,10 +365,10 @@ describe('cleanupOrphanedSources', () => {
     mockGetOrphanedSources.mockResolvedValue(orphaned);
     mockDeleteSource.mockResolvedValue(undefined);
 
-    const vectorStoreDelete = jest.fn();
+    const orphanVectorStoreDelete = jest.fn();
     const mockVectorStoreWithDelete = {
       add: vectorStoreAdd,
-      delete: vectorStoreDelete,
+      delete: orphanVectorStoreDelete,
     } as Partial<OPSQLiteVectorStore> as OPSQLiteVectorStore;
 
     await useSourceStore
@@ -328,7 +377,7 @@ describe('cleanupOrphanedSources', () => {
 
     expect(mockGetOrphanedSources).toHaveBeenCalledWith(mockDb);
     expect(mockDeleteSource).toHaveBeenCalledWith(mockDb, 5);
-    expect(vectorStoreDelete).toHaveBeenCalledWith({
+    expect(orphanVectorStoreDelete).toHaveBeenCalledWith({
       predicate: expect.any(Function),
     });
   });
