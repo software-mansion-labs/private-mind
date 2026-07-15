@@ -78,7 +78,9 @@ const CustomDrawer = ({ navigation }: DrawerContentComponentProps) => {
 
   const handleNavigate = useCallback(() => {
     closeSearch(true);
-    navigation.closeDrawer();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => navigation.closeDrawer());
+    });
   }, [closeSearch, navigation]);
 
   const handleMenuActiveChange = useCallback((active: boolean) => {
