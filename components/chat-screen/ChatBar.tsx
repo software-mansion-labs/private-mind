@@ -108,7 +108,7 @@ const ChatBar = ({
       clear: () => {
         setUserInput('');
         clearAll();
-        extraContentPadding.value = 0;
+        extraContentPadding.set(0);
         if (Platform.OS === 'ios') {
           textInputRef.current?.setNativeProps({ text: ' ' });
           textInputRef.current?.setNativeProps({ text: '' });
@@ -136,7 +136,7 @@ const ChatBar = ({
       }
       const baseline = defaultBarHeight.current || height;
       const delta = height - baseline;
-      extraContentPadding.value = Math.max(0, delta);
+      extraContentPadding.set(Math.max(0, delta));
       onHeightChange?.(height);
       if (delta > 0) {
         onBarGrow?.();
