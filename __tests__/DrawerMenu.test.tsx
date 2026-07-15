@@ -80,7 +80,9 @@ const defaultProps = {
   onCloseSearch: jest.fn(),
 };
 
-const renderMenu = (props: Partial<typeof defaultProps> = {}) =>
+type MenuProps = React.ComponentProps<typeof DrawerMenu>;
+
+const renderMenu = (props: Partial<MenuProps> = {}) =>
   render(<DrawerMenu {...defaultProps} {...props} />);
 
 beforeEach(() => {
@@ -163,7 +165,7 @@ describe('DrawerMenu — collapsed', () => {
   it('starts a phantom chat when New chat is pressed', () => {
     mockPathname = '/model-hub';
     const onNavigate = jest.fn();
-    renderMenu({ onNavigate } as never);
+    renderMenu({ onNavigate });
 
     fireEvent.press(screen.getByTestId('drawer-new-chat'));
 
@@ -191,7 +193,7 @@ describe('DrawerMenu — searching', () => {
 
   it('opens the list at the offset the drawer was scrolled to', () => {
     const scrollOffsetRef = { current: 120 };
-    renderMenu({ searching: true, scrollOffsetRef } as never);
+    renderMenu({ searching: true, scrollOffsetRef });
 
     expect(screen.getByTestId('drawer-scroll').props.contentOffset).toEqual({
       x: 0,
@@ -205,7 +207,7 @@ describe('DrawerMenu — searching', () => {
       searching: true,
       search: 'meeting',
       scrollOffsetRef,
-    } as never);
+    });
 
     fireEvent.scroll(screen.getByTestId('drawer-scroll'), {
       nativeEvent: { contentOffset: { x: 0, y: 0 } },
@@ -275,7 +277,7 @@ describe('DrawerMenu — searching', () => {
       searching: true,
       search: 'nonexistent',
       onNavigate,
-    } as never);
+    });
 
     fireEvent.press(screen.getByText('Start new chat'));
 
@@ -331,7 +333,7 @@ describe('DrawerMenu — context menu', () => {
       .mockImplementation(() => {});
     const onMenuActiveChange = jest.fn();
 
-    renderMenu({ searching: true, onMenuActiveChange } as never);
+    renderMenu({ searching: true, onMenuActiveChange });
 
     fireEvent(screen.getByTestId('drawer-chat-1'), 'longPress');
 

@@ -32,7 +32,6 @@ interface Props {
   onBlur?: () => void;
   inputRef?: RefObject<TextInput | null>;
   progress?: SharedValue<number>;
-  geometryProgress?: SharedValue<number>;
 }
 
 export const DrawerTopBar = ({
@@ -44,7 +43,6 @@ export const DrawerTopBar = ({
   onBlur,
   inputRef,
   progress,
-  geometryProgress,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -52,19 +50,12 @@ export const DrawerTopBar = ({
 
   const collapsedTitleWidth =
     getDrawerWidth(screenWidth) - DRAWER_HORIZONTAL_PADDING * 2;
-  const expandedTitleWidth = screenWidth - DRAWER_HORIZONTAL_PADDING * 2;
 
   const fallbackProgress = useSharedValue(1);
   const value = progress ?? fallbackProgress;
-  const geometry = geometryProgress ?? fallbackProgress;
 
   const titleLayerStyle = useAnimatedStyle(() => ({
     opacity: interpolate(value.get(), [0, 0.4], [1, 0]),
-    width: interpolate(
-      geometry.get(),
-      [0, 1],
-      [collapsedTitleWidth, expandedTitleWidth]
-    ),
   }));
 
   const fieldStyle = useAnimatedStyle(() => ({
@@ -124,7 +115,11 @@ export const DrawerTopBar = ({
       </Animated.View>
 
       <Animated.View
-        style={[styles.titleLayer, titleLayerStyle]}
+        style={[
+          styles.titleLayer,
+          { width: collapsedTitleWidth },
+          titleLayerStyle,
+        ]}
         pointerEvents="none"
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"

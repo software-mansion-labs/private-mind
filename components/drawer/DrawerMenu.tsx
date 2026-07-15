@@ -48,7 +48,6 @@ interface Props {
   scrollRef?: RefObject<ScrollView | null>;
   scrollOffsetRef?: RefObject<number>;
   searchProgress?: SharedValue<number>;
-  panelProgress?: SharedValue<number>;
   resetScrollPosition?: boolean;
 }
 
@@ -68,7 +67,6 @@ const DrawerMenu = ({
   scrollRef: externalScrollRef,
   scrollOffsetRef,
   searchProgress,
-  panelProgress,
   resetScrollPosition,
 }: Props) => {
   const { theme } = useTheme();
@@ -155,7 +153,6 @@ const DrawerMenu = ({
           onBlur={onSearchBlur}
           inputRef={inputRef}
           progress={searchProgress}
-          geometryProgress={panelProgress}
         />
       </View>
 
