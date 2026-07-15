@@ -5,6 +5,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useChatStore } from '../store/chatStore';
 import { useVectorStore } from '../context/VectorStoreContext';
 import { exportChatRoom } from '../database/exportImportRepository';
+import { useConfirm } from './useConfirm';
 
 const MAX_TITLE_LENGTH = 25;
 
@@ -16,6 +17,7 @@ export const useChatActions = ({ onDeleted }: Options = {}) => {
   const db = useSQLiteContext();
   const { renameChat, deleteChat } = useChatStore();
   const { vectorStore } = useVectorStore();
+  const { confirm, ConfirmElement } = useConfirm();
 
   const rename = useCallback(
     async (chatId: number, newTitle: string) => {
@@ -50,26 +52,24 @@ export const useChatActions = ({ onDeleted }: Options = {}) => {
   );
 
   const confirmDelete = useCallback(
-    (chatId: number) => {
-      Alert.alert('Delete Chat', 'Are you sure you want to delete this chat?', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteChat(chatId, vectorStore ?? undefined);
-              onDeleted?.(chatId);
-            } catch (error) {
-              console.error('Error deleting chat:', error);
-              Alert.alert('Error', 'Failed to delete chat. Please try again.');
-            }
-          },
-        },
-      ]);
+    async (chatId: number) => {
+      const confirmed = await confirm({
+        title: 'Delete Chat',
+        message: 'Are you sure you want to delete this chat?',
+        confirmLabel: 'Delete',
+      });
+      if (!confirmed) return;
+
+      try {
+        await deleteChat(chatId, vectorStore ?? undefined);
+        onDeleted?.(chatId);
+      } catch (error) {
+        console.error('Error deleting chat:', error);
+        Alert.alert('Error', 'Failed to delete chat. Please try again.');
+      }
     },
-    [deleteChat, vectorStore, onDeleted]
+    [confirm, deleteChat, vectorStore, onDeleted]
   );
 
-  return { rename, exportChat, confirmDelete };
+  return { rename, exportChat, confirmDelete, ConfirmElement };
 };

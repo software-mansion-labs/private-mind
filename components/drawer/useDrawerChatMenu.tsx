@@ -27,8 +27,9 @@ export const useDrawerChatMenu = ({ onMenuActiveChange }: Options = {}) => {
   const [targetChat, setTargetChat] = useState<Chat | null>(null);
   const [renameVisible, setRenameVisible] = useState(false);
   const androidSheetRef = useRef<BottomSheetModal>(null);
+  const actionPendingRef = useRef(false);
 
-  const { rename, exportChat, confirmDelete } = useChatActions({
+  const { rename, exportChat, confirmDelete, ConfirmElement } = useChatActions({
     onDeleted: (chatId) => {
       if (pathname === `/chat/${chatId}`) {
         router.replace('/');
@@ -39,6 +40,19 @@ export const useDrawerChatMenu = ({ onMenuActiveChange }: Options = {}) => {
   const setMenuActive = useCallback(
     (active: boolean) => onMenuActiveChange?.(active),
     [onMenuActiveChange]
+  );
+
+  const runAction = useCallback(
+    async (action: () => Promise<void>) => {
+      actionPendingRef.current = true;
+      try {
+        await action();
+      } finally {
+        actionPendingRef.current = false;
+        setMenuActive(false);
+      }
+    },
+    [setMenuActive]
   );
 
   const openMenuFor = useCallback(
@@ -58,21 +72,20 @@ export const useDrawerChatMenu = ({ onMenuActiveChange }: Options = {}) => {
           (index) => {
             if (index === CHAT_MENU_RENAME_INDEX) {
               setRenameVisible(true);
-              return;
-            }
-            if (index === CHAT_MENU_EXPORT_INDEX) {
-              exportChat(chat.id, chatLabel(chat));
+            } else if (index === CHAT_MENU_EXPORT_INDEX) {
+              runAction(() => exportChat(chat.id, chatLabel(chat)));
             } else if (index === CHAT_MENU_DELETE_INDEX) {
-              confirmDelete(chat.id);
+              runAction(() => confirmDelete(chat.id));
+            } else {
+              setMenuActive(false);
             }
-            setMenuActive(false);
           }
         );
       } else {
         androidSheetRef.current?.present();
       }
     },
-    [exportChat, confirmDelete, setMenuActive]
+    [exportChat, confirmDelete, runAction, setMenuActive]
   );
 
   const handleRenameSubmit = useCallback(
@@ -98,18 +111,20 @@ export const useDrawerChatMenu = ({ onMenuActiveChange }: Options = {}) => {
           title={targetChat ? getChatMenuTitle(chatLabel(targetChat)) : ''}
           onRename={() => setRenameVisible(true)}
           onExport={() => {
-            setMenuActive(false);
-            if (targetChat) exportChat(targetChat.id, chatLabel(targetChat));
+            if (targetChat)
+              runAction(() => exportChat(targetChat.id, chatLabel(targetChat)));
           }}
           onDelete={() => {
-            setMenuActive(false);
-            if (targetChat) confirmDelete(targetChat.id);
+            if (targetChat) runAction(() => confirmDelete(targetChat.id));
           }}
           onDismiss={() => {
-            if (!renameVisible) setMenuActive(false);
+            if (!renameVisible && !actionPendingRef.current) {
+              setMenuActive(false);
+            }
           }}
         />
       )}
+      {ConfirmElement}
       <RenameChatModal
         visible={renameVisible}
         initialTitle={targetChat ? chatLabel(targetChat) : ''}

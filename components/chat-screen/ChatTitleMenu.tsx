@@ -28,7 +28,7 @@ export const useChatTitleMenu = ({ chatId, chatTitle }: Options) => {
     chatLabel({ id: chatId, title: chatTitle })
   );
 
-  const { rename, exportChat, confirmDelete } = useChatActions({
+  const { rename, exportChat, confirmDelete, ConfirmElement } = useChatActions({
     onDeleted: () => router.replace('/'),
   });
 
@@ -81,6 +81,7 @@ export const useChatTitleMenu = ({ chatId, chatTitle }: Options) => {
           onDelete={handleDelete}
         />
       )}
+      {ConfirmElement}
       <RenameChatModal
         visible={renameVisible}
         initialTitle={chatTitle}
