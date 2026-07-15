@@ -8,6 +8,8 @@ export const SEARCH_EXPAND_DURATION = 500;
 
 export const SEARCH_COLLAPSE_DURATION = 240;
 
+export const BACKDROP_FADE_IN_DURATION = 240;
+
 export const NAV_COLLAPSE_DURATION = 260;
 
 export const FIELD_FADE_IN_DELAY = 90;

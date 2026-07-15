@@ -7,6 +7,7 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 import {
+  BACKDROP_FADE_IN_DURATION,
   EMPHASIZED_ACCELERATE,
   EMPHASIZED_DECELERATE,
   FIELD_FADE_IN_DELAY,
@@ -33,6 +34,7 @@ export const useSearchOverlayAnimation = ({
   const mountedRef = useRef(active);
   const progress = useSharedValue(0);
   const contentProgress = useSharedValue(0);
+  const backdropOpacity = useSharedValue(0);
 
   const applyMounted = useCallback((value: boolean) => {
     mountedRef.current = value;
@@ -40,6 +42,12 @@ export const useSearchOverlayAnimation = ({
   }, []);
 
   const startExpand = useCallback(() => {
+    backdropOpacity.set(
+      withTiming(1, {
+        duration: BACKDROP_FADE_IN_DURATION,
+        easing: EXPAND_EASING,
+      })
+    );
     progress.set(
       withTiming(1, {
         duration: SEARCH_EXPAND_DURATION,
@@ -55,7 +63,7 @@ export const useSearchOverlayAnimation = ({
         })
       )
     );
-  }, [progress, contentProgress]);
+  }, [progress, contentProgress, backdropOpacity]);
 
   useEffect(() => {
     if (active) {
@@ -66,6 +74,7 @@ export const useSearchOverlayAnimation = ({
 
       progress.set(0);
       contentProgress.set(0);
+      backdropOpacity.set(0);
       applyMounted(true);
       return;
     }
@@ -75,6 +84,7 @@ export const useSearchOverlayAnimation = ({
     if (closeInstantly) {
       progress.set(0);
       contentProgress.set(0);
+      backdropOpacity.set(0);
       applyMounted(false);
       return;
     }
@@ -83,6 +93,12 @@ export const useSearchOverlayAnimation = ({
       withTiming(0, {
         duration: FIELD_FADE_OUT_DURATION,
         easing: FADE_EASING,
+      })
+    );
+    backdropOpacity.set(
+      withTiming(0, {
+        duration: SEARCH_COLLAPSE_DURATION,
+        easing: COLLAPSE_EASING,
       })
     );
     progress.set(
@@ -99,9 +115,10 @@ export const useSearchOverlayAnimation = ({
     closeInstantly,
     progress,
     contentProgress,
+    backdropOpacity,
     startExpand,
     applyMounted,
   ]);
 
-  return { mounted, progress, contentProgress, startExpand };
+  return { mounted, progress, contentProgress, backdropOpacity, startExpand };
 };

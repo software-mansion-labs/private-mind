@@ -105,7 +105,6 @@ export const DrawerTopBar = ({
           placeholderTextColor={theme.text.defaultTertiary}
           style={styles.input}
           testID="drawer-search-input"
-          autoFocus
           autoCorrect={false}
           autoCapitalize="none"
           clearButtonMode="while-editing"

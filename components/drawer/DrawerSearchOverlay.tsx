@@ -1,4 +1,4 @@
-import React, { RefObject, useMemo } from 'react';
+import React, { RefObject, useCallback, useMemo } from 'react';
 import {
   Modal,
   StyleSheet,
@@ -11,7 +11,10 @@ import Animated, {
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
-import { Pressable } from 'react-native-gesture-handler';
+import {
+  GestureHandlerRootView,
+  Pressable,
+} from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { useTheme } from '../../context/ThemeContext';
@@ -58,7 +61,7 @@ export const DrawerSearchOverlay = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { width: screenWidth } = useWindowDimensions();
 
-  const { mounted, progress, contentProgress, startExpand } =
+  const { mounted, progress, contentProgress, backdropOpacity, startExpand } =
     useSearchOverlayAnimation({ active, closeInstantly });
   const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
 
@@ -71,10 +74,19 @@ export const DrawerSearchOverlay = ({
     paddingBottom: -keyboardHeight.get(),
   }));
 
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: backdropOpacity.get(),
+  }));
+
   const handleBackdropPress = () => {
     Keyboard.dismiss();
     onRequestClose();
   };
+
+  const handleShow = useCallback(() => {
+    startExpand();
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [startExpand, inputRef]);
 
   if (!mounted) return null;
 
@@ -84,39 +96,54 @@ export const DrawerSearchOverlay = ({
       transparent
       animationType="none"
       statusBarTranslucent
-      onShow={startExpand}
+      onShow={handleShow}
       onRequestClose={onRequestClose}
     >
-      <BottomSheetModalProvider>
-        <Pressable style={styles.backdrop} onPress={handleBackdropPress} />
-        <Animated.View style={[styles.panel, panelStyle]}>
-          <View style={styles.panelContent}>
-            <DrawerMenu
-              searching
-              search={search}
-              now={now}
-              navHeight={navHeight}
-              onNavMeasured={onNavMeasured}
-              onChangeSearch={onChangeSearch}
-              onCloseSearch={onRequestClose}
-              onSearchBlur={onSearchBlur}
-              onMenuActiveChange={onMenuActiveChange}
-              onNavigate={onNavigate}
-              inputRef={inputRef}
-              scrollOffsetRef={scrollOffsetRef}
-              searchProgress={contentProgress}
-              panelProgress={progress}
-            />
-          </View>
-        </Animated.View>
-      </BottomSheetModalProvider>
+      <GestureHandlerRootView style={styles.root}>
+        <BottomSheetModalProvider>
+          <Animated.View
+            style={[styles.backdrop, backdropStyle]}
+            pointerEvents="none"
+          />
+          <Pressable
+            style={styles.backdropTouch}
+            onPress={handleBackdropPress}
+          />
+          <Animated.View style={[styles.panel, panelStyle]}>
+            <View style={styles.panelContent}>
+              <DrawerMenu
+                searching
+                search={search}
+                now={now}
+                navHeight={navHeight}
+                onNavMeasured={onNavMeasured}
+                onChangeSearch={onChangeSearch}
+                onCloseSearch={onRequestClose}
+                onSearchBlur={onSearchBlur}
+                onMenuActiveChange={onMenuActiveChange}
+                onNavigate={onNavigate}
+                inputRef={inputRef}
+                scrollOffsetRef={scrollOffsetRef}
+                searchProgress={contentProgress}
+              />
+            </View>
+          </Animated.View>
+        </BottomSheetModalProvider>
+      </GestureHandlerRootView>
     </Modal>
   );
 };
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
+    root: {
+      flex: 1,
+    },
     backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.bg.softPrimary,
+    },
+    backdropTouch: {
       ...StyleSheet.absoluteFillObject,
     },
     panel: {
