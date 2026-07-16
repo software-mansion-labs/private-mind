@@ -11,8 +11,6 @@ export const THINK_CLOSE = '</think>';
 // Coverage nouns (does a source address the topic); a refusal negates one, a negative-fact answer does not.
 const NO_ANSWER_META_EN =
   'information|info|mention|reference|data|details?|indication|records?';
-const NO_ANSWER_META_PL =
-  'informacj\\w*|info|wzmian\\w*|danych|dane|mowy|odniesie\\w*|dokument\\w*|plik\\w*|tematu|tekst\\w*|materia\\w*|źród\\w*|nic|niczego';
 
 // English "no information" refusal patterns; each negation is tied to a coverage noun.
 export const NO_ANSWER_PATTERNS_EN: RegExp[] = [
@@ -29,16 +27,4 @@ export const NO_ANSWER_PATTERNS_EN: RegExp[] = [
   /\bnot (found|available|mentioned|provided|present|specified|stated) in (the|these|any|this|your|provided|given)\b/i,
   /\bi (do ?n['o]?t|cannot|can ?not|can['o]?t) (know|find|see|answer|tell|determine|locate)\b/i,
   /\bunable to (find|answer|determine|locate|provide)\b/i,
-];
-
-// Polish "brak informacji" refusal patterns; each negation is tied to a coverage noun.
-export const NO_ANSWER_PATTERNS_PL: RegExp[] = [
-  new RegExp(
-    `\\b(nie ma|brak|nie zawiera\\w*|nie znaleziono|nie podano|nie wymienia\\w*) (żadn\\w* )?(${NO_ANSWER_META_PL})\\b`,
-    'i'
-  ),
-  /\bnie wspomina\w*\b/i,
-  /\bnie odnosi si\w*\b/i,
-  /\bnie wiem\b/i,
-  /\bnie mog\w* (znaleźć|odpowiedzieć|okre\w*)\b/i,
 ];

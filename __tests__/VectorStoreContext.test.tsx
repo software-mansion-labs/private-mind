@@ -32,10 +32,6 @@ jest.mock('../utils/embeddingModelMigration', () => ({
   migrateEmbeddingModelIfNeeded: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../database/keywordIndex', () => ({
-  ensureKeywordIndex: jest.fn().mockResolvedValue(undefined),
-}));
-
 jest.mock('../utils/embeddingModel', () => ({
   isEmbeddingModelDownloaded: jest.fn().mockResolvedValue(true),
 }));

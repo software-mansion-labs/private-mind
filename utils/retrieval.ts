@@ -1,34 +1,14 @@
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { type Scalar } from '@op-engineering/op-sqlite';
 import { LFMEmbeddings } from './lfmEmbeddings';
-import { extractQueryTerms, stemPrefix } from './queryTerms';
-import { keywordSearch } from '../database/keywordIndex';
 import { type ContextChunk, sourceKey } from './contextUtils';
 import {
-  adaptiveKeepCount,
-  cosineSimilarity,
-  maximalMarginalRelevance,
-  reciprocalRankFusion,
-  termCoverage,
-  type MMRCandidate,
-} from './rankFusion';
-import {
-  ADAPTIVE_K_MIN_KEEP,
   ATTACHMENT_RELEVANCE_BONUS,
   CANDIDATE_POOL,
-  COVERAGE_ALPHA,
-  KEYWORD_WEIGHT,
-  LEXICAL_MATCH_MIN_SIMILARITY,
   MAX_CHUNKS_PER_FILE,
   MAX_RELEVANT_CHUNKS,
   STRONG_SEMANTIC_THRESHOLD,
-  VECTOR_WEIGHT,
 } from '../constants/retrieval';
-
-// Hybrid retrieval: fuse semantic vector + keyword (BM25/FTS5) search, then
-// re-rank (RRF + term-coverage boost + MMR) down to the final chunks. No
-// cross-encoder — see rankFusion.ts. Output feeds formatContextChunks /
-// getSourceDocumentsFromChunks unchanged, preserving the "Source N" ↔ citation map.
 
 type Candidate = {
   id: string;
@@ -51,8 +31,6 @@ const resolveName = (
     ? sourceNamesById.get(documentId)
     : undefined);
 
-// Loads full chunk rows by id to hydrate keyword-only hits absent from the
-// vector pool, so they can be re-ranked on equal footing.
 const hydrateChunksByIds = async (
   vectorStore: OPSQLiteVectorStore,
   ids: string[]
@@ -169,9 +147,6 @@ const expandSelectedWithNeighbors = async (
   for (const key of groupOrder) {
     const group = groups.get(key)!;
 
-    // Order chunks as relevance-ranked windows: seeds most- to least-relevant,
-    // each emitting its [seed-1, seed, seed+1] run in document order (deduped),
-    // so the matched chunk leads and a later budget truncation trims the tail.
     const seeds = [...group.indices.entries()]
       .filter(([id]) => selectedSimilarity.has(id))
       .sort(
@@ -215,7 +190,7 @@ const expandSelectedWithNeighbors = async (
   return result;
 };
 
-export type HybridRetrieveParams = {
+export type RetrieveParams = {
   prompt: string;
   enabledSourceIds: number[];
   vectorStore: OPSQLiteVectorStore;
@@ -224,18 +199,19 @@ export type HybridRetrieveParams = {
   attachmentSourceIds?: number[];
 };
 
-export const hybridRetrieve = async ({
+export const retrieve = async ({
   prompt,
   enabledSourceIds,
   vectorStore,
   sourceNamesById,
   embeddings,
   attachmentSourceIds = [],
-}: HybridRetrieveParams): Promise<ContextChunk[]> => {
+}: RetrieveParams): Promise<ContextChunk[]> => {
   const attachmentSet = new Set(attachmentSourceIds);
   const enabledSet = new Set(enabledSourceIds);
   const isAttachment = (documentId?: number): boolean =>
     typeof documentId === 'number' && attachmentSet.has(documentId);
+
   let queryEmbedding: number[] | undefined;
   if (embeddings) {
     try {
@@ -245,28 +221,16 @@ export const hybridRetrieve = async ({
     }
   }
 
-  const terms = extractQueryTerms(prompt);
-  const coverageTerms = new Set([...terms].map(stemPrefix));
-
-  // Isolate the vector query: without a usable embedding the store re-embeds and
-  // rejects, so catch here to degrade to keyword-only instead of returning nothing.
-  const [vectorResults, keywordHits] = await Promise.all([
-    vectorStore
-      .query({
-        ...(queryEmbedding ? { queryEmbedding } : { queryText: prompt }),
-        predicate: (r) => enabledSet.has(r.metadata?.documentId),
-        nResults: CANDIDATE_POOL,
-      })
-      .catch((error) => {
-        console.warn(
-          'Vector query failed; degrading to keyword-only retrieval',
-          error
-        );
-        return [] as Awaited<ReturnType<typeof vectorStore.query>>;
-      }),
-    keywordSearch(vectorStore.db, [...terms], enabledSourceIds, CANDIDATE_POOL),
-  ]);
-  const keywordIds = new Set(keywordHits.map((hit) => hit.chunkId));
+  const vectorResults = await vectorStore
+    .query({
+      ...(queryEmbedding ? { queryEmbedding } : { queryText: prompt }),
+      predicate: (r) => enabledSet.has(r.metadata?.documentId),
+      nResults: CANDIDATE_POOL,
+    })
+    .catch((error) => {
+      console.warn('Vector query failed; returning no chunks', error);
+      return [] as Awaited<ReturnType<typeof vectorStore.query>>;
+    });
 
   const byId = new Map<string, Candidate>();
   for (const result of vectorResults) {
@@ -284,122 +248,44 @@ export const hybridRetrieve = async ({
     });
   }
 
-  const missingIds = keywordHits
-    .map((hit) => hit.chunkId)
-    .filter((id) => !byId.has(id));
-  const hydrated = await hydrateChunksByIds(vectorStore, missingIds);
-  for (const row of hydrated) {
-    byId.set(row.id, {
-      id: row.id,
-      document: row.document,
-      embedding: row.embedding,
-      documentId: row.documentId,
-      name: resolveName(row.name, row.documentId, sourceNamesById),
-      similarity: queryEmbedding
-        ? cosineSimilarity(queryEmbedding, row.embedding)
-        : 0,
-    });
-  }
-
-  const fused = reciprocalRankFusion([
-    { ids: vectorResults.map((r) => r.id), weight: VECTOR_WEIGHT },
-    { ids: keywordHits.map((h) => h.chunkId), weight: KEYWORD_WEIGHT },
-  ]);
-
-  const coverageById = new Map<string, number>();
-  const coverageOf = (candidate: Candidate): number => {
-    let coverage = coverageById.get(candidate.id);
-    if (coverage === undefined) {
-      coverage = termCoverage(
-        `${candidate.name ?? ''} ${candidate.document ?? ''}`,
-        coverageTerms
-      );
-      coverageById.set(candidate.id, coverage);
-    }
-    return coverage;
-  };
-
-  const qualified = [...byId.values()].filter((candidate) => {
-    if (isAttachment(candidate.documentId)) return true;
-    if (keywordIds.has(candidate.id)) return true;
-    if (candidate.similarity >= STRONG_SEMANTIC_THRESHOLD) return true;
-    return (
-      candidate.similarity >= LEXICAL_MATCH_MIN_SIMILARITY &&
-      coverageOf(candidate) > 0
-    );
-  });
+  const qualified = [...byId.values()].filter(
+    (candidate) =>
+      isAttachment(candidate.documentId) ||
+      candidate.similarity >= STRONG_SEMANTIC_THRESHOLD
+  );
 
   if (qualified.length === 0) return [];
 
-  const maxFused = Math.max(
-    ...qualified.map((c) => fused.get(c.id) ?? 0),
-    Number.EPSILON
-  );
-
-  const baseRelevanceById = new Map<string, number>();
-  const mmrCandidates: MMRCandidate[] = qualified.map((candidate) => {
-    const base = (fused.get(candidate.id) ?? 0) / maxFused;
-    const coverage = coverageOf(candidate);
-    const baseRelevance = base * (1 + COVERAGE_ALPHA * coverage);
-    baseRelevanceById.set(candidate.id, baseRelevance);
-    return {
+  const scored = qualified
+    .map((candidate) => ({
       id: candidate.id,
+      documentId: candidate.documentId,
       relevance:
-        baseRelevance +
+        candidate.similarity +
         (isAttachment(candidate.documentId) ? ATTACHMENT_RELEVANCE_BONUS : 0),
-      embedding: candidate.embedding,
-    };
-  });
+    }))
+    .sort((a, b) => b.relevance - a.relevance);
 
-  // Cap chunks per document only when the pool spans several documents, so one
-  // long or freshly-attached file can't evict every other enabled source.
   const distinctDocs = new Set(qualified.map((c) => c.documentId)).size;
-  const selected = maximalMarginalRelevance(
-    mmrCandidates,
-    MAX_RELEVANT_CHUNKS,
-    undefined,
-    distinctDocs > 1
-      ? {
-          groupOf: (candidate) => {
-            const documentId = byId.get(candidate.id)?.documentId;
-            return typeof documentId === 'number'
-              ? String(documentId)
-              : undefined;
-          },
-          maxPerGroup: MAX_CHUNKS_PER_FILE,
-        }
-      : undefined
-  );
-
-  // Adaptive-k on the non-attachment tail: drop chunks past the first large
-  // relevance gap so a weak distractor never reaches the small reader.
-  // Attachment chunks are always kept — they are the explicit subject of the turn.
-  const nonAttachmentByRelevance = selected
-    .filter((item) => !isAttachment(byId.get(item.id)?.documentId))
-    .sort(
-      (a, b) =>
-        (baseRelevanceById.get(b.id) ?? 0) - (baseRelevanceById.get(a.id) ?? 0)
-    );
-  const keepCount = adaptiveKeepCount(
-    nonAttachmentByRelevance.map((item) => baseRelevanceById.get(item.id) ?? 0),
-    ADAPTIVE_K_MIN_KEEP
-  );
-  const keptNonAttachmentIds = new Set(
-    nonAttachmentByRelevance.slice(0, keepCount).map((item) => item.id)
-  );
-  const kept = selected.filter(
-    (item) =>
-      isAttachment(byId.get(item.id)?.documentId) ||
-      keptNonAttachmentIds.has(item.id)
-  );
+  const perFileCount = new Map<number | undefined, number>();
+  const selected: typeof scored = [];
+  for (const item of scored) {
+    if (selected.length >= MAX_RELEVANT_CHUNKS) break;
+    if (distinctDocs > 1) {
+      const count = perFileCount.get(item.documentId) ?? 0;
+      if (count >= MAX_CHUNKS_PER_FILE) continue;
+      perFileCount.set(item.documentId, count + 1);
+    }
+    selected.push(item);
+  }
 
   const ordered = attachmentSet.size
-    ? [...kept].sort(
+    ? [...selected].sort(
         (a, b) =>
-          Number(isAttachment(byId.get(b.id)?.documentId)) -
-          Number(isAttachment(byId.get(a.id)?.documentId))
+          Number(isAttachment(b.documentId)) -
+          Number(isAttachment(a.documentId))
       )
-    : kept;
+    : selected;
 
   return expandSelectedWithNeighbors(
     ordered.map((item) => item.id),
@@ -409,29 +295,19 @@ export const hybridRetrieve = async ({
   );
 };
 
-// Thin app↔library boundary. Binds the store + embeddings so retrieval is a
-// single retrieve(query, options) call, making the hybrid testable and portable
-// in isolation. It forwards to hybridRetrieve unchanged — no interface, because
-// there is one implementation and one caller; extract a Retriever interface only
-// if a second retriever ever appears. Deliberately NOT `implements VectorStore`:
-// the hybrid is read-only and its ContextChunk output drops id/embedding, so
-// coercing to QueryResult would change retrieval results.
-export type HybridRetrieveOptions = Omit<
-  HybridRetrieveParams,
+export type RetrieveOptions = Omit<
+  RetrieveParams,
   'prompt' | 'vectorStore' | 'embeddings'
 >;
 
-export class HybridRetriever {
+export class Retriever {
   constructor(
     private vectorStore: OPSQLiteVectorStore,
     private embeddings?: LFMEmbeddings | null
   ) {}
 
-  retrieve(
-    query: string,
-    options: HybridRetrieveOptions
-  ): Promise<ContextChunk[]> {
-    return hybridRetrieve({
+  retrieve(query: string, options: RetrieveOptions): Promise<ContextChunk[]> {
+    return retrieve({
       prompt: query,
       vectorStore: this.vectorStore,
       embeddings: this.embeddings,
