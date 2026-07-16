@@ -15,7 +15,6 @@ type TextAreaFieldProps = TextInputProps & {
   value: string;
   onChangeText: (text: string) => void;
   onFocus?: () => void;
-  error?: boolean;
   errorMessage?: string;
 };
 
@@ -24,13 +23,14 @@ const TextAreaField: React.FC<TextAreaFieldProps> = ({
   onChangeText,
   placeholder,
   onFocus,
-  error = false,
   errorMessage,
   ...props
 }) => {
   const { theme } = useTheme();
   const [active, setActive] = useState(false);
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const error = !!errorMessage;
 
   return (
     <View style={styles.container}>

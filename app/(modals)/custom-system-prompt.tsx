@@ -81,7 +81,6 @@ export default function CustomSystemPromptScreen() {
               value={draft}
               onChangeText={setDraft}
               editable={didSeed}
-              error={isOverLimit}
               errorMessage={
                 isOverLimit
                   ? "That's a bit too long — please shorten it."
