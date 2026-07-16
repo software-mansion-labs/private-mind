@@ -8,12 +8,11 @@ import {
   sourceKey,
   sourcesPresentInContext,
 } from './contextUtils';
-import { hybridRetrieve } from './hybridRetrieval';
+import { retrieve } from './retrieval';
 import { extractQueryTerms, stemPrefix } from './queryTerms';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
 import {
   NO_ANSWER_PATTERNS_EN,
-  NO_ANSWER_PATTERNS_PL,
   THINK_CLOSE,
   THINK_OPEN,
 } from '../constants/citations';
@@ -125,9 +124,7 @@ const answerTermsOf = (answer: string): Set<string> =>
 
 // True when the visible reply is an EN/PL "no information" refusal (negation tied to a coverage noun).
 export const looksLikeNoAnswer = (visibleReply: string): boolean =>
-  [...NO_ANSWER_PATTERNS_EN, ...NO_ANSWER_PATTERNS_PL].some((pattern) =>
-    pattern.test(visibleReply)
-  );
+  NO_ANSWER_PATTERNS_EN.some((pattern) => pattern.test(visibleReply));
 
 // Compact per-document overlap for logs: `name:overlap` per candidate, so a surprising citation set is diagnosable.
 export const answerCitationOverlaps = (
@@ -188,7 +185,7 @@ const retrieveChunks = async (
   embeddings?: LFMEmbeddings | null
 ) => {
   try {
-    const relevantChunks = await hybridRetrieve({
+    const relevantChunks = await retrieve({
       prompt: userInput,
       enabledSourceIds: allSourceIds,
       vectorStore,

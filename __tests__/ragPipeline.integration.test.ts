@@ -5,14 +5,7 @@ import {
   type SourceRow,
 } from '../utils/messageSources';
 import { sourcesPresentInContext } from '../utils/contextUtils';
-import * as keywordIndex from '../database/keywordIndex';
 import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
-
-jest.mock('../database/keywordIndex', () => ({
-  keywordSearch: jest.fn(),
-}));
-
-const mockKeywordSearch = keywordIndex.keywordSearch as jest.Mock;
 
 type VectorRow = {
   id: string;
@@ -54,7 +47,6 @@ const presentNames = (context: string[]): Set<string> =>
   sourcesPresentInContext(context.join('\n'));
 
 beforeEach(() => {
-  mockKeywordSearch.mockReset();
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
 });
@@ -80,10 +72,6 @@ describe('buildMessageSources — retrieval → context → citation pipeline', 
         similarity: 0.82,
         metadata: { documentId: 2, name: 'q4_report.pdf' },
       },
-    ]);
-    mockKeywordSearch.mockResolvedValue([
-      { chunkId: '1:0', documentId: 1, score: -1 },
-      { chunkId: '2:0', documentId: 2, score: -1.1 },
     ]);
 
     const { context, sourceDocuments, preferredSourceDocuments } =
@@ -122,9 +110,6 @@ describe('buildMessageSources — retrieval → context → citation pipeline', 
         metadata: { documentId: 2, name: 'attachment.txt' },
       },
     ]);
-    mockKeywordSearch.mockResolvedValue([
-      { chunkId: '1:0', documentId: 1, score: -1 },
-    ]);
 
     const { context, sourceDocuments, preferredSourceDocuments } =
       await buildMessageSources({
@@ -159,9 +144,6 @@ describe('buildMessageSources — retrieval → context → citation pipeline', 
         metadata: { documentId: 1, name: 'library.pdf' },
       },
     ]);
-    mockKeywordSearch.mockResolvedValue([
-      { chunkId: '1:0', documentId: 1, score: -1 },
-    ]);
 
     const { context, sourceDocuments } = await buildMessageSources({
       userInput: 'summarize everything',
@@ -181,7 +163,6 @@ describe('buildMessageSources — retrieval → context → citation pipeline', 
 
   it('takes the attachment-only path when there is no user query', async () => {
     const vectorStore = makeVectorStore([]);
-    mockKeywordSearch.mockResolvedValue([]);
 
     const { context, sourceDocuments } = await buildMessageSources({
       userInput: '   ',
@@ -205,7 +186,6 @@ describe('buildMessageSources — retrieval → context → citation pipeline', 
 
   it('returns nothing and never touches retrieval when no sources are active', async () => {
     const vectorStore = makeVectorStore([]);
-    mockKeywordSearch.mockResolvedValue([]);
 
     const result = await buildMessageSources({
       userInput: 'anything',
@@ -222,7 +202,6 @@ describe('buildMessageSources — retrieval → context → citation pipeline', 
       preferredSourceDocuments: [],
     });
     expect(vectorStore.query).not.toHaveBeenCalled();
-    expect(mockKeywordSearch).not.toHaveBeenCalled();
   });
 
   it('never emits a citation whose block is absent from the context sent to the model', async () => {
@@ -241,10 +220,6 @@ describe('buildMessageSources — retrieval → context → citation pipeline', 
         similarity: 0.82,
         metadata: { documentId: 2, name: 'q4_report.pdf' },
       },
-    ]);
-    mockKeywordSearch.mockResolvedValue([
-      { chunkId: '1:0', documentId: 1, score: -1 },
-      { chunkId: '2:0', documentId: 2, score: -1.1 },
     ]);
 
     const { context, sourceDocuments, preferredSourceDocuments } =
