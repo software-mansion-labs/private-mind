@@ -268,6 +268,28 @@ describe('pickCitationsByAnswer', () => {
     expect(result).toEqual([]);
   });
 
+  it('cites nothing when a verbose refusal still overlaps the passages', () => {
+    const cited = [
+      withPassage(
+        1,
+        'sample.pdf',
+        'The report covers revenue and profit figures.'
+      ),
+      withPassage(
+        2,
+        'misja_ares_trzy.pdf',
+        'The mission Ares III briefing and crew roster.'
+      ),
+    ];
+    const answer =
+      'Przeanalizowałem dokumenty: sample.pdf opisuje revenue i profit, a misja ' +
+      'Ares III to briefing i crew roster. W żadnym nie ma informacji o L4.';
+
+    const result = pickCitationsByAnswer(cited, answer, []);
+
+    expect(result).toEqual([]);
+  });
+
   it('attributes to the source the visible reply echoes, not the reasoning', () => {
     const cited = [
       withPassage(1, 'sample.pdf', 'alpha beta gamma'),
@@ -301,6 +323,11 @@ describe('visibleAnswer', () => {
 
 describe('looksLikeNoAnswer', () => {
   it.each([
+    'W dokumentach nie ma informacji o L4.',
+    'Brak informacji na ten temat w załączonych plikach.',
+    'Dokument nie zawiera danych o urlopie.',
+    'Nie wiem, o tym nie ma mowy.',
+    'Nie ma dokumentu z tematem "L4" w kontekście dostanych materiałów. Informacje zamieszczone w źródłach obejmują tylko raport testowy.',
     'There is no information about L4 in the documents.',
     'There is no mention of sick leave anywhere.',
     'Sick leave is not mentioned in the provided documents.',

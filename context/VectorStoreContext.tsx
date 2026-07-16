@@ -7,6 +7,7 @@ import {
 } from '../constants/embedding-model';
 import { migrateEmbeddingModelIfNeeded } from '../utils/embeddingModelMigration';
 import { LFMEmbeddings } from '../utils/lfmEmbeddings';
+import { ensureKeywordIndex } from '../database/keywordIndex';
 import { isEmbeddingModelDownloaded } from '../utils/embeddingModel';
 import { useEmbeddingModelStore } from '../store/embeddingModelStore';
 
@@ -68,6 +69,9 @@ export const VectorStoreProvider = ({
           db,
           LFM_2_5_EMBEDDING_MODEL_ID
         );
+
+        if (cancelled) return;
+        await ensureKeywordIndex(store.db);
 
         if (cancelled) return;
         const downloaded = await isEmbeddingModelDownloaded();

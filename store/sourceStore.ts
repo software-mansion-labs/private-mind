@@ -15,6 +15,10 @@ import { readDocumentText } from '../utils/fileReaders';
 import { useLLMStore } from './llmStore';
 import { LFMEmbeddings } from '../utils/lfmEmbeddings';
 import {
+  addChunkToKeywordIndex,
+  removeDocumentFromKeywordIndex,
+} from '../database/keywordIndex';
+import {
   MAX_SOURCE_CHUNKS,
   MAX_SOURCE_TEXT_CHARS,
   TEXT_SPLITTER_CHUNK_OVERLAP,
@@ -130,6 +134,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
           await vectorStore.delete({
             predicate: (value) => value.metadata?.documentId === sourceId,
           });
+          await removeDocumentFromKeywordIndex(vectorStore.db, sourceId);
         }
         await deleteSource(db, sourceId);
         set((state) => ({
@@ -158,6 +163,14 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
             isFirstChunk: i === 0,
           },
         });
+        if (vectorStore) {
+          await addChunkToKeywordIndex(
+            vectorStore.db,
+            chunkId,
+            sourceId,
+            chunks[i]!
+          );
+        }
         onProgress?.((i + 1) / chunks.length);
       }
 
@@ -222,6 +235,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         await vectorStore.delete({
           predicate: (value) => value.metadata?.documentId === source.id,
         });
+        await removeDocumentFromKeywordIndex(vectorStore.db, source.id);
         await deleteSource(db, source.id);
       }
       if (orphaned.length > 0) {
