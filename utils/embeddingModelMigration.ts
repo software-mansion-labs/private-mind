@@ -12,6 +12,11 @@ export const migrateEmbeddingModelIfNeeded = async (
 
   if (storedModelId === currentModelId) return false;
 
+  if (storedModelId === null) {
+    await AsyncStorage.setItem(ACTIVE_EMBEDDING_MODEL_KEY, currentModelId);
+    return false;
+  }
+
   await vectorStore.deleteVectorStore();
 
   try {

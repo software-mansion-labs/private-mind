@@ -6,7 +6,10 @@ import { useLLMStore } from '../store/llmStore';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import type { LFMEmbeddings } from '../utils/lfmEmbeddings';
-import { MAX_SOURCE_CHUNKS } from '../constants/retrieval';
+import {
+  MAX_SOURCE_CHUNKS,
+  MAX_SOURCE_TEXT_CHARS,
+} from '../constants/retrieval';
 
 jest.mock('../database/sourcesRepository');
 jest.mock('../utils/fileReaders');
@@ -167,6 +170,21 @@ describe('addSource', () => {
 
     expect(result).toEqual({ success: true, sourceId: 99, truncated: true });
     expect(vectorStoreAdd).toHaveBeenCalledTimes(MAX_SOURCE_CHUNKS);
+  });
+
+  it('caps oversized extracted text before splitting and flags it truncated', async () => {
+    const oversized = 'a'.repeat(MAX_SOURCE_TEXT_CHARS + 500);
+    mockReadDocumentText.mockResolvedValue(oversized);
+    mockInsertSource.mockResolvedValue(99);
+    const splitText = jest.fn().mockResolvedValue(['chunk']);
+    MockSplitter.mockImplementation(() => ({ splitText }));
+
+    const result = await useSourceStore
+      .getState()
+      .addSource(baseSource, '/path/doc.txt', mockVectorStore);
+
+    expect(result).toEqual({ success: true, sourceId: 99, truncated: true });
+    expect(splitText.mock.calls[0][0]).toHaveLength(MAX_SOURCE_TEXT_CHARS);
   });
 
   it('aborts embedding and rolls back the partial source when the signal is aborted', async () => {
