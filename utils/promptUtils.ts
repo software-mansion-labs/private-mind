@@ -20,16 +20,16 @@ export const prepareMessagesForLLM = (
   context: string[],
   settings: ChatSettings,
   model: Model,
-  globalSystemPrompt: string = ''
+  customSystemPrompt: string = ''
 ): ExecutorchMessage[] => {
   let systemPrompt = settings.systemPrompt;
 
-  const trimmedGlobalPrompt = globalSystemPrompt.trim();
-  if (trimmedGlobalPrompt) {
-    const guardedGlobalPrompt = `${CUSTOM_PROMPT_GUARD}\n\n${trimmedGlobalPrompt}`;
+  const trimmedCustomPrompt = customSystemPrompt.trim();
+  if (trimmedCustomPrompt) {
+    const guardedCustomPrompt = `${CUSTOM_PROMPT_GUARD}\n\n${trimmedCustomPrompt}`;
     systemPrompt = systemPrompt
-      ? `${systemPrompt}\n\n${guardedGlobalPrompt}`
-      : guardedGlobalPrompt;
+      ? `${systemPrompt}\n\n${guardedCustomPrompt}`
+      : guardedCustomPrompt;
   }
 
   if (context.length > 0) {
