@@ -19,7 +19,7 @@ import { DrawerItem } from './DrawerItem';
 import { DrawerTopBar } from './DrawerTopBar';
 import { DrawerNavSection } from './DrawerNavSection';
 import { DrawerEmptyState } from './DrawerEmptyState';
-import { buildChatSections } from './chatSections';
+import { buildChatSections, sortChatsByRecency } from './chatSections';
 import { useDrawerChatMenu } from './useDrawerChatMenu';
 import {
   DRAWER_HORIZONTAL_PADDING,
@@ -85,9 +85,10 @@ const DrawerMenu = ({
   const query = search.trim().toLowerCase();
   const isFiltering = query.length > 0;
 
+  const sortedChats = useMemo(() => sortChatsByRecency(chats), [chats]);
   const sections = useMemo(
-    () => buildChatSections(chats, query, now),
-    [chats, query, now]
+    () => buildChatSections(sortedChats, query, now),
+    [sortedChats, query, now]
   );
 
   const hasNoResults = isFiltering && sections.length === 0;

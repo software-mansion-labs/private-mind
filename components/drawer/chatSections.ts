@@ -22,16 +22,18 @@ export const getRelativeDateSection = (date: Date, now: Date): string => {
 
 export type ChatSection = [string, Chat[]];
 
+export const sortChatsByRecency = (chats: Chat[]): Chat[] =>
+  [...chats].sort((a, b) => b.lastUsed - a.lastUsed);
+
 export const buildChatSections = (
   chats: Chat[],
   query: string,
   now: number
 ): ChatSection[] => {
   const nowDate = new Date(now);
-  const sorted = [...chats].sort((a, b) => b.lastUsed - a.lastUsed);
   const matching = query
-    ? sorted.filter((chat) => chatLabel(chat).toLowerCase().includes(query))
-    : sorted;
+    ? chats.filter((chat) => chatLabel(chat).toLowerCase().includes(query))
+    : chats;
 
   const sections: Record<string, Chat[]> = {};
   matching.forEach((chat) => {

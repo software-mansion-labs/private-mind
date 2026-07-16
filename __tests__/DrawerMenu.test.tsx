@@ -69,6 +69,8 @@ const setPlatform = (os: string) => {
   Object.defineProperty(Platform, 'OS', { get: () => os, configurable: true });
 };
 
+const ORIGINAL_OS = Platform.OS;
+
 const defaultProps = {
   searching: false,
   search: '',
@@ -90,6 +92,8 @@ beforeEach(() => {
   mockPathname = '/';
   setPlatform('ios');
 });
+
+afterEach(() => setPlatform(ORIGINAL_OS));
 
 describe('DrawerMenu — collapsed', () => {
   it('keeps New chat, Models and App Info at the top', () => {
