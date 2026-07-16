@@ -46,7 +46,7 @@ const baseModel = {
 };
 
 // Captures the token callback registered during loadModel so tests can fire tokens
-let capturedTokenCallback: ((token: string) => void) | null = null;
+let capturedTokenCallback: ((token: string) => void) | null | undefined = null;
 
 const makeMockInstance = () => ({
   generate: jest.fn(),
@@ -114,7 +114,7 @@ describe('loadModel', () => {
     let wasLoading = false;
     mockLLMModule.fromModelName.mockImplementation(async (...args) => {
       wasLoading = useLLMStore.getState().isLoading;
-      capturedTokenCallback = args[4];
+      capturedTokenCallback = args[2];
       return mockInstance as unknown as LLMModule;
     });
 
@@ -144,7 +144,7 @@ describe('loadModel', () => {
     // Load a different model
     mockInstance = makeMockInstance();
     mockLLMModule.fromModelName.mockImplementation(async (...args) => {
-      capturedTokenCallback = args[4];
+      capturedTokenCallback = args[2];
       return mockInstance as unknown as LLMModule;
     });
     await useLLMStore.getState().loadModel({ ...baseModel, id: 2 });
