@@ -16,6 +16,7 @@ import { useLLMStore } from './llmStore';
 import { LFMEmbeddings } from '../utils/lfmEmbeddings';
 import {
   MAX_SOURCE_CHUNKS,
+  MAX_SOURCE_TEXT_CHARS,
   TEXT_SPLITTER_CHUNK_OVERLAP,
   TEXT_SPLITTER_CHUNK_SIZE,
 } from '../constants/retrieval';
@@ -96,12 +97,19 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
       const tempSource: Source = { ...source, id: tempId, isProcessing: true };
       set((state) => ({ sources: [...state.sources, tempSource] }));
 
+      const cappedText =
+        sourceTextContent.length > MAX_SOURCE_TEXT_CHARS
+          ? sourceTextContent.slice(0, MAX_SOURCE_TEXT_CHARS)
+          : sourceTextContent;
+
       const textSplitter = new RecursiveCharacterTextSplitter({
         chunkSize: TEXT_SPLITTER_CHUNK_SIZE,
         chunkOverlap: TEXT_SPLITTER_CHUNK_OVERLAP,
       });
-      const allChunks = await textSplitter.splitText(sourceTextContent);
-      const truncated = allChunks.length > MAX_SOURCE_CHUNKS;
+      const allChunks = await textSplitter.splitText(cappedText);
+      const truncated =
+        cappedText.length < sourceTextContent.length ||
+        allChunks.length > MAX_SOURCE_CHUNKS;
       const chunks = truncated
         ? allChunks.slice(0, MAX_SOURCE_CHUNKS)
         : allChunks;

@@ -7,6 +7,7 @@ import {
   CANDIDATE_POOL,
   MAX_CHUNKS_PER_FILE,
   MAX_RELEVANT_CHUNKS,
+  SEMANTIC_TOP_KEEP_FLOOR,
   STRONG_SEMANTIC_THRESHOLD,
 } from '../constants/retrieval';
 
@@ -248,11 +249,21 @@ export const retrieve = async ({
     });
   }
 
-  const qualified = [...byId.values()].filter(
-    (candidate) =>
-      isAttachment(candidate.documentId) ||
-      candidate.similarity >= STRONG_SEMANTIC_THRESHOLD
+  const candidates = [...byId.values()];
+  const topSemantic = candidates.reduce<Candidate | null>(
+    (best, candidate) =>
+      candidate.similarity > (best?.similarity ?? -Infinity) ? candidate : best,
+    null
   );
+
+  const qualified = candidates.filter((candidate) => {
+    if (isAttachment(candidate.documentId)) return true;
+    if (candidate.similarity >= STRONG_SEMANTIC_THRESHOLD) return true;
+    return (
+      candidate === topSemantic &&
+      candidate.similarity >= SEMANTIC_TOP_KEEP_FLOOR
+    );
+  });
 
   if (qualified.length === 0) return [];
 

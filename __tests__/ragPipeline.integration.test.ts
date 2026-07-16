@@ -252,4 +252,76 @@ describe('buildMessageSources — retrieval → context → citation pipeline', 
       expect(present.has(cited.name)).toBe(true);
     }
   });
+
+  it('surfaces a paraphrase match that clears the lowered semantic threshold', async () => {
+    const vectorStore = makeVectorStore([
+      {
+        id: '1:0',
+        document: 'the summit of Everest is the highest point on Earth',
+        embedding: [1, 0],
+        similarity: 0.45,
+        metadata: { documentId: 1, name: 'everest.txt' },
+      },
+    ]);
+
+    const { context, sourceDocuments } = await buildMessageSources({
+      userInput: 'which mountain is the tallest',
+      attachmentSourceIds: [],
+      enabledSources: [1],
+      sources: [source(1, 'everest.txt')],
+      vectorStore,
+      embeddings: null,
+    });
+
+    expect(context.join('\n')).toContain('--- Source 1:');
+    expect(sourceDocuments.map((d) => d.name)).toEqual(['everest.txt']);
+  });
+
+  it('keeps the single best chunk above the top-keep floor even below the main threshold', async () => {
+    const vectorStore = makeVectorStore([
+      {
+        id: '1:0',
+        document: 'a loosely related passage about alpine geography',
+        embedding: [1, 0],
+        similarity: 0.3,
+        metadata: { documentId: 1, name: 'geography.txt' },
+      },
+    ]);
+
+    const { context, sourceDocuments } = await buildMessageSources({
+      userInput: 'which mountain is the tallest',
+      attachmentSourceIds: [],
+      enabledSources: [1],
+      sources: [source(1, 'geography.txt')],
+      vectorStore,
+      embeddings: null,
+    });
+
+    expect(context.join('\n')).toContain('--- Source 1:');
+    expect(sourceDocuments.map((d) => d.name)).toEqual(['geography.txt']);
+  });
+
+  it('returns nothing when even the best chunk is below the top-keep floor', async () => {
+    const vectorStore = makeVectorStore([
+      {
+        id: '1:0',
+        document: 'entirely unrelated noise passage',
+        embedding: [1, 0],
+        similarity: 0.2,
+        metadata: { documentId: 1, name: 'noise.txt' },
+      },
+    ]);
+
+    const { context, sourceDocuments } = await buildMessageSources({
+      userInput: 'which mountain is the tallest',
+      attachmentSourceIds: [],
+      enabledSources: [1],
+      sources: [source(1, 'noise.txt')],
+      vectorStore,
+      embeddings: null,
+    });
+
+    expect(context).toEqual([]);
+    expect(sourceDocuments).toEqual([]);
+  });
 });
