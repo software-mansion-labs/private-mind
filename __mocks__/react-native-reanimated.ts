@@ -31,7 +31,11 @@ module.exports = {
   useAnimatedRef: () => ({ current: null }),
   useDerivedValue: (fn: () => any) => ({ value: fn() }),
   useAnimatedScrollHandler: (fn: any) => fn,
-  withTiming: (val: any, _config: any, callback?: (finished: boolean) => void) => {
+  withTiming: (
+    val: any,
+    _config: any,
+    callback?: (finished: boolean) => void
+  ) => {
     callback?.(true);
     return val;
   },
