@@ -52,6 +52,8 @@ const setPlatform = (os: string) => {
   Object.defineProperty(Platform, 'OS', { get: () => os, configurable: true });
 };
 
+const ORIGINAL_OS = Platform.OS;
+
 const captureSheet = () => {
   let callback: ((index: number) => void) | null = null;
   jest
@@ -84,7 +86,10 @@ beforeEach(() => {
   mockExportChatRoom.mockResolvedValue(undefined);
 });
 
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {
+  jest.restoreAllMocks();
+  setPlatform(ORIGINAL_OS);
+});
 
 describe('opening the menu', () => {
   it('offers rename, export and delete for the long-pressed chat', () => {
@@ -263,7 +268,7 @@ describe('rename flow', () => {
     expect(screen.queryByDisplayValue('Trip to Rome')).toBeNull();
   });
 
-  it('opens the rename modal seeded with the chat label', () => {
+  it('opens the rename modal seeded with the chat title', () => {
     const getCallback = captureSheet();
     const { result } = renderHook(() => useDrawerChatMenu());
     const { rerender } = render(<>{result.current.MenuElements}</>);
@@ -273,6 +278,19 @@ describe('rename flow', () => {
     rerender(<>{result.current.MenuElements}</>);
 
     expect(screen.getByDisplayValue('Trip to Rome')).toBeTruthy();
+  });
+
+  it('seeds the rename modal empty for an untitled chat, not its "Chat N" label', () => {
+    const getCallback = captureSheet();
+    const { result } = renderHook(() => useDrawerChatMenu());
+    const { rerender } = render(<>{result.current.MenuElements}</>);
+
+    act(() => result.current.openMenuFor(untitledChat));
+    act(() => getCallback()(0));
+    rerender(<>{result.current.MenuElements}</>);
+
+    expect(screen.queryByDisplayValue('Chat 9')).toBeNull();
+    expect(screen.getByPlaceholderText('Chat name').props.value).toBe('');
   });
 
   it('renames the long-pressed chat on submit', async () => {

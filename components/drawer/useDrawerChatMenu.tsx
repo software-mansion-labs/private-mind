@@ -127,7 +127,7 @@ export const useDrawerChatMenu = ({ onMenuActiveChange }: Options = {}) => {
       {ConfirmElement}
       <RenameChatModal
         visible={renameVisible}
-        initialTitle={targetChat ? chatLabel(targetChat) : ''}
+        initialTitle={targetChat?.title ?? ''}
         onCancel={handleRenameCancel}
         onSubmit={handleRenameSubmit}
       />
