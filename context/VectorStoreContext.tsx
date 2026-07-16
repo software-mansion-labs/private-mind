@@ -19,7 +19,6 @@ const VectorStoreContext = createContext<{
   embeddings: null,
 });
 
-// Serializes init/teardown so overlapping effect runs don't race the shared DB.
 let vectorStoreInitChain: Promise<unknown> = Promise.resolve();
 
 export const VectorStoreProvider = ({
@@ -36,6 +35,17 @@ export const VectorStoreProvider = ({
   useEffect(() => {
     let cancelled = false;
     let localStore: OPSQLiteVectorStore | null = null;
+    let unloaded = false;
+
+    const unloadStore = async () => {
+      if (unloaded || !localStore) return;
+      unloaded = true;
+      try {
+        await localStore.unload();
+      } catch (error) {
+        console.error('Failed to unload vector store:', error);
+      }
+    };
 
     const initialize = async () => {
       if (cancelled) return;
@@ -53,27 +63,25 @@ export const VectorStoreProvider = ({
         });
         localStore = store;
 
+        if (cancelled) return;
         await migrateEmbeddingModelIfNeeded(
           store,
           db,
           LFM_2_5_EMBEDDING_MODEL_ID
         );
 
+        if (cancelled) return;
         await ensureKeywordIndex(store.db);
 
+        if (cancelled) return;
         const downloaded = await isEmbeddingModelDownloaded();
+
+        if (cancelled) return;
         if (downloaded) {
           await store.load();
         }
 
-        if (cancelled) {
-          await store
-            .unload()
-            .catch((error) =>
-              console.error('Failed to unload superseded vector store:', error)
-            );
-          return;
-        }
+        if (cancelled) return;
 
         setVectorStore(store);
         setEmbeddings(lfmEmbeddings);
@@ -96,15 +104,7 @@ export const VectorStoreProvider = ({
       setVectorStore(null);
       setEmbeddings(null);
       useEmbeddingModelStore.getState().setStatus('unknown');
-      vectorStoreInitChain = vectorStoreInitChain.then(() =>
-        localStore
-          ? localStore
-              .unload()
-              .catch((error) =>
-                console.error('Failed to unload vector store:', error)
-              )
-          : undefined
-      );
+      vectorStoreInitChain = vectorStoreInitChain.then(unloadStore);
     };
   }, [db]);
 
