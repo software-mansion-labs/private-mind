@@ -1,4 +1,4 @@
-import { hybridRetrieve } from '../utils/hybridRetrieval';
+import { hybridRetrieve, HybridRetriever } from '../utils/hybridRetrieval';
 import * as keywordIndex from '../database/keywordIndex';
 import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 
@@ -481,5 +481,62 @@ describe('hybridRetrieve', () => {
       new Set(['Invoice'])
     );
     expect(result.map((c) => c.similarity)).toEqual([0, 0.9, 0]);
+  });
+});
+
+describe('HybridRetriever', () => {
+  beforeEach(() => {
+    mockKeywordSearch.mockReset();
+  });
+
+  // The cases above already exercise the hybrid logic; this proves the wrapper
+  // forwards 1:1 — query→prompt, store/embeddings from the constructor, and
+  // every option spread through. Inputs are chosen so the two options a naive
+  // spread could silently drop are load-bearing: sourceNamesById resolves doc
+  // 1's missing name, and attachmentSourceIds keeps doc 2's otherwise-gated
+  // low-similarity chunk and orders it first. A wrapper that dropped either
+  // would diverge from the raw call and fail the toEqual.
+  it('forwards to hybridRetrieve 1:1, including attachmentSourceIds and sourceNamesById', async () => {
+    const vectorResults = [
+      {
+        id: '1:0',
+        document: 'a semantic passage about felines',
+        embedding: [1, 0],
+        similarity: 0.8,
+        metadata: { documentId: 1 }, // no name → resolved via sourceNamesById
+      },
+      {
+        id: '2:0',
+        document: 'freshly attached, low semantic overlap',
+        embedding: [0, 1],
+        similarity: 0.05, // gated out unless treated as an attachment
+        metadata: { documentId: 2, name: 'Attachment' },
+      },
+    ];
+    mockKeywordSearch.mockResolvedValue([]);
+
+    const store = makeVectorStore(vectorResults, {});
+    const options = {
+      enabledSourceIds: [1, 2],
+      sourceNamesById: new Map<number, string>([[1, 'ResolvedName']]),
+      attachmentSourceIds: [2],
+    };
+
+    const viaWrapper = await new HybridRetriever(store, null).retrieve(
+      'felines',
+      options
+    );
+    const viaFunction = await hybridRetrieve({
+      prompt: 'felines',
+      vectorStore: store,
+      embeddings: null,
+      ...options,
+    });
+
+    const names = viaWrapper.map((c) => c.metadata?.name);
+    expect(names).toContain('ResolvedName'); // sourceNamesById forwarded
+    expect(names).toContain('Attachment'); // attachmentSourceIds forwarded
+    expect(viaWrapper[0]?.metadata?.name).toBe('Attachment'); // attachment ordered first
+    expect(viaWrapper).toEqual(viaFunction); // and identical to the raw call
   });
 });
