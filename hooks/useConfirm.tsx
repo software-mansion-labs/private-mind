@@ -37,8 +37,14 @@ export const useConfirm = () => {
         }
 
         settle(false);
+
+        if (!sheetRef.current) {
+          resolve(false);
+          return;
+        }
+
         resolveRef.current = resolve;
-        sheetRef.current?.present({
+        sheetRef.current.present({
           title,
           subtitle: message,
           buttonTitle: confirmLabel,

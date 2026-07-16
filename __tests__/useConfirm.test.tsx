@@ -52,6 +52,8 @@ const setPlatform = (os: string) => {
   Object.defineProperty(Platform, 'OS', { get: () => os, configurable: true });
 };
 
+const ORIGINAL_OS = Platform.OS;
+
 const OPTIONS = {
   title: 'Delete Chat',
   message: 'Are you sure you want to delete this chat?',
@@ -75,6 +77,18 @@ const Harness = () => {
   );
 };
 
+const HarnessNoSheet = () => {
+  const { confirm } = useConfirm();
+  return (
+    <Pressable
+      testID="ask"
+      onPress={async () => onResult(await confirm(OPTIONS))}
+    >
+      <Text>Ask</Text>
+    </Pressable>
+  );
+};
+
 const getIosButton = (spy: jest.SpyInstance, text: string) => {
   const buttons = spy.mock.calls[0][2] as {
     text: string;
@@ -86,6 +100,8 @@ const getIosButton = (spy: jest.SpyInstance, text: string) => {
 beforeEach(() => {
   jest.clearAllMocks();
 });
+
+afterEach(() => setPlatform(ORIGINAL_OS));
 
 describe('useConfirm — Android', () => {
   beforeEach(() => setPlatform('android'));
@@ -153,6 +169,14 @@ describe('useConfirm — Android', () => {
     fireEvent.press(screen.getByTestId('ask'));
 
     expect(alertSpy).not.toHaveBeenCalled();
+  });
+
+  it('resolves false instead of hanging when no sheet is mounted', async () => {
+    render(<HarnessNoSheet />);
+
+    fireEvent.press(screen.getByTestId('ask'));
+
+    await waitFor(() => expect(onResult).toHaveBeenCalledWith(false));
   });
 });
 
