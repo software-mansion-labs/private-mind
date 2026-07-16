@@ -2,11 +2,7 @@ import { create } from 'zustand';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 
 export type EmbeddingModelStatus =
-  | 'unknown'
-  | 'not_downloaded'
-  | 'downloading'
-  | 'ready'
-  | 'error';
+  'unknown' | 'not_downloaded' | 'downloading' | 'ready' | 'error';
 
 type EmbeddingModelStore = {
   status: EmbeddingModelStatus;
