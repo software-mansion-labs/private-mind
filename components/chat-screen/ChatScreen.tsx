@@ -379,7 +379,7 @@ export default function ChatScreen({
             }}
             onBarGrow={() => {
               setTimeout(() => {
-                messagesRef.current?.scrollToEnd();
+                messagesRef.current?.scrollToEndIfAtBottom();
               }, 100);
             }}
           />

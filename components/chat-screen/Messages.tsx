@@ -36,6 +36,7 @@ import ChevronDown from '../../assets/icons/chevron-down.svg';
 export interface MessagesHandle {
   onMessageSent: () => void;
   scrollToEnd: () => void;
+  scrollToEndIfAtBottom: () => void;
 }
 
 interface Props {
@@ -182,6 +183,11 @@ const Messages = ({
     () => ({
       scrollToEnd: () => {
         scrollRef.current?.scrollToEnd({ animated: true });
+      },
+      scrollToEndIfAtBottom: () => {
+        if (isAtBottomRef.current) {
+          scrollRef.current?.scrollToEnd({ animated: true });
+        }
       },
       onMessageSent: () => {
         // Ensure the view is visible (covers new-chat case where the

@@ -94,6 +94,7 @@ const ChatBar = ({
   } = useAttachment();
 
   const defaultBarHeight = useRef(0);
+  const prevBarHeight = useRef(0);
   const textInputRef = useRef<RNTextInput>(null);
   // iOS-only: bump the TextInput key to force a remount when a prompt
   // suggestion is set programmatically. iOS doesn't re-fire onLayout
@@ -138,7 +139,9 @@ const ChatBar = ({
       const delta = height - baseline;
       extraContentPadding.value = Math.max(0, delta);
       onHeightChange?.(height);
-      if (delta > 0) {
+      const grew = height > prevBarHeight.current;
+      prevBarHeight.current = height;
+      if (delta > 0 && grew) {
         onBarGrow?.();
       }
     },
