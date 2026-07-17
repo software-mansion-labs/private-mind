@@ -266,6 +266,47 @@ describe('hybridRetrieve', () => {
     expect(result.map((c) => c.metadata?.name)).toContain('Everest');
   });
 
+  it('keeps several top-similarity semantic chunks above the floor, not just the single best', async () => {
+    mockKeywordSearch.mockResolvedValue([]);
+    const result = await hybridRetrieve({
+      prompt: 'how do mountains form',
+      enabledSourceIds: [1],
+      vectorStore: makeVectorStore(
+        [
+          {
+            id: '1:0',
+            document: 'first paraphrase-relevant passage',
+            embedding: [1, 0],
+            similarity: 0.33,
+            metadata: { documentId: 1, name: 'A' },
+          },
+          {
+            id: '2:0',
+            document: 'second paraphrase-relevant passage',
+            embedding: [0.9, 0.1],
+            similarity: 0.3,
+            metadata: { documentId: 2, name: 'B' },
+          },
+          {
+            id: '3:0',
+            document: 'third paraphrase-relevant passage',
+            embedding: [0.8, 0.2],
+            similarity: 0.28,
+            metadata: { documentId: 3, name: 'C' },
+          },
+        ],
+        {}
+      ),
+      sourceNamesById: new Map(),
+      embeddings: null,
+    });
+
+    const names = result.map((c) => c.metadata?.name);
+    expect(names).toContain('A');
+    expect(names).toContain('B');
+    expect(names).toContain('C');
+  });
+
   it('keeps a mid-similarity chunk when the query shares terms with it', async () => {
     mockKeywordSearch.mockResolvedValue([]);
     const result = await hybridRetrieve({

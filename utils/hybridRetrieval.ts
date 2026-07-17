@@ -22,6 +22,7 @@ import {
   MAX_CHUNKS_PER_FILE,
   MAX_RELEVANT_CHUNKS,
   SEMANTIC_TOP_KEEP_FLOOR,
+  SEMANTIC_TOP_KEEP_N,
   STRONG_SEMANTIC_THRESHOLD,
   VECTOR_WEIGHT,
 } from '../constants/retrieval';
@@ -321,10 +322,12 @@ export const hybridRetrieve = async ({
   };
 
   const candidates = [...byId.values()];
-  const topSemantic = candidates.reduce<Candidate | null>(
-    (best, candidate) =>
-      candidate.similarity > (best?.similarity ?? -Infinity) ? candidate : best,
-    null
+  const topSemanticIds = new Set(
+    candidates
+      .filter((c) => c.similarity >= SEMANTIC_TOP_KEEP_FLOOR)
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, SEMANTIC_TOP_KEEP_N)
+      .map((c) => c.id)
   );
 
   const qualified = candidates.filter((candidate) => {
@@ -334,12 +337,7 @@ export const hybridRetrieve = async ({
       if (candidate.similarity >= LEXICAL_MATCH_MIN_SIMILARITY) return true;
     }
     if (candidate.similarity >= STRONG_SEMANTIC_THRESHOLD) return true;
-    if (
-      candidate === topSemantic &&
-      candidate.similarity >= SEMANTIC_TOP_KEEP_FLOOR
-    ) {
-      return true;
-    }
+    if (topSemanticIds.has(candidate.id)) return true;
     return (
       candidate.similarity >= LEXICAL_MATCH_MIN_SIMILARITY &&
       coverageOf(candidate) > 0

@@ -32,8 +32,11 @@ export const ADAPTIVE_K_MIN_KEEP = 1;
 /** Cosine floor to qualify on semantics alone. Measured on-device: LFM2.5 true paraphrase matches land ~0.28–0.54, so 0.40 admits clear matches while most unrelated passages stay below. */
 export const STRONG_SEMANTIC_THRESHOLD = 0.4;
 
-/** The single highest-similarity candidate always qualifies above this floor, so the best semantic match is never fully gated out (empty result) on a paraphrase that clears neither the main threshold nor any keyword/coverage overlap. */
+/** The highest-similarity candidates always qualify above this floor, so paraphrase matches are never gated out when they clear neither the main threshold nor any keyword/coverage overlap. */
 export const SEMANTIC_TOP_KEEP_FLOOR = 0.25;
+
+/** How many of the top-similarity candidates the floor keeps. Retains the vector top-N on pure-paraphrase queries, matching what naive vector retrieval would surface. */
+export const SEMANTIC_TOP_KEEP_N = 5;
 
 /** Min cosine to qualify via lexical overlap (paired with non-zero term coverage). */
 export const LEXICAL_MATCH_MIN_SIMILARITY = 0.1;
