@@ -17,7 +17,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { KeyboardChatScrollView } from 'react-native-keyboard-controller';
+import {
+  KeyboardChatScrollView,
+  useReanimatedKeyboardAnimation,
+} from 'react-native-keyboard-controller';
 import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
@@ -81,6 +84,20 @@ const Messages = ({
   const hasScrolledToEnd = useRef(false);
   const animatedContainerStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
+  }));
+
+  const { height: keyboardHeight, progress: keyboardProgress } =
+    useReanimatedKeyboardAnimation();
+  const insetsBottom = theme.insets.bottom;
+  const scrollButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY:
+          -extraContentPadding.value +
+          keyboardHeight.value +
+          keyboardProgress.value * insetsBottom,
+      },
+    ],
   }));
 
   // Re-arm the initial scroll when the chat history is cleared (e.g.
@@ -376,17 +393,24 @@ const Messages = ({
       </KeyboardChatScrollView>
 
       {showScrollButton && (
-        <TouchableOpacity
-          style={styles.scrollToBottomButton}
-          onPress={scrollToBottom}
-          activeOpacity={0.8}
+        <Reanimated.View
+          style={[
+            styles.scrollToBottomButtonContainer,
+            scrollButtonAnimatedStyle,
+          ]}
         >
-          <ChevronDown
-            width={20}
-            height={20}
-            style={{ color: theme.text.primary }}
-          />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.scrollToBottomButton}
+            onPress={scrollToBottom}
+            activeOpacity={0.8}
+          >
+            <ChevronDown
+              width={20}
+              height={20}
+              style={{ color: theme.text.primary }}
+            />
+          </TouchableOpacity>
+        </Reanimated.View>
       )}
     </Reanimated.View>
   );
@@ -405,10 +429,12 @@ const createStyles = (theme: Theme) =>
       paddingTop: 16,
       paddingBottom: 8,
     },
-    scrollToBottomButton: {
+    scrollToBottomButtonContainer: {
       position: 'absolute',
       bottom: 16,
       right: 16,
+    },
+    scrollToBottomButton: {
       width: 36,
       height: 36,
       borderRadius: 18,
