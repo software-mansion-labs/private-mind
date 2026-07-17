@@ -15,7 +15,12 @@ import {
   Keyboard,
   Platform,
 } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  LinearTransition,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
 import AttachmentSheet from '../bottomSheets/AttachmentSheet';
 import { useAttachment, Attachment } from '../../hooks/useAttachment';
@@ -32,6 +37,11 @@ import WhatsNewCard from '../WhatsNewCard';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
+
+const BAR_GROW_DURATION = 200;
+const BAR_GROW_EASING = Easing.out(Easing.ease);
+const BAR_GROW_LAYOUT =
+  LinearTransition.duration(BAR_GROW_DURATION).easing(BAR_GROW_EASING);
 
 interface Props {
   chatId: number | null;
@@ -137,7 +147,10 @@ const ChatBar = ({
       }
       const baseline = defaultBarHeight.current || height;
       const delta = height - baseline;
-      extraContentPadding.value = Math.max(0, delta);
+      extraContentPadding.value = withTiming(Math.max(0, delta), {
+        duration: BAR_GROW_DURATION,
+        easing: BAR_GROW_EASING,
+      });
       onHeightChange?.(height);
       const grew = height > prevBarHeight.current;
       prevBarHeight.current = height;
@@ -269,7 +282,11 @@ const ChatBar = ({
   }
 
   return (
-    <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
+    <Animated.View
+      style={containerStyle}
+      onLayout={handleBarLayoutForPadding}
+      layout={BAR_GROW_LAYOUT}
+    >
       {model?.isDownloaded && (
         <>
           {!hasMessages && (
@@ -333,7 +350,7 @@ const ChatBar = ({
           />
         </>
       )}
-    </View>
+    </Animated.View>
   );
 };
 
