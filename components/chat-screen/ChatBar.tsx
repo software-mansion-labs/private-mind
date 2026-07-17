@@ -385,7 +385,9 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.md,
       // lineHeight on Android causes typed text to be taller than the
       // placeholder, making the ChatBar jump on first keystroke.
-      ...(Platform.OS === 'ios' && { lineHeight: lineHeights.md }),
+      ...(Platform.OS === 'ios'
+        ? { lineHeight: lineHeights.md }
+        : { includeFontPadding: false }),
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
       color: theme.text.onChatBar,
