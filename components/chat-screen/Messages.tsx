@@ -22,7 +22,10 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { KeyboardChatScrollView } from 'react-native-keyboard-controller';
+import {
+  KeyboardChatScrollView,
+  useReanimatedKeyboardAnimation,
+} from 'react-native-keyboard-controller';
 import Reanimated, {
   runOnJS,
   useSharedValue,
@@ -42,6 +45,7 @@ import Toast from 'react-native-toast-message';
 export interface MessagesHandle {
   onMessageSent: () => void;
   scrollToEnd: () => void;
+  scrollToEndIfAtBottom: () => void;
 }
 
 export type UserMessageActionMenuState = {
@@ -202,6 +206,20 @@ const Messages = ({
     return byMessageId;
   }, [branchMarkers]);
 
+  const { height: keyboardHeight, progress: keyboardProgress } =
+    useReanimatedKeyboardAnimation();
+  const insetsBottom = theme.insets.bottom;
+  const scrollButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY:
+          -extraContentPadding.value +
+          keyboardHeight.value +
+          keyboardProgress.value * insetsBottom,
+      },
+    ],
+  }));
+
   // Re-arm the initial scroll when the chat history is cleared (e.g.
   // navigating away via useFocusEffect in the chat route sets
   // messageHistory to [] while reloading). This ensures that returning
@@ -289,6 +307,11 @@ const Messages = ({
       scrollToEnd: () => {
         closeUserActionMenu();
         scrollRef.current?.scrollToEnd({ animated: true });
+      },
+      scrollToEndIfAtBottom: () => {
+        if (isAtBottomRef.current) {
+          scrollRef.current?.scrollToEnd({ animated: true });
+        }
       },
       onMessageSent: () => {
         closeUserActionMenu();
@@ -626,21 +649,28 @@ const Messages = ({
       </KeyboardChatScrollView>
 
       {showScrollButton && (
-        <Pressable
-          style={({ pressed }) => [
-            styles.scrollToBottomButton,
-            pressed && styles.scrollToBottomButtonPressed,
+        <Reanimated.View
+          style={[
+            styles.scrollToBottomButtonContainer,
+            scrollButtonAnimatedStyle,
           ]}
-          onPress={scrollToBottom}
-          accessibilityRole="button"
-          accessibilityLabel="Scroll to latest message"
         >
-          <ChevronDown
-            width={20}
-            height={20}
-            style={{ color: theme.text.primary }}
-          />
-        </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.scrollToBottomButton,
+              pressed && styles.scrollToBottomButtonPressed,
+            ]}
+            onPress={scrollToBottom}
+            accessibilityRole="button"
+            accessibilityLabel="Scroll to latest message"
+          >
+            <ChevronDown
+              width={20}
+              height={20}
+              style={{ color: theme.text.primary }}
+            />
+          </Pressable>
+        </Reanimated.View>
       )}
     </Reanimated.View>
   );
@@ -662,10 +692,12 @@ const createStyles = (theme: Theme) =>
     messageRow: {
       position: 'relative',
     },
-    scrollToBottomButton: {
+    scrollToBottomButtonContainer: {
       position: 'absolute',
       bottom: 16,
       right: 16,
+    },
+    scrollToBottomButton: {
       width: 36,
       height: 36,
       borderRadius: 18,

@@ -8,7 +8,7 @@ import React, {
 import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -118,10 +118,17 @@ export default function ChatScreen({
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const stickyOffset = useMemo(
-    () => ({ closed: 0, opened: theme.insets.bottom }),
-    [theme.insets.bottom]
-  );
+  const { height: keyboardHeight, progress: keyboardProgress } =
+    useReanimatedKeyboardAnimation();
+  const insetsBottom = theme.insets.bottom;
+  const chatBarStickyStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY:
+          keyboardHeight.value + keyboardProgress.value * insetsBottom,
+      },
+    ],
+  }));
 
   const { settings: chatSettings, setSetting } = useChatSettings(chatId);
 
@@ -419,7 +426,7 @@ export default function ChatScreen({
           chatBarSpacerHeight > 0 && { height: chatBarSpacerHeight },
         ]}
       >
-        <KeyboardStickyView offset={stickyOffset} style={styles.chatBarSticky}>
+        <Animated.View style={[styles.chatBarSticky, chatBarStickyStyle]}>
           <ChatBar
             chatId={chatId}
             onSend={handleSendMessage}
@@ -436,11 +443,11 @@ export default function ChatScreen({
             onHeightChange={handleChatBarHeightChange}
             onBarGrow={() => {
               setTimeout(() => {
-                messagesRef.current?.scrollToEnd();
+                messagesRef.current?.scrollToEndIfAtBottom();
               }, 100);
             }}
           />
-        </KeyboardStickyView>
+        </Animated.View>
       </View>
 
       {userActionMenuPosition && (
