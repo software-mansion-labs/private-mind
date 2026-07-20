@@ -354,11 +354,11 @@ export default function ChatScreen({
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const gradientProgress = useSharedValue(isEmpty ? 1 : 0);
   useEffect(() => {
-    gradientProgress.value = withTiming(isEmpty ? 1 : 0, { duration: 900 });
+    gradientProgress.set(withTiming(isEmpty ? 1 : 0, { duration: 900 }));
   }, [isEmpty, gradientProgress]);
   const gradientStyle = useAnimatedStyle(() => ({
-    opacity: gradientProgress.value,
-    transform: [{ translateY: (1 - gradientProgress.value) * windowHeight }],
+    opacity: gradientProgress.get(),
+    transform: [{ translateY: (1 - gradientProgress.get()) * windowHeight }],
   }));
 
   const userActionMenuPosition = useMemo(() => {

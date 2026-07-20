@@ -142,7 +142,7 @@ const ChatSpeechInput: React.FC<Props> = ({
   const wrapperStyle = useAnimatedStyle(() => {
     return {
       backgroundColor: interpolateColor(
-        cancelAnimationProgress.value,
+        cancelAnimationProgress.get(),
         [0, 0.5, 1],
         [theme.bg.main, theme.bg.errorPrimary, theme.bg.errorPrimary]
       ),
@@ -151,9 +151,11 @@ const ChatSpeechInput: React.FC<Props> = ({
 
   const handleCancel = () => {
     stop();
-    cancelAnimationProgress.value = withTiming(1, {
-      duration: CANCEL_ANIMATION_DURATION,
-    });
+    cancelAnimationProgress.set(
+      withTiming(1, {
+        duration: CANCEL_ANIMATION_DURATION,
+      })
+    );
 
     setTimeout(onCancel, CANCEL_ANIMATION_DURATION);
   };
