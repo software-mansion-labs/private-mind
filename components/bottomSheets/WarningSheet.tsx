@@ -16,14 +16,19 @@ export interface WarningSheetData {
 
 interface Props {
   bottomSheetModalRef: RefObject<AppBottomSheetRef<WarningSheetData> | null>;
+  onDismiss?: () => void;
 }
 
-const WarningSheet = ({ bottomSheetModalRef }: Props) => {
+const WarningSheet = ({ bottomSheetModalRef, onDismiss }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <AppBottomSheet<WarningSheetData> ref={bottomSheetModalRef} dynamic>
+    <AppBottomSheet<WarningSheetData>
+      ref={bottomSheetModalRef}
+      dynamic
+      onDismiss={onDismiss}
+    >
       {({ data }) => (
         <View style={styles.sheet}>
           <Text style={styles.title}>{data?.title}</Text>
