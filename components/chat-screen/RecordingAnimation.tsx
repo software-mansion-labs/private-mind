@@ -55,23 +55,27 @@ const RecordingAnimation: React.FC<Props> = ({ width, height, ref }) => {
           .concat(newBars);
         lastDataRef.current = updatedBars;
 
-        offset.value = newBarsCount * BAR_OFFSET;
-        barsPath.value = prepareBarsPath(updatedBars, {
-          barsPerWindow,
-          height,
-        });
+        offset.set(newBarsCount * BAR_OFFSET);
+        barsPath.set(
+          prepareBarsPath(updatedBars, {
+            barsPerWindow,
+            height,
+          })
+        );
 
-        offset.value = withTiming(0, {
-          duration: (newBarsCount / barsPerWindow) * WINDOW_DURATION,
-          easing: Easing.linear,
-        });
+        offset.set(
+          withTiming(0, {
+            duration: (newBarsCount / barsPerWindow) * WINDOW_DURATION,
+            easing: Easing.linear,
+          })
+        );
       },
     }),
     [barsPerWindow, height]
   );
 
   const barsStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: offset.value - (offset.value % BAR_OFFSET) }],
+    transform: [{ translateX: offset.get() - (offset.get() % BAR_OFFSET) }],
   }));
 
   return (

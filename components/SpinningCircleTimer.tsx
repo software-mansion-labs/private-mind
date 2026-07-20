@@ -28,13 +28,15 @@ export const SpinningCircleTimer = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   useEffect(() => {
-    rotation.value = withRepeat(
-      withTiming(360, {
-        duration: 1000,
-        easing: Easing.linear,
-      }),
-      -1,
-      false
+    rotation.set(
+      withRepeat(
+        withTiming(360, {
+          duration: 1000,
+          easing: Easing.linear,
+        }),
+        -1,
+        false
+      )
     );
   }, []);
 
@@ -46,7 +48,7 @@ export const SpinningCircleTimer = ({
   const displayTime = `${minutes}:${String(seconds).padStart(2, '0')}`;
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
+    transform: [{ rotate: `${rotation.get()}deg` }],
   }));
 
   return (
