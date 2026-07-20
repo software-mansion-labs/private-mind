@@ -1,5 +1,10 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { Theme } from '../styles/colors';
 import { useTheme } from '../context/ThemeContext';
 
@@ -19,34 +24,29 @@ const TextInputBorder: React.FC<TextInputBorderProps> = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const showActive = active && !error;
-  const activeOpacity = useRef(new Animated.Value(showActive ? 1 : 0)).current;
-  const errorOpacity = useRef(new Animated.Value(error ? 1 : 0)).current;
+  const activeOpacity = useSharedValue(showActive ? 1 : 0);
+  const errorOpacity = useSharedValue(error ? 1 : 0);
 
   useEffect(() => {
-    Animated.timing(activeOpacity, {
-      toValue: showActive ? 1 : 0,
-      duration: 180,
-      useNativeDriver: true,
-    }).start();
+    activeOpacity.set(withTiming(showActive ? 1 : 0, { duration: 180 }));
   }, [showActive, activeOpacity]);
 
   useEffect(() => {
-    Animated.timing(errorOpacity, {
-      toValue: error ? 1 : 0,
-      duration: 180,
-      useNativeDriver: true,
-    }).start();
+    errorOpacity.set(withTiming(error ? 1 : 0, { duration: 180 }));
   }, [error, errorOpacity]);
+
+  const activeStyle = useAnimatedStyle(() => ({
+    opacity: activeOpacity.get(),
+  }));
+  const errorStyle = useAnimatedStyle(() => ({
+    opacity: errorOpacity.get(),
+  }));
 
   return (
     <>
       <View style={[styles.common, styles.inactive]} />
-      <Animated.View
-        style={[styles.common, styles.active, { opacity: activeOpacity }]}
-      />
-      <Animated.View
-        style={[styles.common, styles.errorBorder, { opacity: errorOpacity }]}
-      />
+      <Animated.View style={[styles.common, styles.active, activeStyle]} />
+      <Animated.View style={[styles.common, styles.errorBorder, errorStyle]} />
     </>
   );
 };
