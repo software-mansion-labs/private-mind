@@ -15,7 +15,12 @@ import {
   Keyboard,
   Platform,
 } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  LinearTransition,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
 import AttachmentSheet from '../bottomSheets/AttachmentSheet';
 import { useAttachment, Attachment } from '../../hooks/useAttachment';
@@ -32,6 +37,11 @@ import WhatsNewCard from '../WhatsNewCard';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
+
+const BAR_GROW_DURATION = 200;
+const BAR_GROW_EASING = Easing.out(Easing.ease);
+const BAR_GROW_LAYOUT =
+  LinearTransition.duration(BAR_GROW_DURATION).easing(BAR_GROW_EASING);
 
 interface Props {
   chatId: number | null;
@@ -94,6 +104,7 @@ const ChatBar = ({
   } = useAttachment();
 
   const defaultBarHeight = useRef(0);
+  const prevBarHeight = useRef(0);
   const textInputRef = useRef<RNTextInput>(null);
   // iOS-only: bump the TextInput key to force a remount when a prompt
   // suggestion is set programmatically. iOS doesn't re-fire onLayout
@@ -136,9 +147,16 @@ const ChatBar = ({
       }
       const baseline = defaultBarHeight.current || height;
       const delta = height - baseline;
-      extraContentPadding.set(Math.max(0, delta));
+      extraContentPadding.set(
+        withTiming(Math.max(0, delta), {
+          duration: BAR_GROW_DURATION,
+          easing: BAR_GROW_EASING,
+        })
+      );
       onHeightChange?.(height);
-      if (delta > 0) {
+      const grew = height > prevBarHeight.current;
+      prevBarHeight.current = height;
+      if (delta > 0 && grew) {
         onBarGrow?.();
       }
     },
@@ -266,7 +284,11 @@ const ChatBar = ({
   }
 
   return (
-    <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
+    <Animated.View
+      style={containerStyle}
+      onLayout={handleBarLayoutForPadding}
+      layout={BAR_GROW_LAYOUT}
+    >
       {model?.isDownloaded && (
         <>
           {!hasMessages && (
@@ -330,7 +352,7 @@ const ChatBar = ({
           />
         </>
       )}
-    </View>
+    </Animated.View>
   );
 };
 
@@ -382,7 +404,9 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.md,
       // lineHeight on Android causes typed text to be taller than the
       // placeholder, making the ChatBar jump on first keystroke.
-      ...(Platform.OS === 'ios' && { lineHeight: lineHeights.md }),
+      ...(Platform.OS === 'ios'
+        ? { lineHeight: lineHeights.md }
+        : { includeFontPadding: false }),
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
       color: theme.text.onChatBar,
