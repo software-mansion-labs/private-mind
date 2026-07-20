@@ -1,14 +1,18 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   View,
   Image,
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  Animated,
-  Easing,
   StyleSheet,
 } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -26,16 +30,18 @@ const AttachmentThumbnail = ({ attachment, onRemove }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const fill = useRef(new Animated.Value(0)).current;
+  const fill = useSharedValue(0);
   useEffect(() => {
     if (attachment.progress == null) return;
-    Animated.timing(fill, {
-      toValue: attachment.progress * ATTACHMENT_PROGRESS_TRACK_WIDTH,
-      duration: 250,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
+    fill.set(
+      withTiming(attachment.progress * ATTACHMENT_PROGRESS_TRACK_WIDTH, {
+        duration: 250,
+        easing: Easing.out(Easing.cubic),
+      })
+    );
   }, [attachment.progress, fill]);
+
+  const fillStyle = useAnimatedStyle(() => ({ width: fill.get() }));
 
   const renderContent = () => {
     if (attachment.status === 'loading') {
@@ -58,7 +64,7 @@ const AttachmentThumbnail = ({ attachment, onRemove }: Props) => {
             {Math.round(attachment.progress * 100)}%
           </Text>
           <View style={styles.progressTrack}>
-            <Animated.View style={[styles.progressFill, { width: fill }]} />
+            <Animated.View style={[styles.progressFill, fillStyle]} />
           </View>
         </View>
       );
