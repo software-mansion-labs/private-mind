@@ -3,6 +3,26 @@ const RN = require('react-native');
 
 const createAnimatedComponent = (Component: any) => Component;
 
+interface MockSharedValue<T> {
+  value: T;
+  get: () => T;
+  set: (next: T | ((prev: T) => T)) => void;
+}
+
+const makeSharedValue = <T>(init: T): MockSharedValue<T> => {
+  const shared: MockSharedValue<T> = {
+    value: init,
+    get: () => shared.value,
+    set: (next) => {
+      shared.value =
+        typeof next === 'function'
+          ? (next as (prev: T) => T)(shared.value)
+          : next;
+    },
+  };
+  return shared;
+};
+
 const Animated = {
   View: RN.View,
   Text: RN.Text,
@@ -17,19 +37,10 @@ module.exports = {
   default: Animated,
   ...Animated,
   createAnimatedComponent,
-  useSharedValue: (init: any) => {
-    const shared = {
-      value: init,
-      get: () => shared.value,
-      set: (next: any) => {
-        shared.value = typeof next === 'function' ? next(shared.value) : next;
-      },
-    };
-    return shared;
-  },
+  useSharedValue: <T>(init: T) => makeSharedValue(init),
   useAnimatedStyle: (fn: () => any) => fn(),
   useAnimatedRef: () => ({ current: null }),
-  useDerivedValue: (fn: () => any) => ({ value: fn() }),
+  useDerivedValue: <T>(fn: () => T) => makeSharedValue(fn()),
   useAnimatedScrollHandler: (fn: any) => fn,
   withTiming: (
     val: any,
