@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
@@ -11,6 +11,7 @@ import { Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
 import type { WarningSheetData } from '../bottomSheets/WarningSheet';
 import { isModelCompatible } from '../../utils/modelCompatibility';
+import { useConfirm } from '../../hooks/useConfirm';
 import Chip from '../Chip';
 import CircleButton from '../CircleButton';
 import ProcessorIcon from '../../assets/icons/processor.svg';
@@ -47,6 +48,7 @@ const ModelCard = ({
 
   const { downloadStates, downloadModel, cancelDownload, removeModelFiles } =
     useModelStore();
+  const { confirm, ConfirmElement } = useConfirm();
 
   const downloadState = downloadStates[model.id] || {
     progress: model.isDownloaded ? 1 : 0,
@@ -105,25 +107,19 @@ const ModelCard = ({
     await downloadModel(model);
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      'Delete model files?',
-      `${model.modelName} will be removed from your device. You can redownload it later.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await removeModelFiles(model.id);
-            Toast.show({
-              type: 'defaultToast',
-              text1: `${model.modelName} has been successfully deleted`,
-            });
-          },
-        },
-      ]
-    );
+  const handleDelete = async () => {
+    const confirmed = await confirm({
+      title: 'Delete model files?',
+      message: `${model.modelName} will be removed from your device. You can redownload it later.`,
+      confirmLabel: 'Delete',
+    });
+    if (!confirmed) return;
+
+    await removeModelFiles(model.id);
+    Toast.show({
+      type: 'defaultToast',
+      text1: `${model.modelName} has been successfully deleted`,
+    });
   };
 
   const isCompatible = isModelCompatible(model);
@@ -264,6 +260,8 @@ const ModelCard = ({
           </Text>
         </View>
       )}
+
+      {showDeleteButton && ConfirmElement}
     </TouchableOpacity>
   );
 };
