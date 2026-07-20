@@ -88,7 +88,8 @@ beforeEach(() => {
   );
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await flushFrame();
   jest.restoreAllMocks();
 });
 
@@ -98,8 +99,6 @@ const loadModel = async (model = baseModel) => {
   return capturedTokenCallback!;
 };
 
-// Streaming token appends are coalesced and applied on the next animation
-// frame, so tests that assert the flushed store state await one frame.
 const flushFrame = () =>
   new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
@@ -175,9 +174,12 @@ describe('token callback', () => {
     useLLMStore.setState({ isProcessingPrompt: true, isGenerating: true });
 
     onToken('first');
+    await flushFrame();
     const firstTime = useLLMStore.getState().performance.firstTokenTime;
+    expect(firstTime).toBeGreaterThan(0);
 
     onToken('second');
+    await flushFrame();
     expect(useLLMStore.getState().performance.firstTokenTime).toBe(firstTime);
   });
 
@@ -630,5 +632,23 @@ describe('runBenchmark', () => {
 
     expect(useLLMStore.getState().isGenerating).toBe(false);
     expect(useLLMStore.getState().isBenchmarking).toBe(false);
+  });
+
+  it('tracks a fresh first token on every run without stale carry-over', async () => {
+    await loadModel();
+    useLLMStore.setState({ model: baseModel });
+
+    mockInstance.generate.mockImplementation(async () => {
+      await flushFrame();
+      capturedTokenCallback!('tok');
+      await flushFrame();
+      return 'out';
+    });
+
+    const first = await useLLMStore.getState().runBenchmark();
+    const second = await useLLMStore.getState().runBenchmark();
+
+    expect(first?.timeToFirstToken).toBeGreaterThan(0);
+    expect(second?.timeToFirstToken).toBeGreaterThan(0);
   });
 });

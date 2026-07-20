@@ -51,13 +51,6 @@ interface LLMStore {
 
 let llmInstance: LLMModule | null = null;
 
-// Streaming token coalescing. The executorch token callback can fire many times
-// in a single synchronous tick (notably while replaying the prompt during
-// prefill). Appending to the store on every token then schedules one React
-// update per token; a burst of them in one tick trips "Maximum update depth
-// exceeded". Instead we accumulate tokens here and flush the visible append at
-// most once per animation frame. The authoritative full text is still written
-// on generation 'complete', so a dropped/late flush never loses content.
 let streamBuffer = '';
 let streamTokenCount = 0;
 let streamFirstTokenTime = 0;
@@ -155,8 +148,6 @@ const updateChatStateForGeneration = (
       });
       break;
     case 'complete':
-      // The full response is written below; drop any buffered tail so a pending
-      // flush can't append it on top of the final content.
       streamBuffer = '';
       if (
         data?.timeToFirstToken !== undefined &&
@@ -297,13 +288,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       llmInstance = null;
     }
 
-    // A fresh model instance has no in-flight stream — drop any buffered tokens.
     resetStreamState();
     set({ isLoading: true, model: model });
 
-    // Append the tokens buffered since the last frame to the streaming message
-    // in a single store update, collapsing a burst of token callbacks into one
-    // React render.
     const flushStream = () => {
       streamFlushScheduled = false;
       if (!streamBuffer) return;
@@ -341,10 +328,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         },
         () => {},
         (token) => {
-          // First-token bookkeeping stays synchronous and per-token (it is
-          // cheap and never touches the message list). `streamTokenCount` is the
-          // authoritative in-flight counter — the store's tokenCount only
-          // updates on flush, so it can't be used to detect the first token.
           const isFirstToken = streamTokenCount === 0;
 
           if (isFirstToken && !get().isBenchmarking) {
@@ -363,8 +346,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             streamFirstTokenTime = performance.now();
           }
 
-          // Buffer the visible content and coalesce appends to one flush per
-          // frame, so a synchronous burst of tokens becomes a single render.
           streamTokenCount += 1;
           streamBuffer += token;
           if (!streamFlushScheduled) {
@@ -502,6 +483,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     });
 
     try {
+      resetStreamState();
       set({
         isGenerating: true,
         performance: { tokenCount: 0, firstTokenTime: 0 },
