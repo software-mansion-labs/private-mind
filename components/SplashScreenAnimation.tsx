@@ -20,13 +20,15 @@ function SplashScreenAnimation() {
 
   useEffect(() => {
     SplashScreen.hide();
-    rippleProgress.value = withTiming(1, { duration: 800 }, () => {
-      runOnJS(setDone)(true);
-    });
+    rippleProgress.set(
+      withTiming(1, { duration: 800 }, () => {
+        runOnJS(setDone)(true);
+      })
+    );
   }, []);
 
   const rippleStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: rippleProgress.value }],
+    transform: [{ scale: rippleProgress.get() }],
   }));
 
   if (done) {

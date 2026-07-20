@@ -103,7 +103,7 @@ function OnboardingScreen() {
           return true; // Prevent default back action
         } else if (stepNumber === 1) {
           // Go back to intro panel
-          bgSpillProgress.value = withTiming(0, { duration: 500 });
+          bgSpillProgress.set(withTiming(0, { duration: 500 }));
           setTimeout(() => setStepNumber(0), 500);
           return true; // Prevent default back action
         }
@@ -120,29 +120,29 @@ function OnboardingScreen() {
 
   const initialBgBottom = introPanel.height + 16;
   const bgDistance = useDerivedValue(() =>
-    interpolate(bgSpillProgress.value, [0, 1], [0, initialBgBottom])
+    interpolate(bgSpillProgress.get(), [0, 1], [0, initialBgBottom])
   );
 
   const divider = useDerivedValue(
-    () => SCREEN_HEIGHT - initialBgBottom + bgDistance.value
+    () => SCREEN_HEIGHT - initialBgBottom + bgDistance.get()
   );
 
   const colorBgAnimation = useAnimatedStyle(() => {
-    const topEdge = Math.max(theme.insets.top + 16 - bgDistance.value, 0);
-    const sideEdge = Math.max(16 - bgDistance.value, 0);
+    const topEdge = Math.max(theme.insets.top + 16 - bgDistance.get(), 0);
+    const sideEdge = Math.max(16 - bgDistance.get(), 0);
 
     return {
       position: 'absolute',
       top: topEdge,
       left: sideEdge,
       right: sideEdge,
-      bottom: SCREEN_HEIGHT - divider.value,
-      borderRadius: Math.max(10 - bgDistance.value, 0),
+      bottom: SCREEN_HEIGHT - divider.get(),
+      borderRadius: Math.max(10 - bgDistance.get(), 0),
     };
   });
 
   const imageAnimation = useAnimatedStyle(() => ({
-    height: divider.value,
+    height: divider.get(),
   }));
 
   return (
@@ -150,7 +150,7 @@ function OnboardingScreen() {
       <View ref={introPanel.ref} style={styles.bottomPanel}>
         <OnboardingIntroPanel
           onPressStart={() => {
-            bgSpillProgress.value = withTiming(1, { duration: 500 });
+            bgSpillProgress.set(withTiming(1, { duration: 500 }));
             setTimeout(() => setStepNumber(1), 500);
           }}
         />

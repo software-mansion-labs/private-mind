@@ -23,13 +23,15 @@ const SpinningCircle = ({
   const rotation = useSharedValue(0);
 
   useEffect(() => {
-    rotation.value = withRepeat(
-      withTiming(360, {
-        duration: 1000,
-        easing: Easing.linear,
-      }),
-      -1,
-      false
+    rotation.set(
+      withRepeat(
+        withTiming(360, {
+          duration: 1000,
+          easing: Easing.linear,
+        }),
+        -1,
+        false
+      )
     );
   }, []);
 
@@ -37,7 +39,7 @@ const SpinningCircle = ({
   const cx = size / 2;
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
+    transform: [{ rotate: `${rotation.get()}deg` }],
   }));
 
   return (
