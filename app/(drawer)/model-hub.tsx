@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Alert, View, StyleSheet, Text, Platform } from 'react-native';
+import { View, StyleSheet, Text, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -27,6 +27,7 @@ import FamilyCard from '../../components/model-hub/FamilyCard';
 import ModelCard from '../../components/model-hub/ModelCard';
 import { groupModelsByFamily, ModelFamily } from '../../utils/modelFamily';
 import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
+import { useConfirm } from '../../hooks/useConfirm';
 
 const ModelHubScreen = () => {
   useDefaultHeader();
@@ -41,6 +42,7 @@ const ModelHubScreen = () => {
   const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
 
   const { models, removeModelFiles } = useModelStore();
+  const { confirm, ConfirmElement } = useConfirm();
   const [tab, setTab] = useState<ModelHubTab>('featured');
   const [search, setSearch] = useState('');
 
@@ -96,32 +98,26 @@ const ModelHubScreen = () => {
     [deletableDownloaded]
   );
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (deletableDownloaded.length === 0) return;
-    Alert.alert(
-      'Clear all downloaded models?',
-      `This will delete ${deletableDownloaded.length} model${
+    const confirmed = await confirm({
+      title: 'Clear all downloaded models?',
+      message: `This will delete ${deletableDownloaded.length} model${
         deletableDownloaded.length === 1 ? '' : 's'
       } (${totalDownloadedSizeGB.toFixed(
         2
       )} GB) from your device. You can redownload them later.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear all',
-          style: 'destructive',
-          onPress: async () => {
-            for (const m of deletableDownloaded) {
-              await removeModelFiles(m.id);
-            }
-            Toast.show({
-              type: 'defaultToast',
-              text1: 'All downloaded model files have been deleted',
-            });
-          },
-        },
-      ]
-    );
+      confirmLabel: 'Clear all',
+    });
+    if (!confirmed) return;
+
+    for (const m of deletableDownloaded) {
+      await removeModelFiles(m.id);
+    }
+    Toast.show({
+      type: 'defaultToast',
+      text1: 'All downloaded model files have been deleted',
+    });
   };
 
   const isEmpty =
@@ -229,6 +225,7 @@ const ModelHubScreen = () => {
       <AddModelSheet bottomSheetModalRef={addModelSheetRef} />
       <WarningSheet bottomSheetModalRef={wifiWarningSheetRef} />
       <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
+      {ConfirmElement}
     </CustomKeyboardAvoidingView>
   );
 };
