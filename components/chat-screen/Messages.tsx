@@ -155,8 +155,8 @@ const Messages = ({
   const initialScrollSettlingUntil = useRef(0);
   const initialScrollTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const animatedContainerStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: revealTranslateY.value }],
+    opacity: opacity.get(),
+    transform: [{ translateY: revealTranslateY.get() }],
   }));
 
   const clearInitialScrollTimers = useCallback(() => {
@@ -185,8 +185,8 @@ const Messages = ({
 
     schedule(500, () => {
       snapToEnd();
-      opacity.value = withTiming(1, { duration: 350 });
-      revealTranslateY.value = withTiming(0, { duration: 350 });
+      opacity.set(withTiming(1, { duration: 350 }));
+      revealTranslateY.set(withTiming(0, { duration: 350 }));
       initialScrollTimers.current = [];
     });
   }, [clearInitialScrollTimers, opacity, revealTranslateY, snapToEnd]);
@@ -214,9 +214,9 @@ const Messages = ({
       hasScrolledToEnd.current
     ) {
       hasScrolledToEnd.current = false;
-      opacity.value = 0;
+      opacity.set(0);
       pinActive.current = false;
-      blankSpace.value = 0;
+      blankSpace.set(0);
     }
     prevChatLengthRef.current = chatHistory.length;
   }, [chatHistory.length, opacity, blankSpace]);
