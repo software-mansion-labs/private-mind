@@ -104,6 +104,18 @@ const waitForModelLoad = async (get: () => LLMStore): Promise<void> => {
   }
 };
 
+const waitForSettingsHydration = async (): Promise<void> => {
+  if (useSettingsStore.getState().hasHydrated) return;
+  await new Promise<void>((resolve) => {
+    const unsubscribe = useSettingsStore.subscribe((state) => {
+      if (state.hasHydrated) {
+        unsubscribe();
+        resolve();
+      }
+    });
+  });
+};
+
 const updateChatStateForGeneration = (
   set: (
     partial: Partial<LLMStore> | ((state: LLMStore) => Partial<LLMStore>)
@@ -388,6 +400,15 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         activeChatMessages: updatedChatMessages,
       });
 
+      await waitForModelLoad(get);
+
+      if (!get().isProcessingPrompt) {
+        updateChatStateForGeneration(set, 'failed');
+        return;
+      }
+
+      await waitForSettingsHydration();
+
       const messagesWithSystemPrompt = prepareMessagesForLLM(
         get().activeChatMessages,
         context,
@@ -395,14 +416,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         currentModel,
         useSettingsStore.getState().customSystemPrompt
       );
-
-      await waitForModelLoad(get);
-
-      // Check if user interrupted during model loading
-      if (!get().isProcessingPrompt) {
-        updateChatStateForGeneration(set, 'failed');
-        return;
-      }
 
       // Set generation state and generate response
       updateChatStateForGeneration(set, 'generating');
