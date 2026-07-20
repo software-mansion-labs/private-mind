@@ -32,6 +32,19 @@ const Animated = {
   createAnimatedComponent,
 };
 
+type AnimationBuilder = Record<
+  string,
+  (...args: unknown[]) => AnimationBuilder
+>;
+
+const makeAnimationBuilder = (): AnimationBuilder => {
+  const builder = new Proxy(
+    {},
+    { get: () => () => builder }
+  ) as AnimationBuilder;
+  return builder;
+};
+
 module.exports = {
   __esModule: true,
   default: Animated,
@@ -74,4 +87,9 @@ module.exports = {
   interpolateColor: (val: any, _r: any, outputRange: any) => outputRange[0],
   runOnJS: (fn: any) => fn,
   runOnUI: (fn: any) => fn,
+  configureReanimatedLogger: () => {},
+  LinearTransition: makeAnimationBuilder(),
+  FadeIn: makeAnimationBuilder(),
+  FadeInDown: makeAnimationBuilder(),
+  FadeOut: makeAnimationBuilder(),
 };
