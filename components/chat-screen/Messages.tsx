@@ -84,7 +84,7 @@ const Messages = ({
   const opacity = useSharedValue(0);
   const hasScrolledToEnd = useRef(false);
   const animatedContainerStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
+    opacity: opacity.get(),
   }));
 
   const { height: keyboardHeight, progress: keyboardProgress } =
@@ -113,7 +113,7 @@ const Messages = ({
       hasScrolledToEnd.current
     ) {
       hasScrolledToEnd.current = false;
-      opacity.value = 0;
+      opacity.set(0);
     }
     prevChatLengthRef.current = chatHistory.length;
   }, [chatHistory.length, opacity]);
@@ -175,7 +175,7 @@ const Messages = ({
       lastUserHeight.current -
       lastAssistantHeight.current -
       CONTAINER_PADDING;
-    blankSpace.value = Math.max(0, raw);
+    blankSpace.set(Math.max(0, raw));
   }, [blankSpace]);
 
   useImperativeHandle(
@@ -195,7 +195,7 @@ const Messages = ({
         // messages yet).
         if (!hasScrolledToEnd.current) {
           hasScrolledToEnd.current = true;
-          opacity.value = 1;
+          opacity.set(1);
         }
         lastAssistantHeight.current = 0;
         lastUserHeight.current = 0;
@@ -203,7 +203,7 @@ const Messages = ({
 
         if (Platform.OS === 'ios') {
           if (containerHeight.current > 0) {
-            blankSpace.value = containerHeight.current;
+            blankSpace.set(containerHeight.current);
           }
         }
         pendingPinRef.current = true;
@@ -280,7 +280,7 @@ const Messages = ({
             snap();
             requestAnimationFrame(() => {
               snap();
-              opacity.value = withTiming(1, { duration: 350 });
+              opacity.set(withTiming(1, { duration: 350 }));
             });
           }, 16);
         });
@@ -298,9 +298,11 @@ const Messages = ({
       if (pendingPinRef.current) {
         pendingPinRef.current = false;
         if (Platform.OS !== 'ios' && containerHeight.current > 0) {
-          blankSpace.value = withTiming(containerHeight.current, {
-            duration: 300,
-          });
+          blankSpace.set(
+            withTiming(containerHeight.current, {
+              duration: 300,
+            })
+          );
         }
         scrollRef.current?.scrollToEnd({ animated: true });
       }

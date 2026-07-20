@@ -24,15 +24,17 @@ const AnimatedChatLoading = () => {
   const opacity = useSharedValue(0.4);
 
   useEffect(() => {
-    opacity.value = withRepeat(
-      withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }),
-      -1,
-      true
+    opacity.set(
+      withRepeat(
+        withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }),
+        -1,
+        true
+      )
     );
   }, [opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
+    opacity: opacity.get(),
   }));
 
   return (
