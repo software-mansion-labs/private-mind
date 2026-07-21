@@ -1,6 +1,6 @@
 import React, { useCallback, useRef } from 'react';
 import { Alert, Platform } from 'react-native';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { AppBottomSheetRef } from '../components/bottomSheets/AppBottomSheet';
 import WarningSheet, {
   WarningSheetData,
 } from '../components/bottomSheets/WarningSheet';
@@ -12,7 +12,7 @@ export interface ConfirmOptions {
 }
 
 export const useConfirm = () => {
-  const sheetRef = useRef<BottomSheetModal<WarningSheetData>>(null);
+  const sheetRef = useRef<AppBottomSheetRef<WarningSheetData>>(null);
   const resolveRef = useRef<((confirmed: boolean) => void) | null>(null);
 
   const settle = useCallback((confirmed: boolean) => {

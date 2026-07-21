@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import { Alert, Platform, Pressable, Text } from 'react-native';
 import {
   render,
@@ -6,44 +6,52 @@ import {
   fireEvent,
   waitFor,
 } from '@testing-library/react-native';
+import type { AppBottomSheetRef } from '../components/bottomSheets/AppBottomSheet';
+import type { WarningSheetData } from '../components/bottomSheets/WarningSheet';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({ theme: require('./helpers/renderWithTheme').testTheme }),
 }));
 
-jest.mock('@gorhom/bottom-sheet', () => {
-  const ReactModule = require('react');
+type MockSheetProps = {
+  onDismiss?: () => void;
+  children: ReactNode | ((state: { data?: WarningSheetData }) => ReactNode);
+};
+
+jest.mock('../components/bottomSheets/AppBottomSheet', () => {
+  const ReactModule: typeof React = require('react');
   const { View } = require('react-native');
 
-  const BottomSheetModal = ReactModule.forwardRef((props: any, ref: any) => {
-    const [data, setData] = ReactModule.useState(null);
+  const AppBottomSheet = ReactModule.forwardRef<
+    AppBottomSheetRef<WarningSheetData>,
+    MockSheetProps
+  >((props, ref) => {
+    const [state, setState] = ReactModule.useState<{
+      data?: WarningSheetData;
+    } | null>(null);
+
+    const close = () => {
+      setState(null);
+      props.onDismiss?.();
+    };
 
     ReactModule.useImperativeHandle(ref, () => ({
-      present: (presented: any) => setData(presented ?? {}),
-      dismiss: () => {
-        setData(null);
-        props.onDismiss?.();
-      },
+      present: (data?: WarningSheetData) => setState({ data }),
+      dismiss: close,
+      close,
     }));
 
-    if (!data) return null;
+    if (!state) return null;
     return (
       <View>
         {typeof props.children === 'function'
-          ? props.children({ data })
+          ? props.children(state)
           : props.children}
       </View>
     );
   });
 
-  return {
-    BottomSheetModal,
-    BottomSheetView: ({ children, style }: any) => (
-      <View style={style}>{children}</View>
-    ),
-    BottomSheetBackdrop: () => null,
-    BottomSheetModalProvider: ({ children }: any) => <>{children}</>,
-  };
+  return { AppBottomSheet };
 });
 
 import { useConfirm } from '../hooks/useConfirm';
