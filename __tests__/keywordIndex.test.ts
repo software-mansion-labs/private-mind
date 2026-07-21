@@ -119,21 +119,33 @@ describe('ensureKeywordIndex backfill', () => {
     expect(calls.some((c) => c.sql === 'COMMIT')).toBe(true);
   });
 
-  it('skips backfill when the index already has rows', async () => {
+  it('indexes only the chunks the index is missing, not just the empty case', async () => {
     const { db, calls } = makeDb({
       count: 7,
       vectors: [
         {
-          id: '1:0',
-          document: 'x',
-          metadata: JSON.stringify({ documentId: 1 }),
+          id: '9:1',
+          document: 'never indexed',
+          metadata: JSON.stringify({ documentId: 9 }),
         },
       ],
     });
 
     await ensureKeywordIndex(db);
 
-    expect(calls.some((c) => c.sql.includes('FROM vectors'))).toBe(false);
+    const vectorQuery = calls.find((c) => c.sql.includes('FROM vectors'));
+    expect(vectorQuery?.sql).toContain('NOT IN (SELECT chunk_id');
+
+    const inserts = calls.filter((c) => c.sql.startsWith('INSERT INTO'));
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0].params).toEqual(['9:1', 9, 'never indexed']);
+  });
+
+  it('inserts nothing when no chunk is missing from the index', async () => {
+    const { db, calls } = makeDb({ count: 7, vectors: [] });
+
+    await ensureKeywordIndex(db);
+
     expect(calls.some((c) => c.sql.startsWith('INSERT INTO'))).toBe(false);
   });
 

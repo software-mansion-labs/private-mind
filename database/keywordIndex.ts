@@ -13,8 +13,6 @@ export const foldForKeywordIndex = (text: string): string =>
 
 let ftsAvailable = false;
 
-export const isKeywordIndexAvailable = (): boolean => ftsAvailable;
-
 export const ensureKeywordIndex = async (db: DB): Promise<boolean> => {
   try {
     await db.execute(
@@ -38,16 +36,15 @@ export const ensureKeywordIndex = async (db: DB): Promise<boolean> => {
   return ftsAvailable;
 };
 
+// Indexes every chunk the index is missing, not just the initial empty case: a
+// single swallowed insert (see addChunkToKeywordIndex) would otherwise leave a
+// chunk searchable by vector but never by keyword, with nothing to repair it.
 const backfillKeywordIndex = async (db: DB): Promise<void> => {
-  const counted = await db.execute(
-    `SELECT COUNT(*) AS n FROM ${KEYWORD_TABLE}`
-  );
-  if (Number(counted.rows[0]?.n ?? 0) > 0) return;
-
   let rows: Record<string, Scalar>[];
   try {
     const result = await db.execute(
-      `SELECT id, document, metadata FROM vectors`
+      `SELECT id, document, metadata FROM vectors
+       WHERE id NOT IN (SELECT chunk_id FROM ${KEYWORD_TABLE})`
     );
     rows = result.rows;
   } catch {
