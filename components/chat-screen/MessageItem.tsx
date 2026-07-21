@@ -12,7 +12,10 @@ import AttachmentIcon from '../../assets/icons/attachment.svg';
 import CopyIcon from '../../assets/icons/copy.svg';
 import ForkIcon from '../../assets/icons/fork.svg';
 import MessageActionButton from './MessageActionButton';
-import { MESSAGE_ACTION_ROW_HEIGHT } from '../../constants/chat-screen';
+import {
+  MESSAGE_ACTION_ROW_HEIGHT,
+  SUPPORTS_USER_ACTION_MENU,
+} from '../../constants/chat-screen';
 import { Message } from '../../database/chatRepository';
 
 interface MessageItemProps {
@@ -82,9 +85,7 @@ const MessageItem = memo(
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
     const isGenerating = useLLMStore((state) => state.isGenerating);
-    const isProcessingPrompt = useLLMStore(
-      (state) => state.isProcessingPrompt
-    );
+    const isProcessingPrompt = useLLMStore((state) => state.isProcessingPrompt);
     const [lightboxVisible, setLightboxVisible] = useState(false);
 
     const contentParts = parseThinkingContent(content);
@@ -155,7 +156,10 @@ const MessageItem = memo(
             {contentParts.normalContent.trim() && (
               <View style={styles.userBubble} testID="text-bubble">
                 <View style={styles.userMessageContent}>
-                  <Text style={styles.userText}>
+                  <Text
+                    style={styles.userText}
+                    selectable={!SUPPORTS_USER_ACTION_MENU}
+                  >
                     {contentParts.normalContent}
                   </Text>
                 </View>

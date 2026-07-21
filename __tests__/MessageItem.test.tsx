@@ -48,8 +48,9 @@ const mockLLMState = (state: {
   isGenerating?: boolean;
   isProcessingPrompt?: boolean;
 }) =>
-  mockUseLLMStore.mockImplementation((selector?: (s: typeof state) => unknown) =>
-    selector ? selector(state) : state
+  mockUseLLMStore.mockImplementation(
+    (selector?: (s: typeof state) => unknown) =>
+      selector ? selector(state) : state
   );
 
 const baseMessage = {

@@ -41,6 +41,7 @@ import { Feedback } from '../../utils/Feedback';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
 import BranchMarker from './BranchMarker';
 import Toast from 'react-native-toast-message';
+import { SUPPORTS_USER_ACTION_MENU } from '../../constants/chat-screen';
 
 export interface MessagesHandle {
   onMessageSent: () => void;
@@ -263,6 +264,7 @@ const Messages = ({
     let snapTimer: ReturnType<typeof setTimeout> | null = null;
     const showSub = Keyboard.addListener('keyboardDidShow', () => {
       wasAtBottomDuringKeyboard.current = isAtBottomRef.current;
+      closeUserActionMenu();
     });
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       if (wasAtBottomDuringKeyboard.current) {
@@ -608,6 +610,7 @@ const Messages = ({
           );
 
           const shouldHandleUserLongPress =
+            SUPPORTS_USER_ACTION_MENU &&
             message.role === 'user' &&
             message.id > 0 &&
             activeUserActionsId !== message.id;
