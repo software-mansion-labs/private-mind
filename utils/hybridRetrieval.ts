@@ -248,8 +248,6 @@ export const hybridRetrieve = async ({
   }
 
   const terms = extractQueryTerms(prompt);
-  // Folded the same way the keyword index folds, so coverage agrees with what
-  // FTS actually matched instead of missing every de-diacriticised document.
   const coverageTerms = new Set(
     [...terms].map((term) => stemPrefix(foldForMatching(term)))
   );

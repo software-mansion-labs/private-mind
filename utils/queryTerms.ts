@@ -131,10 +131,5 @@ const FOLD_MAP: Record<string, string> = {
   ż: 'z',
 };
 
-// The keyword index compares text after two foldings: ł by hand (unicode61's
-// remove_diacritics leaves that stroke letter alone) and the tokenizer's own
-// diacritic stripping. Layers that match in JS rather than through SQLite have
-// to fold the same way, or "płatność" stops matching "platnosc" on one side
-// only. Explicit map instead of NFD normalize, which Hermes does not guarantee.
 export const foldForMatching = (text: string): string =>
   text.toLowerCase().replace(/[ąćęłńóśźż]/g, (char) => FOLD_MAP[char] ?? char);

@@ -587,8 +587,6 @@ describe('hybridRetrieve', () => {
   });
 
   it('covers a de-diacriticised document from a diacriticised query, as FTS would', async () => {
-    // Similarity sits below the semantic threshold and the top-keep floor, and
-    // there is no keyword hit, so this chunk qualifies on term coverage alone.
     const vectorResults = [
       {
         id: '1:0',

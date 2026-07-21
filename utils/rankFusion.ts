@@ -31,10 +31,7 @@ export const reciprocalRankFusion = (
 };
 
 // Cosine similarity; normalises internally (LFM2.5 embeddings are non-unit-length).
-// Returns 0 when either vector is empty or zero-length, and when the two differ
-// in length — mismatched dimensions mean the vectors came from different
-// embedding models, and truncating to the shorter one would answer with a
-// plausible-looking number instead of surfacing that.
+// Returns 0 when either vector is empty or zero-length, or when they differ in length.
 export const cosineSimilarity = (a: number[], b: number[]): number => {
   const len = a.length;
   if (len === 0 || b.length !== len) return 0;
@@ -137,9 +134,6 @@ export const maximalMarginalRelevance = (
 };
 
 // Keep leading items until relevance drops below `dropRatio × previous`; at least `minKeep`.
-// Scores must be non-negative — the cut is a ratio, which says nothing about
-// negative scales such as raw BM25. A zero score keeps everything after it,
-// since nothing below zero can follow in a descending non-negative list.
 export const adaptiveKeepCount = (
   sortedScoresDesc: number[],
   minKeep = 1,

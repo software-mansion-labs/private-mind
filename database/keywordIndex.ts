@@ -36,9 +36,6 @@ export const ensureKeywordIndex = async (db: DB): Promise<boolean> => {
   return ftsAvailable;
 };
 
-// Indexes every chunk the index is missing, not just the initial empty case: a
-// single swallowed insert (see addChunkToKeywordIndex) would otherwise leave a
-// chunk searchable by vector but never by keyword, with nothing to repair it.
 const backfillKeywordIndex = async (db: DB): Promise<void> => {
   let rows: Record<string, Scalar>[];
   try {
