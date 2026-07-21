@@ -7,10 +7,12 @@ jest.mock('react-native-image-picker', () => ({
 jest.mock('expo-document-picker', () => ({
   getDocumentAsync: jest.fn(),
 }));
+const mockCleanupOrphanedSources = jest.fn();
 jest.mock('../store/sourceStore', () => ({
   useSourceStore: {
     getState: jest.fn(() => ({
       addSource: jest.fn(),
+      cleanupOrphanedSources: mockCleanupOrphanedSources,
     })),
   },
 }));
@@ -98,7 +100,10 @@ describe('useAttachment', () => {
       .fn()
       .mockResolvedValue({ success: true, sourceId: 42 });
     const { useSourceStore } = require('../store/sourceStore');
-    useSourceStore.getState.mockReturnValue({ addSource: mockAddSource });
+    useSourceStore.getState.mockReturnValue({
+      addSource: mockAddSource,
+      cleanupOrphanedSources: mockCleanupOrphanedSources,
+    });
 
     const { result } = renderHook(() => useAttachment());
     await act(async () => {
@@ -110,6 +115,72 @@ describe('useAttachment', () => {
     expect(att.type).toBe('document');
     expect(att.sourceId).toBe(42);
     expect(att.status).toBe('ready');
+  });
+
+  describe('abandoned source cleanup', () => {
+    const pickReadyDocument = async () => {
+      mockGetDocumentAsync.mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: 'file://doc.txt', name: 'doc.txt', size: 100 }],
+      });
+      const { useSourceStore } = require('../store/sourceStore');
+      useSourceStore.getState.mockReturnValue({
+        addSource: jest.fn().mockResolvedValue({ success: true, sourceId: 42 }),
+        cleanupOrphanedSources: mockCleanupOrphanedSources,
+      });
+
+      const view = renderHook(() => useAttachment());
+      await act(async () => {
+        await view.result.current.pickDocument();
+      });
+      mockCleanupOrphanedSources.mockClear();
+      return view;
+    };
+
+    it('sweeps when an embedded document is removed before it is ever sent', async () => {
+      const { result } = await pickReadyDocument();
+
+      act(() => {
+        result.current.removeAttachment(result.current.attachments[0].id);
+      });
+
+      expect(mockCleanupOrphanedSources).toHaveBeenCalledTimes(1);
+    });
+
+    it('sweeps when the screen unmounts with the document still attached', async () => {
+      const { unmount } = await pickReadyDocument();
+
+      unmount();
+
+      expect(mockCleanupOrphanedSources).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not sweep on send, when the source is about to be linked to the chat', async () => {
+      const { result } = await pickReadyDocument();
+
+      act(() => {
+        result.current.clearAll({ cleanupSources: false });
+      });
+
+      expect(mockCleanupOrphanedSources).not.toHaveBeenCalled();
+    });
+
+    it('does not sweep when a plain image is removed', async () => {
+      mockLaunchImageLibrary.mockResolvedValue({
+        assets: [{ uri: 'file://photo.jpg' }],
+      });
+      const { result } = renderHook(() => useAttachment());
+      await act(async () => {
+        await result.current.pickFromLibrary();
+      });
+      mockCleanupOrphanedSources.mockClear();
+
+      act(() => {
+        result.current.removeAttachment(result.current.attachments[0].id);
+      });
+
+      expect(mockCleanupOrphanedSources).not.toHaveBeenCalled();
+    });
   });
 
   it('ignores a stale document result when a second document replaces it', async () => {
@@ -126,7 +197,10 @@ describe('useAttachment', () => {
       .mockReturnValueOnce(firstSource.promise)
       .mockReturnValueOnce(secondSource.promise);
     const { useSourceStore } = require('../store/sourceStore');
-    useSourceStore.getState.mockReturnValue({ addSource: mockAddSource });
+    useSourceStore.getState.mockReturnValue({
+      addSource: mockAddSource,
+      cleanupOrphanedSources: mockCleanupOrphanedSources,
+    });
     mockGetDocumentAsync
       .mockResolvedValueOnce({
         canceled: false,
@@ -241,7 +315,10 @@ describe('useAttachment', () => {
         .fn()
         .mockResolvedValue({ success: true, sourceId: 7 });
       const { useSourceStore } = require('../store/sourceStore');
-      useSourceStore.getState.mockReturnValue({ addSource: mockAddSource });
+      useSourceStore.getState.mockReturnValue({
+        addSource: mockAddSource,
+        cleanupOrphanedSources: mockCleanupOrphanedSources,
+      });
 
       const { result } = renderHook(() => useAttachment());
       await act(async () => {

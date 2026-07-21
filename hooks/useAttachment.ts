@@ -71,12 +71,25 @@ export const useAttachment = () => {
   const embeddingDownloadSheetRef = useRef<BottomSheetModal>(null);
   const embeddingDownloadSheetOpenRef = useRef(false);
   const { vectorStore, embeddings } = useVectorStore();
+  const vectorStoreRef = useRef(vectorStore);
+  vectorStoreRef.current = vectorStore;
+
+  // A document is embedded as a source the moment it is attached, but it is only
+  // tied to a chat on send. Sweep whenever one is abandoned instead, or it stays
+  // in the store forever. cleanupOrphanedSources only removes unreferenced rows.
+  const sweepAbandonedSources = useCallback(() => {
+    const store = vectorStoreRef.current;
+    if (store) useSourceStore.getState().cleanupOrphanedSources(store);
+  }, []);
 
   useEffect(() => {
     return () => {
       embeddingDownloadSheetOpenRef.current = false;
+      if (attachmentsRef.current.some((a) => a.sourceId)) {
+        sweepAbandonedSources();
+      }
     };
-  }, []);
+  }, [sweepAbandonedSources]);
 
   const replaceWithImage = useCallback((uri: string) => {
     currentDocumentAttachmentIdRef.current = null;
@@ -277,13 +290,18 @@ export const useAttachment = () => {
     }
   }, [vectorStore, runDocumentPicker]);
 
-  const removeAttachment = useCallback((id: string) => {
-    if (currentDocumentAttachmentIdRef.current === id) {
-      currentDocumentAttachmentIdRef.current = null;
-      documentAbortRef.current?.abort();
-    }
-    setAttachments((prev) => prev.filter((a) => a.id !== id));
-  }, []);
+  const removeAttachment = useCallback(
+    (id: string) => {
+      if (currentDocumentAttachmentIdRef.current === id) {
+        currentDocumentAttachmentIdRef.current = null;
+        documentAbortRef.current?.abort();
+      }
+      const removed = attachmentsRef.current.find((a) => a.id === id);
+      setAttachments((prev) => prev.filter((a) => a.id !== id));
+      if (removed?.sourceId) sweepAbandonedSources();
+    },
+    [sweepAbandonedSources]
+  );
 
   const clearAll = useCallback(
     (options: ClearAllOptions = {}) => {
@@ -292,11 +310,11 @@ export const useAttachment = () => {
       currentDocumentAttachmentIdRef.current = null;
       documentAbortRef.current?.abort();
       setAttachments([]);
-      if (cleanupSources && hadDocuments && vectorStore) {
-        useSourceStore.getState().cleanupOrphanedSources(vectorStore);
+      if (cleanupSources && hadDocuments) {
+        sweepAbandonedSources();
       }
     },
-    [vectorStore]
+    [sweepAbandonedSources]
   );
 
   const openSheet = useCallback(() => {
