@@ -64,7 +64,6 @@ export default function ChatScreen({
   openModelSheetRef,
 }: Props) {
   const inputRef = useRef<{
-    clear: () => void;
     setInput: (text: string) => void;
   }>(null);
   const messagesRef = useRef<MessagesHandle>(null);

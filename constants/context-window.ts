@@ -22,9 +22,6 @@ export const getContextWindowTokens = (model: Model): number =>
   (model.family ? CONTEXT_WINDOW_TOKENS_BY_FAMILY[model.family] : undefined) ??
   DEFAULT_CONTEXT_WINDOW_TOKENS;
 
-export const estimateTokens = (text: string): number =>
-  Math.ceil(text.length / CHARS_PER_TOKEN);
-
 export const getPromptCharBudget = (model: Model): number => {
   const promptTokenBudget = Math.max(
     0,
