@@ -8,6 +8,15 @@ export const CITATION_DOCUMENT_NAME_TOKEN_PATTERN = /[^a-z0-9ąćęłńóśźż]
 export const THINK_OPEN = '<think>';
 export const THINK_CLOSE = '</think>';
 
+// English negation cues. Terms inside a negated clause say what a source does NOT
+// support, so they must not count as overlap evidence for citing it.
+export const NEGATION_CUE_EN =
+  /\b(no|not|n['’]t|never|none|neither|nor|without|lacks?|lacking)\b/i;
+
+// Clause boundaries, so "covers X but does not mention Y" keeps X and drops only Y.
+export const CLAUSE_SPLIT_PATTERN =
+  /[,;]|\b(?:but|however|although|though|whereas|while)\b/i;
+
 // Coverage nouns (does a source address the topic); a refusal negates one, a negative-fact answer does not.
 const NO_ANSWER_META_EN =
   'information|info|mention|reference|data|details?|indication|records?';
