@@ -175,9 +175,6 @@ const expandSelectedWithNeighbors = async (
       }
     }
 
-    // Seeds are ranked by similarity, so emitting their windows in that order
-    // hands the model one document's prose out of sequence (9,10,11 then 2,3,4).
-    // Relevance already decided which chunks got in; read them in document order.
     orderedIds.sort(
       (a, b) => (group.indices.get(a) ?? 0) - (group.indices.get(b) ?? 0)
     );
