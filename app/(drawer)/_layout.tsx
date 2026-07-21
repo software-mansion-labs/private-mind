@@ -3,6 +3,7 @@ import Drawer from 'expo-router/drawer';
 import { useWindowDimensions } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import CustomDrawer from '../../components/drawer/CustomDrawer';
+import { getDrawerWidth } from '../../constants/drawer-layout';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 
 const DrawerLayout = () => {
@@ -15,6 +16,7 @@ const DrawerLayout = () => {
       screenOptions={{
         overlayColor: theme.bg.overlay,
         swipeEdgeWidth: width,
+        drawerStyle: { width: getDrawerWidth(width) },
         drawerType: 'slide',
         headerShadowVisible: false,
         headerShown: true,
@@ -39,6 +41,12 @@ const DrawerLayout = () => {
         name="model-hub"
         options={{
           title: 'Models',
+        }}
+      />
+      <Drawer.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
         }}
       />
       <Drawer.Screen

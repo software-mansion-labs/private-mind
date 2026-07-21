@@ -3,6 +3,7 @@ import { LLMModule } from 'react-native-executorch';
 import * as chatRepository from '../database/chatRepository';
 import * as Feedback from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
+import { useSettingsStore } from '../store/settingsStore';
 
 jest.mock('../database/chatRepository');
 jest.mock('../utils/Feedback', () => ({
@@ -75,6 +76,10 @@ beforeEach(() => {
     activeChatMessages: [],
   });
 
+  // Default: settings already hydrated, so the hydration barrier is a no-op
+  // for every test except the cold-start one below (which opts into false).
+  useSettingsStore.setState({ hasHydrated: true, customSystemPrompt: '' });
+
   jest.clearAllMocks();
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -88,7 +93,8 @@ beforeEach(() => {
   );
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await flushFrame();
   jest.restoreAllMocks();
 });
 
@@ -97,6 +103,9 @@ const loadModel = async (model = baseModel) => {
   await useLLMStore.getState().loadModel(model);
   return capturedTokenCallback!;
 };
+
+const flushFrame = () =>
+  new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
 // ─── loadModel ───────────────────────────────────────────────────────────────
 
@@ -160,6 +169,7 @@ describe('token callback', () => {
 
     onToken('hello');
     onToken(' world');
+    await flushFrame();
 
     expect(useLLMStore.getState().performance.tokenCount).toBe(2);
   });
@@ -169,9 +179,12 @@ describe('token callback', () => {
     useLLMStore.setState({ isProcessingPrompt: true, isGenerating: true });
 
     onToken('first');
+    await flushFrame();
     const firstTime = useLLMStore.getState().performance.firstTokenTime;
+    expect(firstTime).toBeGreaterThan(0);
 
     onToken('second');
+    await flushFrame();
     expect(useLLMStore.getState().performance.firstTokenTime).toBe(firstTime);
   });
 
@@ -208,7 +221,7 @@ describe('token callback', () => {
       isGenerating: true,
       activeChatId: 5,
       generatingForChatId: 5,
-      performance: { tokenCount: 1, firstTokenTime: 1 }, // not first token
+      performance: { tokenCount: 1, firstTokenTime: 1 },
       activeChatMessages: [
         { id: 1, chatId: 5, role: 'user', content: 'Hi', timestamp: 0 },
         { id: -1, chatId: 5, role: 'assistant', content: '', timestamp: 0 },
@@ -216,6 +229,7 @@ describe('token callback', () => {
     });
 
     onToken(' hello');
+    await flushFrame();
 
     const messages = useLLMStore.getState().activeChatMessages;
     expect(messages[messages.length - 1].content).toBe(' hello');
@@ -445,6 +459,60 @@ describe('sendChatMessage', () => {
   });
 });
 
+describe('sendChatMessage — settings hydration barrier', () => {
+  const settings = { systemPrompt: 'be helpful' };
+
+  beforeEach(async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    mockInstance.generate.mockResolvedValue('response');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+  });
+
+  it('does not read customSystemPrompt until settings have hydrated (cold-start race)', async () => {
+    useSettingsStore.setState({ hasHydrated: false, customSystemPrompt: '' });
+
+    const sendPromise = useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, [], settings);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(prepareMessagesForLLM).not.toHaveBeenCalled();
+    expect(mockInstance.generate).not.toHaveBeenCalled();
+
+    useSettingsStore.setState({
+      hasHydrated: true,
+      customSystemPrompt: 'Always end replies with BANANA',
+    });
+
+    await sendPromise;
+
+    expect(prepareMessagesForLLM).toHaveBeenCalledTimes(1);
+    expect((prepareMessagesForLLM as jest.Mock).mock.calls[0][4]).toBe(
+      'Always end replies with BANANA'
+    );
+  });
+
+  it('reads customSystemPrompt immediately when settings are already hydrated', async () => {
+    useSettingsStore.setState({
+      hasHydrated: true,
+      customSystemPrompt: 'Be concise.',
+    });
+
+    await useLLMStore.getState().sendChatMessage('hi', 1, [], settings);
+
+    expect(prepareMessagesForLLM).toHaveBeenCalledTimes(1);
+    expect((prepareMessagesForLLM as jest.Mock).mock.calls[0][4]).toBe(
+      'Be concise.'
+    );
+  });
+});
+
 // ─── sendEventMessage ─────────────────────────────────────────────────────────
 
 describe('sendEventMessage', () => {
@@ -645,5 +713,23 @@ describe('runBenchmark', () => {
 
     expect(useLLMStore.getState().isGenerating).toBe(false);
     expect(useLLMStore.getState().isBenchmarking).toBe(false);
+  });
+
+  it('tracks a fresh first token on every run without stale carry-over', async () => {
+    await loadModel();
+    useLLMStore.setState({ model: baseModel });
+
+    mockInstance.generate.mockImplementation(async () => {
+      await flushFrame();
+      capturedTokenCallback!('tok');
+      await flushFrame();
+      return 'out';
+    });
+
+    const first = await useLLMStore.getState().runBenchmark();
+    const second = await useLLMStore.getState().runBenchmark();
+
+    expect(first?.timeToFirstToken).toBeGreaterThan(0);
+    expect(second?.timeToFirstToken).toBeGreaterThan(0);
   });
 });
