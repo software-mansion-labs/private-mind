@@ -28,7 +28,8 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import MessageItem from './MessageItem';
-import { Message } from '../../database/chatRepository';
+import SourcesSheet, { type SourcesSheetHandle } from './SourcesSheet';
+import { Message, SourceDocument } from '../../database/chatRepository';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
@@ -77,6 +78,13 @@ const Messages = ({
   const [showScrollButton, setShowScrollButton] = useState(false);
   const lastScrollOffset = useRef(0);
   const lastLayoutHeight = useRef(0);
+  const sourcesSheetRef = useRef<SourcesSheetHandle>(null);
+
+  const handleShowSources = useCallback(
+    (sources: SourceDocument[], question?: string) =>
+      sourcesSheetRef.current?.present(sources, question),
+    []
+  );
 
   // v0-style initial scroll: hide the view until we've snapped to
   // the bottom, then fade in so the user never sees content flying by.
@@ -401,6 +409,7 @@ const Messages = ({
               documentName={message.documentName}
               sourceDocuments={message.sourceDocuments}
               userQuestion={userQuestion}
+              onShowSources={handleShowSources}
             />
           );
 
@@ -435,6 +444,8 @@ const Messages = ({
           </TouchableOpacity>
         </Reanimated.View>
       )}
+
+      <SourcesSheet ref={sourcesSheetRef} />
     </Reanimated.View>
   );
 };
