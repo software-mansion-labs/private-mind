@@ -21,16 +21,18 @@ const readPersistedVectorDim = async (
 const clearImportedSources = async (
   vectorStore: OPSQLiteVectorStore,
   db: SQLiteDatabase
-): Promise<void> => {
+): Promise<boolean> => {
   await vectorStore.deleteVectorStore();
   try {
     await db.runAsync(`DELETE FROM chatSources`);
     await db.runAsync(`DELETE FROM sources`);
+    return true;
   } catch (error) {
     console.warn(
       'Failed to clear source metadata during embedding migration',
       error
     );
+    return false;
   }
 };
 
@@ -48,14 +50,16 @@ export const migrateEmbeddingModelIfNeeded = async (
     const persistedDim = await readPersistedVectorDim(vectorStore);
     const incompatible =
       persistedDim !== null && persistedDim !== currentModelDim;
-    if (incompatible) {
-      await clearImportedSources(vectorStore, db);
+    // Leave the key unset when the wipe was partial so the next launch retries;
+    // deleting again is idempotent.
+    if (incompatible && !(await clearImportedSources(vectorStore, db))) {
+      return true;
     }
     await AsyncStorage.setItem(ACTIVE_EMBEDDING_MODEL_KEY, currentModelId);
     return incompatible;
   }
 
-  await clearImportedSources(vectorStore, db);
+  if (!(await clearImportedSources(vectorStore, db))) return true;
   await AsyncStorage.setItem(ACTIVE_EMBEDDING_MODEL_KEY, currentModelId);
   return true;
 };
