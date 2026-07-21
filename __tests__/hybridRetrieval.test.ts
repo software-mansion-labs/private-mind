@@ -585,6 +585,33 @@ describe('hybridRetrieve', () => {
     );
     expect(result.map((c) => c.similarity)).toEqual([0, 0.9, 0]);
   });
+
+  it('covers a de-diacriticised document from a diacriticised query, as FTS would', async () => {
+    // Similarity sits below the semantic threshold and the top-keep floor, and
+    // there is no keyword hit, so this chunk qualifies on term coverage alone.
+    const vectorResults = [
+      {
+        id: '1:0',
+        document: 'platnosc za usluge wynosi 100 zl',
+        embedding: [1, 0],
+        similarity: 0.2,
+        metadata: { documentId: 1, name: 'faktura.pdf' },
+      },
+    ];
+    mockKeywordSearch.mockResolvedValue([]);
+
+    const result = await hybridRetrieve({
+      prompt: 'jaka jest płatność za usługę',
+      enabledSourceIds: [1],
+      vectorStore: makeVectorStore(vectorResults, {}),
+      sourceNamesById: new Map(),
+      embeddings: null,
+    });
+
+    expect(result.map((c) => c.document)).toEqual([
+      'platnosc za usluge wynosi 100 zl',
+    ]);
+  });
 });
 
 describe('HybridRetriever', () => {

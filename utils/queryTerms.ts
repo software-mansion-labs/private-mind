@@ -118,3 +118,23 @@ export const stemPrefix = (term: string): string =>
   WORD_PATTERN.test(term) && term.length >= STEM_MIN_TERM_LENGTH
     ? term.slice(0, Math.max(4, term.length - 2))
     : term;
+
+const FOLD_MAP: Record<string, string> = {
+  ą: 'a',
+  ć: 'c',
+  ę: 'e',
+  ł: 'l',
+  ń: 'n',
+  ó: 'o',
+  ś: 's',
+  ź: 'z',
+  ż: 'z',
+};
+
+// The keyword index compares text after two foldings: ł by hand (unicode61's
+// remove_diacritics leaves that stroke letter alone) and the tokenizer's own
+// diacritic stripping. Layers that match in JS rather than through SQLite have
+// to fold the same way, or "płatność" stops matching "platnosc" on one side
+// only. Explicit map instead of NFD normalize, which Hermes does not guarantee.
+export const foldForMatching = (text: string): string =>
+  text.toLowerCase().replace(/[ąćęłńóśźż]/g, (char) => FOLD_MAP[char] ?? char);

@@ -1,4 +1,24 @@
-import { extractQueryTerms, stemPrefix } from '../utils/queryTerms';
+import {
+  extractQueryTerms,
+  foldForMatching,
+  stemPrefix,
+} from '../utils/queryTerms';
+
+describe('foldForMatching', () => {
+  it('folds Polish diacritics and the stroke letter to plain ASCII', () => {
+    expect(foldForMatching('płatność')).toBe('platnosc');
+    expect(foldForMatching('Księgową')).toBe('ksiegowa');
+    expect(foldForMatching('ŁÓDŹ')).toBe('lodz');
+  });
+
+  it('lands a diacriticised query and a plain one on the same string', () => {
+    expect(foldForMatching('płatność')).toBe(foldForMatching('platnosc'));
+  });
+
+  it('leaves plain ASCII untouched apart from case', () => {
+    expect(foldForMatching('invoice E4021')).toBe('invoice e4021');
+  });
+});
 
 describe('extractQueryTerms', () => {
   it('drops short bare numbers and codes that caused false highlights', () => {

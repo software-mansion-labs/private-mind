@@ -1,7 +1,7 @@
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { type Scalar } from '@op-engineering/op-sqlite';
 import { LFMEmbeddings } from './lfmEmbeddings';
-import { extractQueryTerms, stemPrefix } from './queryTerms';
+import { extractQueryTerms, foldForMatching, stemPrefix } from './queryTerms';
 import { keywordSearch } from '../database/keywordIndex';
 import { type ContextChunk, sourceKey } from './contextUtils';
 import {
@@ -248,7 +248,11 @@ export const hybridRetrieve = async ({
   }
 
   const terms = extractQueryTerms(prompt);
-  const coverageTerms = new Set([...terms].map(stemPrefix));
+  // Folded the same way the keyword index folds, so coverage agrees with what
+  // FTS actually matched instead of missing every de-diacriticised document.
+  const coverageTerms = new Set(
+    [...terms].map((term) => stemPrefix(foldForMatching(term)))
+  );
 
   // Isolate the vector query: without a usable embedding the store re-embeds and
   // rejects, so catch here to degrade to keyword-only instead of returning nothing.
@@ -313,7 +317,7 @@ export const hybridRetrieve = async ({
     let coverage = coverageById.get(candidate.id);
     if (coverage === undefined) {
       coverage = termCoverage(
-        `${candidate.name ?? ''} ${candidate.document ?? ''}`,
+        foldForMatching(`${candidate.name ?? ''} ${candidate.document ?? ''}`),
         coverageTerms
       );
       coverageById.set(candidate.id, coverage);
