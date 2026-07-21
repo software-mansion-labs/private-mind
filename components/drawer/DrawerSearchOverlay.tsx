@@ -15,7 +15,7 @@ import {
   GestureHandlerRootView,
   Pressable,
 } from 'react-native-gesture-handler';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { BottomSheetProvider } from '@swmansion/react-native-bottom-sheet';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
@@ -100,7 +100,7 @@ export const DrawerSearchOverlay = ({
       onRequestClose={onRequestClose}
     >
       <GestureHandlerRootView style={styles.root}>
-        <BottomSheetModalProvider>
+        <BottomSheetProvider>
           <Animated.View
             style={[styles.backdrop, backdropStyle]}
             pointerEvents="none"
@@ -128,7 +128,7 @@ export const DrawerSearchOverlay = ({
               />
             </View>
           </Animated.View>
-        </BottomSheetModalProvider>
+        </BottomSheetProvider>
       </GestureHandlerRootView>
     </Modal>
   );
