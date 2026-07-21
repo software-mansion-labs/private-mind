@@ -122,7 +122,7 @@ const ChatBar = ({
     () => ({
       clear: () => {
         setUserInput('');
-        clearAll();
+        clearAll({ cleanupSources: true });
         extraContentPadding.set(0);
         if (Platform.OS === 'ios') {
           textInputRef.current?.setNativeProps({ text: ' ' });
