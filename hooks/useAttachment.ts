@@ -23,6 +23,10 @@ interface ClearAllOptions {
   cleanupSources?: boolean;
 }
 
+interface ClearAllOptions {
+  cleanupSources?: boolean;
+}
+
 const requestAndroidGalleryPermission = async (): Promise<boolean> => {
   if (Platform.OS !== 'android') return true;
 

@@ -58,19 +58,13 @@ jest.mock('../components/bottomSheets/AttachmentSheet', () => {
     isVisionModel: boolean;
   }) => (
     <View testID="attachment-sheet">
-      {isVisionModel && (
-        <>
-          <TouchableOpacity
-            testID="pick-library-btn"
-            onPress={onPickFromLibrary}
-          >
-            <Text>Library</Text>
-          </TouchableOpacity>
-          <TouchableOpacity testID="pick-camera-btn" onPress={onPickFromCamera}>
-            <Text>Camera</Text>
-          </TouchableOpacity>
-        </>
-      )}
+      <Text>{`vision:${isVisionModel}`}</Text>
+      <TouchableOpacity testID="pick-library-btn" onPress={onPickFromLibrary}>
+        <Text>Library</Text>
+      </TouchableOpacity>
+      <TouchableOpacity testID="pick-camera-btn" onPress={onPickFromCamera}>
+        <Text>Camera</Text>
+      </TouchableOpacity>
       <TouchableOpacity testID="pick-document-btn" onPress={onPickDocument}>
         <Text>Document</Text>
       </TouchableOpacity>
@@ -554,16 +548,18 @@ describe('attachment', () => {
     ]);
   });
 
-  it('passes isVisionModel to AttachmentSheet', () => {
+  it('forwards isVisionModel=true and renders image options in AttachmentSheet', () => {
     renderBar({ isVisionModel: true });
+    expect(screen.getByText('vision:true')).toBeTruthy();
     expect(screen.getByTestId('pick-library-btn')).toBeTruthy();
     expect(screen.getByTestId('pick-camera-btn')).toBeTruthy();
   });
 
-  it('hides image options in AttachmentSheet when not a vision model', () => {
+  it('keeps image options visible and forwards isVisionModel=false for non-vision models', () => {
     renderBar({ isVisionModel: false });
-    expect(screen.queryByTestId('pick-library-btn')).toBeNull();
-    expect(screen.queryByTestId('pick-camera-btn')).toBeNull();
+    expect(screen.getByText('vision:false')).toBeTruthy();
+    expect(screen.getByTestId('pick-library-btn')).toBeTruthy();
+    expect(screen.getByTestId('pick-camera-btn')).toBeTruthy();
     expect(screen.getByTestId('pick-document-btn')).toBeTruthy();
   });
 });

@@ -4,6 +4,7 @@ import {
   SourceDocument,
 } from '../database/chatRepository';
 import { Model } from '../database/modelRepository';
+import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { getPromptCharBudget } from '../constants/context-window';
 
@@ -29,9 +30,18 @@ export const prepareMessagesForLLM = (
   context: string[],
   settings: ChatSettings,
   model: Model,
+  customSystemPrompt: string = '',
   preferredSourceDocuments?: SourceDocument[]
 ): ExecutorchMessage[] => {
   let systemPrompt = settings.systemPrompt;
+
+  const trimmedCustomPrompt = customSystemPrompt.trim();
+  if (trimmedCustomPrompt) {
+    const guardedCustomPrompt = `${CUSTOM_PROMPT_GUARD}\n\n${trimmedCustomPrompt}`;
+    systemPrompt = systemPrompt
+      ? `${systemPrompt}\n\n${guardedCustomPrompt}`
+      : guardedCustomPrompt;
+  }
 
   if (context.length > 0) {
     systemPrompt += CONTEXT_INSTRUCTION;
