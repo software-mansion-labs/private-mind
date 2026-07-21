@@ -17,7 +17,7 @@ import { startPhantomChat } from '../../utils/startPhantomChat';
 import { Theme } from '../../styles/colors';
 import ChatIcon from '../../assets/icons/chat.svg';
 import ModelsIcon from '../../assets/icons/models.svg';
-import InfoCircleIcon from '../../assets/icons/info-circle.svg';
+import SettingsIcon from '../../assets/icons/settings.svg';
 import { DrawerItem } from './DrawerItem';
 import {
   EMPHASIZED_STANDARD,
@@ -138,11 +138,12 @@ export const DrawerNavSection = ({
           }}
         />
         <DrawerItem
-          icon={<InfoCircleIcon width={18} height={18} style={styles.icon} />}
-          label="App Info"
-          active={false}
+          icon={<SettingsIcon width={18} height={18} style={styles.icon} />}
+          label="Settings"
+          active={pathname === '/settings'}
           onPress={() => {
-            router.push('/app-info');
+            interrupt();
+            router.replace('/settings');
             onNavigate?.();
           }}
         />

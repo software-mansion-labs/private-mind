@@ -15,6 +15,7 @@ import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
 import { Feedback } from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
+import { useSettingsStore } from './settingsStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
 
 interface LLMStore {
@@ -113,6 +114,18 @@ const waitForModelLoad = async (get: () => LLMStore): Promise<void> => {
       }, 100);
     });
   }
+};
+
+const waitForSettingsHydration = async (): Promise<void> => {
+  if (useSettingsStore.getState().hasHydrated) return;
+  await new Promise<void>((resolve) => {
+    const unsubscribe = useSettingsStore.subscribe((state) => {
+      if (state.hasHydrated) {
+        unsubscribe();
+        resolve();
+      }
+    });
+  });
 };
 
 const updateChatStateForGeneration = (
@@ -410,20 +423,22 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         activeChatMessages: updatedChatMessages,
       });
 
-      const messagesWithSystemPrompt = prepareMessagesForLLM(
-        get().activeChatMessages,
-        context,
-        settings,
-        currentModel
-      );
-
       await waitForModelLoad(get);
 
-      // Check if user interrupted during model loading
       if (!get().isProcessingPrompt) {
         updateChatStateForGeneration(set, 'failed');
         return;
       }
+
+      await waitForSettingsHydration();
+
+      const messagesWithSystemPrompt = prepareMessagesForLLM(
+        get().activeChatMessages,
+        context,
+        settings,
+        currentModel,
+        useSettingsStore.getState().customSystemPrompt
+      );
 
       // Set generation state and generate response
       updateChatStateForGeneration(set, 'generating');

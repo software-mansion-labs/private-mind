@@ -3,6 +3,7 @@ import { LLMModule } from 'react-native-executorch';
 import * as chatRepository from '../database/chatRepository';
 import * as Feedback from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
+import { useSettingsStore } from '../store/settingsStore';
 
 jest.mock('../database/chatRepository');
 jest.mock('../utils/Feedback', () => ({
@@ -74,6 +75,10 @@ beforeEach(() => {
     generatingForChatId: null,
     activeChatMessages: [],
   });
+
+  // Default: settings already hydrated, so the hydration barrier is a no-op
+  // for every test except the cold-start one below (which opts into false).
+  useSettingsStore.setState({ hasHydrated: true, customSystemPrompt: '' });
 
   jest.clearAllMocks();
   jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -429,6 +434,60 @@ describe('sendChatMessage', () => {
     const messages = useLLMStore.getState().activeChatMessages;
     const lastMsg = messages[messages.length - 1];
     expect(lastMsg?.timeToFirstToken).toBeUndefined();
+  });
+});
+
+describe('sendChatMessage — settings hydration barrier', () => {
+  const settings = { systemPrompt: 'be helpful' };
+
+  beforeEach(async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    mockInstance.generate.mockResolvedValue('response');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+  });
+
+  it('does not read customSystemPrompt until settings have hydrated (cold-start race)', async () => {
+    useSettingsStore.setState({ hasHydrated: false, customSystemPrompt: '' });
+
+    const sendPromise = useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, [], settings);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(prepareMessagesForLLM).not.toHaveBeenCalled();
+    expect(mockInstance.generate).not.toHaveBeenCalled();
+
+    useSettingsStore.setState({
+      hasHydrated: true,
+      customSystemPrompt: 'Always end replies with BANANA',
+    });
+
+    await sendPromise;
+
+    expect(prepareMessagesForLLM).toHaveBeenCalledTimes(1);
+    expect((prepareMessagesForLLM as jest.Mock).mock.calls[0][4]).toBe(
+      'Always end replies with BANANA'
+    );
+  });
+
+  it('reads customSystemPrompt immediately when settings are already hydrated', async () => {
+    useSettingsStore.setState({
+      hasHydrated: true,
+      customSystemPrompt: 'Be concise.',
+    });
+
+    await useLLMStore.getState().sendChatMessage('hi', 1, [], settings);
+
+    expect(prepareMessagesForLLM).toHaveBeenCalledTimes(1);
+    expect((prepareMessagesForLLM as jest.Mock).mock.calls[0][4]).toBe(
+      'Be concise.'
+    );
   });
 });
 

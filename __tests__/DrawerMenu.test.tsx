@@ -96,12 +96,12 @@ beforeEach(() => {
 afterEach(() => setPlatform(ORIGINAL_OS));
 
 describe('DrawerMenu — collapsed', () => {
-  it('keeps New chat, Models and App Info at the top', () => {
+  it('keeps New chat, Models and Settings at the top', () => {
     renderMenu();
 
     expect(screen.getByText('New chat')).toBeTruthy();
     expect(screen.getByText('Models')).toBeTruthy();
-    expect(screen.getByText('App Info')).toBeTruthy();
+    expect(screen.getByText('Settings')).toBeTruthy();
   });
 
   it('renders the app name and a search button instead of a search field', () => {
@@ -225,7 +225,7 @@ describe('DrawerMenu — searching', () => {
 
     expect(screen.getByText('New chat')).toBeTruthy();
     expect(screen.getByText('Models')).toBeTruthy();
-    expect(screen.getByText('App Info')).toBeTruthy();
+    expect(screen.getByText('Settings')).toBeTruthy();
   });
 
   it('hides the navigation items once a query is typed, leaving only results', () => {
@@ -233,7 +233,7 @@ describe('DrawerMenu — searching', () => {
 
     expect(screen.queryByText('New chat')).toBeNull();
     expect(screen.queryByText('Models')).toBeNull();
-    expect(screen.queryByText('App Info')).toBeNull();
+    expect(screen.queryByText('Settings')).toBeNull();
     expect(screen.getByText('Pizza recipe')).toBeTruthy();
   });
 
