@@ -9,6 +9,7 @@ import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+import { router } from 'expo-router';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -94,6 +95,7 @@ export default function ChatScreen({
     isGenerating,
     sendChatMessage,
     loadModel,
+    setActiveChatId,
     model: loadedModel,
   } = useLLMStore();
   const { getModelById } = useModelStore();
@@ -161,14 +163,21 @@ export default function ChatScreen({
     const hasDocuments = attachments?.some((a) => a.type === 'document');
     if ((!userInput.trim() && !imagePath && !hasDocuments) || isGenerating)
       return;
-    if (!(await checkIfChatExists(db, chatId!))) {
+
+    let targetChatId = chatId!;
+    if (!(await checkIfChatExists(db, targetChatId))) {
       const docName = attachments?.find((a) => a.type === 'document')?.name;
       const titleSource = userInput.trim() || docName || 'New chat';
       const newChatTitle =
         titleSource.length > 25
           ? titleSource.slice(0, 25) + '...'
           : titleSource;
-      await addChat(newChatTitle, model!.id);
+      const newChatId = await addChat(newChatTitle, model!.id);
+      if (!newChatId) return;
+
+      targetChatId = newChatId;
+      await setActiveChatId(targetChatId);
+      router.replace(`/chat/${targetChatId}`);
     }
 
     let persistedImagePath: string | undefined = imagePath;
@@ -185,9 +194,8 @@ export default function ChatScreen({
       }
     }
 
-    inputRef.current?.clear();
     Keyboard.dismiss();
-    updateLastUsed(chatId!);
+    updateLastUsed(targetChatId);
 
     // Notify Messages that a send is in flight. It will seed blankSpace to
     // the full container height, then derive the final value from measured
@@ -229,7 +237,7 @@ export default function ChatScreen({
     // Enable new sources for this chat (persists for future messages)
     for (const sourceId of attachmentSourceIds) {
       if (!enabledSources.includes(sourceId)) {
-        await enableSource(chatId!, sourceId);
+        await enableSource(targetChatId, sourceId);
       }
     }
 
@@ -247,7 +255,7 @@ export default function ChatScreen({
         .join(', ') || undefined;
     await sendChatMessage(
       userInput,
-      chatId!,
+      targetChatId,
       context,
       settings,
       persistedImagePath,
