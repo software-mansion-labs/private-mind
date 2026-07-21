@@ -34,6 +34,8 @@ import { markOnboardingComplete } from '../../utils/onboardingStatus';
 import { Feedback } from '../../utils/Feedback';
 
 const SCREEN_HEIGHT = Dimensions.get('screen').height;
+const IMAGE_WIDTH = 300;
+const IMAGE_HEIGHT = 618;
 
 type PanelStepProps = Omit<
   OnboardingStepPanelProps,
@@ -41,7 +43,6 @@ type PanelStepProps = Omit<
 >;
 const STEPS: (PanelStepProps & {
   image: ImageSourcePropType;
-  alignment: 'center' | 'bottom';
 })[] = [
   {
     label: 'Offline AI access',
@@ -50,7 +51,6 @@ const STEPS: (PanelStepProps & {
       'Interact with AI models securely and offline on your mobile device.',
     buttonLabel: 'Got it, next',
     image: require('../../assets/onboarding/step_chat.png'),
-    alignment: 'center',
   },
   {
     label: 'AI RAG',
@@ -58,7 +58,14 @@ const STEPS: (PanelStepProps & {
     description: 'Use extra files to extend models knowledge and responses.',
     buttonLabel: 'Great, next',
     image: require('../../assets/onboarding/step_sources.png'),
-    alignment: 'bottom',
+  },
+  {
+    label: 'Web search',
+    title: 'Search the web in chat',
+    description:
+      'Let the model look things up online for fresh, sourced answers.',
+    buttonLabel: 'Nice, next',
+    image: require('../../assets/onboarding/step_websearch.png'),
   },
   {
     label: 'Speech to text',
@@ -66,7 +73,6 @@ const STEPS: (PanelStepProps & {
     description: 'Use voice messages that automatically transcript into text.',
     buttonLabel: 'Awesome, next',
     image: require('../../assets/onboarding/step_voice.png'),
-    alignment: 'bottom',
   },
   {
     label: 'Custom models',
@@ -74,7 +80,6 @@ const STEPS: (PanelStepProps & {
     description: 'Add your own custom models compatible with ExecuTorch.',
     buttonLabel: 'Start chatting',
     image: require('../../assets/onboarding/step_models.png'),
-    alignment: 'center',
   },
 ];
 
@@ -159,17 +164,13 @@ function OnboardingScreen() {
       <Animated.View style={[styles.colorBg, colorBgAnimation]} />
       <Animated.View style={[styles.imageWrapper, imageAnimation]}>
         <View
-          style={[
-            styles.innerImageWrapper,
-            step?.alignment === 'bottom'
-              ? {
-                  justifyContent: 'flex-end',
-                  bottom: stepPanel.height + 8,
-                }
-              : { justifyContent: 'center' },
-          ]}
+          style={[styles.innerImageWrapper, { bottom: stepPanel.height + 8 }]}
         >
-          <Image source={step?.image ?? STEPS[0].image} />
+          <Image
+            source={step?.image ?? STEPS[0].image}
+            style={styles.stepImage}
+            resizeMode="contain"
+          />
         </View>
       </Animated.View>
 
@@ -229,7 +230,12 @@ const createStyles = (theme: Theme) =>
     },
     innerImageWrapper: {
       alignItems: 'center',
+      justifyContent: 'flex-end',
       height: SCREEN_HEIGHT,
+    },
+    stepImage: {
+      width: IMAGE_WIDTH,
+      height: IMAGE_HEIGHT,
     },
     bottomPanel: {
       padding: 16,
