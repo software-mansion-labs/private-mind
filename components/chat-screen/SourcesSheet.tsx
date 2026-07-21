@@ -1,5 +1,6 @@
 import React, {
   forwardRef,
+  memo,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -136,171 +137,180 @@ const SourceRow = ({
 };
 
 export interface SourcesSheetHandle {
-  present: (highlightIndex?: number | null) => void;
+  present: (
+    sources: SourceDocument[],
+    userQuestion?: string,
+    highlightIndex?: number | null
+  ) => void;
 }
 
-interface SourcesSheetProps {
+interface SourcesSheetPayload {
   sources: SourceDocument[];
   userQuestion?: string;
 }
 
-const SourcesSheet = forwardRef<SourcesSheetHandle, SourcesSheetProps>(
-  ({ sources, userQuestion }, ref) => {
-    const { theme } = useTheme();
-    const styles = useMemo(() => createStyles(theme), [theme]);
-    const { height: screenHeight } = useWindowDimensions();
+const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { height: screenHeight } = useWindowDimensions();
 
-    const sheetRef = useRef<BottomSheetModal>(null);
-    const isOpenRef = useRef(false);
-    const scrollRef = useRef<BottomSheetScrollViewMethods>(null);
-    const rowYRef = useRef<Record<number, number>>({});
-    const listYRef = useRef(0);
-    const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const [highlightedIndex, setHighlightedIndex] = useState<number | null>(
-      null
-    );
-    const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-    const [contentHeight, setContentHeight] = useState(0);
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const isOpenRef = useRef(false);
+  const scrollRef = useRef<BottomSheetScrollViewMethods>(null);
+  const rowYRef = useRef<Record<number, number>>({});
+  const listYRef = useRef(0);
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [contentHeight, setContentHeight] = useState(0);
+  const [payload, setPayload] = useState<SourcesSheetPayload>({
+    sources: [],
+  });
+  const { sources, userQuestion } = payload;
 
-    const clearScrollTimer = useCallback(() => {
-      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
-      scrollTimerRef.current = null;
-    }, []);
+  const clearScrollTimer = useCallback(() => {
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = null;
+  }, []);
 
-    useEffect(() => clearScrollTimer, [clearScrollTimer]);
+  useEffect(() => clearScrollTimer, [clearScrollTimer]);
 
-    useImperativeHandle(
-      ref,
-      () => ({
-        present: (highlightIndex: number | null = null) => {
-          if (isOpenRef.current) return;
-          isOpenRef.current = true;
-          setHighlightedIndex(highlightIndex);
-          setExpandedIndex(highlightIndex);
-          sheetRef.current?.present();
-        },
-      }),
-      []
-    );
-
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => <SheetBackdrop {...props} />,
-      []
-    );
-
-    const toggleExpanded = useCallback(
-      (index: number) => {
-        const willExpand = expandedIndex !== index;
-        setExpandedIndex(willExpand ? index : null);
-        clearScrollTimer();
-        if (!willExpand) return;
-
-        scrollTimerRef.current = setTimeout(() => {
-          const y = listYRef.current + (rowYRef.current[index] ?? 0);
-          scrollRef.current?.scrollTo({
-            y: Math.max(space.none, y - space.two),
-            animated: true,
-          });
-        }, ROW_EXPAND_SCROLL_DELAY);
+  useImperativeHandle(
+    ref,
+    () => ({
+      present: (
+        nextSources: SourceDocument[],
+        nextUserQuestion?: string,
+        highlightIndex: number | null = null
+      ) => {
+        if (isOpenRef.current) return;
+        isOpenRef.current = true;
+        setPayload({ sources: nextSources, userQuestion: nextUserQuestion });
+        setHighlightedIndex(highlightIndex);
+        setExpandedIndex(highlightIndex);
+        sheetRef.current?.present();
       },
-      [expandedIndex, clearScrollTimer]
-    );
+    }),
+    []
+  );
 
-    const anyNamedSource = useMemo(
-      () =>
-        sources.some((source) =>
-          queryNamesDocument(userQuestion ?? '', source.name)
-        ),
-      [sources, userQuestion]
-    );
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => <SheetBackdrop {...props} />,
+    []
+  );
 
-    const expandedExcerpt = useMemo<CitationExcerpt | null>(() => {
-      if (expandedIndex === null) return null;
-      const source = sources[expandedIndex];
-      const passage = source?.passage;
-      const suppressHighlight =
-        anyNamedSource &&
-        !queryNamesDocument(userQuestion ?? '', source?.name ?? '');
-      const span = suppressHighlight
-        ? null
-        : findCitedSpan(passage, userQuestion ?? '');
-      return buildCitationExcerpt(passage, span);
-    }, [expandedIndex, sources, userQuestion, anyNamedSource]);
+  const toggleExpanded = useCallback(
+    (index: number) => {
+      const willExpand = expandedIndex !== index;
+      setExpandedIndex(willExpand ? index : null);
+      clearScrollTimer();
+      if (!willExpand) return;
 
-    const onContentSizeChange = useCallback((width: number, height: number) => {
-      const next = Math.round(height);
-      setContentHeight((prev) => (Math.abs(prev - next) > 1 ? next : prev));
-    }, []);
+      scrollTimerRef.current = setTimeout(() => {
+        const y = listYRef.current + (rowYRef.current[index] ?? 0);
+        scrollRef.current?.scrollTo({
+          y: Math.max(space.none, y - space.two),
+          animated: true,
+        });
+      }, ROW_EXPAND_SCROLL_DELAY);
+    },
+    [expandedIndex, clearScrollTimer]
+  );
 
-    const snapPoints = useMemo<number[]>(() => {
-      const seed =
-        EST_SHEET_CHROME +
-        theme.insets.bottom +
-        sources.length * EST_ROW_HEIGHT +
-        Math.max(0, sources.length - 1) * EST_ROW_GAP;
-      const target = contentHeight ? contentHeight + SHEET_HANDLE_HEIGHT : seed;
-      return [Math.min(target, screenHeight * MAX_SHEET_HEIGHT_RATIO)];
-    }, [contentHeight, sources.length, theme.insets.bottom, screenHeight]);
+  const anyNamedSource = useMemo(
+    () =>
+      sources.some((source) =>
+        queryNamesDocument(userQuestion ?? '', source.name)
+      ),
+    [sources, userQuestion]
+  );
 
-    const animationConfigs = useBottomSheetSpringConfigs(SHEET_SPRING_CONFIG);
+  const expandedExcerpt = useMemo<CitationExcerpt | null>(() => {
+    if (expandedIndex === null) return null;
+    const source = sources[expandedIndex];
+    const passage = source?.passage;
+    const suppressHighlight =
+      anyNamedSource &&
+      !queryNamesDocument(userQuestion ?? '', source?.name ?? '');
+    const span = suppressHighlight
+      ? null
+      : findCitedSpan(passage, userQuestion ?? '');
+    return buildCitationExcerpt(passage, span);
+  }, [expandedIndex, sources, userQuestion, anyNamedSource]);
 
-    return (
-      <BottomSheetModal
-        ref={sheetRef}
-        index={0}
-        snapPoints={snapPoints}
-        animationConfigs={animationConfigs}
-        backdropComponent={renderBackdrop}
-        backgroundStyle={styles.sourcesSheetBackground}
-        handleIndicatorStyle={styles.sourcesSheetHandle}
-        onChange={(index) => {
-          isOpenRef.current = index >= 0;
-        }}
-        onDismiss={() => {
-          isOpenRef.current = false;
-          clearScrollTimer();
-          setHighlightedIndex(null);
-          setExpandedIndex(null);
-        }}
+  const onContentSizeChange = useCallback((width: number, height: number) => {
+    const next = Math.round(height);
+    setContentHeight((prev) => (Math.abs(prev - next) > 1 ? next : prev));
+  }, []);
+
+  const snapPoints = useMemo<number[]>(() => {
+    const seed =
+      EST_SHEET_CHROME +
+      theme.insets.bottom +
+      sources.length * EST_ROW_HEIGHT +
+      Math.max(0, sources.length - 1) * EST_ROW_GAP;
+    const target = contentHeight ? contentHeight + SHEET_HANDLE_HEIGHT : seed;
+    return [Math.min(target, screenHeight * MAX_SHEET_HEIGHT_RATIO)];
+  }, [contentHeight, sources.length, theme.insets.bottom, screenHeight]);
+
+  const animationConfigs = useBottomSheetSpringConfigs(SHEET_SPRING_CONFIG);
+
+  return (
+    <BottomSheetModal
+      ref={sheetRef}
+      index={0}
+      snapPoints={snapPoints}
+      animationConfigs={animationConfigs}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={styles.sourcesSheetBackground}
+      handleIndicatorStyle={styles.sourcesSheetHandle}
+      onChange={(index) => {
+        isOpenRef.current = index >= 0;
+      }}
+      onDismiss={() => {
+        isOpenRef.current = false;
+        clearScrollTimer();
+        setHighlightedIndex(null);
+        setExpandedIndex(null);
+      }}
+    >
+      <BottomSheetScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.sourcesSheet}
+        onContentSizeChange={onContentSizeChange}
+        showsVerticalScrollIndicator={false}
       >
-        <BottomSheetScrollView
-          ref={scrollRef}
-          contentContainerStyle={styles.sourcesSheet}
-          onContentSizeChange={onContentSizeChange}
-          showsVerticalScrollIndicator={false}
+        <Text style={styles.sourcesSheetTitle}>Sources</Text>
+        <View
+          style={styles.sourcesList}
+          onLayout={(e) => {
+            listYRef.current = e.nativeEvent.layout.y;
+          }}
         >
-          <Text style={styles.sourcesSheetTitle}>Sources</Text>
-          <View
-            style={styles.sourcesList}
-            onLayout={(e) => {
-              listYRef.current = e.nativeEvent.layout.y;
-            }}
-          >
-            {sources.map((source, index) => (
-              <SourceRow
-                key={`${source.documentId ?? 'unknown'}-${source.name}`}
-                source={source}
-                isHighlighted={highlightedIndex === index}
-                isExpanded={expandedIndex === index}
-                excerpt={expandedExcerpt}
-                chevronColor={theme.text.defaultTertiary}
-                styles={styles}
-                onToggle={() => toggleExpanded(index)}
-                onLayout={(e) => {
-                  rowYRef.current[index] = e.nativeEvent.layout.y;
-                }}
-              />
-            ))}
-          </View>
-        </BottomSheetScrollView>
-      </BottomSheetModal>
-    );
-  }
-);
+          {sources.map((source, index) => (
+            <SourceRow
+              key={`${source.documentId ?? 'unknown'}-${source.name}`}
+              source={source}
+              isHighlighted={highlightedIndex === index}
+              isExpanded={expandedIndex === index}
+              excerpt={expandedExcerpt}
+              chevronColor={theme.text.defaultTertiary}
+              styles={styles}
+              onToggle={() => toggleExpanded(index)}
+              onLayout={(e) => {
+                rowYRef.current[index] = e.nativeEvent.layout.y;
+              }}
+            />
+          ))}
+        </View>
+      </BottomSheetScrollView>
+    </BottomSheetModal>
+  );
+});
 
 SourcesSheet.displayName = 'SourcesSheet';
 
-export default SourcesSheet;
+export default memo(SourcesSheet);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({

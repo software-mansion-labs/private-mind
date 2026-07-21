@@ -168,79 +168,28 @@ describe('assistant messages', () => {
     expect(screen.queryByText(/tps:/)).toBeNull();
   });
 
-  it('renders a sources button that opens a deduplicated list without the "Source document" label', () => {
+  it('hands deduplicated sources to onShowSources when the sources button is pressed', () => {
+    const onShowSources = jest.fn();
     renderItem({
       role: 'assistant',
       content: 'The answer is in the report.',
+      userQuestion: 'What was the revenue?',
       sourceDocuments: [
         { documentId: 1, name: 'financial_report.pdf' },
         { documentId: 1, name: 'financial_report.pdf' },
       ],
+      onShowSources,
     });
 
     expect(screen.getByTestId('source-action-button')).toBeTruthy();
     expect(screen.getByLabelText('Sources')).toBeTruthy();
-    expect(screen.getAllByText('Sources').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('PDF')).toBeTruthy();
-    expect(screen.getAllByText('financial_report.pdf')).toHaveLength(1);
-    expect(screen.queryByText('Source document')).toBeNull();
 
     fireEvent.press(screen.getByTestId('source-action-button'));
-  });
 
-  it('keeps the cited passage collapsed until the source row is tapped', () => {
-    renderItem({
-      role: 'assistant',
-      content: 'The answer is in the report.',
-      sourceDocuments: [
-        {
-          documentId: 1,
-          name: 'financial_report.pdf',
-          passage: 'Net revenue grew 12% year over year.',
-        },
-      ],
-    });
-
-    expect(screen.queryByTestId('source-passage')).toBeNull();
-
-    fireEvent.press(screen.getByTestId('source-item'));
-
-    expect(screen.getByTestId('source-passage')).toBeTruthy();
-    expect(
-      screen.getByText('Net revenue grew 12% year over year.')
-    ).toBeTruthy();
-  });
-
-  it('emphasises the passage span relevant to the user question', () => {
-    const passage =
-      'Intro sentence. Net revenue grew 12% year over year. Outro.';
-    renderItem({
-      role: 'assistant',
-      content: 'Net revenue grew 12% last year, showing strong growth.',
-      userQuestion: 'What was the net revenue growth?',
-      sourceDocuments: [
-        { documentId: 1, name: 'financial_report.pdf', passage },
-      ],
-    });
-
-    fireEvent.press(screen.getByTestId('source-item'));
-
-    const cited = screen.getByText('Net revenue grew 12% year over year.');
-    expect(cited).toBeTruthy();
-    expect(cited.props.style).toEqual(
-      expect.objectContaining({ fontFamily: expect.any(String) })
+    expect(onShowSources).toHaveBeenCalledWith(
+      [{ documentId: 1, name: 'financial_report.pdf' }],
+      'What was the revenue?'
     );
-  });
-
-  it('does not render a passage block when the source has no passage', () => {
-    renderItem({
-      role: 'assistant',
-      content: 'The answer is in the report.',
-      sourceDocuments: [{ documentId: 1, name: 'financial_report.pdf' }],
-    });
-
-    fireEvent.press(screen.getByTestId('source-item'));
-    expect(screen.queryByTestId('source-passage')).toBeNull();
   });
 
   it('strips inline [n] citation markers from the rendered answer', () => {

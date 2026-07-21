@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useMemo, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,7 +11,6 @@ import {
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import AnimatedChatLoading from './AnimatedChatLoading';
-import SourcesSheet, { type SourcesSheetHandle } from './SourcesSheet';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
@@ -34,6 +33,7 @@ interface MessageItemProps {
   documentName?: string;
   sourceDocuments?: SourceDocument[];
   userQuestion?: string;
+  onShowSources?: (sources: SourceDocument[], userQuestion?: string) => void;
 }
 
 const THINK_OPEN = '<think>';
@@ -80,12 +80,13 @@ const MessageItem = memo(
     documentName,
     sourceDocuments,
     userQuestion,
+    onShowSources,
   }: MessageItemProps) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
-    const { isGenerating, isProcessingPrompt } = useLLMStore();
+    const isGenerating = useLLMStore((state) => state.isGenerating);
+    const isProcessingPrompt = useLLMStore((state) => state.isProcessingPrompt);
     const [lightboxVisible, setLightboxVisible] = useState(false);
-    const sourcesSheetRef = useRef<SourcesSheetHandle>(null);
 
     const contentParts = parseThinkingContent(content);
     const hasSources = !!sourceDocuments?.length;
@@ -230,7 +231,9 @@ const MessageItem = memo(
                       styles.sourcesButton,
                       pressed && styles.sourcesButtonPressed,
                     ]}
-                    onPress={() => sourcesSheetRef.current?.present()}
+                    onPress={() =>
+                      onShowSources?.(displayedSources, userQuestion)
+                    }
                     hitSlop={8}
                     accessibilityRole="button"
                     accessibilityLabel="Sources"
@@ -247,13 +250,6 @@ const MessageItem = memo(
               )}
             </View>
           </View>
-        )}
-        {role === 'assistant' && canShowSourcesAction && (
-          <SourcesSheet
-            ref={sourcesSheetRef}
-            sources={displayedSources}
-            userQuestion={userQuestion}
-          />
         )}
       </>
     );
