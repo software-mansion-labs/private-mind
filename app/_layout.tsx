@@ -119,8 +119,8 @@ export default function Layout() {
               <BottomSheetProvider>
                 <RootNavigator />
                 {Platform.OS === 'android' && <StatusBar style="auto" />}
-                <AppToast />
               </BottomSheetProvider>
+              <AppToast />
             </KeyboardProvider>
           </VectorStoreProvider>
           <SplashScreenAnimation />

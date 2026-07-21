@@ -88,7 +88,8 @@ beforeEach(() => {
   );
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await flushFrame();
   jest.restoreAllMocks();
 });
 
@@ -97,6 +98,9 @@ const loadModel = async (model = baseModel) => {
   await useLLMStore.getState().loadModel(model);
   return capturedTokenCallback!;
 };
+
+const flushFrame = () =>
+  new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
 // ─── loadModel ───────────────────────────────────────────────────────────────
 
@@ -160,6 +164,7 @@ describe('token callback', () => {
 
     onToken('hello');
     onToken(' world');
+    await flushFrame();
 
     expect(useLLMStore.getState().performance.tokenCount).toBe(2);
   });
@@ -169,9 +174,12 @@ describe('token callback', () => {
     useLLMStore.setState({ isProcessingPrompt: true, isGenerating: true });
 
     onToken('first');
+    await flushFrame();
     const firstTime = useLLMStore.getState().performance.firstTokenTime;
+    expect(firstTime).toBeGreaterThan(0);
 
     onToken('second');
+    await flushFrame();
     expect(useLLMStore.getState().performance.firstTokenTime).toBe(firstTime);
   });
 
@@ -208,7 +216,7 @@ describe('token callback', () => {
       isGenerating: true,
       activeChatId: 5,
       generatingForChatId: 5,
-      performance: { tokenCount: 1, firstTokenTime: 1 }, // not first token
+      performance: { tokenCount: 1, firstTokenTime: 1 },
       activeChatMessages: [
         { id: 1, chatId: 5, role: 'user', content: 'Hi', timestamp: 0 },
         { id: -1, chatId: 5, role: 'assistant', content: '', timestamp: 0 },
@@ -216,6 +224,7 @@ describe('token callback', () => {
     });
 
     onToken(' hello');
+    await flushFrame();
 
     const messages = useLLMStore.getState().activeChatMessages;
     expect(messages[messages.length - 1].content).toBe(' hello');
@@ -623,5 +632,23 @@ describe('runBenchmark', () => {
 
     expect(useLLMStore.getState().isGenerating).toBe(false);
     expect(useLLMStore.getState().isBenchmarking).toBe(false);
+  });
+
+  it('tracks a fresh first token on every run without stale carry-over', async () => {
+    await loadModel();
+    useLLMStore.setState({ model: baseModel });
+
+    mockInstance.generate.mockImplementation(async () => {
+      await flushFrame();
+      capturedTokenCallback!('tok');
+      await flushFrame();
+      return 'out';
+    });
+
+    const first = await useLLMStore.getState().runBenchmark();
+    const second = await useLLMStore.getState().runBenchmark();
+
+    expect(first?.timeToFirstToken).toBeGreaterThan(0);
+    expect(second?.timeToFirstToken).toBeGreaterThan(0);
   });
 });

@@ -4,6 +4,7 @@ import { AppBottomSheet, type AppBottomSheetRef } from './AppBottomSheet';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import Toast from 'react-native-toast-message';
 import CameraIcon from '../../assets/icons/camera.svg';
 import ImageIcon from '../../assets/icons/image.svg';
 import AttachmentIcon from '../../assets/icons/attachment.svg';
@@ -26,6 +27,7 @@ interface OptionProps {
   onPress: () => void;
   testID: string;
   styles: ReturnType<typeof createStyles>;
+  disabled?: boolean;
 }
 
 const AttachmentOption = ({
@@ -35,8 +37,13 @@ const AttachmentOption = ({
   onPress,
   testID,
   styles,
+  disabled = false,
 }: OptionProps) => (
-  <TouchableOpacity style={styles.option} onPress={onPress} testID={testID}>
+  <TouchableOpacity
+    style={[styles.option, disabled && styles.optionDisabled]}
+    onPress={onPress}
+    testID={testID}
+  >
     <View style={styles.iconWrapper}>
       <Icon width={24} height={24} style={{ color: iconColor }} />
     </View>
@@ -60,6 +67,17 @@ const AttachmentSheet = ({
     action();
   };
 
+  const handleImageOption = (action: () => void) => {
+    if (!isVisionModel) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'This model does not support images',
+      });
+      return;
+    }
+    handleOption(action);
+  };
+
   return (
     <AppBottomSheet
       ref={bottomSheetModalRef}
@@ -74,26 +92,24 @@ const AttachmentSheet = ({
       }}
     >
       <View style={styles.container}>
-        {isVisionModel && (
-          <>
-            <AttachmentOption
-              icon={CameraIcon}
-              iconColor={theme.text.primary}
-              label="Camera"
-              onPress={() => handleOption(onPickFromCamera)}
-              testID="attachment-camera"
-              styles={styles}
-            />
-            <AttachmentOption
-              icon={ImageIcon}
-              iconColor={theme.text.primary}
-              label="Photo Library"
-              onPress={() => handleOption(onPickFromLibrary)}
-              testID="attachment-library"
-              styles={styles}
-            />
-          </>
-        )}
+        <AttachmentOption
+          icon={CameraIcon}
+          iconColor={theme.text.primary}
+          label="Camera"
+          onPress={() => handleImageOption(onPickFromCamera)}
+          testID="attachment-camera"
+          styles={styles}
+          disabled={!isVisionModel}
+        />
+        <AttachmentOption
+          icon={ImageIcon}
+          iconColor={theme.text.primary}
+          label="Photo Library"
+          onPress={() => handleImageOption(onPickFromLibrary)}
+          testID="attachment-library"
+          styles={styles}
+          disabled={!isVisionModel}
+        />
         <AttachmentOption
           icon={AttachmentIcon}
           iconColor={theme.text.primary}
@@ -124,6 +140,9 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: 8,
       gap: 16,
       borderRadius: 12,
+    },
+    optionDisabled: {
+      opacity: 0.4,
     },
     iconWrapper: {
       width: 44,
