@@ -12,6 +12,9 @@ import { hybridRetrieve } from './hybridRetrieval';
 import { extractQueryTerms, stemPrefix } from './queryTerms';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
 import {
+  CITATION_SENTENCE_PATTERN,
+  CLAUSE_SPLIT_PATTERN,
+  NEGATION_CUE_EN,
   NO_ANSWER_PATTERNS_EN,
   NO_ANSWER_PATTERNS_PL,
   THINK_CLOSE,
@@ -113,15 +116,38 @@ const overlapWithAnswer = (
 
 // Attribute against the visible reply only; the <think> block surveys every source and inflates overlap.
 export const visibleAnswer = (answer: string): string => {
-  const open = answer.indexOf(THINK_OPEN);
-  if (open === -1) return answer;
-  const close = answer.indexOf(THINK_CLOSE);
-  const after = close === -1 ? '' : answer.slice(close + THINK_CLOSE.length);
-  return `${answer.slice(0, open)} ${after}`;
+  const parts: string[] = [];
+  let cursor = 0;
+  let open = answer.indexOf(THINK_OPEN);
+
+  while (open !== -1) {
+    parts.push(answer.slice(cursor, open));
+    const close = answer.indexOf(THINK_CLOSE, open + THINK_OPEN.length);
+    // Unterminated: the model is still reasoning, so nothing after it is visible.
+    if (close === -1) return `${parts.join(' ')} `;
+    cursor = close + THINK_CLOSE.length;
+    open = answer.indexOf(THINK_OPEN, cursor);
+  }
+
+  parts.push(answer.slice(cursor));
+  return parts.join(' ');
 };
 
+// Keep only the clauses the reply actually asserts; a negated clause names a topic
+// the source does not cover, and scoring it as overlap cites the source for the
+// opposite of what it says. English-only for now.
+const affirmativeAnswer = (visibleReply: string): string =>
+  (visibleReply.match(CITATION_SENTENCE_PATTERN) ?? [visibleReply])
+    .flatMap((sentence) => sentence.split(CLAUSE_SPLIT_PATTERN))
+    .filter((clause) => clause && !NEGATION_CUE_EN.test(clause))
+    .join(' ');
+
 const answerTermsOf = (answer: string): Set<string> =>
-  new Set([...extractQueryTerms(visibleAnswer(answer))].map(stemPrefix));
+  new Set(
+    [...extractQueryTerms(affirmativeAnswer(visibleAnswer(answer)))].map(
+      stemPrefix
+    )
+  );
 
 // True when the visible reply is an EN/PL "no information" refusal (negation tied to a coverage noun).
 export const looksLikeNoAnswer = (visibleReply: string): boolean =>

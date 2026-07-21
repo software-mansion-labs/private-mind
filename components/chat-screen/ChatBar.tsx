@@ -54,7 +54,6 @@ interface Props {
   onSelectModel: () => void;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
-    clear: () => void;
     setInput: (text: string) => void;
   }>;
   model: Model | undefined;
@@ -120,15 +119,6 @@ const ChatBar = ({
   useImperativeHandle(
     ref,
     () => ({
-      clear: () => {
-        setUserInput('');
-        clearAll();
-        extraContentPadding.set(0);
-        if (Platform.OS === 'ios') {
-          textInputRef.current?.setNativeProps({ text: ' ' });
-          textInputRef.current?.setNativeProps({ text: '' });
-        }
-      },
       setInput: (text: string) => {
         setUserInput(text);
         if (Platform.OS === 'ios') {
@@ -136,7 +126,7 @@ const ChatBar = ({
         }
       },
     }),
-    [clearAll, extraContentPadding]
+    []
   );
 
   const handleBarLayoutForPadding = useCallback(

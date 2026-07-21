@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import {
+  LFM_2_5_EMBEDDING_DIM,
   LFM_2_5_EMBEDDING_MODEL_ID,
   LFM_2_5_EMBEDDING_SOURCES,
 } from '../constants/embedding-model';
@@ -67,7 +68,8 @@ export const VectorStoreProvider = ({
         await migrateEmbeddingModelIfNeeded(
           store,
           db,
-          LFM_2_5_EMBEDDING_MODEL_ID
+          LFM_2_5_EMBEDDING_MODEL_ID,
+          LFM_2_5_EMBEDDING_DIM
         );
 
         if (cancelled) return;
