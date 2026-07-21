@@ -51,6 +51,18 @@ interface LLMStore {
 
 let llmInstance: LLMModule | null = null;
 
+let streamBuffer = '';
+let streamTokenCount = 0;
+let streamFirstTokenTime = 0;
+let streamFlushScheduled = false;
+
+const resetStreamState = () => {
+  streamBuffer = '';
+  streamTokenCount = 0;
+  streamFirstTokenTime = 0;
+  streamFlushScheduled = false;
+};
+
 const calculatePerformanceMetrics = (
   startTime: number,
   endTime: number,
@@ -126,6 +138,7 @@ const updateChatStateForGeneration = (
       });
       break;
     case 'generating':
+      resetStreamState();
       set({
         isGenerating: true,
         performance: {
@@ -135,6 +148,7 @@ const updateChatStateForGeneration = (
       });
       break;
     case 'complete':
+      streamBuffer = '';
       if (
         data?.timeToFirstToken !== undefined &&
         data?.tokensPerSecond !== undefined
@@ -162,6 +176,7 @@ const updateChatStateForGeneration = (
       }
       break;
     case 'failed':
+      streamBuffer = '';
       // Drop the empty assistant placeholder left behind when generation
       // failed, was interrupted before any tokens, or produced no response.
       set((state) => {
@@ -273,7 +288,32 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       llmInstance = null;
     }
 
+    resetStreamState();
     set({ isLoading: true, model: model });
+
+    const flushStream = () => {
+      streamFlushScheduled = false;
+      if (!streamBuffer) return;
+      const text = streamBuffer;
+      streamBuffer = '';
+      const snapshot = get();
+      const shouldAppendToActiveChat =
+        snapshot.generatingForChatId === snapshot.activeChatId;
+      set((state) => ({
+        isProcessingPrompt: false,
+        performance: {
+          tokenCount: streamTokenCount,
+          firstTokenTime: streamFirstTokenTime,
+        },
+        activeChatMessages: shouldAppendToActiveChat
+          ? state.activeChatMessages.map((msg, index) =>
+              index === state.activeChatMessages.length - 1
+                ? { ...msg, content: msg.content + text }
+                : msg
+            )
+          : state.activeChatMessages,
+      }));
+    };
 
     try {
       llmInstance = await LLMModule.fromModelName(
@@ -288,47 +328,30 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         },
         () => {},
         (token) => {
-          const snapshot = get();
-          const isFirstToken = snapshot.performance.tokenCount === 0;
+          const isFirstToken = streamTokenCount === 0;
 
-          if (isFirstToken && !snapshot.isBenchmarking) {
+          if (isFirstToken && !get().isBenchmarking) {
             Feedback.firstToken();
           }
 
           /* Temporary solution to handle interrupt during prefill, needs to be fixed in the
           react-native-executorch library
           */
-          if (
-            isFirstToken &&
-            !snapshot.isProcessingPrompt &&
-            !snapshot.isGenerating
-          ) {
-            llmInstance?.interrupt();
-            return;
+          if (isFirstToken) {
+            const snapshot = get();
+            if (!snapshot.isProcessingPrompt && !snapshot.isGenerating) {
+              llmInstance?.interrupt();
+              return;
+            }
+            streamFirstTokenTime = performance.now();
           }
 
-          const shouldAppendToActiveChat =
-            snapshot.generatingForChatId === snapshot.activeChatId;
-          const firstTokenTime = isFirstToken
-            ? performance.now()
-            : snapshot.performance.firstTokenTime;
-
-          // Use functional set so tokenCount increments relative to the
-          // latest state, not the captured snapshot.
-          set((state) => ({
-            isProcessingPrompt: false,
-            performance: {
-              tokenCount: state.performance.tokenCount + 1,
-              firstTokenTime,
-            },
-            activeChatMessages: shouldAppendToActiveChat
-              ? state.activeChatMessages.map((msg, index) =>
-                  index === state.activeChatMessages.length - 1
-                    ? { ...msg, content: msg.content + token }
-                    : msg
-                )
-              : state.activeChatMessages,
-          }));
+          streamTokenCount += 1;
+          streamBuffer += token;
+          if (!streamFlushScheduled) {
+            streamFlushScheduled = true;
+            requestAnimationFrame(flushStream);
+          }
         }
       );
 
@@ -460,6 +483,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     });
 
     try {
+      resetStreamState();
       set({
         isGenerating: true,
         performance: { tokenCount: 0, firstTokenTime: 0 },

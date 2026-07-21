@@ -49,7 +49,7 @@ interface Props {
     userInput: string,
     imagePath?: string,
     attachments?: Attachment[]
-  ) => void;
+  ) => void | Promise<void>;
   onSelectModel: () => void;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
@@ -160,7 +160,7 @@ const ChatBar = ({
         onBarGrow?.();
       }
     },
-    [extraContentPadding, onHeightChange, hasMessages]
+    [extraContentPadding, onHeightChange, onBarGrow, hasMessages]
   );
 
   const {
@@ -187,8 +187,17 @@ const ChatBar = ({
 
   const handleSend = useCallback(() => {
     if (hasLoadingAttachment) return;
-    onSend(userInput, imageAttachment?.uri, attachments);
-    clearAll();
+    const attachmentsToSend = attachments;
+    const imageUriToSend = imageAttachment?.uri;
+    const inputToSend = userInput;
+
+    setUserInput('');
+    clearAll({ cleanupSources: false });
+    Promise.resolve(
+      onSend(inputToSend, imageUriToSend, attachmentsToSend)
+    ).catch((error) => {
+      console.error('Failed to send message:', error);
+    });
   }, [
     onSend,
     userInput,
@@ -253,8 +262,14 @@ const ChatBar = ({
     const handleSubmit = (transcript: string) => {
       setShowSpeechInput(false);
       if (transcript) {
-        onSend(transcript, imageAttachment?.uri, attachments);
-        clearAll();
+        const attachmentsToSend = attachments;
+        const imageUriToSend = imageAttachment?.uri;
+        clearAll({ cleanupSources: false });
+        Promise.resolve(
+          onSend(transcript, imageUriToSend, attachmentsToSend)
+        ).catch((error) => {
+          console.error('Failed to send transcript:', error);
+        });
       }
     };
 

@@ -16,6 +16,10 @@ export interface Attachment {
   sourceId?: number;
 }
 
+interface ClearAllOptions {
+  cleanupSources?: boolean;
+}
+
 const requestAndroidGalleryPermission = async (): Promise<boolean> => {
   if (Platform.OS !== 'android') return true;
 
@@ -175,13 +179,17 @@ export const useAttachment = () => {
     [vectorStore]
   );
 
-  const clearAll = useCallback(() => {
-    const hadDocuments = attachmentsRef.current.some((a) => a.sourceId);
-    setAttachments([]);
-    if (hadDocuments && vectorStore) {
-      useSourceStore.getState().cleanupOrphanedSources(vectorStore);
-    }
-  }, [vectorStore]);
+  const clearAll = useCallback(
+    (options: ClearAllOptions = {}) => {
+      const cleanupSources = options.cleanupSources ?? true;
+      const hadDocuments = attachmentsRef.current.some((a) => a.sourceId);
+      setAttachments([]);
+      if (cleanupSources && hadDocuments && vectorStore) {
+        useSourceStore.getState().cleanupOrphanedSources(vectorStore);
+      }
+    },
+    [vectorStore]
+  );
 
   const openSheet = useCallback(() => {
     sheetRef.current?.present();
