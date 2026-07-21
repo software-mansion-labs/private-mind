@@ -183,6 +183,39 @@ describe('pickCitationsByAnswer', () => {
     expect(result.map((d) => d.documentId)).toEqual([24]);
   });
 
+  it('does not cite a source for a fact the answer says it lacks', () => {
+    const cited = [
+      withPassage(
+        1,
+        'revenue.txt',
+        'Total revenue grew to five million dollars.'
+      ),
+      withPassage(2, 'headcount.txt', 'The company hired forty new engineers.'),
+    ];
+    const answer = 'The report does not mention revenue.';
+
+    const result = pickCitationsByAnswer(cited, answer, []);
+
+    expect(result).toEqual([]);
+  });
+
+  it('keeps the asserted half of a sentence and drops the negated half', () => {
+    const cited = [
+      withPassage(
+        1,
+        'revenue.txt',
+        'Total revenue grew to five million dollars.'
+      ),
+      withPassage(2, 'headcount.txt', 'The company hired forty new engineers.'),
+    ];
+    const answer =
+      'The company hired forty engineers, but the report does not mention total revenue or the five million dollars figure.';
+
+    const result = pickCitationsByAnswer(cited, answer, []);
+
+    expect(result.map((d) => d.documentId)).toEqual([2]);
+  });
+
   it('keeps both sources when the answer draws on each', () => {
     const cited = [
       withPassage(

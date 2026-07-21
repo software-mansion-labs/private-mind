@@ -12,6 +12,9 @@ import { retrieve } from './retrieval';
 import { extractQueryTerms, stemPrefix } from './queryTerms';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
 import {
+  CITATION_SENTENCE_PATTERN,
+  CLAUSE_SPLIT_PATTERN,
+  NEGATION_CUE_EN,
   NO_ANSWER_PATTERNS_EN,
   THINK_CLOSE,
   THINK_OPEN,
@@ -119,8 +122,21 @@ export const visibleAnswer = (answer: string): string => {
   return `${answer.slice(0, open)} ${after}`;
 };
 
+// Keep only the clauses the reply actually asserts; a negated clause names a topic
+// the source does not cover, and scoring it as overlap cites the source for the
+// opposite of what it says. English-only for now.
+const affirmativeAnswer = (visibleReply: string): string =>
+  (visibleReply.match(CITATION_SENTENCE_PATTERN) ?? [visibleReply])
+    .flatMap((sentence) => sentence.split(CLAUSE_SPLIT_PATTERN))
+    .filter((clause) => clause && !NEGATION_CUE_EN.test(clause))
+    .join(' ');
+
 const answerTermsOf = (answer: string): Set<string> =>
-  new Set([...extractQueryTerms(visibleAnswer(answer))].map(stemPrefix));
+  new Set(
+    [...extractQueryTerms(affirmativeAnswer(visibleAnswer(answer)))].map(
+      stemPrefix
+    )
+  );
 
 // True when the visible reply is an EN/PL "no information" refusal (negation tied to a coverage noun).
 export const looksLikeNoAnswer = (visibleReply: string): boolean =>
