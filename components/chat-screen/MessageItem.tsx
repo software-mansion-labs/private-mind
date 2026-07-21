@@ -13,8 +13,10 @@ import CopyIcon from '../../assets/icons/copy.svg';
 import ForkIcon from '../../assets/icons/fork.svg';
 import MessageActionButton from './MessageActionButton';
 import { MESSAGE_ACTION_ROW_HEIGHT } from '../../constants/chat-screen';
+import { Message } from '../../database/chatRepository';
 
 interface MessageItemProps {
+  message: Message;
   content: string;
   role: 'user' | 'assistant' | 'system' | 'event';
   modelName?: string;
@@ -25,8 +27,8 @@ interface MessageItemProps {
   documentName?: string;
   showActions?: boolean;
   showForkAction?: boolean;
-  onCopy?: () => void;
-  onFork?: () => void;
+  onCopy?: (message: Message) => void;
+  onFork?: (message: Message) => void;
 }
 
 const THINK_OPEN = '<think>';
@@ -63,6 +65,7 @@ const parseThinkingContent = (text: string) => {
 
 const MessageItem = memo(
   ({
+    message,
     content,
     modelName,
     role,
@@ -78,15 +81,26 @@ const MessageItem = memo(
   }: MessageItemProps) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
-    const { isGenerating, isProcessingPrompt } = useLLMStore();
+    const isGenerating = useLLMStore((state) => state.isGenerating);
+    const isProcessingPrompt = useLLMStore(
+      (state) => state.isProcessingPrompt
+    );
     const [lightboxVisible, setLightboxVisible] = useState(false);
 
     const contentParts = parseThinkingContent(content);
     const actions = showActions ? (
       <View style={styles.actionRow}>
-        <MessageActionButton label="Copy" icon={CopyIcon} onPress={onCopy} />
+        <MessageActionButton
+          label="Copy"
+          icon={CopyIcon}
+          onPress={() => onCopy?.(message)}
+        />
         {showForkAction && (
-          <MessageActionButton label="Fork" icon={ForkIcon} onPress={onFork} />
+          <MessageActionButton
+            label="Fork"
+            icon={ForkIcon}
+            onPress={() => onFork?.(message)}
+          />
         )}
       </View>
     ) : null;

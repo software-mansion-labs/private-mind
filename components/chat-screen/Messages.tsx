@@ -583,6 +583,7 @@ const Messages = ({
           const item = (
             <View style={styles.messageRow} collapsable={false}>
               <MessageItem
+                message={message}
                 content={message.content}
                 modelName={message.modelName}
                 role={message.role}
@@ -593,8 +594,8 @@ const Messages = ({
                 documentName={message.documentName}
                 showActions={showActions}
                 showForkAction={showForkAction}
-                onCopy={() => handleCopyMessage(message)}
-                onFork={() => handleForkMessage(message)}
+                onCopy={handleCopyMessage}
+                onFork={handleForkMessage}
               />
               {branchMarker && (
                 <BranchMarker
