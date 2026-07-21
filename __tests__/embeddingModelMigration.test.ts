@@ -139,4 +139,40 @@ describe('migrateEmbeddingModelIfNeeded', () => {
       'model-new'
     );
   });
+
+  it('leaves the key unset when clearing source metadata fails, so the next launch retries', async () => {
+    await AsyncStorage.setItem(ACTIVE_EMBEDDING_MODEL_KEY, 'model-old');
+    const { store, deleteVectorStore } = makeVectorStore(CURRENT_DIM);
+    const { db, runAsync } = makeDb();
+    runAsync.mockRejectedValueOnce(new Error('database is locked'));
+
+    const migrated = await migrateEmbeddingModelIfNeeded(
+      store,
+      db,
+      'model-new',
+      CURRENT_DIM
+    );
+
+    expect(migrated).toBe(true);
+    expect(deleteVectorStore).toHaveBeenCalledTimes(1);
+    expect(await AsyncStorage.getItem(ACTIVE_EMBEDDING_MODEL_KEY)).toBe(
+      'model-old'
+    );
+  });
+
+  it('leaves a lost key unset when a dimension-incompatible wipe fails', async () => {
+    const { store } = makeVectorStore(384);
+    const { db, runAsync } = makeDb();
+    runAsync.mockRejectedValueOnce(new Error('database is locked'));
+
+    const migrated = await migrateEmbeddingModelIfNeeded(
+      store,
+      db,
+      'model-new',
+      CURRENT_DIM
+    );
+
+    expect(migrated).toBe(true);
+    expect(await AsyncStorage.getItem(ACTIVE_EMBEDDING_MODEL_KEY)).toBeNull();
+  });
 });
