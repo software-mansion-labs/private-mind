@@ -70,7 +70,14 @@ function RootNavigator() {
         name="(modals)/app-info"
         options={{
           headerShown: false,
-          presentation: 'modal',
+          animation: 'ios_from_right',
+        }}
+      />
+      <Stack.Screen
+        name="(modals)/custom-system-prompt"
+        options={{
+          headerShown: false,
+          animation: 'ios_from_right',
         }}
       />
       <Stack.Screen
@@ -119,8 +126,8 @@ export default function Layout() {
               <BottomSheetModalProvider>
                 <RootNavigator />
                 {Platform.OS === 'android' && <StatusBar style="auto" />}
-                <AppToast />
               </BottomSheetModalProvider>
+              <AppToast />
             </KeyboardProvider>
           </VectorStoreProvider>
           <SplashScreenAnimation />

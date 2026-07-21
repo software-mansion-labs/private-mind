@@ -6,9 +6,8 @@ import {
   TextInput,
   StyleSheet,
   Pressable,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useTheme } from '../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -57,10 +56,7 @@ const RenameChatModal = ({
       statusBarTranslucent
       onRequestClose={onCancel}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.overlay}
-      >
+      <KeyboardAvoidingView behavior="padding" style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onCancel} />
         <View style={styles.card}>
           <Text style={styles.title}>Rename chat</Text>
@@ -114,7 +110,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: 24,
     },
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: 'rgba(0,0,0,0.4)',
     },
     card: {

@@ -20,9 +20,10 @@ export interface WarningSheetData {
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal<WarningSheetData> | null>;
+  onDismiss?: () => void;
 }
 
-const WarningSheet = ({ bottomSheetModalRef }: Props) => {
+const WarningSheet = ({ bottomSheetModalRef, onDismiss }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -43,6 +44,7 @@ const WarningSheet = ({ bottomSheetModalRef }: Props) => {
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       enableDynamicSizing
+      onDismiss={onDismiss}
       handleStyle={styles.handleStyle}
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.background}

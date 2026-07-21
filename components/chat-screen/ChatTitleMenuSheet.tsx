@@ -16,9 +16,11 @@ import { Feedback } from '../../utils/Feedback';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
+  title: string;
   onRename: () => void;
   onExport: () => void;
   onDelete: () => void;
+  onDismiss?: () => void;
 }
 
 interface OptionProps {
@@ -52,9 +54,11 @@ const MenuOption = ({
 
 const ChatTitleMenuSheet = ({
   bottomSheetModalRef,
+  title,
   onRename,
   onExport,
   onDelete,
+  onDismiss,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -68,6 +72,7 @@ const ChatTitleMenuSheet = ({
     <BottomSheetModal
       ref={bottomSheetModalRef}
       enableDynamicSizing
+      onDismiss={onDismiss}
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
       }}
@@ -82,6 +87,9 @@ const ChatTitleMenuSheet = ({
       handleIndicatorStyle={{ backgroundColor: theme.border.soft }}
     >
       <BottomSheetView style={styles.container}>
+        <Text numberOfLines={1} style={styles.title} testID="chat-menu-title">
+          {title}
+        </Text>
         <MenuOption
           icon={EditIcon}
           iconColor={theme.text.primary}
@@ -121,6 +129,13 @@ const createStyles = (theme: Theme) =>
       paddingTop: 8,
       paddingBottom: 32,
       gap: 4,
+    },
+    title: {
+      paddingHorizontal: 8,
+      paddingBottom: 8,
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.sm,
+      color: theme.text.defaultTertiary,
     },
     option: {
       flexDirection: 'row',
