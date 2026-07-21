@@ -330,6 +330,14 @@ describe('visibleAnswer', () => {
   it('returns the text unchanged when there is no think block', () => {
     expect(visibleAnswer('plain answer')).toBe('plain answer');
   });
+
+  it('drops every think block, not just the first', () => {
+    expect(
+      visibleAnswer(
+        'one<think>hidden</think>two<think>also hidden</think>three'
+      )
+    ).toBe('one two three');
+  });
 });
 
 describe('looksLikeNoAnswer', () => {
