@@ -254,6 +254,8 @@ const Messages = ({
     onUserActionMenuChange?.({ isOpen: false });
   }, [onUserActionMenuChange]);
 
+  const pendingMenuOpenRef = useRef<(() => void) | null>(null);
+
   // Android-only: KeyboardChatScrollView's ClippingScrollView can
   // bounce the scroll offset on keyboard dismiss. Snap back to the
   // remembered position (top or bottom) if the user hadn't manually
@@ -267,12 +269,22 @@ const Messages = ({
       closeUserActionMenu();
     });
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
-      if (wasAtBottomDuringKeyboard.current) {
+      const runPendingMenuOpen = () => {
+        const openMenu = pendingMenuOpenRef.current;
+        pendingMenuOpenRef.current = null;
+        openMenu?.();
+      };
+
+      if (wasAtBottomDuringKeyboard.current && isAtBottomRef.current) {
         snapTimer = setTimeout(() => {
           closeUserActionMenu();
           scrollRef.current?.scrollToEnd({ animated: false });
+          runPendingMenuOpen();
         }, 300);
+        return;
       }
+
+      runPendingMenuOpen();
     });
     return () => {
       if (snapTimer) clearTimeout(snapTimer);
@@ -432,8 +444,14 @@ const Messages = ({
       const shouldOpen = activeUserActionsId !== messageId;
       setActiveUserActionsId(shouldOpen ? messageId : null);
 
-      if (shouldOpen) {
-        Feedback.longPress();
+      if (!shouldOpen) {
+        onUserActionMenuChange?.({ isOpen: false });
+        return;
+      }
+
+      Feedback.longPress();
+
+      const openMenu = () => {
         target?.measureInWindow((x, y, width, height) => {
           onUserActionMenuChange?.({
             isOpen: true,
@@ -441,9 +459,15 @@ const Messages = ({
             onCopy: () => handleCopyMessage(message),
           });
         });
-      } else {
-        onUserActionMenuChange?.({ isOpen: false });
+      };
+
+      if (!Keyboard.isVisible()) {
+        openMenu();
+        return;
       }
+
+      pendingMenuOpenRef.current = openMenu;
+      Keyboard.dismiss();
     },
     [
       activeUserActionsId,
@@ -612,8 +636,7 @@ const Messages = ({
           const shouldHandleUserLongPress =
             SUPPORTS_USER_ACTION_MENU &&
             message.role === 'user' &&
-            message.id > 0 &&
-            activeUserActionsId !== message.id;
+            message.id > 0;
 
           if (onLayout) {
             if (!shouldHandleUserLongPress) {
