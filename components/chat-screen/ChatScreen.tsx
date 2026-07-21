@@ -15,7 +15,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import type { MessagesHandle } from './Messages';
+import type { MessagesHandle, UserMessageActionMenuState } from './Messages';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
 import { useModelStore } from '../../store/modelStore';
@@ -30,6 +30,7 @@ import {
 import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
 import ChatBar from './ChatBar';
+import UserMessageActionMenu from './UserMessageActionMenu';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -45,6 +46,12 @@ import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
 import { persistImage } from '../../utils/persistImage';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
+import useChatBranching from '../../hooks/useChatBranching';
+import {
+  LAYOUT_HEIGHT_CHANGE_THRESHOLD,
+  USER_ACTION_MENU_OFFSET,
+  USER_MESSAGE_BOTTOM_SPACING,
+} from '../../constants/chat-screen';
 
 interface Props {
   chatId: number;
@@ -54,6 +61,7 @@ interface Props {
   model: Model | undefined;
   selectModel?: (model: Model) => Promise<void>;
   openModelSheetRef?: React.MutableRefObject<(() => void) | null>;
+  revealFromTop?: boolean;
 }
 
 const prepareContext = async (
@@ -67,8 +75,7 @@ const prepareContext = async (
       predicate: (r) => enabledSources.includes(r.metadata?.documentId),
     });
     return filterAndFormatContext(context);
-  } catch (error) {
-    console.error('Error preparing context:', error);
+  } catch {
     return [];
   }
 };
@@ -81,12 +88,14 @@ export default function ChatScreen({
   model,
   selectModel,
   openModelSheetRef,
+  revealFromTop = false,
 }: Props) {
   const inputRef = useRef<{
     clear: () => void;
     setInput: (text: string) => void;
   }>(null);
   const messagesRef = useRef<MessagesHandle>(null);
+  const rootRef = useRef<View>(null);
   const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const db = useSQLiteContext();
 
@@ -111,8 +120,6 @@ export default function ChatScreen({
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const scrollBottomOffset = theme.insets.bottom;
-
   const { height: keyboardHeight, progress: keyboardProgress } =
     useReanimatedKeyboardAnimation();
   const insetsBottom = theme.insets.bottom;
@@ -134,6 +141,14 @@ export default function ChatScreen({
   const extraContentPadding = useSharedValue(0);
   const blankSpace = useSharedValue(0);
   const [chatBarSpacerHeight, setChatBarSpacerHeight] = useState(0);
+  const [rootFrame, setRootFrame] = useState({ x: 0, y: 0 });
+  const [userActionMenu, setUserActionMenu] =
+    useState<UserMessageActionMenuState>({ isOpen: false });
+  const { branchMarkers, handleForkMessage, handleBranchMarkerPress } =
+    useChatBranching({
+      chatId,
+      messageHistoryLength: messageHistory.length,
+    });
 
   // Freeze the scroll view's layout whenever any overlay (model picker,
   // attachment sheet) is presented so keyboard dismiss → sheet open doesn't
@@ -144,7 +159,22 @@ export default function ChatScreen({
 
   const handlePresentModelSheet = useCallback(() => {
     Keyboard.dismiss();
+    setUserActionMenu({ isOpen: false });
     modelBottomSheetModalRef.current?.present();
+  }, []);
+
+  const handleRootLayout = useCallback(() => {
+    rootRef.current?.measureInWindow((x, y) => {
+      setRootFrame({ x, y });
+    });
+  }, []);
+
+  const handleChatBarHeightChange = useCallback((height: number) => {
+    setChatBarSpacerHeight((current) =>
+      Math.abs(current - height) > LAYOUT_HEIGHT_CHANGE_THRESHOLD
+        ? height
+        : current
+    );
   }, []);
 
   useEffect(() => {
@@ -299,6 +329,12 @@ export default function ChatScreen({
 
     try {
       if (phantomChat?.id === chatId) {
+        const chatExists = await checkIfChatExists(db, chatId);
+        if (chatExists) {
+          await setChatSettings(db, chatId, newSettings);
+          return;
+        }
+
         await setPhantomChatSettings(newSettings);
       } else {
         await setChatSettings(db, chatId, newSettings);
@@ -327,8 +363,10 @@ export default function ChatScreen({
   );
 
   const isEmpty = !isLoading && messageHistory.length === 0;
+  const hasMessages = isLoading || messageHistory.length > 0;
+  const scrollBottomOffset = theme.insets.bottom;
 
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const gradientProgress = useSharedValue(isEmpty ? 1 : 0);
   useEffect(() => {
     gradientProgress.set(withTiming(isEmpty ? 1 : 0, { duration: 900 }));
@@ -338,8 +376,32 @@ export default function ChatScreen({
     transform: [{ translateY: (1 - gradientProgress.get()) * windowHeight }],
   }));
 
+  const userActionMenuPosition = useMemo(() => {
+    if (!userActionMenu.isOpen || !userActionMenu.anchor) return null;
+
+    return {
+      top:
+        userActionMenu.anchor.y -
+        rootFrame.y +
+        userActionMenu.anchor.height -
+        USER_MESSAGE_BOTTOM_SPACING +
+        USER_ACTION_MENU_OFFSET,
+      right: Math.max(
+        16,
+        windowWidth -
+          rootFrame.x -
+          (userActionMenu.anchor.x + userActionMenu.anchor.width)
+      ),
+    };
+  }, [rootFrame.x, rootFrame.y, userActionMenu, windowWidth]);
+
   return (
-    <View style={styles.container} collapsable={false}>
+    <View
+      ref={rootRef}
+      style={styles.container}
+      collapsable={false}
+      onLayout={handleRootLayout}
+    >
       <Animated.View
         style={[StyleSheet.absoluteFill, gradientStyle]}
         pointerEvents="none"
@@ -349,15 +411,22 @@ export default function ChatScreen({
           style={StyleSheet.absoluteFill}
         />
       </Animated.View>
-      <Messages
-        ref={messagesRef}
-        chatHistory={messageHistory}
-        extraContentPadding={extraContentPadding}
-        blankSpace={blankSpace}
-        isGenerating={isGenerating}
-        bottomOffset={scrollBottomOffset}
-        freeze={overlayOpen}
-      />
+      <View style={styles.messagesLayer} pointerEvents="box-none">
+        <Messages
+          ref={messagesRef}
+          chatHistory={messageHistory}
+          extraContentPadding={extraContentPadding}
+          blankSpace={blankSpace}
+          isGenerating={isGenerating}
+          bottomOffset={scrollBottomOffset}
+          freeze={overlayOpen}
+          revealFromTop={revealFromTop}
+          branchMarkers={branchMarkers}
+          onForkMessage={handleForkMessage}
+          onBranchMarkerPress={handleBranchMarkerPress}
+          onUserActionMenuChange={setUserActionMenu}
+        />
+      </View>
 
       <View
         style={[
@@ -377,14 +446,9 @@ export default function ChatScreen({
             extraContentPadding={extraContentPadding}
             thinkingEnabled={chatSettings?.thinkingEnabled || false}
             onThinkingToggle={handleThinkingToggle}
-            hasMessages={isLoading || messageHistory.length > 0}
+            hasMessages={hasMessages}
             onAttachmentSheetStateChange={setAttachmentSheetOpen}
-            onHeightChange={(h: number) => {
-              const hasMessages = isLoading || messageHistory.length > 0;
-              if (chatBarSpacerHeight === 0 && hasMessages) {
-                setChatBarSpacerHeight(h);
-              }
-            }}
+            onHeightChange={handleChatBarHeightChange}
             onBarGrow={() => {
               setTimeout(() => {
                 messagesRef.current?.scrollToEndIfAtBottom();
@@ -393,6 +457,15 @@ export default function ChatScreen({
           />
         </Animated.View>
       </View>
+
+      {userActionMenuPosition && (
+        <View
+          style={[styles.userActionMenuOverlay, userActionMenuPosition]}
+          pointerEvents="box-none"
+        >
+          <UserMessageActionMenu onCopy={userActionMenu.onCopy} />
+        </View>
+      )}
 
       <ModelSelectSheet
         bottomSheetModalRef={modelBottomSheetModalRef}
@@ -409,8 +482,21 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
     },
+    messagesLayer: {
+      flex: 1,
+      zIndex: 1,
+      elevation: 1,
+      overflow: 'visible',
+    },
     chatBarSpacer: {
       overflow: 'visible',
+      zIndex: 2,
+      elevation: 2,
+    },
+    userActionMenuOverlay: {
+      position: 'absolute',
+      zIndex: 1000,
+      elevation: 1000,
     },
     chatBarSticky: {
       position: 'absolute',

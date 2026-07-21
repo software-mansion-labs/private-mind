@@ -110,8 +110,8 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: 24,
     },
     backdrop: {
-      ...StyleSheet.absoluteFill,
-      backgroundColor: 'rgba(0,0,0,0.4)',
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.bg.overlay,
     },
     card: {
       width: '100%',
