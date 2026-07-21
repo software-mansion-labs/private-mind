@@ -35,7 +35,6 @@ const makeVectorStore = (
 
 describe('retrieve — neighbor expansion', () => {
   it('emits one document in reading order even when a later passage ranks higher', async () => {
-    // Seed 1:10 outranks seed 1:2, so seed order alone would emit 9,10,11,1,2,3.
     const vectorStore = makeVectorStore([seed(10, 0.9), seed(2, 0.5)], {
       '1:9': neighborRow(9),
       '1:11': neighborRow(11),
