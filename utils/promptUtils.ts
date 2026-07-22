@@ -2,18 +2,50 @@ import {
   ChatSettings,
   Message,
   SourceDocument,
+  sourceKind,
 } from '../database/chatRepository';
 import { Model } from '../database/modelRepository';
 import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { getPromptCharBudget } from '../constants/context-window';
 
-const CONTEXT_INSTRUCTION = `
+const getContextInstruction = (
+  sources?: SourceDocument[],
+  preferred?: SourceDocument[]
+): string => {
+  const hasWeb = !!sources?.some((source) => sourceKind(source) === 'web');
+  const hasDocs = !!sources?.some(
+    (source) => sourceKind(source) === 'document'
+  );
+  const webOnly = hasWeb && !hasDocs;
 
-IMPORTANT CONTEXT INFORMATION:
-The <context>…</context> block below holds excerpts from the user's documents ("Source N: <name>", or "(Overview)" for a freshly attached file). It is the ONLY authoritative source for this question — answer strictly from it and prefer it over your own knowledge.
-Do not answer about any document that is not in the current <context> block, even if it appeared earlier in the chat.
-If the block does not contain the answer, say "I don't know".`;
+  const overviewNote = preferred?.length
+    ? ', or "(Overview)" for a freshly attached file'
+    : '';
+  const what = webOnly
+    ? 'excerpts from web pages just retrieved for this question ("Source N: <name>")'
+    : hasWeb
+      ? 'excerpts from the user\'s documents and from web pages just retrieved for this question ("Source N: <name>")'
+      : `excerpts from the user's documents ("Source N: <name>"${overviewNote})`;
+
+  const scope = webOnly
+    ? []
+    : [
+        'Do not answer about any document that is not in the current <context> block, even if it appeared earlier in the chat — its text is not available to you.',
+      ];
+
+  const missing = webOnly ? 'the search results' : 'the sources';
+  const fallback = `If the block does not contain the answer, say ${missing} contain no information about it; only then may you add what you know, marked as your own knowledge.`;
+
+  const instruction = [
+    'IMPORTANT CONTEXT INFORMATION:',
+    `The <context>…</context> block below holds ${what}. It is the ONLY authoritative source for this question — answer strictly from it and prefer it over your own knowledge.`,
+    ...scope,
+    fallback,
+  ].join('\n');
+
+  return `\n\n${instruction}`;
+};
 
 const getPreferredSourceInstruction = (sources?: SourceDocument[]) => {
   if (!sources?.length) return '';
@@ -31,8 +63,11 @@ export const prepareMessagesForLLM = (
   settings: ChatSettings,
   model: Model,
   customSystemPrompt: string = '',
-  preferredSourceDocuments?: SourceDocument[]
+  preferredSourceDocuments?: SourceDocument[],
+  sourceDocuments?: SourceDocument[]
 ): ExecutorchMessage[] => {
+  const hasContext = context.some((chunk) => chunk.trim().length > 0);
+
   let systemPrompt = settings.systemPrompt;
 
   const trimmedCustomPrompt = customSystemPrompt.trim();
@@ -43,8 +78,11 @@ export const prepareMessagesForLLM = (
       : guardedCustomPrompt;
   }
 
-  if (context.length > 0) {
-    systemPrompt += CONTEXT_INSTRUCTION;
+  if (hasContext) {
+    systemPrompt += getContextInstruction(
+      sourceDocuments,
+      preferredSourceDocuments
+    );
     systemPrompt += getPreferredSourceInstruction(preferredSourceDocuments);
   }
 
@@ -85,18 +123,19 @@ export const prepareMessagesForLLM = (
   const budgetChars = getPromptCharBudget(model);
   const systemChars = messagesWithSystemPrompt[0].content.length;
 
-  if (context.length > 0) {
+  if (hasContext) {
     const safeContext = context
-      .map((c) => c.replace(/<\/context>/gi, ''))
+      .map((c) => c.replace(/<\s*\/?\s*context\s*>/gi, ''))
       .join(' ');
 
     const userText = lastMessage.content;
     const groundingHint = preferredSourceDocuments?.length
-      ? `\nAnswer only about the document(s) in the <context> above. Ignore any document mentioned earlier in the chat that is not in it.`
+      ? 'The question is about the just-attached document(s) in the <context> above.'
       : '';
-    const wrap = (ctx: string) => `<context>${ctx}</context>${groundingHint}
-        ${userText}
-        `;
+    const wrap = (ctx: string) =>
+      [`<context>${ctx}</context>`, groundingHint, userText]
+        .filter(Boolean)
+        .join('\n');
 
     const availableForLast = Math.max(0, budgetChars - systemChars);
     let finalContext = safeContext;
@@ -108,7 +147,15 @@ export const prepareMessagesForLLM = (
         hardSlice.lastIndexOf('\n\n'),
         hardSlice.lastIndexOf('\n ---')
       );
-      finalContext = boundary > 0 ? hardSlice.slice(0, boundary) : hardSlice;
+      const sliced = boundary > 0 ? hardSlice.slice(0, boundary) : hardSlice;
+      const lastOpenLabel = sliced
+        .match(/--- (?!End of )[^:\n]+:/g)
+        ?.at(-1)
+        ?.slice(4, -1);
+      finalContext =
+        lastOpenLabel && !sliced.includes(`--- End of ${lastOpenLabel} ---`)
+          ? `${sliced} \n --- End of ${lastOpenLabel} ---`
+          : sliced;
     }
     lastMessage.content = wrap(finalContext);
   }
@@ -126,5 +173,12 @@ export const prepareMessagesForLLM = (
     keptReversed.push(history[i]);
   }
 
-  return [messagesWithSystemPrompt[0], ...keptReversed.reverse(), lastMessage];
+  const kept = keptReversed.reverse();
+  if (kept.length < history.length) {
+    while (kept[0]?.role === 'assistant') {
+      kept.shift();
+    }
+  }
+
+  return [messagesWithSystemPrompt[0], ...kept, lastMessage];
 };

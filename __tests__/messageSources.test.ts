@@ -338,6 +338,104 @@ describe('pickCitationsByAnswer', () => {
   });
 });
 
+describe('web search results (experimental)', () => {
+  const web = (name: string, url: string, passage: string): SourceDocument => ({
+    name,
+    url,
+    passage,
+    kind: 'web',
+  });
+  const localDoc = (
+    documentId: number,
+    name: string,
+    passage: string
+  ): SourceDocument => ({ documentId, name, passage });
+
+  it('pickCitationsByAnswer keeps every web result even on a refusal', () => {
+    const cited = [
+      localDoc(1, 'library.pdf', 'alpha beta gamma'),
+      localDoc(2, 'other.pdf', 'delta epsilon zeta'),
+      web('Reanimated', 'https://docs.swmansion.com/x', 'smooth animations'),
+      web('DuckDuckGo', 'https://duckduckgo.com/privacy', 'no tracking'),
+    ];
+
+    const result = pickCitationsByAnswer(
+      cited,
+      'There is no information about L4 here.',
+      []
+    );
+
+    expect(result.filter((d) => d.kind !== 'web')).toEqual([]);
+    expect(result.filter((d) => d.kind === 'web').map((d) => d.name)).toEqual([
+      'Reanimated',
+      'DuckDuckGo',
+    ]);
+  });
+
+  it('pickCitationsByAnswer keeps web results alongside a cited local doc', () => {
+    const cited = [
+      localDoc(1, 'revenue.txt', 'Total revenue grew to five million dollars.'),
+      web('Reanimated', 'https://docs.swmansion.com/x', 'smooth animations'),
+    ];
+
+    const result = pickCitationsByAnswer(
+      cited,
+      'Revenue grew to five million dollars.',
+      []
+    );
+
+    expect(result.map((d) => d.name)).toEqual(['revenue.txt', 'Reanimated']);
+  });
+
+  it('flags the web result the answer echoes as used, leaving off-topic ones unused', () => {
+    const cited = [
+      web(
+        'Weather Warsaw',
+        'https://w.com',
+        'Warsaw temperature and rain forecast today'
+      ),
+      web(
+        'Cooking recipes',
+        'https://c.com',
+        'Best pasta carbonara recipe with eggs'
+      ),
+    ];
+    const answer =
+      'The weather in Warsaw shows rain and a low temperature today.';
+
+    const result = pickCitationsByAnswer(cited, answer, []);
+    const usedByName = Object.fromEntries(result.map((d) => [d.name, d.used]));
+
+    expect(usedByName['Weather Warsaw']).toBe(true);
+    expect(usedByName['Cooking recipes']).toBe(false);
+  });
+
+  it('marks no web result used when the answer is a refusal', () => {
+    const cited = [
+      web('Weather Warsaw', 'https://w.com', 'Warsaw temperature and rain'),
+    ];
+
+    const result = pickCitationsByAnswer(
+      cited,
+      'There is no information about that in the sources.',
+      []
+    );
+
+    expect(result[0].used).toBe(false);
+  });
+
+  it('restrictCitationsToContext always retains web results', () => {
+    const cited = [
+      { documentId: 1, name: 'a.pdf' } as SourceDocument,
+      web('Reanimated', 'https://docs.swmansion.com/x', 'smooth animations'),
+    ];
+
+    const result = restrictCitationsToContext(cited, 'no headers here', []);
+
+    expect(result.map((d) => d.name)).toContain('Reanimated');
+  });
+});
+
 describe('visibleAnswer', () => {
   it('drops a complete think block, keeping text before and after', () => {
     expect(visibleAnswer('before<think>hidden reasoning</think>after')).toBe(

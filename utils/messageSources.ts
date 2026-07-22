@@ -1,6 +1,6 @@
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { LFMEmbeddings } from './lfmEmbeddings';
-import { SourceDocument } from '../database/chatRepository';
+import { SourceDocument, sourceKind } from '../database/chatRepository';
 import {
   formatContextChunks,
   formatFirstChunks,
@@ -94,7 +94,10 @@ export const restrictCitationsToContext = (
   const preferredNames = new Set(preferred.map((doc) => doc.name));
 
   const survived = sourceDocuments.filter(
-    (doc) => preferredNames.has(doc.name) || present.has(doc.name)
+    (doc) =>
+      sourceKind(doc) === 'web' ||
+      preferredNames.has(doc.name) ||
+      present.has(doc.name)
   );
   return survived.length > 0 ? survived : sourceDocuments.slice(0, 1);
 };
@@ -168,6 +171,49 @@ export const answerCitationOverlaps = (
 };
 
 export const pickCitationsByAnswer = (
+  sourceDocuments: SourceDocument[],
+  answer: string,
+  preferred: SourceDocument[]
+): SourceDocument[] => {
+  const webDocuments = sourceDocuments.filter(
+    (doc) => sourceKind(doc) === 'web'
+  );
+  const localDocuments = sourceDocuments.filter(
+    (doc) => sourceKind(doc) === 'document'
+  );
+  const citedLocal = pickLocalCitationsByAnswer(
+    localDocuments,
+    answer,
+    preferred
+  );
+  return [...citedLocal, ...flagUsedWebDocuments(webDocuments, answer)];
+};
+
+const flagUsedWebDocuments = (
+  webDocuments: SourceDocument[],
+  answer: string
+): SourceDocument[] => {
+  if (webDocuments.length === 0) return webDocuments;
+
+  const answerTerms = answerTermsOf(answer);
+  if (answerTerms.size === 0 || looksLikeNoAnswer(visibleAnswer(answer))) {
+    return webDocuments.map((doc) => ({ ...doc, used: false }));
+  }
+
+  const scored = webDocuments.map((doc) => ({
+    doc,
+    overlap: overlapWithAnswer(`${doc.name} ${doc.passage ?? ''}`, answerTerms),
+  }));
+  const maxOverlap = Math.max(0, ...scored.map((s) => s.overlap));
+
+  return scored.map((s) => ({
+    ...s.doc,
+    used:
+      maxOverlap > 0 && s.overlap >= maxOverlap * ANSWER_CITATION_OVERLAP_RATIO,
+  }));
+};
+
+const pickLocalCitationsByAnswer = (
   sourceDocuments: SourceDocument[],
   answer: string,
   preferred: SourceDocument[]

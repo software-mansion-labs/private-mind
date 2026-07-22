@@ -470,7 +470,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         settings,
         currentModel,
         useSettingsStore.getState().customSystemPrompt,
-        preferredSourceDocuments
+        preferredSourceDocuments,
+        sourceDocuments
       );
 
       const lastPreparedMessage = messagesWithSystemPrompt.at(-1);

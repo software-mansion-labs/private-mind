@@ -1,5 +1,6 @@
 import { readPDF } from 'react-native-pdfium';
 import { File } from 'expo-file-system';
+import { extractArticle } from './web/url/extractArticle';
 
 const stripHtml = (html: string): string =>
   html
@@ -66,6 +67,11 @@ export async function readDocumentText(
       const htmlFile = new File(filePath);
       const htmlContent = await htmlFile.text();
       return stripHtml(htmlContent);
+    }
+
+    case 'url': {
+      const article = await extractArticle(filePath);
+      return article.text;
     }
 
     default:

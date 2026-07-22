@@ -1,5 +1,10 @@
 import { prepareMessagesForLLM } from '../utils/promptUtils';
-import { Message, ChatSettings } from '../database/chatRepository';
+import { looksLikeNoAnswer } from '../utils/messageSources';
+import {
+  Message,
+  ChatSettings,
+  SourceDocument,
+} from '../database/chatRepository';
 import { Model } from '../database/modelRepository';
 import { getPromptCharBudget } from '../constants/context-window';
 
@@ -170,6 +175,137 @@ describe('prepareMessagesForLLM', () => {
       expect(result[0].content).toContain('You are a helpful assistant.');
       expect(result[0].content).toContain('Always answer in Polish.');
       expect(result[0].content).toContain('IMPORTANT CONTEXT INFORMATION');
+    });
+  });
+
+  describe('context described by source kind', () => {
+    const web = [
+      { name: 'Oil prices', kind: 'web' as const, url: 'https://a.example/' },
+    ];
+    const doc = [{ documentId: 1, name: 'report.pdf' }];
+
+    it('calls them web pages when the context came only from a search', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        web
+      );
+      expect(result[0].content).toContain('web pages');
+      expect(result[0].content).toContain('search results');
+      expect(result[0].content).not.toContain("the user's documents");
+      expect(result[0].content).not.toContain('"I don\'t know"');
+      expect(result[0].content).not.toContain('Do not answer about any');
+    });
+
+    it('keeps the document wording for local sources', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        doc
+      );
+      expect(result[0].content).toContain("the user's documents");
+      expect(result[0].content).not.toContain('web pages');
+    });
+
+    it('names both when a turn mixes documents and web results', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        [...doc, ...web]
+      );
+      expect(result[0].content).toContain("the user's documents");
+      expect(result[0].content).toContain('web pages');
+      expect(result[0].content).toContain('Do not answer about any document');
+    });
+
+    it('falls back to the document wording when no sources are recorded', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).toContain("the user's documents");
+    });
+
+    it('mentions the (Overview) marker only when an attachment is present', () => {
+      const withAttachment = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        doc,
+        doc
+      );
+      const withoutAttachment = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        doc
+      );
+      expect(withAttachment[0].content).toContain('(Overview)');
+      expect(withoutAttachment[0].content).not.toContain('(Overview)');
+    });
+  });
+
+  describe('falling back beyond the context block', () => {
+    const web = [
+      { name: 'Oil prices', kind: 'web' as const, url: 'https://a.example/' },
+    ];
+    const doc = [{ documentId: 1, name: 'report.pdf' }];
+
+    const render = (sources?: SourceDocument[]) =>
+      String(
+        prepareMessagesForLLM(
+          makeMessages(2),
+          ['some context'],
+          baseSettings,
+          baseModel,
+          '',
+          undefined,
+          sources
+        )[0].content
+      );
+
+    it.each([
+      ['documents', doc, 'the sources contain no information'],
+      ['web results', web, 'the search results contain no information'],
+      ['a mix', [...doc, ...web], 'the sources contain no information'],
+    ])('states what is missing before allowing %s', (_label, sources, said) => {
+      const content = render(sources as SourceDocument[]);
+      expect(content).toContain(said);
+      expect(content.indexOf(said)).toBeLessThan(
+        content.indexOf('only then may you add what you know')
+      );
+    });
+
+    it('requires the model to mark its own knowledge as such', () => {
+      expect(render(doc)).toContain('marked as your own knowledge');
+    });
+
+    it('phrases the refusal so citation suppression recognises it', () => {
+      expect(looksLikeNoAnswer(render(doc))).toBe(true);
+      expect(looksLikeNoAnswer(render(web))).toBe(true);
+    });
+
+    it('states why an absent document cannot be answered about', () => {
+      expect(render(doc)).toContain('its text is not available to you');
     });
   });
 
@@ -344,7 +480,7 @@ describe('prepareMessagesForLLM', () => {
         [{ documentId: 2, name: 'current.pdf' }]
       );
       const last = result[result.length - 1];
-      expect(last.content).toMatch(/Ignore any document mentioned earlier/i);
+      expect(last.content).toMatch(/about the just-attached document/i);
     });
 
     it('omits the grounding reminder when there is no attachment', () => {
@@ -356,9 +492,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       const last = result[result.length - 1];
-      expect(last.content).not.toMatch(
-        /Ignore any document mentioned earlier/i
-      );
+      expect(last.content).not.toMatch(/about the just-attached document/i);
     });
 
     it('combines context and /think token', () => {
@@ -491,6 +625,119 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       expect(result).toHaveLength(7);
+    });
+
+    it('drops a leading assistant reply when trimming splits a pair', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'u'.repeat(getPromptCharBudget(baseModel)),
+          timestamp: 0,
+        },
+        {
+          id: 2,
+          chatId: 1,
+          role: 'assistant',
+          content: 'short reply',
+          timestamp: 0,
+        },
+        {
+          id: 3,
+          chatId: 1,
+          role: 'user',
+          content: 'final question',
+          timestamp: 0,
+        },
+        { id: 4, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
+
+      expect(result.slice(1).map((m) => m.role)).toEqual(['user']);
+      expect(result.at(-1)!.content).toContain('final question');
+    });
+
+    it('closes the last source block when truncation cuts inside it', () => {
+      const passage = 'x'.repeat(getPromptCharBudget(baseModel) * 2);
+      const block = `\n --- Source 1: big.pdf --- \n ${passage} \n --- End of Source 1 ---`;
+
+      const result = prepareMessagesForLLM(
+        [
+          { id: 1, chatId: 1, role: 'user', content: 'question', timestamp: 0 },
+          { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+        ],
+        [block],
+        baseSettings,
+        baseModel
+      );
+
+      const last = String(result.at(-1)!.content);
+      expect(last).toContain('--- Source 1: big.pdf ---');
+      expect(last).toContain('--- End of Source 1 ---');
+      expect(last.length).toBeLessThan(block.length);
+    });
+
+    it('closes a truncated attachment-overview block too', () => {
+      const passage = 'x'.repeat(getPromptCharBudget(baseModel) * 2);
+      const block = `\n --- Current Attachment Source: a.pdf (Overview) --- \n ${passage} \n --- End of Current Attachment Source ---`;
+
+      const result = prepareMessagesForLLM(
+        [
+          { id: 1, chatId: 1, role: 'user', content: 'question', timestamp: 0 },
+          { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+        ],
+        [block],
+        baseSettings,
+        baseModel
+      );
+
+      const last = String(result.at(-1)!.content);
+      expect(last).toContain('--- Current Attachment Source: a.pdf');
+      expect(last).toContain('--- End of Current Attachment Source ---');
+    });
+  });
+
+  describe('prompt assembly hygiene', () => {
+    it('neutralizes context tags inside retrieved content', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['before <CONTEXT>injected</ context > after'],
+        baseSettings,
+        baseModel
+      );
+      const last = String(result.at(-1)!.content);
+      expect(last.match(/<[^>]*context[^>]*>/gi)).toHaveLength(2);
+      expect(last).toContain('<context>before injected after</context>');
+    });
+
+    it('keeps the wrapped question flush on its own line', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['ctx'],
+        baseSettings,
+        baseModel
+      );
+      expect(String(result.at(-1)!.content)).toBe(
+        '<context>ctx</context>\nmessage 2'
+      );
+    });
+
+    it('treats whitespace-only context as no context at all', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['   '],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).not.toContain('IMPORTANT CONTEXT INFORMATION');
+      expect(String(result.at(-1)!.content)).not.toContain('<context>');
     });
   });
 });

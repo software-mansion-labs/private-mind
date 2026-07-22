@@ -8,6 +8,9 @@ import { useSourceStore } from '../store/sourceStore';
 import { useVectorStore } from '../context/VectorStoreContext';
 import { useEmbeddingModelStore } from '../store/embeddingModelStore';
 import { documentErrorMessage } from '../utils/documentErrorMessage';
+import { extractArticle } from '../utils/web/url/extractArticle';
+import { buildUrlSource } from '../utils/web/url/urlSource';
+import { hostname } from '../utils/web/webResultsToContext';
 
 export interface Attachment {
   id: string;
@@ -17,10 +20,6 @@ export interface Attachment {
   status: 'loading' | 'ready';
   sourceId?: number;
   progress?: number;
-}
-
-interface ClearAllOptions {
-  cleanupSources?: boolean;
 }
 
 interface ClearAllOptions {
@@ -67,6 +66,7 @@ export const useAttachment = () => {
   const attachmentRequestRef = useRef(0);
   const currentDocumentAttachmentIdRef = useRef<string | null>(null);
   const documentAbortRef = useRef<AbortController | null>(null);
+  const pendingUrlRef = useRef<string | null>(null);
   const sheetRef = useRef<BottomSheetModal>(null);
   const embeddingDownloadSheetRef = useRef<BottomSheetModal>(null);
   const embeddingDownloadSheetOpenRef = useRef(false);
@@ -260,6 +260,116 @@ export const useAttachment = () => {
     }
   }, [vectorStore, embeddings]);
 
+  const runUrlSource = useCallback(
+    async (url: string) => {
+      const attachmentId = `url-${Date.now()}`;
+      const requestId = attachmentRequestRef.current + 1;
+      attachmentRequestRef.current = requestId;
+      currentDocumentAttachmentIdRef.current = attachmentId;
+
+      documentAbortRef.current?.abort();
+      const abortController = new AbortController();
+      documentAbortRef.current = abortController;
+
+      const isCurrentRequest = () =>
+        attachmentRequestRef.current === requestId &&
+        currentDocumentAttachmentIdRef.current === attachmentId;
+
+      const domain = hostname(url);
+      setAttachments([
+        {
+          id: attachmentId,
+          type: 'document',
+          uri: url,
+          name: domain,
+          status: 'loading',
+        },
+      ]);
+
+      try {
+        const article = await extractArticle(url);
+        if (abortController.signal.aborted || !isCurrentRequest()) return;
+
+        if (!article.text || article.text.trim().length === 0) {
+          setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+          Toast.show({
+            type: 'defaultToast',
+            text1: 'Could not read this page.',
+          });
+          return;
+        }
+
+        const displayName = article.title?.trim() || domain;
+        setAttachments((prev) =>
+          prev.map((a) =>
+            a.id === attachmentId ? { ...a, name: displayName } : a
+          )
+        );
+
+        const { addSource } = useSourceStore.getState();
+        let lastPercent = -1;
+        const handleProgress = (progress: number) => {
+          const percent = Math.round(progress * 100);
+          if (percent === lastPercent) return;
+          lastPercent = percent;
+          if (!isCurrentRequest()) return;
+          setAttachments((prev) =>
+            prev.map((a) => (a.id === attachmentId ? { ...a, progress } : a))
+          );
+        };
+
+        const result = await addSource(
+          buildUrlSource(url, article),
+          url,
+          vectorStore!,
+          embeddings,
+          handleProgress,
+          abortController.signal,
+          article.text
+        );
+
+        if (result.cancelled) return;
+        if (result.success) {
+          if (!isCurrentRequest()) return;
+          setAttachments((prev) =>
+            prev.map((a) =>
+              a.id === attachmentId
+                ? { ...a, status: 'ready', sourceId: result.sourceId }
+                : a
+            )
+          );
+          if (result.truncated) {
+            Toast.show({
+              type: 'defaultToast',
+              text1:
+                'This page is large — only the first part was indexed for search.',
+            });
+          }
+        } else {
+          if (!isCurrentRequest()) return;
+          setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+          Toast.show({
+            type: 'defaultToast',
+            text1: documentErrorMessage(result),
+          });
+        }
+      } catch (error) {
+        console.error('URL source processing threw', {
+          attachmentId,
+          url,
+          error,
+        });
+        if (attachmentRequestRef.current !== requestId) return;
+        setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+        Toast.show({
+          type: 'defaultToast',
+          text1: 'Error reading link.',
+        });
+      }
+    },
+    [vectorStore, embeddings]
+  );
+
   const markDownloadSheetClosed = useCallback(() => {
     embeddingDownloadSheetOpenRef.current = false;
   }, []);
@@ -271,6 +381,18 @@ export const useAttachment = () => {
     embeddingDownloadSheetOpenRef.current = true;
     embeddingDownloadSheetRef.current?.present();
   }, [runDocumentPicker]);
+
+  const addUrlSource = useCallback(
+    async (url: string) => {
+      if (useEmbeddingModelStore.getState().status === 'ready') {
+        return runUrlSource(url);
+      }
+      pendingUrlRef.current = url;
+      embeddingDownloadSheetOpenRef.current = true;
+      embeddingDownloadSheetRef.current?.present();
+    },
+    [runUrlSource]
+  );
 
   const downloadModelAndContinue = useCallback(async () => {
     if (!vectorStore) return;
@@ -286,9 +408,15 @@ export const useAttachment = () => {
     }
     if (embeddingDownloadSheetOpenRef.current) {
       embeddingDownloadSheetRef.current?.dismiss();
-      await runDocumentPicker();
+      const pendingUrl = pendingUrlRef.current;
+      pendingUrlRef.current = null;
+      if (pendingUrl) {
+        await runUrlSource(pendingUrl);
+      } else {
+        await runDocumentPicker();
+      }
     }
-  }, [vectorStore, runDocumentPicker]);
+  }, [vectorStore, runDocumentPicker, runUrlSource]);
 
   const removeAttachment = useCallback(
     (id: string) => {
@@ -347,6 +475,7 @@ export const useAttachment = () => {
     pickFromLibrary,
     pickFromCamera,
     pickDocument,
+    addUrlSource,
     downloadModelAndContinue,
     markDownloadSheetClosed,
     removeAttachment,
