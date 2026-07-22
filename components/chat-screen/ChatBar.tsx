@@ -167,7 +167,7 @@ const ChatBar = ({
       );
       // Baseline, not live height — consumers must not follow the bar as it
       // grows with typed lines; that is what extraContentPadding is for.
-      onHeightChange?.(baseline);
+      onHeightChange?.(hasMessages ? baseline : 0);
       const grew = height > prevBarHeight.current;
       prevBarHeight.current = height;
       if (delta > 0 && grew) {
@@ -176,8 +176,8 @@ const ChatBar = ({
     },
     [
       extraContentPadding,
-      onHeightChange,
       onBarGrow,
+      onHeightChange,
       hasMessages,
       theme.insets.bottom,
     ]

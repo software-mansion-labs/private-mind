@@ -1,4 +1,6 @@
 import React, {
+  memo,
+  ReactNode,
   Ref,
   useLayoutEffect,
   useRef,
@@ -13,15 +15,19 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Platform,
+  Pressable,
   StyleSheet,
-  TouchableOpacity,
   View,
+  type View as ViewType,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import {
   KeyboardChatScrollView,
   useReanimatedKeyboardAnimation,
 } from 'react-native-keyboard-controller';
 import Reanimated, {
+  runOnJS,
   useSharedValue,
   useAnimatedStyle,
   withTiming,
@@ -34,10 +40,14 @@ import {
   EdgeFade,
   TOP_FADE_HEIGHT,
 } from './EdgeFade';
-import { Message } from '../../database/chatRepository';
+import { Message, type ChatBranchMarker } from '../../database/chatRepository';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
+import { Feedback } from '../../utils/Feedback';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
+import BranchMarker from './BranchMarker';
+import Toast from 'react-native-toast-message';
+import { SUPPORTS_USER_ACTION_MENU } from '../../constants/chat-screen';
 
 /**
  * Height of the opaque system navigation bar the list paints behind. Android
@@ -58,6 +68,17 @@ export interface MessagesHandle {
   scrollToEndIfAtBottom: () => void;
 }
 
+export type UserMessageActionMenuState = {
+  isOpen: boolean;
+  anchor?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  onCopy?: () => void;
+};
+
 interface Props {
   chatHistory: Message[];
   extraContentPadding: SharedValue<number>;
@@ -65,9 +86,11 @@ interface Props {
   /** Whether the LLM is currently streaming a response. */
   isGenerating: boolean;
   /**
-   * KeyboardChatScrollView's offset, so it calculates the keyboard push
-   * distance without overshooting on dismiss. Empirically tuned — change it
-   * only against a keyboard open/close test.
+   * Bottom inset forwarded to KeyboardChatScrollView's `offset`. Only the
+   * safe-area inset stays fixed below the scroll view while the keyboard
+   * animates, because the ChatBar is pinned to the keyboard and rises with it.
+   * Using the full ChatBar height under-pads the list and clips the end of
+   * long messages.
    */
   bottomOffset: number;
   /**
@@ -82,8 +105,51 @@ interface Props {
    * message resting above it, and sizes the bottom fade.
    */
   chatBarInset: number;
+  revealFromTop?: boolean;
+  branchMarkers?: ChatBranchMarker[];
+  onForkMessage?: (message: Message) => void;
+  onBranchMarkerPress?: (marker: ChatBranchMarker) => void;
+  onUserActionMenuChange?: (menu: UserMessageActionMenuState) => void;
   ref?: Ref<MessagesHandle>;
 }
+
+interface MessageActionsState {
+  showActions: boolean;
+  showForkAction: boolean;
+}
+
+interface LongPressableMessageProps {
+  children: ReactNode;
+  messageId: number;
+  onLongPress: (messageId: number, target: ViewType | null) => void;
+}
+
+const LongPressableMessage = memo(
+  ({ children, messageId, onLongPress }: LongPressableMessageProps) => {
+    const targetRef = useRef<ViewType>(null);
+    const handleLongPress = useCallback(() => {
+      onLongPress(messageId, targetRef.current);
+    }, [messageId, onLongPress]);
+
+    const longPressGesture = useMemo(
+      () =>
+        Gesture.LongPress()
+          .minDuration(450)
+          .onStart(() => {
+            runOnJS(handleLongPress)();
+          }),
+      [handleLongPress]
+    );
+
+    return (
+      <GestureDetector gesture={longPressGesture}>
+        <View ref={targetRef} collapsable={false}>
+          {children}
+        </View>
+      </GestureDetector>
+    );
+  }
+);
 
 const Messages = ({
   chatHistory,
@@ -93,6 +159,11 @@ const Messages = ({
   bottomOffset,
   freeze = false,
   chatBarInset,
+  revealFromTop = false,
+  branchMarkers = [],
+  onForkMessage,
+  onBranchMarkerPress,
+  onUserActionMenuChange,
   ref,
 }: Props) => {
   const { theme } = useTheme();
@@ -100,6 +171,9 @@ const Messages = ({
   const scrollRef = useRef<Reanimated.ScrollView>(null);
   const isAtBottomRef = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [activeUserActionsId, setActiveUserActionsId] = useState<number | null>(
+    null
+  );
   const lastScrollOffset = useRef(0);
   const lastLayoutHeight = useRef(0);
 
@@ -107,10 +181,57 @@ const Messages = ({
   // the bottom, then fade in so the user never sees content flying by.
   // https://vercel.com/blog/how-we-built-the-v0-ios-app
   const opacity = useSharedValue(0);
+  const revealTranslateY = useSharedValue(revealFromTop ? -28 : 0);
   const hasScrolledToEnd = useRef(false);
+  const initialScrollSettlingUntil = useRef(0);
+  const initialScrollTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const animatedContainerStyle = useAnimatedStyle(() => ({
     opacity: opacity.get(),
+    transform: [{ translateY: revealTranslateY.get() }],
   }));
+
+  const clearInitialScrollTimers = useCallback(() => {
+    initialScrollTimers.current.forEach(clearTimeout);
+    initialScrollTimers.current = [];
+  }, []);
+
+  const snapToEnd = useCallback(() => {
+    scrollRef.current?.scrollToEnd({ animated: false });
+  }, []);
+
+  const scheduleInitialScrollToEnd = useCallback(() => {
+    clearInitialScrollTimers();
+    snapToEnd();
+
+    const schedule = (delay: number, action: () => void) => {
+      const timer = setTimeout(action, delay);
+      initialScrollTimers.current.push(timer);
+    };
+
+    [16, 50, 100, 180, 300, 450].forEach((delay) => {
+      schedule(delay, () => {
+        snapToEnd();
+      });
+    });
+
+    schedule(500, () => {
+      snapToEnd();
+      opacity.set(withTiming(1, { duration: 350 }));
+      revealTranslateY.set(withTiming(0, { duration: 350 }));
+      initialScrollTimers.current = [];
+    });
+  }, [clearInitialScrollTimers, opacity, revealTranslateY, snapToEnd]);
+
+  const latestBranchMarkerByMessageId = useMemo(() => {
+    const byMessageId = new Map<number, ChatBranchMarker>();
+    for (const marker of branchMarkers) {
+      const current = byMessageId.get(marker.afterMessageId);
+      if (!current || marker.id > current.id) {
+        byMessageId.set(marker.afterMessageId, marker);
+      }
+    }
+    return byMessageId;
+  }, [branchMarkers]);
 
   const { height: keyboardHeight, progress: keyboardProgress } =
     useReanimatedKeyboardAnimation();
@@ -162,9 +283,13 @@ const Messages = ({
     ) {
       hasScrolledToEnd.current = false;
       opacity.set(0);
+      pinActive.current = false;
+      blankSpace.set(0);
     }
     prevChatLengthRef.current = chatHistory.length;
-  }, [chatHistory.length, opacity]);
+  }, [chatHistory.length, opacity, blankSpace]);
+
+  useLayoutEffect(() => clearInitialScrollTimers, [clearInitialScrollTimers]);
 
   // Heights that drive blankSpace. All in JS refs because updates are
   // driven by layout events and we only need to write the derived value
@@ -172,6 +297,13 @@ const Messages = ({
   const containerHeight = useRef(0);
   const lastUserHeight = useRef(0);
   const lastAssistantHeight = useRef(0);
+
+  const closeUserActionMenu = useCallback(() => {
+    setActiveUserActionsId(null);
+    onUserActionMenuChange?.({ isOpen: false });
+  }, [onUserActionMenuChange]);
+
+  const pendingMenuOpenRef = useRef<(() => void) | null>(null);
 
   // Android-only: KeyboardChatScrollView's ClippingScrollView can
   // bounce the scroll offset on keyboard dismiss. Snap back to the
@@ -183,40 +315,48 @@ const Messages = ({
     let snapTimer: ReturnType<typeof setTimeout> | null = null;
     const showSub = Keyboard.addListener('keyboardDidShow', () => {
       wasAtBottomDuringKeyboard.current = isAtBottomRef.current;
+      closeUserActionMenu();
     });
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
-      if (wasAtBottomDuringKeyboard.current) {
+      const runPendingMenuOpen = () => {
+        const openMenu = pendingMenuOpenRef.current;
+        pendingMenuOpenRef.current = null;
+        openMenu?.();
+      };
+
+      if (wasAtBottomDuringKeyboard.current && isAtBottomRef.current) {
         snapTimer = setTimeout(() => {
+          closeUserActionMenu();
           scrollRef.current?.scrollToEnd({ animated: false });
+          runPendingMenuOpen();
         }, 300);
+        return;
       }
+
+      runPendingMenuOpen();
     });
     return () => {
       if (snapTimer) clearTimeout(snapTimer);
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [closeUserActionMenu]);
 
-  // True while the LLM is streaming a response. Gates both the
-  // blankSpace formula (recomputeBlankSpace) and the force-scroll
-  // in handleContentSizeChange. Flipped off via useLayoutEffect when
-  // generation ends, before the stats-row layout event commits.
-  const streamingActive = useRef(false);
+  // Armed from onMessageSent until the chat is cleared; gates recomputeBlankSpace.
+  // Stays armed past end-of-stream so the final layout (once the stats row and
+  // Copy/Fork bar commit) recomputes blankSpace with the assistant's true height,
+  // instead of leaving it ~50px too large — which clips the pinned question.
+  const pinActive = useRef(false);
   // Armed in onMessageSent, consumed on the next onContentSizeChange:
   // seed blankSpace and scroll to end once the new chat row has
   // actually rendered (avoids a 1-frame flick of old content lifted
   // by the new inset).
   const pendingPinRef = useRef(false);
 
-  useLayoutEffect(() => {
-    if (!isGenerating) {
-      streamingActive.current = false;
-    }
-  }, [isGenerating]);
-
   const recomputeBlankSpace = useCallback(() => {
-    if (!streamingActive.current) return;
+    if (!pinActive.current) return;
+    // Container and content both grew by chatBarInset; subtracting it keeps
+    // blankSpace unchanged.
     const CONTAINER_PADDING = 16 + 8 + chatBarInset;
     const raw =
       containerHeight.current -
@@ -230,6 +370,7 @@ const Messages = ({
     ref,
     () => ({
       scrollToEnd: () => {
+        closeUserActionMenu();
         scrollRef.current?.scrollToEnd({ animated: true });
       },
       scrollToEndIfAtBottom: () => {
@@ -238,6 +379,7 @@ const Messages = ({
         }
       },
       onMessageSent: () => {
+        closeUserActionMenu();
         // Ensure the view is visible (covers new-chat case where the
         // initial-scroll effect hasn't fired because there were no
         // messages yet).
@@ -247,7 +389,7 @@ const Messages = ({
         }
         lastAssistantHeight.current = 0;
         lastUserHeight.current = 0;
-        streamingActive.current = true;
+        pinActive.current = true;
 
         if (Platform.OS === 'ios') {
           if (containerHeight.current > 0) {
@@ -257,15 +399,19 @@ const Messages = ({
         pendingPinRef.current = true;
       },
     }),
-    [blankSpace, opacity]
+    [blankSpace, closeUserActionMenu, opacity]
   );
 
   const handleContainerLayout = useCallback(
     (e: LayoutChangeEvent) => {
       containerHeight.current = e.nativeEvent.layout.height;
+      lastLayoutHeight.current = e.nativeEvent.layout.height;
       recomputeBlankSpace();
+      if (Date.now() < initialScrollSettlingUntil.current) {
+        snapToEnd();
+      }
     },
-    [recomputeBlankSpace]
+    [recomputeBlankSpace, snapToEnd]
   );
 
   const handleLastUserLayout = useCallback(
@@ -303,8 +449,98 @@ const Messages = ({
   );
 
   const scrollToBottom = useCallback(() => {
+    closeUserActionMenu();
     scrollRef.current?.scrollToEnd({ animated: true });
-  }, []);
+  }, [closeUserActionMenu]);
+
+  const handleCopyMessage = useCallback(
+    async (message: Message) => {
+      await Clipboard.setStringAsync(message.content);
+      if (message.role === 'user') {
+        closeUserActionMenu();
+      }
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Message copied',
+      });
+    },
+    [closeUserActionMenu]
+  );
+
+  const getMessageActionsState = useCallback(
+    (message: Message, isLastMessage: boolean): MessageActionsState => {
+      const isPersisted = message.id > 0;
+      const isStreamingMessage = isLastMessage && isGenerating;
+
+      if (message.role === 'assistant') {
+        return {
+          showActions: isPersisted && message.content.trim().length > 0,
+          showForkAction: isPersisted && !!onForkMessage && !isStreamingMessage,
+        };
+      }
+
+      return {
+        showActions: false,
+        showForkAction: false,
+      };
+    },
+    [isGenerating, onForkMessage]
+  );
+
+  const handleUserLongPress = useCallback(
+    (messageId: number, target: ViewType | null) => {
+      const message = chatHistory.find((item) => item.id === messageId);
+      if (!message) return;
+
+      const shouldOpen = activeUserActionsId !== messageId;
+      setActiveUserActionsId(shouldOpen ? messageId : null);
+
+      if (!shouldOpen) {
+        onUserActionMenuChange?.({ isOpen: false });
+        return;
+      }
+
+      Feedback.longPress();
+
+      const openMenu = () => {
+        target?.measureInWindow((x, y, width, height) => {
+          onUserActionMenuChange?.({
+            isOpen: true,
+            anchor: { x, y, width, height },
+            onCopy: () => handleCopyMessage(message),
+          });
+        });
+      };
+
+      if (!Keyboard.isVisible()) {
+        openMenu();
+        return;
+      }
+
+      pendingMenuOpenRef.current = openMenu;
+      Keyboard.dismiss();
+    },
+    [
+      activeUserActionsId,
+      chatHistory,
+      handleCopyMessage,
+      onUserActionMenuChange,
+    ]
+  );
+
+  const handleScrollTouchStart = useCallback(() => {
+    if (activeUserActionsId !== null) {
+      closeUserActionMenu();
+      Keyboard.dismiss();
+    }
+  }, [activeUserActionsId, closeUserActionMenu]);
+
+  const handleForkMessage = useCallback(
+    (message: Message) => {
+      onForkMessage?.(message);
+    },
+    [onForkMessage]
+  );
 
   const handleContentSizeChange = useCallback(
     (_w: number, h: number) => {
@@ -320,18 +556,8 @@ const Messages = ({
         if (h <= CONTENT_PADDING) return;
 
         hasScrolledToEnd.current = true;
-        const snap = () => scrollRef.current?.scrollToEnd({ animated: false });
-        snap();
-        requestAnimationFrame(() => {
-          snap();
-          setTimeout(() => {
-            snap();
-            requestAnimationFrame(() => {
-              snap();
-              opacity.set(withTiming(1, { duration: 350 }));
-            });
-          }, 16);
-        });
+        initialScrollSettlingUntil.current = Date.now() + 650;
+        scheduleInitialScrollToEnd();
         return;
       }
 
@@ -345,6 +571,7 @@ const Messages = ({
       // blankSpace and scrollToEnd for a smooth transition.
       if (pendingPinRef.current) {
         pendingPinRef.current = false;
+        closeUserActionMenu();
         if (Platform.OS !== 'ios' && containerHeight.current > 0) {
           blankSpace.set(
             withTiming(containerHeight.current, {
@@ -373,7 +600,7 @@ const Messages = ({
         }
       }
     },
-    [opacity, blankSpace, chatBarInset]
+    [blankSpace, chatBarInset, closeUserActionMenu, scheduleInitialScrollToEnd]
   );
 
   const hasMessages = chatHistory.length > 0;
@@ -402,10 +629,11 @@ const Messages = ({
         blankSpace={blankSpace}
         freeze={freeze}
         applyWorkaroundForContentInsetHitTestBug
-        keyboardShouldPersistTaps="never"
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={contentContainerStyle}
         onLayout={handleContainerLayout}
         onScroll={handleScroll}
+        onTouchStart={handleScrollTouchStart}
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
         style={styles.container}
@@ -425,28 +653,78 @@ const Messages = ({
               : index === lastAssistantIndex
                 ? handleLastAssistantLayout
                 : undefined;
-
-          const item = (
-            <MessageItem
-              content={message.content}
-              modelName={message.modelName}
-              role={message.role}
-              tokensPerSecond={message.tokensPerSecond}
-              timeToFirstToken={message.timeToFirstToken}
-              isLastMessage={isLastMessage}
-              imagePath={message.imagePath}
-              documentName={message.documentName}
-            />
+          const branchMarker = latestBranchMarkerByMessageId.get(message.id);
+          const { showActions, showForkAction } = getMessageActionsState(
+            message,
+            isLastMessage
           );
 
+          const item = (
+            <View style={styles.messageRow} collapsable={false}>
+              <MessageItem
+                message={message}
+                content={message.content}
+                modelName={message.modelName}
+                role={message.role}
+                tokensPerSecond={message.tokensPerSecond}
+                timeToFirstToken={message.timeToFirstToken}
+                isLastMessage={isLastMessage}
+                imagePath={message.imagePath}
+                documentName={message.documentName}
+                showActions={showActions}
+                showForkAction={showForkAction}
+                onCopy={handleCopyMessage}
+                onFork={handleForkMessage}
+              />
+              {branchMarker && (
+                <BranchMarker
+                  key={`branch-${branchMarker.id}`}
+                  marker={branchMarker}
+                  onPress={onBranchMarkerPress}
+                />
+              )}
+            </View>
+          );
+
+          const shouldHandleUserLongPress =
+            SUPPORTS_USER_ACTION_MENU &&
+            message.role === 'user' &&
+            message.id > 0;
+
           if (onLayout) {
+            if (!shouldHandleUserLongPress) {
+              return (
+                <View key={key} onLayout={onLayout} collapsable={false}>
+                  {item}
+                </View>
+              );
+            }
+
             return (
               <View key={key} onLayout={onLayout} collapsable={false}>
-                {item}
+                <LongPressableMessage
+                  messageId={message.id}
+                  onLongPress={handleUserLongPress}
+                >
+                  {item}
+                </LongPressableMessage>
               </View>
             );
           }
-          return <React.Fragment key={key}>{item}</React.Fragment>;
+
+          if (!shouldHandleUserLongPress) {
+            return <React.Fragment key={key}>{item}</React.Fragment>;
+          }
+
+          return (
+            <LongPressableMessage
+              key={key}
+              messageId={message.id}
+              onLongPress={handleUserLongPress}
+            >
+              {item}
+            </LongPressableMessage>
+          );
         })}
       </KeyboardChatScrollView>
 
@@ -462,17 +740,21 @@ const Messages = ({
       )}
       {showScrollButton && (
         <Reanimated.View style={[scrollButtonStyle, scrollButtonAnimatedStyle]}>
-          <TouchableOpacity
-            style={styles.scrollToBottomButton}
+          <Pressable
+            style={({ pressed }) => [
+              styles.scrollToBottomButton,
+              pressed && styles.scrollToBottomButtonPressed,
+            ]}
             onPress={scrollToBottom}
-            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Scroll to latest message"
           >
             <ChevronDown
               width={20}
               height={20}
               style={{ color: theme.text.primary }}
             />
-          </TouchableOpacity>
+          </Pressable>
         </Reanimated.View>
       )}
     </Reanimated.View>
@@ -500,12 +782,17 @@ const createStyles = (theme: Theme) => {
       right: SCROLL_INDICATOR_GUTTER,
       height: TOP_FADE_HEIGHT,
     },
+    // Positions the ramp and the flat block below it, so the gutter set here
+    // applies to both.
     bottomFade: {
       position: 'absolute',
       bottom: 0,
       left: 0,
       right: SCROLL_INDICATOR_GUTTER,
     },
+    // On Android the ramp must reach full opacity by the top of the navigation
+    // bar, or text stays visible sliding under it. insets.bottom carries the
+    // gesture-vs-buttons difference, so both modes and rotation follow.
     bottomFadeRamp: {
       position: 'absolute',
       top: 0,
@@ -518,8 +805,13 @@ const createStyles = (theme: Theme) => {
       bottom: 0,
       left: 0,
       right: 0,
+      // Overlaps the ramp: insets.bottom is fractional, so the two edges round
+      // independently and leave a sub-pixel seam as a brighter hairline.
       height: navInset && navInset + SEAM_OVERLAP,
       backgroundColor: theme.bg.softPrimary,
+    },
+    messageRow: {
+      position: 'relative',
     },
     scrollToBottomButtonContainer: {
       position: 'absolute',
@@ -532,11 +824,14 @@ const createStyles = (theme: Theme) => {
       backgroundColor: theme.bg.softSecondary,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: '#000',
+      shadowColor: theme.bg.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.15,
       shadowRadius: 4,
       elevation: 4,
+    },
+    scrollToBottomButtonPressed: {
+      opacity: 0.8,
     },
   });
 };

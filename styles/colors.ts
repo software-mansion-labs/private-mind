@@ -13,6 +13,13 @@ export const lightTheme = {
     errorSecondary: '#F5D0D1',
     errorPrimary: '#DE595B',
     overlay: 'rgba(2, 15, 60, 0.2)',
+    shadow: '#000000',
+    lightbox: '#000000',
+    lightboxControl: 'rgba(0, 0, 0, 0.5)',
+    codeInline: 'rgba(0, 0, 0, 0.06)',
+    codeInlineStrong: 'rgba(255, 255, 255, 0.2)',
+    codeBlock: 'rgba(0, 0, 0, 0.05)',
+    codeBlockStrong: 'rgba(255, 255, 255, 0.12)',
   },
   text: {
     primary: '#020f3c',
@@ -28,6 +35,8 @@ export const lightTheme = {
   border: {
     soft: 'rgba(2, 15, 60, 0.2)',
     contrast: '#fff',
+    codeInline: 'rgba(0, 0, 0, 0.08)',
+    codeInlineStrong: 'rgba(255, 255, 255, 0.1)',
   },
 };
 
@@ -46,6 +55,13 @@ export const darkTheme = {
     errorSecondary: '#8B2728',
     errorPrimary: '#DE595B',
     overlay: 'rgba(0, 0, 0, 0.6)',
+    shadow: '#000000',
+    lightbox: '#000000',
+    lightboxControl: 'rgba(0, 0, 0, 0.5)',
+    codeInline: 'rgba(255, 255, 255, 0.2)',
+    codeInlineStrong: 'rgba(255, 255, 255, 0.2)',
+    codeBlock: 'rgba(255, 255, 255, 0.12)',
+    codeBlockStrong: 'rgba(255, 255, 255, 0.12)',
   },
   text: {
     primary: '#FFFFFF',
@@ -61,6 +77,8 @@ export const darkTheme = {
   border: {
     soft: 'rgba(255, 255, 255, 0.15)',
     contrast: '#FFFFFF',
+    codeInline: 'rgba(255, 255, 255, 0.1)',
+    codeInlineStrong: 'rgba(255, 255, 255, 0.1)',
   },
 };
 
