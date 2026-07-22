@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { ActionSheetIOS, Platform } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { AppBottomSheetRef } from '../bottomSheets/AppBottomSheet';
 import { Chat } from '../../database/chatRepository';
 import { useChatActions } from '../../hooks/useChatActions';
 import { Feedback } from '../../utils/Feedback';
@@ -26,7 +26,7 @@ export const useDrawerChatMenu = ({ onMenuActiveChange }: Options = {}) => {
   const pathname = usePathname();
   const [targetChat, setTargetChat] = useState<Chat | null>(null);
   const [renameVisible, setRenameVisible] = useState(false);
-  const androidSheetRef = useRef<BottomSheetModal>(null);
+  const androidSheetRef = useRef<AppBottomSheetRef>(null);
   const actionPendingRef = useRef(false);
 
   const { rename, exportChat, confirmDelete, ConfirmElement } = useChatActions({

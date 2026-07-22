@@ -8,7 +8,8 @@ import React, {
 import { View, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useLocalSearchParams } from 'expo-router';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { AppBottomSheetRef } from '../../components/bottomSheets/AppBottomSheet';
+import type { BenchmarkResultData } from '../../components/bottomSheets/BenchmarkResultSheet';
 import { useModelStore } from '../../store/modelStore';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
@@ -29,7 +30,8 @@ import useDefaultHeader from '../../hooks/useDefaultHeader';
 
 const BenchmarkScreen = () => {
   useDefaultHeader();
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const bottomSheetModalRef =
+    useRef<AppBottomSheetRef<BenchmarkResultData>>(null);
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const db = useSQLiteContext();

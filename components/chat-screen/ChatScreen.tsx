@@ -7,7 +7,7 @@ import React, {
 } from 'react';
 import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { AppBottomSheetRef } from '../bottomSheets/AppBottomSheet';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { router } from 'expo-router';
 import Animated, {
@@ -96,7 +96,7 @@ export default function ChatScreen({
   }>(null);
   const messagesRef = useRef<MessagesHandle>(null);
   const rootRef = useRef<View>(null);
-  const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const modelBottomSheetModalRef = useRef<AppBottomSheetRef>(null);
   const db = useSQLiteContext();
 
   const { vectorStore } = useVectorStore();
@@ -123,14 +123,6 @@ export default function ChatScreen({
   const { height: keyboardHeight, progress: keyboardProgress } =
     useReanimatedKeyboardAnimation();
   const insetsBottom = theme.insets.bottom;
-  const chatBarStickyStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateY:
-          keyboardHeight.value + keyboardProgress.value * insetsBottom,
-      },
-    ],
-  }));
 
   const { settings: chatSettings, setSetting } = useChatSettings(chatId);
 
@@ -156,6 +148,21 @@ export default function ChatScreen({
   const [modelSheetOpen, setModelSheetOpen] = useState(false);
   const [attachmentSheetOpen, setAttachmentSheetOpen] = useState(false);
   const overlayOpen = modelSheetOpen || attachmentSheetOpen;
+
+  const overlayProgress = useSharedValue(0);
+  useEffect(() => {
+    overlayProgress.set(withTiming(overlayOpen ? 1 : 0, { duration: 250 }));
+  }, [overlayOpen, overlayProgress]);
+
+  const chatBarStickyStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY:
+          (1 - overlayProgress.get()) *
+          (keyboardHeight.value + keyboardProgress.value * insetsBottom),
+      },
+    ],
+  }));
 
   const handlePresentModelSheet = useCallback(() => {
     Keyboard.dismiss();

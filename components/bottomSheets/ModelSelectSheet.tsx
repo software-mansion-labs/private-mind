@@ -1,14 +1,7 @@
-import React, { RefObject, useCallback, useMemo, useState } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetFlatList,
-  BottomSheetView,
-  BottomSheetBackdrop,
-  useBottomSheetTimingConfigs,
-} from '@gorhom/bottom-sheet';
-import { Easing } from 'react-native-reanimated';
+import React, { type RefObject, useMemo, useState } from 'react';
 import { router } from 'expo-router';
-import { View, StyleSheet, Text, Platform } from 'react-native';
+import { View, StyleSheet, Text, FlatList } from 'react-native';
+import { AppBottomSheet, type AppBottomSheetRef } from './AppBottomSheet';
 import { useModelStore } from '../../store/modelStore';
 import { useTheme } from '../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -20,7 +13,7 @@ import BottomSheetSearchInput from './BottomSheetSearchInput';
 import { Feedback } from '../../utils/Feedback';
 
 interface Props {
-  bottomSheetModalRef: RefObject<BottomSheetModal | null>;
+  bottomSheetModalRef: RefObject<AppBottomSheetRef | null>;
   selectModel: (model: Model) => void;
   onSheetStateChange?: (isOpen: boolean) => void;
 }
@@ -34,55 +27,26 @@ const ModelSelectSheet = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { downloadedModels } = useModelStore();
   const [search, setSearch] = useState('');
-  const [isFullyOpen, setIsFullyOpen] = useState(false);
-  const animationConfigs = useBottomSheetTimingConfigs({
-    duration: 150,
-    easing: Easing.out(Easing.cubic),
-  });
 
   const filteredModels = downloadedModels.filter((model) =>
     model.modelName.toLowerCase().includes(search.toLowerCase())
   );
 
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
-
   return (
-    <BottomSheetModal
+    <AppBottomSheet
       ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
       snapPoints={['30%', '50%']}
-      animationConfigs={animationConfigs}
-      enableDynamicSizing={false}
-      handleStyle={styles.handle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}
-      keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
-      keyboardBlurBehavior="restore"
+      keyboardAware
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
         onSheetStateChange?.(index >= 0);
-        setIsFullyOpen(index >= 0);
       }}
       onDismiss={() => {
         onSheetStateChange?.(false);
-        setIsFullyOpen(false);
       }}
     >
       {downloadedModels.length > 0 ? (
-        <View
-          style={styles.content}
-          pointerEvents={isFullyOpen ? 'auto' : 'none'}
-        >
+        <View style={styles.content}>
           <Text style={[styles.title, styles.horizontalInset]}>
             Select a Model
           </Text>
@@ -92,9 +56,10 @@ const ModelSelectSheet = ({
             placeholder="Search Models..."
           />
 
-          <BottomSheetFlatList
+          <FlatList
             data={filteredModels}
             keyExtractor={(item) => item.id.toString()}
+            keyboardShouldPersistTaps="handled"
             // only frist two styles appear to be forwarded, so the array is
             // nested to make all styles be part of the first item
             contentContainerStyle={[
@@ -116,7 +81,7 @@ const ModelSelectSheet = ({
           />
         </View>
       ) : (
-        <BottomSheetView style={[styles.content, styles.horizontalInset]}>
+        <View style={[styles.content, styles.horizontalInset]}>
           <Text style={styles.title}>You have no available models yet</Text>
           <Text style={styles.subText}>
             To use Private Mind you need to have at least one model downloaded
@@ -128,9 +93,9 @@ const ModelSelectSheet = ({
               router.push('/model-hub');
             }}
           />
-        </BottomSheetView>
+        </View>
       )}
-    </BottomSheetModal>
+    </AppBottomSheet>
   );
 };
 
@@ -138,22 +103,6 @@ export default ModelSelectSheet;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    handle: {
-      backgroundColor: theme.bg.softPrimary,
-      borderRadius: 16,
-    },
-    handleIndicator: {
-      width: 64,
-      height: 4,
-      borderRadius: 20,
-      backgroundColor: theme.text.primary,
-    },
-    background: {
-      backgroundColor: theme.bg.softPrimary,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
     content: {
       flex: 1,
       paddingTop: 16,

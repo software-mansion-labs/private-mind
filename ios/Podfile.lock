@@ -2152,6 +2152,28 @@ PODS:
     - React-perflogger (= 0.83.4)
     - React-utils (= 0.83.4)
     - ReactNativeDependencies
+  - ReactNativeBottomSheet (0.16.1):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - ReactNativeDependencies (0.83.4)
   - ReactNativeEnrichedMarkdown (0.4.1):
     - hermes-engine
@@ -2715,6 +2737,7 @@ DEPENDENCIES:
   - ReactAppDependencyProvider (from `build/generated/ios/ReactAppDependencyProvider`)
   - ReactCodegen (from `build/generated/ios/ReactCodegen`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
+  - "ReactNativeBottomSheet (from `../node_modules/@swmansion/react-native-bottom-sheet`)"
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - ReactNativeEnrichedMarkdown (from `../node_modules/react-native-enriched-markdown`)
   - "ReactNativeFs (from `../node_modules/@dr.pogodin/react-native-fs`)"
@@ -2952,6 +2975,8 @@ EXTERNAL SOURCES:
     :path: build/generated/ios/ReactCodegen
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
+  ReactNativeBottomSheet:
+    :path: "../node_modules/@swmansion/react-native-bottom-sheet"
   ReactNativeDependencies:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
   ReactNativeEnrichedMarkdown:
@@ -3088,6 +3113,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 2b19d66e5ddfe8dc7afb6338a4626156cbf2bab1
   ReactCodegen: 43f0948182edee9407c7b977fb059455dfeb9361
   ReactCommon: c6e81cc1ae185fa84863f3ea1d58caac4be741d7
+  ReactNativeBottomSheet: ef18b3205d1e6d98831d4e31d7a9e776c1480d3a
   ReactNativeDependencies: f6a49cf945d48640a12c0f24cd404b89c7218273
   ReactNativeEnrichedMarkdown: 27a73f8df1bc304c35b7bd922c9885a4dfec3dc5
   ReactNativeFs: 54a8079110e99a52ab4aeb72f16c6785095eb9e8

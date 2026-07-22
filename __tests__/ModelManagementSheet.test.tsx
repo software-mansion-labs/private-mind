@@ -32,39 +32,35 @@ jest.mock('../components/model-hub/ModelCard', () => {
   return ({ model }: any) => <Text testID="model-card">{model.modelName}</Text>;
 });
 
-// BottomSheetModal — immediately render children with injected data
-jest.mock('@gorhom/bottom-sheet', () => {
+jest.mock('../components/bottomSheets/AppBottomSheet', () => {
   const React = require('react');
   const { View } = require('react-native');
   let _injectedData: any = null;
 
-  const BottomSheetModal = React.forwardRef((props: any, _ref: any) => {
-    if (!props.children || !_injectedData) return null;
+  const AppBottomSheet = React.forwardRef((props: any, _ref: any) => {
+    if (typeof props.children !== 'function') {
+      return <View>{props.children}</View>;
+    }
+    if (!_injectedData) return null;
     return <View>{props.children({ data: _injectedData })}</View>;
   });
   // Attach a way for tests to set the data before rendering
-  (BottomSheetModal as any).__setData = (d: any) => {
+  (AppBottomSheet as any).__setData = (d: any) => {
     _injectedData = d;
   };
 
-  return {
-    BottomSheetModal,
-    BottomSheetView: ({ children, style }: any) => (
-      <View style={style}>{children}</View>
-    ),
-    BottomSheetBackdrop: () => null,
-  };
+  return { __esModule: true, AppBottomSheet };
 });
 
 // ── imports ───────────────────────────────────────────────────────────────────
 
 import ModelManagementSheet from '../components/bottomSheets/ModelManagementSheet';
 import { useModelStore } from '../store/modelStore';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { AppBottomSheet } from '../components/bottomSheets/AppBottomSheet';
 import Toast from 'react-native-toast-message';
 
 const mockUseModelStore = useModelStore as jest.Mock;
-const setSheetData = (BottomSheetModal as any).__setData;
+const setSheetData = (AppBottomSheet as any).__setData;
 
 const baseModel = {
   id: 1,

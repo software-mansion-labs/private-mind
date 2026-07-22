@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { ActionSheetIOS, Platform } from 'react-native';
 import { router } from 'expo-router';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { AppBottomSheetRef } from '../bottomSheets/AppBottomSheet';
 import { useChatActions } from '../../hooks/useChatActions';
 import { chatLabel } from '../../utils/chatLabel';
 import RenameChatModal from './RenameChatModal';
@@ -22,7 +22,7 @@ interface Options {
 
 export const useChatTitleMenu = ({ chatId, chatTitle }: Options) => {
   const [renameVisible, setRenameVisible] = useState(false);
-  const androidSheetRef = useRef<BottomSheetModal>(null);
+  const androidSheetRef = useRef<AppBottomSheetRef>(null);
 
   const menuTitle = getChatMenuTitle(
     chatLabel({ id: chatId, title: chatTitle })

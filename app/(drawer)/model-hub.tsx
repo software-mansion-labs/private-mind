@@ -6,10 +6,10 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
 import { useModelStore } from '../../store/modelStore';
 import FloatingActionButton from '../../components/model-hub/FloatingActionButton';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { AppBottomSheetRef } from '../../components/bottomSheets/AppBottomSheet';
 import AddModelSheet from '../../components/bottomSheets/AddModelSheet';
 import WarningSheet, {
-  WarningSheetData,
+  type WarningSheetData,
 } from '../../components/bottomSheets/WarningSheet';
 import ModelManagementSheet from '../../components/bottomSheets/ModelManagementSheet';
 import { useTheme } from '../../context/ThemeContext';
@@ -35,11 +35,10 @@ const ModelHubScreen = () => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const addModelSheetRef = useRef<BottomSheetModal | null>(null);
-  const wifiWarningSheetRef = useRef<BottomSheetModal<WarningSheetData> | null>(
-    null
-  );
-  const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
+  const addModelSheetRef = useRef<AppBottomSheetRef | null>(null);
+  const wifiWarningSheetRef =
+    useRef<AppBottomSheetRef<WarningSheetData> | null>(null);
+  const modelManagementSheetRef = useRef<AppBottomSheetRef<Model> | null>(null);
 
   const { models, removeModelFiles } = useModelStore();
   const { confirm, ConfirmElement } = useConfirm();

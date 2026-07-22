@@ -1,17 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
-import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
+import { View, StyleSheet, Platform, TextInput, ViewStyle } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import SearchIcon from '../../assets/icons/search.svg';
 import TextInputBorder from '../TextInputBorder';
+import { useExpandSheetForKeyboard } from './AppBottomSheet';
 
 interface Props {
   value: string;
   onChangeText: (text: string) => void;
   placeholder: string;
-  style?: any;
+  style?: ViewStyle;
 }
 
 const BottomSheetSearchInput = ({
@@ -23,6 +23,7 @@ const BottomSheetSearchInput = ({
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [active, setActive] = useState(false);
+  const expandForKeyboard = useExpandSheetForKeyboard();
 
   if (Platform.OS !== 'ios') {
     return null;
@@ -33,13 +34,16 @@ const BottomSheetSearchInput = ({
       <View style={styles.inputWrapper}>
         <TextInputBorder active={active} />
         <SearchIcon width={20} height={20} style={styles.searchIcon} />
-        <BottomSheetTextInput
+        <TextInput
           style={styles.input}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor={theme.text.defaultTertiary}
-          onFocus={() => setActive(true)}
+          onFocus={() => {
+            setActive(true);
+            expandForKeyboard?.();
+          }}
           onBlur={() => setActive(false)}
         />
       </View>

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { AppBottomSheetRef } from '../bottomSheets/AppBottomSheet';
+import type { BenchmarkResultData } from '../bottomSheets/BenchmarkResultSheet';
 import { useTheme } from '../../context/ThemeContext';
 import { useModelStore } from '../../store/modelStore';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
@@ -11,7 +12,7 @@ import { Theme } from '../../styles/colors';
 import { FlatList } from 'react-native-gesture-handler';
 
 interface Props {
-  modalRef: React.RefObject<BottomSheetModal | null>;
+  modalRef: React.RefObject<AppBottomSheetRef<BenchmarkResultData> | null>;
   benchmarkList: BenchmarkResult[];
 }
 

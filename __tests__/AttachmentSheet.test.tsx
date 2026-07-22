@@ -1,6 +1,6 @@
 import React, { createRef } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
-import type { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { AppBottomSheetRef } from '../components/bottomSheets/AppBottomSheet';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
@@ -15,7 +15,7 @@ import AttachmentSheet from '../components/bottomSheets/AttachmentSheet';
 import Toast from 'react-native-toast-message';
 
 const makeProps = (isVisionModel: boolean) => ({
-  bottomSheetModalRef: createRef<BottomSheetModal>(),
+  bottomSheetModalRef: createRef<AppBottomSheetRef>(),
   isVisionModel,
   onPickFromLibrary: jest.fn(),
   onPickFromCamera: jest.fn(),
