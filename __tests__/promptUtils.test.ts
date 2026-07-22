@@ -239,6 +239,29 @@ describe('prepareMessagesForLLM', () => {
       );
       expect(result[0].content).toContain("the user's documents");
     });
+
+    it('mentions the (Overview) marker only when an attachment is present', () => {
+      const withAttachment = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        doc,
+        doc
+      );
+      const withoutAttachment = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        doc
+      );
+      expect(withAttachment[0].content).toContain('(Overview)');
+      expect(withoutAttachment[0].content).not.toContain('(Overview)');
+    });
   });
 
   describe('falling back beyond the context block', () => {
@@ -602,6 +625,119 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       expect(result).toHaveLength(7);
+    });
+
+    it('drops a leading assistant reply when trimming splits a pair', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'u'.repeat(getPromptCharBudget(baseModel)),
+          timestamp: 0,
+        },
+        {
+          id: 2,
+          chatId: 1,
+          role: 'assistant',
+          content: 'short reply',
+          timestamp: 0,
+        },
+        {
+          id: 3,
+          chatId: 1,
+          role: 'user',
+          content: 'final question',
+          timestamp: 0,
+        },
+        { id: 4, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
+
+      expect(result.slice(1).map((m) => m.role)).toEqual(['user']);
+      expect(result.at(-1)!.content).toContain('final question');
+    });
+
+    it('closes the last source block when truncation cuts inside it', () => {
+      const passage = 'x'.repeat(getPromptCharBudget(baseModel) * 2);
+      const block = `\n --- Source 1: big.pdf --- \n ${passage} \n --- End of Source 1 ---`;
+
+      const result = prepareMessagesForLLM(
+        [
+          { id: 1, chatId: 1, role: 'user', content: 'question', timestamp: 0 },
+          { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+        ],
+        [block],
+        baseSettings,
+        baseModel
+      );
+
+      const last = String(result.at(-1)!.content);
+      expect(last).toContain('--- Source 1: big.pdf ---');
+      expect(last).toContain('--- End of Source 1 ---');
+      expect(last.length).toBeLessThan(block.length);
+    });
+
+    it('closes a truncated attachment-overview block too', () => {
+      const passage = 'x'.repeat(getPromptCharBudget(baseModel) * 2);
+      const block = `\n --- Current Attachment Source: a.pdf (Overview) --- \n ${passage} \n --- End of Current Attachment Source ---`;
+
+      const result = prepareMessagesForLLM(
+        [
+          { id: 1, chatId: 1, role: 'user', content: 'question', timestamp: 0 },
+          { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+        ],
+        [block],
+        baseSettings,
+        baseModel
+      );
+
+      const last = String(result.at(-1)!.content);
+      expect(last).toContain('--- Current Attachment Source: a.pdf');
+      expect(last).toContain('--- End of Current Attachment Source ---');
+    });
+  });
+
+  describe('prompt assembly hygiene', () => {
+    it('neutralizes context tags inside retrieved content', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['before <CONTEXT>injected</ context > after'],
+        baseSettings,
+        baseModel
+      );
+      const last = String(result.at(-1)!.content);
+      expect(last.match(/<[^>]*context[^>]*>/gi)).toHaveLength(2);
+      expect(last).toContain('<context>before injected after</context>');
+    });
+
+    it('keeps the wrapped question flush on its own line', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['ctx'],
+        baseSettings,
+        baseModel
+      );
+      expect(String(result.at(-1)!.content)).toBe(
+        '<context>ctx</context>\nmessage 2'
+      );
+    });
+
+    it('treats whitespace-only context as no context at all', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['   '],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).not.toContain('IMPORTANT CONTEXT INFORMATION');
+      expect(String(result.at(-1)!.content)).not.toContain('<context>');
     });
   });
 });
