@@ -2,14 +2,21 @@ import React, {
   type ReactNode,
   type ReactElement,
   type Ref,
+  createContext,
   forwardRef,
   useCallback,
+  useContext,
   useImperativeHandle,
   useMemo,
   useRef,
   useState,
 } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Keyboard, StyleSheet, View, useWindowDimensions } from 'react-native';
+import Animated, { runOnJS, useAnimatedStyle } from 'react-native-reanimated';
+import {
+  useGenericKeyboardHandler,
+  useReanimatedKeyboardAnimation,
+} from 'react-native-keyboard-controller';
 import {
   ModalBottomSheet,
   type Detent,
@@ -26,11 +33,17 @@ export interface AppBottomSheetRef<T = unknown> {
 
 type SnapPoint = number | `${number}%`;
 
+const ExpandForKeyboardContext = createContext<(() => void) | null>(null);
+
+export const useExpandSheetForKeyboard = () =>
+  useContext(ExpandForKeyboardContext);
+
 type Children<T> = ReactNode | ((state: { data?: T }) => ReactNode);
 
 interface Props<T> {
   snapPoints?: SnapPoint[];
   dynamic?: boolean;
+  keyboardAware?: boolean;
   onChange?: (index: number) => void;
   onDismiss?: () => void;
   backgroundColor?: string;
@@ -42,6 +55,7 @@ function AppBottomSheetInner<T>(
   {
     snapPoints,
     dynamic,
+    keyboardAware,
     onChange,
     onDismiss,
     backgroundColor,
@@ -57,6 +71,9 @@ function AppBottomSheetInner<T>(
   const [index, setIndex] = useState(0);
   const [data, setData] = useState<T | undefined>(undefined);
   const wasOpen = useRef(false);
+  const restoreIndex = useRef(OPEN_INDEX);
+
+  const { height: keyboardOffset } = useReanimatedKeyboardAnimation();
 
   const detents = useMemo<Detent[]>(() => {
     if (dynamic || !snapPoints || snapPoints.length === 0) {
@@ -69,6 +86,54 @@ function AppBottomSheetInner<T>(
       ),
     ];
   }, [dynamic, snapPoints, height]);
+
+  const expandsForKeyboard = Boolean(
+    keyboardAware && !dynamic && snapPoints?.length
+  );
+  const keyboardIndex = detents.length;
+
+  const resolvedDetents = useMemo<Detent[]>(
+    () => (expandsForKeyboard ? [...detents, height] : detents),
+    [expandsForKeyboard, detents, height]
+  );
+
+  const syncKeyboard = useCallback(
+    (visible: boolean) => {
+      if (!expandsForKeyboard) {
+        return;
+      }
+      setIndex((current) => {
+        if (visible) {
+          if (current === 0 || current === keyboardIndex) {
+            return current;
+          }
+          restoreIndex.current = current;
+          return keyboardIndex;
+        }
+        return current === keyboardIndex ? restoreIndex.current : current;
+      });
+    },
+    [expandsForKeyboard, keyboardIndex]
+  );
+
+  useGenericKeyboardHandler(
+    {
+      onStart: (event) => {
+        'worklet';
+        runOnJS(syncKeyboard)(event.height > 0);
+      },
+    },
+    [syncKeyboard]
+  );
+
+  const expandForKeyboard = useCallback(
+    () => syncKeyboard(true),
+    [syncKeyboard]
+  );
+
+  const keyboardPadding = useAnimatedStyle(() => ({
+    paddingBottom: keyboardAware ? -keyboardOffset.get() : 0,
+  }));
 
   useImperativeHandle(
     ref,
@@ -102,11 +167,14 @@ function AppBottomSheetInner<T>(
       if (next === 0 && wasOpen.current) {
         wasOpen.current = false;
         setData(undefined);
+        if (keyboardAware) {
+          Keyboard.dismiss();
+        }
         onChange?.(-1);
         onDismiss?.();
       }
     },
-    [onChange, onDismiss]
+    [keyboardAware, onChange, onDismiss]
   );
 
   const surface = useMemo(
@@ -134,7 +202,7 @@ function AppBottomSheetInner<T>(
 
   return (
     <ModalBottomSheet
-      detents={detents}
+      detents={resolvedDetents}
       index={index}
       onIndexChange={handleIndexChange}
       onSettle={handleSettle}
@@ -142,9 +210,16 @@ function AppBottomSheetInner<T>(
       scrimColor={theme.bg.overlay}
       surface={surface}
     >
-      <View style={dynamic ? styles.contentDynamic : styles.contentFill}>
-        {rendered}
-      </View>
+      <Animated.View
+        style={[
+          dynamic ? styles.contentDynamic : styles.contentFill,
+          keyboardPadding,
+        ]}
+      >
+        <ExpandForKeyboardContext.Provider value={expandForKeyboard}>
+          {rendered}
+        </ExpandForKeyboardContext.Provider>
+      </Animated.View>
     </ModalBottomSheet>
   );
 }

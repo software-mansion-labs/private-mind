@@ -36,6 +36,7 @@ const ModelSelectSheet = ({
     <AppBottomSheet
       ref={bottomSheetModalRef}
       snapPoints={['30%', '50%']}
+      keyboardAware
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
         onSheetStateChange?.(index >= 0);
@@ -58,6 +59,7 @@ const ModelSelectSheet = ({
           <FlatList
             data={filteredModels}
             keyExtractor={(item) => item.id.toString()}
+            keyboardShouldPersistTaps="handled"
             // only frist two styles appear to be forwarded, so the array is
             // nested to make all styles be part of the first item
             contentContainerStyle={[
