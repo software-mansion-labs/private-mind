@@ -373,8 +373,6 @@ export default function ChatScreen({
         chatBarInset={chatBarHeight}
       />
 
-      {/* Overlays the list instead of taking layout space, so messages scroll
-          underneath it and dissolve into the bottom fade. */}
       <Animated.View style={[styles.chatBarSticky, chatBarStickyStyle]}>
         <ChatBar
           chatId={chatId}
