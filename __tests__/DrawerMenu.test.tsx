@@ -46,10 +46,12 @@ const mockChats = [
 
 const mockRenameChat = jest.fn();
 const mockDeleteChat = jest.fn();
+let mockPhantomChat: { id: number } | null = null;
 jest.mock('../store/chatStore', () => ({
   useChatStore: jest.fn(() => ({
     chats: mockChats,
-    phantomChat: null,
+    phantomChat: mockPhantomChat,
+    getChatById: (id: number) => mockChats.find((chat) => chat.id === id),
     renameChat: mockRenameChat,
     deleteChat: mockDeleteChat,
   })),
@@ -90,6 +92,7 @@ const renderMenu = (props: Partial<MenuProps> = {}) =>
 beforeEach(() => {
   jest.clearAllMocks();
   mockPathname = '/';
+  mockPhantomChat = null;
   setPlatform('ios');
 });
 
@@ -175,6 +178,28 @@ describe('DrawerMenu — collapsed', () => {
 
     expect(mockStartPhantomChat).toHaveBeenCalledWith({}, 'replace');
     expect(onNavigate).toHaveBeenCalled();
+  });
+
+  it('only closes the drawer when already on the new chat screen', () => {
+    mockPhantomChat = { id: 4 };
+    mockPathname = '/chat/4';
+    const onNavigate = jest.fn();
+    renderMenu({ onNavigate });
+
+    fireEvent.press(screen.getByTestId('drawer-new-chat'));
+
+    expect(mockStartPhantomChat).not.toHaveBeenCalled();
+    expect(onNavigate).toHaveBeenCalled();
+  });
+
+  it('starts a phantom chat when a forked chat claimed the phantom id', () => {
+    mockPhantomChat = { id: 3 };
+    mockPathname = '/chat/3';
+    renderMenu();
+
+    fireEvent.press(screen.getByTestId('drawer-new-chat'));
+
+    expect(mockStartPhantomChat).toHaveBeenCalledWith({}, 'replace');
   });
 
   it('navigates to the chat when an item is pressed', () => {

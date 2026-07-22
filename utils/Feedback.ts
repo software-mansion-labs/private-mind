@@ -10,6 +10,7 @@ export class Feedback {
   static attach = () => Presets.dewdrop();
   static toggleOn = () => Presets.snap();
   static toggleOff = () => Presets.snap();
+  static longPress = () => Presets.bassDrop();
   static destructive = () => Presets.cleave();
 
   // Navigation — barely-there

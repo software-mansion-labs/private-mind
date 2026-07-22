@@ -405,6 +405,30 @@ describe('sendChatMessage', () => {
     expect(messagesBeforeGenerate[1].content).toBe('');
   });
 
+  it('replaces assistant placeholder with persisted message id after generation', async () => {
+    mockPersistMessage.mockResolvedValueOnce(41).mockResolvedValueOnce(42);
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('ping', 1, noSources, settings);
+
+    const messages = useLLMStore.getState().activeChatMessages;
+    expect(messages).toHaveLength(2);
+    expect(messages[0].id).toBe(41);
+    expect(messages[1]).toEqual(
+      expect.objectContaining({
+        id: 42,
+        role: 'assistant',
+        content: 'The answer is 42.',
+      })
+    );
+  });
+
   it('recovers gracefully when generation returns null', async () => {
     mockInstance.generate.mockResolvedValue(null);
     useLLMStore.setState({

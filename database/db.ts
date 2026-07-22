@@ -144,6 +144,9 @@ export const runMigrations = async (db: SQLiteDatabase) => {
   await db.runAsync(
     `DELETE FROM chatSources WHERE chatId NOT IN (SELECT id FROM chats) OR sourceId NOT IN (SELECT id FROM sources)`
   );
+  await db.runAsync(
+    `DELETE FROM chatBranches WHERE chatId NOT IN (SELECT id FROM chats) OR afterMessageId NOT IN (SELECT id FROM messages)`
+  );
 
   await initSourceLinkingBoundary(db);
 
@@ -279,6 +282,21 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       PRIMARY KEY (chatId, sourceId),
       FOREIGN KEY(chatId) REFERENCES chats(id) ON DELETE CASCADE,
       FOREIGN KEY(sourceId) REFERENCES sources(id) ON DELETE CASCADE
+    );
+  `);
+
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS chatBranches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      chatId INTEGER NOT NULL,
+      afterMessageId INTEGER NOT NULL,
+      sourceChatId INTEGER NOT NULL,
+      sourceMessageId INTEGER NOT NULL,
+      sourceChatTitle TEXT DEFAULT '',
+      sourceMessagePreview TEXT DEFAULT '',
+      createdAt timestamp DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(chatId) REFERENCES chats(id) ON DELETE CASCADE,
+      FOREIGN KEY(afterMessageId) REFERENCES messages(id) ON DELETE CASCADE
     );
   `);
 

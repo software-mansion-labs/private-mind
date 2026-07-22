@@ -96,11 +96,20 @@ const setLLMState = (state: MockLLMState) =>
     selector ? selector(state) : state
   );
 
+const baseMessage = {
+  id: 1,
+  role: 'assistant',
+  content: 'Hello world',
+  chatId: 1,
+  timestamp: 0,
+} as React.ComponentProps<typeof MessageItem>['message'];
+
 const renderItem = (
   props: Partial<React.ComponentProps<typeof MessageItem>> = {}
 ) =>
   render(
     <MessageItem
+      message={baseMessage}
       content="Hello world"
       role="assistant"
       isLastMessage={false}
