@@ -116,14 +116,6 @@ export default function ChatScreen({
   const { height: keyboardHeight, progress: keyboardProgress } =
     useReanimatedKeyboardAnimation();
   const insetsBottom = theme.insets.bottom;
-  const chatBarStickyStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateY:
-          keyboardHeight.value + keyboardProgress.value * insetsBottom,
-      },
-    ],
-  }));
 
   const { settings: chatSettings, setSetting } = useChatSettings(chatId);
 
@@ -141,6 +133,21 @@ export default function ChatScreen({
   const [modelSheetOpen, setModelSheetOpen] = useState(false);
   const [attachmentSheetOpen, setAttachmentSheetOpen] = useState(false);
   const overlayOpen = modelSheetOpen || attachmentSheetOpen;
+
+  const overlayProgress = useSharedValue(0);
+  useEffect(() => {
+    overlayProgress.set(withTiming(overlayOpen ? 1 : 0, { duration: 250 }));
+  }, [overlayOpen, overlayProgress]);
+
+  const chatBarStickyStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY:
+          (1 - overlayProgress.get()) *
+          (keyboardHeight.value + keyboardProgress.value * insetsBottom),
+      },
+    ],
+  }));
 
   const handlePresentModelSheet = useCallback(() => {
     Keyboard.dismiss();

@@ -5,6 +5,7 @@ import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import SearchIcon from '../../assets/icons/search.svg';
 import TextInputBorder from '../TextInputBorder';
+import { useExpandSheetForKeyboard } from './AppBottomSheet';
 
 interface Props {
   value: string;
@@ -22,6 +23,7 @@ const BottomSheetSearchInput = ({
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [active, setActive] = useState(false);
+  const expandForKeyboard = useExpandSheetForKeyboard();
 
   if (Platform.OS !== 'ios') {
     return null;
@@ -38,7 +40,10 @@ const BottomSheetSearchInput = ({
           onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor={theme.text.defaultTertiary}
-          onFocus={() => setActive(true)}
+          onFocus={() => {
+            setActive(true);
+            expandForKeyboard?.();
+          }}
           onBlur={() => setActive(false)}
         />
       </View>
