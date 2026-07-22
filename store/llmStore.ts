@@ -147,9 +147,9 @@ const updateChatStateForGeneration = (
     activeChatMessages?: Message[];
     userMessage?: Message;
     assistantPlaceholder?: Message;
+    assistantMessage?: Message;
     timeToFirstToken?: number;
     tokensPerSecond?: number;
-    finalAssistantMessage?: Partial<Message>;
   }
 ) => {
   switch (phase) {
@@ -182,7 +182,11 @@ const updateChatStateForGeneration = (
             index === state.activeChatMessages.length - 1
               ? {
                   ...msg,
-                  ...data.finalAssistantMessage,
+                  id: data.assistantMessage?.id ?? msg.id,
+                  content: data.assistantMessage?.content ?? msg.content,
+                  sourceDocuments:
+                    data.assistantMessage?.sourceDocuments ??
+                    msg.sourceDocuments,
                   timeToFirstToken: data.timeToFirstToken!,
                   tokensPerSecond: data.tokensPerSecond!,
                 }
@@ -492,7 +496,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           finalResponse,
           preferredSourceDocuments ?? []
         );
-        await persistMessage(db, {
+        const assistantMessageId = await persistMessage(db, {
           ...assistantPlaceholder,
           content: finalResponse,
           sourceDocuments: citedSourceDocuments,
@@ -502,12 +506,16 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
         if (get().activeChatId === chatId) {
           updateChatStateForGeneration(set, 'complete', {
-            timeToFirstToken: responsePerformance.timeToFirstToken,
-            tokensPerSecond: responsePerformance.tokensPerSecond,
-            finalAssistantMessage: {
+            assistantMessage: {
+              ...assistantPlaceholder,
+              id: assistantMessageId,
               content: finalResponse,
               sourceDocuments: citedSourceDocuments,
+              tokensPerSecond: responsePerformance.tokensPerSecond,
+              timeToFirstToken: responsePerformance.timeToFirstToken,
             },
+            timeToFirstToken: responsePerformance.timeToFirstToken,
+            tokensPerSecond: responsePerformance.tokensPerSecond,
           });
         } else {
           updateChatStateForGeneration(set, 'complete');
@@ -606,6 +614,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       set({
         isGenerating: false,
         isProcessingPrompt: false,
+        generatingForChatId: null,
       });
     }
   },

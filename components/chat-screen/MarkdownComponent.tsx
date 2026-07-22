@@ -89,17 +89,19 @@ const MarkdownComponent = memo(
           fontSize: baseFontSize - 1,
           color: baseColor,
           backgroundColor: isUser
-            ? 'rgba(255,255,255,0.2)'
-            : 'rgba(0,0,0,0.06)',
-          borderColor: isUser ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+            ? theme.bg.codeInlineStrong
+            : theme.bg.codeInline,
+          borderColor: isUser
+            ? theme.border.codeInlineStrong
+            : theme.border.codeInline,
         },
         codeBlock: {
           fontFamily: monoFont,
           fontSize: 13,
           color: baseColor,
           backgroundColor: isUser
-            ? 'rgba(255,255,255,0.12)'
-            : 'rgba(0,0,0,0.05)',
+            ? theme.bg.codeBlockStrong
+            : theme.bg.codeBlock,
           borderRadius: 10,
           padding: 14,
           marginTop: 8,

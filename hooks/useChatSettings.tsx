@@ -13,13 +13,15 @@ export default function useChatSettings(chatId: number | null) {
   const db = useSQLiteContext();
   const { getChatById, phantomChat } = useChatStore();
 
-  const isPhantomChat = chatId === phantomChat?.id;
   const chat: Chat | undefined = useMemo(() => {
-    return isPhantomChat ? phantomChat : getChatById(chatId as number);
-  }, [isPhantomChat, phantomChat, chatId, getChatById]);
+    const storedChat = getChatById(chatId as number);
+    return storedChat?.id === chatId ? storedChat : undefined;
+  }, [chatId, getChatById]);
+  const isPhantomChat = chatId === phantomChat?.id && !chat;
+  const currentChat = isPhantomChat ? phantomChat : chat;
 
   const [settings, setSettings] = useState<ChatSettingsState>({
-    title: chat?.title || '',
+    title: currentChat?.title || '',
     systemPrompt: '',
     thinkingEnabled: false,
   });
@@ -53,7 +55,7 @@ export default function useChatSettings(chatId: number | null) {
     return () => {
       isMounted = false;
     };
-  }, [db, chatId, phantomChat?.settings]);
+  }, [db, chatId, isPhantomChat, phantomChat?.settings]);
 
   const setSetting = (
     key: keyof ChatSettingsState,
@@ -62,5 +64,5 @@ export default function useChatSettings(chatId: number | null) {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
-  return { settings, setSetting, chat };
+  return { settings, setSetting, chat: currentChat };
 }

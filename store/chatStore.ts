@@ -12,6 +12,7 @@ import {
   ChatSettings,
   getChatSettings,
   setChatSettings,
+  forkChat,
 } from '../database/chatRepository';
 import {
   activateSource,
@@ -30,6 +31,10 @@ interface ChatStore {
   addChat: (title: string, modelId: number) => Promise<number | undefined>;
   renameChat: (id: number, newTitle: string) => Promise<void>;
   setChatModel: (id: number, modelId: number) => Promise<void>;
+  forkChat: (
+    originalChatId: number,
+    targetMessageId: number
+  ) => Promise<number | undefined>;
   deleteChat: (id: number, vectorStore?: OPSQLiteVectorStore) => Promise<void>;
   enableSource: (chatId: number, sourceId: number) => Promise<void>;
   initPhantomChat: (phantomChatId: number, model?: Model) => Promise<void>;
@@ -168,6 +173,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         chat.id === id ? { ...chat, modelId } : chat
       ),
     }));
+  },
+
+  forkChat: async (originalChatId: number, targetMessageId: number) => {
+    const db = get().db;
+    if (!db) return;
+
+    const newChatId = await forkChat(db, originalChatId, targetMessageId);
+    await get().loadChats();
+
+    return newChatId;
   },
 
   deleteChat: async (id: number, vectorStore?: OPSQLiteVectorStore) => {
