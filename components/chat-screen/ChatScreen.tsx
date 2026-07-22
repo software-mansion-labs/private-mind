@@ -133,7 +133,20 @@ export default function ChatScreen({
   // Shared values for KeyboardChatScrollView
   const extraContentPadding = useSharedValue(0);
   const blankSpace = useSharedValue(0);
-  const [chatBarSpacerHeight, setChatBarSpacerHeight] = useState(0);
+  const [chatBarHeight, setChatBarHeight] = useState(0);
+
+  const hasMessages = isLoading || messageHistory.length > 0;
+  const handleChatBarHeightChange = useCallback(
+    (h: number) => {
+      if (hasMessages) setChatBarHeight(h);
+    },
+    [hasMessages]
+  );
+  const handleBarGrow = useCallback(() => {
+    setTimeout(() => {
+      messagesRef.current?.scrollToEndIfAtBottom();
+    }, 100);
+  }, []);
 
   // Freeze the scroll view's layout whenever any overlay (model picker,
   // attachment sheet) is presented so keyboard dismiss → sheet open doesn't
@@ -357,42 +370,29 @@ export default function ChatScreen({
         isGenerating={isGenerating}
         bottomOffset={scrollBottomOffset}
         freeze={overlayOpen}
+        chatBarInset={chatBarHeight}
       />
 
-      <View
-        style={[
-          styles.chatBarSpacer,
-          chatBarSpacerHeight > 0 && { height: chatBarSpacerHeight },
-        ]}
-      >
-        <Animated.View style={[styles.chatBarSticky, chatBarStickyStyle]}>
-          <ChatBar
-            chatId={chatId}
-            onSend={handleSendMessage}
-            onSelectModel={handlePresentModelSheet}
-            onSelectPrompt={handleSelectPrompt}
-            ref={inputRef}
-            model={model}
-            isVisionModel={model?.vision === true}
-            extraContentPadding={extraContentPadding}
-            thinkingEnabled={chatSettings?.thinkingEnabled || false}
-            onThinkingToggle={handleThinkingToggle}
-            hasMessages={isLoading || messageHistory.length > 0}
-            onAttachmentSheetStateChange={setAttachmentSheetOpen}
-            onHeightChange={(h: number) => {
-              const hasMessages = isLoading || messageHistory.length > 0;
-              if (chatBarSpacerHeight === 0 && hasMessages) {
-                setChatBarSpacerHeight(h);
-              }
-            }}
-            onBarGrow={() => {
-              setTimeout(() => {
-                messagesRef.current?.scrollToEndIfAtBottom();
-              }, 100);
-            }}
-          />
-        </Animated.View>
-      </View>
+      {/* Overlays the list instead of taking layout space, so messages scroll
+          underneath it and dissolve into the bottom fade. */}
+      <Animated.View style={[styles.chatBarSticky, chatBarStickyStyle]}>
+        <ChatBar
+          chatId={chatId}
+          onSend={handleSendMessage}
+          onSelectModel={handlePresentModelSheet}
+          onSelectPrompt={handleSelectPrompt}
+          ref={inputRef}
+          model={model}
+          isVisionModel={model?.vision === true}
+          extraContentPadding={extraContentPadding}
+          thinkingEnabled={chatSettings?.thinkingEnabled || false}
+          onThinkingToggle={handleThinkingToggle}
+          hasMessages={hasMessages}
+          onAttachmentSheetStateChange={setAttachmentSheetOpen}
+          onHeightChange={handleChatBarHeightChange}
+          onBarGrow={handleBarGrow}
+        />
+      </Animated.View>
 
       <ModelSelectSheet
         bottomSheetModalRef={modelBottomSheetModalRef}
@@ -408,9 +408,6 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
-    },
-    chatBarSpacer: {
-      overflow: 'visible',
     },
     chatBarSticky: {
       position: 'absolute',

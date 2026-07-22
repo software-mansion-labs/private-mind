@@ -105,6 +105,11 @@ const ChatBar = ({
 
   const defaultBarHeight = useRef(0);
   const prevBarHeight = useRef(0);
+
+  // Inset the baseline was captured with. Checked in the layout handler, not
+  // an effect: onLayout fires first, so an effect-driven reset would lose the
+  // pass carrying the new height.
+  const baselineInset = useRef<number | null>(null);
   const textInputRef = useRef<RNTextInput>(null);
   // iOS-only: bump the TextInput key to force a remount when a prompt
   // suggestion is set programmatically. iOS doesn't re-fire onLayout
@@ -138,12 +143,19 @@ const ChatBar = ({
   const handleBarLayoutForPadding = useCallback(
     (e: { nativeEvent: { layout: { height: number } } }) => {
       const height = e.nativeEvent.layout.height;
+      const inset = theme.insets.bottom;
       // Only capture the default height once we're in the "with messages"
       // layout — otherwise the empty-state extras (WhatsNewCard, prompt
       // suggestions) would bake into the baseline and squeeze the scroll
-      // view once they disappear.
-      if (defaultBarHeight.current === 0 && hasMessages) {
+      // view once they disappear. Re-capture on inset changes (Android
+      // navigation mode, rotation), or the stale baseline reads the difference
+      // as "the bar grew".
+      if (
+        hasMessages &&
+        (defaultBarHeight.current === 0 || baselineInset.current !== inset)
+      ) {
         defaultBarHeight.current = height;
+        baselineInset.current = inset;
       }
       const baseline = defaultBarHeight.current || height;
       const delta = height - baseline;
@@ -153,14 +165,22 @@ const ChatBar = ({
           easing: BAR_GROW_EASING,
         })
       );
-      onHeightChange?.(height);
+      // Baseline, not live height — consumers must not follow the bar as it
+      // grows with typed lines; that is what extraContentPadding is for.
+      onHeightChange?.(baseline);
       const grew = height > prevBarHeight.current;
       prevBarHeight.current = height;
       if (delta > 0 && grew) {
         onBarGrow?.();
       }
     },
-    [extraContentPadding, onHeightChange, onBarGrow, hasMessages]
+    [
+      extraContentPadding,
+      onHeightChange,
+      onBarGrow,
+      hasMessages,
+      theme.insets.bottom,
+    ]
   );
 
   const {

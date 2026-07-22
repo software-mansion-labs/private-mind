@@ -28,10 +28,29 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import MessageItem from './MessageItem';
+import {
+  BOTTOM_FADE_RUNUP,
+  BOTTOM_FADE_SCALE,
+  EdgeFade,
+  TOP_FADE_HEIGHT,
+} from './EdgeFade';
 import { Message } from '../../database/chatRepository';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
+
+/**
+ * Height of the opaque system navigation bar the list paints behind. Android
+ * only — iOS's bottom inset is the home indicator, a thin overlay that must
+ * not be blocked out.
+ */
+const navBarInset = (theme: Theme) =>
+  Platform.OS === 'android' ? theme.insets.bottom : 0;
+
+const SEAM_OVERLAP = 1;
+
+/** Right-edge gap so the fades don't paint over the scroll indicator. */
+const SCROLL_INDICATOR_GUTTER = 12;
 
 export interface MessagesHandle {
   onMessageSent: () => void;
@@ -46,10 +65,9 @@ interface Props {
   /** Whether the LLM is currently streaming a response. */
   isGenerating: boolean;
   /**
-   * Distance between the bottom of the screen and the scroll view
-   * (ChatBar height + safe area). Passed to KeyboardChatScrollView's
-   * offset prop so it correctly calculates the keyboard push distance
-   * and doesn't overshoot on keyboard dismiss.
+   * KeyboardChatScrollView's offset, so it calculates the keyboard push
+   * distance without overshooting on dismiss. Empirically tuned — change it
+   * only against a keyboard open/close test.
    */
   bottomOffset: number;
   /**
@@ -58,6 +76,12 @@ interface Props {
    * is dismissed to make room for the sheet.
    */
   freeze?: boolean;
+  /**
+   * Height of the chat bar overlaying the bottom of the list. The scroll view
+   * runs full-screen so messages slide under the bar; this keeps the last
+   * message resting above it, and sizes the bottom fade.
+   */
+  chatBarInset: number;
   ref?: Ref<MessagesHandle>;
 }
 
@@ -68,6 +92,7 @@ const Messages = ({
   isGenerating,
   bottomOffset,
   freeze = false,
+  chatBarInset,
   ref,
 }: Props) => {
   const { theme } = useTheme();
@@ -97,6 +122,29 @@ const Messages = ({
           -extraContentPadding.value +
           keyboardHeight.value +
           keyboardProgress.value * insetsBottom,
+      },
+    ],
+  }));
+
+  const contentContainerStyle = useMemo(
+    () => [styles.contentContainer, { paddingBottom: chatBarInset + 8 }],
+    [styles.contentContainer, chatBarInset]
+  );
+  const scrollButtonStyle = useMemo(
+    () => [styles.scrollToBottomButtonContainer, { bottom: chatBarInset + 16 }],
+    [styles.scrollToBottomButtonContainer, chatBarInset]
+  );
+
+  const navInset = navBarInset(theme);
+  const bottomFadeAnimatedStyle = useAnimatedStyle(() => ({
+    height:
+      (chatBarInset + extraContentPadding.value + BOTTOM_FADE_RUNUP) *
+        BOTTOM_FADE_SCALE +
+      navInset,
+    transform: [
+      {
+        translateY:
+          keyboardHeight.value + keyboardProgress.value * insetsBottom,
       },
     ],
   }));
@@ -169,14 +217,14 @@ const Messages = ({
 
   const recomputeBlankSpace = useCallback(() => {
     if (!streamingActive.current) return;
-    const CONTAINER_PADDING = 16 + 8;
+    const CONTAINER_PADDING = 16 + 8 + chatBarInset;
     const raw =
       containerHeight.current -
       lastUserHeight.current -
       lastAssistantHeight.current -
       CONTAINER_PADDING;
     blankSpace.set(Math.max(0, raw));
-  }, [blankSpace]);
+  }, [blankSpace, chatBarInset]);
 
   useImperativeHandle(
     ref,
@@ -268,7 +316,7 @@ const Messages = ({
         // onContentSizeChange fires with just padding (~24px) before
         // the message items have laid out. Scrolling at that point is
         // a no-op since there's nothing to scroll to.
-        const CONTENT_PADDING = 24;
+        const CONTENT_PADDING = 24 + chatBarInset;
         if (h <= CONTENT_PADDING) return;
 
         hasScrolledToEnd.current = true;
@@ -325,8 +373,10 @@ const Messages = ({
         }
       }
     },
-    [opacity, blankSpace]
+    [opacity, blankSpace, chatBarInset]
   );
+
+  const hasMessages = chatHistory.length > 0;
 
   // Identify the last user and last assistant indices so we can wrap
   // those specific rows in onLayout measurement Views.
@@ -353,7 +403,7 @@ const Messages = ({
         freeze={freeze}
         applyWorkaroundForContentInsetHitTestBug
         keyboardShouldPersistTaps="never"
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={contentContainerStyle}
         onLayout={handleContainerLayout}
         onScroll={handleScroll}
         onContentSizeChange={handleContentSizeChange}
@@ -400,13 +450,18 @@ const Messages = ({
         })}
       </KeyboardChatScrollView>
 
-      {showScrollButton && (
+      {hasMessages && <EdgeFade edge="top" style={styles.topFade} />}
+      {hasMessages && (
         <Reanimated.View
-          style={[
-            styles.scrollToBottomButtonContainer,
-            scrollButtonAnimatedStyle,
-          ]}
+          style={[styles.bottomFade, bottomFadeAnimatedStyle]}
+          pointerEvents="none"
         >
+          <EdgeFade edge="bottom" style={styles.bottomFadeRamp} />
+          <View style={styles.bottomFadeSolid} />
+        </Reanimated.View>
+      )}
+      {showScrollButton && (
+        <Reanimated.View style={[scrollButtonStyle, scrollButtonAnimatedStyle]}>
           <TouchableOpacity
             style={styles.scrollToBottomButton}
             onPress={scrollToBottom}
@@ -426,8 +481,9 @@ const Messages = ({
 
 export default Messages;
 
-const createStyles = (theme: Theme) =>
-  StyleSheet.create({
+const createStyles = (theme: Theme) => {
+  const navInset = navBarInset(theme);
+  return StyleSheet.create({
     container: {
       flex: 1,
       width: '100%',
@@ -437,9 +493,36 @@ const createStyles = (theme: Theme) =>
       paddingTop: 16,
       paddingBottom: 8,
     },
+    topFade: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: SCROLL_INDICATOR_GUTTER,
+      height: TOP_FADE_HEIGHT,
+    },
+    bottomFade: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: SCROLL_INDICATOR_GUTTER,
+    },
+    bottomFadeRamp: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: navInset,
+    },
+    bottomFadeSolid: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: navInset && navInset + SEAM_OVERLAP,
+      backgroundColor: theme.bg.softPrimary,
+    },
     scrollToBottomButtonContainer: {
       position: 'absolute',
-      bottom: 16,
       right: 16,
     },
     scrollToBottomButton: {
@@ -456,3 +539,4 @@ const createStyles = (theme: Theme) =>
       elevation: 4,
     },
   });
+};
