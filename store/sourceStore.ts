@@ -37,7 +37,8 @@ interface SourceStore {
     vectorStore: OPSQLiteVectorStore,
     embeddings?: LFMEmbeddings | null,
     onProgress?: (progress: number) => void,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    preReadText?: string
   ) => Promise<{
     success: boolean;
     isEmpty?: boolean;
@@ -78,7 +79,8 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     vectorStore,
     embeddings,
     onProgress,
-    signal
+    signal,
+    preReadText
   ) => {
     const db = get().db;
     if (!db) return { success: false };
@@ -87,7 +89,8 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     set({ isReading: true });
 
     try {
-      const sourceTextContent = await readDocumentText(sourceUri, source.type);
+      const sourceTextContent =
+        preReadText ?? (await readDocumentText(sourceUri, source.type));
 
       if (!sourceTextContent || sourceTextContent.trim().length === 0) {
         const isScannedPdf = source.type.toLowerCase() === 'pdf';
