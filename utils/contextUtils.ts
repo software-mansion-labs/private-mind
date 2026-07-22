@@ -85,14 +85,16 @@ const joinGroupPassages = (group: DocumentGroup): string => {
   return stitched;
 };
 
+export const sourceBlock = (
+  index: number,
+  name: string,
+  passage: string
+): string =>
+  `\n --- Source ${index + 1}: ${name} --- \n ${passage} \n --- End of Source ${index + 1} ---`;
+
 export const formatContextChunks = (chunks: ContextChunk[]): string[] =>
-  groupChunksByDocument(chunks).map(
-    (group, index) =>
-      `\n --- Source ${index + 1}: ${
-        group.name
-      } --- \n ${joinGroupPassages(group)} \n --- End of Source ${
-        index + 1
-      } ---`
+  groupChunksByDocument(chunks).map((group, index) =>
+    sourceBlock(index, group.name, joinGroupPassages(group))
   );
 
 export const getSourceDocumentsFromChunks = (
