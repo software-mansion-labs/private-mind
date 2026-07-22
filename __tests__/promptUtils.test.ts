@@ -1,5 +1,10 @@
 import { prepareMessagesForLLM } from '../utils/promptUtils';
-import { Message, ChatSettings } from '../database/chatRepository';
+import { looksLikeNoAnswer } from '../utils/messageSources';
+import {
+  Message,
+  ChatSettings,
+  SourceDocument,
+} from '../database/chatRepository';
 import { Model } from '../database/modelRepository';
 import { getPromptCharBudget } from '../constants/context-window';
 
@@ -236,6 +241,51 @@ describe('prepareMessagesForLLM', () => {
     });
   });
 
+  describe('falling back beyond the context block', () => {
+    const web = [
+      { name: 'Oil prices', kind: 'web' as const, url: 'https://a.example/' },
+    ];
+    const doc = [{ documentId: 1, name: 'report.pdf' }];
+
+    const render = (sources?: SourceDocument[]) =>
+      String(
+        prepareMessagesForLLM(
+          makeMessages(2),
+          ['some context'],
+          baseSettings,
+          baseModel,
+          '',
+          undefined,
+          sources
+        )[0].content
+      );
+
+    it.each([
+      ['documents', doc, 'the sources contain no information'],
+      ['web results', web, 'the search results contain no information'],
+      ['a mix', [...doc, ...web], 'the sources contain no information'],
+    ])('states what is missing before allowing %s', (_label, sources, said) => {
+      const content = render(sources as SourceDocument[]);
+      expect(content).toContain(said);
+      expect(content.indexOf(said)).toBeLessThan(
+        content.indexOf('only then may you add what you know')
+      );
+    });
+
+    it('requires the model to mark its own knowledge as such', () => {
+      expect(render(doc)).toContain('marked as your own knowledge');
+    });
+
+    it('phrases the refusal so citation suppression recognises it', () => {
+      expect(looksLikeNoAnswer(render(doc))).toBe(true);
+      expect(looksLikeNoAnswer(render(web))).toBe(true);
+    });
+
+    it('states why an absent document cannot be answered about', () => {
+      expect(render(doc)).toContain('its text is not available to you');
+    });
+  });
+
   describe('event message filtering', () => {
     it('strips event messages from the output', () => {
       // Last item is the empty assistant placeholder (as per llmStore contract)
@@ -407,7 +457,7 @@ describe('prepareMessagesForLLM', () => {
         [{ documentId: 2, name: 'current.pdf' }]
       );
       const last = result[result.length - 1];
-      expect(last.content).toMatch(/Ignore any document mentioned earlier/i);
+      expect(last.content).toMatch(/about the just-attached document/i);
     });
 
     it('omits the grounding reminder when there is no attachment', () => {
@@ -419,9 +469,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       const last = result[result.length - 1];
-      expect(last.content).not.toMatch(
-        /Ignore any document mentioned earlier/i
-      );
+      expect(last.content).not.toMatch(/about the just-attached document/i);
     });
 
     it('combines context and /think token', () => {
