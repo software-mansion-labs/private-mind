@@ -1,4 +1,5 @@
 import { MIN_STITCH_OVERLAP, SOURCE_HEADER } from '../constants/retrieval';
+import type { SourceDocument } from '../database/chatRepository';
 
 export type ContextChunk = {
   document?: string;
@@ -7,13 +8,6 @@ export type ContextChunk = {
     documentId?: number;
     name?: string;
   };
-};
-
-export type SourceDocument = {
-  documentId?: number;
-  name: string;
-  passage?: string;
-  similarity?: number;
 };
 
 type FirstChunkSource = {
