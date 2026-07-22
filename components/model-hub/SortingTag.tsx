@@ -52,7 +52,7 @@ const createStyles = (theme: Theme, selected: boolean) =>
     },
     border: {
       pointerEvents: 'none',
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       borderRadius: 9999,
       borderWidth: selected ? 2 : 1,
       borderColor: selected ? theme.bg.strongPrimary : theme.border.soft,

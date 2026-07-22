@@ -1,5 +1,6 @@
 import React, { useCallback, useRef } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { BackHandler } from 'react-native';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
 import { useState } from 'react';
 import { useLLMStore } from '../../../store/llmStore';
@@ -7,6 +8,10 @@ import { useModelStore } from '../../../store/modelStore';
 import { Model } from '../../../database/modelRepository';
 import { useChatStore } from '../../../store/chatStore';
 import useChatHeader from '../../../hooks/useChatHeader';
+import {
+  CHAT_ENTRY_ANIMATION,
+  ChatEntryAnimation,
+} from '../../../constants/chat-route-params';
 
 export default function ChatScreenWrapper() {
   const { id, modelId } = useLocalSearchParams<{
@@ -21,16 +26,22 @@ export default function ChatScreenWrapper() {
 
 function ChatScreenInner() {
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
-  const { modelId }: { modelId: string } = useLocalSearchParams();
-  const { activeChatMessages, activeChatId, setActiveChatId } = useLLMStore();
+  const {
+    modelId,
+    entryAnimation,
+  }: { modelId: string; entryAnimation?: ChatEntryAnimation } =
+    useLocalSearchParams();
+  const { activeChatMessages, activeChatId } = useLLMStore();
   const { getModelById } = useModelStore();
   const { getChatById, setChatModel, loadChats, phantomChat } = useChatStore();
-  const chatId = parseInt(rawId);
+  const chatId = parseInt(rawId, 10);
   const chat = getChatById(chatId);
-  const isPhantom = phantomChat?.id === chatId;
+  const isPhantom = phantomChat?.id === chatId && !chat;
+  const shouldPlayBranchEntryAnimation =
+    entryAnimation === CHAT_ENTRY_ANIMATION.BranchCreated;
   const resolvedModelId = modelId ?? chat?.modelId;
   const resolvedModel = resolvedModelId
-    ? getModelById(parseInt(resolvedModelId.toString()))
+    ? getModelById(parseInt(resolvedModelId.toString(), 10))
     : undefined;
   const [model, setModel] = useState<Model | undefined>(resolvedModel);
   // Only show the loading/empty state on the very first mount for this
@@ -45,6 +56,7 @@ function ChatScreenInner() {
   );
 
   const isEmpty = !isLoading && activeChatMessages.length === 0;
+  const shouldExitOnBack = isPhantom && isEmpty;
   const openModelSheetRef = useRef<(() => void) | null>(null);
 
   const { MenuElements } = useChatHeader({
@@ -64,16 +76,52 @@ function ChatScreenInner() {
       // would retrigger an unwanted re-fetch on the previously-focused chat.
       const currentActiveId = useLLMStore.getState().activeChatId;
       if (currentActiveId === chatId) {
-        return;
+        return () => {
+          const snapshot = useLLMStore.getState();
+          const isGeneratingThisChat =
+            snapshot.generatingForChatId === chatId &&
+            (snapshot.isGenerating || snapshot.isProcessingPrompt);
+
+          if (isGeneratingThisChat) {
+            snapshot.interrupt();
+          }
+        };
       }
       const initChat = async () => {
         if (!isPhantom) setIsLoading(true);
-        await setActiveChatId(chatId);
+        await useLLMStore.getState().setActiveChatId(chatId);
         setIsLoading(false);
       };
 
       initChat();
+
+      return () => {
+        const snapshot = useLLMStore.getState();
+        const isGeneratingThisChat =
+          snapshot.generatingForChatId === chatId &&
+          (snapshot.isGenerating || snapshot.isProcessingPrompt);
+
+        if (isGeneratingThisChat) {
+          snapshot.interrupt();
+        }
+      };
     }, [chatId, isPhantom])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!shouldExitOnBack) return;
+
+      const backHandler = BackHandler.addEventListener(
+        'hardwareBackPress',
+        () => {
+          BackHandler.exitApp();
+          return true;
+        }
+      );
+
+      return () => backHandler.remove();
+    }, [shouldExitOnBack])
   );
 
   const handleSetModel = async (newModel: Model) => {
@@ -92,6 +140,7 @@ function ChatScreenInner() {
         model={model}
         selectModel={handleSetModel}
         openModelSheetRef={openModelSheetRef}
+        revealFromTop={shouldPlayBranchEntryAnimation}
       />
       {MenuElements}
     </>

@@ -77,6 +77,83 @@ describe('prepareMessagesForLLM', () => {
     });
   });
 
+  describe('global custom system prompt', () => {
+    it('appends the global custom prompt to the base system prompt', () => {
+      const messages = makeMessages(2);
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel,
+        'Always answer in Polish.'
+      );
+      expect(result[0].content).toContain(baseSettings.systemPrompt);
+      expect(result[0].content).toContain('Always answer in Polish.');
+    });
+
+    it('frames the custom prompt as silent guidance so the model does not parrot it', () => {
+      const messages = makeMessages(2);
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel,
+        'Always answer in Polish.'
+      );
+      expect(result[0].content).toMatch(/silently/i);
+      expect(result[0].content).toMatch(/never mention/i);
+      expect(result[0].content.indexOf('silently')).toBeLessThan(
+        result[0].content.indexOf('Always answer in Polish.')
+      );
+    });
+
+    it('keeps the base prompt unchanged when the global prompt is empty or whitespace', () => {
+      const messages = makeMessages(2);
+      const emptyResult = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel,
+        ''
+      );
+      const whitespaceResult = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel,
+        '   \n  '
+      );
+      expect(emptyResult[0].content).toBe(baseSettings.systemPrompt);
+      expect(whitespaceResult[0].content).toBe(baseSettings.systemPrompt);
+    });
+
+    it('uses the global prompt alone when the base system prompt is empty', () => {
+      const messages = makeMessages(2);
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        { ...baseSettings, systemPrompt: '' },
+        baseModel,
+        'Be concise.'
+      );
+      expect(result[0].content).toContain('Be concise.');
+    });
+
+    it('preserves the RAG grounding instructions alongside the global prompt', () => {
+      const messages = makeMessages(2);
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some context'],
+        baseSettings,
+        baseModel,
+        'Always answer in Polish.'
+      );
+      expect(result[0].content).toContain('You are a helpful assistant.');
+      expect(result[0].content).toContain('Always answer in Polish.');
+      expect(result[0].content).toContain('IMPORTANT CONTEXT INFORMATION');
+    });
+  });
+
   describe('event message filtering', () => {
     it('strips event messages from the output', () => {
       // Last item is the empty assistant placeholder (as per llmStore contract)

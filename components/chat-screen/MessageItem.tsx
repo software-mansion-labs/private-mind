@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Image } from 'react-native';
+import { View, StyleSheet, Text, Pressable, Image } from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import AnimatedChatLoading from './AnimatedChatLoading';
@@ -9,8 +9,17 @@ import { useLLMStore } from '../../store/llmStore';
 import { Theme } from '../../styles/colors';
 import ImageLightbox from './ImageLightbox';
 import AttachmentIcon from '../../assets/icons/attachment.svg';
+import CopyIcon from '../../assets/icons/copy.svg';
+import ForkIcon from '../../assets/icons/fork.svg';
+import MessageActionButton from './MessageActionButton';
+import {
+  MESSAGE_ACTION_ROW_HEIGHT,
+  SUPPORTS_USER_ACTION_MENU,
+} from '../../constants/chat-screen';
+import { Message } from '../../database/chatRepository';
 
 interface MessageItemProps {
+  message: Message;
   content: string;
   role: 'user' | 'assistant' | 'system' | 'event';
   modelName?: string;
@@ -19,6 +28,10 @@ interface MessageItemProps {
   isLastMessage: boolean;
   imagePath?: string;
   documentName?: string;
+  showActions?: boolean;
+  showForkAction?: boolean;
+  onCopy?: (message: Message) => void;
+  onFork?: (message: Message) => void;
 }
 
 const THINK_OPEN = '<think>';
@@ -55,6 +68,7 @@ const parseThinkingContent = (text: string) => {
 
 const MessageItem = memo(
   ({
+    message,
     content,
     modelName,
     role,
@@ -63,13 +77,34 @@ const MessageItem = memo(
     isLastMessage = false,
     imagePath,
     documentName,
+    showActions = false,
+    showForkAction = false,
+    onCopy,
+    onFork,
   }: MessageItemProps) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
-    const { isGenerating, isProcessingPrompt } = useLLMStore();
+    const isGenerating = useLLMStore((state) => state.isGenerating);
+    const isProcessingPrompt = useLLMStore((state) => state.isProcessingPrompt);
     const [lightboxVisible, setLightboxVisible] = useState(false);
 
     const contentParts = parseThinkingContent(content);
+    const actions = showActions ? (
+      <View style={styles.actionRow}>
+        <MessageActionButton
+          label="Copy"
+          icon={CopyIcon}
+          onPress={() => onCopy?.(message)}
+        />
+        {showForkAction && (
+          <MessageActionButton
+            label="Fork"
+            icon={ForkIcon}
+            onPress={() => onFork?.(message)}
+          />
+        )}
+      </View>
+    ) : null;
 
     return (
       <>
@@ -86,9 +121,9 @@ const MessageItem = memo(
           <View style={styles.userMessageGroup}>
             {imagePath && (
               <View style={styles.userBubble} testID="image-bubble">
-                <TouchableOpacity
+                <Pressable
                   onPress={() => setLightboxVisible(true)}
-                  activeOpacity={0.9}
+                  style={({ pressed }) => pressed && styles.imagePressed}
                 >
                   <Image
                     source={{ uri: imagePath }}
@@ -96,7 +131,7 @@ const MessageItem = memo(
                     resizeMode="cover"
                     testID="message-image"
                   />
-                </TouchableOpacity>
+                </Pressable>
                 <ImageLightbox
                   uri={imagePath}
                   visible={lightboxVisible}
@@ -121,7 +156,10 @@ const MessageItem = memo(
             {contentParts.normalContent.trim() && (
               <View style={styles.userBubble} testID="text-bubble">
                 <View style={styles.userMessageContent}>
-                  <Text style={styles.userText} selectable>
+                  <Text
+                    style={styles.userText}
+                    selectable={!SUPPORTS_USER_ACTION_MENU}
+                  >
                     {contentParts.normalContent}
                   </Text>
                 </View>
@@ -167,6 +205,7 @@ const MessageItem = memo(
                   {tokensPerSecond?.toFixed(2)} tok/s
                 </Text>
               )}
+              {actions}
             </View>
           </View>
         )}
@@ -262,5 +301,15 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.xxs,
       fontFamily: fontFamily.regular,
       color: theme.text.defaultTertiary,
+    },
+    actionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 4,
+      height: MESSAGE_ACTION_ROW_HEIGHT,
+    },
+    imagePressed: {
+      opacity: 0.9,
     },
   });

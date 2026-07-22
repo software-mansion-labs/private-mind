@@ -15,6 +15,7 @@ import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
 import { Feedback } from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
+import { useSettingsStore } from './settingsStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
 
 interface LLMStore {
@@ -115,6 +116,18 @@ const waitForModelLoad = async (get: () => LLMStore): Promise<void> => {
   }
 };
 
+const waitForSettingsHydration = async (): Promise<void> => {
+  if (useSettingsStore.getState().hasHydrated) return;
+  await new Promise<void>((resolve) => {
+    const unsubscribe = useSettingsStore.subscribe((state) => {
+      if (state.hasHydrated) {
+        unsubscribe();
+        resolve();
+      }
+    });
+  });
+};
+
 const updateChatStateForGeneration = (
   set: (
     partial: Partial<LLMStore> | ((state: LLMStore) => Partial<LLMStore>)
@@ -125,6 +138,7 @@ const updateChatStateForGeneration = (
     activeChatMessages?: Message[];
     userMessage?: Message;
     assistantPlaceholder?: Message;
+    assistantMessage?: Message;
     timeToFirstToken?: number;
     tokensPerSecond?: number;
   }
@@ -158,6 +172,8 @@ const updateChatStateForGeneration = (
             index === state.activeChatMessages.length - 1
               ? {
                   ...msg,
+                  id: data.assistantMessage?.id ?? msg.id,
+                  content: data.assistantMessage?.content ?? msg.content,
                   timeToFirstToken: data.timeToFirstToken!,
                   tokensPerSecond: data.tokensPerSecond!,
                 }
@@ -410,20 +426,22 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         activeChatMessages: updatedChatMessages,
       });
 
-      const messagesWithSystemPrompt = prepareMessagesForLLM(
-        get().activeChatMessages,
-        context,
-        settings,
-        currentModel
-      );
-
       await waitForModelLoad(get);
 
-      // Check if user interrupted during model loading
       if (!get().isProcessingPrompt) {
         updateChatStateForGeneration(set, 'failed');
         return;
       }
+
+      await waitForSettingsHydration();
+
+      const messagesWithSystemPrompt = prepareMessagesForLLM(
+        get().activeChatMessages,
+        context,
+        settings,
+        currentModel,
+        useSettingsStore.getState().customSystemPrompt
+      );
 
       // Set generation state and generate response
       updateChatStateForGeneration(set, 'generating');
@@ -431,7 +449,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         await generateLLMResponse(messagesWithSystemPrompt, get);
       // Handle successful response
       if (finalResponse) {
-        await persistMessage(db, {
+        const assistantMessageId = await persistMessage(db, {
           ...assistantPlaceholder,
           content: finalResponse,
           tokensPerSecond: responsePerformance.tokensPerSecond,
@@ -440,6 +458,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
         if (get().activeChatId === chatId) {
           updateChatStateForGeneration(set, 'complete', {
+            assistantMessage: {
+              ...assistantPlaceholder,
+              id: assistantMessageId,
+              content: finalResponse,
+              tokensPerSecond: responsePerformance.tokensPerSecond,
+              timeToFirstToken: responsePerformance.timeToFirstToken,
+            },
             timeToFirstToken: responsePerformance.timeToFirstToken,
             tokensPerSecond: responsePerformance.tokensPerSecond,
           });
@@ -540,6 +565,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       set({
         isGenerating: false,
         isProcessingPrompt: false,
+        generatingForChatId: null,
       });
     }
   },

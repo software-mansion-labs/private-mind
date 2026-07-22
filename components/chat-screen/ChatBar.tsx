@@ -153,14 +153,14 @@ const ChatBar = ({
           easing: BAR_GROW_EASING,
         })
       );
-      onHeightChange?.(height);
+      onHeightChange?.(hasMessages ? baseline : 0);
       const grew = height > prevBarHeight.current;
       prevBarHeight.current = height;
       if (delta > 0 && grew) {
         onBarGrow?.();
       }
     },
-    [extraContentPadding, onHeightChange, onBarGrow, hasMessages]
+    [extraContentPadding, onBarGrow, onHeightChange, hasMessages]
   );
 
   const {
