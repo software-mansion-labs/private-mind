@@ -34,12 +34,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import MessageItem from './MessageItem';
-import {
-  BOTTOM_FADE_RUNUP,
-  BOTTOM_FADE_SCALE,
-  EdgeFade,
-  TOP_FADE_HEIGHT,
-} from './EdgeFade';
+import { EdgeFade, FADE_HEIGHT } from './EdgeFade';
 import { Message, type ChatBranchMarker } from '../../database/chatRepository';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
@@ -256,12 +251,7 @@ const Messages = ({
     [styles.scrollToBottomButtonContainer, chatBarInset]
   );
 
-  const navInset = navBarInset(theme);
   const bottomFadeAnimatedStyle = useAnimatedStyle(() => ({
-    height:
-      (chatBarInset + extraContentPadding.value + BOTTOM_FADE_RUNUP) *
-        BOTTOM_FADE_SCALE +
-      navInset,
     transform: [
       {
         translateY:
@@ -780,15 +770,14 @@ const createStyles = (theme: Theme) => {
       top: 0,
       left: 0,
       right: SCROLL_INDICATOR_GUTTER,
-      height: TOP_FADE_HEIGHT,
+      height: FADE_HEIGHT,
     },
-    // Positions the ramp and the flat block below it, so the gutter set here
-    // applies to both.
     bottomFade: {
       position: 'absolute',
       bottom: 0,
       left: 0,
       right: SCROLL_INDICATOR_GUTTER,
+      height: FADE_HEIGHT + navInset,
     },
     // On Android the ramp must reach full opacity by the top of the navigation
     // bar, or text stays visible sliding under it. insets.bottom carries the
