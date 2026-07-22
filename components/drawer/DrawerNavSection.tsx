@@ -11,7 +11,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useTheme } from '../../context/ThemeContext';
-import { useChatStore } from '../../store/chatStore';
 import { useLLMStore } from '../../store/llmStore';
 import { startPhantomChat } from '../../utils/startPhantomChat';
 import { Theme } from '../../styles/colors';
@@ -19,6 +18,7 @@ import ChatIcon from '../../assets/icons/chat.svg';
 import ModelsIcon from '../../assets/icons/models.svg';
 import SettingsIcon from '../../assets/icons/settings.svg';
 import { DrawerItem } from './DrawerItem';
+import { useIsOnPhantomChat } from './useIsOnPhantomChat';
 import {
   EMPHASIZED_STANDARD,
   NAV_COLLAPSE_DURATION,
@@ -46,11 +46,9 @@ export const DrawerNavSection = ({
   const router = useRouter();
   const pathname = usePathname();
   const db = useSQLiteContext();
-  const { phantomChat } = useChatStore();
   const { interrupt } = useLLMStore();
 
-  const isOnPhantomChat =
-    phantomChat != null && pathname === `/chat/${phantomChat.id}`;
+  const isOnPhantomChat = useIsOnPhantomChat();
 
   const [rendered, setRendered] = useState(!collapsed);
   const progress = useSharedValue(collapsed ? 0 : 1);

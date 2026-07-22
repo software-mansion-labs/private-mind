@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   Text,
-  TouchableOpacity,
   Image,
   Pressable,
   Linking,
@@ -18,11 +17,19 @@ import { Theme } from '../../styles/colors';
 import ImageLightbox from './ImageLightbox';
 import AttachmentIcon from '../../assets/icons/attachment.svg';
 import BookIcon from '../../assets/icons/book-open.svg';
-import { type SourceDocument } from '../../database/chatRepository';
+import CopyIcon from '../../assets/icons/copy.svg';
+import ForkIcon from '../../assets/icons/fork.svg';
+import MessageActionButton from './MessageActionButton';
+import {
+  MESSAGE_ACTION_ROW_HEIGHT,
+  SUPPORTS_USER_ACTION_MENU,
+} from '../../constants/chat-screen';
+import { Message, type SourceDocument } from '../../database/chatRepository';
 import { stripCitations } from '../../utils/citations';
 import { sourceKey } from '../../utils/contextUtils';
 
 interface MessageItemProps {
+  message: Message;
   content: string;
   role: 'user' | 'assistant' | 'system' | 'event';
   modelName?: string;
@@ -34,6 +41,10 @@ interface MessageItemProps {
   sourceDocuments?: SourceDocument[];
   userQuestion?: string;
   onShowSources?: (sources: SourceDocument[], userQuestion?: string) => void;
+  showActions?: boolean;
+  showForkAction?: boolean;
+  onCopy?: (message: Message) => void;
+  onFork?: (message: Message) => void;
 }
 
 const THINK_OPEN = '<think>';
@@ -70,6 +81,7 @@ const parseThinkingContent = (text: string) => {
 
 const MessageItem = memo(
   ({
+    message,
     content,
     modelName,
     role,
@@ -81,6 +93,10 @@ const MessageItem = memo(
     sourceDocuments,
     userQuestion,
     onShowSources,
+    showActions = false,
+    showForkAction = false,
+    onCopy,
+    onFork,
   }: MessageItemProps) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
@@ -126,6 +142,23 @@ const MessageItem = memo(
       displayedSources.length > 0 &&
       !(isLastMessage && (isGenerating || isProcessingPrompt));
 
+    const actions = showActions ? (
+      <View style={styles.actionRow}>
+        <MessageActionButton
+          label="Copy"
+          icon={CopyIcon}
+          onPress={() => onCopy?.(message)}
+        />
+        {showForkAction && (
+          <MessageActionButton
+            label="Fork"
+            icon={ForkIcon}
+            onPress={() => onFork?.(message)}
+          />
+        )}
+      </View>
+    ) : null;
+
     return (
       <>
         {role === 'event' ? (
@@ -141,9 +174,9 @@ const MessageItem = memo(
           <View style={styles.userMessageGroup}>
             {imagePath && (
               <View style={styles.userBubble} testID="image-bubble">
-                <TouchableOpacity
+                <Pressable
                   onPress={() => setLightboxVisible(true)}
-                  activeOpacity={0.9}
+                  style={({ pressed }) => pressed && styles.imagePressed}
                 >
                   <Image
                     source={{ uri: imagePath }}
@@ -151,7 +184,7 @@ const MessageItem = memo(
                     resizeMode="cover"
                     testID="message-image"
                   />
-                </TouchableOpacity>
+                </Pressable>
                 <ImageLightbox
                   uri={imagePath}
                   visible={lightboxVisible}
@@ -176,7 +209,10 @@ const MessageItem = memo(
             {contentParts.normalContent.trim() && (
               <View style={styles.userBubble} testID="text-bubble">
                 <View style={styles.userMessageContent}>
-                  <Text style={styles.userText} selectable>
+                  <Text
+                    style={styles.userText}
+                    selectable={!SUPPORTS_USER_ACTION_MENU}
+                  >
                     {contentParts.normalContent}
                   </Text>
                 </View>
@@ -248,6 +284,7 @@ const MessageItem = memo(
                   </Pressable>
                 </View>
               )}
+              {actions}
             </View>
           </View>
         )}
@@ -366,5 +403,15 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.sm,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
+    },
+    actionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 4,
+      height: MESSAGE_ACTION_ROW_HEIGHT,
+    },
+    imagePressed: {
+      opacity: 0.9,
     },
   });

@@ -1,15 +1,14 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { usePathname } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useTheme } from '../../context/ThemeContext';
-import { useChatStore } from '../../store/chatStore';
 import { useLLMStore } from '../../store/llmStore';
 import { startPhantomChat } from '../../utils/startPhantomChat';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import ChatIcon from '../../assets/icons/chat.svg';
 import { DrawerItem } from './DrawerItem';
+import { useIsOnPhantomChat } from './useIsOnPhantomChat';
 
 interface Props {
   onNavigate?: () => void;
@@ -19,13 +18,10 @@ export const DrawerEmptyState = ({ onNavigate }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const pathname = usePathname();
   const db = useSQLiteContext();
-  const { phantomChat } = useChatStore();
   const { interrupt } = useLLMStore();
 
-  const isOnPhantomChat =
-    phantomChat != null && pathname === `/chat/${phantomChat.id}`;
+  const isOnPhantomChat = useIsOnPhantomChat();
 
   const startNewChat = () => {
     if (isOnPhantomChat) {
