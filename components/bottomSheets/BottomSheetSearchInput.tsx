@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, Platform, TextInput } from 'react-native';
+import { View, StyleSheet, Platform, TextInput, ViewStyle } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -11,7 +11,7 @@ interface Props {
   value: string;
   onChangeText: (text: string) => void;
   placeholder: string;
-  style?: any;
+  style?: ViewStyle;
 }
 
 const BottomSheetSearchInput = ({
