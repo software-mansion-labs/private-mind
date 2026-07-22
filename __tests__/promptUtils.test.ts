@@ -173,6 +173,69 @@ describe('prepareMessagesForLLM', () => {
     });
   });
 
+  describe('context described by source kind', () => {
+    const web = [
+      { name: 'Oil prices', kind: 'web' as const, url: 'https://a.example/' },
+    ];
+    const doc = [{ documentId: 1, name: 'report.pdf' }];
+
+    it('calls them web pages when the context came only from a search', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        web
+      );
+      expect(result[0].content).toContain('web pages');
+      expect(result[0].content).toContain('search results');
+      expect(result[0].content).not.toContain("the user's documents");
+      expect(result[0].content).not.toContain('"I don\'t know"');
+      expect(result[0].content).not.toContain('Do not answer about any');
+    });
+
+    it('keeps the document wording for local sources', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        doc
+      );
+      expect(result[0].content).toContain("the user's documents");
+      expect(result[0].content).not.toContain('web pages');
+    });
+
+    it('names both when a turn mixes documents and web results', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        [...doc, ...web]
+      );
+      expect(result[0].content).toContain("the user's documents");
+      expect(result[0].content).toContain('web pages');
+      expect(result[0].content).toContain('Do not answer about any document');
+    });
+
+    it('falls back to the document wording when no sources are recorded', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).toContain("the user's documents");
+    });
+  });
+
   describe('event message filtering', () => {
     it('strips event messages from the output', () => {
       // Last item is the empty assistant placeholder (as per llmStore contract)
