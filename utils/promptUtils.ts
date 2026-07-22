@@ -25,14 +25,11 @@ const getContextInstruction = (sources?: SourceDocument[]): string => {
   const scope = webOnly
     ? []
     : [
-        'Do not answer about any document that is not in the current <context> block, even if it appeared earlier in the chat.',
+        'Do not answer about any document that is not in the current <context> block, even if it appeared earlier in the chat — its text is not available to you.',
       ];
 
-  const fallback = webOnly
-    ? 'If the block does not contain the answer, say you could not find it in the search results.'
-    : hasWeb
-      ? 'If the block does not contain the answer, say you could not find it in the sources.'
-      : 'If the block does not contain the answer, say "I don\'t know".';
+  const missing = webOnly ? 'the search results' : 'the sources';
+  const fallback = `If the block does not contain the answer, say ${missing} contain no information about it; only then may you add what you know, marked as your own knowledge.`;
 
   const instruction = [
     'IMPORTANT CONTEXT INFORMATION:',
@@ -122,7 +119,7 @@ export const prepareMessagesForLLM = (
 
     const userText = lastMessage.content;
     const groundingHint = preferredSourceDocuments?.length
-      ? `\nAnswer only about the document(s) in the <context> above. Ignore any document mentioned earlier in the chat that is not in it.`
+      ? '\nThe question is about the just-attached document(s) in the <context> above.'
       : '';
     const wrap = (ctx: string) => `<context>${ctx}</context>${groundingHint}
         ${userText}
