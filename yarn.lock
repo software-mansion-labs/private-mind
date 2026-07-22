@@ -6467,6 +6467,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-web-browser@npm:~55.0.18":
+  version: 55.0.18
+  resolution: "expo-web-browser@npm:55.0.18"
+  peerDependencies:
+    expo: "*"
+    react-native: "*"
+  checksum: 6327b6461c6835d7a135f05962f02639d1f96f5b6d4a4e29268cabf6525ee4b24503ae5e7cf97880e47efb34c382444239b2f2173d0d8e4562ab84356096b09a
+  languageName: node
+  linkType: hard
+
 "expo@npm:^55.0.0":
   version: 55.0.27
   resolution: "expo@npm:55.0.27"
@@ -7330,7 +7340,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"invariant@npm:^2.2.4":
+"invariant@npm:2.2.4, invariant@npm:^2.2.4":
   version: 2.2.4
   resolution: "invariant@npm:2.2.4"
   dependencies:
@@ -10371,6 +10381,7 @@ __metadata:
     expo-sqlite: ~55.0.14
     expo-status-bar: ~55.0.5
     expo-store-review: ~55.0.12
+    expo-web-browser: ~55.0.18
     husky: ^9.1.7
     jest: ~29.7.0
     jest-expo: ~55.0.14
@@ -10398,6 +10409,7 @@ __metadata:
     react-native-svg: 15.15.3
     react-native-svg-transformer: ^1.5.0
     react-native-toast-message: ^2.3.0
+    react-native-webview: 13.16.0
     react-native-wheel-scrollview-picker: ^2.0.6
     react-native-worklets: 0.8.1
     react-test-renderer: 19.2.0
@@ -10821,6 +10833,19 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 313fe6e6b6437b2384d13f8987a141f9aa2df0930a668628276ed5ea990917e7d953dfa1584aa4991326ee9430baab1b735adf0b4a9861e702996617a583cc33
+  languageName: node
+  linkType: hard
+
+"react-native-webview@npm:13.16.0":
+  version: 13.16.0
+  resolution: "react-native-webview@npm:13.16.0"
+  dependencies:
+    escape-string-regexp: ^4.0.0
+    invariant: 2.2.4
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: a6fefc1bc977c1d121057c91696edb08ca170421a6d6ad5a9bcda279a20eca84aaaf553eca3a8e51b621e22fd473afa8bc994888807fb7db154eb9d7acb87928
   languageName: node
   linkType: hard
 
