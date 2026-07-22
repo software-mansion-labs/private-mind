@@ -41,13 +41,32 @@ jest.mock('../components/chat-screen/AnimatedChatLoading', () => () => null);
 import MessageItem from '../components/chat-screen/MessageItem';
 import { useLLMStore } from '../store/llmStore';
 
-const mockUseLLMStore = useLLMStore as jest.Mock;
+const mockUseLLMStore = useLLMStore as unknown as jest.Mock;
+
+// The component reads the store via selectors; make the mock honor them.
+const mockLLMState = (state: {
+  isGenerating?: boolean;
+  isProcessingPrompt?: boolean;
+}) =>
+  mockUseLLMStore.mockImplementation(
+    (selector?: (s: typeof state) => unknown) =>
+      selector ? selector(state) : state
+  );
+
+const baseMessage = {
+  id: 1,
+  role: 'assistant',
+  content: 'Hello world',
+  chatId: 1,
+  timestamp: 0,
+} as React.ComponentProps<typeof MessageItem>['message'];
 
 const renderItem = (
   props: Partial<React.ComponentProps<typeof MessageItem>> = {}
 ) =>
   render(
     <MessageItem
+      message={baseMessage}
       content="Hello world"
       role="assistant"
       isLastMessage={false}
@@ -56,7 +75,7 @@ const renderItem = (
   );
 
 beforeEach(() => {
-  mockUseLLMStore.mockReturnValue({ isGenerating: false });
+  mockLLMState({ isGenerating: false });
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -248,14 +267,14 @@ describe('thinking block parsing', () => {
   });
 
   it('marks ThinkingBlock as inProgress when last message and isGenerating and thinking is incomplete', () => {
-    mockUseLLMStore.mockReturnValue({ isGenerating: true });
+    mockLLMState({ isGenerating: true });
     renderItem({ content: '<think>working...', isLastMessage: true });
     const block = screen.getByTestId('thinking-block');
     expect(block.props.accessibilityLabel).toContain('inProgress:true');
   });
 
   it('does not mark ThinkingBlock as inProgress when not isLastMessage', () => {
-    mockUseLLMStore.mockReturnValue({ isGenerating: true });
+    mockLLMState({ isGenerating: true });
     renderItem({ content: '<think>working...', isLastMessage: false });
     const block = screen.getByTestId('thinking-block');
     expect(block.props.accessibilityLabel).toContain('inProgress:false');

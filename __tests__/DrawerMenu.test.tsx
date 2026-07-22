@@ -46,10 +46,12 @@ const mockChats = [
 
 const mockRenameChat = jest.fn();
 const mockDeleteChat = jest.fn();
+let mockPhantomChat: { id: number } | null = null;
 jest.mock('../store/chatStore', () => ({
   useChatStore: jest.fn(() => ({
     chats: mockChats,
-    phantomChat: null,
+    phantomChat: mockPhantomChat,
+    getChatById: (id: number) => mockChats.find((chat) => chat.id === id),
     renameChat: mockRenameChat,
     deleteChat: mockDeleteChat,
   })),
@@ -90,18 +92,19 @@ const renderMenu = (props: Partial<MenuProps> = {}) =>
 beforeEach(() => {
   jest.clearAllMocks();
   mockPathname = '/';
+  mockPhantomChat = null;
   setPlatform('ios');
 });
 
 afterEach(() => setPlatform(ORIGINAL_OS));
 
 describe('DrawerMenu — collapsed', () => {
-  it('keeps New chat, Models and App Info at the top', () => {
+  it('keeps New chat, Models and Settings at the top', () => {
     renderMenu();
 
     expect(screen.getByText('New chat')).toBeTruthy();
     expect(screen.getByText('Models')).toBeTruthy();
-    expect(screen.getByText('App Info')).toBeTruthy();
+    expect(screen.getByText('Settings')).toBeTruthy();
   });
 
   it('renders the app name and a search button instead of a search field', () => {
@@ -177,6 +180,28 @@ describe('DrawerMenu — collapsed', () => {
     expect(onNavigate).toHaveBeenCalled();
   });
 
+  it('only closes the drawer when already on the new chat screen', () => {
+    mockPhantomChat = { id: 4 };
+    mockPathname = '/chat/4';
+    const onNavigate = jest.fn();
+    renderMenu({ onNavigate });
+
+    fireEvent.press(screen.getByTestId('drawer-new-chat'));
+
+    expect(mockStartPhantomChat).not.toHaveBeenCalled();
+    expect(onNavigate).toHaveBeenCalled();
+  });
+
+  it('starts a phantom chat when a forked chat claimed the phantom id', () => {
+    mockPhantomChat = { id: 3 };
+    mockPathname = '/chat/3';
+    renderMenu();
+
+    fireEvent.press(screen.getByTestId('drawer-new-chat'));
+
+    expect(mockStartPhantomChat).toHaveBeenCalledWith({}, 'replace');
+  });
+
   it('navigates to the chat when an item is pressed', () => {
     renderMenu();
 
@@ -225,7 +250,7 @@ describe('DrawerMenu — searching', () => {
 
     expect(screen.getByText('New chat')).toBeTruthy();
     expect(screen.getByText('Models')).toBeTruthy();
-    expect(screen.getByText('App Info')).toBeTruthy();
+    expect(screen.getByText('Settings')).toBeTruthy();
   });
 
   it('hides the navigation items once a query is typed, leaving only results', () => {
@@ -233,7 +258,7 @@ describe('DrawerMenu — searching', () => {
 
     expect(screen.queryByText('New chat')).toBeNull();
     expect(screen.queryByText('Models')).toBeNull();
-    expect(screen.queryByText('App Info')).toBeNull();
+    expect(screen.queryByText('Settings')).toBeNull();
     expect(screen.getByText('Pizza recipe')).toBeTruthy();
   });
 

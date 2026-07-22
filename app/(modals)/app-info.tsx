@@ -5,6 +5,7 @@ import {
   Text,
   TouchableOpacity,
   Linking,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
@@ -130,8 +131,20 @@ export default function AppInfoScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.softPrimary }]}>
-      <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-        <ModalHeader title="App info" onClose={() => router.back()} />
+      <View
+        style={[
+          styles.container,
+          {
+            paddingTop: Platform.OS === 'ios' ? insets.top : 16,
+            paddingBottom: insets.bottom,
+          },
+        ]}
+      >
+        <ModalHeader
+          title="App info"
+          leftIcon="back"
+          onClose={() => router.back()}
+        />
         <AppHeader />
         <LearnMoreSection />
         <VersionInfo />
