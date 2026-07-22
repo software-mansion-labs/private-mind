@@ -52,6 +52,8 @@ import { SUPPORTS_USER_ACTION_MENU } from '../../constants/chat-screen';
 const navBarInset = (theme: Theme) =>
   Platform.OS === 'android' ? theme.insets.bottom : 0;
 
+const BOTTOM_FADE_HEIGHT = Platform.OS === 'ios' ? 64 : FADE_HEIGHT;
+
 const SEAM_OVERLAP = 1;
 
 /** Right-edge gap so the fades don't paint over the scroll indicator. */
@@ -772,12 +774,14 @@ const createStyles = (theme: Theme) => {
       right: SCROLL_INDICATOR_GUTTER,
       height: FADE_HEIGHT,
     },
+    // Positions the ramp and the nav bar block below it, so the gutter set
+    // here applies to both.
     bottomFade: {
       position: 'absolute',
       bottom: 0,
       left: 0,
       right: SCROLL_INDICATOR_GUTTER,
-      height: FADE_HEIGHT + navInset,
+      height: BOTTOM_FADE_HEIGHT + navInset,
     },
     // On Android the ramp must reach full opacity by the top of the navigation
     // bar, or text stays visible sliding under it. insets.bottom carries the
