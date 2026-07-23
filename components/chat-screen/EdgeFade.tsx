@@ -6,8 +6,9 @@ import { withAlpha } from '../../styles/colors';
 
 export const FADE_HEIGHT = 24;
 
-const LOCATIONS = [0, 0.25, 0.5, 0.75, 1] as const;
-const ALPHAS = [0, 0.156, 0.5, 0.844, 1] as const;
+const LOCATIONS: [number, number, ...number[]] = [0, 0.25, 0.5, 0.75, 1];
+const BOTTOM_ALPHAS = [0, 0.156, 0.5, 0.844, 1];
+const TOP_ALPHAS = [...BOTTOM_ALPHAS].reverse();
 
 interface Props {
   edge: 'top' | 'bottom';
@@ -18,14 +19,18 @@ export const EdgeFade = React.memo(({ edge, style }: Props) => {
   const { theme } = useTheme();
 
   const colors = useMemo(() => {
-    const ramp = edge === 'top' ? [...ALPHAS].reverse() : [...ALPHAS];
-    return ramp.map((alpha) => withAlpha(theme.bg.softPrimary, alpha));
+    const ramp = edge === 'top' ? TOP_ALPHAS : BOTTOM_ALPHAS;
+    return ramp.map((alpha) => withAlpha(theme.bg.softPrimary, alpha)) as [
+      string,
+      string,
+      ...string[],
+    ];
   }, [edge, theme.bg.softPrimary]);
 
   return (
     <LinearGradient
-      colors={colors as [string, string, ...string[]]}
-      locations={LOCATIONS as unknown as [number, number, ...number[]]}
+      colors={colors}
+      locations={LOCATIONS}
       style={style}
       pointerEvents="none"
     />
