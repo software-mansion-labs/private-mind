@@ -126,7 +126,6 @@ export const visibleAnswer = (answer: string): string => {
   while (open !== -1) {
     parts.push(answer.slice(cursor, open));
     const close = answer.indexOf(THINK_CLOSE, open + THINK_OPEN.length);
-    // Unterminated: the model is still reasoning, so nothing after it is visible.
     if (close === -1) return `${parts.join(' ')} `;
     cursor = close + THINK_CLOSE.length;
     open = answer.indexOf(THINK_OPEN, cursor);
@@ -136,9 +135,6 @@ export const visibleAnswer = (answer: string): string => {
   return parts.join(' ');
 };
 
-// Keep only the clauses the reply actually asserts; a negated clause names a topic
-// the source does not cover, and scoring it as overlap cites the source for the
-// opposite of what it says. English-only for now.
 const affirmativeAnswer = (visibleReply: string): string =>
   (visibleReply.match(CITATION_SENTENCE_PATTERN) ?? [visibleReply])
     .flatMap((sentence) => sentence.split(CLAUSE_SPLIT_PATTERN))
