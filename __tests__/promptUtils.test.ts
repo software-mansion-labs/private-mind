@@ -741,3 +741,67 @@ describe('prepareMessagesForLLM', () => {
     });
   });
 });
+
+describe('getPromptCharBudget script awareness', () => {
+  const english = 'plain ascii english text about concert tickets '.repeat(40);
+  const polish =
+    'Czy są jeszcze dostępne miejsca na festiwalu? Wstępna sprzedaż wejściówek ruszyła we wrześniu, a organizatorzy zapowiedzieli dodatkową pulę biletów. '.repeat(
+      12
+    );
+  const cjk = '東京で開催される音楽フェスティバルのチケット情報。'.repeat(60);
+
+  it('keeps the default budget for ascii text', () => {
+    expect(getPromptCharBudget(baseModel, english)).toBe(
+      getPromptCharBudget(baseModel)
+    );
+  });
+
+  it('shrinks the char budget for diacritic-heavy text', () => {
+    expect(getPromptCharBudget(baseModel, polish)).toBeLessThan(
+      getPromptCharBudget(baseModel, english)
+    );
+  });
+
+  it('shrinks it further for CJK text', () => {
+    expect(getPromptCharBudget(baseModel, cjk)).toBeLessThan(
+      getPromptCharBudget(baseModel, polish)
+    );
+  });
+});
+
+describe('prepareMessagesForLLM budget scale', () => {
+  it('keeps less history when the budget is scaled down for a retry', () => {
+    const messages: Message[] = [
+      ...Array.from({ length: 12 }, (_, i) => ({
+        id: i + 1,
+        chatId: 1,
+        role: (i % 2 === 0 ? 'user' : 'assistant') as Message['role'],
+        content: `turn ${i + 1} ${'padding words here '.repeat(20)}`,
+        timestamp: Date.now(),
+      })),
+      {
+        id: 99,
+        chatId: 1,
+        role: 'assistant' as Message['role'],
+        content: '',
+        timestamp: Date.now(),
+      },
+    ];
+
+    const full = prepareMessagesForLLM(messages, [], baseSettings, baseModel);
+    const half = prepareMessagesForLLM(
+      messages,
+      [],
+      baseSettings,
+      baseModel,
+      '',
+      undefined,
+      undefined,
+      0.5
+    );
+
+    expect(half.length).toBeLessThan(full.length);
+    expect(half[0].role).toBe('system');
+    expect(half.at(-1)!.content).toBe(full.at(-1)!.content);
+  });
+});
