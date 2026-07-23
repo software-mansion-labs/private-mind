@@ -16,13 +16,16 @@ export interface EnrichPageEvent {
 export const enrichWebResults = async (
   results: WebSearchResult[],
   topN: number = WEB_FETCH_TOP_N_CONTENT,
-  onPage?: (event: EnrichPageEvent) => void
+  onPage?: (event: EnrichPageEvent) => void,
+  skip?: ReadonlySet<string>
 ): Promise<WebSearchResult[]> => {
   if (topN <= 0 || results.length === 0) return results;
 
   return Promise.all(
     results.map(async (result, index) => {
-      if (index >= topN || result.content) return result;
+      if (index >= topN || result.content || skip?.has(result.url)) {
+        return result;
+      }
       try {
         const article = await extractArticle(
           result.url,
