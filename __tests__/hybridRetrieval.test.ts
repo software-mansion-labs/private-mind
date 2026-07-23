@@ -617,13 +617,6 @@ describe('HybridRetriever', () => {
     mockKeywordSearch.mockReset();
   });
 
-  // The cases above already exercise the hybrid logic; this proves the wrapper
-  // forwards 1:1 — query→prompt, store/embeddings from the constructor, and
-  // every option spread through. Inputs are chosen so the two options a naive
-  // spread could silently drop are load-bearing: sourceNamesById resolves doc
-  // 1's missing name, and attachmentSourceIds keeps doc 2's otherwise-gated
-  // low-similarity chunk and orders it first. A wrapper that dropped either
-  // would diverge from the raw call and fail the toEqual.
   it('forwards to hybridRetrieve 1:1, including attachmentSourceIds and sourceNamesById', async () => {
     const vectorResults = [
       {

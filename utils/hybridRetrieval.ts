@@ -426,13 +426,6 @@ export const hybridRetrieve = async ({
   );
 };
 
-// Thin app↔library boundary. Binds the store + embeddings so retrieval is a
-// single retrieve(query, options) call, making the hybrid testable and portable
-// in isolation. It forwards to hybridRetrieve unchanged — no interface, because
-// there is one implementation and one caller; extract a Retriever interface only
-// if a second retriever ever appears. Deliberately NOT `implements VectorStore`:
-// the hybrid is read-only and its ContextChunk output drops id/embedding, so
-// coercing to QueryResult would change retrieval results.
 export type HybridRetrieveOptions = Omit<
   HybridRetrieveParams,
   'prompt' | 'vectorStore' | 'embeddings'
