@@ -60,6 +60,16 @@ const heuristicExtractText = (html: string): string => {
     .trim();
 };
 
+const BOT_WALL_PHRASES =
+  /are you a robot|unusual traffic|verify you are human|verify you're human|checking your browser|enable javascript and cookies|just a moment|attention required|access denied|request blocked|pardon our interruption/i;
+
+const BOT_WALL_MAX_TEXT_CHARS = 800;
+
+export const looksLikeBotWall = (text: string, title?: string): boolean => {
+  if (title && BOT_WALL_PHRASES.test(title)) return true;
+  return text.length < BOT_WALL_MAX_TEXT_CHARS && BOT_WALL_PHRASES.test(text);
+};
+
 export const fetchHtml = async (
   url: string,
   timeoutMs: number = URL_FETCH_TIMEOUT_MS

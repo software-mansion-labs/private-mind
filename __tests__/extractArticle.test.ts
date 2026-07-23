@@ -1,4 +1,7 @@
-import { extractArticle } from '../utils/web/url/extractArticle';
+import {
+  extractArticle,
+  looksLikeBotWall,
+} from '../utils/web/url/extractArticle';
 
 const html = `
 <!DOCTYPE html>
@@ -59,5 +62,34 @@ describe('extractArticle', () => {
   it('throws on a non-ok response', async () => {
     global.fetch = mockFetch('', false) as unknown as typeof fetch;
     await expect(extractArticle('https://x.com')).rejects.toThrow();
+  });
+});
+
+describe('looksLikeBotWall', () => {
+  it('flags a challenge title regardless of body', () => {
+    expect(looksLikeBotWall('some body text', 'Just a moment...')).toBe(true);
+    expect(looksLikeBotWall('', 'Attention Required! | Cloudflare')).toBe(true);
+  });
+
+  it('flags a short challenge body', () => {
+    expect(
+      looksLikeBotWall(
+        'Please enable JavaScript and cookies to continue browsing this site.'
+      )
+    ).toBe(true);
+    expect(
+      looksLikeBotWall('Checking your browser before accessing example.com')
+    ).toBe(true);
+  });
+
+  it('does not flag a long article that merely mentions verification', () => {
+    const article = `Sites often show verify you are human prompts. ${'More analysis. '.repeat(80)}`;
+    expect(looksLikeBotWall(article, 'How bot detection works')).toBe(false);
+  });
+
+  it('does not flag ordinary short text', () => {
+    expect(looksLikeBotWall('Concert tickets on sale from May 10th.')).toBe(
+      false
+    );
   });
 });

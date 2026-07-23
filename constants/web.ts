@@ -3,6 +3,7 @@ export const WEB_SEARCH_TIMEOUT_MS = 8000;
 export const WEB_SNIPPET_MAX_CHARS = 500;
 export const WEB_FETCH_TOP_N_CONTENT = 2;
 export const WEB_CONTENT_MAX_CHARS = 1500;
+export const WEB_CONTENT_MIN_CHARS = 120;
 
 export const WEB_ADAPTIVE_ENRICH = true;
 export const WEB_ENRICH_WAVE_FIRST = 2;
