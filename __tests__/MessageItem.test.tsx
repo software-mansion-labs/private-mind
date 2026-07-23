@@ -1,8 +1,28 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
-import { lightTheme } from '../styles/colors';
+import type { ViewProps } from 'react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 
-// ── mocks ─────────────────────────────────────────────────────────────────────
+type MockLLMState = {
+  isGenerating: boolean;
+  isProcessingPrompt: boolean;
+};
+
+type MockLLMSelector<T = MockLLMState> = (state: MockLLMState) => T;
+
+type ThinkingBlockMockProps = {
+  content: string;
+  isComplete: boolean;
+  inProgress: boolean;
+};
+
+type BottomSheetModalHandle = {
+  present: jest.Mock;
+  dismiss: jest.Mock;
+};
+
+type BottomSheetModalMockProps = {
+  children?: React.ReactNode;
+};
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
@@ -14,7 +34,10 @@ jest.mock('../context/ThemeContext', () => ({
 }));
 
 jest.mock('../store/llmStore', () => ({
-  useLLMStore: jest.fn(() => ({ isGenerating: false })),
+  useLLMStore: jest.fn(<T,>(selector?: MockLLMSelector<T>) => {
+    const state = { isGenerating: false, isProcessingPrompt: false };
+    return selector ? selector(state) : state;
+  }),
 }));
 
 jest.mock('../components/chat-screen/MarkdownComponent', () => {
@@ -24,7 +47,7 @@ jest.mock('../components/chat-screen/MarkdownComponent', () => {
 
 jest.mock('../components/chat-screen/ThinkingBlock', () => {
   const { Text } = require('react-native');
-  return ({ content, isComplete, inProgress }: any) => (
+  return ({ content, isComplete, inProgress }: ThinkingBlockMockProps) => (
     <Text
       testID="thinking-block"
       accessibilityLabel={`complete:${isComplete} inProgress:${inProgress}`}
@@ -36,6 +59,31 @@ jest.mock('../components/chat-screen/ThinkingBlock', () => {
 
 jest.mock('../components/chat-screen/AnimatedChatLoading', () => () => null);
 
+jest.mock('@gorhom/bottom-sheet', () => {
+  const MockReact = require('react') as typeof import('react');
+  const { View } = require('react-native');
+
+  const BottomSheetModal = MockReact.forwardRef<
+    BottomSheetModalHandle,
+    BottomSheetModalMockProps
+  >(({ children }, ref) => {
+    MockReact.useImperativeHandle(ref, () => ({
+      present: jest.fn(),
+      dismiss: jest.fn(),
+    }));
+    return <View testID="bottom-sheet-modal">{children}</View>;
+  });
+
+  return {
+    BottomSheetBackdrop: (props: ViewProps) => <View {...props} />,
+    BottomSheetModal,
+    BottomSheetView: View,
+    BottomSheetScrollView: View,
+    useBottomSheet: () => ({ close: jest.fn() }),
+    useBottomSheetSpringConfigs: (config: unknown) => config,
+  };
+});
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 import MessageItem from '../components/chat-screen/MessageItem';
@@ -43,14 +91,9 @@ import { useLLMStore } from '../store/llmStore';
 
 const mockUseLLMStore = useLLMStore as unknown as jest.Mock;
 
-// The component reads the store via selectors; make the mock honor them.
-const mockLLMState = (state: {
-  isGenerating?: boolean;
-  isProcessingPrompt?: boolean;
-}) =>
-  mockUseLLMStore.mockImplementation(
-    (selector?: (s: typeof state) => unknown) =>
-      selector ? selector(state) : state
+const setLLMState = (state: MockLLMState) =>
+  mockUseLLMStore.mockImplementation((selector?: MockLLMSelector) =>
+    selector ? selector(state) : state
   );
 
 const baseMessage = {
@@ -75,7 +118,7 @@ const renderItem = (
   );
 
 beforeEach(() => {
-  mockLLMState({ isGenerating: false });
+  setLLMState({ isGenerating: false, isProcessingPrompt: false });
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -132,6 +175,67 @@ describe('assistant messages', () => {
   it('does not render metadata when tokensPerSecond is undefined', () => {
     renderItem({ role: 'assistant', content: 'Hi' });
     expect(screen.queryByText(/tps:/)).toBeNull();
+  });
+
+  it('hands deduplicated sources to onShowSources when the sources button is pressed', () => {
+    const onShowSources = jest.fn();
+    renderItem({
+      role: 'assistant',
+      content: 'The answer is in the report.',
+      userQuestion: 'What was the revenue?',
+      sourceDocuments: [
+        { documentId: 1, name: 'financial_report.pdf' },
+        { documentId: 1, name: 'financial_report.pdf' },
+      ],
+      onShowSources,
+    });
+
+    expect(screen.getByTestId('source-action-button')).toBeTruthy();
+    expect(screen.getByLabelText('Sources')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('source-action-button'));
+
+    expect(onShowSources).toHaveBeenCalledWith(
+      [{ documentId: 1, name: 'financial_report.pdf' }],
+      'What was the revenue?'
+    );
+  });
+
+  it('strips inline [n] citation markers from the rendered answer', () => {
+    renderItem({
+      role: 'assistant',
+      content: 'The total was 100 [1].',
+      sourceDocuments: [{ documentId: 1, name: 'financial_report.pdf' }],
+    });
+
+    const markdown = screen.getByTestId('markdown');
+    expect(markdown.props.children).toBe('The total was 100.');
+  });
+
+  it('does not render source actions for user messages', () => {
+    renderItem({
+      role: 'user',
+      content: 'Question',
+      sourceDocuments: [{ documentId: 1, name: 'notes.txt' }],
+    });
+
+    expect(screen.queryByTestId('source-action-button')).toBeNull();
+  });
+
+  it('does not render source actions while the last assistant message is generating', () => {
+    setLLMState({
+      isGenerating: true,
+      isProcessingPrompt: false,
+    });
+
+    renderItem({
+      role: 'assistant',
+      content: 'Streaming answer',
+      isLastMessage: true,
+      sourceDocuments: [{ documentId: 1, name: 'report.pdf' }],
+    });
+
+    expect(screen.queryByTestId('source-action-button')).toBeNull();
   });
 });
 
@@ -267,14 +371,14 @@ describe('thinking block parsing', () => {
   });
 
   it('marks ThinkingBlock as inProgress when last message and isGenerating and thinking is incomplete', () => {
-    mockLLMState({ isGenerating: true });
+    setLLMState({ isGenerating: true, isProcessingPrompt: false });
     renderItem({ content: '<think>working...', isLastMessage: true });
     const block = screen.getByTestId('thinking-block');
     expect(block.props.accessibilityLabel).toContain('inProgress:true');
   });
 
   it('does not mark ThinkingBlock as inProgress when not isLastMessage', () => {
-    mockLLMState({ isGenerating: true });
+    setLLMState({ isGenerating: true, isProcessingPrompt: false });
     renderItem({ content: '<think>working...', isLastMessage: false });
     const block = screen.getByTestId('thinking-block');
     expect(block.props.accessibilityLabel).toContain('inProgress:false');

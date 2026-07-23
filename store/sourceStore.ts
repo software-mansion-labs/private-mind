@@ -13,6 +13,13 @@ import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { RecursiveCharacterTextSplitter } from 'react-native-rag';
 import { readDocumentText } from '../utils/fileReaders';
 import { useLLMStore } from './llmStore';
+import { LFMEmbeddings } from '../utils/lfmEmbeddings';
+import {
+  MAX_SOURCE_CHUNKS,
+  MAX_SOURCE_TEXT_CHARS,
+  TEXT_SPLITTER_CHUNK_OVERLAP,
+  TEXT_SPLITTER_CHUNK_SIZE,
+} from '../constants/retrieval';
 
 interface SourceStore {
   sources: Source[];
@@ -23,16 +30,23 @@ interface SourceStore {
   addSource: (
     source: Omit<Source, 'id'>,
     sourceUri: string,
-    vectorStore: OPSQLiteVectorStore
-  ) => Promise<{ success: boolean; isEmpty?: boolean; sourceId?: number }>;
+    vectorStore: OPSQLiteVectorStore,
+    embeddings?: LFMEmbeddings | null,
+    onProgress?: (progress: number) => void,
+    signal?: AbortSignal
+  ) => Promise<{
+    success: boolean;
+    isEmpty?: boolean;
+    reason?: 'scanned_pdf';
+    sourceId?: number;
+    cancelled?: boolean;
+    truncated?: boolean;
+  }>;
   setSourceProcessing: (id: number, isProcessing: boolean) => void;
   deleteSource: (source: Source) => Promise<void>;
   renameSource: (id: number, newName: string) => Promise<void>;
   cleanupOrphanedSources: (vectorStore: OPSQLiteVectorStore) => Promise<void>;
 }
-
-const TEXT_SPLITTER_CHUNK_SIZE = 1000;
-const TEXT_SPLITTER_CHUNK_OVERLAP = 100;
 
 export const useSourceStore = create<SourceStore>((set, get) => ({
   sources: [],
@@ -54,7 +68,14 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     }
   },
 
-  addSource: async (source, sourceUri, vectorStore) => {
+  addSource: async (
+    source,
+    sourceUri,
+    vectorStore,
+    embeddings,
+    onProgress,
+    signal
+  ) => {
     const db = get().db;
     if (!db) return { success: false };
 
@@ -65,17 +86,33 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
       const sourceTextContent = await readDocumentText(sourceUri, source.type);
 
       if (!sourceTextContent || sourceTextContent.trim().length === 0) {
-        return { success: false, isEmpty: true };
+        const isScannedPdf = source.type.toLowerCase() === 'pdf';
+        return {
+          success: false,
+          isEmpty: true,
+          ...(isScannedPdf ? { reason: 'scanned_pdf' as const } : {}),
+        };
       }
 
       const tempSource: Source = { ...source, id: tempId, isProcessing: true };
       set((state) => ({ sources: [...state.sources, tempSource] }));
 
+      const cappedText =
+        sourceTextContent.length > MAX_SOURCE_TEXT_CHARS
+          ? sourceTextContent.slice(0, MAX_SOURCE_TEXT_CHARS)
+          : sourceTextContent;
+
       const textSplitter = new RecursiveCharacterTextSplitter({
         chunkSize: TEXT_SPLITTER_CHUNK_SIZE,
         chunkOverlap: TEXT_SPLITTER_CHUNK_OVERLAP,
       });
-      const chunks = await textSplitter.splitText(sourceTextContent);
+      const allChunks = await textSplitter.splitText(cappedText);
+      const truncated =
+        cappedText.length < sourceTextContent.length ||
+        allChunks.length > MAX_SOURCE_CHUNKS;
+      const chunks = truncated
+        ? allChunks.slice(0, MAX_SOURCE_CHUNKS)
+        : allChunks;
 
       const sourceId = await insertSource(db, {
         ...source,
@@ -88,11 +125,40 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         return { success: false };
       }
 
+      const rollbackPartialSource = async () => {
+        if (vectorStore) {
+          await vectorStore.delete({
+            predicate: (value) => value.metadata?.documentId === sourceId,
+          });
+        }
+        await deleteSource(db, sourceId);
+        set((state) => ({
+          sources: state.sources.filter((s) => s.id !== tempId),
+        }));
+      };
+
+      onProgress?.(0);
       for (let i = 0; i < chunks.length; i++) {
+        if (signal?.aborted) {
+          await rollbackPartialSource();
+          return { success: false, cancelled: true };
+        }
+        const embedding = embeddings
+          ? await embeddings.embedDocument(chunks[i]!)
+          : undefined;
+        const chunkId = `${sourceId}:${i}`;
         await vectorStore?.add({
+          id: chunkId,
           document: chunks[i]!,
-          metadata: { documentId: sourceId, isFirstChunk: i === 0 },
+          embedding,
+          metadata: {
+            documentId: sourceId,
+            name: source.name,
+            chunkIndex: i,
+            isFirstChunk: i === 0,
+          },
         });
+        onProgress?.((i + 1) / chunks.length);
       }
 
       set((state) => ({
@@ -102,7 +168,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
             : s
         ),
       }));
-      return { success: true, sourceId };
+      return { success: true, sourceId, truncated };
     } catch (e) {
       console.error(e);
       set((state) => ({

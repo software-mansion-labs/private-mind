@@ -1,4 +1,4 @@
-import { readDocumentText } from '../utils/fileReaders';
+import { readDocumentText, normalizePdfText } from '../utils/fileReaders';
 import { readPDF } from 'react-native-pdfium';
 import { File } from 'expo-file-system';
 
@@ -64,8 +64,6 @@ describe('readDocumentText — TXT / MD', () => {
 });
 
 describe('readDocumentText — HTML', () => {
-  const html = (body: string) => body;
-
   it('strips basic HTML tags', async () => {
     const mockText = jest.fn().mockResolvedValue('<p>Hello <b>world</b></p>');
     MockFile.mockImplementation(() => ({ text: mockText }));
@@ -132,10 +130,54 @@ describe('readDocumentText — unsupported types', () => {
       'Unsupported file type: docx'
     );
   });
+});
 
-  it('throws for csv', async () => {
-    await expect(readDocumentText('/data.csv', 'csv')).rejects.toThrow(
-      'Unsupported file type: csv'
+describe('readDocumentText — CSV', () => {
+  it('reads csv files as text via File.text()', async () => {
+    const mockText = jest.fn().mockResolvedValue('a,b,c\n1,2,3');
+    MockFile.mockImplementation(() => ({ text: mockText }));
+
+    const result = await readDocumentText('/data.csv', 'csv');
+    expect(MockFile).toHaveBeenCalledWith('/data.csv');
+    expect(result).toBe('a,b,c\n1,2,3');
+  });
+});
+
+describe('normalizePdfText', () => {
+  it('collapses single soft-wrap line breaks into spaces', () => {
+    expect(normalizePdfText('Sta\nwka\nVAT')).toBe('Sta wka VAT');
+  });
+
+  it('rejoins wrapped multi-word headers', () => {
+    expect(normalizePdfText('Cena brutto\n[zł]')).toBe('Cena brutto [zł]');
+  });
+
+  it('preserves paragraph breaks between blocks', () => {
+    expect(normalizePdfText('Block one.\n\n\nBlock two.')).toBe(
+      'Block one.\n\nBlock two.'
     );
+  });
+
+  it('rejoins a word split by a hyphen at a line break', () => {
+    expect(normalizePdfText('structured e-\ninvoice')).toBe(
+      'structured einvoice'
+    );
+  });
+
+  it('strips control and format characters (soft hyphen, zero-width space)', () => {
+    const softHyphen = String.fromCharCode(0x00ad);
+    const zeroWidth = String.fromCharCode(0x200b);
+    const input = `e${softHyphen}invoice a${zeroWidth}b`;
+    expect(normalizePdfText(input)).toBe('einvoice ab');
+  });
+
+  it('leaves already-clean single-line text unchanged', () => {
+    expect(normalizePdfText('extracted text')).toBe('extracted text');
+  });
+
+  it('applies to text read from a PDF', async () => {
+    mockReadPDF.mockResolvedValue('Cena brutto\n[zł]\nWartość');
+    const result = await readDocumentText('file:///doc.pdf', 'pdf');
+    expect(result).toBe('Cena brutto [zł] Wartość');
   });
 });

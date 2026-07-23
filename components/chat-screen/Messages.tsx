@@ -34,7 +34,12 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import MessageItem from './MessageItem';
-import { Message, type ChatBranchMarker } from '../../database/chatRepository';
+import SourcesSheet, { type SourcesSheetHandle } from './SourcesSheet';
+import {
+  Message,
+  SourceDocument,
+  type ChatBranchMarker,
+} from '../../database/chatRepository';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import { Feedback } from '../../utils/Feedback';
@@ -150,6 +155,13 @@ const Messages = ({
   );
   const lastScrollOffset = useRef(0);
   const lastLayoutHeight = useRef(0);
+  const sourcesSheetRef = useRef<SourcesSheetHandle>(null);
+
+  const handleShowSources = useCallback(
+    (sources: SourceDocument[], question?: string) =>
+      sourcesSheetRef.current?.present(sources, question),
+    []
+  );
 
   // v0-style initial scroll: hide the view until we've snapped to
   // the bottom, then fade in so the user never sees content flying by.
@@ -552,6 +564,18 @@ const Messages = ({
     [blankSpace, closeUserActionMenu, scheduleInitialScrollToEnd]
   );
 
+  // Citations are highlighted against the preceding user question.
+  const questionForAssistantAt = useMemo(() => {
+    const questions: (string | undefined)[] = new Array(chatHistory.length);
+    let lastUserContent: string | undefined;
+    for (let i = 0; i < chatHistory.length; i += 1) {
+      const message = chatHistory[i];
+      if (message.role === 'user') lastUserContent = message.content;
+      questions[i] = message.role === 'assistant' ? lastUserContent : undefined;
+    }
+    return questions;
+  }, [chatHistory]);
+
   // Identify the last user and last assistant indices so we can wrap
   // those specific rows in onLayout measurement Views.
   let lastUserIndex = -1;
@@ -587,6 +611,7 @@ const Messages = ({
       >
         {chatHistory.map((message, index) => {
           const isLastMessage = index === chatHistory.length - 1;
+          const userQuestion = questionForAssistantAt[index];
           // Streaming assistant placeholder has id: -1 until persisted; fall
           // back to role+index for that single in-flight row.
           const key =
@@ -618,6 +643,9 @@ const Messages = ({
                 isLastMessage={isLastMessage}
                 imagePath={message.imagePath}
                 documentName={message.documentName}
+                sourceDocuments={message.sourceDocuments}
+                userQuestion={userQuestion}
+                onShowSources={handleShowSources}
                 showActions={showActions}
                 showForkAction={showForkAction}
                 onCopy={handleCopyMessage}
@@ -699,6 +727,8 @@ const Messages = ({
           </Pressable>
         </Reanimated.View>
       )}
+
+      <SourcesSheet ref={sourcesSheetRef} />
     </Reanimated.View>
   );
 };
