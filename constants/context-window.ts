@@ -1,6 +1,11 @@
 import { type Model } from '../database/modelRepository';
 
 const CHARS_PER_TOKEN = 3;
+const CHARS_PER_TOKEN_DIACRITIC = 2.2;
+const CHARS_PER_TOKEN_CJK = 1.5;
+const SAMPLE_MAX_CHARS = 8000;
+const DIACRITIC_MIN_RATIO = 0.02;
+const CJK_MIN_RATIO = 0.2;
 
 const DEFAULT_CONTEXT_WINDOW_TOKENS = 2048;
 
@@ -22,10 +27,23 @@ export const getContextWindowTokens = (model: Model): number =>
   (model.family ? CONTEXT_WINDOW_TOKENS_BY_FAMILY[model.family] : undefined) ??
   DEFAULT_CONTEXT_WINDOW_TOKENS;
 
-export const getPromptCharBudget = (model: Model): number => {
+const charsPerToken = (sample?: string): number => {
+  const slice = sample?.slice(0, SAMPLE_MAX_CHARS) ?? '';
+  if (!slice) return CHARS_PER_TOKEN;
+  const cjk =
+    slice.match(/[\u3000-\u30ff\u3400-\u9fff\uac00-\ud7af]/g)?.length ?? 0;
+  if (cjk / slice.length >= CJK_MIN_RATIO) return CHARS_PER_TOKEN_CJK;
+  // eslint-disable-next-line no-control-regex
+  const nonAscii = slice.match(/[^\x00-\x7f]/g)?.length ?? 0;
+  return nonAscii / slice.length >= DIACRITIC_MIN_RATIO
+    ? CHARS_PER_TOKEN_DIACRITIC
+    : CHARS_PER_TOKEN;
+};
+
+export const getPromptCharBudget = (model: Model, sample?: string): number => {
   const promptTokenBudget = Math.max(
     0,
     getContextWindowTokens(model) - GENERATION_RESERVE_TOKENS
   );
-  return promptTokenBudget * CHARS_PER_TOKEN;
+  return Math.floor(promptTokenBudget * charsPerToken(sample));
 };

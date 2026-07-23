@@ -64,7 +64,8 @@ export const prepareMessagesForLLM = (
   model: Model,
   customSystemPrompt: string = '',
   preferredSourceDocuments?: SourceDocument[],
-  sourceDocuments?: SourceDocument[]
+  sourceDocuments?: SourceDocument[],
+  budgetScale: number = 1
 ): ExecutorchMessage[] => {
   const hasContext = context.some((chunk) => chunk.trim().length > 0);
 
@@ -120,7 +121,15 @@ export const prepareMessagesForLLM = (
     lastMessage.content += ' /no_think';
   }
 
-  const budgetChars = getPromptCharBudget(model);
+  const sample = [
+    ...context,
+    ...messagesWithSystemPrompt.map((msg) =>
+      typeof msg.content === 'string' ? msg.content : ''
+    ),
+  ].join(' ');
+  const budgetChars = Math.floor(
+    getPromptCharBudget(model, sample) * budgetScale
+  );
   const systemChars = messagesWithSystemPrompt[0].content.length;
 
   if (hasContext) {

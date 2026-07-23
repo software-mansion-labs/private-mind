@@ -488,8 +488,31 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       // Set generation state and generate response
       updateChatStateForGeneration(set, 'generating');
+      let generation: Awaited<ReturnType<typeof generateLLMResponse>>;
+      try {
+        generation = await generateLLMResponse(messagesWithSystemPrompt, get);
+      } catch (error) {
+        console.warn(
+          'Chat generation failed, retrying with a reduced prompt',
+          error
+        );
+        updateChatStateForGeneration(set, 'generating');
+        generation = await generateLLMResponse(
+          prepareMessagesForLLM(
+            get().activeChatMessages,
+            context,
+            settings,
+            currentModel,
+            useSettingsStore.getState().customSystemPrompt,
+            preferredSourceDocuments,
+            sourceDocuments,
+            0.5
+          ),
+          get
+        );
+      }
       const { response: finalResponse, performance: responsePerformance } =
-        await generateLLMResponse(messagesWithSystemPrompt, get);
+        generation;
       // Handle successful response
       if (finalResponse) {
         const citedSourceDocuments = pickCitationsByAnswer(
