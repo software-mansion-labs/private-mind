@@ -7,6 +7,7 @@ import {
   getChatMessages,
   Message,
   persistMessage,
+  SourceDocument,
 } from '../database/chatRepository';
 import DeviceInfo from 'react-native-device-info';
 import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
@@ -15,10 +16,14 @@ import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
 import { Feedback } from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
+import {
+  pickCitationsByAnswer,
+  restrictCitationsToContext,
+} from '../utils/messageSources';
 import { useSettingsStore } from './settingsStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
 
-interface LLMStore {
+export interface LLMStore {
   isLoading: boolean;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -39,7 +44,11 @@ interface LLMStore {
   sendChatMessage: (
     newMessage: string,
     chatId: number,
-    context: string[],
+    buildSources: () => Promise<{
+      context: string[];
+      sourceDocuments?: SourceDocument[];
+      preferredSourceDocuments?: SourceDocument[];
+    }>,
     settings: ChatSettings,
     imagePath?: string,
     documentName?: string
@@ -88,7 +97,7 @@ const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
   if (Platform.OS !== 'ios') {
     return { start: () => {}, stop: () => {} };
   }
-  let trackerId: number;
+  let trackerId: ReturnType<typeof setInterval>;
   return {
     start: () => {
       trackerId = setInterval(async () => {
@@ -148,6 +157,7 @@ const updateChatStateForGeneration = (
       set({
         isProcessingPrompt: true,
         generatingForChatId: data?.chatId,
+        ...(data?.chatId !== undefined ? { activeChatId: data.chatId } : {}),
         activeChatMessages: data?.activeChatMessages,
       });
       break;
@@ -174,6 +184,9 @@ const updateChatStateForGeneration = (
                   ...msg,
                   id: data.assistantMessage?.id ?? msg.id,
                   content: data.assistantMessage?.content ?? msg.content,
+                  sourceDocuments:
+                    data.assistantMessage?.sourceDocuments ??
+                    msg.sourceDocuments,
                   timeToFirstToken: data.timeToFirstToken!,
                   tokensPerSecond: data.tokensPerSecond!,
                 }
@@ -233,7 +246,7 @@ const generateLLMResponse = async (
           content: [
             { type: 'image' },
             { type: 'text', text: msg.content as string },
-          ] as any,
+          ] as unknown as string,
         }
       : msg
   );
@@ -386,7 +399,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   sendChatMessage: async (
     newMessage,
     chatId,
-    context,
+    buildSources,
     settings,
     imagePath,
     documentName
@@ -397,34 +410,50 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       return;
     }
 
+    const tempUserId = -Date.now();
+    const userMessage: Message = {
+      id: tempUserId,
+      role: 'user',
+      content: newMessage,
+      chatId,
+      timestamp: Date.now(),
+      imagePath,
+      documentName,
+    };
+    const assistantPlaceholder: Message = {
+      role: 'assistant',
+      content: '',
+      modelName: currentModel.modelName,
+      chatId: chatId,
+      timestamp: Date.now(),
+      id: -1,
+    };
+
+    updateChatStateForGeneration(set, 'start', {
+      chatId,
+      activeChatMessages: [
+        ...activeChatMessages,
+        userMessage,
+        assistantPlaceholder,
+      ],
+    });
+
     try {
-      const userMessage: Omit<Message, 'id'> = {
+      const userMessageId = await persistMessage(db, {
         role: 'user',
         content: newMessage,
         chatId,
-        timestamp: Date.now(),
         imagePath,
         documentName,
-      };
-      const assistantPlaceholder: Message = {
-        role: 'assistant',
-        content: '',
-        modelName: currentModel.modelName,
-        chatId: chatId,
-        timestamp: Date.now(),
-        id: -1,
-      };
-      const userMessageId = await persistMessage(db, userMessage);
-      const updatedChatMessages = [
-        ...activeChatMessages,
-        { ...userMessage, id: userMessageId },
-        assistantPlaceholder,
-      ];
-
-      updateChatStateForGeneration(set, 'start', {
-        chatId,
-        activeChatMessages: updatedChatMessages,
       });
+      set((state) => ({
+        activeChatMessages: state.activeChatMessages.map((msg) =>
+          msg.id === tempUserId ? { ...msg, id: userMessageId } : msg
+        ),
+      }));
+
+      const { context, sourceDocuments, preferredSourceDocuments } =
+        await buildSources();
 
       await waitForModelLoad(get);
 
@@ -440,18 +469,61 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         context,
         settings,
         currentModel,
-        useSettingsStore.getState().customSystemPrompt
+        useSettingsStore.getState().customSystemPrompt,
+        preferredSourceDocuments,
+        sourceDocuments
+      );
+
+      const lastPreparedMessage = messagesWithSystemPrompt.at(-1);
+      const lastPreparedContent =
+        typeof lastPreparedMessage?.content === 'string'
+          ? lastPreparedMessage.content
+          : JSON.stringify(lastPreparedMessage?.content ?? '');
+
+      const seenSourceDocuments = restrictCitationsToContext(
+        sourceDocuments ?? [],
+        lastPreparedContent,
+        preferredSourceDocuments ?? []
       );
 
       // Set generation state and generate response
       updateChatStateForGeneration(set, 'generating');
+      let generation: Awaited<ReturnType<typeof generateLLMResponse>>;
+      try {
+        generation = await generateLLMResponse(messagesWithSystemPrompt, get);
+      } catch (error) {
+        console.warn(
+          'Chat generation failed, retrying with a reduced prompt',
+          error
+        );
+        updateChatStateForGeneration(set, 'generating');
+        generation = await generateLLMResponse(
+          prepareMessagesForLLM(
+            get().activeChatMessages,
+            context,
+            settings,
+            currentModel,
+            useSettingsStore.getState().customSystemPrompt,
+            preferredSourceDocuments,
+            sourceDocuments,
+            0.5
+          ),
+          get
+        );
+      }
       const { response: finalResponse, performance: responsePerformance } =
-        await generateLLMResponse(messagesWithSystemPrompt, get);
+        generation;
       // Handle successful response
       if (finalResponse) {
+        const citedSourceDocuments = pickCitationsByAnswer(
+          seenSourceDocuments,
+          finalResponse,
+          preferredSourceDocuments ?? []
+        );
         const assistantMessageId = await persistMessage(db, {
           ...assistantPlaceholder,
           content: finalResponse,
+          sourceDocuments: citedSourceDocuments,
           tokensPerSecond: responsePerformance.tokensPerSecond,
           timeToFirstToken: responsePerformance.timeToFirstToken,
         });
@@ -462,6 +534,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               ...assistantPlaceholder,
               id: assistantMessageId,
               content: finalResponse,
+              sourceDocuments: citedSourceDocuments,
               tokensPerSecond: responsePerformance.tokensPerSecond,
               timeToFirstToken: responsePerformance.timeToFirstToken,
             },
@@ -548,7 +621,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         tokensGenerated: llmInstance.getGeneratedTokenCount(),
         peakMemory: runPeakMemory,
       };
-    } catch (e) {
+    } catch {
       memoryTracker.stop();
     } finally {
       set({ isGenerating: false, isBenchmarking: false });

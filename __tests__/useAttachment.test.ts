@@ -7,10 +7,12 @@ jest.mock('react-native-image-picker', () => ({
 jest.mock('expo-document-picker', () => ({
   getDocumentAsync: jest.fn(),
 }));
+const mockCleanupOrphanedSources = jest.fn();
 jest.mock('../store/sourceStore', () => ({
   useSourceStore: {
     getState: jest.fn(() => ({
       addSource: jest.fn(),
+      cleanupOrphanedSources: mockCleanupOrphanedSources,
     })),
   },
 }));
@@ -27,12 +29,25 @@ jest.mock('react-native-toast-message', () => ({
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useAttachment } from '../hooks/useAttachment';
+import { useEmbeddingModelStore } from '../store/embeddingModelStore';
 
 const mockLaunchImageLibrary = launchImageLibrary as jest.Mock;
 const mockLaunchCamera = launchCamera as jest.Mock;
 const mockGetDocumentAsync = DocumentPicker.getDocumentAsync as jest.Mock;
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  useEmbeddingModelStore.setState({ status: 'ready', progress: 1 });
+});
+
+const createDeferred = <T>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve;
+  });
+
+  return { promise, resolve };
+};
 
 describe('useAttachment', () => {
   it('initializes with empty attachments', () => {
@@ -85,7 +100,10 @@ describe('useAttachment', () => {
       .fn()
       .mockResolvedValue({ success: true, sourceId: 42 });
     const { useSourceStore } = require('../store/sourceStore');
-    useSourceStore.getState.mockReturnValue({ addSource: mockAddSource });
+    useSourceStore.getState.mockReturnValue({
+      addSource: mockAddSource,
+      cleanupOrphanedSources: mockCleanupOrphanedSources,
+    });
 
     const { result } = renderHook(() => useAttachment());
     await act(async () => {
@@ -97,6 +115,125 @@ describe('useAttachment', () => {
     expect(att.type).toBe('document');
     expect(att.sourceId).toBe(42);
     expect(att.status).toBe('ready');
+  });
+
+  describe('abandoned source cleanup', () => {
+    const pickReadyDocument = async () => {
+      mockGetDocumentAsync.mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: 'file://doc.txt', name: 'doc.txt', size: 100 }],
+      });
+      const { useSourceStore } = require('../store/sourceStore');
+      useSourceStore.getState.mockReturnValue({
+        addSource: jest.fn().mockResolvedValue({ success: true, sourceId: 42 }),
+        cleanupOrphanedSources: mockCleanupOrphanedSources,
+      });
+
+      const view = renderHook(() => useAttachment());
+      await act(async () => {
+        await view.result.current.pickDocument();
+      });
+      mockCleanupOrphanedSources.mockClear();
+      return view;
+    };
+
+    it('sweeps when an embedded document is removed before it is ever sent', async () => {
+      const { result } = await pickReadyDocument();
+
+      act(() => {
+        result.current.removeAttachment(result.current.attachments[0].id);
+      });
+
+      expect(mockCleanupOrphanedSources).toHaveBeenCalledTimes(1);
+    });
+
+    it('sweeps when the screen unmounts with the document still attached', async () => {
+      const { unmount } = await pickReadyDocument();
+
+      unmount();
+
+      expect(mockCleanupOrphanedSources).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not sweep on send, when the source is about to be linked to the chat', async () => {
+      const { result } = await pickReadyDocument();
+
+      act(() => {
+        result.current.clearAll({ cleanupSources: false });
+      });
+
+      expect(mockCleanupOrphanedSources).not.toHaveBeenCalled();
+    });
+
+    it('does not sweep when a plain image is removed', async () => {
+      mockLaunchImageLibrary.mockResolvedValue({
+        assets: [{ uri: 'file://photo.jpg' }],
+      });
+      const { result } = renderHook(() => useAttachment());
+      await act(async () => {
+        await result.current.pickFromLibrary();
+      });
+      mockCleanupOrphanedSources.mockClear();
+
+      act(() => {
+        result.current.removeAttachment(result.current.attachments[0].id);
+      });
+
+      expect(mockCleanupOrphanedSources).not.toHaveBeenCalled();
+    });
+  });
+
+  it('ignores a stale document result when a second document replaces it', async () => {
+    const firstSource = createDeferred<{
+      success: boolean;
+      sourceId: number;
+    }>();
+    const secondSource = createDeferred<{
+      success: boolean;
+      sourceId: number;
+    }>();
+    const mockAddSource = jest
+      .fn()
+      .mockReturnValueOnce(firstSource.promise)
+      .mockReturnValueOnce(secondSource.promise);
+    const { useSourceStore } = require('../store/sourceStore');
+    useSourceStore.getState.mockReturnValue({
+      addSource: mockAddSource,
+      cleanupOrphanedSources: mockCleanupOrphanedSources,
+    });
+    mockGetDocumentAsync
+      .mockResolvedValueOnce({
+        canceled: false,
+        assets: [{ uri: 'file://first.pdf', name: 'first.pdf', size: 100 }],
+      })
+      .mockResolvedValueOnce({
+        canceled: false,
+        assets: [{ uri: 'file://second.pdf', name: 'second.pdf', size: 100 }],
+      });
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { result } = renderHook(() => useAttachment());
+    let firstPick!: Promise<void>;
+    let secondPick!: Promise<void>;
+
+    await act(async () => {
+      firstPick = result.current.pickDocument();
+    });
+    await act(async () => {
+      secondPick = result.current.pickDocument();
+    });
+    await act(async () => {
+      secondSource.resolve({ success: true, sourceId: 2 });
+      await secondPick;
+    });
+    await act(async () => {
+      firstSource.resolve({ success: true, sourceId: 1 });
+      await firstPick;
+    });
+
+    expect(result.current.attachments).toHaveLength(1);
+    expect(result.current.attachments[0].name).toBe('second.pdf');
+    expect(result.current.attachments[0].sourceId).toBe(2);
   });
 
   it('removeAttachment removes by id', async () => {
@@ -178,7 +315,10 @@ describe('useAttachment', () => {
         .fn()
         .mockResolvedValue({ success: true, sourceId: 7 });
       const { useSourceStore } = require('../store/sourceStore');
-      useSourceStore.getState.mockReturnValue({ addSource: mockAddSource });
+      useSourceStore.getState.mockReturnValue({
+        addSource: mockAddSource,
+        cleanupOrphanedSources: mockCleanupOrphanedSources,
+      });
 
       const { result } = renderHook(() => useAttachment());
       await act(async () => {
@@ -192,7 +332,7 @@ describe('useAttachment', () => {
       expect(result.current.attachments[0].type).toBe('document');
     });
 
-    it('picking an image after a document cleans up the orphaned source', async () => {
+    it('picking an image after a document does not clean up sources during attachment replacement', async () => {
       mockGetDocumentAsync.mockResolvedValue({
         canceled: false,
         assets: [{ uri: 'file://doc.txt', name: 'doc.txt', size: 100 }],
@@ -222,7 +362,7 @@ describe('useAttachment', () => {
 
       expect(result.current.attachments).toHaveLength(1);
       expect(result.current.attachments[0].type).toBe('image');
-      expect(mockCleanup).toHaveBeenCalled();
+      expect(mockCleanup).not.toHaveBeenCalled();
     });
 
     it('addPastedAttachment replaces an existing image', () => {

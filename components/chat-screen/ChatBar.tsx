@@ -23,12 +23,16 @@ import Animated, {
 } from 'react-native-reanimated';
 import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
 import AttachmentSheet from '../bottomSheets/AttachmentSheet';
+import EmbeddingDownloadSheet from '../bottomSheets/EmbeddingDownloadSheet';
 import { useAttachment, Attachment } from '../../hooks/useAttachment';
 import { Model } from '../../database/modelRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useLLMStore } from '../../store/llmStore';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
+import LinkIcon from '../../assets/icons/link-alt.svg';
+import { detectUrls } from '../../utils/web/url/urlDetection';
+import { hostname } from '../../utils/web/webResultsToContext';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
@@ -53,7 +57,6 @@ interface Props {
   onSelectModel: () => void;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
-    clear: () => void;
     setInput: (text: string) => void;
   }>;
   model: Model | undefined;
@@ -94,9 +97,13 @@ const ChatBar = ({
   const {
     attachments,
     sheetRef,
+    embeddingDownloadSheetRef,
     pickFromLibrary,
     pickFromCamera,
     pickDocument,
+    addUrlSource,
+    downloadModelAndContinue,
+    markDownloadSheetClosed,
     removeAttachment,
     clearAll,
     openSheet,
@@ -116,15 +123,6 @@ const ChatBar = ({
   useImperativeHandle(
     ref,
     () => ({
-      clear: () => {
-        setUserInput('');
-        clearAll();
-        extraContentPadding.set(0);
-        if (Platform.OS === 'ios') {
-          textInputRef.current?.setNativeProps({ text: ' ' });
-          textInputRef.current?.setNativeProps({ text: '' });
-        }
-      },
       setInput: (text: string) => {
         setUserInput(text);
         if (Platform.OS === 'ios') {
@@ -132,7 +130,7 @@ const ChatBar = ({
         }
       },
     }),
-    [clearAll, extraContentPadding]
+    []
   );
 
   const handleBarLayoutForPadding = useCallback(
@@ -184,6 +182,23 @@ const ChatBar = ({
 
   const imageAttachment = attachments.find((a) => a.type === 'image');
   const hasLoadingAttachment = attachments.some((a) => a.status === 'loading');
+
+  const detectedUrl = useMemo(
+    () => detectUrls(userInput)[0] ?? null,
+    [userInput]
+  );
+  const showIndexChip =
+    !!detectedUrl && !attachments.some((a) => a.type === 'document');
+  const handleIndexUrl = useCallback(() => {
+    if (!detectedUrl) return;
+    addUrlSource(detectedUrl);
+    setUserInput((prev) =>
+      prev
+        .replace(detectedUrl, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+    );
+  }, [detectedUrl, addUrlSource]);
 
   const handleSend = useCallback(() => {
     if (hasLoadingAttachment) return;
@@ -313,6 +328,22 @@ const ChatBar = ({
             </View>
           )}
           <View style={styles.inputContainer}>
+            {showIndexChip && (
+              <TouchableOpacity
+                style={styles.indexUrlChip}
+                onPress={handleIndexUrl}
+                testID="index-url-chip"
+              >
+                <LinkIcon
+                  width={16}
+                  height={16}
+                  style={{ color: theme.text.onChatBar }}
+                />
+                <Text style={styles.indexUrlChipText} numberOfLines={1}>
+                  Index {hostname(detectedUrl!)}
+                </Text>
+              </TouchableOpacity>
+            )}
             {attachments.length > 0 && (
               <View style={[styles.previewRow, { marginBottom: 8 }]}>
                 {attachments.map((attachment) => (
@@ -364,6 +395,11 @@ const ChatBar = ({
             onPickFromCamera={pickFromCamera}
             onPickDocument={pickDocument}
             onSheetStateChange={onAttachmentSheetStateChange}
+          />
+          <EmbeddingDownloadSheet
+            bottomSheetModalRef={embeddingDownloadSheetRef}
+            onDownload={downloadModelAndContinue}
+            onDismiss={markDownloadSheetClosed}
           />
         </>
       )}
@@ -429,5 +465,24 @@ const createStyles = (theme: Theme) =>
     previewRow: {
       flexDirection: 'row',
       gap: 8,
+    },
+    indexUrlChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 6,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 9999,
+      borderWidth: 1,
+      borderColor: theme.text.onChatBar,
+      marginBottom: 8,
+      maxWidth: '100%',
+    },
+    indexUrlChipText: {
+      color: theme.text.onChatBar,
+      fontSize: fontSizes.sm,
+      fontFamily: fontFamily.regular,
+      flexShrink: 1,
     },
   });

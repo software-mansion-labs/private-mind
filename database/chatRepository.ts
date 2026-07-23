@@ -42,9 +42,70 @@ export type Message = {
   content: string;
   imagePath?: string;
   documentName?: string;
+  sourceDocuments?: SourceDocument[];
   tokensPerSecond?: number;
   timeToFirstToken?: number;
   timestamp: number;
+};
+
+export type SourceKind = 'document' | 'web';
+
+export type SourceDocument = {
+  documentId?: number;
+  name: string;
+  passage?: string;
+  similarity?: number;
+  kind?: SourceKind;
+  url?: string;
+  query?: string;
+  used?: boolean;
+};
+
+export const sourceKind = (source: SourceDocument): SourceKind =>
+  source.kind ?? 'document';
+
+type RawMessage = Omit<Message, 'sourceDocuments'> & {
+  sourceDocuments?: string | null;
+};
+
+const parseSourceDocuments = (
+  sourceDocuments?: string | null
+): SourceDocument[] | undefined => {
+  if (!sourceDocuments) return undefined;
+
+  try {
+    const parsed = JSON.parse(sourceDocuments);
+    if (!Array.isArray(parsed)) return undefined;
+
+    return parsed
+      .filter(
+        (source): source is SourceDocument =>
+          !!source &&
+          typeof source === 'object' &&
+          typeof source.name === 'string'
+      )
+      .map((source) => ({
+        documentId:
+          typeof source.documentId === 'number' ? source.documentId : undefined,
+        name: source.name,
+        passage:
+          typeof source.passage === 'string' ? source.passage : undefined,
+        similarity:
+          typeof source.similarity === 'number' ? source.similarity : undefined,
+        kind: source.kind === 'web' ? 'web' : undefined,
+        url:
+          source.kind === 'web' && typeof source.url === 'string'
+            ? source.url
+            : undefined,
+        query:
+          source.kind === 'web' && typeof source.query === 'string'
+            ? source.query
+            : undefined,
+        used: source.kind === 'web' && source.used === true ? true : undefined,
+      }));
+  } catch {
+    return undefined;
+  }
 };
 
 export type ChatBranchMarker = {
@@ -107,10 +168,15 @@ export const getChatMessages = async (
   db: SQLiteDatabase,
   chatId: number
 ): Promise<Message[]> => {
-  return db.getAllAsync<Message>(
+  const messages = await db.getAllAsync<RawMessage>(
     `SELECT * FROM messages WHERE chatId = ? ORDER BY id ASC`,
     [chatId]
   );
+
+  return messages.map((message) => ({
+    ...message,
+    sourceDocuments: parseSourceDocuments(message.sourceDocuments),
+  }));
 };
 
 export const persistMessage = async (
@@ -118,7 +184,7 @@ export const persistMessage = async (
   message: Omit<Message, 'id' | 'timestamp'>
 ): Promise<number> => {
   const result = await db.runAsync(
-    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
     [
       message.chatId,
       message.role,
@@ -128,6 +194,9 @@ export const persistMessage = async (
       message.timeToFirstToken ?? 0,
       message.imagePath || null,
       message.documentName || null,
+      message.sourceDocuments?.length
+        ? JSON.stringify(message.sourceDocuments)
+        : null,
     ]
   );
 
@@ -144,8 +213,8 @@ export const persistMessage = async (
 };
 
 // SQLite's default SQLITE_MAX_VARIABLE_NUMBER is 999 on older builds.
-// 9 params per row, so 100 rows per batch keeps us well under the limit.
-const IMPORT_BATCH_SIZE = 100;
+// 10 params per row, so 90 rows per batch keeps us well under the limit.
+const IMPORT_BATCH_SIZE = 90;
 const MAX_PREVIEW_LENGTH = 72;
 
 export const importMessages = async (
@@ -158,7 +227,7 @@ export const importMessages = async (
   for (let i = 0; i < messages.length; i += IMPORT_BATCH_SIZE) {
     const batch = messages.slice(i, i + IMPORT_BATCH_SIZE);
     const placeholders = batch
-      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .join(', ');
     const flattenedValues = batch.flatMap((msg) => [
       chatId,
@@ -170,9 +239,10 @@ export const importMessages = async (
       msg.timeToFirstToken ?? 0,
       msg.imagePath ?? null,
       msg.documentName ?? null,
+      msg.sourceDocuments?.length ? JSON.stringify(msg.sourceDocuments) : null,
     ]);
     await db.runAsync(
-      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName) VALUES ${placeholders}`,
+      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments) VALUES ${placeholders}`,
       flattenedValues
     );
   }
