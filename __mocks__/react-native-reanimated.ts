@@ -91,5 +91,8 @@ module.exports = {
   LinearTransition: makeAnimationBuilder(),
   FadeIn: makeAnimationBuilder(),
   FadeInDown: makeAnimationBuilder(),
+  FadeInUp: makeAnimationBuilder(),
   FadeOut: makeAnimationBuilder(),
+  FadeOutDown: makeAnimationBuilder(),
+  FadeOutUp: makeAnimationBuilder(),
 };

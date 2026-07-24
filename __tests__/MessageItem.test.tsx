@@ -5,9 +5,22 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 type MockLLMState = {
   isGenerating: boolean;
   isProcessingPrompt: boolean;
+  isSearchingWeb?: boolean;
+  webSearchQuery?: string | null;
+  webSearchTrace?: unknown[];
 };
 
 type MockLLMSelector<T = MockLLMState> = (state: MockLLMState) => T;
+
+type MockWebSearchState = {
+  isSearchingWeb: boolean;
+  webSearchQuery: string | null;
+  webSearchTrace: unknown[];
+};
+
+type MockWebSearchSelector<T = MockWebSearchState> = (
+  state: MockWebSearchState
+) => T;
 
 type ThinkingBlockMockProps = {
   content: string;
@@ -40,6 +53,17 @@ jest.mock('../store/llmStore', () => ({
   }),
 }));
 
+jest.mock('../store/webSearchStore', () => ({
+  useWebSearchStore: jest.fn(<T,>(selector?: MockWebSearchSelector<T>) => {
+    const state = {
+      isSearchingWeb: false,
+      webSearchQuery: null,
+      webSearchTrace: [],
+    };
+    return selector ? selector(state) : state;
+  }),
+}));
+
 jest.mock('../components/chat-screen/MarkdownComponent', () => {
   const { Text } = require('react-native');
   return ({ text }: { text: string }) => <Text testID="markdown">{text}</Text>;
@@ -58,6 +82,18 @@ jest.mock('../components/chat-screen/ThinkingBlock', () => {
 });
 
 jest.mock('../components/chat-screen/AnimatedChatLoading', () => () => null);
+
+jest.mock('../components/chat-screen/WebSearchBlock', () => {
+  const { Text } = require('react-native');
+  return ({ isSearching }: { isSearching?: boolean }) => (
+    <Text
+      testID="web-search-block"
+      accessibilityLabel={`searching:${!!isSearching}`}
+    >
+      {''}
+    </Text>
+  );
+});
 
 jest.mock('@gorhom/bottom-sheet', () => {
   const MockReact = require('react') as typeof import('react');
@@ -88,13 +124,25 @@ jest.mock('@gorhom/bottom-sheet', () => {
 
 import MessageItem from '../components/chat-screen/MessageItem';
 import { useLLMStore } from '../store/llmStore';
+import { useWebSearchStore } from '../store/webSearchStore';
 
 const mockUseLLMStore = useLLMStore as unknown as jest.Mock;
+const mockUseWebSearchStore = useWebSearchStore as unknown as jest.Mock;
 
-const setLLMState = (state: MockLLMState) =>
+const setLLMState = (state: MockLLMState) => {
   mockUseLLMStore.mockImplementation((selector?: MockLLMSelector) =>
     selector ? selector(state) : state
   );
+  const webState: MockWebSearchState = {
+    isSearchingWeb: state.isSearchingWeb ?? false,
+    webSearchQuery: state.webSearchQuery ?? null,
+    webSearchTrace: state.webSearchTrace ?? [],
+  };
+  mockUseWebSearchStore.mockImplementation(
+    (selector?: MockWebSearchSelector) =>
+      selector ? selector(webState) : webState
+  );
+};
 
 const baseMessage = {
   id: 1,
@@ -387,5 +435,45 @@ describe('thinking block parsing', () => {
   it('does not render ThinkingBlock when thinking content is empty whitespace', () => {
     renderItem({ content: '<think>   </think>answer' });
     expect(screen.queryByTestId('thinking-block')).toBeNull();
+  });
+});
+
+describe('live web-search trace', () => {
+  it('shows the web trace in the searching state while searching the web', () => {
+    setLLMState({
+      isGenerating: false,
+      isProcessingPrompt: true,
+      isSearchingWeb: true,
+      webSearchTrace: [],
+    });
+    renderItem({ content: '', isLastMessage: true });
+
+    const block = screen.getByTestId('web-search-block');
+    expect(block).toBeTruthy();
+    expect(block.props.accessibilityLabel).toBe('searching:true');
+  });
+
+  it('is not in the searching state once tokens have started streaming', () => {
+    setLLMState({
+      isGenerating: true,
+      isProcessingPrompt: false,
+      isSearchingWeb: true,
+      webSearchTrace: [],
+    });
+    renderItem({ content: 'Dzisiaj jest słonecznie', isLastMessage: true });
+
+    expect(screen.queryByTestId('web-search-block')).toBeNull();
+  });
+
+  it('does not show the searching trace on a non-last message', () => {
+    setLLMState({
+      isGenerating: false,
+      isProcessingPrompt: true,
+      isSearchingWeb: true,
+      webSearchTrace: [],
+    });
+    renderItem({ content: '', isLastMessage: false });
+
+    expect(screen.queryByTestId('web-search-block')).toBeNull();
   });
 });
