@@ -40,8 +40,13 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useVectorStore } from '../../context/VectorStoreContext';
 import { Attachment } from '../../hooks/useAttachment';
 import { buildMessageSources } from '../../utils/messageSources';
+import { runWebSearch } from '../../utils/web/runWebSearch';
+import { webViewScrapeProvider } from '../../utils/web/scrape/webViewScrapeProvider';
+import { WEB_SEARCH_ENABLED } from '../../constants/web';
 import { useLegacyChatNotice } from '../../hooks/useLegacyChatNotice';
 import { useSourceStore } from '../../store/sourceStore';
+import { useWebSearchStore } from '../../store/webSearchStore';
+import { useEmbeddingModelStore } from '../../store/embeddingModelStore';
 import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
 import { persistImage } from '../../utils/persistImage';
@@ -195,6 +200,7 @@ export default function ChatScreen({
       const newChatId = await addChat(newChatTitle, model!.id);
       if (!newChatId) return;
       targetChatId = newChatId;
+      useWebSearchStore.getState().transfer(chatId, targetChatId);
     }
 
     let persistedImagePath: string | undefined = imagePath;
@@ -213,6 +219,7 @@ export default function ChatScreen({
 
     Keyboard.dismiss();
     updateLastUsed(targetChatId);
+    useWebSearchStore.getState().resetTrace();
 
     // Notify Messages that a send is in flight. It will seed blankSpace to
     // the full container height, then derive the final value from measured
@@ -270,6 +277,36 @@ export default function ChatScreen({
               { restore: false }
             )
           : await prepareSources());
+      }
+
+      const shouldRunWebSearch =
+        WEB_SEARCH_ENABLED && chatSettings.webSearchEnabled && !!userInput.trim();
+
+      if (shouldRunWebSearch) {
+        const trimmedInput = userInput.trim();
+        useWebSearchStore.getState().setSearchingWeb(true, trimmedInput);
+        try {
+          const embeddingModelReady =
+            useEmbeddingModelStore.getState().status === 'ready';
+          const { context: webContext, sourceDocuments: webSources } =
+            await runWebSearch({
+              query: trimmedInput,
+              history: messageHistory,
+              provider: webViewScrapeProvider,
+              embeddings,
+              embeddingModelReady,
+              generate: (messages) =>
+                useLLMStore.getState().generateUtility(messages),
+              onProgress: (event) =>
+                useWebSearchStore.getState().pushWebSearchEvent(event),
+            });
+          context = [...context, ...webContext];
+          sourceDocuments = [...sourceDocuments, ...webSources];
+        } catch (error) {
+          console.warn('Web search failed', error);
+        } finally {
+          useWebSearchStore.getState().setSearchingWeb(false);
+        }
       }
 
       // Enable new sources for this chat (persists for future messages)
@@ -348,6 +385,10 @@ export default function ChatScreen({
       setSetting('thinkingEnabled', previous ?? false);
       console.error('Failed to update thinking setting:', error);
     }
+  };
+
+  const handleWebSearchToggle = () => {
+    setSetting('webSearchEnabled', !chatSettings.webSearchEnabled);
   };
 
   const handleSelectPrompt = useCallback(
@@ -477,6 +518,10 @@ export default function ChatScreen({
           extraContentPadding={extraContentPadding}
           thinkingEnabled={chatSettings?.thinkingEnabled || false}
           onThinkingToggle={handleThinkingToggle}
+          webSearchEnabled={chatSettings?.webSearchEnabled || false}
+          onWebSearchToggle={
+            WEB_SEARCH_ENABLED ? handleWebSearchToggle : undefined
+          }
           hasMessages={hasMessages}
           onAttachmentSheetStateChange={setAttachmentSheetOpen}
           onHeightChange={handleChatBarHeightChange}
