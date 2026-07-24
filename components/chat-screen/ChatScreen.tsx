@@ -8,7 +8,8 @@ import React, {
 import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { useKeyboardLift } from './useKeyboardLift';
 import { router } from 'expo-router';
 import Animated, {
   useAnimatedStyle,
@@ -62,6 +63,7 @@ interface Props {
   selectModel?: (model: Model) => Promise<void>;
   openModelSheetRef?: React.MutableRefObject<(() => void) | null>;
   revealFromTop?: boolean;
+  headerTitleBottom?: number;
 }
 
 const prepareContext = async (
@@ -89,6 +91,7 @@ export default function ChatScreen({
   selectModel,
   openModelSheetRef,
   revealFromTop = false,
+  headerTitleBottom,
 }: Props) {
   const inputRef = useRef<{
     clear: () => void;
@@ -119,17 +122,11 @@ export default function ChatScreen({
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const headerHeight = useHeaderHeight();
 
-  const { height: keyboardHeight, progress: keyboardProgress } =
-    useReanimatedKeyboardAnimation();
-  const insetsBottom = theme.insets.bottom;
+  const keyboardLift = useKeyboardLift();
   const chatBarStickyStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateY:
-          keyboardHeight.value + keyboardProgress.value * insetsBottom,
-      },
-    ],
+    transform: [{ translateY: keyboardLift.value }],
   }));
 
   const { settings: chatSettings, setSetting } = useChatSettings(chatId);
@@ -170,7 +167,9 @@ export default function ChatScreen({
 
   const handleRootLayout = useCallback(() => {
     rootRef.current?.measureInWindow((x, y) => {
-      setRootFrame({ x, y });
+      setRootFrame((current) =>
+        current.x === x && current.y === y ? current : { x, y }
+      );
     });
   }, []);
 
@@ -400,6 +399,11 @@ export default function ChatScreen({
     };
   }, [rootFrame.x, rootFrame.y, userActionMenu, windowWidth]);
 
+  const fadeBottom =
+    headerTitleBottom !== undefined
+      ? headerTitleBottom - rootFrame.y
+      : undefined;
+
   return (
     <View
       ref={rootRef}
@@ -431,6 +435,8 @@ export default function ChatScreen({
           onBranchMarkerPress={handleBranchMarkerPress}
           onUserActionMenuChange={setUserActionMenu}
           chatBarInset={chatBarHeight}
+          topInset={headerHeight}
+          fadeBottom={fadeBottom}
         />
       </View>
 
