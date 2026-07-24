@@ -97,6 +97,14 @@ const ChatBar = ({
   );
 
   const [userInput, setUserInput] = useState('');
+  const lastSentRef = useRef<string | null>(null);
+
+  const handleChangeText = useCallback((text: string) => {
+    const justSent = lastSentRef.current;
+    lastSentRef.current = null;
+    if (justSent !== null && text === justSent) return;
+    setUserInput(text);
+  }, []);
   const {
     attachments,
     sheetRef,
@@ -231,10 +239,12 @@ const ChatBar = ({
 
   const handleSend = useCallback(() => {
     if (hasLoadingAttachment) return;
+    Keyboard.dismiss();
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
     const inputToSend = userInput;
 
+    lastSentRef.current = inputToSend || null;
     setUserInput('');
     clearAll({ cleanupSources: false });
     Promise.resolve(
@@ -400,7 +410,7 @@ const ChatBar = ({
                   placeholder="Ask about anything..."
                   placeholderTextColor={theme.text.onChatBarMuted}
                   value={userInput}
-                  onChangeText={setUserInput}
+                  onChangeText={handleChangeText}
                 />
               </TextInputWrapper>
             </View>
