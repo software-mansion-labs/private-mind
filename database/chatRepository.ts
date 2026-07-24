@@ -280,8 +280,9 @@ const copyMessagesWithIdMap = async (
           tokensPerSecond,
           timeToFirstToken,
           imagePath,
-          documentName
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          documentName,
+          sourceDocuments
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         chatId,
@@ -293,6 +294,9 @@ const copyMessagesWithIdMap = async (
         msg.timeToFirstToken ?? 0,
         msg.imagePath ?? null,
         msg.documentName ?? null,
+        msg.sourceDocuments?.length
+          ? JSON.stringify(msg.sourceDocuments)
+          : null,
       ]
     );
     idMap.set(msg.id, result.lastInsertRowId);

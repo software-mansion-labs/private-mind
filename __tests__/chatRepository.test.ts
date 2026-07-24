@@ -133,11 +133,11 @@ describe('forkChat', () => {
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO messages'),
-      [10, 'user', 'one', 100, '', 0, 0, null, null]
+      [10, 'user', 'one', 100, '', 0, 0, null, null, null]
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO messages'),
-      [10, 'assistant', 'two', 200, 'model', 0, 0, null, null]
+      [10, 'assistant', 'two', 200, 'model', 0, 0, null, null, null]
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO chatBranches'),
@@ -150,6 +150,50 @@ describe('forkChat', () => {
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO chatSources'),
       [10, 1]
+    );
+  });
+
+  it('copies the sourceDocuments of a grounded message into the fork', async () => {
+    const sourceDocuments = [
+      { kind: 'web' as const, name: 'Example', url: 'https://example.com' },
+    ];
+    const runAsync = jest
+      .fn()
+      .mockResolvedValueOnce({ lastInsertRowId: 10 })
+      .mockResolvedValueOnce({ lastInsertRowId: 101 })
+      .mockResolvedValueOnce({ lastInsertRowId: 102 })
+      .mockResolvedValue({ lastInsertRowId: 0 });
+    const mockDb = {
+      runAsync,
+      getFirstAsync: jest.fn().mockResolvedValue({
+        id: 1,
+        title: 'Original',
+        modelId: 7,
+        lastUsed: 1,
+      }),
+      getAllAsync: jest
+        .fn()
+        .mockResolvedValueOnce([
+          { id: 1, chatId: 1, role: 'user', content: 'q', timestamp: 100 },
+          {
+            id: 2,
+            chatId: 1,
+            role: 'assistant',
+            content: 'a',
+            timestamp: 200,
+            modelName: 'model',
+            sourceDocuments: JSON.stringify(sourceDocuments),
+          },
+        ])
+        .mockResolvedValueOnce([]),
+      withTransactionAsync: async (callback: TransactionCallback) => callback(),
+    } as SQLiteDatabase;
+
+    await forkChat(mockDb, 1, 2);
+
+    expect(runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('sourceDocuments'),
+      expect.arrayContaining([expect.stringContaining('https://example.com')])
     );
   });
 
