@@ -307,6 +307,40 @@ describe('downloaded model — text input', () => {
     expect(onSend).toHaveBeenCalledWith('Hello', undefined, []);
   });
 
+  it('stays empty when the native input echoes the sent text back', () => {
+    renderBar();
+    const input = screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(input, 'czesc test wysylki');
+    fireEvent.press(screen.getByTestId('send-btn'));
+    expect(input.props.value).toBe('');
+
+    fireEvent.changeText(input, 'czesc test wysylki');
+    expect(input.props.value).toBe('');
+  });
+
+  it('accepts genuine typing right after a send', () => {
+    renderBar();
+    const input = screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(input, 'first');
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    fireEvent.changeText(input, 'n');
+    expect(input.props.value).toBe('n');
+    fireEvent.changeText(input, 'next');
+    expect(input.props.value).toBe('next');
+  });
+
+  it('does not swallow a repeat of the same message typed again', () => {
+    renderBar();
+    const input = screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(input, 'again');
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    fireEvent.changeText(input, 'a');
+    fireEvent.changeText(input, 'again');
+    expect(input.props.value).toBe('again');
+  });
+
   it('shows prompt suggestions when hasMessages is false', () => {
     renderBar({ hasMessages: false });
     expect(screen.getByTestId('prompt-suggestion')).toBeTruthy();
