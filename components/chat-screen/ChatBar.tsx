@@ -66,6 +66,8 @@ interface Props {
   onBarGrow?: () => void;
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
+  webSearchEnabled?: boolean;
+  onWebSearchToggle?: () => void;
   hasMessages: boolean;
   onAttachmentSheetStateChange?: (isOpen: boolean) => void;
 }
@@ -83,6 +85,8 @@ const ChatBar = ({
   onBarGrow,
   thinkingEnabled,
   onThinkingToggle,
+  webSearchEnabled,
+  onWebSearchToggle,
   hasMessages,
   onAttachmentSheetStateChange,
 }: Props) => {
@@ -412,6 +416,8 @@ const ChatBar = ({
               onSpeechInput={openSpeechInput}
               thinkingEnabled={thinkingEnabled}
               onThinkingToggle={onThinkingToggle}
+              webSearchEnabled={webSearchEnabled}
+              onWebSearchToggle={onWebSearchToggle}
             />
           </View>
           <AttachmentSheet
