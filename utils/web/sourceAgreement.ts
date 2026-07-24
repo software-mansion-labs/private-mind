@@ -155,14 +155,3 @@ export const analyzeSourceAgreement = (
       .slice(0, WEB_AGREEMENT_MAX_CLAIMS),
   };
 };
-
-export const summarizeAgreement = (
-  agreement: SourceAgreement
-): string | null => {
-  const { independentHosts, corroborated } = agreement;
-  if (independentHosts === 0) return null;
-  if (independentHosts === 1) return 'All pages from one publisher';
-  if (corroborated.length === 0) return null;
-  const figures = corroborated.length === 1 ? 'figure' : 'figures';
-  return `${corroborated.length} matching ${figures}`;
-};

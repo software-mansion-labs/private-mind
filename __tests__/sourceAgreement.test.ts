@@ -1,7 +1,6 @@
 import {
   analyzeSourceAgreement,
   registrableDomain,
-  summarizeAgreement,
 } from '../utils/web/sourceAgreement';
 import { evaluateWebRetrieval } from '../utils/web/retrievalEvaluator';
 import type { WebSearchResult } from '../utils/web/types';
@@ -180,51 +179,5 @@ describe('evaluateWebRetrieval — independence factor', () => {
         agreement,
       }).confidence
     ).toBe(0);
-  });
-});
-
-describe('summarizeAgreement — the line the user reads', () => {
-  const summarize = (results: WebSearchResult[]) =>
-    summarizeAgreement(analyzeSourceAgreement(results));
-
-  it('flags an echo chamber outright', () => {
-    expect(
-      summarize([
-        page('https://news.a.com/1', 'Height 1200 m'),
-        page('https://blog.a.com/2', 'Height 1200 m'),
-      ])
-    ).toBe('All pages from one publisher');
-  });
-
-  it('counts the figures the publishers agree on', () => {
-    expect(
-      summarize([
-        page('https://a.com/x', 'Height 1200 m, area 55 km'),
-        page('https://b.com/y', 'Height 1200 m, area 55 km'),
-        page('https://c.com/z', 'nothing numeric here'),
-      ])
-    ).toBe('2 matching figures');
-  });
-
-  it('uses the singular for a single agreed figure', () => {
-    expect(
-      summarize([
-        page('https://a.com/x', 'Height 1200 m'),
-        page('https://b.com/y', 'Height 1200 m'),
-      ])
-    ).toBe('1 matching figure');
-  });
-
-  it('says nothing when publishers differ but no figures line up', () => {
-    expect(
-      summarize([
-        page('https://a.com/x', 'no numbers'),
-        page('https://b.com/y', 'also none'),
-      ])
-    ).toBeNull();
-  });
-
-  it('says nothing at all with no usable sources', () => {
-    expect(summarizeAgreement(analyzeSourceAgreement([]))).toBeNull();
   });
 });
