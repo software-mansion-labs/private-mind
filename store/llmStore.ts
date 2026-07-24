@@ -61,6 +61,7 @@ export interface LLMStore {
   ) => Promise<void>;
   retryLastGeneration: () => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
+  generateUtility: (messages: ExecutorchMessage[]) => Promise<string>;
   interrupt: () => void;
   sendEventMessage: (chatId: number, message: string) => Promise<void>;
   refreshActiveChatMessages: () => Promise<void>;
@@ -93,6 +94,8 @@ const resetStreamState = () => {
   streamFirstTokenTime = 0;
   streamFlushScheduled = false;
 };
+
+let suppressUtilityStreaming = false;
 
 const calculatePerformanceMetrics = (
   startTime: number,
@@ -220,6 +223,8 @@ const loadModelInstance = async (
       },
       () => {},
       (token) => {
+        if (suppressUtilityStreaming) return;
+
         const isFirstToken = streamTokenCount === 0;
 
         if (isFirstToken && !get().isBenchmarking) {
@@ -627,6 +632,19 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         preferredSourceDocuments ?? []
       );
 
+      const webSourceDocuments = seenSourceDocuments.filter(
+        (doc) => doc.kind === 'web'
+      );
+      if (webSourceDocuments.length > 0) {
+        set((state) => ({
+          activeChatMessages: state.activeChatMessages.map((msg) =>
+            msg.id === -1 && msg.role === 'assistant'
+              ? { ...msg, sourceDocuments: webSourceDocuments }
+              : msg
+          ),
+        }));
+      }
+
       // Set generation state and generate response
       updateChatStateForGeneration(set, 'generating');
       let generation: Awaited<ReturnType<typeof generateLLMResponse>>;
@@ -790,6 +808,20 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       memoryTracker.stop();
     } finally {
       set({ isGenerating: false, isBenchmarking: false });
+    }
+  },
+
+  generateUtility: async (messages) => {
+    if (!llmInstance || get().isLoading) return '';
+    suppressUtilityStreaming = true;
+    try {
+      const result = await llmInstance.generate(messages);
+      return typeof result === 'string' ? result : '';
+    } catch (error) {
+      console.warn('generateUtility failed', error);
+      return '';
+    } finally {
+      suppressUtilityStreaming = false;
     }
   },
 
