@@ -1,5 +1,11 @@
-import React, { useMemo } from 'react';
-import { Text, StyleSheet, View, Pressable } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  Text,
+  StyleSheet,
+  View,
+  Pressable,
+  useWindowDimensions,
+} from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -10,6 +16,7 @@ interface Props {
   modelName: string;
   onPress?: () => void;
   showChevron?: boolean;
+  onBottomMeasured?: (bottomY: number) => void;
 }
 
 const ChatTitle = ({
@@ -17,11 +24,33 @@ const ChatTitle = ({
   modelName,
   onPress,
   showChevron = false,
+  onBottomMeasured,
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const containerRef = useRef<View>(null);
+  const lastReportedBottom = useRef<number | null>(null);
+  const handleLayout = useCallback(() => {
+    containerRef.current?.measureInWindow((_x, y, _width, height) => {
+      const bottom = Math.round(y + height);
+      if (bottom !== lastReportedBottom.current) {
+        lastReportedBottom.current = bottom;
+        onBottomMeasured?.(bottom);
+      }
+    });
+  }, [onBottomMeasured]);
+
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  useEffect(() => {
+    if (!onBottomMeasured) return;
+    const frame = requestAnimationFrame(handleLayout);
+    return () => cancelAnimationFrame(frame);
+  }, [handleLayout, onBottomMeasured, windowWidth, windowHeight]);
+
   return (
     <Pressable
+      ref={containerRef}
+      onLayout={onBottomMeasured ? handleLayout : undefined}
       onPress={onPress}
       disabled={!onPress}
       hitSlop={8}

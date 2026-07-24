@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import { useChatStore } from '../store/chatStore';
 import NewChatHeaderButton from '../components/NewChatHeaderButton';
 import { Model } from '../database/modelRepository';
@@ -24,6 +24,7 @@ export default function useChatHeader({
   const { getChatById } = useChatStore();
   const chat = getChatById(chatId);
   const chatTitle = chat ? chat.title : ``;
+  const [titleBottom, setTitleBottom] = useState<number>();
 
   const { openMenu, MenuElements } = useChatTitleMenu({
     chatId,
@@ -40,6 +41,7 @@ export default function useChatHeader({
           modelName={chatModel?.modelName || 'No model selected'}
           onPress={onSelectModelFromTitle ?? (chat ? openMenu : undefined)}
           showChevron={!!onSelectModelFromTitle}
+          onBottomMeasured={setTitleBottom}
         />
       ),
     });
@@ -54,5 +56,5 @@ export default function useChatHeader({
     onSelectModelFromTitle,
   ]);
 
-  return { MenuElements };
+  return { MenuElements, titleBottom };
 }

@@ -58,14 +58,13 @@ function ChatScreenInner() {
   const isEmpty = !isLoading && activeChatMessages.length === 0;
   const shouldExitOnBack = isPhantom && isEmpty;
   const openModelSheetRef = useRef<(() => void) | null>(null);
+  const openModelSheet = useCallback(() => openModelSheetRef.current?.(), []);
 
-  const { MenuElements } = useChatHeader({
+  const { MenuElements, titleBottom } = useChatHeader({
     chatId: chatId,
     chatModel: model,
     isEmpty,
-    onSelectModelFromTitle: isPhantom
-      ? () => openModelSheetRef.current?.()
-      : undefined,
+    onSelectModelFromTitle: isPhantom ? openModelSheet : undefined,
   });
 
   useFocusEffect(
@@ -141,6 +140,7 @@ function ChatScreenInner() {
         selectModel={handleSetModel}
         openModelSheetRef={openModelSheetRef}
         revealFromTop={shouldPlayBranchEntryAnimation}
+        headerTitleBottom={titleBottom}
       />
       {MenuElements}
     </>
