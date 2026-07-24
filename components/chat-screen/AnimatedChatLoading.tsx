@@ -17,7 +17,13 @@ import { fontFamily, fontSizes } from '../../styles/fontStyles';
  * text style exactly so swapping it for the real model name when the
  * first token arrives causes no layout shift.
  */
-const AnimatedChatLoading = () => {
+const AnimatedChatLoading = ({
+  label = 'Thinking…',
+  inline = false,
+}: {
+  label?: string;
+  inline?: boolean;
+}) => {
   const { styles } = useThemedStyles(createStyles);
 
   const opacity = useSharedValue(0.4);
@@ -37,8 +43,10 @@ const AnimatedChatLoading = () => {
   }));
 
   return (
-    <Animated.Text style={[styles.label, animatedStyle]}>
-      Thinking…
+    <Animated.Text
+      style={[styles.label, inline && styles.inline, animatedStyle]}
+    >
+      {label}
     </Animated.Text>
   );
 };
@@ -58,5 +66,8 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.xs,
       fontFamily: fontFamily.medium,
       color: theme.text.defaultSecondary,
+    },
+    inline: {
+      position: 'relative',
     },
   });

@@ -418,7 +418,7 @@ const Messages = ({
       listTopPadding -
       listBottomPadding +
       MESSAGE_PIN_OFFSET;
-    blankSpace.set(Math.max(0, raw));
+    blankSpace.set(Math.min(blankSpace.get(), Math.max(0, raw)));
   }, [blankSpace, listBottomPadding, listTopPadding]);
 
   useImperativeHandle(

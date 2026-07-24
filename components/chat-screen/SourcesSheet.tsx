@@ -17,6 +17,7 @@ import {
   useWindowDimensions,
   type LayoutChangeEvent,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import {
   BottomSheetModal,
   BottomSheetScrollView,
@@ -46,7 +47,9 @@ import {
 import SheetBackdrop from '../bottomSheets/SheetBackdrop';
 import RowChevron from './RowChevron';
 import SourceIcon from '../../assets/icons/source.svg';
+import WebFavicon from './WebFavicon';
 import { type SourceDocument } from '../../database/chatRepository';
+import { hostname } from '../../utils/web/webResultsToContext';
 import { getDocumentType, isSpreadsheetType } from '../../utils/documentType';
 import {
   findCitedSpan,
@@ -101,8 +104,34 @@ const SourceRow = ({
   onToggle,
   onLayout,
 }: SourceRowProps) => {
-  const docType = getDocumentType(source.name);
-  const hasPassage = !!source.passage && !isSpreadsheetType(docType);
+  const isWeb = source.kind === 'web' && !!source.url;
+  const docType = isWeb ? hostname(source.url!) : getDocumentType(source.name);
+  const hasPassage = !isWeb && !!source.passage && !isSpreadsheetType(docType);
+
+  if (isWeb) {
+    return (
+      <Pressable
+        style={[styles.webRow, isHighlighted && styles.sourceRowHighlighted]}
+        onPress={() => {
+          WebBrowser.openBrowserAsync(source.url!).catch(() => {});
+        }}
+        onLayout={onLayout}
+        accessibilityRole="link"
+        accessibilityLabel={source.name}
+        testID="source-item"
+      >
+        <WebFavicon url={source.url!} size={space.four} />
+        <View style={styles.webRowText}>
+          <Text style={styles.webRowTitle} numberOfLines={2}>
+            {source.name}
+          </Text>
+          <Text style={styles.webRowHost} numberOfLines={1}>
+            {hostname(source.url!)}
+          </Text>
+        </View>
+      </Pressable>
+    );
+  }
 
   return (
     <Pressable
@@ -121,7 +150,11 @@ const SourceRow = ({
             height={space.three}
             style={styles.typeBadgeIcon}
           />
-          {docType ? <Text style={styles.typeBadgeText}>{docType}</Text> : null}
+          {docType ? (
+            <Text style={styles.typeBadgeText} numberOfLines={1}>
+              {docType}
+            </Text>
+          ) : null}
         </View>
         <Text style={styles.sourceRowName} numberOfLines={1}>
           {source.name}
@@ -381,6 +414,26 @@ const createStyles = (theme: Theme) =>
     },
     sourceRowHighlighted: {
       backgroundColor: theme.bg.softSecondary,
+    },
+    webRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: space.two,
+      paddingVertical: space.two,
+      paddingHorizontal: space.three,
+      borderRadius: radius.twelve,
+    },
+    webRowText: {
+      flex: 1,
+      gap: 2,
+    },
+    webRowTitle: {
+      ...textStyles.bodySecondaryMedium,
+      color: theme.text.primary,
+    },
+    webRowHost: {
+      ...textStyles.bodyTertiaryRegular,
+      color: theme.text.defaultTertiary,
     },
     sourceRowHeader: {
       flexDirection: 'row',
