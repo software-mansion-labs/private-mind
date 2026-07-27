@@ -169,7 +169,8 @@ export const answerCitationOverlaps = (
 export const pickCitationsByAnswer = (
   sourceDocuments: SourceDocument[],
   answer: string,
-  preferred: SourceDocument[]
+  preferred: SourceDocument[],
+  presentNames?: Set<string>
 ): SourceDocument[] => {
   const webDocuments = sourceDocuments.filter(
     (doc) => sourceKind(doc) === 'web'
@@ -182,12 +183,16 @@ export const pickCitationsByAnswer = (
     answer,
     preferred
   );
-  return [...citedLocal, ...flagUsedWebDocuments(webDocuments, answer)];
+  return [
+    ...citedLocal,
+    ...flagUsedWebDocuments(webDocuments, answer, presentNames),
+  ];
 };
 
 const flagUsedWebDocuments = (
   webDocuments: SourceDocument[],
-  answer: string
+  answer: string,
+  presentNames?: Set<string>
 ): SourceDocument[] => {
   if (webDocuments.length === 0) return webDocuments;
 
@@ -205,7 +210,9 @@ const flagUsedWebDocuments = (
   return scored.map((s) => ({
     ...s.doc,
     used:
-      maxOverlap > 0 && s.overlap >= maxOverlap * ANSWER_CITATION_OVERLAP_RATIO,
+      maxOverlap > 0 &&
+      s.overlap >= maxOverlap * ANSWER_CITATION_OVERLAP_RATIO &&
+      (presentNames === undefined || presentNames.has(s.doc.name)),
   }));
 };
 

@@ -8,7 +8,10 @@ export const useMessageSources = (sourceDocuments?: SourceDocument[]) => {
 
     const seen = new Set<string>();
     return sourceDocuments.filter((source) => {
-      const key = sourceKey(source.documentId, source.name);
+      const key =
+        source.kind === 'web' && source.url
+          ? `web:${source.url}`
+          : sourceKey(source.documentId, source.name);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
