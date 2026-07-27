@@ -418,6 +418,43 @@ describe('web search results (experimental)', () => {
     expect(usedByName['Cooking recipes']).toBe(false);
   });
 
+  it('does not flag a web result used when it was truncated out of the prompt', () => {
+    const cited = [
+      web(
+        'Weather Warsaw',
+        'https://w.com',
+        'Warsaw temperature and rain forecast today'
+      ),
+    ];
+    const answer =
+      'The weather in Warsaw shows rain and a low temperature today.';
+
+    const result = pickCitationsByAnswer(cited, answer, [], new Set<string>());
+
+    expect(result[0].used).toBe(false);
+  });
+
+  it('flags a web result used only when its name is present in the prompt', () => {
+    const cited = [
+      web(
+        'Weather Warsaw',
+        'https://w.com',
+        'Warsaw temperature and rain forecast today'
+      ),
+    ];
+    const answer =
+      'The weather in Warsaw shows rain and a low temperature today.';
+
+    const result = pickCitationsByAnswer(
+      cited,
+      answer,
+      [],
+      new Set(['Weather Warsaw'])
+    );
+
+    expect(result[0].used).toBe(true);
+  });
+
   it('marks no web result used when the answer is a refusal', () => {
     const cited = [
       web('Weather Warsaw', 'https://w.com', 'Warsaw temperature and rain'),
