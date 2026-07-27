@@ -9,6 +9,9 @@ import { extractQueryTerms, foldForMatching, stemPrefix } from '../queryTerms';
 const truncate = (text: string, max: number): string =>
   text.length <= max ? text : `${text.slice(0, max).trimEnd()}…`;
 
+const neutralizeDelimiters = (text: string): string =>
+  text.replace(/-{3,}/g, '—');
+
 export const hostname = (url: string): string => {
   try {
     return new URL(url).hostname.replace(/^www\./, '');
@@ -90,24 +93,30 @@ export const selectRelevantContent = (
 
 export const webResultsToContext = (
   results: WebSearchResult[],
-  query?: string
+  query?: string,
+  startIndex = 0
 ): WebContext => {
   const context: string[] = [];
   const sourceDocuments: WebSourceDocument[] = [];
 
   results.forEach((result, index) => {
-    const name = result.title || hostname(result.url);
-    const snippet = truncate(result.snippet.trim(), WEB_SNIPPET_MAX_CHARS);
+    const name = neutralizeDelimiters(result.title || hostname(result.url));
+    const snippet = truncate(
+      (result.snippet ?? '').trim(),
+      WEB_SNIPPET_MAX_CHARS
+    );
     const relevant = result.content
       ? selectRelevantContent(result.content, query, WEB_CONTENT_MAX_CHARS)
       : '';
-    const contextPassage = relevant
+    const rawPassage = relevant
       ? snippet
         ? `${snippet}\n${relevant}`
         : relevant
       : snippet;
 
-    context.push(sourceBlock(index, name, contextPassage));
+    context.push(
+      sourceBlock(startIndex + index, name, neutralizeDelimiters(rawPassage))
+    );
 
     sourceDocuments.push({
       kind: 'web',
