@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { View, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   FadeInDown,
@@ -33,6 +33,18 @@ const WebSearchTraceList = ({
 }: Props) => {
   const listHeight = useSharedValue(0);
   const contentHeight = useSharedValue(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const notifyCollapsed = useCallback(() => {
+    if (mountedRef.current) onCollapsed();
+  }, [onCollapsed]);
 
   useEffect(() => {
     if (expanded) {
@@ -47,10 +59,10 @@ const WebSearchTraceList = ({
     }
     listHeight.set(
       withTiming(0, { duration: WEB_TRACE_TRANSITION_MS }, (finished) => {
-        if (finished) runOnJS(onCollapsed)();
+        if (finished) runOnJS(notifyCollapsed)();
       })
     );
-  }, [expanded, listHeight, contentHeight, onCollapsed]);
+  }, [expanded, listHeight, contentHeight, notifyCollapsed]);
 
   const handleListLayout = useCallback(
     (event: LayoutChangeEvent) => {
