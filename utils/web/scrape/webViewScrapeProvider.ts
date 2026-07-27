@@ -3,7 +3,7 @@ import type {
   WebSearchProviderOptions,
   WebSearchResult,
 } from '../types';
-import { parseSerpMessage } from './serpParser';
+import { parseSerpMessage } from '../security/untrustedContent';
 import {
   SCRAPE_CHALLENGE_TIMEOUT_MS,
   SCRAPE_ENGINES,

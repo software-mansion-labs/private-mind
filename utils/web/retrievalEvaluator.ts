@@ -39,7 +39,7 @@ const W_PAGES = 0.1;
 const QUALIFIED_TARGET = 3;
 const PAGES_TARGET = 2;
 
-const LEAN_WITH_CONTENT = WEB_EVAL_CONFIDENCE_HIGH;
+const LEAN_WITH_CONTENT = 0.5;
 const LEAN_SNIPPETS_ONLY = 0.3;
 
 const clamp01 = (value: number): number =>

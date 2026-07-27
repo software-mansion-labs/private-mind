@@ -72,14 +72,14 @@ describe('evaluateWebRetrieval', () => {
     expect(e.shouldCorrect).toBe(true);
   });
 
-  it('lean path: trusts extracted content when embeddings are unavailable', () => {
+  it('lean path: content without a retrieval signal is uncertain, not correct', () => {
     const e = evaluateWebRetrieval({
       resultCount: 4,
       contentCount: 2,
       retrieval: null,
     });
-    expect(e.label).toBe('correct');
-    expect(e.shouldCorrect).toBe(false);
+    expect(e.label).toBe('ambiguous');
+    expect(e.shouldCorrect).toBe(true);
   });
 
   it('lean path: flags SERP hits that yielded no page text', () => {
@@ -98,6 +98,7 @@ describe('evaluateWebRetrieval', () => {
       contentCount: 2,
       retrieval: signals({ embedded: false }),
     });
-    expect(e.label).toBe('correct');
+    expect(e.label).toBe('ambiguous');
+    expect(e.shouldCorrect).toBe(true);
   });
 });

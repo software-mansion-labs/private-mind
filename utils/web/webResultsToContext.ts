@@ -5,12 +5,10 @@ import {
 } from '../../constants/web';
 import { sourceBlock } from '../contextUtils';
 import { extractQueryTerms, foldForMatching, stemPrefix } from '../queryTerms';
+import { neutralizeDelimiters } from './security/untrustedContent';
 
 const truncate = (text: string, max: number): string =>
   text.length <= max ? text : `${text.slice(0, max).trimEnd()}…`;
-
-const neutralizeDelimiters = (text: string): string =>
-  text.replace(/-{3,}/g, '—');
 
 export const hostname = (url: string): string => {
   try {

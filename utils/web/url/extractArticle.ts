@@ -5,6 +5,10 @@ import {
   URL_FETCH_USER_AGENT,
 } from '../../../constants/web';
 import { hostname } from '../webResultsToContext';
+import {
+  assertPublicHttpUrl,
+  enforceResponseSize,
+} from '../security/outboundFetch';
 
 const stripTagBlock = (html: string, tag: string): string =>
   html.replace(
@@ -93,9 +97,7 @@ export const fetchHtml = async (
   url: string,
   timeoutMs: number = URL_FETCH_TIMEOUT_MS
 ): Promise<string> => {
-  if (!/^https?:\/\//i.test(url)) {
-    throw new Error(`Refusing to fetch non-http(s) url: ${url}`);
-  }
+  assertPublicHttpUrl(url);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -108,6 +110,7 @@ export const fetchHtml = async (
         `Fetch failed: ${response.status} ${response.statusText}`
       );
     }
+    enforceResponseSize(response);
     const html = await response.text();
     return html.length > URL_FETCH_MAX_BYTES
       ? html.slice(0, URL_FETCH_MAX_BYTES)

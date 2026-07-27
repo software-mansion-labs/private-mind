@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { WebView } from 'react-native-webview';
-import {
-  SERP_PARSER_JS,
-  parseSerpMessage,
-} from '../utils/web/scrape/serpParser';
+import { SERP_PARSER_JS } from '../utils/web/scrape/serpParser';
+import { parseSerpMessage } from '../utils/web/security/untrustedContent';
 import { webViewScrapeProvider } from '../utils/web/scrape/webViewScrapeProvider';
 import { useWebSearchStore } from '../store/webSearchStore';
 import {
@@ -43,7 +41,12 @@ export const useScrapeHost = () => {
       Math.random() *
         (SCRAPE_REINJECT_DELAY_MAX_MS - SCRAPE_REINJECT_DELAY_MIN_MS);
     reinjectTimer.current = setTimeout(() => {
-      if (navKeyRef.current === scheduledKey) recheck();
+      if (
+        navKeyRef.current === scheduledKey &&
+        !useWebSearchStore.getState().challengeActive
+      ) {
+        recheck();
+      }
     }, jitter);
   }, [nav, recheck]);
 

@@ -17,6 +17,7 @@ import {
   KEYWORD_WEIGHT,
   LEXICAL_MATCH_MIN_SIMILARITY,
   MIN_STITCH_OVERLAP,
+  STRONG_SEMANTIC_THRESHOLD,
   VECTOR_WEIGHT,
 } from '../../constants/retrieval';
 import {
@@ -38,9 +39,26 @@ export interface WebRetrievalResult {
   signals: WebRetrievalSignals | null;
 }
 
-export type WebEmbeddingCache = Map<string, number[]>;
+export interface WebEmbeddingCache {
+  get(key: string): number[] | undefined;
+  set(key: string, value: number[]): void;
+}
 
-export const createWebEmbeddingCache = (): WebEmbeddingCache => new Map();
+const WEB_EMBEDDING_CACHE_MAX = 512;
+
+export const createWebEmbeddingCache = (): WebEmbeddingCache => {
+  const store = new Map<string, number[]>();
+  return {
+    get: (key) => store.get(key),
+    set: (key, value) => {
+      if (store.size >= WEB_EMBEDDING_CACHE_MAX && !store.has(key)) {
+        const oldest = store.keys().next().value;
+        if (oldest !== undefined) store.delete(oldest);
+      }
+      store.set(key, value);
+    },
+  };
+};
 
 type WebChunk = {
   id: string;
@@ -157,7 +175,9 @@ export const retrieveWebPassages = async (
 
   const qualified = chunks.filter(
     (chunk) =>
-      chunk.coverage > 0 || chunk.similarity >= LEXICAL_MATCH_MIN_SIMILARITY
+      (chunk.coverage > 0 &&
+        chunk.similarity >= LEXICAL_MATCH_MIN_SIMILARITY) ||
+      chunk.similarity >= STRONG_SEMANTIC_THRESHOLD
   );
   if (qualified.length === 0) return { results, signals: signalsFor([]) };
 

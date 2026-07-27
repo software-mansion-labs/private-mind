@@ -7,41 +7,12 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { SERP_PARSER_JS_ONLOAD } from '../../utils/web/scrape/serpParser';
 import {
-  SCRAPE_ENGINES,
   SCRAPE_IDLE_SOURCE,
   SCRAPE_HOST_OFFSCREEN_TOP,
   SCRAPE_HOST_OFFSCREEN_HEIGHT,
 } from '../../constants/web';
 import { useScrapeHost } from '../../hooks/useScrapeHost';
-
-const ENGINE_DOMAINS = Array.from(
-  new Set(
-    SCRAPE_ENGINES.map((engine) => {
-      try {
-        return new URL(engine.url).hostname
-          .split('.')
-          .slice(-2)
-          .join('.')
-          .toLowerCase();
-      } catch {
-        return '';
-      }
-    }).filter(Boolean)
-  )
-);
-
-const isAllowedScrapeNavigation = (url: string): boolean => {
-  if (url.startsWith('about:') || url.startsWith('data:')) return true;
-  if (!/^https?:\/\//i.test(url)) return false;
-  try {
-    const host = new URL(url).hostname.toLowerCase();
-    return ENGINE_DOMAINS.some(
-      (domain) => host === domain || host.endsWith(`.${domain}`)
-    );
-  } catch {
-    return false;
-  }
-};
+import { isAllowedScrapeNavigation } from '../../utils/web/security/scrapeNavigation';
 
 const WebScrapeSheet = () => {
   const { theme } = useTheme();

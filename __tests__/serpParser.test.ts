@@ -2,9 +2,11 @@ import {
   SERP_PARSER_JS,
   SERP_PARSER_JS_ONLOAD,
   buildSerpParserJs,
+} from '../utils/web/scrape/serpParser';
+import {
   parseSerpMessage,
   type SerpMessage,
-} from '../utils/web/scrape/serpParser';
+} from '../utils/web/security/untrustedContent';
 
 interface FakeNode {
   querySelector: (selector: string) => unknown;
@@ -181,6 +183,21 @@ describe('parseSerpMessage — trust boundary', () => {
     expect(parsed.results[0]!.title.length).toBeLessThanOrEqual(300);
     expect(parsed.results[0]!.snippet.length).toBeLessThanOrEqual(1000);
   });
+
+  it('rejects an oversized raw message before parsing', () => {
+    expect(
+      parseSerpMessage(
+        msg([{ title: 'x'.repeat(600_000), url: 'https://x.com' }])
+      )
+    ).toBeNull();
+  });
+
+  it('collapses whitespace in a title so the source header stays one line', () => {
+    const parsed = parseSerpMessage(
+      msg([{ title: 'Multi\n  line\ttitle', url: 'https://x.com' }])
+    ) as Extract<SerpMessage, { type: 'serp-results' }>;
+    expect(parsed.results[0]!.title).toBe('Multi line title');
+  });
 });
 
 describe('buildSerpParserJs — empty-result reporting', () => {
@@ -194,5 +211,13 @@ describe('buildSerpParserJs — empty-result reporting', () => {
   it('the on-load variant never settles an engine with an empty result set', () => {
     expect(SERP_PARSER_JS_ONLOAD).not.toContain(EMPTY_POST);
     expect(buildSerpParserJs(false)).not.toContain(EMPTY_POST);
+  });
+
+  it('checks for a challenge before the generic link fallback', () => {
+    const challengeIdx = SERP_PARSER_JS.indexOf("type: 'serp-challenge'");
+    const genericIdx = SERP_PARSER_JS.indexOf("querySelectorAll('a[href]')");
+    expect(challengeIdx).toBeGreaterThan(-1);
+    expect(genericIdx).toBeGreaterThan(-1);
+    expect(challengeIdx).toBeLessThan(genericIdx);
   });
 });
