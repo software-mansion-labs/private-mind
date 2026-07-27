@@ -16,8 +16,12 @@ export const useWebSearchActivity = ({
   content: string;
   hasWebResults: boolean;
 }) => {
-  const isGenerating = useLLMStore((state) => state.isGenerating);
-  const isProcessingPrompt = useLLMStore((state) => state.isProcessingPrompt);
+  const isGenerating = useLLMStore(
+    (state) => isLastMessage && state.isGenerating
+  );
+  const isProcessingPrompt = useLLMStore(
+    (state) => isLastMessage && state.isProcessingPrompt
+  );
   const isSearchingWeb = useWebSearchStore(
     (state) => isLastMessage && state.isSearchingWeb
   );

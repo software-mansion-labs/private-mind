@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -19,8 +19,13 @@ const WebFavicon = ({ url, size }: Props) => {
   const { theme } = useTheme();
   const [failed, setFailed] = useState(false);
   const host = hostname(url);
+  const source = useMemo(() => ({ uri: WEB_FAVICON_URL(host) }), [host]);
 
   const progress = useSharedValue(0);
+  useEffect(() => {
+    setFailed(false);
+    progress.set(0);
+  }, [host, progress]);
   const faviconStyle = useAnimatedStyle(() => ({
     opacity: progress.get(),
     transform: [{ scale: 0.82 + progress.get() * 0.18 }],
@@ -43,7 +48,7 @@ const WebFavicon = ({ url, size }: Props) => {
       <View style={StyleSheet.absoluteFill}>{fallback}</View>
       {!failed && (
         <Animated.Image
-          source={{ uri: WEB_FAVICON_URL(host) }}
+          source={source}
           style={[
             StyleSheet.absoluteFill,
             { borderRadius: size * 0.2 },
