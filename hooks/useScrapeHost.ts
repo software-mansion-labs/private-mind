@@ -16,8 +16,13 @@ type Navigation = { uri: string; key: number };
 export const useScrapeHost = () => {
   const webRef = useRef<WebView>(null);
   const reinjectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navKeyRef = useRef<number | null>(null);
   const [nav, setNav] = useState<Navigation | null>(null);
   const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    navKeyRef.current = nav?.key ?? null;
+  }, [nav?.key]);
 
   const recheck = useCallback(() => {
     webRef.current?.injectJavaScript(SERP_PARSER_JS);
@@ -32,11 +37,14 @@ export const useScrapeHost = () => {
   const handleLoadEnd = useCallback(() => {
     if (!nav) return;
     if (reinjectTimer.current) clearTimeout(reinjectTimer.current);
+    const scheduledKey = nav.key;
     const jitter =
       SCRAPE_REINJECT_DELAY_MIN_MS +
       Math.random() *
         (SCRAPE_REINJECT_DELAY_MAX_MS - SCRAPE_REINJECT_DELAY_MIN_MS);
-    reinjectTimer.current = setTimeout(recheck, jitter);
+    reinjectTimer.current = setTimeout(() => {
+      if (navKeyRef.current === scheduledKey) recheck();
+    }, jitter);
   }, [nav, recheck]);
 
   const handleMessage = useCallback(
