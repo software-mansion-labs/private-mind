@@ -34,14 +34,15 @@ describe('useWebSearchStore', () => {
     expect(useWebSearchStore.getState().enabledByChat).toEqual({});
   });
 
-  it('transfers the flag from one chat id to another (phantom → real)', () => {
+  it('moves the flag from one chat id to another (phantom → real)', () => {
     const { setEnabled, transfer, isEnabled } = useWebSearchStore.getState();
     setEnabled(-100, true);
 
     transfer(-100, 42);
 
     expect(isEnabled(42)).toBe(true);
-    expect(isEnabled(-100)).toBe(true);
+    expect(isEnabled(-100)).toBe(false);
+    expect((-100) in useWebSearchStore.getState().enabledByChat).toBe(false);
   });
 
   it('does not create an entry when transferring from an unset chat id', () => {
@@ -61,7 +62,7 @@ describe('useWebSearchStore', () => {
 
   it('keeps the trace expanded across the searching→settled transition', () => {
     useWebSearchStore.setState({ isSearchingWeb: false, traceExpanded: false });
-    useWebSearchStore.getState().setSearchingWeb(true, 'q');
+    useWebSearchStore.getState().setSearchingWeb(true);
     useWebSearchStore.getState().setTraceExpanded(true);
 
     useWebSearchStore.getState().setSearchingWeb(false);
@@ -72,9 +73,32 @@ describe('useWebSearchStore', () => {
   it('collapses the trace again when a fresh search starts', () => {
     useWebSearchStore.setState({ isSearchingWeb: false, traceExpanded: true });
 
-    useWebSearchStore.getState().setSearchingWeb(true, 'q2');
+    useWebSearchStore.getState().setSearchingWeb(true);
 
     expect(useWebSearchStore.getState().traceExpanded).toBe(false);
+  });
+
+  it('clearEnabled removes a chat entry entirely', () => {
+    const { setEnabled, clearEnabled, isEnabled } =
+      useWebSearchStore.getState();
+    setEnabled(5, true);
+    expect(isEnabled(5)).toBe(true);
+
+    clearEnabled(5);
+
+    expect(isEnabled(5)).toBe(false);
+    expect(5 in useWebSearchStore.getState().enabledByChat).toBe(false);
+  });
+
+  it('a fresh search clears a stale active challenge', () => {
+    useWebSearchStore.setState({
+      isSearchingWeb: false,
+      challengeActive: true,
+    });
+
+    useWebSearchStore.getState().setSearchingWeb(true);
+
+    expect(useWebSearchStore.getState().challengeActive).toBe(false);
   });
 
   it('collapses the trace on reset', () => {
