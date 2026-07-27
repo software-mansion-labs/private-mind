@@ -1,5 +1,7 @@
 import {
   SERP_PARSER_JS,
+  SERP_PARSER_JS_ONLOAD,
+  buildSerpParserJs,
   parseSerpMessage,
   type SerpMessage,
 } from '../utils/web/scrape/serpParser';
@@ -147,5 +149,50 @@ describe('SERP_PARSER_JS classification', () => {
       type: 'serp-results',
       results: [{ title: 'One' }],
     });
+  });
+});
+
+describe('parseSerpMessage — trust boundary', () => {
+  const msg = (results: unknown[]): string =>
+    JSON.stringify({ type: 'serp-results', results });
+
+  it('rejects results whose url is not http(s)', () => {
+    const parsed = parseSerpMessage(
+      msg([
+        { title: 'Local file', url: 'file:///etc/passwd' },
+        { title: 'Weird scheme', url: `${'java'}script:alert(1)` },
+        { title: 'Real', url: 'https://example.com/a' },
+      ])
+    ) as Extract<SerpMessage, { type: 'serp-results' }>;
+    expect(parsed.results.map((r) => r.url)).toEqual(['https://example.com/a']);
+  });
+
+  it('caps the result count and truncates oversized fields', () => {
+    const many = Array.from({ length: 50 }, (_, i) => ({
+      title: 'T'.repeat(500),
+      url: `https://example.com/${i}`,
+      snippet: 'S'.repeat(5000),
+    }));
+    const parsed = parseSerpMessage(msg(many)) as Extract<
+      SerpMessage,
+      { type: 'serp-results' }
+    >;
+    expect(parsed.results.length).toBeLessThanOrEqual(20);
+    expect(parsed.results[0]!.title.length).toBeLessThanOrEqual(300);
+    expect(parsed.results[0]!.snippet.length).toBeLessThanOrEqual(1000);
+  });
+});
+
+describe('buildSerpParserJs — empty-result reporting', () => {
+  const EMPTY_POST = "post({ type: 'serp-results', results: [] });";
+
+  it('the recheck variant reports an empty result set', () => {
+    expect(SERP_PARSER_JS).toContain(EMPTY_POST);
+    expect(buildSerpParserJs(true)).toContain(EMPTY_POST);
+  });
+
+  it('the on-load variant never settles an engine with an empty result set', () => {
+    expect(SERP_PARSER_JS_ONLOAD).not.toContain(EMPTY_POST);
+    expect(buildSerpParserJs(false)).not.toContain(EMPTY_POST);
   });
 });

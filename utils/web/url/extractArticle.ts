@@ -12,14 +12,27 @@ const stripTagBlock = (html: string, tag: string): string =>
     ' '
   );
 
+const fromCodePoint = (code: number): string => {
+  if (!Number.isFinite(code) || code < 0 || code > 0x10ffff) return '';
+  try {
+    return String.fromCodePoint(code);
+  } catch {
+    return '';
+  }
+};
+
 const decodeEntities = (text: string): string =>
   text
     .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+      fromCodePoint(parseInt(hex, 16))
+    )
+    .replace(/&#(\d+);/g, (_, dec) => fromCodePoint(parseInt(dec, 10)))
+    .replace(/&amp;/g, '&');
 
 const extractTitle = (html: string): string | undefined => {
   const og = html.match(
@@ -65,6 +78,12 @@ const BOT_WALL_PHRASES =
 
 const BOT_WALL_MAX_TEXT_CHARS = 800;
 
+const CHALLENGE_MARKERS =
+  /cf-browser-verification|id=["']challenge-(?:form|running)|id=["']cf-challenge-running|(?:src|action)=["'][^"']*(?:recaptcha|hcaptcha|turnstile|challenge)|id=["']captcha/i;
+
+export const hasChallengeMarkers = (html: string): boolean =>
+  CHALLENGE_MARKERS.test(html);
+
 export const looksLikeBotWall = (text: string, title?: string): boolean => {
   if (title && BOT_WALL_PHRASES.test(title)) return true;
   return text.length < BOT_WALL_MAX_TEXT_CHARS && BOT_WALL_PHRASES.test(text);
@@ -74,6 +93,9 @@ export const fetchHtml = async (
   url: string,
   timeoutMs: number = URL_FETCH_TIMEOUT_MS
 ): Promise<string> => {
+  if (!/^https?:\/\//i.test(url)) {
+    throw new Error(`Refusing to fetch non-http(s) url: ${url}`);
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -100,11 +122,11 @@ export const extractArticle = async (
   timeoutMs?: number
 ): Promise<ExtractedArticle> => {
   const html = await fetchHtml(url, timeoutMs);
-  const text = heuristicExtractText(html);
+  const title = extractTitle(html) ?? hostname(url);
   return {
     url,
-    title: extractTitle(html) ?? hostname(url),
-    text,
+    title,
+    text: hasChallengeMarkers(html) ? '' : heuristicExtractText(html),
     siteName: hostname(url),
   };
 };

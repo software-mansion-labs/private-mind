@@ -1,6 +1,8 @@
 import type { WebSearchResult } from '../types';
 
-export const SERP_PARSER_JS = `(function () {
+export const buildSerpParserJs = (
+  reportEmpty: boolean
+): string => `(function () {
   try {
     var post = function (msg) {
       window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify(msg));
@@ -81,9 +83,12 @@ export const SERP_PARSER_JS = `(function () {
     }
 
     if (results.length === 0) {
+      var NAV = /^(privacy|terms|settings|help|about|sign in|log in|more results|feedback|advertising|images|videos|maps|news|all results)/i;
       var all = document.querySelectorAll('a[href]');
       for (var n = 0; n < all.length && results.length < MAX; n++) {
-        add(textOf(all[n]), hrefOf(all[n]), '', MIN_TITLE_GENERIC);
+        var label = textOf(all[n]);
+        if (NAV.test(label)) continue;
+        add(label, hrefOf(all[n]), '', MIN_TITLE_GENERIC);
       }
     }
 
@@ -105,7 +110,7 @@ export const SERP_PARSER_JS = `(function () {
       return;
     }
 
-    post({ type: 'serp-results', results: [] });
+    ${reportEmpty ? "post({ type: 'serp-results', results: [] });" : ''}
   } catch (e) {
     window.ReactNativeWebView && window.ReactNativeWebView.postMessage(
       JSON.stringify({ type: 'serp-error', message: String(e) })
@@ -114,16 +119,39 @@ export const SERP_PARSER_JS = `(function () {
 })();
 true;`;
 
+export const SERP_PARSER_JS = buildSerpParserJs(true);
+export const SERP_PARSER_JS_ONLOAD = buildSerpParserJs(false);
+
 export type SerpMessage =
   | { type: 'serp-results'; results: WebSearchResult[] }
   | { type: 'serp-challenge' }
   | { type: 'serp-error'; message: string };
 
-const isWebSearchResult = (value: unknown): value is WebSearchResult =>
-  !!value &&
-  typeof value === 'object' &&
-  typeof (value as WebSearchResult).url === 'string' &&
-  typeof (value as WebSearchResult).title === 'string';
+const SERP_HARD_MAX_RESULTS = 20;
+const SERP_MAX_URL_CHARS = 2048;
+const SERP_MAX_TITLE_CHARS = 300;
+const SERP_MAX_SNIPPET_CHARS = 1000;
+
+const isHttpUrl = (url: string): boolean => /^https?:\/\//i.test(url);
+
+const isWebSearchResult = (value: unknown): value is WebSearchResult => {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.url === 'string' &&
+    isHttpUrl(record.url) &&
+    typeof record.title === 'string'
+  );
+};
+
+const sanitizeResult = (result: WebSearchResult): WebSearchResult => ({
+  title: result.title.slice(0, SERP_MAX_TITLE_CHARS),
+  url: result.url.slice(0, SERP_MAX_URL_CHARS),
+  snippet:
+    typeof result.snippet === 'string'
+      ? result.snippet.slice(0, SERP_MAX_SNIPPET_CHARS)
+      : '',
+});
 
 export const parseSerpMessage = (raw: string): SerpMessage | null => {
   try {
@@ -138,7 +166,10 @@ export const parseSerpMessage = (raw: string): SerpMessage | null => {
     }
     if (parsed.type === 'serp-results') {
       const results = Array.isArray(parsed.results)
-        ? parsed.results.filter(isWebSearchResult)
+        ? parsed.results
+            .filter(isWebSearchResult)
+            .slice(0, SERP_HARD_MAX_RESULTS)
+            .map(sanitizeResult)
         : [];
       return { type: 'serp-results', results };
     }
