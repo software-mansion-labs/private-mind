@@ -63,6 +63,36 @@ describe('extractArticle', () => {
     global.fetch = mockFetch('', false) as unknown as typeof fetch;
     await expect(extractArticle('https://x.com')).rejects.toThrow();
   });
+
+  it('refuses to fetch a private-range host without hitting the network', async () => {
+    const fetchSpy = jest.fn();
+    global.fetch = fetchSpy as unknown as typeof fetch;
+
+    await expect(extractArticle('http://192.168.1.1/admin')).rejects.toThrow();
+    await expect(extractArticle('http://127.0.0.1/')).rejects.toThrow();
+    await expect(
+      extractArticle('http://169.254.169.254/latest/meta-data')
+    ).rejects.toThrow();
+    await expect(extractArticle('http://localhost:8080/')).rejects.toThrow();
+    await expect(extractArticle('http://10.0.0.5/')).rejects.toThrow();
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('rejects a response whose Content-Length exceeds the cap', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      headers: {
+        get: (name: string) =>
+          name.toLowerCase() === 'content-length' ? '50000000' : null,
+      },
+      text: () => Promise.resolve('x'),
+    }) as unknown as typeof fetch;
+
+    await expect(extractArticle('https://example.com/huge')).rejects.toThrow();
+  });
 });
 
 describe('looksLikeBotWall', () => {

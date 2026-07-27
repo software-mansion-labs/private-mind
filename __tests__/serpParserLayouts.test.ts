@@ -1,8 +1,8 @@
+import { SERP_PARSER_JS } from '../utils/web/scrape/serpParser';
 import {
-  SERP_PARSER_JS,
   parseSerpMessage,
   type SerpMessage,
-} from '../utils/web/scrape/serpParser';
+} from '../utils/web/security/untrustedContent';
 
 interface El {
   sel: string[];

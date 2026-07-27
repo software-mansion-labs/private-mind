@@ -11,12 +11,15 @@ jest.mock('../utils/web/scrape/webViewScrapeProvider', () => ({
 
 jest.mock('../utils/web/scrape/serpParser', () => ({
   SERP_PARSER_JS: 'PARSER_JS',
+}));
+
+jest.mock('../utils/web/security/untrustedContent', () => ({
   parseSerpMessage: jest.fn(),
 }));
 
 import { useScrapeHost } from '../hooks/useScrapeHost';
 import { webViewScrapeProvider } from '../utils/web/scrape/webViewScrapeProvider';
-import { parseSerpMessage } from '../utils/web/scrape/serpParser';
+import { parseSerpMessage } from '../utils/web/security/untrustedContent';
 import { useWebSearchStore } from '../store/webSearchStore';
 
 const attachHost = webViewScrapeProvider.attachHost as jest.Mock;
