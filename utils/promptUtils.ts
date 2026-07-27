@@ -9,6 +9,14 @@ import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { getPromptCharBudget } from '../constants/context-window';
 
+const CONTEXT_CLOSE_TAG_RESERVE_CHARS = 64;
+
+const surrogateSafeEnd = (text: string, end: number): number => {
+  if (end <= 0 || end >= text.length) return end;
+  const code = text.charCodeAt(end - 1);
+  return code >= 0xd800 && code <= 0xdbff ? end - 1 : end;
+};
+
 const getContextInstruction = (
   sources?: SourceDocument[],
   preferred?: SourceDocument[]
@@ -147,8 +155,14 @@ export const prepareMessagesForLLM = (
     let finalContext = safeContext;
     if (wrap(finalContext).length > availableForLast) {
       const overhead = wrap('').length;
-      const room = Math.max(0, availableForLast - overhead);
-      const hardSlice = safeContext.slice(0, room);
+      const room = Math.max(
+        0,
+        availableForLast - overhead - CONTEXT_CLOSE_TAG_RESERVE_CHARS
+      );
+      const hardSlice = safeContext.slice(
+        0,
+        surrogateSafeEnd(safeContext, room)
+      );
       const boundary = Math.max(
         hardSlice.lastIndexOf('\n\n'),
         hardSlice.lastIndexOf('\n ---')

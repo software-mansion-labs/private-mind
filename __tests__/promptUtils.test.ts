@@ -1,5 +1,6 @@
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { looksLikeNoAnswer } from '../utils/messageSources';
+import { sourceBlock } from '../utils/contextUtils';
 import {
   Message,
   ChatSettings,
@@ -571,6 +572,42 @@ describe('prepareMessagesForLLM', () => {
       const last = result[result.length - 1];
       expect(last.role).toBe('user');
       expect(last.content).toContain('keep me');
+    });
+
+    it('keeps the assembled prompt within budget when doc and web context overflow', () => {
+      const budget = getPromptCharBudget(baseModel);
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'question about the topic',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const docBlock = sourceBlock(0, 'doc.pdf', 'd'.repeat(budget));
+      const webBlock = sourceBlock(1, 'Web Page', 'w'.repeat(budget));
+
+      const result = prepareMessagesForLLM(
+        messages,
+        [docBlock, webBlock],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        [
+          { name: 'doc.pdf' },
+          { name: 'Web Page', kind: 'web', url: 'https://x.com' },
+        ] as SourceDocument[]
+      );
+
+      const total = result.reduce(
+        (sum, msg) =>
+          sum + (typeof msg.content === 'string' ? msg.content.length : 0),
+        0
+      );
+      expect(total).toBeLessThanOrEqual(budget);
     });
 
     it('truncates the RAG context when it alone overflows the budget', () => {
