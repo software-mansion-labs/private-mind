@@ -1,13 +1,7 @@
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Theme } from '../../styles/colors';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useSpeechInput } from '../../hooks/useSpeechInput';
 import CircleButton from '../CircleButton';
@@ -35,8 +29,7 @@ const ChatSpeechInput: React.FC<Props> = ({
   onSubmit: onSubmitProp,
   onCancel: onCancelProp,
 }) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
 
   const recordingAttemptedRef = useRef(false);
   const recordingStartTimeRef = useRef(0);
@@ -248,8 +241,7 @@ const RecordingInfo: React.FC<{
   /** in seconds */
   duration: number;
 }> = ({ active, duration }) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const minutes = Math.floor(duration / 60);
   const seconds = duration % 60;
@@ -265,8 +257,7 @@ const RecordingInfo: React.FC<{
 };
 
 const ScrollableTranscript: React.FC<{ text: string }> = ({ text }) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   return (
     <ScrollView style={styles.transcriptWrapper}>

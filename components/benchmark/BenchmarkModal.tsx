@@ -1,10 +1,10 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Modal, View, Text, StyleSheet } from 'react-native';
 import ModelCard from '../model-hub/ModelCard';
 import SecondaryButton from '../SecondaryButton';
 import { SpinningCircleTimer } from '../SpinningCircleTimer';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';
 import CheckIcon from '../../assets/icons/check.svg';
@@ -24,8 +24,7 @@ export const BenchmarkModal = ({
   timer,
   selectedModel,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   return (
     <Modal

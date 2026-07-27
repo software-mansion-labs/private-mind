@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -6,7 +6,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Theme } from '../styles/colors';
-import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 interface TextInputBorderProps {
   active: boolean;
@@ -20,8 +20,7 @@ const TextInputBorder: React.FC<TextInputBorderProps> = ({
   active,
   error = false,
 }) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const showActive = active && !error;
   const activeOpacity = useSharedValue(showActive ? 1 : 0);

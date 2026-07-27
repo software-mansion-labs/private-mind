@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
@@ -6,14 +6,13 @@ import useDefaultHeader from '../../hooks/useDefaultHeader';
 import { SettingsRow } from '../../components/settings/SettingsRow';
 import EditIcon from '../../assets/icons/edit.svg';
 import InfoCircleIcon from '../../assets/icons/info-circle.svg';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 
 const SettingsScreen = () => {
   useDefaultHeader();
   const router = useRouter();
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   return (
     <View style={styles.container}>

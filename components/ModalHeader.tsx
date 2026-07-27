@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   View,
   TouchableOpacity,
@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import CloseIcon from '../assets/icons/close.svg';
 import ArrowLeftIcon from '../assets/icons/arrow-left.svg';
-import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 
@@ -19,8 +19,7 @@ interface Props {
 }
 
 const ModalHeader = ({ title, onClose, leftIcon = 'close' }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
   const Icon = leftIcon === 'back' ? ArrowLeftIcon : CloseIcon;
   const iconSize = leftIcon === 'back' ? 20 : 16;
 

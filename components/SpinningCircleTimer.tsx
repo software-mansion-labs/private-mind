@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Animated, {
@@ -8,7 +8,7 @@ import Animated, {
   Easing,
   withRepeat,
 } from 'react-native-reanimated';
-import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
 
@@ -23,9 +23,8 @@ export const SpinningCircleTimer = ({
   strokeWidth = 8,
   time,
 }: SpinningCircleProps) => {
-  const { theme } = useTheme();
+  const { styles, theme } = useThemedStyles(createStyles);
   const rotation = useSharedValue(0);
-  const styles = useMemo(() => createStyles(theme), [theme]);
 
   useEffect(() => {
     rotation.set(

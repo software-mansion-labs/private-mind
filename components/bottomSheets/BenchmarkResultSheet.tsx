@@ -1,10 +1,4 @@
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import {
   BottomSheetModal,
   BottomSheetBackdrop,
@@ -12,7 +6,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { StyleSheet, Text } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import DeviceInfo from 'react-native-device-info';
 import SecondaryButton from '../SecondaryButton';
@@ -28,8 +22,7 @@ interface Props {
 }
 
 const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const [deviceInfo, setDeviceInfo] = useState({
     model: '',

@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dimensions, StyleSheet } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { lightTheme, Theme } from '../styles/colors';
 import { SplashScreen } from 'expo-router';
 import Animated, {
@@ -12,8 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 function SplashScreenAnimation() {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const rippleProgress = useSharedValue(0);
   const [done, setDone] = useState(false);

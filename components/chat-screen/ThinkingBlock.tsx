@@ -1,6 +1,6 @@
-import React, { memo, useMemo, useState } from 'react';
+import React, { memo, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import MarkdownComponent from './MarkdownComponent';
@@ -18,8 +18,7 @@ interface Props {
 const ThinkingBlock = memo(
   ({ content, isComplete = true, inProgress }: Props) => {
     const [expanded, setExpanded] = useState(!isComplete);
-    const { theme } = useTheme();
-    const styles = useMemo(() => createStyles(theme), [theme]);
+    const { styles } = useThemedStyles(createStyles);
 
     const toggleExpanded = () => {
       if (inProgress) return;

@@ -1,4 +1,4 @@
-import React, { RefObject, useCallback, useMemo, useState } from 'react';
+import React, { RefObject, useCallback, useState } from 'react';
 import {
   BottomSheetModal,
   BottomSheetFlatList,
@@ -10,7 +10,7 @@ import { Easing } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';
@@ -30,8 +30,7 @@ const ModelSelectSheet = ({
   selectModel,
   onSheetStateChange,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
   const { downloadedModels } = useModelStore();
   const [search, setSearch] = useState('');
   const [isFullyOpen, setIsFullyOpen] = useState(false);

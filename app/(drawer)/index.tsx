@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-} from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { startPhantomChat } from '../../utils/startPhantomChat';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { configureReanimatedLogger } from 'react-native-reanimated';
@@ -18,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import PrimaryButton from '../../components/PrimaryButton';
 import TextButton from '../../components/TextButton';
 import { Theme } from '../../styles/colors';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { importChatRoom } from '../../database/exportImportRepository';
 import { useChatStore } from '../../store/chatStore';
 import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
@@ -49,8 +43,7 @@ export default function App() {
       headerRight: () => <NewChatHeaderButton noOp />,
     });
   }, [navigation]);
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
   const { addChat } = useChatStore();
 
   const handleSetModel = async (model: Model, replace = false) => {

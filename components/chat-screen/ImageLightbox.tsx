@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   Modal,
   StatusBar,
@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CloseIcon from '../../assets/icons/close.svg';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 
 interface Props {
@@ -19,8 +19,7 @@ interface Props {
 
 const ImageLightbox = ({ uri, visible, onClose }: Props) => {
   const insets = useSafeAreaInsets();
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   return (
     <Modal

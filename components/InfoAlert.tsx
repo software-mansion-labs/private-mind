@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Text, StyleSheet, View } from 'react-native';
 import InfoCircleIcon from '../assets/icons/info-circle.svg';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
-import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 
 interface Props {
@@ -10,8 +10,7 @@ interface Props {
 }
 
 export const InfoAlert = ({ text }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   return (
     <View style={styles.container}>

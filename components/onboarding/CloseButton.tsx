@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { StyleSheet, TouchableOpacity } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import CloseIcon from '../../assets/icons/cross-small.svg';
 
@@ -9,8 +9,7 @@ interface Props {
 }
 
 function CloseButton({ onPress }: Props) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
 
   return (
     <TouchableOpacity style={styles.wrapper} onPress={onPress}>

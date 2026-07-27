@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 import PlusIcon from '../../assets/icons/plus.svg';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 
 interface Props {
@@ -10,11 +10,7 @@ interface Props {
 }
 
 const FloatingActionButton = ({ onPress, disabled = false }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(
-    () => createStyles(theme, disabled),
-    [theme, disabled]
-  );
+  const { styles } = useThemedStyles(createStyles, disabled);
 
   return (
     <TouchableOpacity

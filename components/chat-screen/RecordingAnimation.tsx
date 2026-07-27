@@ -1,4 +1,4 @@
-import React, { useCallback, useImperativeHandle, useMemo } from 'react';
+import React, { useCallback, useImperativeHandle } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -32,8 +32,7 @@ const BAR_GAP = 3;
 const BAR_OFFSET = BAR_WIDTH + BAR_GAP;
 
 const RecordingAnimation: React.FC<Props> = ({ width, height, ref }) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const barsPerWindow = Math.floor(width / BAR_OFFSET);
   const windowWidth = barsPerWindow * BAR_OFFSET;

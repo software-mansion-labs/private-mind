@@ -1,10 +1,4 @@
-import React, {
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useEffect,
-} from 'react';
+import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import {
   Dimensions,
   Image,
@@ -13,7 +7,7 @@ import {
   View,
   BackHandler,
 } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import OnboardingIntroPanel from '../../components/onboarding/OnboardingIntroPanel';
 import Animated, {
@@ -85,8 +79,7 @@ function OnboardingScreen() {
     router.replace('/(modals)/select-starting-model');
   };
 
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
   const bgSpillProgress = useSharedValue(0);
 
   const [stepNumber, setStepNumber] = useState(0);

@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { SvgComponent } from '../../utils/SvgComponent';
 
@@ -15,8 +15,7 @@ export default function MessageActionButton({
   icon: Icon,
   onPress,
 }: MessageActionButtonProps) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   return (
     <Pressable

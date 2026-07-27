@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import Animated, {
@@ -10,7 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useLLMStore } from '../../store/llmStore';
 import { startPhantomChat } from '../../utils/startPhantomChat';
 import { Theme } from '../../styles/colors';
@@ -40,8 +40,7 @@ export const DrawerNavSection = ({
   onMeasured,
   onNavigate,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const router = useRouter();
   const pathname = usePathname();

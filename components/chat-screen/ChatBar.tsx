@@ -26,7 +26,7 @@ import AttachmentSheet from '../bottomSheets/AttachmentSheet';
 import { useAttachment, Attachment } from '../../hooks/useAttachment';
 import { Model } from '../../database/modelRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useLLMStore } from '../../store/llmStore';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import { Theme } from '../../styles/colors';
@@ -83,8 +83,7 @@ const ChatBar = ({
   hasMessages,
   onAttachmentSheetStateChange,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
   const containerStyle = useMemo(
     () => [styles.container, { paddingBottom: theme.insets.bottom + 16 }],
     [styles.container, theme.insets.bottom]

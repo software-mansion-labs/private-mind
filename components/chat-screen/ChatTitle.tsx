@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Text, StyleSheet, View, Pressable } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
@@ -18,8 +18,7 @@ const ChatTitle = ({
   onPress,
   showChevron = false,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
   return (
     <Pressable
       onPress={onPress}

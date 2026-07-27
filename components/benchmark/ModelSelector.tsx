@@ -1,8 +1,8 @@
-import React, { Dispatch, SetStateAction, useMemo, useRef } from 'react';
+import React, { Dispatch, SetStateAction, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Model } from '../../database/modelRepository';
 import ModelCard from '../model-hub/ModelCard';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
@@ -16,8 +16,7 @@ interface Props {
 
 export const ModelSelector = ({ model, setSelectedModel }: Props) => {
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   return (
     <>

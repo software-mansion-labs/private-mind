@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
@@ -40,11 +40,7 @@ const ModelCard = ({
   wifiWarningSheetRef,
   showDeleteButton = false,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(
-    () => createStyles(theme, selected),
-    [theme, selected]
-  );
+  const { styles, theme } = useThemedStyles(createStyles, selected);
 
   const { downloadStates, downloadModel, cancelDownload, removeModelFiles } =
     useModelStore();

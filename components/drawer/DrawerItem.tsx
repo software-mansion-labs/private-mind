@@ -1,7 +1,7 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 
@@ -25,8 +25,7 @@ export const DrawerItem = memo(
     testID,
     hugContent,
   }: Props) => {
-    const { theme } = useTheme();
-    const styles = useMemo(() => createStyles(theme), [theme]);
+    const { styles } = useThemedStyles(createStyles);
 
     return (
       <Pressable

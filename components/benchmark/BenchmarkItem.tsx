@@ -1,9 +1,9 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 
@@ -13,8 +13,7 @@ interface Props {
 }
 
 const BenchmarkItem = ({ entry, onPress }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const date = new Date(entry.timestamp);
   const formattedDate = `${date.getDate()} ${date.toLocaleString('default', {

@@ -11,7 +11,7 @@ import {
 import { useRouter, usePathname } from 'expo-router';
 import { ScrollView } from 'react-native-gesture-handler';
 import { SharedValue } from 'react-native-reanimated';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useChatStore } from '../../store/chatStore';
 import { useLLMStore } from '../../store/llmStore';
 import { chatLabel } from '../../utils/chatLabel';
@@ -69,8 +69,7 @@ const DrawerMenu = ({
   searchProgress,
   resetScrollPosition,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const router = useRouter();
   const pathname = usePathname();

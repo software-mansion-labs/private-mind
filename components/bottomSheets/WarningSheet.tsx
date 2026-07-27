@@ -1,4 +1,4 @@
-import React, { RefObject, useCallback, useMemo } from 'react';
+import React, { RefObject, useCallback } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -6,7 +6,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { StyleSheet, Text, View } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
@@ -24,8 +24,7 @@ interface Props {
 }
 
 const WarningSheet = ({ bottomSheetModalRef, onDismiss }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const renderBackdrop = useCallback(
     (props: any) => (

@@ -1,4 +1,4 @@
-import React, { RefObject, useMemo } from 'react';
+import React, { RefObject } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import {
@@ -44,8 +44,7 @@ export const DrawerTopBar = ({
   inputRef,
   progress,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
   const { width: screenWidth } = useWindowDimensions();
 
   const collapsedTitleWidth =
