@@ -6,7 +6,6 @@ type MockLLMState = {
   isGenerating: boolean;
   isProcessingPrompt: boolean;
   isSearchingWeb?: boolean;
-  webSearchQuery?: string | null;
   webSearchTrace?: unknown[];
 };
 
@@ -14,7 +13,6 @@ type MockLLMSelector<T = MockLLMState> = (state: MockLLMState) => T;
 
 type MockWebSearchState = {
   isSearchingWeb: boolean;
-  webSearchQuery: string | null;
   webSearchTrace: unknown[];
 };
 
@@ -57,7 +55,6 @@ jest.mock('../store/webSearchStore', () => ({
   useWebSearchStore: jest.fn(<T,>(selector?: MockWebSearchSelector<T>) => {
     const state = {
       isSearchingWeb: false,
-      webSearchQuery: null,
       webSearchTrace: [],
     };
     return selector ? selector(state) : state;
@@ -135,7 +132,6 @@ const setLLMState = (state: MockLLMState) => {
   );
   const webState: MockWebSearchState = {
     isSearchingWeb: state.isSearchingWeb ?? false,
-    webSearchQuery: state.webSearchQuery ?? null,
     webSearchTrace: state.webSearchTrace ?? [],
   };
   mockUseWebSearchStore.mockImplementation(

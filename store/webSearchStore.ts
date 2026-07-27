@@ -23,12 +23,12 @@ interface WebSearchStore {
   enabledByChat: Record<number, boolean>;
   isEnabled: (chatId: number | null) => boolean;
   setEnabled: (chatId: number | null, enabled: boolean) => void;
+  clearEnabled: (chatId: number | null) => void;
   transfer: (fromChatId: number, toChatId: number) => void;
 
   isSearchingWeb: boolean;
-  webSearchQuery: string | null;
   webSearchTrace: WebSearchTraceEntry[];
-  setSearchingWeb: (searching: boolean, query?: string | null) => void;
+  setSearchingWeb: (searching: boolean) => void;
   pushWebSearchEvent: (event: WebSearchProgressEvent) => void;
   resetTrace: () => void;
 
@@ -52,21 +52,20 @@ export const useWebSearchStore = create<WebSearchStore>()(
     (set, get) => ({
       enabledByChat: {},
       isSearchingWeb: false,
-      webSearchQuery: null,
       webSearchTrace: [],
       traceExpanded: false,
       challengeActive: false,
       challengePolicy: DEFAULT_CHALLENGE_POLICY,
       challengeHandlers: null,
 
-      setSearchingWeb: (searching, query = null) =>
+      setSearchingWeb: (searching) =>
         set((state) => {
           const isNewSearch = searching && !state.isSearchingWeb;
           return {
             isSearchingWeb: searching,
-            webSearchQuery: searching ? query : null,
             webSearchTrace: isNewSearch ? [] : state.webSearchTrace,
             traceExpanded: isNewSearch ? false : state.traceExpanded,
+            challengeActive: isNewSearch ? false : state.challengeActive,
           };
         }),
 
@@ -83,7 +82,12 @@ export const useWebSearchStore = create<WebSearchStore>()(
         });
       },
 
-      resetTrace: () => set({ webSearchTrace: [], traceExpanded: false }),
+      resetTrace: () =>
+        set({
+          webSearchTrace: [],
+          traceExpanded: false,
+          challengeActive: false,
+        }),
 
       setChallengeActive: (active) => set({ challengeActive: active }),
 
@@ -109,20 +113,39 @@ export const useWebSearchStore = create<WebSearchStore>()(
         }));
       },
 
+      clearEnabled: (chatId) => {
+        if (chatId == null) return;
+        set((state) => {
+          if (!(chatId in state.enabledByChat)) return state;
+          const next = { ...state.enabledByChat };
+          delete next[chatId];
+          return { enabledByChat: next };
+        });
+      },
+
       transfer: (fromChatId, toChatId) => {
         set((state) => {
           const value = state.enabledByChat[fromChatId];
           if (value === undefined) return state;
-          return {
-            enabledByChat: { ...state.enabledByChat, [toChatId]: value },
-          };
+          const next = { ...state.enabledByChat, [toChatId]: value };
+          if (fromChatId !== toChatId) delete next[fromChatId];
+          return { enabledByChat: next };
         });
       },
     }),
     {
       name: 'web-search',
+      version: 1,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({ challengePolicy: state.challengePolicy }),
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<WebSearchStore>;
+        const validPolicies: ChallengePolicy[] = ['ask', 'reveal', 'skip'];
+        const challengePolicy = validPolicies.includes(saved.challengePolicy!)
+          ? saved.challengePolicy!
+          : DEFAULT_CHALLENGE_POLICY;
+        return { ...current, challengePolicy };
+      },
     }
   )
 );
