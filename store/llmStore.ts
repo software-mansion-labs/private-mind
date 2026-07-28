@@ -96,6 +96,7 @@ const resetStreamState = () => {
 };
 
 let suppressUtilityStreaming = false;
+let utilityGenerating = false;
 
 const withNoThink = (messages: ExecutorchMessage[]): ExecutorchMessage[] => {
   if (messages.length === 0) return messages;
@@ -822,7 +823,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   },
 
   generateUtility: async (messages) => {
-    if (!llmInstance || get().isLoading) return '';
+    if (!llmInstance || get().isLoading || utilityGenerating) return '';
+    utilityGenerating = true;
     suppressUtilityStreaming = true;
     try {
       const prepared = get().model?.thinking ? withNoThink(messages) : messages;
@@ -833,6 +835,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       return '';
     } finally {
       suppressUtilityStreaming = false;
+      utilityGenerating = false;
     }
   },
 
