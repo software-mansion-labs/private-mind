@@ -1,4 +1,4 @@
-import type { WebSearchResult } from './types';
+import type { WebSearchResult, ExtractedArticle } from './types';
 import { extractArticle, looksLikeBotWall } from './url/extractArticle';
 import { hostname } from './webResultsToContext';
 import {
@@ -13,11 +13,17 @@ export interface EnrichPageEvent {
   ok: boolean;
 }
 
+export type ArticleFetcher = (
+  url: string,
+  timeoutMs: number
+) => Promise<ExtractedArticle>;
+
 export const enrichWebResults = async (
   results: WebSearchResult[],
   topN: number = WEB_FETCH_TOP_N_CONTENT,
   onPage?: (event: EnrichPageEvent) => void,
-  skip?: ReadonlySet<string>
+  skip?: ReadonlySet<string>,
+  fetchArticle: ArticleFetcher = extractArticle
 ): Promise<WebSearchResult[]> => {
   if (topN <= 0 || results.length === 0) return results;
 
@@ -27,7 +33,7 @@ export const enrichWebResults = async (
         return result;
       }
       try {
-        const article = await extractArticle(
+        const article = await fetchArticle(
           result.url,
           WEB_CONTENT_FETCH_TIMEOUT_MS
         );

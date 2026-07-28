@@ -5,7 +5,11 @@ import type {
   WebSourceDocument,
 } from './types';
 import { planWebSearch, type QueryRewriteFn } from './buildSearchQuery';
-import { enrichWebResults, type EnrichPageEvent } from './enrichResults';
+import {
+  enrichWebResults,
+  type ArticleFetcher,
+  type EnrichPageEvent,
+} from './enrichResults';
 import {
   createWebEmbeddingCache,
   retrieveWebPassages,
@@ -61,6 +65,7 @@ export interface RunWebSearchInput {
   onProgress?: (event: WebSearchProgressEvent) => void;
   signal?: AbortSignal;
   today?: string;
+  fetchArticle?: ArticleFetcher;
 }
 
 export interface WebRoundTelemetry {
@@ -269,7 +274,13 @@ export const runWebSearch = async (
     let waves = 0;
 
     const runWave = async () => {
-      enriched = await enrichWebResults(enriched, target, onPage, attempted);
+      enriched = await enrichWebResults(
+        enriched,
+        target,
+        onPage,
+        attempted,
+        input.fetchArticle
+      );
       for (const result of enriched) {
         if (result.content?.trim()) enrichedByUrl.set(result.url, result);
       }
