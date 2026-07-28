@@ -39,8 +39,8 @@ export const WEB_AGREEMENT_MIN_BARE_VALUE = 10;
 export const WEB_POSTGEN_CORRECTION_ENABLED = false;
 
 export const WEB_QUERY_REWRITE = true;
-export const WEB_QUERY_CONTEXT_TURNS = 6;
-export const WEB_QUERY_CONTEXT_TURN_MAX_CHARS = 300;
+export const WEB_QUERY_CONTEXT_TURNS = 3;
+export const WEB_QUERY_CONTEXT_TURN_MAX_CHARS = 160;
 export const WEB_QUERY_MAX_CHARS = 160;
 export const WEB_QUERY_GATE = true;
 export const WEB_QUERY_MAX_SUBQUERIES = 2;

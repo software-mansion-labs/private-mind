@@ -24,28 +24,21 @@ export interface WebSearchPlan {
 }
 
 const PLANNER_SYSTEM_PROMPT = (today: string): string =>
-  "/no_think You turn the user's latest message into a web-search plan. " +
-  'Respond with ONLY one JSON object, no other text and no reasoning:\n' +
+  "You turn the user's latest message into a web-search plan. " +
+  'Output ONLY one JSON object, no other text and no reasoning:\n' +
   '{"needs_search": true|false, "intent": "<goal, max 8 words>", "queries": ["<q1>", "<optional q2>"]}\n' +
-  'Rules:\n' +
-  '- needs_search=false for small talk, opinions, creative writing, or things ' +
-  'answerable from general knowledge with no fresh/real-time facts; then use "queries": [].\n' +
-  '- needs_search=true for current events, prices, weather, scores, product ' +
-  'specs, people/places, or any time-sensitive or factual lookup.\n' +
-  '- Each query is concise KEYWORDS a search engine matches, NOT a full ' +
-  'sentence, under 12 words.\n' +
-  '- Resolve pronouns and references (it, that, they, "instead") to the ' +
-  'concrete thing using the conversation.\n' +
-  `- Turn "today/latest/now/current" into a concrete date or year. Today is ${today}.\n` +
-  '- Give 1 query normally; give 2 ONLY when the message has two clearly ' +
-  'distinct parts (e.g. a comparison of two things).\n' +
-  'Examples:\n' +
+  'needs_search=false for small talk, opinions, creative writing, or general ' +
+  'knowledge with no fresh/real-time facts (then "queries": []). ' +
+  'needs_search=true for current events, prices, weather, scores, specs, ' +
+  'people/places, or any time-sensitive or factual lookup. ' +
+  'Each query is concise search KEYWORDS under 12 words, not a sentence. ' +
+  'Resolve pronouns/references (it, that, they) from the conversation. ' +
+  `Turn today/latest/now/current into a concrete date or year; today is ${today}. ` +
+  'Give 1 query normally, 2 ONLY for a clear comparison of two things.\n' +
   'User: hey how are you\n' +
   '{"needs_search": false, "intent": "casual greeting", "queries": []}\n' +
-  'User: whats the weather in kraków like right now\n' +
-  '{"needs_search": true, "intent": "current Kraków weather", "queries": ["Kraków weather today"]}\n' +
-  'User: how do 4 cups of coffee a day affect health, and how does that compare to green tea\n' +
-  '{"needs_search": true, "intent": "coffee vs green tea health effects", "queries": ["health effects 4 cups coffee daily", "green tea daily intake health effects"]}';
+  'User: whats the weather in kraków right now\n' +
+  '{"needs_search": true, "intent": "current Kraków weather", "queries": ["Kraków weather today"]}';
 
 const CONTEXT_MARKERS =
   /\b(it|its|it's|this|that|they|them|those|these|there|he|she|him|her|his|hers|one|ones|instead|too|also|either|another)\b/i;
