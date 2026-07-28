@@ -97,6 +97,16 @@ const resetStreamState = () => {
 
 let suppressUtilityStreaming = false;
 
+const withNoThink = (messages: ExecutorchMessage[]): ExecutorchMessage[] => {
+  if (messages.length === 0) return messages;
+  const last = messages.length - 1;
+  return messages.map((message, index) =>
+    index === last
+      ? { ...message, content: `${message.content} /no_think` }
+      : message
+  );
+};
+
 const calculatePerformanceMetrics = (
   startTime: number,
   endTime: number,
@@ -815,7 +825,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     if (!llmInstance || get().isLoading) return '';
     suppressUtilityStreaming = true;
     try {
-      const result = await llmInstance.generate(messages);
+      const prepared = get().model?.thinking ? withNoThink(messages) : messages;
+      const result = await llmInstance.generate(prepared);
       return typeof result === 'string' ? result : '';
     } catch (error) {
       console.warn('generateUtility failed', error);

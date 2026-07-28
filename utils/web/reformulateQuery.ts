@@ -70,7 +70,7 @@ export const buildCorrectiveEvidence = (
     .slice(0, WEB_CORRECTIVE_EVIDENCE_PAGES);
 
 const CORRECTIVE_SYSTEM_PROMPT = (targetLanguage: string): string =>
-  '/no_think A web search did not answer the question. You get excerpts from ' +
+  'A web search did not answer the question. You get excerpts from ' +
   'the pages it found. Write ONE better search query.\n' +
   'Respond with ONLY one JSON object, no other text and no reasoning:\n' +
   '{"query": "<new search keywords>"}\n' +
