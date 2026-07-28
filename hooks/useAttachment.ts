@@ -74,9 +74,6 @@ export const useAttachment = () => {
   const vectorStoreRef = useRef(vectorStore);
   vectorStoreRef.current = vectorStore;
 
-  // A document is embedded as a source the moment it is attached, but it is only
-  // tied to a chat on send. Sweep whenever one is abandoned instead, or it stays
-  // in the store forever. cleanupOrphanedSources only removes unreferenced rows.
   const sweepAbandonedSources = useCallback(() => {
     const store = vectorStoreRef.current;
     if (store) useSourceStore.getState().cleanupOrphanedSources(store);

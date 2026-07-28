@@ -52,8 +52,6 @@ export const migrateEmbeddingModelIfNeeded = async (
     const persistedDim = await readPersistedVectorDim(vectorStore);
     const incompatible =
       persistedDim !== null && persistedDim !== currentModelDim;
-    // Leave the key unset when the wipe was partial so the next launch retries;
-    // deleting again is idempotent.
     if (incompatible && !(await clearImportedSources(vectorStore, db))) {
       return true;
     }

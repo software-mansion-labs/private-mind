@@ -761,6 +761,12 @@ describe('runBenchmark', () => {
     await loadModel();
     useLLMStore.setState({ model: baseModel });
 
+    // The RN jest preset aliases performance.now to Date.now (1 ms resolution),
+    // so on a fast machine startTime and the first token can share a millisecond
+    // and the measured delta collapses to 0. Advance a virtual clock instead.
+    let now = 0;
+    jest.spyOn(performance, 'now').mockImplementation(() => (now += 10));
+
     mockInstance.generate.mockImplementation(async () => {
       await flushFrame();
       capturedTokenCallback!('tok');
