@@ -59,6 +59,7 @@ const WebScrapeSheet = () => {
           onShouldStartLoadWithRequest={(request) =>
             isAllowedScrapeNavigation(request.url)
           }
+          incognito
           javaScriptEnabled
           domStorageEnabled
           thirdPartyCookiesEnabled
