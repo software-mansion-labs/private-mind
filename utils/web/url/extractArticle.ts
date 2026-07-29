@@ -95,11 +95,15 @@ export const looksLikeBotWall = (text: string, title?: string): boolean => {
 
 export const fetchHtml = async (
   url: string,
-  timeoutMs: number = URL_FETCH_TIMEOUT_MS
+  timeoutMs: number = URL_FETCH_TIMEOUT_MS,
+  signal?: AbortSignal
 ): Promise<string> => {
   assertPublicHttpUrl(url);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const onAbort = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener('abort', onAbort);
   try {
     const response = await fetch(url, {
       signal: controller.signal,
@@ -117,14 +121,16 @@ export const fetchHtml = async (
       : html;
   } finally {
     clearTimeout(timeout);
+    signal?.removeEventListener('abort', onAbort);
   }
 };
 
 export const extractArticle = async (
   url: string,
-  timeoutMs?: number
+  timeoutMs?: number,
+  signal?: AbortSignal
 ): Promise<ExtractedArticle> => {
-  const html = await fetchHtml(url, timeoutMs);
+  const html = await fetchHtml(url, timeoutMs, signal);
   const title = extractTitle(html) ?? hostname(url);
   return {
     url,

@@ -236,7 +236,8 @@ export const runWebSearch = async (
         enriched,
         retrievalQuery,
         embeddings!,
-        embeddingCache
+        embeddingCache,
+        signal
       );
       grounded = retrieval.results;
       signals = retrieval.signals;
@@ -279,7 +280,8 @@ export const runWebSearch = async (
         target,
         onPage,
         attempted,
-        input.fetchArticle
+        input.fetchArticle,
+        signal
       );
       for (const result of enriched) {
         if (result.content?.trim()) enrichedByUrl.set(result.url, result);

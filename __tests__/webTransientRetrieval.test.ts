@@ -144,3 +144,60 @@ describe('retrieveWebPassages', () => {
     expect(embedded).toBeGreaterThan(1);
   });
 });
+
+describe('retrieveWebPassages — abort signal', () => {
+  it('returns results untouched and skips all embedding on a pre-aborted signal', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const input = [
+      result({
+        url: 'https://a.com/1',
+        content: asChunk('weather in Warsaw is sunny with a high temperature'),
+      }),
+    ];
+
+    const out = await retrieveWebPassages(
+      input,
+      QUERY,
+      fakeEmbeddings,
+      undefined,
+      controller.signal
+    );
+
+    expect(out.results).toBe(input);
+    expect(out.signals).toBeNull();
+    expect(fakeEmbeddings.embedQuery).not.toHaveBeenCalled();
+    expect(fakeEmbeddings.embedDocument).not.toHaveBeenCalled();
+  });
+
+  it('stops embedding chunks once the signal aborts mid-loop', async () => {
+    const controller = new AbortController();
+    const abortingEmbeddings = {
+      embedQuery: jest.fn(async (text: string) => axisOf(text)),
+      embedDocument: jest.fn(async (text: string) => {
+        controller.abort();
+        return axisOf(text);
+      }),
+    } as unknown as LFMEmbeddings;
+    const input = [
+      result({
+        url: 'https://a.com/1',
+        content:
+          asChunk('weather in Warsaw is sunny with a high temperature') +
+          asChunk('football match score from yesterday evening game'),
+      }),
+    ];
+
+    const out = await retrieveWebPassages(
+      input,
+      QUERY,
+      abortingEmbeddings,
+      undefined,
+      controller.signal
+    );
+
+    expect(out.results).toBe(input);
+    expect(out.signals).toBeNull();
+    expect(abortingEmbeddings.embedDocument).toHaveBeenCalledTimes(1);
+  });
+});

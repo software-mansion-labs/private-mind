@@ -127,8 +127,10 @@ export const retrieveWebPassages = async (
   results: WebSearchResult[],
   query: WebRetrievalQuery,
   embeddings: LFMEmbeddings,
-  cache?: WebEmbeddingCache
+  cache?: WebEmbeddingCache,
+  signal?: AbortSignal
 ): Promise<WebRetrievalResult> => {
+  if (signal?.aborted) return { results, signals: null };
   const chunks = await chunkPages(results);
   if (chunks.length === 0) return { results, signals: null };
 
@@ -141,6 +143,7 @@ export const retrieveWebPassages = async (
       (await embeddings.embedQuery(query.semanticQuery));
     cache?.set(queryKey, queryEmbedding);
     for (const chunk of chunks) {
+      if (signal?.aborted) return { results, signals: null };
       const key = `d:${chunk.text}`;
       chunk.embedding =
         cache?.get(key) ?? (await embeddings.embedDocument(chunk.text));
