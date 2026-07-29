@@ -184,10 +184,8 @@ export const runMigrations = async (db: SQLiteDatabase) => {
       model.modelName
     );
 
-    // Rows are seeded with INSERT OR IGNORE, so download URLs frozen in an
-    // existing install go stale when the upstream HF repo moves files. Only
-    // undownloaded rows are refreshed: for a downloaded model the stored URL
-    // is the resource fetcher's key to its local files.
+    // Refresh stale download URLs. Downloaded rows keep theirs — the stored
+    // URL is the resource fetcher's key to the local files.
     await db.runAsync(
       `UPDATE models SET modelPath = ?, tokenizerPath = ?, tokenizerConfigPath = ?, modelSize = ?
        WHERE modelName = ? AND source = 'built-in' AND isDownloaded = 0`,
