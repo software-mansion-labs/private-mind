@@ -15,7 +15,8 @@ export interface EnrichPageEvent {
 
 export type ArticleFetcher = (
   url: string,
-  timeoutMs: number
+  timeoutMs: number,
+  signal?: AbortSignal
 ) => Promise<ExtractedArticle>;
 
 export const enrichWebResults = async (
@@ -23,19 +24,26 @@ export const enrichWebResults = async (
   topN: number = WEB_FETCH_TOP_N_CONTENT,
   onPage?: (event: EnrichPageEvent) => void,
   skip?: ReadonlySet<string>,
-  fetchArticle: ArticleFetcher = extractArticle
+  fetchArticle: ArticleFetcher = extractArticle,
+  signal?: AbortSignal
 ): Promise<WebSearchResult[]> => {
   if (topN <= 0 || results.length === 0) return results;
 
   return Promise.all(
     results.map(async (result, index) => {
-      if (index >= topN || result.content || skip?.has(result.url)) {
+      if (
+        index >= topN ||
+        result.content ||
+        skip?.has(result.url) ||
+        signal?.aborted
+      ) {
         return result;
       }
       try {
         const article = await fetchArticle(
           result.url,
-          WEB_CONTENT_FETCH_TIMEOUT_MS
+          WEB_CONTENT_FETCH_TIMEOUT_MS,
+          signal
         );
         const text = article.text?.trim() ?? '';
         const usable =

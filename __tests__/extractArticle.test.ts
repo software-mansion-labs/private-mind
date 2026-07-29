@@ -123,3 +123,50 @@ describe('looksLikeBotWall', () => {
     );
   });
 });
+
+describe('extractArticle — external abort signal', () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('rejects when the external signal aborts mid-fetch', async () => {
+    global.fetch = jest.fn(
+      (_url: string, init: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          init.signal.addEventListener('abort', () =>
+            reject(new Error('Aborted'))
+          );
+        })
+    ) as unknown as typeof fetch;
+
+    const controller = new AbortController();
+    const pending = extractArticle(
+      'https://docs.swmansion.com/x',
+      5000,
+      controller.signal
+    );
+    controller.abort();
+    await expect(pending).rejects.toThrow('Aborted');
+  });
+
+  it('rejects immediately when the signal is already aborted', async () => {
+    global.fetch = jest.fn(
+      (_url: string, init: { signal: AbortSignal }) =>
+        init.signal.aborted
+          ? Promise.reject(new Error('Aborted'))
+          : Promise.resolve({
+              ok: true,
+              status: 200,
+              statusText: 'OK',
+              text: () => Promise.resolve('<html></html>'),
+            })
+    ) as unknown as typeof fetch;
+
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      extractArticle('https://docs.swmansion.com/x', 5000, controller.signal)
+    ).rejects.toThrow('Aborted');
+  });
+});

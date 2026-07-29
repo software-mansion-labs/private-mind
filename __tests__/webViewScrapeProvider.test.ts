@@ -230,3 +230,32 @@ describe('WebViewScrapeProvider engine chain', () => {
     expect(await settle(promise)).toEqual([]);
   });
 });
+
+describe('WebViewScrapeProvider — resetting the WebView to idle', () => {
+  it('resets the host when the abort signal fires mid-scrape', async () => {
+    const provider = new WebViewScrapeProvider();
+    const reset = jest.fn();
+    provider.attachHost({ navigate: () => {}, reset });
+
+    const controller = new AbortController();
+    const pending = provider.search('query', { signal: controller.signal });
+    await jest.advanceTimersByTimeAsync(0);
+    controller.abort();
+
+    await expect(pending).resolves.toEqual([]);
+    expect(reset).toHaveBeenCalled();
+  });
+
+  it('resets the host on cancelPending', async () => {
+    const provider = new WebViewScrapeProvider();
+    const reset = jest.fn();
+    provider.attachHost({ navigate: () => {}, reset });
+
+    const pending = provider.search('query', {});
+    await jest.advanceTimersByTimeAsync(0);
+    provider.cancelPending();
+
+    await expect(pending).resolves.toEqual([]);
+    expect(reset).toHaveBeenCalled();
+  });
+});

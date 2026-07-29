@@ -14,6 +14,7 @@ import {
 
 export interface ScraperHost {
   navigate(url: string): void;
+  reset?(): void;
   onChallenge?(): void;
   recheck?(): void;
 }
@@ -37,6 +38,7 @@ export class WebViewScrapeProvider implements WebSearchProvider {
   cancelPending(): void {
     this.cancelled = true;
     this.settle([], null);
+    this.host?.reset?.();
   }
 
   recheck(): void {
@@ -147,7 +149,10 @@ export class WebViewScrapeProvider implements WebSearchProvider {
     if (!this.host) throw new Error('WebView scraper host detached');
     this.lastRunAt = nowMs();
 
-    const onAbort = () => this.settle([], null);
+    const onAbort = () => {
+      this.settle([], null);
+      this.host?.reset?.();
+    };
     signal?.addEventListener('abort', onAbort);
     try {
       if (signal?.aborted) return [];

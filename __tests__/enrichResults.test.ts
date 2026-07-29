@@ -120,3 +120,50 @@ describe('enrichWebResults', () => {
     expect(enriched[0].content).toBe(text.trim());
   });
 });
+
+describe('enrichWebResults — abort signal', () => {
+  afterEach(() => jest.clearAllMocks());
+
+  it('passes the signal through to the fetcher', async () => {
+    mockExtract.mockImplementation(async (url) => ({
+      url,
+      title: 'x',
+      text: 'some fetched text long enough to keep',
+      siteName: 'a.com',
+    }));
+    const controller = new AbortController();
+
+    await enrichWebResults(
+      [result()],
+      1,
+      undefined,
+      undefined,
+      undefined,
+      controller.signal
+    );
+
+    expect(mockExtract).toHaveBeenCalledWith(
+      'https://a.com/1',
+      expect.any(Number),
+      controller.signal
+    );
+  });
+
+  it('skips fetching entirely when the signal is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const input = [result(), result({ url: 'https://a.com/2' })];
+
+    const out = await enrichWebResults(
+      input,
+      2,
+      undefined,
+      undefined,
+      undefined,
+      controller.signal
+    );
+
+    expect(mockExtract).not.toHaveBeenCalled();
+    expect(out).toEqual(input);
+  });
+});
