@@ -7,6 +7,7 @@ import {
   updateModelDownloaded,
   removeModelFiles,
   updateModel,
+  syncBuiltInModelPaths,
 } from '../database/modelRepository';
 import Toast from 'react-native-toast-message';
 import { ResourceFetcher } from 'react-native-executorch';
@@ -198,6 +199,12 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         );
       }
       await updateModelDownloaded(db, modelId, 0);
+      // A downloaded row keeps the URLs it was installed with (they key the
+      // fetcher's local files); once the files are gone, re-sync the row so an
+      // immediate re-download uses the current upstream paths.
+      if (model.source === 'built-in') {
+        await syncBuiltInModelPaths(db, modelId, model.modelName);
+      }
       await get().loadModels();
       set((state) => {
         const { [modelId]: _, ...rest } = state.downloadStates;

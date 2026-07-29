@@ -7,7 +7,7 @@ import { addModel } from './modelRepository';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSourceStore } from '../store/sourceStore';
 
-const runMigrations = async (db: SQLiteDatabase) => {
+export const runMigrations = async (db: SQLiteDatabase) => {
   const modelsTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(models)`
   );
@@ -181,6 +181,20 @@ const runMigrations = async (db: SQLiteDatabase) => {
       model.vision ? 1 : 0,
       model.labels ? JSON.stringify(model.labels) : null,
       model.systemPrompt || null,
+      model.modelName
+    );
+
+    // Rows are seeded with INSERT OR IGNORE, so download URLs frozen in an
+    // existing install go stale when the upstream HF repo moves files. Only
+    // undownloaded rows are refreshed: for a downloaded model the stored URL
+    // is the resource fetcher's key to its local files.
+    await db.runAsync(
+      `UPDATE models SET modelPath = ?, tokenizerPath = ?, tokenizerConfigPath = ?, modelSize = ?
+       WHERE modelName = ? AND source = 'built-in' AND isDownloaded = 0`,
+      model.modelPath,
+      model.tokenizerPath,
+      model.tokenizerConfigPath,
+      model.modelSize ?? null,
       model.modelName
     );
   }
