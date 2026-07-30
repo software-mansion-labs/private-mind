@@ -385,7 +385,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      marginLeft: 'auto',
+      paddingLeft: 4,
       paddingVertical: 4,
     },
     sourcesButtonPressed: {
@@ -396,8 +396,10 @@ const createStyles = (theme: Theme) =>
     },
     sourcesButtonLabel: {
       fontSize: fontSizes.sm,
+      lineHeight: 16,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
+      includeFontPadding: false,
     },
     actionRow: {
       flexDirection: 'row',
