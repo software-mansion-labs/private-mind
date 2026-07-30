@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Text,
   Pressable,
+  Keyboard,
   useWindowDimensions,
   type LayoutChangeEvent,
 } from 'react-native';
@@ -23,6 +24,7 @@ import {
   type BottomSheetBackdropProps,
   type BottomSheetScrollViewMethods,
 } from '@gorhom/bottom-sheet';
+import { KeyboardEvents } from 'react-native-keyboard-controller';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import {
@@ -35,6 +37,7 @@ import {
   EST_ROW_GAP,
   EST_ROW_HEIGHT,
   EST_SHEET_CHROME,
+  KEYBOARD_HIDE_PRESENT_FALLBACK_MS,
   MAX_SHEET_HEIGHT_RATIO,
   ROW_EXPAND_SCROLL_DELAY,
   SHEET_HANDLE_HEIGHT,
@@ -175,6 +178,21 @@ const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
 
   useEffect(() => clearScrollTimer, [clearScrollTimer]);
 
+  const keyboardHideSubRef = useRef<{ remove: () => void } | null>(null);
+  const pendingPresentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+
+  const clearPendingPresent = useCallback(() => {
+    keyboardHideSubRef.current?.remove();
+    keyboardHideSubRef.current = null;
+    if (pendingPresentTimerRef.current)
+      clearTimeout(pendingPresentTimerRef.current);
+    pendingPresentTimerRef.current = null;
+  }, []);
+
+  useEffect(() => clearPendingPresent, [clearPendingPresent]);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -188,10 +206,33 @@ const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
         setPayload({ sources: nextSources, userQuestion: nextUserQuestion });
         setHighlightedIndex(highlightIndex);
         setExpandedIndex(highlightIndex);
-        sheetRef.current?.present();
+
+        if (!Keyboard.isVisible()) {
+          sheetRef.current?.present();
+          return;
+        }
+
+        // Presenting while the keyboard is mid-hide interrupts the
+        // keyboard-controller inset animation and leaves the chat bar
+        // stranded at its lifted position, so wait for the keyboard to
+        // fully close before opening the sheet. RN's own keyboardDidHide
+        // is not animation-synced on Android — keyboard-controller's is.
+        const presentAfterKeyboardHide = () => {
+          clearPendingPresent();
+          sheetRef.current?.present();
+        };
+        keyboardHideSubRef.current = KeyboardEvents.addListener(
+          'keyboardDidHide',
+          presentAfterKeyboardHide
+        );
+        pendingPresentTimerRef.current = setTimeout(
+          presentAfterKeyboardHide,
+          KEYBOARD_HIDE_PRESENT_FALLBACK_MS
+        );
+        Keyboard.dismiss();
       },
     }),
-    []
+    [clearPendingPresent]
   );
 
   const renderBackdrop = useCallback(
@@ -269,6 +310,7 @@ const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
       }}
       onDismiss={() => {
         isOpenRef.current = false;
+        clearPendingPresent();
         clearScrollTimer();
         setHighlightedIndex(null);
         setExpandedIndex(null);

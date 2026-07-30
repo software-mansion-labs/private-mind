@@ -25,18 +25,20 @@ jest.mock('@gorhom/bottom-sheet', () => {
   const MockReact = require('react') as typeof import('react');
   const { View } = require('react-native');
 
+  const sheetPresentMock = jest.fn();
   const BottomSheetModal = MockReact.forwardRef<
     BottomSheetModalHandle,
     BottomSheetModalMockProps
   >(({ children }, ref) => {
     MockReact.useImperativeHandle(ref, () => ({
-      present: jest.fn(),
+      present: sheetPresentMock,
       dismiss: jest.fn(),
     }));
     return <View testID="bottom-sheet-modal">{children}</View>;
   });
 
   return {
+    __sheetPresentMock: sheetPresentMock,
     BottomSheetBackdrop: (props: ViewProps) => <View {...props} />,
     BottomSheetModal,
     BottomSheetView: View,
@@ -46,9 +48,34 @@ jest.mock('@gorhom/bottom-sheet', () => {
   };
 });
 
+jest.mock('react-native-keyboard-controller', () => ({
+  KeyboardEvents: {
+    addListener: jest.fn(() => ({ remove: jest.fn() })),
+  },
+}));
+
+const { __sheetPresentMock: mockSheetPresent } = jest.requireMock(
+  '@gorhom/bottom-sheet'
+) as { __sheetPresentMock: jest.Mock };
+
+const { KeyboardEvents: mockKeyboardEvents } = jest.requireMock(
+  'react-native-keyboard-controller'
+) as { KeyboardEvents: { addListener: jest.Mock } };
+
 import SourcesSheet, {
   type SourcesSheetHandle,
 } from '../components/chat-screen/SourcesSheet';
+
+beforeEach(() => {
+  mockSheetPresent.mockClear();
+  mockKeyboardEvents.addListener
+    .mockClear()
+    .mockImplementation(() => ({ remove: jest.fn() }));
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
 
 const presentWith = (sources: SourceDocument[], userQuestion?: string) => {
   const ref = React.createRef<SourcesSheetHandle>();
@@ -72,6 +99,50 @@ describe('SourcesSheet', () => {
     expect(screen.getByText('financial_report.pdf')).toBeTruthy();
     expect(screen.getByText('PDF')).toBeTruthy();
     expect(screen.queryByText('Source document')).toBeNull();
+  });
+
+  it('presents immediately when the keyboard is closed', () => {
+    presentWith([{ documentId: 1, name: 'financial_report.pdf' }]);
+
+    expect(mockSheetPresent).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes the keyboard fully before presenting when it is open', () => {
+    const { Keyboard } = require('react-native');
+    jest.spyOn(Keyboard, 'isVisible').mockReturnValue(true);
+    const dismissSpy = jest.spyOn(Keyboard, 'dismiss');
+    let hideListener: (() => void) | undefined;
+    mockKeyboardEvents.addListener.mockImplementation(
+      (event: string, cb: () => void) => {
+        if (event === 'keyboardDidHide') hideListener = cb;
+        return { remove: jest.fn() };
+      }
+    );
+
+    presentWith([{ documentId: 1, name: 'financial_report.pdf' }]);
+
+    expect(dismissSpy).toHaveBeenCalled();
+    expect(mockSheetPresent).not.toHaveBeenCalled();
+
+    act(() => hideListener?.());
+
+    expect(mockSheetPresent).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to a timer when keyboardDidHide never fires', () => {
+    jest.useFakeTimers();
+    const { Keyboard } = require('react-native');
+    jest.spyOn(Keyboard, 'isVisible').mockReturnValue(true);
+
+    presentWith([{ documentId: 1, name: 'financial_report.pdf' }]);
+    expect(mockSheetPresent).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(mockSheetPresent).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
   });
 
   it('ignores a second present() while the sheet is still open', () => {
