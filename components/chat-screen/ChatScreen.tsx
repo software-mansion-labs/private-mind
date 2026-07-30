@@ -8,7 +8,8 @@ import React, {
 import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { useKeyboardLift } from './useKeyboardLift';
 import { router } from 'expo-router';
 import Animated, {
   useAnimatedStyle,
@@ -60,6 +61,7 @@ interface Props {
   selectModel?: (model: Model) => Promise<void>;
   openModelSheetRef?: React.MutableRefObject<(() => void) | null>;
   revealFromTop?: boolean;
+  headerTitleBottom?: number;
 }
 
 export default function ChatScreen({
@@ -71,6 +73,7 @@ export default function ChatScreen({
   selectModel,
   openModelSheetRef,
   revealFromTop = false,
+  headerTitleBottom,
 }: Props) {
   const inputRef = useRef<{
     setInput: (text: string) => void;
@@ -99,17 +102,11 @@ export default function ChatScreen({
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const headerHeight = useHeaderHeight();
 
-  const { height: keyboardHeight, progress: keyboardProgress } =
-    useReanimatedKeyboardAnimation();
-  const insetsBottom = theme.insets.bottom;
+  const keyboardLift = useKeyboardLift();
   const chatBarStickyStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateY:
-          keyboardHeight.value + keyboardProgress.value * insetsBottom,
-      },
-    ],
+    transform: [{ translateY: keyboardLift.value }],
   }));
 
   const { settings: chatSettings, setSetting } = useChatSettings(chatId);
@@ -120,7 +117,7 @@ export default function ChatScreen({
   // Shared values for KeyboardChatScrollView
   const extraContentPadding = useSharedValue(0);
   const blankSpace = useSharedValue(0);
-  const [chatBarSpacerHeight, setChatBarSpacerHeight] = useState(0);
+  const [chatBarHeight, setChatBarHeight] = useState(0);
   const [rootFrame, setRootFrame] = useState({ x: 0, y: 0 });
   const [userActionMenu, setUserActionMenu] =
     useState<UserMessageActionMenuState>({ isOpen: false });
@@ -129,6 +126,11 @@ export default function ChatScreen({
       chatId,
       messageHistoryLength: messageHistory.length,
     });
+  const handleBarGrow = useCallback(() => {
+    setTimeout(() => {
+      messagesRef.current?.scrollToEndIfAtBottom();
+    }, 100);
+  }, []);
 
   // Freeze the scroll view's layout whenever any overlay (model picker,
   // attachment sheet) is presented so keyboard dismiss → sheet open doesn't
@@ -145,12 +147,14 @@ export default function ChatScreen({
 
   const handleRootLayout = useCallback(() => {
     rootRef.current?.measureInWindow((x, y) => {
-      setRootFrame({ x, y });
+      setRootFrame((current) =>
+        current.x === x && current.y === y ? current : { x, y }
+      );
     });
   }, []);
 
   const handleChatBarHeightChange = useCallback((height: number) => {
-    setChatBarSpacerHeight((current) =>
+    setChatBarHeight((current) =>
       Math.abs(current - height) > LAYOUT_HEIGHT_CHANGE_THRESHOLD
         ? height
         : current
@@ -387,6 +391,11 @@ export default function ChatScreen({
     };
   }, [rootFrame.x, rootFrame.y, userActionMenu, windowWidth]);
 
+  const fadeBottom =
+    headerTitleBottom !== undefined
+      ? headerTitleBottom - rootFrame.y
+      : undefined;
+
   return (
     <View
       ref={rootRef}
@@ -417,38 +426,30 @@ export default function ChatScreen({
           onForkMessage={handleForkMessage}
           onBranchMarkerPress={handleBranchMarkerPress}
           onUserActionMenuChange={setUserActionMenu}
+          chatBarInset={chatBarHeight}
+          topInset={headerHeight}
+          fadeBottom={fadeBottom}
         />
       </View>
 
-      <View
-        style={[
-          styles.chatBarSpacer,
-          chatBarSpacerHeight > 0 && { height: chatBarSpacerHeight },
-        ]}
-      >
-        <Animated.View style={[styles.chatBarSticky, chatBarStickyStyle]}>
-          <ChatBar
-            chatId={chatId}
-            onSend={handleSendMessage}
-            onSelectModel={handlePresentModelSheet}
-            onSelectPrompt={handleSelectPrompt}
-            ref={inputRef}
-            model={model}
-            isVisionModel={model?.vision === true}
-            extraContentPadding={extraContentPadding}
-            thinkingEnabled={chatSettings?.thinkingEnabled || false}
-            onThinkingToggle={handleThinkingToggle}
-            hasMessages={hasMessages}
-            onAttachmentSheetStateChange={setAttachmentSheetOpen}
-            onHeightChange={handleChatBarHeightChange}
-            onBarGrow={() => {
-              setTimeout(() => {
-                messagesRef.current?.scrollToEndIfAtBottom();
-              }, 100);
-            }}
-          />
-        </Animated.View>
-      </View>
+      <Animated.View style={[styles.chatBarSticky, chatBarStickyStyle]}>
+        <ChatBar
+          chatId={chatId}
+          onSend={handleSendMessage}
+          onSelectModel={handlePresentModelSheet}
+          onSelectPrompt={handleSelectPrompt}
+          ref={inputRef}
+          model={model}
+          isVisionModel={model?.vision === true}
+          extraContentPadding={extraContentPadding}
+          thinkingEnabled={chatSettings?.thinkingEnabled || false}
+          onThinkingToggle={handleThinkingToggle}
+          hasMessages={hasMessages}
+          onAttachmentSheetStateChange={setAttachmentSheetOpen}
+          onHeightChange={handleChatBarHeightChange}
+          onBarGrow={handleBarGrow}
+        />
+      </Animated.View>
 
       {userActionMenuPosition && (
         <View
@@ -480,11 +481,6 @@ const createStyles = (theme: Theme) =>
       elevation: 1,
       overflow: 'visible',
     },
-    chatBarSpacer: {
-      overflow: 'visible',
-      zIndex: 2,
-      elevation: 2,
-    },
     userActionMenuOverlay: {
       position: 'absolute',
       zIndex: 1000,
@@ -495,5 +491,7 @@ const createStyles = (theme: Theme) =>
       bottom: 0,
       left: 0,
       right: 0,
+      zIndex: 2,
+      elevation: 2,
     },
   });

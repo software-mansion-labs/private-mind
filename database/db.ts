@@ -187,6 +187,18 @@ export const runMigrations = async (db: SQLiteDatabase) => {
       model.systemPrompt || null,
       model.modelName
     );
+
+    // Refresh stale download URLs. Downloaded rows keep theirs — the stored
+    // URL is the resource fetcher's key to the local files.
+    await db.runAsync(
+      `UPDATE models SET modelPath = ?, tokenizerPath = ?, tokenizerConfigPath = ?, modelSize = ?
+       WHERE modelName = ? AND source = 'built-in' AND isDownloaded = 0`,
+      model.modelPath,
+      model.tokenizerPath,
+      model.tokenizerConfigPath,
+      model.modelSize ?? null,
+      model.modelName
+    );
   }
 };
 
