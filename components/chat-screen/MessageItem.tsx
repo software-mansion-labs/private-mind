@@ -119,6 +119,9 @@ const MessageItem = memo(
     }, [sourceDocuments]);
 
     const handleLinkPress = useCallback(({ url }: { url: string }) => {
+        if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url)) return; // not sure about this
+        Linking.openURL(url).catch(() => {});
+     }, []);
       Linking.openURL(url).catch(() => {});
     }, []);
 
