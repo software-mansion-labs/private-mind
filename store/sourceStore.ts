@@ -85,6 +85,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
 
     const tempId = -Date.now();
     set({ isReading: true });
+    let rollbackPartialSource: (() => Promise<void>) | null = null;
 
     try {
       const sourceTextContent = await readDocumentText(sourceUri, source.type);
@@ -129,7 +130,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         return { success: false };
       }
 
-      const rollbackPartialSource = async () => {
+      rollbackPartialSource = async () => {
         if (vectorStore) {
           await vectorStore.delete({
             predicate: (value) => value.metadata?.documentId === sourceId,
@@ -184,6 +185,11 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
       return { success: true, sourceId, truncated };
     } catch (e) {
       console.error(e);
+      try {
+        await rollbackPartialSource?.();
+      } catch (rollbackError) {
+        console.error(rollbackError);
+      }
       set((state) => ({
         sources: state.sources.filter((s) => s.id !== tempId),
       }));

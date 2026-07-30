@@ -119,9 +119,7 @@ const MessageItem = memo(
     }, [sourceDocuments]);
 
     const handleLinkPress = useCallback(({ url }: { url: string }) => {
-        if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url)) return; // not sure about this
-        Linking.openURL(url).catch(() => {});
-     }, []);
+      if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url)) return;
       Linking.openURL(url).catch(() => {});
     }, []);
 
@@ -145,22 +143,45 @@ const MessageItem = memo(
       displayedSources.length > 0 &&
       !(isLastMessage && (isGenerating || isProcessingPrompt));
 
-    const actions = showActions ? (
-      <View style={styles.actionRow}>
-        <MessageActionButton
-          label="Copy"
-          icon={CopyIcon}
-          onPress={() => onCopy?.(message)}
-        />
-        {showForkAction && (
-          <MessageActionButton
-            label="Fork"
-            icon={ForkIcon}
-            onPress={() => onFork?.(message)}
-          />
-        )}
-      </View>
-    ) : null;
+    const actions =
+      showActions || canShowSourcesAction ? (
+        <View style={styles.actionRow} testID="message-actions">
+          {showActions && (
+            <MessageActionButton
+              label="Copy"
+              icon={CopyIcon}
+              onPress={() => onCopy?.(message)}
+            />
+          )}
+          {showActions && showForkAction && (
+            <MessageActionButton
+              label="Fork"
+              icon={ForkIcon}
+              onPress={() => onFork?.(message)}
+            />
+          )}
+          {canShowSourcesAction && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.sourcesButton,
+                pressed && styles.sourcesButtonPressed,
+              ]}
+              onPress={() => onShowSources?.(displayedSources, userQuestion)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Sources"
+              testID="source-action-button"
+            >
+              <BookIcon
+                width={16}
+                height={16}
+                style={styles.sourcesButtonIcon}
+              />
+              <Text style={styles.sourcesButtonLabel}>Sources</Text>
+            </Pressable>
+          )}
+        </View>
+      ) : null;
 
     return (
       <>
@@ -263,30 +284,6 @@ const MessageItem = memo(
                   {tokensPerSecond?.toFixed(2)} tok/s
                 </Text>
               )}
-              {canShowSourcesAction && (
-                <View style={styles.messageActions} testID="message-actions">
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.sourcesButton,
-                      pressed && styles.sourcesButtonPressed,
-                    ]}
-                    onPress={() =>
-                      onShowSources?.(displayedSources, userQuestion)
-                    }
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel="Sources"
-                    testID="source-action-button"
-                  >
-                    <BookIcon
-                      width={16}
-                      height={16}
-                      style={styles.sourcesButtonIcon}
-                    />
-                    <Text style={styles.sourcesButtonLabel}>Sources</Text>
-                  </Pressable>
-                </View>
-              )}
               {actions}
             </View>
           </View>
@@ -384,16 +381,11 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.regular,
       color: theme.text.defaultTertiary,
     },
-    messageActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: 6,
-    },
     sourcesButton: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      alignSelf: 'flex-start',
+      marginLeft: 'auto',
       paddingVertical: 4,
     },
     sourcesButtonPressed: {

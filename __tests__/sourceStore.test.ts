@@ -319,6 +319,27 @@ describe('addSource', () => {
     expect(useSourceStore.getState().sources).toHaveLength(0);
     expect(useSourceStore.getState().isReading).toBe(false);
   });
+
+  it('rolls back the partial source when embedding fails mid-loop', async () => {
+    mockReadDocumentText.mockResolvedValue('content');
+    mockInsertSource.mockResolvedValue(77);
+    MockSplitter.mockImplementation(() => ({
+      splitText: jest.fn().mockResolvedValue(['chunk-a', 'chunk-b']),
+    }));
+    vectorStoreAdd
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('embed failed'));
+
+    const result = await useSourceStore
+      .getState()
+      .addSource(baseSource, '/path/doc.txt', mockVectorStore);
+
+    expect(result).toEqual({ success: false });
+    expect(vectorStoreDelete).toHaveBeenCalledTimes(1);
+    expect(mockDeleteSource).toHaveBeenCalledWith(mockDb, 77);
+    expect(useSourceStore.getState().sources).toHaveLength(0);
+    expect(useSourceStore.getState().isReading).toBe(false);
+  });
 });
 
 describe('deleteSource', () => {
