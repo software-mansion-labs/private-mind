@@ -4290,6 +4290,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"babel-plugin-transform-remove-console@npm:^6.9.4":
+  version: 6.9.4
+  resolution: "babel-plugin-transform-remove-console@npm:6.9.4"
+  checksum: 1123c3816c6f89c064752199c8796f30265d937f5d8e1e43d3837f1c0e87ed0e6bbd0afa6117ce021c8b93ec1de7154e158674bb22331c7ed6609d10121359df
+  languageName: node
+  linkType: hard
+
 "babel-preset-current-node-syntax@npm:^1.0.0":
   version: 1.2.0
   resolution: "babel-preset-current-node-syntax@npm:1.2.0"
@@ -10287,6 +10294,7 @@ __metadata:
     "@testing-library/react-native": ^13.3.3
     "@types/jest": 29.5.14
     "@types/react": ~19.2.10
+    babel-plugin-transform-remove-console: ^6.9.4
     eslint: ^9
     eslint-config-prettier: ^10.1.8
     eslint-plugin-prettier: ^5.5.5
