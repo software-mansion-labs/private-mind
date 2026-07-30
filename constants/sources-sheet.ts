@@ -19,10 +19,6 @@ export const EST_SHEET_CHROME =
 
 export const ROW_EXPAND_SCROLL_DELAY = 260;
 
-// Presenting while the keyboard is still animating away interrupts the
-// keyboard-controller inset animation and strands the chat bar mid-screen,
-// so present() waits for keyboardDidHide — this caps that wait in case the
-// event never arrives.
 export const KEYBOARD_HIDE_PRESENT_FALLBACK_MS = 600;
 
 export const SHEET_SPRING_CONFIG = {

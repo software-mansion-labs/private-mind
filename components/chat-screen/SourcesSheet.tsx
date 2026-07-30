@@ -212,11 +212,6 @@ const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
           return;
         }
 
-        // Presenting while the keyboard is mid-hide interrupts the
-        // keyboard-controller inset animation and leaves the chat bar
-        // stranded at its lifted position, so wait for the keyboard to
-        // fully close before opening the sheet. RN's own keyboardDidHide
-        // is not animation-synced on Android — keyboard-controller's is.
         const presentAfterKeyboardHide = () => {
           clearPendingPresent();
           sheetRef.current?.present();
