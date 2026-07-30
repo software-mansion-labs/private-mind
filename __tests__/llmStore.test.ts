@@ -1,6 +1,9 @@
 import { useLLMStore } from '../store/llmStore';
 import { LLMModule } from 'react-native-executorch';
 import * as chatRepository from '../database/chatRepository';
+import type { Message } from '../database/chatRepository';
+import type { Model } from '../database/modelRepository';
+import type { SQLiteDatabase } from 'expo-sqlite';
 import * as Feedback from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { useSettingsStore } from '../store/settingsStore';
@@ -24,7 +27,13 @@ const mockLLMModule = LLMModule as jest.Mocked<typeof LLMModule>;
 const mockPersistMessage = chatRepository.persistMessage as jest.Mock;
 const mockGetChatMessages = chatRepository.getChatMessages as jest.Mock;
 
-const mockDb = {} as any;
+const noSources = async () => ({
+  context: [] as string[],
+  sourceDocuments: [],
+  preferredSourceDocuments: [],
+});
+
+const mockDb = {} as unknown as SQLiteDatabase;
 
 const baseModel = {
   id: 1,
@@ -38,7 +47,7 @@ const baseModel = {
 };
 
 // Captures the token callback registered during loadModel so tests can fire tokens
-let capturedTokenCallback: ((token: string) => void) | null = null;
+let capturedTokenCallback: ((token: string) => void) | null | undefined = null;
 
 const makeMockInstance = () => ({
   generate: jest.fn(),
@@ -59,7 +68,7 @@ beforeEach(() => {
   mockLLMModule.fromModelName.mockImplementation(
     async (_namedSources, _onProgress, onToken) => {
       capturedTokenCallback = onToken;
-      return mockInstance as any;
+      return mockInstance as unknown as LLMModule;
     }
   );
 
@@ -88,7 +97,7 @@ beforeEach(() => {
   mockLLMModule.fromModelName.mockImplementation(
     async (_namedSources, _onProgress, onToken) => {
       capturedTokenCallback = onToken;
-      return mockInstance as any;
+      return mockInstance as unknown as LLMModule;
     }
   );
 });
@@ -114,8 +123,8 @@ describe('loadModel', () => {
     let wasLoading = false;
     mockLLMModule.fromModelName.mockImplementation(async (...args) => {
       wasLoading = useLLMStore.getState().isLoading;
-      capturedTokenCallback = args[4];
-      return mockInstance as any;
+      capturedTokenCallback = args[2];
+      return mockInstance as unknown as LLMModule;
     });
 
     await useLLMStore.getState().loadModel(baseModel);
@@ -144,8 +153,8 @@ describe('loadModel', () => {
     // Load a different model
     mockInstance = makeMockInstance();
     mockLLMModule.fromModelName.mockImplementation(async (...args) => {
-      capturedTokenCallback = args[4];
-      return mockInstance as any;
+      capturedTokenCallback = args[2];
+      return mockInstance as unknown as LLMModule;
     });
     await useLLMStore.getState().loadModel({ ...baseModel, id: 2 });
 
@@ -324,13 +333,13 @@ describe('sendChatMessage', () => {
 
   it('returns early when db is not set', async () => {
     useLLMStore.setState({ db: null });
-    await useLLMStore.getState().sendChatMessage('hi', 1, [], settings);
+    await useLLMStore.getState().sendChatMessage('hi', 1, noSources, settings);
     expect(mockPersistMessage).not.toHaveBeenCalled();
   });
 
   it('returns early when model is not loaded', async () => {
     useLLMStore.setState({ model: null });
-    await useLLMStore.getState().sendChatMessage('hi', 1, [], settings);
+    await useLLMStore.getState().sendChatMessage('hi', 1, noSources, settings);
     expect(mockPersistMessage).not.toHaveBeenCalled();
   });
 
@@ -341,7 +350,9 @@ describe('sendChatMessage', () => {
       activeChatMessages: [],
     });
 
-    await useLLMStore.getState().sendChatMessage('hello', 1, [], settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
 
     expect(mockPersistMessage).toHaveBeenCalledTimes(2);
     expect(mockPersistMessage).toHaveBeenCalledWith(
@@ -364,14 +375,16 @@ describe('sendChatMessage', () => {
       activeChatMessages: [],
     });
 
-    await useLLMStore.getState().sendChatMessage('hello', 1, [], settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
 
     expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
     expect(useLLMStore.getState().isGenerating).toBe(false);
   });
 
   it('adds user message and assistant placeholder to activeChatMessages before generating', async () => {
-    let messagesBeforeGenerate: any[] = [];
+    let messagesBeforeGenerate: Message[] = [];
     mockInstance.generate.mockImplementation(async () => {
       messagesBeforeGenerate = useLLMStore.getState().activeChatMessages;
       return 'response';
@@ -382,7 +395,9 @@ describe('sendChatMessage', () => {
       activeChatMessages: [],
     });
 
-    await useLLMStore.getState().sendChatMessage('ping', 1, [], settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('ping', 1, noSources, settings);
 
     expect(messagesBeforeGenerate).toHaveLength(2);
     expect(messagesBeforeGenerate[0].role).toBe('user');
@@ -398,7 +413,9 @@ describe('sendChatMessage', () => {
       activeChatMessages: [],
     });
 
-    await useLLMStore.getState().sendChatMessage('ping', 1, [], settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('ping', 1, noSources, settings);
 
     const messages = useLLMStore.getState().activeChatMessages;
     expect(messages).toHaveLength(2);
@@ -420,7 +437,9 @@ describe('sendChatMessage', () => {
       activeChatMessages: [],
     });
 
-    await useLLMStore.getState().sendChatMessage('hello', 1, [], settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
 
     expect(useLLMStore.getState().isGenerating).toBe(false);
     expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
@@ -436,21 +455,28 @@ describe('sendChatMessage', () => {
       activeChatMessages: [],
     });
 
-    await useLLMStore.getState().sendChatMessage('hello', 1, [], settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
 
     expect(useLLMStore.getState().isGenerating).toBe(false);
     expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
   });
 
   it('does not update performance metrics on last message when user navigated away', async () => {
-    mockInstance.generate.mockResolvedValue('response');
+    mockInstance.generate.mockImplementation(async () => {
+      useLLMStore.setState({ activeChatId: 99 });
+      return 'response';
+    });
     useLLMStore.setState({
       model: baseModel,
-      activeChatId: 99, // different from chatId=1
+      activeChatId: 1,
       activeChatMessages: [],
     });
 
-    await useLLMStore.getState().sendChatMessage('hello', 1, [], settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
 
     // complete called without perf data — last message should not have timeToFirstToken
     const messages = useLLMStore.getState().activeChatMessages;
@@ -478,7 +504,7 @@ describe('sendChatMessage — settings hydration barrier', () => {
 
     const sendPromise = useLLMStore
       .getState()
-      .sendChatMessage('hello', 1, [], settings);
+      .sendChatMessage('hello', 1, async () => ({ context: [] }), settings);
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -504,7 +530,9 @@ describe('sendChatMessage — settings hydration barrier', () => {
       customSystemPrompt: 'Be concise.',
     });
 
-    await useLLMStore.getState().sendChatMessage('hi', 1, [], settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hi', 1, async () => ({ context: [] }), settings);
 
     expect(prepareMessagesForLLM).toHaveBeenCalledTimes(1);
     expect((prepareMessagesForLLM as jest.Mock).mock.calls[0][4]).toBe(
@@ -605,7 +633,7 @@ describe('sendChatMessage imagePath', () => {
         modelName: 'LFM VL',
         vision: true,
         featured: true,
-      } as any,
+      } as Model,
       activeChatId: 1,
       activeChatMessages: [],
     });
@@ -614,7 +642,13 @@ describe('sendChatMessage imagePath', () => {
   it('passes imagePath to persistMessage for user message when provided', async () => {
     await useLLMStore
       .getState()
-      .sendChatMessage('What is this?', 1, [], settings, '/local/image.jpg');
+      .sendChatMessage(
+        'What is this?',
+        1,
+        noSources,
+        settings,
+        '/local/image.jpg'
+      );
 
     expect(mockPersistMessage).toHaveBeenCalledWith(
       expect.anything(),
@@ -623,7 +657,9 @@ describe('sendChatMessage imagePath', () => {
   });
 
   it('passes undefined imagePath to persistMessage when not provided', async () => {
-    await useLLMStore.getState().sendChatMessage('Hello', 1, [], settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('Hello', 1, noSources, settings);
 
     expect(mockPersistMessage).toHaveBeenCalledWith(
       expect.anything(),
@@ -642,7 +678,13 @@ describe('sendChatMessage imagePath', () => {
 
     await useLLMStore
       .getState()
-      .sendChatMessage('What is this?', 1, [], settings, '/local/image.jpg');
+      .sendChatMessage(
+        'What is this?',
+        1,
+        noSources,
+        settings,
+        '/local/image.jpg'
+      );
 
     expect(mockInstance.generate).toHaveBeenCalledTimes(1);
     const calledMessages = mockInstance.generate.mock.calls[0][0];
@@ -718,6 +760,12 @@ describe('runBenchmark', () => {
   it('tracks a fresh first token on every run without stale carry-over', async () => {
     await loadModel();
     useLLMStore.setState({ model: baseModel });
+
+    // The RN jest preset aliases performance.now to Date.now (1 ms resolution),
+    // so on a fast machine startTime and the first token can share a millisecond
+    // and the measured delta collapses to 0. Advance a virtual clock instead.
+    let now = 0;
+    jest.spyOn(performance, 'now').mockImplementation(() => (now += 10));
 
     mockInstance.generate.mockImplementation(async () => {
       await flushFrame();
