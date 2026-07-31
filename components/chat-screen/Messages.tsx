@@ -17,6 +17,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   View,
   type View as ViewType,
 } from 'react-native';
@@ -31,12 +32,18 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import MessageItem from './MessageItem';
+import SourcesSheet, { type SourcesSheetHandle } from './SourcesSheet';
 import { EdgeFade, FADE_HEIGHT } from './EdgeFade';
-import { Message, type ChatBranchMarker } from '../../database/chatRepository';
+import {
+  Message,
+  SourceDocument,
+  type ChatBranchMarker,
+} from '../../database/chatRepository';
 import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import { Feedback } from '../../utils/Feedback';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
+import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import BranchMarker from './BranchMarker';
 import Toast from 'react-native-toast-message';
 import { SUPPORTS_USER_ACTION_MENU } from '../../constants/chat-screen';
@@ -58,6 +65,10 @@ const FADE_GAP_TRIM = 5;
 
 /** Right-edge gap so the bottom fade doesn't paint over the scroll indicator. */
 const SCROLL_INDICATOR_GUTTER = 12;
+
+const GENERATION_ERROR_MEASUREMENT_KEY = 'generation-error';
+
+const MESSAGE_PIN_OFFSET = 8;
 
 export interface MessagesHandle {
   onMessageSent: () => void;
@@ -82,6 +93,8 @@ interface Props {
   blankSpace: SharedValue<number>;
   /** Whether the LLM is currently streaming a response. */
   isGenerating: boolean;
+  generationError?: string;
+  onRetryGeneration?: () => void;
   /**
    * Bottom inset forwarded to KeyboardChatScrollView's `offset`. Only the
    * safe-area inset stays fixed below the scroll view while the keyboard
@@ -163,6 +176,8 @@ const Messages = ({
   extraContentPadding,
   blankSpace,
   isGenerating,
+  generationError,
+  onRetryGeneration,
   bottomOffset,
   freeze = false,
   chatBarInset,
@@ -185,6 +200,13 @@ const Messages = ({
   );
   const lastScrollOffset = useRef(0);
   const lastLayoutHeight = useRef(0);
+  const sourcesSheetRef = useRef<SourcesSheetHandle>(null);
+
+  const handleShowSources = useCallback(
+    (sources: SourceDocument[], question?: string) =>
+      sourcesSheetRef.current?.present(sources, question),
+    []
+  );
 
   // v0-style initial scroll: hide the view until we've snapped to
   // the bottom, then fade in so the user never sees content flying by.
@@ -307,6 +329,8 @@ const Messages = ({
   const containerHeight = useRef(0);
   const lastUserHeight = useRef(0);
   const lastAssistantHeight = useRef(0);
+  const lastUserMeasurementKey = useRef<string | null>(null);
+  const lastAssistantMeasurementKey = useRef<string | null>(null);
 
   const closeUserActionMenu = useCallback(() => {
     setActiveUserActionsId(null);
@@ -320,33 +344,67 @@ const Messages = ({
   // remembered position (top or bottom) if the user hadn't manually
   // scrolled while the keyboard was open. iOS handles this natively.
   const wasAtBottomDuringKeyboard = useRef(false);
+  const keyboardOpenRef = useRef(false);
+  const userScrolledDuringKeyboard = useRef(false);
   useLayoutEffect(() => {
     if (Platform.OS !== 'android') return;
     let snapTimer: ReturnType<typeof setTimeout> | null = null;
+    let firstFrame: number | null = null;
+    let secondFrame: number | null = null;
+
+    const clearPendingSnap = () => {
+      if (snapTimer) {
+        clearTimeout(snapTimer);
+        snapTimer = null;
+      }
+      if (firstFrame !== null) {
+        cancelAnimationFrame(firstFrame);
+        firstFrame = null;
+      }
+      if (secondFrame !== null) {
+        cancelAnimationFrame(secondFrame);
+        secondFrame = null;
+      }
+    };
+
     const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      clearPendingSnap();
+      keyboardOpenRef.current = true;
       wasAtBottomDuringKeyboard.current = isAtBottomRef.current;
+      userScrolledDuringKeyboard.current = false;
       closeUserActionMenu();
     });
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardOpenRef.current = false;
       const runPendingMenuOpen = () => {
         const openMenu = pendingMenuOpenRef.current;
         pendingMenuOpenRef.current = null;
         openMenu?.();
       };
 
-      if (wasAtBottomDuringKeyboard.current && isAtBottomRef.current) {
+      if (
+        wasAtBottomDuringKeyboard.current &&
+        !userScrolledDuringKeyboard.current
+      ) {
+        clearPendingSnap();
+        firstFrame = requestAnimationFrame(() => {
+          secondFrame = requestAnimationFrame(() => {
+            closeUserActionMenu();
+            scrollRef.current?.scrollToEnd({ animated: false });
+          });
+        });
         snapTimer = setTimeout(() => {
           closeUserActionMenu();
           scrollRef.current?.scrollToEnd({ animated: false });
           runPendingMenuOpen();
-        }, 300);
+        }, 160);
         return;
       }
 
       runPendingMenuOpen();
     });
     return () => {
-      if (snapTimer) clearTimeout(snapTimer);
+      clearPendingSnap();
       showSub.remove();
       hideSub.remove();
     };
@@ -370,7 +428,8 @@ const Messages = ({
       lastUserHeight.current -
       lastAssistantHeight.current -
       listTopPadding -
-      listBottomPadding;
+      listBottomPadding +
+      MESSAGE_PIN_OFFSET;
     blankSpace.set(Math.max(0, raw));
   }, [blankSpace, listBottomPadding, listTopPadding]);
 
@@ -423,7 +482,8 @@ const Messages = ({
   );
 
   const handleLastUserLayout = useCallback(
-    (e: LayoutChangeEvent) => {
+    (key: string, e: LayoutChangeEvent) => {
+      if (lastUserMeasurementKey.current !== key) return;
       lastUserHeight.current = e.nativeEvent.layout.height;
       recomputeBlankSpace();
     },
@@ -431,7 +491,8 @@ const Messages = ({
   );
 
   const handleLastAssistantLayout = useCallback(
-    (e: LayoutChangeEvent) => {
+    (key: string, e: LayoutChangeEvent) => {
+      if (lastAssistantMeasurementKey.current !== key) return;
       lastAssistantHeight.current = e.nativeEvent.layout.height;
       recomputeBlankSpace();
     },
@@ -476,14 +537,13 @@ const Messages = ({
   );
 
   const getMessageActionsState = useCallback(
-    (message: Message, isLastMessage: boolean): MessageActionsState => {
+    (message: Message): MessageActionsState => {
       const isPersisted = message.id > 0;
-      const isStreamingMessage = isLastMessage && isGenerating;
 
       if (message.role === 'assistant') {
         return {
           showActions: isPersisted && message.content.trim().length > 0,
-          showForkAction: isPersisted && !!onForkMessage && !isStreamingMessage,
+          showForkAction: isPersisted && !!onForkMessage && !isGenerating,
         };
       }
 
@@ -543,6 +603,12 @@ const Messages = ({
     }
   }, [activeUserActionsId, closeUserActionMenu]);
 
+  const handleScrollBeginDrag = useCallback(() => {
+    if (keyboardOpenRef.current) {
+      userScrolledDuringKeyboard.current = true;
+    }
+  }, []);
+
   const handleForkMessage = useCallback(
     (message: Message) => {
       onForkMessage?.(message);
@@ -578,12 +644,14 @@ const Messages = ({
         closeUserActionMenu();
         if (Platform.OS !== 'ios' && containerHeight.current > 0) {
           blankSpace.set(
-            withTiming(containerHeight.current - topInset, {
-              duration: 300,
-            })
+            containerHeight.current - topInset + MESSAGE_PIN_OFFSET
           );
         }
-        scrollRef.current?.scrollToEnd({ animated: true });
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            scrollRef.current?.scrollToEnd({ animated: true });
+          });
+        });
       }
 
       // During streaming, check if content has grown past the viewport
@@ -614,6 +682,18 @@ const Messages = ({
     ]
   );
 
+  // Citations are highlighted against the preceding user question.
+  const questionForAssistantAt = useMemo(() => {
+    const questions: (string | undefined)[] = new Array(chatHistory.length);
+    let lastUserContent: string | undefined;
+    for (let i = 0; i < chatHistory.length; i += 1) {
+      const message = chatHistory[i];
+      if (message.role === 'user') lastUserContent = message.content;
+      questions[i] = message.role === 'assistant' ? lastUserContent : undefined;
+    }
+    return questions;
+  }, [chatHistory]);
+
   const hasMessages = chatHistory.length > 0;
 
   // Identify the last user and last assistant indices so we can wrap
@@ -621,7 +701,11 @@ const Messages = ({
   let lastUserIndex = -1;
   let lastAssistantIndex = -1;
   for (let i = chatHistory.length - 1; i >= 0; i--) {
-    if (lastAssistantIndex === -1 && chatHistory[i].role === 'assistant') {
+    if (
+      !generationError &&
+      lastAssistantIndex === -1 &&
+      chatHistory[i].role === 'assistant'
+    ) {
       lastAssistantIndex = i;
     }
     if (lastUserIndex === -1 && chatHistory[i].role === 'user') {
@@ -629,6 +713,22 @@ const Messages = ({
     }
     if (lastUserIndex !== -1 && lastAssistantIndex !== -1) break;
   }
+
+  const measurementKeyAt = (index: number): string | null => {
+    const message = chatHistory[index];
+    if (!message) return null;
+    return message.id > 0
+      ? `msg-${message.id}`
+      : `pending-${message.role}-${index}`;
+  };
+
+  const assistantMeasurementKey = (): string | null => {
+    if (generationError) return GENERATION_ERROR_MEASUREMENT_KEY;
+    return measurementKeyAt(lastAssistantIndex);
+  };
+
+  lastUserMeasurementKey.current = measurementKeyAt(lastUserIndex);
+  lastAssistantMeasurementKey.current = assistantMeasurementKey();
 
   return (
     <Reanimated.View style={[styles.container, animatedContainerStyle]}>
@@ -645,6 +745,7 @@ const Messages = ({
         scrollIndicatorInsets={scrollIndicatorInsets}
         onLayout={handleContainerLayout}
         onScroll={handleScroll}
+        onScrollBeginDrag={handleScrollBeginDrag}
         onTouchStart={handleScrollTouchStart}
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
@@ -652,6 +753,7 @@ const Messages = ({
       >
         {chatHistory.map((message, index) => {
           const isLastMessage = index === chatHistory.length - 1;
+          const userQuestion = questionForAssistantAt[index];
           // Streaming assistant placeholder has id: -1 until persisted; fall
           // back to role+index for that single in-flight row.
           const key =
@@ -661,15 +763,14 @@ const Messages = ({
 
           const onLayout =
             index === lastUserIndex
-              ? handleLastUserLayout
+              ? (event: LayoutChangeEvent) => handleLastUserLayout(key, event)
               : index === lastAssistantIndex
-                ? handleLastAssistantLayout
+                ? (event: LayoutChangeEvent) =>
+                    handleLastAssistantLayout(key, event)
                 : undefined;
           const branchMarker = latestBranchMarkerByMessageId.get(message.id);
-          const { showActions, showForkAction } = getMessageActionsState(
-            message,
-            isLastMessage
-          );
+          const { showActions, showForkAction } =
+            getMessageActionsState(message);
 
           const item = (
             <View style={styles.messageRow} collapsable={false}>
@@ -683,6 +784,9 @@ const Messages = ({
                 isLastMessage={isLastMessage}
                 imagePath={message.imagePath}
                 documentName={message.documentName}
+                sourceDocuments={message.sourceDocuments}
+                userQuestion={userQuestion}
+                onShowSources={handleShowSources}
                 showActions={showActions}
                 showForkAction={showForkAction}
                 onCopy={handleCopyMessage}
@@ -738,6 +842,34 @@ const Messages = ({
             </LongPressableMessage>
           );
         })}
+        {generationError && (
+          <View
+            onLayout={(event) =>
+              handleLastAssistantLayout(GENERATION_ERROR_MEASUREMENT_KEY, event)
+            }
+            collapsable={false}
+            style={styles.generationError}
+            testID="generation-error"
+          >
+            <Text style={styles.generationErrorText}>{generationError}</Text>
+            <Pressable
+              onPress={onRetryGeneration}
+              accessibilityRole="button"
+              accessibilityLabel="Retry response generation"
+              style={({ pressed }) => [
+                styles.retryButton,
+                pressed && styles.retryButtonPressed,
+              ]}
+            >
+              <RotateLeftIcon
+                width={16}
+                height={16}
+                style={styles.retryButtonIcon}
+              />
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </Pressable>
+          </View>
+        )}
       </KeyboardChatScrollView>
 
       {hasMessages && (
@@ -774,6 +906,8 @@ const Messages = ({
           </Pressable>
         </Reanimated.View>
       )}
+
+      <SourcesSheet ref={sourcesSheetRef} />
     </Reanimated.View>
   );
 };
@@ -839,6 +973,36 @@ const createStyles = (theme: Theme) => {
     },
     messageRow: {
       position: 'relative',
+    },
+    generationError: {
+      width: '90%',
+      alignSelf: 'flex-start',
+      marginBottom: 24,
+      gap: 8,
+    },
+    generationErrorText: {
+      color: theme.text.defaultSecondary,
+      fontSize: 14,
+    },
+    retryButton: {
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      borderRadius: 8,
+      backgroundColor: theme.bg.softSecondary,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    retryButtonPressed: {
+      opacity: 0.7,
+    },
+    retryButtonIcon: {
+      color: theme.text.primary,
+    },
+    retryButtonText: {
+      color: theme.text.primary,
+      fontSize: 14,
     },
     scrollToBottomButtonContainer: {
       position: 'absolute',

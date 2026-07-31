@@ -27,6 +27,21 @@ export const insertSource = async (
   return result.lastInsertRowId!;
 };
 
+export const findMatchingSource = async (
+  db: SQLiteDatabase,
+  source: Pick<Source, 'type' | 'size' | 'firstChunk'>
+): Promise<Source | null> =>
+  db.getFirstAsync<Source>(
+    `SELECT *
+       FROM sources
+      WHERE type = ?
+        AND ((size IS NULL AND ? IS NULL) OR size = ?)
+        AND firstChunk = ?
+      ORDER BY id
+      LIMIT 1`,
+    [source.type, source.size, source.size, source.firstChunk ?? null]
+  );
+
 export const deleteSource = async (db: SQLiteDatabase, id: number) => {
   await db.runAsync(`DELETE FROM sources WHERE id = ?`, [id]);
 };
@@ -71,11 +86,38 @@ export const activateSource = async (
   db: SQLiteDatabase,
   chatId: number,
   sourceId: number
-) => {
+): Promise<boolean> => {
+  const relationState = await db.getFirstAsync<{
+    chatExists: number;
+    sourceExists: number;
+    alreadyEnabled: number;
+  }>(
+    `SELECT
+      EXISTS(SELECT 1 FROM chats WHERE id = ?) AS chatExists,
+      EXISTS(SELECT 1 FROM sources WHERE id = ?) AS sourceExists,
+      EXISTS(
+        SELECT 1 FROM chatSources WHERE chatId = ? AND sourceId = ?
+      ) AS alreadyEnabled`,
+    [chatId, sourceId, chatId, sourceId]
+  );
+
+  if (!relationState?.chatExists || !relationState?.sourceExists) {
+    console.warn('Skipping source activation because FK target is missing', {
+      chatId,
+      sourceId,
+      chatExists: !!relationState?.chatExists,
+      sourceExists: !!relationState?.sourceExists,
+    });
+    return false;
+  }
+
+  if (relationState.alreadyEnabled) return true;
+
   await db.runAsync(
     `INSERT INTO chatSources (chatId, sourceId) VALUES (?, ?)`,
     [chatId, sourceId]
   );
+  return true;
 };
 
 export const deleteSourceFromChats = async (

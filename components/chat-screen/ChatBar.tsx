@@ -23,6 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
 import AttachmentSheet from '../bottomSheets/AttachmentSheet';
+import EmbeddingDownloadSheet from '../bottomSheets/EmbeddingDownloadSheet';
 import { useAttachment, Attachment } from '../../hooks/useAttachment';
 import { Model } from '../../database/modelRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -53,7 +54,6 @@ interface Props {
   onSelectModel: () => void;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
-    clear: () => void;
     setInput: (text: string) => void;
   }>;
   model: Model | undefined;
@@ -94,9 +94,12 @@ const ChatBar = ({
   const {
     attachments,
     sheetRef,
+    embeddingDownloadSheetRef,
     pickFromLibrary,
     pickFromCamera,
     pickDocument,
+    downloadModelAndContinue,
+    markDownloadSheetClosed,
     removeAttachment,
     clearAll,
     openSheet,
@@ -121,15 +124,6 @@ const ChatBar = ({
   useImperativeHandle(
     ref,
     () => ({
-      clear: () => {
-        setUserInput('');
-        clearAll();
-        extraContentPadding.set(0);
-        if (Platform.OS === 'ios') {
-          textInputRef.current?.setNativeProps({ text: ' ' });
-          textInputRef.current?.setNativeProps({ text: '' });
-        }
-      },
       setInput: (text: string) => {
         setUserInput(text);
         if (Platform.OS === 'ios') {
@@ -137,7 +131,7 @@ const ChatBar = ({
         }
       },
     }),
-    [clearAll, extraContentPadding]
+    []
   );
 
   const handleBarLayoutForPadding = useCallback(
@@ -189,6 +183,7 @@ const ChatBar = ({
     interrupt,
     loadModel,
     model: loadedModel,
+    runWithModelOffloaded,
   } = useLLMStore();
   const loadSelectedModel = useCallback(async () => {
     if (model?.isDownloaded && loadedModel?.id !== model.id) {
@@ -196,11 +191,16 @@ const ChatBar = ({
     }
   }, [model, loadedModel, loadModel]);
 
-  const handleAttach = useCallback(() => {
+  const handleAttach = useCallback(async () => {
     Keyboard.dismiss();
-    loadSelectedModel();
-    openSheet();
-  }, [loadSelectedModel, openSheet]);
+    try {
+      await runWithModelOffloaded(async () => {}, { restore: false });
+    } catch (error) {
+      console.error('Failed to offload model before attachment picker:', error);
+    } finally {
+      openSheet();
+    }
+  }, [openSheet, runWithModelOffloaded]);
 
   const imageAttachment = attachments.find((a) => a.type === 'image');
   const hasLoadingAttachment = attachments.some((a) => a.status === 'loading');
@@ -320,9 +320,10 @@ const ChatBar = ({
 
   return (
     <Animated.View
+      testID="chat-bar"
       style={containerStyle}
       onLayout={handleBarLayoutForPadding}
-      layout={BAR_GROW_LAYOUT}
+      layout={hasMessages ? BAR_GROW_LAYOUT : undefined}
     >
       {model?.isDownloaded && (
         <>
@@ -384,6 +385,11 @@ const ChatBar = ({
             onPickFromCamera={pickFromCamera}
             onPickDocument={pickDocument}
             onSheetStateChange={onAttachmentSheetStateChange}
+          />
+          <EmbeddingDownloadSheet
+            bottomSheetModalRef={embeddingDownloadSheetRef}
+            onDownload={downloadModelAndContinue}
+            onDismiss={markDownloadSheetClosed}
           />
         </>
       )}
