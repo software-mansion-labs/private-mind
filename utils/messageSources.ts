@@ -168,14 +168,13 @@ export const pickCitationsByAnswer = (
   answer: string,
   preferred: SourceDocument[]
 ): SourceDocument[] => {
+  if (looksLikeNoAnswer(visibleAnswer(answer))) {
+    return [];
+  }
+
   if (sourceDocuments.length <= 1) return sourceDocuments;
 
   const preferredNames = new Set(preferred.map((doc) => doc.name));
-
-  // A refusal cites nothing but a freshly-attached subject, even when it describes the sources.
-  if (looksLikeNoAnswer(visibleAnswer(answer))) {
-    return sourceDocuments.filter((doc) => preferredNames.has(doc.name));
-  }
 
   const answerTerms = answerTermsOf(answer);
   const scored = sourceDocuments.map((doc) => ({

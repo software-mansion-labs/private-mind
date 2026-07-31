@@ -266,7 +266,7 @@ describe('pickCitationsByAnswer', () => {
     expect(result).toEqual([]);
   });
 
-  it('keeps only the fresh attachment when a refusal echoes no passage', () => {
+  it('cites nothing on a refusal, even with a fresh attachment', () => {
     const cited = [
       withPassage(1, 'library.pdf', 'alpha beta gamma'),
       withPassage(2, 'attachment.pdf', 'delta epsilon zeta'),
@@ -278,7 +278,15 @@ describe('pickCitationsByAnswer', () => {
       [doc(2, 'attachment.pdf')]
     );
 
-    expect(result.map((d) => d.documentId)).toEqual([2]);
+    expect(result).toEqual([]);
+  });
+
+  it('cites nothing on a refusal even when only one source was cited', () => {
+    const cited = [withPassage(1, 'report.pdf', 'alpha beta gamma')];
+
+    const result = pickCitationsByAnswer(cited, "I don't know.", []);
+
+    expect(result).toEqual([]);
   });
 
   it('passes through a single citation untouched', () => {
@@ -375,6 +383,11 @@ describe('looksLikeNoAnswer', () => {
     'The file does not contain any information about L4.',
     "I don't know — the context does not cover this.",
     'That detail is not found in the provided sources.',
+    'Adres siedziby glownej spolki Zephyria nie jest określony w podanym kontekście.',
+    'Data premiery nie została podana w dokumencie.',
+    'Te szczegóły nie są wskazane w załączonych materiałach.',
+    'Na podstawie dostarczonych kontekstów nie jest podany adres siedziby głównej spółki Zephyria.',
+    'W dokumencie nie jest określona data premiery.',
   ])('flags the refusal: %s', (reply) => {
     expect(looksLikeNoAnswer(reply)).toBe(true);
   });
@@ -387,6 +400,7 @@ describe('looksLikeNoAnswer', () => {
     'Document A covers revenue; it does not mention costs, which are in B.',
     'Anna ma 26 dni urlopu zgodnie z regulaminem.',
     'The mission launches on Tuesday with a crew of three.',
+    'Urlop dodatkowy nie jest płatny, co potwierdza regulamin.',
   ])('does not flag a real answer: %s', (reply) => {
     expect(looksLikeNoAnswer(reply)).toBe(false);
   });

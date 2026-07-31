@@ -17,8 +17,13 @@ export const CLAUSE_SPLIT_PATTERN =
 // Coverage nouns (does a source address the topic); a refusal negates one, a negative-fact answer does not.
 const NO_ANSWER_META_EN =
   'information|info|mention|reference|data|details?|indication|records?';
+const PL_WORD_CHAR = '[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]';
+const PL_NEGATED_PARTICIPLE =
+  'określon|podan|wskazan|wymienion|opisan|zawart|dostępn|sprecyzowan|ujęt|udokumentowan';
+const PL_COVERAGE_NOUN =
+  'kontek|materia|źród|treś|informacj|dokumen|plik|dan(?:e|ych)|tekst|fragment';
 const NO_ANSWER_META_PL =
-  'informacj\\w*|info|wzmian\\w*|danych|dane|mowy|odniesie\\w*|dokument\\w*|plik\\w*|tematu|tekst\\w*|materia\\w*|źród\\w*|nic|niczego';
+  'informacj\\w*|info|wzmian\\w*|danych|dane|mowy|odniesie\\w*|dokumen\\w*|plik\\w*|tematu|tekst\\w*|materia\\w*|źród\\w*|nic|niczego';
 
 // English "no information" refusal patterns; each negation is tied to a coverage noun.
 export const NO_ANSWER_PATTERNS_EN: RegExp[] = [
@@ -47,4 +52,12 @@ export const NO_ANSWER_PATTERNS_PL: RegExp[] = [
   /\bnie odnosi si\w*\b/i,
   /\bnie wiem\b/i,
   /\bnie mog\w* (znaleźć|odpowiedzieć|okre\w*)\b/i,
+  new RegExp(
+    `\\bnie (jest|są|zosta${PL_WORD_CHAR}+)\\s+(${PL_NEGATED_PARTICIPLE})${PL_WORD_CHAR}*[^.!?]*\\b(${PL_COVERAGE_NOUN})`,
+    'i'
+  ),
+  new RegExp(
+    `\\b(${PL_COVERAGE_NOUN})${PL_WORD_CHAR}*[^.!?]*\\bnie (jest|są|zosta${PL_WORD_CHAR}+)\\s+(${PL_NEGATED_PARTICIPLE})`,
+    'i'
+  ),
 ];
