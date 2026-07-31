@@ -42,13 +42,16 @@ const ChatBarActions = ({
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const isAttachmentBlocked = isGenerating || isProcessingPrompt;
+  const isResponding = isGenerating || isProcessingPrompt;
+  const isAttachmentBlocked = isResponding || isLoadingAttachment;
 
   const handleAttach = () => {
     if (isAttachmentBlocked) {
       Toast.show({
         type: 'defaultToast',
-        text1: 'Wait for the response to finish or stop it first.',
+        text1: isResponding
+          ? 'Wait for the response to finish or stop it first.'
+          : 'Wait for the document to finish processing.',
       });
       return;
     }

@@ -73,6 +73,34 @@ describe('attach button', () => {
     }
   );
 
+  it('greys out attachments and explains why while a document is still indexing', () => {
+    const onAttach = jest.fn();
+    renderActions({ isLoadingAttachment: true, onAttach });
+
+    expect(
+      StyleSheet.flatten(screen.getByTestId('attach-btn-container').props.style)
+    ).toEqual(expect.objectContaining({ opacity: 0.4 }));
+
+    fireEvent.press(screen.getByTestId('attach-btn'));
+
+    expect(onAttach).not.toHaveBeenCalled();
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the document to finish processing.',
+    });
+  });
+
+  it('prefers the response message when generating over an indexing document', () => {
+    renderActions({ isLoadingAttachment: true, isGenerating: true });
+
+    fireEvent.press(screen.getByTestId('attach-btn'));
+
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the response to finish or stop it first.',
+    });
+  });
+
   it('keeps the attachment button at full opacity when idle', () => {
     renderActions();
 
