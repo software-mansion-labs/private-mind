@@ -1,5 +1,12 @@
-import React, { memo, useMemo, useState } from 'react';
-import { View, StyleSheet, Text, Pressable, Image } from 'react-native';
+import React, { memo, useCallback, useMemo, useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  Text,
+  Image,
+  Pressable,
+  Linking,
+} from 'react-native';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import AnimatedChatLoading from './AnimatedChatLoading';
@@ -9,6 +16,7 @@ import { useLLMStore } from '../../store/llmStore';
 import { Theme } from '../../styles/colors';
 import ImageLightbox from './ImageLightbox';
 import AttachmentIcon from '../../assets/icons/attachment.svg';
+import BookIcon from '../../assets/icons/book-open.svg';
 import CopyIcon from '../../assets/icons/copy.svg';
 import ForkIcon from '../../assets/icons/fork.svg';
 import MessageActionButton from './MessageActionButton';
@@ -16,7 +24,9 @@ import {
   MESSAGE_ACTION_ROW_HEIGHT,
   SUPPORTS_USER_ACTION_MENU,
 } from '../../constants/chat-screen';
-import { Message } from '../../database/chatRepository';
+import { Message, type SourceDocument } from '../../database/chatRepository';
+import { stripCitations } from '../../utils/citations';
+import { sourceKey } from '../../utils/contextUtils';
 
 interface MessageItemProps {
   message: Message;
@@ -28,6 +38,9 @@ interface MessageItemProps {
   isLastMessage: boolean;
   imagePath?: string;
   documentName?: string;
+  sourceDocuments?: SourceDocument[];
+  userQuestion?: string;
+  onShowSources?: (sources: SourceDocument[], userQuestion?: string) => void;
   showActions?: boolean;
   showForkAction?: boolean;
   onCopy?: (message: Message) => void;
@@ -77,6 +90,9 @@ const MessageItem = memo(
     isLastMessage = false,
     imagePath,
     documentName,
+    sourceDocuments,
+    userQuestion,
+    onShowSources,
     showActions = false,
     showForkAction = false,
     onCopy,
@@ -89,22 +105,83 @@ const MessageItem = memo(
     const [lightboxVisible, setLightboxVisible] = useState(false);
 
     const contentParts = parseThinkingContent(content);
-    const actions = showActions ? (
-      <View style={styles.actionRow}>
-        <MessageActionButton
-          label="Copy"
-          icon={CopyIcon}
-          onPress={() => onCopy?.(message)}
-        />
-        {showForkAction && (
-          <MessageActionButton
-            label="Fork"
-            icon={ForkIcon}
-            onPress={() => onFork?.(message)}
-          />
-        )}
-      </View>
-    ) : null;
+    const hasSources = !!sourceDocuments?.length;
+    const displayedSources = useMemo(() => {
+      if (!sourceDocuments?.length) return [];
+
+      const seen = new Set<string>();
+      return sourceDocuments.filter((source) => {
+        const key = sourceKey(source.documentId, source.name);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }, [sourceDocuments]);
+
+    const handleLinkPress = useCallback(({ url }: { url: string }) => {
+      if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url)) return;
+      Linking.openURL(url).catch(() => {});
+    }, []);
+
+    const normalContent = useMemo(
+      () =>
+        hasSources
+          ? stripCitations(contentParts.normalContent)
+          : contentParts.normalContent,
+      [contentParts.normalContent, hasSources]
+    );
+    const normalAfterThink = useMemo(
+      () =>
+        hasSources
+          ? stripCitations(contentParts.normalAfterThink ?? '')
+          : (contentParts.normalAfterThink ?? ''),
+      [contentParts.normalAfterThink, hasSources]
+    );
+
+    const canShowSourcesAction =
+      !!content.trim() &&
+      displayedSources.length > 0 &&
+      !(isLastMessage && (isGenerating || isProcessingPrompt));
+
+    const actions =
+      showActions || canShowSourcesAction ? (
+        <View style={styles.actionRow} testID="message-actions">
+          {showActions && (
+            <MessageActionButton
+              label="Copy"
+              icon={CopyIcon}
+              onPress={() => onCopy?.(message)}
+            />
+          )}
+          {showActions && showForkAction && (
+            <MessageActionButton
+              label="Fork"
+              icon={ForkIcon}
+              onPress={() => onFork?.(message)}
+            />
+          )}
+          {canShowSourcesAction && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.sourcesButton,
+                pressed && styles.sourcesButtonPressed,
+              ]}
+              onPress={() => onShowSources?.(displayedSources, userQuestion)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Sources"
+              testID="source-action-button"
+            >
+              <BookIcon
+                width={16}
+                height={16}
+                style={styles.sourcesButtonIcon}
+              />
+              <Text style={styles.sourcesButtonLabel}>Sources</Text>
+            </Pressable>
+          )}
+        </View>
+      ) : null;
 
     return (
       <>
@@ -176,8 +253,9 @@ const MessageItem = memo(
               ) : null}
               {contentParts.normalContent.trim() && (
                 <MarkdownComponent
-                  text={contentParts.normalContent}
+                  text={normalContent}
                   streaming={isLastMessage && isGenerating}
+                  onLinkPress={handleLinkPress}
                 />
               )}
               {contentParts.hasThinking &&
@@ -195,8 +273,9 @@ const MessageItem = memo(
               {contentParts.normalAfterThink &&
                 contentParts.normalAfterThink.trim() && (
                   <MarkdownComponent
-                    text={contentParts.normalAfterThink}
+                    text={normalAfterThink}
                     streaming={isLastMessage && isGenerating}
+                    onLinkPress={handleLinkPress}
                   />
                 )}
               {tokensPerSecond !== undefined && tokensPerSecond !== 0 && (
@@ -301,6 +380,26 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.xxs,
       fontFamily: fontFamily.regular,
       color: theme.text.defaultTertiary,
+    },
+    sourcesButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingLeft: 4,
+      paddingVertical: 4,
+    },
+    sourcesButtonPressed: {
+      opacity: 0.6,
+    },
+    sourcesButtonIcon: {
+      color: theme.text.primary,
+    },
+    sourcesButtonLabel: {
+      fontSize: fontSizes.sm,
+      lineHeight: 16,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
+      includeFontPadding: false,
     },
     actionRow: {
       flexDirection: 'row',

@@ -8,7 +8,8 @@ import React, {
 import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { useKeyboardLift } from './useKeyboardLift';
 import { router } from 'expo-router';
 import Animated, {
   useAnimatedStyle,
@@ -26,6 +27,7 @@ import {
   checkIfChatExists,
   setChatSettings,
   type Message,
+  type SourceDocument,
 } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
@@ -35,12 +37,9 @@ import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useVectorStore } from '../../context/VectorStoreContext';
-import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { Attachment } from '../../hooks/useAttachment';
-import {
-  filterAndFormatContext,
-  formatFirstChunks,
-} from '../../utils/contextUtils';
+import { buildMessageSources } from '../../utils/messageSources';
+import { useLegacyChatNotice } from '../../hooks/useLegacyChatNotice';
 import { useSourceStore } from '../../store/sourceStore';
 import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
@@ -62,23 +61,8 @@ interface Props {
   selectModel?: (model: Model) => Promise<void>;
   openModelSheetRef?: React.MutableRefObject<(() => void) | null>;
   revealFromTop?: boolean;
+  headerTitleBottom?: number;
 }
-
-const prepareContext = async (
-  prompt: string,
-  enabledSources: number[],
-  vectorStore: OPSQLiteVectorStore
-) => {
-  try {
-    const context = await vectorStore.query({
-      queryText: prompt,
-      predicate: (r) => enabledSources.includes(r.metadata?.documentId),
-    });
-    return filterAndFormatContext(context);
-  } catch {
-    return [];
-  }
-};
 
 export default function ChatScreen({
   chatId,
@@ -89,9 +73,9 @@ export default function ChatScreen({
   selectModel,
   openModelSheetRef,
   revealFromTop = false,
+  headerTitleBottom,
 }: Props) {
   const inputRef = useRef<{
-    clear: () => void;
     setInput: (text: string) => void;
   }>(null);
   const messagesRef = useRef<MessagesHandle>(null);
@@ -99,13 +83,15 @@ export default function ChatScreen({
   const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const db = useSQLiteContext();
 
-  const { vectorStore } = useVectorStore();
+  const { vectorStore, embeddings } = useVectorStore();
   const {
     isGenerating,
     sendChatMessage,
     loadModel,
-    setActiveChatId,
     model: loadedModel,
+    runWithModelOffloaded,
+    generationError,
+    retryLastGeneration,
   } = useLLMStore();
   const { getModelById } = useModelStore();
   const {
@@ -119,17 +105,11 @@ export default function ChatScreen({
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const headerHeight = useHeaderHeight();
 
-  const { height: keyboardHeight, progress: keyboardProgress } =
-    useReanimatedKeyboardAnimation();
-  const insetsBottom = theme.insets.bottom;
+  const keyboardLift = useKeyboardLift();
   const chatBarStickyStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateY:
-          keyboardHeight.value + keyboardProgress.value * insetsBottom,
-      },
-    ],
+    transform: [{ translateY: keyboardLift.value }],
   }));
 
   const { settings: chatSettings, setSetting } = useChatSettings(chatId);
@@ -140,7 +120,7 @@ export default function ChatScreen({
   // Shared values for KeyboardChatScrollView
   const extraContentPadding = useSharedValue(0);
   const blankSpace = useSharedValue(0);
-  const [chatBarSpacerHeight, setChatBarSpacerHeight] = useState(0);
+  const [chatBarHeight, setChatBarHeight] = useState(0);
   const [rootFrame, setRootFrame] = useState({ x: 0, y: 0 });
   const [userActionMenu, setUserActionMenu] =
     useState<UserMessageActionMenuState>({ isOpen: false });
@@ -149,6 +129,11 @@ export default function ChatScreen({
       chatId,
       messageHistoryLength: messageHistory.length,
     });
+  const handleBarGrow = useCallback(() => {
+    setTimeout(() => {
+      messagesRef.current?.scrollToEndIfAtBottom();
+    }, 100);
+  }, []);
 
   // Freeze the scroll view's layout whenever any overlay (model picker,
   // attachment sheet) is presented so keyboard dismiss → sheet open doesn't
@@ -165,12 +150,14 @@ export default function ChatScreen({
 
   const handleRootLayout = useCallback(() => {
     rootRef.current?.measureInWindow((x, y) => {
-      setRootFrame({ x, y });
+      setRootFrame((current) =>
+        current.x === x && current.y === y ? current : { x, y }
+      );
     });
   }, []);
 
   const handleChatBarHeightChange = useCallback((height: number) => {
-    setChatBarSpacerHeight((current) =>
+    setChatBarHeight((current) =>
       Math.abs(current - height) > LAYOUT_HEIGHT_CHANGE_THRESHOLD
         ? height
         : current
@@ -195,7 +182,8 @@ export default function ChatScreen({
       return;
 
     let targetChatId = chatId!;
-    if (!(await checkIfChatExists(db, targetChatId))) {
+    const isNewChat = !(await checkIfChatExists(db, targetChatId));
+    if (isNewChat) {
       const docName = attachments?.find((a) => a.type === 'document')?.name;
       const titleSource = userInput.trim() || docName || 'New chat';
       const newChatTitle =
@@ -204,10 +192,7 @@ export default function ChatScreen({
           : titleSource;
       const newChatId = await addChat(newChatTitle, model!.id);
       if (!newChatId) return;
-
       targetChatId = newChatId;
-      await setActiveChatId(targetChatId);
-      router.replace(`/chat/${targetChatId}`);
     }
 
     let persistedImagePath: string | undefined = imagePath;
@@ -234,48 +219,10 @@ export default function ChatScreen({
     // https://vercel.com/blog/how-we-built-the-v0-ios-app
     messagesRef.current?.onMessageSent();
 
-    // Build context from attachments + persisted sources
-    const context: string[] = [];
-
-    // Collect all source IDs: from attachments + already enabled on chat
-    const attachmentSourceIds = (attachments || [])
-      .filter((a) => a.type === 'document' && a.sourceId)
-      .map((a) => a.sourceId!);
-    const allSourceIds = [
-      ...new Set([...enabledSources, ...attachmentSourceIds]),
-    ];
-
-    // RAG context from all sources (persisted + newly attached)
-    if (allSourceIds.length > 0 && vectorStore) {
-      const allSources = useSourceStore.getState().sources;
-      const activeSources = allSources.filter((s) =>
-        allSourceIds.includes(s.id)
-      );
-      const firstChunkContext = formatFirstChunks(activeSources);
-      context.push(...firstChunkContext);
-
-      if (userInput.trim()) {
-        const ragContext = await prepareContext(
-          userInput,
-          allSourceIds,
-          vectorStore
-        );
-        context.push(...ragContext);
-      }
-    }
-
-    // Enable new sources for this chat (persists for future messages)
-    for (const sourceId of attachmentSourceIds) {
-      if (!enabledSources.includes(sourceId)) {
-        await enableSource(targetChatId, sourceId);
-      }
-    }
-
     const settings: ChatSettings = {
       systemPrompt: chatSettings.systemPrompt,
       thinkingEnabled: chatSettings.thinkingEnabled,
     };
-
     const docAttachments =
       attachments?.filter((a) => a.type === 'document') || [];
     const docName =
@@ -283,14 +230,70 @@ export default function ChatScreen({
         .map((a) => a.name)
         .filter(Boolean)
         .join(', ') || undefined;
-    await sendChatMessage(
+
+    // Deferred so retrieval runs only after the optimistic message is on screen.
+    const buildSources = async () => {
+      const allSources = useSourceStore.getState().sources;
+      const existingSourceIds = new Set(allSources.map((source) => source.id));
+      const attachmentSourceIds = (attachments || [])
+        .filter((a) => a.type === 'document' && a.sourceId)
+        .map((a) => a.sourceId!)
+        .filter((sourceId) => {
+          const exists = existingSourceIds.has(sourceId);
+          if (!exists) {
+            console.warn('Skipping missing attachment source before send', {
+              chatId: targetChatId,
+              sourceId,
+            });
+          }
+          return exists;
+        });
+
+      let context: string[] = [];
+      let sourceDocuments: SourceDocument[] = [];
+      let preferredSourceDocuments: SourceDocument[] = [];
+      if (vectorStore) {
+        const prepareSources = () =>
+          buildMessageSources({
+            userInput,
+            attachmentSourceIds,
+            enabledSources,
+            sources: allSources,
+            vectorStore,
+            embeddings,
+          });
+        ({ context, sourceDocuments, preferredSourceDocuments } = embeddings
+          ? await runWithModelOffloaded(
+              () => embeddings.runWithLoadedModel(prepareSources),
+              { restore: false }
+            )
+          : await prepareSources());
+      }
+
+      // Enable new sources for this chat (persists for future messages)
+      for (const sourceId of attachmentSourceIds) {
+        if (!enabledSources.includes(sourceId)) {
+          await enableSource(targetChatId, sourceId);
+        }
+      }
+
+      return { context, sourceDocuments, preferredSourceDocuments };
+    };
+
+    const generation = sendChatMessage(
       userInput,
       targetChatId,
-      context,
+      buildSources,
       settings,
       persistedImagePath,
       docName
     );
+
+    if (isNewChat) {
+      router.replace(`/chat/${targetChatId}`);
+    }
+
+    await generation;
   };
 
   const handleSelectModel = async (selectedModel: Model) => {
@@ -362,9 +365,21 @@ export default function ChatScreen({
     [model, loadedModel, loadModel, getModelById, chat?.modelId]
   );
 
+  const chatGenerationError =
+    generationError?.chatId === chatId ? generationError.message : undefined;
+
+  const handleRetryGeneration = useCallback(() => {
+    messagesRef.current?.onMessageSent();
+    retryLastGeneration().catch((error) => {
+      console.error('Failed to retry generation:', error);
+    });
+  }, [retryLastGeneration]);
+
   const isEmpty = !isLoading && messageHistory.length === 0;
   const hasMessages = isLoading || messageHistory.length > 0;
   const scrollBottomOffset = theme.insets.bottom;
+
+  useLegacyChatNotice(messageHistory);
 
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const gradientProgress = useSharedValue(isEmpty ? 1 : 0);
@@ -395,6 +410,11 @@ export default function ChatScreen({
     };
   }, [rootFrame.x, rootFrame.y, userActionMenu, windowWidth]);
 
+  const fadeBottom =
+    headerTitleBottom !== undefined
+      ? headerTitleBottom - rootFrame.y
+      : undefined;
+
   return (
     <View
       ref={rootRef}
@@ -418,6 +438,8 @@ export default function ChatScreen({
           extraContentPadding={extraContentPadding}
           blankSpace={blankSpace}
           isGenerating={isGenerating}
+          generationError={chatGenerationError}
+          onRetryGeneration={handleRetryGeneration}
           bottomOffset={scrollBottomOffset}
           freeze={overlayOpen}
           revealFromTop={revealFromTop}
@@ -425,38 +447,30 @@ export default function ChatScreen({
           onForkMessage={handleForkMessage}
           onBranchMarkerPress={handleBranchMarkerPress}
           onUserActionMenuChange={setUserActionMenu}
+          chatBarInset={chatBarHeight}
+          topInset={headerHeight}
+          fadeBottom={fadeBottom}
         />
       </View>
 
-      <View
-        style={[
-          styles.chatBarSpacer,
-          chatBarSpacerHeight > 0 && { height: chatBarSpacerHeight },
-        ]}
-      >
-        <Animated.View style={[styles.chatBarSticky, chatBarStickyStyle]}>
-          <ChatBar
-            chatId={chatId}
-            onSend={handleSendMessage}
-            onSelectModel={handlePresentModelSheet}
-            onSelectPrompt={handleSelectPrompt}
-            ref={inputRef}
-            model={model}
-            isVisionModel={model?.vision === true}
-            extraContentPadding={extraContentPadding}
-            thinkingEnabled={chatSettings?.thinkingEnabled || false}
-            onThinkingToggle={handleThinkingToggle}
-            hasMessages={hasMessages}
-            onAttachmentSheetStateChange={setAttachmentSheetOpen}
-            onHeightChange={handleChatBarHeightChange}
-            onBarGrow={() => {
-              setTimeout(() => {
-                messagesRef.current?.scrollToEndIfAtBottom();
-              }, 100);
-            }}
-          />
-        </Animated.View>
-      </View>
+      <Animated.View style={[styles.chatBarSticky, chatBarStickyStyle]}>
+        <ChatBar
+          chatId={chatId}
+          onSend={handleSendMessage}
+          onSelectModel={handlePresentModelSheet}
+          onSelectPrompt={handleSelectPrompt}
+          ref={inputRef}
+          model={model}
+          isVisionModel={model?.vision === true}
+          extraContentPadding={extraContentPadding}
+          thinkingEnabled={chatSettings?.thinkingEnabled || false}
+          onThinkingToggle={handleThinkingToggle}
+          hasMessages={hasMessages}
+          onAttachmentSheetStateChange={setAttachmentSheetOpen}
+          onHeightChange={handleChatBarHeightChange}
+          onBarGrow={handleBarGrow}
+        />
+      </Animated.View>
 
       {userActionMenuPosition && (
         <View
@@ -488,11 +502,6 @@ const createStyles = (theme: Theme) =>
       elevation: 1,
       overflow: 'visible',
     },
-    chatBarSpacer: {
-      overflow: 'visible',
-      zIndex: 2,
-      elevation: 2,
-    },
     userActionMenuOverlay: {
       position: 'absolute',
       zIndex: 1000,
@@ -503,5 +512,7 @@ const createStyles = (theme: Theme) =>
       bottom: 0,
       left: 0,
       right: 0,
+      zIndex: 2,
+      elevation: 2,
     },
   });

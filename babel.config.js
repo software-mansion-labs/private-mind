@@ -18,5 +18,12 @@ module.exports = function (api) {
         },
       ],
     ],
+    env: {
+      // Strip every console.* call (error included — there is no crash
+      // reporting to feed) from release bundles; dev and test keep them.
+      production: {
+        plugins: ['transform-remove-console'],
+      },
+    },
   };
 };

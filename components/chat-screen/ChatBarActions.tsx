@@ -11,6 +11,7 @@ import LightBulbCrossedIcon from '../../assets/icons/light_bulb_crossed.svg';
 import LightBulbIcon from '../../assets/icons/light_bulb.svg';
 import PlusIcon from '../../assets/icons/plus.svg';
 import { Feedback } from '../../utils/Feedback';
+import Toast from 'react-native-toast-message';
 
 interface Props {
   onAttach: () => void;
@@ -41,6 +42,23 @@ const ChatBarActions = ({
 }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const isResponding = isGenerating || isProcessingPrompt;
+  const isAttachmentBlocked = isResponding || isLoadingAttachment;
+
+  const handleAttach = () => {
+    if (isAttachmentBlocked) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: isResponding
+          ? 'Wait for the response to finish or stop it first.'
+          : 'Wait for the document to finish processing.',
+      });
+      return;
+    }
+
+    Feedback.attach();
+    onAttach();
+  };
 
   const renderButton = () => {
     if (isGenerating || isProcessingPrompt) {
@@ -95,17 +113,19 @@ const ChatBarActions = ({
   return (
     <View style={styles.container}>
       <View style={styles.leftActions}>
-        <CircleButton
-          icon={PlusIcon}
-          size={14}
-          onPress={() => {
-            Feedback.attach();
-            onAttach();
-          }}
-          backgroundColor={theme.bg.attachButton}
-          color={theme.text.onAttachButton}
-          testID="attach-btn"
-        />
+        <View
+          testID="attach-btn-container"
+          style={isAttachmentBlocked ? styles.blockedAttachment : undefined}
+        >
+          <CircleButton
+            icon={PlusIcon}
+            size={14}
+            onPress={handleAttach}
+            backgroundColor={theme.bg.attachButton}
+            color={theme.text.onAttachButton}
+            testID="attach-btn"
+          />
+        </View>
         <TouchableOpacity
           onPress={() => {
             if (thinkingEnabled) {
@@ -151,6 +171,9 @@ const createStyles = (theme: Theme) =>
     leftActions: {
       flexDirection: 'row',
       gap: 8,
+    },
+    blockedAttachment: {
+      opacity: 0.4,
     },
     rightActions: {
       flexDirection: 'row',

@@ -1,5 +1,9 @@
-import { QWEN3_1_7B_QUANTIZED } from 'react-native-executorch';
 import {
+  BIELIK_V3_0_1_5B_QUANTIZED,
+  QWEN3_1_7B_QUANTIZED,
+} from 'react-native-executorch';
+import {
+  DEFAULT_MODELS,
   DEFAULT_REPETITION_PENALTY,
   getGenerationConfigForModel,
   getStartingModels,
@@ -54,5 +58,31 @@ describe('getStartingModels', () => {
     const lowEnd = ['Qwen 3 - 0.6B', 'LFM 2.5 VL - 450M', 'LFM 2.5 - 1.2B'];
     expect(getStartingModels(0)).toEqual(lowEnd);
     expect(getStartingModels(-1)).toEqual(lowEnd);
+  });
+});
+
+describe('DEFAULT_MODELS paths', () => {
+  it('sources Bielik paths from the react-native-executorch constant', () => {
+    const bielik = DEFAULT_MODELS.find((m) => m.modelName === 'Bielik - v3.0');
+    expect(bielik).toBeDefined();
+    expect(bielik!.modelPath).toBe(BIELIK_V3_0_1_5B_QUANTIZED.modelSource);
+    expect(bielik!.tokenizerPath).toBe(
+      BIELIK_V3_0_1_5B_QUANTIZED.tokenizerSource
+    );
+    expect(bielik!.tokenizerConfigPath).toBe(
+      BIELIK_V3_0_1_5B_QUANTIZED.tokenizerConfigSource
+    );
+  });
+
+  it('never points a default model at the mutable HF main branch', () => {
+    for (const model of DEFAULT_MODELS) {
+      for (const path of [
+        model.modelPath,
+        model.tokenizerPath,
+        model.tokenizerConfigPath,
+      ]) {
+        expect(path).not.toContain('/resolve/main/');
+      }
+    }
   });
 });

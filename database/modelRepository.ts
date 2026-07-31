@@ -85,6 +85,30 @@ export const removeModelFiles = async (db: SQLiteDatabase, id: number) => {
   await db.runAsync(`DELETE FROM models WHERE id = ?`, [id]);
 };
 
+export const syncBuiltInModelPaths = async (
+  db: SQLiteDatabase,
+  id: number,
+  modelName: string
+) => {
+  const defaults = DEFAULT_MODELS.find((m) => m.modelName === modelName);
+  if (!defaults) return;
+
+  await db.runAsync(
+    `
+    UPDATE models
+    SET modelPath = ?, tokenizerPath = ?, tokenizerConfigPath = ?, modelSize = ?
+    WHERE id = ? AND source = 'built-in'
+  `,
+    [
+      defaults.modelPath,
+      defaults.tokenizerPath,
+      defaults.tokenizerConfigPath,
+      defaults.modelSize ?? null,
+      id,
+    ]
+  );
+};
+
 type RawModel = Omit<
   Model,
   | 'isDownloaded'

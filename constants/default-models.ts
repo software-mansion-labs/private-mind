@@ -13,6 +13,7 @@ import {
   LFM2_5_1_2B_INSTRUCT_QUANTIZED,
   LFM2_5_VL_1_6B_QUANTIZED,
   LFM2_5_VL_450M_QUANTIZED,
+  BIELIK_V3_0_1_5B_QUANTIZED,
   GEMMA4_E2B,
   GEMMA4_E2B_MM,
 } from 'react-native-executorch';
@@ -42,6 +43,7 @@ const RNE_MODELS = [
   LFM2_5_1_2B_INSTRUCT_QUANTIZED,
   LFM2_5_VL_1_6B_QUANTIZED,
   LFM2_5_VL_450M_QUANTIZED,
+  BIELIK_V3_0_1_5B_QUANTIZED,
   GEMMA4_E2B,
   GEMMA4_E2B_MM,
 ];
@@ -225,15 +227,12 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
   {
     modelName: 'Bielik - v3.0',
     family: 'Bielik',
-    tokenizerPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/tokenizer.json',
-    modelPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/bielik-v3.0-1.5B/quantized/bielik_1_5b_v3_0_instruct_xnnpack_8da4w.pte',
-    tokenizerConfigPath:
-      'https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/main/tokenizer_config.json',
+    tokenizerPath: BIELIK_V3_0_1_5B_QUANTIZED.tokenizerSource,
+    modelPath: BIELIK_V3_0_1_5B_QUANTIZED.modelSource,
+    tokenizerConfigPath: BIELIK_V3_0_1_5B_QUANTIZED.tokenizerConfigSource,
     source: 'remote',
     parameters: 1.5,
-    modelSize: 1.65,
+    modelSize: 0.86,
     featured: true,
     experimental: true,
     thinking: false,
