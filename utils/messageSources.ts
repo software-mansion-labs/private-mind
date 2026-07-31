@@ -282,8 +282,8 @@ export const buildMessageSources = async ({
       vectorStore,
       embeddings
     );
-    context.push(...attachmentOverview());
     context.push(...formatContextChunks(relevantChunks));
+    context.push(...attachmentOverview());
 
     const retrieved = getSourceDocumentsFromChunks(relevantChunks);
     sourceDocuments = assembleSourceDocuments(

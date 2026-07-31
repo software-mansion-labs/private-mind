@@ -7,9 +7,11 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import type { LFMEmbeddings } from '../utils/lfmEmbeddings';
 import {
+  EMBEDDING_CHUNK_TOKEN_BUDGET,
   MAX_SOURCE_CHUNKS,
   MAX_SOURCE_TEXT_CHARS,
 } from '../constants/retrieval';
+import { estimatePromptTokens } from '../constants/context-window';
 
 jest.mock('../database/sourcesRepository');
 jest.mock('../utils/fileReaders');
@@ -185,6 +187,47 @@ describe('addSource', () => {
 
     expect(result).toEqual({ success: true, sourceId: 99, truncated: true });
     expect(splitText.mock.calls[0][0]).toHaveLength(MAX_SOURCE_TEXT_CHARS);
+  });
+
+  it('shrinks the splitter chunk size for a document in a dense script', async () => {
+    mockReadDocumentText.mockResolvedValue(
+      '泽菲里亚能源公司在波兰的三个城市设有生产基地。'.repeat(40)
+    );
+    mockInsertSource.mockResolvedValue(99);
+    MockSplitter.mockImplementation(() => ({
+      splitText: jest.fn().mockResolvedValue(['chunk']),
+    }));
+
+    await useSourceStore
+      .getState()
+      .addSource(baseSource, '/path/doc.txt', mockVectorStore);
+
+    const { chunkSize, chunkOverlap } = MockSplitter.mock.calls[0][0];
+    expect(chunkSize).toBeLessThanOrEqual(EMBEDDING_CHUNK_TOKEN_BUDGET);
+    expect(chunkOverlap).toBeLessThan(chunkSize);
+  });
+
+  it('splits a chunk that still exceeds the embedding token budget', async () => {
+    const dense = '泽菲里亚能源公司在波兰的三个城市设有生产基地。'.repeat(30);
+    mockReadDocumentText.mockResolvedValue(`plain ascii content ${dense}`);
+    mockInsertSource.mockResolvedValue(99);
+    MockSplitter.mockImplementation(() => ({
+      splitText: jest.fn().mockResolvedValue([dense]),
+    }));
+    const embedDocument = jest.fn().mockResolvedValue([0.1]);
+
+    await useSourceStore
+      .getState()
+      .addSource(baseSource, '/path/doc.txt', mockVectorStore, {
+        embedDocument,
+      } as unknown as LFMEmbeddings);
+
+    expect(embedDocument.mock.calls.length).toBeGreaterThan(1);
+    for (const [text] of embedDocument.mock.calls) {
+      expect(estimatePromptTokens(text)).toBeLessThanOrEqual(
+        EMBEDDING_CHUNK_TOKEN_BUDGET
+      );
+    }
   });
 
   it('aborts embedding and rolls back the partial source when the signal is aborted', async () => {

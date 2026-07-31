@@ -47,6 +47,12 @@ export const ANSWER_CITATION_OVERLAP_RATIO = 0.5;
 export const TEXT_SPLITTER_CHUNK_SIZE = 1000;
 export const TEXT_SPLITTER_CHUNK_OVERLAP = 200;
 
+/** Estimated tokens allowed in one chunk handed to the embedding model; the export rejects anything past its baked-in sequence cap instead of truncating. */
+export const EMBEDDING_CHUNK_TOKEN_BUDGET = 256;
+
+/** Floor for the adaptive chunk size, so a dense script can't shrink chunks into useless fragments. */
+export const MIN_TEXT_SPLITTER_CHUNK_SIZE = 200;
+
 /** Safety backstop on chunks embedded per source; high enough that large real documents (~1.6 MB of text) index in full, low enough to stop a pathological multi-MB file from embedding for tens of minutes. */
 export const MAX_SOURCE_CHUNKS = 2000;
 

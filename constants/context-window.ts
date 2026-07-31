@@ -1,31 +1,106 @@
 import { type Model } from '../database/modelRepository';
 
-const CHARS_PER_TOKEN = 3;
+const TOKENS_PER_CHAR = {
+  cjk: 1.0,
+  denseAbugida: 0.6,
+  rtlAndIndic: 0.5,
+  nonLatinAlphabet: 0.5,
+  latinAccented: 0.5,
+  digit: 0.5,
+  punctuation: 0.4,
+  latin: 0.25,
+  other: 1.0,
+} as const;
+
+const DEFAULT_TOKENS_PER_CHAR = 1 / 3;
 
 const DEFAULT_CONTEXT_WINDOW_TOKENS = 2048;
 
-const GENERATION_RESERVE_TOKENS = 512;
+const GENERATION_RESERVE_TOKENS = 768;
 
-// TODO: replace with each export's real window. Every family here is ≥32k
-// upstream, but the ExecuTorch .pte bakes in a smaller one, so these are
-// conservative floors. Unknown/imported models keep the 2048 default.
 const CONTEXT_WINDOW_TOKENS_BY_FAMILY: Record<string, number> = {
-  'Qwen 3': 4096,
-  'Qwen 2.5': 4096,
-  'LLaMA 3.2': 4096,
-  'LFM 2.5': 4096,
-  'Bielik': 4096,
-  'Gemma 4': 4096,
+  'Qwen 3': 2048,
+  'Qwen 2.5': 2048,
+  'LLaMA 3.2': 2048,
+  'LFM 2.5': 2048,
+  'Bielik': 2048,
+  'Gemma 4': 2048,
 };
 
-export const getContextWindowTokens = (model: Model): number =>
-  (model.family ? CONTEXT_WINDOW_TOKENS_BY_FAMILY[model.family] : undefined) ??
-  DEFAULT_CONTEXT_WINDOW_TOKENS;
+export const getContextWindowTokens = (model: Model): number => {
+  const familyWindow = model.family
+    ? CONTEXT_WINDOW_TOKENS_BY_FAMILY[model.family]
+    : undefined;
+  return familyWindow ?? DEFAULT_CONTEXT_WINDOW_TOKENS;
+};
 
-export const getPromptCharBudget = (model: Model): number => {
-  const promptTokenBudget = Math.max(
-    0,
-    getContextWindowTokens(model) - GENERATION_RESERVE_TOKENS
-  );
-  return promptTokenBudget * CHARS_PER_TOKEN;
+const tokensForCodePoint = (code: number): number => {
+  if (
+    (code >= 0x3040 && code <= 0x30ff) ||
+    (code >= 0x3400 && code <= 0x4dbf) ||
+    (code >= 0x4e00 && code <= 0x9fff) ||
+    (code >= 0xf900 && code <= 0xfaff) ||
+    (code >= 0xac00 && code <= 0xd7af) ||
+    (code >= 0x1100 && code <= 0x11ff) ||
+    (code >= 0x20000 && code <= 0x3134f)
+  ) {
+    return TOKENS_PER_CHAR.cjk;
+  }
+  if (
+    (code >= 0x0e00 && code <= 0x0eff) ||
+    (code >= 0x1000 && code <= 0x109f) ||
+    (code >= 0x1780 && code <= 0x17ff)
+  ) {
+    return TOKENS_PER_CHAR.denseAbugida;
+  }
+  if (
+    (code >= 0x0590 && code <= 0x08ff) ||
+    (code >= 0x0900 && code <= 0x0dff)
+  ) {
+    return TOKENS_PER_CHAR.rtlAndIndic;
+  }
+  if (
+    (code >= 0x0370 && code <= 0x058f) ||
+    (code >= 0x10a0 && code <= 0x10ff)
+  ) {
+    return TOKENS_PER_CHAR.nonLatinAlphabet;
+  }
+  if (code >= 0x00c0 && code <= 0x036f) {
+    return TOKENS_PER_CHAR.latinAccented;
+  }
+  if (code >= 0x30 && code <= 0x39) return TOKENS_PER_CHAR.digit;
+  if (
+    (code >= 0x41 && code <= 0x5a) ||
+    (code >= 0x61 && code <= 0x7a) ||
+    code === 0x20 ||
+    code === 0x0a ||
+    code === 0x09
+  ) {
+    return TOKENS_PER_CHAR.latin;
+  }
+  if (code < 0x80) return TOKENS_PER_CHAR.punctuation;
+  return TOKENS_PER_CHAR.other;
+};
+
+export const estimateCharTokens = (char: string): number =>
+  tokensForCodePoint(char.codePointAt(0)!);
+
+export const estimatePromptTokens = (text: string): number => {
+  let tokens = 0;
+  for (const char of text) {
+    tokens += estimateCharTokens(char);
+  }
+  return Math.ceil(tokens);
+};
+
+export const getPromptTokenBudget = (model: Model): number =>
+  Math.max(0, getContextWindowTokens(model) - GENERATION_RESERVE_TOKENS);
+
+export const getPromptCharBudget = (model: Model, sample?: string): number => {
+  const tokenBudget = getPromptTokenBudget(model);
+  const density =
+    sample && sample.length > 0
+      ? estimatePromptTokens(sample) / sample.length
+      : DEFAULT_TOKENS_PER_CHAR;
+  return Math.floor(tokenBudget / density);
 };

@@ -21,9 +21,12 @@ import {
 import {
   MAX_SOURCE_CHUNKS,
   MAX_SOURCE_TEXT_CHARS,
-  TEXT_SPLITTER_CHUNK_OVERLAP,
-  TEXT_SPLITTER_CHUNK_SIZE,
 } from '../constants/retrieval';
+import {
+  capChunksToTokenBudget,
+  getChunkCharOverlap,
+  getChunkCharSize,
+} from '../utils/textChunking';
 
 interface SourceStore {
   sources: Source[];
@@ -107,11 +110,14 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
           ? sourceTextContent.slice(0, MAX_SOURCE_TEXT_CHARS)
           : sourceTextContent;
 
+      const chunkSize = getChunkCharSize(cappedText);
       const textSplitter = new RecursiveCharacterTextSplitter({
-        chunkSize: TEXT_SPLITTER_CHUNK_SIZE,
-        chunkOverlap: TEXT_SPLITTER_CHUNK_OVERLAP,
+        chunkSize,
+        chunkOverlap: getChunkCharOverlap(chunkSize),
       });
-      const allChunks = await textSplitter.splitText(cappedText);
+      const allChunks = capChunksToTokenBudget(
+        await textSplitter.splitText(cappedText)
+      );
       const truncated =
         cappedText.length < sourceTextContent.length ||
         allChunks.length > MAX_SOURCE_CHUNKS;

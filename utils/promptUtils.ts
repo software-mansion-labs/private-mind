@@ -82,7 +82,10 @@ export const prepareMessagesForLLM = (
     lastMessage.content += ' /no_think';
   }
 
-  const budgetChars = getPromptCharBudget(model);
+  const budgetSample = `${messagesWithSystemPrompt[0].content}${context.join(
+    ' '
+  )}${lastMessage.content}`;
+  const budgetChars = getPromptCharBudget(model, budgetSample);
   const systemChars = messagesWithSystemPrompt[0].content.length;
 
   if (context.length > 0) {

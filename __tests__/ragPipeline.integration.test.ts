@@ -105,7 +105,7 @@ describe('buildMessageSources — retrieval → context → citation pipeline', 
     expect(preferredSourceDocuments).toEqual([]);
   });
 
-  it('prepends the attachment overview and orders the attachment first in the citations', async () => {
+  it('appends the attachment overview after retrieval and orders the attachment first in the citations', async () => {
     const vectorStore = makeVectorStore([
       {
         id: '1:0',
@@ -139,7 +139,8 @@ describe('buildMessageSources — retrieval → context → citation pipeline', 
         embeddings: null,
       });
 
-    expect(context[0]).toContain(
+    expect(context[0]).toContain('--- Source 1:');
+    expect(context.at(-1)).toContain(
       'Current Attachment Source: attachment.txt (Overview)'
     );
     expect(sourceDocuments[0].documentId).toBe(2);
@@ -176,7 +177,7 @@ describe('buildMessageSources — retrieval → context → citation pipeline', 
     });
 
     expect(sourceDocuments.map((d) => d.documentId)).toEqual([2, 1]);
-    expect(context[0]).toContain('attachment.pdf (Overview)');
+    expect(context.at(-1)).toContain('attachment.pdf (Overview)');
   });
 
   it('takes the attachment-only path when there is no user query', async () => {
