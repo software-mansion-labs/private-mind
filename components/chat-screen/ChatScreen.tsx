@@ -46,6 +46,7 @@ import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
 import { persistImage } from '../../utils/persistImage';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
+import { stripThinkMarkers } from '../../utils/thinking';
 import useChatBranching from '../../hooks/useChatBranching';
 import {
   LAYOUT_HEIGHT_CHANGE_THRESHOLD,
@@ -187,7 +188,8 @@ export default function ChatScreen({
     const isNewChat = !(await checkIfChatExists(db, targetChatId));
     if (isNewChat) {
       const docName = attachments?.find((a) => a.type === 'document')?.name;
-      const titleSource = userInput.trim() || docName || 'New chat';
+      const titleSource =
+        stripThinkMarkers(userInput).trim() || docName || 'New chat';
       const newChatTitle =
         titleSource.length > 25
           ? titleSource.slice(0, 25) + '...'

@@ -354,7 +354,7 @@ describe('visibleAnswer', () => {
   });
 
   it('drops an unterminated think block (streaming) entirely', () => {
-    expect(visibleAnswer('visible<think>still reasoning')).toBe('visible ');
+    expect(visibleAnswer('visible<think>still reasoning')).toBe('visible');
   });
 
   it('returns the text unchanged when there is no think block', () => {

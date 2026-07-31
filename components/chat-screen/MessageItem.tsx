@@ -27,6 +27,7 @@ import {
 import { Message, type SourceDocument } from '../../database/chatRepository';
 import { stripCitations } from '../../utils/citations';
 import { sourceKey } from '../../utils/contextUtils';
+import { parseThinkingContent, stripThinkMarkers } from '../../utils/thinking';
 
 interface MessageItemProps {
   message: Message;
@@ -46,38 +47,6 @@ interface MessageItemProps {
   onCopy?: (message: Message) => void;
   onFork?: (message: Message) => void;
 }
-
-const THINK_OPEN = '<think>';
-const THINK_CLOSE = '</think>';
-
-const parseThinkingContent = (text: string) => {
-  const thinkStartIndex = text.indexOf(THINK_OPEN);
-  if (thinkStartIndex === -1) {
-    return { normalContent: text, thinkingContent: null, hasThinking: false };
-  }
-
-  const thinkEndIndex = text.indexOf(THINK_CLOSE);
-  const normalBeforeThink = text.slice(0, thinkStartIndex);
-  const contentStart = thinkStartIndex + THINK_OPEN.length;
-
-  if (thinkEndIndex === -1) {
-    return {
-      normalContent: normalBeforeThink,
-      thinkingContent: text.slice(contentStart),
-      hasThinking: true,
-      isThinkingComplete: false,
-      normalAfterThink: '',
-    };
-  }
-
-  return {
-    normalContent: normalBeforeThink,
-    thinkingContent: text.slice(contentStart, thinkEndIndex),
-    hasThinking: true,
-    isThinkingComplete: true,
-    normalAfterThink: text.slice(thinkEndIndex + THINK_CLOSE.length),
-  };
-};
 
 const MessageItem = memo(
   ({
@@ -104,6 +73,7 @@ const MessageItem = memo(
     const [lightboxVisible, setLightboxVisible] = useState(false);
 
     const contentParts = parseThinkingContent(content);
+    const userText = useMemo(() => stripThinkMarkers(content), [content]);
     const hasSources = !!sourceDocuments?.length;
     const displayedSources = useMemo(() => {
       if (!sourceDocuments?.length) return [];
@@ -229,14 +199,14 @@ const MessageItem = memo(
                 </View>
               </View>
             )}
-            {contentParts.normalContent.trim() && (
+            {userText.trim() && (
               <View style={styles.userBubble} testID="text-bubble">
                 <View style={styles.userMessageContent}>
                   <Text
                     style={styles.userText}
                     selectable={!SUPPORTS_USER_ACTION_MENU}
                   >
-                    {contentParts.normalContent}
+                    {userText}
                   </Text>
                 </View>
               </View>
