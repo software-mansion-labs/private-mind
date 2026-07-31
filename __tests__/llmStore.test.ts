@@ -53,6 +53,7 @@ const makeMockInstance = () => ({
   generate: jest.fn(),
   interrupt: jest.fn(),
   delete: jest.fn(),
+  configure: jest.fn(),
   getGeneratedTokenCount: jest.fn(() => 10),
 });
 
