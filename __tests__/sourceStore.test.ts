@@ -43,6 +43,8 @@ const mockDeleteSource = sourcesRepository.deleteSource as jest.Mock;
 const mockDeleteSourceFromChats =
   sourcesRepository.deleteSourceFromChats as jest.Mock;
 const mockGetAllSources = sourcesRepository.getAllSources as jest.Mock;
+const mockFindMatchingSource =
+  sourcesRepository.findMatchingSource as jest.Mock;
 const mockRenameSource = sourcesRepository.renameSource as jest.Mock;
 const mockGetOrphanedSources =
   sourcesRepository.getOrphanedSources as jest.Mock;
@@ -56,6 +58,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(console, 'error').mockImplementation(() => {});
   mockGetAllSources.mockResolvedValue([]);
+  mockFindMatchingSource.mockResolvedValue(null);
   mockGetOrphanedSources.mockResolvedValue([]);
   (useLLMStore.getState as jest.Mock).mockReturnValue({
     refreshActiveChatMessages: mockRefreshActiveChatMessages,
@@ -153,6 +156,35 @@ describe('addSource', () => {
     expect(sources).toHaveLength(1);
     expect(sources[0].id).toBe(99);
     expect(sources[0].isProcessing).toBe(false);
+  });
+
+  it('reuses an already indexed matching document', async () => {
+    mockReadDocumentText.mockResolvedValue('same document content');
+    MockSplitter.mockImplementation(() => ({
+      splitText: jest.fn().mockResolvedValue(['same document content']),
+    }));
+    mockFindMatchingSource.mockResolvedValue({
+      id: 7,
+      name: 'original-name.txt',
+      type: 'txt',
+      size: 100,
+      firstChunk: 'same document content',
+    });
+
+    const result = await useSourceStore
+      .getState()
+      .addSource(baseSource, '/path/doc.txt', mockVectorStore);
+
+    expect(result).toEqual({
+      success: true,
+      sourceId: 7,
+      truncated: false,
+    });
+    expect(mockInsertSource).not.toHaveBeenCalled();
+    expect(vectorStoreAdd).not.toHaveBeenCalled();
+    expect(useSourceStore.getState().sources).toEqual([
+      expect.objectContaining({ id: 7 }),
+    ]);
   });
 
   it('caps embedded chunks at MAX_SOURCE_CHUNKS and flags the result truncated', async () => {

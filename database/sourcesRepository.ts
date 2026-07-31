@@ -27,6 +27,21 @@ export const insertSource = async (
   return result.lastInsertRowId!;
 };
 
+export const findMatchingSource = async (
+  db: SQLiteDatabase,
+  source: Pick<Source, 'type' | 'size' | 'firstChunk'>
+): Promise<Source | null> =>
+  db.getFirstAsync<Source>(
+    `SELECT *
+       FROM sources
+      WHERE type = ?
+        AND ((size IS NULL AND ? IS NULL) OR size = ?)
+        AND firstChunk = ?
+      ORDER BY id
+      LIMIT 1`,
+    [source.type, source.size, source.size, source.firstChunk ?? null]
+  );
+
 export const deleteSource = async (db: SQLiteDatabase, id: number) => {
   await db.runAsync(`DELETE FROM sources WHERE id = ?`, [id]);
 };

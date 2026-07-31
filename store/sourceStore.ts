@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import {
   deleteSource,
   deleteSourceFromChats,
+  findMatchingSource,
   getAllSources,
   getOrphanedSources,
   insertSource,
@@ -124,6 +125,32 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
       const chunks = truncated
         ? allChunks.slice(0, MAX_SOURCE_CHUNKS)
         : allChunks;
+
+      const matchingSource = await findMatchingSource(db, {
+        type: source.type,
+        size: source.size,
+        firstChunk: chunks[0] || undefined,
+      });
+      if (matchingSource) {
+        onProgress?.(1);
+        set((state) => {
+          const withoutTemporary = state.sources.filter(
+            (item) => item.id !== tempId
+          );
+          return {
+            sources: withoutTemporary.some(
+              (item) => item.id === matchingSource.id
+            )
+              ? withoutTemporary
+              : [...withoutTemporary, matchingSource],
+          };
+        });
+        return {
+          success: true,
+          sourceId: matchingSource.id,
+          truncated,
+        };
+      }
 
       const sourceId = await insertSource(db, {
         ...source,
