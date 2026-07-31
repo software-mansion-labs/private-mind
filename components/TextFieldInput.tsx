@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { TextInput, StyleSheet, View, TextInputProps } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
 import TextInputBorder from './TextInputBorder';
@@ -20,13 +20,12 @@ const TextFieldInput: React.FC<TextFieldInputProps> = ({
   placeholder,
   ...props
 }) => {
-  const { theme } = useTheme();
-  const [active, setActive] = useState(false);
-
-  const styles = useMemo(
-    () => createStyles(theme, !!icon, props.editable !== false),
-    [theme, icon, props.editable]
+  const { styles, theme } = useThemedStyles(
+    createStyles,
+    !!icon,
+    props.editable !== false
   );
+  const [active, setActive] = useState(false);
 
   return (
     <View style={styles.inputWrapper}>

@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
 
@@ -19,10 +19,11 @@ const Chip = ({
   textColor,
   borderColor,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(
-    () => createStyles(theme, backgroundColor, textColor, borderColor),
-    [theme, backgroundColor, textColor, borderColor]
+  const { styles } = useThemedStyles(
+    createStyles,
+    backgroundColor,
+    textColor,
+    borderColor
   );
 
   return (
