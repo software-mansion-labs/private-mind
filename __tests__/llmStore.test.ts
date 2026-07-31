@@ -83,6 +83,7 @@ beforeEach(() => {
     activeChatId: null,
     generatingForChatId: null,
     activeChatMessages: [],
+    generationError: null,
   });
 
   // Default: settings already hydrated, so the hydration barrier is a no-op
@@ -166,6 +167,108 @@ describe('loadModel', () => {
     await useLLMStore.getState().loadModel(baseModel);
     expect(useLLMStore.getState().isLoading).toBe(false);
     expect(useLLMStore.getState().model).toBeNull();
+  });
+
+  it('serializes duplicate load requests for the same model', async () => {
+    let finishLoad!: () => void;
+    const loadGate = new Promise<void>((resolve) => {
+      finishLoad = resolve;
+    });
+    mockLLMModule.fromModelName.mockImplementationOnce(async (...args) => {
+      capturedTokenCallback = args[2];
+      await loadGate;
+      return mockInstance as unknown as LLMModule;
+    });
+
+    const first = useLLMStore.getState().loadModel(baseModel);
+    const second = useLLMStore.getState().loadModel(baseModel);
+    // The load chain hops through several awaits before reaching
+    // fromModelName; a single microtask flush is not enough.
+    await flushFrame();
+
+    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(1);
+    finishLoad();
+    await Promise.all([first, second]);
+
+    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('runWithModelOffloaded', () => {
+  it('unloads the LLM for the operation and restores it afterwards', async () => {
+    await loadModel();
+    const operation = jest.fn().mockResolvedValue('done');
+
+    await expect(
+      useLLMStore.getState().runWithModelOffloaded(operation)
+    ).resolves.toBe('done');
+
+    expect(mockInstance.delete).toHaveBeenCalledTimes(1);
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(2);
+    expect(useLLMStore.getState().model).toEqual(baseModel);
+    expect(useLLMStore.getState().isLoading).toBe(false);
+  });
+
+  it('restores the LLM when the offloaded operation fails', async () => {
+    await loadModel();
+
+    await expect(
+      useLLMStore.getState().runWithModelOffloaded(async () => {
+        throw new Error('embedding failed');
+      })
+    ).rejects.toThrow('embedding failed');
+
+    expect(mockInstance.delete).toHaveBeenCalledTimes(1);
+    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(2);
+    expect(useLLMStore.getState().model).toEqual(baseModel);
+  });
+
+  it('serializes offloaded operations', async () => {
+    await loadModel();
+    let finishFirst!: () => void;
+    let markFirstStarted!: () => void;
+    const firstGate = new Promise<void>((resolve) => {
+      finishFirst = resolve;
+    });
+    const firstStarted = new Promise<void>((resolve) => {
+      markFirstStarted = resolve;
+    });
+    const order: string[] = [];
+
+    const first = useLLMStore.getState().runWithModelOffloaded(async () => {
+      order.push('first-start');
+      markFirstStarted();
+      await firstGate;
+      order.push('first-end');
+    });
+    const second = useLLMStore.getState().runWithModelOffloaded(async () => {
+      order.push('second');
+    });
+
+    await firstStarted;
+    expect(order).toEqual(['first-start']);
+
+    finishFirst();
+    await Promise.all([first, second]);
+
+    expect(order).toEqual(['first-start', 'first-end', 'second']);
+    expect(mockInstance.delete).toHaveBeenCalledTimes(2);
+    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(3);
+  });
+
+  it('can leave the LLM unloaded until generation needs it', async () => {
+    await loadModel();
+
+    await useLLMStore
+      .getState()
+      .runWithModelOffloaded(async () => {}, { restore: false });
+
+    expect(mockInstance.delete).toHaveBeenCalledTimes(1);
+    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(1);
+
+    await useLLMStore.getState().loadModel(baseModel);
+    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -461,6 +564,41 @@ describe('sendChatMessage', () => {
 
     expect(useLLMStore.getState().isGenerating).toBe(false);
     expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
+    expect(useLLMStore.getState().generationError).toEqual({
+      chatId: 1,
+      message: 'Failed to generate a response.',
+    });
+    expect(mockInstance.delete).toHaveBeenCalled();
+  });
+
+  it('retries a failed generation without persisting the user message twice', async () => {
+    mockPersistMessage.mockResolvedValueOnce(41).mockResolvedValueOnce(42);
+    mockInstance.generate
+      .mockRejectedValueOnce(new Error('out of memory'))
+      .mockResolvedValueOnce('Recovered answer');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
+    expect(mockPersistMessage).toHaveBeenCalledTimes(1);
+
+    await useLLMStore.getState().retryLastGeneration();
+
+    expect(mockPersistMessage).toHaveBeenCalledTimes(2);
+    expect(
+      mockPersistMessage.mock.calls.filter(
+        ([, message]) => message.role === 'user'
+      )
+    ).toHaveLength(1);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Recovered answer'
+    );
   });
 
   it('does not update performance metrics on last message when user navigated away', async () => {

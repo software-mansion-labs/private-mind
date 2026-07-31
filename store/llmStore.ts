@@ -37,9 +37,14 @@ export interface LLMStore {
   activeChatId: number | null;
   generatingForChatId: number | null;
   activeChatMessages: Message[];
+  generationError: { chatId: number; message: string } | null;
 
   setDB: (db: SQLiteDatabase) => void;
   loadModel: (model: Model, hardReload?: boolean) => Promise<void>;
+  runWithModelOffloaded: <T>(
+    operation: () => Promise<T>,
+    options?: { restore?: boolean }
+  ) => Promise<T>;
   setActiveChatId: (chatId: number | null) => Promise<void>;
   sendChatMessage: (
     newMessage: string,
@@ -51,8 +56,10 @@ export interface LLMStore {
     }>,
     settings: ChatSettings,
     imagePath?: string,
-    documentName?: string
+    documentName?: string,
+    isRetry?: boolean
   ) => Promise<void>;
+  retryLastGeneration: () => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   interrupt: () => void;
   sendEventMessage: (chatId: number, message: string) => Promise<void>;
@@ -60,6 +67,20 @@ export interface LLMStore {
 }
 
 let llmInstance: LLMModule | null = null;
+let modelOffloadChain: Promise<void> = Promise.resolve();
+let modelLoadChain: Promise<void> = Promise.resolve();
+
+type FailedGenerationRequest = {
+  newMessage: string;
+  chatId: number;
+  buildSources: Parameters<LLMStore['sendChatMessage']>[2];
+  settings: ChatSettings;
+  imagePath?: string;
+  documentName?: string;
+  reusePersistedUser: boolean;
+};
+
+let failedGenerationRequest: FailedGenerationRequest | null = null;
 
 let streamBuffer = '';
 let streamTokenCount = 0;
@@ -113,15 +134,8 @@ const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
 };
 
 const waitForModelLoad = async (get: () => LLMStore): Promise<void> => {
-  if (get().isLoading) {
-    await new Promise((resolve) => {
-      const interval = setInterval(() => {
-        if (!get().isLoading || !get().isProcessingPrompt) {
-          clearInterval(interval);
-          resolve(null);
-        }
-      }, 100);
-    });
+  while (get().isLoading) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
 };
 
@@ -135,6 +149,115 @@ const waitForSettingsHydration = async (): Promise<void> => {
       }
     });
   });
+};
+
+const waitForModelToBecomeIdle = async (get: () => LLMStore) => {
+  while (get().isLoading || get().isGenerating) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+};
+
+type StoreSet = (
+  partial: Partial<LLMStore> | ((state: LLMStore) => Partial<LLMStore>)
+) => void;
+
+const unloadLLM = () => {
+  if (!llmInstance) return false;
+  llmInstance.delete();
+  llmInstance = null;
+  return true;
+};
+
+const loadModelInstance = async (
+  model: Model,
+  hardReload: boolean,
+  set: StoreSet,
+  get: () => LLMStore
+) => {
+  const { model: currentModel } = get();
+  if (model.id === currentModel?.id && llmInstance && !hardReload) {
+    return;
+  }
+  unloadLLM();
+
+  resetStreamState();
+  set({ isLoading: true, model });
+
+  const flushStream = () => {
+    streamFlushScheduled = false;
+    if (!streamBuffer) return;
+    const text = streamBuffer;
+    streamBuffer = '';
+    const snapshot = get();
+    const shouldAppendToActiveChat =
+      snapshot.generatingForChatId === snapshot.activeChatId;
+    set((state) => ({
+      isProcessingPrompt: false,
+      performance: {
+        tokenCount: streamTokenCount,
+        firstTokenTime: streamFirstTokenTime,
+      },
+      activeChatMessages: shouldAppendToActiveChat
+        ? state.activeChatMessages.map((msg, index) =>
+            index === state.activeChatMessages.length - 1
+              ? { ...msg, content: msg.content + text }
+              : msg
+          )
+        : state.activeChatMessages,
+    }));
+  };
+
+  try {
+    llmInstance = await LLMModule.fromModelName(
+      {
+        modelName: 'custom' as Parameters<
+          typeof LLMModule.fromModelName
+        >[0]['modelName'],
+        modelSource: model.modelPath,
+        tokenizerSource: model.tokenizerPath,
+        tokenizerConfigSource: model.tokenizerConfigPath,
+        capabilities: model.vision ? (['vision'] as const) : undefined,
+      },
+      () => {},
+      (token) => {
+        const isFirstToken = streamTokenCount === 0;
+
+        if (isFirstToken && !get().isBenchmarking) {
+          Feedback.firstToken();
+        }
+
+        /* Temporary solution to handle interrupt during prefill, needs to be fixed in the
+        react-native-executorch library
+        */
+        if (isFirstToken) {
+          const snapshot = get();
+          if (!snapshot.isProcessingPrompt && !snapshot.isGenerating) {
+            llmInstance?.interrupt();
+            return;
+          }
+          streamFirstTokenTime = performance.now();
+        }
+
+        streamTokenCount += 1;
+        streamBuffer += token;
+        if (!streamFlushScheduled) {
+          streamFlushScheduled = true;
+          requestAnimationFrame(flushStream);
+        }
+      }
+    );
+
+    const generationConfig = getGenerationConfigForModel(model.modelPath);
+    if (generationConfig) {
+      llmInstance.configure({ generationConfig });
+    }
+
+    set({ isLoading: false });
+  } catch (e) {
+    console.error('Error loading model:', e);
+    unloadLLM();
+    set({ isLoading: false, model: null });
+  }
 };
 
 const updateChatStateForGeneration = (
@@ -289,6 +412,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     firstTokenTime: 0,
   },
   activeChatMessages: [],
+  generationError: null,
 
   setDB: (db) => set({ db }),
 
@@ -308,92 +432,62 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   },
 
   loadModel: async (model, hardReload: boolean = false) => {
-    const { model: currentModel } = get();
-    if (model.id === currentModel?.id && !hardReload) {
-      return;
-    }
-    if (currentModel && llmInstance) {
-      llmInstance.delete();
-      llmInstance = null;
-    }
+    const result = modelLoadChain.then(async () => {
+      await modelOffloadChain;
+      await loadModelInstance(model, hardReload, set, get);
+    });
+    modelLoadChain = result.then(
+      () => undefined,
+      () => undefined
+    );
+    return result;
+  },
 
-    resetStreamState();
-    set({ isLoading: true, model: model });
+  runWithModelOffloaded: <T>(
+    operation: () => Promise<T>,
+    options: { restore?: boolean } = {}
+  ): Promise<T> => {
+    const result = modelOffloadChain.then(async () => {
+      await waitForModelToBecomeIdle(get);
 
-    const flushStream = () => {
-      streamFlushScheduled = false;
-      if (!streamBuffer) return;
-      const text = streamBuffer;
-      streamBuffer = '';
-      const snapshot = get();
-      const shouldAppendToActiveChat =
-        snapshot.generatingForChatId === snapshot.activeChatId;
-      set((state) => ({
-        isProcessingPrompt: false,
-        performance: {
-          tokenCount: streamTokenCount,
-          firstTokenTime: streamFirstTokenTime,
-        },
-        activeChatMessages: shouldAppendToActiveChat
-          ? state.activeChatMessages.map((msg, index) =>
-              index === state.activeChatMessages.length - 1
-                ? { ...msg, content: msg.content + text }
-                : msg
-            )
-          : state.activeChatMessages,
-      }));
-    };
+      const modelToRestore = get().model;
+      const shouldRestore =
+        options.restore !== false && !!llmInstance && !!modelToRestore;
+      unloadLLM();
 
-    try {
-      llmInstance = await LLMModule.fromModelName(
-        {
-          modelName: 'custom' as Parameters<
-            typeof LLMModule.fromModelName
-          >[0]['modelName'],
-          modelSource: model.modelPath,
-          tokenizerSource: model.tokenizerPath,
-          tokenizerConfigSource: model.tokenizerConfigPath,
-          capabilities: model.vision ? (['vision'] as const) : undefined,
-        },
-        () => {},
-        (token) => {
-          const isFirstToken = streamTokenCount === 0;
-
-          if (isFirstToken && !get().isBenchmarking) {
-            Feedback.firstToken();
-          }
-
-          /* Temporary solution to handle interrupt during prefill, needs to be fixed in the
-          react-native-executorch library
-          */
-          if (isFirstToken) {
-            const snapshot = get();
-            if (!snapshot.isProcessingPrompt && !snapshot.isGenerating) {
-              llmInstance?.interrupt();
-              return;
-            }
-            streamFirstTokenTime = performance.now();
-          }
-
-          streamTokenCount += 1;
-          streamBuffer += token;
-          if (!streamFlushScheduled) {
-            streamFlushScheduled = true;
-            requestAnimationFrame(flushStream);
-          }
-        }
-      );
-
-      const generationConfig = getGenerationConfigForModel(model.modelPath);
-      if (generationConfig) {
-        llmInstance.configure({ generationConfig });
+      let operationResult!: T;
+      let operationFailed = false;
+      let operationError: unknown;
+      try {
+        operationResult = await operation();
+      } catch (error) {
+        operationFailed = true;
+        operationError = error;
       }
 
-      set({ isLoading: false });
-    } catch (e) {
-      console.error('Error loading model:', e);
-      set({ isLoading: false, model: null });
-    }
+      let restoreError: Error | null = null;
+      if (
+        shouldRestore &&
+        modelToRestore &&
+        get().model?.id === modelToRestore.id
+      ) {
+        await loadModelInstance(modelToRestore, true, set, get);
+        if (!llmInstance) {
+          restoreError = new Error('Failed to restore the language model');
+        }
+      }
+
+      if (operationFailed) throw operationError;
+      if (restoreError) throw restoreError;
+      return operationResult;
+    });
+
+    modelOffloadChain = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    return result;
   },
 
   sendChatMessage: async (
@@ -402,7 +496,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     buildSources,
     settings,
     imagePath,
-    documentName
+    documentName,
+    isRetry = false
   ) => {
     const { db, model: currentModel, activeChatMessages } = get();
     if (!db || !currentModel) {
@@ -429,35 +524,81 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       id: -1,
     };
 
+    set({ generationError: null });
     updateChatStateForGeneration(set, 'start', {
       chatId,
-      activeChatMessages: [
-        ...activeChatMessages,
-        userMessage,
-        assistantPlaceholder,
-      ],
+      activeChatMessages: isRetry
+        ? [...activeChatMessages, assistantPlaceholder]
+        : [...activeChatMessages, userMessage, assistantPlaceholder],
     });
 
-    try {
-      const userMessageId = await persistMessage(db, {
-        role: 'user',
-        content: newMessage,
+    let userMessagePersisted = isRetry;
+    const markGenerationFailed = (error: unknown, showToUser = true) => {
+      unloadLLM();
+      updateChatStateForGeneration(set, 'failed');
+
+      if (!userMessagePersisted && !isRetry) {
+        set((state) => ({
+          activeChatMessages: state.activeChatMessages.filter(
+            (message) => message.id !== tempUserId
+          ),
+        }));
+      }
+
+      if (!showToUser) return;
+      failedGenerationRequest = {
+        newMessage,
         chatId,
+        buildSources,
+        settings,
         imagePath,
         documentName,
-      });
-      set((state) => ({
-        activeChatMessages: state.activeChatMessages.map((msg) =>
-          msg.id === tempUserId ? { ...msg, id: userMessageId } : msg
-        ),
-      }));
+        reusePersistedUser: userMessagePersisted,
+      };
+      if (get().activeChatId === chatId) {
+        set({
+          generationError: {
+            chatId,
+            message: 'Failed to generate a response.',
+          },
+        });
+      }
+      console.error('Chat sendMessage failed', error);
+    };
+
+    try {
+      if (!isRetry) {
+        const userMessageId = await persistMessage(db, {
+          role: 'user',
+          content: newMessage,
+          chatId,
+          imagePath,
+          documentName,
+        });
+        userMessagePersisted = true;
+        set((state) => ({
+          activeChatMessages: state.activeChatMessages.map((msg) =>
+            msg.id === tempUserId ? { ...msg, id: userMessageId } : msg
+          ),
+        }));
+      }
 
       const { context, sourceDocuments, preferredSourceDocuments } =
         await buildSources();
 
+      if (!get().isProcessingPrompt) {
+        updateChatStateForGeneration(set, 'failed');
+        return;
+      }
+
+      await get().loadModel(currentModel, isRetry);
       await waitForModelLoad(get);
+      if (!llmInstance) {
+        throw new Error('Failed to load the language model');
+      }
 
       if (!get().isProcessingPrompt) {
+        unloadLLM();
         updateChatStateForGeneration(set, 'failed');
         return;
       }
@@ -520,13 +661,37 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         } else {
           updateChatStateForGeneration(set, 'complete');
         }
+        failedGenerationRequest = null;
+        set({ generationError: null });
       } else {
-        updateChatStateForGeneration(set, 'failed');
+        markGenerationFailed(new Error('The model returned an empty response'));
       }
     } catch (e) {
-      console.error('Chat sendMessage failed', e);
-      updateChatStateForGeneration(set, 'failed');
+      const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;
+      markGenerationFailed(e, !wasInterrupted);
     }
+  },
+
+  retryLastGeneration: async () => {
+    const request = failedGenerationRequest;
+    if (
+      !request ||
+      get().isGenerating ||
+      get().isProcessingPrompt ||
+      get().activeChatId !== request.chatId
+    ) {
+      return;
+    }
+
+    await get().sendChatMessage(
+      request.newMessage,
+      request.chatId,
+      request.buildSources,
+      request.settings,
+      request.imagePath,
+      request.documentName,
+      request.reusePersistedUser
+    );
   },
 
   sendEventMessage: async (chatId: number, content: string) => {
