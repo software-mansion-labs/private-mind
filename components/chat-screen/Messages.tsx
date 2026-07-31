@@ -49,6 +49,7 @@ import BranchMarker from './BranchMarker';
 import Toast from 'react-native-toast-message';
 import { SUPPORTS_USER_ACTION_MENU } from '../../constants/chat-screen';
 import { useKeyboardLift } from './useKeyboardLift';
+import { useScrollSettler } from './useScrollSettler';
 import { visibleMessageText } from '../../utils/messageText';
 
 /**
@@ -67,6 +68,8 @@ const SCROLL_INDICATOR_GUTTER = 12;
 const GENERATION_ERROR_MEASUREMENT_KEY = 'generation-error';
 
 const MESSAGE_PIN_OFFSET = 8;
+
+const PIN_FALLBACK_MS = 300;
 
 export interface MessagesHandle {
   onMessageSent: () => void;
@@ -227,6 +230,17 @@ const Messages = ({
     scrollRef.current?.scrollToEnd({ animated: false });
   }, []);
 
+  const {
+    start: startPin,
+    cancel: cancelPin,
+    resettle: resettlePin,
+    isSettling: isPinSettling,
+  } = useScrollSettler(
+    useCallback((animated: boolean) => {
+      scrollRef.current?.scrollToEnd({ animated });
+    }, [])
+  );
+
   const scheduleInitialScrollToEnd = useCallback(() => {
     clearInitialScrollTimers();
     snapToEnd();
@@ -306,9 +320,10 @@ const Messages = ({
       opacity.set(0);
       pinActive.current = false;
       blankSpace.set(0);
+      cancelPin();
     }
     prevChatLengthRef.current = chatHistory.length;
-  }, [chatHistory.length, opacity, blankSpace]);
+  }, [chatHistory.length, opacity, blankSpace, cancelPin]);
 
   useLayoutEffect(() => clearInitialScrollTimers, [clearInitialScrollTimers]);
 
@@ -372,8 +387,9 @@ const Messages = ({
       };
 
       if (
-        wasAtBottomDuringKeyboard.current &&
-        !userScrolledDuringKeyboard.current
+        (wasAtBottomDuringKeyboard.current &&
+          !userScrolledDuringKeyboard.current) ||
+        isPinSettling()
       ) {
         clearPendingSnap();
         firstFrame = requestAnimationFrame(() => {
@@ -397,7 +413,7 @@ const Messages = ({
       showSub.remove();
       hideSub.remove();
     };
-  }, [closeUserActionMenu]);
+  }, [closeUserActionMenu, isPinSettling]);
 
   // Armed from onMessageSent until the chat is cleared; gates recomputeBlankSpace.
   // Stays armed past end-of-stream so the final layout (once the stats row and
@@ -420,7 +436,29 @@ const Messages = ({
       listBottomPadding +
       MESSAGE_PIN_OFFSET;
     blankSpace.set(Math.max(0, raw));
-  }, [blankSpace, listBottomPadding, listTopPadding]);
+    resettlePin();
+  }, [blankSpace, listBottomPadding, listTopPadding, resettlePin]);
+
+  const pinFallbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearPinFallback = useCallback(() => {
+    if (pinFallbackTimer.current) {
+      clearTimeout(pinFallbackTimer.current);
+      pinFallbackTimer.current = null;
+    }
+  }, []);
+
+  const runPendingPin = useCallback(() => {
+    if (!pendingPinRef.current) return;
+    pendingPinRef.current = false;
+    clearPinFallback();
+    closeUserActionMenu();
+    if (Platform.OS !== 'ios' && containerHeight.current > 0) {
+      blankSpace.set(containerHeight.current - topInset + MESSAGE_PIN_OFFSET);
+    }
+    startPin();
+  }, [blankSpace, clearPinFallback, closeUserActionMenu, startPin, topInset]);
+
+  useLayoutEffect(() => clearPinFallback, [clearPinFallback]);
 
   useImperativeHandle(
     ref,
@@ -453,9 +491,18 @@ const Messages = ({
           }
         }
         pendingPinRef.current = true;
+        clearPinFallback();
+        pinFallbackTimer.current = setTimeout(runPendingPin, PIN_FALLBACK_MS);
       },
     }),
-    [blankSpace, closeUserActionMenu, opacity, topInset]
+    [
+      blankSpace,
+      clearPinFallback,
+      closeUserActionMenu,
+      opacity,
+      runPendingPin,
+      topInset,
+    ]
   );
 
   const handleContainerLayout = useCallback(
@@ -596,7 +643,8 @@ const Messages = ({
     if (keyboardOpenRef.current) {
       userScrolledDuringKeyboard.current = true;
     }
-  }, []);
+    cancelPin();
+  }, [cancelPin]);
 
   const handleForkMessage = useCallback(
     (message: Message) => {
@@ -620,28 +668,7 @@ const Messages = ({
         return;
       }
 
-      // After send: now that the new chat row has rendered, seed
-      // blankSpace and scroll to end. Doing this here (instead of
-      // synchronously in onMessageSent) avoids a 1-frame flick where
-      // the old content gets lifted by the new inset before the new
-      // DOM commits.
-      // Android: defer the pin here (not in onMessageSent) so the new
-      // row has committed before we expand blankSpace. Animate both
-      // blankSpace and scrollToEnd for a smooth transition.
-      if (pendingPinRef.current) {
-        pendingPinRef.current = false;
-        closeUserActionMenu();
-        if (Platform.OS !== 'ios' && containerHeight.current > 0) {
-          blankSpace.set(
-            containerHeight.current - topInset + MESSAGE_PIN_OFFSET
-          );
-        }
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            scrollRef.current?.scrollToEnd({ animated: true });
-          });
-        });
-      }
+      runPendingPin();
 
       // During streaming, check if content has grown past the viewport
       // so the scroll-to-bottom button can appear without the user
@@ -662,12 +689,10 @@ const Messages = ({
       }
     },
     [
-      blankSpace,
-      closeUserActionMenu,
       listBottomPadding,
       listTopPadding,
+      runPendingPin,
       scheduleInitialScrollToEnd,
-      topInset,
     ]
   );
 
