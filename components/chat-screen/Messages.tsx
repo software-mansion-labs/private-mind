@@ -537,14 +537,13 @@ const Messages = ({
   );
 
   const getMessageActionsState = useCallback(
-    (message: Message, isLastMessage: boolean): MessageActionsState => {
+    (message: Message): MessageActionsState => {
       const isPersisted = message.id > 0;
-      const isStreamingMessage = isLastMessage && isGenerating;
 
       if (message.role === 'assistant') {
         return {
           showActions: isPersisted && message.content.trim().length > 0,
-          showForkAction: isPersisted && !!onForkMessage && !isStreamingMessage,
+          showForkAction: isPersisted && !!onForkMessage && !isGenerating,
         };
       }
 
@@ -770,10 +769,8 @@ const Messages = ({
                     handleLastAssistantLayout(key, event)
                 : undefined;
           const branchMarker = latestBranchMarkerByMessageId.get(message.id);
-          const { showActions, showForkAction } = getMessageActionsState(
-            message,
-            isLastMessage
-          );
+          const { showActions, showForkAction } =
+            getMessageActionsState(message);
 
           const item = (
             <View style={styles.messageRow} collapsable={false}>
