@@ -33,7 +33,8 @@ import Reanimated, {
 import type { SharedValue } from 'react-native-reanimated';
 import MessageItem from './MessageItem';
 import SourcesSheet, { type SourcesSheetHandle } from './SourcesSheet';
-import { EdgeFade, FADE_HEIGHT } from './EdgeFade';
+import { EdgeFade, FADE_HEIGHT, SEAM_OVERLAP } from './EdgeFade';
+import { TopFade, topFadeHeight } from './TopFade';
 import {
   Message,
   SourceDocument,
@@ -58,10 +59,6 @@ const navBarInset = (theme: Theme) =>
   Platform.OS === 'android' ? theme.insets.bottom : 0;
 
 const BOTTOM_FADE_HEIGHT = Platform.OS === 'ios' ? 64 : FADE_HEIGHT;
-
-const SEAM_OVERLAP = 1;
-
-const FADE_GAP_TRIM = 5;
 
 /** Right-edge gap so the bottom fade doesn't paint over the scroll indicator. */
 const SCROLL_INDICATOR_GUTTER = 12;
@@ -280,17 +277,9 @@ const Messages = ({
     [styles.contentContainer, listBottomPadding, listTopPadding]
   );
   const fadeAnchor = fadeBottom ?? topInset;
-  const topFadeBottom = fadeAnchor + FADE_HEIGHT - FADE_GAP_TRIM;
-  const { scrollIndicatorInsets, topFadeStyle, topFadeSolidStyle } = useMemo(
-    () => ({
-      scrollIndicatorInsets: { top: topFadeBottom },
-      topFadeStyle: [styles.topFade, { height: topFadeBottom }],
-      topFadeSolidStyle: [
-        styles.topFadeSolid,
-        { height: fadeAnchor - FADE_GAP_TRIM + SEAM_OVERLAP },
-      ],
-    }),
-    [styles.topFade, styles.topFadeSolid, fadeAnchor, topFadeBottom]
+  const scrollIndicatorInsets = useMemo(
+    () => ({ top: topFadeHeight(fadeAnchor) }),
+    [fadeAnchor]
   );
   const scrollButtonStyle = useMemo(
     () => [styles.scrollToBottomButtonContainer, { bottom: chatBarInset + 16 }],
@@ -871,12 +860,7 @@ const Messages = ({
         )}
       </KeyboardChatScrollView>
 
-      {hasMessages && (
-        <View style={topFadeStyle} pointerEvents="none">
-          <View style={topFadeSolidStyle} />
-          <EdgeFade edge="top" style={styles.topFadeRamp} />
-        </View>
-      )}
+      {hasMessages && <TopFade anchor={fadeAnchor} />}
       {hasMessages && (
         <Reanimated.View
           style={[styles.bottomFade, bottomFadeAnimatedStyle]}
@@ -922,26 +906,6 @@ const createStyles = (theme: Theme) => {
     },
     contentContainer: {
       paddingHorizontal: 16,
-    },
-    topFade: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-    },
-    topFadeSolid: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    topFadeRamp: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      height: FADE_HEIGHT,
     },
     bottomFade: {
       position: 'absolute',

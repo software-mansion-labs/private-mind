@@ -85,7 +85,7 @@ export const darkTheme = {
 export type ThemeColors = typeof lightTheme;
 export type Theme = ThemeColors & { insets: EdgeInsets };
 
-export const withAlpha = (color: string, alpha: number) => {
+const toRgb = (color: string) => {
   const hex = color.replace('#', '');
   const full =
     hex.length === 3
@@ -94,8 +94,25 @@ export const withAlpha = (color: string, alpha: number) => {
           .map((c) => c + c)
           .join('')
       : hex;
-  const r = parseInt(full.slice(0, 2), 16);
-  const g = parseInt(full.slice(2, 4), 16);
-  const b = parseInt(full.slice(4, 6), 16);
+  return {
+    r: parseInt(full.slice(0, 2), 16),
+    g: parseInt(full.slice(2, 4), 16),
+    b: parseInt(full.slice(4, 6), 16),
+  };
+};
+
+export const withAlpha = (color: string, alpha: number) => {
+  const { r, g, b } = toRgb(color);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+export const mixColors = (from: string, to: string, t: number) => {
+  const ratio = Math.min(1, Math.max(0, t));
+  const a = toRgb(from);
+  const b = toRgb(to);
+  const channel = (start: number, end: number) =>
+    Math.round(start + (end - start) * ratio)
+      .toString(16)
+      .padStart(2, '0');
+  return `#${channel(a.r, b.r)}${channel(a.g, b.g)}${channel(a.b, b.b)}`;
 };
