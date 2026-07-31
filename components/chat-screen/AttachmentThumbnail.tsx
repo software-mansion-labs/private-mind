@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Image,
@@ -7,12 +7,19 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import CloseIcon from '../../assets/icons/close.svg';
 import AttachmentIcon from '../../assets/icons/attachment.svg';
 import { Attachment } from '../../hooks/useAttachment';
+import { ATTACHMENT_PROGRESS_TRACK_WIDTH } from '../../constants/chat';
 
 interface Props {
   attachment: Attachment;
@@ -22,11 +29,42 @@ interface Props {
 const AttachmentThumbnail = ({ attachment, onRemove }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
 
+  const fill = useSharedValue(0);
+  useEffect(() => {
+    if (attachment.progress == null) return;
+    fill.set(
+      withTiming(attachment.progress * ATTACHMENT_PROGRESS_TRACK_WIDTH, {
+        duration: 250,
+        easing: Easing.out(Easing.cubic),
+      })
+    );
+  }, [attachment.progress, fill]);
+
+  const fillStyle = useAnimatedStyle(() => ({ width: fill.get() }));
+
   const renderContent = () => {
     if (attachment.status === 'loading') {
+      if (attachment.progress == null) {
+        return (
+          <View style={styles.placeholder}>
+            <ActivityIndicator color={theme.text.primary} />
+          </View>
+        );
+      }
+
       return (
-        <View style={styles.placeholder}>
-          <ActivityIndicator color={theme.text.primary} />
+        <View style={styles.docThumbnail}>
+          <AttachmentIcon
+            width={18}
+            height={18}
+            style={{ color: theme.text.primary }}
+          />
+          <Text style={styles.percentText}>
+            {Math.round(attachment.progress * 100)}%
+          </Text>
+          <View style={styles.progressTrack}>
+            <Animated.View style={[styles.progressFill, fillStyle]} />
+          </View>
         </View>
       );
     }
@@ -105,6 +143,24 @@ const createStyles = (theme: Theme) =>
       color: theme.text.primary,
       maxWidth: 60,
       textAlign: 'center',
+    },
+    percentText: {
+      fontSize: fontSizes.sm,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
+      fontVariant: ['tabular-nums'],
+    },
+    progressTrack: {
+      width: ATTACHMENT_PROGRESS_TRACK_WIDTH,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.bg.softSecondary,
+      overflow: 'hidden',
+    },
+    progressFill: {
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.bg.strongPrimary,
     },
     dismissButton: {
       position: 'absolute',

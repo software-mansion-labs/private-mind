@@ -1,6 +1,11 @@
 // __tests__/modelRepository.test.ts
 import { type SQLiteDatabase } from 'expo-sqlite';
-import { getAllModels, getModelsByNames } from '../database/modelRepository';
+import {
+  getAllModels,
+  getModelsByNames,
+  syncBuiltInModelPaths,
+} from '../database/modelRepository';
+import { DEFAULT_MODELS } from '../constants/default-models';
 
 jest.mock('expo-sqlite', () => {
   const stableDb = {};
@@ -165,5 +170,35 @@ describe('getModelsByNames', () => {
       'LFM 2.5 - 1.2B',
       'Qwen 3 - 1.7B',
     ]);
+  });
+});
+
+describe('syncBuiltInModelPaths', () => {
+  it('rewrites a built-in row with paths from DEFAULT_MODELS', async () => {
+    const bielik = DEFAULT_MODELS.find((m) => m.modelName === 'Bielik - v3.0')!;
+    const runAsync = jest.fn().mockResolvedValue({});
+    const mockDb = { runAsync } as unknown as SQLiteDatabase;
+
+    await syncBuiltInModelPaths(mockDb, 7, 'Bielik - v3.0');
+
+    expect(runAsync).toHaveBeenCalledTimes(1);
+    const [sql, params] = runAsync.mock.calls[0];
+    expect(sql).toContain(`source = 'built-in'`);
+    expect(params).toEqual([
+      bielik.modelPath,
+      bielik.tokenizerPath,
+      bielik.tokenizerConfigPath,
+      bielik.modelSize,
+      7,
+    ]);
+  });
+
+  it('does nothing for a model name outside DEFAULT_MODELS', async () => {
+    const runAsync = jest.fn();
+    const mockDb = { runAsync } as unknown as SQLiteDatabase;
+
+    await syncBuiltInModelPaths(mockDb, 3, 'My Local Model');
+
+    expect(runAsync).not.toHaveBeenCalled();
   });
 });

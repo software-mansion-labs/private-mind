@@ -1,4 +1,28 @@
-import { getStartingModels } from '../constants/default-models';
+import {
+  BIELIK_V3_0_1_5B_QUANTIZED,
+  QWEN3_1_7B_QUANTIZED,
+} from 'react-native-executorch';
+import {
+  DEFAULT_MODELS,
+  DEFAULT_REPETITION_PENALTY,
+  getGenerationConfigForModel,
+  getStartingModels,
+} from '../constants/default-models';
+
+describe('getGenerationConfigForModel', () => {
+  it('applies a default repetitionPenalty so no model is left without one', () => {
+    // The Qwen 3 registry entry (the issue #255 model) ships no penalty.
+    expect(
+      getGenerationConfigForModel(QWEN3_1_7B_QUANTIZED.modelSource)
+        .repetitionPenalty
+    ).toBe(DEFAULT_REPETITION_PENALTY);
+    // Even a model absent from the registry map gets the default.
+    expect(
+      getGenerationConfigForModel('https://example.com/custom.pte')
+        .repetitionPenalty
+    ).toBe(DEFAULT_REPETITION_PENALTY);
+  });
+});
 
 describe('getStartingModels', () => {
   it('returns low-end model suggestions below 4 GB RAM', () => {
@@ -34,5 +58,31 @@ describe('getStartingModels', () => {
     const lowEnd = ['Qwen 3 - 0.6B', 'LFM 2.5 VL - 450M', 'LFM 2.5 - 1.2B'];
     expect(getStartingModels(0)).toEqual(lowEnd);
     expect(getStartingModels(-1)).toEqual(lowEnd);
+  });
+});
+
+describe('DEFAULT_MODELS paths', () => {
+  it('sources Bielik paths from the react-native-executorch constant', () => {
+    const bielik = DEFAULT_MODELS.find((m) => m.modelName === 'Bielik - v3.0');
+    expect(bielik).toBeDefined();
+    expect(bielik!.modelPath).toBe(BIELIK_V3_0_1_5B_QUANTIZED.modelSource);
+    expect(bielik!.tokenizerPath).toBe(
+      BIELIK_V3_0_1_5B_QUANTIZED.tokenizerSource
+    );
+    expect(bielik!.tokenizerConfigPath).toBe(
+      BIELIK_V3_0_1_5B_QUANTIZED.tokenizerConfigSource
+    );
+  });
+
+  it('never points a default model at the mutable HF main branch', () => {
+    for (const model of DEFAULT_MODELS) {
+      for (const path of [
+        model.modelPath,
+        model.tokenizerPath,
+        model.tokenizerConfigPath,
+      ]) {
+        expect(path).not.toContain('/resolve/main/');
+      }
+    }
   });
 });

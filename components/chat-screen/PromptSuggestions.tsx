@@ -81,5 +81,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.regular,
       color: theme.text.defaultSecondary,
       lineHeight: lineHeights.xs,
+      height: lineHeights.xs * 3,
     },
   });
