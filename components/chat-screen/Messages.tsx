@@ -17,6 +17,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   View,
   type View as ViewType,
 } from 'react-native';
@@ -42,6 +43,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
 import { Feedback } from '../../utils/Feedback';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
+import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import BranchMarker from './BranchMarker';
 import Toast from 'react-native-toast-message';
 import { SUPPORTS_USER_ACTION_MENU } from '../../constants/chat-screen';
@@ -63,6 +65,8 @@ const FADE_GAP_TRIM = 5;
 
 /** Right-edge gap so the bottom fade doesn't paint over the scroll indicator. */
 const SCROLL_INDICATOR_GUTTER = 12;
+
+const GENERATION_ERROR_MEASUREMENT_KEY = 'generation-error';
 
 export interface MessagesHandle {
   onMessageSent: () => void;
@@ -87,6 +91,8 @@ interface Props {
   blankSpace: SharedValue<number>;
   /** Whether the LLM is currently streaming a response. */
   isGenerating: boolean;
+  generationError?: string;
+  onRetryGeneration?: () => void;
   /**
    * Bottom inset forwarded to KeyboardChatScrollView's `offset`. Only the
    * safe-area inset stays fixed below the scroll view while the keyboard
@@ -168,6 +174,8 @@ const Messages = ({
   extraContentPadding,
   blankSpace,
   isGenerating,
+  generationError,
+  onRetryGeneration,
   bottomOffset,
   freeze = false,
   chatBarInset,
@@ -319,6 +327,8 @@ const Messages = ({
   const containerHeight = useRef(0);
   const lastUserHeight = useRef(0);
   const lastAssistantHeight = useRef(0);
+  const lastUserMeasurementKey = useRef<string | null>(null);
+  const lastAssistantMeasurementKey = useRef<string | null>(null);
 
   const closeUserActionMenu = useCallback(() => {
     setActiveUserActionsId(null);
@@ -435,7 +445,8 @@ const Messages = ({
   );
 
   const handleLastUserLayout = useCallback(
-    (e: LayoutChangeEvent) => {
+    (key: string, e: LayoutChangeEvent) => {
+      if (lastUserMeasurementKey.current !== key) return;
       lastUserHeight.current = e.nativeEvent.layout.height;
       recomputeBlankSpace();
     },
@@ -443,7 +454,8 @@ const Messages = ({
   );
 
   const handleLastAssistantLayout = useCallback(
-    (e: LayoutChangeEvent) => {
+    (key: string, e: LayoutChangeEvent) => {
+      if (lastAssistantMeasurementKey.current !== key) return;
       lastAssistantHeight.current = e.nativeEvent.layout.height;
       recomputeBlankSpace();
     },
@@ -645,7 +657,11 @@ const Messages = ({
   let lastUserIndex = -1;
   let lastAssistantIndex = -1;
   for (let i = chatHistory.length - 1; i >= 0; i--) {
-    if (lastAssistantIndex === -1 && chatHistory[i].role === 'assistant') {
+    if (
+      !generationError &&
+      lastAssistantIndex === -1 &&
+      chatHistory[i].role === 'assistant'
+    ) {
       lastAssistantIndex = i;
     }
     if (lastUserIndex === -1 && chatHistory[i].role === 'user') {
@@ -653,6 +669,22 @@ const Messages = ({
     }
     if (lastUserIndex !== -1 && lastAssistantIndex !== -1) break;
   }
+
+  const measurementKeyAt = (index: number): string | null => {
+    const message = chatHistory[index];
+    if (!message) return null;
+    return message.id > 0
+      ? `msg-${message.id}`
+      : `pending-${message.role}-${index}`;
+  };
+
+  const assistantMeasurementKey = (): string | null => {
+    if (generationError) return GENERATION_ERROR_MEASUREMENT_KEY;
+    return measurementKeyAt(lastAssistantIndex);
+  };
+
+  lastUserMeasurementKey.current = measurementKeyAt(lastUserIndex);
+  lastAssistantMeasurementKey.current = assistantMeasurementKey();
 
   return (
     <Reanimated.View style={[styles.container, animatedContainerStyle]}>
@@ -686,9 +718,10 @@ const Messages = ({
 
           const onLayout =
             index === lastUserIndex
-              ? handleLastUserLayout
+              ? (event: LayoutChangeEvent) => handleLastUserLayout(key, event)
               : index === lastAssistantIndex
-                ? handleLastAssistantLayout
+                ? (event: LayoutChangeEvent) =>
+                    handleLastAssistantLayout(key, event)
                 : undefined;
           const branchMarker = latestBranchMarkerByMessageId.get(message.id);
           const { showActions, showForkAction } = getMessageActionsState(
@@ -766,6 +799,34 @@ const Messages = ({
             </LongPressableMessage>
           );
         })}
+        {generationError && (
+          <View
+            onLayout={(event) =>
+              handleLastAssistantLayout(GENERATION_ERROR_MEASUREMENT_KEY, event)
+            }
+            collapsable={false}
+            style={styles.generationError}
+            testID="generation-error"
+          >
+            <Text style={styles.generationErrorText}>{generationError}</Text>
+            <Pressable
+              onPress={onRetryGeneration}
+              accessibilityRole="button"
+              accessibilityLabel="Retry response generation"
+              style={({ pressed }) => [
+                styles.retryButton,
+                pressed && styles.retryButtonPressed,
+              ]}
+            >
+              <RotateLeftIcon
+                width={16}
+                height={16}
+                style={styles.retryButtonIcon}
+              />
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </Pressable>
+          </View>
+        )}
       </KeyboardChatScrollView>
 
       {hasMessages && (
@@ -869,6 +930,36 @@ const createStyles = (theme: Theme) => {
     },
     messageRow: {
       position: 'relative',
+    },
+    generationError: {
+      width: '90%',
+      alignSelf: 'flex-start',
+      marginBottom: 24,
+      gap: 8,
+    },
+    generationErrorText: {
+      color: theme.text.defaultSecondary,
+      fontSize: 14,
+    },
+    retryButton: {
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      borderRadius: 8,
+      backgroundColor: theme.bg.softSecondary,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    retryButtonPressed: {
+      opacity: 0.7,
+    },
+    retryButtonIcon: {
+      color: theme.text.primary,
+    },
+    retryButtonText: {
+      color: theme.text.primary,
+      fontSize: 14,
     },
     scrollToBottomButtonContainer: {
       position: 'absolute',

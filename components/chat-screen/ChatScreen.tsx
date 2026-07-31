@@ -89,6 +89,8 @@ export default function ChatScreen({
     sendChatMessage,
     loadModel,
     model: loadedModel,
+    generationError,
+    retryLastGeneration,
   } = useLLMStore();
   const { getModelById } = useModelStore();
   const {
@@ -356,6 +358,16 @@ export default function ChatScreen({
     [model, loadedModel, loadModel, getModelById, chat?.modelId]
   );
 
+  const chatGenerationError =
+    generationError?.chatId === chatId ? generationError.message : undefined;
+
+  const handleRetryGeneration = useCallback(() => {
+    messagesRef.current?.onMessageSent();
+    retryLastGeneration().catch((error) => {
+      console.error('Failed to retry generation:', error);
+    });
+  }, [retryLastGeneration]);
+
   const isEmpty = !isLoading && messageHistory.length === 0;
   const hasMessages = isLoading || messageHistory.length > 0;
   const scrollBottomOffset = theme.insets.bottom;
@@ -419,6 +431,8 @@ export default function ChatScreen({
           extraContentPadding={extraContentPadding}
           blankSpace={blankSpace}
           isGenerating={isGenerating}
+          generationError={chatGenerationError}
+          onRetryGeneration={handleRetryGeneration}
           bottomOffset={scrollBottomOffset}
           freeze={overlayOpen}
           revealFromTop={revealFromTop}
