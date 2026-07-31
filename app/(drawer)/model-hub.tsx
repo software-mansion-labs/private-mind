@@ -12,7 +12,7 @@ import WarningSheet, {
   WarningSheetData,
 } from '../../components/bottomSheets/WarningSheet';
 import ModelManagementSheet from '../../components/bottomSheets/ModelManagementSheet';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Model } from '../../database/modelRepository';
@@ -32,8 +32,7 @@ import { useConfirm } from '../../hooks/useConfirm';
 const ModelHubScreen = () => {
   useDefaultHeader();
   const router = useRouter();
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
 
   const addModelSheetRef = useRef<BottomSheetModal | null>(null);
   const wifiWarningSheetRef = useRef<BottomSheetModal<WarningSheetData> | null>(

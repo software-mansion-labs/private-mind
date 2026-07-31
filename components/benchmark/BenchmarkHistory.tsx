@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useModelStore } from '../../store/modelStore';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
 import BenchmarkItem from './BenchmarkItem';
@@ -16,9 +16,8 @@ interface Props {
 }
 
 const BenchmarkHistory = ({ modalRef, benchmarkList }: Props) => {
-  const { theme } = useTheme();
+  const { styles } = useThemedStyles(createStyles);
   const { getModelById } = useModelStore();
-  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <>

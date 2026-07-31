@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import PrimaryButton from '../PrimaryButton';
 import TextLogo from '../../assets/text_logo.svg';
@@ -11,8 +11,7 @@ interface Props {
 }
 
 function OnboardingIntroPanel({ onPressStart }: Props) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
 
   return (
     <View>

@@ -25,7 +25,7 @@ import {
   type BottomSheetScrollViewMethods,
 } from '@gorhom/bottom-sheet';
 import { KeyboardEvents } from 'react-native-keyboard-controller';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import {
   radius,
@@ -153,8 +153,7 @@ interface SourcesSheetPayload {
 }
 
 const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
   const { height: screenHeight } = useWindowDimensions();
 
   const sheetRef = useRef<BottomSheetModal>(null);

@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import PrimaryButton from '../PrimaryButton';
@@ -26,8 +26,7 @@ function OnboardingStepPanel({
   onNextPress,
   buttonPrimary,
 }: OnboardingStepPanelProps) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
 
   return (
     <View style={styles.container}>

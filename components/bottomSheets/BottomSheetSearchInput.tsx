@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import SearchIcon from '../../assets/icons/search.svg';
@@ -20,8 +20,7 @@ const BottomSheetSearchInput = ({
   placeholder,
   style,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
   const [active, setActive] = useState(false);
 
   if (Platform.OS !== 'ios') {

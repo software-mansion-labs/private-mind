@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useLLMStore } from '../../store/llmStore';
 import { startPhantomChat } from '../../utils/startPhantomChat';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -15,8 +15,7 @@ interface Props {
 }
 
 export const DrawerEmptyState = ({ onNavigate }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const db = useSQLiteContext();
   const { interrupt } = useLLMStore();

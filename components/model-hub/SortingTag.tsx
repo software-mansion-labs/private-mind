@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Text, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import CheckIcon from '../../assets/icons/check.svg';
@@ -12,11 +12,7 @@ interface Props {
 }
 
 const SortingTag = ({ text, selected, onPress }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(
-    () => createStyles(theme, selected),
-    [theme, selected]
-  );
+  const { styles } = useThemedStyles(createStyles, selected);
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>

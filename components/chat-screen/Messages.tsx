@@ -39,7 +39,7 @@ import {
   SourceDocument,
   type ChatBranchMarker,
 } from '../../database/chatRepository';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { Feedback } from '../../utils/Feedback';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
@@ -190,8 +190,7 @@ const Messages = ({
   onUserActionMenuChange,
   ref,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
   const scrollRef = useRef<Reanimated.ScrollView>(null);
   const isAtBottomRef = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);

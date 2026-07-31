@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, Text, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useModelStore } from '../../store/modelStore';
 import PrimaryButton from '../../components/PrimaryButton';
 import ModelCard from '../../components/model-hub/ModelCard';
@@ -19,8 +19,7 @@ import { getDeviceMemoryGB } from '../../utils/modelCompatibility';
 function SelectStartingModelScreen() {
   const router = useRouter();
   const db = useSQLiteContext();
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
   const { initPhantomChat } = useChatStore();
   const { setActiveChatId } = useLLMStore();
   const { downloadedModels } = useModelStore();

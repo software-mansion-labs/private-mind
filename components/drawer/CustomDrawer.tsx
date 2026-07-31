@@ -1,13 +1,7 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, TextInput, Keyboard } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import DrawerMenu from './DrawerMenu';
 import { DrawerSearchOverlay } from './DrawerSearchOverlay';
@@ -20,8 +14,7 @@ import {
 
 const CustomDrawer = ({ navigation }: DrawerContentComponentProps) => {
   const isFirstRender = useRef(true);
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
   const status = useDrawerStatus();
 
   const [searching, setSearching] = useState(false);

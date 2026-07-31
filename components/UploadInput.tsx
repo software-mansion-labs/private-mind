@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import Folder from '../assets/icons/folder.svg';
 import TrashIcon from '../assets/icons/trash.svg';
 import AttachmentIcon from '../assets/icons/attachment.svg';
-import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
 
@@ -34,11 +34,7 @@ const formatFileSize = (bytes: number | null) => {
 };
 
 const UploadInput = ({ fileInfo, onChange, disabled = false }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(
-    () => createStyles(theme, disabled),
-    [theme, disabled]
-  );
+  const { styles } = useThemedStyles(createStyles, disabled);
 
   const handlePickFile = async () => {
     const result = await DocumentPicker.getDocumentAsync({

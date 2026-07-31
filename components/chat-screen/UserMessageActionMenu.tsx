@@ -1,9 +1,9 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import CopyIcon from '../../assets/icons/copy.svg';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { SvgComponent } from '../../utils/SvgComponent';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 
 type MenuItemProps = {
@@ -13,8 +13,7 @@ type MenuItemProps = {
 };
 
 const MenuItem = ({ label, icon: Icon, onPress }: MenuItemProps) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   return (
     <Pressable
@@ -36,8 +35,7 @@ type UserMessageActionMenuProps = {
 export default function UserMessageActionMenu({
   onCopy,
 }: UserMessageActionMenuProps) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   return (
     <View style={styles.container}>

@@ -1,11 +1,11 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Text, StyleSheet, Alert, Platform, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useModelStore } from '../../../store/modelStore';
 import ModalHeader from '../../../components/ModalHeader';
 import TextFieldInput from '../../../components/TextFieldInput';
 import { fontSizes, fontFamily } from '../../../styles/fontStyles';
-import { useTheme } from '../../../context/ThemeContext';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import PrimaryButton from '../../../components/PrimaryButton';
 import { ScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
@@ -25,8 +25,7 @@ export default function EditRemoteModelScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const router = useRouter();
 
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const { getModelById, editModel } = useModelStore();
   const model = getModelById(modelId);

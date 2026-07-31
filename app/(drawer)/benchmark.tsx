@@ -1,16 +1,10 @@
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useRef,
-  useMemo,
-} from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useLocalSearchParams } from 'expo-router';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import {
   BenchmarkResult,
@@ -30,8 +24,7 @@ import useDefaultHeader from '../../hooks/useDefaultHeader';
 const BenchmarkScreen = () => {
   useDefaultHeader();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
   const db = useSQLiteContext();
   const { getModelById } = useModelStore();
   const { modelId } = useLocalSearchParams<{ modelId?: string }>();

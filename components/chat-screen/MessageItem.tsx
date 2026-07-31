@@ -11,7 +11,7 @@ import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import AnimatedChatLoading from './AnimatedChatLoading';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useLLMStore } from '../../store/llmStore';
 import { Theme } from '../../styles/colors';
 import ImageLightbox from './ImageLightbox';
@@ -98,8 +98,7 @@ const MessageItem = memo(
     onCopy,
     onFork,
   }: MessageItemProps) => {
-    const { theme } = useTheme();
-    const styles = useMemo(() => createStyles(theme), [theme]);
+    const { styles, theme } = useThemedStyles(createStyles);
     const isGenerating = useLLMStore((state) => state.isGenerating);
     const isProcessingPrompt = useLLMStore((state) => state.isProcessingPrompt);
     const [lightboxVisible, setLightboxVisible] = useState(false);

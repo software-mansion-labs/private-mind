@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -7,7 +7,7 @@ import {
   TextStyle,
   GestureResponderEvent,
 } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
 
@@ -26,11 +26,7 @@ const TextButton = ({
   style,
   textStyle,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(
-    () => createStyles(theme, disabled),
-    [theme, disabled]
-  );
+  const { styles } = useThemedStyles(createStyles, disabled);
 
   return (
     <TouchableOpacity

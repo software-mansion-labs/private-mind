@@ -1,11 +1,11 @@
-import React, { RefObject, useCallback, useMemo } from 'react';
+import React, { RefObject, useCallback } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
 import { StyleSheet, Text, View } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { router } from 'expo-router';
@@ -18,8 +18,7 @@ interface Props {
 }
 
 const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const renderBackdrop = useCallback(
     (props: any) => (

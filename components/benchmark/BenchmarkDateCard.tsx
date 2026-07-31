@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 
 type Props = {
@@ -9,8 +9,7 @@ type Props = {
 };
 
 const BenchmarkDateCard = ({ timestamp }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const displayDate = new Date(timestamp || new Date()).toLocaleDateString(
     'en-GB',

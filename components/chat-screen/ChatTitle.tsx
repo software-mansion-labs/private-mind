@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   Text,
   StyleSheet,
@@ -6,7 +6,7 @@ import {
   Pressable,
   useWindowDimensions,
 } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
@@ -26,8 +26,7 @@ const ChatTitle = ({
   showChevron = false,
   onBottomMeasured,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
   const containerRef = useRef<View>(null);
   const lastReportedBottom = useRef<number | null>(null);
   const handleLayout = useCallback(() => {

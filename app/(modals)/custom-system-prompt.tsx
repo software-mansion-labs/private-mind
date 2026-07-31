@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform, Text, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScrollView } from 'react-native-gesture-handler';
@@ -8,7 +8,7 @@ import PrimaryButton from '../../components/PrimaryButton';
 import TextAreaField from '../../components/TextAreaField';
 import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { useSettingsStore } from '../../store/settingsStore';
 import { Feedback } from '../../utils/Feedback';
@@ -16,8 +16,7 @@ import { MAX_CUSTOM_SYSTEM_PROMPT_LENGTH } from '../../constants/settings';
 
 export default function CustomSystemPromptScreen() {
   const router = useRouter();
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const customSystemPrompt = useSettingsStore((s) => s.customSystemPrompt);
   const setCustomSystemPrompt = useSettingsStore(

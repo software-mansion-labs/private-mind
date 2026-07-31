@@ -1,15 +1,14 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import Menu from '../../assets/icons/menu.svg';
 import { useNavigation } from 'expo-router';
 import { DrawerContentComponentProps } from '@react-navigation/drawer';
 
 const DrawerToggleButton = () => {
-  const { theme } = useTheme();
   const navigation: DrawerContentComponentProps['navigation'] = useNavigation();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   return (
     <TouchableOpacity

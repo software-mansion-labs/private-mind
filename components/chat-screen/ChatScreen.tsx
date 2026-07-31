@@ -20,7 +20,7 @@ import type { MessagesHandle, UserMessageActionMenuState } from './Messages';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
 import { useModelStore } from '../../store/modelStore';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import {
   Chat,
   ChatSettings,
@@ -103,8 +103,7 @@ export default function ChatScreen({
     setPhantomChatSettings,
   } = useChatStore();
 
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
   const headerHeight = useHeaderHeight();
 
   const keyboardLift = useKeyboardLift();

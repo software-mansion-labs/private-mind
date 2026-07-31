@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { Text, StyleSheet, Alert, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useModelStore } from '../../store/modelStore';
 import ModalHeader from '../../components/ModalHeader';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import PrimaryButton from '../../components/PrimaryButton';
 import { ScrollView } from 'react-native-gesture-handler';
 import UploadInput from '../../components/UploadInput';
@@ -26,8 +26,7 @@ export interface LocalModelFormState {
 
 export default function AddLocalModelScreen() {
   const router = useRouter();
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
   const { addModelToDB } = useModelStore();
 
   const [

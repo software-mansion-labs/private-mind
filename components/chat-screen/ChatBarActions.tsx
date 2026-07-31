@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import SendIcon from '../../assets/icons/send_icon.svg';
@@ -40,8 +40,7 @@ const ChatBarActions = ({
   thinkingEnabled = false,
   onThinkingToggle,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
   const isResponding = isGenerating || isProcessingPrompt;
   const isAttachmentBlocked = isResponding || isLoadingAttachment;
 

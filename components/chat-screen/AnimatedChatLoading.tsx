@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, {
   Easing,
@@ -7,7 +7,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 
@@ -18,8 +18,7 @@ import { fontFamily, fontSizes } from '../../styles/fontStyles';
  * first token arrives causes no layout shift.
  */
 const AnimatedChatLoading = () => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const opacity = useSharedValue(0.4);
 

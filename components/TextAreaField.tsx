@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   TextInput,
   StyleSheet,
@@ -6,7 +6,7 @@ import {
   Text,
   TextInputProps,
 } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
 import TextInputBorder from './TextInputBorder';
@@ -26,9 +26,8 @@ const TextAreaField: React.FC<TextAreaFieldProps> = ({
   errorMessage,
   ...props
 }) => {
-  const { theme } = useTheme();
+  const { styles, theme } = useThemedStyles(createStyles);
   const [active, setActive] = useState(false);
-  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const error = !!errorMessage;
 

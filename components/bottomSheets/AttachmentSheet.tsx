@@ -1,11 +1,11 @@
-import React, { RefObject, useMemo } from 'react';
+import React, { RefObject } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import Toast from 'react-native-toast-message';
@@ -63,8 +63,7 @@ const AttachmentSheet = ({
   onPickDocument,
   onSheetStateChange,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
 
   const handleOption = (action: () => void) => {
     bottomSheetModalRef.current?.dismiss();

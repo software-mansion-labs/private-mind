@@ -6,7 +6,7 @@ import {
   BottomSheetModal,
   BottomSheetModalProvider,
 } from '@gorhom/bottom-sheet';
-import { useTheme } from '../../../context/ThemeContext';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
 import { fontFamily, fontSizes } from '../../../styles/fontStyles';
 import { useModelStore } from '../../../store/modelStore';
@@ -22,8 +22,7 @@ import { FAMILY_DESCRIPTIONS } from '../../../constants/family-descriptions';
 
 const FamilyScreen = () => {
   const router = useRouter();
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
   const { family } = useLocalSearchParams<{ family: string }>();
   const familyName = decodeURIComponent(family ?? '');
 

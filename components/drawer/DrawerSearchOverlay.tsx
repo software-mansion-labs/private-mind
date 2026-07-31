@@ -1,4 +1,4 @@
-import React, { RefObject, useCallback, useMemo } from 'react';
+import React, { RefObject, useCallback } from 'react';
 import {
   Modal,
   StyleSheet,
@@ -17,8 +17,8 @@ import {
 } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
-import { useTheme } from '../../context/ThemeContext';
 import { Theme } from '../../styles/colors';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import DrawerMenu from './DrawerMenu';
 import { useSearchOverlayAnimation } from './useSearchOverlayAnimation';
 import {
@@ -57,8 +57,7 @@ export const DrawerSearchOverlay = ({
   inputRef,
   scrollOffsetRef,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
   const { width: screenWidth } = useWindowDimensions();
 
   const { mounted, progress, contentProgress, backdropOpacity, startExpand } =

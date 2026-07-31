@@ -1,13 +1,12 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
 import { LATEST_RELEASE } from '../constants/latest-release';
 
 const WhatsNewCard = () => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   return (
     <View style={styles.card}>

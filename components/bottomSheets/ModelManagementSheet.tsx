@@ -1,4 +1,4 @@
-import React, { RefObject, useCallback, useMemo, useState } from 'react';
+import React, { RefObject, useCallback, useState } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -6,7 +6,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { StyleSheet, Text, View } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import EntryButton from '../EntryButton';
 import ModelCard from '../model-hub/ModelCard';
@@ -34,8 +34,7 @@ enum ModalStage {
 }
 
 const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles } = useThemedStyles(createStyles);
 
   const { removeModel, removeModelFiles } = useModelStore();
   const [stage, setStage] = useState<ModalStage>(ModalStage.Initial);
