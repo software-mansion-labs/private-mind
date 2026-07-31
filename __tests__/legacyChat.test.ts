@@ -102,6 +102,35 @@ describe('chatPredatesSourceLinking', () => {
     expect(chatPredatesSourceLinking([], BOUNDARY)).toBe(false);
   });
 
+  it('ignores an optimistic message still carrying its negative placeholder id', () => {
+    expect(
+      chatPredatesSourceLinking(
+        [
+          message({
+            id: -1785487200000,
+            role: 'user',
+            documentName: 'new.pdf',
+          }),
+          message({ id: -1, role: 'assistant', content: '' }),
+        ],
+        BOUNDARY
+      )
+    ).toBe(false);
+  });
+
+  it('still flags a genuine legacy chat that also has an in-flight message', () => {
+    expect(
+      chatPredatesSourceLinking(
+        [
+          message({ id: 10, role: 'user', documentName: 'report.pdf' }),
+          message({ id: 11, role: 'assistant', content: 'summary' }),
+          message({ id: -1785487200000, role: 'user', content: 'follow-up' }),
+        ],
+        BOUNDARY
+      )
+    ).toBe(true);
+  });
+
   it('reads the module boundary when none is passed', () => {
     setSourceLinkingBoundary(BOUNDARY);
     expect(
