@@ -32,9 +32,10 @@ import {
 import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
 import ChatBar from './ChatBar';
+import { TopFade } from './TopFade';
 import UserMessageActionMenu from './UserMessageActionMenu';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
-import { Theme } from '../../styles/colors';
+import { mixColors, Theme } from '../../styles/colors';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useVectorStore } from '../../context/VectorStoreContext';
 import { Attachment } from '../../hooks/useAttachment';
@@ -120,7 +121,7 @@ export default function ChatScreen({
   const extraContentPadding = useSharedValue(0);
   const blankSpace = useSharedValue(0);
   const [chatBarHeight, setChatBarHeight] = useState(0);
-  const [rootFrame, setRootFrame] = useState({ x: 0, y: 0 });
+  const [rootFrame, setRootFrame] = useState({ x: 0, y: 0, height: 0 });
   const [userActionMenu, setUserActionMenu] =
     useState<UserMessageActionMenuState>({ isOpen: false });
   const { branchMarkers, handleForkMessage, handleBranchMarkerPress } =
@@ -148,9 +149,11 @@ export default function ChatScreen({
   }, []);
 
   const handleRootLayout = useCallback(() => {
-    rootRef.current?.measureInWindow((x, y) => {
+    rootRef.current?.measureInWindow((x, y, _width, height) => {
       setRootFrame((current) =>
-        current.x === x && current.y === y ? current : { x, y }
+        current.x === x && current.y === y && current.height === height
+          ? current
+          : { x, y, height }
       );
     });
   }, []);
@@ -413,6 +416,16 @@ export default function ChatScreen({
     headerTitleBottom !== undefined
       ? headerTitleBottom - rootFrame.y
       : undefined;
+  const topFadeAnchor = fadeBottom ?? headerHeight;
+  const emptyFadeColors = useMemo(() => {
+    const sample = (y: number) =>
+      mixColors(
+        theme.bg.softPrimary,
+        theme.bg.main,
+        rootFrame.height > 0 ? y / rootFrame.height : 0
+      );
+    return [sample(0), sample(topFadeAnchor)] as const;
+  }, [rootFrame.height, theme.bg.main, theme.bg.softPrimary, topFadeAnchor]);
 
   return (
     <View
@@ -471,6 +484,14 @@ export default function ChatScreen({
         />
       </Animated.View>
 
+      {isEmpty && (
+        <TopFade
+          anchor={topFadeAnchor}
+          colors={emptyFadeColors}
+          style={styles.topFadeOverlay}
+        />
+      )}
+
       {userActionMenuPosition && (
         <View
           style={[styles.userActionMenuOverlay, userActionMenuPosition]}
@@ -505,6 +526,10 @@ const createStyles = (theme: Theme) =>
       position: 'absolute',
       zIndex: 1000,
       elevation: 1000,
+    },
+    topFadeOverlay: {
+      zIndex: 3,
+      elevation: 3,
     },
     chatBarSticky: {
       position: 'absolute',
