@@ -6,6 +6,10 @@ import type { PermissionStatus } from 'react-native-audio-api';
 
 // ── mocks ─────────────────────────────────────────────────────────────────────
 
+const mockRunWithModelOffloaded = jest.fn(
+  async (operation: () => Promise<unknown>) => operation()
+);
+
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
     theme: {
@@ -23,6 +27,8 @@ jest.mock('../store/llmStore', () => ({
       interrupt: jest.fn(),
       loadModel: jest.fn(),
       model: null,
+      runWithModelOffloaded:
+        mockRunWithModelOffloaded as unknown as LLMStore['runWithModelOffloaded'],
     };
     return selector ? selector(state) : state;
   }),
@@ -229,6 +235,8 @@ beforeEach(() => {
         interrupt: jest.fn(),
         loadModel: jest.fn(),
         model: null,
+        runWithModelOffloaded:
+          mockRunWithModelOffloaded as unknown as LLMStore['runWithModelOffloaded'],
       };
       return selector ? selector(state) : state;
     }
@@ -237,6 +245,7 @@ beforeEach(() => {
   mockUseAttachment.openSheet.mockClear();
   mockUseAttachment.clearAll.mockClear();
   mockUseAttachment.removeAttachment.mockClear();
+  mockRunWithModelOffloaded.mockClear();
   jest.clearAllMocks();
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -483,9 +492,15 @@ describe('attachment', () => {
     expect(screen.getByTestId('attach-btn')).toBeTruthy();
   });
 
-  it('opens attachment sheet when + button is pressed', () => {
+  it('offloads the LLM before opening the attachment sheet', async () => {
     renderBar();
-    fireEvent.press(screen.getByTestId('attach-btn'));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('attach-btn'));
+    });
+    expect(mockRunWithModelOffloaded).toHaveBeenCalledWith(
+      expect.any(Function),
+      { restore: false }
+    );
     expect(mockUseAttachment.openSheet).toHaveBeenCalled();
   });
 

@@ -11,6 +11,7 @@ import { LFMEmbeddings } from '../utils/lfmEmbeddings';
 import { ensureKeywordIndex } from '../database/keywordIndex';
 import { isEmbeddingModelDownloaded } from '../utils/embeddingModel';
 import { useEmbeddingModelStore } from '../store/embeddingModelStore';
+import { useLLMStore } from '../store/llmStore';
 
 const VectorStoreContext = createContext<{
   vectorStore: OPSQLiteVectorStore | null;
@@ -80,7 +81,13 @@ export const VectorStoreProvider = ({
 
         if (cancelled) return;
         if (downloaded) {
-          await store.load();
+          await useLLMStore.getState().runWithModelOffloaded(
+            async () => {
+              await store.load();
+              await lfmEmbeddings.unload();
+            },
+            { restore: false }
+          );
         }
 
         if (cancelled) return;

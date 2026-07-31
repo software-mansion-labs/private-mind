@@ -7,6 +7,7 @@ import Toast from 'react-native-toast-message';
 import { useSourceStore } from '../store/sourceStore';
 import { useVectorStore } from '../context/VectorStoreContext';
 import { useEmbeddingModelStore } from '../store/embeddingModelStore';
+import { useLLMStore } from '../store/llmStore';
 import { documentErrorMessage } from '../utils/documentErrorMessage';
 
 export interface Attachment {
@@ -194,14 +195,25 @@ export const useAttachment = () => {
           prev.map((a) => (a.id === attachmentId ? { ...a, progress } : a))
         );
       };
-      const result = await addSource(
-        newSource,
-        asset.uri,
-        vectorStore!,
-        embeddings,
-        handleProgress,
-        abortController.signal
-      );
+      const addDocumentSource = () =>
+        addSource(
+          newSource,
+          asset.uri,
+          vectorStore!,
+          embeddings,
+          handleProgress,
+          abortController.signal
+        );
+      const indexDocumentSource = () =>
+        embeddings
+          ? useLLMStore
+              .getState()
+              .runWithModelOffloaded(
+                () => embeddings.runWithLoadedModel(addDocumentSource),
+                { restore: false }
+              )
+          : addDocumentSource();
+      const result = await indexDocumentSource();
       if (result.cancelled) return;
       const isCurrentDocumentRequest =
         attachmentRequestRef.current === requestId &&
@@ -271,9 +283,16 @@ export const useAttachment = () => {
 
   const downloadModelAndContinue = useCallback(async () => {
     if (!vectorStore) return;
-    const ready = await useEmbeddingModelStore
-      .getState()
-      .ensureReady(vectorStore);
+    const ready = await useLLMStore.getState().runWithModelOffloaded(
+      async () => {
+        const loaded = await useEmbeddingModelStore
+          .getState()
+          .ensureReady(vectorStore);
+        await embeddings?.unload();
+        return loaded;
+      },
+      { restore: false }
+    );
     if (!ready) {
       Toast.show({
         type: 'defaultToast',
@@ -285,7 +304,7 @@ export const useAttachment = () => {
       embeddingDownloadSheetRef.current?.dismiss();
       await runDocumentPicker();
     }
-  }, [vectorStore, runDocumentPicker]);
+  }, [vectorStore, embeddings, runDocumentPicker]);
 
   const removeAttachment = useCallback(
     (id: string) => {

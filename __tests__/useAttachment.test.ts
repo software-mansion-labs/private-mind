@@ -30,13 +30,16 @@ import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useAttachment } from '../hooks/useAttachment';
 import { useEmbeddingModelStore } from '../store/embeddingModelStore';
+import { useVectorStore } from '../context/VectorStoreContext';
 
 const mockLaunchImageLibrary = launchImageLibrary as jest.Mock;
 const mockLaunchCamera = launchCamera as jest.Mock;
 const mockGetDocumentAsync = DocumentPicker.getDocumentAsync as jest.Mock;
+const mockUseVectorStore = useVectorStore as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockUseVectorStore.mockReturnValue({ vectorStore: {}, embeddings: null });
   useEmbeddingModelStore.setState({ status: 'ready', progress: 1 });
 });
 
@@ -99,6 +102,13 @@ describe('useAttachment', () => {
     const mockAddSource = jest
       .fn()
       .mockResolvedValue({ success: true, sourceId: 42 });
+    const runWithLoadedModel = jest.fn(
+      async (operation: () => Promise<unknown>) => operation()
+    );
+    mockUseVectorStore.mockReturnValue({
+      vectorStore: {},
+      embeddings: { runWithLoadedModel },
+    });
     const { useSourceStore } = require('../store/sourceStore');
     useSourceStore.getState.mockReturnValue({
       addSource: mockAddSource,
@@ -115,6 +125,7 @@ describe('useAttachment', () => {
     expect(att.type).toBe('document');
     expect(att.sourceId).toBe(42);
     expect(att.status).toBe('ready');
+    expect(runWithLoadedModel).toHaveBeenCalledTimes(1);
   });
 
   describe('abandoned source cleanup', () => {

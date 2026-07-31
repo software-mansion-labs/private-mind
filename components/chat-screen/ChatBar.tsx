@@ -183,6 +183,7 @@ const ChatBar = ({
     interrupt,
     loadModel,
     model: loadedModel,
+    runWithModelOffloaded,
   } = useLLMStore();
   const loadSelectedModel = useCallback(async () => {
     if (model?.isDownloaded && loadedModel?.id !== model.id) {
@@ -190,11 +191,16 @@ const ChatBar = ({
     }
   }, [model, loadedModel, loadModel]);
 
-  const handleAttach = useCallback(() => {
+  const handleAttach = useCallback(async () => {
     Keyboard.dismiss();
-    loadSelectedModel();
-    openSheet();
-  }, [loadSelectedModel, openSheet]);
+    try {
+      await runWithModelOffloaded(async () => {}, { restore: false });
+    } catch (error) {
+      console.error('Failed to offload model before attachment picker:', error);
+    } finally {
+      openSheet();
+    }
+  }, [openSheet, runWithModelOffloaded]);
 
   const imageAttachment = attachments.find((a) => a.type === 'image');
   const hasLoadingAttachment = attachments.some((a) => a.status === 'loading');

@@ -7,6 +7,9 @@ const mockStoreInstances: Array<{
   load: jest.Mock;
   unload: jest.Mock;
 }> = [];
+const mockEmbeddingInstances: Array<{
+  unload: jest.Mock;
+}> = [];
 
 jest.mock('@react-native-rag/op-sqlite', () => ({
   OPSQLiteVectorStore: jest
@@ -41,7 +44,13 @@ jest.mock('../utils/embeddingModel', () => ({
 }));
 
 jest.mock('../utils/lfmEmbeddings', () => ({
-  LFMEmbeddings: jest.fn().mockImplementation(() => ({})),
+  LFMEmbeddings: jest.fn().mockImplementation(() => {
+    const instance = {
+      unload: jest.fn().mockResolvedValue(undefined),
+    };
+    mockEmbeddingInstances.push(instance);
+    return instance;
+  }),
 }));
 
 jest.mock('../store/embeddingModelStore', () => ({
@@ -80,6 +89,7 @@ const renderProvider = () =>
 beforeEach(() => {
   jest.clearAllMocks();
   mockStoreInstances.length = 0;
+  mockEmbeddingInstances.length = 0;
   mockMigrate.mockResolvedValue(undefined);
 });
 
@@ -103,6 +113,14 @@ describe('VectorStoreProvider init/teardown chain', () => {
     expect(mockStoreInstances).toHaveLength(2);
     expect(mockStoreInstances[0].unload).toHaveBeenCalledTimes(1);
     expect(mockStoreInstances[1].unload).not.toHaveBeenCalled();
+  });
+
+  it('releases the downloaded embedding model after initialization', async () => {
+    renderProvider();
+    await flush();
+
+    expect(mockEmbeddingInstances).toHaveLength(1);
+    expect(mockEmbeddingInstances[0].unload).toHaveBeenCalledTimes(1);
   });
 
   it('unmount during init unloads the store exactly once', async () => {

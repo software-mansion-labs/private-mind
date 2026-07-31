@@ -89,6 +89,7 @@ export default function ChatScreen({
     sendChatMessage,
     loadModel,
     model: loadedModel,
+    runWithModelOffloaded,
     generationError,
     retryLastGeneration,
   } = useLLMStore();
@@ -252,15 +253,21 @@ export default function ChatScreen({
       let sourceDocuments: SourceDocument[] = [];
       let preferredSourceDocuments: SourceDocument[] = [];
       if (vectorStore) {
-        ({ context, sourceDocuments, preferredSourceDocuments } =
-          await buildMessageSources({
+        const prepareSources = () =>
+          buildMessageSources({
             userInput,
             attachmentSourceIds,
             enabledSources,
             sources: allSources,
             vectorStore,
             embeddings,
-          }));
+          });
+        ({ context, sourceDocuments, preferredSourceDocuments } = embeddings
+          ? await runWithModelOffloaded(
+              () => embeddings.runWithLoadedModel(prepareSources),
+              { restore: false }
+            )
+          : await prepareSources());
       }
 
       // Enable new sources for this chat (persists for future messages)
