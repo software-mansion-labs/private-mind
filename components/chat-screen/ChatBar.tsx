@@ -314,9 +314,10 @@ const ChatBar = ({
 
   return (
     <Animated.View
+      testID="chat-bar"
       style={containerStyle}
       onLayout={handleBarLayoutForPadding}
-      layout={BAR_GROW_LAYOUT}
+      layout={hasMessages ? BAR_GROW_LAYOUT : undefined}
     >
       {model?.isDownloaded && (
         <>

@@ -68,6 +68,8 @@ const SCROLL_INDICATOR_GUTTER = 12;
 
 const GENERATION_ERROR_MEASUREMENT_KEY = 'generation-error';
 
+const MESSAGE_PIN_OFFSET = 8;
+
 export interface MessagesHandle {
   onMessageSent: () => void;
   scrollToEnd: () => void;
@@ -342,33 +344,67 @@ const Messages = ({
   // remembered position (top or bottom) if the user hadn't manually
   // scrolled while the keyboard was open. iOS handles this natively.
   const wasAtBottomDuringKeyboard = useRef(false);
+  const keyboardOpenRef = useRef(false);
+  const userScrolledDuringKeyboard = useRef(false);
   useLayoutEffect(() => {
     if (Platform.OS !== 'android') return;
     let snapTimer: ReturnType<typeof setTimeout> | null = null;
+    let firstFrame: number | null = null;
+    let secondFrame: number | null = null;
+
+    const clearPendingSnap = () => {
+      if (snapTimer) {
+        clearTimeout(snapTimer);
+        snapTimer = null;
+      }
+      if (firstFrame !== null) {
+        cancelAnimationFrame(firstFrame);
+        firstFrame = null;
+      }
+      if (secondFrame !== null) {
+        cancelAnimationFrame(secondFrame);
+        secondFrame = null;
+      }
+    };
+
     const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      clearPendingSnap();
+      keyboardOpenRef.current = true;
       wasAtBottomDuringKeyboard.current = isAtBottomRef.current;
+      userScrolledDuringKeyboard.current = false;
       closeUserActionMenu();
     });
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardOpenRef.current = false;
       const runPendingMenuOpen = () => {
         const openMenu = pendingMenuOpenRef.current;
         pendingMenuOpenRef.current = null;
         openMenu?.();
       };
 
-      if (wasAtBottomDuringKeyboard.current && isAtBottomRef.current) {
+      if (
+        wasAtBottomDuringKeyboard.current &&
+        !userScrolledDuringKeyboard.current
+      ) {
+        clearPendingSnap();
+        firstFrame = requestAnimationFrame(() => {
+          secondFrame = requestAnimationFrame(() => {
+            closeUserActionMenu();
+            scrollRef.current?.scrollToEnd({ animated: false });
+          });
+        });
         snapTimer = setTimeout(() => {
           closeUserActionMenu();
           scrollRef.current?.scrollToEnd({ animated: false });
           runPendingMenuOpen();
-        }, 300);
+        }, 160);
         return;
       }
 
       runPendingMenuOpen();
     });
     return () => {
-      if (snapTimer) clearTimeout(snapTimer);
+      clearPendingSnap();
       showSub.remove();
       hideSub.remove();
     };
@@ -392,7 +428,8 @@ const Messages = ({
       lastUserHeight.current -
       lastAssistantHeight.current -
       listTopPadding -
-      listBottomPadding;
+      listBottomPadding +
+      MESSAGE_PIN_OFFSET;
     blankSpace.set(Math.max(0, raw));
   }, [blankSpace, listBottomPadding, listTopPadding]);
 
@@ -567,6 +604,12 @@ const Messages = ({
     }
   }, [activeUserActionsId, closeUserActionMenu]);
 
+  const handleScrollBeginDrag = useCallback(() => {
+    if (keyboardOpenRef.current) {
+      userScrolledDuringKeyboard.current = true;
+    }
+  }, []);
+
   const handleForkMessage = useCallback(
     (message: Message) => {
       onForkMessage?.(message);
@@ -602,12 +645,14 @@ const Messages = ({
         closeUserActionMenu();
         if (Platform.OS !== 'ios' && containerHeight.current > 0) {
           blankSpace.set(
-            withTiming(containerHeight.current - topInset, {
-              duration: 300,
-            })
+            containerHeight.current - topInset + MESSAGE_PIN_OFFSET
           );
         }
-        scrollRef.current?.scrollToEnd({ animated: true });
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            scrollRef.current?.scrollToEnd({ animated: true });
+          });
+        });
       }
 
       // During streaming, check if content has grown past the viewport
@@ -701,6 +746,7 @@ const Messages = ({
         scrollIndicatorInsets={scrollIndicatorInsets}
         onLayout={handleContainerLayout}
         onScroll={handleScroll}
+        onScrollBeginDrag={handleScrollBeginDrag}
         onTouchStart={handleScrollTouchStart}
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
