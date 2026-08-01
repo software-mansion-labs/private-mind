@@ -1,10 +1,11 @@
 export const LATEST_RELEASE = {
-  version: '1.1.6',
-  title: 'App-wide redesign',
+  version: '1.2.0',
+  title: "What's new",
   highlights: [
-    'Model Hub grouped by family with recommended, experimental, and mine tabs',
-    'Streaming markdown for assistant replies and thinking blocks',
-    'Tap the chat title to rename, export, or delete — no more settings screen',
-    'Smoother chat input, keyboard, and scroll behavior',
+    'Chat with your documents — on-device retrieval with source citations',
+    'Fork any conversation to explore a different direction',
+    'Save custom system prompts as reusable presets',
+    'Revamped sidebar with chat search and quick actions',
+    'Recommended models tuned to your device',
   ],
 };

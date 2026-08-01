@@ -1,6 +1,6 @@
 {
   "name": "private-mind",
-  "version": "1.1.6",
+  "version": "1.2.0",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
@@ -14,6 +14,7 @@
     "format:check": "prettier --check '**/*.{ts,tsx,js,jsx,json,md}'",
     "test": "jest",
     "test:watch": "jest --watch",
+    "postinstall": "patch-package",
     "prepare": "husky"
   },
   "jest": {
@@ -129,6 +130,8 @@
     "jest": "~29.7.0",
     "jest-expo": "~55.0.14",
     "lint-staged": "^16.4.0",
+    "patch-package": "^8.0.1",
+    "postinstall-postinstall": "^2.1.0",
     "prettier": "^3.8.1",
     "react-test-renderer": "19.2.0",
     "typescript": "~5.9.2",
