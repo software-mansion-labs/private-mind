@@ -576,6 +576,7 @@ describe('sendChatMessage', () => {
     mockPersistMessage.mockResolvedValueOnce(41).mockResolvedValueOnce(42);
     mockInstance.generate
       .mockRejectedValueOnce(new Error('out of memory'))
+      .mockRejectedValueOnce(new Error('out of memory'))
       .mockResolvedValueOnce('Recovered answer');
     useLLMStore.setState({
       model: baseModel,

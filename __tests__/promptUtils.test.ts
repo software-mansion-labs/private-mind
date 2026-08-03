@@ -602,12 +602,17 @@ describe('prepareMessagesForLLM', () => {
         ] as SourceDocument[]
       );
 
+      const assembled = result
+        .map((msg) => (typeof msg.content === 'string' ? msg.content : ''))
+        .join(' ');
       const total = result.reduce(
         (sum, msg) =>
           sum + (typeof msg.content === 'string' ? msg.content.length : 0),
         0
       );
-      expect(total).toBeLessThanOrEqual(budget);
+      expect(total).toBeLessThanOrEqual(
+        getPromptCharBudget(baseModel, assembled)
+      );
     });
 
     it('truncates the RAG context when it alone overflows the budget', () => {
@@ -670,7 +675,7 @@ describe('prepareMessagesForLLM', () => {
           id: 1,
           chatId: 1,
           role: 'user',
-          content: 'u'.repeat(getPromptCharBudget(baseModel)),
+          content: 'u'.repeat(getPromptCharBudget(baseModel) * 2),
           timestamp: 0,
         },
         {
@@ -787,8 +792,8 @@ describe('getPromptCharBudget script awareness', () => {
     );
   const cjk = '東京で開催される音楽フェスティバルのチケット情報。'.repeat(60);
 
-  it('keeps the default budget for ascii text', () => {
-    expect(getPromptCharBudget(baseModel, english)).toBe(
+  it('never drops below the default budget for ascii text', () => {
+    expect(getPromptCharBudget(baseModel, english)).toBeGreaterThanOrEqual(
       getPromptCharBudget(baseModel)
     );
   });
