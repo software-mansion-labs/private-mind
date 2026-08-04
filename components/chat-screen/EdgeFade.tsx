@@ -4,12 +4,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { withAlpha } from '../../styles/colors';
 
-export const FADE_HEIGHT = 24;
-
-export const FADE_GAP_TRIM = 5;
-
-export const SEAM_OVERLAP = 1;
-
 const LOCATIONS: [number, number, ...number[]] = [0, 0.25, 0.5, 0.75, 1];
 const BOTTOM_ALPHAS = [0, 0.156, 0.5, 0.844, 1];
 const TOP_ALPHAS = [...BOTTOM_ALPHAS].reverse();
