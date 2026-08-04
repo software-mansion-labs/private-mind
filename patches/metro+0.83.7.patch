@@ -1,0 +1,23 @@
+diff --git a/node_modules/metro/src/node-haste/DependencyGraph.js b/node_modules/metro/src/node-haste/DependencyGraph.js
+index 8222d8c..6225ada 100644
+--- a/node_modules/metro/src/node-haste/DependencyGraph.js
++++ b/node_modules/metro/src/node-haste/DependencyGraph.js
+@@ -199,6 +199,18 @@ class DependencyGraph extends _events.default {
+   async getOrComputeSha1(mixedPath) {
+     const result = await this._fileSystem.getOrComputeSha1(mixedPath);
+     if (!result || !result.sha1) {
++      // react-native-worklets Bundle Mode writes worklet modules to
++      // `.worklets/` on the fly during transform, so they can be requested
++      // before Metro's file map has indexed them. Fall back to hashing the
++      // file directly from disk instead of failing the bundle.
++      if (mixedPath.includes(`${require("path").sep}.worklets${require("path").sep}`)) {
++        try {
++          const fs = require("fs");
++          const crypto = require("crypto");
++          const content = fs.readFileSync(mixedPath);
++          return { sha1: crypto.createHash("sha1").update(content).digest("hex") };
++        } catch (e) {}
++      }
+       throw new Error(`Failed to get the SHA-1 for: ${mixedPath}.
+       Potential causes:
+         1) The file is not watched. Ensure it is under the configured \`projectRoot\` or \`watchFolders\`.

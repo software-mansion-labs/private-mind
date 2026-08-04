@@ -3008,14 +3008,14 @@ SPEC CHECKSUMS:
   ExpoStoreReview: 416b2de497481b0aeb28ef95d3f93bc9ae4bca6a
   ExpoSymbols: 896159288ad708e1a32dc12c92fe5f90bff01126
   FBLazyVector: 061f518bbd81677ed8a8317e2ae60b8779495808
-  hermes-engine: 2f0d004f7ea59a531ab9a9087cf8663d386d3706
+  hermes-engine: 6efab816e8c36910982624956b84291fafd418e6
   iosMath: f7a6cbadf9d836d2149c2a84c435b1effc244cba
   libavif: 5f8e715bea24debec477006f21ef9e95432e254d
   libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   op-sqlite: 10397885c9f2d478a9d099d20e2a7915c5fda944
   opencv-rne: 2305807573b6e29c8c87e3416ab096d09047a7a0
-  Pdfium: f800387e18744bb2aa3a8054ee6d2f6c84e5e3fd
+  Pdfium: 4a0412b69bb0172892aaed9254b430289a99f1c8
   Pulsar: 9ec19a182a03d08ecefb47877e8de9e976c2a03c
   Pulsar-haptics: f795eaf55d8d0290148fd97c747dcc6689c3d079
   RCTDeprecation: 5045f20b2cc1239bf422764004338c720684a22f
@@ -3026,7 +3026,7 @@ SPEC CHECKSUMS:
   React: 3e14066ac707b3e369d09e2e923d8bee7f8c33ff
   React-callinvoker: bd7959a24564feaf5e4c8c11789e64884da13482
   React-Core: f060f4e14e9301685ce63ea65fbe903bf3397e45
-  React-Core-prebuilt: 3a1e334c56ae9652c0b9227176fe068e388bcea8
+  React-Core-prebuilt: 42f9b01572344fe716675524de2771274177fca5
   React-CoreModules: 89a1a544297be88ca4cdff317423f9e0d0c192a4
   React-cxxreact: 81b1bfa305b1b759cc0fe18327644816216e5993
   React-debug: 234fddb309822e13b9b442ef1bdca8d2b8c3cbf2
@@ -3054,7 +3054,7 @@ SPEC CHECKSUMS:
   React-logger: d0632d799fbd3507cdd5406f72489a83ed5f9163
   React-Mapbuffer: 274cb203819492f7fb594bbb3a1f3f5061fa794d
   React-microtasksnativemodule: 563b4dcc8b8570814d6de4fc1196f48d2944acd4
-  react-native-executorch: c2ee5d2a9c6b7923585dc97ee63eb6f6b0558763
+  react-native-executorch: 54d7ca6ad0d1b46997785eb485a33459e7df10c9
   react-native-image-picker: 48d850454b4a389753053e1d7378b624d3b47d77
   react-native-keyboard-controller: 6b4bc1ef1ad46ace3842f49ed03815a96a99b139
   react-native-netinfo: f852c868bf5175e46165c7e4db48a204a95c3800
@@ -3092,7 +3092,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 2b19d66e5ddfe8dc7afb6338a4626156cbf2bab1
   ReactCodegen: 43f0948182edee9407c7b977fb059455dfeb9361
   ReactCommon: c6e81cc1ae185fa84863f3ea1d58caac4be741d7
-  ReactNativeDependencies: a2f9f20c34689c0ea681da2ef0e17aed80df81cb
+  ReactNativeDependencies: 98d8290c99cc02e3e02f8a4a8354106a81edcaa3
   ReactNativeEnrichedMarkdown: 27a73f8df1bc304c35b7bd922c9885a4dfec3dc5
   ReactNativeFs: f2b571997aa8d6397850a6477e1c8f5823171e50
   RNAudioAPI: a2a67b86dbd376f391252f0e249aec34a6e1ae92
@@ -3109,6 +3109,6 @@ SPEC CHECKSUMS:
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   Yoga: acd565934addf7423687593ec490bd4491b2a802
 
-PODFILE CHECKSUM: 0a3087ea87a4b75755d3808c4cd99a5b11166513
+PODFILE CHECKSUM: 98dae2faac825e8be62e53ba73a7a2018ef7ea09
 
 COCOAPODS: 1.16.2
