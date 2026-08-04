@@ -36,6 +36,11 @@ export type ChatSettings = {
 
 export type Message = {
   id: number;
+  /**
+   * Stable React key across the optimistic-placeholder → persisted-row `id`
+   * flip. Absent for rows loaded from the DB.
+   */
+  localId?: number;
   chatId: number;
   modelName?: string;
   role: 'user' | 'assistant' | 'system' | 'event';

@@ -56,6 +56,7 @@ import {
   SEAM_OVERLAP,
   SUPPORTS_USER_ACTION_MENU,
 } from '../../constants/chat-screen';
+import { messageRowKey } from '../../utils/messageRowKey';
 import { useKeyboardLift } from './useKeyboardLift';
 
 export interface MessagesHandle {
@@ -696,9 +697,7 @@ const Messages = ({
   const measurementKeyAt = (index: number): string | null => {
     const message = chatHistory[index];
     if (!message) return null;
-    return message.id > 0
-      ? `msg-${message.id}`
-      : `pending-${message.role}-${index}`;
+    return messageRowKey(message, index);
   };
 
   const assistantMeasurementKey = (): string | null => {
@@ -733,12 +732,7 @@ const Messages = ({
         {chatHistory.map((message, index) => {
           const isLastMessage = index === chatHistory.length - 1;
           const userQuestion = questionForAssistantAt[index];
-          // Streaming assistant placeholder has id: -1 until persisted; fall
-          // back to role+index for that single in-flight row.
-          const key =
-            message.id && message.id > 0
-              ? `msg-${message.id}`
-              : `pending-${message.role}-${index}`;
+          const key = messageRowKey(message, index);
 
           const onLayout =
             index === lastUserIndex
