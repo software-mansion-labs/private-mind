@@ -33,7 +33,7 @@ import Reanimated, {
 import type { SharedValue } from 'react-native-reanimated';
 import MessageItem from './MessageItem';
 import SourcesSheet, { type SourcesSheetHandle } from './SourcesSheet';
-import { EdgeFade, FADE_HEIGHT, SEAM_OVERLAP } from './EdgeFade';
+import { EdgeFade } from './EdgeFade';
 import { TopFade, topFadeHeight } from './TopFade';
 import {
   Message,
@@ -47,25 +47,16 @@ import ChevronDown from '../../assets/icons/chevron-down.svg';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import BranchMarker from './BranchMarker';
 import Toast from 'react-native-toast-message';
-import { SUPPORTS_USER_ACTION_MENU } from '../../constants/chat-screen';
+import {
+  BOTTOM_FADE_HEIGHT,
+  GENERATION_ERROR_MEASUREMENT_KEY,
+  MESSAGE_PIN_OFFSET,
+  navBarInset,
+  SCROLL_INDICATOR_GUTTER,
+  SEAM_OVERLAP,
+  SUPPORTS_USER_ACTION_MENU,
+} from '../../constants/chat-screen';
 import { useKeyboardLift } from './useKeyboardLift';
-
-/**
- * Height of the opaque system navigation bar the list paints behind. Android
- * only — iOS's bottom inset is the home indicator, a thin overlay that must
- * not be blocked out.
- */
-const navBarInset = (theme: Theme) =>
-  Platform.OS === 'android' ? theme.insets.bottom : 0;
-
-const BOTTOM_FADE_HEIGHT = Platform.OS === 'ios' ? 64 : FADE_HEIGHT;
-
-/** Right-edge gap so the bottom fade doesn't paint over the scroll indicator. */
-const SCROLL_INDICATOR_GUTTER = 12;
-
-const GENERATION_ERROR_MEASUREMENT_KEY = 'generation-error';
-
-const MESSAGE_PIN_OFFSET = 8;
 
 export interface MessagesHandle {
   onMessageSent: () => void;
