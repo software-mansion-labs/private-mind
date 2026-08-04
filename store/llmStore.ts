@@ -97,6 +97,8 @@ const resetStreamState = () => {
 
 let suppressUtilityStreaming = false;
 let utilityGenerating = false;
+let messageLocalIdSeq = 0;
+const nextMessageLocalId = () => (messageLocalIdSeq += 1);
 
 const withNoThink = (messages: ExecutorchMessage[]): ExecutorchMessage[] => {
   if (messages.length === 0) return messages;
@@ -524,6 +526,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     const tempUserId = -Date.now();
     const userMessage: Message = {
       id: tempUserId,
+      localId: nextMessageLocalId(),
       role: 'user',
       content: newMessage,
       chatId,
@@ -538,6 +541,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       chatId: chatId,
       timestamp: Date.now(),
       id: -1,
+      localId: nextMessageLocalId(),
     };
 
     set({ generationError: null });
