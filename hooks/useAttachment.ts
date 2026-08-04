@@ -2,7 +2,6 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { Platform, PermissionsAndroid } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSourceStore } from '../store/sourceStore';
 import { useVectorStore } from '../context/VectorStoreContext';
@@ -27,21 +26,6 @@ interface ClearAllOptions {
 interface ClearAllOptions {
   cleanupSources?: boolean;
 }
-
-const requestAndroidGalleryPermission = async (): Promise<boolean> => {
-  if (Platform.OS !== 'android') return true;
-
-  const permission =
-    Number(Platform.Version) >= 33
-      ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
-      : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
-
-  const status = await PermissionsAndroid.check(permission);
-  if (status) return true;
-
-  const result = await PermissionsAndroid.request(permission);
-  return result === PermissionsAndroid.RESULTS.GRANTED;
-};
 
 const IMAGE_EXTENSIONS = [
   'jpg',
@@ -97,14 +81,6 @@ export const useAttachment = () => {
   }, []);
 
   const pickFromLibrary = useCallback(async () => {
-    const granted = await requestAndroidGalleryPermission();
-    if (!granted) {
-      Toast.show({
-        type: 'defaultToast',
-        text1: 'Photo library permission is required to attach images.',
-      });
-      return;
-    }
     const result = await launchImageLibrary({ mediaType: 'photo', quality: 1 });
     if (!result.didCancel && result.assets && result.assets.length > 0) {
       const uri = result.assets[0].uri;
