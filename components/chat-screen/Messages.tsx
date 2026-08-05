@@ -411,14 +411,25 @@ const Messages = ({
   // by the new inset).
   const pendingPinRef = useRef(false);
 
-  // Android's scrollToEnd targets the bottom of the content, which moves every
-  // time a row grows — the pinned question then drifts off the top edge. The
+  // scrollToEnd targets the bottom of the content, which moves every time a row
+  // grows — the pinned question then drifts off the top edge, and seeding the
+  // inset before the new row commits flicks the old answer up for a frame. The
   // question's own offset does not move, so scroll to it directly.
   const scrollToPinnedQuestion = useCallback(() => {
-    const y = Math.max(0, lastUserTop.current - topInset - MESSAGE_PIN_OFFSET);
-    requestAnimationFrame(() => {
+    const scroll = () => {
+      const y = Math.max(
+        0,
+        lastUserTop.current - topInset - MESSAGE_PIN_OFFSET
+      );
       scrollRef.current?.scrollTo({ y, animated: false });
-    });
+    };
+    // iOS commits the scroll in the same frame as the content it was measured
+    // from; Android needs the extra frame or the inset has not landed yet.
+    if (Platform.OS === 'ios') {
+      scroll();
+    } else {
+      requestAnimationFrame(scroll);
+    }
   }, [topInset]);
 
   const recomputeBlankSpace = useCallback(() => {
@@ -432,7 +443,7 @@ const Messages = ({
       MESSAGE_PIN_OFFSET;
     blankSpace.set(Math.max(0, raw));
 
-    if (Platform.OS !== 'ios' && isAtBottomRef.current) {
+    if (isAtBottomRef.current) {
       scrollToPinnedQuestion();
     }
   }, [blankSpace, listBottomPadding, listTopPadding, scrollToPinnedQuestion]);
@@ -461,12 +472,6 @@ const Messages = ({
         lastAssistantHeight.current = 0;
         lastUserHeight.current = 0;
         pinActive.current = true;
-
-        if (Platform.OS === 'ios') {
-          if (containerHeight.current > 0) {
-            blankSpace.set(containerHeight.current - topInset);
-          }
-        }
         pendingPinRef.current = true;
       },
       cancelMessageSent: () => {
@@ -475,7 +480,7 @@ const Messages = ({
         blankSpace.set(0);
       },
     }),
-    [blankSpace, closeUserActionMenu, opacity, topInset]
+    [blankSpace, closeUserActionMenu, opacity]
   );
 
   const handleContainerLayout = useCallback(
@@ -652,14 +657,10 @@ const Messages = ({
       if (pendingPinRef.current) {
         pendingPinRef.current = false;
         closeUserActionMenu();
-        if (Platform.OS !== 'ios' && containerHeight.current > 0) {
+        if (containerHeight.current > 0) {
           recomputeBlankSpace();
         }
-        if (Platform.OS === 'ios') {
-          scrollRef.current?.scrollToEnd({ animated: false });
-        } else {
-          scrollToPinnedQuestion();
-        }
+        scrollToPinnedQuestion();
       }
 
       // During streaming, check if content has grown past the viewport
