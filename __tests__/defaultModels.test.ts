@@ -13,13 +13,18 @@ describe('getGenerationConfigForModel', () => {
   it('applies a default repetitionPenalty so no model is left without one', () => {
     // The Qwen 3 registry entry (the issue #255 model) ships no penalty.
     expect(
-      getGenerationConfigForModel(QWEN3_1_7B_QUANTIZED.modelSource)
-        .repetitionPenalty
+      getGenerationConfigForModel({
+        modelName: 'Qwen 3 - 1.7B',
+        family: 'Qwen 3',
+        modelPath: QWEN3_1_7B_QUANTIZED.modelSource,
+      }).repetitionPenalty
     ).toBe(DEFAULT_REPETITION_PENALTY);
     // Even a model absent from the registry map gets the default.
     expect(
-      getGenerationConfigForModel('https://example.com/custom.pte')
-        .repetitionPenalty
+      getGenerationConfigForModel({
+        modelName: 'Custom',
+        modelPath: 'https://example.com/custom.pte',
+      }).repetitionPenalty
     ).toBe(DEFAULT_REPETITION_PENALTY);
   });
 });

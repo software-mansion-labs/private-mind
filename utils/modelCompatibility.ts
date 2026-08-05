@@ -1,5 +1,10 @@
 import DeviceInfo from 'react-native-device-info';
 import { Model } from '../database/modelRepository';
+import { LOW_MEMORY_DEVICE_GB } from '../constants/web';
+import {
+  getWebSearchMinDeviceMemoryGB,
+  type ProfileTarget,
+} from '../constants/model-profiles';
 
 const getTotalMemoryGB = () =>
   DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024;
@@ -46,4 +51,38 @@ export const isModelCompatible = (model: Model): boolean => {
 
 export const getDeviceMemoryGB = (): number => {
   return getTotalMemoryGB();
+};
+
+/**
+ * The search pipeline competes with the RAM left NEXT TO the loaded model, not
+ * the device total: an S24 counts as roomy until a 2.5 GB model is resident and
+ * lmkd shoots the app while it is foreground.
+ */
+export const isMemoryConstrained = (
+  model?: { modelSize?: number } | null
+): boolean => {
+  try {
+    const headroom = getTotalMemoryGB() - (model?.modelSize ?? 0);
+    return headroom < LOW_MEMORY_DEVICE_GB;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Searching allocates on top of the model — a WebView per page, the article
+ * text, and on the semantic path a second resident model — and on a phone
+ * already near its limit that is what the OS kills the app over, mid-answer.
+ */
+export const hasMemoryForWebSearch = (
+  model?: (ProfileTarget & { modelSize?: number }) | null
+): boolean => {
+  const required = getWebSearchMinDeviceMemoryGB(model);
+  if (required === undefined) return true;
+  try {
+    return getTotalMemoryGB() >= required;
+  } catch {
+    // An unreadable memory figure must not silently disable the feature.
+    return true;
+  }
 };
