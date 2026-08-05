@@ -6,6 +6,8 @@ export interface TopicLanguage {
   name: string;
 }
 
+type Linked = { url?: string };
+
 const LANGUAGE_NAMES: Record<string, string> = {
   it: 'Italian',
   de: 'German',
@@ -64,7 +66,7 @@ const languageOfHost = (host: string): string | null => {
 };
 
 export const detectTopicLanguage = (
-  results: WebSearchResult[]
+  results: Linked[]
 ): TopicLanguage | null => {
   const counts = new Map<string, number>();
   for (const result of results) {
