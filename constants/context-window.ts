@@ -1,4 +1,5 @@
 import { type Model } from '../database/modelRepository';
+import { getModelProfile } from './model-profiles';
 
 const TOKENS_PER_CHAR = {
   cjk: 1.0,
@@ -14,25 +15,8 @@ const TOKENS_PER_CHAR = {
 
 const DEFAULT_TOKENS_PER_CHAR = 1 / 3;
 
-const DEFAULT_CONTEXT_WINDOW_TOKENS = 2048;
-
-const GENERATION_RESERVE_TOKENS = 768;
-
-const CONTEXT_WINDOW_TOKENS_BY_FAMILY: Record<string, number> = {
-  'Qwen 3': 2048,
-  'Qwen 2.5': 2048,
-  'LLaMA 3.2': 2048,
-  'LFM 2.5': 2048,
-  'Bielik': 2048,
-  'Gemma 4': 2048,
-};
-
-export const getContextWindowTokens = (model: Model): number => {
-  const familyWindow = model.family
-    ? CONTEXT_WINDOW_TOKENS_BY_FAMILY[model.family]
-    : undefined;
-  return familyWindow ?? DEFAULT_CONTEXT_WINDOW_TOKENS;
-};
+export const getContextWindowTokens = (model: Model): number =>
+  getModelProfile(model).contextWindowTokens;
 
 const tokensForCodePoint = (code: number): number => {
   if (
@@ -93,8 +77,13 @@ export const estimatePromptTokens = (text: string): number => {
   return Math.ceil(tokens);
 };
 
-export const getPromptTokenBudget = (model: Model): number =>
-  Math.max(0, getContextWindowTokens(model) - GENERATION_RESERVE_TOKENS);
+export const getPromptTokenBudget = (model: Model): number => {
+  const profile = getModelProfile(model);
+  return Math.max(
+    0,
+    profile.contextWindowTokens - profile.generationReserveTokens
+  );
+};
 
 export const getPromptCharBudget = (model: Model, sample?: string): number => {
   const tokenBudget = getPromptTokenBudget(model);

@@ -1,6 +1,11 @@
 import { Platform } from 'react-native';
 import { type Model } from '../database/modelRepository';
 import {
+  DEFAULT_PROFILE,
+  getModelProfile,
+  type ProfileTarget,
+} from './model-profiles';
+import {
   QWEN3_0_6B_QUANTIZED,
   QWEN3_1_7B_QUANTIZED,
   LLAMA3_2_1B_QLORA,
@@ -57,13 +62,23 @@ const GENERATION_CONFIG_BY_MODEL_PATH: Record<string, object> =
     )
   );
 
-// The RNE registry sets `repetitionPenalty` only for LFM, leaving other small
-// quantized models free to loop. Registry values still win below.
-export const DEFAULT_REPETITION_PENALTY = 1.1;
+export const DEFAULT_REPETITION_PENALTY = DEFAULT_PROFILE.repetitionPenalty;
 
-export const getGenerationConfigForModel = (modelPath: string) => ({
-  repetitionPenalty: DEFAULT_REPETITION_PENALTY,
-  ...GENERATION_CONFIG_BY_MODEL_PATH[modelPath],
+/**
+ * ExecuTorch applies `repetitionPenalty` over the whole prompt, once per
+ * occurrence (`common/runner/text_token_generator.h` seeds it with the prefill
+ * tokens), so any penalty above 1 suppresses exactly the words a grounded
+ * answer has to quote.
+ */
+export const GROUNDED_REPETITION_PENALTY = 1;
+
+export const getGenerationConfigForModel = (
+  model: ProfileTarget & Pick<Model, 'modelPath'>,
+  grounded: boolean = false
+) => ({
+  repetitionPenalty: getModelProfile(model).repetitionPenalty,
+  ...GENERATION_CONFIG_BY_MODEL_PATH[model.modelPath],
+  ...(grounded ? { repetitionPenalty: GROUNDED_REPETITION_PENALTY } : {}),
 });
 
 export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [

@@ -1,6 +1,8 @@
 import { Model } from '../database/modelRepository';
 
-export const getModelFamily = (model: Model): string => {
+export const getModelFamily = (
+  model: Pick<Model, 'modelName' | 'family'>
+): string => {
   if (model.family) return model.family;
   const dashIdx = model.modelName.indexOf(' - ');
   if (dashIdx === -1) return model.modelName;
