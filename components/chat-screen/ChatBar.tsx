@@ -99,6 +99,7 @@ const ChatBar = ({
     pickDocument,
     downloadModelAndContinue,
     markDownloadSheetClosed,
+    markAttachmentSheetClosed,
     removeAttachment,
     clearAll,
     openSheet,
@@ -190,15 +191,12 @@ const ChatBar = ({
     }
   }, [model, loadedModel, loadModel]);
 
-  const handleAttach = useCallback(async () => {
+  const handleAttach = useCallback(() => {
     Keyboard.dismiss();
-    try {
-      await runWithModelOffloaded(async () => {}, { restore: false });
-    } catch (error) {
+    openSheet();
+    runWithModelOffloaded(async () => {}, { restore: false }).catch((error) => {
       console.error('Failed to offload model before attachment picker:', error);
-    } finally {
-      openSheet();
-    }
+    });
   }, [openSheet, runWithModelOffloaded]);
 
   const imageAttachment = attachments.find((a) => a.type === 'image');
@@ -384,6 +382,7 @@ const ChatBar = ({
             onPickFromCamera={pickFromCamera}
             onPickDocument={pickDocument}
             onSheetStateChange={onAttachmentSheetStateChange}
+            onDismissed={markAttachmentSheetClosed}
           />
           <EmbeddingDownloadSheet
             bottomSheetModalRef={embeddingDownloadSheetRef}

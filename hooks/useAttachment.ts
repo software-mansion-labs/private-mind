@@ -53,8 +53,11 @@ export const useAttachment = () => {
   const currentDocumentAttachmentIdRef = useRef<string | null>(null);
   const documentAbortRef = useRef<AbortController | null>(null);
   const sheetRef = useRef<BottomSheetModal>(null);
+  const attachmentSheetOpenRef = useRef(false);
   const embeddingDownloadSheetRef = useRef<BottomSheetModal>(null);
   const embeddingDownloadSheetOpenRef = useRef(false);
+  const pendingDownloadSheetRef = useRef(false);
+  const pendingDocumentPickRef = useRef(false);
   const { vectorStore, embeddings } = useVectorStore();
   const vectorStoreRef = useRef(vectorStore);
   vectorStoreRef.current = vectorStore;
@@ -66,7 +69,10 @@ export const useAttachment = () => {
 
   useEffect(() => {
     return () => {
+      attachmentSheetOpenRef.current = false;
       embeddingDownloadSheetOpenRef.current = false;
+      pendingDownloadSheetRef.current = false;
+      pendingDocumentPickRef.current = false;
       if (attachmentsRef.current.some((a) => a.sourceId)) {
         sweepAbandonedSources();
       }
@@ -245,17 +251,38 @@ export const useAttachment = () => {
     }
   }, [vectorStore, embeddings]);
 
+  const presentDownloadSheet = useCallback(() => {
+    embeddingDownloadSheetOpenRef.current = true;
+    embeddingDownloadSheetRef.current?.present();
+  }, []);
+
   const markDownloadSheetClosed = useCallback(() => {
     embeddingDownloadSheetOpenRef.current = false;
-  }, []);
+    if (!pendingDocumentPickRef.current) return;
+    pendingDocumentPickRef.current = false;
+    runDocumentPicker().catch((error) => {
+      console.error('Failed to open the document picker after download', error);
+    });
+  }, [runDocumentPicker]);
+
+  const markAttachmentSheetClosed = useCallback(() => {
+    attachmentSheetOpenRef.current = false;
+    if (!pendingDownloadSheetRef.current) return;
+    pendingDownloadSheetRef.current = false;
+    presentDownloadSheet();
+  }, [presentDownloadSheet]);
 
   const pickDocument = useCallback(async () => {
     if (useEmbeddingModelStore.getState().status === 'ready') {
       return runDocumentPicker();
     }
-    embeddingDownloadSheetOpenRef.current = true;
-    embeddingDownloadSheetRef.current?.present();
-  }, [runDocumentPicker]);
+    if (attachmentSheetOpenRef.current) {
+      pendingDownloadSheetRef.current = true;
+      sheetRef.current?.dismiss();
+      return;
+    }
+    presentDownloadSheet();
+  }, [runDocumentPicker, presentDownloadSheet]);
 
   const downloadModelAndContinue = useCallback(async () => {
     if (!vectorStore) return;
@@ -276,11 +303,10 @@ export const useAttachment = () => {
       });
       return;
     }
-    if (embeddingDownloadSheetOpenRef.current) {
-      embeddingDownloadSheetRef.current?.dismiss();
-      await runDocumentPicker();
-    }
-  }, [vectorStore, embeddings, runDocumentPicker]);
+    if (!embeddingDownloadSheetOpenRef.current) return;
+    pendingDocumentPickRef.current = true;
+    embeddingDownloadSheetRef.current?.dismiss();
+  }, [vectorStore, embeddings]);
 
   const removeAttachment = useCallback(
     (id: string) => {
@@ -310,6 +336,7 @@ export const useAttachment = () => {
   );
 
   const openSheet = useCallback(() => {
+    attachmentSheetOpenRef.current = true;
     sheetRef.current?.present();
   }, []);
 
@@ -341,6 +368,7 @@ export const useAttachment = () => {
     pickDocument,
     downloadModelAndContinue,
     markDownloadSheetClosed,
+    markAttachmentSheetClosed,
     removeAttachment,
     clearAll,
     openSheet,
