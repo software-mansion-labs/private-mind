@@ -20,9 +20,6 @@ interface Props {
   onSubmit: (newTitle: string) => void;
 }
 
-const stripTrailingEllipsis = (title: string) =>
-  title.endsWith('...') ? title.slice(0, -3) : title;
-
 const RenameChatModal = ({
   visible,
   initialTitle,
@@ -30,11 +27,11 @@ const RenameChatModal = ({
   onSubmit,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
-  const [value, setValue] = useState(stripTrailingEllipsis(initialTitle));
+  const [value, setValue] = useState(initialTitle);
 
   useEffect(() => {
     if (visible) {
-      setValue(stripTrailingEllipsis(initialTitle));
+      setValue(initialTitle);
     }
   }, [visible, initialTitle]);
 

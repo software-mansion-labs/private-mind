@@ -31,14 +31,9 @@ describe('prefill', () => {
     expect(screen.getByDisplayValue('My Chat')).toBeTruthy();
   });
 
-  it('strips trailing "..." from initialTitle', () => {
-    renderModal({ initialTitle: 'Truncated...' });
-    expect(screen.getByDisplayValue('Truncated')).toBeTruthy();
-  });
-
-  it('does not strip "..." when they are not trailing', () => {
-    renderModal({ initialTitle: 'A...B' });
-    expect(screen.getByDisplayValue('A...B')).toBeTruthy();
+  it('prefills the stored title verbatim, including a trailing "..."', () => {
+    renderModal({ initialTitle: 'To be continued...' });
+    expect(screen.getByDisplayValue('To be continued...')).toBeTruthy();
   });
 });
 
