@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
+import { MAX_CHAT_TITLE_LENGTH } from '../utils/chatLabel';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
@@ -44,10 +45,10 @@ describe('prefill', () => {
 // ─── maxLength prop ──────────────────────────────────────────────────────────
 
 describe('maxLength', () => {
-  it('passes maxLength={25} to the TextInput', () => {
+  it('passes the stored title maximum to the TextInput', () => {
     renderModal();
     const input = screen.getByDisplayValue('My Chat');
-    expect(input.props.maxLength).toBe(25);
+    expect(input.props.maxLength).toBe(MAX_CHAT_TITLE_LENGTH);
   });
 });
 

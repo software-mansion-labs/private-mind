@@ -45,6 +45,7 @@ import { useSourceStore } from '../../store/sourceStore';
 import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
 import { persistImage } from '../../utils/persistImage';
+import { toChatTitle } from '../../utils/chatLabel';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import useChatBranching from '../../hooks/useChatBranching';
 import {
@@ -191,11 +192,7 @@ export default function ChatScreen({
     if (isNewChat) {
       const docName = attachments?.find((a) => a.type === 'document')?.name;
       const titleSource = userInput.trim() || docName || 'New chat';
-      const newChatTitle =
-        titleSource.length > 25
-          ? titleSource.slice(0, 25) + '...'
-          : titleSource;
-      const newChatId = await addChat(newChatTitle, model!.id);
+      const newChatId = await addChat(toChatTitle(titleSource), model!.id);
       if (!newChatId) {
         messagesRef.current?.cancelMessageSent();
         return;

@@ -11,6 +11,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import { MAX_CHAT_TITLE_LENGTH } from '../../utils/chatLabel';
 
 interface Props {
   visible: boolean;
@@ -18,8 +19,6 @@ interface Props {
   onCancel: () => void;
   onSubmit: (newTitle: string) => void;
 }
-
-const MAX_TITLE_LENGTH = 25;
 
 const stripTrailingEllipsis = (title: string) =>
   title.endsWith('...') ? title.slice(0, -3) : title;
@@ -62,7 +61,7 @@ const RenameChatModal = ({
           <TextInput
             value={value}
             onChangeText={setValue}
-            maxLength={MAX_TITLE_LENGTH}
+            maxLength={MAX_CHAT_TITLE_LENGTH}
             autoFocus
             selectTextOnFocus
             placeholder="Chat name"
