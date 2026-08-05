@@ -1,8 +1,0 @@
-apply plugin: 'com.android.asset-pack'
-
-assetPack {
-    packName = "executorch_models"
-    dynamicDelivery {
-        deliveryType = "install-time"
-    }
-}
