@@ -244,9 +244,6 @@ const Messages = ({
       revealTranslateY.set(withTiming(0, { duration }));
     };
 
-    // Reveal as soon as the list stops moving rather than always waiting out
-    // the whole ladder: opening a chat from the drawer or from search is
-    // otherwise dead time where the previous screen is all the user sees.
     let settledHeight = -1;
     let settledRounds = 0;
     [16, 50, 100, 180, 300, 450].forEach((delay) => {
@@ -426,39 +423,30 @@ const Messages = ({
   // by the new inset).
   const pendingPinRef = useRef(false);
 
-  // scrollToEnd targets the bottom of the content, which moves every time a row
-  // grows — the pinned question then drifts off the top edge, and seeding the
-  // inset before the new row commits flicks the old answer up for a frame. The
-  // question's own offset does not move, so scroll to it directly.
+  const pinnedScrollOffset = useCallback(
+    () => Math.max(0, lastUserTop.current - topInset - MESSAGE_PIN_OFFSET),
+    [topInset]
+  );
+
   const scrollToPinnedQuestion = useCallback(() => {
     const scroll = () => {
-      const y = Math.max(
-        0,
-        lastUserTop.current - topInset - MESSAGE_PIN_OFFSET
-      );
-      // Streaming re-measures the answer on every layout pass; the question
-      // stays where it is, so almost all of those would be the same scroll.
+      const y = pinnedScrollOffset();
       if (Math.abs(lastScrollOffset.current - y) < 1) return;
       scrollRef.current?.scrollTo({ y, animated: false });
     };
-    // iOS commits the scroll in the same frame as the content it was measured
-    // from; Android needs the extra frame or the inset has not landed yet.
     if (Platform.OS === 'ios') {
       scroll();
     } else {
       requestAnimationFrame(scroll);
     }
-  }, [topInset]);
+  }, [pinnedScrollOffset]);
 
   const recomputeBlankSpace = useCallback(() => {
     if (!pinActive.current) return;
     const raw =
+      pinnedScrollOffset() +
       containerHeight.current -
-      lastUserHeight.current -
-      lastAssistantHeight.current -
-      listTopPadding -
-      listBottomPadding +
-      MESSAGE_PIN_OFFSET;
+      lastContentHeight.current;
     const next = Math.max(0, raw);
     if (next !== blankSpace.value) {
       blankSpace.set(next);
@@ -467,7 +455,7 @@ const Messages = ({
     if (isAtBottomRef.current) {
       scrollToPinnedQuestion();
     }
-  }, [blankSpace, listBottomPadding, listTopPadding, scrollToPinnedQuestion]);
+  }, [blankSpace, pinnedScrollOffset, scrollToPinnedQuestion]);
 
   useImperativeHandle(
     ref,
@@ -519,7 +507,6 @@ const Messages = ({
   const handleLastUserLayout = useCallback(
     (key: string, e: LayoutChangeEvent) => {
       if (lastUserMeasurementKey.current !== key) return;
-      lastUserHeight.current = e.nativeEvent.layout.height;
       lastUserTop.current = e.nativeEvent.layout.y;
       recomputeBlankSpace();
     },
@@ -527,9 +514,8 @@ const Messages = ({
   );
 
   const handleLastAssistantLayout = useCallback(
-    (key: string, e: LayoutChangeEvent) => {
+    (key: string) => {
       if (lastAssistantMeasurementKey.current !== key) return;
-      lastAssistantHeight.current = e.nativeEvent.layout.height;
       recomputeBlankSpace();
     },
     [recomputeBlankSpace]
@@ -541,9 +527,6 @@ const Messages = ({
         event.nativeEvent;
       lastScrollOffset.current = contentOffset.y;
       lastLayoutHeight.current = layoutMeasurement.height;
-      // iOS reports blankSpace as part of the bottom inset. It is room reserved
-      // to hold the question at the top, not content waiting below, so counting
-      // it lights up the scroll-to-bottom button over an already-complete view.
       const pinInset = pinActive.current ? blankSpace.value : 0;
       const bottomInset = Math.max(0, (contentInset?.bottom ?? 0) - pinInset);
       const distanceFromBottom =
@@ -683,10 +666,9 @@ const Messages = ({
       if (pendingPinRef.current) {
         pendingPinRef.current = false;
         closeUserActionMenu();
-        if (containerHeight.current > 0) {
-          recomputeBlankSpace();
-        }
-        scrollToPinnedQuestion();
+      }
+      if (containerHeight.current > 0) {
+        recomputeBlankSpace();
       }
 
       // During streaming, check if content has grown past the viewport
@@ -713,7 +695,6 @@ const Messages = ({
       listTopPadding,
       recomputeBlankSpace,
       scheduleInitialScrollToEnd,
-      scrollToPinnedQuestion,
     ]
   );
 
@@ -800,8 +781,7 @@ const Messages = ({
             index === lastUserIndex
               ? (event: LayoutChangeEvent) => handleLastUserLayout(key, event)
               : index === lastAssistantIndex
-                ? (event: LayoutChangeEvent) =>
-                    handleLastAssistantLayout(key, event)
+                ? () => handleLastAssistantLayout(key)
                 : undefined;
           const branchMarker = latestBranchMarkerByMessageId.get(message.id);
           const { showActions, showForkAction } =
@@ -879,8 +859,8 @@ const Messages = ({
         })}
         {generationError && (
           <View
-            onLayout={(event) =>
-              handleLastAssistantLayout(GENERATION_ERROR_MEASUREMENT_KEY, event)
+            onLayout={() =>
+              handleLastAssistantLayout(GENERATION_ERROR_MEASUREMENT_KEY)
             }
             collapsable={false}
             style={styles.generationError}
