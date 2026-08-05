@@ -316,6 +316,7 @@ const Messages = ({
   // driven by layout events and we only need to write the derived value
   // into the shared value once per change.
   const containerHeight = useRef(0);
+  const lastUserTop = useRef(0);
   const lastUserHeight = useRef(0);
   const lastAssistantHeight = useRef(0);
   const lastUserMeasurementKey = useRef<string | null>(null);
@@ -410,6 +411,16 @@ const Messages = ({
   // by the new inset).
   const pendingPinRef = useRef(false);
 
+  // Android's scrollToEnd targets the bottom of the content, which moves every
+  // time a row grows — the pinned question then drifts off the top edge. The
+  // question's own offset does not move, so scroll to it directly.
+  const scrollToPinnedQuestion = useCallback(() => {
+    const y = Math.max(0, lastUserTop.current - topInset - MESSAGE_PIN_OFFSET);
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y, animated: false });
+    });
+  }, [topInset]);
+
   const recomputeBlankSpace = useCallback(() => {
     if (!pinActive.current) return;
     const raw =
@@ -420,7 +431,11 @@ const Messages = ({
       listBottomPadding +
       MESSAGE_PIN_OFFSET;
     blankSpace.set(Math.max(0, raw));
-  }, [blankSpace, listBottomPadding, listTopPadding]);
+
+    if (Platform.OS !== 'ios' && isAtBottomRef.current) {
+      scrollToPinnedQuestion();
+    }
+  }, [blankSpace, listBottomPadding, listTopPadding, scrollToPinnedQuestion]);
 
   useImperativeHandle(
     ref,
@@ -479,6 +494,7 @@ const Messages = ({
     (key: string, e: LayoutChangeEvent) => {
       if (lastUserMeasurementKey.current !== key) return;
       lastUserHeight.current = e.nativeEvent.layout.height;
+      lastUserTop.current = e.nativeEvent.layout.y;
       recomputeBlankSpace();
     },
     [recomputeBlankSpace]
@@ -637,16 +653,12 @@ const Messages = ({
         pendingPinRef.current = false;
         closeUserActionMenu();
         if (Platform.OS !== 'ios' && containerHeight.current > 0) {
-          blankSpace.set(
-            containerHeight.current - topInset + MESSAGE_PIN_OFFSET
-          );
+          recomputeBlankSpace();
         }
         if (Platform.OS === 'ios') {
           scrollRef.current?.scrollToEnd({ animated: false });
         } else {
-          requestAnimationFrame(() => {
-            scrollRef.current?.scrollToEnd({ animated: true });
-          });
+          scrollToPinnedQuestion();
         }
       }
 
@@ -669,12 +681,12 @@ const Messages = ({
       }
     },
     [
-      blankSpace,
       closeUserActionMenu,
       listBottomPadding,
       listTopPadding,
+      recomputeBlankSpace,
       scheduleInitialScrollToEnd,
-      topInset,
+      scrollToPinnedQuestion,
     ]
   );
 
