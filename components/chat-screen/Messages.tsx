@@ -69,6 +69,7 @@ const MESSAGE_PIN_OFFSET = 8;
 
 export interface MessagesHandle {
   onMessageSent: () => void;
+  cancelMessageSent: () => void;
   scrollToEnd: () => void;
   scrollToEndIfAtBottom: () => void;
 }
@@ -453,6 +454,11 @@ const Messages = ({
         }
         pendingPinRef.current = true;
       },
+      cancelMessageSent: () => {
+        pendingPinRef.current = false;
+        pinActive.current = false;
+        blankSpace.set(0);
+      },
     }),
     [blankSpace, closeUserActionMenu, opacity, topInset]
   );
@@ -635,11 +641,13 @@ const Messages = ({
             containerHeight.current - topInset + MESSAGE_PIN_OFFSET
           );
         }
-        requestAnimationFrame(() => {
+        if (Platform.OS === 'ios') {
+          scrollRef.current?.scrollToEnd({ animated: false });
+        } else {
           requestAnimationFrame(() => {
             scrollRef.current?.scrollToEnd({ animated: true });
           });
-        });
+        }
       }
 
       // During streaming, check if content has grown past the viewport
