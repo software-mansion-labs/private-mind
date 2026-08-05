@@ -290,7 +290,7 @@ export default function ChatScreen({
       docName
     );
 
-    if (isNewChat) {
+    if (isNewChat && targetChatId !== chatId) {
       router.replace(`/chat/${targetChatId}`);
     }
 
