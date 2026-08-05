@@ -191,6 +191,7 @@ const Messages = ({
   const { styles, theme } = useThemedStyles(createStyles);
   const scrollRef = useRef<Reanimated.ScrollView>(null);
   const isAtBottomRef = useRef(true);
+  const isAtScrollEndRef = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [activeUserActionsId, setActiveUserActionsId] = useState<number | null>(
     null
@@ -329,8 +330,6 @@ const Messages = ({
   // into the shared value once per change.
   const containerHeight = useRef(0);
   const lastUserTop = useRef(0);
-  const lastUserHeight = useRef(0);
-  const lastAssistantHeight = useRef(0);
   const lastUserMeasurementKey = useRef<string | null>(null);
   const lastAssistantMeasurementKey = useRef<string | null>(null);
 
@@ -422,6 +421,7 @@ const Messages = ({
   // actually rendered (avoids a 1-frame flick of old content lifted
   // by the new inset).
   const pendingPinRef = useRef(false);
+  const followPin = useRef(false);
 
   const pinnedScrollOffset = useCallback(
     () => Math.max(0, lastUserTop.current - topInset - MESSAGE_PIN_OFFSET),
@@ -452,7 +452,7 @@ const Messages = ({
       blankSpace.set(next);
     }
 
-    if (isAtBottomRef.current) {
+    if (followPin.current) {
       scrollToPinnedQuestion();
     }
   }, [blankSpace, pinnedScrollOffset, scrollToPinnedQuestion]);
@@ -478,18 +478,24 @@ const Messages = ({
           hasScrolledToEnd.current = true;
           opacity.set(1);
         }
-        lastAssistantHeight.current = 0;
-        lastUserHeight.current = 0;
+        if (!isAtBottomRef.current) {
+          isAtBottomRef.current = true;
+          isAtScrollEndRef.current = true;
+          setShowScrollButton(false);
+          snapToEnd();
+        }
         pinActive.current = true;
         pendingPinRef.current = true;
+        followPin.current = true;
       },
       cancelMessageSent: () => {
         pendingPinRef.current = false;
         pinActive.current = false;
+        followPin.current = false;
         blankSpace.set(0);
       },
     }),
-    [blankSpace, closeUserActionMenu, opacity]
+    [blankSpace, closeUserActionMenu, opacity, snapToEnd]
   );
 
   const handleContainerLayout = useCallback(
@@ -527,12 +533,14 @@ const Messages = ({
         event.nativeEvent;
       lastScrollOffset.current = contentOffset.y;
       lastLayoutHeight.current = layoutMeasurement.height;
-      const pinInset = pinActive.current ? blankSpace.value : 0;
-      const bottomInset = Math.max(0, (contentInset?.bottom ?? 0) - pinInset);
-      const distanceFromBottom =
+      const scrollableBottom =
         contentSize.height +
-        bottomInset -
+        (contentInset?.bottom ?? 0) -
         (contentOffset.y + layoutMeasurement.height);
+      isAtScrollEndRef.current = scrollableBottom < 100;
+
+      const pinInset = pinActive.current ? blankSpace.value : 0;
+      const distanceFromBottom = scrollableBottom - pinInset;
       const atBottom = distanceFromBottom < 100;
       isAtBottomRef.current = atBottom;
       setShowScrollButton(!atBottom);
@@ -627,9 +635,14 @@ const Messages = ({
   }, [activeUserActionsId, closeUserActionMenu]);
 
   const handleScrollBeginDrag = useCallback(() => {
+    followPin.current = false;
     if (keyboardOpenRef.current) {
       userScrolledDuringKeyboard.current = true;
     }
+  }, []);
+
+  const handleScrollSettle = useCallback(() => {
+    followPin.current = isAtScrollEndRef.current;
   }, []);
 
   const handleForkMessage = useCallback(
@@ -762,6 +775,8 @@ const Messages = ({
         onLayout={handleContainerLayout}
         onScroll={handleScroll}
         onScrollBeginDrag={handleScrollBeginDrag}
+        onScrollEndDrag={handleScrollSettle}
+        onMomentumScrollEnd={handleScrollSettle}
         onTouchStart={handleScrollTouchStart}
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
