@@ -211,6 +211,7 @@ const Messages = ({
   const opacity = useSharedValue(0);
   const revealTranslateY = useSharedValue(revealFromTop ? -28 : 0);
   const hasScrolledToEnd = useRef(false);
+  const lastContentHeight = useRef(0);
   const initialScrollSettlingUntil = useRef(0);
   const initialScrollTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const animatedContainerStyle = useAnimatedStyle(() => ({
@@ -236,18 +237,32 @@ const Messages = ({
       initialScrollTimers.current.push(timer);
     };
 
+    const reveal = (duration: number) => {
+      clearInitialScrollTimers();
+      snapToEnd();
+      opacity.set(withTiming(1, { duration }));
+      revealTranslateY.set(withTiming(0, { duration }));
+    };
+
+    // Reveal as soon as the list stops moving rather than always waiting out
+    // the whole ladder: opening a chat from the drawer or from search is
+    // otherwise dead time where the previous screen is all the user sees.
+    let settledHeight = -1;
+    let settledRounds = 0;
     [16, 50, 100, 180, 300, 450].forEach((delay) => {
       schedule(delay, () => {
         snapToEnd();
+        if (lastContentHeight.current === settledHeight) {
+          settledRounds += 1;
+          if (settledRounds >= 2) reveal(200);
+          return;
+        }
+        settledHeight = lastContentHeight.current;
+        settledRounds = 0;
       });
     });
 
-    schedule(500, () => {
-      snapToEnd();
-      opacity.set(withTiming(1, { duration: 350 }));
-      revealTranslateY.set(withTiming(0, { duration: 350 }));
-      initialScrollTimers.current = [];
-    });
+    schedule(500, () => reveal(350));
   }, [clearInitialScrollTimers, opacity, revealTranslateY, snapToEnd]);
 
   const latestBranchMarkerByMessageId = useMemo(() => {
@@ -421,6 +436,9 @@ const Messages = ({
         0,
         lastUserTop.current - topInset - MESSAGE_PIN_OFFSET
       );
+      // Streaming re-measures the answer on every layout pass; the question
+      // stays where it is, so almost all of those would be the same scroll.
+      if (Math.abs(lastScrollOffset.current - y) < 1) return;
       scrollRef.current?.scrollTo({ y, animated: false });
     };
     // iOS commits the scroll in the same frame as the content it was measured
@@ -441,7 +459,10 @@ const Messages = ({
       listTopPadding -
       listBottomPadding +
       MESSAGE_PIN_OFFSET;
-    blankSpace.set(Math.max(0, raw));
+    const next = Math.max(0, raw);
+    if (next !== blankSpace.value) {
+      blankSpace.set(next);
+    }
 
     if (isAtBottomRef.current) {
       scrollToPinnedQuestion();
@@ -520,7 +541,11 @@ const Messages = ({
         event.nativeEvent;
       lastScrollOffset.current = contentOffset.y;
       lastLayoutHeight.current = layoutMeasurement.height;
-      const bottomInset = contentInset?.bottom ?? 0;
+      // iOS reports blankSpace as part of the bottom inset. It is room reserved
+      // to hold the question at the top, not content waiting below, so counting
+      // it lights up the scroll-to-bottom button over an already-complete view.
+      const pinInset = pinActive.current ? blankSpace.value : 0;
+      const bottomInset = Math.max(0, (contentInset?.bottom ?? 0) - pinInset);
       const distanceFromBottom =
         contentSize.height +
         bottomInset -
@@ -529,7 +554,7 @@ const Messages = ({
       isAtBottomRef.current = atBottom;
       setShowScrollButton(!atBottom);
     },
-    []
+    [blankSpace]
   );
 
   const scrollToBottom = useCallback(() => {
@@ -633,6 +658,7 @@ const Messages = ({
 
   const handleContentSizeChange = useCallback(
     (_w: number, h: number) => {
+      lastContentHeight.current = h;
       // Initial reveal: content has been laid out for the first time.
       // Snap to bottom then fade in. This is the most reliable place to
       // scroll because the native content size is already committed.
