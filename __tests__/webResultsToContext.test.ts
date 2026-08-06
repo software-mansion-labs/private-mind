@@ -130,7 +130,8 @@ describe('selectRelevantContent', () => {
   it('falls back to a leading truncation when no query is given', () => {
     const text = 'a'.repeat(50) + 'b'.repeat(50);
     const out = selectRelevantContent(text, undefined, 40);
-    expect(out).toBe('a'.repeat(40) + '…');
+    expect(out).toBe('a'.repeat(39) + '…');
+    expect(out.length).toBe(40);
   });
 
   it('falls back to a leading truncation when nothing matches the query', () => {
@@ -145,6 +146,94 @@ describe('selectRelevantContent', () => {
     const hit = 'Kraków is a major Polish city. ';
     const out = selectRelevantContent(off + hit + off, 'Kraków', 120);
     expect(out).toContain('Kraków');
+  });
+
+  it('spends the whole budget even when one rare term dominates the scores', () => {
+    const chrome = 'Znajdź produkt w naszym katalogu online już dziś.\n';
+    const guide =
+      'Karta graficzna RTX 5080 to topowy model do gier i pracy twórczej. '.repeat(
+        8
+      );
+    const rows = Array.from(
+      { length: 12 },
+      (_, i) =>
+        `Karta graficzna MSI GeForce RTX 5080 wariant ${i} 16GB GDDR7 — ${5999 + i * 100},00 zł`
+    ).join('\n');
+    const out = selectRelevantContent(
+      chrome + guide + rows,
+      'Znajdź najdroższą kartę graficzną RTX 5080',
+      1800
+    );
+    expect((out.match(/zł/g) ?? []).length).toBeGreaterThanOrEqual(6);
+    expect(out).toContain('Znajdź produkt');
+  });
+
+  it('keeps price rows in the running against term-dense prose', () => {
+    const prose =
+      'Karta graficzna RTX 5080 oferuje wydajność nowej generacji dla graczy. '.repeat(
+        6
+      );
+    const prices = '7 499,00 zł\n5 999,00 zł\n6 299,00 zł\n6 199,00 zł';
+    const out = selectRelevantContent(
+      prose + prices,
+      'karta graficzna RTX 5080 cena',
+      900
+    );
+    expect(out).toContain('7 499,00 zł');
+  });
+
+  it('carries a product row down to its price, not just its name', () => {
+    const record = (name: string, price: string) =>
+      [
+        `${name} 16GB GDDR7 DLSS4`,
+        '4,8 (19)',
+        'Najwczesniej u Ciebie: jutro',
+        'Uklad: GeForce RTX 5080',
+        `Cena: ${price}`,
+        'Dodaj do koszyka',
+      ].join('\n');
+    const page = [
+      record('ASUS GeForce RTX 5080 Prime OC', '6 499,00 zl'),
+      record('Gigabyte GeForce RTX 5080 Aero OC', '6 799,00 zl'),
+      record('MSI GeForce RTX 5080 Gaming Trio', '7 499,00 zl'),
+    ].join('\n');
+
+    const out = selectRelevantContent(page, 'najdrozsza karta RTX 5080', 700);
+
+    expect(out).toContain('ASUS GeForce RTX 5080 Prime OC');
+    expect(out).toContain('6 499,00 zl');
+  });
+
+  it('does not let one outlier passage set the bar out of everything else reach', () => {
+    const chrome =
+      'Karty graficzne katalog Filtry Wyczysc wszystkie Pokaz wszystkie filtry sortowanie karty graficzne katalog';
+    const rows = Array.from(
+      { length: 10 },
+      (_, i) => `RTX 5080 model ${i}\nCena: ${6199 + i * 100},00 zl`
+    ).join('\n');
+
+    const out = selectRelevantContent(
+      `${chrome}\n${rows}`,
+      'karty graficzne RTX 5080 cena',
+      600
+    );
+
+    expect((out.match(/zl/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('does not drag following sentences into a prose excerpt', () => {
+    const answer = 'The population of Kraków was 800757 inhabitants in 2023.';
+    const after = Array.from(
+      { length: 40 },
+      (_, i) => `Unrelated sentence number ${i} about the city and its past.`
+    ).join(' ');
+    const out = selectRelevantContent(
+      `${answer} ${after}`,
+      'Kraków population',
+      200
+    );
+    expect(out).toContain('800757');
+    expect(out).not.toContain('Unrelated sentence number 3');
   });
 
   it('prefers a passage with digits when the query is about a figure', () => {
@@ -178,6 +267,60 @@ describe('selectRelevantContent', () => {
     expect(out).toContain('Sardynia');
   });
 
+  it('reassembles table cells split across lines into one passage', () => {
+    const cells = ['Jutro', '31°C', '19°C', 'Czwartek', '26°C', '14°C'];
+    const noise = Array.from({ length: 40 }, () => 'Reklama').join('\n');
+    const out = selectRelevantContent(
+      `${noise}\n${cells.join('\n')}\n${noise}`,
+      'pogoda jutro',
+      120
+    );
+    expect(out).toContain('31°C');
+    expect(out).toContain('19°C');
+  });
+
+  it('matches a short query term only as a whole word', () => {
+    const noise = Array.from(
+      { length: 20 },
+      (_, i) => `Filler paragraph number ${i} about knowledge and knowing.`
+    ).join('\n');
+    const fact = 'The president is in office now after the vote.';
+    const out = selectRelevantContent(
+      `${noise}\n${fact}\n${noise}`,
+      'president now',
+      120
+    );
+    expect(out).toContain('in office now');
+  });
+
+  it('prefers the lead over an equally-scored passage deep in the page', () => {
+    const lead = 'Macron is the president of France since 2017.';
+    const late = Array.from(
+      { length: 30 },
+      (_, i) => `Note ${i} mentions the president of France in passing.`
+    ).join('\n');
+    const out = selectRelevantContent(
+      `${lead}\n${late}`,
+      'president France',
+      140
+    );
+    expect(out).toContain('since 2017');
+  });
+
+  it('ignores query terms that appear in nearly every passage', () => {
+    const menu = Array.from(
+      { length: 30 },
+      (_, i) => `Pogoda miasto ${i} sprawdz prognoze`
+    ).join('\n');
+    const fact = 'Pogoda jutro temperatura wyniesie 31 stopni';
+    const out = selectRelevantContent(
+      `${menu}\n${fact}\n${menu}`,
+      'pogoda jutro',
+      90
+    );
+    expect(out).toContain('31 stopni');
+  });
+
   it('treats newline-separated lines without punctuation as separate passages', () => {
     const nav = Array.from(
       { length: 30 },
@@ -191,6 +334,29 @@ describe('selectRelevantContent', () => {
     );
     expect(out).toContain('800757');
     expect(out.length).toBeLessThanOrEqual(60);
+  });
+});
+
+describe('webResultsToContext — pages that were never opened', () => {
+  it('records them as unread sources without giving them a context block', () => {
+    const { context, sourceDocuments } = webResultsToContext([
+      result({ url: 'https://opened.com/x', content: 'Real page text here.' }),
+      result({ url: 'https://skipped.com/y' }),
+    ]);
+    expect(context).toHaveLength(1);
+    expect(sourceDocuments.map((doc) => [doc.url, doc.read])).toEqual([
+      ['https://opened.com/x', true],
+      ['https://skipped.com/y', false],
+    ]);
+  });
+
+  it('still grounds on the listings when nothing could be opened', () => {
+    const { context, sourceDocuments } = webResultsToContext([
+      result({ url: 'https://a.com/x' }),
+      result({ url: 'https://b.com/y' }),
+    ]);
+    expect(context).toHaveLength(2);
+    expect(sourceDocuments).toHaveLength(2);
   });
 });
 
@@ -238,5 +404,63 @@ describe('webResultsToContext — review hardening', () => {
     const closeMarkers = block.match(/--- End of Source \d+ ---/g) ?? [];
     expect(openHeaders).toHaveLength(1);
     expect(closeMarkers).toHaveLength(1);
+  });
+});
+
+describe('webResultsToContext — context budget', () => {
+  const page = (n: number) => ({
+    url: `https://site${n}.example/x`,
+    title: `Page ${n}`,
+    snippet: `Snippet ${n}`,
+    content: `Prognoza pogody dla Gdanska na jutro numer ${n}. `.repeat(80),
+  });
+
+  it('splits a total budget across the sources instead of overflowing it', () => {
+    const results = [page(1), page(2), page(3), page(4)];
+    const { context } = webResultsToContext(results, 'pogoda jutro', 0, 2000);
+    const total = context.join('').length;
+    expect(context).toHaveLength(4);
+    expect(total).toBeLessThan(2000 * 2);
+  });
+
+  it('gives the best-fitting source more room than the tail', () => {
+    const distinct = (n: number) => ({
+      url: `https://site${n}.example/x`,
+      title: `Page ${n}`,
+      snippet: `Snippet ${n}`,
+      content: Array.from(
+        { length: 150 },
+        (_, i) => `Gdansk jutro pomiar ${n}-${i} wynosi ${i} stopni.`
+      ).join(' '),
+    });
+    const pages = [1, 2, 3, 4, 5].map(distinct);
+    const { context } = webResultsToContext(pages, 'pogoda jutro', 0, 2440);
+    expect(context[0]!.length).toBeGreaterThan(context[4]!.length * 2);
+  });
+
+  it('gives each source less as the budget shrinks', () => {
+    const varied = (n: number) => ({
+      url: `https://site${n}.example/x`,
+      title: `Page ${n}`,
+      snippet: `Snippet ${n}`,
+      content: Array.from(
+        { length: 120 },
+        (_, i) => `Gdansk jutro pomiar ${n}-${i} wynosi ${i} stopni.`
+      ).join(' '),
+    });
+    const pages = [varied(1), varied(2), varied(3), varied(4)];
+    const roomy = webResultsToContext(
+      pages,
+      'pogoda jutro',
+      0,
+      8000
+    ).context.join('').length;
+    const tight = webResultsToContext(
+      pages,
+      'pogoda jutro',
+      0,
+      1200
+    ).context.join('').length;
+    expect(tight).toBeLessThan(roomy);
   });
 });
