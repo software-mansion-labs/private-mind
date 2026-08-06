@@ -3,6 +3,7 @@ import type { LFMEmbeddings } from '../lfmEmbeddings';
 import type { WebSearchResult } from './types';
 import type { WebRetrievalSignals } from './retrievalEvaluator';
 import { extractQueryTerms, stemPrefix } from '../queryTerms';
+import { detectQuestionLanguage } from '../questionLanguage';
 import {
   adaptiveKeepCount,
   cosineSimilarity,
@@ -128,7 +129,8 @@ export const retrieveWebPassages = async (
   query: WebRetrievalQuery,
   embeddings: LFMEmbeddings,
   cache?: WebEmbeddingCache,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  topK: number = WEB_RETRIEVAL_TOP_K
 ): Promise<WebRetrievalResult> => {
   if (signal?.aborted) return { results, signals: null };
   const chunks = await chunkPages(results);
@@ -155,10 +157,11 @@ export const retrieveWebPassages = async (
     return { results, signals: null };
   }
 
+  const language = detectQuestionLanguage(query.semanticQuery)?.code;
   const coverageTerms = new Set(
     [
-      ...extractQueryTerms(query.semanticQuery),
-      ...extractQueryTerms(query.keywordQuery ?? ''),
+      ...extractQueryTerms(query.semanticQuery, language),
+      ...extractQueryTerms(query.keywordQuery ?? '', language),
     ].map(stemPrefix)
   );
   for (const chunk of chunks) {
@@ -211,7 +214,7 @@ export const retrieveWebPassages = async (
   const distinctPages = new Set(qualified.map((c) => c.pageIndex)).size;
   const selected = maximalMarginalRelevance(
     mmrCandidates,
-    WEB_RETRIEVAL_TOP_K,
+    topK,
     undefined,
     distinctPages > 1
       ? {
