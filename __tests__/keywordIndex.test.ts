@@ -192,12 +192,6 @@ describe('ensureKeywordIndex backfill', () => {
   });
 });
 
-/**
- * The index side of the CJK problem. `unicode61` has no word boundaries in
- * these scripts and indexes a whole clause as one token, while a query can only
- * ever be bigrams — measured as Chinese scoring 0 of 6 against 100% for the
- * other fourteen languages on the multilingual corpus.
- */
 describe('unsegmented scripts reach the index as the same units as the query', () => {
   it('bigrams Chinese, Japanese and Thai content', () => {
     expect(foldForKeywordIndex('北京今天天气')).toBe(
