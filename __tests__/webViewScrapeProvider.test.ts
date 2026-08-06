@@ -161,6 +161,23 @@ describe('WebViewScrapeProvider engine chain', () => {
     expect(navigated).toHaveLength(1);
   });
 
+  it('moves to the next engine when one of them shows a challenge', async () => {
+    const provider = new WebViewScrapeProvider();
+    const navigated: string[] = [];
+    provider.attachHost({
+      navigate: (url: string) => {
+        navigated.push(url);
+        provider.handleMessage(JSON.stringify({ type: 'serp-challenge' }));
+        provider.skipEngine();
+      },
+    });
+
+    const results = await settle(provider.search('warsaw weather'));
+
+    expect(results).toEqual([]);
+    expect(navigated).toHaveLength(SCRAPE_ENGINES.length);
+  });
+
   it('honours an already-aborted signal without navigating', async () => {
     const provider = new WebViewScrapeProvider();
     const navigated = attach(provider, {});

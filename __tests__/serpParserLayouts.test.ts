@@ -126,6 +126,54 @@ describe('SERP parser — layout ladder', () => {
     ]);
   });
 
+  it('reads the Brave layout, taking the title from its own element', () => {
+    const item = wire({
+      sel: ['div.snippet[data-type="web"]', 'div.snippet'],
+      children: [
+        {
+          sel: ['a[href^="http"]', 'a'],
+          href: 'https://www.accuweather.com/en/pl/warsaw/274663',
+          innerText:
+            'accuweather.com https://www.accuweather.com/en/pl/warsaw/274663 Warsaw Weather Forecast',
+        },
+        {
+          sel: ['.search-snippet-title', '.title'],
+          innerText: 'Warsaw Weather Forecast',
+        },
+        {
+          sel: ['.generic-snippet .content'],
+          innerText: 'Hourly and 10-day forecast for Warsaw.',
+        },
+      ],
+    });
+
+    const results = resultsOf(runParser([item]));
+
+    expect(results).toEqual([
+      {
+        title: 'Warsaw Weather Forecast',
+        url: 'https://www.accuweather.com/en/pl/warsaw/274663',
+        snippet: 'Hourly and 10-day forecast for Warsaw.',
+      },
+    ]);
+  });
+
+  it('drops the engine own links, Brave included', () => {
+    const item = wire({
+      sel: ['div.snippet'],
+      children: [
+        {
+          sel: ['a[href^="http"]', 'a'],
+          href: 'https://search.brave.com/settings',
+          innerText: 'Brave settings page link',
+        },
+        { sel: ['.title'], innerText: 'Brave settings page link' },
+      ],
+    });
+
+    expect(resultsOf(runParser([item]))).toEqual([]);
+  });
+
   it('falls back to plain anchors when every known selector is gone', () => {
     const anchor = (href: string, innerText: string): El =>
       wire({ sel: ['a[href]'], href, innerText });

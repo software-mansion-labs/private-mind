@@ -106,6 +106,106 @@ describe('enrichWebResults', () => {
     expect(enriched[0].content).toBeUndefined();
   });
 
+  it('frees a failed page slot for the next candidate down the ranking', async () => {
+    mockExtract.mockImplementation(async (url) => {
+      if (url === 'https://a.com/1') throw new Error('dead site');
+      return {
+        url,
+        title: 'x',
+        text: longText(`content of ${url}`),
+        siteName: 'a.com',
+      };
+    });
+
+    const enriched = await enrichWebResults(
+      [
+        result({ url: 'https://a.com/1' }),
+        result({ url: 'https://a.com/2' }),
+        result({ url: 'https://a.com/3' }),
+      ],
+      2
+    );
+
+    expect(enriched[0].content).toBeUndefined();
+    expect(enriched[1].content).toContain('content of https://a.com/2');
+    expect(enriched[2].content).toContain('content of https://a.com/3');
+    expect(mockExtract).toHaveBeenCalledTimes(3);
+  });
+
+  it('treats a bot wall like a failure and moves down the ranking', async () => {
+    mockExtract.mockImplementation(async (url) =>
+      url === 'https://a.com/1'
+        ? {
+            url,
+            title: 'Just a moment...',
+            text: 'Checking your browser before accessing a.com. Please enable JavaScript and cookies to continue.',
+            siteName: 'a.com',
+          }
+        : {
+            url,
+            title: 'x',
+            text: longText(`content of ${url}`),
+            siteName: 'a.com',
+          }
+    );
+
+    const enriched = await enrichWebResults(
+      [result({ url: 'https://a.com/1' }), result({ url: 'https://a.com/2' })],
+      1
+    );
+
+    expect(enriched[0].content).toBeUndefined();
+    expect(enriched[1].content).toContain('content of https://a.com/2');
+  });
+
+  it('stops when the candidate list runs out, not at the budget', async () => {
+    mockExtract.mockRejectedValue(new Error('everything is down'));
+
+    const enriched = await enrichWebResults(
+      [result({ url: 'https://a.com/1' }), result({ url: 'https://a.com/2' })],
+      2
+    );
+
+    expect(enriched.every((r) => r.content === undefined)).toBe(true);
+    expect(mockExtract).toHaveBeenCalledTimes(2);
+  });
+
+  it('replaces failures one at a time in sequential mode', async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    mockExtract.mockImplementation(async (url) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await Promise.resolve();
+      inFlight -= 1;
+      if (url === 'https://a.com/1') throw new Error('dead site');
+      return {
+        url,
+        title: 'x',
+        text: longText(`content of ${url}`),
+        siteName: 'a.com',
+      };
+    });
+
+    const enriched = await enrichWebResults(
+      [
+        result({ url: 'https://a.com/1' }),
+        result({ url: 'https://a.com/2' }),
+        result({ url: 'https://a.com/3' }),
+      ],
+      2,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      true
+    );
+
+    expect(maxInFlight).toBe(1);
+    expect(enriched[1].content).toContain('content of https://a.com/2');
+    expect(enriched[2].content).toContain('content of https://a.com/3');
+  });
+
   it('keeps a long legitimate article that merely mentions verification', async () => {
     const text = `How ticket shops fight bots: verify you are human prompts explained. ${'Detailed analysis paragraph. '.repeat(40)}`;
     mockExtract.mockResolvedValue({
