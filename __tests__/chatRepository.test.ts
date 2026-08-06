@@ -122,7 +122,7 @@ describe('forkChat', () => {
       getFirstAsync,
       getAllAsync,
       withTransactionAsync: async (callback: TransactionCallback) => callback(),
-    } as SQLiteDatabase;
+    } as unknown as SQLiteDatabase;
 
     const newChatId = await forkChat(mockDb, 1, 2);
 
@@ -187,7 +187,7 @@ describe('forkChat', () => {
         ])
         .mockResolvedValueOnce([]),
       withTransactionAsync: async (callback: TransactionCallback) => callback(),
-    } as SQLiteDatabase;
+    } as unknown as SQLiteDatabase;
 
     await forkChat(mockDb, 1, 2);
 
@@ -216,7 +216,7 @@ describe('forkChat', () => {
         },
       ]),
       withTransactionAsync: async (callback: TransactionCallback) => callback(),
-    } as SQLiteDatabase;
+    } as unknown as SQLiteDatabase;
 
     await expect(forkChat(mockDb, 1, 999)).rejects.toThrow(
       'Message 999 not found in chat 1'
@@ -278,7 +278,7 @@ describe('forkChat', () => {
           },
         ]),
       withTransactionAsync: async (callback: TransactionCallback) => callback(),
-    } as SQLiteDatabase;
+    } as unknown as SQLiteDatabase;
 
     await forkChat(mockDb, 1, 3);
 
@@ -338,7 +338,7 @@ describe('forkChat', () => {
           },
         ]),
       withTransactionAsync: async (callback: TransactionCallback) => callback(),
-    } as SQLiteDatabase;
+    } as unknown as SQLiteDatabase;
 
     await forkChat(mockDb, 1, 2);
 

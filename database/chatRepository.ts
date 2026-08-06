@@ -64,6 +64,7 @@ export type SourceDocument = {
   url?: string;
   query?: string;
   used?: boolean;
+  read?: boolean;
 };
 
 export const sourceKind = (source: SourceDocument): SourceKind =>
@@ -107,6 +108,10 @@ const parseSourceDocuments = (
             ? source.query
             : undefined,
         used: source.kind === 'web' && source.used === true ? true : undefined,
+        read:
+          source.kind === 'web' && typeof source.read === 'boolean'
+            ? source.read
+            : undefined,
       }));
   } catch {
     return undefined;
