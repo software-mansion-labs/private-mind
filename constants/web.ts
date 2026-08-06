@@ -1,5 +1,6 @@
 export const WEB_SEARCH_MAX_RESULTS = 5;
 export const WEB_SEARCH_TIMEOUT_MS = 8000;
+export const WEB_SEARCH_OVERALL_TIMEOUT_MS = 90000;
 export const WEB_SNIPPET_MAX_CHARS = 500;
 export const WEB_FETCH_TOP_N_CONTENT = 2;
 export const WEB_CONTENT_MAX_CHARS = 1500;
@@ -9,6 +10,11 @@ export const WEB_ADAPTIVE_ENRICH = true;
 export const WEB_ENRICH_WAVE_FIRST = 2;
 export const WEB_ENRICH_WAVE_STEP = 2;
 export const WEB_CONTENT_FETCH_TIMEOUT_MS = 8000;
+
+export const WEB_OFFLOAD_LLM_FOR_EMBEDDINGS = false;
+export const WEB_BENCH_LOGS = false;
+
+export const LOW_MEMORY_DEVICE_GB = 6.5;
 
 export const WEB_RETRIEVAL_FETCH_TOP_N = 5;
 export const WEB_RETRIEVAL_PAGE_MAX_CHARS = 6000;
@@ -24,7 +30,6 @@ export const WEB_FAVICON_URL = (host: string): string =>
 export const WEB_CORRECTIVE_ENABLED = true;
 export const WEB_EVAL_CONFIDENCE_HIGH = 0.6;
 export const WEB_EVAL_CONFIDENCE_LOW = 0.35;
-export const WEB_CORRECTIVE_MAX_ROUNDS = 1;
 export const WEB_CORRECTIVE_MERGED_MAX_RESULTS = 8;
 export const WEB_CORRECTIVE_LLM_REWRITE = true;
 export const WEB_CORRECTIVE_EVIDENCE_PAGES = 3;
@@ -35,8 +40,6 @@ export const WEB_AGREEMENT_SINGLE_HOST_FACTOR = 0.85;
 export const WEB_AGREEMENT_MAX_CLAIMS = 12;
 export const WEB_AGREEMENT_MAX_TEXT_CHARS = 4000;
 export const WEB_AGREEMENT_MIN_BARE_VALUE = 10;
-
-export const WEB_POSTGEN_CORRECTION_ENABLED = false;
 
 export const WEB_QUERY_REWRITE = true;
 export const WEB_QUERY_CONTEXT_TURNS = 3;
@@ -52,6 +55,20 @@ export const URL_FETCH_MAX_BYTES = 2_000_000;
 export const URL_FETCH_USER_AGENT =
   'Mozilla/5.0 (compatible; PrivateMind/1.0; +on-device)';
 
+export const URL_FETCH_ACCEPTED_CONTENT_TYPE = /text\/|\+xml|\/xml|\/json/i;
+
+export const BINARY_BODY_SIGNATURES = [
+  '%PDF-',
+  'PK\x03\x04',
+  '\x89PNG',
+  '\xff\xd8\xff',
+  'GIF8',
+];
+
+export const WEB_CACHE_TTL_MS = 10 * 60 * 1000;
+export const WEB_SERP_CACHE_MAX_ENTRIES = 32;
+export const WEB_PAGE_CACHE_MAX_CHARS = 250_000;
+
 export const WEB_SEARCH_ENABLED = true;
 
 export interface ScrapeEngine {
@@ -62,9 +79,9 @@ export interface ScrapeEngine {
 export const SCRAPE_ENGINES: ScrapeEngine[] = [
   { id: 'ddg-html', url: 'https://html.duckduckgo.com/html/?q=' },
   { id: 'ddg-lite', url: 'https://lite.duckduckgo.com/lite/?q=' },
+  { id: 'brave', url: 'https://search.brave.com/search?q=' },
   { id: 'mojeek', url: 'https://www.mojeek.com/search?q=' },
 ];
-export const SCRAPE_MAX_PARALLEL = 1;
 export const SCRAPE_MIN_DELAY_MS = 1500;
 export const SCRAPE_PAGE_LOAD_TIMEOUT_MS = 20000;
 export const SCRAPE_CHALLENGE_TIMEOUT_MS = 120000;

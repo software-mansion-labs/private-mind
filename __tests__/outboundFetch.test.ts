@@ -2,7 +2,6 @@ import {
   isHttpUrl,
   isPrivateHost,
   assertPublicHttpUrl,
-  enforceResponseSize,
 } from '../utils/web/security/outboundFetch';
 
 describe('isHttpUrl', () => {
@@ -74,25 +73,5 @@ describe('assertPublicHttpUrl', () => {
 
   it('throws on a malformed url', () => {
     expect(() => assertPublicHttpUrl('http://')).toThrow();
-  });
-});
-
-describe('enforceResponseSize', () => {
-  const resp = (contentLength: string | null): Response =>
-    ({ headers: { get: () => contentLength } }) as unknown as Response;
-
-  it('throws when Content-Length exceeds the cap', () => {
-    expect(() => enforceResponseSize(resp('50000000'))).toThrow();
-  });
-
-  it('passes when under the cap, missing, or non-numeric', () => {
-    expect(() => enforceResponseSize(resp('1000'))).not.toThrow();
-    expect(() => enforceResponseSize(resp(null))).not.toThrow();
-    expect(() => enforceResponseSize(resp('not-a-number'))).not.toThrow();
-  });
-
-  it('respects an explicit maxBytes override', () => {
-    expect(() => enforceResponseSize(resp('2000'), 1000)).toThrow();
-    expect(() => enforceResponseSize(resp('500'), 1000)).not.toThrow();
   });
 });

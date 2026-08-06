@@ -28,7 +28,7 @@ export const buildSerpParserJs = (
       return m ? m[1].toLowerCase() : '';
     };
 
-    var ENGINE_HOST = /(^|\\.)(duckduckgo\\.com|mojeek\\.com)$/;
+    var ENGINE_HOST = /(^|\\.)(duckduckgo\\.com|mojeek\\.com|brave\\.com)$/;
 
     var results = [];
     var seen = {};
@@ -48,14 +48,21 @@ export const buildSerpParserJs = (
         snip: '.result__snippet, [data-testid="result-snippet"]' },
       { box: 'ul.results-standard li, ol.results li, li.result',
         link: 'h2 a, a.title, a',
-        snip: 'p.s, .s, .snippet' }
+        snip: 'p.s, .s, .snippet' },
+      { box: 'div.snippet[data-type="web"], div.snippet',
+        link: 'a[href^="http"], a',
+        title: '.search-snippet-title, .title',
+        snip: '.generic-snippet .content, .snippet-content, .snippet-description' }
     ];
     for (var s = 0; s < CONTAINERS.length && results.length === 0; s++) {
       var boxes = document.querySelectorAll(CONTAINERS[s].box);
       for (var i = 0; i < boxes.length && results.length < MAX; i++) {
         var link = boxes[i].querySelector(CONTAINERS[s].link);
         if (!link) continue;
-        add(textOf(link), hrefOf(link), textOf(boxes[i].querySelector(CONTAINERS[s].snip)), 1);
+        var titleEl = CONTAINERS[s].title
+          ? boxes[i].querySelector(CONTAINERS[s].title)
+          : null;
+        add(textOf(titleEl || link), hrefOf(link), textOf(boxes[i].querySelector(CONTAINERS[s].snip)), 1);
       }
     }
 

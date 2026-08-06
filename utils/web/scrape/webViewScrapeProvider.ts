@@ -41,8 +41,18 @@ export class WebViewScrapeProvider implements WebSearchProvider {
     this.host?.reset?.();
   }
 
+  skipEngine(): void {
+    this.settle([], null);
+    this.host?.reset?.();
+  }
+
   recheck(): void {
     this.host?.recheck?.();
+  }
+
+  releaseHost(): void {
+    if (this.pending) return;
+    this.host?.reset?.();
   }
 
   isChallengeActive(): boolean {
