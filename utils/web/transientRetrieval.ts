@@ -4,6 +4,7 @@ import type { WebSearchResult } from './types';
 import type { WebRetrievalSignals } from './retrievalEvaluator';
 import { extractQueryTerms, stemPrefix } from '../queryTerms';
 import { detectQuestionLanguage } from '../questionLanguage';
+import { selectRelevantContent } from './webResultsToContext';
 import {
   adaptiveKeepCount,
   cosineSimilarity,
@@ -91,7 +92,10 @@ const stitchPassages = (passages: string[]): string => {
   return stitched;
 };
 
-const chunkPages = async (results: WebSearchResult[]): Promise<WebChunk[]> => {
+const chunkPages = async (
+  results: WebSearchResult[],
+  query?: string
+): Promise<WebChunk[]> => {
   const pages = results
     .map((result, pageIndex) => ({ result, pageIndex }))
     .filter(({ result }) => result.content?.trim());
@@ -105,7 +109,11 @@ const chunkPages = async (results: WebSearchResult[]): Promise<WebChunk[]> => {
 
   const chunks: WebChunk[] = [];
   for (const { result, pageIndex } of pages) {
-    const text = result.content!.trim().slice(0, WEB_RETRIEVAL_PAGE_MAX_CHARS);
+    const text = selectRelevantContent(
+      result.content!,
+      query,
+      WEB_RETRIEVAL_PAGE_MAX_CHARS
+    );
     const split = (await splitter.splitText(text)).slice(0, perPageCap);
     split.forEach((chunkText, chunkIndex) => {
       const trimmed = chunkText.trim();
@@ -133,7 +141,7 @@ export const retrieveWebPassages = async (
   topK: number = WEB_RETRIEVAL_TOP_K
 ): Promise<WebRetrievalResult> => {
   if (signal?.aborted) return { results, signals: null };
-  const chunks = await chunkPages(results);
+  const chunks = await chunkPages(results, query.semanticQuery);
   if (chunks.length === 0) return { results, signals: null };
 
   const queryKey = `q:${query.semanticQuery}`;

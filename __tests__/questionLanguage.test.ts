@@ -10,6 +10,16 @@ import {
 const codeOf = (question: string) =>
   detectQuestionLanguage(question)?.code ?? null;
 
+describe('detectQuestionLanguage — Polish typed without diacritics', () => {
+  it.each([
+    'Znajdz najdrozsza oferte karty graficznej rtx 5080 na xkom',
+    'ktory sklep ma najlepsza cene rtx 5080',
+    'pokaz najtansze bilety do Krakowa',
+  ])('names Polish for %s', (question) => {
+    expect(detectQuestionLanguage(question)?.code).toBe('pl');
+  });
+});
+
 describe('detectQuestionLanguage', () => {
   it('names Polish from function words alone, without diacritics', () => {
     expect(codeOf('Kto jest kanclerzem Niemiec?')).toBe('pl');
@@ -18,6 +28,20 @@ describe('detectQuestionLanguage', () => {
 
   it('names Polish from diacritics', () => {
     expect(codeOf('najświeższe wiadomości ze świata')).toBe('pl');
+  });
+
+  it('never mistakes diacritic-free Polish for Portuguese', () => {
+    for (const question of [
+      'Znajdz najdrozsza oferte karty graficznej rtx 5080 na xkom',
+      'najlepsza pizza na wynos w Krakowie',
+      'ceny mieszkan na rynku wtornym',
+    ]) {
+      expect(['pl', null]).toContain(codeOf(question));
+    }
+  });
+
+  it('still names Portuguese from its own function words', () => {
+    expect(codeOf('quanto custa uma placa de video hoje')).toBe('pt');
   });
 
   it('names English', () => {
@@ -93,7 +117,6 @@ describe('detectQuestionLanguage', () => {
       detectThreadLanguage(['jaka jest dzisiaj pogoda w Gdansku', 'a jutro?'])
         ?.code
     ).toBe('pl');
-    // A switch mid-thread is the user's, not drift: the newest namable message wins.
     expect(
       detectThreadLanguage([
         'jaka jest dzisiaj pogoda',
@@ -104,10 +127,6 @@ describe('detectQuestionLanguage', () => {
   });
 });
 
-// The 103 everyday questions behind the multilingual benchmark. Naming the
-// WRONG language is worse than naming none — the prompt then orders the model
-// into a language the user did not write in — so that is asserted separately
-// and at zero.
 describe('detectQuestionLanguage over the multilingual corpus', () => {
   const results = MULTILINGUAL_SCENARIOS.map((scenario) => ({
     id: scenario.id,

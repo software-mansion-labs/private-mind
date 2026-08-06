@@ -1,12 +1,6 @@
-/**
- * Name the question's language for the prompt — a 2B model asked to infer it
- * drifts (a Polish question came back in Russian). Generic rule is the fallback.
- */
-
 export interface QuestionLanguage {
   code: string;
   name: string;
-  /** Named for non-Latin languages only, where models fall back to Latin. */
   script?: string;
 }
 
@@ -78,8 +72,6 @@ const SCRIPT_GROUPS: [RegExp, string[]][] = [
   [CYRILLIC, ['ru', 'uk']],
 ];
 
-// A borrowed word or stray mark from another script isn't the text's script —
-// an Urdu sentence closed with a Devanagari danda used to read as Hindi.
 const MIN_SCRIPT_CHARS = 2;
 
 const LATIN_CANDIDATES = [
@@ -98,8 +90,6 @@ const LATIN_CANDIDATES = [
   'vi',
 ];
 
-// Letters that narrow the field. One shared by several candidates supports a
-// decision but never makes it alone ("ü" alone handed Turkish to German).
 const LETTERS: Record<string, string> = {
   pl: 'ąęłżźśćń',
   cs: 'ěřůňďť',
@@ -118,12 +108,10 @@ const LETTERS: Record<string, string> = {
   fa: 'پچژگ',
 };
 
-// Function/query words a question is built from. Overlaps are deliberate: a
-// word under two languages is evidence for neither alone.
 const WORDS: Record<string, string> = {
   en: 'who what which is are the how where when why today tomorrow now will latest current news weather price cost of and in for to my me it can do does much many time year best near open per',
-  pl: 'kto co jest są czy jak jaka jaki jakie gdzie kiedy ile dlaczego jutro dzisiaj dziś teraz aktualny obecny aktualna najnowsze wiadomości pogoda cena kurs koszt się masz hej cześć siema oraz dla mnie moje jak długo ile kosztuje',
-  cs: 'kdo co je jsou jak kde kdy proč dnes zítra teď zprávy počasí cena kolik stojí jaký jaká jaké nejnovější aktuální mi moje',
+  pl: 'kto co jest są czy jak jaka jaki jakie gdzie kiedy ile dlaczego jutro dzisiaj dziś teraz aktualny obecny aktualna najnowsze wiadomości pogoda cena kurs koszt się masz hej cześć siema oraz dla mnie moje jak długo ile kosztuje na od do po za nie to który która które znajdź szukaj pokaż sprawdź podaj napisz wyjaśnij kup kupić zrobić działa najlepszy najlepsza najlepsze najtańszy najtańsza najdroższy najdroższa najdroższe największy największa najszybszy najnowszy sklep sklepie polsce polski wynosi',
+  cs: 'kdo co je jsou jak kde kdy proč dnes zítra teď zprávy počasí cena kolik stojí jaký jaká jaké nejnovější aktuální mi moje na od do po za to',
   de: 'wer was ist sind wie wo wann warum heute morgen jetzt aktuelle aktueller aktuelles nachrichten wetter preis kosten kostet der die das und für ich mein wieviel viel beantrage bekomme gibt pro',
   nl: 'wie wat welke is zijn hoe waar wanneer waarom vandaag morgen nu actuele nieuws weer prijs kosten kost het de een en voor ik mijn hoeveel krijg aanvragen per',
   fr: 'qui que quoi quel quelle est sont comment quand pourquoi aujourd hui demain maintenant actualités météo prix coût combien le les des du pour mon ma je faire montant',
@@ -142,8 +130,6 @@ const WORDS: Record<string, string> = {
 };
 
 const MARKS = /[̀-ͯ]/g;
-// NFD leaves these as their own letters, so ASCII typing would miss the word.
-// Arabic spells one letter several ways (ی vs ي); unify for the word list.
 const SPECIAL_FOLDS: Record<string, string> = {
   ł: 'l',
   ı: 'i',
@@ -192,8 +178,6 @@ const LETTER_INDEX = index(LETTERS, 'chars');
 
 const EXCLUSIVE_WEIGHT = 3;
 
-// Exclusivity is resolved against the candidate set: "как" is shared with
-// nothing once the script has ruled out non-Cyrillic languages.
 const pickCandidate = (
   question: string,
   candidates: string[]
@@ -203,26 +187,27 @@ const pickCandidate = (
   const score = new Map<string, number>();
   const exclusive = new Map<string, number>();
 
-  const credit = (langs: Set<string> | undefined) => {
+  const decisive = (token: string): boolean =>
+    token.length >= 3 || !/^[a-z]+$/.test(token);
+
+  const credit = (langs: Set<string> | undefined, isDecisive: boolean) => {
     if (!langs) return;
     const hits = [...langs].filter((code) => allowed.has(code));
     if (hits.length === 0) return;
     const weight = hits.length === 1 ? EXCLUSIVE_WEIGHT : 1;
     for (const code of hits) {
       score.set(code, (score.get(code) ?? 0) + weight);
-      if (hits.length === 1) {
+      if (hits.length === 1 && isDecisive) {
         exclusive.set(code, (exclusive.get(code) ?? 0) + 1);
       }
     }
   };
 
   for (const token of fold(question).split(/[^\p{L}]+/u)) {
-    if (token.length >= 2) credit(WORD_INDEX.get(token));
+    if (token.length >= 2) credit(WORD_INDEX.get(token), decisive(token));
   }
-  // Distinct characters only: one accent repeated across a sentence is a single
-  // piece of evidence, not five.
   for (const char of new Set(question.toLowerCase())) {
-    credit(LETTER_INDEX.get(char));
+    credit(LETTER_INDEX.get(char), true);
   }
 
   let best: string | null = null;
@@ -251,8 +236,6 @@ const named = (code: string): QuestionLanguage => ({
 });
 
 const dominantScript = (question: string): string[] | null => {
-  // Kana is written by one language only, so any settles it — a Japanese
-  // sentence can hold more kanji than kana and read as Chinese.
   if (KANA.test(question)) return ['ja'];
   let best: string[] | null = null;
   let bestCount = MIN_SCRIPT_CHARS - 1;
@@ -274,8 +257,6 @@ export const detectQuestionLanguage = (
   const candidates = dominantScript(question);
   if (candidates) {
     const code = pickCandidate(question, candidates);
-    // With nothing pointing at Persian/Urdu, plain Arabic script is Arabic;
-    // Cyrillic has no such default, so leave ru/uk to the generic rule.
     if (!code) return candidates.includes('ar') ? named('ar') : null;
     return named(code);
   }
@@ -283,8 +264,6 @@ export const detectQuestionLanguage = (
   return latin ? named(latin) : null;
 };
 
-// Follow-ups ("a jutro?") are too thin to name a language — exactly when the
-// model drifts. The newest user message that can be named wins.
 export const detectThreadLanguage = (
   userMessages: string[]
 ): QuestionLanguage | null => {

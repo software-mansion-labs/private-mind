@@ -138,3 +138,35 @@ describe('a Latin name glued to an unsegmented script', () => {
     expect(extractQueryTerms('2026年8月5日の天気')).not.toContain('年');
   });
 });
+
+describe('stopwords are the question language’s, not every language’s', () => {
+  it('keeps English words that are function words somewhere else', () => {
+    for (const [query, term] of [
+      ['when did the second world war end', 'war'],
+      ['how many children does the king have', 'children'],
+      ['what is the price of a felt hat', 'hat'],
+      ['why do stars die', 'die'],
+      ['who is the son of the president', 'son'],
+    ] as const) {
+      expect([...extractQueryTerms(query, 'en')]).toContain(term);
+    }
+  });
+
+  it('still strips each language’s own question words', () => {
+    expect([...extractQueryTerms('ile kosztuje bilet', 'pl')]).toEqual([
+      'kosztuje',
+      'bilet',
+    ]);
+    expect([
+      ...extractQueryTerms('wie beantrage ich einen Pass', 'de'),
+    ]).toEqual(['beantrage', 'pass']);
+    expect([...extractQueryTerms('bugün altın fiyatı ne kadar', 'tr')]).toEqual(
+      ['bugün', 'altın', 'fiyatı']
+    );
+  });
+
+  it('falls back to every list when the text is not a question', () => {
+    expect([...extractQueryTerms('war')]).toEqual([]);
+    expect([...extractQueryTerms('war', 'en')]).toEqual(['war']);
+  });
+});
