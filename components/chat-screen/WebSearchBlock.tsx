@@ -40,12 +40,26 @@ interface Props {
   results: SourceDocument[];
 }
 
+const deriveTitle = (
+  isSearching: boolean,
+  trace: WebSearchTraceEntry[]
+): string => {
+  if (isSearching) return 'Searching the web…';
+  if (trace.some((entry) => entry.type === 'offline'))
+    return 'No internet connection';
+  if (trace.some((entry) => entry.type === 'skipped'))
+    return 'Answered without searching';
+  return 'Searched the web';
+};
+
 const WebSearchBlock = memo(({ isSearching, trace, results }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const isLiveBlock = isSearching || trace.length > 0;
-  const traceExpanded = useWebSearchStore((state) => state.traceExpanded);
+  const traceExpanded = useWebSearchStore(
+    (state) => isLiveBlock && state.traceExpanded
+  );
   const setTraceExpanded = useWebSearchStore((state) => state.setTraceExpanded);
   const [localExpanded, setLocalExpanded] = useState(false);
   const expanded = isLiveBlock ? traceExpanded : localExpanded;
@@ -91,11 +105,22 @@ const WebSearchBlock = memo(({ isSearching, trace, results }: Props) => {
   useEffect(() => {
     if (expanded) setListMounted(true);
   }, [expanded]);
-  const handleCollapsed = useCallback(() => setListMounted(false), []);
+  const isSearchingRef = useRef(isSearching);
+  isSearchingRef.current = isSearching;
+  const handleCollapsed = useCallback(() => {
+    if (isSearchingRef.current) setListMounted(false);
+  }, []);
+
+  const openPage = useCallback((url?: string) => {
+    if (!url) return;
+    WebBrowser.openBrowserAsync(url).catch((error) =>
+      console.warn('Failed to open browser', error)
+    );
+  }, []);
 
   if (rows.length === 0 && !isSearching) return null;
 
-  const title = isSearching ? 'Searching the web…' : 'Searched the web';
+  const title = deriveTitle(isSearching, trace);
   const current = rows[rows.length - 1];
 
   const toggleExpanded = () => {
@@ -104,15 +129,14 @@ const WebSearchBlock = memo(({ isSearching, trace, results }: Props) => {
     else setLocalExpanded((prev) => !prev);
   };
 
-  const openPage = (url?: string) => {
-    if (!url) return;
-    WebBrowser.openBrowserAsync(url).catch(() => {});
-  };
-
   return (
     <Animated.View
       style={styles.container}
-      layout={LinearTransition.duration(WEB_TRACE_TRANSITION_MS)}
+      layout={
+        isSearching
+          ? LinearTransition.duration(WEB_TRACE_TRANSITION_MS)
+          : undefined
+      }
     >
       <Pressable
         style={styles.header}

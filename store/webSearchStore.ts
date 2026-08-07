@@ -11,8 +11,11 @@ export interface WebSearchTraceEntry extends WebSearchProgressEvent {
   id: number;
 }
 
-export const WEB_TRACE_MAX = 24;
+export const WEB_TRACE_MAX = 64;
 let nextTraceId = 0;
+
+const isPhaseEvent = (event: WebSearchProgressEvent): boolean =>
+  event.type === 'reading' || event.type === 'ranking';
 
 export interface ChallengeHandlers {
   open: () => void;
@@ -74,7 +77,13 @@ export const useWebSearchStore = create<WebSearchStore>()(
       pushWebSearchEvent: (event) => {
         const entry: WebSearchTraceEntry = { ...event, id: nextTraceId++ };
         set((state) => {
-          const next = [...state.webSearchTrace, entry];
+          const previous = state.webSearchTrace;
+          const last = previous[previous.length - 1];
+          const base =
+            last && isPhaseEvent(last) && isPhaseEvent(entry)
+              ? previous.slice(0, -1)
+              : previous;
+          const next = [...base, entry];
           return {
             webSearchTrace:
               next.length > WEB_TRACE_MAX ? next.slice(-WEB_TRACE_MAX) : next,
