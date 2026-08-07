@@ -38,6 +38,28 @@ describe('useMessageSources', () => {
     expect(r.documentSources.map((s) => s.name)).toEqual(['PDF']);
   });
 
+  it('offers no unopened page as a source, but keeps it for the trace', () => {
+    const r = render([
+      doc({ name: 'Opened', kind: 'web', url: 'https://a.com', read: true }),
+      doc({ name: 'Unopened', kind: 'web', url: 'https://b.com', read: false }),
+    ]);
+    expect(r.displayedSources.map((s) => s.name)).toEqual(['Opened']);
+    expect(r.webResults.map((s) => s.name)).toEqual(['Opened', 'Unopened']);
+  });
+
+  it('keeps an unopened page whose listing grounded the answer', () => {
+    const r = render([
+      doc({
+        name: 'Listing',
+        kind: 'web',
+        url: 'https://a.com',
+        read: false,
+        used: true,
+      }),
+    ]);
+    expect(r.displayedSources.map((s) => s.name)).toEqual(['Listing']);
+  });
+
   it('keeps a web source out of document sources unless it was used', () => {
     const r = render([
       doc({ documentId: 1, name: 'Unused', kind: 'web' }),

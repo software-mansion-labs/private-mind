@@ -3,7 +3,7 @@ import { type SourceDocument } from '../database/chatRepository';
 import { sourceKey } from '../utils/contextUtils';
 
 export const useMessageSources = (sourceDocuments?: SourceDocument[]) => {
-  const displayedSources = useMemo(() => {
+  const deduped = useMemo(() => {
     if (!sourceDocuments?.length) return [];
 
     const seen = new Set<string>();
@@ -18,9 +18,18 @@ export const useMessageSources = (sourceDocuments?: SourceDocument[]) => {
     });
   }, [sourceDocuments]);
 
+  const displayedSources = useMemo(
+    () =>
+      deduped.filter(
+        (source) =>
+          source.kind !== 'web' || source.read !== false || source.used === true
+      ),
+    [deduped]
+  );
+
   const webResults = useMemo(
-    () => displayedSources.filter((source) => source.kind === 'web'),
-    [displayedSources]
+    () => deduped.filter((source) => source.kind === 'web'),
+    [deduped]
   );
 
   const documentSources = useMemo(
