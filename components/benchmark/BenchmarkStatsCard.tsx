@@ -4,8 +4,13 @@ import { Divider } from '../Divider';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import { BenchmarkResultPerformanceNumbers } from '../../database/benchmarkRepository';
 
-const BenchmarkStatsCard = ({ data }: { data: any }) => {
+const BenchmarkStatsCard = ({
+  data,
+}: {
+  data: BenchmarkResultPerformanceNumbers;
+}) => {
   const { styles } = useThemedStyles(createStyles);
 
   return (

@@ -15,9 +15,15 @@ import BenchmarkStatsCard from '../benchmark/BenchmarkStatsCard';
 import DeviceInfoCard from '../benchmark/DeviceInfoCard';
 import BenchmarkDateCard from '../benchmark/BenchmarkDateCard';
 import { Feedback } from '../../utils/Feedback';
+import { BenchmarkResult } from '../../database/benchmarkRepository';
+import { Model } from '../../database/modelRepository';
+
+export interface BenchmarkResultSheetData extends BenchmarkResult {
+  model?: Model;
+}
 
 interface Props {
-  bottomSheetModalRef: RefObject<BottomSheetModal | null>;
+  bottomSheetModalRef: RefObject<BottomSheetModal<BenchmarkResultSheetData> | null>;
   handleDelete: (benchmarkId: number) => Promise<void>;
 }
 
@@ -69,24 +75,32 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.sheetBackground}
     >
-      {(props) => (
-        <BottomSheetScrollView contentContainerStyle={styles.contentContainer}>
-          <Text style={styles.header}>Benchmark results</Text>
-          <ModelCard model={props.data.model} onPress={() => {}} />
-          <BenchmarkStatsCard data={props.data} />
-          <DeviceInfoCard deviceInfo={deviceInfo} />
-          <BenchmarkDateCard timestamp={props.data.timestamp} />
-          <SecondaryButton
-            text="Delete this benchmark"
-            style={styles.deleteButton}
-            textStyle={styles.deleteText}
-            onPress={async () => {
-              await handleDelete(props.data.id);
-              bottomSheetModalRef.current?.dismiss();
-            }}
-          />
-        </BottomSheetScrollView>
-      )}
+      {({ data }) => {
+        if (!data) return null;
+
+        const onDeletePress = async () => {
+          await handleDelete(data.id);
+          bottomSheetModalRef.current?.dismiss();
+        };
+
+        return (
+          <BottomSheetScrollView
+            contentContainerStyle={styles.contentContainer}
+          >
+            <Text style={styles.header}>Benchmark results</Text>
+            {data.model && <ModelCard model={data.model} onPress={() => {}} />}
+            <BenchmarkStatsCard data={data} />
+            <DeviceInfoCard deviceInfo={deviceInfo} />
+            <BenchmarkDateCard timestamp={data.timestamp} />
+            <SecondaryButton
+              text="Delete this benchmark"
+              style={styles.deleteButton}
+              textStyle={styles.deleteText}
+              onPress={onDeletePress}
+            />
+          </BottomSheetScrollView>
+        );
+      }}
     </BottomSheetModal>
   );
 };

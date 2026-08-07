@@ -7,7 +7,7 @@ jest.mock('../store/llmStore', () => ({ useLLMStore: jest.fn() }));
 jest.mock('expo-sqlite', () => ({ useSQLiteContext: jest.fn(() => ({})) }));
 jest.mock('../database/benchmarkRepository');
 
-const mockUseLLMStore = useLLMStore as jest.Mock;
+const mockUseLLMStore = useLLMStore as unknown as jest.Mock;
 const mockInsertBenchmark = benchmarkRepository.insertBenchmark as jest.Mock;
 
 const baseModel = {
@@ -48,8 +48,6 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-// ─── initial state ────────────────────────────────────────────────────────────
-
 describe('initial state', () => {
   it('starts idle', () => {
     const { result } = renderHook(() =>
@@ -60,8 +58,6 @@ describe('initial state', () => {
     expect(result.current.timer).toBe(0);
   });
 });
-
-// ─── startBenchmark ───────────────────────────────────────────────────────────
 
 describe('startBenchmark', () => {
   it('does nothing when no model is selected', async () => {
@@ -91,14 +87,12 @@ describe('startBenchmark', () => {
       useBenchmarkRunner({ onComplete: jest.fn() })
     );
 
-    // startBenchmark sets isRunning synchronously before any awaits
     act(() => {
       result.current.startBenchmark(baseModel);
     });
 
     expect(result.current.isRunning).toBe(true);
 
-    // Resolve the hanging promise to avoid open handles
     await act(async () => {
       if (resolveRunBenchmark) resolveRunBenchmark(perfResult);
       jest.advanceTimersByTime(10000);
@@ -215,8 +209,6 @@ describe('startBenchmark', () => {
   });
 });
 
-// ─── cancelBenchmark ─────────────────────────────────────────────────────────
-
 describe('cancelBenchmark', () => {
   it('calls interrupt and sets isRunning=false', () => {
     const interrupt = jest.fn();
@@ -253,7 +245,6 @@ describe('cancelBenchmark', () => {
       useBenchmarkRunner({ onComplete: jest.fn() })
     );
 
-    // Start benchmark and cancel mid-way through first iteration
     let startPromise: Promise<void>;
     act(() => {
       startPromise = result.current.startBenchmark(baseModel) as any;
@@ -264,7 +255,6 @@ describe('cancelBenchmark', () => {
       await startPromise;
     });
 
-    // With cancel, should not complete all 3 iterations
     expect(runBenchmark.mock.calls.length).toBeLessThan(3);
   });
 });

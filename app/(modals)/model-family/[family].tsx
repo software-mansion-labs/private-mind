@@ -28,7 +28,7 @@ const FamilyScreen = () => {
 
   const { models } = useModelStore();
 
-  const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
+  const modelManagementSheetRef = useRef<BottomSheetModal<Model> | null>(null);
   const wifiWarningSheetRef = useRef<BottomSheetModal<WarningSheetData> | null>(
     null
   );
@@ -91,7 +91,6 @@ const FamilyScreen = () => {
 export default FamilyScreen;
 
 const scrollIndicatorInsets = Platform.select({
-  // iOS 17.5 can initially place the indicator on the left when auto-adjusting.
   ios: { right: 1 },
 });
 
