@@ -38,6 +38,14 @@ describe('useMessageSources', () => {
     expect(r.documentSources.map((s) => s.name)).toEqual(['PDF']);
   });
 
+  it('shows a web source whose read flag was never set', () => {
+    const r = render([
+      doc({ name: 'Web', kind: 'web', url: 'https://a.com' }),
+    ]);
+    expect(r.displayedSources.map((s) => s.name)).toEqual(['Web']);
+    expect(r.hasSources).toBe(true);
+  });
+
   it('offers no unopened page as a source, but keeps it for the trace', () => {
     const r = render([
       doc({ name: 'Opened', kind: 'web', url: 'https://a.com', read: true }),
