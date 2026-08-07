@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import type { LLMStore } from '../store/llmStore';
 import type { Attachment } from '../hooks/useAttachment';
 import type { PermissionStatus } from 'react-native-audio-api';
+import type { SharedValue } from 'react-native-reanimated';
 
 // ── mocks ─────────────────────────────────────────────────────────────────────
 
@@ -193,7 +194,7 @@ import { useLLMStore } from '../store/llmStore';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
 
-const mockUseLLMStore = useLLMStore as jest.Mock;
+const mockUseLLMStore = useLLMStore as unknown as jest.Mock;
 const mockAudioManager = AudioManager as jest.Mocked<typeof AudioManager>;
 
 const downloadedModel = {
@@ -211,6 +212,8 @@ const downloadedModel = {
 
 const defaultProps = {
   chatId: 1,
+  ref: { current: null },
+  extraContentPadding: { value: 0 } as unknown as SharedValue<number>,
   onSend: jest.fn(),
   onSelectModel: jest.fn(),
   onSelectPrompt: jest.fn(),
