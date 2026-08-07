@@ -191,7 +191,6 @@ const Messages = ({
   const { styles, theme } = useThemedStyles(createStyles);
   const scrollRef = useRef<Reanimated.ScrollView>(null);
   const isAtBottomRef = useRef(true);
-  const isAtScrollEndRef = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [activeUserActionsId, setActiveUserActionsId] = useState<number | null>(
     null
@@ -452,10 +451,23 @@ const Messages = ({
       blankSpace.set(next);
     }
 
-    if (followPin.current) {
-      scrollToPinnedQuestion();
-    }
+    if (!followPin.current || next === 0) return;
+    scrollToPinnedQuestion();
   }, [blankSpace, pinnedScrollOffset, scrollToPinnedQuestion]);
+
+  const wasGenerating = useRef(isGenerating);
+  useLayoutEffect(() => {
+    const finished = wasGenerating.current && !isGenerating;
+    wasGenerating.current = isGenerating;
+    if (!finished || !pinActive.current) return;
+
+    const frame = requestAnimationFrame(recomputeBlankSpace);
+    const timer = setTimeout(recomputeBlankSpace, 250);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, [isGenerating, recomputeBlankSpace]);
 
   useImperativeHandle(
     ref,
@@ -480,7 +492,6 @@ const Messages = ({
         }
         if (!isAtBottomRef.current) {
           isAtBottomRef.current = true;
-          isAtScrollEndRef.current = true;
           setShowScrollButton(false);
           snapToEnd();
         }
@@ -532,12 +543,20 @@ const Messages = ({
       const { contentOffset, contentSize, layoutMeasurement, contentInset } =
         event.nativeEvent;
       lastScrollOffset.current = contentOffset.y;
-      lastLayoutHeight.current = layoutMeasurement.height;
       const scrollableBottom =
         contentSize.height +
         (contentInset?.bottom ?? 0) -
         (contentOffset.y + layoutMeasurement.height);
-      isAtScrollEndRef.current = scrollableBottom < 100;
+
+      if (
+        contentSize.height !== lastContentHeight.current ||
+        layoutMeasurement.height !== lastLayoutHeight.current
+      ) {
+        lastContentHeight.current = contentSize.height;
+        lastLayoutHeight.current = layoutMeasurement.height;
+        containerHeight.current = layoutMeasurement.height;
+        recomputeBlankSpace();
+      }
 
       const pinInset = pinActive.current ? blankSpace.value : 0;
       const distanceFromBottom = scrollableBottom - pinInset;
@@ -545,11 +564,12 @@ const Messages = ({
       isAtBottomRef.current = atBottom;
       setShowScrollButton(!atBottom);
     },
-    [blankSpace]
+    [blankSpace, recomputeBlankSpace]
   );
 
   const scrollToBottom = useCallback(() => {
     closeUserActionMenu();
+    followPin.current = false;
     scrollRef.current?.scrollToEnd({ animated: true });
   }, [closeUserActionMenu]);
 
@@ -639,10 +659,6 @@ const Messages = ({
     if (keyboardOpenRef.current) {
       userScrolledDuringKeyboard.current = true;
     }
-  }, []);
-
-  const handleScrollSettle = useCallback(() => {
-    followPin.current = isAtScrollEndRef.current;
   }, []);
 
   const handleForkMessage = useCallback(
@@ -775,8 +791,6 @@ const Messages = ({
         onLayout={handleContainerLayout}
         onScroll={handleScroll}
         onScrollBeginDrag={handleScrollBeginDrag}
-        onScrollEndDrag={handleScrollSettle}
-        onMomentumScrollEnd={handleScrollSettle}
         onTouchStart={handleScrollTouchStart}
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}

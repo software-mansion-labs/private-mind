@@ -144,12 +144,17 @@ const ChatBar = ({
       // view once they disappear. Re-capture on inset changes (Android
       // navigation mode, rotation), or the stale baseline reads the difference
       // as "the bar grew".
-      if (
-        hasMessages &&
-        (defaultBarHeight.current === 0 || baselineInset.current !== inset)
-      ) {
-        defaultBarHeight.current = height;
-        baselineInset.current = inset;
+      const isResting = !userInput && attachments.length === 0;
+      if (hasMessages && isResting) {
+        if (baselineInset.current !== inset) {
+          defaultBarHeight.current = height;
+          baselineInset.current = inset;
+        } else if (
+          defaultBarHeight.current === 0 ||
+          height < defaultBarHeight.current
+        ) {
+          defaultBarHeight.current = height;
+        }
       }
       const baseline = defaultBarHeight.current || height;
       const delta = height - baseline;
@@ -169,11 +174,13 @@ const ChatBar = ({
       }
     },
     [
+      attachments.length,
       extraContentPadding,
       onBarGrow,
       onHeightChange,
       hasMessages,
       theme.insets.bottom,
+      userInput,
     ]
   );
 
@@ -208,6 +215,10 @@ const ChatBar = ({
     const imageUriToSend = imageAttachment?.uri;
     const inputToSend = userInput;
 
+    if (Platform.OS === 'ios') {
+      textInputRef.current?.blur();
+      setIosInputKey((key) => key + 1);
+    }
     setUserInput('');
     clearAll({ cleanupSources: false });
     Promise.resolve(
