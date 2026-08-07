@@ -15,7 +15,7 @@ jest.mock('../store/chatStore', () => ({
 }));
 
 const mockGetChatSettings = chatRepository.getChatSettings as jest.Mock;
-const mockUseChatStore = useChatStore as jest.Mock;
+const mockUseChatStore = useChatStore as unknown as jest.Mock;
 
 const baseChat = {
   id: 1,
