@@ -1,4 +1,5 @@
 import { renderHook } from '@testing-library/react-native';
+import { Keyboard } from 'react-native';
 import { useKeyboardLift } from '../components/chat-screen/useKeyboardLift';
 
 let mockInsetsBottom = 0;
@@ -60,6 +61,28 @@ describe('useKeyboardLift', () => {
     const { result } = renderHook(() => useKeyboardLift());
 
     expect(result.current.value).toBe(-300);
+  });
+
+  it('drops the bar back when the keyboard never actually appeared', () => {
+    mockInsetsBottom = 34;
+    mockHeight.value = -346;
+    mockProgress.value = 1;
+    const listeners: Record<string, () => void> = {};
+    const spy = jest
+      .spyOn(Keyboard, 'addListener')
+      .mockImplementation((event, handler) => {
+        listeners[event] = handler as () => void;
+        return { remove: () => undefined } as never;
+      });
+
+    const { result, rerender } = renderHook(() => useKeyboardLift());
+    expect(result.current.value).toBe(-312);
+
+    listeners.keyboardDidHide!();
+    rerender({});
+    expect(result.current.value).toBe(0);
+
+    spy.mockRestore();
   });
 
   it('recomputes after the keyboard values change', () => {

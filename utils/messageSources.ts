@@ -117,7 +117,6 @@ const overlapWithAnswer = (
   return overlap;
 };
 
-// Attribute against the visible reply only; the <think> block surveys every source and inflates overlap.
 export const visibleAnswer = (answer: string): string => {
   const parts: string[] = [];
   let cursor = 0;
@@ -148,13 +147,11 @@ const answerTermsOf = (answer: string): Set<string> =>
     )
   );
 
-// True when the visible reply is an EN/PL "no information" refusal (negation tied to a coverage noun).
 export const looksLikeNoAnswer = (visibleReply: string): boolean =>
   [...NO_ANSWER_PATTERNS_EN, ...NO_ANSWER_PATTERNS_PL].some((pattern) =>
     pattern.test(visibleReply)
   );
 
-// Compact per-document overlap for logs: `name:overlap` per candidate, so a surprising citation set is diagnosable.
 export const answerCitationOverlaps = (
   sourceDocuments: SourceDocument[],
   answer: string
@@ -240,7 +237,6 @@ const pickLocalCitationsByAnswer = (
 
   const maxOverlap = Math.max(0, ...scored.map((s) => s.overlap));
 
-  // Reply echoes no candidate → not grounded in any; keep only a freshly-attached source, cite nothing else.
   if (maxOverlap === 0) {
     return scored.filter((s) => s.isPreferred).map((s) => s.doc);
   }
@@ -259,7 +255,8 @@ const retrieveChunks = async (
   activeSources: SourceRow[],
   attachmentSourceIds: number[],
   vectorStore: OPSQLiteVectorStore,
-  embeddings?: LFMEmbeddings | null
+  embeddings?: LFMEmbeddings | null,
+  maxRelevantChunks?: number
 ) => {
   try {
     const relevantChunks = await hybridRetrieve({
@@ -269,6 +266,7 @@ const retrieveChunks = async (
       sourceNamesById: new Map(activeSources.map((s) => [s.id, s.name])),
       embeddings,
       attachmentSourceIds,
+      maxRelevantChunks,
     });
     return relevantChunks;
   } catch (error) {
@@ -284,6 +282,7 @@ export interface BuildMessageSourcesParams {
   sources: SourceRow[];
   vectorStore: OPSQLiteVectorStore;
   embeddings?: LFMEmbeddings | null;
+  maxRelevantChunks?: number;
 }
 
 export interface MessageSources {
@@ -299,6 +298,7 @@ export const buildMessageSources = async ({
   sources,
   vectorStore,
   embeddings,
+  maxRelevantChunks,
 }: BuildMessageSourcesParams): Promise<MessageSources> => {
   const empty: MessageSources = {
     context: [],
@@ -332,7 +332,8 @@ export const buildMessageSources = async ({
       activeSources,
       attachmentSourceIds,
       vectorStore,
-      embeddings
+      embeddings,
+      maxRelevantChunks
     );
     context.push(...formatContextChunks(relevantChunks));
     context.push(...attachmentOverview());
