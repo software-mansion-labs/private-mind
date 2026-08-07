@@ -38,7 +38,7 @@ export const useWebSearchActivity = ({
       isSearchingThis ||
       (isLastMessage && isProcessingPrompt && !hasContent && trace.length > 0));
   const isAwaitingFirstToken =
-    !hasContent && isLastMessage && isProcessingPrompt && !isSearchingWeb;
+    !hasContent && isLastMessage && isProcessingPrompt;
 
   return {
     isGenerating,

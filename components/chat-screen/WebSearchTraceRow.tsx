@@ -1,10 +1,19 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, Text, Pressable } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { useTheme } from '../../context/ThemeContext';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import WebIcon from '../../assets/icons/web.svg';
 import CheckIcon from '../../assets/icons/check.svg';
+import InfoIcon from '../../assets/icons/info-circle.svg';
+import LogoIcon from '../../assets/icons/logo.svg';
 import WebFavicon from './WebFavicon';
 import { type Row } from './webSearchTrace';
 import {
@@ -21,6 +30,45 @@ interface Props {
   onOpen: (url?: string) => void;
   onOpenChallenge: () => void;
 }
+
+const ActiveStepMarker = () => {
+  const pulse = useSharedValue(0);
+  useEffect(() => {
+    pulse.set(
+      withRepeat(
+        withTiming(1, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true
+      )
+    );
+  }, [pulse]);
+  const pulseStyle = useAnimatedStyle(() => ({
+    opacity: 0.45 + 0.55 * pulse.get(),
+    transform: [{ scale: 0.85 + 0.2 * pulse.get() }],
+  }));
+  return (
+    <Animated.View style={pulseStyle} testID="web-search-active-marker">
+      <LogoIcon width={13} height={15} />
+    </Animated.View>
+  );
+};
+
+const rowContentEqual = (a: Row, b: Row): boolean => {
+  const prev = a as Record<string, unknown>;
+  const next = b as Record<string, unknown>;
+  const keys = Object.keys(prev);
+  return (
+    keys.length === Object.keys(next).length &&
+    keys.every((key) => prev[key] === next[key])
+  );
+};
+
+const rowsEqual = (prev: Props, next: Props): boolean =>
+  prev.isFirst === next.isFirst &&
+  prev.isLast === next.isLast &&
+  prev.onOpen === next.onOpen &&
+  prev.onOpenChallenge === next.onOpenChallenge &&
+  rowContentEqual(prev.row, next.row);
 
 const WebSearchTraceRow = ({
   row,
@@ -60,81 +108,125 @@ const WebSearchTraceRow = ({
     </>
   );
 
-  if (row.type === 'challenge') {
-    return (
-      <View style={styles.rowWrap}>
-        {connectors}
-        <Pressable
-          style={styles.row}
-          onPress={onOpenChallenge}
-          accessibilityRole="button"
-          accessibilityLabel="Verify to continue searching"
-          testID="web-search-challenge"
-        >
-          <View style={styles.marker}>
-            <View style={styles.stepDot} />
+  const marker = (): React.ReactNode => {
+    switch (row.type) {
+      case 'challenge':
+        return <View style={styles.stepDot} />;
+      case 'note':
+        return (
+          <InfoIcon
+            width={14}
+            height={14}
+            style={row.tone === 'warn' ? styles.noteWarnIcon : styles.noteIcon}
+          />
+        );
+      case 'step':
+        return row.done ? (
+          <View style={styles.doneBadge}>
+            <CheckIcon width={11} height={11} style={styles.doneCheck} />
           </View>
-          <Text style={styles.challengeLabel} numberOfLines={1}>
-            Verify to continue
-          </Text>
-        </Pressable>
-      </View>
-    );
-  }
+        ) : row.active ? (
+          <ActiveStepMarker />
+        ) : (
+          <View style={styles.stepDot} />
+        );
+      case 'page':
+        return row.url ? (
+          <WebFavicon url={row.url} size={16} />
+        ) : (
+          <WebIcon
+            width={16}
+            height={16}
+            style={{ color: theme.text.defaultSecondary }}
+          />
+        );
+    }
+  };
 
-  if (row.type === 'step') {
-    return (
-      <View style={styles.rowWrap}>
-        {connectors}
-        <View style={styles.row}>
-          <View style={styles.marker}>
-            {row.done ? (
-              <View style={styles.doneBadge}>
-                <CheckIcon width={11} height={11} style={styles.doneCheck} />
-              </View>
-            ) : (
-              <View style={styles.stepDot} />
-            )}
-          </View>
+  const label = (): React.ReactNode => {
+    switch (row.type) {
+      case 'challenge':
+        return (
+          <Text style={styles.challengeLabel} numberOfLines={1}>
+            Tap to confirm you’re not a robot
+          </Text>
+        );
+      case 'note':
+        return (
+          <Text
+            style={
+              row.tone === 'warn' ? styles.noteWarnLabel : styles.noteLabel
+            }
+            numberOfLines={1}
+          >
+            {row.label}
+          </Text>
+        );
+      case 'step':
+        return (
           <Text style={styles.stepLabel} numberOfLines={1}>
             {row.label}
           </Text>
-        </View>
-      </View>
-    );
-  }
+        );
+      case 'page':
+        return (
+          <Text style={styles.host} numberOfLines={1}>
+            {row.host}
+            {row.name && row.name !== row.host ? (
+              <Text style={styles.pageTitle}>{`  ${row.name}`}</Text>
+            ) : null}
+          </Text>
+        );
+    }
+  };
+
+  const press = (): React.ComponentProps<typeof Pressable> | null => {
+    switch (row.type) {
+      case 'challenge':
+        return {
+          onPress: onOpenChallenge,
+          accessibilityRole: 'button',
+          accessibilityLabel:
+            'The site wants to check you are not a robot — tap to continue',
+          testID: 'web-search-challenge',
+        };
+      case 'page':
+        return {
+          onPress: () => onOpen(row.url),
+          disabled: !row.url,
+          accessibilityRole: 'link',
+          accessibilityLabel: row.name,
+          testID: 'web-search-result',
+        };
+      default:
+        return null;
+    }
+  };
+
+  const pressProps = press();
+
+  const body = (
+    <>
+      <View style={styles.marker}>{marker()}</View>
+      {label()}
+    </>
+  );
 
   return (
     <View style={styles.rowWrap}>
       {connectors}
-      <Pressable
-        style={styles.row}
-        onPress={() => onOpen(row.url)}
-        disabled={!row.url}
-        accessibilityRole="link"
-        accessibilityLabel={row.name}
-        testID="web-search-result"
-      >
-        <View style={styles.marker}>
-          {row.url ? (
-            <WebFavicon url={row.url} size={16} />
-          ) : (
-            <WebIcon
-              width={16}
-              height={16}
-              style={{ color: theme.text.defaultSecondary }}
-            />
-          )}
-        </View>
-        <Text style={styles.host} numberOfLines={1}>
-          {row.host}
-        </Text>
-      </Pressable>
+      {pressProps ? (
+        <Pressable style={styles.row} {...pressProps}>
+          {body}
+        </Pressable>
+      ) : (
+        <View style={styles.row}>{body}</View>
+      )}
     </View>
   );
 };
 
-export default WebSearchTraceRow;
+export default React.memo(WebSearchTraceRow, rowsEqual);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -197,5 +289,29 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.medium,
       color: theme.text.defaultSecondary,
       lineHeight: lineHeights.xs,
+    },
+    pageTitle: {
+      fontFamily: fontFamily.regular,
+      color: theme.text.defaultTertiary,
+    },
+    noteLabel: {
+      flex: 1,
+      fontSize: fontSizes.xs,
+      fontFamily: fontFamily.regular,
+      color: theme.text.defaultTertiary,
+      lineHeight: lineHeights.xs,
+    },
+    noteWarnLabel: {
+      flex: 1,
+      fontSize: fontSizes.xs,
+      fontFamily: fontFamily.regular,
+      color: theme.text.defaultSecondary,
+      lineHeight: lineHeights.xs,
+    },
+    noteIcon: {
+      color: theme.text.defaultTertiary,
+    },
+    noteWarnIcon: {
+      color: theme.text.error,
     },
   });

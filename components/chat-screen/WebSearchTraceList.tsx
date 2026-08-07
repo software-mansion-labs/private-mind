@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { View, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import Animated, {
+  Easing,
   FadeInDown,
   LinearTransition,
   runOnJS,
@@ -21,6 +22,8 @@ interface Props {
   onOpenChallenge: () => void;
   onCollapsed: () => void;
 }
+
+const ACCORDION_EASING = Easing.bezier(0.25, 0.1, 0.25, 1);
 
 const WebSearchTraceList = ({
   expanded,
@@ -52,15 +55,20 @@ const WebSearchTraceList = ({
         listHeight.set(
           withTiming(contentHeight.get(), {
             duration: WEB_TRACE_TRANSITION_MS,
+            easing: ACCORDION_EASING,
           })
         );
       }
       return;
     }
     listHeight.set(
-      withTiming(0, { duration: WEB_TRACE_TRANSITION_MS }, (finished) => {
-        if (finished) runOnJS(notifyCollapsed)();
-      })
+      withTiming(
+        0,
+        { duration: WEB_TRACE_TRANSITION_MS, easing: ACCORDION_EASING },
+        (finished) => {
+          if (finished) runOnJS(notifyCollapsed)();
+        }
+      )
     );
   }, [expanded, listHeight, contentHeight, notifyCollapsed]);
 
@@ -70,7 +78,12 @@ const WebSearchTraceList = ({
       if (next <= 0) return;
       contentHeight.set(next);
       if (!expanded) return;
-      listHeight.set(withTiming(next, { duration: WEB_TRACE_TRANSITION_MS }));
+      listHeight.set(
+        withTiming(next, {
+          duration: WEB_TRACE_TRANSITION_MS,
+          easing: ACCORDION_EASING,
+        })
+      );
     },
     [expanded, listHeight, contentHeight]
   );
@@ -88,9 +101,13 @@ const WebSearchTraceList = ({
                 ? LinearTransition.duration(WEB_TRACE_TRANSITION_MS)
                 : undefined
             }
-            entering={FadeInDown.duration(WEB_TRACE_TRANSITION_MS).delay(
-              enterDelay.get(row.key) ?? 0
-            )}
+            entering={
+              animateRows
+                ? FadeInDown.duration(WEB_TRACE_TRANSITION_MS).delay(
+                    enterDelay.get(row.key) ?? 0
+                  )
+                : undefined
+            }
           >
             <WebSearchTraceRow
               row={row}
