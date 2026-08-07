@@ -9,6 +9,7 @@
     "web": "expo start --web",
     "download-models": "node -e \"require('./scripts/download-models.js').ensureModelAssets()\"",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write '**/*.{ts,tsx,js,jsx,json,md}'",
     "format:check": "prettier --check '**/*.{ts,tsx,js,jsx,json,md}'",

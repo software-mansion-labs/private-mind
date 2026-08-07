@@ -76,7 +76,7 @@ export const useScrapeHost = () => {
       onChallenge: () => {
         const current = useWebSearchStore.getState();
         if (current.challengePolicy === 'skip') {
-          webViewScrapeProvider.cancelPending();
+          webViewScrapeProvider.skipEngine();
           return;
         }
         current.setChallengeActive(true);

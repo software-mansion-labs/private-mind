@@ -6,6 +6,7 @@ jest.mock('../utils/web/scrape/webViewScrapeProvider', () => ({
     detachHost: jest.fn(),
     handleMessage: jest.fn(),
     cancelPending: jest.fn(),
+    skipEngine: jest.fn(),
   },
 }));
 
@@ -26,6 +27,7 @@ const attachHost = webViewScrapeProvider.attachHost as jest.Mock;
 const detachHost = webViewScrapeProvider.detachHost as jest.Mock;
 const providerHandleMessage = webViewScrapeProvider.handleMessage as jest.Mock;
 const cancelPending = webViewScrapeProvider.cancelPending as jest.Mock;
+const skipEngine = webViewScrapeProvider.skipEngine as jest.Mock;
 
 const registeredHost = () => attachHost.mock.calls[0]![0];
 
@@ -65,13 +67,14 @@ describe('useScrapeHost', () => {
     expect(useWebSearchStore.getState().challengeActive).toBe(true);
   });
 
-  it('cancels the fetch on a challenge when the policy is skip, without revealing', () => {
+  it('skips the blocked engine on a challenge when the policy is skip, without revealing', () => {
     useWebSearchStore.getState().updateChallengePolicy('skip');
     const { result } = renderHook(() => useScrapeHost());
 
     act(() => registeredHost().onChallenge());
 
-    expect(cancelPending).toHaveBeenCalledTimes(1);
+    expect(skipEngine).toHaveBeenCalledTimes(1);
+    expect(cancelPending).not.toHaveBeenCalled();
     expect(result.current.revealed).toBe(false);
   });
 
