@@ -4,6 +4,7 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useModelStore } from '../../store/modelStore';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
+import { BenchmarkResultSheetData } from '../bottomSheets/BenchmarkResultSheet';
 import BenchmarkItem from './BenchmarkItem';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -11,7 +12,7 @@ import { Theme } from '../../styles/colors';
 import { FlatList } from 'react-native-gesture-handler';
 
 interface Props {
-  modalRef: React.RefObject<BottomSheetModal | null>;
+  modalRef: React.RefObject<BottomSheetModal<BenchmarkResultSheetData> | null>;
   benchmarkList: BenchmarkResult[];
 }
 

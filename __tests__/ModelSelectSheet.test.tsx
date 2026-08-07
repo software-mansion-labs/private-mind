@@ -78,7 +78,7 @@ import ModelSelectSheet from '../components/bottomSheets/ModelSelectSheet';
 import { useModelStore } from '../store/modelStore';
 import { router } from 'expo-router';
 
-const mockUseModelStore = useModelStore as jest.Mock;
+const mockUseModelStore = useModelStore as unknown as jest.Mock;
 
 const makeModel = (id: number, name: string) => ({
   id,
@@ -108,8 +108,6 @@ const renderSheet = (props = {}) =>
     />
   );
 
-// ─── empty state ──────────────────────────────────────────────────────────────
-
 describe('empty state', () => {
   it('shows empty state message when no models downloaded', () => {
     renderSheet();
@@ -127,8 +125,6 @@ describe('empty state', () => {
     expect(router.push).toHaveBeenCalledWith('/model-hub');
   });
 });
-
-// ─── with models ──────────────────────────────────────────────────────────────
 
 describe('with downloaded models', () => {
   beforeEach(() => {
@@ -157,8 +153,6 @@ describe('with downloaded models', () => {
     );
   });
 });
-
-// ─── search filtering ─────────────────────────────────────────────────────────
 
 describe('search filtering', () => {
   beforeEach(() => {
