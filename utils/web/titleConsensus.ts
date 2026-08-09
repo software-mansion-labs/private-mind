@@ -3,12 +3,6 @@ import { registrableDomain } from './sourceAgreement';
 import { extractQueryTerms, foldForMatching, stemPrefix } from '../queryTerms';
 import { detectQuestionLanguage } from '../questionLanguage';
 
-/**
- * Small models answer from source ORDER, so the page carrying the real news is
- * moved to the front. Signal: a proper name several INDEPENDENT domains put in
- * their titles that the user didn't mention. Narrow, to avoid mis-promotion.
- */
-
 const CAPITALIZED = /^\p{Lu}[\p{L}'’-]+$/u;
 const SEGMENT_SPLIT = /\s+[-–—|:·»]\s+/;
 const MIN_ASSERTION_TOKENS = 2;
@@ -53,7 +47,6 @@ export const promoteTitleConsensus = (
       return stems.some((stem) => folded.startsWith(stem));
     });
 
-  // Drop the outlet-name tail unless the entity itself lives there.
   const assertionTokens = (title: string): string[] => {
     const segments = title.split(SEGMENT_SPLIT);
     if (segments.length < 2) return tokensOf(title);
@@ -68,7 +61,6 @@ export const promoteTitleConsensus = (
     if (!result.title) return [];
     const tokens = assertionTokens(result.title);
     const runs = entityRuns(tokens).filter((run) => !isQueryRun(run));
-    // Only reports vote and get promoted, not bare-entity profile pages.
     const keys = runs
       .filter((run) => tokens.length - run.length >= MIN_ASSERTION_TOKENS)
       .map((run) => run.map(foldForMatching).join(' '));

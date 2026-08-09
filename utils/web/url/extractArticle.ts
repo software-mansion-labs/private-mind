@@ -204,7 +204,7 @@ const collectJsonLdText = (html: string): string => {
     try {
       visit(JSON.parse(match[1]!), 0);
     } catch {
-      /* empty */
+      continue;
     }
   }
 

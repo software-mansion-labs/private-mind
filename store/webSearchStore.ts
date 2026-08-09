@@ -150,9 +150,11 @@ export const useWebSearchStore = create<WebSearchStore>()(
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<WebSearchStore>;
         const validPolicies: ChallengePolicy[] = ['ask', 'reveal', 'skip'];
-        const challengePolicy = validPolicies.includes(saved.challengePolicy!)
-          ? saved.challengePolicy!
-          : DEFAULT_CHALLENGE_POLICY;
+        const policy = saved.challengePolicy;
+        const challengePolicy =
+          policy && validPolicies.includes(policy)
+            ? policy
+            : DEFAULT_CHALLENGE_POLICY;
         return { ...current, challengePolicy };
       },
     }

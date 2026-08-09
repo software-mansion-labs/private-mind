@@ -81,14 +81,14 @@ export class WebViewScrapeProvider implements WebSearchProvider {
     if (!message || !this.pending) return;
 
     if (message.type === 'serp-challenge') {
-      if (this.pending) {
+      if (!this.challengeActive) {
         clearTimeout(this.pending.timer);
         this.pending.timer = setTimeout(() => {
           this.settle([], null);
         }, SCRAPE_CHALLENGE_TIMEOUT_MS);
+        this.challengeActive = true;
+        this.host?.onChallenge?.();
       }
-      this.challengeActive = true;
-      this.host?.onChallenge?.();
       return;
     }
     if (message.type === 'serp-error') {

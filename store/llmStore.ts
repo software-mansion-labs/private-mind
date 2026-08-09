@@ -265,7 +265,7 @@ const loadModelInstance = async (
       }
     );
 
-    const generationConfig = getGenerationConfigForModel(model.modelPath);
+    const generationConfig = getGenerationConfigForModel(model);
     if (generationConfig) {
       llmInstance.configure({ generationConfig });
     }
