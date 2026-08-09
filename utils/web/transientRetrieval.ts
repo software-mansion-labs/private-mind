@@ -2,7 +2,7 @@ import { RecursiveCharacterTextSplitter } from 'react-native-rag';
 import type { LFMEmbeddings } from '../lfmEmbeddings';
 import type { WebSearchResult } from './types';
 import type { WebRetrievalSignals } from './retrievalEvaluator';
-import { extractQueryTerms, stemPrefix } from '../queryTerms';
+import { extractQueryTerms, foldForMatching, stemPrefix } from '../queryTerms';
 import { detectQuestionLanguage } from '../questionLanguage';
 import { selectRelevantContent } from './webResultsToContext';
 import {
@@ -170,7 +170,7 @@ export const retrieveWebPassages = async (
     [
       ...extractQueryTerms(query.semanticQuery, language),
       ...extractQueryTerms(query.keywordQuery ?? '', language),
-    ].map(stemPrefix)
+    ].map((term) => stemPrefix(foldForMatching(term)))
   );
   for (const chunk of chunks) {
     chunk.coverage = termCoverage(chunk.text, coverageTerms);

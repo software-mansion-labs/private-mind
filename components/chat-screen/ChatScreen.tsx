@@ -284,7 +284,7 @@ export default function ChatScreen({
 
       if (shouldRunWebSearch) {
         const trimmedInput = userInput.trim();
-        useWebSearchStore.getState().setSearchingWeb(true, trimmedInput);
+        useWebSearchStore.getState().setSearchingWeb(true);
         try {
           const embeddingModelReady =
             useEmbeddingModelStore.getState().status === 'ready';

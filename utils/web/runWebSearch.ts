@@ -48,10 +48,23 @@ import {
 } from '../../constants/web';
 
 export interface WebSearchProgressEvent {
-  type: 'objectives' | 'searching' | 'fetched' | 'failed' | 'done';
+  type:
+    | 'objectives'
+    | 'searching'
+    | 'found'
+    | 'reading'
+    | 'fetched'
+    | 'failed'
+    | 'ranking'
+    | 'done'
+    | 'weak'
+    | 'offline'
+    | 'skipped'
+    | 'timeout';
   query?: string;
   host?: string;
   url?: string;
+  title?: string;
   round?: number;
 }
 
@@ -273,16 +286,22 @@ export const runWebSearch = async (
       ? Math.min(Math.max(1, WEB_ENRICH_WAVE_FIRST), maxEnrich)
       : maxEnrich;
     let waves = 0;
+    let spent = 0;
 
     const runWave = async () => {
+      let readThisWave = 0;
       enriched = await enrichWebResults(
         enriched,
-        target,
-        onPage,
+        Math.max(0, target - spent),
+        (page) => {
+          if (page.ok) readThisWave += 1;
+          onPage(page);
+        },
         attempted,
         input.fetchArticle,
         signal
       );
+      spent += readThisWave;
       for (const result of enriched) {
         if (result.content?.trim()) enrichedByUrl.set(result.url, result);
       }

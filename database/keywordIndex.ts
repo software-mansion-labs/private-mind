@@ -6,12 +6,6 @@ import {
   LEGACY_KEYWORD_TABLES,
 } from '../constants/keyword-index';
 
-// FTS5 keyword index paralleling the vector store's chunks (same op-sqlite DB,
-// same chunk id) for BM25 retrieval. FTS5 depends on the native build; when it's
-// absent every op below no-ops and hybrid search degrades to vector-only. ł/Ł is
-// folded by hand because the tokenizer's remove_diacritics leaves that stroke
-// letter alone, so "platnosc" would otherwise never match "płatność".
-
 export const foldForKeywordIndex = (text: string): string =>
   segmentUnsegmentedScripts(text.replace(/Ł/g, 'L').replace(/ł/g, 'l'));
 
@@ -51,7 +45,8 @@ const backfillKeywordIndex = async (db: DB): Promise<void> => {
        WHERE id NOT IN (SELECT chunk_id FROM ${KEYWORD_TABLE})`
     );
     rows = result.rows;
-  } catch {
+  } catch (error) {
+    console.warn('Keyword backfill query failed', error);
     return;
   }
   if (rows.length === 0) return;

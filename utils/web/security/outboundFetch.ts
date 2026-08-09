@@ -10,24 +10,34 @@ const looksBinary = (body: string): boolean =>
 
 export const isHttpUrl = (url: string): boolean => /^https?:\/\//i.test(url);
 
+const isPrivateIPv4 = (a: number, b: number): boolean =>
+  a === 0 ||
+  a === 10 ||
+  a === 127 ||
+  (a === 169 && b === 254) ||
+  (a === 192 && b === 168) ||
+  (a === 172 && b >= 16 && b <= 31) ||
+  (a === 100 && b >= 64 && b <= 127);
+
 export const isPrivateHost = (rawHost: string): boolean => {
   const host = rawHost.toLowerCase().replace(/^\[|\]$/g, '');
   if (host === 'localhost' || host.endsWith('.localhost')) return true;
-  if (host === '::1' || host === '::') return true;
-  if (/^fe80:|^fc|^fd/.test(host)) return true;
-  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
-  if (!m) return false;
-  const a = Number(m[1]);
-  const b = Number(m[2]);
-  return (
-    a === 0 ||
-    a === 10 ||
-    a === 127 ||
-    (a === 169 && b === 254) ||
-    (a === 192 && b === 168) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 100 && b >= 64 && b <= 127)
-  );
+
+  if (host.includes(':')) {
+    if (host === '::' || host === '::1') return true;
+    if (/^0*(:0*)*:0*1$/.test(host)) return true;
+    if (/^f[cd]/.test(host) || /^fe[89ab]/.test(host)) return true;
+    const embedded = host.match(/(\d{1,3}(?:\.\d{1,3}){3})$/);
+    return !!embedded && isPrivateHost(embedded[1]!);
+  }
+
+  const dotted = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (dotted) return isPrivateIPv4(Number(dotted[1]), Number(dotted[2]));
+
+  if (/^0x[0-9a-f]+$/.test(host) || /^\d+$/.test(host) || /(^|\.)0\d/.test(host)) {
+    return true;
+  }
+  return false;
 };
 
 export const assertPublicHttpUrl = (url: string): string => {
@@ -87,8 +97,15 @@ export const fetchTextWithLimit = (
     signal?.addEventListener('abort', onAbort);
 
     xhr.onreadystatechange = () => {
-      if (xhr.readyState !== XHR_HEADERS_RECEIVED || !contentTypePattern)
+      if (xhr.readyState !== XHR_HEADERS_RECEIVED) return;
+      const declaredLength = Number(
+        xhr.getResponseHeader?.('content-length') ?? ''
+      );
+      if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+        fail(`Response too large: content-length ${declaredLength}`);
         return;
+      }
+      if (!contentTypePattern) return;
       const declared = xhr.getResponseHeader?.('content-type') ?? '';
       if (declared && !contentTypePattern.test(declared)) {
         fail(`Unsupported content type: ${declared}`);
@@ -107,6 +124,17 @@ export const fetchTextWithLimit = (
           reject(new Error(`Fetch failed: ${xhr.status} ${xhr.statusText}`))
         );
         return;
+      }
+      const finalUrl = xhr.responseURL;
+      if (finalUrl && finalUrl !== url) {
+        try {
+          assertPublicHttpUrl(finalUrl);
+        } catch {
+          finish(() =>
+            reject(new Error(`Refusing redirect to private url: ${finalUrl}`))
+          );
+          return;
+        }
       }
       const body = xhr.responseText ?? '';
       if (body.length > maxBytes) {

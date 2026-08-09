@@ -25,8 +25,7 @@ export const enrichWebResults = async (
   onPage?: (event: EnrichPageEvent) => void,
   skip?: ReadonlySet<string>,
   fetchArticle: ArticleFetcher = extractArticle,
-  signal?: AbortSignal,
-  sequential = false
+  signal?: AbortSignal
 ): Promise<WebSearchResult[]> => {
   if (topN <= 0 || results.length === 0) return results;
 
@@ -59,10 +58,7 @@ export const enrichWebResults = async (
   let index = 0;
   let succeeded = 0;
   while (succeeded < topN && index < candidates.length && !signal?.aborted) {
-    const batch = candidates.slice(
-      index,
-      index + (sequential ? 1 : topN - succeeded)
-    );
+    const batch = candidates.slice(index, index + (topN - succeeded));
     index += batch.length;
     const outcomes = await Promise.all(batch.map(enrichOne));
     succeeded += outcomes.filter(Boolean).length;

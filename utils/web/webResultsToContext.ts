@@ -122,7 +122,7 @@ const scorePassage = (
   if (digits === 0) return score;
   const money = (folded.match(MONEY_ANCHOR) ?? []).length;
   if (money > 0) score += Math.min(1, money / 2) * MONEY_BONUS;
-  const words = (folded.match(/[^\W\d_]{3,}/gu) ?? []).length;
+  const words = (folded.match(/\p{L}{3,}/gu) ?? []).length;
   const proseRatio = Math.min(1, words / Math.max(4, digits / 2));
   return score + Math.min(1, digits / 8) * proseRatio;
 };

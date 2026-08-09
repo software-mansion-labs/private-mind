@@ -64,12 +64,6 @@ const GENERATION_CONFIG_BY_MODEL_PATH: Record<string, object> =
 
 export const DEFAULT_REPETITION_PENALTY = DEFAULT_PROFILE.repetitionPenalty;
 
-/**
- * ExecuTorch applies `repetitionPenalty` over the whole prompt, once per
- * occurrence (`common/runner/text_token_generator.h` seeds it with the prefill
- * tokens), so any penalty above 1 suppresses exactly the words a grounded
- * answer has to quote.
- */
 export const GROUNDED_REPETITION_PENALTY = 1;
 
 export const getGenerationConfigForModel = (
