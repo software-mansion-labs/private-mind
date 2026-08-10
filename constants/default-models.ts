@@ -57,14 +57,8 @@ const GENERATION_CONFIG_BY_MODEL_PATH: Record<string, object> =
     )
   );
 
-// The RNE registry sets `repetitionPenalty` only for LFM, leaving other small
-// quantized models free to loop. Registry values still win below.
-export const DEFAULT_REPETITION_PENALTY = 1.1;
-
-export const getGenerationConfigForModel = (modelPath: string) => ({
-  repetitionPenalty: DEFAULT_REPETITION_PENALTY,
-  ...GENERATION_CONFIG_BY_MODEL_PATH[modelPath],
-});
+export const getGenerationConfigForModel = (modelPath: string) =>
+  GENERATION_CONFIG_BY_MODEL_PATH[modelPath];
 
 export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
   {

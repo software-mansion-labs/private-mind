@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSourceStore } from '../store/sourceStore';
 import { initSourceLinkingBoundary } from '../utils/sourceLinkingBoundary';
 import { migrateLegacyVectorStore } from './vectorStoreMigration';
+import { restoreTruncatedChatTitles } from './chatTitleMigration';
 
 export const runMigrations = async (db: SQLiteDatabase) => {
   const modelsTableInfo = await db.getAllAsync<{ name: string }>(
@@ -133,6 +134,8 @@ export const runMigrations = async (db: SQLiteDatabase) => {
   }
 
   await migrateLegacyVectorStore(db);
+
+  await restoreTruncatedChatTitles(db);
 
   // One-time cleanup of orphan rows from before FK enforcement was enabled.
   await db.runAsync(
