@@ -321,11 +321,8 @@ export default function ChatScreen({
         useWebSearchStore.getState().setSearchingWeb(true);
         let webGrounded = false;
         try {
-          if (vectorStore && !lowMemory) {
-            await useEmbeddingModelStore.getState().ensureReady(vectorStore);
-          }
           const embeddingModelReady =
-            useEmbeddingModelStore.getState().status === 'ready';
+            !lowMemory && useEmbeddingModelStore.getState().status === 'ready';
           const searchStartedAt = Date.now();
           let isolateTotalMs = 0;
           const { context: webContext, sourceDocuments: webSources } =
