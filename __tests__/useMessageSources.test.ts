@@ -39,9 +39,7 @@ describe('useMessageSources', () => {
   });
 
   it('shows a web source whose read flag was never set', () => {
-    const r = render([
-      doc({ name: 'Web', kind: 'web', url: 'https://a.com' }),
-    ]);
+    const r = render([doc({ name: 'Web', kind: 'web', url: 'https://a.com' })]);
     expect(r.displayedSources.map((s) => s.name)).toEqual(['Web']);
     expect(r.hasSources).toBe(true);
   });
