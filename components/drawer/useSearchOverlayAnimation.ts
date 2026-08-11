@@ -15,6 +15,7 @@ import {
   FIELD_FADE_OUT_DURATION,
   SEARCH_COLLAPSE_DURATION,
   SEARCH_EXPAND_DURATION,
+  SEARCH_UNMOUNT_GRACE,
 } from '../../constants/drawer-layout';
 
 const EXPAND_EASING = Easing.bezier(...EMPHASIZED_DECELERATE);
@@ -111,12 +112,9 @@ export const useSearchOverlayAnimation = ({
       )
     );
 
-    // An interrupted collapse never reports `finished`, which would leave the
-    // overlay's Modal mounted and swallowing every touch on the screen behind
-    // it. Unmount on a timer as well; re-opening clears it via the cleanup.
     const forceUnmount = setTimeout(
       () => applyMounted(false),
-      SEARCH_COLLAPSE_DURATION + 120
+      SEARCH_COLLAPSE_DURATION + SEARCH_UNMOUNT_GRACE
     );
     return () => clearTimeout(forceUnmount);
   }, [

@@ -8,15 +8,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
-
-const TRACK_WIDTH = 51;
-const TRACK_HEIGHT = 31;
-const THUMB_SIZE = 27;
-const THUMB_INSET = 2;
-const THUMB_TRAVEL = TRACK_WIDTH - THUMB_SIZE - THUMB_INSET * 2;
-const TOGGLE_DURATION = 180;
-// The system switch keeps a white knob in both themes; match it.
-const THUMB_COLOR = '#FFFFFF';
+import {
+  SWITCH_THUMB_INSET,
+  SWITCH_THUMB_SIZE,
+  SWITCH_THUMB_TRAVEL,
+  SWITCH_TOGGLE_DURATION,
+  SWITCH_TRACK_HEIGHT,
+  SWITCH_TRACK_WIDTH,
+} from '../constants/switch';
 
 interface Props {
   value: boolean;
@@ -29,7 +28,9 @@ export const ThemedSwitch = ({ value, onValueChange, disabled }: Props) => {
   const progress = useSharedValue(value ? 1 : 0);
 
   useEffect(() => {
-    progress.set(withTiming(value ? 1 : 0, { duration: TOGGLE_DURATION }));
+    progress.set(
+      withTiming(value ? 1 : 0, { duration: SWITCH_TOGGLE_DURATION })
+    );
   }, [value, progress]);
 
   const trackStyle = useAnimatedStyle(() => ({
@@ -41,7 +42,7 @@ export const ThemedSwitch = ({ value, onValueChange, disabled }: Props) => {
   }));
 
   const thumbStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: progress.get() * THUMB_TRAVEL }],
+    transform: [{ translateX: progress.get() * SWITCH_THUMB_TRAVEL }],
   }));
 
   if (Platform.OS !== 'android') {
@@ -75,17 +76,17 @@ export const ThemedSwitch = ({ value, onValueChange, disabled }: Props) => {
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     track: {
-      width: TRACK_WIDTH,
-      height: TRACK_HEIGHT,
-      borderRadius: TRACK_HEIGHT / 2,
-      padding: THUMB_INSET,
+      width: SWITCH_TRACK_WIDTH,
+      height: SWITCH_TRACK_HEIGHT,
+      borderRadius: SWITCH_TRACK_HEIGHT / 2,
+      padding: SWITCH_THUMB_INSET,
       justifyContent: 'center',
     },
     thumb: {
-      width: THUMB_SIZE,
-      height: THUMB_SIZE,
-      borderRadius: THUMB_SIZE / 2,
-      backgroundColor: THUMB_COLOR,
+      width: SWITCH_THUMB_SIZE,
+      height: SWITCH_THUMB_SIZE,
+      borderRadius: SWITCH_THUMB_SIZE / 2,
+      backgroundColor: theme.bg.switchThumb,
       elevation: 2,
       shadowColor: theme.bg.shadow,
       shadowOpacity: 0.2,
