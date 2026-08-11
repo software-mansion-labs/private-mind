@@ -21,7 +21,7 @@ describe('getContextWindowTokens', () => {
     for (const family of [
       'Qwen 3',
       'Qwen 2.5',
-      'LLaMA 3.2',
+      'Llama 3.2',
       'LFM 2.5',
       'Bielik',
       'Gemma 4',

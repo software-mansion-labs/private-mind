@@ -21,7 +21,7 @@ const GENERATION_RESERVE_TOKENS = 768;
 const CONTEXT_WINDOW_TOKENS_BY_FAMILY: Record<string, number> = {
   'Qwen 3': 2048,
   'Qwen 2.5': 2048,
-  'LLaMA 3.2': 2048,
+  'Llama 3.2': 2048,
   'LFM 2.5': 2048,
   'Bielik': 2048,
   'Gemma 4': 2048,

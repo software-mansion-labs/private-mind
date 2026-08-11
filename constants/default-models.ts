@@ -88,8 +88,8 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     labels: ['Smart', 'Reasoning'],
   },
   {
-    modelName: 'LLaMA 3.2 - 1B - QLoRa',
-    family: 'LLaMA 3.2',
+    modelName: 'Llama 3.2 - 1B - QLoRa',
+    family: 'Llama 3.2',
     tokenizerPath: LLAMA3_2_1B_QLORA.tokenizerSource,
     modelPath: LLAMA3_2_1B_QLORA.modelSource,
     tokenizerConfigPath: LLAMA3_2_1B_QLORA.tokenizerConfigSource,
@@ -100,8 +100,8 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     labels: ['Good at coding'],
   },
   {
-    modelName: 'LLaMA 3.2 - 1B - SpinQuant',
-    family: 'LLaMA 3.2',
+    modelName: 'Llama 3.2 - 1B - SpinQuant',
+    family: 'Llama 3.2',
     tokenizerPath: LLAMA3_2_1B_SPINQUANT.tokenizerSource,
     modelPath: LLAMA3_2_1B_SPINQUANT.modelSource,
     tokenizerConfigPath: LLAMA3_2_1B_SPINQUANT.tokenizerConfigSource,
@@ -112,8 +112,8 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     labels: ['Good at coding', 'Fast', 'Great first model'],
   },
   {
-    modelName: 'LLaMA 3.2 - 3B - QLoRa',
-    family: 'LLaMA 3.2',
+    modelName: 'Llama 3.2 - 3B - QLoRa',
+    family: 'Llama 3.2',
     tokenizerPath: LLAMA3_2_3B_QLORA.tokenizerSource,
     modelPath: LLAMA3_2_3B_QLORA.modelSource,
     tokenizerConfigPath: LLAMA3_2_3B_QLORA.tokenizerConfigSource,
@@ -124,8 +124,8 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     labels: ['Good at coding'],
   },
   {
-    modelName: 'LLaMA 3.2 - 3B - SpinQuant',
-    family: 'LLaMA 3.2',
+    modelName: 'Llama 3.2 - 3B - SpinQuant',
+    family: 'Llama 3.2',
     tokenizerPath: LLAMA3_2_3B_SPINQUANT.tokenizerSource,
     modelPath: LLAMA3_2_3B_SPINQUANT.modelSource,
     tokenizerConfigPath: LLAMA3_2_3B_SPINQUANT.tokenizerConfigSource,

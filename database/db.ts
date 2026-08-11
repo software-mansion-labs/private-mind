@@ -167,6 +167,22 @@ export const runMigrations = async (db: SQLiteDatabase) => {
      WHERE source = 'built-in' AND modelName LIKE '% - Quantized'`
   );
 
+  await db.runAsync(
+    `DELETE FROM models
+     WHERE source = 'built-in'
+       AND modelName IN (
+         SELECT REPLACE(modelName, 'LLaMA 3.2', 'Llama 3.2')
+         FROM models
+         WHERE source = 'built-in' AND modelName GLOB 'LLaMA 3.2*'
+       )`
+  );
+  await db.runAsync(
+    `UPDATE models
+     SET modelName = REPLACE(modelName, 'LLaMA 3.2', 'Llama 3.2'),
+         family = REPLACE(family, 'LLaMA 3.2', 'Llama 3.2')
+     WHERE source = 'built-in' AND modelName GLOB 'LLaMA 3.2*'`
+  );
+
   const defaultModelNames = DEFAULT_MODELS.map((m) => m.modelName);
   const placeholders = defaultModelNames.map(() => '?').join(',');
 
