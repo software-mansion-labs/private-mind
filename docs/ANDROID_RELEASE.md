@@ -56,10 +56,9 @@ MYAPP_UPLOAD_KEY_PASSWORD=your_key_password
 
 ### 3. Model Assets
 
-The application uses machine learning models that are handled differently across build configurations:
-
-- **Debug builds:** Models are bundled with the application
-- **Release builds:** Models are distributed via Android Asset Packs to reduce APK size
+No model files ship with the app. Every model — LLMs and the embedding model used
+for document search — is downloaded on device from Hugging Face on first use, so
+the AAB contains no `.pte` files and needs no asset packs.
 
 ## Build Process
 
@@ -71,14 +70,6 @@ The recommended method for creating release builds is using the automated build 
 ./scripts/build-release.sh
 ```
 
-This script automatically handles the complete build process:
-
-1. **Copies model files** from `assets/models/` to Android asset packs (`android/executorch_models/src/main/assets/`)
-2. **Creates minimal placeholders** in the main assets directory to reduce bundle size
-3. **Builds the release AAB** with real model files included via asset packs
-4. **Restores original files** back to `assets/models/`
-5. **Cleans up** Android asset pack directory
-
 ### Manual Build Process
 
 If you prefer to build manually:
@@ -89,44 +80,12 @@ If you prefer to build manually:
    export NODE_ENV=production
    ```
 
-2. **Copy Model Assets to Android Asset Packs**
-
-   ```bash
-   # Copy real model files to Android asset packs
-   mkdir -p android/executorch_models/src/main/assets
-   cp -r assets/models/* android/executorch_models/src/main/assets/
-   ```
-
-3. **Prepare Minimal Placeholders**
-
-   ```bash
-   # Replace tokenizer.json files with path placeholders
-   find assets/models -name "tokenizer.json" -exec sh -c '
-       rel_path=$(echo "$1" | sed "s|^assets/models/||")
-       echo "{\"path\": \"$rel_path\"}" > "$1"
-   ' _ {} \;
-
-   # Replace other files with minimal placeholders
-   find assets/models -name "*.json" ! -name "tokenizer.json" -exec sh -c 'echo "{}" > "$1"' _ {} \;
-   find assets/models -name "*.pte" -exec sh -c 'printf "\0" > "$1"' _ {} \;
-   ```
-
-4. **Build the AAB**
+2. **Build the AAB**
 
    ```bash
    cd android
    ./gradlew bundleRelease
    cd ..
-   ```
-
-5. **Restore Original Model Files**
-
-   ```bash
-   # Copy files back from Android asset packs
-   cp -r android/executorch_models/src/main/assets/* assets/models/
-
-   # Clean up Android asset packs
-   rm -rf android/executorch_models/src/main/assets/*
    ```
 
 ## Output Location
@@ -150,10 +109,10 @@ cd android
 
 ### 2. Content Verification
 
-Check that model assets are not included in the bundle:
+Check that no model files ended up in the bundle:
 
 ```bash
-# Extract and inspect AAB contents if needed
+unzip -l android/app/build/outputs/bundle/release/app-release.aab | grep -i '\.pte' || echo "No model files bundled"
 ```
 
 ## Google Play Console Upload
@@ -164,11 +123,3 @@ Check that model assets are not included in the bundle:
 4. Upload the generated AAB file
 5. Complete release notes and metadata
 6. Submit for review
-
-## Asset Packs Configuration
-
-The application uses Android Asset Delivery for model distribution:
-
-- Asset pack name: `executorch_models`
-- Delivery type: Install-time
-- Contains: Machine learning model files (.pte and .json files)

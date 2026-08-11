@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
+import { MAX_CHAT_TITLE_LENGTH } from '../utils/chatLabel';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
@@ -30,24 +31,19 @@ describe('prefill', () => {
     expect(screen.getByDisplayValue('My Chat')).toBeTruthy();
   });
 
-  it('strips trailing "..." from initialTitle', () => {
-    renderModal({ initialTitle: 'Truncated...' });
-    expect(screen.getByDisplayValue('Truncated')).toBeTruthy();
-  });
-
-  it('does not strip "..." when they are not trailing', () => {
-    renderModal({ initialTitle: 'A...B' });
-    expect(screen.getByDisplayValue('A...B')).toBeTruthy();
+  it('prefills the stored title verbatim, including a trailing "..."', () => {
+    renderModal({ initialTitle: 'To be continued...' });
+    expect(screen.getByDisplayValue('To be continued...')).toBeTruthy();
   });
 });
 
 // ─── maxLength prop ──────────────────────────────────────────────────────────
 
 describe('maxLength', () => {
-  it('passes maxLength={25} to the TextInput', () => {
+  it('passes the stored title maximum to the TextInput', () => {
     renderModal();
     const input = screen.getByDisplayValue('My Chat');
-    expect(input.props.maxLength).toBe(25);
+    expect(input.props.maxLength).toBe(MAX_CHAT_TITLE_LENGTH);
   });
 });
 

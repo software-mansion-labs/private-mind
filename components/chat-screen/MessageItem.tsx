@@ -50,6 +50,17 @@ interface MessageItemProps {
   onFork?: (message: Message) => void;
 }
 
+const splitDocumentName = (name: string) => {
+  const dotIndex = name.lastIndexOf('.');
+  const extension = dotIndex > 0 ? name.slice(dotIndex + 1) : '';
+
+  if (!extension || extension.length > 5) {
+    return { title: name, type: 'Document' };
+  }
+
+  return { title: name.slice(0, dotIndex), type: extension.toUpperCase() };
+};
+
 const THINK_OPEN = '<think>';
 const THINK_CLOSE = '</think>';
 
@@ -101,12 +112,17 @@ const MessageItem = memo(
     onCopy,
     onFork,
   }: MessageItemProps) => {
-    const { styles, theme } = useThemedStyles(createStyles);
+    const { styles } = useThemedStyles(createStyles);
     const [lightboxVisible, setLightboxVisible] = useState(false);
 
     const contentParts = parseThinkingContent(content);
     const { displayedSources, webResults, documentSources, hasSources } =
       useMessageSources(sourceDocuments);
+
+    const documentInfo = useMemo(
+      () => (documentName ? splitDocumentName(documentName) : null),
+      [documentName]
+    );
 
     const handleLinkPress = useCallback(({ url }: { url: string }) => {
       if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url)) return;
@@ -217,15 +233,18 @@ const MessageItem = memo(
               </View>
             )}
             {documentName && (
-              <View style={styles.userBubble} testID="document-bubble">
-                <View style={styles.documentTile} testID="message-document">
-                  <AttachmentIcon
-                    width={28}
-                    height={28}
-                    style={{ color: theme.text.primary }}
-                  />
-                  <Text style={styles.documentName} numberOfLines={2}>
-                    {documentName}
+              <View style={styles.documentCard} testID="document-bubble">
+                <AttachmentIcon
+                  width={22}
+                  height={22}
+                  style={styles.documentIcon}
+                />
+                <View style={styles.documentMeta} testID="message-document">
+                  <Text style={styles.documentName} numberOfLines={1}>
+                    {documentInfo?.title}
+                  </Text>
+                  <Text style={styles.documentType} numberOfLines={1}>
+                    {documentInfo?.type}
                   </Text>
                 </View>
               </View>
@@ -340,20 +359,37 @@ const createStyles = (theme: Theme) =>
       width: '100%',
       aspectRatio: 4 / 3,
     },
-    documentTile: {
-      width: '100%',
-      paddingVertical: 20,
-      backgroundColor: theme.bg.overlay,
+    documentCard: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
+      maxWidth: '75%',
+      paddingVertical: 10,
       paddingHorizontal: 12,
+      borderRadius: 16,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border.soft,
+      backgroundColor: theme.bg.softSecondary,
+    },
+    documentIcon: {
+      color: theme.text.defaultSecondary,
+    },
+    documentMeta: {
+      flexShrink: 1,
+      paddingRight: 4,
     },
     documentName: {
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
       color: theme.text.primary,
-      flex: 1,
+    },
+    documentType: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.xxs,
+      lineHeight: lineHeights.xs,
+      letterSpacing: 0.8,
+      color: theme.text.defaultTertiary,
     },
     eventMessage: {
       paddingHorizontal: 16,

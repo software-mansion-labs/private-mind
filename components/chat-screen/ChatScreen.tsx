@@ -64,6 +64,7 @@ import { useEmbeddingModelStore } from '../../store/embeddingModelStore';
 import useChatSettings from '../../hooks/useChatSettings';
 import Toast from 'react-native-toast-message';
 import { persistImage } from '../../utils/persistImage';
+import { toChatTitle } from '../../utils/chatLabel';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import useChatBranching from '../../hooks/useChatBranching';
 import {
@@ -202,17 +203,19 @@ export default function ChatScreen({
     if ((!userInput.trim() && !imagePath && !hasDocuments) || isGenerating)
       return;
 
+    Keyboard.dismiss();
+    messagesRef.current?.onMessageSent();
+
     let targetChatId = chatId!;
     const isNewChat = !(await checkIfChatExists(db, targetChatId));
     if (isNewChat) {
       const docName = attachments?.find((a) => a.type === 'document')?.name;
       const titleSource = userInput.trim() || docName || 'New chat';
-      const newChatTitle =
-        titleSource.length > 25
-          ? titleSource.slice(0, 25) + '...'
-          : titleSource;
-      const newChatId = await addChat(newChatTitle, model!.id);
-      if (!newChatId) return;
+      const newChatId = await addChat(toChatTitle(titleSource), model!.id);
+      if (!newChatId) {
+        messagesRef.current?.cancelMessageSent();
+        return;
+      }
       targetChatId = newChatId;
       useWebSearchStore.getState().transfer(chatId, targetChatId);
     }
@@ -227,20 +230,13 @@ export default function ChatScreen({
           type: 'defaultToast',
           text1: 'Failed to save image attachment.',
         });
+        messagesRef.current?.cancelMessageSent();
         return;
       }
     }
 
-    Keyboard.dismiss();
     updateLastUsed(targetChatId);
     useWebSearchStore.getState().resetTrace();
-
-    // Notify Messages that a send is in flight. It will seed blankSpace to
-    // the full container height, then derive the final value from measured
-    // heights as the new user row and assistant placeholder lay out. See
-    // the v0 iOS app technique:
-    // https://vercel.com/blog/how-we-built-the-v0-ios-app
-    messagesRef.current?.onMessageSent();
 
     const settings: ChatSettings = {
       systemPrompt: chatSettings.systemPrompt,

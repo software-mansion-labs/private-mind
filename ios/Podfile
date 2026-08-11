@@ -61,5 +61,18 @@ target 'PrivateMind' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    # Some third-party pods ship podspecs pinned to a deployment target below
+    # the app's minimum. Xcode 15+ rejects targets under 15.0 as a hard error,
+    # so raise every pod that's too low up to the app minimum.
+    min_ios = podfile_properties['ios.deploymentTarget'] || '15.1'
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        current = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
+        if current.nil? || Gem::Version.new(current) < Gem::Version.new(min_ios)
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = min_ios
+        end
+      end
+    end
   end
 end

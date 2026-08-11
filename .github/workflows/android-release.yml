@@ -35,9 +35,6 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Download model assets
-        run: node -e "require('./scripts/download-models.js').ensureModelAssets()"
-
       - name: Create .env file
         run: |
           cat > .env << EOF

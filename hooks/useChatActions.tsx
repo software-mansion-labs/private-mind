@@ -6,8 +6,7 @@ import { useChatStore } from '../store/chatStore';
 import { useVectorStore } from '../context/VectorStoreContext';
 import { exportChatRoom } from '../database/exportImportRepository';
 import { useConfirm } from './useConfirm';
-
-const MAX_TITLE_LENGTH = 25;
+import { toChatTitle } from '../utils/chatLabel';
 
 interface Options {
   onDeleted?: (chatId: number) => void;
@@ -21,12 +20,8 @@ export const useChatActions = ({ onDeleted }: Options = {}) => {
 
   const rename = useCallback(
     async (chatId: number, newTitle: string) => {
-      const clipped =
-        newTitle.length > MAX_TITLE_LENGTH
-          ? newTitle.slice(0, MAX_TITLE_LENGTH) + '...'
-          : newTitle;
       try {
-        await renameChat(chatId, clipped);
+        await renameChat(chatId, toChatTitle(newTitle));
         Toast.show({
           type: 'defaultToast',
           text1: 'Chat renamed',

@@ -1,6 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { MAX_CHAT_TITLE_LENGTH } from '../utils/chatLabel';
 
 const mockDb = {};
 jest.mock('expo-sqlite', () => ({
@@ -60,24 +61,30 @@ describe('rename', () => {
     );
   });
 
-  it('clips titles longer than 25 characters', async () => {
+  it('clips titles longer than the stored maximum, without an ellipsis', async () => {
     const { result } = renderHook(() => useChatActions());
 
     await act(async () => {
-      await result.current.rename(42, 'a'.repeat(30));
+      await result.current.rename(42, 'a'.repeat(MAX_CHAT_TITLE_LENGTH + 20));
     });
 
-    expect(mockRenameChat).toHaveBeenCalledWith(42, 'a'.repeat(25) + '...');
+    expect(mockRenameChat).toHaveBeenCalledWith(
+      42,
+      'a'.repeat(MAX_CHAT_TITLE_LENGTH)
+    );
   });
 
-  it('keeps a title of exactly 25 characters intact', async () => {
+  it('keeps a title of exactly the maximum length intact', async () => {
     const { result } = renderHook(() => useChatActions());
 
     await act(async () => {
-      await result.current.rename(42, 'a'.repeat(25));
+      await result.current.rename(42, 'a'.repeat(MAX_CHAT_TITLE_LENGTH));
     });
 
-    expect(mockRenameChat).toHaveBeenCalledWith(42, 'a'.repeat(25));
+    expect(mockRenameChat).toHaveBeenCalledWith(
+      42,
+      'a'.repeat(MAX_CHAT_TITLE_LENGTH)
+    );
   });
 
   it('alerts and skips the toast when renaming fails', async () => {

@@ -36,5 +36,4 @@ rootProject.name = 'Private Mind'
 expoAutolinking.useExpoVersionCatalog()
 
 include ':app'
-include ':executorch_models'
 includeBuild(expoAutolinking.reactNativeGradlePlugin)

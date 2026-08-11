@@ -343,8 +343,15 @@ describe('user messages with document', () => {
     expect(screen.getByTestId('message-document')).toBeTruthy();
     expect(screen.getByTestId('document-bubble')).toBeTruthy();
     expect(screen.getByTestId('text-bubble')).toBeTruthy();
-    expect(screen.getByText('report.pdf')).toBeTruthy();
+    expect(screen.getByText('report')).toBeTruthy();
+    expect(screen.getByText('PDF')).toBeTruthy();
     expect(screen.getByText('Summarize this')).toBeTruthy();
+  });
+
+  it('keeps the whole name when it has no usable extension', () => {
+    renderItem({ role: 'user', content: '', documentName: 'meeting notes' });
+    expect(screen.getByText('meeting notes')).toBeTruthy();
+    expect(screen.getByText('Document')).toBeTruthy();
   });
 
   it('does not render document bubble when documentName is absent', () => {

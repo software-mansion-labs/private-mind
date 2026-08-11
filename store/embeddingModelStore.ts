@@ -20,12 +20,19 @@ export const useEmbeddingModelStore = create<EmbeddingModelStore>(
     status: 'unknown',
     progress: 0,
 
-    setProgress: (progress) =>
-      set({
-        progress: Number.isFinite(progress)
-          ? Math.min(1, Math.max(0, progress))
-          : 0,
-      }),
+    setProgress: (progress) => {
+      const clamped = Number.isFinite(progress)
+        ? Math.min(1, Math.max(0, progress))
+        : 0;
+      const current = get().progress;
+      if (
+        clamped !== 1 &&
+        Math.round(clamped * 100) === Math.round(current * 100)
+      ) {
+        return;
+      }
+      set({ progress: clamped });
+    },
     setStatus: (status) => set({ status }),
     markReady: () => set({ status: 'ready', progress: 1 }),
 

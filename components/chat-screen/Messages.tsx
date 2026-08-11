@@ -66,6 +66,7 @@ import { useKeyboardLift } from './useKeyboardLift';
 
 export interface MessagesHandle {
   onMessageSent: () => void;
+  cancelMessageSent: () => void;
   scrollToEnd: () => void;
   scrollToEndIfAtBottom: () => void;
 }
@@ -207,6 +208,7 @@ const Messages = ({
   const opacity = useSharedValue(0);
   const revealTranslateY = useSharedValue(revealFromTop ? -28 : 0);
   const hasScrolledToEnd = useRef(false);
+  const contentHeight = useRef(0);
   const initialScrollSettlingUntil = useRef(0);
   const initialScrollTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const animatedContainerStyle = useAnimatedStyle(() => ({
@@ -232,18 +234,29 @@ const Messages = ({
       initialScrollTimers.current.push(timer);
     };
 
+    const reveal = (duration: number) => {
+      clearInitialScrollTimers();
+      snapToEnd();
+      opacity.set(withTiming(1, { duration }));
+      revealTranslateY.set(withTiming(0, { duration }));
+    };
+
+    let settledHeight = -1;
+    let settledRounds = 0;
     [16, 50, 100, 180, 300, 450].forEach((delay) => {
       schedule(delay, () => {
         snapToEnd();
+        if (contentHeight.current === settledHeight) {
+          settledRounds += 1;
+          if (settledRounds >= 2) reveal(200);
+          return;
+        }
+        settledHeight = contentHeight.current;
+        settledRounds = 0;
       });
     });
 
-    schedule(500, () => {
-      snapToEnd();
-      opacity.set(withTiming(1, { duration: 350 }));
-      revealTranslateY.set(withTiming(0, { duration: 350 }));
-      initialScrollTimers.current = [];
-    });
+    schedule(500, () => reveal(350));
   }, [clearInitialScrollTimers, opacity, revealTranslateY, snapToEnd]);
 
   const latestBranchMarkerByMessageId = useMemo(() => {
@@ -341,7 +354,6 @@ const Messages = ({
   // driven by layout events and we only need to write the derived value
   // into the shared value once per change.
   const containerHeight = useRef(0);
-  const contentHeight = useRef(0);
   const lastUserHeight = useRef(0);
   const lastAssistantHeight = useRef(0);
   const lastUserMeasurementKey = useRef<string | null>(null);
@@ -550,14 +562,27 @@ const Messages = ({
           hasScrolledToEnd.current = true;
           opacity.set(1);
         }
+        if (!isAtBottomRef.current) {
+          isAtBottomRef.current = true;
+          setShowScrollButton(false);
+          snapToEnd();
+        }
         lastAssistantHeight.current = 0;
         lastUserHeight.current = 0;
         pinActive.current = true;
         blankSpace.set(0);
         pendingPinRef.current = true;
       },
+      cancelMessageSent: () => {
+        pendingPinRef.current = false;
+        pinScrollPendingRef.current = false;
+        pinReleaseRef.current = false;
+        pinActive.current = false;
+        setPinAnchor(null);
+        blankSpace.set(0);
+      },
     }),
-    [blankSpace, closeUserActionMenu, opacity]
+    [blankSpace, closeUserActionMenu, opacity, snapToEnd]
   );
 
   const handleContainerLayout = useCallback(
@@ -604,6 +629,7 @@ const Messages = ({
         event.nativeEvent;
       lastScrollOffset.current = contentOffset.y;
       lastLayoutHeight.current = layoutMeasurement.height;
+      contentHeight.current = contentSize.height;
       const bottomInset = contentInset?.bottom ?? 0;
       const distanceFromBottom =
         contentSize.height +

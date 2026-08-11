@@ -115,6 +115,7 @@ const ChatBar = ({
     addUrlSource,
     downloadModelAndContinue,
     markDownloadSheetClosed,
+    markAttachmentSheetClosed,
     removeAttachment,
     clearAll,
     openSheet,
@@ -159,12 +160,17 @@ const ChatBar = ({
       // view once they disappear. Re-capture on inset changes (Android
       // navigation mode, rotation), or the stale baseline reads the difference
       // as "the bar grew".
-      if (
-        hasMessages &&
-        (defaultBarHeight.current === 0 || baselineInset.current !== inset)
-      ) {
-        defaultBarHeight.current = height;
-        baselineInset.current = inset;
+      const isResting = !userInput && attachments.length === 0;
+      if (hasMessages && isResting) {
+        if (baselineInset.current !== inset) {
+          defaultBarHeight.current = height;
+          baselineInset.current = inset;
+        } else if (
+          defaultBarHeight.current === 0 ||
+          height < defaultBarHeight.current
+        ) {
+          defaultBarHeight.current = height;
+        }
       }
       const baseline = defaultBarHeight.current || height;
       const delta = height - baseline;
@@ -184,11 +190,13 @@ const ChatBar = ({
       }
     },
     [
+      attachments.length,
       extraContentPadding,
       onBarGrow,
       onHeightChange,
       hasMessages,
       theme.insets.bottom,
+      userInput,
     ]
   );
 
@@ -206,15 +214,12 @@ const ChatBar = ({
     }
   }, [model, loadedModel, loadModel]);
 
-  const handleAttach = useCallback(async () => {
+  const handleAttach = useCallback(() => {
     Keyboard.dismiss();
-    try {
-      await runWithModelOffloaded(async () => {}, { restore: false });
-    } catch (error) {
+    openSheet();
+    runWithModelOffloaded(async () => {}, { restore: false }).catch((error) => {
       console.error('Failed to offload model before attachment picker:', error);
-    } finally {
-      openSheet();
-    }
+    });
   }, [openSheet, runWithModelOffloaded]);
 
   const imageAttachment = attachments.find((a) => a.type === 'image');
@@ -245,6 +250,10 @@ const ChatBar = ({
     const inputToSend = userInput;
 
     lastSentRef.current = inputToSend || null;
+    if (Platform.OS === 'ios') {
+      textInputRef.current?.blur();
+      setIosInputKey((key) => key + 1);
+    }
     setUserInput('');
     clearAll({ cleanupSources: false });
     Promise.resolve(
@@ -437,6 +446,7 @@ const ChatBar = ({
             onPickFromCamera={pickFromCamera}
             onPickDocument={pickDocument}
             onSheetStateChange={onAttachmentSheetStateChange}
+            onDismissed={markAttachmentSheetClosed}
           />
           <EmbeddingDownloadSheet
             bottomSheetModalRef={embeddingDownloadSheetRef}

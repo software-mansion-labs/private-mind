@@ -22,6 +22,7 @@ interface Props {
   onPickFromCamera: () => void;
   onPickDocument: () => void;
   onSheetStateChange?: (isOpen: boolean) => void;
+  onDismissed?: () => void;
 }
 
 interface OptionProps {
@@ -62,6 +63,7 @@ const AttachmentSheet = ({
   onPickFromCamera,
   onPickDocument,
   onSheetStateChange,
+  onDismissed,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
 
@@ -91,6 +93,7 @@ const AttachmentSheet = ({
       }}
       onDismiss={() => {
         onSheetStateChange?.(false);
+        onDismissed?.();
       }}
       backdropComponent={(props) => (
         <BottomSheetBackdrop
