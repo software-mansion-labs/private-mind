@@ -2,6 +2,7 @@ import React, {
   memo,
   ReactNode,
   Ref,
+  useEffect,
   useLayoutEffect,
   useRef,
   useMemo,
@@ -51,7 +52,11 @@ import {
   BOTTOM_FADE_HEIGHT,
   GENERATION_ERROR_MEASUREMENT_KEY,
   MESSAGE_PIN_OFFSET,
+  MESSAGE_PIN_SETTLE_MS,
   navBarInset,
+  PIN_RELEASE_FALLBACK_MS,
+  PIN_RELEASE_MS,
+  REVEAL_FALLBACK_MS,
   SCROLL_INDICATOR_GUTTER,
   SEAM_OVERLAP,
   SUPPORTS_USER_ACTION_MENU,
@@ -261,6 +266,11 @@ const Messages = ({
 
   const listTopPadding = topInset + 16;
   const listBottomPadding = chatBarInset + 8;
+  const listPaddingRef = useRef({
+    top: listTopPadding,
+    bottom: listBottomPadding,
+  });
+  listPaddingRef.current = { top: listTopPadding, bottom: listBottomPadding };
   const contentContainerStyle = useMemo(
     () => [
       styles.contentContainer,
@@ -296,10 +306,34 @@ const Messages = ({
       hasScrolledToEnd.current = false;
       opacity.set(0);
       pinActive.current = false;
+      pinScrollPendingRef.current = false;
+      setPinAnchor(null);
       blankSpace.set(0);
     }
     prevChatLengthRef.current = chatHistory.length;
   }, [chatHistory.length, opacity, blankSpace]);
+
+  useEffect(() => {
+    if (chatHistory.length === 0) return;
+    const timer = setTimeout(() => {
+      if (!hasScrolledToEnd.current) {
+        hasScrolledToEnd.current = true;
+        snapToEnd();
+      }
+      opacity.set(withTiming(1, { duration: 350 }));
+      revealTranslateY.set(withTiming(0, { duration: 350 }));
+    }, REVEAL_FALLBACK_MS);
+    return () => clearTimeout(timer);
+  }, [chatHistory.length, opacity, revealTranslateY, snapToEnd]);
+
+  useEffect(() => {
+    if (chatHistory.length > 0) return;
+    const timer = setTimeout(() => {
+      opacity.set(withTiming(1, { duration: 350 }));
+      revealTranslateY.set(withTiming(0, { duration: 350 }));
+    }, REVEAL_FALLBACK_MS);
+    return () => clearTimeout(timer);
+  }, [chatHistory.length, opacity, revealTranslateY]);
 
   useLayoutEffect(() => clearInitialScrollTimers, [clearInitialScrollTimers]);
 
@@ -307,6 +341,7 @@ const Messages = ({
   // driven by layout events and we only need to write the derived value
   // into the shared value once per change.
   const containerHeight = useRef(0);
+  const contentHeight = useRef(0);
   const lastUserHeight = useRef(0);
   const lastAssistantHeight = useRef(0);
   const lastUserMeasurementKey = useRef<string | null>(null);
@@ -390,28 +425,109 @@ const Messages = ({
     };
   }, [closeUserActionMenu]);
 
-  // Armed from onMessageSent until the chat is cleared; gates recomputeBlankSpace.
-  // Stays armed past end-of-stream so the final layout (once the stats row and
-  // Copy/Fork bar commit) recomputes blankSpace with the assistant's true height,
-  // instead of leaving it ~50px too large — which clips the pinned question.
   const pinActive = useRef(false);
-  // Armed in onMessageSent, consumed on the next onContentSizeChange:
-  // seed blankSpace and scroll to end once the new chat row has
-  // actually rendered (avoids a 1-frame flick of old content lifted
-  // by the new inset).
   const pendingPinRef = useRef(false);
 
-  const recomputeBlankSpace = useCallback(() => {
-    if (!pinActive.current) return;
-    const raw =
-      containerHeight.current -
-      lastUserHeight.current -
+  const pinOffset = useRef(0);
+  const pinScrollPendingRef = useRef(false);
+
+  const [pinAnchor, setPinAnchor] = useState<{
+    containerHeight: number;
+    userHeight: number;
+  } | null>(null);
+  const pinFloor = pinAnchor
+    ? Math.max(
+        0,
+        pinAnchor.containerHeight -
+          listTopPadding +
+          MESSAGE_PIN_OFFSET -
+          pinAnchor.userHeight -
+          listBottomPadding
+      )
+    : 0;
+  const pinFloorRef = useRef(0);
+  pinFloorRef.current = pinFloor;
+  const pinFloorStyle = useMemo(
+    () => (pinFloor > 0 ? { minHeight: pinFloor } : undefined),
+    [pinFloor]
+  );
+
+  const scrollToPin = useCallback(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ y: pinOffset.current, animated: true });
+      });
+    });
+  }, []);
+
+  const applyPendingPin = useCallback(() => {
+    if (!pendingPinRef.current || containerHeight.current === 0) return;
+    const assistantMeasured =
+      lastAssistantMeasurementKey.current === null ||
+      lastAssistantHeight.current > 0;
+    if (lastUserHeight.current === 0 || !assistantMeasured) return;
+
+    pendingPinRef.current = false;
+    closeUserActionMenu();
+    const questionTop =
+      contentHeight.current -
+      listPaddingRef.current.bottom -
       lastAssistantHeight.current -
-      listTopPadding -
-      listBottomPadding +
-      MESSAGE_PIN_OFFSET;
-    blankSpace.set(Math.min(blankSpace.get(), Math.max(0, raw)));
-  }, [blankSpace, listBottomPadding, listTopPadding]);
+      lastUserHeight.current;
+    pinOffset.current = Math.max(
+      0,
+      questionTop - listPaddingRef.current.top + MESSAGE_PIN_OFFSET
+    );
+    setPinAnchor({
+      containerHeight: containerHeight.current,
+      userHeight: lastUserHeight.current,
+    });
+    if (contentHeight.current >= pinOffset.current + containerHeight.current) {
+      scrollToPin();
+      return;
+    }
+    pinScrollPendingRef.current = true;
+  }, [closeUserActionMenu, scrollToPin]);
+
+  const pinReleaseRef = useRef(false);
+  const settlePinRelease = useCallback(
+    (height: number) => {
+      pinReleaseRef.current = false;
+      const layoutHeight = lastLayoutHeight.current || containerHeight.current;
+      const maxOffset = Math.max(0, height - layoutHeight);
+      if (lastScrollOffset.current > maxOffset) {
+        scrollRef.current?.scrollTo({ y: maxOffset, animated: true });
+      }
+      blankSpace.set(withTiming(0, { duration: 200 }));
+    },
+    [blankSpace]
+  );
+
+  useEffect(() => {
+    if (isGenerating || !pinActive.current) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    timers.push(
+      setTimeout(() => {
+        pinActive.current = false;
+        pinScrollPendingRef.current = false;
+        blankSpace.set(pinFloorRef.current);
+        pinReleaseRef.current = true;
+        timers.push(
+          setTimeout(() => {
+            setPinAnchor(null);
+            timers.push(
+              setTimeout(() => {
+                if (pinReleaseRef.current) {
+                  settlePinRelease(contentHeight.current);
+                }
+              }, PIN_RELEASE_FALLBACK_MS)
+            );
+          }, PIN_RELEASE_MS)
+        );
+      }, MESSAGE_PIN_SETTLE_MS)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [isGenerating, blankSpace, settlePinRelease]);
 
   useImperativeHandle(
     ref,
@@ -437,46 +553,49 @@ const Messages = ({
         lastAssistantHeight.current = 0;
         lastUserHeight.current = 0;
         pinActive.current = true;
-
-        if (Platform.OS === 'ios') {
-          if (containerHeight.current > 0) {
-            blankSpace.set(containerHeight.current - topInset);
-          }
-        }
+        blankSpace.set(0);
         pendingPinRef.current = true;
       },
     }),
-    [blankSpace, closeUserActionMenu, opacity, topInset]
+    [blankSpace, closeUserActionMenu, opacity]
   );
 
   const handleContainerLayout = useCallback(
     (e: LayoutChangeEvent) => {
-      containerHeight.current = e.nativeEvent.layout.height;
-      lastLayoutHeight.current = e.nativeEvent.layout.height;
-      recomputeBlankSpace();
-      if (Date.now() < initialScrollSettlingUntil.current) {
+      const height = e.nativeEvent.layout.height;
+      containerHeight.current = height;
+      lastLayoutHeight.current = height;
+      setPinAnchor((anchor) =>
+        anchor && anchor.containerHeight !== height
+          ? { ...anchor, containerHeight: height }
+          : anchor
+      );
+      if (
+        !pinActive.current &&
+        Date.now() < initialScrollSettlingUntil.current
+      ) {
         snapToEnd();
       }
     },
-    [recomputeBlankSpace, snapToEnd]
+    [snapToEnd]
   );
 
   const handleLastUserLayout = useCallback(
     (key: string, e: LayoutChangeEvent) => {
       if (lastUserMeasurementKey.current !== key) return;
       lastUserHeight.current = e.nativeEvent.layout.height;
-      recomputeBlankSpace();
+      applyPendingPin();
     },
-    [recomputeBlankSpace]
+    [applyPendingPin]
   );
 
   const handleLastAssistantLayout = useCallback(
     (key: string, e: LayoutChangeEvent) => {
       if (lastAssistantMeasurementKey.current !== key) return;
       lastAssistantHeight.current = e.nativeEvent.layout.height;
-      recomputeBlankSpace();
+      applyPendingPin();
     },
-    [recomputeBlankSpace]
+    [applyPendingPin]
   );
 
   const handleScroll = useCallback(
@@ -577,6 +696,7 @@ const Messages = ({
   );
 
   const handleScrollTouchStart = useCallback(() => {
+    pinScrollPendingRef.current = false;
     if (activeUserActionsId !== null) {
       closeUserActionMenu();
       Keyboard.dismiss();
@@ -598,6 +718,17 @@ const Messages = ({
 
   const handleContentSizeChange = useCallback(
     (_w: number, h: number) => {
+      contentHeight.current = h;
+      if (pinReleaseRef.current) {
+        settlePinRelease(h);
+      }
+      if (
+        pinScrollPendingRef.current &&
+        h >= pinOffset.current + containerHeight.current
+      ) {
+        pinScrollPendingRef.current = false;
+        scrollToPin();
+      }
       // Initial reveal: content has been laid out for the first time.
       // Snap to bottom then fade in. This is the most reliable place to
       // scroll because the native content size is already committed.
@@ -616,23 +747,7 @@ const Messages = ({
       // synchronously in onMessageSent) avoids a 1-frame flick where
       // the old content gets lifted by the new inset before the new
       // DOM commits.
-      // Android: defer the pin here (not in onMessageSent) so the new
-      // row has committed before we expand blankSpace. Animate both
-      // blankSpace and scrollToEnd for a smooth transition.
-      if (pendingPinRef.current) {
-        pendingPinRef.current = false;
-        closeUserActionMenu();
-        if (Platform.OS !== 'ios' && containerHeight.current > 0) {
-          blankSpace.set(
-            containerHeight.current - topInset + MESSAGE_PIN_OFFSET
-          );
-        }
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            scrollRef.current?.scrollToEnd({ animated: true });
-          });
-        });
-      }
+      applyPendingPin();
 
       // During streaming, check if content has grown past the viewport
       // so the scroll-to-bottom button can appear without the user
@@ -653,12 +768,12 @@ const Messages = ({
       }
     },
     [
-      blankSpace,
-      closeUserActionMenu,
+      applyPendingPin,
       listBottomPadding,
       listTopPadding,
       scheduleInitialScrollToEnd,
-      topInset,
+      scrollToPin,
+      settlePinRelease,
     ]
   );
 
@@ -781,16 +896,29 @@ const Messages = ({
             message.id > 0;
 
           if (onLayout) {
+            const rowStyle =
+              index === lastAssistantIndex ? pinFloorStyle : undefined;
+
             if (!shouldHandleUserLongPress) {
               return (
-                <View key={key} onLayout={onLayout} collapsable={false}>
+                <View
+                  key={key}
+                  style={rowStyle}
+                  onLayout={onLayout}
+                  collapsable={false}
+                >
                   {item}
                 </View>
               );
             }
 
             return (
-              <View key={key} onLayout={onLayout} collapsable={false}>
+              <View
+                key={key}
+                style={rowStyle}
+                onLayout={onLayout}
+                collapsable={false}
+              >
                 <LongPressableMessage
                   messageId={message.id}
                   onLongPress={handleUserLongPress}
@@ -821,7 +949,7 @@ const Messages = ({
               handleLastAssistantLayout(GENERATION_ERROR_MEASUREMENT_KEY, event)
             }
             collapsable={false}
-            style={styles.generationError}
+            style={[styles.generationError, pinFloorStyle]}
             testID="generation-error"
           >
             <Text style={styles.generationErrorText}>{generationError}</Text>

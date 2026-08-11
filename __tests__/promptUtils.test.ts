@@ -53,10 +53,293 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      expect(result[0]).toEqual({
-        role: 'system',
-        content: baseSettings.systemPrompt,
-      });
+      expect(result[0].role).toBe('system');
+      expect(result[0].content).toContain(baseSettings.systemPrompt);
+    });
+
+    it('states the date only where it can matter', () => {
+      const temporal: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'What date is today?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const webSources: SourceDocument[] = [
+        { name: 'Onet', kind: 'web', url: 'https://pogoda.onet.pl/a' },
+      ];
+
+      expect(
+        prepareMessagesForLLM(temporal, [], baseSettings, baseModel)[0].content
+      ).toContain('CURRENT DATE');
+      expect(
+        prepareMessagesForLLM(
+          makeMessages(2),
+          ['some context'],
+          baseSettings,
+          baseModel,
+          '',
+          undefined,
+          webSources
+        )[0].content
+      ).toContain('CURRENT DATE');
+      expect(
+        prepareMessagesForLLM(makeMessages(2), [], baseSettings, baseModel)[0]
+          .content
+      ).not.toContain('CURRENT DATE');
+      expect(
+        prepareMessagesForLLM(
+          makeMessages(2),
+          ['some context'],
+          baseSettings,
+          baseModel
+        )[0].content
+      ).not.toContain('CURRENT DATE');
+    });
+
+    it('names the answer language when the question makes it detectable', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'Kto jest kanclerzem Niemiec?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const grounded = prepareMessagesForLLM(
+        messages,
+        ['some context'],
+        baseSettings,
+        baseModel
+      );
+      expect(grounded[0].content).toContain('Write the whole answer in Polish');
+      const bare = prepareMessagesForLLM(messages, [], baseSettings, baseModel);
+      expect(bare[0].content).toContain('Write the whole answer in Polish');
+    });
+
+    it('falls back to the generic language rule when the question is opaque', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'Gdansk 2026',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).toContain(
+        'the language of the latest user message'
+      );
+    });
+
+    it('restates the detected language next to the question itself', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'pytanie po polsku',
+          timestamp: 0,
+        },
+        {
+          id: 2,
+          chatId: 1,
+          role: 'assistant',
+          content: 'odpowiedź',
+          timestamp: 0,
+        },
+        {
+          id: 3,
+          chatId: 1,
+          role: 'user',
+          content: 'Who is the prime minister of the UK now?',
+          timestamp: 0,
+        },
+        { id: 4, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some context'],
+        baseSettings,
+        baseModel
+      );
+      expect(result.at(-1)!.content).toContain('(Answer in English.)');
+    });
+
+    it('keeps the thread language when the follow-up is too short to name one', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'jaka jest dzisiaj pogoda w Gdansku?',
+          timestamp: 0,
+        },
+        {
+          id: 2,
+          chatId: 1,
+          role: 'assistant',
+          content: 'Dziś jest słonecznie.',
+          timestamp: 0,
+        },
+        { id: 3, chatId: 1, role: 'user', content: 'a jutro?', timestamp: 0 },
+        { id: 4, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some context'],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).toContain('Write the whole answer in Polish');
+      expect(result.at(-1)!.content).toContain('(Answer in Polish.)');
+    });
+
+    it('names the script and forbids transliteration for non-Latin languages', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'जर्मनी के चांसलर कौन हैं?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some context'],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).toContain(
+        'Write the whole answer in Hindi, written in Devanagari script'
+      );
+      expect(result[0].content).toContain('Never transliterate');
+      expect(result.at(-1)!.content).toContain('(Answer in Hindi.)');
+      expect(result.at(-1)!.content).not.toContain('Devanagari script.)');
+    });
+
+    it('anchors the language next to the question even when it cannot be named', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'Gdansk 2026',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
+      expect(result.at(-1)!.content).toContain(
+        '(Answer in the same language as this message.)'
+      );
+    });
+
+    it('tells the model to answer the question rather than summarize the pages', () => {
+      const result = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).toContain(
+        'Answer the question that was asked, directly and first.'
+      );
+    });
+
+    it('breaks source conflicts toward the newest reporting, but only for web context', () => {
+      const withWeb = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        [{ name: 'BBC', kind: 'web', url: 'https://bbc.com/a' }]
+      );
+      expect(withWeb[0].content).toContain(
+        'trust the page reporting the newest events'
+      );
+
+      const docsOnly = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        [{ name: 'notes.pdf', kind: 'document' }]
+      );
+      expect(docsOnly[0].content).not.toContain(
+        'trust the page reporting the newest events'
+      );
+    });
+
+    it('restates the recency tie-breaker next to the question for web context', () => {
+      const withWeb = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        [{ name: 'BBC', kind: 'web', url: 'https://bbc.com/a' }]
+      );
+      expect(withWeb.at(-1)!.content).toContain(
+        'the one reporting the newest change'
+      );
+
+      const docsOnly = prepareMessagesForLLM(
+        makeMessages(2),
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        [{ name: 'notes.pdf', kind: 'document' }]
+      );
+      expect(docsOnly.at(-1)!.content).not.toContain(
+        'the one reporting the newest change'
+      );
+    });
+
+    it('spells the week out in the language of the retrieved pages', () => {
+      const messages = makeMessages(2);
+      const polish = prepareMessagesForLLM(
+        messages,
+        ['some context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        [
+          { name: 'Onet', kind: 'web', url: 'https://pogoda.onet.pl/a' },
+          { name: 'Interia', kind: 'web', url: 'https://pogoda.interia.pl/b' },
+        ]
+      );
+      expect(polish[0].content).toContain('Weekday names used by the pages');
+      expect(polish[0].content).toMatch(
+        /(poniedzia|wtorek|środa|czwartek|piątek|sobota|niedziela)/
+      );
     });
 
     it('appends context instructions to system prompt when context is provided', () => {
@@ -79,7 +362,7 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      expect(result[0].content).toBe(baseSettings.systemPrompt);
+      expect(result[0].content).toContain(baseSettings.systemPrompt);
       expect(result[0].content).not.toContain('IMPORTANT CONTEXT INFORMATION');
     });
 
@@ -148,8 +431,9 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         '   \n  '
       );
-      expect(emptyResult[0].content).toBe(baseSettings.systemPrompt);
-      expect(whitespaceResult[0].content).toBe(baseSettings.systemPrompt);
+      expect(emptyResult[0].content).toContain(baseSettings.systemPrompt);
+      expect(whitespaceResult[0].content).toContain(baseSettings.systemPrompt);
+      expect(emptyResult[0].content).toBe(whitespaceResult[0].content);
     });
 
     it('uses the global prompt alone when the base system prompt is empty', () => {
@@ -767,7 +1051,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       expect(String(result.at(-1)!.content)).toBe(
-        '<context>ctx</context>\nmessage 2'
+        '<context>ctx</context>\nmessage 2 (Answer in the same language as this message.)'
       );
     });
 

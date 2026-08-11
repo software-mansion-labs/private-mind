@@ -1,4 +1,4 @@
-export const WEB_SEARCH_MAX_RESULTS = 5;
+export const WEB_SEARCH_MAX_RESULTS = 8;
 export const WEB_SEARCH_TIMEOUT_MS = 8000;
 export const WEB_SEARCH_OVERALL_TIMEOUT_MS = 90000;
 export const WEB_SNIPPET_MAX_CHARS = 500;
@@ -28,7 +28,6 @@ export const WEB_FAVICON_URL = (host: string): string =>
   `https://icons.duckduckgo.com/ip3/${host}.ico`;
 
 export const WEB_CORRECTIVE_ENABLED = true;
-export const WEB_CORRECTIVE_MAX_ROUNDS = 1;
 export const WEB_EVAL_CONFIDENCE_HIGH = 0.6;
 export const WEB_EVAL_CONFIDENCE_LOW = 0.35;
 export const WEB_CORRECTIVE_MERGED_MAX_RESULTS = 8;

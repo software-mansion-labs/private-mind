@@ -233,6 +233,45 @@ describe('extractArticle', () => {
     expect(article.text).not.toContain('Kategoria sklepu');
   });
 
+  it('drops a filter rail whose only digits are facet counts and promo badges', async () => {
+    const facets = [
+      'Gaming i streaming ( 142 )',
+      'Laptopy do gier ( 57 )',
+      'Podzespoly do gier ( 41 )',
+      'Karty graficzne ( 51 )',
+      'Filtry',
+      'Wyczysc wszystkie',
+      'Zasilacz UPS -25% ( 14 )',
+      'Monitory iiyama -15% ( 3 )',
+      'Raty 0% ( 30 )',
+      'Pokaz wszystkie filtry',
+    ]
+      .map((line) => `<div>${line}</div>`)
+      .join('');
+    const page = `<html><body>${facets}<article>
+      <p>${'GeForce RTX 5080 kosztuje 6 499,00 zl w tym sklepie. '.repeat(10)}</p>
+      </article></body></html>`;
+    mockFetch(page);
+
+    const article = await extractArticle('https://shop.example/gpu');
+    expect(article.text).toContain('6 499,00 zl');
+    expect(article.text).not.toContain('Karty graficzne');
+    expect(article.text).not.toContain('Zasilacz UPS');
+  });
+
+  it('keeps a run of figure-only cells, which carry no label to strip', async () => {
+    const cells = ['12%', '31%', '48%', '55%', '61%', '70%', '82%', '91%']
+      .map((cell) => `<td>${cell}</td>`)
+      .join('');
+    const page = `<html><body><article><table><tr>${cells}</tr></table>
+      <p>${'Szansa opadow w kolejnych godzinach dnia. '.repeat(6)}</p>
+      </article></body></html>`;
+    mockFetch(page);
+
+    const article = await extractArticle('https://weather.example/rain');
+    expect(article.text).toContain('91%');
+  });
+
   it('keeps short data lines — digits and punctuation are not menu chrome', async () => {
     const rows = [
       'Jutro',

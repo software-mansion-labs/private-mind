@@ -1,5 +1,5 @@
 import {
-  isConciseQuery,
+  toKeywordQuery,
   parseSearchPlan,
   planWebSearch,
   sanitizeSearchQuery,
@@ -12,20 +12,27 @@ const history = [
 
 const TODAY = '2026-07-17';
 
-describe('isConciseQuery', () => {
-  it('accepts short, self-contained keyword queries', () => {
-    expect(isConciseQuery('current bitcoin price usd')).toBe(true);
-    expect(isConciseQuery('warsaw weather forecast')).toBe(true);
-    expect(isConciseQuery('best pizza in kraków')).toBe(true);
+describe('toKeywordQuery', () => {
+  it('drops the request wrapper and the quotes around the subject', () => {
+    expect(toKeywordQuery('Sprawdź oferty produktu ‚wanna’ na olx')).toBe(
+      'oferty produktu wanna na olx'
+    );
+    expect(toKeywordQuery('Znajdź najtańszy bilet do Krakowa')).toBe(
+      'najtańszy bilet do Krakowa'
+    );
+    expect(toKeywordQuery('show me the current bitcoin price')).toBe(
+      'the current bitcoin price'
+    );
   });
 
-  it('rejects questions, follow-ups, anaphora, and long messages', () => {
-    expect(isConciseQuery('how much of it should I drink?')).toBe(false);
-    expect(isConciseQuery('is that healthier')).toBe(false);
-    expect(isConciseQuery('and green tea')).toBe(false);
-    expect(
-      isConciseQuery('what are the health effects of four cups of coffee daily')
-    ).toBe(false);
+  it('leaves a query that is already keywords alone', () => {
+    expect(toKeywordQuery('warsaw weather forecast')).toBe(
+      'warsaw weather forecast'
+    );
+  });
+
+  it('never empties a query that is nothing but a request verb', () => {
+    expect(toKeywordQuery('sprawdź')).toBe('sprawdź');
   });
 });
 
@@ -147,15 +154,31 @@ describe('planWebSearch', () => {
     expect(generate).not.toHaveBeenCalled();
   });
 
-  it('sends an already-concise keyword query verbatim, without the LLM', async () => {
-    const generate = jest.fn();
+  it('still consults the planner for a concise keyword query', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": true, "intent": "bitcoin price", "queries": ["bitcoin price usd today"]}'
+      );
     const plan = await planWebSearch('current bitcoin price usd', [], generate);
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(plan.needsSearch).toBe(true);
+    expect(plan.queries).toEqual(['bitcoin price usd today']);
+  });
+
+  it('lets the planner gate a short greeting that is not a search', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": false, "intent": "casual greeting", "queries": []}'
+      );
+    const plan = await planWebSearch('hej, jak leci?', [], generate);
+    expect(generate).toHaveBeenCalledTimes(1);
     expect(plan).toEqual({
-      needsSearch: true,
-      intent: '',
-      queries: ['current bitcoin price usd'],
+      needsSearch: false,
+      intent: 'casual greeting',
+      queries: [],
     });
-    expect(generate).not.toHaveBeenCalled();
   });
 
   it('plans a complex question via the LLM and carries context + today', async () => {

@@ -3,6 +3,7 @@ import {
   parseCorrectiveQuery,
   reformulateForCorrection,
   reformulateWithEvidence,
+  uncoveredTermsQuery,
 } from '../utils/web/reformulateQuery';
 import type { QueryRewriteMessage } from '../utils/web/buildSearchQuery';
 import type { WebSearchResult } from '../utils/web/types';
@@ -199,5 +200,88 @@ describe('reformulateWithEvidence', () => {
     });
     expect(out).toBe('');
     expect(generate).not.toHaveBeenCalled();
+  });
+});
+
+describe('uncoveredTermsQuery', () => {
+  const page = (text: string): WebSearchResult => ({
+    title: 'Result',
+    url: 'https://example.test/a',
+    snippet: '',
+    content: text,
+  });
+
+  it('asks for the words the results never mentioned', () => {
+    const out = uncoveredTermsQuery(
+      'Aurora Tab battery capacity and Nimbus Dock price',
+      [page('The Aurora Tab battery capacity is 7350 mAh.')],
+      ['aurora tab battery capacity']
+    );
+    expect(out).toBe('nimbus dock price');
+  });
+
+  it('does not treat a word as covered because it sits inside a longer one', () => {
+    const out = uncoveredTermsQuery(
+      'best cat toy for kittens',
+      [page('Popular vacation destinations for families with toys.')],
+      []
+    );
+    expect(out.split(' ')).toContain('cat');
+  });
+
+  it('counts a term as covered when the page inflects it', () => {
+    const out = uncoveredTermsQuery(
+      'Kestrel Motors warranty and Solace Motors warranty',
+      [page('Kestrel Motors warranties run for six years.')],
+      []
+    );
+    expect(out).toBe('solace');
+  });
+
+  it('stays silent when nothing came back', () => {
+    expect(uncoveredTermsQuery('anything at all here', [], [])).toBe('');
+    expect(uncoveredTermsQuery('anything at all here', [page('')], [])).toBe(
+      ''
+    );
+  });
+
+  it('stays silent when the question has one searchable word', () => {
+    expect(
+      uncoveredTermsQuery('how is it', [page('Something else.')], [])
+    ).toBe('');
+  });
+
+  it('stays silent when everything, or nothing, was covered', () => {
+    const covered = uncoveredTermsQuery(
+      'Aurora Tab battery',
+      [page('Aurora Tab battery capacity is 7350 mAh.')],
+      []
+    );
+    expect(covered).toBe('');
+    const nothing = uncoveredTermsQuery(
+      'Aurora Tab battery',
+      [page('Completely unrelated prose about gardening.')],
+      []
+    );
+    expect(nothing).toBe('');
+  });
+
+  it('stays silent for a question written without spaces', () => {
+    expect(
+      uncoveredTermsQuery(
+        '故宫的占地面积是多少',
+        [page('故宫简介与历史背景。')],
+        []
+      )
+    ).toBe('');
+  });
+
+  it('never returns a query that was already run', () => {
+    const out = uncoveredTermsQuery(
+      'Aurora Tab battery and Nimbus Dock',
+      [page('The Aurora Tab battery capacity is 7350 mAh.')],
+      ['Nimbus Dock']
+    );
+    expect(out).toBe('');
   });
 });

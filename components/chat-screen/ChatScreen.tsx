@@ -40,9 +40,23 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useVectorStore } from '../../context/VectorStoreContext';
 import { Attachment } from '../../hooks/useAttachment';
 import { buildMessageSources } from '../../utils/messageSources';
+import NetInfo from '@react-native-community/netinfo';
 import { runWebSearch } from '../../utils/web/runWebSearch';
 import { webViewScrapeProvider } from '../../utils/web/scrape/webViewScrapeProvider';
-import { WEB_SEARCH_ENABLED } from '../../constants/web';
+import {
+  WEB_BENCH_LOGS,
+  WEB_OFFLOAD_LLM_FOR_EMBEDDINGS,
+  WEB_SEARCH_ENABLED,
+} from '../../constants/web';
+import {
+  getModelProfile,
+  isWebSearchReady,
+} from '../../constants/model-profiles';
+import { webContextCharBudget } from '../../utils/web/contextBudget';
+import {
+  hasMemoryForWebSearch,
+  isMemoryConstrained,
+} from '../../utils/modelCompatibility';
 import { useLegacyChatNotice } from '../../hooks/useLegacyChatNotice';
 import { useSourceStore } from '../../store/sourceStore';
 import { useWebSearchStore } from '../../store/webSearchStore';
@@ -240,8 +254,10 @@ export default function ChatScreen({
         .filter(Boolean)
         .join(', ') || undefined;
 
+    const modelProfile = getModelProfile(useLLMStore.getState().model);
+
     // Deferred so retrieval runs only after the optimistic message is on screen.
-    const buildSources = async () => {
+    const buildSources = async (signal?: AbortSignal) => {
       const allSources = useSourceStore.getState().sources;
       const existingSourceIds = new Set(allSources.map((source) => source.id));
       const attachmentSourceIds = (attachments || [])
@@ -261,7 +277,9 @@ export default function ChatScreen({
       let context: string[] = [];
       let sourceDocuments: SourceDocument[] = [];
       let preferredSourceDocuments: SourceDocument[] = [];
-      if (vectorStore) {
+      const hasRagSources =
+        enabledSources.length > 0 || attachmentSourceIds.length > 0;
+      if (vectorStore && hasRagSources) {
         const prepareSources = () =>
           buildMessageSources({
             userInput,
@@ -270,6 +288,7 @@ export default function ChatScreen({
             sources: allSources,
             vectorStore,
             embeddings,
+            maxRelevantChunks: modelProfile.ragMaxRelevantChunks,
           });
         ({ context, sourceDocuments, preferredSourceDocuments } = embeddings
           ? await runWithModelOffloaded(
@@ -280,14 +299,39 @@ export default function ChatScreen({
       }
 
       const shouldRunWebSearch =
-        WEB_SEARCH_ENABLED && chatSettings.webSearchEnabled && !!userInput.trim();
+        WEB_SEARCH_ENABLED &&
+        chatSettings.webSearchEnabled &&
+        isWebSearchReady(useLLMStore.getState().model) &&
+        hasMemoryForWebSearch(useLLMStore.getState().model) &&
+        !!userInput.trim();
+
+      if (
+        WEB_SEARCH_ENABLED &&
+        chatSettings.webSearchEnabled &&
+        !shouldRunWebSearch &&
+        !!userInput.trim()
+      ) {
+        Toast.show({
+          type: 'defaultToast',
+          text1: hasMemoryForWebSearch(useLLMStore.getState().model)
+            ? 'Web search is off for this model — answering without it.'
+            : 'Not enough memory to search alongside this model — answering without it.',
+        });
+      }
 
       if (shouldRunWebSearch) {
         const trimmedInput = userInput.trim();
+        const lowMemory = isMemoryConstrained(useLLMStore.getState().model);
         useWebSearchStore.getState().setSearchingWeb(true);
+        let webGrounded = false;
         try {
+          if (vectorStore && !lowMemory) {
+            await useEmbeddingModelStore.getState().ensureReady(vectorStore);
+          }
           const embeddingModelReady =
             useEmbeddingModelStore.getState().status === 'ready';
+          const searchStartedAt = Date.now();
+          let isolateTotalMs = 0;
           const { context: webContext, sourceDocuments: webSources } =
             await runWebSearch({
               query: trimmedInput,
@@ -295,6 +339,38 @@ export default function ChatScreen({
               provider: webViewScrapeProvider,
               embeddings,
               embeddingModelReady,
+              profile: modelProfile,
+              contextOffset: context.length,
+              contextCharBudget: webContextCharBudget(
+                useLLMStore.getState().model,
+                context
+              ),
+              signal,
+              lowMemory,
+              useCache: true,
+              isolateEmbeddings: WEB_OFFLOAD_LLM_FOR_EMBEDDINGS
+                ? async (operation) => {
+                    const startedAt = Date.now();
+                    try {
+                      return await runWithModelOffloaded(operation, {
+                        restore: false,
+                      });
+                    } finally {
+                      isolateTotalMs += Date.now() - startedAt;
+                    }
+                  }
+                : undefined,
+              isOnline: async () => {
+                try {
+                  const net = await NetInfo.fetch();
+                  return !(
+                    net.isConnected === false &&
+                    net.isInternetReachable === false
+                  );
+                } catch {
+                  return true;
+                }
+              },
               generate: (messages) =>
                 useLLMStore.getState().generateUtility(messages),
               onProgress: (event) =>
@@ -302,10 +378,28 @@ export default function ChatScreen({
             });
           context = [...context, ...webContext];
           sourceDocuments = [...sourceDocuments, ...webSources];
+          webGrounded = webSources.length > 0;
+          if (WEB_BENCH_LOGS) {
+            console.log(
+              `[BENCH] offload=${WEB_OFFLOAD_LLM_FOR_EMBEDDINGS} search=${
+                Date.now() - searchStartedAt
+              }ms isolate=${isolateTotalMs}ms sources=${webSources.length} read=${
+                webSources.filter((source) => source.read).length
+              }`
+            );
+          }
         } catch (error) {
           console.warn('Web search failed', error);
         } finally {
           useWebSearchStore.getState().setSearchingWeb(false);
+          webViewScrapeProvider.releaseHost();
+        }
+        if (!webGrounded) {
+          Toast.show({
+            type: 'defaultToast',
+            text1:
+              'Couldn’t find anything useful online — answering without the web.',
+          });
         }
       }
 
@@ -328,7 +422,7 @@ export default function ChatScreen({
       docName
     );
 
-    if (isNewChat) {
+    if (isNewChat && targetChatId !== chatId) {
       router.replace(`/chat/${targetChatId}`);
     }
 
@@ -388,6 +482,21 @@ export default function ChatScreen({
   };
 
   const handleWebSearchToggle = () => {
+    if (!chatSettings.webSearchEnabled && !isWebSearchReady(model)) {
+      Toast.show({
+        type: 'defaultToast',
+        text1:
+          'This model cannot use web results reliably — pick a larger one.',
+      });
+      return;
+    }
+    if (!chatSettings.webSearchEnabled && !hasMemoryForWebSearch(model)) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: `${model?.modelName ?? 'This model'} already fills this phone's memory — searching alongside it would close the app. Pick a smaller model.`,
+      });
+      return;
+    }
     setSetting('webSearchEnabled', !chatSettings.webSearchEnabled);
   };
 

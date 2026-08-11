@@ -27,36 +27,6 @@ const fromCodePoint = (code: number): string => {
   }
 };
 
-const NAMED_ENTITIES: Record<string, string> = {
-  deg: '°',
-  ndash: '–',
-  mdash: '—',
-  hellip: '…',
-  laquo: '«',
-  raquo: '»',
-  ldquo: '“',
-  rdquo: '”',
-  lsquo: '‘',
-  rsquo: '’',
-  times: '×',
-  divide: '÷',
-  plusmn: '±',
-  micro: 'µ',
-  middot: '·',
-  bull: '•',
-  euro: '€',
-  pound: '£',
-  yen: '¥',
-  cent: '¢',
-  sup2: '²',
-  sup3: '³',
-  frac12: '½',
-  frac14: '¼',
-  frac34: '¾',
-  minus: '−',
-  permil: '‰',
-};
-
 const decodeEntities = (text: string): string =>
   text
     .replace(/&nbsp;/g, ' ')
@@ -64,10 +34,6 @@ const decodeEntities = (text: string): string =>
     .replace(/&quot;/g, '"')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(
-      /&([a-zA-Z][a-zA-Z0-9]{1,9});/g,
-      (match, name: string) => NAMED_ENTITIES[name.toLowerCase()] ?? match
-    )
     .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
       fromCodePoint(parseInt(hex, 16))
     )
@@ -111,15 +77,19 @@ const MENU_RUN_MIN_LINES = 8;
 const MENU_LINE_MAX_CHARS = 40;
 const MENU_LINE_KEEP = /[\d.!?%°:;]/;
 
+const FACET_COUNT = /\(\s*\d[\d\s.,]*\s*\)/g;
+const PROMO_PERCENT = /-?\d+\s*%/g;
+
 const dropMenuRuns = (text: string): string => {
   const lines = text.split('\n');
   const isMenuLine = (line: string): boolean => {
     const trimmed = line.trim();
-    return (
-      trimmed.length > 0 &&
-      trimmed.length <= MENU_LINE_MAX_CHARS &&
-      !MENU_LINE_KEEP.test(trimmed)
-    );
+    if (trimmed.length === 0 || trimmed.length > MENU_LINE_MAX_CHARS) {
+      return false;
+    }
+    const body = trimmed.replace(FACET_COUNT, ' ').replace(PROMO_PERCENT, ' ');
+    if (!/\p{L}/u.test(body)) return false;
+    return !MENU_LINE_KEEP.test(body);
   };
   const kept: string[] = [];
   for (let start = 0; start < lines.length;) {

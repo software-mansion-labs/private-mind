@@ -44,7 +44,7 @@ function ChatScreenInner() {
   const isPhantom = phantomChat?.id === chatId && !chat;
   const shouldPlayBranchEntryAnimation =
     entryAnimation === CHAT_ENTRY_ANIMATION.BranchCreated;
-  const resolvedModelId = modelId ?? chat?.modelId;
+  const resolvedModelId = chat?.modelId ?? modelId;
   const resolvedModel = resolvedModelId
     ? getModelById(parseInt(resolvedModelId.toString(), 10))
     : undefined;
