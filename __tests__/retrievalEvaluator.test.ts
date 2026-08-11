@@ -29,7 +29,7 @@ describe('evaluateWebRetrieval', () => {
     expect(e.shouldCorrect).toBe(true);
   });
 
-  it('is correct (no corrective round) on strong retrieval signals', () => {
+  it('is correct on strong retrieval signals', () => {
     const e = evaluateWebRetrieval({
       resultCount: 5,
       contentCount: 3,
@@ -55,7 +55,7 @@ describe('evaluateWebRetrieval', () => {
     expect(e.shouldCorrect).toBe(true);
   });
 
-  it('is ambiguous on middling signals (fires a corrective round)', () => {
+  it('is ambiguous on middling signals (widens the fetch wave)', () => {
     const e = evaluateWebRetrieval({
       resultCount: 3,
       contentCount: 1,

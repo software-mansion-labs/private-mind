@@ -1,4 +1,3 @@
-import type { WebSearchResult } from './types';
 import { hostname } from './webResultsToContext';
 
 export interface TopicLanguage {
@@ -86,20 +85,4 @@ export const detectTopicLanguage = (
   }
   if (!best || bestCount < 2) return null;
   return { code: best, name: LANGUAGE_NAMES[best]! };
-};
-
-const TITLE_TAIL = /\s*[-—|·]\s*[^-—|·]{1,40}$/;
-
-export const nativeTitleQuery = (
-  results: WebSearchResult[],
-  language: TopicLanguage
-): string => {
-  for (const result of results) {
-    if (!result.url || !result.title) continue;
-    if (languageOfHost(hostname(result.url)) !== language.code) continue;
-    const title = result.title.replace(TITLE_TAIL, '').trim();
-    if (title.length < 4 || title.length > 90) continue;
-    return title.replace(/\s+/g, ' ');
-  }
-  return '';
 };

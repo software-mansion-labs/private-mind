@@ -1,7 +1,4 @@
-import {
-  detectTopicLanguage,
-  nativeTitleQuery,
-} from '../utils/web/topicLanguage';
+import { detectTopicLanguage } from '../utils/web/topicLanguage';
 import type { WebSearchResult } from '../utils/web/types';
 
 const page = (url: string, title = 'Title'): WebSearchResult => ({
@@ -81,43 +78,5 @@ describe('detectTopicLanguage', () => {
         page('https://c.it/'),
       ])
     ).toEqual({ code: 'it', name: 'Italian' });
-  });
-});
-
-describe('nativeTitleQuery', () => {
-  const italian = { code: 'it', name: 'Italian' };
-
-  it('lifts the entity name verbatim from a page in the topic language', () => {
-    const out = nativeTitleQuery(
-      [
-        page('https://example.com/', 'Cagliari Cathedral'),
-        page(
-          'https://it.wikipedia.org/wiki/X',
-          'Cattedrale di Santa Maria (Cagliari) - Wikipedia'
-        ),
-      ],
-      italian
-    );
-    expect(out).toBe('Cattedrale di Santa Maria (Cagliari)');
-  });
-
-  it('skips pages that are not in the topic language', () => {
-    expect(
-      nativeTitleQuery(
-        [page('https://example.com/', 'A long enough title')],
-        italian
-      )
-    ).toBe('');
-  });
-
-  it('rejects titles too short or too long to be a query', () => {
-    expect(nativeTitleQuery([page('https://a.it/', 'ok')], italian)).toBe('');
-    expect(
-      nativeTitleQuery([page('https://a.it/', 'x'.repeat(120))], italian)
-    ).toBe('');
-  });
-
-  it('returns empty when nothing qualifies', () => {
-    expect(nativeTitleQuery([], italian)).toBe('');
   });
 });

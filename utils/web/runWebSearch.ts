@@ -23,19 +23,11 @@ import {
   type WebRetrievalSignals,
 } from './retrievalEvaluator';
 import {
-  buildCorrectiveEvidence,
-  reformulateForCorrection,
-  uncoveredTermsQuery,
-  reformulateWithEvidence,
-} from './reformulateQuery';
-import { detectTopicLanguage, nativeTitleQuery } from './topicLanguage';
-import {
   analyzeSourceAgreement,
   type SourceAgreement,
 } from './sourceAgreement';
 import { hostname, webResultsToContext } from './webResultsToContext';
 import { dedupeByBody, listingFingerprint } from './fingerprint';
-import { interleaveByRound } from './mergeRounds';
 import { rankByListingRelevance } from './listingRelevance';
 import { promoteTitleConsensus } from './titleConsensus';
 import { pageCache, serpCache } from './cache/webCache';
@@ -43,9 +35,6 @@ import { extractArticle } from './url/extractArticle';
 import {
   WEB_ADAPTIVE_ENRICH,
   WEB_AGREEMENT_ENABLED,
-  WEB_CORRECTIVE_ENABLED,
-  WEB_CORRECTIVE_LLM_REWRITE,
-  WEB_CORRECTIVE_MERGED_MAX_RESULTS,
   WEB_ENRICH_WAVE_FIRST,
   WEB_ENRICH_WAVE_STEP,
   WEB_FETCH_TOP_N_CONTENT,
@@ -113,10 +102,6 @@ export interface WebSearchTelemetry {
   skippedReason?: 'gated' | 'provider-not-ready' | 'offline';
   plannedQueries: string[];
   rounds: WebRoundTelemetry[];
-  correctiveFired: boolean;
-  correctiveQuery?: string;
-  correctiveSource?: 'coverage' | 'evidence' | 'native-title' | 'heuristic';
-  correctiveLanguage?: string;
   providerCalls: number;
   enginesTried: string[];
   finalConfidence: number;
@@ -181,7 +166,6 @@ export const runWebSearch = async (
     needsSearch: true,
     plannedQueries: [],
     rounds: [],
-    correctiveFired: false,
     providerCalls: 0,
     enginesTried: [],
     finalConfidence: 0,
@@ -396,86 +380,23 @@ export const runWebSearch = async (
   };
 
   const seen = new Set<string>();
-  const round1Results = await runQueries(baseQueries, 1, seen);
-  const round1 = await groundAndEvaluate(round1Results, WEB_SEARCH_MAX_RESULTS);
+  const found = await runQueries(baseQueries, 1, seen);
+  const outcome = await groundAndEvaluate(found, WEB_SEARCH_MAX_RESULTS);
 
-  let finalResults = round1.grounded;
-  let evaluation = round1.evaluation;
-  let agreement = round1.agreement;
+  let finalResults = outcome.grounded;
+  const { evaluation, agreement } = outcome;
   telemetry.rounds.push({
     round: 1,
     queries: baseQueries,
-    resultCount: round1Results.length,
-    contentCount: round1.contentCount,
-    confidence: round1.evaluation.confidence,
-    label: round1.evaluation.label,
-    enrichedPages: round1.enrichedPages,
-    enrichWaves: round1.waves,
-    independentHosts: round1.agreement.independentHosts,
-    corroboratedClaims: round1.agreement.corroborated.length,
+    resultCount: found.length,
+    contentCount: outcome.contentCount,
+    confidence: outcome.evaluation.confidence,
+    label: outcome.evaluation.label,
+    enrichedPages: outcome.enrichedPages,
+    enrichWaves: outcome.waves,
+    independentHosts: outcome.agreement.independentHosts,
+    corroboratedClaims: outcome.agreement.corroborated.length,
   });
-
-  const shouldRunCorrectiveRound =
-    WEB_CORRECTIVE_ENABLED && evaluation.shouldCorrect && !signal?.aborted;
-
-  if (shouldRunCorrectiveRound) {
-    const topicLanguage = detectTopicLanguage(round1.grounded);
-    telemetry.correctiveLanguage = topicLanguage?.name ?? 'English';
-
-    let reformulated = '';
-    if (WEB_CORRECTIVE_LLM_REWRITE) {
-      reformulated = await reformulateWithEvidence({
-        query,
-        alreadyRun: baseQueries,
-        evidence: buildCorrectiveEvidence(round1.grounded),
-        generate,
-        targetLanguage: telemetry.correctiveLanguage,
-      });
-      if (reformulated) telemetry.correctiveSource = 'evidence';
-    }
-    if (!reformulated && topicLanguage) {
-      const native = nativeTitleQuery(round1.grounded, topicLanguage);
-      if (native && !baseQueries.includes(native)) {
-        reformulated = native;
-        telemetry.correctiveSource = 'native-title';
-      }
-    }
-    if (!reformulated) {
-      reformulated = uncoveredTermsQuery(query, round1.grounded, baseQueries);
-      if (reformulated) telemetry.correctiveSource = 'coverage';
-    }
-    if (!reformulated) {
-      reformulated = reformulateForCorrection(query, plan, baseQueries);
-      if (reformulated) telemetry.correctiveSource = 'heuristic';
-    }
-    if (reformulated) {
-      const round2Results = await runQueries([reformulated], 2, seen);
-      const merged = interleaveByRound(round1Results, round2Results).map(
-        (result) => enrichedByUrl.get(result.url) ?? result
-      );
-      const corrective = await groundAndEvaluate(
-        merged,
-        WEB_CORRECTIVE_MERGED_MAX_RESULTS
-      );
-      finalResults = corrective.grounded;
-      evaluation = corrective.evaluation;
-      agreement = corrective.agreement;
-      telemetry.correctiveFired = true;
-      telemetry.correctiveQuery = reformulated;
-      telemetry.rounds.push({
-        round: 2,
-        queries: [reformulated],
-        resultCount: round2Results.length,
-        contentCount: corrective.contentCount,
-        confidence: corrective.evaluation.confidence,
-        label: corrective.evaluation.label,
-        enrichedPages: corrective.enrichedPages,
-        enrichWaves: corrective.waves,
-        independentHosts: corrective.agreement.independentHosts,
-        corroboratedClaims: corrective.agreement.corroborated.length,
-      });
-    }
-  }
 
   finalResults = promoteTitleConsensus(finalResults, query);
 
@@ -492,11 +413,8 @@ export const runWebSearch = async (
     return { context: [], sourceDocuments: [], telemetry };
   }
 
-  const usedQueries = telemetry.correctiveFired
-    ? [...baseQueries, telemetry.correctiveQuery!]
-    : baseQueries;
   const label =
-    usedQueries.length > 1 ? usedQueries.join(' + ') : usedQueries[0];
+    baseQueries.length > 1 ? baseQueries.join(' + ') : baseQueries[0];
   const web = webResultsToContext(
     finalResults,
     label,
