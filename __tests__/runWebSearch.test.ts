@@ -24,6 +24,7 @@ jest.mock('../utils/web/url/extractArticle', () => ({
 import { runWebSearch } from '../utils/web/runWebSearch';
 import type { WebSearchProgressEvent } from '../utils/web/runWebSearch';
 import { extractArticle } from '../utils/web/url/extractArticle';
+import { clearWebCaches } from '../utils/web/cache/webCache';
 
 const axisOf = (text: string): number[] => {
   const lower = text.toLowerCase();
@@ -35,6 +36,7 @@ const axisOf = (text: string): number[] => {
 const fakeEmbeddings = {
   embedQuery: jest.fn(async (t: string) => axisOf(t)),
   embedDocument: jest.fn(async (t: string) => axisOf(t)),
+  runWithLoadedModel: jest.fn(<T>(operation: () => Promise<T>) => operation()),
 } as unknown as LFMEmbeddings;
 
 class MockProvider implements WebSearchProvider {
@@ -143,6 +145,61 @@ describe('runWebSearch', () => {
     expect(out.context.join('\n')).toContain('weather');
     expect(events.some((e) => e.type === 'searching')).toBe(true);
     expect(events.some((e) => e.type === 'done')).toBe(true);
+    expect(events.some((e) => e.type === 'weak')).toBe(false);
+  });
+
+  it('ranks the whole result set before capping it', async () => {
+    const filler = Array.from({ length: 9 }, (_, i) => ({
+      title: `Gallery ${i}`,
+      url: `https://gallery${i}.example/x`,
+      snippet: 'photo album',
+    }));
+    const buried = {
+      title: 'Warsaw weather',
+      url: 'https://buried.example/x',
+      snippet: 'Warsaw weather today temperature',
+    };
+    const provider = new MockProvider({
+      'warsaw weather': [...filler, buried],
+    });
+    (extractArticle as jest.Mock).mockImplementation(async (url: string) => ({
+      url,
+      title: url,
+      text: url.includes('buried') ? WEATHER_TEXT : SPORT_TEXT,
+      siteName: url,
+    }));
+
+    const out = await runWebSearch({
+      query: 'warsaw weather',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: noGen,
+      today: '2026-07-20',
+    });
+
+    expect(out.sourceDocuments.some((d) => d.url === buried.url)).toBe(true);
+  });
+
+  it('reports the shortfall when the corrective round is still thin', async () => {
+    const provider = new MockProvider({
+      'warsaw weather forecast': [sportPage('https://sport.example/1')],
+      'warsaw weather': [sportPage('https://sport.example/2')],
+    });
+    const events: WebSearchProgressEvent[] = [];
+    const out = await runWebSearch({
+      query: 'warsaw weather forecast',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: noGen,
+      onProgress: (e) => events.push(e),
+      today: '2026-07-20',
+    });
+    expect(out.telemetry.correctiveFired).toBe(true);
+    expect(events.some((e) => e.type === 'weak')).toBe(true);
   });
 
   it('fires ONE corrective round on weak round 1 and recovers', async () => {
@@ -213,6 +270,123 @@ describe('runWebSearch', () => {
     expect(fetched).toContain('https://weather.example/2');
   });
 
+  it('drops the same article listed under a second id on the same host', async () => {
+    const duplicate = (url: string): WebSearchResult => ({
+      title: 'Pogoda Kraków - Prognoza pogody godzinowa',
+      url,
+      snippet: 'weather temperature',
+      content: WEATHER_TEXT,
+    });
+    const provider = new MockProvider({
+      'warsaw weather': [
+        duplicate('https://pogoda.example/krakow-306020'),
+        duplicate('https://pogoda.example/krakow-306021'),
+        weatherPage('https://other.example/1'),
+      ],
+    });
+
+    const out = await runWebSearch({
+      query: 'warsaw weather',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: noGen,
+      today: '2026-07-20',
+    });
+
+    const urls = out.sourceDocuments.map((source) => source.url);
+    expect(urls).toContain('https://pogoda.example/krakow-306020');
+    expect(urls).not.toContain('https://pogoda.example/krakow-306021');
+    expect(urls).toContain('https://other.example/1');
+  });
+
+  it('drops a same-host page whose body repeats one already read', async () => {
+    const reprint = (url: string, title: string): WebSearchResult => ({
+      title,
+      url,
+      snippet: 'weather temperature',
+      content: WEATHER_TEXT,
+    });
+    const provider = new MockProvider({
+      'warsaw weather': [
+        reprint('https://pogoda.example/a', 'Warsaw weather today'),
+        reprint('https://pogoda.example/b', 'Warsaw forecast'),
+        weatherPage('https://other.example/1'),
+      ],
+    });
+
+    const out = await runWebSearch({
+      query: 'warsaw weather',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: noGen,
+      today: '2026-07-20',
+    });
+
+    const urls = out.sourceDocuments.map((source) => source.url);
+    expect(urls).toContain('https://pogoda.example/a');
+    expect(urls).not.toContain('https://pogoda.example/b');
+    expect(urls).toContain('https://other.example/1');
+  });
+
+  it('loads the embedding module around transient retrieval', async () => {
+    const provider = new MockProvider({
+      'warsaw weather': [weatherPage('https://weather.example/1')],
+    });
+
+    await runWebSearch({
+      query: 'warsaw weather',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: noGen,
+      today: '2026-07-20',
+    });
+
+    expect(fakeEmbeddings.runWithLoadedModel).toHaveBeenCalled();
+  });
+
+  it('evicts the LLM around every embedding step', async () => {
+    const provider = new MockProvider({
+      'warsaw weather': [weatherPage('https://weather.example/1')],
+    });
+    const order: string[] = [];
+    const calls = { count: 0 };
+    const isolateEmbeddings = async <T>(
+      operation: () => Promise<T>
+    ): Promise<T> => {
+      calls.count += 1;
+      order.push('offload');
+      const result = await operation();
+      order.push('restore');
+      return result;
+    };
+    (fakeEmbeddings.runWithLoadedModel as jest.Mock).mockImplementation(
+      async (operation: () => Promise<unknown>) => {
+        order.push('embed');
+        return operation();
+      }
+    );
+
+    await runWebSearch({
+      query: 'warsaw weather',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: noGen,
+      isolateEmbeddings,
+      today: '2026-07-20',
+    });
+
+    expect(calls.count).toBeGreaterThan(0);
+    expect(order).toEqual(['offload', 'embed', 'restore']);
+  });
+
   it('lean path (no embeddings) trusts extracted content and does not correct', async () => {
     const provider = new MockProvider({
       'warsaw weather': [weatherPage('https://weather.example/1')],
@@ -229,5 +403,66 @@ describe('runWebSearch', () => {
     expect(out.telemetry.correctiveFired).toBe(false);
     expect(out.telemetry.providerCalls).toBe(1);
     expect(out.context.join('\n')).toContain('weather');
+  });
+});
+
+describe('runWebSearch — reusing a previous turn', () => {
+  const run = (provider: MockProvider, useCache: boolean) =>
+    runWebSearch({
+      query: 'warsaw weather',
+      history: [],
+      provider,
+      embeddings: null,
+      embeddingModelReady: false,
+      generate: noGen,
+      today: '2026-07-20',
+      useCache,
+    });
+
+  beforeEach(() => {
+    clearWebCaches();
+    (extractArticle as jest.Mock).mockResolvedValue({
+      url: 'https://weather.example/1',
+      title: 'Warsaw weather',
+      text: WEATHER_TEXT,
+      siteName: 'weather.example',
+    });
+  });
+  afterEach(() => clearWebCaches());
+
+  it('serves the second identical question without touching the network', async () => {
+    const provider = new MockProvider({
+      'warsaw weather': [bareResult('https://weather.example/1')],
+    });
+
+    const first = await run(provider, true);
+    const second = await run(provider, true);
+
+    expect(first.telemetry.providerCalls).toBe(1);
+    expect(second.telemetry.providerCalls).toBe(0);
+    expect(provider.calls).toHaveLength(1);
+    expect(extractArticle).toHaveBeenCalledTimes(1);
+    expect(second.context.join('\n')).toContain('weather');
+  });
+
+  it('stays off unless the caller asks for it, so the eval harness is unaffected', async () => {
+    const provider = new MockProvider({
+      'warsaw weather': [bareResult('https://weather.example/1')],
+    });
+
+    await run(provider, false);
+    await run(provider, false);
+
+    expect(provider.calls).toHaveLength(2);
+    expect(extractArticle).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not cache an empty SERP, which is as likely to be a bot wall', async () => {
+    const provider = new MockProvider({ 'warsaw weather': [] });
+
+    await run(provider, true);
+    await run(provider, true);
+
+    expect(provider.calls).toHaveLength(2);
   });
 });

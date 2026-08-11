@@ -35,6 +35,7 @@ const axisOf = (text: string): number[] => {
 const fakeEmbeddings = {
   embedQuery: jest.fn(async (t: string) => axisOf(t)),
   embedDocument: jest.fn(async (t: string) => axisOf(t)),
+  runWithLoadedModel: jest.fn(<T>(operation: () => Promise<T>) => operation()),
 } as unknown as LFMEmbeddings;
 
 const bare = (url: string): WebSearchResult => ({
@@ -86,6 +87,27 @@ beforeEach(() => {
 });
 afterEach(() => (console.warn as jest.Mock).mockRestore());
 
+describe('memory-constrained retrieval path', () => {
+  it('ranks by keyword instead of embeddings when the device is low on memory', async () => {
+    const provider = setup([]);
+
+    const out = await runWebSearch({
+      query: 'warsaw weather',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () => '',
+      today: '2026-07-20',
+      lowMemory: true,
+    });
+
+    expect(fakeEmbeddings.embedQuery).not.toHaveBeenCalled();
+    expect(fakeEmbeddings.embedDocument).not.toHaveBeenCalled();
+    expect(out.context.join('\n')).toContain('weather');
+  });
+});
+
 describe('adaptive enrichment', () => {
   it('stops after the first wave when it already answers the query', async () => {
     const provider = setup([]);
@@ -124,6 +146,24 @@ describe('adaptive enrichment', () => {
     expect(round1.enrichedPages).toBe(WEB_RETRIEVAL_FETCH_TOP_N);
     expect(round1.enrichWaves).toBe(3);
     expect(extractArticle).toHaveBeenCalledTimes(WEB_RETRIEVAL_FETCH_TOP_N);
+  });
+
+  it('replaces dead pages inside the wave instead of spending the budget on them', async () => {
+    const urls = [1, 2, 3, 4, 5].map((n) => `https://page${n}.example/`);
+    (extractArticle as jest.Mock).mockImplementation(async (url: string) => {
+      if (url === urls[0] || url === urls[1]) throw new Error('dead');
+      return { text: WEATHER_TEXT };
+    });
+    const provider = new MockProvider(urls.map(bare));
+
+    const out = await run(provider);
+
+    const round1 = out.telemetry.rounds[0]!;
+    expect(round1.enrichWaves).toBe(1);
+    expect(round1.contentCount).toBeGreaterThanOrEqual(2);
+    expect(round1.label).toBe('correct');
+    expect(extractArticle).toHaveBeenCalledTimes(4);
+    expect(out.context.join('\n')).toContain('weather');
   });
 
   it('does not re-fetch a page that failed enrichment as the wave widens', async () => {

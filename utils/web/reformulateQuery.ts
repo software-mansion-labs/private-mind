@@ -5,6 +5,13 @@ import {
   type WebSearchPlan,
 } from './buildSearchQuery';
 import { hostname } from './webResultsToContext';
+import {
+  TOKEN_PATTERN,
+  extractQueryTerms,
+  foldForMatching,
+  stemPrefix,
+} from '../queryTerms';
+import { detectQuestionLanguage } from '../questionLanguage';
 import type { WebSearchResult } from './types';
 import {
   WEB_CORRECTIVE_EVIDENCE_MAX_CHARS,
@@ -24,6 +31,44 @@ const freshnessCheck = (
     const c = norm(candidate);
     return !!c && c !== original && !ran.has(c);
   };
+};
+
+export const uncoveredTermsQuery = (
+  query: string,
+  results: WebSearchResult[],
+  alreadyRun: string[]
+): string => {
+  const seen = new Set(
+    (
+      foldForMatching(
+        results
+          .map(
+            (result) =>
+              `${result.title} ${result.snippet} ${result.content ?? ''}`
+          )
+          .join(' ')
+      ).match(TOKEN_PATTERN) ?? []
+    ).map(stemPrefix)
+  );
+  if (seen.size === 0) return '';
+
+  const covered = (term: string): boolean => {
+    const stem = stemPrefix(foldForMatching(term));
+    return seen.has(stem) || [...seen].some((word) => word.startsWith(stem));
+  };
+
+  const language = detectQuestionLanguage(query)?.code;
+  const words = (query.toLowerCase().match(TOKEN_PATTERN) ?? []).map(
+    (word) => ({ word, terms: [...extractQueryTerms(word, language)] })
+  );
+  const searchable = words.filter((entry) => entry.terms.length > 0);
+  if (searchable.length < 2) return '';
+
+  const missing = searchable.filter((entry) => !entry.terms.some(covered));
+  if (missing.length === 0 || missing.length === searchable.length) return '';
+
+  const candidate = collapse(missing.map((entry) => entry.word).join(' '));
+  return freshnessCheck(query, alreadyRun)(candidate) ? candidate : '';
 };
 
 export const reformulateForCorrection = (

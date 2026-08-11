@@ -1,12 +1,20 @@
+import { Platform } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import {
   getModelMemoryRequirement,
   isModelCompatible,
   getDeviceMemoryGB,
+  getAppMemoryBudgetGB,
   hasMemoryForWebSearch,
   isMemoryConstrained,
 } from '../utils/modelCompatibility';
 import { Model } from '../database/modelRepository';
+
+const setPlatform = (os: string) => {
+  Object.defineProperty(Platform, 'OS', { get: () => os, configurable: true });
+};
+const ORIGINAL_OS = Platform.OS;
+afterEach(() => setPlatform(ORIGINAL_OS));
 
 const baseModel: Model = {
   id: 1,
@@ -19,9 +27,10 @@ const baseModel: Model = {
 };
 
 const mockGetTotalMemorySync = DeviceInfo.getTotalMemorySync as jest.Mock;
+const gb = (value: number) => value * 1024 * 1024 * 1024;
 
 beforeEach(() => {
-  mockGetTotalMemorySync.mockReturnValue(8 * 1024 * 1024 * 1024); // reset to 8GB
+  mockGetTotalMemorySync.mockReturnValue(gb(8));
 });
 
 describe('getModelMemoryRequirement', () => {
@@ -69,34 +78,131 @@ describe('getModelMemoryRequirement', () => {
 });
 
 describe('isModelCompatible', () => {
-  it('returns true when model has no parameters (unknown requirement)', () => {
+  it('returns true when nothing about the model says how big it is', () => {
     const model = { ...baseModel, parameters: undefined };
     expect(isModelCompatible(model)).toBe(true);
   });
 
-  it('returns true when memory requirement fits in device memory', () => {
-    // 8GB device, 1B param non-quantized = 2.5GB required
-    mockGetTotalMemorySync.mockReturnValue(8 * 1024 * 1024 * 1024);
-    const model = { ...baseModel, parameters: 1 };
+  it('prefers the file size over the parameter-count estimate', () => {
+    mockGetTotalMemorySync.mockReturnValue(gb(3.8));
+    const model = {
+      ...baseModel,
+      modelName: 'LLaMA 3.2 - 1B - SpinQuant',
+      parameters: 1.24,
+      modelSize: 1.14,
+    };
     expect(isModelCompatible(model)).toBe(true);
   });
 
-  it('returns false when memory requirement exceeds device memory', () => {
-    mockGetTotalMemorySync.mockReturnValue(2 * 1024 * 1024 * 1024); // 2GB device
-    const model = { ...baseModel, parameters: 7, modelName: 'Llama-7B' }; // needs 17.5GB
-    expect(isModelCompatible(model)).toBe(false);
+  it('falls back to the parameter estimate when there is no file size', () => {
+    mockGetTotalMemorySync.mockReturnValue(gb(12));
+    expect(isModelCompatible({ ...baseModel, parameters: 7 })).toBe(false);
+    expect(isModelCompatible({ ...baseModel, parameters: 1 })).toBe(true);
   });
 
-  it('returns true for a model within the memory limit', () => {
-    // 8GB device, 2B params non-quantized = 5GB required — comfortably fits
-    const model = { ...baseModel, parameters: 2, modelName: 'Llama-2B' };
-    expect(isModelCompatible(model)).toBe(true);
+  it('does not hide every model when the memory figure is unreadable', () => {
+    mockGetTotalMemorySync.mockImplementation(() => {
+      throw new Error('no such thing');
+    });
+    expect(isModelCompatible({ ...baseModel, modelSize: 2.5 })).toBe(true);
+  });
+});
+
+describe('what each device is allowed to run', () => {
+  const CATALOGUE = [
+    { modelName: 'LFM 2.5 VL - 450M', family: 'LFM', modelSize: 0.65 },
+    { modelName: 'Qwen 2.5 - 0.5B', family: 'Qwen 2.5', modelSize: 0.81 },
+    { modelName: 'Qwen 3 - 0.6B', family: 'Qwen 3', modelSize: 0.94 },
+    {
+      modelName: 'LLaMA 3.2 - 1B - SpinQuant',
+      family: 'LLaMA',
+      modelSize: 1.14,
+    },
+    { modelName: 'LFM 2.5 - 1.2B', family: 'LFM', modelSize: 1.14 },
+    { modelName: 'Qwen 2.5 - 1.5B', family: 'Qwen 2.5', modelSize: 1.76 },
+    { modelName: 'Qwen 3 - 1.7B', family: 'Qwen 3', modelSize: 2.16 },
+    { modelName: 'LFM 2.5 VL - 1.6B', family: 'LFM', modelSize: 2.43 },
+    { modelName: 'Gemma 4 - 2B', family: 'Gemma 4', modelSize: 2.5 },
+    { modelName: 'Qwen 2.5 - 3B', family: 'Qwen 2.5', modelSize: 2.89 },
+    { modelName: 'Gemma 4 VL - 2B', family: 'Gemma 4', modelSize: 4.0 },
+  ];
+
+  const allowed = (totalGB: number, os: string) => {
+    setPlatform(os);
+    mockGetTotalMemorySync.mockReturnValue(gb(totalGB));
+    return CATALOGUE.filter((model) =>
+      isModelCompatible(model as unknown as Model)
+    ).map((model) => model.modelName);
+  };
+
+  const withSearch = (totalGB: number, os: string) => {
+    setPlatform(os);
+    mockGetTotalMemorySync.mockReturnValue(gb(totalGB));
+    return CATALOGUE.filter(
+      (model) =>
+        isModelCompatible(model as unknown as Model) &&
+        hasMemoryForWebSearch(model)
+    ).map((model) => model.modelName);
+  };
+
+  it('iPhone SE, 4 GB — jetsam killed the app at 2.29 GiB here', () => {
+    expect(allowed(3.8, 'ios')).toEqual([
+      'LFM 2.5 VL - 450M',
+      'Qwen 2.5 - 0.5B',
+      'Qwen 3 - 0.6B',
+      'LLaMA 3.2 - 1B - SpinQuant',
+      'LFM 2.5 - 1.2B',
+    ]);
+    expect(withSearch(3.8, 'ios')).toEqual([
+      'LFM 2.5 VL - 450M',
+      'Qwen 2.5 - 0.5B',
+      'Qwen 3 - 0.6B',
+    ]);
   });
 
-  it('returns false for a model that is slightly over the limit', () => {
-    // 8GB device, 4B params non-quantized = 10GB needed
-    const model = { ...baseModel, parameters: 4, modelName: 'Llama-4B' };
-    expect(isModelCompatible(model)).toBe(false);
+  it('Galaxy S20 FE, 6 GB — four foreground low-memory kills here', () => {
+    expect(allowed(5.49, 'android')).toEqual([
+      'LFM 2.5 VL - 450M',
+      'Qwen 2.5 - 0.5B',
+      'Qwen 3 - 0.6B',
+      'LLaMA 3.2 - 1B - SpinQuant',
+      'LFM 2.5 - 1.2B',
+      'Qwen 2.5 - 1.5B',
+      'Qwen 3 - 1.7B',
+    ]);
+    expect(withSearch(5.49, 'android')).toEqual([
+      'LFM 2.5 VL - 450M',
+      'Qwen 2.5 - 0.5B',
+      'Qwen 3 - 0.6B',
+      'LLaMA 3.2 - 1B - SpinQuant',
+      'LFM 2.5 - 1.2B',
+      'Qwen 2.5 - 1.5B',
+    ]);
+  });
+
+  it('8 GB Android — keeps every model it can run today', () => {
+    expect(allowed(7.4, 'android')).toEqual(CATALOGUE.map((m) => m.modelName));
+  });
+
+  it('12 GB Android — every model, and search alongside all but the measured refusals', () => {
+    expect(allowed(11.1, 'android')).toEqual(CATALOGUE.map((m) => m.modelName));
+    expect(withSearch(11.1, 'android')).toEqual(
+      CATALOGUE.map((m) => m.modelName)
+    );
+  });
+});
+
+describe('getAppMemoryBudgetGB', () => {
+  it('is a share of RAM on iOS, where the cap is per process', () => {
+    setPlatform('ios');
+    mockGetTotalMemorySync.mockReturnValue(gb(3.8));
+    expect(getAppMemoryBudgetGB()).toBeLessThan(2.29);
+  });
+
+  it('is RAM minus what the system needs on Android, where nothing caps a process', () => {
+    setPlatform('android');
+    mockGetTotalMemorySync.mockReturnValue(gb(5.49));
+    expect(getAppMemoryBudgetGB()).toBeCloseTo(2.99, 2);
   });
 });
 
@@ -107,11 +213,7 @@ describe('getDeviceMemoryGB', () => {
 });
 
 describe('isMemoryConstrained', () => {
-  const gb = (n: number) => n * 1024 * 1024 * 1024;
-
   it('counts the RAM left next to the loaded model, not the device total', () => {
-    // The measured kill: an S24 (7.4 GB) with a 2.5 GB Gemma resident was
-    // lmkd-killed as the foreground app during a parallel scrape.
     mockGetTotalMemorySync.mockReturnValue(gb(7.4));
     expect(isMemoryConstrained({ modelSize: 2.5 })).toBe(true);
     expect(isMemoryConstrained({ modelSize: 0.65 })).toBe(false);
@@ -126,7 +228,6 @@ describe('isMemoryConstrained', () => {
 });
 
 describe('hasMemoryForWebSearch', () => {
-  const gb = (value: number) => value * 1024 * 1024 * 1024;
   const gemma = { modelName: 'Gemma 4 - 2B', family: 'Gemma 4' };
   const qwen = { modelName: 'Qwen 3 - 0.6B', family: 'Qwen 3' };
 

@@ -22,6 +22,10 @@ jest.mock('../utils/promptUtils', () => ({
 jest.mock('../constants/default-benchmark', () => ({
   BENCHMARK_PROMPT: 'benchmark prompt text',
 }));
+jest.mock('@react-native-community/netinfo', () => ({
+  __esModule: true,
+  default: { fetch: jest.fn().mockResolvedValue({ isConnected: true }) },
+}));
 
 const mockLLMModule = LLMModule as jest.Mocked<typeof LLMModule>;
 const mockPersistMessage = chatRepository.persistMessage as jest.Mock;
@@ -733,6 +737,43 @@ describe('setActiveChatId', () => {
 
     expect(useLLMStore.getState().activeChatId).toBeNull();
     expect(useLLMStore.getState().activeChatMessages).toEqual([]);
+  });
+
+  it('keeps the optimistic messages of the chat it is generating for', async () => {
+    const optimistic = [
+      { id: -1, chatId: 5, role: 'user' as const, content: 'hi', timestamp: 0 },
+    ];
+    mockGetChatMessages.mockResolvedValue([]);
+    useLLMStore.setState({
+      db: mockDb,
+      generatingForChatId: 5,
+      activeChatMessages: optimistic,
+    });
+
+    await useLLMStore.getState().setActiveChatId(5);
+
+    expect(mockGetChatMessages).not.toHaveBeenCalled();
+    expect(useLLMStore.getState().activeChatMessages).toEqual(optimistic);
+  });
+
+  it('reloads a generating chat whose messages were cleared, and re-arms a reply row', async () => {
+    const persisted = [
+      { id: 1, chatId: 5, role: 'user' as const, content: 'hi', timestamp: 0 },
+    ];
+    mockGetChatMessages.mockResolvedValue(persisted);
+    useLLMStore.setState({
+      db: mockDb,
+      model: baseModel,
+      generatingForChatId: 5,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore.getState().setActiveChatId(5);
+
+    const messages = useLLMStore.getState().activeChatMessages;
+    expect(messages).toHaveLength(2);
+    expect(messages[0]).toEqual(persisted[0]);
+    expect(messages[1]).toMatchObject({ role: 'assistant', content: '' });
   });
 });
 

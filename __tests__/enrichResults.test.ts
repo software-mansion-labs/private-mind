@@ -170,6 +170,42 @@ describe('enrichWebResults', () => {
     expect(mockExtract).toHaveBeenCalledTimes(2);
   });
 
+  it('replaces failures one at a time in sequential mode', async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    mockExtract.mockImplementation(async (url) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await Promise.resolve();
+      inFlight -= 1;
+      if (url === 'https://a.com/1') throw new Error('dead site');
+      return {
+        url,
+        title: 'x',
+        text: longText(`content of ${url}`),
+        siteName: 'a.com',
+      };
+    });
+
+    const enriched = await enrichWebResults(
+      [
+        result({ url: 'https://a.com/1' }),
+        result({ url: 'https://a.com/2' }),
+        result({ url: 'https://a.com/3' }),
+      ],
+      2,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      true
+    );
+
+    expect(maxInFlight).toBe(1);
+    expect(enriched[1].content).toContain('content of https://a.com/2');
+    expect(enriched[2].content).toContain('content of https://a.com/3');
+  });
+
   it('keeps a long legitimate article that merely mentions verification', async () => {
     const text = `How ticket shops fight bots: verify you are human prompts explained. ${'Detailed analysis paragraph. '.repeat(40)}`;
     mockExtract.mockResolvedValue({

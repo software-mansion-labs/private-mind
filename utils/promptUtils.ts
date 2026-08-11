@@ -7,7 +7,17 @@ import {
 import { Model } from '../database/modelRepository';
 import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
-import { getPromptCharBudget } from '../constants/context-window';
+import {
+  estimatePromptTokens,
+  getPromptCharBudget,
+  getPromptTokenBudget,
+} from '../constants/context-window';
+import { calendarFacts, mentionsTime } from './calendarFacts';
+import {
+  detectThreadLanguage,
+  type QuestionLanguage,
+} from './questionLanguage';
+import { detectTopicLanguage } from './web/topicLanguage';
 
 const CONTEXT_CLOSE_TAG_RESERVE_CHARS = 64;
 
@@ -19,7 +29,8 @@ const surrogateSafeEnd = (text: string, end: number): number => {
 
 const getContextInstruction = (
   sources?: SourceDocument[],
-  preferred?: SourceDocument[]
+  preferred?: SourceDocument[],
+  language?: QuestionLanguage | null
 ): string => {
   const hasWeb = !!sources?.some((source) => sourceKind(source) === 'web');
   const hasDocs = !!sources?.some(
@@ -27,14 +38,15 @@ const getContextInstruction = (
   );
   const webOnly = hasWeb && !hasDocs;
 
+  const headed = 'each block headed by its number and the page title';
   const overviewNote = preferred?.length
-    ? ', or "(Overview)" for a freshly attached file'
+    ? ', with a freshly attached file marked "(Overview)"'
     : '';
   const what = webOnly
-    ? 'excerpts from web pages just retrieved for this question ("Source N: <name>")'
+    ? `excerpts from web pages just retrieved for this question, ${headed}`
     : hasWeb
-      ? 'excerpts from the user\'s documents and from web pages just retrieved for this question ("Source N: <name>")'
-      : `excerpts from the user's documents ("Source N: <name>"${overviewNote})`;
+      ? `excerpts from the user's documents and from web pages just retrieved for this question, ${headed}`
+      : `excerpts from the user's documents, ${headed}${overviewNote}`;
 
   const scope = webOnly
     ? []
@@ -45,14 +57,70 @@ const getContextInstruction = (
   const missing = webOnly ? 'the search results' : 'the sources';
   const fallback = `If the block does not contain the answer, say ${missing} contain no information about it; only then may you add what you know, marked as your own knowledge.`;
 
+  const currentTurn = hasWeb
+    ? [
+        "This block was retrieved for the user's latest message only. Earlier turns may be about a different subject or place — answer the latest message, and never carry a subject over from them.",
+      ]
+    : [];
+
+  const direct =
+    'Answer the question that was asked, directly and first. Do not summarize the pages or add background the question did not ask for.';
+
+  const conflict = hasWeb
+    ? [
+        'The pages may disagree because some are out of date. Where they conflict, trust the page reporting the newest events — a change, a succession, "X replaces Y" — over a page that states the old fact.',
+      ]
+    : [];
+
+  const figures =
+    'Copy every number, price and date exactly as it is printed in the context. If the context does not state the figure the question asks about, say so — never estimate or invent one.';
+
   const instruction = [
     'IMPORTANT CONTEXT INFORMATION:',
     `The <context>…</context> block below holds ${what}. It is the ONLY authoritative source for this question — answer strictly from it and prefer it over your own knowledge.`,
+    ...currentTurn,
     ...scope,
     fallback,
+    direct,
+    ...conflict,
+    figures,
+    languageInstruction(language),
   ].join('\n');
 
   return `\n\n${instruction}`;
+};
+
+const languageInstruction = (language?: QuestionLanguage | null): string => {
+  if (!language) {
+    return 'Write the whole answer in the language of the latest user message, and do not switch language or script partway through.';
+  }
+  const inScript = language.script ? `, written in ${language.script}` : '';
+  const noLatin = language.script
+    ? ' Never transliterate the answer into the Latin alphabet.'
+    : '';
+  return `Write the whole answer in ${language.name}${inScript} — the language of the question — and do not switch language or script partway through.${noLatin}`;
+};
+
+export const answerLanguageAnchor = (
+  language: QuestionLanguage | null
+): string =>
+  language
+    ? ` (Answer in ${language.name}.)`
+    : ' (Answer in the same language as this message.)';
+
+const getDateInstruction = (
+  sources?: SourceDocument[],
+  question?: string
+): string => {
+  const webSources = (sources ?? []).filter(
+    (source) => sourceKind(source) === 'web'
+  );
+  if (webSources.length === 0 && !(question && mentionsTime(question))) {
+    return '';
+  }
+  const language = detectTopicLanguage(webSources);
+
+  return `\n\nCURRENT DATE — from the device clock, correct, and outranking any date found elsewhere:\n${calendarFacts(language?.code)}\nResolve "today", "tomorrow" and weekday names against those lines, quote them exactly, and never ask the user what day it is.`;
 };
 
 const getPreferredSourceInstruction = (sources?: SourceDocument[]) => {
@@ -76,6 +144,14 @@ export const prepareMessagesForLLM = (
   budgetScale: number = 1
 ): ExecutorchMessage[] => {
   const hasContext = context.some((chunk) => chunk.trim().length > 0);
+  const question = activeChatMessages.findLast(
+    (msg) => msg.role === 'user'
+  )?.content;
+  const language = detectThreadLanguage(
+    activeChatMessages
+      .filter((msg) => msg.role === 'user')
+      .map((msg) => msg.content)
+  );
 
   let systemPrompt = settings.systemPrompt;
 
@@ -90,10 +166,14 @@ export const prepareMessagesForLLM = (
   if (hasContext) {
     systemPrompt += getContextInstruction(
       sourceDocuments,
-      preferredSourceDocuments
+      preferredSourceDocuments,
+      language
     );
     systemPrompt += getPreferredSourceInstruction(preferredSourceDocuments);
+  } else {
+    systemPrompt += `\n\n${languageInstruction(language)}`;
   }
+  systemPrompt += getDateInstruction(sourceDocuments, question);
 
   const nonEventMessages = activeChatMessages.filter(
     (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
@@ -123,6 +203,8 @@ export const prepareMessagesForLLM = (
 
   const lastMessage = messagesWithSystemPrompt.at(-1)!;
 
+  lastMessage.content += answerLanguageAnchor(language);
+
   if (settings.thinkingEnabled) {
     lastMessage.content += ' /think';
   } else if (model.thinking) {
@@ -146,8 +228,13 @@ export const prepareMessagesForLLM = (
     const groundingHint = preferredSourceDocuments?.length
       ? 'The question is about the just-attached document(s) in the <context> above.'
       : '';
+    const conflictHint = sourceDocuments?.some(
+      (source) => sourceKind(source) === 'web'
+    )
+      ? 'If the sources above disagree, the one reporting the newest change (a succession, "X replaces Y") is right — a source stating the older fact is out of date.'
+      : '';
     const wrap = (ctx: string) =>
-      [`<context>${ctx}</context>`, groundingHint, userText]
+      [`<context>${ctx}</context>`, groundingHint, conflictHint, userText]
         .filter(Boolean)
         .join('\n');
 
@@ -167,15 +254,28 @@ export const prepareMessagesForLLM = (
         hardSlice.lastIndexOf('\n\n'),
         hardSlice.lastIndexOf('\n ---')
       );
-      const sliced = boundary > 0 ? hardSlice.slice(0, boundary) : hardSlice;
+      let sliced = boundary > 0 ? hardSlice.slice(0, boundary) : hardSlice;
       const lastOpenLabel = sliced
         .match(/--- (?!End of )[^:\n]+:/g)
         ?.at(-1)
         ?.slice(4, -1);
-      finalContext =
-        lastOpenLabel && !sliced.includes(`--- End of ${lastOpenLabel} ---`)
-          ? `${sliced} \n --- End of ${lastOpenLabel} ---`
-          : sliced;
+      if (
+        lastOpenLabel &&
+        !sliced.includes(`--- End of ${lastOpenLabel} ---`)
+      ) {
+        const endMarker = ` \n --- End of ${lastOpenLabel} ---`;
+        const allowed =
+          room + CONTEXT_CLOSE_TAG_RESERVE_CHARS - endMarker.length;
+        if (sliced.length > allowed) {
+          sliced = sliced.slice(
+            0,
+            surrogateSafeEnd(sliced, Math.max(0, allowed))
+          );
+        }
+        finalContext = `${sliced}${endMarker}`;
+      } else {
+        finalContext = sliced;
+      }
     }
     lastMessage.content = wrap(finalContext);
   }
@@ -200,5 +300,23 @@ export const prepareMessagesForLLM = (
     }
   }
 
-  return [messagesWithSystemPrompt[0], ...kept, lastMessage];
+  const finalMessages = [messagesWithSystemPrompt[0], ...kept, lastMessage];
+
+  if (hasContext && budgetScale > 0.75) {
+    const assembled = finalMessages.map((msg) => msg.content).join(' ');
+    if (estimatePromptTokens(assembled) > getPromptTokenBudget(model)) {
+      return prepareMessagesForLLM(
+        activeChatMessages,
+        context,
+        settings,
+        model,
+        customSystemPrompt,
+        preferredSourceDocuments,
+        sourceDocuments,
+        budgetScale * 0.97
+      );
+    }
+  }
+
+  return finalMessages;
 };

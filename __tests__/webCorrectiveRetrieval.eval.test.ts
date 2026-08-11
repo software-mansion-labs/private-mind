@@ -32,6 +32,7 @@ const axisOf = (text: string): number[] => {
 const embeddings = {
   embedQuery: jest.fn(async (t: string) => axisOf(t)),
   embedDocument: jest.fn(async (t: string) => axisOf(t)),
+  runWithLoadedModel: jest.fn(<T>(operation: () => Promise<T>) => operation()),
 } as unknown as LFMEmbeddings;
 
 const onTopic = (
