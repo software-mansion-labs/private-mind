@@ -174,20 +174,10 @@ export const buildRows = (
   if (countOf('searching') >= 2) {
     const rows: Row[] = [];
     const placed = new Set<string>();
-    let searches = 0;
     for (const entry of trace) {
       if (entry.type === 'objectives') {
         rows.push(stepFor(entry));
       } else if (entry.type === 'searching') {
-        searches += 1;
-        if (searches === 2) {
-          rows.push({
-            type: 'note',
-            key: 'corrective',
-            tone: 'muted',
-            label: 'Didn’t find enough — searching again',
-          });
-        }
         rows.push(stepFor(entry));
       } else if (isPageEntry(entry) && entry.host) {
         const key = keyOf(entry.url, entry.host);

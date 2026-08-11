@@ -25,6 +25,7 @@ import { runWebSearch } from '../utils/web/runWebSearch';
 import type { WebSearchProgressEvent } from '../utils/web/runWebSearch';
 import { extractArticle } from '../utils/web/url/extractArticle';
 import { clearWebCaches } from '../utils/web/cache/webCache';
+import { WEB_SEARCH_MAX_RESULTS } from '../constants/web';
 
 const axisOf = (text: string): number[] => {
   const lower = text.toLowerCase();
@@ -51,7 +52,7 @@ class MockProvider implements WebSearchProvider {
   }
   async search(query: string): Promise<WebSearchResult[]> {
     this.calls.push(query);
-    return this.map[query] ?? [];
+    return (this.map[query] ?? []).slice(0, WEB_SEARCH_MAX_RESULTS);
   }
 }
 
@@ -124,7 +125,7 @@ describe('runWebSearch', () => {
     expect(provider.calls).toHaveLength(0);
   });
 
-  it('runs a single round and no corrective round on strong retrieval', async () => {
+  it('runs one round and reports it on strong retrieval', async () => {
     const provider = new MockProvider({
       'warsaw weather': [weatherPage('https://weather.example/1')],
     });
@@ -139,7 +140,6 @@ describe('runWebSearch', () => {
       onProgress: (e) => events.push(e),
       today: '2026-07-20',
     });
-    expect(out.telemetry.correctiveFired).toBe(false);
     expect(out.telemetry.providerCalls).toBe(1);
     expect(out.telemetry.rounds).toHaveLength(1);
     expect(out.context.join('\n')).toContain('weather');
@@ -148,8 +148,8 @@ describe('runWebSearch', () => {
     expect(events.some((e) => e.type === 'weak')).toBe(false);
   });
 
-  it('ranks the whole result set before capping it', async () => {
-    const filler = Array.from({ length: 9 }, (_, i) => ({
+  it('ranks the kept results before spending the fetch budget', async () => {
+    const filler = Array.from({ length: 4 }, (_, i) => ({
       title: `Gallery ${i}`,
       url: `https://gallery${i}.example/x`,
       snippet: 'photo album',
@@ -179,13 +179,13 @@ describe('runWebSearch', () => {
       today: '2026-07-20',
     });
 
-    expect(out.sourceDocuments.some((d) => d.url === buried.url)).toBe(true);
+    const read = out.sourceDocuments.filter((d) => d.read).map((d) => d.url);
+    expect(read).toContain(buried.url);
   });
 
-  it('reports the shortfall when the corrective round is still thin', async () => {
+  it('reports the shortfall when retrieval is thin', async () => {
     const provider = new MockProvider({
       'warsaw weather forecast': [sportPage('https://sport.example/1')],
-      'warsaw weather': [sportPage('https://sport.example/2')],
     });
     const events: WebSearchProgressEvent[] = [];
     const out = await runWebSearch({
@@ -198,76 +198,9 @@ describe('runWebSearch', () => {
       onProgress: (e) => events.push(e),
       today: '2026-07-20',
     });
-    expect(out.telemetry.correctiveFired).toBe(true);
+    expect(out.telemetry.providerCalls).toBe(1);
+    expect(out.telemetry.rounds).toHaveLength(1);
     expect(events.some((e) => e.type === 'weak')).toBe(true);
-  });
-
-  it('fires ONE corrective round on weak round 1 and recovers', async () => {
-    const provider = new MockProvider({
-      'warsaw weather forecast': [sportPage('https://sport.example/1')],
-      'warsaw weather': [weatherPage('https://weather.example/2')],
-    });
-    const out = await runWebSearch({
-      query: 'warsaw weather forecast',
-      history: [],
-      provider,
-      embeddings: fakeEmbeddings,
-      embeddingModelReady: true,
-      generate: noGen,
-      today: '2026-07-20',
-    });
-    expect(out.telemetry.correctiveFired).toBe(true);
-    expect(out.telemetry.correctiveQuery).toBe('warsaw weather');
-    expect(out.telemetry.providerCalls).toBe(2);
-    expect(out.telemetry.rounds).toHaveLength(2);
-    expect(out.context.join('\n')).toContain('weather');
-  });
-
-  it('never exceeds the corrective cap even when round 2 also fails', async () => {
-    const provider = new MockProvider({
-      'warsaw weather forecast': [sportPage('https://sport.example/1')],
-      'warsaw weather': [sportPage('https://sport.example/2')],
-    });
-    const out = await runWebSearch({
-      query: 'warsaw weather forecast',
-      history: [],
-      provider,
-      embeddings: fakeEmbeddings,
-      embeddingModelReady: true,
-      generate: noGen,
-      today: '2026-07-20',
-    });
-    expect(out.telemetry.correctiveFired).toBe(true);
-    expect(out.telemetry.providerCalls).toBe(2);
-    expect(out.telemetry.rounds.length).toBeLessThanOrEqual(2);
-  });
-
-  it('reuses round 1 pages in the corrective round instead of re-fetching', async () => {
-    const provider = new MockProvider({
-      'warsaw weather forecast': [bareResult('https://sport.example/1')],
-      'warsaw weather': [bareResult('https://weather.example/2')],
-    });
-    const fetched: string[] = [];
-    (extractArticle as jest.Mock).mockImplementation(async (url: string) => {
-      fetched.push(url);
-      return { text: url.includes('sport') ? SPORT_TEXT : WEATHER_TEXT };
-    });
-
-    const out = await runWebSearch({
-      query: 'warsaw weather forecast',
-      history: [],
-      provider,
-      embeddings: fakeEmbeddings,
-      embeddingModelReady: true,
-      generate: noGen,
-      today: '2026-07-20',
-    });
-
-    expect(out.telemetry.correctiveFired).toBe(true);
-    expect(fetched.filter((url) => url === 'https://sport.example/1')).toEqual([
-      'https://sport.example/1',
-    ]);
-    expect(fetched).toContain('https://weather.example/2');
   });
 
   it('drops the same article listed under a second id on the same host', async () => {
@@ -400,7 +333,6 @@ describe('runWebSearch', () => {
       generate: noGen,
       today: '2026-07-20',
     });
-    expect(out.telemetry.correctiveFired).toBe(false);
     expect(out.telemetry.providerCalls).toBe(1);
     expect(out.context.join('\n')).toContain('weather');
   });
