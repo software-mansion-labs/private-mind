@@ -13,7 +13,7 @@ import Animated, {
   LinearTransition,
 } from 'react-native-reanimated';
 import * as WebBrowser from 'expo-web-browser';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import WebIcon from '../../assets/icons/web.svg';
@@ -53,8 +53,7 @@ const deriveTitle = (
 };
 
 const WebSearchBlock = memo(({ isSearching, trace, results }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
 
   const isLiveBlock = isSearching || trace.length > 0;
   const traceExpanded = useWebSearchStore(

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, Text, Pressable } from 'react-native';
 import Animated, {
   Easing,
@@ -7,7 +7,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import WebIcon from '../../assets/icons/web.svg';
@@ -77,8 +77,7 @@ const WebSearchTraceRow = ({
   onOpen,
   onOpenChallenge,
 }: Props) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
 
   const markerVisible =
     row.type === 'step' && !row.done ? STEP_DOT_SIZE : MARKER_SIZE;
