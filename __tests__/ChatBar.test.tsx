@@ -312,36 +312,39 @@ describe('downloaded model — text input', () => {
 
   it('stays empty when the native input echoes the sent text back', () => {
     renderBar();
-    const input = screen.getByPlaceholderText('Ask about anything...');
-    fireEvent.changeText(input, 'czesc test wysylki');
+    const textInput = () =>
+      screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(textInput(), 'czesc test wysylki');
     fireEvent.press(screen.getByTestId('send-btn'));
-    expect(input.props.value).toBe('');
+    expect(textInput().props.value).toBe('');
 
-    fireEvent.changeText(input, 'czesc test wysylki');
-    expect(input.props.value).toBe('');
+    fireEvent.changeText(textInput(), 'czesc test wysylki');
+    expect(textInput().props.value).toBe('');
   });
 
   it('accepts genuine typing right after a send', () => {
     renderBar();
-    const input = screen.getByPlaceholderText('Ask about anything...');
-    fireEvent.changeText(input, 'first');
+    const textInput = () =>
+      screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(textInput(), 'first');
     fireEvent.press(screen.getByTestId('send-btn'));
 
-    fireEvent.changeText(input, 'n');
-    expect(input.props.value).toBe('n');
-    fireEvent.changeText(input, 'next');
-    expect(input.props.value).toBe('next');
+    fireEvent.changeText(textInput(), 'n');
+    expect(textInput().props.value).toBe('n');
+    fireEvent.changeText(textInput(), 'next');
+    expect(textInput().props.value).toBe('next');
   });
 
   it('does not swallow a repeat of the same message typed again', () => {
     renderBar();
-    const input = screen.getByPlaceholderText('Ask about anything...');
-    fireEvent.changeText(input, 'again');
+    const textInput = () =>
+      screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(textInput(), 'again');
     fireEvent.press(screen.getByTestId('send-btn'));
 
-    fireEvent.changeText(input, 'a');
-    fireEvent.changeText(input, 'again');
-    expect(input.props.value).toBe('again');
+    fireEvent.changeText(textInput(), 'a');
+    fireEvent.changeText(textInput(), 'again');
+    expect(textInput().props.value).toBe('again');
   });
 
   it('shows prompt suggestions when hasMessages is false', () => {

@@ -24,6 +24,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import SplashScreenAnimation from '../components/SplashScreenAnimation';
 import { initExecutorch } from 'react-native-executorch';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
+import { removeBundledModelLeftovers } from '../utils/bundledModelCleanup';
 
 initExecutorch({ resourceFetcher: ExpoResourceFetcher });
 
@@ -33,6 +34,9 @@ SplashScreen.setOptions({ fade: false, duration: 0 });
 function RootNavigator() {
   useEffect(() => {
     SplashScreen.hideAsync();
+    removeBundledModelLeftovers().catch((error) =>
+      console.warn('Failed to clean up leftover model files', error)
+    );
   }, []);
 
   return (

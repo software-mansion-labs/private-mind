@@ -30,6 +30,7 @@ import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useAttachment } from '../hooks/useAttachment';
 import { useEmbeddingModelStore } from '../store/embeddingModelStore';
+import { useLLMStore } from '../store/llmStore';
 import { useVectorStore } from '../context/VectorStoreContext';
 
 const mockLaunchImageLibrary = launchImageLibrary as jest.Mock;
@@ -91,6 +92,117 @@ describe('useAttachment', () => {
       await result.current.pickFromLibrary();
     });
     expect(result.current.attachments).toEqual([]);
+  });
+
+  describe('embedding model download hand-off', () => {
+    const realEnsureReady = useEmbeddingModelStore.getState().ensureReady;
+    afterEach(() => {
+      useEmbeddingModelStore.setState({ ensureReady: realEnsureReady });
+    });
+
+    const mountWithSheets = () => {
+      const view = renderHook(() => useAttachment());
+      const attachmentSheet = { present: jest.fn(), dismiss: jest.fn() };
+      const downloadSheet = { present: jest.fn(), dismiss: jest.fn() };
+      act(() => {
+        (view.result.current.sheetRef as { current: unknown }).current =
+          attachmentSheet;
+        (
+          view.result.current.embeddingDownloadSheetRef as { current: unknown }
+        ).current = downloadSheet;
+        view.result.current.openSheet();
+      });
+      return { view, attachmentSheet, downloadSheet };
+    };
+
+    it('waits for the attachment sheet to dismiss before showing the download sheet', async () => {
+      useEmbeddingModelStore.setState({
+        status: 'not_downloaded',
+        progress: 0,
+      });
+      const { view, attachmentSheet, downloadSheet } = mountWithSheets();
+
+      await act(async () => {
+        await view.result.current.pickDocument();
+      });
+
+      expect(attachmentSheet.dismiss).toHaveBeenCalled();
+      expect(downloadSheet.present).not.toHaveBeenCalled();
+
+      act(() => {
+        view.result.current.markAttachmentSheetClosed();
+      });
+
+      expect(downloadSheet.present).toHaveBeenCalledTimes(1);
+    });
+
+    it('opens the document picker only once the download sheet is gone', async () => {
+      useEmbeddingModelStore.setState({
+        status: 'not_downloaded',
+        progress: 0,
+      });
+      const ensureReady = jest.fn().mockResolvedValue(true);
+      useEmbeddingModelStore.setState({ ensureReady });
+      const getState = jest.spyOn(useLLMStore, 'getState').mockReturnValue({
+        runWithModelOffloaded: (operation: () => Promise<unknown>) =>
+          operation(),
+      } as unknown as ReturnType<typeof useLLMStore.getState>);
+      mockGetDocumentAsync.mockResolvedValue({ canceled: true, assets: [] });
+
+      const { view, downloadSheet } = mountWithSheets();
+      await act(async () => {
+        await view.result.current.pickDocument();
+      });
+      act(() => {
+        view.result.current.markAttachmentSheetClosed();
+      });
+
+      await act(async () => {
+        await view.result.current.downloadModelAndContinue();
+      });
+
+      expect(ensureReady).toHaveBeenCalled();
+      expect(downloadSheet.dismiss).toHaveBeenCalledTimes(1);
+      expect(mockGetDocumentAsync).not.toHaveBeenCalled();
+
+      await act(async () => {
+        view.result.current.markDownloadSheetClosed();
+      });
+
+      expect(mockGetDocumentAsync).toHaveBeenCalledTimes(1);
+      getState.mockRestore();
+    });
+
+    it('does not hijack the screen when the user closed the download sheet', async () => {
+      useEmbeddingModelStore.setState({
+        status: 'not_downloaded',
+        progress: 0,
+      });
+      useEmbeddingModelStore.setState({
+        ensureReady: jest.fn().mockResolvedValue(true),
+      });
+      const getState = jest.spyOn(useLLMStore, 'getState').mockReturnValue({
+        runWithModelOffloaded: (operation: () => Promise<unknown>) =>
+          operation(),
+      } as unknown as ReturnType<typeof useLLMStore.getState>);
+
+      const { view, downloadSheet } = mountWithSheets();
+      await act(async () => {
+        await view.result.current.pickDocument();
+      });
+      act(() => {
+        view.result.current.markAttachmentSheetClosed();
+        view.result.current.markDownloadSheetClosed();
+      });
+
+      await act(async () => {
+        await view.result.current.downloadModelAndContinue();
+      });
+
+      expect(downloadSheet.dismiss).not.toHaveBeenCalled();
+      expect(mockGetDocumentAsync).not.toHaveBeenCalled();
+      getState.mockRestore();
+    });
   });
 
   it('pickDocument processes document through RAG and stores sourceId', async () => {
