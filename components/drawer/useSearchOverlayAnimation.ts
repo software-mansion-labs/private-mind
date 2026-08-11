@@ -110,6 +110,15 @@ export const useSearchOverlayAnimation = ({
         }
       )
     );
+
+    // An interrupted collapse never reports `finished`, which would leave the
+    // overlay's Modal mounted and swallowing every touch on the screen behind
+    // it. Unmount on a timer as well; re-opening clears it via the cleanup.
+    const forceUnmount = setTimeout(
+      () => applyMounted(false),
+      SEARCH_COLLAPSE_DURATION + 120
+    );
+    return () => clearTimeout(forceUnmount);
   }, [
     active,
     closeInstantly,
