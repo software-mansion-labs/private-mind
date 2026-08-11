@@ -88,6 +88,7 @@ jest.mock('@gorhom/bottom-sheet', () => {
 
 import MessageItem from '../components/chat-screen/MessageItem';
 import { useLLMStore } from '../store/llmStore';
+import { useSettingsStore } from '../store/settingsStore';
 
 const mockUseLLMStore = useLLMStore as unknown as jest.Mock;
 
@@ -119,6 +120,7 @@ const renderItem = (
 
 beforeEach(() => {
   setLLMState({ isGenerating: false, isProcessingPrompt: false });
+  useSettingsStore.setState({ showPerformanceMetrics: true });
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -175,6 +177,18 @@ describe('assistant messages', () => {
   it('does not render metadata when tokensPerSecond is undefined', () => {
     renderItem({ role: 'assistant', content: 'Hi' });
     expect(screen.queryByText(/tps:/)).toBeNull();
+  });
+
+  it('does not render metadata when the performance stats setting is off', () => {
+    useSettingsStore.setState({ showPerformanceMetrics: false });
+    renderItem({
+      role: 'assistant',
+      content: 'Hi',
+      tokensPerSecond: 12.5,
+      timeToFirstToken: 300,
+    });
+    expect(screen.queryByText(/tps:/)).toBeNull();
+    expect(screen.queryByText(/ttft:/)).toBeNull();
   });
 
   it('hands deduplicated sources to onShowSources when the sources button is pressed', () => {
