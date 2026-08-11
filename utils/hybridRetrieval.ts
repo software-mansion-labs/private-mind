@@ -225,7 +225,6 @@ export type HybridRetrieveParams = {
   sourceNamesById: Map<number, string>;
   embeddings?: LFMEmbeddings | null;
   attachmentSourceIds?: number[];
-  /** Per-model override; see `constants/model-profiles`. */
   maxRelevantChunks?: number;
 };
 

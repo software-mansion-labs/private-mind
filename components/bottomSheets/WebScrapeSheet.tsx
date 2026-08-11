@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, StyleSheet, Text, Pressable } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { SERP_PARSER_JS_ONLOAD } from '../../utils/web/scrape/serpParser';
@@ -15,8 +15,7 @@ import { useScrapeHost } from '../../hooks/useScrapeHost';
 import { isAllowedScrapeNavigation } from '../../utils/web/security/scrapeNavigation';
 
 const WebScrapeSheet = () => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { styles, theme } = useThemedStyles(createStyles);
   const {
     webRef,
     nav,
