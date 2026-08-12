@@ -138,9 +138,15 @@ function ChatScreenInner() {
     setModel(newModel);
   };
 
+  // Force complete remount of ChatScreen when model changes by using model.id in key.
+  // This ensures shared values (Reanimated), keyboard state, and scroll view refs
+  // are properly reset when switching between models like Gemma 4 2B and Gemma 4 2B VL.
+  const chatScreenKey = `${chatId}-model-${model?.id || 'none'}`;
+
   return (
     <>
       <ChatScreen
+        key={chatScreenKey}
         chatId={chatId}
         chat={chat}
         messageHistory={isLoading ? [] : activeChatMessages}

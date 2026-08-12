@@ -122,6 +122,13 @@ export default function ChatScreen({
   const extraContentPadding = useSharedValue(0);
   const blankSpace = useSharedValue(0);
   const [chatBarHeight, setChatBarHeight] = useState(0);
+
+  // Reset shared values when model changes to prevent stale keyboard/scroll state
+  // from the previous model affecting the new one (e.g., Gemma 4 2B → Gemma 4 2B VL).
+  useEffect(() => {
+    extraContentPadding.set(0);
+    blankSpace.set(0);
+  }, [model?.id, extraContentPadding, blankSpace]);
   const [rootFrame, setRootFrame] = useState({ x: 0, y: 0, height: 0 });
   const [userActionMenu, setUserActionMenu] =
     useState<UserMessageActionMenuState>({ isOpen: false });
@@ -142,6 +149,13 @@ export default function ChatScreen({
   const [modelSheetOpen, setModelSheetOpen] = useState(false);
   const [attachmentSheetOpen, setAttachmentSheetOpen] = useState(false);
   const overlayOpen = modelSheetOpen || attachmentSheetOpen;
+
+  // When model changes, immediately unfreeze scroll view to prevent new model
+  // from inheriting frozen layout from previous model during transition.
+  useEffect(() => {
+    setModelSheetOpen(false);
+    setAttachmentSheetOpen(false);
+  }, [model?.id]);
 
   const handlePresentModelSheet = useCallback(() => {
     Keyboard.dismiss();
@@ -296,7 +310,10 @@ export default function ChatScreen({
 
   const handleSelectModel = async (selectedModel: Model) => {
     try {
-      loadModel(selectedModel);
+      // Await model loading to ensure proper sequencing: old model unloads,
+      // new model loads, then UI updates. Prevents race condition where scroll view
+      // receives events before model is ready or old model cleanup completes.
+      await loadModel(selectedModel);
 
       if (chatId && !model) {
         await setChatModel(chatId, selectedModel.id);
