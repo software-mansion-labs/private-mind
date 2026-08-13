@@ -49,6 +49,7 @@ import BranchMarker from './BranchMarker';
 import Toast from 'react-native-toast-message';
 import { SUPPORTS_USER_ACTION_MENU } from '../../constants/chat-screen';
 import { useKeyboardLift } from './useKeyboardLift';
+import { visibleMessageText } from '../../utils/messageText';
 
 /**
  * Height of the opaque system navigation bar the list paints behind. Android
@@ -309,8 +310,11 @@ const Messages = ({
   // from Settings lands at the bottom of the chat instead of the top.
   const prevChatLengthRef = useRef(chatHistory.length);
   useLayoutEffect(() => {
+    const prevChatLength = prevChatLengthRef.current;
+    prevChatLengthRef.current = chatHistory.length;
+
     if (
-      prevChatLengthRef.current > 0 &&
+      prevChatLength > 0 &&
       chatHistory.length === 0 &&
       hasScrolledToEnd.current
     ) {
@@ -318,9 +322,17 @@ const Messages = ({
       opacity.set(0);
       pinActive.current = false;
       blankSpace.set(0);
+      return;
     }
-    prevChatLengthRef.current = chatHistory.length;
-  }, [chatHistory.length, opacity, blankSpace]);
+
+    const historyCameBackUnrevealed =
+      prevChatLength === 0 &&
+      chatHistory.length > 0 &&
+      !hasScrolledToEnd.current;
+    if (historyCameBackUnrevealed) {
+      scheduleInitialScrollToEnd();
+    }
+  }, [chatHistory.length, opacity, blankSpace, scheduleInitialScrollToEnd]);
 
   useLayoutEffect(() => clearInitialScrollTimers, [clearInitialScrollTimers]);
 
@@ -411,9 +423,10 @@ const Messages = ({
   }, [closeUserActionMenu]);
 
   // Armed from onMessageSent until the chat is cleared; gates recomputeBlankSpace.
-  // Stays armed past end-of-stream so the final layout (once the stats row and
-  // Copy/Fork bar commit) recomputes blankSpace with the assistant's true height,
-  // instead of leaving it ~50px too large — which clips the pinned question.
+  // Stays armed past end-of-stream so the final layout (once the optional stats
+  // row and the Copy/Fork bar commit) recomputes blankSpace with the assistant's
+  // true height, instead of leaving it ~50px too large — which clips the
+  // pinned question.
   const pinActive = useRef(false);
   // Armed in onMessageSent, consumed on the next onContentSizeChange:
   // seed blankSpace and scroll to end once the new chat row has
@@ -575,7 +588,7 @@ const Messages = ({
 
   const handleCopyMessage = useCallback(
     async (message: Message) => {
-      await Clipboard.setStringAsync(message.content);
+      await Clipboard.setStringAsync(visibleMessageText(message));
       if (message.role === 'user') {
         closeUserActionMenu();
       }

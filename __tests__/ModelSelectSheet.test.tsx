@@ -14,7 +14,9 @@ jest.mock('../store/modelStore', () => ({
   useModelStore: jest.fn(() => ({ downloadedModels: [] })),
 }));
 
-jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
+jest.mock('expo-router', () => ({
+  router: { push: jest.fn(), replace: jest.fn() },
+}));
 
 jest.mock('../components/model-hub/ModelCard', () => {
   const { TouchableOpacity, Text } = require('react-native');
@@ -129,7 +131,8 @@ describe('empty state', () => {
   it('navigates to model-hub when "Download a Model" pressed', () => {
     renderSheet();
     fireEvent.press(screen.getByText('Download a Model'));
-    expect(router.push).toHaveBeenCalledWith('/model-hub');
+    expect(router.replace).toHaveBeenCalledWith('/model-hub');
+    expect(router.push).not.toHaveBeenCalled();
   });
 });
 

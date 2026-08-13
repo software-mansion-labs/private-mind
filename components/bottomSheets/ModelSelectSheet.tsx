@@ -117,7 +117,7 @@ const ModelSelectSheet = ({
             text="Download a Model"
             onPress={() => {
               bottomSheetModalRef.current?.dismiss();
-              router.push('/model-hub');
+              router.replace('/model-hub');
             }}
           />
         </BottomSheetView>

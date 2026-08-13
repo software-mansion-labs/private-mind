@@ -13,6 +13,7 @@ import AnimatedChatLoading from './AnimatedChatLoading';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useLLMStore } from '../../store/llmStore';
+import { useSettingsStore } from '../../store/settingsStore';
 import { Theme } from '../../styles/colors';
 import ImageLightbox from './ImageLightbox';
 import AttachmentIcon from '../../assets/icons/attachment.svg';
@@ -27,6 +28,7 @@ import {
 import { Message, type SourceDocument } from '../../database/chatRepository';
 import { stripCitations } from '../../utils/citations';
 import { sourceKey } from '../../utils/contextUtils';
+import { parseThinkingContent, stripThinkMarkers } from '../../utils/thinking';
 
 interface MessageItemProps {
   message: Message;
@@ -58,38 +60,6 @@ const splitDocumentName = (name: string) => {
   return { title: name.slice(0, dotIndex), type: extension.toUpperCase() };
 };
 
-const THINK_OPEN = '<think>';
-const THINK_CLOSE = '</think>';
-
-const parseThinkingContent = (text: string) => {
-  const thinkStartIndex = text.indexOf(THINK_OPEN);
-  if (thinkStartIndex === -1) {
-    return { normalContent: text, thinkingContent: null, hasThinking: false };
-  }
-
-  const thinkEndIndex = text.indexOf(THINK_CLOSE);
-  const normalBeforeThink = text.slice(0, thinkStartIndex);
-  const contentStart = thinkStartIndex + THINK_OPEN.length;
-
-  if (thinkEndIndex === -1) {
-    return {
-      normalContent: normalBeforeThink,
-      thinkingContent: text.slice(contentStart),
-      hasThinking: true,
-      isThinkingComplete: false,
-      normalAfterThink: '',
-    };
-  }
-
-  return {
-    normalContent: normalBeforeThink,
-    thinkingContent: text.slice(contentStart, thinkEndIndex),
-    hasThinking: true,
-    isThinkingComplete: true,
-    normalAfterThink: text.slice(thinkEndIndex + THINK_CLOSE.length),
-  };
-};
-
 const MessageItem = memo(
   ({
     message,
@@ -112,9 +82,13 @@ const MessageItem = memo(
     const { styles } = useThemedStyles(createStyles);
     const isGenerating = useLLMStore((state) => state.isGenerating);
     const isProcessingPrompt = useLLMStore((state) => state.isProcessingPrompt);
+    const showPerformanceMetrics = useSettingsStore(
+      (state) => state.showPerformanceMetrics
+    );
     const [lightboxVisible, setLightboxVisible] = useState(false);
 
     const contentParts = parseThinkingContent(content);
+    const userText = useMemo(() => stripThinkMarkers(content), [content]);
     const hasSources = !!sourceDocuments?.length;
     const displayedSources = useMemo(() => {
       if (!sourceDocuments?.length) return [];
@@ -248,14 +222,14 @@ const MessageItem = memo(
                 </View>
               </View>
             )}
-            {contentParts.normalContent.trim() && (
+            {userText.trim() && (
               <View style={styles.userBubble} testID="text-bubble">
                 <View style={styles.userMessageContent}>
                   <Text
                     style={styles.userText}
                     selectable={!SUPPORTS_USER_ACTION_MENU}
                   >
-                    {contentParts.normalContent}
+                    {userText}
                   </Text>
                 </View>
               </View>
@@ -296,12 +270,14 @@ const MessageItem = memo(
                     onLinkPress={handleLinkPress}
                   />
                 )}
-              {tokensPerSecond !== undefined && tokensPerSecond !== 0 && (
-                <Text style={styles.metadata}>
-                  ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
-                  {tokensPerSecond?.toFixed(2)} tok/s
-                </Text>
-              )}
+              {showPerformanceMetrics &&
+                tokensPerSecond !== undefined &&
+                tokensPerSecond !== 0 && (
+                  <Text style={styles.metadata}>
+                    ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
+                    {tokensPerSecond?.toFixed(2)} tok/s
+                  </Text>
+                )}
               {actions}
             </View>
           </View>
