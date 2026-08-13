@@ -1,5 +1,10 @@
 import React, { createRef } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react-native';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
@@ -45,7 +50,10 @@ jest.mock('@gorhom/bottom-sheet', () => {
   const { View } = require('react-native');
   const _data: any = null;
 
-  const BottomSheetModal = React.forwardRef((props: any, _ref: any) => {
+  const BottomSheetModal = React.forwardRef((props: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({
+      dismiss: () => props.onDismiss?.(),
+    }));
     React.useEffect(() => {
       props.onChange?.(0);
     }, []);
@@ -63,14 +71,11 @@ jest.mock('@gorhom/bottom-sheet', () => {
   );
   const BottomSheetBackdrop = () => null;
 
-  const useBottomSheetTimingConfigs = () => ({});
-
   return {
     BottomSheetModal,
     BottomSheetFlatList,
     BottomSheetView,
     BottomSheetBackdrop,
-    useBottomSheetTimingConfigs,
   };
 });
 
@@ -148,12 +153,19 @@ describe('with downloaded models', () => {
     expect(screen.getByText('Qwen-1B')).toBeTruthy();
   });
 
-  it('calls selectModel when a model card is pressed', () => {
+  it('calls selectModel after the sheet dismissal settles', async () => {
     const selectModel = jest.fn();
-    renderSheet({ selectModel });
+    const onPendingModelChange = jest.fn();
+    renderSheet({ selectModel, onPendingModelChange });
     fireEvent.press(screen.getByTestId('model-card-1'));
-    expect(selectModel).toHaveBeenCalledWith(
+    expect(onPendingModelChange).toHaveBeenCalledWith(
       expect.objectContaining({ id: 1 })
+    );
+    expect(selectModel).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(selectModel).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1 })
+      )
     );
   });
 });

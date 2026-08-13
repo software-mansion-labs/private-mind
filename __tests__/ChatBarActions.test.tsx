@@ -106,7 +106,7 @@ describe('attach button', () => {
 
     expect(
       StyleSheet.flatten(screen.getByTestId('attach-btn-container').props.style)
-    ).toBeUndefined();
+    ).toEqual(expect.objectContaining({ opacity: 1 }));
   });
 });
 

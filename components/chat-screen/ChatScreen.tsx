@@ -60,6 +60,7 @@ interface Props {
   messageHistory: Message[];
   isLoading?: boolean;
   model: Model | undefined;
+  onPendingModelChange?: (model: Model | undefined) => void;
   selectModel?: (model: Model) => Promise<void>;
   openModelSheetRef?: React.MutableRefObject<(() => void) | null>;
   revealFromTop?: boolean;
@@ -72,6 +73,7 @@ export default function ChatScreen({
   messageHistory,
   isLoading = false,
   model,
+  onPendingModelChange,
   selectModel,
   openModelSheetRef,
   revealFromTop = false,
@@ -83,10 +85,13 @@ export default function ChatScreen({
   const messagesRef = useRef<MessagesHandle>(null);
   const rootRef = useRef<View>(null);
   const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const isModelSwitchingRef = useRef(false);
+  const [isModelSwitching, setIsModelSwitching] = useState(false);
   const db = useSQLiteContext();
 
   const { vectorStore, embeddings } = useVectorStore();
   const {
+    isLoading: isModelLoading,
     isGenerating,
     sendChatMessage,
     loadModel,
@@ -195,7 +200,12 @@ export default function ChatScreen({
     attachments?: Attachment[]
   ) => {
     const hasDocuments = attachments?.some((a) => a.type === 'document');
-    if ((!userInput.trim() && !imagePath && !hasDocuments) || isGenerating)
+    if (
+      (!userInput.trim() && !imagePath && !hasDocuments) ||
+      isGenerating ||
+      isModelLoading ||
+      isModelSwitchingRef.current
+    )
       return;
 
     Keyboard.dismiss();
@@ -308,22 +318,36 @@ export default function ChatScreen({
     await generation;
   };
 
+  const handlePendingModelChange = useCallback(
+    (pendingModel: Model | undefined) => {
+      const switching = pendingModel !== undefined;
+      isModelSwitchingRef.current = switching;
+      setIsModelSwitching(switching);
+      onPendingModelChange?.(pendingModel);
+    },
+    [onPendingModelChange]
+  );
+
   const handleSelectModel = async (selectedModel: Model) => {
     try {
       // Await model loading to ensure proper sequencing: old model unloads,
       // new model loads, then UI updates. Prevents race condition where scroll view
       // receives events before model is ready or old model cleanup completes.
       await loadModel(selectedModel);
+      if (useLLMStore.getState().model?.id !== selectedModel.id) {
+        throw new Error(`Model ${selectedModel.id} did not finish loading`);
+      }
 
       if (chatId && !model) {
         await setChatModel(chatId, selectedModel.id);
       }
 
       await setLastUsedModelId(selectedModel.id);
-      selectModel?.(selectedModel);
-      modelBottomSheetModalRef.current?.dismiss();
+      await selectModel?.(selectedModel);
     } catch (error) {
       console.error('Error loading model:', error);
+    } finally {
+      handlePendingModelChange(undefined);
     }
   };
 
@@ -491,6 +515,8 @@ export default function ChatScreen({
           thinkingEnabled={chatSettings?.thinkingEnabled || false}
           onThinkingToggle={handleThinkingToggle}
           hasMessages={hasMessages}
+          disabled={isModelLoading && !isModelSwitching}
+          modelSwitching={isModelSwitching}
           onAttachmentSheetStateChange={setAttachmentSheetOpen}
           onHeightChange={handleChatBarHeightChange}
           onBarGrow={handleBarGrow}
@@ -517,6 +543,7 @@ export default function ChatScreen({
       <ModelSelectSheet
         bottomSheetModalRef={modelBottomSheetModalRef}
         selectModel={handleSelectModel}
+        onPendingModelChange={handlePendingModelChange}
         onSheetStateChange={setModelSheetOpen}
       />
     </View>

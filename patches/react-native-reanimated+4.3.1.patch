@@ -1,0 +1,64 @@
+--- a/node_modules/react-native-reanimated/Common/cpp/reanimated/Events/UIEventHandler.cpp
++++ b/node_modules/react-native-reanimated/Common/cpp/reanimated/Events/UIEventHandler.cpp
+@@ -1,5 +1,7 @@
+ #include <reanimated/Events/UIEventHandler.h>
+ 
++#include <cstdio>
++#include <exception>
+ #include <memory>
+ #include <string>
+ 
+@@ -7,11 +9,52 @@
+ 
+ namespace reanimated {
+ 
++namespace {
++
++bool isScrollEvent(const std::string &eventName) {
++  return eventName.find("Scroll") != std::string::npos ||
++      eventName.find("scroll") != std::string::npos ||
++      eventName.find("Momentum") != std::string::npos ||
++      eventName.find("momentum") != std::string::npos;
++}
++
++void logSuppressedScrollError(
++    const std::string &eventName,
++    const uint64_t handlerId,
++    const char *message) {
++  std::fprintf(
++      stderr,
++      "[PrivateMind][ReanimatedScrollGuard] event=%s handlerId=%llu error=%s\n",
++      eventName.c_str(),
++      static_cast<unsigned long long>(handlerId),
++      message);
++  std::fflush(stderr);
++}
++
++} // namespace
++
+ void UIEventHandler::process(
+     const std::shared_ptr<WorkletRuntime> &uiRuntime,
+     const double eventTimestamp,
+     const jsi::Value &eventValue) const {
+-  runSyncOnRuntime(uiRuntime, handlerFunction_, jsi::Value(eventTimestamp), eventValue);
++  try {
++    runSyncOnRuntime(uiRuntime, handlerFunction_, jsi::Value(eventTimestamp), eventValue);
++  } catch (const jsi::JSError &error) {
++    if (!isScrollEvent(eventName_)) {
++      throw;
++    }
++    logSuppressedScrollError(eventName_, handlerId_, error.what());
++  } catch (const std::exception &error) {
++    if (!isScrollEvent(eventName_)) {
++      throw;
++    }
++    logSuppressedScrollError(eventName_, handlerId_, error.what());
++  } catch (...) {
++    if (!isScrollEvent(eventName_)) {
++      throw;
++    }
++    logSuppressedScrollError(eventName_, handlerId_, "unknown C++ exception");
++  }
+ }
+ 
+ uint64_t UIEventHandler::getHandlerId() const {
