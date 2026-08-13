@@ -12,7 +12,9 @@ export const File = jest
         : uriOrDir.uri;
     return {
       uri,
+      size: 0,
       text: jest.fn(),
       copy: jest.fn(),
+      delete: jest.fn(),
     };
   });

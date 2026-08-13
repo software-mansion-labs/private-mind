@@ -1,0 +1,12 @@
+export const SWITCH_TRACK_WIDTH = 51;
+
+export const SWITCH_TRACK_HEIGHT = 31;
+
+export const SWITCH_THUMB_SIZE = 27;
+
+export const SWITCH_THUMB_INSET = 2;
+
+export const SWITCH_THUMB_TRAVEL =
+  SWITCH_TRACK_WIDTH - SWITCH_THUMB_SIZE - SWITCH_THUMB_INSET * 2;
+
+export const SWITCH_TOGGLE_DURATION = 180;

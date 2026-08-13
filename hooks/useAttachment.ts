@@ -2,7 +2,6 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { Platform, PermissionsAndroid } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSourceStore } from '../store/sourceStore';
 import { useVectorStore } from '../context/VectorStoreContext';
@@ -27,21 +26,6 @@ interface ClearAllOptions {
 interface ClearAllOptions {
   cleanupSources?: boolean;
 }
-
-const requestAndroidGalleryPermission = async (): Promise<boolean> => {
-  if (Platform.OS !== 'android') return true;
-
-  const permission =
-    Number(Platform.Version) >= 33
-      ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
-      : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
-
-  const status = await PermissionsAndroid.check(permission);
-  if (status) return true;
-
-  const result = await PermissionsAndroid.request(permission);
-  return result === PermissionsAndroid.RESULTS.GRANTED;
-};
 
 const IMAGE_EXTENSIONS = [
   'jpg',
@@ -69,8 +53,11 @@ export const useAttachment = () => {
   const currentDocumentAttachmentIdRef = useRef<string | null>(null);
   const documentAbortRef = useRef<AbortController | null>(null);
   const sheetRef = useRef<BottomSheetModal>(null);
+  const attachmentSheetOpenRef = useRef(false);
   const embeddingDownloadSheetRef = useRef<BottomSheetModal>(null);
   const embeddingDownloadSheetOpenRef = useRef(false);
+  const pendingDownloadSheetRef = useRef(false);
+  const pendingDocumentPickRef = useRef(false);
   const { vectorStore, embeddings } = useVectorStore();
   const vectorStoreRef = useRef(vectorStore);
   vectorStoreRef.current = vectorStore;
@@ -82,7 +69,10 @@ export const useAttachment = () => {
 
   useEffect(() => {
     return () => {
+      attachmentSheetOpenRef.current = false;
       embeddingDownloadSheetOpenRef.current = false;
+      pendingDownloadSheetRef.current = false;
+      pendingDocumentPickRef.current = false;
       if (attachmentsRef.current.some((a) => a.sourceId)) {
         sweepAbandonedSources();
       }
@@ -97,14 +87,6 @@ export const useAttachment = () => {
   }, []);
 
   const pickFromLibrary = useCallback(async () => {
-    const granted = await requestAndroidGalleryPermission();
-    if (!granted) {
-      Toast.show({
-        type: 'defaultToast',
-        text1: 'Photo library permission is required to attach images.',
-      });
-      return;
-    }
     const result = await launchImageLibrary({ mediaType: 'photo', quality: 1 });
     if (!result.didCancel && result.assets && result.assets.length > 0) {
       const uri = result.assets[0].uri;
@@ -269,17 +251,38 @@ export const useAttachment = () => {
     }
   }, [vectorStore, embeddings]);
 
+  const presentDownloadSheet = useCallback(() => {
+    embeddingDownloadSheetOpenRef.current = true;
+    embeddingDownloadSheetRef.current?.present();
+  }, []);
+
   const markDownloadSheetClosed = useCallback(() => {
     embeddingDownloadSheetOpenRef.current = false;
-  }, []);
+    if (!pendingDocumentPickRef.current) return;
+    pendingDocumentPickRef.current = false;
+    runDocumentPicker().catch((error) => {
+      console.error('Failed to open the document picker after download', error);
+    });
+  }, [runDocumentPicker]);
+
+  const markAttachmentSheetClosed = useCallback(() => {
+    attachmentSheetOpenRef.current = false;
+    if (!pendingDownloadSheetRef.current) return;
+    pendingDownloadSheetRef.current = false;
+    presentDownloadSheet();
+  }, [presentDownloadSheet]);
 
   const pickDocument = useCallback(async () => {
     if (useEmbeddingModelStore.getState().status === 'ready') {
       return runDocumentPicker();
     }
-    embeddingDownloadSheetOpenRef.current = true;
-    embeddingDownloadSheetRef.current?.present();
-  }, [runDocumentPicker]);
+    if (attachmentSheetOpenRef.current) {
+      pendingDownloadSheetRef.current = true;
+      sheetRef.current?.dismiss();
+      return;
+    }
+    presentDownloadSheet();
+  }, [runDocumentPicker, presentDownloadSheet]);
 
   const downloadModelAndContinue = useCallback(async () => {
     if (!vectorStore) return;
@@ -300,11 +303,10 @@ export const useAttachment = () => {
       });
       return;
     }
-    if (embeddingDownloadSheetOpenRef.current) {
-      embeddingDownloadSheetRef.current?.dismiss();
-      await runDocumentPicker();
-    }
-  }, [vectorStore, embeddings, runDocumentPicker]);
+    if (!embeddingDownloadSheetOpenRef.current) return;
+    pendingDocumentPickRef.current = true;
+    embeddingDownloadSheetRef.current?.dismiss();
+  }, [vectorStore, embeddings]);
 
   const removeAttachment = useCallback(
     (id: string) => {
@@ -334,6 +336,7 @@ export const useAttachment = () => {
   );
 
   const openSheet = useCallback(() => {
+    attachmentSheetOpenRef.current = true;
     sheetRef.current?.present();
   }, []);
 
@@ -365,6 +368,7 @@ export const useAttachment = () => {
     pickDocument,
     downloadModelAndContinue,
     markDownloadSheetClosed,
+    markAttachmentSheetClosed,
     removeAttachment,
     clearAll,
     openSheet,

@@ -13,9 +13,12 @@ All conversations happen locally, with no data sent to the cloud and no internet
 
 - **Fully Private & Secure**: All conversations and data stay on your device. Nothing is collected or shared.
 - **Free & Accessible**: Use advanced AI models without subscriptions, accounts, or paywalls.
-- **Customizable AI**: Choose from supported models or upload your own. Tailor system prompts and model behavior to fit your needs.
-- **Built-in Benchmarks**: Test and compare models based on performance, memory use, and speed—optimized for your hardware.
-- **Offline by Design**: Every feature works without an internet connection. Download models once, and use them on the go.
+- **Chat With Your Documents**: Attach a PDF, TXT, Markdown, HTML or CSV file and ask about it. Retrieval and embeddings run on-device, and every answer links back to the passages it came from.
+- **Images & Voice**: Send a photo to a vision-capable model, or dictate a message with on-device speech input.
+- **Branch Any Conversation**: Fork a chat from any message to explore a different direction without losing the original.
+- **Customizable AI**: Choose from supported models or add your own. Save system prompts as reusable presets and tune behavior per chat.
+- **Built-in Benchmarks**: Test and compare models on performance, memory use, and speed — measured on your own hardware.
+- **Offline by Design**: Once a model is downloaded, every feature works without an internet connection.
 
 ## Installation
 
@@ -40,13 +43,20 @@ Private Mind is available in App Store and Google Play:
 
 ## Getting Started
 
-```
+You will need Node 20+, Yarn, and the native toolchain for your target — Xcode (iOS 17.0+) or Android Studio.
+
+```bash
 git clone https://github.com/software-mansion-labs/private-mind.git
 cd private-mind
-node -e "require('./scripts/download-models.js').ensureModelAssets()"
 yarn
-yarn expo run:ios | yarn expo run:android
+
+yarn ios       # build, install and launch on a simulator or device
+yarn android
 ```
+
+Models are not bundled with the app: they are downloaded from Hugging Face on first use, so the first run needs a network connection. Larger models need a device with enough free memory — the in-app model list marks which ones fit yours.
+
+With a native build already installed, `yarn start` boots just the dev server.
 
 ## Private Mind is created by Software Mansion
 
@@ -54,4 +64,4 @@ Since 2012 [Software Mansion](https://swmansion.com) is a software agency with e
 
 [![swm](https://logo.swmansion.com/logo?color=white&variant=desktop&width=150&tag=react-native-executorch-github 'Software Mansion')](https://swmansion.com)
 
-Copyright 2025, [Software Mansion](https://swmansion.com/)
+Copyright 2024–2026, [Software Mansion](https://swmansion.com/)
