@@ -111,6 +111,26 @@ describe('isModelCompatible', () => {
     expect(isModelCompatible(gemma4)).toBe(true);
   });
 
+  it('lets a declared minimum override a size that would otherwise pass', () => {
+    mockGetTotalMemorySync.mockReturnValue(SIX_GB_DEVICE);
+    const shrunkGemma4VL = {
+      ...baseModel,
+      modelName: 'Gemma 4 VL - 2B',
+      modelSize: 1.0,
+    };
+    expect(isModelCompatible(shrunkGemma4VL)).toBe(false);
+  });
+
+  it('honours a declared minimum on a device that meets it', () => {
+    mockGetTotalMemorySync.mockReturnValue(EIGHT_GB_DEVICE);
+    const gemma4VL = {
+      ...baseModel,
+      modelName: 'Gemma 4 VL - 2B',
+      modelSize: 4.0,
+    };
+    expect(isModelCompatible(gemma4VL)).toBe(true);
+  });
+
   it('blocks a model that cannot fit on a small device', () => {
     mockGetTotalMemorySync.mockReturnValue(2 * GB);
     const model = { ...baseModel, modelName: 'Llama-7B', modelSize: 6.8 };

@@ -1,5 +1,6 @@
 import DeviceInfo from 'react-native-device-info';
 import { Model } from '../database/modelRepository';
+import { MODEL_MIN_RAM_GB } from '../constants/model-memory';
 
 const getTotalMemoryGB = () =>
   DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024;
@@ -17,6 +18,12 @@ export const getModelMemoryRequirement = (model: Model): number | null => {
 };
 
 export const isModelCompatible = (model: Model): boolean => {
+  const declaredMinRamGB = MODEL_MIN_RAM_GB[model.modelName];
+
+  if (declaredMinRamGB !== undefined) {
+    return getTotalMemoryGB() >= declaredMinRamGB;
+  }
+
   const memoryRequirement = getModelMemoryRequirement(model);
 
   if (memoryRequirement === null) {
