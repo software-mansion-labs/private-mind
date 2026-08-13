@@ -16,84 +16,88 @@ const baseModel: Model = {
   tokenizerConfigPath: '',
 };
 
+const GB = 1024 * 1024 * 1024;
+const GALAXY_S20_FE_BYTES = 5763304 * 1024;
+const EIGHT_GB_PHONE_BYTES = 7.5 * GB;
+
 const mockGetTotalMemorySync = DeviceInfo.getTotalMemorySync as jest.Mock;
 
 beforeEach(() => {
-  mockGetTotalMemorySync.mockReturnValue(8 * 1024 * 1024 * 1024); // reset to 8GB
+  mockGetTotalMemorySync.mockReturnValue(8 * GB);
 });
 
 describe('getModelMemoryRequirement', () => {
-  it('returns null when model has no parameters', () => {
-    const model = { ...baseModel, parameters: undefined };
+  it('returns null when the model has no known download size', () => {
+    const model = { ...baseModel, modelSize: undefined };
     expect(getModelMemoryRequirement(model)).toBeNull();
   });
 
-  it('uses 2.5x multiplier for non-quantized models', () => {
-    const model = { ...baseModel, modelName: 'Llama-3.2-1B', parameters: 1 };
-    expect(getModelMemoryRequirement(model)).toBeCloseTo(2.5);
+  it('derives the requirement from the on-disk size', () => {
+    const model = { ...baseModel, modelSize: 2 };
+    expect(getModelMemoryRequirement(model)).toBeCloseTo(3.1);
   });
 
-  it('uses 1.75x multiplier for quantized models', () => {
-    const model = {
-      ...baseModel,
-      modelName: 'Llama-3.2-1B-quantized',
-      parameters: 1,
-    };
-    expect(getModelMemoryRequirement(model)).toBeCloseTo(1.75);
-  });
-
-  it('detects quantized keyword case-insensitively', () => {
-    const model = {
-      ...baseModel,
-      modelName: 'Llama-QUANTIZED-1B',
-      parameters: 2,
-    };
-    expect(getModelMemoryRequirement(model)).toBeCloseTo(3.5);
-  });
-
-  it('detects spinquant keyword', () => {
-    const model = {
-      ...baseModel,
-      modelName: 'Llama-SpinQuant-1B',
-      parameters: 1,
-    };
-    expect(getModelMemoryRequirement(model)).toBeCloseTo(1.75);
-  });
-
-  it('detects qlora keyword', () => {
-    const model = { ...baseModel, modelName: 'Llama-QLoRA-1B', parameters: 1 };
-    expect(getModelMemoryRequirement(model)).toBeCloseTo(1.75);
+  it('ignores the parameter count when a size is known', () => {
+    const twoBillionParams = { ...baseModel, parameters: 2, modelSize: 4 };
+    const halfBillionParams = { ...baseModel, parameters: 0.5, modelSize: 4 };
+    expect(getModelMemoryRequirement(twoBillionParams)).toBeCloseTo(
+      getModelMemoryRequirement(halfBillionParams)!
+    );
   });
 });
 
 describe('isModelCompatible', () => {
-  it('returns true when model has no parameters (unknown requirement)', () => {
-    const model = { ...baseModel, parameters: undefined };
+  it('returns true when the size is unknown', () => {
+    const model = { ...baseModel, modelSize: undefined };
     expect(isModelCompatible(model)).toBe(true);
   });
 
-  it('returns true when memory requirement fits in device memory', () => {
-    // 8GB device, 1B param non-quantized = 2.5GB required
-    mockGetTotalMemorySync.mockReturnValue(8 * 1024 * 1024 * 1024);
-    const model = { ...baseModel, parameters: 1 };
-    expect(isModelCompatible(model)).toBe(true);
+  it('blocks Gemma 4 VL on a 6GB device', () => {
+    mockGetTotalMemorySync.mockReturnValue(GALAXY_S20_FE_BYTES);
+    const gemma4VL = {
+      ...baseModel,
+      modelName: 'Gemma 4 VL - 2B',
+      parameters: 2,
+      modelSize: 4.0,
+    };
+    expect(isModelCompatible(gemma4VL)).toBe(false);
   });
 
-  it('returns false when memory requirement exceeds device memory', () => {
-    mockGetTotalMemorySync.mockReturnValue(2 * 1024 * 1024 * 1024); // 2GB device
-    const model = { ...baseModel, parameters: 7, modelName: 'Llama-7B' }; // needs 17.5GB
-    expect(isModelCompatible(model)).toBe(false);
+  it('keeps Gemma 4 VL available on an 8GB device', () => {
+    mockGetTotalMemorySync.mockReturnValue(EIGHT_GB_PHONE_BYTES);
+    const gemma4VL = {
+      ...baseModel,
+      modelName: 'Gemma 4 VL - 2B',
+      parameters: 2,
+      modelSize: 4.0,
+    };
+    expect(isModelCompatible(gemma4VL)).toBe(true);
   });
 
-  it('returns true for a model within the memory limit', () => {
-    // 8GB device, 2B params non-quantized = 5GB required — comfortably fits
-    const model = { ...baseModel, parameters: 2, modelName: 'Llama-2B' };
-    expect(isModelCompatible(model)).toBe(true);
+  it('keeps the 6GB starting tier available on a 6GB device', () => {
+    mockGetTotalMemorySync.mockReturnValue(GALAXY_S20_FE_BYTES);
+    const qwen3 = { ...baseModel, modelName: 'Qwen 3 - 1.7B', modelSize: 2.16 };
+    const lfm = { ...baseModel, modelName: 'LFM 2.5 - 1.2B', modelSize: 1.14 };
+    const lfmVL = {
+      ...baseModel,
+      modelName: 'LFM 2.5 VL - 1.6B',
+      modelSize: 2.43,
+    };
+
+    expect(isModelCompatible(qwen3)).toBe(true);
+    expect(isModelCompatible(lfm)).toBe(true);
+    expect(isModelCompatible(lfmVL)).toBe(true);
   });
 
-  it('returns false for a model that is slightly over the limit', () => {
-    // 8GB device, 4B params non-quantized = 10GB needed
-    const model = { ...baseModel, parameters: 4, modelName: 'Llama-4B' };
+  it('keeps Gemma 4 text available on a 6GB device', () => {
+    mockGetTotalMemorySync.mockReturnValue(GALAXY_S20_FE_BYTES);
+    const gemma4 = { ...baseModel, modelName: 'Gemma 4 - 2B', modelSize: 2.5 };
+    expect(isModelCompatible(gemma4)).toBe(true);
+  });
+
+  it('blocks a model that cannot fit on a small device', () => {
+    mockGetTotalMemorySync.mockReturnValue(2 * GB);
+    const model = { ...baseModel, modelName: 'Llama-7B', modelSize: 6.8 };
     expect(isModelCompatible(model)).toBe(false);
   });
 });
