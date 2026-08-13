@@ -10,6 +10,7 @@ import { useChatTitleMenu } from '../components/chat-screen/ChatTitleMenu';
 interface Props {
   chatId: number;
   chatModel: Model | undefined;
+  isModelLoading?: boolean;
   isEmpty: boolean;
   onSelectModelFromTitle?: () => void;
 }
@@ -17,6 +18,7 @@ interface Props {
 export default function useChatHeader({
   chatId,
   chatModel,
+  isModelLoading = false,
   isEmpty,
   onSelectModelFromTitle,
 }: Props) {
@@ -39,6 +41,7 @@ export default function useChatHeader({
         <ChatTitle
           title={chatTitle}
           modelName={chatModel?.modelName || 'No model selected'}
+          isModelLoading={isModelLoading}
           onPress={onSelectModelFromTitle ?? (chat ? openMenu : undefined)}
           showChevron={!!onSelectModelFromTitle}
           onBottomMeasured={setTitleBottom}
@@ -50,6 +53,7 @@ export default function useChatHeader({
     chatId,
     chatTitle,
     chatModel,
+    isModelLoading,
     openMenu,
     chat,
     isEmpty,

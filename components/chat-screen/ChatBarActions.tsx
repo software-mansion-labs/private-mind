@@ -18,6 +18,7 @@ interface Props {
   userInput: string;
   hasAttachments?: boolean;
   isLoadingAttachment?: boolean;
+  disabled?: boolean;
   onSend: () => void;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -32,6 +33,7 @@ const ChatBarActions = ({
   userInput,
   hasAttachments = false,
   isLoadingAttachment = false,
+  disabled = false,
   onSend,
   isGenerating,
   isProcessingPrompt,
@@ -45,6 +47,10 @@ const ChatBarActions = ({
   const isAttachmentBlocked = isResponding || isLoadingAttachment;
 
   const handleAttach = () => {
+    if (disabled) {
+      return;
+    }
+
     if (isAttachmentBlocked) {
       Toast.show({
         type: 'defaultToast',
@@ -81,6 +87,7 @@ const ChatBarActions = ({
           {hasAttachments && !userInput && (
             <CircleButton
               icon={SoundwaveIcon}
+              disabled={disabled}
               onPress={onSpeechInput}
               backgroundColor="transparent"
               color={theme.text.onChatBar}
@@ -88,6 +95,7 @@ const ChatBarActions = ({
           )}
           <CircleButton
             icon={SendIcon}
+            disabled={disabled}
             onPress={() => {
               Feedback.send();
               onSend();
@@ -102,6 +110,7 @@ const ChatBarActions = ({
     return (
       <CircleButton
         icon={SoundwaveIcon}
+        disabled={disabled}
         onPress={onSpeechInput}
         backgroundColor="transparent"
         color={theme.text.onChatBar}
@@ -126,6 +135,7 @@ const ChatBarActions = ({
           />
         </View>
         <TouchableOpacity
+          disabled={disabled}
           onPress={() => {
             if (thinkingEnabled) {
               Feedback.toggleOff();
