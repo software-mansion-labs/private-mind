@@ -1,4 +1,4 @@
-import React, { RefObject, useCallback, useRef, useState } from 'react';
+import React, { RefObject, useCallback, useState } from 'react';
 import {
   BottomSheetModal,
   BottomSheetFlatList,
@@ -21,23 +21,18 @@ const MODEL_SHEET_SNAP_POINTS: Array<string | number> = ['30%', '50%'];
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
-  selectModel: (model: Model) => void;
-  onPendingModelChange?: (model: Model) => void;
+  onModelPicked: (model: Model) => void;
   onSheetStateChange?: (isOpen: boolean) => void;
 }
 
 const ModelSelectSheet = ({
   bottomSheetModalRef,
-  selectModel,
-  onPendingModelChange,
+  onModelPicked,
   onSheetStateChange,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const { downloadedModels } = useModelStore();
   const [search, setSearch] = useState('');
-  const pendingModelRef = useRef<Model | null>(null);
-  const selectionPendingRef = useRef(false);
-  const currentSnapIndexRef = useRef(0);
 
   const filteredModels = downloadedModels.filter((model) =>
     model.modelName.toLowerCase().includes(search.toLowerCase())
@@ -59,7 +54,6 @@ const ModelSelectSheet = ({
     <BottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
-      index={currentSnapIndexRef.current}
       snapPoints={MODEL_SHEET_SNAP_POINTS}
       enableDynamicSizing={false}
       handleStyle={styles.handle}
@@ -70,26 +64,10 @@ const ModelSelectSheet = ({
       onChange={(index) => {
         if (index < 0) return;
 
-        currentSnapIndexRef.current = index;
         Feedback.sheetOpen();
         onSheetStateChange?.(true);
       }}
-      onDismiss={() => {
-        currentSnapIndexRef.current = 0;
-        onSheetStateChange?.(false);
-
-        const pendingModel = pendingModelRef.current;
-        pendingModelRef.current = null;
-        selectionPendingRef.current = false;
-        if (pendingModel) {
-          // onDismiss is emitted at the animation boundary. Give React a
-          // chance to commit the closed state and iOS two quiet frames before
-          // model initialization can put pressure on the UI thread.
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => selectModel(pendingModel));
-          });
-        }
-      }}
+      onDismiss={() => onSheetStateChange?.(false)}
     >
       {downloadedModels.length > 0 ? (
         <View style={styles.content}>
@@ -118,14 +96,7 @@ const ModelSelectSheet = ({
               <ModelCard
                 model={item}
                 onPress={() => {
-                  if (selectionPendingRef.current) return;
-
-                  // Update only the lightweight header immediately. Model
-                  // unloading/loading still waits for the native dismissal
-                  // animation and two quiet frames below.
-                  selectionPendingRef.current = true;
-                  pendingModelRef.current = item;
-                  onPendingModelChange?.(item);
+                  onModelPicked(item);
                   bottomSheetModalRef.current?.dismiss();
                 }}
               />

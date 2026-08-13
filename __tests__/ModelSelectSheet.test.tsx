@@ -1,10 +1,5 @@
 import React, { createRef } from 'react';
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-} from '@testing-library/react-native';
+import { render, screen, fireEvent } from '@testing-library/react-native';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
@@ -108,7 +103,7 @@ const renderSheet = (props = {}) =>
   render(
     <ModelSelectSheet
       bottomSheetModalRef={createRef()}
-      selectModel={jest.fn()}
+      onModelPicked={jest.fn()}
       {...props}
     />
   );
@@ -153,20 +148,17 @@ describe('with downloaded models', () => {
     expect(screen.getByText('Qwen-1B')).toBeTruthy();
   });
 
-  it('calls selectModel after the sheet dismissal settles', async () => {
-    const selectModel = jest.fn();
-    const onPendingModelChange = jest.fn();
-    renderSheet({ selectModel, onPendingModelChange });
+  it('reports the pick and dismisses, leaving the load to the caller', () => {
+    const onModelPicked = jest.fn();
+    const onSheetStateChange = jest.fn();
+    renderSheet({ onModelPicked, onSheetStateChange });
+
     fireEvent.press(screen.getByTestId('model-card-1'));
-    expect(onPendingModelChange).toHaveBeenCalledWith(
+
+    expect(onModelPicked).toHaveBeenCalledWith(
       expect.objectContaining({ id: 1 })
     );
-    expect(selectModel).not.toHaveBeenCalled();
-    await waitFor(() =>
-      expect(selectModel).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 1 })
-      )
-    );
+    expect(onSheetStateChange).toHaveBeenLastCalledWith(false);
   });
 });
 

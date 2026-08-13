@@ -10,6 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useKeyboardLift } from './useKeyboardLift';
+import { useModelSwitch } from './useModelSwitch';
 import { router } from 'expo-router';
 import Animated, {
   useAnimatedStyle,
@@ -85,8 +86,6 @@ export default function ChatScreen({
   const messagesRef = useRef<MessagesHandle>(null);
   const rootRef = useRef<View>(null);
   const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const isModelSwitchingRef = useRef(false);
-  const [isModelSwitching, setIsModelSwitching] = useState(false);
   const db = useSQLiteContext();
 
   const { vectorStore, embeddings } = useVectorStore();
@@ -204,7 +203,7 @@ export default function ChatScreen({
       (!userInput.trim() && !imagePath && !hasDocuments) ||
       isGenerating ||
       isModelLoading ||
-      isModelSwitchingRef.current
+      isSwitching
     )
       return;
 
@@ -318,21 +317,8 @@ export default function ChatScreen({
     await generation;
   };
 
-  const handlePendingModelChange = useCallback(
-    (pendingModel: Model | undefined) => {
-      const switching = pendingModel !== undefined;
-      isModelSwitchingRef.current = switching;
-      setIsModelSwitching(switching);
-      onPendingModelChange?.(pendingModel);
-    },
-    [onPendingModelChange]
-  );
-
   const handleSelectModel = async (selectedModel: Model) => {
     try {
-      // Await model loading to ensure proper sequencing: old model unloads,
-      // new model loads, then UI updates. Prevents race condition where scroll view
-      // receives events before model is ready or old model cleanup completes.
       await loadModel(selectedModel);
       if (useLLMStore.getState().model?.id !== selectedModel.id) {
         throw new Error(`Model ${selectedModel.id} did not finish loading`);
@@ -346,10 +332,27 @@ export default function ChatScreen({
       await selectModel?.(selectedModel);
     } catch (error) {
       console.error('Error loading model:', error);
-    } finally {
-      handlePendingModelChange(undefined);
     }
   };
+
+  const {
+    pendingModel,
+    isSwitching,
+    pickModel,
+    handleSheetStateChange: handleModelSwitchSheetState,
+  } = useModelSwitch(handleSelectModel);
+
+  useEffect(() => {
+    onPendingModelChange?.(pendingModel);
+  }, [pendingModel, onPendingModelChange]);
+
+  const handleModelSheetStateChange = useCallback(
+    (isOpen: boolean) => {
+      setModelSheetOpen(isOpen);
+      handleModelSwitchSheetState(isOpen);
+    },
+    [handleModelSwitchSheetState]
+  );
 
   const handleThinkingToggle = async () => {
     if (!model?.thinking) {
@@ -515,8 +518,8 @@ export default function ChatScreen({
           thinkingEnabled={chatSettings?.thinkingEnabled || false}
           onThinkingToggle={handleThinkingToggle}
           hasMessages={hasMessages}
-          disabled={isModelLoading && !isModelSwitching}
-          modelSwitching={isModelSwitching}
+          disabled={isModelLoading && !isSwitching}
+          modelSwitching={isSwitching}
           onAttachmentSheetStateChange={setAttachmentSheetOpen}
           onHeightChange={handleChatBarHeightChange}
           onBarGrow={handleBarGrow}
@@ -542,9 +545,8 @@ export default function ChatScreen({
 
       <ModelSelectSheet
         bottomSheetModalRef={modelBottomSheetModalRef}
-        selectModel={handleSelectModel}
-        onPendingModelChange={handlePendingModelChange}
-        onSheetStateChange={setModelSheetOpen}
+        onModelPicked={pickModel}
+        onSheetStateChange={handleModelSheetStateChange}
       />
     </View>
   );

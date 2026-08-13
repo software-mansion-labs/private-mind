@@ -951,10 +951,6 @@ const Messages = ({
   );
 };
 
-// Memoization is important for performance, but the component relies on
-// proper remounting (via parent key change) when model changes. When the model
-// switches (e.g., Gemma 4 2B → Gemma 4 2B VL), ChatScreenInner's key changes,
-// forcing this component to unmount and remount, which resets all refs and state.
 export default memo(Messages);
 
 const createStyles = (theme: Theme) => {

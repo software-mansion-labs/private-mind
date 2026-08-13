@@ -1,37 +1,59 @@
+diff --git a/node_modules/react-native-reanimated/Common/cpp/reanimated/Events/UIEventHandler.cpp b/node_modules/react-native-reanimated/Common/cpp/reanimated/Events/UIEventHandler.cpp
+index 6bd328c..c6d325c 100644
 --- a/node_modules/react-native-reanimated/Common/cpp/reanimated/Events/UIEventHandler.cpp
 +++ b/node_modules/react-native-reanimated/Common/cpp/reanimated/Events/UIEventHandler.cpp
-@@ -1,5 +1,7 @@
+@@ -1,17 +1,76 @@
  #include <reanimated/Events/UIEventHandler.h>
  
-+#include <cstdio>
++#include <worklets/Tools/PlatformLogger.h>
++
++#include <atomic>
 +#include <exception>
  #include <memory>
  #include <string>
++#include <unordered_set>
  
-@@ -7,11 +9,52 @@
+ using namespace worklets;
  
  namespace reanimated {
  
 +namespace {
 +
-+bool isScrollEvent(const std::string &eventName) {
-+  return eventName.find("Scroll") != std::string::npos ||
-+      eventName.find("scroll") != std::string::npos ||
-+      eventName.find("Momentum") != std::string::npos ||
-+      eventName.find("momentum") != std::string::npos;
++const std::unordered_set<std::string> &guardedEventNames() {
++  static const std::unordered_set<std::string> names{
++      "onScroll",
++      "topScroll",
++      "onScrollBeginDrag",
++      "topScrollBeginDrag",
++      "onScrollEndDrag",
++      "topScrollEndDrag",
++      "onMomentumScrollBegin",
++      "topMomentumScrollBegin",
++      "onMomentumScrollEnd",
++      "topMomentumScrollEnd"};
++  return names;
 +}
 +
-+void logSuppressedScrollError(
++bool isGuardedEvent(const std::string &eventName) {
++  return guardedEventNames().count(eventName) > 0;
++}
++
++constexpr uint32_t kMaxReports = 10;
++std::atomic<uint32_t> reportCount{0};
++
++void reportSuppressedError(
 +    const std::string &eventName,
 +    const uint64_t handlerId,
-+    const char *message) {
-+  std::fprintf(
-+      stderr,
-+      "[PrivateMind][ReanimatedScrollGuard] event=%s handlerId=%llu error=%s\n",
-+      eventName.c_str(),
-+      static_cast<unsigned long long>(handlerId),
-+      message);
-+  std::fflush(stderr);
++    const std::string &reason) {
++  const uint32_t seen = reportCount.fetch_add(1, std::memory_order_relaxed);
++  if (seen >= kMaxReports) {
++    return;
++  }
++
++  PlatformLogger::log(
++      "[Reanimated] suppressed an error thrown by the worklet for event " + eventName + " (handlerId " +
++      std::to_string(handlerId) + "): " + reason +
++      (seen + 1 == kMaxReports ? " -- further reports for this process are muted." : ""));
 +}
 +
 +} // namespace
@@ -41,23 +63,19 @@
      const double eventTimestamp,
      const jsi::Value &eventValue) const {
 -  runSyncOnRuntime(uiRuntime, handlerFunction_, jsi::Value(eventTimestamp), eventValue);
++  if (!isGuardedEvent(eventName_)) {
++    runSyncOnRuntime(uiRuntime, handlerFunction_, jsi::Value(eventTimestamp), eventValue);
++    return;
++  }
++
 +  try {
 +    runSyncOnRuntime(uiRuntime, handlerFunction_, jsi::Value(eventTimestamp), eventValue);
 +  } catch (const jsi::JSError &error) {
-+    if (!isScrollEvent(eventName_)) {
-+      throw;
-+    }
-+    logSuppressedScrollError(eventName_, handlerId_, error.what());
++    reportSuppressedError(eventName_, handlerId_, error.getMessage() + "\n" + error.getStack());
 +  } catch (const std::exception &error) {
-+    if (!isScrollEvent(eventName_)) {
-+      throw;
-+    }
-+    logSuppressedScrollError(eventName_, handlerId_, error.what());
++    reportSuppressedError(eventName_, handlerId_, error.what());
 +  } catch (...) {
-+    if (!isScrollEvent(eventName_)) {
-+      throw;
-+    }
-+    logSuppressedScrollError(eventName_, handlerId_, "unknown C++ exception");
++    reportSuppressedError(eventName_, handlerId_, "unknown C++ exception");
 +  }
  }
  
