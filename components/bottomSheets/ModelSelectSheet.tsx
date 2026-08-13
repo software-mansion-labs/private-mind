@@ -17,8 +17,6 @@ import PrimaryButton from '../PrimaryButton';
 import BottomSheetSearchInput from './BottomSheetSearchInput';
 import { Feedback } from '../../utils/Feedback';
 
-const MODEL_SHEET_SNAP_POINTS: Array<string | number> = ['30%', '50%'];
-
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
   onModelPicked: (model: Model) => void;
@@ -56,7 +54,7 @@ const ModelSelectSheet = ({
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       index={snapIndex}
-      snapPoints={MODEL_SHEET_SNAP_POINTS}
+      snapPoints={['30%', '50%']}
       enableDynamicSizing={false}
       handleStyle={styles.handle}
       handleIndicatorStyle={styles.handleIndicator}
