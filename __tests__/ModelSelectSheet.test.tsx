@@ -1,5 +1,5 @@
 import React, { createRef } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent, act } from '@testing-library/react-native';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
@@ -48,11 +48,16 @@ jest.mock('@gorhom/bottom-sheet', () => {
   const BottomSheetModal = React.forwardRef((props: any, ref: any) => {
     React.useImperativeHandle(ref, () => ({
       dismiss: () => props.onDismiss?.(),
+      snapToIndex: (i: number) => props.onChange?.(i),
     }));
     React.useEffect(() => {
       props.onChange?.(0);
     }, []);
-    return <View>{props.children}</View>;
+    return (
+      <View testID="sheet-modal" index={props.index}>
+        {props.children}
+      </View>
+    );
   });
   const BottomSheetFlatList = ({ data, renderItem }: any) => (
     <View>
@@ -146,6 +151,27 @@ describe('with downloaded models', () => {
     renderSheet();
     expect(screen.getByText('Llama-3B')).toBeTruthy();
     expect(screen.getByText('Qwen-1B')).toBeTruthy();
+  });
+
+  it('keeps the detent the user dragged to, so a re-render cannot collapse it', () => {
+    const ref = createRef<any>();
+    renderSheet({ bottomSheetModalRef: ref });
+
+    expect(screen.getByTestId('sheet-modal').props.index).toBe(0);
+
+    act(() => ref.current.snapToIndex(1));
+
+    expect(screen.getByTestId('sheet-modal').props.index).toBe(1);
+  });
+
+  it('reopens at the first detent after being dismissed', () => {
+    const ref = createRef<any>();
+    renderSheet({ bottomSheetModalRef: ref });
+
+    act(() => ref.current.snapToIndex(1));
+    act(() => ref.current.dismiss());
+
+    expect(screen.getByTestId('sheet-modal').props.index).toBe(0);
   });
 
   it('reports the pick and dismisses, leaving the load to the caller', () => {

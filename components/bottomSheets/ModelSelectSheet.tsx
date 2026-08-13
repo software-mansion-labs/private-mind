@@ -33,6 +33,7 @@ const ModelSelectSheet = ({
   const { styles, theme } = useThemedStyles(createStyles);
   const { downloadedModels } = useModelStore();
   const [search, setSearch] = useState('');
+  const [snapIndex, setSnapIndex] = useState(0);
 
   const filteredModels = downloadedModels.filter((model) =>
     model.modelName.toLowerCase().includes(search.toLowerCase())
@@ -54,6 +55,7 @@ const ModelSelectSheet = ({
     <BottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
+      index={snapIndex}
       snapPoints={MODEL_SHEET_SNAP_POINTS}
       enableDynamicSizing={false}
       handleStyle={styles.handle}
@@ -64,10 +66,14 @@ const ModelSelectSheet = ({
       onChange={(index) => {
         if (index < 0) return;
 
+        setSnapIndex(index);
         Feedback.sheetOpen();
         onSheetStateChange?.(true);
       }}
-      onDismiss={() => onSheetStateChange?.(false)}
+      onDismiss={() => {
+        setSnapIndex(0);
+        onSheetStateChange?.(false);
+      }}
     >
       {downloadedModels.length > 0 ? (
         <View style={styles.content}>
