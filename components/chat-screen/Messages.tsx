@@ -49,6 +49,7 @@ import BranchMarker from './BranchMarker';
 import Toast from 'react-native-toast-message';
 import { SUPPORTS_USER_ACTION_MENU } from '../../constants/chat-screen';
 import { useKeyboardLift } from './useKeyboardLift';
+import { visibleMessageText } from '../../utils/messageText';
 
 /**
  * Height of the opaque system navigation bar the list paints behind. Android
@@ -587,7 +588,7 @@ const Messages = ({
 
   const handleCopyMessage = useCallback(
     async (message: Message) => {
-      await Clipboard.setStringAsync(message.content);
+      await Clipboard.setStringAsync(visibleMessageText(message));
       if (message.role === 'user') {
         closeUserActionMenu();
       }

@@ -265,6 +265,22 @@ describe('user messages', () => {
     renderItem({ role: 'user', content: 'My question' });
     expect(screen.getByText('My question')).toBeTruthy();
   });
+
+  it('keeps the text of a pasted <think> block, dropping only the markers', () => {
+    renderItem({
+      role: 'user',
+      content: 'Pytanie <think>notatka</think> dalej',
+    });
+
+    expect(screen.getByText('Pytanie notatka dalej')).toBeTruthy();
+    expect(screen.queryByTestId('thinking-block')).toBeNull();
+  });
+
+  it('keeps the text of a pasted unterminated <think> block', () => {
+    renderItem({ role: 'user', content: 'Look at this: <think>cut off' });
+
+    expect(screen.getByText('Look at this: cut off')).toBeTruthy();
+  });
 });
 
 // ─── user messages with image ─────────────────────────────────────────────────

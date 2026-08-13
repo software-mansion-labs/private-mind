@@ -17,9 +17,8 @@ import {
   NEGATION_CUE_EN,
   NO_ANSWER_PATTERNS_EN,
   NO_ANSWER_PATTERNS_PL,
-  THINK_CLOSE,
-  THINK_OPEN,
 } from '../constants/citations';
+import { outsideThinkSegments } from './thinking';
 
 export interface SourceRow {
   id: number;
@@ -115,22 +114,8 @@ const overlapWithAnswer = (
 };
 
 // Attribute against the visible reply only; the <think> block surveys every source and inflates overlap.
-export const visibleAnswer = (answer: string): string => {
-  const parts: string[] = [];
-  let cursor = 0;
-  let open = answer.indexOf(THINK_OPEN);
-
-  while (open !== -1) {
-    parts.push(answer.slice(cursor, open));
-    const close = answer.indexOf(THINK_CLOSE, open + THINK_OPEN.length);
-    if (close === -1) return `${parts.join(' ')} `;
-    cursor = close + THINK_CLOSE.length;
-    open = answer.indexOf(THINK_OPEN, cursor);
-  }
-
-  parts.push(answer.slice(cursor));
-  return parts.join(' ');
-};
+export const visibleAnswer = (answer: string): string =>
+  outsideThinkSegments(answer).join(' ');
 
 const affirmativeAnswer = (visibleReply: string): string =>
   (visibleReply.match(CITATION_SENTENCE_PATTERN) ?? [visibleReply])
