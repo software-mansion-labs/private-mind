@@ -5,6 +5,7 @@ export const LATEST_RELEASE = {
     'Chat with your documents, with source citations',
     'Fork conversations, save prompt presets',
     'Faster sending, opening and model switching',
+    'Only models your device can run are offered',
     'Response-speed stats are now optional',
   ],
 };
