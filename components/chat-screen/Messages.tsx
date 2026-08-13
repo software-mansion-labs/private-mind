@@ -789,145 +789,147 @@ const Messages = ({
   lastAssistantMeasurementKey.current = assistantMeasurementKey();
 
   return (
-    <Reanimated.View style={[styles.container, animatedContainerStyle]}>
-      <KeyboardChatScrollView
-        ref={scrollRef}
-        keyboardLiftBehavior="whenAtEnd"
-        offset={bottomOffset}
-        extraContentPadding={extraContentPadding}
-        blankSpace={blankSpace}
-        freeze={freeze}
-        applyWorkaroundForContentInsetHitTestBug
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={contentContainerStyle}
-        scrollIndicatorInsets={scrollIndicatorInsets}
-        onLayout={handleContainerLayout}
-        onScroll={handleScroll}
-        onScrollBeginDrag={handleScrollBeginDrag}
-        onTouchStart={handleScrollTouchStart}
-        onContentSizeChange={handleContentSizeChange}
-        scrollEventThrottle={16}
-        style={styles.container}
-      >
-        {chatHistory.map((message, index) => {
-          const isLastMessage = index === chatHistory.length - 1;
-          const userQuestion = questionForAssistantAt[index];
-          // Streaming assistant placeholder has id: -1 until persisted; fall
-          // back to role+index for that single in-flight row.
-          const key =
-            message.id && message.id > 0
-              ? `msg-${message.id}`
-              : `pending-${message.role}-${index}`;
+    <View style={styles.container}>
+      <Reanimated.View style={[styles.container, animatedContainerStyle]}>
+        <KeyboardChatScrollView
+          ref={scrollRef}
+          keyboardLiftBehavior="whenAtEnd"
+          offset={bottomOffset}
+          extraContentPadding={extraContentPadding}
+          blankSpace={blankSpace}
+          freeze={freeze}
+          applyWorkaroundForContentInsetHitTestBug
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={contentContainerStyle}
+          scrollIndicatorInsets={scrollIndicatorInsets}
+          onLayout={handleContainerLayout}
+          onScroll={handleScroll}
+          onScrollBeginDrag={handleScrollBeginDrag}
+          onTouchStart={handleScrollTouchStart}
+          onContentSizeChange={handleContentSizeChange}
+          scrollEventThrottle={16}
+          style={styles.container}
+        >
+          {chatHistory.map((message, index) => {
+            const isLastMessage = index === chatHistory.length - 1;
+            const userQuestion = questionForAssistantAt[index];
+            // Streaming assistant placeholder has id: -1 until persisted; fall
+            // back to role+index for that single in-flight row.
+            const key =
+              message.id && message.id > 0
+                ? `msg-${message.id}`
+                : `pending-${message.role}-${index}`;
 
-          const onLayout =
-            index === lastUserIndex
-              ? (event: LayoutChangeEvent) => handleLastUserLayout(key, event)
-              : index === lastAssistantIndex
-                ? () => handleLastAssistantLayout(key)
-                : undefined;
-          const branchMarker = latestBranchMarkerByMessageId.get(message.id);
-          const { showActions, showForkAction } =
-            getMessageActionsState(message);
+            const onLayout =
+              index === lastUserIndex
+                ? (event: LayoutChangeEvent) => handleLastUserLayout(key, event)
+                : index === lastAssistantIndex
+                  ? () => handleLastAssistantLayout(key)
+                  : undefined;
+            const branchMarker = latestBranchMarkerByMessageId.get(message.id);
+            const { showActions, showForkAction } =
+              getMessageActionsState(message);
 
-          const item = (
-            <View style={styles.messageRow} collapsable={false}>
-              <MessageItem
-                message={message}
-                content={message.content}
-                modelName={message.modelName}
-                role={message.role}
-                tokensPerSecond={message.tokensPerSecond}
-                timeToFirstToken={message.timeToFirstToken}
-                isLastMessage={isLastMessage}
-                imagePath={message.imagePath}
-                documentName={message.documentName}
-                sourceDocuments={message.sourceDocuments}
-                userQuestion={userQuestion}
-                onShowSources={handleShowSources}
-                showActions={showActions}
-                showForkAction={showForkAction}
-                onCopy={handleCopyMessage}
-                onFork={handleForkMessage}
-              />
-              {branchMarker && (
-                <BranchMarker
-                  key={`branch-${branchMarker.id}`}
-                  marker={branchMarker}
-                  onPress={onBranchMarkerPress}
+            const item = (
+              <View style={styles.messageRow} collapsable={false}>
+                <MessageItem
+                  message={message}
+                  content={message.content}
+                  modelName={message.modelName}
+                  role={message.role}
+                  tokensPerSecond={message.tokensPerSecond}
+                  timeToFirstToken={message.timeToFirstToken}
+                  isLastMessage={isLastMessage}
+                  imagePath={message.imagePath}
+                  documentName={message.documentName}
+                  sourceDocuments={message.sourceDocuments}
+                  userQuestion={userQuestion}
+                  onShowSources={handleShowSources}
+                  showActions={showActions}
+                  showForkAction={showForkAction}
+                  onCopy={handleCopyMessage}
+                  onFork={handleForkMessage}
                 />
-              )}
-            </View>
-          );
+                {branchMarker && (
+                  <BranchMarker
+                    key={`branch-${branchMarker.id}`}
+                    marker={branchMarker}
+                    onPress={onBranchMarkerPress}
+                  />
+                )}
+              </View>
+            );
 
-          const shouldHandleUserLongPress =
-            SUPPORTS_USER_ACTION_MENU &&
-            message.role === 'user' &&
-            message.id > 0;
+            const shouldHandleUserLongPress =
+              SUPPORTS_USER_ACTION_MENU &&
+              message.role === 'user' &&
+              message.id > 0;
 
-          if (onLayout) {
-            if (!shouldHandleUserLongPress) {
+            if (onLayout) {
+              if (!shouldHandleUserLongPress) {
+                return (
+                  <View key={key} onLayout={onLayout} collapsable={false}>
+                    {item}
+                  </View>
+                );
+              }
+
               return (
                 <View key={key} onLayout={onLayout} collapsable={false}>
-                  {item}
+                  <LongPressableMessage
+                    messageId={message.id}
+                    onLongPress={handleUserLongPress}
+                  >
+                    {item}
+                  </LongPressableMessage>
                 </View>
               );
             }
 
-            return (
-              <View key={key} onLayout={onLayout} collapsable={false}>
-                <LongPressableMessage
-                  messageId={message.id}
-                  onLongPress={handleUserLongPress}
-                >
-                  {item}
-                </LongPressableMessage>
-              </View>
-            );
-          }
-
-          if (!shouldHandleUserLongPress) {
-            return <React.Fragment key={key}>{item}</React.Fragment>;
-          }
-
-          return (
-            <LongPressableMessage
-              key={key}
-              messageId={message.id}
-              onLongPress={handleUserLongPress}
-            >
-              {item}
-            </LongPressableMessage>
-          );
-        })}
-        {generationError && (
-          <View
-            onLayout={() =>
-              handleLastAssistantLayout(GENERATION_ERROR_MEASUREMENT_KEY)
+            if (!shouldHandleUserLongPress) {
+              return <React.Fragment key={key}>{item}</React.Fragment>;
             }
-            collapsable={false}
-            style={styles.generationError}
-            testID="generation-error"
-          >
-            <Text style={styles.generationErrorText}>{generationError}</Text>
-            <Pressable
-              onPress={onRetryGeneration}
-              accessibilityRole="button"
-              accessibilityLabel="Retry response generation"
-              style={({ pressed }) => [
-                styles.retryButton,
-                pressed && styles.retryButtonPressed,
-              ]}
+
+            return (
+              <LongPressableMessage
+                key={key}
+                messageId={message.id}
+                onLongPress={handleUserLongPress}
+              >
+                {item}
+              </LongPressableMessage>
+            );
+          })}
+          {generationError && (
+            <View
+              onLayout={() =>
+                handleLastAssistantLayout(GENERATION_ERROR_MEASUREMENT_KEY)
+              }
+              collapsable={false}
+              style={styles.generationError}
+              testID="generation-error"
             >
-              <RotateLeftIcon
-                width={16}
-                height={16}
-                style={styles.retryButtonIcon}
-              />
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </Pressable>
-          </View>
-        )}
-      </KeyboardChatScrollView>
+              <Text style={styles.generationErrorText}>{generationError}</Text>
+              <Pressable
+                onPress={onRetryGeneration}
+                accessibilityRole="button"
+                accessibilityLabel="Retry response generation"
+                style={({ pressed }) => [
+                  styles.retryButton,
+                  pressed && styles.retryButtonPressed,
+                ]}
+              >
+                <RotateLeftIcon
+                  width={16}
+                  height={16}
+                  style={styles.retryButtonIcon}
+                />
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </Pressable>
+            </View>
+          )}
+        </KeyboardChatScrollView>
+      </Reanimated.View>
 
       {hasMessages && <TopFade anchor={fadeAnchor} />}
       {hasMessages && (
@@ -960,7 +962,7 @@ const Messages = ({
       )}
 
       <SourcesSheet ref={sourcesSheetRef} />
-    </Reanimated.View>
+    </View>
   );
 };
 
