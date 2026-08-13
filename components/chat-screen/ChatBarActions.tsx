@@ -1,11 +1,5 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -50,36 +44,13 @@ const ChatBarActions = ({
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const isResponding = isGenerating || isProcessingPrompt;
-  const isAttachmentBlocked = isResponding || isLoadingAttachment || disabled;
-  const attachmentOpacity = useSharedValue(isAttachmentBlocked ? 0.4 : 1);
-  const primaryActionOpacity = useSharedValue(disabled ? 0.4 : 1);
-
-  useEffect(() => {
-    attachmentOpacity.set(
-      withTiming(isAttachmentBlocked ? 0.4 : 1, {
-        duration: 180,
-        easing: Easing.out(Easing.quad),
-      })
-    );
-  }, [attachmentOpacity, isAttachmentBlocked]);
-
-  useEffect(() => {
-    primaryActionOpacity.set(
-      withTiming(disabled ? 0.4 : 1, {
-        duration: 180,
-        easing: Easing.out(Easing.quad),
-      })
-    );
-  }, [disabled, primaryActionOpacity]);
-
-  const attachmentDisabledStyle = useAnimatedStyle(() => ({
-    opacity: attachmentOpacity.get(),
-  }));
-  const primaryActionDisabledStyle = useAnimatedStyle(() => ({
-    opacity: primaryActionOpacity.get(),
-  }));
+  const isAttachmentBlocked = isResponding || isLoadingAttachment;
 
   const handleAttach = () => {
+    if (disabled) {
+      return;
+    }
+
     if (isAttachmentBlocked) {
       Toast.show({
         type: 'defaultToast',
@@ -150,9 +121,9 @@ const ChatBarActions = ({
   return (
     <View style={styles.container}>
       <View style={styles.leftActions}>
-        <Animated.View
+        <View
           testID="attach-btn-container"
-          style={attachmentDisabledStyle}
+          style={isAttachmentBlocked ? styles.blockedAttachment : undefined}
         >
           <CircleButton
             icon={PlusIcon}
@@ -162,7 +133,7 @@ const ChatBarActions = ({
             color={theme.text.onAttachButton}
             testID="attach-btn"
           />
-        </Animated.View>
+        </View>
         <TouchableOpacity
           disabled={disabled}
           onPress={() => {
@@ -173,10 +144,7 @@ const ChatBarActions = ({
             }
             onThinkingToggle?.();
           }}
-          style={[
-            styles.toggleButton,
-            (!thinkingEnabled || disabled) && { opacity: 0.4 },
-          ]}
+          style={[styles.toggleButton, !thinkingEnabled && { opacity: 0.4 }]}
         >
           {!thinkingEnabled ? (
             <LightBulbCrossedIcon
@@ -195,9 +163,7 @@ const ChatBarActions = ({
         </TouchableOpacity>
       </View>
 
-      <Animated.View style={primaryActionDisabledStyle}>
-        {renderButton()}
-      </Animated.View>
+      {renderButton()}
     </View>
   );
 };
@@ -214,6 +180,9 @@ const createStyles = (theme: Theme) =>
     leftActions: {
       flexDirection: 'row',
       gap: 8,
+    },
+    blockedAttachment: {
+      opacity: 0.4,
     },
     rightActions: {
       flexDirection: 'row',

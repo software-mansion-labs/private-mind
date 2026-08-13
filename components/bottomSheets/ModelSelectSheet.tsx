@@ -62,7 +62,7 @@ const ModelSelectSheet = ({
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.background}
       keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
-      keyboardBlurBehavior="none"
+      keyboardBlurBehavior="restore"
       onChange={(index) => {
         if (index < 0) return;
 
