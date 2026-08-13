@@ -127,8 +127,6 @@ export default function ChatScreen({
   const blankSpace = useSharedValue(0);
   const [chatBarHeight, setChatBarHeight] = useState(0);
 
-  // Reset shared values when model changes to prevent stale keyboard/scroll state
-  // from the previous model affecting the new one (e.g., Gemma 4 2B → Gemma 4 2B VL).
   useEffect(() => {
     extraContentPadding.set(0);
     blankSpace.set(0);
@@ -154,8 +152,6 @@ export default function ChatScreen({
   const [attachmentSheetOpen, setAttachmentSheetOpen] = useState(false);
   const overlayOpen = modelSheetOpen || attachmentSheetOpen;
 
-  // When model changes, immediately unfreeze scroll view to prevent new model
-  // from inheriting frozen layout from previous model during transition.
   useEffect(() => {
     setModelSheetOpen(false);
     setAttachmentSheetOpen(false);
