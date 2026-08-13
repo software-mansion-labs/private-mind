@@ -17,8 +17,9 @@ const baseModel: Model = {
 };
 
 const GB = 1024 * 1024 * 1024;
-const GALAXY_S20_FE_BYTES = 5763304 * 1024;
-const EIGHT_GB_PHONE_BYTES = 7.5 * GB;
+const SIX_GB_DEVICE = 5.5 * GB;
+const EIGHT_GB_DEVICE = 7.5 * GB;
+const FOUR_GB_DEVICE = 3.7 * GB;
 
 const mockGetTotalMemorySync = DeviceInfo.getTotalMemorySync as jest.Mock;
 
@@ -53,7 +54,7 @@ describe('isModelCompatible', () => {
   });
 
   it('blocks Gemma 4 VL on a 6GB device', () => {
-    mockGetTotalMemorySync.mockReturnValue(GALAXY_S20_FE_BYTES);
+    mockGetTotalMemorySync.mockReturnValue(SIX_GB_DEVICE);
     const gemma4VL = {
       ...baseModel,
       modelName: 'Gemma 4 VL - 2B',
@@ -64,7 +65,7 @@ describe('isModelCompatible', () => {
   });
 
   it('keeps Gemma 4 VL available on an 8GB device', () => {
-    mockGetTotalMemorySync.mockReturnValue(EIGHT_GB_PHONE_BYTES);
+    mockGetTotalMemorySync.mockReturnValue(EIGHT_GB_DEVICE);
     const gemma4VL = {
       ...baseModel,
       modelName: 'Gemma 4 VL - 2B',
@@ -75,7 +76,7 @@ describe('isModelCompatible', () => {
   });
 
   it('keeps the 6GB starting tier available on a 6GB device', () => {
-    mockGetTotalMemorySync.mockReturnValue(GALAXY_S20_FE_BYTES);
+    mockGetTotalMemorySync.mockReturnValue(SIX_GB_DEVICE);
     const qwen3 = { ...baseModel, modelName: 'Qwen 3 - 1.7B', modelSize: 2.16 };
     const lfm = { ...baseModel, modelName: 'LFM 2.5 - 1.2B', modelSize: 1.14 };
     const lfmVL = {
@@ -89,8 +90,23 @@ describe('isModelCompatible', () => {
     expect(isModelCompatible(lfmVL)).toBe(true);
   });
 
+  it('keeps the 4GB starting tier available on a 4GB device', () => {
+    mockGetTotalMemorySync.mockReturnValue(FOUR_GB_DEVICE);
+    const qwen3 = { ...baseModel, modelName: 'Qwen 3 - 0.6B', modelSize: 0.94 };
+    const lfm = { ...baseModel, modelName: 'LFM 2.5 - 1.2B', modelSize: 1.14 };
+    const lfmVL = {
+      ...baseModel,
+      modelName: 'LFM 2.5 VL - 450M',
+      modelSize: 0.65,
+    };
+
+    expect(isModelCompatible(qwen3)).toBe(true);
+    expect(isModelCompatible(lfm)).toBe(true);
+    expect(isModelCompatible(lfmVL)).toBe(true);
+  });
+
   it('keeps Gemma 4 text available on a 6GB device', () => {
-    mockGetTotalMemorySync.mockReturnValue(GALAXY_S20_FE_BYTES);
+    mockGetTotalMemorySync.mockReturnValue(SIX_GB_DEVICE);
     const gemma4 = { ...baseModel, modelName: 'Gemma 4 - 2B', modelSize: 2.5 };
     expect(isModelCompatible(gemma4)).toBe(true);
   });
