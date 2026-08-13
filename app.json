@@ -1,11 +1,11 @@
 {
   "expo": {
-    "scheme": "private-mind-release",
-    "name": "Private Mind Release",
-    "slug": "private-mind-release",
+    "scheme": "private-mind",
+    "name": "Private Mind",
+    "slug": "private-mind",
     "version": "1.2.0",
     "orientation": "portrait",
-    "icon": "./assets/icons/icon-release.png",
+    "icon": "./assets/icons/icon.png",
     "userInterfaceStyle": "automatic",
     "plugins": [
       [
@@ -62,15 +62,15 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.swmansion.privatemind.release",
+      "bundleIdentifier": "com.swmansion.privatemind",
       "appleTeamId": "B357MU264T"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icons/icon-release.png",
+        "foregroundImage": "./assets/icons/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.swmansion.privatemind.release",
+      "package": "com.swmansion.privatemind",
       "edgeToEdgeEnabled": true
     }
   }
