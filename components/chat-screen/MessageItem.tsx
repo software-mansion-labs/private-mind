@@ -13,6 +13,7 @@ import AnimatedChatLoading from './AnimatedChatLoading';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useLLMStore } from '../../store/llmStore';
+import { useSettingsStore } from '../../store/settingsStore';
 import { Theme } from '../../styles/colors';
 import ImageLightbox from './ImageLightbox';
 import AttachmentIcon from '../../assets/icons/attachment.svg';
@@ -112,6 +113,9 @@ const MessageItem = memo(
     const { styles } = useThemedStyles(createStyles);
     const isGenerating = useLLMStore((state) => state.isGenerating);
     const isProcessingPrompt = useLLMStore((state) => state.isProcessingPrompt);
+    const showPerformanceMetrics = useSettingsStore(
+      (state) => state.showPerformanceMetrics
+    );
     const [lightboxVisible, setLightboxVisible] = useState(false);
 
     const contentParts = parseThinkingContent(content);
@@ -296,12 +300,14 @@ const MessageItem = memo(
                     onLinkPress={handleLinkPress}
                   />
                 )}
-              {tokensPerSecond !== undefined && tokensPerSecond !== 0 && (
-                <Text style={styles.metadata}>
-                  ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
-                  {tokensPerSecond?.toFixed(2)} tok/s
-                </Text>
-              )}
+              {showPerformanceMetrics &&
+                tokensPerSecond !== undefined &&
+                tokensPerSecond !== 0 && (
+                  <Text style={styles.metadata}>
+                    ttft: {timeToFirstToken?.toFixed()} ms, tps:{' '}
+                    {tokensPerSecond?.toFixed(2)} tok/s
+                  </Text>
+                )}
               {actions}
             </View>
           </View>
