@@ -1,48 +1,47 @@
 import DeviceInfo from 'react-native-device-info';
 import { Model } from '../database/modelRepository';
+import { MODEL_MIN_RAM_GB } from '../constants/model-memory';
 
 const getTotalMemoryGB = () =>
   DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024;
 
-const NON_QUANTIZED_MEMORY_MULTIPLIER = 2.5;
-const QUANTIZED_MEMORY_MULTIPLIER = 1.75;
+const RUNTIME_OVERHEAD_MULTIPLIER = 1.3;
+const RUNTIME_OVERHEAD_GB = 0.5;
+const USABLE_MEMORY_FRACTION = 0.8;
 
-const quantizedKeywords = [
-  'quantized',
-  'qlora',
-  'spinquant',
-  '8da4w',
-  'xnnpack',
-];
+type CompatibilityCheckedModel = Pick<Model, 'modelName' | 'modelSize'>;
 
-const isModelQuantized = (model: Model): boolean => {
-  const haystack = `${model.modelName} ${model.modelPath}`.toLowerCase();
-  return quantizedKeywords.some((keyword) => haystack.includes(keyword));
-};
-
-export const getModelMemoryRequirement = (model: Model): number | null => {
-  if (!model.parameters) {
+export const getModelMemoryRequirement = (
+  model: CompatibilityCheckedModel
+): number | null => {
+  if (!model.modelSize) {
     return null;
   }
 
-  const isQuantized = isModelQuantized(model);
-  const multiplier = isQuantized
-    ? QUANTIZED_MEMORY_MULTIPLIER
-    : NON_QUANTIZED_MEMORY_MULTIPLIER;
-
-  return model.parameters * multiplier;
+  return model.modelSize * RUNTIME_OVERHEAD_MULTIPLIER + RUNTIME_OVERHEAD_GB;
 };
 
-export const isModelCompatible = (model: Model): boolean => {
+export const isModelCompatibleWithRam = (
+  model: CompatibilityCheckedModel,
+  deviceRamGB: number
+): boolean => {
+  const declaredMinRamGB = MODEL_MIN_RAM_GB[model.modelName];
+
+  if (declaredMinRamGB !== undefined) {
+    return deviceRamGB >= declaredMinRamGB;
+  }
+
   const memoryRequirement = getModelMemoryRequirement(model);
 
-  // If we can't determine memory requirement, assume it's compatible
   if (memoryRequirement === null) {
     return true;
   }
 
-  return memoryRequirement <= getTotalMemoryGB();
+  return memoryRequirement <= deviceRamGB * USABLE_MEMORY_FRACTION;
 };
+
+export const isModelCompatible = (model: Model): boolean =>
+  isModelCompatibleWithRam(model, getTotalMemoryGB());
 
 export const getDeviceMemoryGB = (): number => {
   return getTotalMemoryGB();

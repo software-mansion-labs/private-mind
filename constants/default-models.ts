@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { type Model } from '../database/modelRepository';
+import { isModelCompatibleWithRam } from '../utils/modelCompatibility';
 import {
   QWEN3_0_6B_QUANTIZED,
   QWEN3_1_7B_QUANTIZED,
@@ -18,16 +19,51 @@ import {
   GEMMA4_E2B_MM,
 } from 'react-native-executorch';
 
+const LOW_END_STARTING_MODELS = [
+  'Qwen 3 - 0.6B',
+  'LFM 2.5 VL - 450M',
+  'LFM 2.5 - 1.2B',
+];
+
+const MID_RANGE_STARTING_MODELS = [
+  'Qwen 3 - 1.7B',
+  'LFM 2.5 - 1.2B',
+  'LFM 2.5 VL - 1.6B',
+];
+
+const HIGH_END_STARTING_MODELS = [
+  'Gemma 4 - 2B',
+  'Gemma 4 VL - 2B',
+  'Qwen 3 - 1.7B',
+];
+
+const getStartingModelCandidates = (deviceRamInGB: number): string[] => {
+  if (deviceRamInGB <= 6) {
+    return [
+      ...new Set([...MID_RANGE_STARTING_MODELS, ...LOW_END_STARTING_MODELS]),
+    ];
+  }
+
+  return [
+    ...new Set([
+      ...HIGH_END_STARTING_MODELS,
+      ...MID_RANGE_STARTING_MODELS,
+      ...LOW_END_STARTING_MODELS,
+    ]),
+  ];
+};
+
 export const getStartingModels = (deviceRamInGB: number): string[] => {
   if (deviceRamInGB < 4) {
-    return ['Qwen 3 - 0.6B', 'LFM 2.5 VL - 450M', 'LFM 2.5 - 1.2B'];
+    return [...LOW_END_STARTING_MODELS];
   }
 
-  if (deviceRamInGB <= 6) {
-    return ['Qwen 3 - 1.7B', 'LFM 2.5 - 1.2B', 'LFM 2.5 VL - 1.6B'];
-  }
-
-  return ['Gemma 4 - 2B', 'Gemma 4 VL - 2B', 'Qwen 3 - 1.7B'];
+  return getStartingModelCandidates(deviceRamInGB)
+    .filter((modelName) => {
+      const model = DEFAULT_MODELS.find((m) => m.modelName === modelName);
+      return !!model && isModelCompatibleWithRam(model, deviceRamInGB);
+    })
+    .slice(0, 3);
 };
 
 const RNE_MODELS = [
