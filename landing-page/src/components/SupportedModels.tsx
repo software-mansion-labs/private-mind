@@ -34,7 +34,7 @@ function SupportedModels() {
           <img alt="" src={Qwen} className="supported-models-logo" style={{scale: '170%'}}/>
         </a>
         <a
-          href="https://huggingface.co/microsoft/phi-4"
+          href="https://deepmind.google/models/gemma/gemma-4/"
           target="_blank"
           rel="noopener noreferrer"
         >
