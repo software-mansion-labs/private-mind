@@ -4,7 +4,6 @@ import Navigation from './components/Navigation';
 import Highlights from './components/Highlights';
 import SupportedModels from 'components/SupportedModels';
 import FAQ from 'components/FAQ';
-import Contact from 'components/Contact';
 import Footer from 'components/Footer';
 import { TopBarBanner, TOP_BAR_BANNER } from 'components/TopBarBanner';
 
@@ -24,7 +23,6 @@ function App() {
         <Highlights />
         <SupportedModels />
         <FAQ />
-        <Contact />
         <Footer />
       </div>
     </>
