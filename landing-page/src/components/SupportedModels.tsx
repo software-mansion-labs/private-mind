@@ -1,8 +1,8 @@
 import React from 'react';
 import Qwen from 'assets/Qwen.svg';
-import Phi4 from 'assets/Phi4.svg';
-import LLaMA from 'assets/LLaMA.svg';
-import SmolLM from 'assets/SmolLM.svg';
+import LiquidAI from 'assets/LiquidAI.svg'
+import GemmaIcon from 'assets/gemma-color.svg'
+import GemmaText from 'assets/gemma-text.svg'
 import './SupportedModels.css';
 
 function SupportedModels() {
@@ -20,32 +20,28 @@ function SupportedModels() {
       </div>
       <div className="supported-models-logos">
         <a
-          href="https://huggingface.co/meta-llama"
+          href="https://www.liquid.ai/models"
           target="_blank"
           rel="noopener noreferrer"
         >
-          <img alt="" src={LLaMA} className="supported-models-logo" />
-        </a>
-        <a
-          href="https://huggingface.co/collections/HuggingFaceTB/smollm-6695016cad7167254ce15966"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img alt="" src={SmolLM} className="supported-models-logo" />
+          <img alt="" src={LiquidAI} className="supported-models-logo" />
         </a>
         <a
           href="https://qwen.ai/home"
           target="_blank"
           rel="noopener noreferrer"
         >
-          <img alt="" src={Qwen} className="supported-models-logo" />
+          <img alt="" src={Qwen} className="supported-models-logo" style={{scale: '170%'}}/>
         </a>
         <a
           href="https://huggingface.co/microsoft/phi-4"
           target="_blank"
           rel="noopener noreferrer"
         >
-          <img alt="" src={Phi4} className="supported-models-logo" />
+          <div style={{display: 'flex', flex: 'row'}}>
+            <img alt="" src={GemmaIcon} className="supported-models-logo" />
+            <img alt="" src={GemmaText} className="supported-models-logo" style={{height:'2.5rem', margin:'auto'}} />
+          </div>
         </a>
       </div>
       <div className="supported-models-footer">

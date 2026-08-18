@@ -27,9 +27,8 @@
 }
 
 .supported-models-logos {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   margin: auto;
   justify-items: center;
 }
@@ -47,13 +46,21 @@
 }
 
 .supported-models-logo {
-  width: 100%;
+  max-width: 100%;
+  height: 6rem;
   display: flex;
+  margin: auto;
+  margin-top: 2rem;
+  margin-bottom: 2rem
 }
 
 @media (min-width: 1024px) {
   .supported-models-logos {
-    grid-template-columns: repeat(4, 1fr);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     grid-template-rows: 1fr;
+  }
+  .supported-models-logo {
+    max-width: 80%;
   }
 }
