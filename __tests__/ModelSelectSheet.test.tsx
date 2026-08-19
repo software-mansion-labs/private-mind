@@ -1,5 +1,5 @@
 import React, { createRef } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent, act } from '@testing-library/react-native';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
@@ -14,7 +14,9 @@ jest.mock('../store/modelStore', () => ({
   useModelStore: jest.fn(() => ({ downloadedModels: [] })),
 }));
 
-jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
+jest.mock('expo-router', () => ({
+  router: { push: jest.fn(), replace: jest.fn() },
+}));
 
 jest.mock('../components/model-hub/ModelCard', () => {
   const { TouchableOpacity, Text } = require('react-native');
@@ -45,11 +47,19 @@ jest.mock('@gorhom/bottom-sheet', () => {
   const { View } = require('react-native');
   const _data: any = null;
 
-  const BottomSheetModal = React.forwardRef((props: any, _ref: any) => {
+  const BottomSheetModal = React.forwardRef((props: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({
+      dismiss: () => props.onDismiss?.(),
+      snapToIndex: (i: number) => props.onChange?.(i),
+    }));
     React.useEffect(() => {
       props.onChange?.(0);
     }, []);
-    return <View>{props.children}</View>;
+    return (
+      <View testID="sheet-modal" index={props.index}>
+        {props.children}
+      </View>
+    );
   });
   const BottomSheetFlatList = ({ data, renderItem }: any) => (
     <View>
@@ -63,14 +73,11 @@ jest.mock('@gorhom/bottom-sheet', () => {
   );
   const BottomSheetBackdrop = () => null;
 
-  const useBottomSheetTimingConfigs = () => ({});
-
   return {
     BottomSheetModal,
     BottomSheetFlatList,
     BottomSheetView,
     BottomSheetBackdrop,
-    useBottomSheetTimingConfigs,
   };
 });
 
@@ -103,7 +110,7 @@ const renderSheet = (props = {}) =>
   render(
     <ModelSelectSheet
       bottomSheetModalRef={createRef()}
-      selectModel={jest.fn()}
+      onModelPicked={jest.fn()}
       {...props}
     />
   );
@@ -122,7 +129,8 @@ describe('empty state', () => {
   it('navigates to model-hub when "Download a Model" pressed', () => {
     renderSheet();
     fireEvent.press(screen.getByText('Download a Model'));
-    expect(router.push).toHaveBeenCalledWith('/model-hub');
+    expect(router.replace).toHaveBeenCalledWith('/model-hub');
+    expect(router.push).not.toHaveBeenCalled();
   });
 });
 
@@ -144,13 +152,38 @@ describe('with downloaded models', () => {
     expect(screen.getByText('Qwen-1B')).toBeTruthy();
   });
 
-  it('calls selectModel when a model card is pressed', () => {
-    const selectModel = jest.fn();
-    renderSheet({ selectModel });
+  it('keeps the detent the user dragged to, so a re-render cannot collapse it', () => {
+    const ref = createRef<any>();
+    renderSheet({ bottomSheetModalRef: ref });
+
+    expect(screen.getByTestId('sheet-modal').props.index).toBe(0);
+
+    act(() => ref.current.snapToIndex(1));
+
+    expect(screen.getByTestId('sheet-modal').props.index).toBe(1);
+  });
+
+  it('reopens at the first detent after being dismissed', () => {
+    const ref = createRef<any>();
+    renderSheet({ bottomSheetModalRef: ref });
+
+    act(() => ref.current.snapToIndex(1));
+    act(() => ref.current.dismiss());
+
+    expect(screen.getByTestId('sheet-modal').props.index).toBe(0);
+  });
+
+  it('reports the pick and dismisses, leaving the load to the caller', () => {
+    const onModelPicked = jest.fn();
+    const onSheetStateChange = jest.fn();
+    renderSheet({ onModelPicked, onSheetStateChange });
+
     fireEvent.press(screen.getByTestId('model-card-1'));
-    expect(selectModel).toHaveBeenCalledWith(
+
+    expect(onModelPicked).toHaveBeenCalledWith(
       expect.objectContaining({ id: 1 })
     );
+    expect(onSheetStateChange).toHaveBeenLastCalledWith(false);
   });
 });
 

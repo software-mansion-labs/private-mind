@@ -12,6 +12,7 @@ interface Props {
   iconOn: SvgComponent;
   iconOff: SvgComponent;
   onToggle: () => void;
+  disabled?: boolean;
   testID?: string;
 }
 
@@ -21,11 +22,14 @@ const ChatBarToggle = ({
   iconOn: IconOn,
   iconOff: IconOff,
   onToggle,
+  disabled = false,
   testID,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
 
   const handlePress = () => {
+    if (disabled) return;
+
     if (enabled) {
       Feedback.toggleOff();
     } else {
@@ -39,6 +43,7 @@ const ChatBarToggle = ({
   return (
     <Pressable
       onPress={handlePress}
+      disabled={disabled}
       style={({ pressed }) => [
         styles.toggleButton,
         !enabled && styles.off,

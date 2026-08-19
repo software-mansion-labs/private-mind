@@ -40,7 +40,7 @@ export const ModelSelector = ({ model, setSelectedModel }: Props) => {
 
       <ModelSelectSheet
         bottomSheetModalRef={bottomSheetModalRef}
-        selectModel={setSelectedModel}
+        onModelPicked={setSelectedModel}
       />
     </>
   );

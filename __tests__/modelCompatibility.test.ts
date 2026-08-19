@@ -34,70 +34,29 @@ beforeEach(() => {
 });
 
 describe('getModelMemoryRequirement', () => {
-  it('returns null when model has no parameters', () => {
-    const model = { ...baseModel, parameters: undefined };
+  it('returns null when the model has no known download size', () => {
+    const model = { ...baseModel, modelSize: undefined };
     expect(getModelMemoryRequirement(model)).toBeNull();
   });
 
-  it('uses 2.5x multiplier for non-quantized models', () => {
-    const model = { ...baseModel, modelName: 'Llama-3.2-1B', parameters: 1 };
-    expect(getModelMemoryRequirement(model)).toBeCloseTo(2.5);
+  it('derives the requirement from the on-disk size', () => {
+    const model = { ...baseModel, modelSize: 2 };
+    expect(getModelMemoryRequirement(model)).toBeCloseTo(3.1);
   });
 
-  it('uses 1.75x multiplier for quantized models', () => {
-    const model = {
-      ...baseModel,
-      modelName: 'Llama-3.2-1B-quantized',
-      parameters: 1,
-    };
-    expect(getModelMemoryRequirement(model)).toBeCloseTo(1.75);
-  });
-
-  it('detects quantized keyword case-insensitively', () => {
-    const model = {
-      ...baseModel,
-      modelName: 'Llama-QUANTIZED-1B',
-      parameters: 2,
-    };
-    expect(getModelMemoryRequirement(model)).toBeCloseTo(3.5);
-  });
-
-  it('detects spinquant keyword', () => {
-    const model = {
-      ...baseModel,
-      modelName: 'Llama-SpinQuant-1B',
-      parameters: 1,
-    };
-    expect(getModelMemoryRequirement(model)).toBeCloseTo(1.75);
-  });
-
-  it('detects qlora keyword', () => {
-    const model = { ...baseModel, modelName: 'Llama-QLoRA-1B', parameters: 1 };
-    expect(getModelMemoryRequirement(model)).toBeCloseTo(1.75);
+  it('ignores the parameter count when a size is known', () => {
+    const twoBillionParams = { ...baseModel, parameters: 2, modelSize: 4 };
+    const halfBillionParams = { ...baseModel, parameters: 0.5, modelSize: 4 };
+    expect(getModelMemoryRequirement(twoBillionParams)).toBeCloseTo(
+      getModelMemoryRequirement(halfBillionParams)!
+    );
   });
 });
 
 describe('isModelCompatible', () => {
   it('returns true when nothing about the model says how big it is', () => {
-    const model = { ...baseModel, parameters: undefined };
+    const model = { ...baseModel, modelSize: undefined };
     expect(isModelCompatible(model)).toBe(true);
-  });
-
-  it('prefers the file size over the parameter-count estimate', () => {
-    mockGetTotalMemorySync.mockReturnValue(gb(3.8));
-    const model = {
-      ...baseModel,
-      modelName: 'LLaMA 3.2 - 1B - SpinQuant',
-      parameters: 1.24,
-      modelSize: 1.14,
-    };
-    expect(isModelCompatible(model)).toBe(true);
-  });
-
-  it('falls back to the parameter estimate when there is no file size', () => {
-    mockGetTotalMemorySync.mockReturnValue(gb(12));
-    expect(isModelCompatible({ ...baseModel, parameters: 7 })).toBe(false);
-    expect(isModelCompatible({ ...baseModel, parameters: 1 })).toBe(true);
   });
 
   it('does not hide every model when the memory figure is unreadable', () => {
@@ -105,6 +64,52 @@ describe('isModelCompatible', () => {
       throw new Error('no such thing');
     });
     expect(isModelCompatible({ ...baseModel, modelSize: 2.5 })).toBe(true);
+  });
+
+  it('blocks Gemma 4 VL on a 6GB device', () => {
+    mockGetTotalMemorySync.mockReturnValue(gb(5.5));
+    const gemma4VL = {
+      ...baseModel,
+      modelName: 'Gemma 4 VL - 2B',
+      modelSize: 4.0,
+    };
+    expect(isModelCompatible(gemma4VL)).toBe(false);
+  });
+
+  it('keeps Gemma 4 VL available on an 8GB device', () => {
+    mockGetTotalMemorySync.mockReturnValue(gb(7.5));
+    const gemma4VL = {
+      ...baseModel,
+      modelName: 'Gemma 4 VL - 2B',
+      modelSize: 4.0,
+    };
+    expect(isModelCompatible(gemma4VL)).toBe(true);
+  });
+
+  it('lets a declared minimum override a size that would otherwise pass', () => {
+    mockGetTotalMemorySync.mockReturnValue(gb(5.5));
+    const shrunkGemma4VL = {
+      ...baseModel,
+      modelName: 'Gemma 4 VL - 2B',
+      modelSize: 1.0,
+    };
+    expect(isModelCompatible(shrunkGemma4VL)).toBe(false);
+  });
+
+  it('honours a declared minimum on a device that meets it', () => {
+    mockGetTotalMemorySync.mockReturnValue(gb(7.5));
+    const gemma4VL = {
+      ...baseModel,
+      modelName: 'Gemma 4 VL - 2B',
+      modelSize: 4.0,
+    };
+    expect(isModelCompatible(gemma4VL)).toBe(true);
+  });
+
+  it('blocks a model that cannot fit on a small device', () => {
+    mockGetTotalMemorySync.mockReturnValue(gb(2));
+    const model = { ...baseModel, modelName: 'Llama-7B', modelSize: 6.8 };
+    expect(isModelCompatible(model)).toBe(false);
   });
 });
 

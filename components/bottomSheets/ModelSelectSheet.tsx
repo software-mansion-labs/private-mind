@@ -4,9 +4,7 @@ import {
   BottomSheetFlatList,
   BottomSheetView,
   BottomSheetBackdrop,
-  useBottomSheetTimingConfigs,
 } from '@gorhom/bottom-sheet';
-import { Easing } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
@@ -21,23 +19,19 @@ import { Feedback } from '../../utils/Feedback';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
-  selectModel: (model: Model) => void;
+  onModelPicked: (model: Model) => void;
   onSheetStateChange?: (isOpen: boolean) => void;
 }
 
 const ModelSelectSheet = ({
   bottomSheetModalRef,
-  selectModel,
+  onModelPicked,
   onSheetStateChange,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const { downloadedModels } = useModelStore();
   const [search, setSearch] = useState('');
-  const [isFullyOpen, setIsFullyOpen] = useState(false);
-  const animationConfigs = useBottomSheetTimingConfigs({
-    duration: 150,
-    easing: Easing.out(Easing.cubic),
-  });
+  const [snapIndex, setSnapIndex] = useState(0);
 
   const filteredModels = downloadedModels.filter((model) =>
     model.modelName.toLowerCase().includes(search.toLowerCase())
@@ -59,8 +53,8 @@ const ModelSelectSheet = ({
     <BottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
+      index={snapIndex}
       snapPoints={['30%', '50%']}
-      animationConfigs={animationConfigs}
       enableDynamicSizing={false}
       handleStyle={styles.handle}
       handleIndicatorStyle={styles.handleIndicator}
@@ -68,20 +62,19 @@ const ModelSelectSheet = ({
       keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
       keyboardBlurBehavior="restore"
       onChange={(index) => {
-        if (index >= 0) Feedback.sheetOpen();
-        onSheetStateChange?.(index >= 0);
-        setIsFullyOpen(index >= 0);
+        if (index < 0) return;
+
+        setSnapIndex(index);
+        Feedback.sheetOpen();
+        onSheetStateChange?.(true);
       }}
       onDismiss={() => {
+        setSnapIndex(0);
         onSheetStateChange?.(false);
-        setIsFullyOpen(false);
       }}
     >
       {downloadedModels.length > 0 ? (
-        <View
-          style={styles.content}
-          pointerEvents={isFullyOpen ? 'auto' : 'none'}
-        >
+        <View style={styles.content}>
           <Text style={[styles.title, styles.horizontalInset]}>
             Select a Model
           </Text>
@@ -107,7 +100,7 @@ const ModelSelectSheet = ({
               <ModelCard
                 model={item}
                 onPress={() => {
-                  selectModel(item);
+                  onModelPicked(item);
                   bottomSheetModalRef.current?.dismiss();
                 }}
               />
@@ -124,7 +117,7 @@ const ModelSelectSheet = ({
             text="Download a Model"
             onPress={() => {
               bottomSheetModalRef.current?.dismiss();
-              router.push('/model-hub');
+              router.replace('/model-hub');
             }}
           />
         </BottomSheetView>
