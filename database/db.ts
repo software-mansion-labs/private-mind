@@ -1,5 +1,4 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
-import { DEFAULT_MODELS } from '../constants/default-models';
 import { useChatStore } from '../store/chatStore';
 import { useLLMStore } from '../store/llmStore';
 import { useModelStore } from '../store/modelStore';
@@ -9,6 +8,8 @@ import { useSourceStore } from '../store/sourceStore';
 import { initSourceLinkingBoundary } from '../utils/sourceLinkingBoundary';
 import { migrateLegacyVectorStore } from './vectorStoreMigration';
 import { restoreTruncatedChatTitles } from './chatTitleMigration';
+import { resolveModelCatalog } from '../utils/fetchModelCatalog';
+import { getActiveCatalog, setActiveCatalog } from '../utils/modelCatalogState';
 
 export const runMigrations = async (db: SQLiteDatabase) => {
   const modelsTableInfo = await db.getAllAsync<{ name: string }>(
@@ -167,7 +168,8 @@ export const runMigrations = async (db: SQLiteDatabase) => {
      WHERE source = 'built-in' AND modelName LIKE '% - Quantized'`
   );
 
-  const defaultModelNames = DEFAULT_MODELS.map((m) => m.modelName);
+  const catalog = getActiveCatalog();
+  const defaultModelNames = catalog.map((m) => m.modelName);
   const placeholders = defaultModelNames.map(() => '?').join(',');
 
   await db.runAsync(
@@ -178,7 +180,7 @@ export const runMigrations = async (db: SQLiteDatabase) => {
     ...defaultModelNames
   );
 
-  for (const model of DEFAULT_MODELS) {
+  for (const model of catalog) {
     await db.runAsync(
       `UPDATE models SET family = ?, featured = ?, experimental = ?, thinking = ?, vision = ?, labels = ?, systemPrompt = ? WHERE modelName = ?`,
       model.family || null,
@@ -315,6 +317,9 @@ export const initDatabase = async (db: SQLiteDatabase) => {
     );
   `);
 
+  const { models } = await resolveModelCatalog();
+  setActiveCatalog(models);
+
   // Run migration before inserting default models
   await runMigrations(db);
 
@@ -335,7 +340,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   }
 
   await db.withTransactionAsync(async () => {
-    for (const model of DEFAULT_MODELS) {
+    for (const model of getActiveCatalog()) {
       const {
         modelName,
         modelPath,
