@@ -28,3 +28,39 @@ jobs:
 
       - name: Run tests
         run: yarn test --forceExit --ci
+
+  publish-catalog:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if the manifest changed
+        id: catalog-changed
+        run: |
+          if git diff --quiet HEAD^ HEAD -- catalog/model-catalog.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Stage the manifest
+        if: steps.catalog-changed.outputs.changed == 'true'
+        run: |
+          mkdir -p catalog-publish
+          cp catalog/model-catalog.json catalog-publish/model-catalog.json
+
+      - name: Publish to gh-pages
+        if: steps.catalog-changed.outputs.changed == 'true'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./catalog-publish
+          keep_files: true
+          commit_message: "chore: publish model catalog"
