@@ -4,6 +4,7 @@ import {
   StyleSheet,
   View,
   Pressable,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -14,6 +15,7 @@ import ChevronDown from '../../assets/icons/chevron-down.svg';
 interface Props {
   title: string;
   modelName: string;
+  isModelLoading?: boolean;
   onPress?: () => void;
   showChevron?: boolean;
   onBottomMeasured?: (bottomY: number) => void;
@@ -22,6 +24,7 @@ interface Props {
 const ChatTitle = ({
   title,
   modelName,
+  isModelLoading = false,
   onPress,
   showChevron = false,
   onBottomMeasured,
@@ -63,14 +66,33 @@ const ChatTitle = ({
           <Text numberOfLines={1} style={styles.title}>
             {title}
           </Text>
-          <Text style={styles.modelName}>{modelName}</Text>
+          <View style={styles.modelRow}>
+            <Text style={styles.modelName}>{modelName}</Text>
+            <View style={styles.accessory} pointerEvents="none">
+              {isModelLoading && (
+                <ActivityIndicator
+                  size="small"
+                  color={styles.modelName.color}
+                  style={styles.loader}
+                />
+              )}
+            </View>
+          </View>
         </>
       ) : (
         <View style={styles.modelRow}>
           <Text style={styles.modelNameTitle}>{modelName}</Text>
-          {showChevron && (
-            <ChevronDown width={10} height={10} style={styles.chevron} />
-          )}
+          <View style={styles.accessory} pointerEvents="none">
+            {isModelLoading ? (
+              <ActivityIndicator
+                size="small"
+                color={styles.modelNameTitle.color}
+                style={styles.loader}
+              />
+            ) : showChevron ? (
+              <ChevronDown width={10} height={10} style={styles.chevron} />
+            ) : null}
+          </View>
         </View>
       )}
     </Pressable>
@@ -98,7 +120,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.xs,
       fontFamily: fontFamily.regular,
       color: theme.text.defaultSecondary,
-      width: '100%',
       textAlign: 'center',
     },
     modelNameTitle: {
@@ -108,10 +129,22 @@ const createStyles = (theme: Theme) =>
     modelRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      position: 'relative',
+    },
+    accessory: {
+      position: 'absolute',
+      left: '100%',
+      marginLeft: 4,
+      width: 14,
+      height: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     chevron: {
       color: theme.text.defaultSecondary,
       transform: [{ rotate: '-90deg' }],
+    },
+    loader: {
+      transform: [{ scale: 0.65 }],
     },
   });

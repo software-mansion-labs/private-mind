@@ -37,6 +37,28 @@ describe('findCitedSpan', () => {
     expect(cited).toBe('Total revenue reached 2455 PLN last year.');
   });
 
+  it('keeps a decimal amount inside the cited sentence', () => {
+    const passage =
+      'The tenant may leave early. Where such notice is given, the Tenant shall pay an early termination fee equal to one month rent, being 1,450.00 EUR. Pets are not allowed.';
+    const span = findCitedSpan(passage, 'What termination fee must I pay?');
+
+    expect(span).not.toBeNull();
+    expect(passage.slice(span!.start, span!.end)).toBe(
+      'Where such notice is given, the Tenant shall pay an early termination fee equal to one month rent, being 1,450.00 EUR.'
+    );
+  });
+
+  it('does not split a sentence on a clause number', () => {
+    const passage =
+      'Rent is due monthly. Early termination under Clause 7.2 does not forfeit the deposit. Utilities are billed separately.';
+    const span = findCitedSpan(passage, 'Does early termination forfeit it?');
+
+    expect(span).not.toBeNull();
+    expect(passage.slice(span!.start, span!.end)).toBe(
+      'Early termination under Clause 7.2 does not forfeit the deposit.'
+    );
+  });
+
   it('matches identifiers/numbers even when short', () => {
     const passage =
       'Ogólne warunki umowy. Faktura FS-219039 na kwotę 2455,01 PLN. Dziękujemy za współpracę.';

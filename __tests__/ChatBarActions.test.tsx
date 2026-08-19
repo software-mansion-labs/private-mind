@@ -101,6 +101,19 @@ describe('attach button', () => {
     });
   });
 
+  it('blocks attachments while disabled without greying out or explaining', () => {
+    const onAttach = jest.fn();
+    renderActions({ onAttach, disabled: true });
+
+    fireEvent.press(screen.getByTestId('attach-btn'));
+
+    expect(onAttach).not.toHaveBeenCalled();
+    expect(Toast.show).not.toHaveBeenCalled();
+    expect(
+      StyleSheet.flatten(screen.getByTestId('attach-btn-container').props.style)
+    ).toBeUndefined();
+  });
+
   it('keeps the attachment button at full opacity when idle', () => {
     renderActions();
 

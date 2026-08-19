@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import { Model } from '../database/modelRepository';
 import { LOW_MEMORY_DEVICE_GB } from '../constants/web';
+import { MODEL_MIN_RAM_GB } from '../constants/model-memory';
 import {
   ANDROID_SYSTEM_RESERVE_GB,
   APP_RUNTIME_MEMORY_GB,
@@ -18,33 +19,39 @@ import {
 const getTotalMemoryGB = () =>
   DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024;
 
-const NON_QUANTIZED_MEMORY_MULTIPLIER = 2.5;
-const QUANTIZED_MEMORY_MULTIPLIER = 1.75;
+const RUNTIME_OVERHEAD_MULTIPLIER = 1.3;
+const RUNTIME_OVERHEAD_GB = 0.5;
+const USABLE_MEMORY_FRACTION = 0.8;
 
-const quantizedKeywords = [
-  'quantized',
-  'qlora',
-  'spinquant',
-  '8da4w',
-  'xnnpack',
-];
+type CompatibilityCheckedModel = Pick<Model, 'modelName' | 'modelSize'>;
 
-const isModelQuantized = (model: Model): boolean => {
-  const haystack = `${model.modelName} ${model.modelPath}`.toLowerCase();
-  return quantizedKeywords.some((keyword) => haystack.includes(keyword));
-};
-
-export const getModelMemoryRequirement = (model: Model): number | null => {
-  if (!model.parameters) {
+export const getModelMemoryRequirement = (
+  model: CompatibilityCheckedModel
+): number | null => {
+  if (!model.modelSize) {
     return null;
   }
 
-  const isQuantized = isModelQuantized(model);
-  const multiplier = isQuantized
-    ? QUANTIZED_MEMORY_MULTIPLIER
-    : NON_QUANTIZED_MEMORY_MULTIPLIER;
+  return model.modelSize * RUNTIME_OVERHEAD_MULTIPLIER + RUNTIME_OVERHEAD_GB;
+};
 
-  return model.parameters * multiplier;
+export const isModelCompatibleWithRam = (
+  model: CompatibilityCheckedModel,
+  deviceRamGB: number
+): boolean => {
+  const declaredMinRamGB = MODEL_MIN_RAM_GB[model.modelName];
+
+  if (declaredMinRamGB !== undefined) {
+    return deviceRamGB >= declaredMinRamGB;
+  }
+
+  const memoryRequirement = getModelMemoryRequirement(model);
+
+  if (memoryRequirement === null) {
+    return true;
+  }
+
+  return memoryRequirement <= deviceRamGB * USABLE_MEMORY_FRACTION;
 };
 
 export const getAppMemoryBudgetGB = (): number => {
@@ -62,10 +69,16 @@ const getModelMemoryCostGB = (
 ): number | null => {
   if (!model) return null;
   if (model.modelSize) return model.modelSize + MODEL_MEMORY_OVERHEAD_GB;
-  return getModelMemoryRequirement(model as Model);
+  return getModelMemoryRequirement(model as CompatibilityCheckedModel);
 };
 
 export const isModelCompatible = (model: Model): boolean => {
+  const declaredMinRamGB = MODEL_MIN_RAM_GB[model.modelName];
+
+  if (declaredMinRamGB !== undefined) {
+    return getTotalMemoryGB() >= declaredMinRamGB;
+  }
+
   const cost = getModelMemoryCostGB(model);
 
   if (cost === null) {

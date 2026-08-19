@@ -10,6 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useKeyboardLift } from './useKeyboardLift';
+import { useModelSwitch } from './useModelSwitch';
 import { router } from 'expo-router';
 import Animated, {
   useAnimatedStyle,
@@ -66,6 +67,7 @@ import Toast from 'react-native-toast-message';
 import { persistImage } from '../../utils/persistImage';
 import { toChatTitle } from '../../utils/chatLabel';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
+import { stripThinkMarkers } from '../../utils/thinking';
 import useChatBranching from '../../hooks/useChatBranching';
 import {
   LAYOUT_HEIGHT_CHANGE_THRESHOLD,
@@ -79,6 +81,7 @@ interface Props {
   messageHistory: Message[];
   isLoading?: boolean;
   model: Model | undefined;
+  onPendingModelChange?: (model: Model | undefined) => void;
   selectModel?: (model: Model) => Promise<void>;
   openModelSheetRef?: React.MutableRefObject<(() => void) | null>;
   revealFromTop?: boolean;
@@ -91,6 +94,7 @@ export default function ChatScreen({
   messageHistory,
   isLoading = false,
   model,
+  onPendingModelChange,
   selectModel,
   openModelSheetRef,
   revealFromTop = false,
@@ -106,6 +110,7 @@ export default function ChatScreen({
 
   const { vectorStore, embeddings } = useVectorStore();
   const {
+    isLoading: isModelLoading,
     isGenerating,
     sendChatMessage,
     loadModel,
@@ -141,6 +146,11 @@ export default function ChatScreen({
   const extraContentPadding = useSharedValue(0);
   const blankSpace = useSharedValue(0);
   const [chatBarHeight, setChatBarHeight] = useState(0);
+
+  useEffect(() => {
+    extraContentPadding.set(0);
+    blankSpace.set(0);
+  }, [model?.id, extraContentPadding, blankSpace]);
   const [rootFrame, setRootFrame] = useState({ x: 0, y: 0, height: 0 });
   const [userActionMenu, setUserActionMenu] =
     useState<UserMessageActionMenuState>({ isOpen: false });
@@ -161,6 +171,11 @@ export default function ChatScreen({
   const [modelSheetOpen, setModelSheetOpen] = useState(false);
   const [attachmentSheetOpen, setAttachmentSheetOpen] = useState(false);
   const overlayOpen = modelSheetOpen || attachmentSheetOpen;
+
+  useEffect(() => {
+    setModelSheetOpen(false);
+    setAttachmentSheetOpen(false);
+  }, [model?.id]);
 
   const handlePresentModelSheet = useCallback(() => {
     Keyboard.dismiss();
@@ -200,7 +215,12 @@ export default function ChatScreen({
     attachments?: Attachment[]
   ) => {
     const hasDocuments = attachments?.some((a) => a.type === 'document');
-    if ((!userInput.trim() && !imagePath && !hasDocuments) || isGenerating)
+    if (
+      (!userInput.trim() && !imagePath && !hasDocuments) ||
+      isGenerating ||
+      isModelLoading ||
+      isSwitching
+    )
       return;
 
     Keyboard.dismiss();
@@ -210,7 +230,8 @@ export default function ChatScreen({
     const isNewChat = !(await checkIfChatExists(db, targetChatId));
     if (isNewChat) {
       const docName = attachments?.find((a) => a.type === 'document')?.name;
-      const titleSource = userInput.trim() || docName || 'New chat';
+      const titleSource =
+        stripThinkMarkers(userInput).trim() || docName || 'New chat';
       const newChatId = await addChat(toChatTitle(titleSource), model!.id);
       if (!newChatId) {
         messagesRef.current?.cancelMessageSent();
@@ -424,19 +445,40 @@ export default function ChatScreen({
 
   const handleSelectModel = async (selectedModel: Model) => {
     try {
-      loadModel(selectedModel);
+      await loadModel(selectedModel);
+      if (useLLMStore.getState().model?.id !== selectedModel.id) {
+        throw new Error(`Model ${selectedModel.id} did not finish loading`);
+      }
 
       if (chatId && !model) {
         await setChatModel(chatId, selectedModel.id);
       }
 
       await setLastUsedModelId(selectedModel.id);
-      selectModel?.(selectedModel);
-      modelBottomSheetModalRef.current?.dismiss();
+      await selectModel?.(selectedModel);
     } catch (error) {
       console.error('Error loading model:', error);
     }
   };
+
+  const {
+    pendingModel,
+    isSwitching,
+    pickModel,
+    handleSheetStateChange: handleModelSwitchSheetState,
+  } = useModelSwitch(handleSelectModel);
+
+  useEffect(() => {
+    onPendingModelChange?.(pendingModel);
+  }, [pendingModel, onPendingModelChange]);
+
+  const handleModelSheetStateChange = useCallback(
+    (isOpen: boolean) => {
+      setModelSheetOpen(isOpen);
+      handleModelSwitchSheetState(isOpen);
+    },
+    [handleModelSwitchSheetState]
+  );
 
   const handleThinkingToggle = async () => {
     if (!model?.thinking) {
@@ -625,6 +667,8 @@ export default function ChatScreen({
             WEB_SEARCH_ENABLED ? handleWebSearchToggle : undefined
           }
           hasMessages={hasMessages}
+          disabled={isModelLoading && !isSwitching}
+          modelSwitching={isSwitching}
           onAttachmentSheetStateChange={setAttachmentSheetOpen}
           onHeightChange={handleChatBarHeightChange}
           onBarGrow={handleBarGrow}
@@ -650,8 +694,8 @@ export default function ChatScreen({
 
       <ModelSelectSheet
         bottomSheetModalRef={modelBottomSheetModalRef}
-        selectModel={handleSelectModel}
-        onSheetStateChange={setModelSheetOpen}
+        onModelPicked={pickModel}
+        onSheetStateChange={handleModelSheetStateChange}
       />
     </View>
   );

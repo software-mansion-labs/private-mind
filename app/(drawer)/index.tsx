@@ -22,6 +22,7 @@ import { useSourceStore } from '../../store/sourceStore';
 import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
 import WhatsNewCard from '../../components/WhatsNewCard';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
+import { useModelSwitch } from '../../components/chat-screen/useModelSwitch';
 
 configureReanimatedLogger({
   strict: false,
@@ -47,10 +48,11 @@ export default function App() {
   const { addChat } = useChatStore();
 
   const handleSetModel = async (model: Model, replace = false) => {
-    bottomSheetModalRef.current?.dismiss();
     await setLastUsedModelId(model.id);
     await startPhantomChat(db, replace ? 'replace' : 'push', model);
   };
+
+  const { pickModel, handleSheetStateChange } = useModelSwitch(handleSetModel);
 
   const handleImport = async () => {
     const importedChat = await importChatRoom();
@@ -122,7 +124,8 @@ export default function App() {
       </LinearGradient>
       <ModelSelectSheet
         bottomSheetModalRef={bottomSheetModalRef}
-        selectModel={handleSetModel}
+        onModelPicked={pickModel}
+        onSheetStateChange={handleSheetStateChange}
       />
     </>
   );

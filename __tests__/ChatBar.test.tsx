@@ -224,6 +224,8 @@ const defaultProps = {
   thinkingEnabled: false,
   onThinkingToggle: jest.fn(),
   hasMessages: false,
+  disabled: false,
+  modelSwitching: false,
 };
 
 const renderBar = (props: Partial<typeof defaultProps> = {}) =>
@@ -347,6 +349,22 @@ describe('downloaded model — text input', () => {
     expect(textInput().props.value).toBe('again');
   });
 
+  it('keeps the input and shows a toast instead of sending while switching models', () => {
+    const onSend = jest.fn();
+    renderBar({ onSend, modelSwitching: true });
+    const input = screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(input, 'Keep this message');
+
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    expect(onSend).not.toHaveBeenCalled();
+    expect(input.props.value).toBe('Keep this message');
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the model to finish loading.',
+    });
+  });
+
   it('shows prompt suggestions when hasMessages is false', () => {
     renderBar({ hasMessages: false });
     expect(screen.getByTestId('prompt-suggestion')).toBeTruthy();
@@ -420,6 +438,23 @@ describe('generating state', () => {
 // ─── speech input ─────────────────────────────────────────────────────────────
 
 describe('speech input', () => {
+  it('shows a toast instead of opening speech input while switching models', () => {
+    renderBar({ modelSwitching: true });
+    fireEvent.press(screen.getByTestId('speech-btn'));
+    expect(mockAudioManager.requestRecordingPermissions).not.toHaveBeenCalled();
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the model to finish loading.',
+    });
+  });
+
+  it('does not open speech input while the model is loading', () => {
+    renderBar({ disabled: true });
+    fireEvent.press(screen.getByTestId('speech-btn'));
+    expect(mockAudioManager.requestRecordingPermissions).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('speech-input')).toBeNull();
+  });
+
   it('switches to speech input view after mic button press when permission granted', async () => {
     renderBar();
     await act(async () => {
@@ -542,6 +577,19 @@ describe('attachment', () => {
       { restore: false }
     );
     expect(mockUseAttachment.openSheet).toHaveBeenCalled();
+  });
+
+  it('shows a toast instead of opening attachments while switching models', () => {
+    renderBar({ modelSwitching: true });
+
+    fireEvent.press(screen.getByTestId('attach-btn'));
+
+    expect(mockUseAttachment.openSheet).not.toHaveBeenCalled();
+    expect(mockRunWithModelOffloaded).not.toHaveBeenCalled();
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the model to finish loading.',
+    });
   });
 
   it('renders attachment thumbnails when attachments exist', () => {

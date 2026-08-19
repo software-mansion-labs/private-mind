@@ -3,7 +3,10 @@ import { MAX_CUSTOM_SYSTEM_PROMPT_LENGTH } from '../constants/settings';
 
 describe('useSettingsStore', () => {
   beforeEach(() => {
-    useSettingsStore.setState({ customSystemPrompt: '' });
+    useSettingsStore.setState({
+      customSystemPrompt: '',
+      showPerformanceMetrics: false,
+    });
   });
 
   it('defaults to an empty custom system prompt', () => {
@@ -32,5 +35,19 @@ describe('useSettingsStore', () => {
     const exact = 'a'.repeat(MAX_CUSTOM_SYSTEM_PROMPT_LENGTH);
     useSettingsStore.getState().setCustomSystemPrompt(exact);
     expect(useSettingsStore.getState().customSystemPrompt).toBe(exact);
+  });
+
+  it('hides performance metrics by default', () => {
+    expect(useSettingsStore.getInitialState().showPerformanceMetrics).toBe(
+      false
+    );
+  });
+
+  it('toggles performance metrics on and off', () => {
+    useSettingsStore.getState().setShowPerformanceMetrics(true);
+    expect(useSettingsStore.getState().showPerformanceMetrics).toBe(true);
+
+    useSettingsStore.getState().setShowPerformanceMetrics(false);
+    expect(useSettingsStore.getState().showPerformanceMetrics).toBe(false);
   });
 });

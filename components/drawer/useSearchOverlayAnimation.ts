@@ -15,6 +15,7 @@ import {
   FIELD_FADE_OUT_DURATION,
   SEARCH_COLLAPSE_DURATION,
   SEARCH_EXPAND_DURATION,
+  SEARCH_UNMOUNT_GRACE,
 } from '../../constants/drawer-layout';
 
 const EXPAND_EASING = Easing.bezier(...EMPHASIZED_DECELERATE);
@@ -110,6 +111,12 @@ export const useSearchOverlayAnimation = ({
         }
       )
     );
+
+    const forceUnmount = setTimeout(
+      () => applyMounted(false),
+      SEARCH_COLLAPSE_DURATION + SEARCH_UNMOUNT_GRACE
+    );
+    return () => clearTimeout(forceUnmount);
   }, [
     active,
     closeInstantly,

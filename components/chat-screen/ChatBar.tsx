@@ -69,6 +69,8 @@ interface Props {
   webSearchEnabled?: boolean;
   onWebSearchToggle?: () => void;
   hasMessages: boolean;
+  disabled?: boolean;
+  modelSwitching?: boolean;
   onAttachmentSheetStateChange?: (isOpen: boolean) => void;
 }
 
@@ -88,6 +90,8 @@ const ChatBar = ({
   webSearchEnabled,
   onWebSearchToggle,
   hasMessages,
+  disabled = false,
+  modelSwitching = false,
   onAttachmentSheetStateChange,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
@@ -214,16 +218,33 @@ const ChatBar = ({
     }
   }, [model, loadedModel, loadModel]);
 
+  const imageAttachment = attachments.find((a) => a.type === 'image');
+  const hasLoadingAttachment = attachments.some((a) => a.status === 'loading');
+
+  const showModelSwitchingToast = useCallback(() => {
+    Toast.show({
+      type: 'defaultToast',
+      text1: 'Wait for the model to finish loading.',
+    });
+  }, []);
+
   const handleAttach = useCallback(() => {
+    if (modelSwitching) {
+      showModelSwitchingToast();
+      return;
+    }
+
     Keyboard.dismiss();
     openSheet();
     runWithModelOffloaded(async () => {}, { restore: false }).catch((error) => {
       console.error('Failed to offload model before attachment picker:', error);
     });
-  }, [openSheet, runWithModelOffloaded]);
-
-  const imageAttachment = attachments.find((a) => a.type === 'image');
-  const hasLoadingAttachment = attachments.some((a) => a.status === 'loading');
+  }, [
+    modelSwitching,
+    openSheet,
+    runWithModelOffloaded,
+    showModelSwitchingToast,
+  ]);
 
   const detectedUrl = useMemo(
     () => detectUrls(userInput)[0] ?? null,
@@ -243,7 +264,11 @@ const ChatBar = ({
   }, [detectedUrl, addUrlSource]);
 
   const handleSend = useCallback(() => {
-    if (hasLoadingAttachment) return;
+    if (modelSwitching) {
+      showModelSwitchingToast();
+      return;
+    }
+    if (hasLoadingAttachment || disabled) return;
     Keyboard.dismiss();
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
@@ -268,6 +293,9 @@ const ChatBar = ({
     attachments,
     clearAll,
     hasLoadingAttachment,
+    disabled,
+    modelSwitching,
+    showModelSwitchingToast,
   ]);
 
   const onPaste = useCallback(
@@ -308,6 +336,12 @@ const ChatBar = ({
   const [showSpeechInput, setShowSpeechInput] = useState(false);
 
   const openSpeechInput = async () => {
+    if (modelSwitching) {
+      showModelSwitchingToast();
+      return;
+    }
+    if (disabled) return;
+
     const permissionStatus = await AudioManager.requestRecordingPermissions();
     if (permissionStatus !== 'Granted') {
       Toast.show({
@@ -323,6 +357,12 @@ const ChatBar = ({
 
   if (showSpeechInput) {
     const handleSubmit = (transcript: string) => {
+      if (modelSwitching) {
+        showModelSwitchingToast();
+        return;
+      }
+      if (disabled) return;
+
       setShowSpeechInput(false);
       if (transcript) {
         const attachmentsToSend = attachments;
@@ -427,6 +467,7 @@ const ChatBar = ({
               onAttach={handleAttach}
               hasAttachments={attachments.length > 0}
               isLoadingAttachment={hasLoadingAttachment}
+              disabled={disabled}
               userInput={userInput}
               onSend={handleSend}
               isGenerating={isGenerating}

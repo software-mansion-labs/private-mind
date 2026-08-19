@@ -6,6 +6,8 @@ import { MAX_CUSTOM_SYSTEM_PROMPT_LENGTH } from '../constants/settings';
 export interface SettingsStore {
   customSystemPrompt: string;
   setCustomSystemPrompt: (prompt: string) => void;
+  showPerformanceMetrics: boolean;
+  setShowPerformanceMetrics: (show: boolean) => void;
   hasHydrated: boolean;
 }
 
@@ -19,12 +21,18 @@ export const useSettingsStore = create<SettingsStore>()(
             .trim()
             .slice(0, MAX_CUSTOM_SYSTEM_PROMPT_LENGTH),
         }),
+      showPerformanceMetrics: false,
+      setShowPerformanceMetrics: (showPerformanceMetrics) =>
+        set({ showPerformanceMetrics }),
       hasHydrated: false,
     }),
     {
       name: 'app-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ customSystemPrompt: state.customSystemPrompt }),
+      partialize: (state) => ({
+        customSystemPrompt: state.customSystemPrompt,
+        showPerformanceMetrics: state.showPerformanceMetrics,
+      }),
       onRehydrateStorage: () => () => {
         useSettingsStore.setState({ hasHydrated: true });
       },
