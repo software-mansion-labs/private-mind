@@ -7,6 +7,7 @@ import {
   WEB_QUERY_REWRITE,
 } from '../../constants/web';
 import { todayISO } from '../todayISO';
+import { foldForMatching } from '../queryTerms';
 
 export interface QueryRewriteMessage {
   role: 'system' | 'user' | 'assistant';
@@ -21,7 +22,68 @@ export interface WebSearchPlan {
   needsSearch: boolean;
   intent: string;
   queries: string[];
+  siteRestriction?: string;
 }
+
+const PLANNER_EXAMPLES: {
+  user: string;
+  needsSearch: boolean;
+  intent: string;
+  queries: string[];
+}[] = [
+  {
+    user: "hey, how's it going?",
+    needsSearch: false,
+    intent: 'casual greeting',
+    queries: [],
+  },
+  {
+    user: 'write a short poem about autumn',
+    needsSearch: false,
+    intent: 'creative writing',
+    queries: [],
+  },
+  {
+    user: 'I feel tired, how can I sleep better?',
+    needsSearch: false,
+    intent: 'personal advice',
+    queries: [],
+  },
+  {
+    user: 'whats the weather in tokyo right now',
+    needsSearch: true,
+    intent: 'current Tokyo weather',
+    queries: ['Tokyo weather today'],
+  },
+  {
+    user: 'how much does bitcoin cost right now',
+    needsSearch: true,
+    intent: 'current bitcoin price',
+    queries: ['bitcoin price today'],
+  },
+  {
+    user: 'which song has been streamed the most on spotify this year',
+    needsSearch: true,
+    intent: 'most streamed song this year',
+    queries: ['most streamed song Spotify 2025'],
+  },
+];
+
+const PLANNER_EXAMPLES_TEXT = PLANNER_EXAMPLES.map(
+  (ex) =>
+    `User: ${ex.user}\n` +
+    `{"needs_search": ${ex.needsSearch}, "intent": "${ex.intent}", "queries": [${ex.queries
+      .map((q) => `"${q}"`)
+      .join(', ')}]}\n`
+).join('');
+
+const EXAMPLE_LEAK_TOKENS: string[] = [
+  ...new Set(
+    PLANNER_EXAMPLES.flatMap(
+      (ex) => ex.queries.join(' ').match(/\p{Lu}[\p{L}]+/gu) ?? []
+    )
+  ),
+];
 
 const PLANNER_SYSTEM_PROMPT = (today: string): string =>
   "You turn the user's latest message into a web-search plan. " +
@@ -37,16 +99,42 @@ const PLANNER_SYSTEM_PROMPT = (today: string): string =>
   'If the message is conversational and you are unsure, choose false.\n' +
   'Each query is concise search KEYWORDS under 12 words, not a sentence. ' +
   'Resolve pronouns/references (it, that, they) from the conversation. ' +
-  `Turn today/latest/now/current into a concrete date or year; today is ${today}. ` +
+  `Turn relative time words (today, latest, now, current, this year, this ` +
+  `season, so far) into a concrete date, year, or season using today's date ` +
+  `— today is ${today}. For a "most/best/top X" question scoped to a recent ` +
+  'period, put that concrete year or season in the query itself, so results ' +
+  'are about that period and not an all-time or career ranking (a page ' +
+  'about "most/best ever" is the wrong answer to a this-year question even ' +
+  'when it looks authoritative). ' +
   'Give 1 query normally, 2 ONLY for a clear comparison of two things.\n' +
-  'User: hej, jak leci?\n' +
-  '{"needs_search": false, "intent": "casual greeting", "queries": []}\n' +
-  'User: napisz krótki wiersz o jesieni\n' +
-  '{"needs_search": false, "intent": "creative writing", "queries": []}\n' +
-  'User: whats the weather in kraków right now\n' +
-  '{"needs_search": true, "intent": "current Kraków weather", "queries": ["Kraków weather today"]}\n' +
+  PLANNER_EXAMPLES_TEXT +
   'Those are only format examples — plan for the actual user message below and ' +
   'never copy their words or topics.';
+
+const isLeakedQuery = (query: string, groundedText: string): boolean =>
+  EXAMPLE_LEAK_TOKENS.some(
+    (token) =>
+      foldForMatching(query).includes(foldForMatching(token)) &&
+      !groundedText.includes(foldForMatching(token))
+  );
+
+const YEAR_RE = /\b(19|20)\d{2}\b/g;
+
+const regroundYears = (
+  queryText: string,
+  userInput: string,
+  today: string
+): string => {
+  const currentYear = new Date(today).getFullYear();
+  if (!Number.isFinite(currentYear)) return queryText;
+  return queryText.replace(YEAR_RE, (year) => {
+    if (userInput.includes(year)) return year;
+    const y = Number(year);
+    return y >= currentYear - 1 && y <= currentYear
+      ? year
+      : String(currentYear);
+  });
+};
 
 const REQUEST_OPENERS =
   /^(?:\s*(?:proszę|prosze|sprawdź|sprawdz|znajdź|znajdz|poszukaj|wyszukaj|pokaż|pokaz|podaj|powiedz mi|powiedz|napisz|please|check|find|search for|search|show me|show|look up|tell me|give me|get me)(?=[\s,:.\-–—]|$)[\s,:.\-–—]*)+/i;
@@ -61,6 +149,19 @@ export const toKeywordQuery = (text: string): string => {
     .trim();
   return cleaned || text.trim();
 };
+
+const DOMAIN_PATTERN =
+  /\b(?:https?:\/\/)?(?:www\.)?([a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,})\b/i;
+
+export const extractSiteRestriction = (userInput: string): string | null => {
+  const match = userInput.match(DOMAIN_PATTERN);
+  return match ? match[1]!.toLowerCase() : null;
+};
+
+const withSiteRestriction = (query: string, domain: string | null): string =>
+  domain && !query.toLowerCase().includes(`site:${domain}`)
+    ? `${query} site:${domain}`
+    : query;
 
 const truncate = (text: string, max: number): string =>
   text.length <= max ? text : `${text.slice(0, max).trimEnd()}…`;
@@ -155,10 +256,14 @@ export const planWebSearch = async (
   opts?: { today?: string; rewrite?: boolean }
 ): Promise<WebSearchPlan> => {
   const query = userInput.trim();
+  const siteRestriction = extractSiteRestriction(query);
   const verbatim = (intent = ''): WebSearchPlan => ({
     needsSearch: true,
     intent,
-    queries: [clampQuery(toKeywordQuery(query))],
+    queries: [
+      withSiteRestriction(clampQuery(toKeywordQuery(query)), siteRestriction),
+    ],
+    ...(siteRestriction ? { siteRestriction } : {}),
   });
 
   if (!query) return { needsSearch: false, intent: '', queries: [] };
@@ -187,6 +292,18 @@ export const planWebSearch = async (
   if (!parsed.needsSearch) {
     return { needsSearch: false, intent: parsed.intent, queries: [] };
   }
-  if (parsed.queries.length === 0) return verbatim(parsed.intent);
-  return parsed;
+
+  const today = opts?.today ?? todayISO();
+  const groundedText = foldForMatching(`${query} ${convo}`);
+  const safeQueries = parsed.queries
+    .filter((q) => !isLeakedQuery(q, groundedText))
+    .map((q) => regroundYears(q, query, today))
+    .map((q) => withSiteRestriction(q, siteRestriction));
+
+  if (safeQueries.length === 0) return verbatim(parsed.intent);
+  return {
+    ...parsed,
+    queries: safeQueries,
+    ...(siteRestriction ? { siteRestriction } : {}),
+  };
 };

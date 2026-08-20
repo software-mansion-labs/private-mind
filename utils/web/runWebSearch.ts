@@ -28,7 +28,7 @@ import {
 } from './sourceAgreement';
 import { hostname, webResultsToContext } from './webResultsToContext';
 import { dedupeByBody, listingFingerprint } from './fingerprint';
-import { rankByListingRelevance } from './listingRelevance';
+import { fairRankByListingRelevance } from './listingRelevance';
 import { promoteTitleConsensus } from './titleConsensus';
 import { pageCache, serpCache } from './cache/webCache';
 import { extractArticle } from './url/extractArticle';
@@ -100,6 +100,7 @@ export interface WebRoundTelemetry {
 export interface WebSearchTelemetry {
   needsSearch: boolean;
   skippedReason?: 'gated' | 'provider-not-ready' | 'offline';
+  intent: string;
   plannedQueries: string[];
   rounds: WebRoundTelemetry[];
   providerCalls: number;
@@ -117,6 +118,11 @@ export interface RunWebSearchResult {
 
 const contentCountOf = (results: WebSearchResult[]): number =>
   results.filter((result) => result.content?.trim()).length;
+
+const matchesSiteRestriction = (url: string, domain: string): boolean => {
+  const host = hostname(url);
+  return host === domain || host.endsWith(`.${domain}`);
+};
 
 const NO_AGREEMENT: SourceAgreement = {
   independentHosts: 0,
@@ -164,6 +170,7 @@ export const runWebSearch = async (
 
   const telemetry: WebSearchTelemetry = {
     needsSearch: true,
+    intent: '',
     plannedQueries: [],
     rounds: [],
     providerCalls: 0,
@@ -191,7 +198,9 @@ export const runWebSearch = async (
   });
   const baseQueries = plan.queries.length ? plan.queries : [query];
   telemetry.needsSearch = plan.needsSearch;
+  telemetry.intent = plan.intent;
   telemetry.plannedQueries = baseQueries;
+  const rankingQuery = plan.intent ? `${query} ${plan.intent}` : query;
   const shouldSearch = WEB_QUERY_GATE
     ? plan.needsSearch && plan.queries.length > 0
     : true;
@@ -209,9 +218,11 @@ export const runWebSearch = async (
     queries: string[],
     round: number,
     seen: Set<string>
-  ): Promise<WebSearchResult[]> => {
-    const out: WebSearchResult[] = [];
+  ): Promise<WebSearchResult[][]> => {
+    const out: WebSearchResult[][] = [];
     for (const q of queries) {
+      const perQuery: WebSearchResult[] = [];
+      out.push(perQuery);
       if (signal?.aborted) break;
       emit({ type: 'searching', query: q, round });
       try {
@@ -233,11 +244,17 @@ export const runWebSearch = async (
         }
         for (const item of found) {
           if (!item.url) continue;
+          if (
+            plan.siteRestriction &&
+            !matchesSiteRestriction(item.url, plan.siteRestriction)
+          ) {
+            continue;
+          }
           const listing = listingFingerprint(item);
           const keys = [`u:${item.url}`, ...(listing ? [`l:${listing}`] : [])];
           if (keys.some((key) => seen.has(key))) continue;
           keys.forEach((key) => seen.add(key));
-          out.push(item);
+          perQuery.push({ ...item, sourceQuery: q });
           emit({
             type: 'found',
             url: item.url,
@@ -281,7 +298,7 @@ export const runWebSearch = async (
     emit({ type: 'ranking' });
     if (useEmbeddings) {
       const retrievalQuery: WebRetrievalQuery = {
-        semanticQuery: query,
+        semanticQuery: plan.intent ? `${plan.intent}. ${query}` : query,
         keywordQuery: baseQueries.join(' '),
       };
       const runRetrieval = () =>
@@ -316,7 +333,7 @@ export const runWebSearch = async (
   };
 
   const groundAndEvaluate = async (
-    merged: WebSearchResult[],
+    groups: WebSearchResult[][],
     cap: number
   ): Promise<{
     grounded: WebSearchResult[];
@@ -326,7 +343,7 @@ export const runWebSearch = async (
     enrichedPages: number;
     waves: number;
   }> => {
-    const capped = rankByListingRelevance(merged, query).slice(0, cap);
+    const capped = fairRankByListingRelevance(groups, rankingQuery, cap);
     let enriched = capped;
     let target = WEB_ADAPTIVE_ENRICH
       ? Math.min(Math.max(1, WEB_ENRICH_WAVE_FIRST), maxEnrich)
@@ -380,8 +397,9 @@ export const runWebSearch = async (
   };
 
   const seen = new Set<string>();
-  const found = await runQueries(baseQueries, 1, seen);
-  const outcome = await groundAndEvaluate(found, WEB_SEARCH_MAX_RESULTS);
+  const foundGroups = await runQueries(baseQueries, 1, seen);
+  const found = foundGroups.flat();
+  const outcome = await groundAndEvaluate(foundGroups, WEB_SEARCH_MAX_RESULTS);
 
   let finalResults = outcome.grounded;
   const { evaluation, agreement } = outcome;

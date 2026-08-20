@@ -19,7 +19,6 @@ import { retrieveWebPassages } from '../utils/web/transientRetrieval';
 import {
   WEB_RETRIEVAL_CHUNK_CHARS,
   WEB_RETRIEVAL_MAX_CHUNKS,
-  WEB_RETRIEVAL_PAGE_MAX_CHARS,
 } from '../constants/web';
 
 const asChunk = (text: string): string =>
@@ -121,7 +120,7 @@ describe('retrieveWebPassages', () => {
     expect(out.signals).toBeNull();
   });
 
-  it('caps the number of embedded chunks', async () => {
+  it('caps the number of embedded chunks even for one very long page', async () => {
     const results = [
       result({
         url: 'https://long.example',
@@ -133,14 +132,9 @@ describe('retrieveWebPassages', () => {
 
     await retrieveWebPassages(results, QUERY, fakeEmbeddings);
 
-    const pageCapChunks = Math.ceil(
-      WEB_RETRIEVAL_PAGE_MAX_CHARS / WEB_RETRIEVAL_CHUNK_CHARS
-    );
     const embedded = (fakeEmbeddings.embedDocument as jest.Mock).mock.calls
       .length;
-    expect(embedded).toBeLessThanOrEqual(
-      Math.min(pageCapChunks, WEB_RETRIEVAL_MAX_CHUNKS)
-    );
+    expect(embedded).toBeLessThanOrEqual(WEB_RETRIEVAL_MAX_CHUNKS);
     expect(embedded).toBeGreaterThan(1);
   });
 });

@@ -48,7 +48,13 @@ export const enrichWebResults = async (
         text.length >= WEB_CONTENT_MIN_CHARS &&
         !looksLikeBotWall(text, article.title);
       onPage?.({ url: result.url, host: hostname(result.url), ok: usable });
-      if (usable) enrichedByUrl.set(result.url, { ...result, content: text });
+      if (usable) {
+        enrichedByUrl.set(result.url, {
+          ...result,
+          content: text,
+          product: article.product,
+        });
+      }
       return usable;
     } catch {
       onPage?.({ url: result.url, host: hostname(result.url), ok: false });

@@ -75,7 +75,7 @@ describe('webResultsToContext', () => {
     });
   });
 
-  it('grounds context on the snippet AND the extracted content (F1), keeping the snippet as the UI passage', () => {
+  it('grounds context on the snippet AND the extracted content (F1)', () => {
     const { context, sourceDocuments } = webResultsToContext([
       result({
         snippet: 'Check the forecast for Warsaw.',
@@ -84,7 +84,8 @@ describe('webResultsToContext', () => {
     ]);
     expect(context[0]).toContain('obecnie 12°C');
     expect(context[0]).toContain('Check the forecast');
-    expect(sourceDocuments[0].passage).toBe('Check the forecast for Warsaw.');
+    expect(sourceDocuments[0].passage).toContain('obecnie 12°C');
+    expect(sourceDocuments[0].passage).toContain('Check the forecast');
   });
 
   it('keeps the SERP snippet in context when enriched content omits the figure (F1)', () => {
@@ -118,6 +119,69 @@ describe('webResultsToContext', () => {
     const yCount = (context[0].match(/y/g) ?? []).length;
     expect(yCount).toBeLessThanOrEqual(WEB_CONTENT_MAX_CHARS);
     expect(context[0]).toContain('…');
+  });
+
+  it('tags each block with its source query when a comparison spans more than one', () => {
+    const { context } = webResultsToContext([
+      result({
+        url: 'https://a.com',
+        snippet: 'Bitcoin price today: $64,146.36',
+        sourceQuery: 'bitcoin price today',
+      }),
+      result({
+        url: 'https://b.com',
+        snippet: 'Ethereum Price: $1,898.04',
+        sourceQuery: 'ethereum price today',
+      }),
+    ]);
+    expect(context[0]).toContain('[Answers: bitcoin price today]');
+    expect(context[1]).toContain('[Answers: ethereum price today]');
+  });
+
+  it('omits the tag entirely for a single-query search', () => {
+    const { context } = webResultsToContext([
+      result({
+        url: 'https://a.com',
+        snippet: 'Bitcoin price today: $64,146.36',
+        sourceQuery: 'bitcoin price today',
+      }),
+    ]);
+    expect(context[0]).not.toContain('[Answers:');
+  });
+
+  it('prepends a verified-product-data line when the source carries structured product data', () => {
+    const { context } = webResultsToContext([
+      result({
+        content: 'Karta graficzna do gier. '.repeat(10),
+        product: {
+          name: 'RTX 4070',
+          price: '2199',
+          currency: 'PLN',
+          availability: 'in stock',
+        },
+      }),
+    ]);
+    expect(context[0]).toContain('[Verified product data]');
+    expect(context[0]).toContain('name="RTX 4070"');
+    expect(context[0]).toContain('price=2199 PLN');
+    expect(context[0]).toContain('availability=in stock');
+  });
+
+  it('omits the verified-product-data line when the source has no structured price', () => {
+    const { context } = webResultsToContext([
+      result({ content: 'Karta graficzna do gier. '.repeat(10) }),
+    ]);
+    expect(context[0]).not.toContain('[Verified product data]');
+  });
+
+  it('omits the verified-product-data line when structured data has a name but no price', () => {
+    const { context } = webResultsToContext([
+      result({
+        content: 'Karta graficzna do gier. '.repeat(10),
+        product: { name: 'RTX 4070' },
+      }),
+    ]);
+    expect(context[0]).not.toContain('[Verified product data]');
   });
 });
 
@@ -338,15 +402,31 @@ describe('selectRelevantContent', () => {
 });
 
 describe('webResultsToContext — pages that were never opened', () => {
-  it('records them as unread sources without giving them a context block', () => {
+  it('still contributes its snippet to context even when another result has full content', () => {
     const { context, sourceDocuments } = webResultsToContext([
       result({ url: 'https://opened.com/x', content: 'Real page text here.' }),
-      result({ url: 'https://skipped.com/y' }),
+      result({
+        url: 'https://skipped.com/y',
+        snippet: 'Skipped page snippet with the number 800,757.',
+      }),
+    ]);
+    expect(context).toHaveLength(2);
+    expect(context[1]).toContain('800,757');
+    expect(sourceDocuments.map((doc) => [doc.url, doc.read])).toEqual([
+      ['https://opened.com/x', true],
+      ['https://skipped.com/y', false],
+    ]);
+  });
+
+  it('omits the context block only when a result has neither content nor a snippet', () => {
+    const { context, sourceDocuments } = webResultsToContext([
+      result({ url: 'https://opened.com/x', content: 'Real page text here.' }),
+      { url: 'https://bare.com/y', title: 'Bare', snippet: '' },
     ]);
     expect(context).toHaveLength(1);
     expect(sourceDocuments.map((doc) => [doc.url, doc.read])).toEqual([
       ['https://opened.com/x', true],
-      ['https://skipped.com/y', false],
+      ['https://bare.com/y', false],
     ]);
   });
 

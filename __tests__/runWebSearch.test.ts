@@ -148,6 +148,23 @@ describe('runWebSearch', () => {
     expect(events.some((e) => e.type === 'weak')).toBe(false);
   });
 
+  it('threads the planned intent into telemetry instead of dropping it', async () => {
+    const provider = new MockProvider({
+      'warsaw weather': [weatherPage('https://weather.example/1')],
+    });
+    const out = await runWebSearch({
+      query: 'jaka jest dzisiaj pogoda w warszawie',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () =>
+        '{"needs_search": true, "intent": "current Warsaw weather", "queries": ["warsaw weather"]}',
+      today: '2026-07-20',
+    });
+    expect(out.telemetry.intent).toBe('current Warsaw weather');
+  });
+
   it('ranks the kept results before spending the fetch budget', async () => {
     const filler = Array.from({ length: 4 }, (_, i) => ({
       title: `Gallery ${i}`,
@@ -181,6 +198,36 @@ describe('runWebSearch', () => {
 
     const read = out.sourceDocuments.filter((d) => d.read).map((d) => d.url);
     expect(read).toContain(buried.url);
+  });
+
+  it('drops results whose host does not match a site named in the question', async () => {
+    const provider = new MockProvider({
+      'transfermarkt poland top scorer site:transfermarkt.pl': [
+        {
+          title: 'Transfermarkt page',
+          url: 'https://www.transfermarkt.pl/poland/topscorer',
+          snippet: 'Poland top scorer this season on Transfermarkt',
+        },
+        {
+          title: 'Other site',
+          url: 'https://espn.com/poland/topscorer',
+          snippet: 'Poland top scorer on ESPN',
+        },
+      ],
+    });
+    const out = await runWebSearch({
+      query:
+        'sprawdź na stronie transfermarkt.pl kto strzelił najwięcej bramek dla Polski',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () =>
+        '{"needs_search": true, "intent": "poland top scorer", "queries": ["transfermarkt poland top scorer"]}',
+      today: '2026-07-20',
+    });
+    expect(out.sourceDocuments).toHaveLength(1);
+    expect(out.sourceDocuments[0]!.url).toContain('transfermarkt.pl');
   });
 
   it('reports the shortfall when retrieval is thin', async () => {

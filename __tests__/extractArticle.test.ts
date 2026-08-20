@@ -348,6 +348,187 @@ describe('extractArticle', () => {
   });
 });
 
+describe('extractArticle — structured product data', () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const productPage = (ldJson: unknown) => `<html><head>
+    <title>RTX 4070 - Allegro</title>
+    <script type="application/ld+json">${JSON.stringify(ldJson)}</script>
+    </head><body><article><p>${'Karta graficzna do gier w wysokiej rozdzielczości. '.repeat(6)}</p></article></body></html>`;
+
+  it('extracts name, price, currency and normalized availability from a single Product/Offer', async () => {
+    mockFetch(
+      productPage({
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        'name': 'RTX 4070',
+        'offers': {
+          '@type': 'Offer',
+          'price': '2199.00',
+          'priceCurrency': 'PLN',
+          'availability': 'https://schema.org/InStock',
+        },
+      })
+    );
+
+    const article = await extractArticle('https://allegro.pl/oferta/rtx-4070');
+    expect(article.product).toEqual({
+      name: 'RTX 4070',
+      price: '2199.00',
+      currency: 'PLN',
+      availability: 'in stock',
+    });
+  });
+
+  it('accepts an array-wrapped offer, taking the single agreeing price', async () => {
+    mockFetch(
+      productPage({
+        '@type': 'Product',
+        'name': 'RTX 4070',
+        'offers': [
+          { '@type': 'Offer', 'price': '2349', 'priceCurrency': 'PLN' },
+        ],
+      })
+    );
+
+    const article = await extractArticle('https://ceneo.pl/rtx-4070');
+    expect(article.product).toEqual({
+      name: 'RTX 4070',
+      price: '2349',
+      currency: 'PLN',
+      availability: undefined,
+    });
+  });
+
+  it('keeps only the name when several offers disagree on price — no single answer to trust', async () => {
+    mockFetch(
+      productPage({
+        '@type': 'Product',
+        'name': 'RTX 4070',
+        'offers': [
+          { '@type': 'Offer', 'price': '2199', 'priceCurrency': 'PLN' },
+          { '@type': 'Offer', 'price': '2599', 'priceCurrency': 'PLN' },
+        ],
+      })
+    );
+
+    const article = await extractArticle('https://allegro.pl/oferta/rtx-4070');
+    expect(article.product).toEqual({ name: 'RTX 4070' });
+  });
+
+  it('leaves product unset for a category page listing several distinct products', async () => {
+    mockFetch(
+      productPage([
+        {
+          '@type': 'Product',
+          'name': 'RTX 4070',
+          'offers': { price: '2199', priceCurrency: 'PLN' },
+        },
+        {
+          '@type': 'Product',
+          'name': 'RTX 4060',
+          'offers': { price: '1499', priceCurrency: 'PLN' },
+        },
+      ])
+    );
+
+    const article = await extractArticle(
+      'https://allegro.pl/kategoria/karty-graficzne'
+    );
+    expect(article.product).toBeUndefined();
+  });
+
+  it('ignores a lone Product node when the page declares itself a non-product page (F20)', async () => {
+    const html = `<html><head>
+      <title>Mieszkania do wynajęcia - Warszawa</title>
+      <meta property="og:type" content="website" />
+      <script type="application/ld+json">${JSON.stringify({
+        '@type': 'Product',
+        'name': 'Kawalerka 40m2 Mokotów',
+        'offers': { price: '2800', priceCurrency: 'PLN' },
+      })}</script>
+      </head><body><article><p>${'Wiele ogłoszeń wynajmu mieszkań w Warszawie. '.repeat(6)}</p></article></body></html>`;
+    mockFetch(html);
+
+    const article = await extractArticle(
+      'https://olx.pl/nieruchomosci/wynajem'
+    );
+    expect(article.product).toBeUndefined();
+  });
+
+  it('still trusts a lone Product node when og:type is absent', async () => {
+    mockFetch(
+      productPage({
+        '@type': 'Product',
+        'name': 'RTX 4070',
+        'offers': { price: '2199', priceCurrency: 'PLN' },
+      })
+    );
+    const article = await extractArticle('https://allegro.pl/oferta/rtx-4070');
+    expect(article.product?.price).toBe('2199');
+  });
+
+  it('still trusts a lone Product node when og:type explicitly says product', async () => {
+    const html = `<html><head>
+      <title>RTX 4070 - Allegro</title>
+      <meta property="og:type" content="product" />
+      <script type="application/ld+json">${JSON.stringify({
+        '@type': 'Product',
+        'name': 'RTX 4070',
+        'offers': { price: '2199', priceCurrency: 'PLN' },
+      })}</script>
+      </head><body><article><p>${'Karta graficzna do gier. '.repeat(6)}</p></article></body></html>`;
+    mockFetch(html);
+    const article = await extractArticle('https://allegro.pl/oferta/rtx-4070');
+    expect(article.product?.price).toBe('2199');
+  });
+
+  it('falls back to Open Graph product meta tags when there is no Product JSON-LD', async () => {
+    const page = `<html><head>
+      <title>Nike Air Max 90</title>
+      <meta property="product:price:amount" content="649.99" />
+      <meta property="product:price:currency" content="PLN" />
+      </head><body><article><p>${'Buty sportowe do biegania. '.repeat(6)}</p></article></body></html>`;
+    mockFetch(page);
+
+    const article = await extractArticle('https://nike.com/air-max-90');
+    expect(article.product).toEqual({ price: '649.99', currency: 'PLN' });
+  });
+
+  it('leaves product undefined when the page has neither JSON-LD Product nor OG product tags', async () => {
+    mockFetch(html);
+    const article = await extractArticle('https://docs.swmansion.com/x');
+    expect(article.product).toBeUndefined();
+  });
+
+  it('finds the Product node nested inside a @graph array', async () => {
+    mockFetch(
+      productPage({
+        '@context': 'https://schema.org',
+        '@graph': [
+          { '@type': 'WebPage', 'name': 'RTX 4070 - Allegro' },
+          {
+            '@type': 'Product',
+            'name': 'RTX 4070',
+            'offers': { price: '2199', priceCurrency: 'PLN' },
+          },
+        ],
+      })
+    );
+
+    const article = await extractArticle('https://allegro.pl/oferta/rtx-4070');
+    expect(article.product).toEqual({
+      name: 'RTX 4070',
+      price: '2199',
+      currency: 'PLN',
+      availability: undefined,
+    });
+  });
+});
+
 describe('looksLikeBotWall', () => {
   it('flags a challenge title regardless of body', () => {
     expect(looksLikeBotWall('some body text', 'Just a moment...')).toBe(true);
