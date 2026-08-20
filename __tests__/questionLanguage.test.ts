@@ -80,6 +80,15 @@ describe('detectQuestionLanguage', () => {
     expect(codeOf('Quem é o presidente do Brasil hoje?')).toBe('pt');
   });
 
+  it('names Polish for oblique-case question words that collide with a Turkish word', () => {
+    expect(codeOf('Kim był Kazimierz Wielki i czego dokonał?')).toBe('pl');
+    expect(codeOf('Komu podlega prezes NBP?')).toBe('pl');
+  });
+
+  it('still names Turkish for its own "kim" questions', () => {
+    expect(codeOf('kimlik kartı nasıl alınır')).toBe('tr');
+  });
+
   it('returns null when unsure instead of guessing', () => {
     expect(codeOf('Gdansk Berlin 2026')).toBeNull();
     expect(codeOf('ok')).toBeNull();
