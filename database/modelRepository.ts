@@ -1,5 +1,5 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
-import { DEFAULT_MODELS } from '../constants/default-models';
+import { getActiveCatalog } from '../utils/modelCatalogState';
 
 export type Model = {
   id: number;
@@ -90,7 +90,7 @@ export const syncBuiltInModelPaths = async (
   id: number,
   modelName: string
 ) => {
-  const defaults = DEFAULT_MODELS.find((m) => m.modelName === modelName);
+  const defaults = getActiveCatalog().find((m) => m.modelName === modelName);
   if (!defaults) return;
 
   await db.runAsync(
@@ -140,7 +140,7 @@ const parseLabels = (raw: string | null): string[] | undefined => {
 const hydrateModel = (model: RawModel): Model => {
   const defaults =
     model.source === 'built-in'
-      ? DEFAULT_MODELS.find((m) => m.modelName === model.modelName)
+      ? getActiveCatalog().find((m) => m.modelName === model.modelName)
       : undefined;
 
   return {
