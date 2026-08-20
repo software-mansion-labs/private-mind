@@ -3,6 +3,7 @@ import {
   parseSearchPlan,
   planWebSearch,
   sanitizeSearchQuery,
+  extractSiteRestriction,
 } from '../utils/web/buildSearchQuery';
 
 const history = [
@@ -330,5 +331,198 @@ describe('planWebSearch', () => {
     expect(convo).not.toContain('You are helpful.');
     expect(convo).not.toContain('first');
     expect(convo).toContain('turn 9');
+  });
+
+  describe('example leak guard', () => {
+    it("drops a query that echoes the planner's own example entity", async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "current Tokyo weather", "queries": ["Tokyo weather today"]}'
+        );
+      const plan = await planWebSearch(
+        'Nie wiem czy zabrać parasol jutro, wybieram się do Warszawy.',
+        [],
+        generate,
+        { today: TODAY }
+      );
+      expect(plan.queries).not.toContain('Tokyo weather today');
+    });
+
+    it('falls back to verbatim when every query leaks the example entity', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "sleep tips", "queries": ["Tokyo weather today"]}'
+        );
+      const plan = await planWebSearch(
+        'Czuję się dziś zmęczony, może zrobisz mi listę porad na dobry sen?',
+        [],
+        generate,
+        { today: TODAY }
+      );
+      expect(plan.queries).toEqual([
+        toKeywordQuery(
+          'Czuję się dziś zmęczony, może zrobisz mi listę porad na dobry sen?'
+        ),
+      ]);
+    });
+
+    it('keeps a query naming the same entity the planner was given', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "current Tokyo weather", "queries": ["Tokyo weather today"]}'
+        );
+      const plan = await planWebSearch(
+        'jaka jest teraz pogoda w Tokyo?',
+        [],
+        generate,
+        { today: TODAY }
+      );
+      expect(plan.queries).toEqual(['Tokyo weather today']);
+    });
+
+    it('keeps an unrelated multi-query plan alongside a leaked one', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "weather and concert", "queries": ["Tokyo weather today", "Berlin concert traffic"]}'
+        );
+      const plan = await planWebSearch(
+        'Za tydzień jadę na koncert do Berlina, ciekawe jakie będą korki.',
+        [],
+        generate,
+        { today: TODAY }
+      );
+      expect(plan.queries).toEqual(['Berlin concert traffic']);
+    });
+  });
+
+  describe('site restriction', () => {
+    it('extracts a bare domain named in the message', () => {
+      expect(
+        extractSiteRestriction('Sprawdź na stronie Transfermarkt.pl kto...')
+      ).toBe('transfermarkt.pl');
+      expect(
+        extractSiteRestriction('search only on wikipedia.org for this')
+      ).toBe('wikipedia.org');
+      expect(extractSiteRestriction('check www.espn.com please')).toBe(
+        'espn.com'
+      );
+    });
+
+    it('finds nothing when no domain-shaped token is present', () => {
+      expect(extractSiteRestriction('what is the weather today')).toBeNull();
+      expect(extractSiteRestriction('release notes v1.2.0')).toBeNull();
+      expect(extractSiteRestriction('to jest sezon 2025/26.')).toBeNull();
+    });
+
+    it('injects a site: operator into the verbatim fallback query', async () => {
+      const generate = jest.fn().mockRejectedValue(new Error('no model'));
+      const plan = await planWebSearch(
+        'sprawdź na stronie transfermarkt.pl kto strzelił najwięcej bramek',
+        [],
+        generate,
+        { today: TODAY }
+      );
+      expect(plan.siteRestriction).toBe('transfermarkt.pl');
+      expect(plan.queries[0]).toContain('site:transfermarkt.pl');
+    });
+
+    it('injects a site: operator into every LLM-planned query', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "poland goals", "queries": ["poland national team top scorer"]}'
+        );
+      const plan = await planWebSearch(
+        'sprawdź na stronie transfermarkt.pl kto strzelił najwięcej bramek dla Polski',
+        [],
+        generate,
+        { today: TODAY }
+      );
+      expect(plan.siteRestriction).toBe('transfermarkt.pl');
+      expect(plan.queries).toEqual([
+        'poland national team top scorer site:transfermarkt.pl',
+      ]);
+    });
+
+    it('does not duplicate the site: operator if the model already added it', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "poland goals", "queries": ["poland top scorer site:transfermarkt.pl"]}'
+        );
+      const plan = await planWebSearch(
+        'sprawdź na stronie transfermarkt.pl kto strzelił najwięcej bramek',
+        [],
+        generate,
+        { today: TODAY }
+      );
+      expect(plan.queries).toEqual(['poland top scorer site:transfermarkt.pl']);
+    });
+
+    it('leaves queries and siteRestriction untouched when no site is named', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "bitcoin price", "queries": ["bitcoin price today"]}'
+        );
+      const plan = await planWebSearch('current bitcoin price', [], generate, {
+        today: TODAY,
+      });
+      expect(plan.siteRestriction).toBeUndefined();
+      expect(plan.queries).toEqual(['bitcoin price today']);
+    });
+  });
+
+  describe('year regrounding', () => {
+    it('replaces a stale year the model invented with the injected current year', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "Nobel Prize in Literature", "queries": ["Nobel Prize in Literature 2023"]}'
+        );
+      const plan = await planWebSearch(
+        'kto ostatnio dostał Nobla z literatury?',
+        [],
+        generate,
+        { today: '2026-07-17' }
+      );
+      expect(plan.queries).toEqual(['Nobel Prize in Literature 2026']);
+    });
+
+    it('trusts a year the user explicitly asked about', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "Oscars 2019 winner", "queries": ["Oscars 2019 best picture"]}'
+        );
+      const plan = await planWebSearch(
+        'who won best picture at the 2019 Oscars?',
+        [],
+        generate,
+        { today: '2026-07-17' }
+      );
+      expect(plan.queries).toEqual(['Oscars 2019 best picture']);
+    });
+
+    it('leaves last year alone (reigning-champion framing)', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "champion", "queries": ["league champion 2025"]}'
+        );
+      const plan = await planWebSearch(
+        'who is the reigning champion?',
+        [],
+        generate,
+        {
+          today: '2026-07-17',
+        }
+      );
+      expect(plan.queries).toEqual(['league champion 2025']);
+    });
   });
 });

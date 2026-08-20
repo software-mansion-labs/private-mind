@@ -1,4 +1,9 @@
-import type { WebContext, WebSearchResult, WebSourceDocument } from './types';
+import type {
+  StructuredProduct,
+  WebContext,
+  WebSearchResult,
+  WebSourceDocument,
+} from './types';
 import {
   WEB_CONTENT_MAX_CHARS,
   WEB_SNIPPET_MAX_CHARS,
@@ -7,6 +12,19 @@ import { sourceBlock } from '../contextUtils';
 import { extractQueryTerms, foldForMatching, stemPrefix } from '../queryTerms';
 import { detectQuestionLanguage } from '../questionLanguage';
 import { neutralizeDelimiters } from './security/untrustedContent';
+import { VERIFIED_PRODUCT_MARKER } from './figureGrounding';
+
+const formatVerifiedProduct = (
+  product: StructuredProduct | undefined
+): string => {
+  if (!product?.price) return '';
+  const parts = [
+    product.name ? `name="${product.name}"` : null,
+    `price=${product.price}${product.currency ? ` ${product.currency}` : ''}`,
+    product.availability ? `availability=${product.availability}` : null,
+  ].filter((part): part is string => part !== null);
+  return `${VERIFIED_PRODUCT_MARKER} ${parts.join(', ')}\n`;
+};
 
 const truncate = (text: string, max: number): string =>
   text.length <= max
@@ -105,7 +123,7 @@ const containsNeedle = (folded: string, needle: string): boolean =>
     ? folded.includes(needle)
     : new RegExp(`(?<![\\p{L}\\p{N}])${needle}`, 'u').test(folded);
 
-const MONEY_ANCHOR =
+export const MONEY_ANCHOR =
   /\d[\d\s.,]*\s?(?:zl|pln|eur|euro|usd|gbp|czk|chf)(?![\p{L}\p{N}])|[$€£¥]\s?\d|\d\s?[$€£¥]/giu;
 const MONEY_BONUS = 2;
 
@@ -267,9 +285,15 @@ export const webResultsToContext = (
   const context: string[] = [];
   const sourceDocuments: WebSourceDocument[] = [];
 
-  const opened = results.filter((result) => result.content);
-  const used = opened.length > 0 ? opened : results;
+  const withMaterial = results.filter(
+    (result) => result.content || result.snippet?.trim()
+  );
+  const used = withMaterial.length > 0 ? withMaterial : results;
   const budgets = sourceBudgets(totalMaxChars, used.length);
+
+  const distinctQueries = new Set(
+    used.map((result) => result.sourceQuery).filter((q): q is string => !!q)
+  );
 
   used.forEach((result, index) => {
     const name = neutralizeDelimiters(result.title || hostname(result.url));
@@ -280,14 +304,20 @@ export const webResultsToContext = (
     const relevant = result.content
       ? selectRelevantContent(result.content, query, budgets[index]!)
       : '';
-    const rawPassage = relevant
+    const bodyPassage = relevant
       ? snippet
         ? `${relevant}\n${snippet}`
         : relevant
       : snippet;
+    const rawPassage = `${formatVerifiedProduct(result.product)}${bodyPassage}`;
+    const queryLabel =
+      distinctQueries.size > 1 && result.sourceQuery
+        ? `[Answers: ${result.sourceQuery}]\n`
+        : '';
+    const cleanPassage = neutralizeDelimiters(rawPassage);
 
     context.push(
-      sourceBlock(startIndex + index, name, neutralizeDelimiters(rawPassage))
+      sourceBlock(startIndex + index, name, `${queryLabel}${cleanPassage}`)
     );
 
     sourceDocuments.push({
@@ -295,7 +325,7 @@ export const webResultsToContext = (
       name,
       url: result.url,
       read: !!relevant,
-      passage: snippet,
+      passage: cleanPassage,
       query: query?.trim() || undefined,
       similarity: used.length > 1 ? 1 - index / used.length : 1,
     });

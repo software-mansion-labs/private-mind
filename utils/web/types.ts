@@ -1,11 +1,20 @@
 import type { SourceDocument } from '../../database/chatRepository';
 
+export interface StructuredProduct {
+  name?: string;
+  price?: string;
+  currency?: string;
+  availability?: string;
+}
+
 export interface WebSearchResult {
   title: string;
   url: string;
   snippet: string;
   content?: string;
   publishedAt?: string;
+  sourceQuery?: string;
+  product?: StructuredProduct;
 }
 
 export interface ExtractedArticle {
@@ -15,6 +24,7 @@ export interface ExtractedArticle {
   excerpt?: string;
   byline?: string;
   siteName?: string;
+  product?: StructuredProduct;
 }
 
 export interface WebSourceDocument extends SourceDocument {

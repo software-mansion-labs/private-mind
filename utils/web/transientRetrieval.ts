@@ -27,7 +27,6 @@ import {
   WEB_RETRIEVAL_CHUNK_OVERLAP,
   WEB_RETRIEVAL_MAX_CHUNKS,
   WEB_RETRIEVAL_MAX_PER_PAGE,
-  WEB_RETRIEVAL_PAGE_MAX_CHARS,
   WEB_RETRIEVAL_TOP_K,
 } from '../../constants/web';
 
@@ -106,14 +105,11 @@ const chunkPages = async (
     chunkOverlap: WEB_RETRIEVAL_CHUNK_OVERLAP,
   });
   const perPageCap = Math.ceil(WEB_RETRIEVAL_MAX_CHUNKS / pages.length);
+  const perPageMaxChars = perPageCap * WEB_RETRIEVAL_CHUNK_CHARS;
 
   const chunks: WebChunk[] = [];
   for (const { result, pageIndex } of pages) {
-    const text = selectRelevantContent(
-      result.content!,
-      query,
-      WEB_RETRIEVAL_PAGE_MAX_CHARS
-    );
+    const text = selectRelevantContent(result.content!, query, perPageMaxChars);
     const split = (await splitter.splitText(text)).slice(0, perPageCap);
     split.forEach((chunkText, chunkIndex) => {
       const trimmed = chunkText.trim();

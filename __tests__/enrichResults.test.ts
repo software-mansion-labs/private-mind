@@ -47,6 +47,24 @@ describe('enrichWebResults', () => {
     expect(mockExtract).toHaveBeenCalledTimes(2);
   });
 
+  it('carries the extracted structured product data onto the enriched result', async () => {
+    mockExtract.mockResolvedValue({
+      url: 'https://a.com/1',
+      title: 'RTX 4070',
+      text: longText('RTX 4070 details'),
+      siteName: 'a.com',
+      product: { name: 'RTX 4070', price: '2199', currency: 'PLN' },
+    });
+
+    const enriched = await enrichWebResults([result()], 1);
+
+    expect(enriched[0].product).toEqual({
+      name: 'RTX 4070',
+      price: '2199',
+      currency: 'PLN',
+    });
+  });
+
   it('falls back to the original result when extraction fails', async () => {
     mockExtract.mockRejectedValue(new Error('network'));
 

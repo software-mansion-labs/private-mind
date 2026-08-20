@@ -17,7 +17,6 @@ export const WEB_BENCH_LOGS = false;
 export const LOW_MEMORY_DEVICE_GB = 6.5;
 
 export const WEB_RETRIEVAL_FETCH_TOP_N = 5;
-export const WEB_RETRIEVAL_PAGE_MAX_CHARS = 6000;
 export const WEB_RETRIEVAL_CHUNK_CHARS = 500;
 export const WEB_RETRIEVAL_CHUNK_OVERLAP = 80;
 export const WEB_RETRIEVAL_MAX_CHUNKS = 40;
