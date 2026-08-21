@@ -1,6 +1,10 @@
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { LFMEmbeddings } from './lfmEmbeddings';
-import { SourceDocument, sourceKind } from '../database/chatRepository';
+import {
+  SourceDocument,
+  sourceKind,
+  type GroundingCaveatKind,
+} from '../database/chatRepository';
 import {
   formatContextChunks,
   formatFirstChunks,
@@ -155,40 +159,23 @@ export const answerCitationOverlaps = (
   );
 };
 
-const UNVERIFIED_FIGURE_CAVEAT =
-  '\n\n⚠️ A figure in this answer could not be verified against the retrieved sources.';
-
-export const withFigureGroundingCaveat = (
-  answer: string,
-  context: string
-): string =>
-  findUngroundedFigures(answer, context).length > 0
-    ? `${answer}${UNVERIFIED_FIGURE_CAVEAT}`
-    : answer;
-
-const UNVERIFIED_TREND_CAVEAT =
-  '\n\n⚠️ No data on the actual change over this period was found in the sources — this comparison is not grounded.';
-
-export const withTrendGroundingCaveat = (
+export const detectGroundingCaveats = (
   answer: string,
   question: string | undefined,
   context: string
-): string =>
-  isUngroundedTrendClaim(answer, question, context)
-    ? `${answer}${UNVERIFIED_TREND_CAVEAT}`
-    : answer;
-
-const UNVERIFIED_CONVERSION_CAVEAT =
-  '\n\n⚠️ No real conversion rate for this was found in the sources — this figure is not grounded.';
-
-export const withConversionGroundingCaveat = (
-  answer: string,
-  question: string | undefined,
-  context: string
-): string =>
-  isUngroundedConversionClaim(answer, question, context)
-    ? `${answer}${UNVERIFIED_CONVERSION_CAVEAT}`
-    : answer;
+): GroundingCaveatKind[] => {
+  const caveats: GroundingCaveatKind[] = [];
+  if (findUngroundedFigures(answer, context).length > 0) {
+    caveats.push('figure');
+  }
+  if (isUngroundedTrendClaim(answer, question, context)) {
+    caveats.push('trend');
+  }
+  if (isUngroundedConversionClaim(answer, question, context)) {
+    caveats.push('conversion');
+  }
+  return caveats;
+};
 
 const normalizeForEchoCompare = (text: string): string =>
   text
@@ -204,16 +191,6 @@ export const isQuestionEchoAnswer = (
   const visible = stripThinkBlocks(answer);
   if (!visible) return false;
   return normalizeForEchoCompare(visible) === normalizeForEchoCompare(question);
-};
-
-const CIRCULAR_SOURCE_REFERENCE_THRESHOLD = 3;
-const SOURCE_REFERENCE_MARKER = /źródł\w*|\bsources?\b/giu;
-
-export const isCircularNonAnswer = (answer: string): boolean => {
-  const visible = stripThinkBlocks(answer);
-  if (!visible) return false;
-  const mentions = visible.match(SOURCE_REFERENCE_MARKER)?.length ?? 0;
-  return mentions >= CIRCULAR_SOURCE_REFERENCE_THRESHOLD;
 };
 
 export const isWrongLanguageAnswer = (

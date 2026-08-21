@@ -120,6 +120,12 @@ const getContextInstruction = (
   const direct =
     'Answer the question that was asked, directly and first. Do not summarize the pages or add background the question did not ask for.';
 
+  const namedCitation = hasWeb
+    ? [
+        'When a claim rests mainly on one page, name that page in your own words (e.g. "CoinMarketCap reports…", "According to Reuters…") using its title from the block header, instead of a vague "the sources say". Save "the sources" for when several pages agree or you are referring to the whole block.',
+      ]
+    : [];
+
   const conflict = hasWeb
     ? [
         'The pages may disagree because some are out of date. Where they conflict, trust the page reporting the newest events — a change, a succession, "X replaces Y" — over a page that states the old fact.',
@@ -128,6 +134,7 @@ const getContextInstruction = (
 
   const figures =
     'Copy every number, price and date exactly as it is printed in the context. If the context does not state the figure the question asks about, say so — never estimate or invent one. ' +
+    'If the question names something that is not mentioned anywhere in the context at all, say you have no current data for it — do not give it a figure, even an approximate or well-known one. ' +
     'When comparing several things, a source block may be tagged [Answers: <query>] — only use its figures for the entity that tag names, never for another entity in the same comparison.';
 
   const SPECULATIVE_SOURCE_MARKERS =
@@ -152,6 +159,7 @@ const getContextInstruction = (
     fallback,
     noLeakedJargon,
     direct,
+    ...namedCitation,
     ...conflict,
     figures,
     ...speculative,
@@ -267,7 +275,7 @@ const getFiguresInstruction = (context: string): string => {
     .filter(([, tokens]) => tokens.length > 0)
     .map(([query, tokens]) => `${query} → ${tokens.join(', ')}`);
   if (perEntity.length === 0) return '';
-  return `Figures found per entity: ${perEntity.join(' | ')}. Use a figure only for the entity it's listed under — never for another entity in the comparison, and never one from memory.`;
+  return `Figures found per entity: ${perEntity.join(' | ')}. Use a figure only for the entity it's listed under — never for another entity in the comparison, and never one from memory. If the question named something with no entry in this list, say you have no current data for it instead of giving it a figure.`;
 };
 
 const OPINION_MARKERS =
@@ -287,7 +295,7 @@ const getInvestmentComparisonInstruction = (question?: string): string =>
     : '';
 
 const COMPARISON_MARKERS =
-  /czym się różni|jaka jest różnic|różnic\w* (?:między|pomiędzy)|co odróżnia|\bvs\.?\b|\bversus\b|difference between|how (?:do|does) .+ differ|what'?s the difference/i;
+  /czym się różni|jaka jest różnic|różnic\w* (?:między|pomiędzy)|co odróżnia|porówn\w*|\bvs\.?\b|\bversus\b|\bcompare\b|comparison between|difference between|how (?:do|does) .+ differ|what'?s the difference/i;
 
 const getComparisonStructureInstruction = (question?: string): string =>
   question && COMPARISON_MARKERS.test(question)
@@ -333,7 +341,7 @@ const getVerifiedProductInstruction = (context: string): string =>
 
 const getWeakRetrievalInstruction = (weak?: boolean): string =>
   weak
-    ? '\n\nThis web search came back thin — few or low-relevance sources. If the context above does not clearly answer the question, say so plainly rather than stretching what little it has into a fuller-sounding answer.'
+    ? "\n\nThis web search's results could not be confidently verified as relevant to the question. If the context above does not clearly answer it, say so plainly rather than stretching what's there into a fuller-sounding answer."
     : '';
 
 const PERIOD_SCOPE_MARKERS =
