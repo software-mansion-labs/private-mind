@@ -311,6 +311,6 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultTertiary,
     },
     noteWarnIcon: {
-      color: theme.text.error,
+      color: theme.text.warning,
     },
   });

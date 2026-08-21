@@ -32,6 +32,7 @@ export const lightTheme = {
     onChatBarMuted: 'rgba(2, 15, 60, 0.6)',
     onAttachButton: '#ffffff',
     error: '#DE595B',
+    warning: '#B8630A',
   },
   border: {
     soft: 'rgba(2, 15, 60, 0.2)',
@@ -75,6 +76,7 @@ export const darkTheme = {
     onChatBarMuted: 'rgba(0, 0, 0, 0.6)',
     onAttachButton: '#ffffff',
     error: '#E68485',
+    warning: '#F0A860',
   },
   border: {
     soft: 'rgba(255, 255, 255, 0.15)',

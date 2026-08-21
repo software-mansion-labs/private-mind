@@ -120,7 +120,9 @@ const WebSearchBlock = memo(({ isSearching, trace, results }: Props) => {
   if (rows.length === 0 && !isSearching) return null;
 
   const title = deriveTitle(isSearching, trace);
-  const current = rows[rows.length - 1];
+  const currentRow = isSearching ? rows[rows.length - 1] : undefined;
+  const historyRows = isSearching ? rows.slice(0, -1) : rows;
+  const historyVisible = listMounted && historyRows.length > 0;
 
   const toggleExpanded = () => {
     Feedback.sheetOpen();
@@ -153,36 +155,55 @@ const WebSearchBlock = memo(({ isSearching, trace, results }: Props) => {
         ) : null}
       </Pressable>
 
-      {listMounted ? (
+      {isSearching ? (
+        <>
+          {historyVisible ? (
+            <WebSearchTraceList
+              expanded={expanded}
+              rows={historyRows}
+              enterDelay={enterDelay}
+              animateRows
+              continuesBelow
+              onOpen={openPage}
+              onOpenChallenge={openChallenge}
+              onCollapsed={handleCollapsed}
+            />
+          ) : null}
+          {currentRow ? (
+            <Animated.View
+              style={[
+                styles.currentSlot,
+                historyVisible && styles.currentSlotAttached,
+              ]}
+              exiting={FadeOut.duration(160)}
+            >
+              <Animated.View
+                key={currentRow.key}
+                style={styles.currentRow}
+                entering={FadeIn.duration(WEB_TRACE_TRANSITION_MS)}
+                exiting={FadeOut.duration(200)}
+              >
+                <WebSearchTraceRow
+                  row={currentRow}
+                  isFirst={!historyVisible}
+                  isLast
+                  onOpen={openPage}
+                  onOpenChallenge={openChallenge}
+                />
+              </Animated.View>
+            </Animated.View>
+          ) : null}
+        </>
+      ) : listMounted ? (
         <WebSearchTraceList
           expanded={expanded}
           rows={rows}
           enterDelay={enterDelay}
-          animateRows={isSearching}
+          animateRows={false}
           onOpen={openPage}
           onOpenChallenge={openChallenge}
           onCollapsed={handleCollapsed}
         />
-      ) : isSearching && current ? (
-        <Animated.View
-          style={styles.currentSlot}
-          exiting={FadeOut.duration(160)}
-        >
-          <Animated.View
-            key={current.key}
-            style={styles.currentRow}
-            entering={FadeIn.duration(WEB_TRACE_TRANSITION_MS)}
-            exiting={FadeOut.duration(200)}
-          >
-            <WebSearchTraceRow
-              row={current}
-              isFirst
-              isLast
-              onOpen={openPage}
-              onOpenChallenge={openChallenge}
-            />
-          </Animated.View>
-        </Animated.View>
       ) : null}
     </Animated.View>
   );
@@ -216,6 +237,9 @@ const createStyles = (theme: Theme) =>
     currentSlot: {
       marginTop: 6,
       height: ROW_HEIGHT,
+    },
+    currentSlotAttached: {
+      marginTop: 0,
     },
     currentRow: {
       position: 'absolute',

@@ -14,16 +14,42 @@ import SecondaryButton from '../SecondaryButton';
 import { useEmbeddingModelStore } from '../../store/embeddingModelStore';
 import { embeddingModelDownloadSizeLabel } from '../../utils/embeddingModel';
 
+type DownloadContext = 'document' | 'web';
+
 type Props = {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
   onDownload: () => void;
   onDismiss?: () => void;
+  context?: DownloadContext;
+  required?: boolean;
+};
+
+const TITLES: Record<DownloadContext, string> = {
+  document: 'Download document model',
+  web: 'Download search model',
+};
+
+const READY_SUBTEXT: Record<DownloadContext, string> = {
+  document:
+    'To attach documents, Private Mind needs to download the on-device embedding model once (~{size}). It is then reused for every future document.',
+  web: 'Web search gives better results with the on-device embedding model (~{size}) — it ranks pages by actual relevance instead of keyword matches alone. It is downloaded once and reused for documents too.',
+};
+
+const REQUIRED_WEB_SUBTEXT =
+  'Your device can comfortably run the on-device embedding model (~{size}), so web search requires it for accurate, relevant results. It is downloaded once and reused for documents too.';
+
+const ERROR_SUBTEXT: Record<DownloadContext, string> = {
+  document:
+    'The document model could not be downloaded. Check your connection and try again.',
+  web: 'The search model could not be downloaded. Check your connection and try again.',
 };
 
 const EmbeddingDownloadSheet = ({
   bottomSheetModalRef,
   onDownload,
   onDismiss,
+  context = 'document',
+  required = false,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const status = useEmbeddingModelStore((state) => state.status);
@@ -31,6 +57,7 @@ const EmbeddingDownloadSheet = ({
 
   const isDownloading = status === 'downloading';
   const isError = status === 'error';
+  const blockDismiss = required && status === 'not_downloaded';
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -38,10 +65,11 @@ const EmbeddingDownloadSheet = ({
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
+        pressBehavior={blockDismiss ? 'none' : 'close'}
         style={styles.backdrop}
       />
     ),
-    [styles.backdrop]
+    [styles.backdrop, blockDismiss]
   );
 
   const handleCancel = useCallback(
@@ -54,19 +82,23 @@ const EmbeddingDownloadSheet = ({
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       enableDynamicSizing
+      enablePanDownToClose={!blockDismiss}
       onDismiss={onDismiss}
       handleStyle={styles.handleStyle}
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.background}
     >
       <BottomSheetView style={styles.sheet}>
-        <Text style={styles.title}>Download document model</Text>
+        <Text style={styles.title}>{TITLES[context]}</Text>
         <Text style={styles.subText}>
           {isError
-            ? 'The document model could not be downloaded. Check your connection and try again.'
+            ? ERROR_SUBTEXT[context]
             : isDownloading
               ? 'You can close this sheet — the download keeps going in the background and resumes when you reopen it.'
-              : `To attach documents, Private Mind needs to download the on-device embedding model once (~${embeddingModelDownloadSizeLabel()}). It is then reused for every future document.`}
+              : (required && context === 'web'
+                  ? REQUIRED_WEB_SUBTEXT
+                  : READY_SUBTEXT[context]
+                ).replace('{size}', embeddingModelDownloadSizeLabel())}
         </Text>
 
         {isDownloading ? (
@@ -86,7 +118,9 @@ const EmbeddingDownloadSheet = ({
               text={isError ? 'Try again' : 'Download'}
               onPress={onDownload}
             />
-            <SecondaryButton text="Cancel" onPress={handleCancel} />
+            {!blockDismiss ? (
+              <SecondaryButton text="Cancel" onPress={handleCancel} />
+            ) : null}
           </View>
         )}
       </BottomSheetView>
