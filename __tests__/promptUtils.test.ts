@@ -33,7 +33,6 @@ const makeMessages = (count: number): Message[] => [
     content: `message ${i + 1}`,
     timestamp: Date.now(),
   })),
-  // trailing assistant placeholder (always present in real usage)
   {
     id: count + 1,
     chatId: 1,
@@ -637,7 +636,6 @@ describe('prepareMessagesForLLM', () => {
 
   describe('event message filtering', () => {
     it('strips event messages from the output', () => {
-      // Last item is the empty assistant placeholder (as per llmStore contract)
       const messages: Message[] = [
         { id: 1, chatId: 1, role: 'user', content: 'hello', timestamp: 0 },
         {
@@ -664,8 +662,6 @@ describe('prepareMessagesForLLM', () => {
       );
       const roles = result.map((m) => m.role);
       expect(roles).not.toContain('event');
-      // system + user + assistant; trailing empty assistant placeholder is not
-      // sent to the model.
       expect(result).toHaveLength(3);
     });
   });
@@ -679,7 +675,6 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      // system + 20 messages; trailing empty assistant placeholder is not sent.
       expect(result).toHaveLength(21);
       expect(result[0].role).toBe('system');
     });
@@ -1617,6 +1612,39 @@ describe('prepareMessagesForLLM', () => {
       expect(whitelistLine).toContain('399 zł');
       expect(whitelistLine).toContain('far apart from the other figures');
       expect(whitelistLine).toContain('Do not use it as the low');
+    });
+
+    it('flags a lone "price statement" match as an outlier against the page\'s other figures (F25)', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'What is the current price of gold per ounce?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const webSources: SourceDocument[] = [
+        { name: 'Gold', kind: 'web', url: 'https://livepriceofgold.com' },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        [
+          'Investing.com shows gold price $0.1670 today. Other trackers report: $2031.50, $2029.80, $2033.10.',
+        ],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        webSources
+      );
+      const last = result[result.length - 1];
+      const whitelistLine = last.content
+        .split('\n')
+        .find((line) => line.startsWith('Figures found in the sources'));
+      expect(whitelistLine).toContain('$0.1670');
+      expect(whitelistLine).toContain('far apart from the other figures');
     });
 
     it('does not flag any figure as an outlier when prices cluster normally', () => {

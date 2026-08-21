@@ -54,7 +54,7 @@ import {
   MESSAGE_PIN_OFFSET,
   MESSAGE_PIN_SETTLE_MS,
   navBarInset,
-  PIN_RELEASE_FALLBACK_MS,
+  PIN_READY_SLACK_PX,
   PIN_RELEASE_MS,
   REVEAL_FALLBACK_MS,
   SCROLL_INDICATOR_GUTTER,
@@ -479,7 +479,7 @@ const Messages = ({
   const scrollToPin = useCallback(() => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        scrollRef.current?.scrollTo({ y: pinOffset.current, animated: true });
+        scrollRef.current?.scrollTo({ y: pinOffset.current, animated: false });
       });
     });
   }, []);
@@ -506,7 +506,10 @@ const Messages = ({
       containerHeight: containerHeight.current,
       userHeight: lastUserHeight.current,
     });
-    if (contentHeight.current >= pinOffset.current + containerHeight.current) {
+    if (
+      contentHeight.current >=
+      pinOffset.current + containerHeight.current - PIN_READY_SLACK_PX
+    ) {
       scrollToPin();
       return;
     }
@@ -533,25 +536,21 @@ const Messages = ({
     timers.push(
       setTimeout(() => {
         pinActive.current = false;
-        pinScrollPendingRef.current = false;
+        if (pinScrollPendingRef.current) {
+          pinScrollPendingRef.current = false;
+          scrollToPin();
+        }
         blankSpace.set(pinFloorRef.current);
         pinReleaseRef.current = true;
         timers.push(
           setTimeout(() => {
             setPinAnchor(null);
-            timers.push(
-              setTimeout(() => {
-                if (pinReleaseRef.current) {
-                  settlePinRelease(contentHeight.current);
-                }
-              }, PIN_RELEASE_FALLBACK_MS)
-            );
           }, PIN_RELEASE_MS)
         );
       }, MESSAGE_PIN_SETTLE_MS)
     );
     return () => timers.forEach(clearTimeout);
-  }, [isGenerating, blankSpace, settlePinRelease]);
+  }, [isGenerating, blankSpace, scrollToPin]);
 
   useImperativeHandle(
     ref,
@@ -582,6 +581,7 @@ const Messages = ({
         lastAssistantHeight.current = 0;
         lastUserHeight.current = 0;
         pinActive.current = true;
+        pinReleaseRef.current = false;
         blankSpace.set(0);
         pendingPinRef.current = true;
       },
@@ -745,7 +745,10 @@ const Messages = ({
     if (keyboardOpenRef.current) {
       userScrolledDuringKeyboard.current = true;
     }
-  }, []);
+    if (pinReleaseRef.current) {
+      settlePinRelease(contentHeight.current);
+    }
+  }, [settlePinRelease]);
 
   const handleForkMessage = useCallback(
     (message: Message) => {
@@ -762,7 +765,7 @@ const Messages = ({
       }
       if (
         pinScrollPendingRef.current &&
-        h >= pinOffset.current + containerHeight.current
+        h >= pinOffset.current + containerHeight.current - PIN_READY_SLACK_PX
       ) {
         pinScrollPendingRef.current = false;
         scrollToPin();
@@ -888,13 +891,12 @@ const Messages = ({
             const userQuestion = questionForAssistantAt[index];
             const key = messageRowKey(message, index);
 
-            const onLayout =
-              index === lastUserIndex
-                ? (event: LayoutChangeEvent) => handleLastUserLayout(key, event)
-                : index === lastAssistantIndex
-                  ? (event: LayoutChangeEvent) =>
-                      handleLastAssistantLayout(key, event)
-                  : undefined;
+            let onLayout: ((event: LayoutChangeEvent) => void) | undefined;
+            if (index === lastUserIndex) {
+              onLayout = (event) => handleLastUserLayout(key, event);
+            } else if (index === lastAssistantIndex) {
+              onLayout = (event) => handleLastAssistantLayout(key, event);
+            }
             const branchMarker = latestBranchMarkerByMessageId.get(message.id);
             const { showActions, showForkAction } =
               getMessageActionsState(message);
