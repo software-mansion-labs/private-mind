@@ -18,6 +18,7 @@ interface Props {
   rows: Row[];
   enterDelay: Map<string, number>;
   animateRows: boolean;
+  continuesBelow?: boolean;
   onOpen: (url?: string) => void;
   onOpenChallenge: () => void;
   onCollapsed: () => void;
@@ -30,6 +31,7 @@ const WebSearchTraceList = ({
   rows,
   enterDelay,
   animateRows,
+  continuesBelow = false,
   onOpen,
   onOpenChallenge,
   onCollapsed,
@@ -112,7 +114,7 @@ const WebSearchTraceList = ({
             <WebSearchTraceRow
               row={row}
               isFirst={index === 0}
-              isLast={index === rows.length - 1}
+              isLast={!continuesBelow && index === rows.length - 1}
               onOpen={onOpen}
               onOpenChallenge={onOpenChallenge}
             />
