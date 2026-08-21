@@ -261,7 +261,7 @@ export const useSendChatMessage = ({
           if (webGrounded) {
             webIntent = webTelemetry.intent || undefined;
             webSubQueries = webTelemetry.plannedQueries;
-            webWeak = webTelemetry.finalLabel !== 'correct';
+            webWeak = webTelemetry.finalLabel === 'incorrect';
           } else {
             webSearchFailed =
               webTelemetry.needsSearch && !webTelemetry.skippedReason;
