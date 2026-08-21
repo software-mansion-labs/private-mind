@@ -1,10 +1,16 @@
 import {
   assembleSourceDocuments,
+  isCircularNonAnswer,
+  isQuestionEchoAnswer,
+  isWrongLanguageAnswer,
   looksLikeNoAnswer,
   mergeAttachmentFirst,
   pickCitationsByAnswer,
   restrictCitationsToContext,
   visibleAnswer,
+  withConversionGroundingCaveat,
+  withFigureGroundingCaveat,
+  withTrendGroundingCaveat,
   type SourceRow,
 } from '../utils/messageSources';
 import { SourceDocument } from '../database/chatRepository';
@@ -455,6 +461,44 @@ describe('web search results (experimental)', () => {
     expect(result[0].used).toBe(true);
   });
 
+  it('falls back to trusting fetched web results when the answer language shares no words with them (F3)', () => {
+    const cited = [
+      web(
+        'Vitamin D for the Prevention of Disease | Endocrine Society',
+        'https://endocrine.org/x',
+        'The Endocrine Society recommends adults take 600 to 800 IU of vitamin D daily.'
+      ),
+      web(
+        'The 2024 Endocrine Society Guideline on Vitamin D - MDPI',
+        'https://mdpi.com/x',
+        'This guideline reviews evidence for vitamin D supplementation in adults.'
+      ),
+    ];
+    const answer =
+      'Zalecana dzienna dawka witaminy D dla dorosłych według najnowszych ' +
+      'wytycznych to witamina D w dawkach niższych niż 1000 IU.';
+
+    const result = pickCitationsByAnswer(cited, answer, []);
+
+    expect(result.every((d) => d.used)).toBe(true);
+  });
+
+  it('still hides a web result absent from the prompt even when overlap is uninformative', () => {
+    const cited = [
+      web(
+        'Vitamin D for the Prevention of Disease | Endocrine Society',
+        'https://endocrine.org/x',
+        'The Endocrine Society recommends adults take 600 to 800 IU of vitamin D daily.'
+      ),
+    ];
+    const answer =
+      'Zalecana dzienna dawka witaminy D dla dorosłych to witamina D.';
+
+    const result = pickCitationsByAnswer(cited, answer, [], new Set<string>());
+
+    expect(result[0].used).toBe(false);
+  });
+
   it('marks no web result used when the answer is a refusal', () => {
     const cited = [
       web('Weather Warsaw', 'https://w.com', 'Warsaw temperature and rain'),
@@ -523,6 +567,9 @@ describe('looksLikeNoAnswer', () => {
     'Te szczegóły nie są wskazane w załączonych materiałach.',
     'Na podstawie dostarczonych kontekstów nie jest podany adres siedziby głównej spółki Zephyria.',
     'W dokumencie nie jest określona data premiery.',
+    'Nie ma dokładnej informacji o aktualnej pogodzie w kontekście źródeł, które zostały podane.',
+    'There is no exact information about the current weather in the sources provided.',
+    'Źródła nie dostarczają konkretnej informacji o pogodzie w danym momencie.',
   ])('flags the refusal: %s', (reply) => {
     expect(looksLikeNoAnswer(reply)).toBe(true);
   });
@@ -538,5 +585,235 @@ describe('looksLikeNoAnswer', () => {
     'Urlop dodatkowy nie jest płatny, co potwierdza regulamin.',
   ])('does not flag a real answer: %s', (reply) => {
     expect(looksLikeNoAnswer(reply)).toBe(false);
+  });
+});
+
+describe('withFigureGroundingCaveat', () => {
+  it('appends a caveat when the answer states a figure absent from the context', () => {
+    const context = 'Ethereum Price: $1,901.25 (0.20%) | ETH';
+    const answer = 'Aktualna cena Ethereum wynosi około $50,000 USD.';
+    const result = withFigureGroundingCaveat(answer, context);
+    expect(result).toContain(answer);
+    expect(result).toContain('could not be verified');
+  });
+
+  it('leaves the answer untouched when its figure matches the context', () => {
+    const context = 'Bitcoin price today: $64,146.36 USD.';
+    const answer = 'Aktualna cena Bitcoin wynosi około $64,146.36 USD.';
+    expect(withFigureGroundingCaveat(answer, context)).toBe(answer);
+  });
+
+  it('leaves the answer untouched when it states no currency figure', () => {
+    const answer = 'It is sunny in Warsaw today.';
+    expect(withFigureGroundingCaveat(answer, 'Some context.')).toBe(answer);
+  });
+});
+
+describe('withTrendGroundingCaveat', () => {
+  const question = 'Ktory zyskal wiecej procentowo w tym miesiacu?';
+  const context =
+    'Bitcoin price today: $64,146.36. Ethereum price today: $1,899.62.';
+
+  it('appends a caveat when the model asserts a trend claim with no change data in context', () => {
+    const answer = 'Bitcoin zyskał więcej procentowo w tym miesiącu.';
+    const result = withTrendGroundingCaveat(answer, question, context);
+    expect(result).toContain(answer);
+    expect(result).toContain('not grounded');
+  });
+
+  it('leaves the answer untouched when the context has period-matched change data', () => {
+    const answer = 'Bitcoin zyskał więcej procentowo w tym miesiącu.';
+    const grounded =
+      'Bitcoin is up 12% this month, Ethereum is up 4% this month.';
+    expect(withTrendGroundingCaveat(answer, question, grounded)).toBe(answer);
+  });
+
+  it('leaves the answer untouched when it makes no comparative trend claim', () => {
+    const answer =
+      'Bitcoin price today: $64,146.36. Ethereum price today: $1,899.62.';
+    expect(withTrendGroundingCaveat(answer, question, context)).toBe(answer);
+  });
+
+  it('leaves the answer untouched when the question was not about a trend', () => {
+    const answer = 'Bitcoin zyskał więcej procentowo w tym miesiącu.';
+    expect(
+      withTrendGroundingCaveat(answer, 'What is the bitcoin price?', context)
+    ).toBe(answer);
+  });
+});
+
+describe('withConversionGroundingCaveat', () => {
+  const question = 'And how much is that in euros?';
+  const noRateContext =
+    '1 USD to EUR - Convert US dollars to Euros | Wise. ' +
+    '1 Euro to US dollars Exchange Rate. Convert EUR/USD - Wise.';
+
+  it('appends a caveat when the answer states a conversion figure with no real rate in context', () => {
+    const answer = 'The price of 1 USD in euros is 1.00.';
+    const result = withConversionGroundingCaveat(
+      answer,
+      question,
+      noRateContext
+    );
+    expect(result).toContain(answer);
+    expect(result).toContain('not grounded');
+  });
+
+  it('leaves the answer untouched when the context has a genuine conversion rate', () => {
+    const answer = 'That is approximately €1,450.00.';
+    const grounded = '1 USD = 0.92 EUR as of today.';
+    expect(withConversionGroundingCaveat(answer, question, grounded)).toBe(
+      answer
+    );
+  });
+
+  it('leaves the answer untouched when it states no currency figure', () => {
+    const answer = 'I do not have a verified exchange rate to convert that.';
+    expect(withConversionGroundingCaveat(answer, question, noRateContext)).toBe(
+      answer
+    );
+  });
+
+  it('leaves the answer untouched when the question was not a conversion follow-up', () => {
+    const answer = 'The price of 1 USD in euros is 1.00.';
+    expect(
+      withConversionGroundingCaveat(
+        answer,
+        'What is the current gold price?',
+        noRateContext
+      )
+    ).toBe(answer);
+  });
+});
+
+describe('isQuestionEchoAnswer', () => {
+  it('flags an answer that is just the question echoed back after a think block', () => {
+    const question = 'Ile wazy i jakie ma wymiary?';
+    const answer = '<think>\n\n</think>\n\nIle wazy i jakie ma wymiary?';
+    expect(isQuestionEchoAnswer(answer, question)).toBe(true);
+  });
+
+  it('flags a plain echo with no think block and different trailing punctuation', () => {
+    expect(
+      isQuestionEchoAnswer(
+        'Ile wazy i jakie ma wymiary',
+        'Ile wazy i jakie ma wymiary?'
+      )
+    ).toBe(true);
+  });
+
+  it('is case-insensitive', () => {
+    expect(
+      isQuestionEchoAnswer(
+        'ILE WAZY I JAKIE MA WYMIARY?',
+        'Ile wazy i jakie ma wymiary?'
+      )
+    ).toBe(true);
+  });
+
+  it('does not flag a genuine answer', () => {
+    const question = 'Ile wazy i jakie ma wymiary?';
+    const answer = '<think>\n\n</think>\n\nLaptop waży 2.5 kg.';
+    expect(isQuestionEchoAnswer(answer, question)).toBe(false);
+  });
+
+  it('does not flag when there is no question to compare against', () => {
+    expect(isQuestionEchoAnswer('Some answer.', undefined)).toBe(false);
+  });
+
+  it('does not flag when the answer is entirely inside an unclosed think block', () => {
+    const question = 'Ile wazy i jakie ma wymiary?';
+    const answer = '<think>Ile wazy i jakie ma wymiary?';
+    expect(isQuestionEchoAnswer(answer, question)).toBe(false);
+  });
+});
+
+describe('isCircularNonAnswer', () => {
+  const circularAnswer =
+    'Najtańszy bilet oferuje linia lotnicza, która jest przedstawiana w ' +
+    'źródle 2 jako "dziesiątka linii lotniczych". Źródło 1 nie podaje ' +
+    'konkretnego nazwiska linii lotniczych, ale źródło 2 podaje, że ' +
+    'porównuje ceny linii lotniczych. Dlatego, że źródło 2 opisuje, że ' +
+    'porównuje ceny linii lotniczych, to linia lotnicza, która oferuje ' +
+    'najtańszy bilet, jest przedstawiona w źródle 2.';
+
+  it('flags the captured live failure text', () => {
+    expect(isCircularNonAnswer(circularAnswer)).toBe(true);
+  });
+
+  it('flags the English-language shape of the same pattern', () => {
+    const answer =
+      'The cheapest airline is the one named in source 2. Source 1 does ' +
+      'not name an airline, but source 2 compares airline prices, so the ' +
+      'cheapest airline is presented in source 2.';
+    expect(isCircularNonAnswer(answer)).toBe(true);
+  });
+
+  it('does not flag a genuine answer that names a real entity', () => {
+    const answer = 'Najtańsze bilety oferuje Ryanair, od 128 zł.';
+    expect(isCircularNonAnswer(answer)).toBe(false);
+  });
+
+  it('does not flag a single, ordinary "source" mention', () => {
+    const answer = 'Zgodnie ze źródłem, najtańsze bilety oferuje Ryanair.';
+    expect(isCircularNonAnswer(answer)).toBe(false);
+  });
+
+  it('does not flag an answer with two source mentions (below the threshold)', () => {
+    const answer =
+      'Źródło 1 podaje 150 zł, a źródło 2 podaje 180 zł za bilet Ryanair.';
+    expect(isCircularNonAnswer(answer)).toBe(false);
+  });
+
+  it('only counts mentions outside the think block', () => {
+    const answer =
+      '<think>źródło źródło źródło</think>\n\nNajtańsze bilety oferuje Ryanair.';
+    expect(isCircularNonAnswer(answer)).toBe(false);
+  });
+});
+
+describe('isWrongLanguageAnswer', () => {
+  const question = 'Kim był Kazimierz Wielki i czego dokonał?';
+
+  it('flags the captured live failure — a Polish question answered in Turkish', () => {
+    const answer =
+      "Kazimierz Wielki (1310–1370) Polska'nın en son piastıydı. Panlari, " +
+      "hukukun kodifikasyonu, Kraków'da universitetin kurulumu ve büyük " +
+      'inşaat projeleriyle polsada "drewni" ve "murowan" hale gelmesi ' +
+      'anlatılır.';
+    expect(isWrongLanguageAnswer(answer, question)).toBe(true);
+  });
+
+  it('does not flag a genuine answer in the question language', () => {
+    const answer =
+      'Kazimierz Wielki był ostatnim królem Polski z dynastii Piastów. ' +
+      'Skodyfikował prawo, założył Akademię Krakowską i rozbudował kraj.';
+    expect(isWrongLanguageAnswer(answer, question)).toBe(false);
+  });
+
+  it('does not flag a Polish answer that merely contains foreign proper nouns', () => {
+    const answer =
+      'Najtańszy bilet z Warszawy do Londynu oferuje linia Ryanair, według ' +
+      'wyszukiwarki Skyscanner.';
+    expect(isWrongLanguageAnswer(answer, question)).toBe(false);
+  });
+
+  it('does not flag when the answer is too short/numeric to confidently detect a language', () => {
+    expect(isWrongLanguageAnswer('128 zł–181 zł', question)).toBe(false);
+  });
+
+  it('does not flag when the question language cannot be confidently detected', () => {
+    expect(isWrongLanguageAnswer('This is a genuine answer.', '?')).toBe(false);
+  });
+
+  it('does not flag when there is no question to compare against', () => {
+    expect(isWrongLanguageAnswer('Some answer.', undefined)).toBe(false);
+  });
+
+  it('only detects the answer language outside the think block', () => {
+    const answer =
+      '<think>some English reasoning here about the topic</think>\n\n' +
+      'Kazimierz Wielki był ostatnim królem Polski z dynastii Piastów.';
+    expect(isWrongLanguageAnswer(answer, question)).toBe(false);
   });
 });

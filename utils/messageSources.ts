@@ -10,6 +10,11 @@ import {
 } from './contextUtils';
 import { hybridRetrieve } from './hybridRetrieval';
 import { extractQueryTerms, stemPrefix } from './queryTerms';
+import {
+  findUngroundedFigures,
+  isUngroundedConversionClaim,
+  isUngroundedTrendClaim,
+} from './web/figureGrounding';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
 import {
   CITATION_SENTENCE_PATTERN,
@@ -18,7 +23,8 @@ import {
   NO_ANSWER_PATTERNS_EN,
   NO_ANSWER_PATTERNS_PL,
 } from '../constants/citations';
-import { outsideThinkSegments } from './thinking';
+import { outsideThinkSegments, stripThinkBlocks } from './thinking';
+import { detectQuestionLanguage } from './questionLanguage';
 
 export interface SourceRow {
   id: number;
@@ -149,6 +155,80 @@ export const answerCitationOverlaps = (
   );
 };
 
+const UNVERIFIED_FIGURE_CAVEAT =
+  '\n\n⚠️ A figure in this answer could not be verified against the retrieved sources.';
+
+export const withFigureGroundingCaveat = (
+  answer: string,
+  context: string
+): string =>
+  findUngroundedFigures(answer, context).length > 0
+    ? `${answer}${UNVERIFIED_FIGURE_CAVEAT}`
+    : answer;
+
+const UNVERIFIED_TREND_CAVEAT =
+  '\n\n⚠️ No data on the actual change over this period was found in the sources — this comparison is not grounded.';
+
+export const withTrendGroundingCaveat = (
+  answer: string,
+  question: string | undefined,
+  context: string
+): string =>
+  isUngroundedTrendClaim(answer, question, context)
+    ? `${answer}${UNVERIFIED_TREND_CAVEAT}`
+    : answer;
+
+const UNVERIFIED_CONVERSION_CAVEAT =
+  '\n\n⚠️ No real conversion rate for this was found in the sources — this figure is not grounded.';
+
+export const withConversionGroundingCaveat = (
+  answer: string,
+  question: string | undefined,
+  context: string
+): string =>
+  isUngroundedConversionClaim(answer, question, context)
+    ? `${answer}${UNVERIFIED_CONVERSION_CAVEAT}`
+    : answer;
+
+const normalizeForEchoCompare = (text: string): string =>
+  text
+    .trim()
+    .toLowerCase()
+    .replace(/[?!.,;:]+$/, '');
+
+export const isQuestionEchoAnswer = (
+  answer: string,
+  question: string | undefined
+): boolean => {
+  if (!question) return false;
+  const visible = stripThinkBlocks(answer);
+  if (!visible) return false;
+  return normalizeForEchoCompare(visible) === normalizeForEchoCompare(question);
+};
+
+const CIRCULAR_SOURCE_REFERENCE_THRESHOLD = 3;
+const SOURCE_REFERENCE_MARKER = /źródł\w*|\bsources?\b/giu;
+
+export const isCircularNonAnswer = (answer: string): boolean => {
+  const visible = stripThinkBlocks(answer);
+  if (!visible) return false;
+  const mentions = visible.match(SOURCE_REFERENCE_MARKER)?.length ?? 0;
+  return mentions >= CIRCULAR_SOURCE_REFERENCE_THRESHOLD;
+};
+
+export const isWrongLanguageAnswer = (
+  answer: string,
+  question: string | undefined
+): boolean => {
+  if (!question) return false;
+  const expected = detectQuestionLanguage(question);
+  if (!expected) return false;
+  const visible = stripThinkBlocks(answer);
+  if (!visible) return false;
+  const actual = detectQuestionLanguage(visible);
+  return !!actual && actual.code !== expected.code;
+};
+
 export const pickCitationsByAnswer = (
   sourceDocuments: SourceDocument[],
   answer: string,
@@ -189,13 +269,18 @@ const flagUsedWebDocuments = (
     overlap: overlapWithAnswer(`${doc.name} ${doc.passage ?? ''}`, answerTerms),
   }));
   const maxOverlap = Math.max(0, ...scored.map((s) => s.overlap));
+  const isPresent = (doc: SourceDocument) =>
+    presentNames === undefined || presentNames.has(doc.name);
+
+  if (maxOverlap === 0) {
+    return scored.map((s) => ({ ...s.doc, used: isPresent(s.doc) }));
+  }
 
   return scored.map((s) => ({
     ...s.doc,
     used:
-      maxOverlap > 0 &&
       s.overlap >= maxOverlap * ANSWER_CITATION_OVERLAP_RATIO &&
-      (presentNames === undefined || presentNames.has(s.doc.name)),
+      isPresent(s.doc),
   }));
 };
 

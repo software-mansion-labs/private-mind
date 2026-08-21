@@ -90,11 +90,14 @@ const getContextInstruction = (
   const overviewNote = preferred?.length
     ? ', with a freshly attached file marked "(Overview)"'
     : '';
-  const what = webOnly
-    ? `excerpts from web pages just retrieved for this question, ${headed}`
-    : hasWeb
-      ? `excerpts from the user's documents and from web pages just retrieved for this question, ${headed}`
-      : `excerpts from the user's documents, ${headed}${overviewNote}`;
+  let what: string;
+  if (webOnly) {
+    what = `excerpts from web pages just retrieved for this question, ${headed}`;
+  } else if (hasWeb) {
+    what = `excerpts from the user's documents and from web pages just retrieved for this question, ${headed}`;
+  } else {
+    what = `excerpts from the user's documents, ${headed}${overviewNote}`;
+  }
 
   const scope = webOnly
     ? []
@@ -226,15 +229,25 @@ const getRangeHint = (tokenCount: number): string =>
 
 const getOutlierNote = (outliers: string[]): string =>
   outliers.length > 0
-    ? ` ${outliers.join(', ')} ${outliers.length > 1 ? 'stand' : 'stands'} far apart from the other figures found — that is more likely a filter default, shipping cost, financing installment, or an unrelated listing than this product's actual price. Do not use it as the low (or high) end of a range, or as "the" price, unless the source text explicitly ties it to this exact product.`
+    ? ` ${outliers.join(', ')} ${outliers.length > 1 ? 'stand' : 'stands'} far apart from the other figures found — that is more likely a filter default, shipping cost, financing installment, a rate/change value, or an unrelated listing than this product's actual price. Do not use it as the low (or high) end of a range, or as "the" price, unless the source text explicitly ties it to this exact product.`
     : '';
+
+const MIN_TOKENS_FOR_OUTLIER_CHECK = 3;
+
+const outliersAmong = (tokens: string[], context: string): string[] => {
+  const pool =
+    tokens.length < MIN_TOKENS_FOR_OUTLIER_CHECK
+      ? [...new Set([...tokens, ...extractCurrencyTokens(context)])]
+      : tokens;
+  return splitPriceOutliers(pool).outliers.filter((o) => tokens.includes(o));
+};
 
 const getFiguresInstruction = (context: string): string => {
   const tags = [...context.matchAll(ANSWERS_TAG)];
   if (tags.length < 2) {
     const tokens = figureList(context);
     if (tokens.length === 0) return '';
-    const { outliers } = splitPriceOutliers(tokens);
+    const outliers = outliersAmong(tokens, context);
     return `Figures found in the sources: ${tokens.join(', ')}. State a price or amount only if it matches one of these — never one from memory.${getRangeHint(tokens.length)}${getOutlierNote(outliers)}`;
   }
 
