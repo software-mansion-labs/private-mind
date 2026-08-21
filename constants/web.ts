@@ -40,7 +40,7 @@ export const WEB_QUERY_CONTEXT_TURNS = 3;
 export const WEB_QUERY_CONTEXT_TURN_MAX_CHARS = 160;
 export const WEB_QUERY_MAX_CHARS = 160;
 export const WEB_QUERY_GATE = true;
-export const WEB_QUERY_MAX_SUBQUERIES = 2;
+export const WEB_QUERY_MAX_SUBQUERIES = 3;
 export const WEB_QUERY_CONCISE_MAX_WORDS = 6;
 export const WEB_QUERY_INTENT_MAX_CHARS = 80;
 
