@@ -45,12 +45,11 @@ const LEAN_SNIPPETS_ONLY = 0.3;
 const clamp01 = (value: number): number =>
   value < 0 ? 0 : value > 1 ? 1 : value;
 
-const bucket = (confidence: number): RetrievalLabel =>
-  confidence >= WEB_EVAL_CONFIDENCE_HIGH
-    ? 'correct'
-    : confidence <= WEB_EVAL_CONFIDENCE_LOW
-      ? 'incorrect'
-      : 'ambiguous';
+const bucket = (confidence: number): RetrievalLabel => {
+  if (confidence >= WEB_EVAL_CONFIDENCE_HIGH) return 'correct';
+  if (confidence <= WEB_EVAL_CONFIDENCE_LOW) return 'incorrect';
+  return 'ambiguous';
+};
 
 const finalize = (confidence: number): RetrievalEvaluation => {
   const label = bucket(confidence);

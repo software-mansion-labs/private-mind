@@ -461,6 +461,17 @@ export const deleteChat = async (
   await db.runAsync(`DELETE FROM chats WHERE id = ?;`, [chatId]);
 };
 
+const thinkingEnabledFromDb = (value: number | null): boolean | undefined => {
+  if (value === 1) return true;
+  if (value === 0) return false;
+  return undefined;
+};
+
+const thinkingEnabledToDb = (value: boolean | undefined): number | null => {
+  if (value === undefined) return null;
+  return value ? 1 : 0;
+};
+
 export const getChatSettings = async (
   db: SQLiteDatabase,
   chatId: number | null
@@ -483,12 +494,7 @@ export const getChatSettings = async (
   return result
     ? {
         systemPrompt: result.systemPrompt,
-        thinkingEnabled:
-          result.thinkingEnabled === 1
-            ? true
-            : result.thinkingEnabled === 0
-              ? false
-              : undefined,
+        thinkingEnabled: thinkingEnabledFromDb(result.thinkingEnabled),
       }
     : {
         systemPrompt: '',
@@ -506,12 +512,7 @@ export const setChatSettings = async (
       JSON.stringify(settings)
     );
   } else {
-    const thinkingValue =
-      settings.thinkingEnabled === undefined
-        ? null
-        : settings.thinkingEnabled
-          ? 1
-          : 0;
+    const thinkingValue = thinkingEnabledToDb(settings.thinkingEnabled);
 
     await db.runAsync(
       `
