@@ -4,6 +4,8 @@ import {
   planWebSearch,
   sanitizeSearchQuery,
   extractSiteRestriction,
+  carryReferentIntoQuery,
+  asksAboutFactualEntity,
 } from '../utils/web/buildSearchQuery';
 
 const history = [
@@ -261,6 +263,53 @@ describe('planWebSearch', () => {
     expect(plan).toEqual({
       needsSearch: false,
       intent: 'write a poem',
+      queries: [],
+    });
+  });
+
+  it('overrides needs_search=false for a question naming a specific entity (live-found Pixel gap — F31)', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": false, "intent": "elon musk children", "queries": []}'
+      );
+    const plan = await planWebSearch('ile dzieci ma Elon Musk', [], generate, {
+      today: TODAY,
+    });
+    expect(plan.needsSearch).toBe(true);
+    expect(plan.queries).toEqual(['ile dzieci ma Elon Musk']);
+  });
+
+  it('overrides needs_search=false for a bare-role follow-up about a real office (F31)', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": false, "intent": "president children", "queries": []}'
+      );
+    const plan = await planWebSearch(
+      'wypisz imiona wszystkich dzieci prezydenta',
+      [],
+      generate,
+      { today: TODAY }
+    );
+    expect(plan.needsSearch).toBe(true);
+    expect(plan.queries).toEqual([
+      'wypisz imiona wszystkich dzieci prezydenta',
+    ]);
+  });
+
+  it('still honors needs_search=false when nothing names a specific entity', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": false, "intent": "casual greeting", "queries": []}'
+      );
+    const plan = await planWebSearch('hej, jak leci?', [], generate, {
+      today: TODAY,
+    });
+    expect(plan).toEqual({
+      needsSearch: false,
+      intent: 'casual greeting',
       queries: [],
     });
   });
@@ -543,5 +592,124 @@ describe('planWebSearch', () => {
       );
       expect(plan.queries).toEqual(['league champion 2025']);
     });
+  });
+});
+
+describe('carryReferentIntoQuery', () => {
+  const withPresident = [
+    { role: 'user', content: 'kto jest prezydentem usa?' },
+    {
+      role: 'assistant',
+      content: 'Prezydentem USA jest obecnie Donald Trump.',
+    },
+  ];
+
+  it('splices in the most recently named entity for a bare-role follow-up', () => {
+    expect(
+      carryReferentIntoQuery('ile dzieci ma prezydent?', withPresident)
+    ).toBe('ile dzieci ma prezydent? Donald Trump');
+  });
+
+  it('does the same for an English pronoun follow-up', () => {
+    const withCeo = [
+      { role: 'user', content: 'who is the CEO of Tesla?' },
+      { role: 'assistant', content: 'The CEO of Tesla is Elon Musk.' },
+    ];
+    expect(carryReferentIntoQuery('how many kids does he have?', withCeo)).toBe(
+      'how many kids does he have? Elon Musk'
+    );
+  });
+
+  it('leaves a query alone when it already names someone', () => {
+    expect(
+      carryReferentIntoQuery('ile dzieci ma Donald Trump?', withPresident)
+    ).toBe('ile dzieci ma Donald Trump?');
+  });
+
+  it('leaves a query alone with no referent marker at all', () => {
+    expect(
+      carryReferentIntoQuery('jaka jest cena bitcoina?', withPresident)
+    ).toBe('jaka jest cena bitcoina?');
+  });
+
+  it('leaves a query alone when history has no named entity to carry', () => {
+    const smallTalk = [
+      { role: 'user', content: 'hej, jak leci?' },
+      { role: 'assistant', content: 'Wszystko dobrze, dzięki!' },
+    ];
+    expect(carryReferentIntoQuery('ile ma lat prezydent?', smallTalk)).toBe(
+      'ile ma lat prezydent?'
+    );
+  });
+
+  it('prefers the most recent entity over an earlier one', () => {
+    const twoPresidents = [
+      { role: 'user', content: 'kto jest prezydentem Francji?' },
+      {
+        role: 'assistant',
+        content: 'Prezydentem Francji jest Emmanuel Macron.',
+      },
+      { role: 'user', content: 'a kto jest prezydentem USA?' },
+      { role: 'assistant', content: 'Prezydentem USA jest Donald Trump.' },
+    ];
+    expect(carryReferentIntoQuery('ile ma lat prezydent?', twoPresidents)).toBe(
+      'ile ma lat prezydent? Donald Trump'
+    );
+  });
+
+  it('is wired end to end through planWebSearch in verbatim mode', async () => {
+    const generate = jest.fn();
+    const plan = await planWebSearch(
+      'ile dzieci ma prezydent?',
+      withPresident,
+      generate,
+      { rewrite: false }
+    );
+    expect(generate).not.toHaveBeenCalled();
+    expect(plan.queries).toEqual(['ile dzieci ma prezydent? Donald Trump']);
+  });
+
+  it('also carries the referent into a query the LLM planner itself produced (F30 — live-found gap, "how many children does the president have" retrieved Joe Biden pages under a Trump follow-up)', async () => {
+    const generate = jest.fn().mockResolvedValue(
+      JSON.stringify({
+        needs_search: true,
+        intent: "the president's children and wife",
+        queries: [
+          'how many children does the president have',
+          "name of the president's wife",
+        ],
+      })
+    );
+    const plan = await planWebSearch(
+      'ile dzieci ma prezydent i jak nazywa sie jego zona?',
+      withPresident,
+      generate
+    );
+    expect(plan.queries).toEqual([
+      'how many children does the president have Donald Trump',
+      "name of the president's wife Donald Trump",
+    ]);
+  });
+});
+
+describe('asksAboutFactualEntity', () => {
+  it('flags a query naming a specific person', () => {
+    expect(asksAboutFactualEntity('ile dzieci ma Elon Musk')).toBe(true);
+  });
+
+  it('flags a bare role/title with no name attached', () => {
+    expect(asksAboutFactualEntity('wypisz imiona dzieci prezydenta')).toBe(
+      true
+    );
+    expect(asksAboutFactualEntity('who is the CEO right now?')).toBe(true);
+  });
+
+  it('does not flag ordinary chit-chat with no entity', () => {
+    expect(asksAboutFactualEntity('hej, jak leci?')).toBe(false);
+    expect(asksAboutFactualEntity('write me a poem about the sea')).toBe(false);
+  });
+
+  it('does not flag a single capitalized word (sentence-initial capitalization)', () => {
+    expect(asksAboutFactualEntity('Dziękuję za pomoc!')).toBe(false);
   });
 });
