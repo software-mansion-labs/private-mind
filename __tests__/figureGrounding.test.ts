@@ -52,6 +52,24 @@ describe('extractCurrencyTokens', () => {
       '$1,901.25',
     ]);
   });
+
+  it("recognizes currencies from the app's top-language markets (F28)", () => {
+    expect(extractCurrencyTokens('Price: 4,999 INR today')).toEqual([
+      '4,999 INR',
+    ]);
+    expect(extractCurrencyTokens('Price: 500 PKR today')).toEqual(['500 PKR']);
+    expect(extractCurrencyTokens('Price: 199 BRL today')).toEqual(['199 BRL']);
+    expect(extractCurrencyTokens('Цена: 1990 RUB сегодня')).toEqual([
+      '1990 RUB',
+    ]);
+    expect(extractCurrencyTokens('价格：299 CNY 今天')).toEqual(['299 CNY']);
+    expect(extractCurrencyTokens('Precio: 1999 MXN hoy')).toEqual(['1999 MXN']);
+    expect(extractCurrencyTokens('السعر: 199 SAR اليوم')).toEqual(['199 SAR']);
+    expect(extractCurrencyTokens('₹4,999 for the annual plan')).toEqual([
+      '₹4,999',
+    ]);
+    expect(extractCurrencyTokens('₽1990 today')).toEqual(['₽1990']);
+  });
 });
 
 describe('extractPriceStatementTokens', () => {

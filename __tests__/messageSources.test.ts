@@ -1,6 +1,6 @@
 import {
   assembleSourceDocuments,
-  isCircularNonAnswer,
+  detectGroundingCaveats,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
   looksLikeNoAnswer,
@@ -8,9 +8,6 @@ import {
   pickCitationsByAnswer,
   restrictCitationsToContext,
   visibleAnswer,
-  withConversionGroundingCaveat,
-  withFigureGroundingCaveat,
-  withTrendGroundingCaveat,
   type SourceRow,
 } from '../utils/messageSources';
 import { SourceDocument } from '../database/chatRepository';
@@ -588,101 +585,113 @@ describe('looksLikeNoAnswer', () => {
   });
 });
 
-describe('withFigureGroundingCaveat', () => {
-  it('appends a caveat when the answer states a figure absent from the context', () => {
-    const context = 'Ethereum Price: $1,901.25 (0.20%) | ETH';
-    const answer = 'Aktualna cena Ethereum wynosi około $50,000 USD.';
-    const result = withFigureGroundingCaveat(answer, context);
-    expect(result).toContain(answer);
-    expect(result).toContain('could not be verified');
+describe('detectGroundingCaveats', () => {
+  describe('figure caveat', () => {
+    it('flags an answer that states a figure absent from the context', () => {
+      const context = 'Ethereum Price: $1,901.25 (0.20%) | ETH';
+      const answer = 'Aktualna cena Ethereum wynosi około $50,000 USD.';
+      expect(detectGroundingCaveats(answer, undefined, context)).toEqual([
+        'figure',
+      ]);
+    });
+
+    it('does not flag an answer whose figure matches the context', () => {
+      const context = 'Bitcoin price today: $64,146.36 USD.';
+      const answer = 'Aktualna cena Bitcoin wynosi około $64,146.36 USD.';
+      expect(detectGroundingCaveats(answer, undefined, context)).toEqual([]);
+    });
+
+    it('does not flag an answer with no currency figure', () => {
+      const answer = 'It is sunny in Warsaw today.';
+      expect(
+        detectGroundingCaveats(answer, undefined, 'Some context.')
+      ).toEqual([]);
+    });
   });
 
-  it('leaves the answer untouched when its figure matches the context', () => {
-    const context = 'Bitcoin price today: $64,146.36 USD.';
-    const answer = 'Aktualna cena Bitcoin wynosi około $64,146.36 USD.';
-    expect(withFigureGroundingCaveat(answer, context)).toBe(answer);
-  });
-
-  it('leaves the answer untouched when it states no currency figure', () => {
-    const answer = 'It is sunny in Warsaw today.';
-    expect(withFigureGroundingCaveat(answer, 'Some context.')).toBe(answer);
-  });
-});
-
-describe('withTrendGroundingCaveat', () => {
-  const question = 'Ktory zyskal wiecej procentowo w tym miesiacu?';
-  const context =
-    'Bitcoin price today: $64,146.36. Ethereum price today: $1,899.62.';
-
-  it('appends a caveat when the model asserts a trend claim with no change data in context', () => {
-    const answer = 'Bitcoin zyskał więcej procentowo w tym miesiącu.';
-    const result = withTrendGroundingCaveat(answer, question, context);
-    expect(result).toContain(answer);
-    expect(result).toContain('not grounded');
-  });
-
-  it('leaves the answer untouched when the context has period-matched change data', () => {
-    const answer = 'Bitcoin zyskał więcej procentowo w tym miesiącu.';
-    const grounded =
-      'Bitcoin is up 12% this month, Ethereum is up 4% this month.';
-    expect(withTrendGroundingCaveat(answer, question, grounded)).toBe(answer);
-  });
-
-  it('leaves the answer untouched when it makes no comparative trend claim', () => {
-    const answer =
+  describe('trend caveat', () => {
+    const question = 'Ktory zyskal wiecej procentowo w tym miesiacu?';
+    const context =
       'Bitcoin price today: $64,146.36. Ethereum price today: $1,899.62.';
-    expect(withTrendGroundingCaveat(answer, question, context)).toBe(answer);
+
+    it('flags a trend claim with no change data in context', () => {
+      const answer = 'Bitcoin zyskał więcej procentowo w tym miesiącu.';
+      expect(detectGroundingCaveats(answer, question, context)).toEqual([
+        'trend',
+      ]);
+    });
+
+    it('does not flag it when the context has period-matched change data', () => {
+      const answer = 'Bitcoin zyskał więcej procentowo w tym miesiącu.';
+      const grounded =
+        'Bitcoin is up 12% this month, Ethereum is up 4% this month.';
+      expect(detectGroundingCaveats(answer, question, grounded)).toEqual([]);
+    });
+
+    it('does not flag an answer with no comparative trend claim', () => {
+      const answer =
+        'Bitcoin price today: $64,146.36. Ethereum price today: $1,899.62.';
+      expect(detectGroundingCaveats(answer, question, context)).toEqual([]);
+    });
+
+    it('does not flag it when the question was not about a trend', () => {
+      const answer = 'Bitcoin zyskał więcej procentowo w tym miesiącu.';
+      expect(
+        detectGroundingCaveats(answer, 'What is the bitcoin price?', context)
+      ).toEqual([]);
+    });
   });
 
-  it('leaves the answer untouched when the question was not about a trend', () => {
-    const answer = 'Bitcoin zyskał więcej procentowo w tym miesiącu.';
+  describe('conversion caveat', () => {
+    const question = 'And how much is that in euros?';
+    const noRateContext =
+      '1 USD to EUR - Convert US dollars to Euros | Wise. ' +
+      '1 Euro to US dollars Exchange Rate. Convert EUR/USD - Wise.';
+
+    it('flags a conversion figure with no real rate in context', () => {
+      const answer = 'The price of 1 USD in euros is 1.00.';
+      expect(detectGroundingCaveats(answer, question, noRateContext)).toEqual([
+        'conversion',
+      ]);
+    });
+
+    it('does not flag it when the context has a genuine conversion rate', () => {
+      const answer = 'That is approximately €1,450.00.';
+      const grounded =
+        '1 USD = 0.92 EUR as of today, so that converts to approximately €1,450.00.';
+      expect(detectGroundingCaveats(answer, question, grounded)).toEqual([]);
+    });
+
+    it('does not flag an answer with no currency figure', () => {
+      const answer = 'I do not have a verified exchange rate to convert that.';
+      expect(detectGroundingCaveats(answer, question, noRateContext)).toEqual(
+        []
+      );
+    });
+
+    it('does not flag it when the question was not a conversion follow-up', () => {
+      const answer = 'The price of 1 USD in euros is 1.00.';
+      expect(
+        detectGroundingCaveats(
+          answer,
+          'What is the current gold price?',
+          noRateContext
+        )
+      ).toEqual([]);
+    });
+  });
+
+  it('can flag more than one caveat kind at once', () => {
+    const answer =
+      'Bitcoin zyskał więcej procentowo w tym miesiącu i teraz kosztuje $50,000.';
+    const context = 'Bitcoin price today: $64,146.36 USD.';
     expect(
-      withTrendGroundingCaveat(answer, 'What is the bitcoin price?', context)
-    ).toBe(answer);
-  });
-});
-
-describe('withConversionGroundingCaveat', () => {
-  const question = 'And how much is that in euros?';
-  const noRateContext =
-    '1 USD to EUR - Convert US dollars to Euros | Wise. ' +
-    '1 Euro to US dollars Exchange Rate. Convert EUR/USD - Wise.';
-
-  it('appends a caveat when the answer states a conversion figure with no real rate in context', () => {
-    const answer = 'The price of 1 USD in euros is 1.00.';
-    const result = withConversionGroundingCaveat(
-      answer,
-      question,
-      noRateContext
-    );
-    expect(result).toContain(answer);
-    expect(result).toContain('not grounded');
-  });
-
-  it('leaves the answer untouched when the context has a genuine conversion rate', () => {
-    const answer = 'That is approximately €1,450.00.';
-    const grounded = '1 USD = 0.92 EUR as of today.';
-    expect(withConversionGroundingCaveat(answer, question, grounded)).toBe(
-      answer
-    );
-  });
-
-  it('leaves the answer untouched when it states no currency figure', () => {
-    const answer = 'I do not have a verified exchange rate to convert that.';
-    expect(withConversionGroundingCaveat(answer, question, noRateContext)).toBe(
-      answer
-    );
-  });
-
-  it('leaves the answer untouched when the question was not a conversion follow-up', () => {
-    const answer = 'The price of 1 USD in euros is 1.00.';
-    expect(
-      withConversionGroundingCaveat(
+      detectGroundingCaveats(
         answer,
-        'What is the current gold price?',
-        noRateContext
+        'Ktory zyskal wiecej procentowo w tym miesiacu?',
+        context
       )
-    ).toBe(answer);
+    ).toEqual(['figure', 'trend']);
   });
 });
 
@@ -725,50 +734,6 @@ describe('isQuestionEchoAnswer', () => {
     const question = 'Ile wazy i jakie ma wymiary?';
     const answer = '<think>Ile wazy i jakie ma wymiary?';
     expect(isQuestionEchoAnswer(answer, question)).toBe(false);
-  });
-});
-
-describe('isCircularNonAnswer', () => {
-  const circularAnswer =
-    'Najtańszy bilet oferuje linia lotnicza, która jest przedstawiana w ' +
-    'źródle 2 jako "dziesiątka linii lotniczych". Źródło 1 nie podaje ' +
-    'konkretnego nazwiska linii lotniczych, ale źródło 2 podaje, że ' +
-    'porównuje ceny linii lotniczych. Dlatego, że źródło 2 opisuje, że ' +
-    'porównuje ceny linii lotniczych, to linia lotnicza, która oferuje ' +
-    'najtańszy bilet, jest przedstawiona w źródle 2.';
-
-  it('flags the captured live failure text', () => {
-    expect(isCircularNonAnswer(circularAnswer)).toBe(true);
-  });
-
-  it('flags the English-language shape of the same pattern', () => {
-    const answer =
-      'The cheapest airline is the one named in source 2. Source 1 does ' +
-      'not name an airline, but source 2 compares airline prices, so the ' +
-      'cheapest airline is presented in source 2.';
-    expect(isCircularNonAnswer(answer)).toBe(true);
-  });
-
-  it('does not flag a genuine answer that names a real entity', () => {
-    const answer = 'Najtańsze bilety oferuje Ryanair, od 128 zł.';
-    expect(isCircularNonAnswer(answer)).toBe(false);
-  });
-
-  it('does not flag a single, ordinary "source" mention', () => {
-    const answer = 'Zgodnie ze źródłem, najtańsze bilety oferuje Ryanair.';
-    expect(isCircularNonAnswer(answer)).toBe(false);
-  });
-
-  it('does not flag an answer with two source mentions (below the threshold)', () => {
-    const answer =
-      'Źródło 1 podaje 150 zł, a źródło 2 podaje 180 zł za bilet Ryanair.';
-    expect(isCircularNonAnswer(answer)).toBe(false);
-  });
-
-  it('only counts mentions outside the think block', () => {
-    const answer =
-      '<think>źródło źródło źródło</think>\n\nNajtańsze bilety oferuje Ryanair.';
-    expect(isCircularNonAnswer(answer)).toBe(false);
   });
 });
 

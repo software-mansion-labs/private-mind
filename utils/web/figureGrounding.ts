@@ -3,8 +3,9 @@ export const VERIFIED_PRODUCT_MARKER = '[Verified product data]';
 export const hasVerifiedProductData = (context: string): boolean =>
   context.includes(VERIFIED_PRODUCT_MARKER);
 
-const CURRENCY_WORD = '(?:usd|eur|gbp|pln|zl|zł|chf|jpy|czk)';
-const CURRENCY_TOKEN_SRC = `[$€£¥]\\s?\\d(?:[\\d\\s.,]*\\d)?|\\d(?:[\\d\\s.,]*\\d)?\\s?${CURRENCY_WORD}(?![\\p{L}\\p{N}])`;
+const CURRENCY_WORD =
+  '(?:usd|eur|gbp|pln|zl|zł|chf|jpy|czk|inr|pkr|brl|rub|cny|rmb|mxn|sar|aed|irr)';
+const CURRENCY_TOKEN_SRC = `[$€£¥₹₽]\\s?\\d(?:[\\d\\s.,]*\\d)?|\\d(?:[\\d\\s.,]*\\d)?\\s?${CURRENCY_WORD}(?![\\p{L}\\p{N}])`;
 const CURRENCY_TOKEN = new RegExp(CURRENCY_TOKEN_SRC, 'giu');
 
 const PRICE_STATEMENT = new RegExp(

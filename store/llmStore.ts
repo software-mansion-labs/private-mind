@@ -19,14 +19,11 @@ import Toast from 'react-native-toast-message';
 import { Feedback } from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import {
-  isCircularNonAnswer,
+  detectGroundingCaveats,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
   pickCitationsByAnswer,
   restrictCitationsToContext,
-  withConversionGroundingCaveat,
-  withFigureGroundingCaveat,
-  withTrendGroundingCaveat,
 } from '../utils/messageSources';
 import { sourcesPresentInContext } from '../utils/contextUtils';
 import { normalizeModelText } from '../utils/normalizeModelText';
@@ -407,9 +404,6 @@ const describeGenerationFailure = (
   if (!finalResponse) return 'The model returned an empty response';
   if (isQuestionEchoAnswer(finalResponse, currentQuestion)) {
     return 'The model echoed the question back with no actual answer';
-  }
-  if (isCircularNonAnswer(finalResponse)) {
-    return 'The model produced a circular non-answer with no actual content';
   }
   return 'The model answered in the wrong language';
 };
@@ -805,7 +799,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       if (
         finalResponse &&
         !isQuestionEchoAnswer(finalResponse, currentQuestion) &&
-        !isCircularNonAnswer(finalResponse) &&
         !isWrongLanguageAnswer(finalResponse, currentQuestion)
       ) {
         const effectiveLast = effectivePrepared.at(-1);
@@ -827,21 +820,18 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           preferredSourceDocuments ?? [],
           sourcesPresentInContext(effectiveContent)
         );
-        const contentToPersist = context.some((chunk) => chunk.trim())
-          ? withConversionGroundingCaveat(
-              withTrendGroundingCaveat(
-                withFigureGroundingCaveat(finalResponse, effectiveContent),
-                currentQuestion,
-                effectiveContent
-              ),
+        const groundingCaveats = context.some((chunk) => chunk.trim())
+          ? detectGroundingCaveats(
+              finalResponse,
               currentQuestion,
               effectiveContent
             )
-          : finalResponse;
+          : [];
         const assistantMessageId = await persistMessage(db, {
           ...assistantPlaceholder,
-          content: contentToPersist,
+          content: finalResponse,
           sourceDocuments: citedSourceDocuments,
+          groundingCaveats,
           tokensPerSecond: responsePerformance.tokensPerSecond,
           timeToFirstToken: responsePerformance.timeToFirstToken,
         });
@@ -851,8 +841,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             assistantMessage: {
               ...assistantPlaceholder,
               id: assistantMessageId,
-              content: contentToPersist,
+              content: finalResponse,
               sourceDocuments: citedSourceDocuments,
+              groundingCaveats,
               tokensPerSecond: responsePerformance.tokensPerSecond,
               timeToFirstToken: responsePerformance.timeToFirstToken,
             },

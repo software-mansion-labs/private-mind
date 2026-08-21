@@ -34,6 +34,8 @@ export type ChatSettings = {
   thinkingEnabled?: boolean;
 };
 
+export type GroundingCaveatKind = 'figure' | 'trend' | 'conversion';
+
 export type Message = {
   id: number;
   localId?: number;
@@ -44,6 +46,7 @@ export type Message = {
   imagePath?: string;
   documentName?: string;
   sourceDocuments?: SourceDocument[];
+  groundingCaveats?: GroundingCaveatKind[];
   tokensPerSecond?: number;
   timeToFirstToken?: number;
   timestamp: number;
@@ -66,8 +69,33 @@ export type SourceDocument = {
 export const sourceKind = (source: SourceDocument): SourceKind =>
   source.kind ?? 'document';
 
-type RawMessage = Omit<Message, 'sourceDocuments'> & {
+type RawMessage = Omit<Message, 'sourceDocuments' | 'groundingCaveats'> & {
   sourceDocuments?: string | null;
+  groundingCaveats?: string | null;
+};
+
+const GROUNDING_CAVEAT_KINDS: GroundingCaveatKind[] = [
+  'figure',
+  'trend',
+  'conversion',
+];
+
+const parseGroundingCaveats = (
+  groundingCaveats?: string | null
+): GroundingCaveatKind[] | undefined => {
+  if (!groundingCaveats) return undefined;
+
+  try {
+    const parsed = JSON.parse(groundingCaveats);
+    if (!Array.isArray(parsed)) return undefined;
+
+    const kinds = parsed.filter((kind): kind is GroundingCaveatKind =>
+      GROUNDING_CAVEAT_KINDS.includes(kind)
+    );
+    return kinds.length > 0 ? kinds : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 const parseSourceDocuments = (
@@ -182,6 +210,7 @@ export const getChatMessages = async (
   return messages.map((message) => ({
     ...message,
     sourceDocuments: parseSourceDocuments(message.sourceDocuments),
+    groundingCaveats: parseGroundingCaveats(message.groundingCaveats),
   }));
 };
 
@@ -190,7 +219,7 @@ export const persistMessage = async (
   message: Omit<Message, 'id' | 'timestamp'>
 ): Promise<number> => {
   const result = await db.runAsync(
-    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
     [
       message.chatId,
       message.role,
@@ -202,6 +231,9 @@ export const persistMessage = async (
       message.documentName || null,
       message.sourceDocuments?.length
         ? JSON.stringify(message.sourceDocuments)
+        : null,
+      message.groundingCaveats?.length
+        ? JSON.stringify(message.groundingCaveats)
         : null,
     ]
   );
@@ -233,7 +265,7 @@ export const importMessages = async (
   for (let i = 0; i < messages.length; i += IMPORT_BATCH_SIZE) {
     const batch = messages.slice(i, i + IMPORT_BATCH_SIZE);
     const placeholders = batch
-      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .join(', ');
     const flattenedValues = batch.flatMap((msg) => [
       chatId,
@@ -246,9 +278,12 @@ export const importMessages = async (
       msg.imagePath ?? null,
       msg.documentName ?? null,
       msg.sourceDocuments?.length ? JSON.stringify(msg.sourceDocuments) : null,
+      msg.groundingCaveats?.length
+        ? JSON.stringify(msg.groundingCaveats)
+        : null,
     ]);
     await db.runAsync(
-      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments) VALUES ${placeholders}`,
+      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats) VALUES ${placeholders}`,
       flattenedValues
     );
   }
@@ -287,8 +322,9 @@ const copyMessagesWithIdMap = async (
           timeToFirstToken,
           imagePath,
           documentName,
-          sourceDocuments
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          sourceDocuments,
+          groundingCaveats
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         chatId,
@@ -302,6 +338,9 @@ const copyMessagesWithIdMap = async (
         msg.documentName ?? null,
         msg.sourceDocuments?.length
           ? JSON.stringify(msg.sourceDocuments)
+          : null,
+        msg.groundingCaveats?.length
+          ? JSON.stringify(msg.groundingCaveats)
           : null,
       ]
     );
