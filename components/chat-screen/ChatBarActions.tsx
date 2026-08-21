@@ -1,7 +1,6 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import SendIcon from '../../assets/icons/send_icon.svg';
 import PauseIcon from '../../assets/icons/pause_icon.svg';
@@ -10,6 +9,9 @@ import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import LightBulbCrossedIcon from '../../assets/icons/light_bulb_crossed.svg';
 import LightBulbIcon from '../../assets/icons/light_bulb.svg';
 import PlusIcon from '../../assets/icons/plus.svg';
+import WebIcon from '../../assets/icons/web.svg';
+import WebCrossedIcon from '../../assets/icons/web_crossed.svg';
+import ChatBarToggle from './ChatBarToggle';
 import { Feedback } from '../../utils/Feedback';
 import Toast from 'react-native-toast-message';
 
@@ -26,6 +28,8 @@ interface Props {
   onSpeechInput: () => void;
   thinkingEnabled: boolean;
   onThinkingToggle?: () => void;
+  webSearchEnabled?: boolean;
+  onWebSearchToggle?: () => void;
 }
 
 const ChatBarActions = ({
@@ -41,6 +45,8 @@ const ChatBarActions = ({
   onSpeechInput,
   thinkingEnabled = false,
   onThinkingToggle,
+  webSearchEnabled = false,
+  onWebSearchToggle,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const isResponding = isGenerating || isProcessingPrompt;
@@ -134,33 +140,25 @@ const ChatBarActions = ({
             testID="attach-btn"
           />
         </View>
-        <TouchableOpacity
+        <ChatBarToggle
+          label="Think"
+          enabled={thinkingEnabled}
+          iconOn={LightBulbIcon}
+          iconOff={LightBulbCrossedIcon}
+          onToggle={() => onThinkingToggle?.()}
           disabled={disabled}
-          onPress={() => {
-            if (thinkingEnabled) {
-              Feedback.toggleOff();
-            } else {
-              Feedback.toggleOn();
-            }
-            onThinkingToggle?.();
-          }}
-          style={[styles.toggleButton, !thinkingEnabled && { opacity: 0.4 }]}
-        >
-          {!thinkingEnabled ? (
-            <LightBulbCrossedIcon
-              style={{ color: theme.text.onChatBar }}
-              width={20}
-              height={20}
-            />
-          ) : (
-            <LightBulbIcon
-              style={{ color: theme.text.onChatBar }}
-              width={20}
-              height={20}
-            />
-          )}
-          <Text style={styles.toggleText}>Think</Text>
-        </TouchableOpacity>
+        />
+        {onWebSearchToggle ? (
+          <ChatBarToggle
+            label="Web"
+            enabled={webSearchEnabled}
+            iconOn={WebIcon}
+            iconOff={WebCrossedIcon}
+            onToggle={onWebSearchToggle}
+            disabled={disabled}
+            testID="web-search-toggle"
+          />
+        ) : null}
       </View>
 
       {renderButton()}
@@ -188,21 +186,5 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       gap: 8,
       alignItems: 'center',
-    },
-    toggleButton: {
-      padding: 8,
-      borderRadius: 9999,
-      borderWidth: 1,
-      borderColor: theme.text.onChatBar,
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 4,
-      height: 36,
-    },
-    toggleText: {
-      color: theme.text.onChatBar,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
     },
   });

@@ -1,60 +1,37 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Keyboard, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useModelSwitch } from './useModelSwitch';
-import { router } from 'expo-router';
+import { useSendChatMessage } from './useSendChatMessage';
+import { useChatScreenLayout } from './useChatScreenLayout';
+import { useChatScreenActions } from './useChatScreenActions';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
 } from 'react-native-reanimated';
-import type { MessagesHandle, UserMessageActionMenuState } from './Messages';
+import type { MessagesHandle } from './Messages';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
-import { useModelStore } from '../../store/modelStore';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import {
-  Chat,
-  ChatSettings,
-  checkIfChatExists,
-  setChatSettings,
-  type Message,
-  type SourceDocument,
-} from '../../database/chatRepository';
+import { Chat, type Message } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
 import ChatBar from './ChatBar';
 import { TopFade } from './TopFade';
 import UserMessageActionMenu from './UserMessageActionMenu';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
-import { mixColors, Theme } from '../../styles/colors';
+import { Theme } from '../../styles/colors';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useVectorStore } from '../../context/VectorStoreContext';
-import { Attachment } from '../../hooks/useAttachment';
-import { buildMessageSources } from '../../utils/messageSources';
+import { WEB_SEARCH_ENABLED } from '../../constants/web';
 import { useLegacyChatNotice } from '../../hooks/useLegacyChatNotice';
-import { useSourceStore } from '../../store/sourceStore';
 import useChatSettings from '../../hooks/useChatSettings';
-import Toast from 'react-native-toast-message';
-import { persistImage } from '../../utils/persistImage';
-import { toChatTitle } from '../../utils/chatLabel';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
-import { stripThinkMarkers } from '../../utils/thinking';
 import useChatBranching from '../../hooks/useChatBranching';
-import {
-  LAYOUT_HEIGHT_CHANGE_THRESHOLD,
-  USER_ACTION_MENU_OFFSET,
-  USER_MESSAGE_BOTTOM_SPACING,
-} from '../../constants/chat-screen';
+import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
 
 interface Props {
   chatId: number;
@@ -85,7 +62,6 @@ export default function ChatScreen({
     setInput: (text: string) => void;
   }>(null);
   const messagesRef = useRef<MessagesHandle>(null);
-  const rootRef = useRef<View>(null);
   const modelBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const db = useSQLiteContext();
 
@@ -93,22 +69,11 @@ export default function ChatScreen({
   const {
     isLoading: isModelLoading,
     isGenerating,
-    sendChatMessage,
     loadModel,
-    model: loadedModel,
-    runWithModelOffloaded,
     generationError,
     retryLastGeneration,
   } = useLLMStore();
-  const { getModelById } = useModelStore();
-  const {
-    addChat,
-    updateLastUsed,
-    setChatModel,
-    enableSource,
-    phantomChat,
-    setPhantomChatSettings,
-  } = useChatStore();
+  const { setChatModel, phantomChat } = useChatStore();
 
   const { styles, theme } = useThemedStyles(createStyles);
   const headerHeight = useHeaderHeight();
@@ -132,9 +97,22 @@ export default function ChatScreen({
     extraContentPadding.set(0);
     blankSpace.set(0);
   }, [model?.id, extraContentPadding, blankSpace]);
-  const [rootFrame, setRootFrame] = useState({ x: 0, y: 0, height: 0 });
-  const [userActionMenu, setUserActionMenu] =
-    useState<UserMessageActionMenuState>({ isOpen: false });
+
+  const isEmpty = !isLoading && messageHistory.length === 0;
+  const hasMessages = isLoading || messageHistory.length > 0;
+
+  const {
+    rootRef,
+    handleRootLayout,
+    userActionMenu,
+    setUserActionMenu,
+    userActionMenuPosition,
+    gradientStyle,
+    fadeBottom,
+    topFadeAnchor,
+    emptyFadeColors,
+  } = useChatScreenLayout({ isEmpty, headerTitleBottom, headerHeight, theme });
+
   const { branchMarkers, handleForkMessage, handleBranchMarkerPress } =
     useChatBranching({
       chatId,
@@ -162,17 +140,7 @@ export default function ChatScreen({
     Keyboard.dismiss();
     setUserActionMenu({ isOpen: false });
     modelBottomSheetModalRef.current?.present();
-  }, []);
-
-  const handleRootLayout = useCallback(() => {
-    rootRef.current?.measureInWindow((x, y, _width, height) => {
-      setRootFrame((current) =>
-        current.x === x && current.y === y && current.height === height
-          ? current
-          : { x, y, height }
-      );
-    });
-  }, []);
+  }, [setUserActionMenu]);
 
   const handleChatBarHeightChange = useCallback((height: number) => {
     setChatBarHeight((current) =>
@@ -189,131 +157,6 @@ export default function ChatScreen({
       openModelSheetRef.current = null;
     };
   }, [openModelSheetRef, handlePresentModelSheet]);
-
-  const handleSendMessage = async (
-    userInput: string,
-    imagePath?: string,
-    attachments?: Attachment[]
-  ) => {
-    const hasDocuments = attachments?.some((a) => a.type === 'document');
-    if (
-      (!userInput.trim() && !imagePath && !hasDocuments) ||
-      isGenerating ||
-      isModelLoading ||
-      isSwitching
-    )
-      return;
-
-    Keyboard.dismiss();
-    messagesRef.current?.onMessageSent();
-
-    let targetChatId = chatId!;
-    const isNewChat = !(await checkIfChatExists(db, targetChatId));
-    if (isNewChat) {
-      const docName = attachments?.find((a) => a.type === 'document')?.name;
-      const titleSource =
-        stripThinkMarkers(userInput).trim() || docName || 'New chat';
-      const newChatId = await addChat(toChatTitle(titleSource), model!.id);
-      if (!newChatId) {
-        messagesRef.current?.cancelMessageSent();
-        return;
-      }
-      targetChatId = newChatId;
-    }
-
-    let persistedImagePath: string | undefined = imagePath;
-    if (imagePath) {
-      try {
-        persistedImagePath = await persistImage(imagePath);
-      } catch (error) {
-        console.error('Failed to persist image attachment:', error);
-        Toast.show({
-          type: 'defaultToast',
-          text1: 'Failed to save image attachment.',
-        });
-        messagesRef.current?.cancelMessageSent();
-        return;
-      }
-    }
-
-    updateLastUsed(targetChatId);
-
-    const settings: ChatSettings = {
-      systemPrompt: chatSettings.systemPrompt,
-      thinkingEnabled: chatSettings.thinkingEnabled,
-    };
-    const docAttachments =
-      attachments?.filter((a) => a.type === 'document') || [];
-    const docName =
-      docAttachments
-        .map((a) => a.name)
-        .filter(Boolean)
-        .join(', ') || undefined;
-
-    // Deferred so retrieval runs only after the optimistic message is on screen.
-    const buildSources = async () => {
-      const allSources = useSourceStore.getState().sources;
-      const existingSourceIds = new Set(allSources.map((source) => source.id));
-      const attachmentSourceIds = (attachments || [])
-        .filter((a) => a.type === 'document' && a.sourceId)
-        .map((a) => a.sourceId!)
-        .filter((sourceId) => {
-          const exists = existingSourceIds.has(sourceId);
-          if (!exists) {
-            console.warn('Skipping missing attachment source before send', {
-              chatId: targetChatId,
-              sourceId,
-            });
-          }
-          return exists;
-        });
-
-      let context: string[] = [];
-      let sourceDocuments: SourceDocument[] = [];
-      let preferredSourceDocuments: SourceDocument[] = [];
-      if (vectorStore) {
-        const prepareSources = () =>
-          buildMessageSources({
-            userInput,
-            attachmentSourceIds,
-            enabledSources,
-            sources: allSources,
-            vectorStore,
-            embeddings,
-          });
-        ({ context, sourceDocuments, preferredSourceDocuments } = embeddings
-          ? await runWithModelOffloaded(
-              () => embeddings.runWithLoadedModel(prepareSources),
-              { restore: false }
-            )
-          : await prepareSources());
-      }
-
-      // Enable new sources for this chat (persists for future messages)
-      for (const sourceId of attachmentSourceIds) {
-        if (!enabledSources.includes(sourceId)) {
-          await enableSource(targetChatId, sourceId);
-        }
-      }
-
-      return { context, sourceDocuments, preferredSourceDocuments };
-    };
-
-    const generation = sendChatMessage(
-      userInput,
-      targetChatId,
-      buildSources,
-      settings,
-      persistedImagePath,
-      docName
-    );
-
-    if (isNewChat && targetChatId !== chatId) {
-      router.replace(`/chat/${targetChatId}`);
-    }
-
-    await generation;
-  };
 
   const handleSelectModel = async (selectedModel: Model) => {
     try {
@@ -352,58 +195,31 @@ export default function ChatScreen({
     [handleModelSwitchSheetState]
   );
 
-  const handleThinkingToggle = async () => {
-    if (!model?.thinking) {
-      Toast.show({
-        type: 'defaultToast',
-        text1: 'Thinking cannot be enabled for this model.',
-      });
-      return;
-    }
+  const handleSendMessage = useSendChatMessage({
+    chatId,
+    model,
+    messageHistory,
+    chatSettings,
+    enabledSources,
+    vectorStore,
+    embeddings,
+    messagesRef,
+    db,
+    isGenerating,
+    isModelLoading,
+    isSwitching,
+  });
 
-    const previous = chatSettings?.thinkingEnabled;
-    const next = !previous;
-    const newSettings: ChatSettings = {
-      systemPrompt: chatSettings?.systemPrompt || '',
-      thinkingEnabled: next,
-    };
-
-    setSetting('thinkingEnabled', next);
-
-    try {
-      if (phantomChat?.id === chatId) {
-        const chatExists = await checkIfChatExists(db, chatId);
-        if (chatExists) {
-          await setChatSettings(db, chatId, newSettings);
-          return;
-        }
-
-        await setPhantomChatSettings(newSettings);
-      } else {
-        await setChatSettings(db, chatId, newSettings);
-      }
-    } catch (error) {
-      setSetting('thinkingEnabled', previous ?? false);
-      console.error('Failed to update thinking setting:', error);
-    }
-  };
-
-  const handleSelectPrompt = useCallback(
-    async (prompt: string) => {
-      inputRef.current?.setInput(prompt);
-
-      const currentModel =
-        model || (chat?.modelId ? getModelById(chat.modelId) : undefined);
-      if (currentModel?.isDownloaded && loadedModel?.id !== currentModel.id) {
-        try {
-          await loadModel(currentModel);
-        } catch (error) {
-          console.error('Error loading model on prompt selection:', error);
-        }
-      }
-    },
-    [model, loadedModel, loadModel, getModelById, chat?.modelId]
-  );
+  const { handleThinkingToggle, handleWebSearchToggle, handleSelectPrompt } =
+    useChatScreenActions({
+      chatId,
+      chat,
+      model,
+      chatSettings,
+      setSetting,
+      db,
+      inputRef,
+    });
 
   const chatGenerationError =
     generationError?.chatId === chatId ? generationError.message : undefined;
@@ -415,55 +231,9 @@ export default function ChatScreen({
     });
   }, [retryLastGeneration]);
 
-  const isEmpty = !isLoading && messageHistory.length === 0;
-  const hasMessages = isLoading || messageHistory.length > 0;
   const scrollBottomOffset = theme.insets.bottom;
 
   useLegacyChatNotice(messageHistory);
-
-  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
-  const gradientProgress = useSharedValue(isEmpty ? 1 : 0);
-  useEffect(() => {
-    gradientProgress.set(withTiming(isEmpty ? 1 : 0, { duration: 900 }));
-  }, [isEmpty, gradientProgress]);
-  const gradientStyle = useAnimatedStyle(() => ({
-    opacity: gradientProgress.get(),
-    transform: [{ translateY: (1 - gradientProgress.get()) * windowHeight }],
-  }));
-
-  const userActionMenuPosition = useMemo(() => {
-    if (!userActionMenu.isOpen || !userActionMenu.anchor) return null;
-
-    return {
-      top:
-        userActionMenu.anchor.y -
-        rootFrame.y +
-        userActionMenu.anchor.height -
-        USER_MESSAGE_BOTTOM_SPACING +
-        USER_ACTION_MENU_OFFSET,
-      right: Math.max(
-        16,
-        windowWidth -
-          rootFrame.x -
-          (userActionMenu.anchor.x + userActionMenu.anchor.width)
-      ),
-    };
-  }, [rootFrame.x, rootFrame.y, userActionMenu, windowWidth]);
-
-  const fadeBottom =
-    headerTitleBottom !== undefined
-      ? headerTitleBottom - rootFrame.y
-      : undefined;
-  const topFadeAnchor = fadeBottom ?? headerHeight;
-  const emptyFadeColors = useMemo(() => {
-    const sample = (y: number) =>
-      mixColors(
-        theme.bg.softPrimary,
-        theme.bg.main,
-        rootFrame.height > 0 ? y / rootFrame.height : 0
-      );
-    return [sample(0), sample(topFadeAnchor)] as const;
-  }, [rootFrame.height, theme.bg.main, theme.bg.softPrimary, topFadeAnchor]);
 
   return (
     <View
@@ -515,6 +285,10 @@ export default function ChatScreen({
           extraContentPadding={extraContentPadding}
           thinkingEnabled={chatSettings?.thinkingEnabled || false}
           onThinkingToggle={handleThinkingToggle}
+          webSearchEnabled={chatSettings?.webSearchEnabled || false}
+          onWebSearchToggle={
+            WEB_SEARCH_ENABLED ? handleWebSearchToggle : undefined
+          }
           hasMessages={hasMessages}
           disabled={isModelLoading && !isSwitching}
           modelSwitching={isSwitching}

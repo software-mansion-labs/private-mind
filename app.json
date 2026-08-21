@@ -57,7 +57,8 @@
       ],
       "expo-asset",
       "expo-localization",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-web-browser"
     ],
     "newArchEnabled": true,
     "ios": {

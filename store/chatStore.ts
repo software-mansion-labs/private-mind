@@ -19,6 +19,7 @@ import {
   clearPhantomChat,
 } from '../database/sourcesRepository';
 import { maybePromptReview } from '../utils/reviewPrompt';
+import { useWebSearchStore } from './webSearchStore';
 
 interface ChatStore {
   chats: Chat[];
@@ -71,6 +72,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     // Use model-specific system prompt if available, otherwise global default
     const systemPrompt = model?.systemPrompt ?? defaultSettings.systemPrompt;
+
+    useWebSearchStore.getState().clearEnabled(phantomChatId);
 
     set({
       phantomChat: {
@@ -190,6 +193,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (!db) return;
 
     await deleteChat(db, id);
+
+    useWebSearchStore.getState().clearEnabled(id);
 
     set((state) => ({
       chats: state.chats.filter((chat) => chat.id !== id),

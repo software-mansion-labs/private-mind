@@ -1,5 +1,5 @@
-// Manual mock that avoids importing the real module (which needs worklets)
 const RN = require('react-native');
+const React = require('react');
 
 const createAnimatedComponent = (Component: any) => Component;
 
@@ -50,10 +50,18 @@ module.exports = {
   default: Animated,
   ...Animated,
   createAnimatedComponent,
-  useSharedValue: <T>(init: T) => makeSharedValue(init),
+  useSharedValue: <T>(init: T) => {
+    const ref: { current: MockSharedValue<T> | null } = React.useRef(null);
+    if (ref.current === null) ref.current = makeSharedValue(init);
+    return ref.current;
+  },
   useAnimatedStyle: (fn: () => any) => fn(),
   useAnimatedRef: () => ({ current: null }),
   useDerivedValue: <T>(fn: () => T) => makeSharedValue(fn()),
+  useAnimatedReaction: <T>(
+    prepare: () => T,
+    react: (current: T, previous: T | null) => void
+  ) => react(prepare(), null),
   useAnimatedScrollHandler: (fn: any) => fn,
   withTiming: (
     val: any,
@@ -76,7 +84,6 @@ module.exports = {
     inOut: (fn: any) => fn,
     out: (fn: any) => fn,
     in: (fn: any) => fn,
-    bezier: () => (t: any) => t,
   },
   interpolate: (val: any, inputRange: any, outputRange: any) => {
     if (val <= inputRange[0]) return outputRange[0];
@@ -91,5 +98,8 @@ module.exports = {
   LinearTransition: makeAnimationBuilder(),
   FadeIn: makeAnimationBuilder(),
   FadeInDown: makeAnimationBuilder(),
+  FadeInUp: makeAnimationBuilder(),
   FadeOut: makeAnimationBuilder(),
+  FadeOutDown: makeAnimationBuilder(),
+  FadeOutUp: makeAnimationBuilder(),
 };

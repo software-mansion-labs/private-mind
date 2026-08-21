@@ -5,64 +5,69 @@ import { useTheme } from '../../context/ThemeContext';
 import CustomDrawer from '../../components/drawer/CustomDrawer';
 import { getDrawerWidth } from '../../constants/drawer-layout';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import WebScrapeSheet from '../../components/bottomSheets/WebScrapeSheet';
+import { WEB_SEARCH_ENABLED } from '../../constants/web';
 
 const DrawerLayout = () => {
   const { width } = useWindowDimensions();
   const { theme } = useTheme();
 
   return (
-    <Drawer
-      drawerContent={(props) => <CustomDrawer {...props} />}
-      screenOptions={{
-        overlayColor: theme.bg.overlay,
-        swipeEdgeWidth: width,
-        drawerStyle: { width: getDrawerWidth(width) },
-        drawerType: 'slide',
-        headerShadowVisible: false,
-        headerShown: true,
-        headerStyle: {
-          backgroundColor: theme.bg.softPrimary,
-        },
-        headerTitleAlign: 'center',
-        headerTitleStyle: {
-          color: theme.text.primary,
-          fontFamily: fontFamily.medium,
-          fontSize: fontSizes.md,
-        },
-      }}
-    >
-      <Drawer.Screen
-        name="index"
-        options={{
-          title: '',
+    <>
+      <Drawer
+        drawerContent={(props) => <CustomDrawer {...props} />}
+        screenOptions={{
+          overlayColor: theme.bg.overlay,
+          swipeEdgeWidth: width,
+          drawerStyle: { width: getDrawerWidth(width) },
+          drawerType: 'slide',
+          headerShadowVisible: false,
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.bg.softPrimary,
+          },
+          headerTitleAlign: 'center',
+          headerTitleStyle: {
+            color: theme.text.primary,
+            fontFamily: fontFamily.medium,
+            fontSize: fontSizes.md,
+          },
         }}
-      />
-      <Drawer.Screen
-        name="model-hub"
-        options={{
-          title: 'Models',
-        }}
-      />
-      <Drawer.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-        }}
-      />
-      <Drawer.Screen
-        name="benchmark"
-        options={{
-          title: 'Benchmark',
-        }}
-      />
-      <Drawer.Screen
-        name="chat/[id]"
-        options={{
-          headerTransparent: true,
-          headerStyle: { backgroundColor: 'transparent' },
-        }}
-      />
-    </Drawer>
+      >
+        <Drawer.Screen
+          name="index"
+          options={{
+            title: '',
+          }}
+        />
+        <Drawer.Screen
+          name="model-hub"
+          options={{
+            title: 'Models',
+          }}
+        />
+        <Drawer.Screen
+          name="settings"
+          options={{
+            title: 'Settings',
+          }}
+        />
+        <Drawer.Screen
+          name="benchmark"
+          options={{
+            title: 'Benchmark',
+          }}
+        />
+        <Drawer.Screen
+          name="chat/[id]"
+          options={{
+            headerTransparent: true,
+            headerStyle: { backgroundColor: 'transparent' },
+          }}
+        />
+      </Drawer>
+      {WEB_SEARCH_ENABLED && <WebScrapeSheet />}
+    </>
   );
 };
 

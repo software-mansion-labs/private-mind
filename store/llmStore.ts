@@ -14,14 +14,20 @@ import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
 import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
+import Toast from 'react-native-toast-message';
 import { Feedback } from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import {
   pickCitationsByAnswer,
   restrictCitationsToContext,
 } from '../utils/messageSources';
+import { sourcesPresentInContext } from '../utils/contextUtils';
+import { normalizeModelText } from '../utils/normalizeModelText';
 import { useSettingsStore } from './settingsStore';
+import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
+import { WEB_SEARCH_OVERALL_TIMEOUT_MS } from '../constants/web';
 
 export interface LLMStore {
   isLoading: boolean;
@@ -49,7 +55,7 @@ export interface LLMStore {
   sendChatMessage: (
     newMessage: string,
     chatId: number,
-    buildSources: () => Promise<{
+    buildSources: (signal?: AbortSignal) => Promise<{
       context: string[];
       sourceDocuments?: SourceDocument[];
       preferredSourceDocuments?: SourceDocument[];
@@ -61,6 +67,7 @@ export interface LLMStore {
   ) => Promise<void>;
   retryLastGeneration: () => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
+  generateUtility: (messages: ExecutorchMessage[]) => Promise<string>;
   interrupt: () => void;
   sendEventMessage: (chatId: number, message: string) => Promise<void>;
   refreshActiveChatMessages: () => Promise<void>;
@@ -92,6 +99,35 @@ const resetStreamState = () => {
   streamTokenCount = 0;
   streamFirstTokenTime = 0;
   streamFlushScheduled = false;
+};
+
+let suppressUtilityStreaming = false;
+let utilityGenerating = false;
+let sendAbortController: AbortController | null = null;
+let messageLocalIdSeq = 0;
+const nextMessageLocalId = () => (messageLocalIdSeq += 1);
+
+const buildAssistantPlaceholder = (
+  chatId: number,
+  model: Model | null
+): Message => ({
+  role: 'assistant',
+  content: '',
+  modelName: model?.modelName,
+  chatId,
+  timestamp: Date.now(),
+  id: -1,
+  localId: nextMessageLocalId(),
+});
+
+const withNoThink = (messages: ExecutorchMessage[]): ExecutorchMessage[] => {
+  if (messages.length === 0) return messages;
+  const last = messages.length - 1;
+  return messages.map((message, index) =>
+    index === last
+      ? { ...message, content: `${message.content} /no_think` }
+      : message
+  );
 };
 
 const calculatePerformanceMetrics = (
@@ -190,7 +226,8 @@ const loadModelInstance = async (
     streamBuffer = '';
     const snapshot = get();
     const shouldAppendToActiveChat =
-      snapshot.generatingForChatId === snapshot.activeChatId;
+      snapshot.generatingForChatId === snapshot.activeChatId &&
+      snapshot.activeChatMessages.at(-1)?.role === 'assistant';
     set((state) => ({
       isProcessingPrompt: false,
       performance: {
@@ -220,6 +257,8 @@ const loadModelInstance = async (
       },
       () => {},
       (token) => {
+        if (suppressUtilityStreaming) return;
+
         const isFirstToken = streamTokenCount === 0;
 
         if (isFirstToken && !get().isBenchmarking) {
@@ -247,7 +286,7 @@ const loadModelInstance = async (
       }
     );
 
-    const generationConfig = getGenerationConfigForModel(model.modelPath);
+    const generationConfig = getGenerationConfigForModel(model);
     if (generationConfig) {
       llmInstance.configure({ generationConfig });
     }
@@ -302,7 +341,8 @@ const updateChatStateForGeneration = (
       ) {
         set((state) => ({
           activeChatMessages: state.activeChatMessages.map((msg, index) =>
-            index === state.activeChatMessages.length - 1
+            index === state.activeChatMessages.length - 1 &&
+            msg.role === 'assistant'
               ? {
                   ...msg,
                   id: data.assistantMessage?.id ?? msg.id,
@@ -424,14 +464,39 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
     //Once the user selects a chat room, we load the messages for that chat and set it as the active chat.
     if (chatId !== null) {
+      const generatingHere = get().generatingForChatId === chatId;
+      const holdsThisChat = get().activeChatMessages.some(
+        (message) => message.chatId === chatId
+      );
+      if (generatingHere && holdsThisChat) {
+        set({ activeChatId: chatId });
+        return;
+      }
       const messageHistory = await getChatMessages(db, chatId);
-      set({ activeChatId: chatId, activeChatMessages: messageHistory });
+      set({
+        activeChatId: chatId,
+        activeChatMessages: generatingHere
+          ? [...messageHistory, buildAssistantPlaceholder(chatId, get().model)]
+          : messageHistory,
+      });
     } else {
       set({ activeChatId: null, activeChatMessages: [] });
     }
   },
 
   loadModel: async (model, hardReload: boolean = false) => {
+    const { model: currentModel } = get();
+    if (model.id === currentModel?.id && llmInstance && !hardReload) {
+      return;
+    }
+    const network = await NetInfo.fetch().catch(() => null);
+    if (network?.isConnected === false) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Model cannot be loaded without internet connection.',
+      });
+      return;
+    }
     const result = modelLoadChain.then(async () => {
       await modelOffloadChain;
       await loadModelInstance(model, hardReload, set, get);
@@ -508,6 +573,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     const tempUserId = -Date.now();
     const userMessage: Message = {
       id: tempUserId,
+      localId: nextMessageLocalId(),
       role: 'user',
       content: newMessage,
       chatId,
@@ -515,14 +581,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       imagePath,
       documentName,
     };
-    const assistantPlaceholder: Message = {
-      role: 'assistant',
-      content: '',
-      modelName: currentModel.modelName,
-      chatId: chatId,
-      timestamp: Date.now(),
-      id: -1,
-    };
+    const assistantPlaceholder = buildAssistantPlaceholder(
+      chatId,
+      currentModel
+    );
 
     set({ generationError: null });
     updateChatStateForGeneration(set, 'start', {
@@ -583,8 +645,22 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         }));
       }
 
-      const { context, sourceDocuments, preferredSourceDocuments } =
-        await buildSources();
+      const abortController = new AbortController();
+      sendAbortController = abortController;
+      const searchTimeout = setTimeout(() => {
+        const webSearch = useWebSearchStore.getState();
+        if (webSearch.isSearchingWeb) {
+          webSearch.pushWebSearchEvent({ type: 'timeout' });
+        }
+        abortController.abort();
+      }, WEB_SEARCH_OVERALL_TIMEOUT_MS);
+      let built;
+      try {
+        built = await buildSources(abortController.signal);
+      } finally {
+        clearTimeout(searchTimeout);
+      }
+      const { context, sourceDocuments, preferredSourceDocuments } = built;
 
       if (!get().isProcessingPrompt) {
         updateChatStateForGeneration(set, 'failed');
@@ -593,6 +669,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       await get().loadModel(currentModel, isRetry);
       await waitForModelLoad(get);
+      if (!llmInstance && get().isProcessingPrompt) {
+        await get().loadModel(currentModel, true);
+        await waitForModelLoad(get);
+      }
       if (!llmInstance) {
         throw new Error('Failed to load the language model');
       }
@@ -611,7 +691,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         settings,
         currentModel,
         useSettingsStore.getState().customSystemPrompt,
-        preferredSourceDocuments
+        preferredSourceDocuments,
+        sourceDocuments
       );
 
       const lastPreparedMessage = messagesWithSystemPrompt.at(-1);
@@ -626,16 +707,75 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         preferredSourceDocuments ?? []
       );
 
+      const webSourceDocuments = seenSourceDocuments.filter(
+        (doc) => doc.kind === 'web'
+      );
+      if (webSourceDocuments.length > 0 && get().activeChatId === chatId) {
+        set((state) => ({
+          activeChatMessages: state.activeChatMessages.map((msg) =>
+            msg.id === -1 && msg.role === 'assistant' && msg.chatId === chatId
+              ? { ...msg, sourceDocuments: webSourceDocuments }
+              : msg
+          ),
+        }));
+      }
+
+      llmInstance?.configure({
+        generationConfig: getGenerationConfigForModel(
+          currentModel,
+          context.some((chunk) => chunk.trim().length > 0)
+        ),
+      });
+
       // Set generation state and generate response
       updateChatStateForGeneration(set, 'generating');
-      const { response: finalResponse, performance: responsePerformance } =
-        await generateLLMResponse(messagesWithSystemPrompt, get);
+      let generation: Awaited<ReturnType<typeof generateLLMResponse>>;
+      let effectivePrepared = messagesWithSystemPrompt;
+      try {
+        generation = await generateLLMResponse(messagesWithSystemPrompt, get);
+      } catch (error) {
+        console.warn(
+          'Chat generation failed, retrying with a reduced prompt',
+          error
+        );
+        updateChatStateForGeneration(set, 'generating');
+        effectivePrepared = prepareMessagesForLLM(
+          get().activeChatMessages,
+          context,
+          settings,
+          currentModel,
+          useSettingsStore.getState().customSystemPrompt,
+          preferredSourceDocuments,
+          sourceDocuments,
+          0.5
+        );
+        generation = await generateLLMResponse(effectivePrepared, get);
+      }
+      const { response: rawResponse, performance: responsePerformance } =
+        generation;
+      const finalResponse = rawResponse
+        ? normalizeModelText(rawResponse)
+        : rawResponse;
       // Handle successful response
       if (finalResponse) {
+        const effectiveLast = effectivePrepared.at(-1);
+        const effectiveContent =
+          typeof effectiveLast?.content === 'string'
+            ? effectiveLast.content
+            : JSON.stringify(effectiveLast?.content ?? '');
+        const effectiveSeen =
+          effectivePrepared === messagesWithSystemPrompt
+            ? seenSourceDocuments
+            : restrictCitationsToContext(
+                sourceDocuments ?? [],
+                effectiveContent,
+                preferredSourceDocuments ?? []
+              );
         const citedSourceDocuments = pickCitationsByAnswer(
-          seenSourceDocuments,
+          effectiveSeen,
           finalResponse,
-          preferredSourceDocuments ?? []
+          preferredSourceDocuments ?? [],
+          sourcesPresentInContext(effectiveContent)
         );
         const assistantMessageId = await persistMessage(db, {
           ...assistantPlaceholder,
@@ -669,6 +809,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     } catch (e) {
       const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;
       markGenerationFailed(e, !wasInterrupted);
+    } finally {
+      sendAbortController = null;
     }
   },
 
@@ -769,7 +911,36 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
+  generateUtility: async (messages) => {
+    if (!llmInstance || get().isLoading || utilityGenerating) return '';
+    utilityGenerating = true;
+    suppressUtilityStreaming = true;
+    const model = get().model;
+    try {
+      const prepared = model?.thinking ? withNoThink(messages) : messages;
+      if (model) {
+        llmInstance.configure({
+          generationConfig: getGenerationConfigForModel(model, true),
+        });
+      }
+      const result = await llmInstance.generate(prepared);
+      return typeof result === 'string' ? result : '';
+    } catch (error) {
+      console.warn('generateUtility failed', error);
+      return '';
+    } finally {
+      if (model) {
+        llmInstance?.configure({
+          generationConfig: getGenerationConfigForModel(model),
+        });
+      }
+      suppressUtilityStreaming = false;
+      utilityGenerating = false;
+    }
+  },
+
   interrupt: () => {
+    sendAbortController?.abort();
     const state = get();
     if (state.isGenerating && llmInstance) {
       llmInstance.interrupt();

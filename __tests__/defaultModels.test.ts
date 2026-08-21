@@ -4,19 +4,27 @@ import {
 } from 'react-native-executorch';
 import {
   DEFAULT_MODELS,
+  DEFAULT_REPETITION_PENALTY,
   getGenerationConfigForModel,
   getStartingModels,
 } from '../constants/default-models';
 import { isModelCompatibleWithRam } from '../utils/modelCompatibility';
 
 describe('getGenerationConfigForModel', () => {
-  it('passes through the registry config without injecting a penalty', () => {
+  it('applies the profile repetitionPenalty, which defaults to none', () => {
     expect(
-      getGenerationConfigForModel(QWEN3_1_7B_QUANTIZED.modelSource)
-    ).toBeUndefined();
+      getGenerationConfigForModel({
+        modelName: 'Qwen 3 - 1.7B',
+        family: 'Qwen 3',
+        modelPath: QWEN3_1_7B_QUANTIZED.modelSource,
+      }).repetitionPenalty
+    ).toBe(DEFAULT_REPETITION_PENALTY);
     expect(
-      getGenerationConfigForModel('https://example.com/custom.pte')
-    ).toBeUndefined();
+      getGenerationConfigForModel({
+        modelName: 'Custom',
+        modelPath: 'https://example.com/custom.pte',
+      }).repetitionPenalty
+    ).toBe(DEFAULT_REPETITION_PENALTY);
   });
 });
 

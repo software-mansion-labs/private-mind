@@ -36,6 +36,7 @@ export type ChatSettings = {
 
 export type Message = {
   id: number;
+  localId?: number;
   chatId: number;
   modelName?: string;
   role: 'user' | 'assistant' | 'system' | 'event';
@@ -48,12 +49,22 @@ export type Message = {
   timestamp: number;
 };
 
+export type SourceKind = 'document' | 'web';
+
 export type SourceDocument = {
   documentId?: number;
   name: string;
   passage?: string;
   similarity?: number;
+  kind?: SourceKind;
+  url?: string;
+  query?: string;
+  used?: boolean;
+  read?: boolean;
 };
+
+export const sourceKind = (source: SourceDocument): SourceKind =>
+  source.kind ?? 'document';
 
 type RawMessage = Omit<Message, 'sourceDocuments'> & {
   sourceDocuments?: string | null;
@@ -83,6 +94,20 @@ const parseSourceDocuments = (
           typeof source.passage === 'string' ? source.passage : undefined,
         similarity:
           typeof source.similarity === 'number' ? source.similarity : undefined,
+        kind: source.kind === 'web' ? 'web' : undefined,
+        url:
+          source.kind === 'web' && typeof source.url === 'string'
+            ? source.url
+            : undefined,
+        query:
+          source.kind === 'web' && typeof source.query === 'string'
+            ? source.query
+            : undefined,
+        used: source.kind === 'web' && source.used === true ? true : undefined,
+        read:
+          source.kind === 'web' && typeof source.read === 'boolean'
+            ? source.read
+            : undefined,
       }));
   } catch {
     return undefined;
@@ -261,8 +286,9 @@ const copyMessagesWithIdMap = async (
           tokensPerSecond,
           timeToFirstToken,
           imagePath,
-          documentName
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          documentName,
+          sourceDocuments
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         chatId,
@@ -274,6 +300,9 @@ const copyMessagesWithIdMap = async (
         msg.timeToFirstToken ?? 0,
         msg.imagePath ?? null,
         msg.documentName ?? null,
+        msg.sourceDocuments?.length
+          ? JSON.stringify(msg.sourceDocuments)
+          : null,
       ]
     );
     idMap.set(msg.id, result.lastInsertRowId);

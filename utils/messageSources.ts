@@ -1,6 +1,6 @@
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { LFMEmbeddings } from './lfmEmbeddings';
-import { SourceDocument } from '../database/chatRepository';
+import { SourceDocument, sourceKind } from '../database/chatRepository';
 import {
   formatContextChunks,
   formatFirstChunks,
@@ -93,7 +93,10 @@ export const restrictCitationsToContext = (
   const preferredNames = new Set(preferred.map((doc) => doc.name));
 
   const survived = sourceDocuments.filter(
-    (doc) => preferredNames.has(doc.name) || present.has(doc.name)
+    (doc) =>
+      sourceKind(doc) === 'web' ||
+      preferredNames.has(doc.name) ||
+      present.has(doc.name)
   );
   return survived.length > 0 ? survived : sourceDocuments.slice(0, 1);
 };
@@ -130,13 +133,11 @@ const answerTermsOf = (answer: string): Set<string> =>
     )
   );
 
-// True when the visible reply is an EN/PL "no information" refusal (negation tied to a coverage noun).
 export const looksLikeNoAnswer = (visibleReply: string): boolean =>
   [...NO_ANSWER_PATTERNS_EN, ...NO_ANSWER_PATTERNS_PL].some((pattern) =>
     pattern.test(visibleReply)
   );
 
-// Compact per-document overlap for logs: `name:overlap` per candidate, so a surprising citation set is diagnosable.
 export const answerCitationOverlaps = (
   sourceDocuments: SourceDocument[],
   answer: string
@@ -149,6 +150,56 @@ export const answerCitationOverlaps = (
 };
 
 export const pickCitationsByAnswer = (
+  sourceDocuments: SourceDocument[],
+  answer: string,
+  preferred: SourceDocument[],
+  presentNames?: Set<string>
+): SourceDocument[] => {
+  const webDocuments = sourceDocuments.filter(
+    (doc) => sourceKind(doc) === 'web'
+  );
+  const localDocuments = sourceDocuments.filter(
+    (doc) => sourceKind(doc) === 'document'
+  );
+  const citedLocal = pickLocalCitationsByAnswer(
+    localDocuments,
+    answer,
+    preferred
+  );
+  return [
+    ...citedLocal,
+    ...flagUsedWebDocuments(webDocuments, answer, presentNames),
+  ];
+};
+
+const flagUsedWebDocuments = (
+  webDocuments: SourceDocument[],
+  answer: string,
+  presentNames?: Set<string>
+): SourceDocument[] => {
+  if (webDocuments.length === 0) return webDocuments;
+
+  const answerTerms = answerTermsOf(answer);
+  if (answerTerms.size === 0 || looksLikeNoAnswer(visibleAnswer(answer))) {
+    return webDocuments.map((doc) => ({ ...doc, used: false }));
+  }
+
+  const scored = webDocuments.map((doc) => ({
+    doc,
+    overlap: overlapWithAnswer(`${doc.name} ${doc.passage ?? ''}`, answerTerms),
+  }));
+  const maxOverlap = Math.max(0, ...scored.map((s) => s.overlap));
+
+  return scored.map((s) => ({
+    ...s.doc,
+    used:
+      maxOverlap > 0 &&
+      s.overlap >= maxOverlap * ANSWER_CITATION_OVERLAP_RATIO &&
+      (presentNames === undefined || presentNames.has(s.doc.name)),
+  }));
+};
+
+const pickLocalCitationsByAnswer = (
   sourceDocuments: SourceDocument[],
   answer: string,
   preferred: SourceDocument[]
@@ -172,7 +223,6 @@ export const pickCitationsByAnswer = (
 
   const maxOverlap = Math.max(0, ...scored.map((s) => s.overlap));
 
-  // Reply echoes no candidate → not grounded in any; keep only a freshly-attached source, cite nothing else.
   if (maxOverlap === 0) {
     return scored.filter((s) => s.isPreferred).map((s) => s.doc);
   }
@@ -191,7 +241,8 @@ const retrieveChunks = async (
   activeSources: SourceRow[],
   attachmentSourceIds: number[],
   vectorStore: OPSQLiteVectorStore,
-  embeddings?: LFMEmbeddings | null
+  embeddings?: LFMEmbeddings | null,
+  maxRelevantChunks?: number
 ) => {
   try {
     const relevantChunks = await hybridRetrieve({
@@ -201,6 +252,7 @@ const retrieveChunks = async (
       sourceNamesById: new Map(activeSources.map((s) => [s.id, s.name])),
       embeddings,
       attachmentSourceIds,
+      maxRelevantChunks,
     });
     return relevantChunks;
   } catch (error) {
@@ -216,6 +268,7 @@ export interface BuildMessageSourcesParams {
   sources: SourceRow[];
   vectorStore: OPSQLiteVectorStore;
   embeddings?: LFMEmbeddings | null;
+  maxRelevantChunks?: number;
 }
 
 export interface MessageSources {
@@ -231,6 +284,7 @@ export const buildMessageSources = async ({
   sources,
   vectorStore,
   embeddings,
+  maxRelevantChunks,
 }: BuildMessageSourcesParams): Promise<MessageSources> => {
   const empty: MessageSources = {
     context: [],
@@ -264,7 +318,8 @@ export const buildMessageSources = async ({
       activeSources,
       attachmentSourceIds,
       vectorStore,
-      embeddings
+      embeddings,
+      maxRelevantChunks
     );
     context.push(...formatContextChunks(relevantChunks));
     context.push(...attachmentOverview());

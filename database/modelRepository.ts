@@ -160,7 +160,9 @@ const hydrateModel = (model: RawModel): Model => {
   };
 };
 
-export const getAllModels = async (db: SQLiteDatabase): Promise<Model[]> => {
+export const getAllModels = async (
+  db: Pick<SQLiteDatabase, 'getAllAsync'>
+): Promise<Model[]> => {
   const rawModels = await db.getAllAsync<RawModel>(
     `SELECT * FROM models ORDER BY featured DESC`
   );
@@ -192,7 +194,7 @@ export const updateModel = async (
 };
 
 export const getModelsByNames = async (
-  db: SQLiteDatabase,
+  db: Pick<SQLiteDatabase, 'getAllAsync'>,
   modelNames: string[]
 ) => {
   if (modelNames.length === 0) {

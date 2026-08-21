@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import type { LLMStore } from '../store/llmStore';
 import type { Attachment } from '../hooks/useAttachment';
 import type { PermissionStatus } from 'react-native-audio-api';
+import type { SharedValue } from 'react-native-reanimated';
 
 // ── mocks ─────────────────────────────────────────────────────────────────────
 
@@ -193,7 +194,7 @@ import { useLLMStore } from '../store/llmStore';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
 
-const mockUseLLMStore = useLLMStore as jest.Mock;
+const mockUseLLMStore = useLLMStore as unknown as jest.Mock;
 const mockAudioManager = AudioManager as jest.Mocked<typeof AudioManager>;
 
 const downloadedModel = {
@@ -211,6 +212,8 @@ const downloadedModel = {
 
 const defaultProps = {
   chatId: 1,
+  ref: { current: null },
+  extraContentPadding: { value: 0 } as unknown as SharedValue<number>,
   onSend: jest.fn(),
   onSelectModel: jest.fn(),
   onSelectPrompt: jest.fn(),
@@ -307,6 +310,43 @@ describe('downloaded model — text input', () => {
     );
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(onSend).toHaveBeenCalledWith('Hello', undefined, []);
+  });
+
+  it('stays empty when the native input echoes the sent text back', () => {
+    renderBar();
+    const textInput = () =>
+      screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(textInput(), 'czesc test wysylki');
+    fireEvent.press(screen.getByTestId('send-btn'));
+    expect(textInput().props.value).toBe('');
+
+    fireEvent.changeText(textInput(), 'czesc test wysylki');
+    expect(textInput().props.value).toBe('');
+  });
+
+  it('accepts genuine typing right after a send', () => {
+    renderBar();
+    const textInput = () =>
+      screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(textInput(), 'first');
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    fireEvent.changeText(textInput(), 'n');
+    expect(textInput().props.value).toBe('n');
+    fireEvent.changeText(textInput(), 'next');
+    expect(textInput().props.value).toBe('next');
+  });
+
+  it('does not swallow a repeat of the same message typed again', () => {
+    renderBar();
+    const textInput = () =>
+      screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(textInput(), 'again');
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    fireEvent.changeText(textInput(), 'a');
+    fireEvent.changeText(textInput(), 'again');
+    expect(textInput().props.value).toBe('again');
   });
 
   it('keeps the input and shows a toast instead of sending while switching models', () => {

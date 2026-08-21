@@ -182,4 +182,39 @@ describe('ensureKeywordIndex backfill', () => {
     expect(inserts).toHaveLength(1);
     expect(inserts[0].params).toEqual(['3:0', 3, 'indexed']);
   });
+
+  it('drops the v1 table, whose tokens a bigram query can never match', async () => {
+    const { db, calls } = makeDb({});
+    await ensureKeywordIndex(db);
+    expect(
+      calls.some((call) => call.sql.includes('DROP TABLE IF EXISTS chunk_fts;'))
+    ).toBe(true);
+  });
+});
+
+describe('unsegmented scripts reach the index as the same units as the query', () => {
+  it('bigrams Chinese, Japanese and Thai content', () => {
+    expect(foldForKeywordIndex('北京今天天气')).toBe(
+      '北京 京今 今天 天天 天气'
+    );
+    expect(foldForKeywordIndex('東京の天気')).toBe('東京 京の の天 天気');
+    expect(foldForKeywordIndex('กรุงเทพ')).toContain(' ');
+  });
+
+  it('leaves every other script and the Latin runs between them alone', () => {
+    expect(foldForKeywordIndex('płatność za fakturę')).toBe(
+      'platność za fakturę'
+    );
+    expect(foldForKeywordIndex('погода Москва')).toBe('погода Москва');
+    expect(foldForKeywordIndex('iPhone15の新機能')).toBe(
+      'iPhone15 の新 新機 機能'
+    );
+  });
+
+  it('emits a query token the index now contains', () => {
+    const indexed = foldForKeywordIndex('北京今天天气怎么样').split(' ');
+    const match = buildKeywordMatchExpression(['天气'])!;
+    expect(indexed).toContain('天气');
+    expect(match).toBe('"天气"');
+  });
 });

@@ -7,12 +7,16 @@ import {
   Pressable,
   Linking,
 } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import AnimatedChatLoading from './AnimatedChatLoading';
+import WebSearchBlock from './WebSearchBlock';
+import { WEB_TRACE_TRANSITION_MS } from './webSearchTraceConstants';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { useLLMStore } from '../../store/llmStore';
+import { useWebSearchActivity } from '../../hooks/useWebSearchActivity';
+import { useMessageSources } from '../../hooks/useMessageSources';
 import { useSettingsStore } from '../../store/settingsStore';
 import { Theme } from '../../styles/colors';
 import ImageLightbox from './ImageLightbox';
@@ -27,7 +31,6 @@ import {
 } from '../../constants/chat-screen';
 import { Message, type SourceDocument } from '../../database/chatRepository';
 import { stripCitations } from '../../utils/citations';
-import { sourceKey } from '../../utils/contextUtils';
 import { parseThinkingContent, stripThinkMarkers } from '../../utils/thinking';
 
 interface MessageItemProps {
@@ -80,8 +83,6 @@ const MessageItem = memo(
     onFork,
   }: MessageItemProps) => {
     const { styles } = useThemedStyles(createStyles);
-    const isGenerating = useLLMStore((state) => state.isGenerating);
-    const isProcessingPrompt = useLLMStore((state) => state.isProcessingPrompt);
     const showPerformanceMetrics = useSettingsStore(
       (state) => state.showPerformanceMetrics
     );
@@ -89,18 +90,8 @@ const MessageItem = memo(
 
     const contentParts = parseThinkingContent(content);
     const userText = useMemo(() => stripThinkMarkers(content), [content]);
-    const hasSources = !!sourceDocuments?.length;
-    const displayedSources = useMemo(() => {
-      if (!sourceDocuments?.length) return [];
-
-      const seen = new Set<string>();
-      return sourceDocuments.filter((source) => {
-        const key = sourceKey(source.documentId, source.name);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-    }, [sourceDocuments]);
+    const { displayedSources, webResults, documentSources, hasSources } =
+      useMessageSources(sourceDocuments);
 
     const documentInfo = useMemo(
       () => (documentName ? splitDocumentName(documentName) : null),
@@ -127,10 +118,20 @@ const MessageItem = memo(
       [contentParts.normalAfterThink, hasSources]
     );
 
+    const {
+      isGenerating,
+      isBusy,
+      isSearchingThis,
+      isAwaitingFirstToken,
+      trace: webSearchTrace,
+      webActive,
+    } = useWebSearchActivity({
+      isLastMessage,
+      content,
+      hasWebResults: webResults.length > 0,
+    });
     const canShowSourcesAction =
-      !!content.trim() &&
-      displayedSources.length > 0 &&
-      !(isLastMessage && (isGenerating || isProcessingPrompt));
+      !!content.trim() && documentSources.length > 0 && !isBusy;
 
     const actions =
       showActions || canShowSourcesAction ? (
@@ -239,9 +240,22 @@ const MessageItem = memo(
           <View style={styles.aiMessage}>
             <View style={styles.bubbleContent}>
               {content.trim() ? (
-                <Text style={styles.modelName}>{modelName}</Text>
-              ) : isLastMessage && isProcessingPrompt ? (
-                <AnimatedChatLoading />
+                <Animated.Text
+                  style={styles.modelName}
+                  entering={FadeIn.duration(WEB_TRACE_TRANSITION_MS)}
+                >
+                  {modelName}
+                </Animated.Text>
+              ) : null}
+              {webActive && (
+                <WebSearchBlock
+                  isSearching={isSearchingThis}
+                  trace={webSearchTrace}
+                  results={webResults}
+                />
+              )}
+              {isAwaitingFirstToken ? (
+                <AnimatedChatLoading inline={webActive} label="Thinking…" />
               ) : null}
               {contentParts.normalContent.trim() && (
                 <MarkdownComponent
@@ -417,7 +431,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       gap: 6,
       marginTop: 4,
-      height: MESSAGE_ACTION_ROW_HEIGHT,
+      minHeight: MESSAGE_ACTION_ROW_HEIGHT,
     },
     imagePressed: {
       opacity: 0.9,

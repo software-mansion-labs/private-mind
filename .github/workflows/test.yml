@@ -26,5 +26,8 @@ jobs:
       - name: Check formatting
         run: yarn format:check
 
+      - name: Typecheck
+        run: yarn typecheck
+
       - name: Run tests
         run: yarn test --forceExit --ci

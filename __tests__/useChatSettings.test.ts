@@ -1,7 +1,8 @@
-import { renderHook, waitFor } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 import useChatSettings from '../hooks/useChatSettings';
 import * as chatRepository from '../database/chatRepository';
 import { useChatStore } from '../store/chatStore';
+import { useWebSearchStore } from '../store/webSearchStore';
 
 jest.mock('../database/chatRepository');
 jest.mock('expo-sqlite', () => {
@@ -14,7 +15,7 @@ jest.mock('../store/chatStore', () => ({
 }));
 
 const mockGetChatSettings = chatRepository.getChatSettings as jest.Mock;
-const mockUseChatStore = useChatStore as jest.Mock;
+const mockUseChatStore = useChatStore as unknown as jest.Mock;
 
 const baseChat = {
   id: 1,
@@ -31,6 +32,7 @@ const stableGetChatById = jest.fn(() => baseChat);
 beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(console, 'error').mockImplementation(() => {});
+  useWebSearchStore.setState({ enabledByChat: {} });
   stableGetChatById.mockReturnValue(baseChat);
   mockUseChatStore.mockReturnValue({
     getChatById: stableGetChatById,
@@ -114,6 +116,48 @@ describe('setSetting', () => {
     await waitFor(() =>
       expect(result.current.settings.thinkingEnabled).toBe(true)
     );
+  });
+});
+
+describe('webSearchEnabled', () => {
+  it('defaults to false and reflects the web-search store per chat', async () => {
+    const { result } = renderHook(() => useChatSettings(1));
+    await waitFor(() =>
+      expect(result.current.settings.systemPrompt).toBe('You are helpful.')
+    );
+    expect(result.current.settings.webSearchEnabled).toBe(false);
+
+    act(() => result.current.setSetting('webSearchEnabled', true));
+
+    await waitFor(() =>
+      expect(result.current.settings.webSearchEnabled).toBe(true)
+    );
+    expect(useWebSearchStore.getState().isEnabled(1)).toBe(true);
+  });
+
+  it('survives a remount because it lives outside component state', async () => {
+    useWebSearchStore.getState().setEnabled(1, true);
+
+    const { result, unmount } = renderHook(() => useChatSettings(1));
+    await waitFor(() =>
+      expect(result.current.settings.webSearchEnabled).toBe(true)
+    );
+    unmount();
+
+    const remounted = renderHook(() => useChatSettings(1));
+    await waitFor(() =>
+      expect(remounted.result.current.settings.webSearchEnabled).toBe(true)
+    );
+  });
+
+  it('keeps the flag independent per chat id', async () => {
+    useWebSearchStore.getState().setEnabled(1, true);
+
+    const { result } = renderHook(() => useChatSettings(2));
+    await waitFor(() =>
+      expect(result.current.settings.systemPrompt).toBe('You are helpful.')
+    );
+    expect(result.current.settings.webSearchEnabled).toBe(false);
   });
 });
 

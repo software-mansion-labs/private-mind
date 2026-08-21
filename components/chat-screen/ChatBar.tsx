@@ -30,6 +30,9 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useLLMStore } from '../../store/llmStore';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
+import LinkIcon from '../../assets/icons/link-alt.svg';
+import { detectUrls } from '../../utils/web/url/urlDetection';
+import { hostname } from '../../utils/web/webResultsToContext';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
@@ -63,6 +66,8 @@ interface Props {
   onBarGrow?: () => void;
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
+  webSearchEnabled?: boolean;
+  onWebSearchToggle?: () => void;
   hasMessages: boolean;
   disabled?: boolean;
   modelSwitching?: boolean;
@@ -82,6 +87,8 @@ const ChatBar = ({
   onBarGrow,
   thinkingEnabled,
   onThinkingToggle,
+  webSearchEnabled,
+  onWebSearchToggle,
   hasMessages,
   disabled = false,
   modelSwitching = false,
@@ -94,6 +101,14 @@ const ChatBar = ({
   );
 
   const [userInput, setUserInput] = useState('');
+  const lastSentRef = useRef<string | null>(null);
+
+  const handleChangeText = useCallback((text: string) => {
+    const justSent = lastSentRef.current;
+    lastSentRef.current = null;
+    if (justSent !== null && text === justSent) return;
+    setUserInput(text);
+  }, []);
   const {
     attachments,
     sheetRef,
@@ -101,6 +116,7 @@ const ChatBar = ({
     pickFromLibrary,
     pickFromCamera,
     pickDocument,
+    addUrlSource,
     downloadModelAndContinue,
     markDownloadSheetClosed,
     markAttachmentSheetClosed,
@@ -230,16 +246,35 @@ const ChatBar = ({
     showModelSwitchingToast,
   ]);
 
+  const detectedUrl = useMemo(
+    () => detectUrls(userInput)[0] ?? null,
+    [userInput]
+  );
+  const showIndexChip =
+    !!detectedUrl && !attachments.some((a) => a.type === 'document');
+  const handleIndexUrl = useCallback(() => {
+    if (!detectedUrl) return;
+    addUrlSource(detectedUrl);
+    setUserInput((prev) =>
+      prev
+        .replace(detectedUrl, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+    );
+  }, [detectedUrl, addUrlSource]);
+
   const handleSend = useCallback(() => {
     if (modelSwitching) {
       showModelSwitchingToast();
       return;
     }
     if (hasLoadingAttachment || disabled) return;
+    Keyboard.dismiss();
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
     const inputToSend = userInput;
 
+    lastSentRef.current = inputToSend || null;
     if (Platform.OS === 'ios') {
       textInputRef.current?.blur();
       setIosInputKey((key) => key + 1);
@@ -382,6 +417,22 @@ const ChatBar = ({
             </View>
           )}
           <View style={styles.inputContainer}>
+            {showIndexChip && (
+              <TouchableOpacity
+                style={styles.indexUrlChip}
+                onPress={handleIndexUrl}
+                testID="index-url-chip"
+              >
+                <LinkIcon
+                  width={16}
+                  height={16}
+                  style={{ color: theme.text.onChatBar }}
+                />
+                <Text style={styles.indexUrlChipText} numberOfLines={1}>
+                  Index {hostname(detectedUrl!)}
+                </Text>
+              </TouchableOpacity>
+            )}
             {attachments.length > 0 && (
               <View style={[styles.previewRow, { marginBottom: 8 }]}>
                 {attachments.map((attachment) => (
@@ -408,7 +459,7 @@ const ChatBar = ({
                   placeholder="Ask about anything..."
                   placeholderTextColor={theme.text.onChatBarMuted}
                   value={userInput}
-                  onChangeText={setUserInput}
+                  onChangeText={handleChangeText}
                 />
               </TextInputWrapper>
             </View>
@@ -425,6 +476,8 @@ const ChatBar = ({
               onSpeechInput={openSpeechInput}
               thinkingEnabled={thinkingEnabled}
               onThinkingToggle={onThinkingToggle}
+              webSearchEnabled={webSearchEnabled}
+              onWebSearchToggle={onWebSearchToggle}
             />
           </View>
           <AttachmentSheet
@@ -505,5 +558,24 @@ const createStyles = (theme: Theme) =>
     previewRow: {
       flexDirection: 'row',
       gap: 8,
+    },
+    indexUrlChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 6,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 9999,
+      borderWidth: 1,
+      borderColor: theme.text.onChatBar,
+      marginBottom: 8,
+      maxWidth: '100%',
+    },
+    indexUrlChipText: {
+      color: theme.text.onChatBar,
+      fontSize: fontSizes.sm,
+      fontFamily: fontFamily.regular,
+      flexShrink: 1,
     },
   });
