@@ -19,11 +19,18 @@ import Toast from 'react-native-toast-message';
 import { Feedback } from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import {
+  isCircularNonAnswer,
+  isQuestionEchoAnswer,
+  isWrongLanguageAnswer,
   pickCitationsByAnswer,
   restrictCitationsToContext,
+  withConversionGroundingCaveat,
+  withFigureGroundingCaveat,
+  withTrendGroundingCaveat,
 } from '../utils/messageSources';
 import { sourcesPresentInContext } from '../utils/contextUtils';
 import { normalizeModelText } from '../utils/normalizeModelText';
+import { truncateAtRepeatedClause } from '../utils/loopDetection';
 import { useSettingsStore } from './settingsStore';
 import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
@@ -59,6 +66,10 @@ export interface LLMStore {
       context: string[];
       sourceDocuments?: SourceDocument[];
       preferredSourceDocuments?: SourceDocument[];
+      webIntent?: string;
+      webSubQueries?: string[];
+      webWeak?: boolean;
+      webSearchFailed?: boolean;
     }>,
     settings: ChatSettings,
     imagePath?: string,
@@ -389,6 +400,20 @@ const updateChatStateForGeneration = (
   }
 };
 
+const describeGenerationFailure = (
+  finalResponse: string | null | undefined,
+  currentQuestion: string | undefined
+): string => {
+  if (!finalResponse) return 'The model returned an empty response';
+  if (isQuestionEchoAnswer(finalResponse, currentQuestion)) {
+    return 'The model echoed the question back with no actual answer';
+  }
+  if (isCircularNonAnswer(finalResponse)) {
+    return 'The model produced a circular non-answer with no actual content';
+  }
+  return 'The model answered in the wrong language';
+};
+
 const generateLLMResponse = async (
   messages: ExecutorchMessage[],
   get: () => LLMStore
@@ -660,7 +685,15 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       } finally {
         clearTimeout(searchTimeout);
       }
-      const { context, sourceDocuments, preferredSourceDocuments } = built;
+      const {
+        context,
+        sourceDocuments,
+        preferredSourceDocuments,
+        webIntent,
+        webSubQueries,
+        webWeak,
+        webSearchFailed,
+      } = built;
 
       if (!get().isProcessingPrompt) {
         updateChatStateForGeneration(set, 'failed');
@@ -692,7 +725,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         currentModel,
         useSettingsStore.getState().customSystemPrompt,
         preferredSourceDocuments,
-        sourceDocuments
+        sourceDocuments,
+        1,
+        webIntent,
+        webSubQueries,
+        webWeak,
+        webSearchFailed
       );
 
       const lastPreparedMessage = messagesWithSystemPrompt.at(-1);
@@ -747,17 +785,29 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           useSettingsStore.getState().customSystemPrompt,
           preferredSourceDocuments,
           sourceDocuments,
-          0.5
+          0.5,
+          webIntent,
+          webSubQueries,
+          webWeak,
+          webSearchFailed
         );
         generation = await generateLLMResponse(effectivePrepared, get);
       }
       const { response: rawResponse, performance: responsePerformance } =
         generation;
       const finalResponse = rawResponse
-        ? normalizeModelText(rawResponse)
+        ? truncateAtRepeatedClause(normalizeModelText(rawResponse))
         : rawResponse;
+      const currentQuestion = get().activeChatMessages.findLast(
+        (msg) => msg.role === 'user'
+      )?.content;
       // Handle successful response
-      if (finalResponse) {
+      if (
+        finalResponse &&
+        !isQuestionEchoAnswer(finalResponse, currentQuestion) &&
+        !isCircularNonAnswer(finalResponse) &&
+        !isWrongLanguageAnswer(finalResponse, currentQuestion)
+      ) {
         const effectiveLast = effectivePrepared.at(-1);
         const effectiveContent =
           typeof effectiveLast?.content === 'string'
@@ -777,9 +827,20 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           preferredSourceDocuments ?? [],
           sourcesPresentInContext(effectiveContent)
         );
+        const contentToPersist = context.some((chunk) => chunk.trim())
+          ? withConversionGroundingCaveat(
+              withTrendGroundingCaveat(
+                withFigureGroundingCaveat(finalResponse, effectiveContent),
+                currentQuestion,
+                effectiveContent
+              ),
+              currentQuestion,
+              effectiveContent
+            )
+          : finalResponse;
         const assistantMessageId = await persistMessage(db, {
           ...assistantPlaceholder,
-          content: finalResponse,
+          content: contentToPersist,
           sourceDocuments: citedSourceDocuments,
           tokensPerSecond: responsePerformance.tokensPerSecond,
           timeToFirstToken: responsePerformance.timeToFirstToken,
@@ -790,7 +851,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             assistantMessage: {
               ...assistantPlaceholder,
               id: assistantMessageId,
-              content: finalResponse,
+              content: contentToPersist,
               sourceDocuments: citedSourceDocuments,
               tokensPerSecond: responsePerformance.tokensPerSecond,
               timeToFirstToken: responsePerformance.timeToFirstToken,
@@ -804,7 +865,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         failedGenerationRequest = null;
         set({ generationError: null });
       } else {
-        markGenerationFailed(new Error('The model returned an empty response'));
+        markGenerationFailed(
+          new Error(describeGenerationFailure(finalResponse, currentQuestion))
+        );
       }
     } catch (e) {
       const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;

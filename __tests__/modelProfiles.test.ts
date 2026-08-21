@@ -31,6 +31,16 @@ describe('WEB_PLANNER_MATRIX', () => {
       expect(known.has(name)).toBe(true);
     }
   });
+
+  it('never assigns "llm" to a model whose own evidence recorded verbatim outperforming it (F13)', () => {
+    for (const [name, evidence] of Object.entries(PLANNER_EVIDENCE)) {
+      if (
+        /verbatim on the (rest|other \d+):\s*100% retrieval/i.test(evidence)
+      ) {
+        expect([name, WEB_PLANNER_MATRIX[name]]).toEqual([name, 'verbatim']);
+      }
+    }
+  });
 });
 
 describe('isWebSearchReady', () => {
