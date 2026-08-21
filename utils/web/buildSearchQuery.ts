@@ -50,6 +50,12 @@ const PLANNER_EXAMPLES: {
     queries: [],
   },
   {
+    user: 'python vs javascript, which should a beginner learn?',
+    needsSearch: false,
+    intent: 'programming language opinion',
+    queries: [],
+  },
+  {
     user: 'whats the weather in tokyo right now',
     needsSearch: true,
     intent: 'current Tokyo weather',
@@ -60,6 +66,12 @@ const PLANNER_EXAMPLES: {
     needsSearch: true,
     intent: 'current bitcoin price',
     queries: ['bitcoin price today'],
+  },
+  {
+    user: 'compare the prices of bitcoin and ethereum',
+    needsSearch: true,
+    intent: 'compare Bitcoin and Ethereum prices',
+    queries: ['bitcoin price today', 'ethereum price today'],
   },
   {
     user: 'which song has been streamed the most on spotify this year',
@@ -106,7 +118,8 @@ const PLANNER_SYSTEM_PROMPT = (today: string): string =>
   'are about that period and not an all-time or career ranking (a page ' +
   'about "most/best ever" is the wrong answer to a this-year question even ' +
   'when it looks authoritative). ' +
-  'Give 1 query normally, 2 ONLY for a clear comparison of two things.\n' +
+  'Give 1 query normally, one query per item ONLY for a clear comparison of ' +
+  '2 or 3 named things (max 3 queries total, even if more things are named).\n' +
   PLANNER_EXAMPLES_TEXT +
   'Those are only format examples — plan for the actual user message below and ' +
   'never copy their words or topics.';

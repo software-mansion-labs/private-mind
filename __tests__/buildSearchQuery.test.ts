@@ -116,7 +116,7 @@ describe('parseSearchPlan', () => {
       parseSearchPlan(
         '{"needs_search": true, "intent": "", "queries": ["a","b","c","d"]}'
       )?.queries
-    ).toEqual(['a', 'b']);
+    ).toEqual(['a', 'b', 'c']);
   });
 
   it('defaults needsSearch to true when the field is missing', () => {
@@ -224,6 +224,25 @@ describe('planWebSearch', () => {
     expect(plan.queries).toEqual([
       'iPhone 16 camera review',
       'Pixel 9 camera review',
+    ]);
+  });
+
+  it('fans out into three sub-queries for a three-way comparison', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": true, "intent": "compare crypto prices", "queries": ["bitcoin price today", "ethereum price today", "solana price today"]}'
+      );
+    const plan = await planWebSearch(
+      'compare the current prices of Bitcoin, Ethereum and Solana',
+      [],
+      generate,
+      { today: TODAY }
+    );
+    expect(plan.queries).toEqual([
+      'bitcoin price today',
+      'ethereum price today',
+      'solana price today',
     ]);
   });
 
