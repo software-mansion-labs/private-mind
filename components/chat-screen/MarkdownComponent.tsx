@@ -157,6 +157,7 @@ const MarkdownComponent = memo(
         markdown={text}
         markdownStyle={markdownStyle}
         md4cFlags={MD4C_FLAGS}
+        flavor="github"
         selectable={true}
         onLinkPress={onLinkPress}
       />

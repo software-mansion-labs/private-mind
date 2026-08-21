@@ -41,6 +41,11 @@ import WhatsNewCard from '../WhatsNewCard';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
+import { useEmbeddingModelStore } from '../../store/embeddingModelStore';
+import {
+  isHighMemoryDevice,
+  isMemoryConstrained,
+} from '../../utils/modelCompatibility';
 
 const BAR_GROW_DURATION = 200;
 const BAR_GROW_EASING = Easing.out(Easing.ease);
@@ -113,6 +118,7 @@ const ChatBar = ({
     attachments,
     sheetRef,
     embeddingDownloadSheetRef,
+    presentDownloadSheet,
     pickFromLibrary,
     pickFromCamera,
     pickDocument,
@@ -125,6 +131,43 @@ const ChatBar = ({
     openSheet,
     addPastedAttachment,
   } = useAttachment();
+
+  const [embeddingSheetContext, setEmbeddingSheetContext] = useState<
+    'document' | 'web'
+  >('document');
+  const webEmbeddingPromptDismissedRef = useRef(false);
+  const embeddingSheetRequiredRef = useRef(false);
+
+  const handleWebSearchToggle = useCallback(() => {
+    const enabling = !webSearchEnabled;
+    onWebSearchToggle?.();
+    if (!enabling) return;
+    if (useEmbeddingModelStore.getState().status === 'ready') return;
+    if (isMemoryConstrained(model)) return;
+
+    const required = isHighMemoryDevice(model);
+    if (!required && webEmbeddingPromptDismissedRef.current) return;
+
+    setEmbeddingSheetContext('web');
+    embeddingSheetRequiredRef.current = required;
+    presentDownloadSheet();
+  }, [webSearchEnabled, onWebSearchToggle, model, presentDownloadSheet]);
+
+  const handleEmbeddingSheetDismiss = useCallback(() => {
+    if (embeddingSheetContext === 'web') {
+      if (embeddingSheetRequiredRef.current) {
+        if (useEmbeddingModelStore.getState().status !== 'ready') {
+          onWebSearchToggle?.();
+        }
+      } else {
+        webEmbeddingPromptDismissedRef.current = true;
+      }
+    }
+    markDownloadSheetClosed();
+  }, [embeddingSheetContext, markDownloadSheetClosed, onWebSearchToggle]);
+
+  const embeddingSheetRequired =
+    embeddingSheetContext === 'web' && embeddingSheetRequiredRef.current;
 
   const defaultBarHeight = useRef(0);
   const prevBarHeight = useRef(0);
@@ -477,7 +520,9 @@ const ChatBar = ({
               thinkingEnabled={thinkingEnabled}
               onThinkingToggle={onThinkingToggle}
               webSearchEnabled={webSearchEnabled}
-              onWebSearchToggle={onWebSearchToggle}
+              onWebSearchToggle={
+                onWebSearchToggle ? handleWebSearchToggle : undefined
+              }
             />
           </View>
           <AttachmentSheet
@@ -492,7 +537,9 @@ const ChatBar = ({
           <EmbeddingDownloadSheet
             bottomSheetModalRef={embeddingDownloadSheetRef}
             onDownload={downloadModelAndContinue}
-            onDismiss={markDownloadSheetClosed}
+            onDismiss={handleEmbeddingSheetDismiss}
+            context={embeddingSheetContext}
+            required={embeddingSheetRequired}
           />
         </>
       )}
