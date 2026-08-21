@@ -488,6 +488,7 @@ export const useAttachment = () => {
     attachments,
     sheetRef,
     embeddingDownloadSheetRef,
+    presentDownloadSheet,
     pickFromLibrary,
     pickFromCamera,
     pickDocument,
