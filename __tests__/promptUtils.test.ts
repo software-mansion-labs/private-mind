@@ -376,6 +376,36 @@ describe('prepareMessagesForLLM', () => {
       expect(result[0].content).toContain('Never say the word "context"');
     });
 
+    it('nudges the model to name the page instead of a vague "sources say" on web results (F29)', () => {
+      const messages = makeMessages(2);
+      const webSources: SourceDocument[] = [
+        { name: 'CoinMarketCap', kind: 'web', url: 'https://a.example/btc' },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some web context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        webSources
+      );
+      expect(result[0].content).toContain('name that page in your own words');
+    });
+
+    it('does not add the named-citation nudge for document-only context', () => {
+      const messages = makeMessages(2);
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some document context'],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).not.toContain(
+        'name that page in your own words'
+      );
+    });
+
     it('warns not to guess when a needed web search came back with nothing usable', () => {
       const messages = makeMessages(2);
       const result = prepareMessagesForLLM(
@@ -974,6 +1004,27 @@ describe('prepareMessagesForLLM', () => {
       expect(result[0].content).toContain('stay visibly separate');
     });
 
+    it('nudges toward a structured comparison on a "compare X and Y" question without "vs"/"differ" (F26)', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content:
+            'Compare the current prices of Bitcoin, Ethereum and Solana.',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some context'],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).toContain('stay visibly separate');
+    });
+
     it('does not nudge the comparison structure on a single-subject question', () => {
       const messages: Message[] = [
         {
@@ -1295,7 +1346,7 @@ describe('prepareMessagesForLLM', () => {
         undefined,
         true
       );
-      expect(result[0].content).toContain('came back thin');
+      expect(result[0].content).toContain('could not be confidently verified');
     });
 
     it('does not add the weak-retrieval warning when retrieval was not flagged weak', () => {
@@ -1315,7 +1366,9 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      expect(result[0].content).not.toContain('came back thin');
+      expect(result[0].content).not.toContain(
+        'could not be confidently verified'
+      );
     });
 
     it('tells the model to admit missing data on a trend question with only a current price in context', () => {
@@ -1797,6 +1850,66 @@ describe('prepareMessagesForLLM', () => {
       expect(last.content).toContain('bitcoin price today → $64,146.36');
       expect(last.content).toContain('ethereum price today → $1,898.04');
       expect(last.content).toContain('never for another entity');
+    });
+
+    it('tells the model to admit missing data for an entity absent from the per-entity figures list (F27)', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content:
+            'Compare the current prices of Bitcoin, Ethereum and Solana.',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const webSources: SourceDocument[] = [
+        { name: 'BTC', kind: 'web', url: 'https://a.example/btc' },
+        { name: 'ETH', kind: 'web', url: 'https://b.example/eth' },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        [
+          '[Answers: bitcoin price today]\nBitcoin price today: $64,146.36',
+          '[Answers: ethereum price today]\nEthereum Price: $1,898.04',
+        ],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        webSources
+      );
+      const last = result[result.length - 1];
+      expect(last.content).toContain('no entry in this list');
+    });
+
+    it('warns the model against inventing a figure for something absent from the context entirely (F27)', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'What is the current price of gold?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const webSources: SourceDocument[] = [
+        { name: 'Gold', kind: 'web', url: 'https://a.example/gold' },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        ['Gold price today: $4,512.10 per ounce.'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        webSources
+      );
+      expect(result[0].content).toContain(
+        'not mentioned anywhere in the context'
+      );
     });
 
     it('omits the language reminder when there is no web source', () => {

@@ -12,6 +12,7 @@ import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import AnimatedChatLoading from './AnimatedChatLoading';
 import WebSearchBlock from './WebSearchBlock';
+import GroundingCaveatBadges from './GroundingCaveatBadges';
 import { WEB_TRACE_TRANSITION_MS } from './webSearchTraceConstants';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -284,6 +285,7 @@ const MessageItem = memo(
                     onLinkPress={handleLinkPress}
                   />
                 )}
+              <GroundingCaveatBadges caveats={message.groundingCaveats} />
               {showPerformanceMetrics &&
                 tokensPerSecond !== undefined &&
                 tokensPerSecond !== 0 && (
