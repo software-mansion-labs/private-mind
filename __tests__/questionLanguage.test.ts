@@ -89,6 +89,72 @@ describe('detectQuestionLanguage', () => {
     expect(codeOf('kimlik kartı nasıl alınır')).toBe('tr');
   });
 
+  it('names Polish when a short verb ("ma") coincidentally scores as an exclusive French marker (live-found Pixel gap)', () => {
+    expect(codeOf('ile dzieci ma elon musk')).toBe('pl');
+  });
+
+  it('still names French for its own short-word questions', () => {
+    expect(codeOf('quel temps fait-il à Paris')).toBe('fr');
+  });
+
+  it("never lets a short, coincidentally-exclusive word override another language's real marker (systematic audit, not a single-case fix)", () => {
+    const shortExclusive: [string, string][] = [
+      ['of', 'en'],
+      ['in', 'en'],
+      ['my', 'en'],
+      ['me', 'en'],
+      ['it', 'en'],
+      ['wo', 'de'],
+      ['nu', 'nl'],
+      ['en', 'nl'],
+      ['ik', 'nl'],
+      ['le', 'fr'],
+      ['du', 'fr'],
+      ['ma', 'fr'],
+      ['es', 'es'],
+      ['el', 'es'],
+      ['yo', 'es'],
+      ['il', 'it'],
+      ['io', 'it'],
+      ['os', 'pt'],
+      ['da', 'pt'],
+      ['em', 'pt'],
+      ['no', 'pt'],
+      ['ce', 'ro'],
+      ['se', 'ro'],
+      ['ne', 'tr'],
+    ];
+    const decisiveMarker: Record<string, string> = {
+      en: 'who',
+      pl: 'kto',
+      cs: 'kdo',
+      de: 'wer',
+      nl: 'wat',
+      fr: 'qui',
+      es: 'quién',
+      it: 'chi',
+      pt: 'quem',
+      ro: 'cine',
+      tr: 'hangi',
+      id: 'siapa',
+    };
+
+    const wrongGuesses: string[] = [];
+    for (const [shortToken, shortOwner] of shortExclusive) {
+      for (const [targetLang, marker] of Object.entries(decisiveMarker)) {
+        if (targetLang === shortOwner) continue;
+        const sentence = `${shortToken} ${marker}`;
+        const got = codeOf(sentence);
+        if (got === shortOwner) {
+          wrongGuesses.push(
+            `"${sentence}" named ${shortOwner} (owner of "${shortToken}") instead of ${targetLang} (owner of "${marker}") or null`
+          );
+        }
+      }
+    }
+    expect(wrongGuesses).toEqual([]);
+  });
+
   it('returns null when unsure instead of guessing', () => {
     expect(codeOf('Gdansk Berlin 2026')).toBeNull();
     expect(codeOf('ok')).toBeNull();

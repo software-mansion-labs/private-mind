@@ -1,6 +1,10 @@
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { LFMEmbeddings } from './lfmEmbeddings';
-import { SourceDocument, sourceKind } from '../database/chatRepository';
+import {
+  SourceDocument,
+  sourceKind,
+  type GroundingCaveatKind,
+} from '../database/chatRepository';
 import {
   formatContextChunks,
   formatFirstChunks,
@@ -10,6 +14,11 @@ import {
 } from './contextUtils';
 import { hybridRetrieve } from './hybridRetrieval';
 import { extractQueryTerms, stemPrefix } from './queryTerms';
+import {
+  findUngroundedFigures,
+  isUngroundedConversionClaim,
+  isUngroundedTrendClaim,
+} from './web/figureGrounding';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
 import {
   CITATION_SENTENCE_PATTERN,
@@ -18,7 +27,8 @@ import {
   NO_ANSWER_PATTERNS_EN,
   NO_ANSWER_PATTERNS_PL,
 } from '../constants/citations';
-import { outsideThinkSegments } from './thinking';
+import { outsideThinkSegments, stripThinkBlocks } from './thinking';
+import { detectQuestionLanguage } from './questionLanguage';
 
 export interface SourceRow {
   id: number;
@@ -149,6 +159,83 @@ export const answerCitationOverlaps = (
   );
 };
 
+const SOURCE_REFERENCE = /(?<![\p{L}\p{N}])(?:sources?|źródł\w*)\s*(\d+)\b/giu;
+
+export const humanizeSourceReferences = (
+  answer: string,
+  sourceDocuments: SourceDocument[]
+): string => {
+  if (sourceDocuments.length === 0) return answer;
+  return answer.replace(SOURCE_REFERENCE, (match, numeral: string) => {
+    const doc = sourceDocuments[Number(numeral) - 1];
+    return doc ? doc.name : match;
+  });
+};
+
+export const detectGroundingCaveats = (
+  answer: string,
+  question: string | undefined,
+  context: string,
+  priorAnswerText?: string
+): GroundingCaveatKind[] => {
+  const caveats: GroundingCaveatKind[] = [];
+  if (findUngroundedFigures(answer, context).length > 0) {
+    caveats.push('figure');
+  }
+  if (isUngroundedTrendClaim(answer, question, context)) {
+    caveats.push('trend');
+  }
+  if (isUngroundedConversionClaim(answer, question, context, priorAnswerText)) {
+    caveats.push('conversion');
+  }
+  return caveats;
+};
+
+const normalizeForEchoCompare = (text: string): string =>
+  text
+    .trim()
+    .toLowerCase()
+    .replace(/[?!.,;:]+$/, '');
+
+const stripTrailingParenthetical = (text: string): string =>
+  text.replace(/\s*\([^)]{0,80}\)\s*$/, '');
+
+export const isQuestionEchoAnswer = (
+  answer: string,
+  question: string | undefined
+): boolean => {
+  if (!question) return false;
+  const visible = stripThinkBlocks(answer);
+  if (!visible) return false;
+  const normalizedQuestion = normalizeForEchoCompare(question);
+  if (normalizeForEchoCompare(visible) === normalizedQuestion) return true;
+  const answerWithoutAnchor = normalizeForEchoCompare(
+    stripTrailingParenthetical(visible)
+  );
+  return answerWithoutAnchor === normalizedQuestion;
+};
+
+const DANGLING_LIST_INTRO = /[:：]\s*$/;
+
+export const isDanglingListAnswer = (answer: string): boolean => {
+  const visible = stripThinkBlocks(answer);
+  if (!visible) return false;
+  return DANGLING_LIST_INTRO.test(visible);
+};
+
+export const isWrongLanguageAnswer = (
+  answer: string,
+  question: string | undefined
+): boolean => {
+  if (!question) return false;
+  const expected = detectQuestionLanguage(question);
+  if (!expected) return false;
+  const visible = stripThinkBlocks(answer);
+  if (!visible) return false;
+  const actual = detectQuestionLanguage(visible);
+  return !!actual && actual.code !== expected.code;
+};
+
 export const pickCitationsByAnswer = (
   sourceDocuments: SourceDocument[],
   answer: string,
@@ -189,13 +276,18 @@ const flagUsedWebDocuments = (
     overlap: overlapWithAnswer(`${doc.name} ${doc.passage ?? ''}`, answerTerms),
   }));
   const maxOverlap = Math.max(0, ...scored.map((s) => s.overlap));
+  const isPresent = (doc: SourceDocument) =>
+    presentNames === undefined || presentNames.has(doc.name);
+
+  if (maxOverlap === 0) {
+    return scored.map((s) => ({ ...s.doc, used: isPresent(s.doc) }));
+  }
 
   return scored.map((s) => ({
     ...s.doc,
     used:
-      maxOverlap > 0 &&
       s.overlap >= maxOverlap * ANSWER_CITATION_OVERLAP_RATIO &&
-      (presentNames === undefined || presentNames.has(s.doc.name)),
+      isPresent(s.doc),
   }));
 };
 

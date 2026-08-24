@@ -7,6 +7,7 @@ import {
   getAppMemoryBudgetGB,
   hasMemoryForWebSearch,
   isMemoryConstrained,
+  isHighMemoryDevice,
 } from '../utils/modelCompatibility';
 import { Model } from '../database/modelRepository';
 
@@ -256,5 +257,27 @@ describe('hasMemoryForWebSearch', () => {
       throw new Error('no such thing');
     });
     expect(hasMemoryForWebSearch(gemma)).toBe(true);
+  });
+});
+
+describe('isHighMemoryDevice', () => {
+  it('counts the RAM left next to the loaded model, not the device total', () => {
+    mockGetTotalMemorySync.mockReturnValue(gb(13));
+    expect(isHighMemoryDevice({ modelSize: 2 })).toBe(true);
+    expect(isHighMemoryDevice({ modelSize: 6 })).toBe(false);
+  });
+
+  it('falls back to the device threshold when no model is loaded', () => {
+    mockGetTotalMemorySync.mockReturnValue(gb(12));
+    expect(isHighMemoryDevice(null)).toBe(true);
+    mockGetTotalMemorySync.mockReturnValue(gb(6));
+    expect(isHighMemoryDevice(undefined)).toBe(false);
+  });
+
+  it('does not force the download when the memory figure is unreadable', () => {
+    mockGetTotalMemorySync.mockImplementation(() => {
+      throw new Error('no such thing');
+    });
+    expect(isHighMemoryDevice({ modelSize: 2 })).toBe(false);
   });
 });

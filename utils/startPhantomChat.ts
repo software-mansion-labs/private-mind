@@ -42,6 +42,7 @@ export const startPhantomChat = async (
   } as const;
 
   if (mode === 'replace') {
+    await new Promise((resolve) => setTimeout(resolve, 50));
     router.replace(target);
   } else {
     router.push(target);

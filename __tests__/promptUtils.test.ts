@@ -33,7 +33,6 @@ const makeMessages = (count: number): Message[] => [
     content: `message ${i + 1}`,
     timestamp: Date.now(),
   })),
-  // trailing assistant placeholder (always present in real usage)
   {
     id: count + 1,
     chatId: 1,
@@ -377,6 +376,36 @@ describe('prepareMessagesForLLM', () => {
       expect(result[0].content).toContain('Never say the word "context"');
     });
 
+    it('nudges the model to name the page instead of a vague "sources say" on web results (F29)', () => {
+      const messages = makeMessages(2);
+      const webSources: SourceDocument[] = [
+        { name: 'CoinMarketCap', kind: 'web', url: 'https://a.example/btc' },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some web context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        webSources
+      );
+      expect(result[0].content).toContain('name that page in your own words');
+    });
+
+    it('does not add the named-citation nudge for document-only context', () => {
+      const messages = makeMessages(2);
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some document context'],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).not.toContain(
+        'name that page in your own words'
+      );
+    });
+
     it('warns not to guess when a needed web search came back with nothing usable', () => {
       const messages = makeMessages(2);
       const result = prepareMessagesForLLM(
@@ -405,6 +434,62 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       expect(result[0].content).not.toContain('found nothing usable');
+    });
+
+    it('warns against citing "Source N" on a no-context follow-up after a web-grounded reply (live-found Pixel gap)', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'ile dzieci ma prezydent usa i jak nazywa się jego żona',
+          timestamp: Date.now(),
+        },
+        {
+          id: 2,
+          chatId: 1,
+          role: 'assistant',
+          content:
+            'Prezydent ma dwie córki, a jego żona nazywa się Melania Trump.',
+          timestamp: Date.now(),
+          sourceDocuments: [
+            { name: 'Wikipedia', kind: 'web', used: true },
+          ] as SourceDocument[],
+        },
+        {
+          id: 3,
+          chatId: 1,
+          role: 'user',
+          content: 'wypisz imiona wszystkich dzieci prezydenta',
+          timestamp: Date.now(),
+        },
+        {
+          id: 4,
+          chatId: 1,
+          role: 'assistant',
+          content: '',
+          timestamp: Date.now(),
+        },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).toContain('No new search results');
+      expect(result[0].content).toContain('Never write "Source 1"');
+    });
+
+    it('does not add the no-fresh-context warning when this thread never used web search', () => {
+      const messages = makeMessages(2);
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).not.toContain('No new search results');
     });
 
     it('adds current attachment priority without making it exclusive', () => {
@@ -637,7 +722,6 @@ describe('prepareMessagesForLLM', () => {
 
   describe('event message filtering', () => {
     it('strips event messages from the output', () => {
-      // Last item is the empty assistant placeholder (as per llmStore contract)
       const messages: Message[] = [
         { id: 1, chatId: 1, role: 'user', content: 'hello', timestamp: 0 },
         {
@@ -664,8 +748,6 @@ describe('prepareMessagesForLLM', () => {
       );
       const roles = result.map((m) => m.role);
       expect(roles).not.toContain('event');
-      // system + user + assistant; trailing empty assistant placeholder is not
-      // sent to the model.
       expect(result).toHaveLength(3);
     });
   });
@@ -679,7 +761,6 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      // system + 20 messages; trailing empty assistant placeholder is not sent.
       expect(result).toHaveLength(21);
       expect(result[0].role).toBe('system');
     });
@@ -966,6 +1047,27 @@ describe('prepareMessagesForLLM', () => {
           chatId: 1,
           role: 'user',
           content: 'Czym się różnią objawy grypy i przeziębienia?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some context'],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).toContain('stay visibly separate');
+    });
+
+    it('nudges toward a structured comparison on a "compare X and Y" question without "vs"/"differ" (F26)', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content:
+            'Compare the current prices of Bitcoin, Ethereum and Solana.',
           timestamp: 0,
         },
         { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
@@ -1300,7 +1402,7 @@ describe('prepareMessagesForLLM', () => {
         undefined,
         true
       );
-      expect(result[0].content).toContain('came back thin');
+      expect(result[0].content).toContain('could not be confidently verified');
     });
 
     it('does not add the weak-retrieval warning when retrieval was not flagged weak', () => {
@@ -1320,7 +1422,9 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      expect(result[0].content).not.toContain('came back thin');
+      expect(result[0].content).not.toContain(
+        'could not be confidently verified'
+      );
     });
 
     it('tells the model to admit missing data on a trend question with only a current price in context', () => {
@@ -1619,6 +1723,39 @@ describe('prepareMessagesForLLM', () => {
       expect(whitelistLine).toContain('Do not use it as the low');
     });
 
+    it('flags a lone "price statement" match as an outlier against the page\'s other figures (F25)', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'What is the current price of gold per ounce?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const webSources: SourceDocument[] = [
+        { name: 'Gold', kind: 'web', url: 'https://livepriceofgold.com' },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        [
+          'Investing.com shows gold price $0.1670 today. Other trackers report: $2031.50, $2029.80, $2033.10.',
+        ],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        webSources
+      );
+      const last = result[result.length - 1];
+      const whitelistLine = last.content
+        .split('\n')
+        .find((line) => line.startsWith('Figures found in the sources'));
+      expect(whitelistLine).toContain('$0.1670');
+      expect(whitelistLine).toContain('far apart from the other figures');
+    });
+
     it('does not flag any figure as an outlier when prices cluster normally', () => {
       const messages: Message[] = [
         {
@@ -1769,6 +1906,66 @@ describe('prepareMessagesForLLM', () => {
       expect(last.content).toContain('bitcoin price today → $64,146.36');
       expect(last.content).toContain('ethereum price today → $1,898.04');
       expect(last.content).toContain('never for another entity');
+    });
+
+    it('tells the model to admit missing data for an entity absent from the per-entity figures list (F27)', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content:
+            'Compare the current prices of Bitcoin, Ethereum and Solana.',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const webSources: SourceDocument[] = [
+        { name: 'BTC', kind: 'web', url: 'https://a.example/btc' },
+        { name: 'ETH', kind: 'web', url: 'https://b.example/eth' },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        [
+          '[Answers: bitcoin price today]\nBitcoin price today: $64,146.36',
+          '[Answers: ethereum price today]\nEthereum Price: $1,898.04',
+        ],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        webSources
+      );
+      const last = result[result.length - 1];
+      expect(last.content).toContain('no entry in this list');
+    });
+
+    it('warns the model against inventing a figure for something absent from the context entirely (F27)', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'What is the current price of gold?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const webSources: SourceDocument[] = [
+        { name: 'Gold', kind: 'web', url: 'https://a.example/gold' },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        ['Gold price today: $4,512.10 per ounce.'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        webSources
+      );
+      expect(result[0].content).toContain(
+        'not mentioned anywhere in the context'
+      );
     });
 
     it('omits the language reminder when there is no web source', () => {

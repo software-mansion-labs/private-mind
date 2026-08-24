@@ -19,13 +19,13 @@ export const GENERATION_ERROR_MEASUREMENT_KEY = 'generation-error';
 
 export const MESSAGE_PIN_OFFSET = 8;
 
+export const PIN_READY_SLACK_PX = 1;
+
 export const MESSAGE_PIN_SETTLE_MS = 500;
 
 export const REVEAL_FALLBACK_MS = 900;
 
 export const PIN_RELEASE_MS = 32;
-
-export const PIN_RELEASE_FALLBACK_MS = 150;
 
 export const navBarInset = (theme: Theme) =>
   Platform.OS === 'android' ? theme.insets.bottom : 0;

@@ -90,11 +90,14 @@ const getContextInstruction = (
   const overviewNote = preferred?.length
     ? ', with a freshly attached file marked "(Overview)"'
     : '';
-  const what = webOnly
-    ? `excerpts from web pages just retrieved for this question, ${headed}`
-    : hasWeb
-      ? `excerpts from the user's documents and from web pages just retrieved for this question, ${headed}`
-      : `excerpts from the user's documents, ${headed}${overviewNote}`;
+  let what: string;
+  if (webOnly) {
+    what = `excerpts from web pages just retrieved for this question, ${headed}`;
+  } else if (hasWeb) {
+    what = `excerpts from the user's documents and from web pages just retrieved for this question, ${headed}`;
+  } else {
+    what = `excerpts from the user's documents, ${headed}${overviewNote}`;
+  }
 
   const scope = webOnly
     ? []
@@ -117,6 +120,12 @@ const getContextInstruction = (
   const direct =
     'Answer the question that was asked, directly and first. Do not summarize the pages or add background the question did not ask for.';
 
+  const namedCitation = hasWeb
+    ? [
+        'When a claim rests mainly on one page, name that page in your own words (e.g. "CoinMarketCap reports…", "According to Reuters…") using its title from the block header, instead of a vague "the sources say". Save "the sources" for when several pages agree or you are referring to the whole block.',
+      ]
+    : [];
+
   const conflict = hasWeb
     ? [
         'The pages may disagree because some are out of date. Where they conflict, trust the page reporting the newest events — a change, a succession, "X replaces Y" — over a page that states the old fact.',
@@ -125,6 +134,7 @@ const getContextInstruction = (
 
   const figures =
     'Copy every number, price and date exactly as it is printed in the context. If the context does not state the figure the question asks about, say so — never estimate or invent one. ' +
+    'If the question names something that is not mentioned anywhere in the context at all, say you have no current data for it — do not give it a figure, even an approximate or well-known one. ' +
     'When comparing several things, a source block may be tagged [Answers: <query>] — only use its figures for the entity that tag names, never for another entity in the same comparison.';
 
   const SPECULATIVE_SOURCE_MARKERS =
@@ -149,6 +159,7 @@ const getContextInstruction = (
     fallback,
     noLeakedJargon,
     direct,
+    ...namedCitation,
     ...conflict,
     figures,
     ...speculative,
@@ -226,15 +237,25 @@ const getRangeHint = (tokenCount: number): string =>
 
 const getOutlierNote = (outliers: string[]): string =>
   outliers.length > 0
-    ? ` ${outliers.join(', ')} ${outliers.length > 1 ? 'stand' : 'stands'} far apart from the other figures found — that is more likely a filter default, shipping cost, financing installment, or an unrelated listing than this product's actual price. Do not use it as the low (or high) end of a range, or as "the" price, unless the source text explicitly ties it to this exact product.`
+    ? ` ${outliers.join(', ')} ${outliers.length > 1 ? 'stand' : 'stands'} far apart from the other figures found — that is more likely a filter default, shipping cost, financing installment, a rate/change value, or an unrelated listing than this product's actual price. Do not use it as the low (or high) end of a range, or as "the" price, unless the source text explicitly ties it to this exact product.`
     : '';
+
+const MIN_TOKENS_FOR_OUTLIER_CHECK = 3;
+
+const outliersAmong = (tokens: string[], context: string): string[] => {
+  const pool =
+    tokens.length < MIN_TOKENS_FOR_OUTLIER_CHECK
+      ? [...new Set([...tokens, ...extractCurrencyTokens(context)])]
+      : tokens;
+  return splitPriceOutliers(pool).outliers.filter((o) => tokens.includes(o));
+};
 
 const getFiguresInstruction = (context: string): string => {
   const tags = [...context.matchAll(ANSWERS_TAG)];
   if (tags.length < 2) {
     const tokens = figureList(context);
     if (tokens.length === 0) return '';
-    const { outliers } = splitPriceOutliers(tokens);
+    const outliers = outliersAmong(tokens, context);
     return `Figures found in the sources: ${tokens.join(', ')}. State a price or amount only if it matches one of these — never one from memory.${getRangeHint(tokens.length)}${getOutlierNote(outliers)}`;
   }
 
@@ -254,7 +275,7 @@ const getFiguresInstruction = (context: string): string => {
     .filter(([, tokens]) => tokens.length > 0)
     .map(([query, tokens]) => `${query} → ${tokens.join(', ')}`);
   if (perEntity.length === 0) return '';
-  return `Figures found per entity: ${perEntity.join(' | ')}. Use a figure only for the entity it's listed under — never for another entity in the comparison, and never one from memory.`;
+  return `Figures found per entity: ${perEntity.join(' | ')}. Use a figure only for the entity it's listed under — never for another entity in the comparison, and never one from memory. If the question named something with no entry in this list, say you have no current data for it instead of giving it a figure.`;
 };
 
 const OPINION_MARKERS =
@@ -274,7 +295,7 @@ const getInvestmentComparisonInstruction = (question?: string): string =>
     : '';
 
 const COMPARISON_MARKERS =
-  /czym się różni|jaka jest różnic|różnic\w* (?:między|pomiędzy)|co odróżnia|\bvs\.?\b|\bversus\b|difference between|how (?:do|does) .+ differ|what'?s the difference/i;
+  /czym się różni|jaka jest różnic|różnic\w* (?:między|pomiędzy)|co odróżnia|porówn\w*|\bvs\.?\b|\bversus\b|\bcompare\b|comparison between|difference between|how (?:do|does) .+ differ|what'?s the difference/i;
 
 const getComparisonStructureInstruction = (question?: string): string =>
   question && COMPARISON_MARKERS.test(question)
@@ -320,7 +341,7 @@ const getVerifiedProductInstruction = (context: string): string =>
 
 const getWeakRetrievalInstruction = (weak?: boolean): string =>
   weak
-    ? '\n\nThis web search came back thin — few or low-relevance sources. If the context above does not clearly answer the question, say so plainly rather than stretching what little it has into a fuller-sounding answer.'
+    ? "\n\nThis web search's results could not be confidently verified as relevant to the question. If the context above does not clearly answer it, say so plainly rather than stretching what's there into a fuller-sounding answer."
     : '';
 
 const PERIOD_SCOPE_MARKERS =
@@ -341,6 +362,17 @@ const getScopeIntegrityInstruction = (): string =>
 const getWebSearchFailedInstruction = (failed?: boolean): string =>
   failed
     ? '\n\nA web search was just attempted for this question because it needs current or verifiable facts, but it found nothing usable. Do not guess a specific fact — a name, date, score, or number — from memory as if it were confirmed; say plainly that you do not have verified current information for this.'
+    : '';
+
+// When an earlier turn in this thread searched the web, its <context> block
+// carried numbered "Source 1" / "Source 2" labels the model may have cited.
+// A later follow-up this app decided did not need a fresh search has no
+// such block — but without this reminder a small model keeps citing those
+// numbers anyway, imitating its own earlier reply even though nothing here
+// backs the numbers up.
+const getNoFreshContextInstruction = (hasPriorWebAnswer: boolean): string =>
+  hasPriorWebAnswer
+    ? '\n\nNo new search results were retrieved for this message — there is no <context> block this time. Answer from the conversation so far, in your own words. Never write "Source 1", "Source 2" or similar numbered citations here; those labels only existed in an earlier message\'s context block, which is not part of this prompt.'
     : '';
 
 const getPreferredSourceInstruction = (sources?: SourceDocument[]) => {
@@ -409,6 +441,12 @@ export const prepareMessagesForLLM = (
   } else {
     systemPrompt += `\n\n${languageInstruction(language)}`;
     systemPrompt += getWebSearchFailedInstruction(webSearchFailed);
+    const hasPriorWebAnswer = activeChatMessages.some(
+      (msg) =>
+        msg.role === 'assistant' &&
+        msg.sourceDocuments?.some((source) => sourceKind(source) === 'web')
+    );
+    systemPrompt += getNoFreshContextInstruction(hasPriorWebAnswer);
   }
   systemPrompt += getDateInstruction(sourceDocuments, question);
 

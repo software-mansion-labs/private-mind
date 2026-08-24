@@ -12,6 +12,8 @@ import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import AnimatedChatLoading from './AnimatedChatLoading';
 import WebSearchBlock from './WebSearchBlock';
+import GroundingCaveatBadges from './GroundingCaveatBadges';
+import DominantSourceBadge from './DominantSourceBadge';
 import { WEB_TRACE_TRANSITION_MS } from './webSearchTraceConstants';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -90,8 +92,13 @@ const MessageItem = memo(
 
     const contentParts = parseThinkingContent(content);
     const userText = useMemo(() => stripThinkMarkers(content), [content]);
-    const { displayedSources, webResults, documentSources, hasSources } =
-      useMessageSources(sourceDocuments);
+    const {
+      displayedSources,
+      webResults,
+      documentSources,
+      dominantWebSource,
+      hasSources,
+    } = useMessageSources(sourceDocuments);
 
     const documentInfo = useMemo(
       () => (documentName ? splitDocumentName(documentName) : null),
@@ -284,6 +291,8 @@ const MessageItem = memo(
                     onLinkPress={handleLinkPress}
                   />
                 )}
+              <DominantSourceBadge source={dominantWebSource} />
+              <GroundingCaveatBadges caveats={message.groundingCaveats} />
               {showPerformanceMetrics &&
                 tokensPerSecond !== undefined &&
                 tokensPerSecond !== 0 && (

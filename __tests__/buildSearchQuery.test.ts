@@ -4,6 +4,8 @@ import {
   planWebSearch,
   sanitizeSearchQuery,
   extractSiteRestriction,
+  carryReferentIntoQuery,
+  isConversationalIntent,
 } from '../utils/web/buildSearchQuery';
 
 const history = [
@@ -116,7 +118,7 @@ describe('parseSearchPlan', () => {
       parseSearchPlan(
         '{"needs_search": true, "intent": "", "queries": ["a","b","c","d"]}'
       )?.queries
-    ).toEqual(['a', 'b']);
+    ).toEqual(['a', 'b', 'c']);
   });
 
   it('defaults needsSearch to true when the field is missing', () => {
@@ -227,6 +229,25 @@ describe('planWebSearch', () => {
     ]);
   });
 
+  it('fans out into three sub-queries for a three-way comparison', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": true, "intent": "compare crypto prices", "queries": ["bitcoin price today", "ethereum price today", "solana price today"]}'
+      );
+    const plan = await planWebSearch(
+      'compare the current prices of Bitcoin, Ethereum and Solana',
+      [],
+      generate,
+      { today: TODAY }
+    );
+    expect(plan.queries).toEqual([
+      'bitcoin price today',
+      'ethereum price today',
+      'solana price today',
+    ]);
+  });
+
   it('honors needs_search=false (no queries)', async () => {
     const generate = jest
       .fn()
@@ -242,6 +263,66 @@ describe('planWebSearch', () => {
     expect(plan).toEqual({
       needsSearch: false,
       intent: 'write a poem',
+      queries: [],
+    });
+  });
+
+  it("overrides needs_search=false when the plan's own intent is not one of the conversational categories its prompt defines (live-found Pixel gap — F31)", async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": false, "intent": "elon musk children", "queries": []}'
+      );
+    const plan = await planWebSearch('ile dzieci ma Elon Musk', [], generate, {
+      today: TODAY,
+    });
+    expect(plan.needsSearch).toBe(true);
+    expect(plan.queries).toEqual(['ile dzieci ma Elon Musk']);
+  });
+
+  it('overrides needs_search=false for a bare-role follow-up whose intent is still non-conversational (F31)', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": false, "intent": "president children", "queries": []}'
+      );
+    const plan = await planWebSearch(
+      'wypisz imiona wszystkich dzieci prezydenta',
+      [],
+      generate,
+      { today: TODAY }
+    );
+    expect(plan.needsSearch).toBe(true);
+    expect(plan.queries).toEqual([
+      'wypisz imiona wszystkich dzieci prezydenta',
+    ]);
+  });
+
+  it('overrides needs_search=false when the model gives no intent at all', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": false, "intent": "", "queries": []}'
+      );
+    const plan = await planWebSearch('kurs euro dzisiaj', [], generate, {
+      today: TODAY,
+    });
+    expect(plan.needsSearch).toBe(true);
+    expect(plan.queries).toEqual(['kurs euro dzisiaj']);
+  });
+
+  it('still honors needs_search=false when the intent matches a conversational category', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": false, "intent": "casual greeting", "queries": []}'
+      );
+    const plan = await planWebSearch('hej, jak leci?', [], generate, {
+      today: TODAY,
+    });
+    expect(plan).toEqual({
+      needsSearch: false,
+      intent: 'casual greeting',
       queries: [],
     });
   });
@@ -524,5 +605,147 @@ describe('planWebSearch', () => {
       );
       expect(plan.queries).toEqual(['league champion 2025']);
     });
+  });
+});
+
+describe('carryReferentIntoQuery', () => {
+  const withPresident = [
+    { role: 'user', content: 'kto jest prezydentem usa?' },
+    {
+      role: 'assistant',
+      content: 'Prezydentem USA jest obecnie Donald Trump.',
+    },
+  ];
+
+  it('splices in the most recently named entity for a bare-role follow-up', () => {
+    expect(
+      carryReferentIntoQuery('ile dzieci ma prezydent?', withPresident)
+    ).toBe('ile dzieci ma prezydent? Donald Trump');
+  });
+
+  it('does the same for an English pronoun follow-up', () => {
+    const withCeo = [
+      { role: 'user', content: 'who is the CEO of Tesla?' },
+      { role: 'assistant', content: 'The CEO of Tesla is Elon Musk.' },
+    ];
+    expect(carryReferentIntoQuery('how many kids does he have?', withCeo)).toBe(
+      'how many kids does he have? Elon Musk'
+    );
+  });
+
+  it('leaves a query alone when it already names someone', () => {
+    expect(
+      carryReferentIntoQuery('ile dzieci ma Donald Trump?', withPresident)
+    ).toBe('ile dzieci ma Donald Trump?');
+  });
+
+  it('leaves a query alone with no referent marker at all', () => {
+    expect(
+      carryReferentIntoQuery('jaka jest cena bitcoina?', withPresident)
+    ).toBe('jaka jest cena bitcoina?');
+  });
+
+  it('leaves a query alone when history has no named entity to carry', () => {
+    const smallTalk = [
+      { role: 'user', content: 'hej, jak leci?' },
+      { role: 'assistant', content: 'Wszystko dobrze, dzięki!' },
+    ];
+    expect(carryReferentIntoQuery('ile ma lat prezydent?', smallTalk)).toBe(
+      'ile ma lat prezydent?'
+    );
+  });
+
+  it('splices in the entity for a Polish zero-subject follow-up with no pronoun at all (F31)', () => {
+    expect(carryReferentIntoQuery('a kiedy się urodził?', withPresident)).toBe(
+      'a kiedy się urodził? Donald Trump'
+    );
+  });
+
+  it('does not misfire on a short but self-contained new question that happens to be brief', () => {
+    expect(
+      carryReferentIntoQuery('jaka jest cena bitcoina?', withPresident)
+    ).toBe('jaka jest cena bitcoina?');
+  });
+
+  it('does not fire on "się" buried in an otherwise long, self-contained sentence', () => {
+    const longQuery =
+      'czy zgadzasz się, że trzeba to zmienić w całym systemie edukacji?';
+    expect(carryReferentIntoQuery(longQuery, withPresident)).toBe(longQuery);
+  });
+
+  it('prefers the most recent entity over an earlier one', () => {
+    const twoPresidents = [
+      { role: 'user', content: 'kto jest prezydentem Francji?' },
+      {
+        role: 'assistant',
+        content: 'Prezydentem Francji jest Emmanuel Macron.',
+      },
+      { role: 'user', content: 'a kto jest prezydentem USA?' },
+      { role: 'assistant', content: 'Prezydentem USA jest Donald Trump.' },
+    ];
+    expect(carryReferentIntoQuery('ile ma lat prezydent?', twoPresidents)).toBe(
+      'ile ma lat prezydent? Donald Trump'
+    );
+  });
+
+  it('is wired end to end through planWebSearch in verbatim mode', async () => {
+    const generate = jest.fn();
+    const plan = await planWebSearch(
+      'ile dzieci ma prezydent?',
+      withPresident,
+      generate,
+      { rewrite: false }
+    );
+    expect(generate).not.toHaveBeenCalled();
+    expect(plan.queries).toEqual(['ile dzieci ma prezydent? Donald Trump']);
+  });
+
+  it('also carries the referent into a query the LLM planner itself produced (F30 — live-found gap, "how many children does the president have" retrieved Joe Biden pages under a Trump follow-up)', async () => {
+    const generate = jest.fn().mockResolvedValue(
+      JSON.stringify({
+        needs_search: true,
+        intent: "the president's children and wife",
+        queries: [
+          'how many children does the president have',
+          "name of the president's wife",
+        ],
+      })
+    );
+    const plan = await planWebSearch(
+      'ile dzieci ma prezydent i jak nazywa sie jego zona?',
+      withPresident,
+      generate
+    );
+    expect(plan.queries).toEqual([
+      'how many children does the president have Donald Trump',
+      "name of the president's wife Donald Trump",
+    ]);
+  });
+});
+
+describe('isConversationalIntent', () => {
+  it('recognizes every conversational category the planner prompt itself defines as needing no search', () => {
+    expect(isConversationalIntent('casual greeting')).toBe(true);
+    expect(isConversationalIntent('creative writing')).toBe(true);
+    expect(isConversationalIntent('personal advice')).toBe(true);
+    expect(isConversationalIntent('programming language opinion')).toBe(true);
+    expect(isConversationalIntent('thanking the assistant')).toBe(true);
+    expect(isConversationalIntent('translate this sentence')).toBe(true);
+    expect(isConversationalIntent('rewrite the paragraph')).toBe(true);
+    expect(isConversationalIntent('basic math question')).toBe(true);
+    expect(isConversationalIntent('debugging code')).toBe(true);
+    expect(isConversationalIntent('general knowledge')).toBe(true);
+  });
+
+  it('does not recognize an intent describing a real-world fact, in any language the query itself was in — intent is always written in English', () => {
+    expect(isConversationalIntent('elon musk children')).toBe(false);
+    expect(isConversationalIntent('president children')).toBe(false);
+    expect(isConversationalIntent('current gold price')).toBe(false);
+    expect(isConversationalIntent('CEO of Tesla')).toBe(false);
+  });
+
+  it('does not trust an empty or missing intent as evidence of being conversational', () => {
+    expect(isConversationalIntent('')).toBe(false);
+    expect(isConversationalIntent('   ')).toBe(false);
   });
 });

@@ -19,11 +19,17 @@ import Toast from 'react-native-toast-message';
 import { Feedback } from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import {
+  detectGroundingCaveats,
+  humanizeSourceReferences,
+  isDanglingListAnswer,
+  isQuestionEchoAnswer,
+  isWrongLanguageAnswer,
   pickCitationsByAnswer,
   restrictCitationsToContext,
 } from '../utils/messageSources';
 import { sourcesPresentInContext } from '../utils/contextUtils';
 import { normalizeModelText } from '../utils/normalizeModelText';
+import { truncateAtRepeatedClause } from '../utils/loopDetection';
 import { useSettingsStore } from './settingsStore';
 import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
@@ -59,6 +65,10 @@ export interface LLMStore {
       context: string[];
       sourceDocuments?: SourceDocument[];
       preferredSourceDocuments?: SourceDocument[];
+      webIntent?: string;
+      webSubQueries?: string[];
+      webWeak?: boolean;
+      webSearchFailed?: boolean;
     }>,
     settings: ChatSettings,
     imagePath?: string,
@@ -350,6 +360,9 @@ const updateChatStateForGeneration = (
                   sourceDocuments:
                     data.assistantMessage?.sourceDocuments ??
                     msg.sourceDocuments,
+                  groundingCaveats:
+                    data.assistantMessage?.groundingCaveats ??
+                    msg.groundingCaveats,
                   timeToFirstToken: data.timeToFirstToken!,
                   tokensPerSecond: data.tokensPerSecond!,
                 }
@@ -387,6 +400,20 @@ const updateChatStateForGeneration = (
       });
       break;
   }
+};
+
+const describeGenerationFailure = (
+  finalResponse: string | null | undefined,
+  currentQuestion: string | undefined
+): string => {
+  if (!finalResponse) return 'The model returned an empty response';
+  if (isQuestionEchoAnswer(finalResponse, currentQuestion)) {
+    return 'The model echoed the question back with no actual answer';
+  }
+  if (isDanglingListAnswer(finalResponse)) {
+    return 'The model started a list but produced no items';
+  }
+  return 'The model answered in the wrong language';
 };
 
 const generateLLMResponse = async (
@@ -660,7 +687,15 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       } finally {
         clearTimeout(searchTimeout);
       }
-      const { context, sourceDocuments, preferredSourceDocuments } = built;
+      const {
+        context,
+        sourceDocuments,
+        preferredSourceDocuments,
+        webIntent,
+        webSubQueries,
+        webWeak,
+        webSearchFailed,
+      } = built;
 
       if (!get().isProcessingPrompt) {
         updateChatStateForGeneration(set, 'failed');
@@ -692,7 +727,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         currentModel,
         useSettingsStore.getState().customSystemPrompt,
         preferredSourceDocuments,
-        sourceDocuments
+        sourceDocuments,
+        1,
+        webIntent,
+        webSubQueries,
+        webWeak,
+        webSearchFailed
       );
 
       const lastPreparedMessage = messagesWithSystemPrompt.at(-1);
@@ -747,17 +787,36 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           useSettingsStore.getState().customSystemPrompt,
           preferredSourceDocuments,
           sourceDocuments,
-          0.5
+          0.5,
+          webIntent,
+          webSubQueries,
+          webWeak,
+          webSearchFailed
         );
         generation = await generateLLMResponse(effectivePrepared, get);
       }
       const { response: rawResponse, performance: responsePerformance } =
         generation;
       const finalResponse = rawResponse
-        ? normalizeModelText(rawResponse)
+        ? truncateAtRepeatedClause(normalizeModelText(rawResponse))
         : rawResponse;
+      const currentQuestion = get().activeChatMessages.findLast(
+        (msg) => msg.role === 'user'
+      )?.content;
+      const priorAnswerText = get()
+        .activeChatMessages.slice(0, -1)
+        .findLast((msg) => msg.role === 'assistant')?.content;
       // Handle successful response
-      if (finalResponse) {
+      if (
+        finalResponse &&
+        !isQuestionEchoAnswer(finalResponse, currentQuestion) &&
+        !isDanglingListAnswer(finalResponse) &&
+        !isWrongLanguageAnswer(finalResponse, currentQuestion)
+      ) {
+        const humanizedResponse = humanizeSourceReferences(
+          finalResponse,
+          sourceDocuments ?? []
+        );
         const effectiveLast = effectivePrepared.at(-1);
         const effectiveContent =
           typeof effectiveLast?.content === 'string'
@@ -773,14 +832,23 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               );
         const citedSourceDocuments = pickCitationsByAnswer(
           effectiveSeen,
-          finalResponse,
+          humanizedResponse,
           preferredSourceDocuments ?? [],
           sourcesPresentInContext(effectiveContent)
         );
+        const groundingCaveats = context.some((chunk) => chunk.trim())
+          ? detectGroundingCaveats(
+              humanizedResponse,
+              currentQuestion,
+              effectiveContent,
+              priorAnswerText
+            )
+          : [];
         const assistantMessageId = await persistMessage(db, {
           ...assistantPlaceholder,
-          content: finalResponse,
+          content: humanizedResponse,
           sourceDocuments: citedSourceDocuments,
+          groundingCaveats,
           tokensPerSecond: responsePerformance.tokensPerSecond,
           timeToFirstToken: responsePerformance.timeToFirstToken,
         });
@@ -790,8 +858,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             assistantMessage: {
               ...assistantPlaceholder,
               id: assistantMessageId,
-              content: finalResponse,
+              content: humanizedResponse,
               sourceDocuments: citedSourceDocuments,
+              groundingCaveats,
               tokensPerSecond: responsePerformance.tokensPerSecond,
               timeToFirstToken: responsePerformance.timeToFirstToken,
             },
@@ -804,7 +873,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         failedGenerationRequest = null;
         set({ generationError: null });
       } else {
-        markGenerationFailed(new Error('The model returned an empty response'));
+        markGenerationFailed(
+          new Error(describeGenerationFailure(finalResponse, currentQuestion))
+        );
       }
     } catch (e) {
       const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;

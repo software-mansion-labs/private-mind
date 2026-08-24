@@ -32,8 +32,11 @@ const NO_ANSWER_META_PL =
 
 // English "no information" refusal patterns; each negation is tied to a coverage noun.
 export const NO_ANSWER_PATTERNS_EN: RegExp[] = [
-  new RegExp(`\\bno (${NO_ANSWER_META_EN})\\b`, 'i'),
-  new RegExp(`\\bthere (is|are|'s) no (${NO_ANSWER_META_EN})\\b`, 'i'),
+  new RegExp(`\\bno [^.!?]{0,40}?\\b(${NO_ANSWER_META_EN})\\b`, 'i'),
+  new RegExp(
+    `\\bthere (is|are|'s) no [^.!?]{0,40}?\\b(${NO_ANSWER_META_EN})\\b`,
+    'i'
+  ),
   new RegExp(
     `\\b(does|do|did|could|can) ?n['o]?t (contain|mention|include|provide|specify|cover|have|state|say)( any| any relevant)? (${NO_ANSWER_META_EN})\\b`,
     'i'
@@ -50,7 +53,7 @@ export const NO_ANSWER_PATTERNS_EN: RegExp[] = [
 // Polish "brak informacji" refusal patterns; each negation is tied to a coverage noun.
 export const NO_ANSWER_PATTERNS_PL: RegExp[] = [
   new RegExp(
-    `\\b(nie ma|brak|nie zawiera\\w*|nie znaleziono|nie podano|nie wymienia\\w*) (żadn\\w* )?(${NO_ANSWER_META_PL})\\b`,
+    `\\b(nie ma|brak|nie zawiera${PL_WORD_CHAR}*|nie znaleziono|nie podano|nie wymienia${PL_WORD_CHAR}*|nie dostarcza${PL_WORD_CHAR}*|nie oferuje${PL_WORD_CHAR}*) [^.!?]{0,40}?\\b(${NO_ANSWER_META_PL})\\b`,
     'i'
   ),
   /\bnie wspomina\w*\b/i,

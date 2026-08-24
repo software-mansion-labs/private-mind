@@ -93,19 +93,27 @@ export const buildRows = (
       ? [{ type: 'step', key: 'phase-reading', label: 'Reading the pages' }]
       : [];
   const phaseRunning = isSearching && !has('done');
-  const withPhaseState = (rows: StepRow[]): StepRow[] =>
-    phaseRunning ? rows : rows.map((row) => ({ ...row, done: true }));
 
-  const markActive = (rows: Row[]): Row[] => {
-    if (!phaseRunning) return rows;
+  const finalizeSteps = (rows: Row[]): Row[] => {
+    if (!phaseRunning) {
+      return rows.map((row) =>
+        row.type === 'step' && !row.done ? { ...row, done: true } : row
+      );
+    }
+    let activeIndex = -1;
     for (let i = rows.length - 1; i >= 0; i -= 1) {
       const row = rows[i]!;
       if (row.type === 'step' && !row.done) {
-        rows[i] = { ...row, active: true };
+        activeIndex = i;
         break;
       }
     }
-    return rows;
+    if (activeIndex === -1) return rows;
+    return rows.map((row, i) => {
+      if (row.type !== 'step') return row;
+      if (i === activeIndex) return { ...row, active: true };
+      return i < activeIndex ? { ...row, done: true } : row;
+    });
   };
 
   const isPageEntry = (entry: WebSearchTraceEntry): boolean =>
@@ -191,7 +199,7 @@ export const buildRows = (
       if (placed.has(key)) continue;
       rows.push(page);
     }
-    rows.push(...withPhaseState(phaseRows));
+    rows.push(...phaseRows);
     if (isSearching && challengeActive) {
       rows.push({ type: 'challenge', key: 'challenge' });
     }
@@ -209,7 +217,7 @@ export const buildRows = (
             }
       );
     }
-    return markActive(rows);
+    return finalizeSteps(rows);
   }
 
   const steps: StepRow[] = trace
@@ -238,29 +246,29 @@ export const buildRows = (
 
   if (!isSearching) {
     if (pages.length > 0) {
-      return [
+      return finalizeSteps([
         ...openingSteps,
         ...pages,
-        ...withPhaseState(phaseRows),
+        ...phaseRows,
         closingRow,
-      ];
+      ]);
     }
     if (timedOut) {
-      return [...steps, timeoutNote];
+      return finalizeSteps([...steps, timeoutNote]);
     }
     if (has('searching')) {
-      return [
+      return finalizeSteps([
         ...steps,
         { type: 'step', key: 'no-results', label: 'Nothing found', done: true },
-      ];
+      ]);
     }
     return [];
   }
 
-  return markActive([
+  return finalizeSteps([
     ...steps,
     ...pages,
-    ...withPhaseState(phaseRows),
+    ...phaseRows,
     ...(challengeActive
       ? [{ type: 'challenge', key: 'challenge' } as ChallengeRow]
       : []),

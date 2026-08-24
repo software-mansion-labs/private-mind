@@ -1,5 +1,10 @@
 import {
   assembleSourceDocuments,
+  detectGroundingCaveats,
+  humanizeSourceReferences,
+  isDanglingListAnswer,
+  isQuestionEchoAnswer,
+  isWrongLanguageAnswer,
   looksLikeNoAnswer,
   mergeAttachmentFirst,
   pickCitationsByAnswer,
@@ -455,6 +460,44 @@ describe('web search results (experimental)', () => {
     expect(result[0].used).toBe(true);
   });
 
+  it('falls back to trusting fetched web results when the answer language shares no words with them (F3)', () => {
+    const cited = [
+      web(
+        'Vitamin D for the Prevention of Disease | Endocrine Society',
+        'https://endocrine.org/x',
+        'The Endocrine Society recommends adults take 600 to 800 IU of vitamin D daily.'
+      ),
+      web(
+        'The 2024 Endocrine Society Guideline on Vitamin D - MDPI',
+        'https://mdpi.com/x',
+        'This guideline reviews evidence for vitamin D supplementation in adults.'
+      ),
+    ];
+    const answer =
+      'Zalecana dzienna dawka witaminy D dla dorosłych według najnowszych ' +
+      'wytycznych to witamina D w dawkach niższych niż 1000 IU.';
+
+    const result = pickCitationsByAnswer(cited, answer, []);
+
+    expect(result.every((d) => d.used)).toBe(true);
+  });
+
+  it('still hides a web result absent from the prompt even when overlap is uninformative', () => {
+    const cited = [
+      web(
+        'Vitamin D for the Prevention of Disease | Endocrine Society',
+        'https://endocrine.org/x',
+        'The Endocrine Society recommends adults take 600 to 800 IU of vitamin D daily.'
+      ),
+    ];
+    const answer =
+      'Zalecana dzienna dawka witaminy D dla dorosłych to witamina D.';
+
+    const result = pickCitationsByAnswer(cited, answer, [], new Set<string>());
+
+    expect(result[0].used).toBe(false);
+  });
+
   it('marks no web result used when the answer is a refusal', () => {
     const cited = [
       web('Weather Warsaw', 'https://w.com', 'Warsaw temperature and rain'),
@@ -523,6 +566,9 @@ describe('looksLikeNoAnswer', () => {
     'Te szczegóły nie są wskazane w załączonych materiałach.',
     'Na podstawie dostarczonych kontekstów nie jest podany adres siedziby głównej spółki Zephyria.',
     'W dokumencie nie jest określona data premiery.',
+    'Nie ma dokładnej informacji o aktualnej pogodzie w kontekście źródeł, które zostały podane.',
+    'There is no exact information about the current weather in the sources provided.',
+    'Źródła nie dostarczają konkretnej informacji o pogodzie w danym momencie.',
   ])('flags the refusal: %s', (reply) => {
     expect(looksLikeNoAnswer(reply)).toBe(true);
   });
@@ -538,5 +584,304 @@ describe('looksLikeNoAnswer', () => {
     'Urlop dodatkowy nie jest płatny, co potwierdza regulamin.',
   ])('does not flag a real answer: %s', (reply) => {
     expect(looksLikeNoAnswer(reply)).toBe(false);
+  });
+});
+
+describe('detectGroundingCaveats', () => {
+  describe('figure caveat', () => {
+    it('flags an answer that states a figure absent from the context', () => {
+      const context = 'Ethereum Price: $1,901.25 (0.20%) | ETH';
+      const answer = 'Aktualna cena Ethereum wynosi około $50,000 USD.';
+      expect(detectGroundingCaveats(answer, undefined, context)).toEqual([
+        'figure',
+      ]);
+    });
+
+    it('does not flag an answer whose figure matches the context', () => {
+      const context = 'Bitcoin price today: $64,146.36 USD.';
+      const answer = 'Aktualna cena Bitcoin wynosi około $64,146.36 USD.';
+      expect(detectGroundingCaveats(answer, undefined, context)).toEqual([]);
+    });
+
+    it('does not flag an answer with no currency figure', () => {
+      const answer = 'It is sunny in Warsaw today.';
+      expect(
+        detectGroundingCaveats(answer, undefined, 'Some context.')
+      ).toEqual([]);
+    });
+  });
+
+  describe('trend caveat', () => {
+    const question = 'Ktory zyskal wiecej procentowo w tym miesiacu?';
+    const context =
+      'Bitcoin price today: $64,146.36. Ethereum price today: $1,899.62.';
+
+    it('flags a trend claim with no change data in context', () => {
+      const answer = 'Bitcoin zyskał więcej procentowo w tym miesiącu.';
+      expect(detectGroundingCaveats(answer, question, context)).toEqual([
+        'trend',
+      ]);
+    });
+
+    it('does not flag it when the context has period-matched change data', () => {
+      const answer = 'Bitcoin zyskał więcej procentowo w tym miesiącu.';
+      const grounded =
+        'Bitcoin is up 12% this month, Ethereum is up 4% this month.';
+      expect(detectGroundingCaveats(answer, question, grounded)).toEqual([]);
+    });
+
+    it('does not flag an answer with no comparative trend claim', () => {
+      const answer =
+        'Bitcoin price today: $64,146.36. Ethereum price today: $1,899.62.';
+      expect(detectGroundingCaveats(answer, question, context)).toEqual([]);
+    });
+
+    it('does not flag it when the question was not about a trend', () => {
+      const answer = 'Bitcoin zyskał więcej procentowo w tym miesiącu.';
+      expect(
+        detectGroundingCaveats(answer, 'What is the bitcoin price?', context)
+      ).toEqual([]);
+    });
+  });
+
+  describe('conversion caveat', () => {
+    const question = 'And how much is that in euros?';
+    const noRateContext =
+      '1 USD to EUR - Convert US dollars to Euros | Wise. ' +
+      '1 Euro to US dollars Exchange Rate. Convert EUR/USD - Wise.';
+
+    it('flags a conversion figure with no real rate in context', () => {
+      const answer = 'The price of 1 USD in euros is 1.00.';
+      expect(detectGroundingCaveats(answer, question, noRateContext)).toEqual([
+        'conversion',
+      ]);
+    });
+
+    it('does not flag it when the context has a genuine conversion rate', () => {
+      const answer = 'That is approximately €1,450.00.';
+      const grounded =
+        '1 USD = 0.92 EUR as of today, so that converts to approximately €1,450.00.';
+      expect(detectGroundingCaveats(answer, question, grounded)).toEqual([]);
+    });
+
+    it('does not flag an answer with no currency figure', () => {
+      const answer = 'I do not have a verified exchange rate to convert that.';
+      expect(detectGroundingCaveats(answer, question, noRateContext)).toEqual(
+        []
+      );
+    });
+
+    it('does not flag it when the question was not a conversion follow-up', () => {
+      const answer = 'The price of 1 USD in euros is 1.00.';
+      expect(
+        detectGroundingCaveats(
+          answer,
+          'What is the current gold price?',
+          noRateContext
+        )
+      ).toEqual([]);
+    });
+  });
+
+  it('can flag more than one caveat kind at once', () => {
+    const answer =
+      'Bitcoin zyskał więcej procentowo w tym miesiącu i teraz kosztuje $50,000.';
+    const context = 'Bitcoin price today: $64,146.36 USD.';
+    expect(
+      detectGroundingCaveats(
+        answer,
+        'Ktory zyskal wiecej procentowo w tym miesiacu?',
+        context
+      )
+    ).toEqual(['figure', 'trend']);
+  });
+});
+
+describe('isQuestionEchoAnswer', () => {
+  it('flags an answer that is just the question echoed back after a think block', () => {
+    const question = 'Ile wazy i jakie ma wymiary?';
+    const answer = '<think>\n\n</think>\n\nIle wazy i jakie ma wymiary?';
+    expect(isQuestionEchoAnswer(answer, question)).toBe(true);
+  });
+
+  it('flags a plain echo with no think block and different trailing punctuation', () => {
+    expect(
+      isQuestionEchoAnswer(
+        'Ile wazy i jakie ma wymiary',
+        'Ile wazy i jakie ma wymiary?'
+      )
+    ).toBe(true);
+  });
+
+  it('is case-insensitive', () => {
+    expect(
+      isQuestionEchoAnswer(
+        'ILE WAZY I JAKIE MA WYMIARY?',
+        'Ile wazy i jakie ma wymiary?'
+      )
+    ).toBe(true);
+  });
+
+  it('does not flag a genuine answer', () => {
+    const question = 'Ile wazy i jakie ma wymiary?';
+    const answer = '<think>\n\n</think>\n\nLaptop waży 2.5 kg.';
+    expect(isQuestionEchoAnswer(answer, question)).toBe(false);
+  });
+
+  it('does not flag when there is no question to compare against', () => {
+    expect(isQuestionEchoAnswer('Some answer.', undefined)).toBe(false);
+  });
+
+  it('does not flag when the answer is entirely inside an unclosed think block', () => {
+    const question = 'Ile wazy i jakie ma wymiary?';
+    const answer = '<think>Ile wazy i jakie ma wymiary?';
+    expect(isQuestionEchoAnswer(answer, question)).toBe(false);
+  });
+
+  it('flags an echo with a leaked trailing "(Answer in X.)" reminder', () => {
+    const question = 'Kiedy urodził się Macron?';
+    const answer = 'Kiedy urodził się Macron? (Odpowiedź w polskim.)';
+    expect(isQuestionEchoAnswer(answer, question)).toBe(true);
+  });
+
+  it('does not flag a genuine answer that happens to end in a parenthetical', () => {
+    const question = 'Kiedy urodził się Macron?';
+    const answer = 'Macron urodził się 21 grudnia 1977 roku (we Francji).';
+    expect(isQuestionEchoAnswer(answer, question)).toBe(false);
+  });
+});
+
+describe('isWrongLanguageAnswer', () => {
+  const question = 'Kim był Kazimierz Wielki i czego dokonał?';
+
+  it('flags the captured live failure — a Polish question answered in Turkish', () => {
+    const answer =
+      "Kazimierz Wielki (1310–1370) Polska'nın en son piastıydı. Panlari, " +
+      "hukukun kodifikasyonu, Kraków'da universitetin kurulumu ve büyük " +
+      'inşaat projeleriyle polsada "drewni" ve "murowan" hale gelmesi ' +
+      'anlatılır.';
+    expect(isWrongLanguageAnswer(answer, question)).toBe(true);
+  });
+
+  it('does not flag a genuine answer in the question language', () => {
+    const answer =
+      'Kazimierz Wielki był ostatnim królem Polski z dynastii Piastów. ' +
+      'Skodyfikował prawo, założył Akademię Krakowską i rozbudował kraj.';
+    expect(isWrongLanguageAnswer(answer, question)).toBe(false);
+  });
+
+  it('does not flag a Polish answer that merely contains foreign proper nouns', () => {
+    const answer =
+      'Najtańszy bilet z Warszawy do Londynu oferuje linia Ryanair, według ' +
+      'wyszukiwarki Skyscanner.';
+    expect(isWrongLanguageAnswer(answer, question)).toBe(false);
+  });
+
+  it('does not flag when the answer is too short/numeric to confidently detect a language', () => {
+    expect(isWrongLanguageAnswer('128 zł–181 zł', question)).toBe(false);
+  });
+
+  it('does not flag when the question language cannot be confidently detected', () => {
+    expect(isWrongLanguageAnswer('This is a genuine answer.', '?')).toBe(false);
+  });
+
+  it('does not flag when there is no question to compare against', () => {
+    expect(isWrongLanguageAnswer('Some answer.', undefined)).toBe(false);
+  });
+
+  it('only detects the answer language outside the think block', () => {
+    const answer =
+      '<think>some English reasoning here about the topic</think>\n\n' +
+      'Kazimierz Wielki był ostatnim królem Polski z dynastii Piastów.';
+    expect(isWrongLanguageAnswer(answer, question)).toBe(false);
+  });
+});
+
+describe('humanizeSourceReferences', () => {
+  const webDoc = (documentId: number, name: string): SourceDocument => ({
+    documentId,
+    name,
+    kind: 'web',
+  });
+
+  it('replaces the exact captured live regression — four numbered citations across one answer', () => {
+    const sourceDocuments = [
+      webDoc(1, "Elon Musk's 14 Children: Names, Ages, Moms – Parade"),
+      webDoc(2, 'Every Woman Elon Musk Has Children With – People.com'),
+      webDoc(3, "All About Elon Musk's 14 Kids and Their 4 Moms – InStyle"),
+      webDoc(4, "Elon Musk's 14 Children: All About the Tesla CEO's Kids"),
+    ];
+    const answer =
+      "The search results contain information about Elon Musk's children, " +
+      'specifically mentioning his 14 children with four different women ' +
+      '(Source 1), and welcomed 14 children over 20 years (Source 2), and ' +
+      'is stated as the father of 14 children (Source 3), and details ' +
+      'about the family are given (Source 4).';
+    const result = humanizeSourceReferences(answer, sourceDocuments);
+    expect(result).toContain(
+      "(Elon Musk's 14 Children: Names, Ages, Moms – Parade)"
+    );
+    expect(result).toContain(
+      '(Every Woman Elon Musk Has Children With – People.com)'
+    );
+    expect(result).not.toMatch(/Source \d/);
+  });
+
+  it('replaces a Polish "źródło N" reference the same way', () => {
+    const sourceDocuments = [webDoc(1, 'Reuters'), webDoc(2, 'CoinMarketCap')];
+    const answer = 'Według źródła 2, cena wynosi 100 zł.';
+    expect(humanizeSourceReferences(answer, sourceDocuments)).toBe(
+      'Według CoinMarketCap, cena wynosi 100 zł.'
+    );
+  });
+
+  it('leaves an out-of-range number untouched rather than guessing', () => {
+    const sourceDocuments = [webDoc(1, 'Reuters')];
+    const answer = 'As stated in Source 5, the price is rising.';
+    expect(humanizeSourceReferences(answer, sourceDocuments)).toBe(answer);
+  });
+
+  it('leaves ordinary text untouched when there is nothing to replace', () => {
+    const answer = 'The president has two daughters.';
+    expect(humanizeSourceReferences(answer, [webDoc(1, 'Reuters')])).toBe(
+      answer
+    );
+  });
+
+  it('is a no-op when there are no source documents at all', () => {
+    const answer = 'As stated in Source 1, the price is rising.';
+    expect(humanizeSourceReferences(answer, [])).toBe(answer);
+  });
+});
+
+describe('isDanglingListAnswer', () => {
+  it('flags the captured live failure — a list intro with no items after it', () => {
+    const answer = 'Prezydent ma dwie córki. Ich imiona to:';
+    expect(isDanglingListAnswer(answer)).toBe(true);
+  });
+
+  it('flags an English list intro left dangling', () => {
+    expect(
+      isDanglingListAnswer('The president has two daughters. They are:')
+    ).toBe(true);
+  });
+
+  it('does not flag when the list is actually filled in', () => {
+    const answer = 'Prezydent ma dwie córki. Ich imiona to: Anna i Maria.';
+    expect(isDanglingListAnswer(answer)).toBe(false);
+  });
+
+  it('does not flag an ordinary answer with no trailing colon', () => {
+    expect(isDanglingListAnswer('Prezydent ma dwie córki.')).toBe(false);
+  });
+
+  it('does not flag an empty response', () => {
+    expect(isDanglingListAnswer('')).toBe(false);
+  });
+
+  it('only checks the visible answer, not a trailing colon left inside <think>', () => {
+    const answer =
+      '<think>let me think about this:</think>\n\nPrezydent ma dwie córki.';
+    expect(isDanglingListAnswer(answer)).toBe(false);
   });
 });

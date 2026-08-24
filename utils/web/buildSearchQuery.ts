@@ -50,6 +50,12 @@ const PLANNER_EXAMPLES: {
     queries: [],
   },
   {
+    user: 'python vs javascript, which should a beginner learn?',
+    needsSearch: false,
+    intent: 'programming language opinion',
+    queries: [],
+  },
+  {
     user: 'whats the weather in tokyo right now',
     needsSearch: true,
     intent: 'current Tokyo weather',
@@ -60,6 +66,12 @@ const PLANNER_EXAMPLES: {
     needsSearch: true,
     intent: 'current bitcoin price',
     queries: ['bitcoin price today'],
+  },
+  {
+    user: 'compare the prices of bitcoin and ethereum',
+    needsSearch: true,
+    intent: 'compare Bitcoin and Ethereum prices',
+    queries: ['bitcoin price today', 'ethereum price today'],
   },
   {
     user: 'which song has been streamed the most on spotify this year',
@@ -96,7 +108,11 @@ const PLANNER_SYSTEM_PROMPT = (today: string): string =>
   '- true only when the best answer needs fresh, local, or verifiable outside ' +
   'facts: current events, news, prices, weather, scores, schedules, releases, ' +
   'specs, or specific people, places or organisations.\n' +
-  'If the message is conversational and you are unsure, choose false.\n' +
+  'When unsure whether you can answer a specific, checkable question ' +
+  'accurately from memory alone, choose true — a search is cheap, a ' +
+  'confident wrong or stale answer is not. Only choose false when the ' +
+  'message is clearly conversational (greeting, opinion, chit-chat) with ' +
+  'nothing to verify.\n' +
   'Each query is concise search KEYWORDS under 12 words, not a sentence. ' +
   'Resolve pronouns/references (it, that, they) from the conversation. ' +
   `Turn relative time words (today, latest, now, current, this year, this ` +
@@ -106,7 +122,8 @@ const PLANNER_SYSTEM_PROMPT = (today: string): string =>
   'are about that period and not an all-time or career ranking (a page ' +
   'about "most/best ever" is the wrong answer to a this-year question even ' +
   'when it looks authoritative). ' +
-  'Give 1 query normally, 2 ONLY for a clear comparison of two things.\n' +
+  'Give 1 query normally, one query per item ONLY for a clear comparison of ' +
+  '2 or 3 named things (max 3 queries total, even if more things are named).\n' +
   PLANNER_EXAMPLES_TEXT +
   'Those are only format examples — plan for the actual user message below and ' +
   'never copy their words or topics.';
@@ -233,6 +250,69 @@ export const parseSearchPlan = (raw: string): WebSearchPlan | null => {
   return { needsSearch, intent, queries };
 };
 
+const REFERENT_ROLE_MARKERS =
+  /\b(prezydent\w*|premier\w*|kr[oó]l\w*|papie[żz]\w*|prezes\w*|szef\w*|dyrektor\w*|the president|the prime minister|the king|the pope|the ceo|the boss)\b/iu;
+const PRONOUN_MARKERS =
+  /\b(on|ona|jego|jemu|niego|niej|nim|ni[ąa]|jej|he|she|him|her|his|hers|they|them|their)\b/iu;
+const NEEDS_REFERENT = new RegExp(
+  `${REFERENT_ROLE_MARKERS.source}|${PRONOUN_MARKERS.source}`,
+  'iu'
+);
+
+// At least two capitalized words in a row — a rough, precision-over-recall
+// proxy for "the query already names someone/something specific", so we
+// don't misfire on ordinary sentence-initial capitalization.
+const PROPER_NOUN_RUN = /\p{Lu}[\p{L}'-]*(?:\s+\p{Lu}[\p{L}'-]*)+/gu;
+
+const hasOwnEntity = (text: string): boolean =>
+  (text.match(PROPER_NOUN_RUN) ?? []).length > 0;
+
+const mostRecentEntity = (
+  history: { role: string; content: string }[]
+): string | null => {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const turn = history[i]!;
+    if (turn.role !== 'user' && turn.role !== 'assistant') continue;
+    const matches = turn.content.match(PROPER_NOUN_RUN);
+    if (matches && matches.length > 0) return matches[matches.length - 1]!;
+  }
+  return null;
+};
+
+const SHORT_QUERY_MAX_WORDS = 6;
+const REFLEXIVE_DROPPED_SUBJECT =
+  /(?<![\p{L}\p{N}])się(?![\p{L}\p{N}])/iu;
+
+const wordCount = (text: string): number =>
+  (text.trim().match(/\S+/gu) ?? []).length;
+
+const looksLikeDroppedSubject = (query: string): boolean =>
+  wordCount(query) <= SHORT_QUERY_MAX_WORDS &&
+  REFLEXIVE_DROPPED_SUBJECT.test(query);
+
+// A bare-role or pronoun follow-up ("how many kids does the president
+// have", "ile dzieci ma prezydent") searches badly on its own — verbatim
+// mode has no LLM step to resolve who "the president" is, so without this
+// the query goes out under-specified and retrieval comes back generic.
+// Splices in the most recently named entity from the conversation so far,
+// when the query doesn't already name someone itself.
+export const carryReferentIntoQuery = (
+  query: string,
+  history: { role: string; content: string }[]
+): string => {
+  const looksIncomplete =
+    NEEDS_REFERENT.test(query) || looksLikeDroppedSubject(query);
+  if (!looksIncomplete || hasOwnEntity(query)) return query;
+  const entity = mostRecentEntity(history);
+  return entity ? `${query} ${entity}` : query;
+};
+
+const CONVERSATIONAL_INTENT_MARKERS =
+  /\b(greet\w*|hello|hi there|thank\w*|chit.?chat|small talk|casual|opinion|advice|\bmath\b|coding|programming|\bcode\b|translat\w*|rewrit\w*|paraphras\w*|creative writing|\bpoem\w*|poetry|\bstory\b|\bjoke\w*|recipe idea|general knowledge|timeless)\b/i;
+
+export const isConversationalIntent = (intent: string): boolean =>
+  !!intent.trim() && CONVERSATIONAL_INTENT_MARKERS.test(intent);
+
 const buildConversation = (
   history: { role: string; content: string }[]
 ): string =>
@@ -257,11 +337,15 @@ export const planWebSearch = async (
 ): Promise<WebSearchPlan> => {
   const query = userInput.trim();
   const siteRestriction = extractSiteRestriction(query);
+  const searchQuery = carryReferentIntoQuery(query, history);
   const verbatim = (intent = ''): WebSearchPlan => ({
     needsSearch: true,
     intent,
     queries: [
-      withSiteRestriction(clampQuery(toKeywordQuery(query)), siteRestriction),
+      withSiteRestriction(
+        clampQuery(toKeywordQuery(searchQuery)),
+        siteRestriction
+      ),
     ],
     ...(siteRestriction ? { siteRestriction } : {}),
   });
@@ -290,7 +374,9 @@ export const planWebSearch = async (
   const parsed = parseSearchPlan(raw);
   if (!parsed) return verbatim();
   if (!parsed.needsSearch) {
-    return { needsSearch: false, intent: parsed.intent, queries: [] };
+    return isConversationalIntent(parsed.intent)
+      ? { needsSearch: false, intent: parsed.intent, queries: [] }
+      : verbatim(parsed.intent);
   }
 
   const today = opts?.today ?? todayISO();
@@ -298,6 +384,12 @@ export const planWebSearch = async (
   const safeQueries = parsed.queries
     .filter((q) => !isLeakedQuery(q, groundedText))
     .map((q) => regroundYears(q, query, today))
+    // The planner is told to "resolve pronouns/references from the
+    // conversation," but a small model doesn't reliably do that itself —
+    // this is the same under-specified-follow-up gap the verbatim path
+    // has, just reached via a query the LLM did produce rather than one
+    // it failed to.
+    .map((q) => carryReferentIntoQuery(q, history))
     .map((q) => withSiteRestriction(q, siteRestriction));
 
   if (safeQueries.length === 0) return verbatim(parsed.intent);

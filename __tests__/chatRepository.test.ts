@@ -133,11 +133,11 @@ describe('forkChat', () => {
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO messages'),
-      [10, 'user', 'one', 100, '', 0, 0, null, null, null]
+      [10, 'user', 'one', 100, '', 0, 0, null, null, null, null]
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO messages'),
-      [10, 'assistant', 'two', 200, 'model', 0, 0, null, null, null]
+      [10, 'assistant', 'two', 200, 'model', 0, 0, null, null, null, null]
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO chatBranches'),

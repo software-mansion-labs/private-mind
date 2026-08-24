@@ -15,6 +15,7 @@ export const WEB_OFFLOAD_LLM_FOR_EMBEDDINGS = false;
 export const WEB_BENCH_LOGS = false;
 
 export const LOW_MEMORY_DEVICE_GB = 6.5;
+export const STRONG_DEVICE_MEMORY_GB = 8;
 
 export const WEB_RETRIEVAL_FETCH_TOP_N = 5;
 export const WEB_RETRIEVAL_CHUNK_CHARS = 500;
@@ -40,7 +41,7 @@ export const WEB_QUERY_CONTEXT_TURNS = 3;
 export const WEB_QUERY_CONTEXT_TURN_MAX_CHARS = 160;
 export const WEB_QUERY_MAX_CHARS = 160;
 export const WEB_QUERY_GATE = true;
-export const WEB_QUERY_MAX_SUBQUERIES = 2;
+export const WEB_QUERY_MAX_SUBQUERIES = 3;
 export const WEB_QUERY_CONCISE_MAX_WORDS = 6;
 export const WEB_QUERY_INTENT_MAX_CHARS = 80;
 
@@ -64,6 +65,8 @@ export const WEB_SERP_CACHE_MAX_ENTRIES = 32;
 export const WEB_PAGE_CACHE_MAX_CHARS = 250_000;
 
 export const WEB_SEARCH_ENABLED = true;
+
+export const RAG_PRIORITY_OVER_WEB_SEARCH = true;
 
 export interface ScrapeEngine {
   id: string;
