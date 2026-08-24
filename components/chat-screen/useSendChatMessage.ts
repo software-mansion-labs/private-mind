@@ -18,6 +18,7 @@ import { runWebSearch } from '../../utils/web/runWebSearch';
 import { webViewScrapeProvider } from '../../utils/web/scrape/webViewScrapeProvider';
 import { webContextCharBudget } from '../../utils/web/contextBudget';
 import {
+  RAG_PRIORITY_OVER_WEB_SEARCH,
   WEB_BENCH_LOGS,
   WEB_OFFLOAD_LLM_FOR_EMBEDDINGS,
   WEB_SEARCH_ENABLED,
@@ -186,9 +187,13 @@ export const useSendChatMessage = ({
           : await prepareSources());
       }
 
+      const skippedForDocPriority =
+        RAG_PRIORITY_OVER_WEB_SEARCH && hasRagSources;
+
       const shouldRunWebSearch =
         WEB_SEARCH_ENABLED &&
         chatSettings.webSearchEnabled &&
+        !skippedForDocPriority &&
         isWebSearchReady(useLLMStore.getState().model) &&
         hasMemoryForWebSearch(useLLMStore.getState().model) &&
         !!userInput.trim();
@@ -201,9 +206,11 @@ export const useSendChatMessage = ({
       ) {
         Toast.show({
           type: 'defaultToast',
-          text1: hasMemoryForWebSearch(useLLMStore.getState().model)
-            ? 'Web search is off for this model — answering without it.'
-            : 'Not enough memory to search alongside this model — answering without it.',
+          text1: skippedForDocPriority
+            ? 'Using your documents for this chat — web search is off while they’re active.'
+            : hasMemoryForWebSearch(useLLMStore.getState().model)
+              ? 'Web search is off for this model — answering without it.'
+              : 'Not enough memory to search alongside this model — answering without it.',
         });
       }
 

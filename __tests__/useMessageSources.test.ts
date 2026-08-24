@@ -53,7 +53,7 @@ describe('useMessageSources', () => {
     expect(r.webResults.map((s) => s.name)).toEqual(['Opened', 'Unopened']);
   });
 
-  it('keeps an unopened page whose listing grounded the answer', () => {
+  it('excludes an unopened page even when its listing grounded the answer', () => {
     const r = render([
       doc({
         name: 'Listing',
@@ -63,7 +63,7 @@ describe('useMessageSources', () => {
         used: true,
       }),
     ]);
-    expect(r.displayedSources.map((s) => s.name)).toEqual(['Listing']);
+    expect(r.displayedSources).toEqual([]);
   });
 
   it('keeps a web source out of document sources unless it was used', () => {
@@ -73,5 +73,36 @@ describe('useMessageSources', () => {
     ]);
     expect(r.webResults.map((s) => s.name)).toEqual(['Unused', 'Used']);
     expect(r.documentSources.map((s) => s.name)).toEqual(['Used']);
+  });
+
+  describe('dominantWebSource', () => {
+    it('names the single used web source', () => {
+      const r = render([
+        doc({ documentId: 1, name: 'CoinMarketCap', kind: 'web', used: true }),
+        doc({ documentId: 2, name: 'Unused', kind: 'web' }),
+      ]);
+      expect(r.dominantWebSource?.name).toBe('CoinMarketCap');
+    });
+
+    it('is undefined when no web source was used', () => {
+      const r = render([
+        doc({ documentId: 1, name: 'A', kind: 'web' }),
+        doc({ documentId: 2, name: 'B', kind: 'web' }),
+      ]);
+      expect(r.dominantWebSource).toBeUndefined();
+    });
+
+    it('is undefined when several web sources were used, deferring to "the sources"', () => {
+      const r = render([
+        doc({ documentId: 1, name: 'A', kind: 'web', used: true }),
+        doc({ documentId: 2, name: 'B', kind: 'web', used: true }),
+      ]);
+      expect(r.dominantWebSource).toBeUndefined();
+    });
+
+    it('ignores a used document source', () => {
+      const r = render([doc({ documentId: 1, name: 'PDF', used: true })]);
+      expect(r.dominantWebSource).toBeUndefined();
+    });
   });
 });

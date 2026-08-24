@@ -320,11 +320,6 @@ const createStyles = (theme: Theme) =>
       ...textStyles.bodyTertiaryRegular,
       color: theme.text.defaultTertiary,
     },
-    webRowSnippetOnly: {
-      ...textStyles.bodyTertiaryRegular,
-      color: theme.text.defaultTertiary,
-      fontStyle: 'italic',
-    },
     sourceRowHeader: {
       flexDirection: 'row',
       alignItems: 'center',

@@ -184,6 +184,38 @@ describe('buildRows — live search', () => {
     ).toMatchObject({ label: 'Reading the pages' });
   });
 
+  it('checks off a step the moment the trace moves past it, not just once the whole search ends (reported: stayed a bare dot forever)', () => {
+    const rows = buildRows(
+      true,
+      [
+        ev({ id: 1, type: 'objectives' }),
+        ev({ id: 2, type: 'searching', query: 'cats' }),
+        ev({ id: 3, type: 'found', host: 'a.com', url: 'https://a.com/1' }),
+      ],
+      [],
+      false
+    );
+    expect(rows[0]).toMatchObject({
+      label: 'Deciding what to search for',
+      done: true,
+    });
+    expect(rows[1]).toMatchObject({ label: 'Searching “cats”', active: true });
+  });
+
+  it('checks off every step once the search is completely over, even a step that was never superseded by a later one', () => {
+    const rows = buildRows(
+      false,
+      [ev({ id: 1, type: 'objectives' }), ev({ id: 2, type: 'searching' })],
+      [],
+      false
+    );
+    expect(rows[0]).toMatchObject({
+      label: 'Deciding what to search for',
+      done: true,
+    });
+    expect(rows[1]).toMatchObject({ label: 'Searching the web', done: true });
+  });
+
   it('leaves nothing active once the search reports done or is over', () => {
     const trace = [
       ev({ id: 1, type: 'searching', query: 'cats' }),

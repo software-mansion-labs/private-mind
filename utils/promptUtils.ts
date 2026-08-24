@@ -128,6 +128,7 @@ const getContextInstruction = (
 
   const figures =
     'Copy every number, price and date exactly as it is printed in the context. If the context does not state the figure the question asks about, say so — never estimate or invent one. ' +
+    'If the question names something that is not mentioned anywhere in the context at all, say you have no current data for it — do not give it a figure, even an approximate or well-known one. ' +
     'When comparing several things, a source block may be tagged [Answers: <query>] — only use its figures for the entity that tag names, never for another entity in the same comparison.';
 
   const SPECULATIVE_SOURCE_MARKERS =
@@ -267,7 +268,7 @@ const getFiguresInstruction = (context: string): string => {
     .filter(([, tokens]) => tokens.length > 0)
     .map(([query, tokens]) => `${query} → ${tokens.join(', ')}`);
   if (perEntity.length === 0) return '';
-  return `Figures found per entity: ${perEntity.join(' | ')}. Use a figure only for the entity it's listed under — never for another entity in the comparison, and never one from memory.`;
+  return `Figures found per entity: ${perEntity.join(' | ')}. Use a figure only for the entity it's listed under — never for another entity in the comparison, and never one from memory. If the question named something with no entry in this list, say you have no current data for it instead of giving it a figure.`;
 };
 
 const OPINION_MARKERS =
@@ -287,7 +288,7 @@ const getInvestmentComparisonInstruction = (question?: string): string =>
     : '';
 
 const COMPARISON_MARKERS =
-  /czym się różni|jaka jest różnic|różnic\w* (?:między|pomiędzy)|co odróżnia|\bvs\.?\b|\bversus\b|difference between|how (?:do|does) .+ differ|what'?s the difference/i;
+  /czym się różni|jaka jest różnic|różnic\w* (?:między|pomiędzy)|co odróżnia|porówn\w*|\bvs\.?\b|\bversus\b|\bcompare\b|comparison between|difference between|how (?:do|does) .+ differ|what'?s the difference/i;
 
 const getComparisonStructureInstruction = (question?: string): string =>
   question && COMPARISON_MARKERS.test(question)
@@ -333,7 +334,7 @@ const getVerifiedProductInstruction = (context: string): string =>
 
 const getWeakRetrievalInstruction = (weak?: boolean): string =>
   weak
-    ? '\n\nThis web search came back thin — few or low-relevance sources. If the context above does not clearly answer the question, say so plainly rather than stretching what little it has into a fuller-sounding answer.'
+    ? "\n\nThis web search's results could not be confidently verified as relevant to the question. If the context above does not clearly answer it, say so plainly rather than stretching what's there into a fuller-sounding answer."
     : '';
 
 const PERIOD_SCOPE_MARKERS =
@@ -354,6 +355,17 @@ const getScopeIntegrityInstruction = (): string =>
 const getWebSearchFailedInstruction = (failed?: boolean): string =>
   failed
     ? '\n\nA web search was just attempted for this question because it needs current or verifiable facts, but it found nothing usable. Do not guess a specific fact — a name, date, score, or number — from memory as if it were confirmed; say plainly that you do not have verified current information for this.'
+    : '';
+
+// When an earlier turn in this thread searched the web, its <context> block
+// carried numbered "Source 1" / "Source 2" labels the model may have cited.
+// A later follow-up this app decided did not need a fresh search has no
+// such block — but without this reminder a small model keeps citing those
+// numbers anyway, imitating its own earlier reply even though nothing here
+// backs the numbers up.
+const getNoFreshContextInstruction = (hasPriorWebAnswer: boolean): string =>
+  hasPriorWebAnswer
+    ? '\n\nNo new search results were retrieved for this message — there is no <context> block this time. Answer from the conversation so far, in your own words. Never write "Source 1", "Source 2" or similar numbered citations here; those labels only existed in an earlier message\'s context block, which is not part of this prompt.'
     : '';
 
 const getPreferredSourceInstruction = (sources?: SourceDocument[]) => {
@@ -422,6 +434,12 @@ export const prepareMessagesForLLM = (
   } else {
     systemPrompt += `\n\n${languageInstruction(language)}`;
     systemPrompt += getWebSearchFailedInstruction(webSearchFailed);
+    const hasPriorWebAnswer = activeChatMessages.some(
+      (msg) =>
+        msg.role === 'assistant' &&
+        msg.sourceDocuments?.some((source) => sourceKind(source) === 'web')
+    );
+    systemPrompt += getNoFreshContextInstruction(hasPriorWebAnswer);
   }
   systemPrompt += getDateInstruction(sourceDocuments, question);
 
