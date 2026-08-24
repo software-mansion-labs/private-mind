@@ -1,6 +1,8 @@
 import {
   assembleSourceDocuments,
   detectGroundingCaveats,
+  humanizeSourceReferences,
+  isDanglingListAnswer,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
   looksLikeNoAnswer,
@@ -735,6 +737,18 @@ describe('isQuestionEchoAnswer', () => {
     const answer = '<think>Ile wazy i jakie ma wymiary?';
     expect(isQuestionEchoAnswer(answer, question)).toBe(false);
   });
+
+  it('flags an echo with a leaked trailing "(Answer in X.)" reminder', () => {
+    const question = 'Kiedy urodził się Macron?';
+    const answer = 'Kiedy urodził się Macron? (Odpowiedź w polskim.)';
+    expect(isQuestionEchoAnswer(answer, question)).toBe(true);
+  });
+
+  it('does not flag a genuine answer that happens to end in a parenthetical', () => {
+    const question = 'Kiedy urodził się Macron?';
+    const answer = 'Macron urodził się 21 grudnia 1977 roku (we Francji).';
+    expect(isQuestionEchoAnswer(answer, question)).toBe(false);
+  });
 });
 
 describe('isWrongLanguageAnswer', () => {
@@ -780,5 +794,94 @@ describe('isWrongLanguageAnswer', () => {
       '<think>some English reasoning here about the topic</think>\n\n' +
       'Kazimierz Wielki był ostatnim królem Polski z dynastii Piastów.';
     expect(isWrongLanguageAnswer(answer, question)).toBe(false);
+  });
+});
+
+describe('humanizeSourceReferences', () => {
+  const webDoc = (documentId: number, name: string): SourceDocument => ({
+    documentId,
+    name,
+    kind: 'web',
+  });
+
+  it('replaces the exact captured live regression — four numbered citations across one answer', () => {
+    const sourceDocuments = [
+      webDoc(1, "Elon Musk's 14 Children: Names, Ages, Moms – Parade"),
+      webDoc(2, 'Every Woman Elon Musk Has Children With – People.com'),
+      webDoc(3, "All About Elon Musk's 14 Kids and Their 4 Moms – InStyle"),
+      webDoc(4, "Elon Musk's 14 Children: All About the Tesla CEO's Kids"),
+    ];
+    const answer =
+      "The search results contain information about Elon Musk's children, " +
+      'specifically mentioning his 14 children with four different women ' +
+      '(Source 1), and welcomed 14 children over 20 years (Source 2), and ' +
+      'is stated as the father of 14 children (Source 3), and details ' +
+      'about the family are given (Source 4).';
+    const result = humanizeSourceReferences(answer, sourceDocuments);
+    expect(result).toContain(
+      "(Elon Musk's 14 Children: Names, Ages, Moms – Parade)"
+    );
+    expect(result).toContain(
+      '(Every Woman Elon Musk Has Children With – People.com)'
+    );
+    expect(result).not.toMatch(/Source \d/);
+  });
+
+  it('replaces a Polish "źródło N" reference the same way', () => {
+    const sourceDocuments = [webDoc(1, 'Reuters'), webDoc(2, 'CoinMarketCap')];
+    const answer = 'Według źródła 2, cena wynosi 100 zł.';
+    expect(humanizeSourceReferences(answer, sourceDocuments)).toBe(
+      'Według CoinMarketCap, cena wynosi 100 zł.'
+    );
+  });
+
+  it('leaves an out-of-range number untouched rather than guessing', () => {
+    const sourceDocuments = [webDoc(1, 'Reuters')];
+    const answer = 'As stated in Source 5, the price is rising.';
+    expect(humanizeSourceReferences(answer, sourceDocuments)).toBe(answer);
+  });
+
+  it('leaves ordinary text untouched when there is nothing to replace', () => {
+    const answer = 'The president has two daughters.';
+    expect(humanizeSourceReferences(answer, [webDoc(1, 'Reuters')])).toBe(
+      answer
+    );
+  });
+
+  it('is a no-op when there are no source documents at all', () => {
+    const answer = 'As stated in Source 1, the price is rising.';
+    expect(humanizeSourceReferences(answer, [])).toBe(answer);
+  });
+});
+
+describe('isDanglingListAnswer', () => {
+  it('flags the captured live failure — a list intro with no items after it', () => {
+    const answer = 'Prezydent ma dwie córki. Ich imiona to:';
+    expect(isDanglingListAnswer(answer)).toBe(true);
+  });
+
+  it('flags an English list intro left dangling', () => {
+    expect(
+      isDanglingListAnswer('The president has two daughters. They are:')
+    ).toBe(true);
+  });
+
+  it('does not flag when the list is actually filled in', () => {
+    const answer = 'Prezydent ma dwie córki. Ich imiona to: Anna i Maria.';
+    expect(isDanglingListAnswer(answer)).toBe(false);
+  });
+
+  it('does not flag an ordinary answer with no trailing colon', () => {
+    expect(isDanglingListAnswer('Prezydent ma dwie córki.')).toBe(false);
+  });
+
+  it('does not flag an empty response', () => {
+    expect(isDanglingListAnswer('')).toBe(false);
+  });
+
+  it('only checks the visible answer, not a trailing colon left inside <think>', () => {
+    const answer =
+      '<think>let me think about this:</think>\n\nPrezydent ma dwie córki.';
+    expect(isDanglingListAnswer(answer)).toBe(false);
   });
 });

@@ -252,4 +252,40 @@ describe('isUngroundedConversionClaim', () => {
       )
     ).toBe(false);
   });
+
+  it('flags the exact captured live failure — 77 493 USD "converts" to 0,2318 EUR', () => {
+    const answer = 'Ile to jest w euro? 0,2318 EUR.';
+    const genuineRateContext = '1 USD = 0.92 EUR as of today.';
+    const priorAnswerText = 'Aktualna cena bitcoina to 77 493 USD.';
+    expect(
+      isUngroundedConversionClaim(
+        answer,
+        question,
+        genuineRateContext,
+        priorAnswerText
+      )
+    ).toBe(true);
+  });
+
+  it('does not flag a plausible conversion against the anchor figure', () => {
+    const answer = 'To około 71 293 EUR.';
+    const genuineRateContext = '1 USD = 0.92 EUR as of today.';
+    const priorAnswerText = 'Aktualna cena bitcoina to 77 493 USD.';
+    expect(
+      isUngroundedConversionClaim(
+        answer,
+        question,
+        genuineRateContext,
+        priorAnswerText
+      )
+    ).toBe(false);
+  });
+
+  it('does not flag when there is no prior answer to anchor against', () => {
+    const answer = 'Ile to jest w euro? 0,2318 EUR.';
+    const genuineRateContext = '1 USD = 0.92 EUR as of today.';
+    expect(
+      isUngroundedConversionClaim(answer, question, genuineRateContext)
+    ).toBe(false);
+  });
 });

@@ -19,11 +19,7 @@ export const useMessageSources = (sourceDocuments?: SourceDocument[]) => {
   }, [sourceDocuments]);
 
   const displayedSources = useMemo(
-    () =>
-      deduped.filter(
-        (source) =>
-          source.kind !== 'web' || source.read !== false || source.used === true
-      ),
+    () => deduped.filter((source) => source.kind !== 'web' || source.read !== false),
     [deduped]
   );
 
@@ -38,10 +34,16 @@ export const useMessageSources = (sourceDocuments?: SourceDocument[]) => {
     [displayedSources]
   );
 
+  const dominantWebSource = useMemo(() => {
+    const used = webResults.filter((source) => source.used);
+    return used.length === 1 ? used[0] : undefined;
+  }, [webResults]);
+
   return {
     displayedSources,
     webResults,
     documentSources,
+    dominantWebSource,
     hasSources: displayedSources.length > 0,
   };
 };

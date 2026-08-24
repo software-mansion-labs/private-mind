@@ -159,10 +159,24 @@ export const answerCitationOverlaps = (
   );
 };
 
+const SOURCE_REFERENCE = /(?<![\p{L}\p{N}])(?:sources?|źródł\w*)\s*(\d+)\b/giu;
+
+export const humanizeSourceReferences = (
+  answer: string,
+  sourceDocuments: SourceDocument[]
+): string => {
+  if (sourceDocuments.length === 0) return answer;
+  return answer.replace(SOURCE_REFERENCE, (match, numeral: string) => {
+    const doc = sourceDocuments[Number(numeral) - 1];
+    return doc ? doc.name : match;
+  });
+};
+
 export const detectGroundingCaveats = (
   answer: string,
   question: string | undefined,
-  context: string
+  context: string,
+  priorAnswerText?: string
 ): GroundingCaveatKind[] => {
   const caveats: GroundingCaveatKind[] = [];
   if (findUngroundedFigures(answer, context).length > 0) {
@@ -171,7 +185,7 @@ export const detectGroundingCaveats = (
   if (isUngroundedTrendClaim(answer, question, context)) {
     caveats.push('trend');
   }
-  if (isUngroundedConversionClaim(answer, question, context)) {
+  if (isUngroundedConversionClaim(answer, question, context, priorAnswerText)) {
     caveats.push('conversion');
   }
   return caveats;
@@ -183,6 +197,9 @@ const normalizeForEchoCompare = (text: string): string =>
     .toLowerCase()
     .replace(/[?!.,;:]+$/, '');
 
+const stripTrailingParenthetical = (text: string): string =>
+  text.replace(/\s*\([^)]{0,80}\)\s*$/, '');
+
 export const isQuestionEchoAnswer = (
   answer: string,
   question: string | undefined
@@ -190,7 +207,20 @@ export const isQuestionEchoAnswer = (
   if (!question) return false;
   const visible = stripThinkBlocks(answer);
   if (!visible) return false;
-  return normalizeForEchoCompare(visible) === normalizeForEchoCompare(question);
+  const normalizedQuestion = normalizeForEchoCompare(question);
+  if (normalizeForEchoCompare(visible) === normalizedQuestion) return true;
+  const answerWithoutAnchor = normalizeForEchoCompare(
+    stripTrailingParenthetical(visible)
+  );
+  return answerWithoutAnchor === normalizedQuestion;
+};
+
+const DANGLING_LIST_INTRO = /[:：]\s*$/;
+
+export const isDanglingListAnswer = (answer: string): boolean => {
+  const visible = stripThinkBlocks(answer);
+  if (!visible) return false;
+  return DANGLING_LIST_INTRO.test(visible);
 };
 
 export const isWrongLanguageAnswer = (

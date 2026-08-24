@@ -127,15 +127,38 @@ export const FOLLOWUP_CONVERSION_MARKERS =
 export const hasGenuineConversionRate = (context: string): boolean =>
   extractCurrencyFigures(context).some((figure) => figure !== 1);
 
+const PLAUSIBLE_CONVERSION_RATIO_MIN = 0.1;
+const PLAUSIBLE_CONVERSION_RATIO_MAX = 6;
+
+export const isImplausibleConversionFigure = (
+  anchorFigure: number,
+  answerFigure: number
+): boolean => {
+  if (anchorFigure <= 0 || answerFigure <= 0) return false;
+  const ratio = answerFigure / anchorFigure;
+  return (
+    ratio < PLAUSIBLE_CONVERSION_RATIO_MIN ||
+    ratio > PLAUSIBLE_CONVERSION_RATIO_MAX
+  );
+};
+
 export const isUngroundedConversionClaim = (
   answer: string,
   question: string | undefined,
-  context: string
-): boolean =>
-  !!question &&
-  FOLLOWUP_CONVERSION_MARKERS.test(question) &&
-  !hasGenuineConversionRate(context) &&
-  extractCurrencyFigures(answer).length > 0;
+  context: string,
+  priorAnswerText?: string
+): boolean => {
+  if (!question || !FOLLOWUP_CONVERSION_MARKERS.test(question)) return false;
+  const answerFigures = extractCurrencyFigures(answer);
+  if (answerFigures.length === 0) return false;
+  if (!hasGenuineConversionRate(context)) return true;
+  const anchorFigures = extractCurrencyFigures(priorAnswerText ?? '');
+  if (anchorFigures.length === 0) return false;
+  const anchor = Math.max(...anchorFigures);
+  return answerFigures.some((figure) =>
+    isImplausibleConversionFigure(anchor, figure)
+  );
+};
 
 const TREND_ASSERTION =
   /zyskał[ae]? (?:więcej|bardziej)|stracił[ae]? (?:więcej|bardziej)|wzrosł[ao]? (?:bardziej|więcej|znaczn)|spadł[ao]? (?:bardziej|więcej|znaczn)|zmiana .{0,25}(?:znaczna|duża|istotna|widoczna)|gained (?:more|less)|rose more|fell more|dropped more|(?:is|was) up more|(?:is|was) down more|significant change/i;

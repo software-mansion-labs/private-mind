@@ -56,18 +56,26 @@ describe('startPhantomChat', () => {
     jest.useRealTimers();
   });
 
-  it('waits briefly before a replace navigation', async () => {
-    const promise = startPhantomChat({} as never, 'replace');
-    await jest.advanceTimersByTimeAsync(0);
-    expect(router.replace).not.toHaveBeenCalled();
-
-    await jest.advanceTimersByTimeAsync(50);
-    await promise;
+  it('replaces without waiting on a timer', async () => {
+    await startPhantomChat({} as never, 'replace');
 
     expect(router.replace).toHaveBeenCalledWith({
       pathname: '/chat/42',
       params: { modelId: '7' },
     });
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('clears the active chat before navigating', async () => {
+    const setActiveChatId = jest.fn().mockResolvedValue(undefined);
+    (useLLMStore.getState as jest.Mock).mockReturnValue({ setActiveChatId });
+
+    await startPhantomChat({} as never, 'replace');
+
+    expect(setActiveChatId).toHaveBeenCalledWith(null);
+    expect(setActiveChatId.mock.invocationCallOrder[0]).toBeLessThan(
+      (router.replace as jest.Mock).mock.invocationCallOrder[0]
+    );
   });
 
   it('does not delay a push navigation', async () => {

@@ -80,12 +80,6 @@ const SourceRow = ({
           </Text>
           <Text style={styles.webRowHost} numberOfLines={1}>
             {hostname(source.url!)}
-            {source.read === false ? (
-              <Text style={styles.webRowSnippetOnly}>
-                {' '}
-                · from the search listing only
-              </Text>
-            ) : null}
           </Text>
         </View>
       </Pressable>

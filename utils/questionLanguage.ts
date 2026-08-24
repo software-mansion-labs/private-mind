@@ -222,7 +222,13 @@ const pickCandidate = (
       runnerUp = value;
     }
   }
-  if (!best || bestScore === runnerUp) return null;
+  if (!best) return null;
+  if (bestScore === runnerUp) {
+    const tiedWithDecisive = [...score.entries()]
+      .filter(([, value]) => value === bestScore)
+      .filter(([code]) => (exclusive.get(code) ?? 0) > 0);
+    return tiedWithDecisive.length === 1 ? tiedWithDecisive[0]![0] : null;
+  }
   if (exclusive.get(best)) return best;
   return bestScore >= EXCLUSIVE_WEIGHT && bestScore - runnerUp >= 2
     ? best

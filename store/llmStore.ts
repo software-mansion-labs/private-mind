@@ -20,6 +20,8 @@ import { Feedback } from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import {
   detectGroundingCaveats,
+  humanizeSourceReferences,
+  isDanglingListAnswer,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
   pickCitationsByAnswer,
@@ -358,6 +360,9 @@ const updateChatStateForGeneration = (
                   sourceDocuments:
                     data.assistantMessage?.sourceDocuments ??
                     msg.sourceDocuments,
+                  groundingCaveats:
+                    data.assistantMessage?.groundingCaveats ??
+                    msg.groundingCaveats,
                   timeToFirstToken: data.timeToFirstToken!,
                   tokensPerSecond: data.tokensPerSecond!,
                 }
@@ -404,6 +409,9 @@ const describeGenerationFailure = (
   if (!finalResponse) return 'The model returned an empty response';
   if (isQuestionEchoAnswer(finalResponse, currentQuestion)) {
     return 'The model echoed the question back with no actual answer';
+  }
+  if (isDanglingListAnswer(finalResponse)) {
+    return 'The model started a list but produced no items';
   }
   return 'The model answered in the wrong language';
 };
@@ -795,12 +803,20 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const currentQuestion = get().activeChatMessages.findLast(
         (msg) => msg.role === 'user'
       )?.content;
+      const priorAnswerText = get()
+        .activeChatMessages.slice(0, -1)
+        .findLast((msg) => msg.role === 'assistant')?.content;
       // Handle successful response
       if (
         finalResponse &&
         !isQuestionEchoAnswer(finalResponse, currentQuestion) &&
+        !isDanglingListAnswer(finalResponse) &&
         !isWrongLanguageAnswer(finalResponse, currentQuestion)
       ) {
+        const humanizedResponse = humanizeSourceReferences(
+          finalResponse,
+          sourceDocuments ?? []
+        );
         const effectiveLast = effectivePrepared.at(-1);
         const effectiveContent =
           typeof effectiveLast?.content === 'string'
@@ -816,20 +832,21 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               );
         const citedSourceDocuments = pickCitationsByAnswer(
           effectiveSeen,
-          finalResponse,
+          humanizedResponse,
           preferredSourceDocuments ?? [],
           sourcesPresentInContext(effectiveContent)
         );
         const groundingCaveats = context.some((chunk) => chunk.trim())
           ? detectGroundingCaveats(
-              finalResponse,
+              humanizedResponse,
               currentQuestion,
-              effectiveContent
+              effectiveContent,
+              priorAnswerText
             )
           : [];
         const assistantMessageId = await persistMessage(db, {
           ...assistantPlaceholder,
-          content: finalResponse,
+          content: humanizedResponse,
           sourceDocuments: citedSourceDocuments,
           groundingCaveats,
           tokensPerSecond: responsePerformance.tokensPerSecond,
@@ -841,7 +858,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             assistantMessage: {
               ...assistantPlaceholder,
               id: assistantMessageId,
-              content: finalResponse,
+              content: humanizedResponse,
               sourceDocuments: citedSourceDocuments,
               groundingCaveats,
               tokensPerSecond: responsePerformance.tokensPerSecond,

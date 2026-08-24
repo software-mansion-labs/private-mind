@@ -279,6 +279,17 @@ const mostRecentEntity = (
   return null;
 };
 
+const SHORT_QUERY_MAX_WORDS = 6;
+const REFLEXIVE_DROPPED_SUBJECT =
+  /(?<![\p{L}\p{N}])się(?![\p{L}\p{N}])/iu;
+
+const wordCount = (text: string): number =>
+  (text.trim().match(/\S+/gu) ?? []).length;
+
+const looksLikeDroppedSubject = (query: string): boolean =>
+  wordCount(query) <= SHORT_QUERY_MAX_WORDS &&
+  REFLEXIVE_DROPPED_SUBJECT.test(query);
+
 // A bare-role or pronoun follow-up ("how many kids does the president
 // have", "ile dzieci ma prezydent") searches badly on its own — verbatim
 // mode has no LLM step to resolve who "the president" is, so without this
@@ -289,22 +300,18 @@ export const carryReferentIntoQuery = (
   query: string,
   history: { role: string; content: string }[]
 ): string => {
-  if (!NEEDS_REFERENT.test(query) || hasOwnEntity(query)) return query;
+  const looksIncomplete =
+    NEEDS_REFERENT.test(query) || looksLikeDroppedSubject(query);
+  if (!looksIncomplete || hasOwnEntity(query)) return query;
   const entity = mostRecentEntity(history);
   return entity ? `${query} ${entity}` : query;
 };
 
-// The planner is told its own "true" bucket includes "specific people,
-// places or organisations" — but live testing caught a small model
-// answering "ile dzieci ma Elon Musk" with needs_search: false from stale
-// pretrained knowledge (and the wrong number), ignoring its own rule.
-// Deterministically enforce that one clause of the model's own stated
-// policy instead of trusting it to apply it reliably: a query naming a
-// real entity (two capitalized words in a row) or a bare role/title
-// ("prezydent", "the president") almost always has a checkable current
-// fact behind it, so a `false` here gets overridden to a real search.
-export const asksAboutFactualEntity = (query: string): boolean =>
-  hasOwnEntity(query) || REFERENT_ROLE_MARKERS.test(query);
+const CONVERSATIONAL_INTENT_MARKERS =
+  /\b(greet\w*|hello|hi there|thank\w*|chit.?chat|small talk|casual|opinion|advice|\bmath\b|coding|programming|\bcode\b|translat\w*|rewrit\w*|paraphras\w*|creative writing|\bpoem\w*|poetry|\bstory\b|\bjoke\w*|recipe idea|general knowledge|timeless)\b/i;
+
+export const isConversationalIntent = (intent: string): boolean =>
+  !!intent.trim() && CONVERSATIONAL_INTENT_MARKERS.test(intent);
 
 const buildConversation = (
   history: { role: string; content: string }[]
@@ -367,9 +374,9 @@ export const planWebSearch = async (
   const parsed = parseSearchPlan(raw);
   if (!parsed) return verbatim();
   if (!parsed.needsSearch) {
-    return asksAboutFactualEntity(query)
-      ? verbatim(parsed.intent)
-      : { needsSearch: false, intent: parsed.intent, queries: [] };
+    return isConversationalIntent(parsed.intent)
+      ? { needsSearch: false, intent: parsed.intent, queries: [] }
+      : verbatim(parsed.intent);
   }
 
   const today = opts?.today ?? todayISO();

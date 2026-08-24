@@ -45,6 +45,16 @@ verbatim outperformed it while the matrix still says `'llm'`, not just this
 one. Confirmed live: the in-progress "Searching '...'" line now shows the
 literal user question verbatim (previously it showed a separate, sometimes
 mutated, LLM-generated query).
+⚠️ **Status note (this round)**: this fix was re-derived and re-staged
+during this round's git-history cleanup, then the `constants/model-profiles.ts`
+edit itself reverted back to `'llm'` on disk — in the working tree, the
+index, and confirmed identical to HEAD — with no corresponding action taken
+from this session (most likely an editor "discard changes" on that one file).
+F13 is currently **failing** as a result. The fix described above is
+correct and was live-confirmed in an earlier round; it just isn't
+consistently present on disk right now. Re-apply
+`WEB_PLANNER_MATRIX['Qwen 3 - 1.7B']: 'llm' → 'verbatim'` and re-run F13
+before trusting this item again.
 
 ⚠️ **This fix trades away query reformulation — verbatim is a fallback, not a
 strictly better replacement**
@@ -89,6 +99,292 @@ proposed work below rather than attempted this round.
   with only a toast, no persistent indicator — not investigated this round,
   but worth checking on a memory-constrained device if search still feels
   under-triggered after this fix.
+
+✅ **`'llm'`-mode planner too willing to say `needs_search: false` on
+specific, checkable questions — fixed, confirmed live; entity/role-list
+backstop replaced with a general intent-validation mechanism**
+Scenario: with Web search on, `Gemma 4 - 2B` (`webPlanner: 'llm'`) answered
+"ile dzieci ma elon musk" (how many children does Elon Musk have) straight
+from stale pretrained knowledge — `needs_search: false`, "Elon Musk ma
+cztery dzieci" (four) — a confidently wrong number for a person the
+`PLANNER_SYSTEM_PROMPT`'s own "true" bucket explicitly names ("specific
+people, places or organisations"). The model just doesn't reliably apply
+its own stated rule under uncertainty, and the prompt's own fallback line
+— "If the message is conversational and you are unsure, choose false" —
+was actively pushing it the wrong way whenever it hesitated.
+Fix, two layers:
+- Prompt: reworded the unsure-fallback to bias toward `true` ("search is
+  cheap, a confident wrong or stale answer is not"), narrowing the
+  false-by-default case to clearly conversational messages only.
+- Deterministic backstop, v1 (superseded, see below): first shipped as
+  `asksAboutFactualEntity`, reusing `hasOwnEntity` (two capitalized words
+  in a row) and `REFERENT_ROLE_MARKERS` (prezydent/premier/king/pope/CEO/…)
+  — override to a real search when the planner says `false` but the query
+  names a capitalized entity or a bare office/title. Flagged in review as
+  too narrow: a hardcoded role/title word list only ever covers the
+  entity *types* someone thought to enumerate (president, CEO, king, …),
+  not the general shape of the problem — any specific, checkable claim
+  the planner waves off, not just ones about a named person's role.
+- Deterministic backstop, v2 (current): `isConversationalIntent`
+  ([utils/web/buildSearchQuery.ts](../utils/web/buildSearchQuery.ts))
+  validates the override against the planner's own returned `intent`
+  field instead of pattern-matching the question. The planner prompt
+  already defines a closed set of categories that legitimately justify
+  `needs_search: false` (greetings, thanks, chit-chat, opinions, advice,
+  math, coding, translation, rewriting/paraphrasing, creative writing,
+  timeless/general knowledge) — `isConversationalIntent` matches the
+  model's stated `intent` against exactly that closed set. In
+  `planWebSearch`, whenever the planner returns `needsSearch: false`, the
+  override now checks `isConversationalIntent(parsed.intent)`: if the
+  model's own reasoning falls inside the defined conversational set, the
+  `false` is trusted; if it doesn't (e.g. `intent: "elon musk children"`
+  or `"president children"` — a factual claim the model itself didn't
+  even attempt to classify as conversational), the answer is treated as
+  unsure and a real search runs anyway (`verbatim(parsed.intent)`). This
+  generalizes past "does the text look like it names a person/role" to
+  "did the model's own classification actually earn the skip" — covers
+  every kind of specific/checkable claim, not just person-plus-title
+  ones, without hardcoding entity types. `carryReferentIntoQuery`/
+  `hasOwnEntity`/`REFERENT_ROLE_MARKERS` remain in place for their
+  original, unrelated job (carrying a referent into a follow-up query),
+  just no longer doing double duty as the needs_search override.
+Caveat: `isConversationalIntent` trusts the planner's self-reported
+`intent` string rather than re-deriving it from the question text — if the
+model mislabels its own intent (e.g. calls a factual lookup "general
+knowledge"), the override won't catch it. This is a smaller, more general
+failure surface than the old per-entity-type list, but not a zero-risk one.
+Verify: [__tests__/buildSearchQuery.test.ts](../__tests__/buildSearchQuery.test.ts)
+— `isConversationalIntent` unit cases (each defined category, an empty
+string, and a factual-sounding intent that must NOT match), plus
+`planWebSearch` override tests using mock `intent` values including the
+exact captured live query (`"elon musk children"`), a bare-role follow-up
+(`"president children"`), and a plain-greeting control confirming
+`needs_search: false` still stands when the intent is genuinely
+conversational. Confirmed live on Pixel 10, same model, same lowercase-typed
+query, re-tested after the v2 switch: "ile dzieci ma elon musk" searches
+("Searching 'Elon Musk's children'…") and answers correctly in Polish
+("Elon Musk miał 14 dzieci"), with the trace showing "Deciding what to
+search for" → "Searching…" → "Reading the pages" → "Done".
+
+✅ **Follow-up query planning ignored conversation context far more often than
+it needed to — `carryReferentIntoQuery`'s trigger widened from "one specific
+pronoun/role word literally in the query" to also cover Polish's dropped
+subject, the single most common way a Polish follow-up carries no context
+of its own**
+Scenario/request: the user flagged, in general terms, that follow-up
+questions weren't taking the recent conversation into account well enough
+before the query planner decided what to search for. Investigation
+confirmed this is real and has a precise cause: for `webPlanner: 'verbatim'`
+(the mode nearly every shipped model in `WEB_PLANNER_MATRIX` actually uses,
+including the default), the search query is the literal current message
+plus, optionally, one entity name spliced in by `carryReferentIntoQuery`
+([utils/web/buildSearchQuery.ts](../utils/web/buildSearchQuery.ts)) — but
+only when the query contains one specific pronoun ("he"/"ona"/"jego"/…) or
+role word ("prezydent"/"CEO"/…) from a fixed list (`NEEDS_REFERENT`). Polish
+freely drops the subject pronoun entirely in a way English doesn't — "Kiedy
+się urodził?" ("[he] was born when?") has no pronoun token anywhere — so
+this exact, very common follow-up shape fell through the trigger completely
+and searched with zero context, a gap already independently observed twice
+this session (see Citations/Sources and Sports above) but never fixed at
+the query-planning layer itself.
+Design choice: presented two directions — broaden the trigger to fire on
+any short, entity-less query (simpler, more general, but a naive version of
+this was caught live breaking an existing, correct case: "jaka jest cena
+bitcoina?" is short and names no entity, but is a genuinely new,
+self-contained topic — appending an unrelated prior entity to it would be
+wrong) versus a narrower Polish-specific dropped-subject pattern. Chose the
+broadening direction as requested, but refined it after the regression was
+found: instead of firing on brevity alone, the new signal is the reflexive
+marker **"się"** — a single, reliable token that a Polish sentence's
+grammatical subject may be implicit, present regardless of which specific
+pronoun or role word (if any) is missing. This is a real generalization
+(catches "Gdzie się wychował?", "Jak się nazywał?", "Co się stało?",
+"Dlaczego się poddał?" — any zero-subject construction, not one specific
+question) while staying precise enough not to fire on an unrelated
+short-but-self-contained question, since those don't happen to contain
+"się".
+Fix: `looksLikeDroppedSubject`
+([utils/web/buildSearchQuery.ts](../utils/web/buildSearchQuery.ts)) — a
+short query (≤6 words) containing "się" — is now OR'd alongside the
+existing `NEEDS_REFERENT` check in `carryReferentIntoQuery`, so either
+signal independently triggers referent-carrying. Caught its own bug while
+implementing: a plain `/\bsię\b/` silently never matched, because JS's
+`\b` is ASCII-only and doesn't treat "ę" as a word character — same class
+of bug already fixed once this session in `humanizeSourceReferences` and
+`questionLanguage.ts`'s tie-break, now fixed a third time here with the
+same `(?<![\p{L}\p{N}])…(?![\p{L}\p{N}])` Unicode-aware lookaround pattern
+instead of a bare `\b`.
+Verify: [__tests__/buildSearchQuery.test.ts](../__tests__/buildSearchQuery.test.ts)
+(F31) — the exact motivating case ("a kiedy się urodził?" → carries the
+entity), the regression guard for the naive brevity-only version (the
+bitcoin question, left untouched), and "się" appearing deep inside an
+otherwise long, self-contained sentence (left untouched, since the ≤6-word
+bound excludes it). Confirmed live on iOS Simulator: asked "Kto jest
+obecnym prezydentem Francji?" (correctly answered Emmanuel Macron), then
+the exact zero-anaphora follow-up "A kiedy się urodził?" — the trace now
+shows `Searching "A kiedy się urodził? Emmanuel Macron"` (previously this
+would have searched the bare question with no name at all), and the answer
+correctly reads "Urodził się 21 grudnia 1977 roku." — Macron's real
+birthdate.
+💡 **Scope note, not fixed this round**: this closes the single largest,
+most-repeatedly-observed gap (Polish zero-subject follow-ups), but
+`carryReferentIntoQuery` still only ever carries one *entity* (a
+capitalized proper noun), not a general topic/object referent — "a ten
+drugi model?" ("and that other model?", Sports section above) or "w tym
+meczu" ("in that game") still carry nothing, since there's no proper noun
+to extract. Those remain out of scope for this mechanism, per the existing
+Sports-section note that this class of gap was addressed at the
+retrieval-filtering layer instead (`EVENT_SCOPE_MARKERS`), not at
+query-building.
+
+✅ **Unrelated, pre-existing regression found and fixed while testing the
+above: `WEB_PLANNER_MATRIX['Qwen 3 - 1.7B']` had reverted back to `'llm'`
+on disk**
+This is the same regression already flagged with a ⚠️ status note earlier
+in this section ("this fix was re-derived and re-staged during this
+round's git-history cleanup, then the `constants/model-profiles.ts` edit
+itself reverted back to `'llm'` on disk") — confirmed still present
+(`F13` failing) while testing the referent-carrying fix above, which only
+matters when the model is actually in `'verbatim'` mode. Fixed the same way
+as before: `WEB_PLANNER_MATRIX['Qwen 3 - 1.7B']: 'llm' → 'verbatim'`. F13
+passes again; full suite (1491 tests) and `tsc` clean.
+
+## Cross-feature: web search vs. local document RAG (mutual exclusion)
+
+✅ **Web search and local document RAG could previously run simultaneously
+and blend their retrieval into one context block — changed so local
+documents take priority and web search is skipped whenever they're active,
+behind an easy-to-flip switch**
+Scenario/request: with both a document attached (or already enabled for the
+chat) and the "Web" toggle on, the app previously ran both retrieval
+mechanisms unconditionally and concatenated their output —
+[components/chat-screen/useSendChatMessage.ts](../components/chat-screen/useSendChatMessage.ts)
+built the doc-RAG context first, then ran web search regardless of whether
+doc-RAG already found anything, appending its context and sources onto the
+same flat list with no signal to the model about which source should win on
+conflict. Changed by explicit request: only one retrieval mechanism should
+run per message, with local documents taking priority — reasoning being
+that mixing an attached document's content with unrelated web results in
+one prompt is more likely to confuse a small model than help it, and a
+user who explicitly attached a document almost certainly wants answers
+grounded in it, not diluted by a web search running in parallel.
+Fix: `RAG_PRIORITY_OVER_WEB_SEARCH`
+([constants/web.ts](../constants/web.ts)) — a single boolean, the same
+UPPER_SNAKE_CASE constant-in-`constants/*.ts` pattern already used for
+every other feature gate in this codebase (`WEB_SEARCH_ENABLED`,
+`WEB_QUERY_GATE`, etc.), defaulting to `true`. When on, `useSendChatMessage.ts`
+computes `hasRagSources` (documents attached or already enabled for this
+chat) before deciding whether to run web search at all — if RAG sources
+exist, `shouldRunWebSearch` is forced `false` regardless of the per-chat
+Web toggle, and a toast explains why ("Using your documents for this chat —
+web search is off while they're active."), the same UX pattern already
+used for the two other reasons a search can be silently skipped (model
+compatibility, low memory). Flipping the constant to `false` restores the
+exact previous behavior (both run, doc context first) with no other code
+changes needed — this is the "easy to turn off in the next version"
+requirement, verified by actually flipping it live (see below), not just
+by code inspection.
+Verify: confirmed live on iOS Simulator (iPhone 17 Pro, `Qwen 3 - 1.7B`).
+With the flag on: attached a test document (a fictitious "secret
+verification code" fact no web source or pretrained knowledge could
+supply) with Web also on, asked a question only the document could answer
+— got the correct answer, **no "Searched the web" trace appeared at all**,
+and the Sources sheet showed only the local document. With the flag
+flipped to `false` and reloaded: the identical question **did** show a web
+search trace alongside the document answer, confirming the toggle
+genuinely restores simultaneous retrieval rather than just suppressing the
+UI indicator. Flag restored to `true` (the shipped default) afterward.
+
+⚠️ **Known trade-off, observed live, not a bug relative to what was asked
+for: once any document is enabled for a chat, web search stays off for
+every later message in that chat, even ones with nothing to do with the
+document**
+Scenario: after attaching a document and asking it a question, a
+completely unrelated follow-up in the same chat ("Jaka jest dzisiejsza
+pogoda w Warszawie?" — today's weather in Warsaw) also skipped web search,
+because `hasRagSources` is based on whether the chat has any RAG sources
+*enabled* — which, per the existing (pre-dating this change) "enable this
+source for the chat" behavior in `useSendChatMessage.ts`, persists for
+every future message once a document has been attached and used once, not
+just the turn it was attached on. The model answered the weather question
+anyway, from stale pretrained knowledge, exactly as it would with Web fully
+off — no crash, no error, just a wrong/fabricated answer to a question that
+would have benefited from a real search. This is the direct, mechanical
+consequence of "only one option can run, local documents take priority" as
+requested — not a bug in the implementation — but worth flagging clearly
+since it means attaching one document to a chat quietly disables web
+search for that entire chat going forward, not just for document-related
+turns. No topic-relevance check was added (the request was for a simple,
+blunt priority rule, easy to reason about and easy to disable — a smarter
+"only prioritize docs when the question is actually about them" version
+would need its own design and is a natural next step if this trade-off
+proves too broad in practice).
+No dedicated unit test: `useSendChatMessage.ts` has no existing test file
+in this codebase (confirmed before implementing — the whole send-message
+flow is only ever covered by live/manual QA here, consistent with how
+`buildSources`, `runWebSearch`, and the rest of this hook's logic are
+already tested elsewhere in this doc), so this fix is verified live only,
+per the existing convention for this file.
+
+## Language detection (question-language routing)
+
+✅ **General class of bug: short, coincidentally-exclusive words could make
+`detectQuestionLanguage` misjudge or, worse, silently return the wrong
+language — found via one live instance, fixed as a class, not a
+single-case patch**
+Scenario, live-caught on Pixel 10: "ile dzieci ma elon musk" (Polish, "how
+many children does Elon Musk have") got answered **in English**. The
+answer-language guard (`isWrongLanguageAnswer` in
+[utils/messageSources.ts](../utils/messageSources.ts)) exists specifically
+to catch and retry this shape of failure — but it never fired, because
+`detectQuestionLanguage` couldn't name the *question's* language at all
+(`null`), and the guard is a no-op without an expected language to compare
+against.
+Root cause, and why this is a **class** of bug, not one word: each
+language in [utils/questionLanguage.ts](../utils/questionLanguage.ts) is
+scored from a hand-curated marker-word list. A word absent from every
+*other* language's list scores as if it were exclusive to its own language
+— regardless of whether it's actually distinctive. "ma" (a common Polish
+verb, "has") isn't in the Polish list, but happens to also be an exclusive
+French marker ("my", possessive) — so a Polish sentence containing "ma"
+picked up a phantom French vote. Here it tied the genuine Polish signal
+("ile") exactly, and the old tie-break gave up (`null`) the moment any two
+languages tied on raw score, without asking whether that tie was between
+two *real* signals or one real signal and one coincidence. With close to
+25 languages each contributing a marker list, this exact shape of
+collision — some short, ordinary word that one list-author didn't think to
+add — can happen between any pair, not just Polish/French. Audited the
+actual word lists (a one-off script, not committed) for every word under 3
+characters that is exclusive to exactly one Latin-script language: **54
+such words** across the current language set.
+Fix: `pickCandidate`'s tie-break
+([utils/questionLanguage.ts](../utils/questionLanguage.ts)) no longer
+treats every raw-score tie as unresolvable. A tie is now broken in favor
+of whichever tied candidate has genuine *decisive* evidence (a marker word
+of 3+ characters, or one carrying a language-specific diacritic) — and
+only when exactly one of the tied candidates has that; if two languages
+both have decisive evidence, or neither does, it still abstains (`null`)
+rather than guess. Nothing in the fix references "ma", French, or Polish
+specifically — it's a property of the scoring, so it applies uniformly to
+every language pair sharing the list-completeness gap.
+Verify: [__tests__/questionLanguage.test.ts](../__tests__/questionLanguage.test.ts)
+— the original captured case, plus a systematic audit test that
+cross-pairs all 24 identified short-exclusive words against 13 other
+languages' own decisive markers (276 synthetic sentence pairs) and asserts
+the *safety* invariant that actually matters: a short-word collision must
+never make the detector confidently name the wrong language — landing on
+the correct language or abstaining are both acceptable, being *confidently
+wrong* is not. All 276 pairs pass that bar (a handful abstain via `null`
+instead of naming the technically-correct language — safe, just not
+maximally precise, and out of scope for this fix). The existing 500+ item
+multilingual corpus regression suite
+([__tests__/fixtures/multilingualQueries.ts](../__tests__/fixtures/multilingualQueries.ts))
+still reports 100% per-language accuracy with zero cross-language
+misnamings — confirming the tie-break change doesn't trade the new safety
+property for the old precision. Confirmed live: reloaded, re-asked the
+identical "ile dzieci ma elon musk" question — this time it correctly
+detected the question as Polish and (combined with the citation/search
+fixes above) returned a well-grounded Polish answer.
 
 ## Finance / crypto (prices, comparisons)
 
@@ -187,17 +483,96 @@ Verify: [__tests__/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts
 and [__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts),
 both asserting against the literal captured failure text ("The price of 1
 USD in euros is 1.00.").
-Live status: confirmed the caveat pipeline is wired end to end (full
-suite/tsc/eslint clean, no regressions), but several live re-tests this
-round did not reproduce the exact original wrong-figure text again — the
-model's output for this question shape is highly non-deterministic run to
-run (seen instead: an honest "no specific price found" refusal, a
-different fabricated figure not shaped like "1:1", and once a raw
-instruction-text leak unrelated to conversion at all — see the note
-below). So this is unit-verified against the exact captured failure, and
-wired correctly, but not live-reconfirmed to the same standard as the
-blank-screen fix below — flagged honestly rather than claimed as a full
-live-verified fix.
+Live status (superseded — see the two follow-ups directly below): confirmed
+the caveat pipeline is wired end to end (full suite/tsc/eslint clean, no
+regressions), but several live re-tests this round did not reproduce the
+exact original wrong-figure text again — the model's output for this
+question shape is highly non-deterministic run to run (seen instead: an
+honest "no specific price found" refusal, a different fabricated figure not
+shaped like "1:1", and once a raw instruction-text leak unrelated to
+conversion at all — see the note below). So this was unit-verified against
+the exact captured failure, and wired correctly, but not live-reconfirmed
+to the same standard as the blank-screen fix below at the time.
+
+✅ **Root cause of "not live-reconfirmed" found and fixed: `groundingCaveats`
+was persisted to the DB correctly but never reached the live, currently-open
+chat's rendered message — the ENTIRE caveat-badge feature (figure/trend/
+conversion) was silently invisible in-session since it shipped**
+Found while live-testing the RAG-priority feature below on iOS Simulator: a
+follow-up currency-conversion question (see the new finding directly below)
+produced a clearly-wrong figure and a debug log confirming
+`detectGroundingCaveats` correctly returned `["conversion"]` — but no badge
+ever appeared on screen. Root cause:
+`updateChatStateForGeneration`'s `'complete'` phase
+([store/llmStore.ts](../store/llmStore.ts)) merges the freshly-generated
+`assistantMessage` into `activeChatMessages` field-by-field (`id`,
+`content`, `sourceDocuments`, `timeToFirstToken`, `tokensPerSecond`) —
+`groundingCaveats` was simply missing from that list, even though the
+object being merged FROM (`data.assistantMessage`) always carried it
+correctly. `persistMessage` writes it to SQLite correctly (confirmed
+correct in the DB), so the badge would only ever appear after the chat was
+reloaded from the database (app restart, navigating away and back) — never
+during the live turn that actually produced it, which is the one moment a
+caveat matters most. This explains why every "confirmed live" or
+"not live-reconfirmed" note for `withFigureGroundingCaveat`/
+`withTrendGroundingCaveat`/`withConversionGroundingCaveat` throughout this
+whole doc was checking a channel that, in the live in-session case, could
+never have shown the badge in the first place — any apparent live
+confirmation for those either happened via a reload/restart in between (a
+believable, easy-to-miss step) or was actually checking something else (the
+answer text itself, before caveats moved into badges).
+Fix: added `groundingCaveats: data.assistantMessage?.groundingCaveats ??
+msg.groundingCaveats` to that merge, mirroring the existing
+`sourceDocuments` line right next to it. One-line fix, but the entire
+badge feature was affected by its absence.
+Verify: confirmed live — the exact repro below now shows the
+"No real conversion rate was found in the sources" badge immediately, in
+the same turn that produced the wrong figure, with no reload needed.
+
+✅ **New finding while re-testing: a follow-up conversion figure can be
+wrong not just by "losing the anchor," but by copying an unrelated
+currency pair's example output — plausibility check added against the
+anchor figure**
+Scenario, captured live on iOS Simulator: asked "Jaka jest aktualna cena
+bitcoina w dolarach?" (correctly answered "77 493 USD", well-sourced),
+then the natural follow-up "A ile to jest w euro?" ("And how much is that
+in euros?"). The answer: "23,19 EUR" — sourced to a real currency-converter
+page (money.pl), but that page's actual content was a **PLN→EUR**
+calculator example ("100,00 PLN = 23,19 EUR"), not a USD→EUR conversion at
+all. The model copied the calculator's example output figure verbatim,
+producing a "grounded-looking" but nonsensical answer (77 493 USD does not
+convert to 23.19 EUR by any real exchange rate — off by a factor of
+~3,342×). This passed the existing `hasGenuineConversionRate` check because
+the context genuinely did contain a non-`1` currency figure — just not one
+that had anything to do with the actual question.
+Fix: `isImplausibleConversionFigure`
+([utils/web/figureGrounding.ts](../utils/web/figureGrounding.ts)) adds a
+plausibility band on top of the existing "is there a real rate at all"
+check — `FOLLOWUP_CONVERSION_MARKERS` only ever fires for conversions
+between major, stable currencies (euro/dolar/funt/złoty/frank), and a real
+rate between any pair of those never leaves roughly a 0.1×–6× band. When
+the ratio between the answer's figure and the anchor figure (the largest
+currency figure in the model's own immediately-preceding answer, extracted
+via `activeChatMessages`) falls outside that band, the conversion is
+flagged regardless of whether the retrieved page had a genuine-looking rate
+on it. `isUngroundedConversionClaim` now takes an optional `priorAnswerText`
+parameter for this; wired through `detectGroundingCaveats` from
+[store/llmStore.ts](../store/llmStore.ts), which locates the previous
+assistant turn by dropping the in-progress placeholder
+(`activeChatMessages.slice(0, -1).findLast(...)`) rather than trusting the
+array's last element, since that's always the still-generating placeholder
+at this point in the flow.
+Verify: [__tests__/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
+— the exact captured live text (77 493 USD anchor, 23,19 EUR answer,
+flagged), a plausible conversion against the same anchor (not flagged), and
+the case with no prior answer to anchor against (not flagged, consistent
+with the existing behavior when nothing can be verified). Confirmed live:
+re-ran the identical two-question sequence twice; the caveat correctly
+fired both times the model produced an implausible figure (once "23,19
+EUR" from the PLN-calculator mixup above, once a different fabricated
+figure), and correctly did NOT fire on the leg of testing where the model
+answered the price question itself (no conversion question asked, marker
+doesn't match).
 
 🔧 **New, unrelated finding along the way: raw instruction text leaking
 into a visible answer**
@@ -744,6 +1119,20 @@ it: `Chat sendMessage failed Error: The model produced a circular
 non-answer with no actual content` — shown to the user as "Failed to
 generate a response." with Retry, not persisted as if it answered the
 question.
+⚠️ **Status note (this round)**: `isCircularNonAnswer` and both its call
+sites in `store/llmStore.ts` (`describeGenerationFailure` and the
+persistence gate) were removed in the tip commit on this branch, `9d3476a
+"feat(web): move grounding caveats out of the answer text into badges"` —
+apparently collateral damage from that refactor, since the two are
+unrelated (that commit moved *caveats* — figure/trend/conversion warnings
+appended to answer text — into separate badge components; the circular
+detector was a *reject-and-retry* gate, not a caveat). Live testing this
+round reproduced exactly this failure shape again on Pixel: literal
+"źródło 2" phrases in the answer, and no Sources shown underneath (see
+Citations / Sources below for why the latter half also happens on a
+related-but-distinct path). Deliberately left unfixed this round — out of
+scope per direct instruction, tracked for a future PR. Re-adding it is a
+straight revert of the two deletions in that commit.
 
 ## Entertainment (movies / TV)
 
@@ -939,7 +1328,150 @@ question shape and fails gracefully a second time, since the underlying
 model tendency itself isn't fixed — only its user-facing consequence is:
 never again silently masquerading as a real answer).
 
+✅ **`isQuestionEchoAnswer` widened: an echo with a leaked per-turn language
+reminder tacked on evaded the exact-match check**
+Scenario, found live on iOS Simulator while testing an (accidentally
+malformed) follow-up: `answerLanguageAnchor`
+([utils/promptUtils.ts](../utils/promptUtils.ts)) appends a short reminder
+— `(Answer in Polish.)`, translated by the model into whatever language it's
+answering in — directly onto the raw text of the outgoing user turn, with
+no framing that visually separates it from the user's own words. A model
+that falls back to echoing its input (the exact failure `isQuestionEchoAnswer`
+exists to catch) can echo this reminder right along with the question,
+translated: the captured answer was `A kiedy się urodził? (Odpowiedź w
+polskim.)` — the (near-)echoed question plus the leaked, translated
+reminder — which the old exact-match comparison missed entirely, since the
+trailing text made it not equal to the raw question.
+Fix: `isQuestionEchoAnswer` now also strips one trailing parenthetical
+clause from the visible answer before comparing — if what's left matches
+the question, it's still an echo, just with a leaked reminder riding along.
+This doesn't require recognizing the reminder's text in any specific
+language, since it only cares about the parenthetical's position, not its
+content. Verify: [__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts)
+— the captured shape (echo + leaked reminder, flagged) and a genuine answer
+that happens to end in an unrelated parenthetical clause (not flagged,
+since the part before it doesn't match the question). Caveat: the original
+live capture used input mangled by an unrelated typing-tool glitch during
+testing (a duplicated word fragment), so the model's echo wasn't a clean
+match even after stripping the reminder — re-tested with clean input and
+did not reproduce the leak at all, meaning this is confirmed as a real,
+narrow failure shape (garbled input → leaked reminder in an echo) rather
+than a common one; the fix is unit-verified against the clean version of
+that shape, not live-reconfirmed with the exact original garbled text.
+
+🔧 **A third non-answer shape found live: commits to a list, delivers zero
+items — fixed in code, not yet re-verified live**
+Scenario, captured on Pixel 10 in a real thread: "ile dzieci ma prezydent
+usa i jak nazywa się jego żona" got a correct, complete answer ("Prezydent
+ma dwie córki, a jego żona nazywa się Melania Trump."). The natural
+follow-up in the same thread, "wypisz imiona wszystkich dzieci prezydenta"
+(list the names of all the president's children), triggered `needs_search:
+false` — the planner judged this answerable from the conversation already
+in progress rather than as a fresh lookup — and the reply was, in full:
+"Prezydent ma dwie córki. Ich imiona to:" — a correct recap followed by a
+list intro and then nothing. Distinct from both the question-echo shape
+above (this one is not a repeat of the question) and the circular
+non-answer above (this one does not restate itself — it just stops). Root
+cause is upstream of generation: with no fresh `<context>` this turn (the
+planner's `needs_search: false` means `runWebSearch` returns empty and
+`prepareMessagesForLLM` takes the no-context branch — see
+[utils/promptUtils.ts](../utils/promptUtils.ts)), the model has nothing
+grounding the daughters' names and, rather than saying so, commits to a
+list format it can't fill in.
+Fix: `isDanglingListAnswer`
+([utils/messageSources.ts](../utils/messageSources.ts)) flags a visible
+answer (outside `<think>`) that ends on a bare colon — a genuine answer
+essentially never does. Routed through the same `store/llmStore.ts` gate as
+the other two non-answer shapes (`markGenerationFailed` → "Failed to
+generate a response." with Retry). This does not fix the planner's
+`needs_search: false` misjudgment itself (a small model deciding a specific
+named-entity fact is "already known" is a planner-quality problem, not
+something a text-shape detector can correct) — it only stops the resulting
+dangling-list reply from being persisted as if it were a complete answer.
+Verify:
+[__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts) —
+the exact captured text, an English equivalent, a filled-in list (not
+flagged), an ordinary answer with no trailing colon (not flagged), and a
+colon left inside `<think>` only (not flagged). Live re-attempt on Pixel
+10 (same thread shape, same model) did not reproduce the exact dangling
+colon this round — the planner's `needs_search` call is non-deterministic
+and this time chose `true` for the follow-up, so it searched and answered
+("Prezydent USA, Donald Trump, ma syna o imieniu Barron Trump.") instead
+of hitting the no-context path at all. No regression either way. Still 🔧,
+not ✅ — the fix has not yet been seen to actually catch a live dangling
+answer.
+Update (same day, after the `needs_search`-too-eager fix above): a second
+live round asked a same-thread pronoun-only follow-up ("a kiedy się
+urodził?", no entity or role marker at all) specifically to try to land on
+the no-search precondition again — it searched anyway and returned a
+fully filled-in answer (a bulleted list of dates, each item complete, no
+dangling colon). Consistent with the same explanation as the sibling entry
+above: the `needs_search` fix is shrinking exposure to this detector's
+trigger condition, which is a good outcome for users but still leaves this
+specific detector unconfirmed against a real dangling answer. Left at 🔧.
+
 ## Citations / Sources
+
+✅ **Regression: removing the `namedCitation` prompt line for the
+`DominantSourceBadge` left every multi-source answer citing "Source N"
+literally — found live, first patched with a prompt instruction, then
+replaced with a deterministic post-processing fix per explicit direction**
+Scenario: earlier this round, the old `namedCitation` instruction ("name
+the page in your own words... instead of a vague 'the sources say'") was
+deleted from [utils/promptUtils.ts](../utils/promptUtils.ts) and replaced
+with `DominantSourceBadge` — a deterministic UI pill shown when exactly one
+web source ends up cited. That works well for the single-source case, but
+the badge is computed *after* generation from the final answer's citation
+overlap, so it can't be known while the prompt is being built, and it
+never fires at all for 0 or 2+ cited sources. Removing the instruction
+outright meant those cases — which turned out to be the common ones —
+had **no guidance at all**, and the model fell back to its rawest habit:
+repeating the `<context>` block's own header labels ("Source 1", "Source
+2"...) straight into the answer. Live-caught on a real 4-source "ile
+dzieci ma elon musk" answer: "...he has fathered 14 children (Source 1),
+and welcomed 14 children over 20 years (Source 2)... (Source 3)... (Source
+4)." with no badge (four sources used, not one) — exactly the shape from
+the user's own earlier report ("w ostatniej wiadomosci sa source 4 i
+source 2 zmiast badge").
+First fix attempted (reverted): restored `namedCitation` in
+`getContextInstruction`, asking the model to name the page in its own
+words instead of writing "Source N". Live-tested clean at the time — but
+this is exactly the shape of fix the project has already decided against
+elsewhere in this doc (the `DominantSourceBadge` switch itself was a move
+*away* from trusting prompt-instruction compliance toward a deterministic
+mechanism, for the single-source case). Re-adding an LLM-compliance
+instruction for the multi-source case was flagged as solving one instance
+rather than the class, and reverted per explicit instruction to replace it
+with something deterministic instead.
+Fix (current): `humanizeSourceReferences`
+([utils/messageSources.ts](../utils/messageSources.ts)) is a deterministic
+post-processing pass, not a prompt instruction — it runs on every answer
+after generation, regardless of language or how the model chose to phrase
+the citation, and replaces any literal `Source N` / `źródł* N` match with
+that source's real name (`sourceDocuments[N-1].name`, the same 1-based
+numbering `sourceBlock`/`webResultsToContext` assign when building the
+`<context>` block, so the index the model copies verbatim always resolves
+correctly against the original, unfiltered source list). Matching is
+Unicode-aware (`(?<![\p{L}\p{N}])` instead of a bare `\b`, since JS's `\b`
+does not treat accented letters like "ź" as word characters, so a bare
+`\b` misses "źródła 2"), and covers English and Polish today
+(`sources?`/`źródł\w*`). Wired into `store/llmStore.ts` right after the
+success gate opens: the humanized text — not the raw model output — is
+what gets used for citation-picking, grounding-caveat detection,
+persistence, and the in-memory chat state, so every downstream consumer
+sees the cleaned-up answer, not just what's rendered on screen.
+Verify: [__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts)
+— the exact captured live 4-source text, a Polish "źródła 2" case, and a
+no-op case (no source documents, text left untouched). Confirmed live on
+Pixel 10 as part of the same round's language-detection re-test: the humanizer
+did not need to intervene on that particular answer (the model's Polish
+reply named no sources at all, literal or humanized), so this run is
+supporting evidence that no regression was introduced, not a fresh catch of
+the original literal-"Source N" text — that exact shape was previously
+confirmed working under the reverted `namedCitation` version, which is
+what originally established the underlying detection was correct; the
+mechanism producing the fix has since changed, this specific text pattern
+has not yet been re-caught live under the new deterministic version.
 
 ✅ **Two independent root causes found and fixed for "successful search,
 zero Sources"**
@@ -977,6 +1509,56 @@ zero Sources"**
   added `dostarcza*`/`oferuje*` for parity with English) — completing an
   existing pattern, not adding another special case.
 
+🔧 **"Source N" cited on a follow-up with no fresh context — fixed in code,
+not yet re-verified live**
+Scenario, captured on Pixel 10: in an "ile dzieci ma Elon Musk" thread that
+had already searched and answered correctly once, a later message in the
+same thread was answered by `needs_search: false` (no fresh `<context>`
+this turn), yet the reply still contained literal "Source 4" and "Source 2"
+— and, consistently with that no-context turn, "Sources" was empty
+underneath. Root cause: each `<context>` block is headed `Source 1: <page
+title>`, `Source 2: ...` (see `sourceBlock` in
+[utils/contextUtils.ts](../utils/contextUtils.ts)) — a model that searched
+one turn ago has that exact citation pattern in its own immediately-prior
+reply in the conversation history, and a small model on a no-context
+follow-up imitates its own recent style rather than noticing there is
+nothing to cite this time. This is a different mechanism from the
+`namedCitation`→`DominantSourceBadge` switch elsewhere in this round (that
+one only ever applied when a fresh context block existed this turn, so it
+never covered this no-context-follow-up path either, before or after the
+switch) — the empty "Sources" here isn't a bug in isolation, it's the
+*correct* half of an inconsistent pair; the bug is the model still act like
+sources exist when this turn has none.
+Fix: `getNoFreshContextInstruction`
+([utils/promptUtils.ts](../utils/promptUtils.ts)) — when a turn has no
+`<context>` block but an earlier assistant message in the same thread did
+cite a web source, add an explicit reminder that this turn has no context
+block and the model must not invent "Source N" numbers, answering from the
+conversation in its own words instead. Scoped to threads that have actually
+searched before (not added unconditionally to every prompt), following this
+doc's documented lesson that stacking an unconditional instruction onto a
+small model risks new regressions of its own (see Real estate, above).
+Verify: [__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) —
+the exact captured shape (a president-follow-up thread reused as the
+fixture, since it is the same no-context-after-web-turn pattern) gets the
+warning, and an ordinary thread that never searched does not. Live
+re-attempt on Pixel 10 (fresh "ile dzieci ma Elon Musk" thread) also didn't
+land on the triggering condition this round — the planner chose
+`needs_search: false` on the very first message this time (no search ran
+at all, so no earlier web-cited turn existed to test the follow-up
+reminder against), where the original captured bug had a successful first
+search. Still 🔧, not ✅ — the fix has not yet been seen to actually
+suppress a live "Source N" hallucination.
+Update (same day, after the `needs_search`-too-eager fix above and the
+citation-humanizer work): a second live round on Pixel 10 never landed
+on the no-context precondition either — every follow-up tried this round,
+including a bare pronoun-only one with no explicit entity or role marker
+("a kiedy się urodził?"), triggered a real search rather than a
+memory-only answer. That's a reasonable side effect of the same-day
+`needs_search` fix shrinking how often the no-context branch is reached at
+all, not evidence this specific instruction works — its trigger condition
+just keeps not coming up. Left at 🔧 until it's actually seen to fire.
+
 💡 **Proposed / to monitor**
 - Watch whether "trust present sources on zero overlap" starts showing
   sources on genuine refusals in languages other than PL/EN (the refusal
@@ -986,6 +1568,60 @@ zero Sources"**
   weather-category testing; not added to the regex list yet — avoiding
   further case-by-case regex whack-a-mole in favor of a more general
   refusal-detection approach if this keeps recurring.
+
+✅ **Unread ("search listing only") sources removed from the Sources sheet
+entirely, per explicit direction**
+Previously `useMessageSources`'s `displayedSources` filter kept a web
+source whose page was never actually fetched (`read === false`) as long as
+it was flagged `used: true` — i.e. the citation-attribution heuristic
+matched it against the answer text even though only the SERP snippet, not
+the real page, was ever read. Those rows showed "· from the search listing
+only" ([SourceRow.tsx](../components/chat-screen/SourceRow.tsx)) to signal
+the caveat. Per direct instruction, the Sources sheet should never surface
+a source that was never actually read, used or not — so the filter now
+drops any web source with `read === false` unconditionally
+([hooks/useMessageSources.ts](../hooks/useMessageSources.ts)). The
+"from the search listing only" label and its style became dead code as a
+result (nothing reaches `SourceRow` with `read === false` anymore) and
+were removed. `webResults` (used for the search-trace panel and the
+`DominantSourceBadge` computation) is unaffected — unread pages still show
+up in the "Searched the web" trace, just not in the Sources sheet.
+Verify: [__tests__/useMessageSources.test.ts](../__tests__/useMessageSources.test.ts)
+— updated the case that used to assert an unread-but-used source was kept
+to assert it's now excluded. Confirmed live on Pixel 10: a recipe question
+("jaki jest przepis na sernik nowojorski") that searched multiple pages
+opened a Sources sheet showing only the sources with real fetched content,
+no unread-listing entries and no italic caveat text.
+
+## Search trace UI (the "Searching the web…" expandable panel)
+
+✅ **Completed trace steps stayed a bare dot instead of getting a checkmark
+like "Done" — fixed**
+Scenario: while a search trace is running or after it finishes, each step
+row ("Deciding what to search for", "Searching '...'", "Reading the
+pages") is rendered by `buildRows`
+([components/chat-screen/webSearchTrace.ts](../components/chat-screen/webSearchTrace.ts))
+as a `StepRow` with an optional `done` flag driving the checkmark vs. plain
+dot. Most step rows were only ever pushed with `done` unset — a step got a
+checkmark solely via a few call sites that happened to set `done: true`
+explicitly (mainly the final "Done"/weak-results row), so a completed
+"Searching '...'" step stayed a bare dot forever, inconsistent with the
+checkmark "Done" gets right below it in the same list.
+Fix: replaced the old `withPhaseState`/`markActive` helpers with a single
+`finalizeSteps` pass that runs once over the assembled row list right
+before it's returned, from every code path that builds rows. While a
+search is still running, every step before the last not-yet-`done` one is
+finished by definition (the trace already moved past it) and gets `done:
+true`; the last incomplete one gets `active: true` (the pulsing state).
+Once nothing is running anymore, every step that made it into the trace at
+all is done — a finished trace has no such thing as a still-pending step.
+Verify: [__tests__/webSearchTrace.test.ts](../__tests__/webSearchTrace.test.ts)
+— a mid-search case (checkmarks on every step before the active one, no
+checkmark on the active one) and a fully-completed case (checkmarks on
+every step). Confirmed live on Pixel 10: expanded the "Searched the web"
+panel after a completed search — "Deciding what to search for",
+"Searching 'Elon Musk's children'", "Reading the pages", and "Done" all
+show a checkmark, none left as a plain dot.
 
 ## User-facing communication
 
@@ -1086,6 +1722,35 @@ resource" errors across all 5 navigations, and all 3 attempts that
 actually reached "send" (2 were lost to unrelated test-harness timing, not
 app bugs) rendered their finished answers correctly. Previously this
 reproduced on effectively the first or second attempt.
+
+⚠️ **Status note (this round): recurred live, root cause not yet
+re-established — likely a different trigger than the fixed `router.replace`
+race**
+Scenario: the blank-screen symptom (message area fully invisible,
+`restart-app` recovers it) reappeared live on the Pixel 10 during this
+round's testing. Not yet root-caused to the same standard as the fix above
+— the 50ms `startPhantomChat` delay fix targets one specific race
+(`KeyboardProvider` not caught up before `KeyboardChatScrollView` attaches
+its worklet handlers on a `'replace'`-mode "new chat" navigation) and
+nothing in this round's `git diff` touches `startPhantomChat.ts` or that
+navigation path, so a straight regression of that exact fix is unlikely.
+Log signature captured this time was similar but not identical: `Can not
+attach worklet handlers for react-native-keyboard-controller...`,
+`Failed to fetch chat settings: ...Access to closed resource`, `Failed to
+load branch markers: ...Access to closed resource`, `Database not
+initialized`, and an uncaught `Access to closed resource` promise
+rejection. Working theory, not confirmed: this round involved many rapid
+Fast-Refresh reloads from live file edits landing while the app was mid-
+navigation, on a Metro instance a second device ("iPhone 17 Pro") was also
+connected to — plausible that a Fast-Refresh-triggered remount hits the
+same class of "provider not caught up yet" race the original bug was, but
+via a different trigger than a plain `'replace'` navigation, or that it's
+a distinct SQLite-connection-closure issue coincidentally sharing several
+log lines with the original bug. Recovered via `restart-app` (data intact,
+no loss), but the underlying trigger for this round's recurrence remains
+open — needs a dedicated repro attempt outside an active Fast-Refresh
+session (a built/installed app, not a live Metro dev session) before it
+can be root-caused or ruled distinct from the fixed race above.
 
 ✅ **A sent message could get permanently lost off-screen when sent from
 scrolled-up in a long thread — root cause found and fixed, a plain JS
@@ -1283,3 +1948,46 @@ lesson from this file's own history (the reverted "sandwiched instruction"
 attempt above) is that broad, ambitious fixes on a small model tend to cost
 more than they're worth; the narrow, testable pattern this file has used
 throughout keeps winning.*
+
+*A later round, prompted by two fresh live-caught bugs on the same "ile
+dzieci ma elon musk" thread shape, fixed: (1) a dangling list-intro answer
+("Prezydent USA ma następujące dzieci:" with nothing after the colon) on a
+`needs_search: false` follow-up — `isDanglingListAnswer`
+(Text quality, above); (2) a `needs_search: false` follow-up in an
+already-searched thread hallucinating "Source N" citations with no Sources
+shown — `getNoFreshContextInstruction` (Citations/Sources, above). Neither
+has yet been seen to actually catch a live recurrence of its exact trigger
+condition (both remain 🔧). Along the way, the `needs_search`-too-eager
+problem got a second design pass: the first backstop
+(`asksAboutFactualEntity`, a hardcoded entity/role-word list) was flagged
+as solving one entity shape rather than the general problem, and replaced
+with `isConversationalIntent` — validating the planner's own `needs_search:
+false` against the closed set of conversational categories its own prompt
+already defines, rather than pattern-matching the question text (Search
+frequency, above). Separately, the `namedCitation` prompt-instruction
+citation fix (confirmed working two paragraphs above) was itself flagged as
+the wrong *kind* of fix — reintroducing LLM-compliance dependence right
+after the project had moved away from it for the single-source case — and
+replaced with `humanizeSourceReferences`, a deterministic post-generation
+pass that resolves any literal "Source N"/"źródło N" the model writes
+against the real source name, in any language, regardless of prompt
+compliance (Citations/Sources, above). A `questionLanguage.ts` tie-break bug
+was also found and fixed as a general class rather than a one-word patch: a
+short, coincidentally cross-language-exclusive marker word ("ma" scoring as
+both Polish and French) could make the language detector abstain or,
+combined with the old tie-break, contribute to a wrong-language answer;
+fixed by only trusting a tie-break in favor of *decisive* (3+ character or
+diacritic-bearing) evidence, verified against a 276-pair synthetic audit of
+every short cross-language collision found in the current marker lists
+(Language detection, above). A UI consistency bug — completed search-trace
+steps staying a bare dot instead of getting a checkmark like "Done" — was
+fixed with a single `finalizeSteps` pass replacing the old ad hoc
+`done`-flag wiring (Search trace UI, above). An unrelated first-paste-into-
+a-fresh-chat-input bug (pasted text flashes in then clears, first attempt
+only) was fixed by a background agent on a separate branch/worktree,
+`fix/chat-input-first-paste-clears` — not yet merged, pending manual
+on-device verification. And the blank-screen bug (fixed with confidence
+two rounds ago) recurred live under circumstances that don't obviously
+implicate the same fix (see the status note above) — recovered via
+`restart-app`, root cause of the recurrence left open for a future round
+with a non-Fast-Refresh repro environment.*

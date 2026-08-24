@@ -376,36 +376,6 @@ describe('prepareMessagesForLLM', () => {
       expect(result[0].content).toContain('Never say the word "context"');
     });
 
-    it('nudges the model to name the page instead of a vague "sources say" on web results (F29)', () => {
-      const messages = makeMessages(2);
-      const webSources: SourceDocument[] = [
-        { name: 'CoinMarketCap', kind: 'web', url: 'https://a.example/btc' },
-      ];
-      const result = prepareMessagesForLLM(
-        messages,
-        ['some web context'],
-        baseSettings,
-        baseModel,
-        '',
-        undefined,
-        webSources
-      );
-      expect(result[0].content).toContain('name that page in your own words');
-    });
-
-    it('does not add the named-citation nudge for document-only context', () => {
-      const messages = makeMessages(2);
-      const result = prepareMessagesForLLM(
-        messages,
-        ['some document context'],
-        baseSettings,
-        baseModel
-      );
-      expect(result[0].content).not.toContain(
-        'name that page in your own words'
-      );
-    });
-
     it('warns not to guess when a needed web search came back with nothing usable', () => {
       const messages = makeMessages(2);
       const result = prepareMessagesForLLM(
@@ -434,6 +404,62 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       expect(result[0].content).not.toContain('found nothing usable');
+    });
+
+    it('warns against citing "Source N" on a no-context follow-up after a web-grounded reply (live-found Pixel gap)', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'ile dzieci ma prezydent usa i jak nazywa się jego żona',
+          timestamp: Date.now(),
+        },
+        {
+          id: 2,
+          chatId: 1,
+          role: 'assistant',
+          content:
+            'Prezydent ma dwie córki, a jego żona nazywa się Melania Trump.',
+          timestamp: Date.now(),
+          sourceDocuments: [
+            { name: 'Wikipedia', kind: 'web', used: true },
+          ] as SourceDocument[],
+        },
+        {
+          id: 3,
+          chatId: 1,
+          role: 'user',
+          content: 'wypisz imiona wszystkich dzieci prezydenta',
+          timestamp: Date.now(),
+        },
+        {
+          id: 4,
+          chatId: 1,
+          role: 'assistant',
+          content: '',
+          timestamp: Date.now(),
+        },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).toContain('No new search results');
+      expect(result[0].content).toContain('Never write "Source 1"');
+    });
+
+    it('does not add the no-fresh-context warning when this thread never used web search', () => {
+      const messages = makeMessages(2);
+      const result = prepareMessagesForLLM(
+        messages,
+        [],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).not.toContain('No new search results');
     });
 
     it('adds current attachment priority without making it exclusive', () => {

@@ -66,6 +66,8 @@ export const WEB_PAGE_CACHE_MAX_CHARS = 250_000;
 
 export const WEB_SEARCH_ENABLED = true;
 
+export const RAG_PRIORITY_OVER_WEB_SEARCH = true;
+
 export interface ScrapeEngine {
   id: string;
   url: string;
