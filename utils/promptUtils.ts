@@ -120,6 +120,12 @@ const getContextInstruction = (
   const direct =
     'Answer the question that was asked, directly and first. Do not summarize the pages or add background the question did not ask for.';
 
+  const namedCitation = hasWeb
+    ? [
+        'When a claim rests mainly on one page, name that page in your own words (e.g. "CoinMarketCap reports…", "According to Reuters…") using its title from the block header, instead of a vague "the sources say". Save "the sources" for when several pages agree or you are referring to the whole block.',
+      ]
+    : [];
+
   const conflict = hasWeb
     ? [
         'The pages may disagree because some are out of date. Where they conflict, trust the page reporting the newest events — a change, a succession, "X replaces Y" — over a page that states the old fact.',
@@ -153,6 +159,7 @@ const getContextInstruction = (
     fallback,
     noLeakedJargon,
     direct,
+    ...namedCitation,
     ...conflict,
     figures,
     ...speculative,

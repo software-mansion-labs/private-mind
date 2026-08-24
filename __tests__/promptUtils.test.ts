@@ -376,6 +376,36 @@ describe('prepareMessagesForLLM', () => {
       expect(result[0].content).toContain('Never say the word "context"');
     });
 
+    it('nudges the model to name the page instead of a vague "sources say" on web results (F29)', () => {
+      const messages = makeMessages(2);
+      const webSources: SourceDocument[] = [
+        { name: 'CoinMarketCap', kind: 'web', url: 'https://a.example/btc' },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some web context'],
+        baseSettings,
+        baseModel,
+        '',
+        undefined,
+        webSources
+      );
+      expect(result[0].content).toContain('name that page in your own words');
+    });
+
+    it('does not add the named-citation nudge for document-only context', () => {
+      const messages = makeMessages(2);
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some document context'],
+        baseSettings,
+        baseModel
+      );
+      expect(result[0].content).not.toContain(
+        'name that page in your own words'
+      );
+    });
+
     it('warns not to guess when a needed web search came back with nothing usable', () => {
       const messages = makeMessages(2);
       const result = prepareMessagesForLLM(
