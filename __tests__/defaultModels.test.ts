@@ -1,5 +1,6 @@
 import {
   BIELIK_V3_0_1_5B_QUANTIZED,
+  QWEN2_5_0_5B_QUANTIZED,
   QWEN3_1_7B_QUANTIZED,
 } from 'react-native-executorch';
 import {
@@ -10,13 +11,25 @@ import {
 import { isModelCompatibleWithRam } from '../utils/modelCompatibility';
 
 describe('getGenerationConfigForModel', () => {
-  it('passes through the registry config without injecting a penalty', () => {
+  it('passes through the registry config without injecting a penalty for most models', () => {
     expect(
       getGenerationConfigForModel(QWEN3_1_7B_QUANTIZED.modelSource)
     ).toBeUndefined();
     expect(
       getGenerationConfigForModel('https://example.com/custom.pte')
     ).toBeUndefined();
+  });
+
+  // Qwen 2.5 - 0.5B and Bielik were observed looping verbatim on ordinary
+  // prompts with the penalty off (issue #255) — everything else stays
+  // untouched until it shows the same symptom under the same testing.
+  it('overrides repetitionPenalty for the models observed looping unpenalized', () => {
+    expect(
+      getGenerationConfigForModel(QWEN2_5_0_5B_QUANTIZED.modelSource)
+    ).toEqual({ repetitionPenalty: 1.05 });
+    expect(
+      getGenerationConfigForModel(BIELIK_V3_0_1_5B_QUANTIZED.modelSource)
+    ).toEqual({ repetitionPenalty: 1.05 });
   });
 });
 

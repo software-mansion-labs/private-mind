@@ -1,0 +1,41 @@
+diff --git a/node_modules/react-native-executorch/common/runner/sampler.h b/node_modules/react-native-executorch/common/runner/sampler.h
+index 6af1a5a..a2ff1c6 100644
+--- a/node_modules/react-native-executorch/common/runner/sampler.h
++++ b/node_modules/react-native-executorch/common/runner/sampler.h
+@@ -16,6 +16,7 @@
+ #include <cstdlib>
+ #include <cstring>
+ #include <memory>
++#include <unordered_set>
+ #include <utility>
+ #include <vector>
+ #ifdef USE_ATEN_LIB
+@@ -75,10 +76,27 @@ private:
+                            const std::vector<uint64_t> &recent_tokens) {
+     if (repetition_penalty_ == 1.0f || recent_tokens.empty())
+       return;
+-    for (uint64_t id : recent_tokens) {
++    // Only consider the most recent tokens: penalizing the entire prompt
++    // and history flattens the distribution for anything the user just
++    // asked about (a pasted JSON blob, quoted context, etc). 256 is a
++    // conservative window for mobile-sized contexts.
++    constexpr size_t kRepetitionPenaltyWindow = 256;
++    const size_t window_start =
++        recent_tokens.size() > kRepetitionPenaltyWindow
++            ? recent_tokens.size() - kRepetitionPenaltyWindow
++            : 0;
++    // Penalize each token once, not once per occurrence: the multiplicative
++    // form otherwise compounds exponentially (penalty^count) for a token
++    // that recurs many times in the window.
++    std::unordered_set<uint64_t> penalized;
++    for (size_t i = window_start; i < recent_tokens.size(); ++i) {
++      uint64_t id = recent_tokens[i];
+       if (!std::cmp_less(id, vocab_size)) {
+         continue;
+       }
++      if (!penalized.insert(id).second) {
++        continue;
++      }
+       T &val = logits[id];
+       if (val > T(0)) {
+         val = static_cast<T>(static_cast<float>(val) / repetition_penalty_);
