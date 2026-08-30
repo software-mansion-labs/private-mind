@@ -84,7 +84,7 @@ const RNE_MODELS = [
   GEMMA4_E2B_MM,
 ];
 
-const GENERATION_CONFIG_BY_MODEL_PATH: Record<string, object> =
+const REGISTRY_GENERATION_CONFIG_BY_MODEL_PATH: Record<string, object> =
   Object.fromEntries(
     RNE_MODELS.flatMap((m) =>
       m && 'generationConfig' in m && m.generationConfig
@@ -92,6 +92,34 @@ const GENERATION_CONFIG_BY_MODEL_PATH: Record<string, object> =
         : []
     )
   );
+
+// react-native-executorch's own registry leaves `repetitionPenalty` unset
+// (effectively 1.0 / off) for most models. Two of them were observed to
+// degenerate into verbatim repetition loops on ordinary prompts with the
+// penalty off — the smallest quantized model and the only Polish model
+// (see issue #255 and the field test linked from it). Overriding just these
+// two, at a conservative value: 1.1 was tried previously for every model and
+// broke grounded RAG answers, so this stays low and scoped to the models
+// with an observed failure rather than applied globally.
+const GENERATION_CONFIG_OVERRIDES_BY_MODEL_PATH: Record<string, object> = {
+  [QWEN2_5_0_5B_QUANTIZED.modelSource]: { repetitionPenalty: 1.05 },
+  [BIELIK_V3_0_1_5B_QUANTIZED.modelSource]: { repetitionPenalty: 1.05 },
+};
+
+const GENERATION_CONFIG_BY_MODEL_PATH: Record<string, object> = {
+  ...REGISTRY_GENERATION_CONFIG_BY_MODEL_PATH,
+  ...Object.fromEntries(
+    Object.entries(GENERATION_CONFIG_OVERRIDES_BY_MODEL_PATH).map(
+      ([modelPath, override]) => [
+        modelPath,
+        {
+          ...REGISTRY_GENERATION_CONFIG_BY_MODEL_PATH[modelPath],
+          ...override,
+        },
+      ]
+    )
+  ),
+};
 
 export const getGenerationConfigForModel = (modelPath: string) =>
   GENERATION_CONFIG_BY_MODEL_PATH[modelPath];
