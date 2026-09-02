@@ -64,6 +64,19 @@ export const MENU_ITEMS = 3;
 export const MENU_HEIGHT =
   MENU.itemHeight * MENU_ITEMS + MENU.paddingVertical * 2;
 
+/**
+ * The height the SHEET's top edge is anchored on — the reference's five-row
+ * menu, not ours.
+ *
+ * The reference keeps one top edge for both shapes, which works because its
+ * menu is 354pt tall. Ours is 222pt with three rows, and hanging the grid off
+ * that line costs the sheet 66pt of height — the photo grid and the camera
+ * come out visibly short. So the menu keeps its own centred top and the sheet
+ * keeps the reference's; the morph moves the top edge between them.
+ */
+export const SHEET_ANCHOR_HEIGHT =
+  MENU.itemHeight * 5 + MENU.paddingVertical * 2;
+
 export const GRID = {
   columns: 3,
   /** Hairline of panel material showing between the cells. */
@@ -133,10 +146,13 @@ export const PANEL_CONTENT = {
  * Window Y of the sheet's top edge, given the composer's bottom. The panel, the
  * grid's layout and the flights all have to agree on this line.
  */
-export function sheetTopFromComposerBottom(bottom: number) {
+export function sheetTopFromComposerBottom(
+  bottom: number,
+  shapeHeight: number = SHEET_ANCHOR_HEIGHT
+) {
   'worklet';
   return (
-    bottom - PLUS_CENTER_ABOVE_BOTTOM + MENU.centerOffset - MENU_HEIGHT / 2
+    bottom - PLUS_CENTER_ABOVE_BOTTOM + MENU.centerOffset - shapeHeight / 2
   );
 }
 

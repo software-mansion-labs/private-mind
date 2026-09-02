@@ -19,13 +19,11 @@ import Animated, {
   Easing,
   FadeOut,
   LinearTransition,
-  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
 import EmbeddingDownloadSheet from '../bottomSheets/EmbeddingDownloadSheet';
 import {
@@ -128,6 +126,7 @@ const ChatBar = ({
     composerBottom,
     gridWidth,
     gridHeight,
+    menuMaxBottom,
   } = useSheetGeometry();
 
   const handleSelectFiles = useCallback(() => {
@@ -183,33 +182,13 @@ const ChatBar = ({
     height: strip.get() * COMPOSER_STRIP_HEIGHT,
   }));
 
-  /**
-   * The strip needs something to show while it closes, so the thumbnails
-   * outlive the attachments and are dropped once the strip has actually shut.
-   */
-  const [retained, setRetained] = useState<Attachment[]>([]);
-  useEffect(() => {
-    if (attachments.length) setRetained(attachments);
-  }, [attachments]);
-  const dropRetained = useCallback(() => setRetained([]), []);
-  useAnimatedReaction(
-    () => {
-      'worklet';
-      return strip.get();
-    },
-    (open, previous) => {
-      // Both callbacks carry the directive rather than relying on the babel
-      // plugin to spot them: without it the reaction reaches the UI thread as
-      // undefined and Reanimated throws "react is not a function".
-      'worklet';
-      // Only once the strip has actually finished closing. The opening spring
-      // starts at 0 too, so reacting to the value alone empties the strip on
-      // the very frame it opens — and the photo lands on nothing.
-      if (open === 0 && previous !== null && previous > 0) {
-        scheduleOnRN(dropRetained);
-      }
-    }
-  );
+  // The reference keeps a `retained` copy of the attachments so the strip has
+  // content while it animates shut, driven by a `useAnimatedReaction` on the
+  // strip value. Deliberately not ported: under Bundle Mode a worklet from a
+  // hot-reloaded module can be missing from the worklet bundle, and Reanimated
+  // then throws "react is not a function" straight into a redbox. The strip
+  // renders the attachments themselves and each thumbnail's own `FadeOut`
+  // covers a removal.
 
   /** Photos still in the air: their thumbnails stay blank so no photo is ever
    *  on screen twice. */
@@ -504,11 +483,11 @@ const ChatBar = ({
                 full size to its top, so a half-open strip shows the top of the
                 photos rather than a squashed copy. */}
             <Animated.View
-              pointerEvents={retained.length ? 'auto' : 'none'}
+              pointerEvents={attachments.length ? 'auto' : 'none'}
               style={[styles.strip, stripStyle]}
             >
               <View style={styles.stripRow}>
-                {retained.map((attachment) => (
+                {attachments.map((attachment) => (
                   <Animated.View
                     key={attachment.id}
                     exiting={FadeOut.duration(BAR_GROW_DURATION)}
@@ -580,6 +559,7 @@ const ChatBar = ({
             height={screenHeight}
             gridWidth={gridWidth}
             gridHeight={gridHeight}
+            menuMaxBottom={menuMaxBottom}
             composerBottom={composerBottom}
             rowsBelowStrip={rowsBelowStrip}
             strip={strip}

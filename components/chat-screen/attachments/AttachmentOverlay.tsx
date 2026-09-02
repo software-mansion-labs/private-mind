@@ -26,6 +26,8 @@ interface Props {
   height: number;
   gridWidth: number;
   gridHeight: number;
+  /** How low the menu shape may be drawn — see `useSheetGeometry`. */
+  menuMaxBottom: number;
   composerBottom: SharedValue<number>;
   rowsBelowStrip: SharedValue<number>;
   strip: SharedValue<number>;
@@ -53,6 +55,7 @@ const AttachmentOverlay = ({
   height,
   gridWidth,
   gridHeight,
+  menuMaxBottom,
   composerBottom,
   rowsBelowStrip,
   strip,
@@ -214,6 +217,7 @@ const AttachmentOverlay = ({
             screenHeight={height}
             gridWidth={gridWidth}
             gridHeight={gridHeight}
+            menuMaxBottom={menuMaxBottom}
             interactive={
               isFlying ? 'none' : panel.mode === 'menu' ? 'menu' : 'grid'
             }
