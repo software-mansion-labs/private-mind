@@ -85,7 +85,10 @@ describe('useAttachment', () => {
     const { result } = renderHook(() => useAttachment());
     await attachPhoto(result, 'ph://asset-1', 'asset-1');
 
-    expect(mockGetAssetInfoAsync).toHaveBeenCalledWith('asset-1');
+    // Never over the network: the picker must not block on an iCloud fetch.
+    expect(mockGetAssetInfoAsync).toHaveBeenCalledWith('asset-1', {
+      shouldDownloadFromNetwork: false,
+    });
     expect(result.current.attachments[0].uri).toBe('file://resolved.heic');
     expect(result.current.attachments[0].status).toBe('ready');
   });

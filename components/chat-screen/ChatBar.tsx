@@ -193,8 +193,13 @@ const ChatBar = ({
   }, [attachments]);
   useAnimatedReaction(
     () => strip.get(),
-    (open) => {
-      if (open === 0) scheduleOnRN(setRetained, [] as Attachment[]);
+    (open, previous) => {
+      // Only once the strip has actually finished closing. The opening spring
+      // starts at 0 too, so reacting to the value alone empties the strip on
+      // the very frame it opens — and the photo lands on nothing.
+      if (open === 0 && previous !== null && previous > 0) {
+        scheduleOnRN(setRetained, [] as Attachment[]);
+      }
     }
   );
 
@@ -500,16 +505,23 @@ const ChatBar = ({
                     key={attachment.id}
                     exiting={FadeOut.duration(BAR_GROW_DURATION)}
                     layout={BAR_GROW_LAYOUT}
-                    style={
-                      pendingIds.includes(attachment.id)
-                        ? styles.stripPending
-                        : undefined
-                    }
                   >
-                    <AttachmentThumbnail
-                      attachment={attachment}
-                      onRemove={() => removeAttachment(attachment.id)}
-                    />
+                    {/* The hide lives on a plain inner view: a layout animation
+                        owns its target's opacity, so cutting a pending photo on
+                        the animated wrapper leaves the thumbnail stuck at 0
+                        once the flight lands. */}
+                    <View
+                      style={
+                        pendingIds.includes(attachment.id)
+                          ? styles.stripPending
+                          : undefined
+                      }
+                    >
+                      <AttachmentThumbnail
+                        attachment={attachment}
+                        onRemove={() => removeAttachment(attachment.id)}
+                      />
+                    </View>
                   </Animated.View>
                 ))}
               </View>
