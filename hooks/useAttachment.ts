@@ -53,12 +53,26 @@ export const MAX_IMAGE_ATTACHMENTS = 1;
  * the asset has to be resolved before either sees it. Android hands back a
  * `file://` uri already.
  */
+const RESOLVE_TIMEOUT_MS = 8000;
+
 const resolveLibraryUri = async (
   photo: LibraryImage
 ): Promise<string | null> => {
   if (!photo.uri.startsWith('ph://')) return photo.uri;
   try {
-    const info = await MediaLibrary.getAssetInfoAsync(photo.id);
+    const info = await Promise.race([
+      // `shouldDownloadFromNetwork` defaults to true, which blocks on an iCloud
+      // asset for as long as the fetch takes. The picker is not the place to
+      // wait on the network.
+      MediaLibrary.getAssetInfoAsync(photo.id, {
+        shouldDownloadFromNetwork: false,
+      }),
+      // And a bound on it regardless: a resolve that never settles would leave
+      // the attachment `loading` forever, with send disabled and no way back.
+      new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), RESOLVE_TIMEOUT_MS)
+      ),
+    ]);
     return info?.localUri ?? null;
   } catch (error) {
     console.error('Failed to resolve a library asset to a local file', error);
@@ -147,6 +161,9 @@ export const useAttachment = () => {
 
     const failed = resolved.filter((photo) => !photo.uri);
     if (failed.length) {
+      console.warn('Could not resolve picked photos to local files', {
+        ids: failed.map((photo) => photo.id),
+      });
       Toast.show({
         type: 'defaultToast',
         text1: 'Could not open that photo.',

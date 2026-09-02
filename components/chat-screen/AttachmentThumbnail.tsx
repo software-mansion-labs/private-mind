@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 import {
   View,
-  Image,
   Text,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
+import { Image } from 'expo-image';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -50,7 +50,14 @@ const AttachmentThumbnail = ({ attachment, onRemove }: Props) => {
       return (
         <>
           <Image
-            source={{ uri: attachment.uri }}
+            // expo-image, not RN's: an attachment wears the library's own uri
+            // until it resolves to a file, and `ph://` is not something
+            // RCTImageLoader can load.
+            source={attachment.uri}
+            recyclingKey={attachment.id}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={0}
             style={styles.thumbnail}
             testID="attachment-image-preview"
           />
