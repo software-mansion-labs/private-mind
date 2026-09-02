@@ -98,7 +98,6 @@
     "react-native-executorch": "^0.9.0",
     "react-native-executorch-expo-resource-fetcher": "^0.9.0",
     "react-native-gesture-handler": "~2.30.0",
-    "react-native-image-picker": "^8.2.1",
     "react-native-keyboard-controller": "1.22.3",
     "react-native-loading-spinner-overlay": "^3.0.1",
     "react-native-pdfium": "file:./react-native-pdfium-0.1.3.tgz",
