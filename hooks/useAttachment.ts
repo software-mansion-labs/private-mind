@@ -53,27 +53,58 @@ export const MAX_IMAGE_ATTACHMENTS = 1;
  * the asset has to be resolved before either sees it. Android hands back a
  * `file://` uri already.
  */
-const RESOLVE_TIMEOUT_MS = 8000;
+const RESOLVE_TIMEOUT_MS = 15000;
 
+const withTimeout = async <T>(work: Promise<T>) => {
+  // A resolve that never settles would leave the attachment `loading` forever,
+  // with send disabled and no way back. The timer is cleared either way, or it
+  // outlives the work it was guarding.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      work,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), RESOLVE_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
+/**
+ * A library asset id is not a file. `expo-image` draws `ph://` directly, but
+ * `persistImage` copies with the file system and ExecuTorch reads a path, so
+ * the asset has to be resolved before either sees it. Android hands back a
+ * `file://` uri already.
+ *
+ * Two steps, because asking for the local file alone is not enough: an asset
+ * that is not materialised on disk answers in milliseconds with a null
+ * `localUri` rather than an error, and only a fetch will produce a file. The
+ * cheap local read comes first so the common case never touches the network.
+ */
 const resolveLibraryUri = async (
   photo: LibraryImage
 ): Promise<string | null> => {
   if (!photo.uri.startsWith('ph://')) return photo.uri;
   try {
-    const info = await Promise.race([
-      // `shouldDownloadFromNetwork` defaults to true, which blocks on an iCloud
-      // asset for as long as the fetch takes. The picker is not the place to
-      // wait on the network.
+    const local = await withTimeout(
       MediaLibrary.getAssetInfoAsync(photo.id, {
         shouldDownloadFromNetwork: false,
-      }),
-      // And a bound on it regardless: a resolve that never settles would leave
-      // the attachment `loading` forever, with send disabled and no way back.
-      new Promise<null>((resolve) =>
-        setTimeout(() => resolve(null), RESOLVE_TIMEOUT_MS)
-      ),
-    ]);
-    return info?.localUri ?? null;
+      })
+    );
+    if (local?.localUri) return local.localUri;
+
+    const fetched = await withTimeout(
+      MediaLibrary.getAssetInfoAsync(photo.id, {
+        shouldDownloadFromNetwork: true,
+      })
+    );
+    // Still nothing means the asset has no file representation we can reach.
+    // Every photo in the iOS simulator's library answers this way; on hardware
+    // the first call normally returns a path. `expo-image`'s disk cache is not
+    // a way out — it does not cache local assets.
+    return fetched?.localUri ?? null;
   } catch (error) {
     console.error('Failed to resolve a library asset to a local file', error);
     return null;
