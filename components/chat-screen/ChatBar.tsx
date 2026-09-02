@@ -1,5 +1,6 @@
 import React, {
   Ref,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useState,
@@ -12,19 +13,32 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
-  Keyboard,
   Platform,
 } from 'react-native';
 import Animated, {
   Easing,
+  FadeOut,
   LinearTransition,
+  useAnimatedReaction,
+  useAnimatedStyle,
+  useSharedValue,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
-import AttachmentSheet from '../bottomSheets/AttachmentSheet';
 import EmbeddingDownloadSheet from '../bottomSheets/EmbeddingDownloadSheet';
-import { useAttachment, Attachment } from '../../hooks/useAttachment';
+import {
+  useAttachment,
+  Attachment,
+  MAX_IMAGE_ATTACHMENTS,
+  type LibraryImage,
+} from '../../hooks/useAttachment';
+import AttachmentOverlay from './attachments/AttachmentOverlay';
+import { COMPOSER, COMPOSER_STRIP_HEIGHT } from './attachments/constants';
+import { useAttachmentFlights } from './attachments/useAttachmentFlights';
+import { useAttachmentPanel } from './attachments/useAttachmentPanel';
+import { useSheetGeometry } from './attachments/useSheetGeometry';
 import { Model } from '../../database/modelRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -96,19 +110,107 @@ const ChatBar = ({
   const [userInput, setUserInput] = useState('');
   const {
     attachments,
-    sheetRef,
     embeddingDownloadSheetRef,
-    pickFromLibrary,
-    pickFromCamera,
+    addImages,
     pickDocument,
     downloadModelAndContinue,
     markDownloadSheetClosed,
-    markAttachmentSheetClosed,
+    markPanelOpen,
+    markPanelClosed,
     removeAttachment,
     clearAll,
-    openSheet,
     addPastedAttachment,
   } = useAttachment();
+
+  const {
+    width: screenWidth,
+    height: screenHeight,
+    composerBottom,
+    gridWidth,
+    gridHeight,
+  } = useSheetGeometry();
+
+  const handleSelectFiles = useCallback(() => {
+    pickDocument().catch((error) => {
+      console.error('Failed to open the document picker:', error);
+    });
+  }, [pickDocument]);
+
+  const showImagesUnsupportedToast = useCallback(() => {
+    Toast.show({
+      type: 'defaultToast',
+      text1: 'This model does not support images',
+    });
+  }, []);
+
+  const panel = useAttachmentPanel({
+    onSelectFiles: handleSelectFiles,
+    canAttachImages: isVisionModel,
+    onImagesUnsupported: showImagesUnsupportedToast,
+  });
+
+  const handleAttachPhotos = useCallback(
+    (photos: LibraryImage[]) => {
+      addImages(photos).catch((error) => {
+        console.error('Failed to attach the picked photos:', error);
+      });
+    },
+    [addImages]
+  );
+
+  const { flights, isFlying, attach, strip, attachAndLeave } =
+    useAttachmentFlights({
+      hasAttachments: attachments.length > 0,
+      onAttachPhotos: handleAttachPhotos,
+      collapsePanel: panel.collapseForLeave,
+      resetPanel: panel.resetAfterLeave,
+    });
+
+  /**
+   * Height of everything below the strip inside the composer card. The bar's
+   * bottom edge is pinned and the strip grows it upward, so this is what the
+   * flight subtracts to find the slot it is aiming at.
+   */
+  const rowsBelowStrip = useSharedValue(0);
+  const handleRowsBelowStripLayout = useCallback(
+    (e: { nativeEvent: { layout: { height: number } } }) => {
+      rowsBelowStrip.set(e.nativeEvent.layout.height + COMPOSER.cardPadding);
+    },
+    [rowsBelowStrip]
+  );
+
+  const stripStyle = useAnimatedStyle(() => ({
+    height: strip.get() * COMPOSER_STRIP_HEIGHT,
+  }));
+
+  /**
+   * The strip needs something to show while it closes, so the thumbnails
+   * outlive the attachments and are dropped once the strip has actually shut.
+   */
+  const [retained, setRetained] = useState<Attachment[]>([]);
+  useEffect(() => {
+    if (attachments.length) setRetained(attachments);
+  }, [attachments]);
+  useAnimatedReaction(
+    () => strip.get(),
+    (open) => {
+      if (open === 0) scheduleOnRN(setRetained, [] as Attachment[]);
+    }
+  );
+
+  /** Photos still in the air: their thumbnails stay blank so no photo is ever
+   *  on screen twice. */
+  const pendingIds = flights.map((flight) => flight.photo.id);
+
+  // The document picker's download gate waits for the panel to be gone.
+  useEffect(() => {
+    if (panel.mode === 'closed') markPanelClosed();
+    else markPanelOpen();
+  }, [panel.mode, markPanelClosed, markPanelOpen]);
+
+  useEffect(() => {
+    onAttachmentSheetStateChange?.(panel.mode !== 'closed');
+  }, [panel.mode, onAttachmentSheetStateChange]);
 
   const defaultBarHeight = useRef(0);
   const prevBarHeight = useRef(0);
@@ -202,6 +304,17 @@ const ChatBar = ({
     }
   }, [model, loadedModel, loadModel]);
 
+  // The grid and the camera preview are real memory pressure next to a resident
+  // model, so the model steps aside as a sheet opens — not as the menu does,
+  // which costs nothing.
+  const sheetOpen = panel.mode === 'photos' || panel.mode === 'camera';
+  useEffect(() => {
+    if (!sheetOpen) return;
+    runWithModelOffloaded(async () => {}, { restore: false }).catch((error) => {
+      console.error('Failed to offload model before the photo sheet:', error);
+    });
+  }, [sheetOpen, runWithModelOffloaded]);
+
   const imageAttachment = attachments.find((a) => a.type === 'image');
   const hasLoadingAttachment = attachments.some((a) => a.status === 'loading');
 
@@ -217,18 +330,10 @@ const ChatBar = ({
       showModelSwitchingToast();
       return;
     }
-
-    Keyboard.dismiss();
-    openSheet();
-    runWithModelOffloaded(async () => {}, { restore: false }).catch((error) => {
-      console.error('Failed to offload model before attachment picker:', error);
-    });
-  }, [
-    modelSwitching,
-    openSheet,
-    runWithModelOffloaded,
-    showModelSwitchingToast,
-  ]);
+    // No `Keyboard.dismiss()`: the panel is anchored to the keyboard and is
+    // hosted in the window above it, so the keyboard stays up throughout.
+    panel.onPlusPress();
+  }, [modelSwitching, panel, showModelSwitchingToast]);
 
   const handleSend = useCallback(() => {
     if (modelSwitching) {
@@ -382,59 +487,89 @@ const ChatBar = ({
             </View>
           )}
           <View style={styles.inputContainer}>
-            {attachments.length > 0 && (
-              <View style={[styles.previewRow, { marginBottom: 8 }]}>
-                {attachments.map((attachment) => (
-                  <AttachmentThumbnail
+            {/* A clipped window on the strip: the thumbnails are pinned at
+                full size to its top, so a half-open strip shows the top of the
+                photos rather than a squashed copy. */}
+            <Animated.View
+              pointerEvents={retained.length ? 'auto' : 'none'}
+              style={[styles.strip, stripStyle]}
+            >
+              <View style={styles.stripRow}>
+                {retained.map((attachment) => (
+                  <Animated.View
                     key={attachment.id}
-                    attachment={attachment}
-                    onRemove={() => removeAttachment(attachment.id)}
-                  />
+                    exiting={FadeOut.duration(BAR_GROW_DURATION)}
+                    layout={BAR_GROW_LAYOUT}
+                    style={
+                      pendingIds.includes(attachment.id)
+                        ? styles.stripPending
+                        : undefined
+                    }
+                  >
+                    <AttachmentThumbnail
+                      attachment={attachment}
+                      onRemove={() => removeAttachment(attachment.id)}
+                    />
+                  </Animated.View>
                 ))}
               </View>
-            )}
-            <View style={styles.content}>
-              <TextInputWrapper
-                onPaste={onPaste}
-                style={styles.textInputWrapper}
-              >
-                <RNTextInput
-                  key={Platform.OS === 'ios' ? iosInputKey : undefined}
-                  ref={textInputRef}
-                  style={styles.input}
-                  multiline
-                  numberOfLines={3}
-                  onFocus={() => loadSelectedModel()}
-                  placeholder="Ask about anything..."
-                  placeholderTextColor={theme.text.onChatBarMuted}
-                  value={userInput}
-                  onChangeText={setUserInput}
-                />
-              </TextInputWrapper>
+            </Animated.View>
+            <View
+              style={styles.belowStrip}
+              onLayout={handleRowsBelowStripLayout}
+            >
+              <View style={styles.content}>
+                <TextInputWrapper
+                  onPaste={onPaste}
+                  style={styles.textInputWrapper}
+                >
+                  <RNTextInput
+                    key={Platform.OS === 'ios' ? iosInputKey : undefined}
+                    ref={textInputRef}
+                    style={styles.input}
+                    multiline
+                    numberOfLines={3}
+                    onFocus={() => loadSelectedModel()}
+                    placeholder="Ask about anything..."
+                    placeholderTextColor={theme.text.onChatBarMuted}
+                    value={userInput}
+                    onChangeText={setUserInput}
+                  />
+                </TextInputWrapper>
+              </View>
+              <ChatBarActions
+                plusOut={panel.plusOut}
+                onAttach={handleAttach}
+                hasAttachments={attachments.length > 0}
+                isLoadingAttachment={hasLoadingAttachment}
+                disabled={disabled}
+                userInput={userInput}
+                onSend={handleSend}
+                isGenerating={isGenerating}
+                isProcessingPrompt={isProcessingPrompt}
+                onInterrupt={interrupt}
+                onSpeechInput={openSpeechInput}
+                thinkingEnabled={thinkingEnabled}
+                onThinkingToggle={onThinkingToggle}
+              />
             </View>
-            <ChatBarActions
-              onAttach={handleAttach}
-              hasAttachments={attachments.length > 0}
-              isLoadingAttachment={hasLoadingAttachment}
-              disabled={disabled}
-              userInput={userInput}
-              onSend={handleSend}
-              isGenerating={isGenerating}
-              isProcessingPrompt={isProcessingPrompt}
-              onInterrupt={interrupt}
-              onSpeechInput={openSpeechInput}
-              thinkingEnabled={thinkingEnabled}
-              onThinkingToggle={onThinkingToggle}
-            />
           </View>
-          <AttachmentSheet
-            bottomSheetModalRef={sheetRef}
-            isVisionModel={isVisionModel}
-            onPickFromLibrary={pickFromLibrary}
-            onPickFromCamera={pickFromCamera}
-            onPickDocument={pickDocument}
-            onSheetStateChange={onAttachmentSheetStateChange}
-            onDismissed={markAttachmentSheetClosed}
+          <AttachmentOverlay
+            panel={panel}
+            width={screenWidth}
+            height={screenHeight}
+            gridWidth={gridWidth}
+            gridHeight={gridHeight}
+            composerBottom={composerBottom}
+            rowsBelowStrip={rowsBelowStrip}
+            strip={strip}
+            attach={attach}
+            flights={flights}
+            isFlying={isFlying}
+            attachAndLeave={attachAndLeave}
+            attachedIds={attachments.map((attachment) => attachment.id)}
+            maxSelection={MAX_IMAGE_ATTACHMENTS}
+            imagesEnabled={isVisionModel}
           />
           <EmbeddingDownloadSheet
             bottomSheetModalRef={embeddingDownloadSheetRef}
@@ -484,8 +619,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'column',
       backgroundColor: theme.bg.chatBar,
       borderRadius: 18,
-      padding: 16,
-      gap: 8,
+      padding: COMPOSER.cardPadding,
       justifyContent: 'center',
     },
     textInputWrapper: {
@@ -502,8 +636,22 @@ const createStyles = (theme: Theme) =>
       textAlignVertical: 'center',
       color: theme.text.onChatBar,
     },
-    previewRow: {
+    strip: {
+      overflow: 'hidden',
+    },
+    stripRow: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: COMPOSER.stripPaddingTop,
       flexDirection: 'row',
+      gap: COMPOSER.thumbGap,
+    },
+    /** A photo still in the air: its slot is held, but nothing is drawn in it. */
+    stripPending: {
+      opacity: 0,
+    },
+    belowStrip: {
       gap: 8,
     },
   });

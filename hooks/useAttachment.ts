@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as MediaLibrary from 'expo-media-library';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
 import { useSourceStore } from '../store/sourceStore';
@@ -23,8 +23,10 @@ interface ClearAllOptions {
   cleanupSources?: boolean;
 }
 
-interface ClearAllOptions {
-  cleanupSources?: boolean;
+/** A photo as the in-app grid and the camera hand it over. */
+export interface LibraryImage {
+  id: string;
+  uri: string;
 }
 
 const IMAGE_EXTENSIONS = [
@@ -37,6 +39,32 @@ const IMAGE_EXTENSIONS = [
   'heic',
   'heif',
 ];
+
+/**
+ * The send path carries one image: ExecuTorch takes a single `mediaPath` per
+ * message and `messages.imagePath` is a single column. The grid is built for a
+ * set, so the cap lives here rather than in the picker.
+ */
+export const MAX_IMAGE_ATTACHMENTS = 1;
+
+/**
+ * A library asset id is not a file. `expo-image` draws `ph://` directly, but
+ * `persistImage` copies with the file system and ExecuTorch reads a path, so
+ * the asset has to be resolved before either sees it. Android hands back a
+ * `file://` uri already.
+ */
+const resolveLibraryUri = async (
+  photo: LibraryImage
+): Promise<string | null> => {
+  if (!photo.uri.startsWith('ph://')) return photo.uri;
+  try {
+    const info = await MediaLibrary.getAssetInfoAsync(photo.id);
+    return info?.localUri ?? null;
+  } catch (error) {
+    console.error('Failed to resolve a library asset to a local file', error);
+    return null;
+  }
+};
 
 const isImageUri = (uri: string): boolean => {
   const pathPart = uri.split('?')[0].split('#')[0];
@@ -52,8 +80,7 @@ export const useAttachment = () => {
   const attachmentRequestRef = useRef(0);
   const currentDocumentAttachmentIdRef = useRef<string | null>(null);
   const documentAbortRef = useRef<AbortController | null>(null);
-  const sheetRef = useRef<BottomSheetModal>(null);
-  const attachmentSheetOpenRef = useRef(false);
+  const panelOpenRef = useRef(false);
   const embeddingDownloadSheetRef = useRef<BottomSheetModal>(null);
   const embeddingDownloadSheetOpenRef = useRef(false);
   const pendingDownloadSheetRef = useRef(false);
@@ -69,7 +96,7 @@ export const useAttachment = () => {
 
   useEffect(() => {
     return () => {
-      attachmentSheetOpenRef.current = false;
+      panelOpenRef.current = false;
       embeddingDownloadSheetOpenRef.current = false;
       pendingDownloadSheetRef.current = false;
       pendingDocumentPickRef.current = false;
@@ -86,25 +113,55 @@ export const useAttachment = () => {
     ]);
   }, []);
 
-  const pickFromLibrary = useCallback(async () => {
-    const result = await launchImageLibrary({ mediaType: 'photo', quality: 1 });
-    if (!result.didCancel && result.assets && result.assets.length > 0) {
-      const uri = result.assets[0].uri;
-      if (uri) {
-        replaceWithImage(uri);
-      }
-    }
-  }, [replaceWithImage]);
+  /**
+   * Takes the photos the grid or the camera just handed over. They land as
+   * `loading` wearing the uri the flight was drawing, so the thumbnail the copy
+   * lands on shows the photo at once; resolving the asset to a real file only
+   * decides when the message can be sent.
+   */
+  const addImages = useCallback(async (photos: LibraryImage[]) => {
+    const picked = photos.slice(0, MAX_IMAGE_ATTACHMENTS);
+    if (!picked.length) return;
 
-  const pickFromCamera = useCallback(async () => {
-    const result = await launchCamera({ mediaType: 'photo', quality: 1 });
-    if (!result.didCancel && result.assets && result.assets.length > 0) {
-      const uri = result.assets[0].uri;
-      if (uri) {
-        replaceWithImage(uri);
-      }
+    currentDocumentAttachmentIdRef.current = null;
+    documentAbortRef.current?.abort();
+    const requestId = attachmentRequestRef.current + 1;
+    attachmentRequestRef.current = requestId;
+
+    setAttachments(
+      picked.map((photo) => ({
+        id: photo.id,
+        type: 'image' as const,
+        uri: photo.uri,
+        status: 'loading' as const,
+      }))
+    );
+
+    const resolved = await Promise.all(
+      picked.map(async (photo) => ({
+        id: photo.id,
+        uri: await resolveLibraryUri(photo),
+      }))
+    );
+    if (attachmentRequestRef.current !== requestId) return;
+
+    const failed = resolved.filter((photo) => !photo.uri);
+    if (failed.length) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Could not open that photo.',
+      });
     }
-  }, [replaceWithImage]);
+
+    setAttachments((prev) =>
+      prev.flatMap((attachment) => {
+        const match = resolved.find((photo) => photo.id === attachment.id);
+        if (!match) return attachment;
+        if (!match.uri) return [];
+        return { ...attachment, uri: match.uri, status: 'ready' as const };
+      })
+    );
+  }, []);
 
   const runDocumentPicker = useCallback(async () => {
     const pickedFileResult = await DocumentPicker.getDocumentAsync({
@@ -265,8 +322,8 @@ export const useAttachment = () => {
     });
   }, [runDocumentPicker]);
 
-  const markAttachmentSheetClosed = useCallback(() => {
-    attachmentSheetOpenRef.current = false;
+  const markPanelClosed = useCallback(() => {
+    panelOpenRef.current = false;
     if (!pendingDownloadSheetRef.current) return;
     pendingDownloadSheetRef.current = false;
     presentDownloadSheet();
@@ -276,9 +333,10 @@ export const useAttachment = () => {
     if (useEmbeddingModelStore.getState().status === 'ready') {
       return runDocumentPicker();
     }
-    if (attachmentSheetOpenRef.current) {
+    if (panelOpenRef.current) {
+      // The panel is already collapsing — the download sheet waits for it, so
+      // the two never overlap.
       pendingDownloadSheetRef.current = true;
-      sheetRef.current?.dismiss();
       return;
     }
     presentDownloadSheet();
@@ -335,9 +393,8 @@ export const useAttachment = () => {
     [sweepAbandonedSources]
   );
 
-  const openSheet = useCallback(() => {
-    attachmentSheetOpenRef.current = true;
-    sheetRef.current?.present();
+  const markPanelOpen = useCallback(() => {
+    panelOpenRef.current = true;
   }, []);
 
   const addPastedAttachment = useCallback(
@@ -361,17 +418,15 @@ export const useAttachment = () => {
 
   return {
     attachments,
-    sheetRef,
     embeddingDownloadSheetRef,
-    pickFromLibrary,
-    pickFromCamera,
+    addImages,
     pickDocument,
     downloadModelAndContinue,
     markDownloadSheetClosed,
-    markAttachmentSheetClosed,
+    markPanelOpen,
+    markPanelClosed,
     removeAttachment,
     clearAll,
-    openSheet,
     addPastedAttachment,
   };
 };
