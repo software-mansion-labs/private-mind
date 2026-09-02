@@ -98,26 +98,35 @@ export function Glass({
 
   if (!LIQUID_GLASS) {
     return (
-      <BlurView
-        intensity={60}
-        tint={dark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight'}
-        // The fallback is a blur, and a blur does have to clip to its shape.
-        style={[shapeOf(radius), styles.clip, style]}
-        {...rest}
-      >
-        {/* The stand-in is a blur, and a blur needs a tint to land on the
-            material it is imitating. Real glass gets none — it carries its own
-            colour scheme, and laying a scrim over it reads as a grey disc. */}
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: fallbackTint ?? palette.controlScrim },
-            scrimStyle,
-          ]}
-        />
+      // The stand-in has to answer to `active` the way real glass does. A
+      // GlassView switches its material to 'none' and keeps its children; a
+      // BlurView has no such switch, and on Android — where it sits in the
+      // over-keyboard window with nothing to sample — it renders as a solid
+      // tinted rectangle. Left up while the menu is showing, that is a visible
+      // slab behind controls that are supposed to be gone.
+      <View style={[shapeOf(radius), styles.clip, style]} {...rest}>
+        {active ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, scrimStyle]}
+          >
+            <BlurView
+              intensity={60}
+              tint={
+                dark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight'
+              }
+              style={StyleSheet.absoluteFill}
+            />
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                { backgroundColor: fallbackTint ?? palette.controlScrim },
+              ]}
+            />
+          </Animated.View>
+        ) : null}
         {children}
-      </BlurView>
+      </View>
     );
   }
 
