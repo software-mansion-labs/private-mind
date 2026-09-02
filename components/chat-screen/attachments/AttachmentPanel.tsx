@@ -41,6 +41,8 @@ interface Props extends PanelDrivers {
   screenHeight: number;
   gridWidth: number;
   gridHeight: number;
+  /** How low the menu shape may be drawn. */
+  menuMaxBottom: number;
   /** Which layer takes touches. Both stay mounted through the morph, and a
    *  faded-out view still swallows taps. */
   interactive: 'menu' | 'grid' | 'none';
@@ -61,6 +63,7 @@ const AttachmentPanel = ({
   screenHeight,
   gridWidth,
   gridHeight,
+  menuMaxBottom,
   interactive,
   glass,
   glassDuration,
@@ -83,9 +86,17 @@ const AttachmentPanel = ({
     const plusCenter = bottom - PLUS_CENTER_ABOVE_BOTTOM;
     const top = sheetTopFromComposerBottom(bottom);
 
+    // The two shapes no longer share a top edge — see SHEET_ANCHOR_HEIGHT. The
+    // menu is centred on the + and pushed up if that would run it off the
+    // bottom of the screen; the sheet hangs from the reference's line.
+    const menuTop = Math.min(
+      sheetTopFromComposerBottom(bottom, MENU_HEIGHT),
+      menuMaxBottom - MENU_HEIGHT
+    );
+
     const m = morph.get();
     let x = GUTTER;
-    let y = top;
+    let y = mix(m, menuTop, top);
     let w = mix(m, MENU.width, gridWidth);
     let h = mix(m, MENU_HEIGHT, screenHeight - top - GUTTER);
     let r = mix(m, MENU.radius, GRID.panelRadius);

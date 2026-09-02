@@ -48,6 +48,12 @@ export function useSheetGeometry() {
     Math.max(settledKeyboard, insets.bottom) -
     COMPOSER.barPaddingBottom;
   const panelTop = sheetTopFromComposerBottom(settledBottom);
+  /**
+   * How low the menu shape may be drawn. It is centred on the + button, and
+   * with no keyboard under it that button sits just above the screen edge — so
+   * without this the last row runs off the bottom.
+   */
+  const menuMaxBottom = height - insets.bottom - GUTTER;
   // The sheet keeps the composer's gutter rather than going full bleed, and
   // stops a gutter short of the bottom — so the grid inside it does too.
   const gridWidth = width - GUTTER * 2;
@@ -60,5 +66,6 @@ export function useSheetGeometry() {
     composerStyle,
     gridWidth,
     gridHeight,
+    menuMaxBottom,
   };
 }
