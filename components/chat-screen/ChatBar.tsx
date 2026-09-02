@@ -301,12 +301,30 @@ const ChatBar = ({
   // model, so the model steps aside as a sheet opens — not as the menu does,
   // which costs nothing.
   const sheetOpen = panel.mode === 'photos' || panel.mode === 'camera';
+  const offloadedForSheet = useRef(false);
   useEffect(() => {
-    if (!sheetOpen) return;
-    runWithModelOffloaded(async () => {}, { restore: false }).catch((error) => {
-      console.error('Failed to offload model before the photo sheet:', error);
+    if (sheetOpen) {
+      offloadedForSheet.current = true;
+      runWithModelOffloaded(async () => {}, { restore: false }).catch(
+        (error) => {
+          console.error(
+            'Failed to offload model before the photo sheet:',
+            error
+          );
+        }
+      );
+      return;
+    }
+    // And it has to come back by itself. The keyboard never drops through this
+    // flow, so the field is never re-focused and `onFocus` — the only other
+    // thing that loads the model — never fires again; a send would find no
+    // model and fail with nothing on screen.
+    if (!offloadedForSheet.current) return;
+    offloadedForSheet.current = false;
+    loadSelectedModel().catch((error) => {
+      console.error('Failed to reload the model after the photo sheet:', error);
     });
-  }, [sheetOpen, runWithModelOffloaded]);
+  }, [sheetOpen, runWithModelOffloaded, loadSelectedModel]);
 
   const imageAttachment = attachments.find((a) => a.type === 'image');
   const hasLoadingAttachment = attachments.some((a) => a.status === 'loading');
