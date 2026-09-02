@@ -11,12 +11,7 @@ import CameraBar from './CameraBar';
 import CameraSheet, { type CameraSheetHandle } from './CameraSheet';
 import PhotoGrid, { type PhotoGridHandle } from './PhotoGrid';
 import PhotoGridBar from './PhotoGridBar';
-import {
-  DURATION,
-  GRID,
-  GUTTER,
-  sheetTopFromComposerBottom,
-} from './constants';
+import { BOTTOM_BAR, DURATION, GRID, GUTTER } from './constants';
 import type { useAttachmentPanel } from './useAttachmentPanel';
 import { usePhotoLibrary, type LibraryPhoto } from './usePhotoLibrary';
 
@@ -28,6 +23,8 @@ interface Props {
   gridHeight: number;
   /** How low the menu shape may be drawn — see `useSheetGeometry`. */
   menuMaxBottom: number;
+  /** Window Y of the sheet's top edge. */
+  sheetTop: number;
   composerBottom: SharedValue<number>;
   rowsBelowStrip: SharedValue<number>;
   strip: SharedValue<number>;
@@ -56,6 +53,7 @@ const AttachmentOverlay = ({
   gridWidth,
   gridHeight,
   menuMaxBottom,
+  sheetTop,
   composerBottom,
   rowsBelowStrip,
   strip,
@@ -67,6 +65,9 @@ const AttachmentOverlay = ({
   maxSelection,
   imagesEnabled,
 }: Props) => {
+  /** The bar rides the sheet's bottom edge, computed the same way the panel
+   *  computes its own — see `SheetBar`. */
+  const barTop = height - GUTTER - BOTTOM_BAR.inset - BOTTOM_BAR.controlSize;
   const gridRef = useRef<PhotoGridHandle>(null);
   const cameraRef = useRef<CameraSheetHandle>(null);
   const [selected, setSelected] = useState<string[]>([]);
@@ -117,7 +118,7 @@ const AttachmentOverlay = ({
     // Where each photo is sitting on the frame it leaves. The panel is at rest
     // and fully morphed here, so its own frame is the offset from the window —
     // no measure pass, and nothing that can land a frame late.
-    const gridTop = sheetTopFromComposerBottom(composerBottom.get());
+    const gridTop = sheetTop;
     // Only used for a photo the list has not laid out. The middle of the sheet
     // is the least wrong answer: it is where the sheet is collapsing towards.
     const cellSize = gridWidth / GRID.columns - GRID.gap;
@@ -163,7 +164,6 @@ const AttachmentOverlay = ({
       if (!uri) return;
       Feedback.attach();
 
-      const sheetTop = sheetTopFromComposerBottom(composerBottom.get());
       attachAndLeave([
         {
           photo: { id: uri, uri },
@@ -218,6 +218,7 @@ const AttachmentOverlay = ({
             gridWidth={gridWidth}
             gridHeight={gridHeight}
             menuMaxBottom={menuMaxBottom}
+            sheetTop={sheetTop}
             interactive={
               isFlying ? 'none' : panel.mode === 'menu' ? 'menu' : 'grid'
             }
@@ -267,6 +268,7 @@ const AttachmentOverlay = ({
           {panel.sheet === 'camera' ? (
             <CameraBar
               width={gridWidth}
+              top={barTop}
               active={panel.mode === 'camera' && !isFlying}
               fade={panel.gridOpacity}
               flash={flash}
@@ -278,6 +280,7 @@ const AttachmentOverlay = ({
           ) : (
             <PhotoGridBar
               width={gridWidth}
+              top={barTop}
               selected={selected}
               active={panel.mode === 'photos' && !isFlying}
               fade={panel.gridOpacity}

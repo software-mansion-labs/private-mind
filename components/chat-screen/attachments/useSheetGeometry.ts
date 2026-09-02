@@ -1,13 +1,8 @@
-import { useState } from 'react';
 import { useWindowDimensions } from 'react-native';
-import {
-  useKeyboardHandler,
-  useReanimatedKeyboardAnimation,
-} from 'react-native-keyboard-controller';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { useAnimatedStyle, useDerivedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { scheduleOnRN } from 'react-native-worklets';
-import { COMPOSER, GUTTER, sheetTopFromComposerBottom } from './constants';
+import { COMPOSER, GUTTER, SHEET_TOP_GAP } from './constants';
 
 /**
  * Where everything sits, derived from the one thing that moves it: the
@@ -18,7 +13,6 @@ export function useSheetGeometry() {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const keyboard = useReanimatedKeyboardAnimation();
-  const [settledKeyboard, setSettledKeyboard] = useState(0);
 
   // `keyboard.height` is negative while the keyboard is up, which is what makes
   // it drop straight into a translate.
@@ -32,22 +26,8 @@ export function useSheetGeometry() {
     transform: [{ translateY: -liftedBy.get() }],
   }));
 
-  // The grid is laid out in React, so it needs a plain number.
-  useKeyboardHandler(
-    {
-      onEnd: (event) => {
-        'worklet';
-        scheduleOnRN(setSettledKeyboard, event.height);
-      },
-    },
-    []
-  );
-
-  const settledBottom =
-    height -
-    Math.max(settledKeyboard, insets.bottom) -
-    COMPOSER.barPaddingBottom;
-  const panelTop = sheetTopFromComposerBottom(settledBottom);
+  /** The sheet hangs from the top of the screen, not from the keyboard. */
+  const sheetTop = insets.top + SHEET_TOP_GAP;
   /**
    * How low the menu shape may be drawn. It is centred on the + button, and
    * with no keyboard under it that button sits just above the screen edge — so
@@ -57,7 +37,7 @@ export function useSheetGeometry() {
   // The sheet keeps the composer's gutter rather than going full bleed, and
   // stops a gutter short of the bottom — so the grid inside it does too.
   const gridWidth = width - GUTTER * 2;
-  const gridHeight = height - panelTop - GUTTER;
+  const gridHeight = height - sheetTop - GUTTER;
 
   return {
     width,
@@ -66,6 +46,7 @@ export function useSheetGeometry() {
     composerStyle,
     gridWidth,
     gridHeight,
+    sheetTop,
     menuMaxBottom,
   };
 }

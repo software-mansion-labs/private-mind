@@ -121,6 +121,8 @@ const ConfirmPill = ({ count, active, fade, onPress }: ConfirmPillProps) => {
 
 interface Props {
   width: number;
+  /** Window Y of the bar's top edge — see `SheetBar`. */
+  top: number;
   selected: string[];
   active: boolean;
   fade: SharedValue<number>;
@@ -131,13 +133,14 @@ interface Props {
 /** The confirm capsule that floats over the grid, on the shared `SheetBar`. */
 const PhotoGridBar = ({
   width,
+  top,
   selected,
   active,
   fade,
   onBack,
   onConfirm,
 }: Props) => (
-  <SheetBar width={width} active={active} fade={fade} onBack={onBack}>
+  <SheetBar width={width} top={top} active={active} fade={fade} onBack={onBack}>
     <ConfirmPill
       count={selected.length}
       active={active}
@@ -164,7 +167,7 @@ const createStyles = (theme: Theme) => {
       justifyContent: 'center',
     },
     pillLabel: {
-      color: palette.text,
+      color: palette.onControl,
       fontSize: BOTTOM_BAR.pillLabelSize,
       fontFamily: fontFamily.bold,
       // Tabular figures: the capsule only resizes when the count gains a digit.
