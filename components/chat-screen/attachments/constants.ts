@@ -189,8 +189,11 @@ export const panelPalette = (theme: Theme) => ({
    * They hover over photos and an empty grid's pale placeholders alike, so a
    * scrim that followed the theme would go white in the light one and take the
    * light glyphs with it.
+   *
+   * Lighter than the reference's 0.31, which it measured against glass that was
+   * already dark-scheme over a dark grid. Stacked on ours it buried the photos.
    */
-  controlScrim: 'rgba(0, 0, 0, 0.31)',
+  controlScrim: 'rgba(0, 0, 0, 0.18)',
   iconWell: withAlpha(theme.text.primary, 0.09),
   /** Laid over the panel's blur to land on the reference's material. */
   material: withAlpha(theme.text.primary, 0.047),

@@ -55,6 +55,7 @@ const SheetBar = ({ width, top, active, fade, onBack, children }: Props) => {
           radius={BOTTOM_BAR.controlSize / 2}
           active={active}
           scheme="dark"
+          fade={fade}
           duration={DURATION.crossfade / 1000}
           style={styles.back}
         >

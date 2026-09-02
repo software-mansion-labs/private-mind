@@ -102,6 +102,7 @@ const Option = ({
           radius={BOTTOM_BAR.controlSize / 2}
           active={active}
           scheme="dark"
+          fade={fade}
           duration={DURATION.crossfade / 1000}
           style={styles.round}
         >
@@ -199,6 +200,7 @@ const CameraBar = ({
             radius={CAMERA.shutterSize / 2}
             active={active}
             scheme="dark"
+            fade={fade}
             duration={DURATION.crossfade / 1000}
             style={styles.shutter}
           >
@@ -242,6 +244,7 @@ const CameraBar = ({
             radius={BOTTOM_BAR.controlSize / 2}
             active={active}
             scheme="dark"
+            fade={fade}
             duration={DURATION.crossfade / 1000}
             style={styles.round}
           >
