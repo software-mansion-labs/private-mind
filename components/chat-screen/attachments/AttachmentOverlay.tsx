@@ -89,6 +89,24 @@ const AttachmentOverlay = ({
   }, [panel.mode]);
   const { photos, status } = usePhotoLibrary(photosOpened);
 
+  /**
+   * Whether this visit to the panel has been inside a sheet yet.
+   *
+   * The panel keeps both of its layers mounted so the morph can crossfade
+   * between them, but the sheet's *contents* have no business existing while
+   * the menu is up: profiling the + tap showed FlashList, 24 photo cells and 36
+   * images mounting under a menu nobody had left yet — about 100ms of React
+   * work landing on the frames the panel is trying to open in. It stays mounted
+   * once entered, so `‹` back to the menu still crossfades, and goes when the
+   * panel does.
+   */
+  const [enteredSheet, setEnteredSheet] = useState(false);
+  useEffect(() => {
+    if (panel.mode === 'photos' || panel.mode === 'camera')
+      setEnteredSheet(true);
+    else if (panel.mode === 'closed') setEnteredSheet(false);
+  }, [panel.mode]);
+
   const togglePhoto = useCallback(
     (photo: LibraryPhoto) => {
       Feedback.toggleOn();
@@ -239,7 +257,7 @@ const AttachmentOverlay = ({
               />
             }
             grid={
-              panel.sheet === 'camera' ? (
+              !enteredSheet ? null : panel.sheet === 'camera' ? (
                 <CameraSheet
                   ref={cameraRef}
                   width={gridWidth}
