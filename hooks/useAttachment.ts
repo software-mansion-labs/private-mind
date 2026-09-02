@@ -126,6 +126,8 @@ export const useAttachment = () => {
   const currentDocumentAttachmentIdRef = useRef<string | null>(null);
   const documentAbortRef = useRef<AbortController | null>(null);
   const panelOpenRef = useRef(false);
+  /** Resolves the moment the OS picker is gone — see `pickDocument`. */
+  const pickerClosedRef = useRef<(() => void) | null>(null);
   const embeddingDownloadSheetRef = useRef<BottomSheetModal>(null);
   const embeddingDownloadSheetOpenRef = useRef(false);
   const pendingDownloadSheetRef = useRef(false);
@@ -225,6 +227,12 @@ export const useAttachment = () => {
       ],
       copyToCacheDirectory: true,
     });
+
+    // The picker is off screen from here on, whichever way it went. Anything
+    // waiting on it — the panel, which holds the menu up while the OS takes its
+    // time presenting — is released now, not when indexing finishes.
+    pickerClosedRef.current?.();
+    pickerClosedRef.current = null;
 
     if (pickedFileResult.canceled || !pickedFileResult.assets[0]) return;
 
@@ -379,7 +387,20 @@ export const useAttachment = () => {
 
   const pickDocument = useCallback(async () => {
     if (useEmbeddingModelStore.getState().status === 'ready') {
-      return runDocumentPicker();
+      const closed = new Promise<void>((resolve) => {
+        pickerClosedRef.current = resolve;
+      });
+      // Indexing is deliberately not awaited here: it reports itself through
+      // the attachment's own loading state, and the panel must not sit open
+      // for the length of it.
+      runDocumentPicker().catch((error) => {
+        pickerClosedRef.current?.();
+        pickerClosedRef.current = null;
+        console.error('Document attachment failed', error);
+      });
+      // Resolves at the picker, not at the end of indexing — the caller uses
+      // this to decide when to put the menu away.
+      return closed;
     }
     if (panelOpenRef.current) {
       // The panel is already collapsing — the download sheet waits for it, so
