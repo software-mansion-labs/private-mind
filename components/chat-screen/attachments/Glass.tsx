@@ -54,6 +54,12 @@ export interface GlassProps extends ViewProps {
   /** False for a container, which should not bulge under a finger aiming at
    *  something inside it. */
   interactive?: boolean;
+  /**
+   * `theme` follows the app; `dark` pins the material dark whatever the theme
+   * is. The floating controls take `dark`: they sit over photos, and their
+   * glyphs are light in both themes.
+   */
+  scheme?: 'theme' | 'dark';
   /** Transition length in seconds. */
   duration?: number;
   children?: ReactNode;
@@ -65,12 +71,13 @@ export function Glass({
   active = true,
   interactive = true,
   duration = 0.25,
+  scheme = 'theme',
   style,
   children,
   ...rest
 }: GlassProps) {
   const { theme } = useTheme();
-  const dark = isDarkTheme(theme);
+  const dark = scheme === 'dark' || isDarkTheme(theme);
   const glassEffectStyle = useGlassStyle(active ? 'regular' : 'none', duration);
 
   if (!LIQUID_GLASS) {
