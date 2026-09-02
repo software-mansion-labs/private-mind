@@ -130,11 +130,13 @@ const ChatBar = ({
     menuMaxBottom,
   } = useSheetGeometry();
 
-  const handleSelectFiles = useCallback(() => {
-    pickDocument().catch((error) => {
-      console.error('Failed to open the document picker:', error);
-    });
-  }, [pickDocument]);
+  const handleSelectFiles = useCallback(
+    () =>
+      pickDocument().catch((error) => {
+        console.error('Failed to open the document picker:', error);
+      }),
+    [pickDocument]
+  );
 
   const showImagesUnsupportedToast = useCallback(() => {
     Toast.show({
