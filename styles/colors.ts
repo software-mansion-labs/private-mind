@@ -87,6 +87,11 @@ export const darkTheme = {
 export type ThemeColors = typeof lightTheme;
 export type Theme = ThemeColors & { insets: EdgeInsets };
 
+/** Which of the two palettes a theme carries. The panel's glass and blur need
+ *  a native colour scheme, which the tokens alone don't say. */
+export const isDarkTheme = (theme: ThemeColors) =>
+  theme.bg.softPrimary === darkTheme.bg.softPrimary;
+
 const toRgb = (color: string) => {
   const hex = color.replace('#', '');
   const full =

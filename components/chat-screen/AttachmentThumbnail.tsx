@@ -43,6 +43,26 @@ const AttachmentThumbnail = ({ attachment, onRemove }: Props) => {
   const fillStyle = useAnimatedStyle(() => ({ width: fill.get() }));
 
   const renderContent = () => {
+    if (attachment.type === 'image') {
+      // Drawn even while the attachment is still resolving to a file: this is
+      // the thumbnail a flying copy lands on, and a spinner in its place would
+      // be the photo disappearing at the end of its own flight.
+      return (
+        <>
+          <Image
+            source={{ uri: attachment.uri }}
+            style={styles.thumbnail}
+            testID="attachment-image-preview"
+          />
+          {attachment.status === 'loading' && (
+            <View style={[styles.thumbnail, styles.imageLoading]}>
+              <ActivityIndicator color={theme.text.contrastPrimary} />
+            </View>
+          )}
+        </>
+      );
+    }
+
     if (attachment.status === 'loading') {
       if (attachment.progress == null) {
         return (
@@ -66,16 +86,6 @@ const AttachmentThumbnail = ({ attachment, onRemove }: Props) => {
             <Animated.View style={[styles.progressFill, fillStyle]} />
           </View>
         </View>
-      );
-    }
-
-    if (attachment.type === 'image') {
-      return (
-        <Image
-          source={{ uri: attachment.uri }}
-          style={styles.thumbnail}
-          testID="attachment-image-preview"
-        />
       );
     }
 
@@ -118,6 +128,14 @@ const createStyles = (theme: Theme) =>
       width: 72,
       height: 72,
       borderRadius: 8,
+    },
+    imageLoading: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.bg.overlay,
     },
     placeholder: {
       width: 72,
