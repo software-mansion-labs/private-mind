@@ -101,6 +101,7 @@ const Option = ({
         <Glass
           radius={BOTTOM_BAR.controlSize / 2}
           active={active}
+          scheme="dark"
           duration={DURATION.crossfade / 1000}
           style={styles.round}
         >
@@ -197,6 +198,7 @@ const CameraBar = ({
           <Glass
             radius={CAMERA.shutterSize / 2}
             active={active}
+            scheme="dark"
             duration={DURATION.crossfade / 1000}
             style={styles.shutter}
           >
@@ -239,6 +241,7 @@ const CameraBar = ({
           <Glass
             radius={BOTTOM_BAR.controlSize / 2}
             active={active}
+            scheme="dark"
             duration={DURATION.crossfade / 1000}
             style={styles.round}
           >

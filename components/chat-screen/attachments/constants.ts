@@ -184,8 +184,13 @@ export const panelPalette = (theme: Theme) => ({
   onControl: '#ffffff',
   placeholder: theme.text.defaultTertiary,
   accent: theme.bg.main,
-  /** The glass controls darken what they sit on. */
-  controlScrim: withAlpha(theme.bg.softPrimary, 0.31),
+  /**
+   * The floating controls darken what they sit on — always, in both themes.
+   * They hover over photos and an empty grid's pale placeholders alike, so a
+   * scrim that followed the theme would go white in the light one and take the
+   * light glyphs with it.
+   */
+  controlScrim: 'rgba(0, 0, 0, 0.31)',
   iconWell: withAlpha(theme.text.primary, 0.09),
   /** Laid over the panel's blur to land on the reference's material. */
   material: withAlpha(theme.text.primary, 0.047),
