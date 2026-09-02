@@ -191,14 +191,22 @@ const ChatBar = ({
   useEffect(() => {
     if (attachments.length) setRetained(attachments);
   }, [attachments]);
+  const dropRetained = useCallback(() => setRetained([]), []);
   useAnimatedReaction(
-    () => strip.get(),
+    () => {
+      'worklet';
+      return strip.get();
+    },
     (open, previous) => {
+      // Both callbacks carry the directive rather than relying on the babel
+      // plugin to spot them: without it the reaction reaches the UI thread as
+      // undefined and Reanimated throws "react is not a function".
+      'worklet';
       // Only once the strip has actually finished closing. The opening spring
       // starts at 0 too, so reacting to the value alone empties the strip on
       // the very frame it opens — and the photo lands on nothing.
       if (open === 0 && previous !== null && previous > 0) {
-        scheduleOnRN(setRetained, [] as Attachment[]);
+        scheduleOnRN(dropRetained);
       }
     }
   );
