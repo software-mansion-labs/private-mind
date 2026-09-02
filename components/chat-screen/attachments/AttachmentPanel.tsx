@@ -43,7 +43,8 @@ interface Props extends PanelDrivers {
   gridHeight: number;
   /** How low the menu shape may be drawn. */
   menuMaxBottom: number;
-  /** Window Y of the sheet's top edge — fixed, off the safe-area top. */
+  /** Window Y of the sheet's top edge — fixed, off the safe-area top. The
+   *  camera passes its own, shorter line. */
   sheetTop: number;
   /** Which layer takes touches. Both stay mounted through the morph, and a
    *  faded-out view still swallows taps. */
@@ -136,7 +137,14 @@ const AttachmentPanel = ({
   // Both wrappers carry their content's real size: a zero-sized wrapper would
   // still paint, but iOS drops touches that land outside a view's bounds.
   const menuStyle = useAnimatedStyle(() => ({
-    opacity: menuOpacity.get() * openFade.get(),
+    // Also tied to the morph, not just to the crossfade value. The shape
+    // demonstrably follows `morph`, so hanging the menu's opacity off it too
+    // means the rows cannot be left painted over a sheet if the crossfade
+    // timing is ever lost.
+    opacity:
+      menuOpacity.get() *
+      openFade.get() *
+      interpolate(morph.get(), [0, 0.35], [1, 0], Extrapolation.CLAMP),
     transform: [{ scale: rect.get().w / MENU.width }],
   }));
 

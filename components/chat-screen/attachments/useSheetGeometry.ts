@@ -2,7 +2,7 @@ import { useWindowDimensions } from 'react-native';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { useAnimatedStyle, useDerivedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COMPOSER, GUTTER, SHEET_TOP_GAP } from './constants';
+import { CAMERA_ASPECT, COMPOSER, GUTTER, SHEET_TOP_GAP } from './constants';
 
 /**
  * Where everything sits, derived from the one thing that moves it: the
@@ -38,6 +38,12 @@ export function useSheetGeometry() {
   // stops a gutter short of the bottom — so the grid inside it does too.
   const gridWidth = width - GUTTER * 2;
   const gridHeight = height - sheetTop - GUTTER;
+  /** The camera's own top edge — never lower than the grid's. */
+  const cameraTop = Math.max(
+    sheetTop,
+    height - GUTTER - gridWidth * CAMERA_ASPECT
+  );
+  const cameraHeight = height - cameraTop - GUTTER;
 
   return {
     width,
@@ -47,6 +53,8 @@ export function useSheetGeometry() {
     gridWidth,
     gridHeight,
     sheetTop,
+    cameraTop,
+    cameraHeight,
     menuMaxBottom,
   };
 }

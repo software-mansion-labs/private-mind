@@ -76,6 +76,15 @@ export const MENU_HEIGHT =
  */
 export const SHEET_TOP_GAP = 44;
 
+/**
+ * The camera's preview keeps a portrait 3:4 frame instead of filling the
+ * sheet. The grid wants every pixel it can get; a preview stretched down a
+ * 20:9 phone does not — it reads as a tall black slab and crops most of what
+ * the lens sees. This is a deliberate second footprint: the reference has one,
+ * because there its sheet was already close to this shape.
+ */
+export const CAMERA_ASPECT = 4 / 3;
+
 export const GRID = {
   columns: 3,
   /** Hairline of panel material showing between the cells. */
