@@ -78,6 +78,7 @@ export function Glass({
 }: GlassProps) {
   const { theme } = useTheme();
   const dark = scheme === 'dark' || isDarkTheme(theme);
+  const palette = panelPalette(theme);
   const glassEffectStyle = useGlassStyle(active ? 'regular' : 'none', duration);
 
   if (!LIQUID_GLASS) {
@@ -111,6 +112,21 @@ export function Glass({
       style={[shapeOf(radius), style]}
       {...rest}
     >
+      {/* The scrim is not only for the blur stand-in: real glass over a pale
+          photo grid is pale too, and the light glyphs on these controls have to
+          read against whatever the grid happens to be showing. A plain child
+          with its own radius, never faded — the material itself must not go
+          under an opacity. */}
+      {scheme === 'dark' ? (
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            shapeOf(radius),
+            { backgroundColor: fallbackTint ?? palette.controlScrim },
+          ]}
+        />
+      ) : null}
       {children}
     </GlassView>
   );
