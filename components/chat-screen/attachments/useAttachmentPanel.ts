@@ -26,8 +26,12 @@ interface PanelOptions {
   /** Called whenever the panel walks away from a sheet, so the caller can drop
    *  the sheet's selection with it. */
   onLeaveSheet?: () => void;
-  /** The Files row: the panel dismisses and the document picker takes over. */
-  onSelectFiles?: () => void;
+  /**
+   * The Files row. May return a promise — the panel then waits for it before
+   * collapsing, so the menu stays up while the OS takes its time presenting the
+   * document picker instead of leaving a blank screen behind.
+   */
+  onSelectFiles?: () => void | Promise<unknown>;
   /** Guard for the image rows when the loaded model has no vision support. */
   canAttachImages?: boolean;
   /** Called when an image row is tapped on a model that cannot take images. */
@@ -191,8 +195,18 @@ export function useAttachmentPanel({
   const onMenuAction = useCallback(
     (action: MenuAction) => {
       if (action === 'files') {
-        onSelectFiles?.();
-        dismiss();
+        const picking = onSelectFiles?.();
+        // The picker is the OS's to present, and on a cold Files provider that
+        // takes seconds. Collapsing first leaves nothing on screen for the
+        // whole of it, so the menu holds until the picker is up or gone.
+        if (
+          picking &&
+          typeof (picking as Promise<unknown>).then === 'function'
+        ) {
+          (picking as Promise<unknown>).then(dismiss, dismiss);
+        } else {
+          dismiss();
+        }
         return;
       }
       if (!canAttachImages) {

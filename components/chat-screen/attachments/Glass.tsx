@@ -65,9 +65,9 @@ export interface GlassProps extends ViewProps {
    */
   scheme?: 'theme' | 'dark';
   /**
-   * Fades the scrim with the surface it belongs to. The glass itself must never
-   * go under an animated opacity, but a child drawn inside it may — and without
-   * this the scrim is a dark disc sitting on screen while the menu is up and
+   * Fades the blur stand-in's tint with the surface it belongs to. The glass
+   * itself must never go under an animated opacity, but a child drawn inside it
+   * may — and without this the tint sits on screen while the menu is up and
    * long after the sheet has gone.
    */
   fade?: SharedValue<number>;
@@ -105,13 +105,15 @@ export function Glass({
         style={[shapeOf(radius), styles.clip, style]}
         {...rest}
       >
-        <View
+        {/* The stand-in is a blur, and a blur needs a tint to land on the
+            material it is imitating. Real glass gets none — it carries its own
+            colour scheme, and laying a scrim over it reads as a grey disc. */}
+        <Animated.View
           pointerEvents="none"
           style={[
             StyleSheet.absoluteFill,
-            {
-              backgroundColor: fallbackTint ?? panelPalette(theme).controlScrim,
-            },
+            { backgroundColor: fallbackTint ?? palette.controlScrim },
+            scrimStyle,
           ]}
         />
         {children}
@@ -127,22 +129,6 @@ export function Glass({
       style={[shapeOf(radius), style]}
       {...rest}
     >
-      {/* The scrim is not only for the blur stand-in: real glass over a pale
-          photo grid is pale too, and the light glyphs on these controls have to
-          read against whatever the grid happens to be showing. A plain child
-          with its own radius, never faded — the material itself must not go
-          under an opacity. */}
-      {scheme === 'dark' ? (
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            StyleSheet.absoluteFill,
-            shapeOf(radius),
-            { backgroundColor: fallbackTint ?? palette.controlScrim },
-            scrimStyle,
-          ]}
-        />
-      ) : null}
       {children}
     </GlassView>
   );
