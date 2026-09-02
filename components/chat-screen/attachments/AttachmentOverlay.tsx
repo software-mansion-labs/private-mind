@@ -1,5 +1,5 @@
 import type { CameraType, FlashMode } from 'expo-camera';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { OverKeyboardView } from 'react-native-keyboard-controller';
 import type { SharedValue } from 'react-native-reanimated';
@@ -72,8 +72,18 @@ const AttachmentOverlay = ({
   /** True from the shutter tap until the capture is in hand — one at a time. */
   const capturing = useRef(false);
 
-  // The library is only read once the photo sheet is actually on its way up.
-  const { photos, status } = usePhotoLibrary(panel.sheet === 'photos');
+  /**
+   * The library is read the first time the photo sheet is actually opened, and
+   * stays warm after that. This hook lives at the overlay's level, which is
+   * mounted for the whole life of the composer — gating on `sheet` alone would
+   * ask a privacy-first app's user for their photo library on launch, since
+   * `photos` is the sheet the panel defaults to.
+   */
+  const [photosOpened, setPhotosOpened] = useState(false);
+  useEffect(() => {
+    if (panel.mode === 'photos') setPhotosOpened(true);
+  }, [panel.mode]);
+  const { photos, status } = usePhotoLibrary(photosOpened);
 
   const togglePhoto = useCallback(
     (photo: LibraryPhoto) => {
