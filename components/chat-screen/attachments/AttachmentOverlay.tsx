@@ -23,8 +23,11 @@ interface Props {
   gridHeight: number;
   /** How low the menu shape may be drawn — see `useSheetGeometry`. */
   menuMaxBottom: number;
-  /** Window Y of the sheet's top edge. */
+  /** Window Y of the photo sheet's top edge. */
   sheetTop: number;
+  /** The camera's own, shorter footprint. */
+  cameraTop: number;
+  cameraHeight: number;
   composerBottom: SharedValue<number>;
   rowsBelowStrip: SharedValue<number>;
   strip: SharedValue<number>;
@@ -54,6 +57,8 @@ const AttachmentOverlay = ({
   gridHeight,
   menuMaxBottom,
   sheetTop,
+  cameraTop,
+  cameraHeight,
   composerBottom,
   rowsBelowStrip,
   strip,
@@ -168,7 +173,7 @@ const AttachmentOverlay = ({
         {
           photo: { id: uri, uri },
           slot: 0,
-          from: { x: GUTTER, y: sheetTop, w: gridWidth, h: gridHeight },
+          from: { x: GUTTER, y: cameraTop, w: gridWidth, h: cameraHeight },
           fromRadius: GRID.panelRadius,
         },
       ]);
@@ -218,7 +223,7 @@ const AttachmentOverlay = ({
             gridWidth={gridWidth}
             gridHeight={gridHeight}
             menuMaxBottom={menuMaxBottom}
-            sheetTop={sheetTop}
+            sheetTop={panel.sheet === 'camera' ? cameraTop : sheetTop}
             interactive={
               isFlying ? 'none' : panel.mode === 'menu' ? 'menu' : 'grid'
             }
@@ -243,7 +248,7 @@ const AttachmentOverlay = ({
                 <CameraSheet
                   ref={cameraRef}
                   width={gridWidth}
-                  height={gridHeight}
+                  height={cameraHeight}
                   facing={facing}
                   flash={flash}
                   lifting={isFlying}
