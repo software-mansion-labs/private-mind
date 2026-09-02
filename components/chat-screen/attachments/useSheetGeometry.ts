@@ -26,24 +26,22 @@ export function useSheetGeometry() {
     transform: [{ translateY: -liftedBy.get() }],
   }));
 
-  /** The sheet hangs from the top of the screen, not from the keyboard. */
-  const sheetTop = insets.top + SHEET_TOP_GAP;
   /**
-   * How low the menu shape may be drawn. It is centred on the + button, and
-   * with no keyboard under it that button sits just above the screen edge — so
-   * without this the last row runs off the bottom.
+   * One footprint for both sheets, the way the reference has it: a portrait 3:4
+   * frame standing on the bottom gutter, never taller than the safe area
+   * allows. The camera needs that shape — a preview stretched down a 20:9 phone
+   * crops most of what the lens sees — and the grid matching it is what keeps
+   * the morph a single move rather than two destinations.
    */
+  const sheetTop = Math.max(
+    insets.top + SHEET_TOP_GAP,
+    height - GUTTER - (width - GUTTER * 2) * CAMERA_ASPECT
+  );
   const menuMaxBottom = height - insets.bottom - GUTTER;
   // The sheet keeps the composer's gutter rather than going full bleed, and
   // stops a gutter short of the bottom — so the grid inside it does too.
   const gridWidth = width - GUTTER * 2;
   const gridHeight = height - sheetTop - GUTTER;
-  /** The camera's own top edge — never lower than the grid's. */
-  const cameraTop = Math.max(
-    sheetTop,
-    height - GUTTER - gridWidth * CAMERA_ASPECT
-  );
-  const cameraHeight = height - cameraTop - GUTTER;
 
   return {
     width,
@@ -53,8 +51,6 @@ export function useSheetGeometry() {
     gridWidth,
     gridHeight,
     sheetTop,
-    cameraTop,
-    cameraHeight,
     menuMaxBottom,
   };
 }

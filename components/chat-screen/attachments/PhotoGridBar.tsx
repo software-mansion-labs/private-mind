@@ -95,6 +95,7 @@ const ConfirmPill = ({ count, active, fade, onPress }: ConfirmPillProps) => {
           radius={BOTTOM_BAR.pillHeight / 2}
           active={active}
           scheme="dark"
+          fade={fade}
           duration={DURATION.crossfade / 1000}
           style={styles.pill}
         >

@@ -8,7 +8,11 @@ import {
   type ViewProps,
   type ViewStyle,
 } from 'react-native';
-import Animated, { type AnimatedProps } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  type AnimatedProps,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { useTheme } from '../../../context/ThemeContext';
 import { isDarkTheme } from '../../../styles/colors';
 import { panelPalette } from './constants';
@@ -60,6 +64,13 @@ export interface GlassProps extends ViewProps {
    * glyphs are light in both themes.
    */
   scheme?: 'theme' | 'dark';
+  /**
+   * Fades the scrim with the surface it belongs to. The glass itself must never
+   * go under an animated opacity, but a child drawn inside it may — and without
+   * this the scrim is a dark disc sitting on screen while the menu is up and
+   * long after the sheet has gone.
+   */
+  fade?: SharedValue<number>;
   /** Transition length in seconds. */
   duration?: number;
   children?: ReactNode;
@@ -72,6 +83,7 @@ export function Glass({
   interactive = true,
   duration = 0.25,
   scheme = 'theme',
+  fade,
   style,
   children,
   ...rest
@@ -80,6 +92,9 @@ export function Glass({
   const dark = scheme === 'dark' || isDarkTheme(theme);
   const palette = panelPalette(theme);
   const glassEffectStyle = useGlassStyle(active ? 'regular' : 'none', duration);
+  const scrimStyle = useAnimatedStyle(() => ({
+    opacity: fade ? fade.get() : 1,
+  }));
 
   if (!LIQUID_GLASS) {
     return (
@@ -118,12 +133,13 @@ export function Glass({
           with its own radius, never faded — the material itself must not go
           under an opacity. */}
       {scheme === 'dark' ? (
-        <View
+        <Animated.View
           pointerEvents="none"
           style={[
             StyleSheet.absoluteFill,
             shapeOf(radius),
             { backgroundColor: fallbackTint ?? palette.controlScrim },
+            scrimStyle,
           ]}
         />
       ) : null}
