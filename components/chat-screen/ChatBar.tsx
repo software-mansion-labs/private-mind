@@ -289,7 +289,6 @@ const ChatBar = ({
     interrupt,
     loadModel,
     model: loadedModel,
-    runWithModelOffloaded,
   } = useLLMStore();
   const loadSelectedModel = useCallback(async () => {
     if (model?.isDownloaded && loadedModel?.id !== model.id) {
@@ -297,34 +296,11 @@ const ChatBar = ({
     }
   }, [model, loadedModel, loadModel]);
 
-  // The grid and the camera preview are real memory pressure next to a resident
-  // model, so the model steps aside as a sheet opens — not as the menu does,
-  // which costs nothing.
-  const sheetOpen = panel.mode === 'photos' || panel.mode === 'camera';
-  const offloadedForSheet = useRef(false);
-  useEffect(() => {
-    if (sheetOpen) {
-      offloadedForSheet.current = true;
-      runWithModelOffloaded(async () => {}, { restore: false }).catch(
-        (error) => {
-          console.error(
-            'Failed to offload model before the photo sheet:',
-            error
-          );
-        }
-      );
-      return;
-    }
-    // And it has to come back by itself. The keyboard never drops through this
-    // flow, so the field is never re-focused and `onFocus` — the only other
-    // thing that loads the model — never fires again; a send would find no
-    // model and fail with nothing on screen.
-    if (!offloadedForSheet.current) return;
-    offloadedForSheet.current = false;
-    loadSelectedModel().catch((error) => {
-      console.error('Failed to reload the model after the photo sheet:', error);
-    });
-  }, [sheetOpen, runWithModelOffloaded, loadSelectedModel]);
+  // Deliberately no model offload around the picker. The old bottom sheet
+  // handed off to the system photo picker and camera, which run in their own
+  // processes and needed the room; this panel is in-process, so unloading the
+  // model only to load it again seconds later is pure cost — and on a 6GB
+  // device that reload is what got the app killed mid-flight.
 
   const imageAttachment = attachments.find((a) => a.type === 'image');
   const hasLoadingAttachment = attachments.some((a) => a.status === 'loading');

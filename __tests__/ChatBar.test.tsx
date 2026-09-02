@@ -563,17 +563,16 @@ describe('attachment', () => {
     expect(mockUseAttachment.markPanelOpen).toHaveBeenCalled();
   });
 
-  it('offloads the LLM when the photo sheet opens', async () => {
+  it('keeps the model loaded when the photo sheet opens', async () => {
     renderBar({ isVisionModel: true });
     await openPanel();
     await act(async () => {
       fireEvent.press(screen.getByTestId('menu-photos'));
     });
     expect(screen.getByText('mode:photos')).toBeTruthy();
-    expect(mockRunWithModelOffloaded).toHaveBeenCalledWith(
-      expect.any(Function),
-      { restore: false }
-    );
+    // The picker is in-process now. Unloading only to load again seconds later
+    // is pure cost, and on a 6GB device that reload got the app killed.
+    expect(mockRunWithModelOffloaded).not.toHaveBeenCalled();
   });
 
   it('sends the Files row to the document picker', async () => {
