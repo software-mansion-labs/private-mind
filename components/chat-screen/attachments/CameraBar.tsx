@@ -108,7 +108,7 @@ const Option = ({
             <Icon
               width={CAMERA.optionIcon}
               height={CAMERA.optionIcon}
-              style={{ color: panelPalette(theme).text }}
+              style={{ color: panelPalette(theme).onControl }}
             />
           </Animated.View>
         </Glass>
@@ -119,6 +119,8 @@ const Option = ({
 
 interface Props {
   width: number;
+  /** Window Y of the bar's top edge — see `SheetBar`. */
+  top: number;
   active: boolean;
   fade: SharedValue<number>;
   flash: FlashMode;
@@ -135,6 +137,7 @@ interface Props {
  */
 const CameraBar = ({
   width,
+  top,
   active,
   fade,
   flash,
@@ -174,7 +177,13 @@ const CameraBar = ({
   });
 
   return (
-    <SheetBar width={width} active={active} fade={fade} onBack={onBack}>
+    <SheetBar
+      width={width}
+      top={top}
+      active={active}
+      fade={fade}
+      onBack={onBack}
+    >
       {/* The shutter: a glass ring with a disc set into it. The disc is a child
           of the material, so it fades with the sheet while the ring switches
           its material natively. */}
@@ -237,14 +246,14 @@ const CameraBar = ({
               <MoreIcon
                 width={CAMERA.optionIcon}
                 height={CAMERA.optionIcon}
-                style={{ color: panelPalette(theme).text }}
+                style={{ color: panelPalette(theme).onControl }}
               />
             </Animated.View>
             <Animated.View style={[styles.glyph, closeStyle]}>
               <CloseIcon
                 width={BOTTOM_BAR.backIcon}
                 height={BOTTOM_BAR.backIcon}
-                style={{ color: panelPalette(theme).text }}
+                style={{ color: panelPalette(theme).onControl }}
               />
             </Animated.View>
           </Glass>
@@ -287,7 +296,7 @@ const createStyles = (theme: Theme) => {
       width: CAMERA.shutterSize - CAMERA.shutterPadding * 2,
       height: CAMERA.shutterSize - CAMERA.shutterPadding * 2,
       borderRadius: (CAMERA.shutterSize - CAMERA.shutterPadding * 2) / 2,
-      backgroundColor: palette.text,
+      backgroundColor: palette.onControl,
     },
     more: {
       width: BOTTOM_BAR.controlSize,

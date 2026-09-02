@@ -12,6 +12,13 @@ import { Glass } from './Glass';
 
 interface Props {
   width: number;
+  /**
+   * Window Y of the bar's top edge. Positioned off the same numbers as the
+   * panel rather than by `bottom`: the panel is placed absolutely in window
+   * coordinates while this sits in the over-keyboard view, and on Android the
+   * two disagree by the navigation bar.
+   */
+  top: number;
   /** Whether the controls are wearing their glass and taking touches. */
   active: boolean;
   /** Fades the glyphs with the sheet. The glass itself cannot be faded, but
@@ -29,14 +36,14 @@ interface Props {
  * nothing. Nothing in here clips — a glass control draws its rim and press
  * bulge outside its own bounds.
  */
-const SheetBar = ({ width, active, fade, onBack, children }: Props) => {
+const SheetBar = ({ width, top, active, fade, onBack, children }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const backStyle = useAnimatedStyle(() => ({ opacity: fade.get() }));
 
   return (
     <View
       pointerEvents={active ? 'box-none' : 'none'}
-      style={[styles.bar, { width }]}
+      style={[styles.bar, { width, top }]}
     >
       <Pressable
         accessibilityRole="button"
@@ -54,7 +61,7 @@ const SheetBar = ({ width, active, fade, onBack, children }: Props) => {
             <ArrowLeft
               width={BOTTOM_BAR.backIcon}
               height={BOTTOM_BAR.backIcon}
-              style={{ color: panelPalette(theme).text }}
+              style={{ color: panelPalette(theme).onControl }}
             />
           </Animated.View>
         </Glass>
@@ -72,10 +79,8 @@ const createStyles = (_theme: Theme) =>
     bar: {
       position: 'absolute',
       // The controls belong to the sheet, so they sit inside its edges rather
-      // than the screen's. The sheet stops a gutter short of the bottom, so
-      // that gutter is counted in.
+      // than the screen's. `top` comes from the caller — see the prop.
       left: GUTTER,
-      bottom: GUTTER + BOTTOM_BAR.inset,
       height: BOTTOM_BAR.controlSize,
       flexDirection: 'row',
       alignItems: 'center',

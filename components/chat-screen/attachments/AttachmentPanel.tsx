@@ -20,7 +20,7 @@ import {
   PANEL_CONTENT,
   PLUS_CENTER_ABOVE_BOTTOM,
   PLUS_CENTER_X,
-  sheetTopFromComposerBottom,
+  menuTopFromComposerBottom,
 } from './constants';
 import { PanelMaterial } from './Glass';
 
@@ -43,6 +43,8 @@ interface Props extends PanelDrivers {
   gridHeight: number;
   /** How low the menu shape may be drawn. */
   menuMaxBottom: number;
+  /** Window Y of the sheet's top edge — fixed, off the safe-area top. */
+  sheetTop: number;
   /** Which layer takes touches. Both stay mounted through the morph, and a
    *  faded-out view still swallows taps. */
   interactive: 'menu' | 'grid' | 'none';
@@ -64,6 +66,7 @@ const AttachmentPanel = ({
   gridWidth,
   gridHeight,
   menuMaxBottom,
+  sheetTop,
   interactive,
   glass,
   glassDuration,
@@ -84,21 +87,20 @@ const AttachmentPanel = ({
   const rect = useDerivedValue(() => {
     const bottom = composerBottom.get();
     const plusCenter = bottom - PLUS_CENTER_ABOVE_BOTTOM;
-    const top = sheetTopFromComposerBottom(bottom);
 
-    // The two shapes no longer share a top edge — see SHEET_ANCHOR_HEIGHT. The
-    // menu is centred on the + and pushed up if that would run it off the
-    // bottom of the screen; the sheet hangs from the reference's line.
+    // The two shapes no longer share a top edge — see SHEET_TOP_GAP. The menu
+    // is centred on the + and pushed up if that would run it off the bottom of
+    // the screen; the sheet hangs from the top of the screen.
     const menuTop = Math.min(
-      sheetTopFromComposerBottom(bottom, MENU_HEIGHT),
+      menuTopFromComposerBottom(bottom),
       menuMaxBottom - MENU_HEIGHT
     );
 
     const m = morph.get();
     let x = GUTTER;
-    let y = mix(m, menuTop, top);
+    let y = mix(m, menuTop, sheetTop);
     let w = mix(m, MENU.width, gridWidth);
-    let h = mix(m, MENU_HEIGHT, screenHeight - top - GUTTER);
+    let h = mix(m, MENU_HEIGHT, screenHeight - sheetTop - GUTTER);
     let r = mix(m, MENU.radius, GRID.panelRadius);
 
     // The panel begins as the circle wrapping the + button and grows out of it,

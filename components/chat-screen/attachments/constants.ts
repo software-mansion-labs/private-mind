@@ -65,17 +65,16 @@ export const MENU_HEIGHT =
   MENU.itemHeight * MENU_ITEMS + MENU.paddingVertical * 2;
 
 /**
- * The height the SHEET's top edge is anchored on — the reference's five-row
- * menu, not ours.
+ * Gap between the safe-area top and the sheet's top edge.
  *
- * The reference keeps one top edge for both shapes, which works because its
- * menu is 354pt tall. Ours is 222pt with three rows, and hanging the grid off
- * that line costs the sheet 66pt of height — the photo grid and the camera
- * come out visibly short. So the menu keeps its own centred top and the sheet
- * keeps the reference's; the morph moves the top edge between them.
+ * The reference hangs both shapes off one line centred on the + button, which
+ * works because its menu is 354pt tall and its keyboard is always up. Ours is
+ * 222pt with three rows, and with the keyboard down the + sits just above the
+ * screen edge — the grid and the camera came out a quarter of the screen tall.
+ * The sheet is a full-bleed surface, so it hangs from the top of the screen
+ * instead and does not move with the keyboard at all.
  */
-export const SHEET_ANCHOR_HEIGHT =
-  MENU.itemHeight * 5 + MENU.paddingVertical * 2;
+export const SHEET_TOP_GAP = 44;
 
 export const GRID = {
   columns: 3,
@@ -142,17 +141,11 @@ export const PANEL_CONTENT = {
   transformOrigin: 'top left',
 } as const satisfies ViewStyle;
 
-/**
- * Window Y of the sheet's top edge, given the composer's bottom. The panel, the
- * grid's layout and the flights all have to agree on this line.
- */
-export function sheetTopFromComposerBottom(
-  bottom: number,
-  shapeHeight: number = SHEET_ANCHOR_HEIGHT
-) {
+/** Window Y of the MENU's top edge — centred on the + button. */
+export function menuTopFromComposerBottom(bottom: number) {
   'worklet';
   return (
-    bottom - PLUS_CENTER_ABOVE_BOTTOM + MENU.centerOffset - shapeHeight / 2
+    bottom - PLUS_CENTER_ABOVE_BOTTOM + MENU.centerOffset - MENU_HEIGHT / 2
   );
 }
 
@@ -175,6 +168,11 @@ export function mix(t: number, a: number, b: number) {
  */
 export const panelPalette = (theme: Theme) => ({
   text: theme.text.primary,
+  /**
+   * Glyphs on the floating glass controls. Always light: they sit on a dark
+   * scrim over the photo grid, where a near-black `text.primary` disappears.
+   */
+  onControl: '#ffffff',
   placeholder: theme.text.defaultTertiary,
   accent: theme.bg.main,
   /** The glass controls darken what they sit on. */
