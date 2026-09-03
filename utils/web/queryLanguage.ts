@@ -32,6 +32,13 @@ const sharesStem = (a: string, b: string): boolean =>
     Math.min(a.length, b.length) - INFLECTION_MAX_CHARS
   );
 
+export const sharedStemCount = (query: string, text: string): number => {
+  const known = termsIn(text);
+  return termsIn(query).filter((term) =>
+    known.some((word) => sharesStem(term, word))
+  ).length;
+};
+
 export const sharesLanguageWith = (
   query: string,
   conversation: string
