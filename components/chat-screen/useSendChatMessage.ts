@@ -178,6 +178,8 @@ export const useSendChatMessage = ({
             vectorStore,
             embeddings,
             maxRelevantChunks: modelProfile.ragMaxRelevantChunks,
+            history: messageHistory,
+            digest: useLLMStore.getState().activeChatDigest ?? undefined,
           });
         ({ context, sourceDocuments, preferredSourceDocuments } = embeddings
           ? await runWithModelOffloaded(
@@ -231,6 +233,7 @@ export const useSendChatMessage = ({
           } = await runWebSearch({
             query: trimmedInput,
             history: messageHistory,
+            digest: useLLMStore.getState().activeChatDigest ?? undefined,
             provider: webViewScrapeProvider,
             embeddings,
             embeddingModelReady,
@@ -239,7 +242,8 @@ export const useSendChatMessage = ({
             contextCharBudget: webContextCharBudget(
               useLLMStore.getState().model,
               context,
-              chatSettings.systemPrompt
+              chatSettings.systemPrompt,
+              trimmedInput
             ),
             signal,
             lowMemory,
