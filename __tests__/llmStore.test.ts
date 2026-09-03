@@ -889,6 +889,96 @@ describe('sendChatMessage', () => {
     );
   });
 
+  it('retries once when the answer skips a sub-query the sources cover, naming that part', async () => {
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content:
+          'Kurs bitcoina wynosi dziś 98 000 USD. Kurs ethereum wynosi dziś 3 200 USD.\n\nporównaj kurs bitcoina i ethereum',
+      },
+    ]);
+    const complete =
+      'Bitcoin kosztuje około 98 000 USD, a ethereum około 3 200 USD.';
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        'Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.'
+      )
+      .mockResolvedValueOnce(complete)
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const withSubQueries = async () => ({
+      ...(await noSources()),
+      webSubQueries: ['kurs bitcoin', 'kurs ethereum'],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'porównaj kurs bitcoina i ethereum',
+        1,
+        withSubQueries,
+        settings
+      );
+
+    const nudge = mockInstance.generate.mock.calls[1]![0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(nudge.at(-1)!.content).toContain(
+      'does not address: "kurs ethereum"'
+    );
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      complete
+    );
+  });
+
+  it('keeps the first answer when the coverage retry still skips the aspect', async () => {
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content:
+          'Kurs bitcoina wynosi dziś 98 000 USD. Kurs ethereum wynosi dziś 3 200 USD.\n\nporównaj kurs bitcoina i ethereum',
+      },
+    ]);
+    const partial =
+      'Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.';
+    mockInstance.generate
+      .mockResolvedValueOnce(partial)
+      .mockResolvedValueOnce(
+        'Bitcoin wciąż kosztuje około 98 000 USD i dalej zyskuje na wartości.'
+      )
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const withSubQueries = async () => ({
+      ...(await noSources()),
+      webSubQueries: ['kurs bitcoin', 'kurs ethereum'],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'porównaj kurs bitcoina i ethereum',
+        1,
+        withSubQueries,
+        settings
+      );
+
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      partial
+    );
+  });
+
   it('retries once when the model echoes the question back, instead of failing the turn', async () => {
     mockInstance.generate
       .mockResolvedValueOnce('co zabrać do samolotu?')

@@ -30,6 +30,7 @@ import {
   detectGroundingCaveats,
   claimsMissingEvidenceItHas,
   answerUsesNoRetrievedEvidence,
+  aspectsMissingFromAnswer,
   humanizeSourceReferences,
   isCircularNonAnswer,
   isDanglingListAnswer,
@@ -452,6 +453,12 @@ const SOURCES_COVER_TOPIC_RETRY_PROMPT =
   'The sources do discuss what the question asks about. Read them again, ' +
   'including the page titles, and answer from what they actually say. If ' +
   'they cover it only in part, give that part instead of refusing.';
+
+const aspectCoverageRetryPrompt = (aspects: string[]): string =>
+  'The answer does not address: ' +
+  aspects.map((aspect) => `"${aspect}"`).join(', ') +
+  '. The sources do cover it. Write the complete answer again: keep what you ' +
+  'already said and add what the sources say about that part as well.';
 
 const WRONG_LANGUAGE_RETRY_PROMPT =
   'That reply was written in the wrong language. Write the same answer again, ' +
@@ -1023,6 +1030,24 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           'Circular non-answer, retrying once with a nudge',
           CIRCULAR_ANSWER_RETRY_PROMPT,
           isCircularNonAnswer
+        );
+      }
+
+      const missingAspects = finalResponse
+        ? aspectsMissingFromAnswer(finalResponse, webSubQueries, promptContext)
+        : [];
+      if (
+        !nudged &&
+        finalResponse &&
+        missingAspects.length > 0 &&
+        !isDanglingListAnswer(finalResponse)
+      ) {
+        await nudgeOnce(
+          'Answer skips an aspect the sources cover, retrying once with a nudge',
+          aspectCoverageRetryPrompt(missingAspects),
+          (retried) =>
+            aspectsMissingFromAnswer(retried, webSubQueries, promptContext)
+              .length > 0
         );
       }
 
