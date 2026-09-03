@@ -202,6 +202,14 @@ export const panelPalette = (theme: Theme) => ({
    * reference's measured #1E1E1E.
    */
   materialFlat: mixColors(theme.bg.softPrimary, theme.text.primary, 0.12),
+  /**
+   * Laid over the chat while the panel is up. The panel's surface is the same
+   * grey as the app's cards, and the What's New card sits at the same gutter
+   * with a 16pt corner where the sheet has 52 — so the card showed through the
+   * sheet's corner and read as a second, tighter border around it. Darkening
+   * what is behind is what tells the two apart.
+   */
+  backdrop: 'rgba(0, 0, 0, 0.22)',
   /** Fill behind a photo for the frames before it decodes. */
   photoFill: mixColors(theme.bg.softPrimary, theme.text.primary, 0.08),
 });
