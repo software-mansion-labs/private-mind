@@ -649,3 +649,48 @@ describe('runWebSearch — reusing a previous turn', () => {
     expect(provider.calls).toHaveLength(2);
   });
 });
+
+describe('searching the question itself is a fallback, not a habit', () => {
+  const plan =
+    '{"needs_search": true, "intent": "weather", "queries": ["warsaw weather forecast"]}';
+
+  it('leaves the question unsearched when the plan already found enough', async () => {
+    const provider = new MockProvider({
+      'warsaw weather forecast': [
+        weatherPage('https://a.example/1'),
+        weatherPage('https://b.example/2'),
+        weatherPage('https://c.example/3'),
+      ],
+    });
+    await runWebSearch({
+      query: 'Jaka jest pogoda w Warszawie?',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () => plan,
+      today: '2026-07-20',
+    });
+    expect(provider.calls).toEqual(['warsaw weather forecast']);
+  });
+
+  it('searches the question when the plan came back nearly empty', async () => {
+    const provider = new MockProvider({
+      'warsaw weather forecast': [weatherPage('https://a.example/1')],
+      'Jaka jest pogoda w Warszawie?': [
+        weatherPage('https://d.example/4'),
+        weatherPage('https://e.example/5'),
+      ],
+    });
+    await runWebSearch({
+      query: 'Jaka jest pogoda w Warszawie?',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () => plan,
+      today: '2026-07-20',
+    });
+    expect(provider.calls).toContain('Jaka jest pogoda w Warszawie?');
+  });
+});

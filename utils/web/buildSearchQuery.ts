@@ -205,14 +205,10 @@ export const isSmallTalk = (question: string): boolean => {
 
 const WEB_MAX_BASE_QUERIES = 4;
 
-export const withVerbatimFallback = (
-  plannedQueries: string[],
-  question: string
-): string[] => {
-  const candidates = [...plannedQueries, toKeywordQuery(question)];
+export const dedupeQueries = (queries: string[]): string[] => {
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const candidate of candidates) {
+  for (const candidate of queries) {
     const text = candidate.trim();
     if (!text) continue;
     const key = foldForMatching(text);
@@ -221,6 +217,18 @@ export const withVerbatimFallback = (
     out.push(text);
   }
   return out.slice(0, WEB_MAX_BASE_QUERIES);
+};
+
+export const verbatimQueryFor = (
+  question: string,
+  planned: string[]
+): string | null => {
+  const text = toKeywordQuery(question).trim();
+  if (!text) return null;
+  const key = foldForMatching(text);
+  return planned.some((query) => foldForMatching(query.trim()) === key)
+    ? null
+    : text;
 };
 
 const DOMAIN_PATTERN =

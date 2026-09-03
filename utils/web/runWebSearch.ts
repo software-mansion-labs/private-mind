@@ -7,7 +7,8 @@ import type {
 import {
   isSmallTalk,
   planWebSearch,
-  withVerbatimFallback,
+  dedupeQueries,
+  verbatimQueryFor,
   type QueryRewriteFn,
 } from './buildSearchQuery';
 import type { ModelProfile } from '../../constants/model-profiles';
@@ -54,6 +55,7 @@ import {
   WEB_ENRICH_WAVE_STEP,
   WEB_FETCH_TOP_N_CONTENT,
   WEB_MIN_SAME_SCRIPT_RESULTS,
+  WEB_VERBATIM_MIN_RESULTS,
   WEB_QUERY_GATE,
   WEB_RECOVERY_ENABLED,
   WEB_RECOVERY_MAX_RESULTS,
@@ -227,7 +229,7 @@ export const runWebSearch = async (
     ...(input.profile ? { rewrite: input.profile.webPlanner === 'llm' } : {}),
     ...(input.digest ? { digest: input.digest } : {}),
   });
-  const baseQueries = withVerbatimFallback(plan.queries, query);
+  let baseQueries = dedupeQueries(plan.queries);
   telemetry.needsSearch = plan.needsSearch;
   telemetry.intent = plan.intent;
   telemetry.plannedQueries = baseQueries;
@@ -453,9 +455,22 @@ export const runWebSearch = async (
       ? sameScript
       : [...sameScript, ...foreign];
   };
-  const foundGroups = (await runQueries(baseQueries, 1, seen)).map(
+  let foundGroups = (await runQueries(baseQueries, 1, seen)).map(
     dropForeignScript
   );
+  const verbatim = verbatimQueryFor(query, baseQueries);
+  if (
+    verbatim &&
+    foundGroups.flat().length < WEB_VERBATIM_MIN_RESULTS &&
+    !signal?.aborted
+  ) {
+    const rescued = (await runQueries([verbatim], 1, seen)).map(
+      dropForeignScript
+    );
+    foundGroups = [...foundGroups, ...rescued];
+    baseQueries = [...baseQueries, verbatim];
+    telemetry.plannedQueries = baseQueries;
+  }
   const found = foundGroups.flat();
   const outcome = await groundAndEvaluate(foundGroups, WEB_SEARCH_MAX_RESULTS);
 
