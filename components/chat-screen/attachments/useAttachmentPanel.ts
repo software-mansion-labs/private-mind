@@ -191,15 +191,18 @@ export function useAttachmentPanel({
   const backToMenu = useCallback(() => {
     setMode('menu');
     onLeaveSheet?.();
-    // `sheet` outlives `mode` only for the length of the crossfade — long
-    // enough that going back does not flash the other sheet, and no longer.
-    // Holding it forever keeps the camera's layer mounted, and on Android the
-    // preview's surface stays painted where the menu no longer covers it.
+    // `sheet` outlives `mode` for the length of the move back, so the layer it
+    // names is still there to be crossfaded out — and so the camera is torn
+    // down after the panel has stopped rather than under it. Unmounting it on
+    // the tap put an AVCaptureSession teardown on the main thread in the middle
+    // of the morph, which is what made the way back from the camera jump where
+    // the way back from the photos was smooth. It cannot be held longer than
+    // this: the layer would still be there the next time the menu opened.
     if (sheetResetTimer.current !== null) clearTimeout(sheetResetTimer.current);
     sheetResetTimer.current = setTimeout(() => {
       sheetResetTimer.current = null;
       setSheet('photos');
-    }, DURATION.crossfade);
+    }, DURATION.panel);
     pulseBlur();
     morph.set(withSpring(0, SPRING.panel));
     menuOpacity.set(

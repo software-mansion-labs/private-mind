@@ -50,8 +50,6 @@ interface Props extends PanelDrivers {
    *  faded-out view still swallows taps. */
   interactive: 'menu' | 'grid' | 'none';
   glass: boolean;
-  /** How long the glass takes to come or go, in seconds. */
-  glassDuration: number;
   menu: ReactNode;
   grid: ReactNode;
 }
@@ -70,7 +68,6 @@ const AttachmentPanel = ({
   sheetHeight,
   interactive,
   glass,
-  glassDuration,
   menu,
   grid,
   open,
@@ -131,8 +128,10 @@ const AttachmentPanel = ({
     return { left: x, top: y, width: w, height: h };
   });
 
-  /** The panel's live corner radius, worn by the material and by the clip. */
-  const shapeStyle = useAnimatedStyle(() => ({ borderRadius: rect.get().r }));
+  /** The panel's live corner radius: worn by the one clip everything sits in,
+   *  and handed to the material so the glass rounds itself to match. */
+  const radius = useDerivedValue(() => rect.get().r);
+  const clipShape = useAnimatedStyle(() => ({ borderRadius: radius.get() }));
 
   // Both wrappers carry their content's real size: a zero-sized wrapper would
   // still paint, but iOS drops touches that land outside a view's bounds.
@@ -165,19 +164,20 @@ const AttachmentPanel = ({
       pointerEvents="box-none"
       style={[styles.panel, panelStyle]}
     >
-      {/* The material, never wrapped in an animated opacity and never clipped —
-          interactive glass draws its press bulge outside its own bounds. */}
-      <PanelMaterial
-        variant={glass ? 'regular' : 'none'}
-        duration={glassDuration}
-        style={[StyleSheet.absoluteFill, shapeStyle]}
-      />
-
-      {/* Everything that has to be cut to the panel's shape, and nothing else. */}
+      {/* One shape for the whole panel. The material used to be cut by a
+          rounded rect of its own, so that any disagreement between the two
+          showed as a wedge of material past the photos at every corner — and
+          they did disagree. It is still never wrapped in an animated opacity:
+          that is what a GlassView cannot survive, not a clip. */}
       <Animated.View
         pointerEvents="box-none"
-        style={[StyleSheet.absoluteFill, styles.clip, shapeStyle]}
+        style={[StyleSheet.absoluteFill, styles.clip, clipShape]}
       >
+        <PanelMaterial
+          variant={glass ? 'regular' : 'none'}
+          style={StyleSheet.absoluteFill}
+        />
+
         <Animated.View
           pointerEvents={interactive === 'grid' ? 'auto' : 'none'}
           style={[
