@@ -5,6 +5,7 @@ import type {
   WebSourceDocument,
 } from './types';
 import {
+  isSmallTalk,
   planWebSearch,
   withVerbatimFallback,
   type QueryRewriteFn,
@@ -212,6 +213,11 @@ export const runWebSearch = async (
   if (input.isOnline && !(await input.isOnline())) {
     emit({ type: 'offline' });
     return empty('offline');
+  }
+
+  if (isSmallTalk(query)) {
+    emit({ type: 'skipped' });
+    return empty('gated');
   }
 
   emit({ type: 'objectives' });

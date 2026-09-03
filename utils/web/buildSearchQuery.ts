@@ -188,6 +188,21 @@ export const toKeywordQuery = (text: string): string => {
   return cleaned || text.trim();
 };
 
+const SMALL_TALK_OPENER =
+  /^(?:dzi[eę]ki|dzi[eę]kuj[eę]|thanks|thank you|thx|ok|okej|okay|spoko|super|[śs]wietnie|great|nice|cool|perfect|hej|cze[śs][ćc]|siema|witaj|hello|hi|yo|dobra|pa|bye|do widzenia|dobranoc|good night)(?![\p{L}\p{N}])/iu;
+const SMALL_TALK_MAX_WORDS = 6;
+const CAPITALISED = /^[\p{Lu}\p{Lt}]/u;
+const ANY_DIGIT = /\p{N}/u;
+
+export const isSmallTalk = (question: string): boolean => {
+  const text = question.trim();
+  if (!text || !SMALL_TALK_OPENER.test(text)) return false;
+  if (ANY_DIGIT.test(text) || text.includes('?')) return false;
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length > SMALL_TALK_MAX_WORDS) return false;
+  return !words.slice(1).some((word) => CAPITALISED.test(word));
+};
+
 const WEB_MAX_BASE_QUERIES = 4;
 
 export const withVerbatimFallback = (
