@@ -253,6 +253,33 @@ const renderBlockFrame = (frame: BlockFrame): string => {
 export const groupBlockRecords = (html: string): string =>
   renderBlockFrame(parseBlockFrames(html));
 
+const SPLIT_GAP = '(?:\\n| \\| | )';
+const INTEGER_PART = '(?:\\d{3,}|\\d{1,3}(?: \\d{3})+)';
+const AMOUNT_BEFORE_UNIT = new RegExp(
+  `(?<![\\p{L}\\p{N}])(${INTEGER_PART})${SPLIT_GAP}(\\d{2}) ?(\\p{L}{1,3}|\\p{Sc})(?![\\p{L}\\p{N}])`,
+  'gu'
+);
+const AMOUNT_AFTER_SYMBOL = new RegExp(
+  `(\\p{Sc} ?(?:\\d{3,}|\\d{1,3}(?:[ ,.]\\d{3})+))${SPLIT_GAP}(\\d{2})(?![\\p{L}\\p{N}])`,
+  'gu'
+);
+
+const decimalMarkFor = (integerPart: string): string =>
+  integerPart.includes(',') ? '.' : ',';
+
+export const joinSplitAmounts = (text: string): string =>
+  text
+    .replace(
+      AMOUNT_BEFORE_UNIT,
+      (_, integerPart: string, cents: string, unit: string) =>
+        `${integerPart}${decimalMarkFor(integerPart)}${cents} ${unit}`
+    )
+    .replace(
+      AMOUNT_AFTER_SYMBOL,
+      (_, integerPart: string, cents: string) =>
+        `${integerPart}${decimalMarkFor(integerPart)}${cents}`
+    );
+
 const heuristicExtractText = (html: string): string => {
   let out = html
     .replace(/\sdata-mw=(["'])[\s\S]*?\1/g, ' ')
@@ -278,7 +305,7 @@ const heuristicExtractText = (html: string): string => {
     .replace(/[^\S\n]+/g, ' ')
     .replace(/ ?\n ?/g, '\n')
     .replace(/\n{2,}/g, '\n');
-  return dropMenuRuns(dropReferenceLines(normalized)).trim();
+  return dropMenuRuns(dropReferenceLines(joinSplitAmounts(normalized))).trim();
 };
 
 const JSON_LD_PATTERN =

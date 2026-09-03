@@ -716,6 +716,60 @@ describe('record grouping generalises past <table>', () => {
   });
 });
 
+describe('prices split across two elements (live-found: x-kom "6 999" + "00 zł")', () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const page = (body: string) =>
+    `<html><body><article><p>Opis produktu, ktory jest wystarczajaco dlugi na artykul.</p>${body}</article></body></html>`;
+
+  it('joins the integer and the cents when a grid puts them in two cells', async () => {
+    mockFetch(page('<div><div>6 999</div><div>00 zł</div></div>'));
+    const article = await extractArticle('https://www.x-kom.pl/p/1');
+    expect(article.text).toContain('6 999,00 zł');
+    expect(article.text).not.toMatch(/6 999\s*\|/);
+  });
+
+  it('joins them when a line break separates the two spans', async () => {
+    mockFetch(page('<div><span>6 999</span><br><span>00 zł</span></div>'));
+    const article = await extractArticle('https://www.x-kom.pl/p/1');
+    expect(article.text).toContain('6 999,00 zł');
+  });
+
+  it('joins them when they land on consecutive lines', async () => {
+    mockFetch(page('<p>6 999</p><p>00 zł</p>'));
+    const article = await extractArticle('https://www.x-kom.pl/p/1');
+    expect(article.text).toContain('6 999,00 zł');
+  });
+
+  it('joins a symbol-first amount with the point its grouping implies', async () => {
+    mockFetch(page('<div><div>$6,999</div><div>00</div></div>'));
+    const article = await extractArticle('https://shop.example.com/p/1');
+    expect(article.text).toContain('$6,999.00');
+  });
+
+  it('leaves a grouped amount and a range of amounts as they are', async () => {
+    mockFetch(
+      page(
+        '<p>Nagroda wynosi 1 500 000 zł w tym roku.</p><p>Ceny od 6 999 do 7 200 zł zaleznie od sklepu.</p>'
+      )
+    );
+    const article = await extractArticle('https://example.com/x');
+    expect(article.text).toContain('1 500 000 zł');
+    expect(article.text).toContain('od 6 999 do 7 200 zł');
+  });
+
+  it('does not read a quantity next to a small price as cents (a limitation: prices under 100 stay split)', async () => {
+    mockFetch(
+      page('<table><tr><td>Sztuk</td><td>3</td><td>20 zł</td></tr></table>')
+    );
+    const article = await extractArticle('https://example.com/x');
+    expect(article.text).toContain('Sztuk | 3 | 20 zł');
+  });
+});
+
 describe('main-content isolation on pages without a single landmark', () => {
   const originalFetch = global.fetch;
   afterEach(() => {
