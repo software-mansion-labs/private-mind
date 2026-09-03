@@ -537,33 +537,52 @@ const CONTEXT_DATE =
   /\b\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}\b|\b\d{1,2}\s?(?:sty|lut|mar|kwi|maj|cze|lip|sie|wrz|pa[źz]|lis|gru|jan|feb|apr|jun|jul|aug|sep|oct|nov|dec)/i;
 const CONTEXT_AMOUNT = /\d{1,3}(?:[.,\u00A0\u202F ]\d{3})+|\d+[.,]\d+|\d{4,}/;
 
-const TOPIC_MIN_TERMS = 1;
-const TOPIC_MIN_CONTEXT_CHARS = 600;
+const EVIDENCE_MIN_TOKENS = 5;
+const EVIDENCE_MIN_ANSWER_CHARS = 40;
+const DIGIT_BASES = [0x0660, 0x06f0, 0x0966, 0x09e6, 0xff10];
+const ANY_DIGIT_CHAR = /\p{Nd}/gu;
+const NUMBER_RUN = /\d[\d.,]*/g;
+const NAME_RUN = /\p{Lu}[\p{L}\p{N}-]{2,}/gu;
 
-export const refusesWhileSourcesCoverTopic = (
+const toAsciiDigits = (text: string): string =>
+  text.replace(ANY_DIGIT_CHAR, (char) => {
+    const code = char.codePointAt(0) ?? 0;
+    if (code >= 0x30 && code <= 0x39) return char;
+    for (const base of DIGIT_BASES) {
+      if (code >= base && code <= base + 9) return String(code - base);
+    }
+    return char;
+  });
+
+export const distinctiveEvidence = (text: string): Set<string> => {
+  const found = new Set<string>();
+  if (!text) return found;
+  const ascii = toAsciiDigits(text);
+  for (const match of ascii.match(NUMBER_RUN) ?? []) {
+    const value = match.replace(/[.,]+$/, '');
+    if (value.length >= 2) found.add(value);
+  }
+  for (const match of text.match(NAME_RUN) ?? []) {
+    found.add(foldForMatching(match));
+  }
+  return found;
+};
+
+export const answerUsesNoRetrievedEvidence = (
   answer: string,
   question: string | undefined,
   context: string
 ): boolean => {
-  if (!question || context.trim().length < TOPIC_MIN_CONTEXT_CHARS)
-    return false;
-  if (
-    QUESTION_WANTS_DATE.test(question) ||
-    QUESTION_WANTS_AMOUNT.test(question)
-  ) {
-    return false;
+  const visible = stripThinkBlocks(answer).trim();
+  if (visible.length < EVIDENCE_MIN_ANSWER_CHARS) return false;
+  const asked = distinctiveEvidence(question ?? '');
+  const offered = distinctiveEvidence(context);
+  for (const term of asked) offered.delete(term);
+  if (offered.size < EVIDENCE_MIN_TOKENS) return false;
+  for (const term of distinctiveEvidence(visible)) {
+    if (offered.has(term)) return false;
   }
-  const visible = stripThinkBlocks(answer);
-  if (!visible || !ABSENCE_CLAIM.test(visible)) return false;
-  const folded = foldForMatching(context);
-  const language = detectQuestionLanguage(question)?.code;
-  let covered = 0;
-  for (const term of extractQueryTerms(question, language)) {
-    if (term.length < 4) continue;
-    if (folded.includes(stemPrefix(term))) covered += 1;
-    if (covered >= TOPIC_MIN_TERMS) return true;
-  }
-  return false;
+  return true;
 };
 
 export const claimsMissingEvidenceItHas = (
