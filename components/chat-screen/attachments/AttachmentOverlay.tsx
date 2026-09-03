@@ -25,6 +25,8 @@ interface Props {
   menuMaxBottom: number;
   /** Window Y of the sheet's top edge — one footprint for grid and camera. */
   sheetTop: number;
+  /** Window Y of its bottom edge, inside the safe area. */
+  sheetBottom: number;
   composerBottom: SharedValue<number>;
   rowsBelowStrip: SharedValue<number>;
   strip: SharedValue<number>;
@@ -54,6 +56,7 @@ const AttachmentOverlay = ({
   gridHeight,
   menuMaxBottom,
   sheetTop,
+  sheetBottom,
   composerBottom,
   rowsBelowStrip,
   strip,
@@ -237,6 +240,7 @@ const AttachmentOverlay = ({
             gridHeight={gridHeight}
             menuMaxBottom={menuMaxBottom}
             sheetTop={sheetTop}
+            sheetHeight={gridHeight}
             interactive={
               isFlying ? 'none' : panel.mode === 'menu' ? 'menu' : 'grid'
             }
@@ -258,14 +262,20 @@ const AttachmentOverlay = ({
             }
             grid={
               !enteredSheet ? null : panel.sheet === 'camera' ? (
-                <CameraSheet
-                  ref={cameraRef}
-                  width={gridWidth}
-                  height={gridHeight}
-                  facing={facing}
-                  flash={flash}
-                  lifting={isFlying}
-                />
+                // Only while the camera is the mode, not merely the sheet. The
+                // preview is a native surface: `‹` back to the menu fades the
+                // layer to nothing on iOS, but on Android the surface ignores
+                // the opacity and stays on screen behind the rows.
+                panel.mode === 'camera' ? (
+                  <CameraSheet
+                    ref={cameraRef}
+                    width={gridWidth}
+                    height={gridHeight}
+                    facing={facing}
+                    flash={flash}
+                    lifting={isFlying}
+                  />
+                ) : null
               ) : (
                 <PhotoGrid
                   ref={gridRef}
