@@ -4114,3 +4114,63 @@ shapes — accessory rail, metadata run, spec table with `:` and `|`
 separators, ranking with several `<article>`s, promo rail before the `<h1>`
 — are the shapes to reach for when a new page misbehaves. Add the page's
 shape as a fixture; do not tune the constants to the page.
+
+## Landing round: the plan above, built
+
+Every item of the plan is on `web-search-compact`, each as its own commit
+with a test that fails without it. Where the build deviated from the plan,
+the deviation and its reason are here so nobody "fixes" it back.
+
+| Plan item | Commit | Test |
+|---|---|---|
+| P1.1 conversation subject | `881f27c` | `__tests__/conversationDigest.test.ts` |
+| P1.2 language-drift guard | `f2a89e6` | `__tests__/runWebSearch.test.ts` |
+| P1.3 topic anchors | `8e9c598` | `__tests__/buildSearchQuery.test.ts` |
+| P1.4 intent kind | `04f0bf2` | `__tests__/webResultsToContext.test.ts` |
+| split-price join | `6360228` | `__tests__/extractArticle.test.ts` |
+| filler floor | `9bc8108` | `__tests__/webResultsToContext.test.ts` |
+| P2.5 per-source relevance | `fb0c77d` | `__tests__/webResultsToContext.test.ts` |
+| P2.5 aspect coverage nudge | `2e0433d` | `__tests__/aspectCoverage.test.ts`, `__tests__/llmStore.test.ts` |
+| P3.7 badge ↔ Sources button | `6384d12` | `__tests__/useMessageSources.test.ts`, `__tests__/MessageItem.test.tsx` |
+| P2.6 nudge flicker | `996636d` | `__tests__/llmStore.test.ts`, `__tests__/MessageItem.test.tsx` |
+| P3.8 trace rebuild | `dffd8dc`, `a675171` | `__tests__/chatRepository.test.ts`, `__tests__/webSearchTrace.test.ts` |
+
+**P2.6 — the retry's metrics are thrown away.** With streaming suppressed
+the store's `firstTokenTime` still belongs to the first generation, so the
+retry's TTFT would come out negative. The bubble keeps the first answer's
+ttft/tps: they describe the generation the user watched. The dangling-list
+continuation still streams — there, appending is the point.
+
+**P3.8 — `searchedQuery` is gone; `sourceQuery` is on the row.** The
+earlier entry above says the persisted rows "carry `sourceQuery` per result
+and `searchedQuery` on the document". Half true: `sourceQuery` lived on the
+in-memory result only, and `searchedQuery` (the ' + '-joined label) was
+dropped by `parseSourceDocuments` on reload and read by nobody. Each source
+row now records the query that found it, the parser keeps it, and
+`savedSteps()` emits one step per distinct value in saved order.
+
+**P3.8 — "pages only for `read: true`" became "not both unopened and
+unused".** P3.7 made a listing-only source the model cited (`read: false,
+used: true`) a displayed source; the trace follows the same rule so the
+badge, the Sources sheet and the trace name the same pages. Rows saved
+before the `read` flag existed keep showing. Fetch failures are not
+persisted, so a replayed trace carries no failure note — only the live one
+can say why a page could not be read. `animateRows={false}` on replay was
+already in place.
+
+**P2.5 — the coverage nudge is the last in the chain.** Wrong language,
+question echo, missing evidence and circular answer still take precedence;
+one nudge per turn. The nudge names the sub-queries whose distinctive stems
+appear in the context but not in the answer; a sub-query with no stem of its
+own (`pogoda Kraków` vs `pogoda Kraków weekend`) is judged on the stems it
+does not share, and stopwords (`jutro`) are not stems, so a fixture that
+relies on one silently tests nothing.
+
+What to watch on the Pixel, in order: (1) a two-part question
+("porównaj kurs bitcoina i ethereum") — the trace shows two searches, both
+pages, and the answer covers both or a single "Refining…" pass appears
+under the first answer without the text doubling; (2) leave the chat and
+come back — the trace still shows the two searches and only the pages that
+were read or cited; (3) a source badge always comes with a Sources button;
+(4) a shop page at the 2048 default — the excerpt carries the price line,
+not an accessory rail.
