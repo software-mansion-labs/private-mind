@@ -2,12 +2,13 @@ import { getPromptCharBudget } from '../../constants/context-window';
 import { WEB_SNIPPET_MAX_CHARS } from '../../constants/web';
 import type { Model } from '../../database/modelRepository';
 
-const INSTRUCTION_HINT_MARGIN_CHARS = 1200;
+const ASSEMBLED_INSTRUCTION_CHARS = 3000;
 
 export const webContextCharBudget = (
   model: Model | null | undefined,
   existingContext: string[],
-  systemPrompt = ''
+  systemPrompt = '',
+  densitySample?: string
 ): number | undefined => {
   if (!model) return undefined;
   const alreadyUsed = existingContext.reduce(
@@ -15,6 +16,9 @@ export const webContextCharBudget = (
     0
   );
   const overhead =
-    systemPrompt.length + INSTRUCTION_HINT_MARGIN_CHARS + alreadyUsed;
-  return Math.max(WEB_SNIPPET_MAX_CHARS, getPromptCharBudget(model) - overhead);
+    systemPrompt.length + ASSEMBLED_INSTRUCTION_CHARS + alreadyUsed;
+  return Math.max(
+    WEB_SNIPPET_MAX_CHARS,
+    getPromptCharBudget(model, densitySample) - overhead
+  );
 };

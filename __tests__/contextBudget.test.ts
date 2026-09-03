@@ -22,7 +22,7 @@ describe('webContextCharBudget', () => {
 
   it('shrinks the budget as the actual system prompt grows (F12)', () => {
     const shortPrompt = 'You are a helpful assistant.';
-    const longPrompt = 'x'.repeat(2000);
+    const longPrompt = 'x'.repeat(300);
 
     const withShortPrompt = webContextCharBudget(baseModel, [], shortPrompt)!;
     const withLongPrompt = webContextCharBudget(baseModel, [], longPrompt)!;
@@ -32,6 +32,22 @@ describe('webContextCharBudget', () => {
       longPrompt.length - shortPrompt.length,
       0
     );
+  });
+
+  it('uses the question to judge character density, so a dense script gets less room', () => {
+    const latin = webContextCharBudget(
+      baseModel,
+      [],
+      '',
+      'How much does the Samsung Galaxy S25 cost in Poland?'
+    )!;
+    const cjk = webContextCharBudget(
+      baseModel,
+      [],
+      '',
+      '三星 Galaxy S25 在波兰的价格是多少？'
+    )!;
+    expect(cjk).toBeLessThan(latin);
   });
 
   it('accounts for context already spent on attached documents', () => {

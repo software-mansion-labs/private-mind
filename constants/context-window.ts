@@ -85,11 +85,15 @@ export const getPromptTokenBudget = (model: Model): number => {
   );
 };
 
+export const PROMPT_TOKEN_SAFETY = 0.85;
+
 export const getPromptCharBudget = (model: Model, sample?: string): number => {
-  const tokenBudget = getPromptTokenBudget(model);
-  const density =
-    sample && sample.length > 0
-      ? estimatePromptTokens(sample) / sample.length
-      : DEFAULT_TOKENS_PER_CHAR;
-  return Math.floor(tokenBudget / density);
+  const tokenBudget = Math.floor(
+    getPromptTokenBudget(model) * PROMPT_TOKEN_SAFETY
+  );
+  if (!sample || sample.length === 0) {
+    return Math.floor(tokenBudget / DEFAULT_TOKENS_PER_CHAR);
+  }
+  const density = estimatePromptTokens(sample) / sample.length;
+  return Math.max(0, Math.floor((tokenBudget - 1) / density));
 };
