@@ -109,7 +109,15 @@ const chunkPages = async (
 
   const chunks: WebChunk[] = [];
   for (const { result, pageIndex } of pages) {
-    const text = selectRelevantContent(result.content!, query, perPageMaxChars);
+    const text = selectRelevantContent(
+      result.content!,
+      query,
+      perPageMaxChars,
+      {
+        title: result.title,
+        verifiedPrice: result.product?.price,
+      }
+    );
     const split = (await splitter.splitText(text)).slice(0, perPageCap);
     split.forEach((chunkText, chunkIndex) => {
       const trimmed = chunkText.trim();

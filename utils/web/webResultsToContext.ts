@@ -86,6 +86,16 @@ const coalesceLines = (text: string, target: number): string[] => {
   return passages;
 };
 
+const wordBoundaryBefore = (
+  text: string,
+  start: number,
+  limit: number
+): number => {
+  if (limit >= text.length) return text.length;
+  const space = text.lastIndexOf(' ', limit);
+  return space > start + PASSAGE_MAX_LEN / 2 ? space : limit;
+};
+
 const splitIntoPassages = (text: string, budget: number): string[] => {
   const passages: string[] = [];
   const target = Math.max(CELL_MAX_LEN, Math.min(PASSAGE_TARGET_LEN, budget));
@@ -101,8 +111,10 @@ const splitIntoPassages = (text: string, budget: number): string[] => {
         passages.push(s);
         continue;
       }
-      for (let i = 0; i < s.length; i += PASSAGE_MAX_LEN) {
-        passages.push(s.slice(i, i + PASSAGE_MAX_LEN).trim());
+      for (let start = 0; start < s.length;) {
+        const end = wordBoundaryBefore(s, start, start + PASSAGE_MAX_LEN);
+        passages.push(s.slice(start, end).trim());
+        start = end;
       }
     }
   }
@@ -138,35 +150,124 @@ export const MONEY_ANCHOR =
   /\d[\d\s.,]*\s?(?:zl(?:ot(?:ych|ego|emu|ymi|ym|y|e))?|pln|eur(?:o)?|usd|gbp|czk|chf|dolar(?:ow|ach|ami|em|a|y)?)(?![\p{L}\p{N}])|[$€£¥]\s?\d|\d\s?[$€£¥]/giu;
 const MONEY_BONUS = 2;
 
+const TOPIC_NEEDLE_DISCOUNT = 0.5;
+
+const RECORD_LINE =
+  /^(?=[^:|\n]{0,40}\p{L})([^:|\n]{2,40}?)\s*[:|]\s*(\S.{0,79})$/u;
+const RECORD_KEY_MAX_REPEATS = 2;
+
+const recordKeys = (passage: string): string[] =>
+  passage
+    .split('\n')
+    .map((line) => line.trim().match(RECORD_LINE)?.[1])
+    .filter((key): key is string => key !== undefined)
+    .map((key) => foldForMatching(key));
+
+const creditedRecords = (passages: string[]): Set<number> => {
+  const keysOf = passages.map(recordKeys);
+  const keyCount = new Map<string, number>();
+  keysOf
+    .flat()
+    .forEach((key) => keyCount.set(key, (keyCount.get(key) ?? 0) + 1));
+  const isRecordLine = (index: number): boolean =>
+    index >= 0 &&
+    index < passages.length &&
+    keysOf[index]!.length === 1 &&
+    !passages[index]!.includes('\n');
+  const credited = new Set<number>();
+  keysOf.forEach((keys, index) => {
+    const structured =
+      keys.length >= 2 ||
+      (isRecordLine(index) &&
+        (isRecordLine(index - 1) || isRecordLine(index + 1)));
+    const distinct = keys.some(
+      (key) => keyCount.get(key)! <= RECORD_KEY_MAX_REPEATS
+    );
+    if (structured && distinct) credited.add(index);
+  });
+  return credited;
+};
+
+const parseAmount = (text: string): number | null => {
+  const digits = text.match(/\d[\d\s.,]*/)?.[0].replace(/\s/g, '');
+  if (!digits) return null;
+  const decimal = digits.match(/[.,](\d{1,2})$/);
+  const whole = (
+    decimal ? digits.slice(0, -decimal[0].length) : digits
+  ).replace(/[.,]/g, '');
+  const value = Number(`${whole}.${decimal?.[1] ?? '0'}`);
+  return Number.isFinite(value) ? value : null;
+};
+
+const AMOUNT_TOLERANCE = 0.005;
+
+const isOtherAmount = (mention: string, verified: number | null): boolean => {
+  if (verified === null) return false;
+  const amount = parseAmount(mention);
+  return (
+    amount !== null && Math.abs(amount - verified) > verified * AMOUNT_TOLERANCE
+  );
+};
+
+interface PassageScoring {
+  needles: string[];
+  weights: number[];
+  topicNeedles: Set<string>;
+  wantsDate: boolean;
+  wantsPrice: boolean;
+  verifiedAmount: number | null;
+}
+
 const scorePassage = (
   folded: string,
-  needles: string[],
-  weights: number[],
-  wantsDate = false,
-  wantsPrice = false
+  scoring: PassageScoring,
+  creditedRecord: boolean
 ): number => {
+  const { needles, weights, topicNeedles, wantsDate, wantsPrice } = scoring;
   let score = 0;
   needles.forEach((needle, index) => {
-    if (containsNeedle(folded, needle)) score += 2 * weights[index]!;
+    const topic = topicNeedles.has(needle);
+    if (containsNeedle(folded, needle) || (creditedRecord && topic)) {
+      score += 2 * weights[index]! * (topic ? TOPIC_NEEDLE_DISCOUNT : 1);
+    }
   });
   if (wantsDate && DATE_IN_TEXT.test(folded)) score += DATE_BONUS;
+  const mentions = folded.match(MONEY_ANCHOR) ?? [];
   if (wantsPrice) {
-    if (folded.match(MONEY_ANCHOR) !== null) score += PRICE_BONUS;
+    if (mentions.length > 0) score += PRICE_BONUS;
     else score *= NO_PRICE_FACTOR;
   }
+  if (
+    mentions.some((mention) => isOtherAmount(mention, scoring.verifiedAmount))
+  ) {
+    return 0;
+  }
+  if (mentions.length > 0)
+    score += Math.min(1, mentions.length / 2) * MONEY_BONUS;
   const digits = (folded.match(/\d/g) ?? []).length;
-  if (digits === 0) return score;
-  const money = (folded.match(MONEY_ANCHOR) ?? []).length;
-  if (money > 0) score += Math.min(1, money / 2) * MONEY_BONUS;
-  const words = (folded.match(/\p{L}{3,}/gu) ?? []).length;
-  const proseRatio = Math.min(1, words / Math.max(4, digits / 2));
-  return score + Math.min(1, digits / 8) * proseRatio;
+  if (digits > 0) {
+    const words = (folded.match(/\p{L}{3,}/gu) ?? []).length;
+    const proseRatio = creditedRecord
+      ? 1
+      : Math.min(1, words / Math.max(4, digits / 2));
+    score += Math.min(1, digits / 8) * proseRatio;
+  }
+  return score;
 };
+
+const isSentenceLead = (passage: string): boolean =>
+  !passage.includes('\n') && ENDS_SENTENCE.test(passage);
+
+export interface SelectionOptions {
+  title?: string;
+  verifiedPrice?: string;
+}
 
 export const selectRelevantContent = (
   content: string,
   query: string | undefined,
-  maxChars: number
+  maxChars: number,
+  options: SelectionOptions = {}
 ): string => {
   const trimmed = content.trim();
   if (trimmed.length <= maxChars) return trimmed;
@@ -182,28 +283,41 @@ export const selectRelevantContent = (
     : [];
   if (needles.length === 0) return truncate(trimmed, maxChars);
 
+  const verifiedAmount =
+    options.verifiedPrice !== undefined
+      ? parseAmount(options.verifiedPrice)
+      : null;
   const wantsDate = !!query && WHEN_QUESTION.test(query);
-  const wantsPrice = !!query && PRICE_QUESTION.test(query);
+  const wantsPrice =
+    !!query && verifiedAmount === null && PRICE_QUESTION.test(query);
   const all = splitIntoPassages(trimmed, maxChars);
   const foldedAll = all.map(foldForMatching);
-  const weights = idfWeights(foldedAll, needles);
+  const foldedTitle = foldForMatching(options.title ?? '');
+  const scoring: PassageScoring = {
+    needles,
+    weights: idfWeights(foldedAll, needles),
+    topicNeedles: new Set(
+      needles.filter((needle) => containsNeedle(foldedTitle, needle))
+    ),
+    wantsDate,
+    wantsPrice,
+    verifiedAmount,
+  };
+  const credited =
+    scoring.topicNeedles.size > 0 ? creditedRecords(all) : new Set<number>();
 
   const leadWindow = Math.min(LEAD_WINDOW, all.length);
   const leadBonus = (index: number): number =>
-    index < leadWindow ? LEAD_BONUS * (1 - index / leadWindow) : 0;
+    index < leadWindow && isSentenceLead(all[index]!)
+      ? LEAD_BONUS * (1 - index / leadWindow)
+      : 0;
 
   const seenText = new Set<string>();
   const scored = all
     .map((text, index) => ({
       text,
       index,
-      score: scorePassage(
-        foldedAll[index]!,
-        needles,
-        weights,
-        wantsDate,
-        wantsPrice
-      ),
+      score: scorePassage(foldedAll[index]!, scoring, credited.has(index)),
     }))
     .filter((passage) => {
       const key = foldedAll[passage.index]!;
@@ -287,6 +401,21 @@ export const selectRelevantContent = (
   return excerpt || truncate(trimmed, maxChars);
 };
 
+const SNIPPET_REPEAT_SHARE = 0.6;
+const SNIPPET_TOKEN = /\p{L}{4,}|\d[\d.,]*\d|\d/gu;
+
+const snippetRepeatsExcerpt = (snippet: string, excerpt: string): boolean => {
+  const folded = foldForMatching(excerpt);
+  const tokens = [
+    ...new Set(foldForMatching(snippet).match(SNIPPET_TOKEN) ?? []),
+  ];
+  if (tokens.length === 0) return true;
+  const figures = tokens.filter((token) => /\d/.test(token));
+  if (figures.some((figure) => !folded.includes(figure))) return false;
+  const repeated = tokens.filter((token) => folded.includes(token)).length;
+  return repeated >= tokens.length * SNIPPET_REPEAT_SHARE;
+};
+
 const sourceBudgets = (
   totalMaxChars: number | undefined,
   count: number
@@ -340,11 +469,25 @@ export const webResultsToContext = (
       (result.snippet ?? '').trim(),
       WEB_SNIPPET_MAX_CHARS
     );
-    const relevant = result.content
-      ? selectRelevantContent(result.content, query, budgets[index]!)
-      : '';
+    const budget = budgets[index]!;
+    const select = (maxChars: number): string =>
+      result.content
+        ? selectRelevantContent(result.content, query, maxChars, {
+            title: result.title,
+            verifiedPrice: result.product?.price,
+          })
+        : '';
+    const besideSnippet = select(
+      snippet
+        ? Math.max(MIN_SOURCE_EXCERPT_CHARS, budget - snippet.length - 1)
+        : budget
+    );
+    const snippetKept =
+      !!snippet &&
+      (!besideSnippet || !snippetRepeatsExcerpt(snippet, besideSnippet));
+    const relevant = !snippet || snippetKept ? besideSnippet : select(budget);
     const bodyPassage = relevant
-      ? snippet
+      ? snippetKept
         ? `${relevant}\n${snippet}`
         : relevant
       : snippet;
