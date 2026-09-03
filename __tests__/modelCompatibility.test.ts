@@ -281,3 +281,38 @@ describe('isHighMemoryDevice', () => {
     expect(isHighMemoryDevice({ modelSize: 2 })).toBe(false);
   });
 });
+
+describe('a 4 GB Android phone is offered something to run', () => {
+  const smallest: Model = {
+    ...baseModel,
+    modelName: 'LFM 2.5 VL - 450M',
+    modelSize: 0.65,
+  };
+  const midsize: Model = {
+    ...baseModel,
+    modelName: 'Qwen 3 - 1.7B',
+    modelSize: 2.16,
+  };
+
+  beforeEach(() => {
+    setPlatform('android');
+    mockGetTotalMemorySync.mockReturnValue(gb(3.87));
+  });
+
+  it('leaves room for the smallest shipped model', () => {
+    expect(isModelCompatible(smallest)).toBe(true);
+  });
+
+  it('offers web search alongside that model', () => {
+    expect(hasMemoryForWebSearch(smallest)).toBe(true);
+  });
+
+  it('still keeps a 1.7B model out, which only fits by swapping', () => {
+    expect(isModelCompatible(midsize)).toBe(false);
+  });
+
+  it('holds the full reserve back once the device is large enough', () => {
+    mockGetTotalMemorySync.mockReturnValue(gb(8));
+    expect(getAppMemoryBudgetGB()).toBeCloseTo(5.5);
+  });
+});
