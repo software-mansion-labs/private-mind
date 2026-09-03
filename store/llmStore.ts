@@ -29,6 +29,7 @@ import { detectQuestionLanguage } from '../utils/questionLanguage';
 import {
   detectGroundingCaveats,
   claimsMissingEvidenceItHas,
+  refusesWhileSourcesCoverTopic,
   humanizeSourceReferences,
   isCircularNonAnswer,
   isDanglingListAnswer,
@@ -444,6 +445,11 @@ const EVIDENCE_PRESENT_RETRY_PROMPT =
   'The block does contain a figure of the kind the question asks for. Read it ' +
   'again, including the page titles, find that value and answer with it. Only ' +
   'if it truly is not there, say so.';
+
+const SOURCES_COVER_TOPIC_RETRY_PROMPT =
+  'The sources do discuss what the question asks about. Read them again, ' +
+  'including the page titles, and answer from what they actually say. If ' +
+  'they cover it only in part, give that part instead of refusing.';
 
 const WRONG_LANGUAGE_RETRY_PROMPT =
   'That reply was written in the wrong language. Write the same answer again, ' +
@@ -974,6 +980,27 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           EVIDENCE_PRESENT_RETRY_PROMPT,
           (retried) =>
             claimsMissingEvidenceItHas(retried, currentQuestion, promptContext)
+        );
+      }
+
+      if (
+        !nudged &&
+        finalResponse &&
+        refusesWhileSourcesCoverTopic(
+          finalResponse,
+          currentQuestion,
+          promptContext
+        )
+      ) {
+        await nudgeOnce(
+          'Answer refuses while the sources cover the topic, retrying once',
+          SOURCES_COVER_TOPIC_RETRY_PROMPT,
+          (retried) =>
+            refusesWhileSourcesCoverTopic(
+              retried,
+              currentQuestion,
+              promptContext
+            )
         );
       }
 

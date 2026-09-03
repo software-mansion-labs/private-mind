@@ -1,4 +1,7 @@
-import { claimsMissingEvidenceItHas } from '../utils/messageSources';
+import {
+  claimsMissingEvidenceItHas,
+  refusesWhileSourcesCoverTopic,
+} from '../utils/messageSources';
 
 const NBP_CONTEXT =
   'Kurs euro Kurs InternetowyKantor.pl Nasz kurs | Kurs NBP Kurs kupna EUR InternetowyKantor.pl 4,3327 | Zmiana kursu średniego';
@@ -119,6 +122,69 @@ describe('refusals measured on the Pixel 10, Gemma 4 - 2B', () => {
         'Przepraszam, ale nie mam dostępu do aktualnych informacji o cenach.',
         'Ile kosztuje uncja zlota w dolarach?',
         'Sprawdz cene zlota za uncje, gram lub kilogram na naszym wykresie.'
+      )
+    ).toBe(false);
+  });
+});
+
+describe('refusals on questions that ask for no figure at all', () => {
+  const CAMERA_CONTEXT = [
+    'iPhone 17 Pro aparat: potrojny uklad 48 Mpix z teleobiektywem i trybem nocnym.',
+    'Samsung Galaxy S25 Ultra aparat: matryca 200 Mpix, piecio-krotny zoom optyczny.',
+    'W testach nocnych aparat Galaxy S25 Ultra zachowuje wiecej detali, natomiast',
+    'iPhone 17 Pro lepiej odwzorowuje kolory skory w swietle dziennym.',
+    'Oba telefony nagrywaja wideo w 8K, a stabilizacja jest porownywalna.',
+    'Recenzenci zwracaja uwage na inny charakter przetwarzania obrazu w obu aparatach.',
+    'Zoom cyfrowy w Galaxy S25 Ultra siega 100x, w iPhone 17 Pro jest ograniczony.',
+    'Aparat przedni w obu modelach oferuje autofokus i nagrywanie w wysokiej jakosci.',
+  ].join(' ');
+
+  it('retries a refusal when the sources plainly discuss the subject', () => {
+    expect(
+      refusesWhileSourcesCoverTopic(
+        'Na podstawie dostarczonych źródeł nie jestem w stanie porównać jakości aparatów między tymi telefonami.',
+        'Ktory z nich ma lepszy aparat?',
+        CAMERA_CONTEXT
+      )
+    ).toBe(true);
+  });
+
+  it('leaves a price question to the stricter figure rule', () => {
+    expect(
+      refusesWhileSourcesCoverTopic(
+        'Na podstawie dostarczonych źródeł nie ma informacji o cenie.',
+        'Ile kosztuje iPhone 17 Pro?',
+        CAMERA_CONTEXT
+      )
+    ).toBe(false);
+  });
+
+  it('does not retry when barely anything was retrieved', () => {
+    expect(
+      refusesWhileSourcesCoverTopic(
+        'Nie ma informacji na ten temat w źródłach.',
+        'Ktory z nich ma lepszy aparat?',
+        'Sklep internetowy. Koszyk jest pusty.'
+      )
+    ).toBe(false);
+  });
+
+  it('does not retry when the sources are about something else', () => {
+    expect(
+      refusesWhileSourcesCoverTopic(
+        'Nie ma informacji na ten temat w źródłach.',
+        'Ktory z nich ma lepszy aparat?',
+        'Rozklad jazdy pociagow z Krakowa do Zakopanego. '.repeat(20)
+      )
+    ).toBe(false);
+  });
+
+  it('does not fire on an answer that actually answers', () => {
+    expect(
+      refusesWhileSourcesCoverTopic(
+        'Galaxy S25 Ultra ma lepszy zoom, a iPhone 17 Pro wierniejsze kolory.',
+        'Ktory z nich ma lepszy aparat?',
+        CAMERA_CONTEXT
       )
     ).toBe(false);
   });
