@@ -687,6 +687,33 @@ describe('planWebSearch', () => {
       expect(plan.queries).toEqual(['parametry techniczne LG OLED65B65LA']);
     });
 
+    it('carries the topic the user kept returning to into a planner query that dropped it (live #353)', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "cheaper TV", "queries": ["tańszy telewizor podobny"]}'
+        );
+      const plan = await planWebSearch(
+        'Trochę za drogi znajdź tańszy spełniający moje wymagania',
+        [
+          ...oledHistory,
+          {
+            role: 'user',
+            content:
+              'Jeszcze raz wyszukaj tv do mojego salonu najlepszy tylko oled',
+          },
+          {
+            role: 'assistant',
+            content:
+              'Najlepszym telewizorem OLED do salonu jest Samsung QE65S99H za 12 999 zł.',
+          },
+        ],
+        generate,
+        { today: TODAY }
+      );
+      expect(plan.queries).toEqual(['tańszy telewizor podobny OLED']);
+    });
+
     it('does not ask twice when the plan already speaks the language of the conversation', async () => {
       const generate = jest.fn().mockResolvedValue(correctedPlan);
       await planWebSearch(question, oledHistory, generate, { today: TODAY });

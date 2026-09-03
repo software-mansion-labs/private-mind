@@ -11,6 +11,7 @@ import { namesAnotherDay } from '../calendarFacts';
 import { foldForMatching } from '../queryTerms';
 import { conversationSubject, namedEntitiesIn } from './conversationSubject';
 import { sharesLanguageWith } from './queryLanguage';
+import { topicAnchorer } from './topicAnchors';
 
 export interface QueryRewriteMessage {
   role: 'system' | 'user' | 'assistant';
@@ -573,7 +574,10 @@ export const planWebSearch = async (
     };
   }
   const siteRestriction = extractSiteRestriction(query);
-  const searchQuery = carryReferentIntoQuery(query, history, opts?.digest);
+  const anchorTopic = topicAnchorer(query, history, opts?.digest);
+  const searchQuery = anchorTopic(
+    carryReferentIntoQuery(query, history, opts?.digest)
+  );
   const verbatim = (intent = ''): WebSearchPlan => ({
     needsSearch: true,
     intent,
@@ -640,6 +644,7 @@ export const planWebSearch = async (
     // has, just reached via a query the LLM did produce rather than one
     // it failed to.
     .map((q) => carryReferentIntoQuery(q, history, opts?.digest))
+    .map(anchorTopic)
     .map((q) => withSiteRestriction(q, siteRestriction));
 
   if (safeQueries.length === 0) return verbatim(plan.intent);
