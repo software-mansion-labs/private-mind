@@ -53,7 +53,7 @@ describe('useMessageSources', () => {
     expect(r.webResults.map((s) => s.name)).toEqual(['Opened', 'Unopened']);
   });
 
-  it('excludes an unopened page even when its listing grounded the answer', () => {
+  it('keeps an unopened page whose listing grounded the answer, so the badge and the Sources button agree (#357)', () => {
     const r = render([
       doc({
         name: 'Listing',
@@ -63,7 +63,9 @@ describe('useMessageSources', () => {
         used: true,
       }),
     ]);
-    expect(r.displayedSources).toEqual([]);
+    expect(r.displayedSources.map((s) => s.name)).toEqual(['Listing']);
+    expect(r.documentSources.map((s) => s.name)).toEqual(['Listing']);
+    expect(r.dominantWebSource?.name).toBe('Listing');
   });
 
   it('keeps a web source out of document sources unless it was used', () => {
