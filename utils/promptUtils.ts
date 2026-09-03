@@ -81,7 +81,9 @@ const smartTrimContextBlocks = (
       }
       const verifiedLine = verifiedProductLine(passage!);
       if (!verifiedLine) {
-        const selected = selectRelevantContent(passage!, query, innerBudget);
+        const selected = selectRelevantContent(passage!, query, innerBudget, {
+          title: name,
+        });
         return selected.length < MIN_USEFUL_PASSAGE_CHARS
           ? null
           : buildContextBlock(label!, name!, selected);
@@ -89,7 +91,9 @@ const smartTrimContextBlocks = (
       const rest = passage!.slice(verifiedLine.length);
       const restBudget = innerBudget - verifiedLine.length;
       const trimmedRest =
-        restBudget > 0 ? selectRelevantContent(rest, query, restBudget) : '';
+        restBudget > 0
+          ? selectRelevantContent(rest, query, restBudget, { title: name })
+          : '';
       return buildContextBlock(label!, name!, `${verifiedLine}${trimmedRest}`);
     })
     .filter((block): block is string => block !== null);

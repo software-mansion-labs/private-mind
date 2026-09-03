@@ -618,3 +618,198 @@ describe('Polish prices spelled out as "zlotych"', () => {
     expect('5299 zlozen'.match(MONEY_ANCHOR)).toBeNull();
   });
 });
+
+describe('selectRelevantContent — passages measured on real shop and review pages', () => {
+  it('does not hand the lead bonus to a metadata run at the top of the page', () => {
+    const metadata = [
+      'Telewizor',
+      'Samsung QE65QN90D',
+      'Zobacz recenzje',
+      'Znajdź najtańszy',
+      'Ocena użytkowników',
+      '100 %',
+    ].join('\n');
+    const filler = Array.from(
+      { length: 20 },
+      (_, i) =>
+        `Akapit ${i} opisuje ogólne wrażenia z oglądania filmów wieczorem.`
+    ).join('\n');
+    const fact =
+      'Samsung QE65QN90D ma częstotliwość odświeżania 144 Hz i jasność 2000 nitów.';
+
+    const out = selectRelevantContent(
+      `${metadata}\n${filler}\n${fact}`,
+      'parametry Samsung QE65QN90D',
+      100
+    );
+    expect(out).toContain('144 Hz');
+  });
+
+  it('brings the spec rows of a page titled after the subject into the excerpt', () => {
+    const page = [
+      'Samsung QN90D to niemal flagowa seria telewizorów Mini LED 4K na 2024 rok.',
+      'Co oferuje Samsung QN90D pod kątem specyfikacji technicznej? Sprawdzamy.',
+      'Samsung QN90D wygląda elegancko, a jego smukła ramka pasuje do każdego salonu.',
+      'Seria Samsung QN90D dostępna jest w rozmiarach od 43 do 98 cali.',
+      'Częstotliwość odświeżania: 120Hz (do 144Hz)',
+      'Rozdzielczość: 4K (3,840 x 2,160)',
+      'Podświetlenie: Mini LED',
+      'Moc RMS: 70W',
+      'Procesor: NQ4 AI Gen2',
+      'Publikujemy analizy specyfikacji technicznych telewizorów Samsung od 2015 roku.',
+    ].join('\n');
+
+    const out = selectRelevantContent(
+      page,
+      'parametry techniczne Samsung QN90D',
+      260,
+      { title: 'Samsung QN90D: specyfikacja techniczna' }
+    );
+    expect(out).toContain('120Hz');
+    expect(out).toContain('Rozdzielczość');
+  });
+
+  it('leaves the spec rows out when the page title says nothing about the subject', () => {
+    const page = [
+      'Samsung QN90D to niemal flagowa seria telewizorów Mini LED 4K na 2024 rok.',
+      'Co oferuje Samsung QN90D pod kątem specyfikacji technicznej? Sprawdzamy.',
+      'Samsung QN90D wygląda elegancko, a jego smukła ramka pasuje do każdego salonu.',
+      'Seria Samsung QN90D dostępna jest w rozmiarach od 43 do 98 cali.',
+      'Częstotliwość odświeżania: 120Hz (do 144Hz)',
+      'Rozdzielczość: 4K (3,840 x 2,160)',
+      'Podświetlenie: Mini LED',
+      'Moc RMS: 70W',
+      'Procesor: NQ4 AI Gen2',
+      'Publikujemy analizy specyfikacji technicznych telewizorów Samsung od 2015 roku.',
+    ].join('\n');
+
+    const out = selectRelevantContent(
+      page,
+      'parametry techniczne Samsung QN90D',
+      260,
+      { title: 'Nowości ze świata telewizorów' }
+    );
+    expect(out).not.toContain('120Hz');
+  });
+
+  it('cuts an over-long sentence at a word boundary', () => {
+    const list = Array.from({ length: 90 }, (_, i) => `element${i * 13},`).join(
+      ' '
+    );
+    const out = selectRelevantContent(list, 'element', 400);
+    expect(out.length).toBeGreaterThan(300);
+    for (const token of out.split(' ')) {
+      expect(token).toMatch(/^element\d+,$/);
+    }
+  });
+});
+
+describe('webResultsToContext — a single-product page with a verified price', () => {
+  const shopPage = [
+    'LG OLED65B65LA 65" OLED 4K 120Hz webOS',
+    'Przekątna ekranu : 65"',
+    'Typ telewizora : OLED',
+    'Klasa energetyczna : F',
+    'Rozdzielczość : UHD 4K 3840 x 2160',
+    'Cena: 6 999,00 zł (z VAT)',
+    'Dodaj do koszyka Dostępny Dowiedz się więcej Najwcześniej u Ciebie: w poniedziałek | Dowiedz się więcej Darmowa dostawa Koszty dostawy',
+    'Rekomendowane akcesoria',
+    'Silver Monkey UT-800',
+    'Cena: 229,00 zł',
+    'Seagate Expansion 2TB',
+    'Cena: 159,00 zł',
+    'Google TV Streamer 4K',
+    'Cena: 497,00 zł',
+    'One For All WM2611',
+    'Cena: 75,00 zł',
+    'Telewizor LG OLED65B65LA to połączenie nowoczesnej technologii i eleganckiego designu, który uczyni każdą przestrzeń salonu wyjątkową.',
+    'Dzięki ekranowi OLED o przekątnej 65 cali i rozdzielczości UHD 4K każdy film zyska na jakości.',
+    'Technologia OLED zapewnia głębokie czernie i jasne biele, a odświeżanie 120 Hz gwarantuje płynność.',
+  ].join('\n');
+
+  const shop = (over: Partial<WebSearchResult> = {}): WebSearchResult => ({
+    title:
+      'LG OLED65B65LA 65" OLED 4K 120Hz webOS - Telewizor 65" - najlepsze ceny w x-kom.pl',
+    url: 'https://www.x-kom.pl/p/1510638-telewizor-lg-oled65b65la.html',
+    snippet: 'Telewizor LG OLED65B65LA - kup w x-kom.',
+    content: shopPage,
+    product: { name: 'LG OLED65B65LA', price: '6999', currency: 'PLN' },
+    ...over,
+  });
+
+  it('stops hunting prices in the body once the product price is verified', () => {
+    const { context } = webResultsToContext(
+      [shop()],
+      'cena LG OLED65B65LA',
+      0,
+      200
+    );
+    expect(context[0]).toContain('6 999,00 zł');
+    expect(context[0]).toContain('nowoczesnej technologii');
+    expect(context[0]).not.toContain('229,00 zł');
+  });
+
+  it('still hunts the price in the body when nothing verified it', () => {
+    const { context } = webResultsToContext(
+      [shop({ product: undefined })],
+      'cena LG OLED65B65LA',
+      0,
+      200
+    );
+    expect(context[0]).toContain('6 999,00 zł');
+  });
+});
+
+describe('webResultsToContext — the snippet against the source budget', () => {
+  it('drops a snippet that repeats what the excerpt already says', () => {
+    const snippet = 'Kurs euro w NBP wynosi dziś 4,2650 zł i jest stabilny.';
+    const { context } = webResultsToContext(
+      [
+        result({
+          snippet,
+          content: `${snippet} Analitycy spodziewają się spokojnego tygodnia na rynku walut.`,
+        }),
+      ],
+      'kurs euro',
+      0,
+      2000
+    );
+    expect(context[0]!.match(/4,2650/g)).toHaveLength(1);
+  });
+
+  it('counts the snippet against the source budget instead of adding it on top', () => {
+    const snippet =
+      'Notowania euro z ostatnich dni: 4,2650 zł, 4,2710 zł oraz 4,2590 zł, według tabeli A Narodowego Banku Polskiego z poniedziałku.';
+    const content = Array.from(
+      { length: 60 },
+      (_, i) =>
+        `Kurs euro na rynku międzybankowym w dniu ${i} wynosił ${4.2 + i / 1000} zł.`
+    ).join(' ');
+    const { sourceDocuments } = webResultsToContext(
+      [result({ snippet, content })],
+      'kurs euro',
+      0,
+      1000
+    );
+    expect(sourceDocuments[0]!.passage!.length).toBeLessThanOrEqual(1000);
+    expect(sourceDocuments[0]!.passage).toContain('4,2710');
+  });
+
+  it('hands the share reserved for a dropped snippet back to the excerpt', () => {
+    const lines = Array.from(
+      { length: 60 },
+      (_, i) =>
+        `Kurs euro na rynku międzybankowym w dniu ${i} wynosił ${4.2 + i / 1000} zł.`
+    );
+    const snippet = lines.slice(0, 5).join(' ');
+    const { sourceDocuments } = webResultsToContext(
+      [result({ snippet, content: lines.join(' ') })],
+      'kurs euro',
+      0,
+      1000
+    );
+    const passage = sourceDocuments[0]!.passage!;
+    expect(passage.length).toBeLessThanOrEqual(1000);
+    expect(passage.length).toBeGreaterThan(1000 - snippet.length);
+  });
+});
