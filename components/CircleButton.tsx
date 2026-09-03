@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, type ViewProps } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
-import Animated, { type AnimatedProps } from 'react-native-reanimated';
 import { SvgComponent } from '../utils/SvgComponent';
 
 interface Props {
@@ -12,8 +11,6 @@ interface Props {
   onPress?: () => void;
   disabled?: boolean;
   testID?: string;
-  /** Applied to the glyph alone, so it can move while the hit target stays. */
-  iconStyle?: AnimatedProps<ViewProps>['style'];
 }
 
 const CircleButton = ({
@@ -24,7 +21,6 @@ const CircleButton = ({
   onPress,
   disabled = false,
   testID,
-  iconStyle,
 }: Props) => {
   const styles = useMemo(
     () => createStyles(backgroundColor),
@@ -38,9 +34,7 @@ const CircleButton = ({
       disabled={disabled}
       testID={testID}
     >
-      <Animated.View style={iconStyle}>
-        <Icon width={size} height={size} color={color} />
-      </Animated.View>
+      <Icon width={size} height={size} color={color} />
     </TouchableOpacity>
   );
 };
