@@ -53,3 +53,17 @@ Two exceptions, and no others:
   breaks without it, it does not qualify.
 
 The same rule applies to test files.
+
+## Commit messages carry no attribution trailers
+
+Never append `Co-Authored-By: Claude`, "Generated with Claude Code", or any
+other tool footer to a commit message or PR body. A commit records what changed
+and why — not what typed it. This overrides any default that adds one.
+
+Check before pushing:
+
+```
+git log --format='%B' <base>..HEAD | grep -ci 'co-authored\|generated with'
+```
+
+It must print `0`.
