@@ -88,3 +88,38 @@ describe('an answer that claims absence while the block holds the figure', () =>
     ).toBe(false);
   });
 });
+
+describe('refusals measured on the Pixel 10, Gemma 4 - 2B', () => {
+  const GOLD_CONTEXT =
+    'Gold Price in US Today: per oz 4,438.55 United States dollars. United States gold price today at livepriceofgold.com.';
+
+  it('catches "nie jestem w stanie okreslic" over a context that states the price', () => {
+    expect(
+      claimsMissingEvidenceItHas(
+        'Zgodnie z informacjami zawartymi w dostarczonych źródłach, nie jestem w stanie określić aktualnej ceny uncji złota w dolarach.',
+        'Ile kosztuje uncja zlota w dolarach?',
+        GOLD_CONTEXT
+      )
+    ).toBe(true);
+  });
+
+  it('catches "nie mam dostepu" when the sources carry the figure', () => {
+    expect(
+      claimsMissingEvidenceItHas(
+        'Przepraszam, ale nie mam dostępu do aktualnych i dynamicznych informacji o cenach.',
+        'Ile kosztuje uncja zlota w dolarach?',
+        GOLD_CONTEXT
+      )
+    ).toBe(true);
+  });
+
+  it('leaves the same refusal alone when no source carries a figure', () => {
+    expect(
+      claimsMissingEvidenceItHas(
+        'Przepraszam, ale nie mam dostępu do aktualnych informacji o cenach.',
+        'Ile kosztuje uncja zlota w dolarach?',
+        'Sprawdz cene zlota za uncje, gram lub kilogram na naszym wykresie.'
+      )
+    ).toBe(false);
+  });
+});
