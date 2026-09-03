@@ -7,7 +7,11 @@ import {
   SourceDocument,
 } from '../database/chatRepository';
 import { Model } from '../database/modelRepository';
-import { getPromptCharBudget } from '../constants/context-window';
+import {
+  estimatePromptTokens,
+  getPromptCharBudget,
+  getPromptTokenBudget,
+} from '../constants/context-window';
 
 const baseSettings = {
   systemPrompt: 'You are a helpful assistant.',
@@ -80,9 +84,7 @@ describe('prepareMessagesForLLM', () => {
           ['some context'],
           baseSettings,
           baseModel,
-          '',
-          undefined,
-          webSources
+          { customSystemPrompt: '', sourceDocuments: webSources }
         )[0].content
       ).toContain('CURRENT DATE');
       expect(
@@ -271,9 +273,12 @@ describe('prepareMessagesForLLM', () => {
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        [{ name: 'BBC', kind: 'web', url: 'https://bbc.com/a' }]
+        {
+          customSystemPrompt: '',
+          sourceDocuments: [
+            { name: 'BBC', kind: 'web', url: 'https://bbc.com/a' },
+          ],
+        }
       );
       expect(withWeb[0].content).toContain(
         'trust the page reporting the newest events'
@@ -284,9 +289,10 @@ describe('prepareMessagesForLLM', () => {
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        [{ name: 'notes.pdf', kind: 'document' }]
+        {
+          customSystemPrompt: '',
+          sourceDocuments: [{ name: 'notes.pdf', kind: 'document' }],
+        }
       );
       expect(docsOnly[0].content).not.toContain(
         'trust the page reporting the newest events'
@@ -299,9 +305,12 @@ describe('prepareMessagesForLLM', () => {
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        [{ name: 'BBC', kind: 'web', url: 'https://bbc.com/a' }]
+        {
+          customSystemPrompt: '',
+          sourceDocuments: [
+            { name: 'BBC', kind: 'web', url: 'https://bbc.com/a' },
+          ],
+        }
       );
       expect(withWeb.at(-1)!.content).toContain(
         'the one reporting the newest change'
@@ -312,28 +321,124 @@ describe('prepareMessagesForLLM', () => {
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        [{ name: 'notes.pdf', kind: 'document' }]
+        {
+          customSystemPrompt: '',
+          sourceDocuments: [{ name: 'notes.pdf', kind: 'document' }],
+        }
       );
       expect(docsOnly.at(-1)!.content).not.toContain(
         'the one reporting the newest change'
       );
     });
 
+    it('only explains the [Answers:] tag when the block actually carries one', () => {
+      const webSources: SourceDocument[] = [
+        { name: 'A', kind: 'web', url: 'https://a.example' },
+      ];
+      const single = prepareMessagesForLLM(
+        makeMessages(2),
+        ['\n --- Source 1: A --- \n plain passage \n --- End of Source 1 ---'],
+        baseSettings,
+        baseModel,
+        { sourceDocuments: webSources }
+      );
+      expect(single[0].content).not.toContain('[Answers:');
+
+      const compared = prepareMessagesForLLM(
+        makeMessages(2),
+        [
+          '\n --- Source 1: A --- \n [Answers: bitcoin price]\n 1 \n --- End of Source 1 ---',
+          '\n --- Source 2: B --- \n [Answers: ethereum price]\n 2 \n --- End of Source 2 ---',
+        ],
+        baseSettings,
+        baseModel,
+        { sourceDocuments: webSources }
+      );
+      expect(compared[0].content).toContain('[Answers: <query>]');
+    });
+
+    it('only warns about narrowly scoped totals when the question asks for one', () => {
+      const webSources: SourceDocument[] = [
+        { name: 'A', kind: 'web', url: 'https://a.example' },
+      ];
+      const ask = (content: string) =>
+        prepareMessagesForLLM(
+          [
+            { id: 1, chatId: 1, role: 'user', content, timestamp: 0 },
+            { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+          ],
+          ['some retrieved text'],
+          baseSettings,
+          baseModel,
+          { sourceDocuments: webSources }
+        )[0].content;
+
+      expect(ask('Ile bramek strzelił Lewandowski w tym sezonie?')).toContain(
+        'Before stating a total or count'
+      );
+      expect(ask('How many goals did he score in total?')).toContain(
+        'Before stating a total or count'
+      );
+      expect(ask('Jaki procesor ma Samsung Galaxy S25?')).not.toContain(
+        'Before stating a total or count'
+      );
+    });
+
+    it('leaves the weekday table out when the question is not about time', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'Ile kosztuje Samsung Galaxy S25?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        ['some retrieved text'],
+        baseSettings,
+        baseModel,
+        {
+          sourceDocuments: [
+            { name: 'Onet', kind: 'web', url: 'https://pogoda.onet.pl/a' },
+          ],
+        }
+      );
+      expect(result[0].content).not.toContain(
+        'Weekday names used by the pages'
+      );
+      expect(result[0].content).toContain('CURRENT DATE');
+    });
+
     it('spells the week out in the language of the retrieved pages', () => {
-      const messages = makeMessages(2);
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'Jaka będzie pogoda w Warszawie jutro?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
       const polish = prepareMessagesForLLM(
         messages,
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        [
-          { name: 'Onet', kind: 'web', url: 'https://pogoda.onet.pl/a' },
-          { name: 'Interia', kind: 'web', url: 'https://pogoda.interia.pl/b' },
-        ]
+        {
+          customSystemPrompt: '',
+          sourceDocuments: [
+            { name: 'Onet', kind: 'web', url: 'https://pogoda.onet.pl/a' },
+            {
+              name: 'Interia',
+              kind: 'web',
+              url: 'https://pogoda.interia.pl/b',
+            },
+          ],
+        }
       );
       expect(polish[0].content).toContain('Weekday names used by the pages');
       expect(polish[0].content).toMatch(
@@ -350,7 +455,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       expect(result[0].content).toContain('You are a helpful assistant.');
-      expect(result[0].content).toContain('IMPORTANT CONTEXT INFORMATION');
+      expect(result[0].content).toContain('IMPORTANT SOURCE INFORMATION');
     });
 
     it('does not append context instructions when context is empty', () => {
@@ -362,18 +467,22 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       expect(result[0].content).toContain(baseSettings.systemPrompt);
-      expect(result[0].content).not.toContain('IMPORTANT CONTEXT INFORMATION');
+      expect(result[0].content).not.toContain('IMPORTANT SOURCE INFORMATION');
     });
 
-    it('tells the model never to say "context" to the user (F7)', () => {
+    it('never shows the model the word "context", so there is nothing to leak (F7)', () => {
       const messages = makeMessages(2);
       const result = prepareMessagesForLLM(
         messages,
-        ['some context'],
+        ['some retrieved text'],
         baseSettings,
         baseModel
       );
-      expect(result[0].content).toContain('Never say the word "context"');
+      const prompt = result
+        .map((message) => String(message.content))
+        .join('\n');
+      expect(prompt.toLowerCase()).not.toContain('context');
+      expect(prompt).toContain('<sources>');
     });
 
     it('nudges the model to name the page instead of a vague "sources say" on web results (F29)', () => {
@@ -386,9 +495,7 @@ describe('prepareMessagesForLLM', () => {
         ['some web context'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       expect(result[0].content).toContain('name that page in your own words');
     });
@@ -413,14 +520,7 @@ describe('prepareMessagesForLLM', () => {
         [],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        undefined,
-        1,
-        undefined,
-        undefined,
-        undefined,
-        true
+        { customSystemPrompt: '', budgetScale: 1, webSearchFailed: true }
       );
       expect(result[0].content).toContain('found nothing usable');
     });
@@ -499,8 +599,10 @@ describe('prepareMessagesForLLM', () => {
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        [{ documentId: 2, name: 'current.pdf' }]
+        {
+          customSystemPrompt: '',
+          preferredSourceDocuments: [{ documentId: 2, name: 'current.pdf' }],
+        }
       );
 
       expect(result[0].content).toContain('CURRENT ATTACHMENT PRIORITY');
@@ -519,7 +621,7 @@ describe('prepareMessagesForLLM', () => {
         [],
         baseSettings,
         baseModel,
-        'Always answer in Polish.'
+        { customSystemPrompt: 'Always answer in Polish.' }
       );
       expect(result[0].content).toContain(baseSettings.systemPrompt);
       expect(result[0].content).toContain('Always answer in Polish.');
@@ -532,7 +634,7 @@ describe('prepareMessagesForLLM', () => {
         [],
         baseSettings,
         baseModel,
-        'Always answer in Polish.'
+        { customSystemPrompt: 'Always answer in Polish.' }
       );
       expect(result[0].content).toMatch(/silently/i);
       expect(result[0].content).toMatch(/never mention/i);
@@ -548,14 +650,14 @@ describe('prepareMessagesForLLM', () => {
         [],
         baseSettings,
         baseModel,
-        ''
+        { customSystemPrompt: '' }
       );
       const whitespaceResult = prepareMessagesForLLM(
         messages,
         [],
         baseSettings,
         baseModel,
-        '   \n  '
+        { customSystemPrompt: '   \n  ' }
       );
       expect(emptyResult[0].content).toContain(baseSettings.systemPrompt);
       expect(whitespaceResult[0].content).toContain(baseSettings.systemPrompt);
@@ -569,7 +671,7 @@ describe('prepareMessagesForLLM', () => {
         [],
         { ...baseSettings, systemPrompt: '' },
         baseModel,
-        'Be concise.'
+        { customSystemPrompt: 'Be concise.' }
       );
       expect(result[0].content).toContain('Be concise.');
     });
@@ -581,11 +683,11 @@ describe('prepareMessagesForLLM', () => {
         ['some context'],
         baseSettings,
         baseModel,
-        'Always answer in Polish.'
+        { customSystemPrompt: 'Always answer in Polish.' }
       );
       expect(result[0].content).toContain('You are a helpful assistant.');
       expect(result[0].content).toContain('Always answer in Polish.');
-      expect(result[0].content).toContain('IMPORTANT CONTEXT INFORMATION');
+      expect(result[0].content).toContain('IMPORTANT SOURCE INFORMATION');
     });
   });
 
@@ -601,9 +703,7 @@ describe('prepareMessagesForLLM', () => {
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        web
+        { customSystemPrompt: '', sourceDocuments: web }
       );
       expect(result[0].content).toContain('web pages');
       expect(result[0].content).toContain('search results');
@@ -618,9 +718,7 @@ describe('prepareMessagesForLLM', () => {
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        doc
+        { customSystemPrompt: '', sourceDocuments: doc }
       );
       expect(result[0].content).toContain("the user's documents");
       expect(result[0].content).not.toContain('web pages');
@@ -632,9 +730,7 @@ describe('prepareMessagesForLLM', () => {
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        [...doc, ...web]
+        { customSystemPrompt: '', sourceDocuments: [...doc, ...web] }
       );
       expect(result[0].content).toContain("the user's documents");
       expect(result[0].content).toContain('web pages');
@@ -657,18 +753,18 @@ describe('prepareMessagesForLLM', () => {
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        doc,
-        doc
+        {
+          customSystemPrompt: '',
+          preferredSourceDocuments: doc,
+          sourceDocuments: doc,
+        }
       );
       const withoutAttachment = prepareMessagesForLLM(
         makeMessages(2),
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        doc
+        { customSystemPrompt: '', sourceDocuments: doc }
       );
       expect(withAttachment[0].content).toContain('(Overview)');
       expect(withoutAttachment[0].content).not.toContain('(Overview)');
@@ -688,9 +784,7 @@ describe('prepareMessagesForLLM', () => {
           ['some context'],
           baseSettings,
           baseModel,
-          '',
-          undefined,
-          sources
+          { customSystemPrompt: '', sourceDocuments: sources }
         )[0].content
       );
 
@@ -824,7 +918,7 @@ describe('prepareMessagesForLLM', () => {
   });
 
   describe('context injection', () => {
-    it('wraps context in <context> tags on the latest user message', () => {
+    it('wraps the retrieved block in <sources> tags on the latest user message', () => {
       const messages = makeMessages(3);
       const result = prepareMessagesForLLM(
         messages,
@@ -834,7 +928,7 @@ describe('prepareMessagesForLLM', () => {
       );
       const last = result[result.length - 1];
       expect(last.role).toBe('user');
-      expect(last.content).toContain('<context>chunk one chunk two</context>');
+      expect(last.content).toContain('<sources>chunk one chunk two</sources>');
       expect(last.content).toContain('message 3');
     });
 
@@ -873,7 +967,7 @@ describe('prepareMessagesForLLM', () => {
       expect(result).toHaveLength(4);
       expect(last.role).toBe('user');
       expect(last.content).toContain('Tell me more');
-      expect(last.content).toContain('<context>some context</context>');
+      expect(last.content).toContain('<sources>some context</sources>');
     });
 
     it('adds a grounding reminder next to the question when an attachment is present', () => {
@@ -883,8 +977,10 @@ describe('prepareMessagesForLLM', () => {
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        [{ documentId: 2, name: 'current.pdf' }]
+        {
+          customSystemPrompt: '',
+          preferredSourceDocuments: [{ documentId: 2, name: 'current.pdf' }],
+        }
       );
       const last = result[result.length - 1];
       expect(last.content).toMatch(/about the just-attached document/i);
@@ -909,11 +1005,11 @@ describe('prepareMessagesForLLM', () => {
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        undefined,
-        1,
-        'current Kraków weather'
+        {
+          customSystemPrompt: '',
+          budgetScale: 1,
+          webIntent: 'current Kraków weather',
+        }
       );
       const last = result[result.length - 1];
       expect(last.content).toContain(
@@ -928,12 +1024,12 @@ describe('prepareMessagesForLLM', () => {
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        undefined,
-        1,
-        'compare two phones',
-        ['iPhone 16 price', 'Galaxy S24 price']
+        {
+          customSystemPrompt: '',
+          budgetScale: 1,
+          webIntent: 'compare two phones',
+          webSubQueries: ['iPhone 16 price', 'Galaxy S24 price'],
+        }
       );
       const last = result[result.length - 1];
       expect(last.content).toContain('answer every one of them');
@@ -972,9 +1068,7 @@ describe('prepareMessagesForLLM', () => {
         ['iPhone 17: 48MP camera, A19 chip, ProMotion display'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       expect(result[0].content).toContain('asks for your assessment');
     });
@@ -1218,9 +1312,7 @@ describe('prepareMessagesForLLM', () => {
         ['iPhone 18 is expected to launch in September.'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       expect(result[0].content).toContain('rumor or speculation');
     });
@@ -1248,9 +1340,7 @@ describe('prepareMessagesForLLM', () => {
         ['The iPhone 17 launched in September 2025.'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       expect(result[0].content).not.toContain('rumor or speculation');
     });
@@ -1394,13 +1484,7 @@ describe('prepareMessagesForLLM', () => {
         ['some thin context'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        undefined,
-        1,
-        undefined,
-        undefined,
-        true
+        { customSystemPrompt: '', budgetScale: 1, webWeak: true }
       );
       expect(result[0].content).toContain('could not be confidently verified');
     });
@@ -1529,9 +1613,7 @@ describe('prepareMessagesForLLM', () => {
         ['Warsaw weather: sunny, 20C'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       const last = result[result.length - 1];
       expect(last.content).toContain("Answer in Polish, not the sources'");
@@ -1556,9 +1638,7 @@ describe('prepareMessagesForLLM', () => {
         ['some context'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       const last = result[result.length - 1];
       expect(last.content).toContain(
@@ -1585,9 +1665,7 @@ describe('prepareMessagesForLLM', () => {
         ['Ethereum Price: $1,901.25 (0.20%) | ETH'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       const last = result[result.length - 1];
       expect(last.content).toContain('Figures found in the sources: $1,901.25');
@@ -1615,9 +1693,7 @@ describe('prepareMessagesForLLM', () => {
         ],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       const last = result[result.length - 1];
       const whitelistLine = last.content
@@ -1649,9 +1725,7 @@ describe('prepareMessagesForLLM', () => {
         ],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       const last = result[result.length - 1];
       const whitelistLine = last.content
@@ -1680,9 +1754,7 @@ describe('prepareMessagesForLLM', () => {
         ['Cena: 999 zł (poprzednio 1299 zł).'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       const last = result[result.length - 1];
       const whitelistLine = last.content
@@ -1710,17 +1782,16 @@ describe('prepareMessagesForLLM', () => {
         ['RTX 4070: 399 zł, 2199 zł, 2349 zł, 2599 zł widoczne w ofertach.'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       const last = result[result.length - 1];
       const whitelistLine = last.content
         .split('\n')
         .find((line) => line.startsWith('Figures found in the sources'));
-      expect(whitelistLine).toContain('399 zł');
+      expect(whitelistLine).not.toContain('399 zł,');
+      expect(whitelistLine).toContain('399 zł was left out of that list');
       expect(whitelistLine).toContain('far apart from the other figures');
-      expect(whitelistLine).toContain('Do not use it as the low');
+      expect(whitelistLine).toContain('Never quote it as the price');
     });
 
     it('flags a lone "price statement" match as an outlier against the page\'s other figures (F25)', () => {
@@ -1744,16 +1815,130 @@ describe('prepareMessagesForLLM', () => {
         ],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       const last = result[result.length - 1];
-      const whitelistLine = last.content
+      const figuresLine = last.content
+        .split('\n')
+        .find(
+          (line) =>
+            line.startsWith('Figures found in the sources') ||
+            line.startsWith('No reliable figure')
+        );
+      expect(figuresLine).toContain('No reliable figure was found');
+      expect(figuresLine).toContain('$0.1670 was left out');
+      expect(figuresLine).toContain('far apart from the other figures');
+    });
+
+    it('drops a source it can only keep a shard of, rather than passing the shard off as evidence', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'Ile kosztuje Samsung Galaxy S25?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const webSources: SourceDocument[] = Array.from(
+        { length: 8 },
+        (_, index) => ({
+          name: `Sklep ${index + 1}`,
+          kind: 'web' as const,
+          url: `https://sklep${index + 1}.example`,
+        })
+      );
+      const blocks = webSources.map(
+        (source, index) =>
+          `\n --- Source ${index + 1}: ${source.name} --- \n Cena Samsung Galaxy S25 wynosi ${3000 + index} zl. ${'Opis produktu i specyfikacja telefonu. '.repeat(30)} \n --- End of Source ${index + 1} ---`
+      );
+      const result = prepareMessagesForLLM(
+        messages,
+        blocks,
+        baseSettings,
+        baseModel,
+        { sourceDocuments: webSources }
+      );
+      const last = String(result.at(-1)!.content);
+      const headers = last.match(/--- Source \d+:/g) ?? [];
+      expect(headers.length).toBeGreaterThan(0);
+      expect(headers.length).toBeLessThan(blocks.length);
+      for (const header of headers) {
+        const start = last.indexOf(header);
+        const end = last.indexOf('--- End of', start);
+        expect(end - start).toBeGreaterThan(120);
+      }
+    });
+
+    it('keeps the verified product line whole when the block is trimmed (live-found: price=3199 PLN was cut)', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'How much does the Samsung Galaxy S25 cost in Poland?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const webSources: SourceDocument[] = [
+        { name: 'Euro', kind: 'web', url: 'https://euro.com.pl' },
+        { name: 'Media Expert', kind: 'web', url: 'https://mediaexpert.pl' },
+      ];
+      const verified =
+        '[Verified product data] name="Samsung Galaxy S25 12/128GB", price=3199 PLN, availability=in stock';
+      const filler =
+        'Opis produktu i specyfikacja techniczna telefonu. '.repeat(60);
+      const junk =
+        'CENA zł _ zł DOSTĘPNOŚĆ Dostępny natychmiast PROMOCJE Drugi -30% lub piąty za 1 zł! RATY Do 40 rat 0%. '.repeat(
+          30
+        );
+      const result = prepareMessagesForLLM(
+        messages,
+        [
+          `\n --- Source 1: Euro --- \n ${verified}\n${filler} \n --- End of Source 1 ---`,
+          `\n --- Source 2: Media Expert --- \n ${junk} \n --- End of Source 2 ---`,
+        ],
+        baseSettings,
+        baseModel,
+        { customSystemPrompt: '', sourceDocuments: webSources }
+      );
+      const last = result[result.length - 1];
+      expect(last.content).toContain('price=3199 PLN');
+    });
+
+    it('never offers a 0 or 1 unit price the model can quote (live-found: "costs 1 zł")', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'How much does the Samsung Galaxy S25 cost in Poland?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const webSources: SourceDocument[] = [
+        { name: 'Media Expert', kind: 'web', url: 'https://mediaexpert.pl' },
+      ];
+      const result = prepareMessagesForLLM(
+        messages,
+        [
+          'Cena 3999 zł. Rata 0 zł przez 10 miesięcy, dostawa 0 zł. Cena od 1 zł. Cena 4299 zł. Cena 4499 zł.',
+        ],
+        baseSettings,
+        baseModel,
+        { customSystemPrompt: '', sourceDocuments: webSources }
+      );
+      const last = result[result.length - 1];
+      const figuresLine = last.content
         .split('\n')
         .find((line) => line.startsWith('Figures found in the sources'));
-      expect(whitelistLine).toContain('$0.1670');
-      expect(whitelistLine).toContain('far apart from the other figures');
+      expect(figuresLine).toBeDefined();
+      expect(figuresLine).not.toContain('0 zł');
+      expect(figuresLine).not.toContain('1 zł,');
+      expect(figuresLine).toContain('3999 zł');
     });
 
     it('does not flag any figure as an outlier when prices cluster normally', () => {
@@ -1777,9 +1962,7 @@ describe('prepareMessagesForLLM', () => {
         ],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       const last = result[result.length - 1];
       const whitelistLine = last.content
@@ -1809,9 +1992,7 @@ describe('prepareMessagesForLLM', () => {
         ],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       expect(result[0].content).toContain('[Verified product data]');
       expect(result[0].content).toContain(
@@ -1838,9 +2019,7 @@ describe('prepareMessagesForLLM', () => {
         ['Karty graficzne w cenach od 399 zł do 2599 zł.'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       expect(result[0].content).not.toContain(
         'not text scraped and inferred like the rest of the passage'
@@ -1866,9 +2045,7 @@ describe('prepareMessagesForLLM', () => {
         ['Sunny, 20C today.'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       const last = result[result.length - 1];
       expect(last.content).not.toContain('Figures found in the sources');
@@ -1897,9 +2074,7 @@ describe('prepareMessagesForLLM', () => {
         ],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       const last = result[result.length - 1];
       expect(last.content).toContain('Figures found per entity');
@@ -1932,9 +2107,7 @@ describe('prepareMessagesForLLM', () => {
         ],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       const last = result[result.length - 1];
       expect(last.content).toContain('no entry in this list');
@@ -1959,12 +2132,10 @@ describe('prepareMessagesForLLM', () => {
         ['Gold price today: $4,512.10 per ounce.'],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
       expect(result[0].content).toContain(
-        'not mentioned anywhere in the context'
+        'not mentioned anywhere in the sources'
       );
     });
 
@@ -1992,7 +2163,7 @@ describe('prepareMessagesForLLM', () => {
       const last = result[result.length - 1];
       expect(last.role).toBe('user');
       expect(last.content).toContain('/think');
-      expect(last.content).toContain('<context>');
+      expect(last.content).toContain('<sources>');
     });
   });
 
@@ -2077,24 +2248,20 @@ describe('prepareMessagesForLLM', () => {
         [docBlock, webBlock],
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        [
-          { name: 'doc.pdf' },
-          { name: 'Web Page', kind: 'web', url: 'https://x.com' },
-        ] as SourceDocument[]
+        {
+          customSystemPrompt: '',
+          sourceDocuments: [
+            { name: 'doc.pdf' },
+            { name: 'Web Page', kind: 'web', url: 'https://x.com' },
+          ] as SourceDocument[],
+        }
       );
 
       const assembled = result
         .map((msg) => (typeof msg.content === 'string' ? msg.content : ''))
         .join(' ');
-      const total = result.reduce(
-        (sum, msg) =>
-          sum + (typeof msg.content === 'string' ? msg.content.length : 0),
-        0
-      );
-      expect(total).toBeLessThanOrEqual(
-        getPromptCharBudget(baseModel, assembled)
+      expect(estimatePromptTokens(assembled)).toBeLessThanOrEqual(
+        getPromptTokenBudget(baseModel)
       );
     });
 
@@ -2116,7 +2283,7 @@ describe('prepareMessagesForLLM', () => {
 
       const last = result[result.length - 1];
       expect(last.content).toContain('question');
-      expect(last.content).toContain('<context>');
+      expect(last.content).toContain('<sources>');
       expect(last.content.length).toBeLessThan(hugeContext.length);
     });
 
@@ -2163,9 +2330,7 @@ describe('prepareMessagesForLLM', () => {
         context,
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
 
       const last = result[result.length - 1];
@@ -2204,9 +2369,7 @@ describe('prepareMessagesForLLM', () => {
         context,
         baseSettings,
         baseModel,
-        '',
-        undefined,
-        webSources
+        { customSystemPrompt: '', sourceDocuments: webSources }
       );
 
       const last = result[result.length - 1];
@@ -2304,16 +2467,20 @@ describe('prepareMessagesForLLM', () => {
   });
 
   describe('prompt assembly hygiene', () => {
-    it('neutralizes context tags inside retrieved content', () => {
+    it('neutralizes source tags inside retrieved content', () => {
       const result = prepareMessagesForLLM(
         makeMessages(2),
-        ['before <CONTEXT>injected</ context > after'],
+        [
+          'before <CONTEXT>injected</ context > and <SOURCES>this</ sources > after',
+        ],
         baseSettings,
         baseModel
       );
       const last = String(result.at(-1)!.content);
-      expect(last.match(/<[^>]*context[^>]*>/gi)).toHaveLength(2);
-      expect(last).toContain('<context>before injected after</context>');
+      expect(last.match(/<[^>]*context[^>]*>/gi)).toBeNull();
+      expect(last).toContain(
+        '<sources>before injected and this after</sources>'
+      );
     });
 
     it('keeps the wrapped question flush on its own line', () => {
@@ -2324,7 +2491,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       expect(String(result.at(-1)!.content)).toBe(
-        '<context>ctx</context>\nmessage 2 (Answer in the same language as this message.)'
+        '<sources>ctx</sources>\nmessage 2 (Answer in the same language as this message.)'
       );
     });
 
@@ -2335,8 +2502,8 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      expect(result[0].content).not.toContain('IMPORTANT CONTEXT INFORMATION');
-      expect(String(result.at(-1)!.content)).not.toContain('<context>');
+      expect(result[0].content).not.toContain('IMPORTANT SOURCE INFORMATION');
+      expect(String(result.at(-1)!.content)).not.toContain('<sources>');
     });
   });
 });
@@ -2388,19 +2555,162 @@ describe('prepareMessagesForLLM budget scale', () => {
     ];
 
     const full = prepareMessagesForLLM(messages, [], baseSettings, baseModel);
-    const half = prepareMessagesForLLM(
-      messages,
-      [],
-      baseSettings,
-      baseModel,
-      '',
-      undefined,
-      undefined,
-      0.5
-    );
+    const half = prepareMessagesForLLM(messages, [], baseSettings, baseModel, {
+      customSystemPrompt: '',
+      budgetScale: 0.5,
+    });
 
     expect(half.length).toBeLessThan(full.length);
     expect(half[0].role).toBe('system');
     expect(half.at(-1)!.content).toBe(full.at(-1)!.content);
+  });
+});
+
+describe('prepareMessagesForLLM — conversation digest replaces dropped turns', () => {
+  let nextId = 1;
+  const turn = (role: Message['role'], content: string): Message => ({
+    id: nextId++,
+    chatId: 1,
+    role,
+    content,
+    timestamp: Date.now(),
+  });
+  const longTurn = (marker: string): Message[] => [
+    turn('user', `${marker} ${'pytanie o rowery gorskie '.repeat(60)}`),
+    turn(
+      'assistant',
+      `${marker} ${'odpowiedz o rowerach gorskich '.repeat(60)}`
+    ),
+  ];
+
+  const manyTurns: Message[] = [
+    ...longTurn('a'),
+    ...longTurn('b'),
+    ...longTurn('c'),
+    ...longTurn('d'),
+    ...longTurn('e'),
+    turn('user', 'a jakie hamulce?'),
+  ];
+
+  const systemOf = (messages: { content: string }[]) => messages[0]!.content;
+
+  it('adds the digest once the budget has actually dropped older turns', () => {
+    const result = prepareMessagesForLLM(
+      manyTurns,
+      [],
+      baseSettings,
+      baseModel,
+      {
+        digest: 'rowery gorskie dla poczatkujacych',
+      }
+    );
+    expect(result.length).toBeLessThan(manyTurns.length + 1);
+    expect(systemOf(result)).toContain(
+      'Conversation so far: rowery gorskie dla poczatkujacych'
+    );
+  });
+
+  it('leaves a short conversation untouched — nothing was dropped, nothing to replace', () => {
+    const short: Message[] = [
+      turn('user', 'czesc'),
+      turn('assistant', 'czesc, w czym pomoc?'),
+      turn('user', 'a jakie hamulce?'),
+    ];
+    const result = prepareMessagesForLLM(short, [], baseSettings, baseModel, {
+      digest: 'rowery gorskie dla poczatkujacych',
+    });
+    expect(systemOf(result)).not.toContain('Conversation so far');
+    expect(result).toHaveLength(short.length + 1);
+  });
+
+  it('changes nothing when there is no digest to add', () => {
+    const withDigest = prepareMessagesForLLM(
+      manyTurns,
+      [],
+      baseSettings,
+      baseModel,
+      { digest: '   ' }
+    );
+    expect(systemOf(withDigest)).not.toContain('Conversation so far');
+  });
+
+  it('counts the digest against the budget, so it can only ever cost history', () => {
+    const digest = `d ${'x'.repeat(180)}`;
+    const line = `\n\nConversation so far: ${digest}`;
+    const withDigest = prepareMessagesForLLM(
+      manyTurns,
+      [],
+      baseSettings,
+      baseModel,
+      { digest }
+    );
+    const withoutDigest = prepareMessagesForLLM(
+      manyTurns,
+      [],
+      baseSettings,
+      baseModel
+    );
+    const chars = (messages: { content: string }[]) =>
+      messages.reduce((total, msg) => total + msg.content.length, 0);
+    expect(chars(withDigest) - chars(withoutDigest)).toBeLessThanOrEqual(
+      line.length
+    );
+  });
+});
+
+describe('a question about a named day must not be answered with "now"', () => {
+  const webSource: SourceDocument = {
+    kind: 'web',
+    name: 'Pogoda',
+    url: 'https://pogoda.example.pl/nowy-sacz',
+  };
+  const context = [
+    sourceBlock(
+      1,
+      'Pogoda',
+      'Pogoda teraz | 20°C | Jutro | 22°C | 12°C | Piątek | 24°C | 18°C'
+    ),
+  ];
+
+  const systemPromptFor = (question: string): string => {
+    const messages: Message[] = [
+      { id: 1, chatId: 1, role: 'user', content: question, timestamp: 0 },
+      { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 1 },
+    ];
+    return String(
+      prepareMessagesForLLM(messages, context, baseSettings, baseModel, {
+        sourceDocuments: [webSource],
+      })[0].content
+    );
+  };
+
+  it('warns off the current reading when the question names tomorrow', () => {
+    expect(
+      systemPromptFor('Jaka będzie pogoda w Nowym Sączu jutro?')
+    ).toContain('does not answer a question about a different day');
+  });
+
+  it('fires for a weekday name too, not just "tomorrow"', () => {
+    expect(systemPromptFor('Jaka pogoda w piątek w Krakowie?')).toContain(
+      'does not answer a question about a different day'
+    );
+  });
+
+  it('fires in English on the same rule', () => {
+    expect(
+      systemPromptFor('What is the weather tomorrow in Krakow?')
+    ).toContain('does not answer a question about a different day');
+  });
+
+  it('stays silent for a question about the current moment', () => {
+    expect(
+      systemPromptFor('Jaka jest teraz pogoda w Nowym Sączu?')
+    ).not.toContain('does not answer a question about a different day');
+  });
+
+  it('stays silent for a question with no day in it at all', () => {
+    expect(systemPromptFor('Ile kosztuje Samsung Galaxy S25?')).not.toContain(
+      'does not answer a question about a different day'
+    );
   });
 });

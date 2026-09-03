@@ -98,6 +98,39 @@ export const mentionsTime = (question: string): boolean => {
     .some(isTemporalToken);
 };
 
+const RAW_OTHER_DAY_STEMS = (
+  'jutr pojutrz wczoraj przedwczoraj weekend ' +
+  'poniedzial wtor srod czwart piat sobot niedziel ' +
+  'tomorrow yesterday tonight ' +
+  'monday tuesday wednesday thursday friday saturday sunday ' +
+  'morgen gestern montag dienstag mittwoch donnerstag freitag samstag sonntag ' +
+  'demain hier lundi mardi mercredi jeudi vendredi samedi dimanche ' +
+  'manana ayer lunes martes miercoles jueves viernes sabado domingo ' +
+  'amanha ontem domani ieri zitra vcera ' +
+  'завтра вчера завтрашн вчора ' +
+  'कल फردا دیروز غدا امس'
+).split(' ');
+
+const OTHER_DAY_HAN = ['明天', '昨天', '後天', '后天', '周末'];
+
+let otherDayStems: string[] | null = null;
+
+const isOtherDayToken = (token: string): boolean => {
+  otherDayStems ??= RAW_OTHER_DAY_STEMS.map(foldTemporal);
+  return otherDayStems.some(
+    (stem) =>
+      token.startsWith(stem) && token.length - stem.length <= TEMPORAL_TAIL_MAX
+  );
+};
+
+export const namesAnotherDay = (question: string): boolean => {
+  if (OTHER_DAY_HAN.some((word) => question.includes(word))) return true;
+  return foldTemporal(question)
+    .split(/[^\p{L}\p{M}\p{N}']+/u)
+    .filter(isTokenLongEnough)
+    .some(isOtherDayToken);
+};
+
 const dateLine = (label: string, date: Date): string => {
   const long = format(date, REFERENCE_LOCALE, FULL_DATE);
   return `${label}: ${long ? `${long} (${localISO(date)})` : localISO(date)}`;
