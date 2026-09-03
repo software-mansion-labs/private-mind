@@ -535,3 +535,33 @@ describe('buildRows — pages that could not be read', () => {
     expect(notesOf(rows)).toEqual([]);
   });
 });
+
+describe('regressions the trace panel keeps reintroducing', () => {
+  const searchRun: WebSearchTraceEntry[] = [
+    ev({ id: 1, type: 'objectives' }),
+    ev({ id: 2, type: 'searching', query: 'karnet zakopane' }),
+    ev({ id: 3, type: 'found', url: 'https://a.com/x', host: 'a.com' }),
+    ev({ id: 4, type: 'fetched', url: 'https://a.com/x', host: 'a.com' }),
+  ];
+  const reading = ev({ id: 5, type: 'reading' });
+
+  it('keeps every earlier row when the reading phase starts', () => {
+    const before = buildRows(true, searchRun, [], false);
+    const after = buildRows(true, [...searchRun, reading], [], false);
+
+    expect(labelsOf(after)).toEqual(
+      expect.arrayContaining(['Deciding what to search for'])
+    );
+    expect(hostsOf(after)).toEqual(hostsOf(before));
+    expect(after.length).toBeGreaterThan(before.length);
+    expect(labelsOf(after)).toContain('Reading the pages');
+  });
+
+  it('keeps row keys stable when the search stops running', () => {
+    const trace = [...searchRun, reading, ev({ id: 6, type: 'done' })];
+    const running = buildRows(true, trace, [], false).map((row) => row.key);
+    const finished = buildRows(false, trace, [], false).map((row) => row.key);
+
+    expect(finished).toEqual(running);
+  });
+});
