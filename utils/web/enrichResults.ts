@@ -2,6 +2,11 @@ import type { WebSearchResult, ExtractedArticle } from './types';
 import { extractArticle, looksLikeBotWall } from './url/extractArticle';
 import { hostname } from './webResultsToContext';
 import {
+  classifyFetchError,
+  classifyUnusableContent,
+  type FetchFailureReason,
+} from './fetchFailure';
+import {
   WEB_CONTENT_FETCH_TIMEOUT_MS,
   WEB_CONTENT_MIN_CHARS,
   WEB_FETCH_TOP_N_CONTENT,
@@ -11,6 +16,7 @@ export interface EnrichPageEvent {
   url: string;
   host: string;
   ok: boolean;
+  reason?: FetchFailureReason;
 }
 
 export type ArticleFetcher = (
@@ -44,10 +50,14 @@ export const enrichWebResults = async (
         signal
       );
       const text = article.text?.trim() ?? '';
-      const usable =
-        text.length >= WEB_CONTENT_MIN_CHARS &&
-        !looksLikeBotWall(text, article.title);
-      onPage?.({ url: result.url, host: hostname(result.url), ok: usable });
+      const botWall = looksLikeBotWall(text, article.title);
+      const usable = text.length >= WEB_CONTENT_MIN_CHARS && !botWall;
+      onPage?.({
+        url: result.url,
+        host: hostname(result.url),
+        ok: usable,
+        ...(usable ? {} : { reason: classifyUnusableContent(botWall) }),
+      });
       if (usable) {
         enrichedByUrl.set(result.url, {
           ...result,
@@ -56,8 +66,13 @@ export const enrichWebResults = async (
         });
       }
       return usable;
-    } catch {
-      onPage?.({ url: result.url, host: hostname(result.url), ok: false });
+    } catch (error) {
+      onPage?.({
+        url: result.url,
+        host: hostname(result.url),
+        ok: false,
+        reason: classifyFetchError(error),
+      });
       return false;
     }
   };

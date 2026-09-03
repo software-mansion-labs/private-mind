@@ -93,11 +93,31 @@ const figuresMatch = (a: number, b: number): boolean => {
   return diff < 1 || diff <= Math.max(a, b) * FIGURE_TOLERANCE_RATIO;
 };
 
+const CURRENCY_MENTION = new RegExp(
+  `(?<![\\p{L}])(?:${CURRENCY_WORD}|dolar\\w*|euro|z[łl]ot\\w*|funt\\w*|dollars?|euros?|pounds?)(?![\\p{L}])`,
+  'iu'
+);
+const BARE_NUMBER = /(?<![\p{L}\p{N}.,])\d(?:[\d\s.,]*\d)?(?![\p{L}\p{N}])/gu;
+const YEAR_LIKE = /^(?:19|20)\d{2}$/;
+const MIN_BARE_AMOUNT = 100;
+
+export const extractBareAmounts = (answer: string): number[] => {
+  if (!CURRENCY_MENTION.test(answer)) return [];
+  return [...answer.matchAll(BARE_NUMBER)]
+    .map((match) => match[0]!.trim())
+    .filter((raw) => !YEAR_LIKE.test(raw.replace(/\s/g, '')))
+    .map(normalizeFigure)
+    .filter(
+      (value): value is number => value !== null && value >= MIN_BARE_AMOUNT
+    );
+};
+
 export const findUngroundedFigures = (
   answer: string,
   context: string
 ): number[] => {
-  const answerFigures = extractCurrencyFigures(answer);
+  const marked = extractCurrencyFigures(answer);
+  const answerFigures = marked.length > 0 ? marked : extractBareAmounts(answer);
   if (answerFigures.length === 0) return [];
 
   const priceFigures = extractPriceStatementTokens(context)
