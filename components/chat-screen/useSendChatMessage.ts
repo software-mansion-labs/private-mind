@@ -220,7 +220,6 @@ export const useSendChatMessage = ({
         const trimmedInput = userInput.trim();
         const lowMemory = isMemoryConstrained(useLLMStore.getState().model);
         useWebSearchStore.getState().setSearchingWeb(true);
-        let webGrounded = false;
         try {
           const embeddingModelReady =
             !lowMemory && useEmbeddingModelStore.getState().status === 'ready';
@@ -268,8 +267,7 @@ export const useSendChatMessage = ({
           });
           context = [...context, ...webContext];
           sourceDocuments = [...sourceDocuments, ...webSources];
-          webGrounded = webSources.length > 0;
-          if (webGrounded) {
+          if (webSources.length > 0) {
             webIntent = webTelemetry.intent || undefined;
             webSubQueries = webTelemetry.plannedQueries;
             webWeak = webTelemetry.finalLabel === 'incorrect';
@@ -288,11 +286,12 @@ export const useSendChatMessage = ({
           }
         } catch (error) {
           console.warn('Web search failed', error);
+          webSearchFailed = true;
         } finally {
           useWebSearchStore.getState().setSearchingWeb(false);
           webViewScrapeProvider.releaseHost();
         }
-        if (!webGrounded) {
+        if (webSearchFailed) {
           Toast.show({
             type: 'defaultToast',
             text1:

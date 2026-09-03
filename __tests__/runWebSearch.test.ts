@@ -115,6 +115,23 @@ describe('runWebSearch', () => {
     expect(provider.calls).toHaveLength(0);
   });
 
+  it('gates small talk before the planner is ever asked', async () => {
+    const provider = new MockProvider({});
+    const generate = jest.fn(async () => '');
+    const out = await runWebSearch({
+      query: 'Dzieki, to bardzo pomocne.',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate,
+      today: '2026-07-20',
+    });
+    expect(out.telemetry.skippedReason).toBe('gated');
+    expect(generate).not.toHaveBeenCalled();
+    expect(provider.calls).toHaveLength(0);
+  });
+
   it('skips when the provider is not ready', async () => {
     const provider = new MockProvider({}, false);
     const out = await runWebSearch({
