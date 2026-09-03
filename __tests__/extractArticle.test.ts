@@ -715,3 +715,68 @@ describe('record grouping generalises past <table>', () => {
     expect(article.text).not.toContain('Buty (12) | Kurtki (8)');
   });
 });
+
+describe('main-content isolation on pages without a single landmark', () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const promoRail = Array.from(
+    { length: 10 },
+    (_, i) =>
+      `<div><span>Akcesorium ${i + 1}</span><span>${(i + 1) * 39},99 zł</span></div>`
+  ).join('');
+
+  it('keeps every article of a ranking page, not just the first one', async () => {
+    const places = [1, 2, 3].map(
+      (place) =>
+        `<article><h2>Miejsce ${place}</h2><p>${`Telewizor numer ${place} ma jasność ${place * 400} nitów i 4 porty HDMI 2.1. `.repeat(4)}</p></article>`
+    );
+    mockFetch(`<html><body><div>${places.join('')}</div></body></html>`);
+
+    const article = await extractArticle('https://ranking.example/oled');
+    expect(article.text).toContain('Miejsce 1');
+    expect(article.text).toContain('Miejsce 2');
+    expect(article.text).toContain('Miejsce 3');
+  });
+
+  it('starts a landmark-less shop page at its headline, past the promo rail', async () => {
+    const page = `<html><body>
+      <div>${promoRail}</div>
+      <div><h1>Telewizor LG OLED65B65LA</h1>
+      <p>Cena: 6 999,00 zł</p>
+      <p>${'Telewizor OLED 65 cali z procesorem α8 i systemem webOS 25. '.repeat(12)}</p></div>
+    </body></html>`;
+    mockFetch(page);
+
+    const article = await extractArticle('https://shop.example/lg-oled65b65la');
+    expect(article.text).toContain('6 999,00 zł');
+    expect(article.text).not.toContain('Akcesorium 1');
+    expect(article.text).not.toContain('39,99 zł');
+  });
+
+  it('starts at role="main" when the page marks it without a <main> tag', async () => {
+    const page = `<html><body>
+      <div>${promoRail}</div>
+      <div role="main"><h2>Samsung QE65S99H</h2>
+      <p>${'Telewizor QD-OLED 65 cali, 165 Hz, procesor NQ4 AI Gen3. '.repeat(12)}</p></div>
+    </body></html>`;
+    mockFetch(page);
+
+    const article = await extractArticle('https://shop.example/samsung-s99h');
+    expect(article.text).toContain('QD-OLED 65 cali');
+    expect(article.text).not.toContain('Akcesorium 1');
+  });
+
+  it('keeps the whole body when the headline sits near its end', async () => {
+    const page = `<html><body>
+      <div><p>${'Recenzja telewizora: obraz jest jasny, czernie głębokie, a dźwięk wyraźny. '.repeat(20)}</p></div>
+      <h1>Podobne artykuły</h1><p>Zobacz też ranking soundbarów.</p>
+    </body></html>`;
+    mockFetch(page);
+
+    const article = await extractArticle('https://blog.example/recenzja');
+    expect(article.text).toContain('czernie głębokie');
+  });
+});

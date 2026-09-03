@@ -70,13 +70,34 @@ const extractTitle = (
   return title?.[1] ? decodeEntities(title[1]).trim() : undefined;
 };
 
+const HEADLINE_TAIL_MIN_SHARE = 0.2;
+
+const visibleTextLength = (html: string): number =>
+  html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim().length;
+
+const cutFromHeadline = (body: string): string => {
+  const headline = body.search(/<h1\b/i);
+  if (headline < 0) return body;
+  const tail = body.slice(headline);
+  return visibleTextLength(tail) >=
+    visibleTextLength(body) * HEADLINE_TAIL_MIN_SHARE
+    ? tail
+    : body;
+};
+
 const isolateMainContent = (html: string): string => {
-  const article = html.match(/<article\b[\s\S]*?<\/article>/i);
-  if (article) return article[0];
+  const articles = html.match(/<article\b[\s\S]*?<\/article>/gi) ?? [];
+  if (articles.length === 1) return articles[0]!;
   const main = html.match(/<main\b[\s\S]*?<\/main>/i);
   if (main) return main[0];
+  const roleMain = html.match(/<[a-z][^>]*\brole=["']?main\b[\s\S]*/i);
+  if (roleMain) return roleMain[0];
+  if (articles.length > 1) return articles.join('\n');
   const body = html.match(/<body\b[\s\S]*?<\/body>/i);
-  return body ? body[0] : html;
+  return cutFromHeadline(body ? body[0] : html);
 };
 
 const FOOTNOTE_LINE =
