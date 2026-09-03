@@ -1,6 +1,11 @@
 import { type SourceDocument } from '../../database/chatRepository';
 import { type WebSearchTraceEntry } from '../../store/webSearchStore';
 import { hostname } from '../../utils/web/webResultsToContext';
+import {
+  describeFetchFailure,
+  summarizeFetchFailures,
+  type FetchFailureReason,
+} from '../../utils/web/fetchFailure';
 
 export type StepRow = {
   type: 'step';
@@ -15,6 +20,8 @@ export type PageRow = {
   url?: string;
   host: string;
   name: string;
+  failed?: boolean;
+  note?: string;
 };
 export type ChallengeRow = { type: 'challenge'; key: string };
 export type NoteRow = {
@@ -88,6 +95,26 @@ export const buildRows = (
   };
   const closingRow: Row = has('weak') ? weakNote : doneRow;
 
+  const failureSummary = summarizeFetchFailures(
+    trace
+      .filter((entry) => entry.type === 'failed' && entry.reason)
+      .map((entry) => ({
+        url: entry.url ?? '',
+        host: entry.host ?? '',
+        reason: entry.reason as FetchFailureReason,
+      }))
+  );
+  const failureNote: NoteRow | null = failureSummary
+    ? {
+        type: 'note',
+        key: 'fetch-failures',
+        tone: 'muted',
+        label: failureSummary,
+      }
+    : null;
+  const withFailureNote = (rows: Row[]): Row[] =>
+    failureNote ? [...rows, failureNote] : rows;
+
   const phaseRows: StepRow[] =
     has('reading') || has('ranking')
       ? [{ type: 'step', key: 'phase-reading', label: 'Reading the pages' }]
@@ -126,7 +153,13 @@ export const buildRows = (
     const byKey = new Map<string, PageRow>();
     const remember = (
       key: string,
-      next: { url?: string; host: string; title?: string }
+      next: {
+        url?: string;
+        host: string;
+        title?: string;
+        failed?: boolean;
+        note?: string;
+      }
     ) => {
       const current = byKey.get(key);
       if (!current) {
@@ -136,22 +169,35 @@ export const buildRows = (
           url: next.url,
           host: next.host,
           name: next.title || next.host,
+          ...(next.failed ? { failed: true } : {}),
+          ...(next.note ? { note: next.note } : {}),
         });
         return;
       }
+      const failed = next.failed ?? current.failed;
+      const note =
+        next.failed === false ? undefined : (next.note ?? current.note);
       byKey.set(key, {
         ...current,
         url: next.url ?? current.url,
         name: next.title || current.name,
+        ...(failed ? { failed: true } : { failed: undefined }),
+        ...(note ? { note } : { note: undefined }),
       });
     };
 
     for (const entry of trace) {
       if (!isPageEntry(entry) || !entry.host) continue;
+      const failed = entry.type === 'failed';
       remember(keyOf(entry.url, entry.host), {
         url: entry.url,
         host: entry.host,
         title: entry.title,
+        ...(entry.type === 'fetched' ? { failed: false } : {}),
+        ...(failed ? { failed: true } : {}),
+        ...(failed && entry.reason
+          ? { note: describeFetchFailure(entry.reason) }
+          : {}),
       });
     }
     for (const result of results) {
@@ -170,6 +216,9 @@ export const buildRows = (
 
   const stepLabel = (entry: WebSearchTraceEntry): string => {
     if (entry.type === 'objectives') return 'Deciding what to search for';
+    if (entry.type === 'recovering') {
+      return 'Couldn’t read those — looking for another source';
+    }
     if (entry.query) return `Searching “${entry.query}”`;
     return 'Searching the web';
   };
@@ -183,9 +232,11 @@ export const buildRows = (
     const rows: Row[] = [];
     const placed = new Set<string>();
     for (const entry of trace) {
-      if (entry.type === 'objectives') {
-        rows.push(stepFor(entry));
-      } else if (entry.type === 'searching') {
+      if (
+        entry.type === 'objectives' ||
+        entry.type === 'searching' ||
+        entry.type === 'recovering'
+      ) {
         rows.push(stepFor(entry));
       } else if (isPageEntry(entry) && entry.host) {
         const key = keyOf(entry.url, entry.host);
@@ -206,6 +257,7 @@ export const buildRows = (
     if (timedOut) {
       rows.push(timeoutNote);
     } else if (!isSearching || has('done')) {
+      if (failureNote) rows.push(failureNote);
       rows.push(
         pages.length > 0
           ? closingRow
@@ -222,7 +274,10 @@ export const buildRows = (
 
   const steps: StepRow[] = trace
     .filter(
-      (entry) => entry.type === 'objectives' || entry.type === 'searching'
+      (entry) =>
+        entry.type === 'objectives' ||
+        entry.type === 'searching' ||
+        entry.type === 'recovering'
     )
     .map(stepFor);
 
@@ -250,6 +305,7 @@ export const buildRows = (
         ...openingSteps,
         ...pages,
         ...phaseRows,
+        ...withFailureNote([]),
         closingRow,
       ]);
     }
@@ -273,6 +329,7 @@ export const buildRows = (
       ? [{ type: 'challenge', key: 'challenge' } as ChallengeRow]
       : []),
     ...(timedOut ? [timeoutNote] : []),
+    ...(has('done') ? withFailureNote([]) : []),
     ...(has('done') ? [closingRow] : []),
   ]);
 };

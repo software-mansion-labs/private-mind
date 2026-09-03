@@ -8,11 +8,12 @@ import {
   Linking,
 } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import MarkdownComponent from './MarkdownComponent';
 import ThinkingBlock from './ThinkingBlock';
 import AnimatedChatLoading from './AnimatedChatLoading';
 import WebSearchBlock from './WebSearchBlock';
 import GroundingCaveatBadges from './GroundingCaveatBadges';
+import AttributedAnswer from './AttributedAnswer';
+import { attributeSourcesByBlock } from '../../utils/attributeSources';
 import DominantSourceBadge from './DominantSourceBadge';
 import { WEB_TRACE_TRANSITION_MS } from './webSearchTraceConstants';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -137,6 +138,23 @@ const MessageItem = memo(
       content,
       hasWebResults: webResults.length > 0,
     });
+    const attributionShown = useMemo(() => {
+      if (isLastMessage && isGenerating) return false;
+      return [contentParts.normalContent, contentParts.normalAfterThink ?? '']
+        .filter((part) => part.trim())
+        .some((part) =>
+          attributeSourcesByBlock(part, webResults).some(
+            (block) => block.source
+          )
+        );
+    }, [
+      contentParts.normalContent,
+      contentParts.normalAfterThink,
+      isGenerating,
+      isLastMessage,
+      webResults,
+    ]);
+
     const canShowSourcesAction =
       !!content.trim() && documentSources.length > 0 && !isBusy;
 
@@ -265,8 +283,9 @@ const MessageItem = memo(
                 <AnimatedChatLoading inline={webActive} label="Thinking…" />
               ) : null}
               {contentParts.normalContent.trim() && (
-                <MarkdownComponent
+                <AttributedAnswer
                   text={normalContent}
+                  sources={webResults}
                   streaming={isLastMessage && isGenerating}
                   onLinkPress={handleLinkPress}
                 />
@@ -285,13 +304,16 @@ const MessageItem = memo(
                 )}
               {contentParts.normalAfterThink &&
                 contentParts.normalAfterThink.trim() && (
-                  <MarkdownComponent
+                  <AttributedAnswer
                     text={normalAfterThink}
+                    sources={webResults}
                     streaming={isLastMessage && isGenerating}
                     onLinkPress={handleLinkPress}
                   />
                 )}
-              <DominantSourceBadge source={dominantWebSource} />
+              {attributionShown ? null : (
+                <DominantSourceBadge source={dominantWebSource} />
+              )}
               <GroundingCaveatBadges caveats={message.groundingCaveats} />
               {showPerformanceMetrics &&
                 tokensPerSecond !== undefined &&

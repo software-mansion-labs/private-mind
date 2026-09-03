@@ -169,9 +169,14 @@ const WebSearchTraceRow = ({
         );
       case 'page':
         return (
-          <Text style={styles.host} numberOfLines={1}>
+          <Text
+            style={[styles.host, row.failed ? styles.hostFailed : null]}
+            numberOfLines={1}
+          >
             {row.host}
-            {row.name && row.name !== row.host ? (
+            {row.failed && row.note ? (
+              <Text style={styles.pageNote}>{`  ${row.note}`}</Text>
+            ) : row.name && row.name !== row.host ? (
               <Text style={styles.pageTitle}>{`  ${row.name}`}</Text>
             ) : null}
           </Text>
@@ -292,6 +297,15 @@ const createStyles = (theme: Theme) =>
     pageTitle: {
       fontFamily: fontFamily.regular,
       color: theme.text.defaultTertiary,
+    },
+    hostFailed: {
+      color: theme.text.defaultTertiary,
+      textDecorationLine: 'line-through',
+    },
+    pageNote: {
+      fontFamily: fontFamily.regular,
+      color: theme.text.defaultTertiary,
+      textDecorationLine: 'none',
     },
     noteLabel: {
       flex: 1,

@@ -55,7 +55,6 @@ import {
   MESSAGE_PIN_SETTLE_MS,
   navBarInset,
   PIN_READY_SLACK_PX,
-  PIN_RELEASE_MS,
   REVEAL_FALLBACK_MS,
   SCROLL_INDICATOR_GUTTER,
   SEAM_OVERLAP,
@@ -532,25 +531,15 @@ const Messages = ({
 
   useEffect(() => {
     if (isGenerating || !pinActive.current) return;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    timers.push(
-      setTimeout(() => {
-        pinActive.current = false;
-        if (pinScrollPendingRef.current) {
-          pinScrollPendingRef.current = false;
-          scrollToPin();
-        }
-        blankSpace.set(pinFloorRef.current);
-        pinReleaseRef.current = true;
-        timers.push(
-          setTimeout(() => {
-            setPinAnchor(null);
-          }, PIN_RELEASE_MS)
-        );
-      }, MESSAGE_PIN_SETTLE_MS)
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [isGenerating, blankSpace, scrollToPin]);
+    const timer = setTimeout(() => {
+      pinActive.current = false;
+      if (pinScrollPendingRef.current) {
+        pinScrollPendingRef.current = false;
+        scrollToPin();
+      }
+    }, MESSAGE_PIN_SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [isGenerating, scrollToPin]);
 
   useImperativeHandle(
     ref,
@@ -747,8 +736,13 @@ const Messages = ({
     }
     if (pinReleaseRef.current) {
       settlePinRelease(contentHeight.current);
+      return;
     }
-  }, [settlePinRelease]);
+    if (!pinActive.current && pinAnchor) {
+      pinReleaseRef.current = true;
+      setPinAnchor(null);
+    }
+  }, [pinAnchor, settlePinRelease]);
 
   const handleForkMessage = useCallback(
     (message: Message) => {

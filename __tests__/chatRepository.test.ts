@@ -1,7 +1,9 @@
 import {
   forkChat,
+  getChatDigest,
   getChatMessages,
   persistMessage,
+  setChatDigest,
 } from '../database/chatRepository';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
@@ -73,6 +75,38 @@ describe('persistMessage with imagePath', () => {
       expect.stringContaining('sourceDocuments'),
       expect.arrayContaining([JSON.stringify(sourceDocuments)])
     );
+  });
+});
+
+describe('getChatDigest / setChatDigest', () => {
+  it('upserts the digest by chatId', async () => {
+    const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 1 });
+    const mockDb = { runAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    await setChatDigest(mockDb, 5, 'Discussing Qwen 3 vs Gemma 4 benchmarks.');
+
+    expect(runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('ON CONFLICT(chatId)'),
+      [5, 'Discussing Qwen 3 vs Gemma 4 benchmarks.']
+    );
+  });
+
+  it('returns null when no digest row exists yet', async () => {
+    const getFirstAsync = jest.fn().mockResolvedValue(null);
+    const mockDb = {
+      getFirstAsync,
+    } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    expect(await getChatDigest(mockDb, 5)).toBeNull();
+  });
+
+  it('returns the stored digest text', async () => {
+    const getFirstAsync = jest.fn().mockResolvedValue({ digest: 'Summary.' });
+    const mockDb = {
+      getFirstAsync,
+    } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    expect(await getChatDigest(mockDb, 5)).toBe('Summary.');
   });
 });
 
