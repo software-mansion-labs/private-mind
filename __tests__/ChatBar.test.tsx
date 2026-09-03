@@ -35,9 +35,13 @@ jest.mock('../store/llmStore', () => ({
   }),
 }));
 
+const mockPresentDownloadSheet = jest.fn();
+
 const mockUseAttachment = {
   attachments: [] as Attachment[],
   sheetRef: { current: null },
+  embeddingDownloadSheetRef: { current: null },
+  presentDownloadSheet: mockPresentDownloadSheet,
   pickFromLibrary: jest.fn(),
   pickFromCamera: jest.fn(),
   pickDocument: jest.fn(),
@@ -144,6 +148,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onThinkingToggle,
     thinkingEnabled,
     onAttach,
+    onWebSearchToggle,
   }: {
     userInput: string;
     hasAttachments: boolean;
@@ -155,8 +160,17 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onThinkingToggle: () => void;
     thinkingEnabled: boolean;
     onAttach: () => void;
+    onWebSearchToggle?: () => void;
   }) => (
     <View testID="chat-bar-actions">
+      {onWebSearchToggle && (
+        <TouchableOpacity
+          testID="web-search-toggle"
+          onPress={onWebSearchToggle}
+        >
+          <Text>Web</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity testID="attach-btn" onPress={onAttach}>
         <Text>+</Text>
       </TouchableOpacity>
@@ -187,10 +201,17 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
   );
 });
 
+jest.mock('../utils/modelCompatibility', () => ({
+  ...jest.requireActual('../utils/modelCompatibility'),
+  isMemoryConstrained: () => false,
+  isHighMemoryDevice: () => true,
+}));
+
 // ── imports ───────────────────────────────────────────────────────────────────
 
 import ChatBar from '../components/chat-screen/ChatBar';
 import { useLLMStore } from '../store/llmStore';
+import { useEmbeddingModelStore } from '../store/embeddingModelStore';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
 
@@ -811,5 +832,84 @@ describe('paste functionality', () => {
     expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith(
       'file://test.jpg'
     );
+  });
+});
+
+// ─── web search toggle vs. embedding model download prompt ────────────────────
+
+describe('web search toggle and the embedding download sheet', () => {
+  const flush = () => act(async () => {});
+
+  const toggleWebOn = (props: Partial<typeof defaultProps> = {}) => {
+    const onWebSearchToggle = jest.fn();
+    renderBar({
+      ...props,
+      webSearchEnabled: false,
+      onWebSearchToggle,
+    } as Partial<typeof defaultProps>);
+    fireEvent.press(screen.getByTestId('web-search-toggle'));
+    return onWebSearchToggle;
+  };
+
+  beforeEach(() => {
+    useEmbeddingModelStore.setState({ status: 'unknown', progress: 0 });
+  });
+
+  it('does not offer the download while the model turns out to be on disk', async () => {
+    const onWebSearchToggle = toggleWebOn();
+    expect(onWebSearchToggle).toHaveBeenCalledTimes(1);
+    expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
+
+    act(() => useEmbeddingModelStore.setState({ status: 'ready' }));
+    await flush();
+
+    expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
+  });
+
+  it('offers the download once the model is known to be missing', async () => {
+    toggleWebOn();
+    act(() => useEmbeddingModelStore.setState({ status: 'not_downloaded' }));
+    await flush();
+
+    expect(mockPresentDownloadSheet).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers the download at once when the model is already known to be missing', async () => {
+    useEmbeddingModelStore.setState({ status: 'not_downloaded' });
+    toggleWebOn();
+    await flush();
+
+    expect(mockPresentDownloadSheet).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays quiet when the model is already ready', async () => {
+    useEmbeddingModelStore.setState({ status: 'ready' });
+    toggleWebOn();
+    await flush();
+
+    expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
+  });
+
+  it('drops the pending offer when web search is switched off in the meantime', async () => {
+    const onWebSearchToggle = jest.fn();
+    const view = renderBar({
+      webSearchEnabled: false,
+      onWebSearchToggle,
+    } as Partial<typeof defaultProps>);
+    fireEvent.press(screen.getByTestId('web-search-toggle'));
+    view.rerender(
+      <ChatBar
+        {...defaultProps}
+        webSearchEnabled
+        onWebSearchToggle={onWebSearchToggle}
+      />
+    );
+    fireEvent.press(screen.getByTestId('web-search-toggle'));
+
+    act(() => useEmbeddingModelStore.setState({ status: 'not_downloaded' }));
+    await flush();
+
+    expect(onWebSearchToggle).toHaveBeenCalledTimes(2);
+    expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
   });
 });

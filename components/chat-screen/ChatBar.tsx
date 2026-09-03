@@ -41,7 +41,11 @@ import WhatsNewCard from '../WhatsNewCard';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
-import { useEmbeddingModelStore } from '../../store/embeddingModelStore';
+import {
+  embeddingModelNeedsDownloadPrompt,
+  useEmbeddingModelStore,
+  whenEmbeddingStatusKnown,
+} from '../../store/embeddingModelStore';
 import {
   isHighMemoryDevice,
   isMemoryConstrained,
@@ -137,20 +141,26 @@ const ChatBar = ({
   >('document');
   const webEmbeddingPromptDismissedRef = useRef(false);
   const embeddingSheetRequiredRef = useRef(false);
+  const webToggleSeqRef = useRef(0);
 
   const handleWebSearchToggle = useCallback(() => {
     const enabling = !webSearchEnabled;
+    const toggleSeq = webToggleSeqRef.current + 1;
+    webToggleSeqRef.current = toggleSeq;
     onWebSearchToggle?.();
     if (!enabling) return;
-    if (useEmbeddingModelStore.getState().status === 'ready') return;
     if (isMemoryConstrained(model)) return;
 
     const required = isHighMemoryDevice(model);
     if (!required && webEmbeddingPromptDismissedRef.current) return;
 
-    setEmbeddingSheetContext('web');
-    embeddingSheetRequiredRef.current = required;
-    presentDownloadSheet();
+    whenEmbeddingStatusKnown().then((status) => {
+      if (webToggleSeqRef.current !== toggleSeq) return;
+      if (!embeddingModelNeedsDownloadPrompt(status)) return;
+      setEmbeddingSheetContext('web');
+      embeddingSheetRequiredRef.current = required;
+      presentDownloadSheet();
+    });
   }, [webSearchEnabled, onWebSearchToggle, model, presentDownloadSheet]);
 
   const handleEmbeddingSheetDismiss = useCallback(() => {

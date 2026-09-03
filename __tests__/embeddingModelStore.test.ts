@@ -1,4 +1,8 @@
-import { useEmbeddingModelStore } from '../store/embeddingModelStore';
+import {
+  embeddingModelNeedsDownloadPrompt,
+  useEmbeddingModelStore,
+  whenEmbeddingStatusKnown,
+} from '../store/embeddingModelStore';
 import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 
 const makeStore = (load: jest.Mock) =>
@@ -111,5 +115,42 @@ describe('embeddingModelStore.ensureReady', () => {
     expect(second).toBe(true);
     expect(load).toHaveBeenCalledTimes(2);
     expect(useEmbeddingModelStore.getState().status).toBe('ready');
+  });
+});
+
+describe('whenEmbeddingStatusKnown', () => {
+  it('resolves at once when the status is already known', async () => {
+    useEmbeddingModelStore.setState({ status: 'ready' });
+    await expect(whenEmbeddingStatusKnown()).resolves.toBe('ready');
+  });
+
+  it('waits through the unknown window until the provider settles', async () => {
+    const pending = whenEmbeddingStatusKnown();
+    useEmbeddingModelStore.setState({ status: 'ready' });
+    await expect(pending).resolves.toBe('ready');
+  });
+
+  it('gives up as unknown when nothing ever settles', async () => {
+    jest.useFakeTimers();
+    try {
+      const pending = whenEmbeddingStatusKnown(50);
+      jest.advanceTimersByTime(50);
+      await expect(pending).resolves.toBe('unknown');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+describe('embeddingModelNeedsDownloadPrompt', () => {
+  it.each(['not_downloaded', 'downloading', 'error'] as const)(
+    'prompts for %s',
+    (status) => {
+      expect(embeddingModelNeedsDownloadPrompt(status)).toBe(true);
+    }
+  );
+
+  it.each(['ready', 'unknown'] as const)('stays quiet for %s', (status) => {
+    expect(embeddingModelNeedsDownloadPrompt(status)).toBe(false);
   });
 });

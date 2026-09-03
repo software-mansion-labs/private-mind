@@ -60,3 +60,31 @@ export const useEmbeddingModelStore = create<EmbeddingModelStore>(
     },
   })
 );
+
+export const EMBEDDING_STATUS_WAIT_MS = 8000;
+
+export const whenEmbeddingStatusKnown = (
+  timeoutMs: number = EMBEDDING_STATUS_WAIT_MS
+): Promise<EmbeddingModelStatus> =>
+  new Promise((resolve) => {
+    const current = useEmbeddingModelStore.getState().status;
+    if (current !== 'unknown') {
+      resolve(current);
+      return;
+    }
+    let unsubscribe = () => {};
+    const timer = setTimeout(() => {
+      unsubscribe();
+      resolve(useEmbeddingModelStore.getState().status);
+    }, timeoutMs);
+    unsubscribe = useEmbeddingModelStore.subscribe((state) => {
+      if (state.status === 'unknown') return;
+      clearTimeout(timer);
+      unsubscribe();
+      resolve(state.status);
+    });
+  });
+
+export const embeddingModelNeedsDownloadPrompt = (
+  status: EmbeddingModelStatus
+): boolean => status !== 'ready' && status !== 'unknown';
