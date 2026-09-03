@@ -247,6 +247,25 @@ describe('selectRelevantContent', () => {
     expect(out).toContain('7 499,00 zł');
   });
 
+  it('does not pad the excerpt with another product only because its name carries a digit (live: x-kom footer)', () => {
+    const page = [
+      'Karta graficzna ASUS GeForce RTX 5080 Prime OC 16GB GDDR7 to układ nowej generacji dla wymagających graczy.',
+      'Cena karty graficznej RTX 5080 w naszym sklepie wynosi 6 499,00 zł.',
+      'Klienci oglądali również',
+      'Logitech K270 Wireless Keyboard',
+      'Mysz Logitech G305 Lightspeed',
+      'Podkładka SteelSeries QcK 450',
+    ].join('\n');
+    const out = selectRelevantContent(
+      page,
+      'karta graficzna RTX 5080 cena',
+      240
+    );
+    expect(out).toContain('6 499,00 zł');
+    expect(out).not.toContain('Logitech');
+    expect(out).not.toContain('SteelSeries');
+  });
+
   it('carries a product row down to its price, not just its name', () => {
     const record = (name: string, price: string) =>
       [
