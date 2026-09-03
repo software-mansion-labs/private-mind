@@ -415,6 +415,34 @@ describe('getChatMessages source provenance', () => {
     });
   });
 
+  it('keeps the query that found each web source, so the saved trace can replay the searches', async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 3,
+        chatId: 1,
+        role: 'assistant',
+        content: 'Bitcoin kosztuje 98 000 USD.',
+        sourceDocuments: JSON.stringify([
+          {
+            name: 'Bankier',
+            url: 'https://bankier.pl/btc',
+            kind: 'web',
+            query: 'porównaj kurs bitcoina i ethereum',
+            sourceQuery: 'kurs bitcoin',
+          },
+        ]),
+      },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(messages[0].sourceDocuments?.[0]).toMatchObject({
+      query: 'porównaj kurs bitcoina i ethereum',
+      sourceQuery: 'kurs bitcoin',
+    });
+  });
+
   it('leaves document sources without a web kind/url', async () => {
     const getAllAsync = jest.fn().mockResolvedValue([
       {

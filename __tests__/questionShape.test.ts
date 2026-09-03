@@ -67,12 +67,12 @@ describe('what the source row records', () => {
     expect(out.sourceDocuments[0]!.query).toBe(
       'jaka jest pogoda w Krakowie dzisiaj'
     );
-    expect(out.sourceDocuments[0]!.searchedQuery).toBe('pogoda Kraków dzisiaj');
+    expect(out.sourceDocuments[0]!.sourceQuery).toBe('pogoda Kraków dzisiaj');
   });
 
-  it('records no separate retrieval query when the two are the same', () => {
+  it('records no retrieval query for a result that carries none', () => {
     const out = webResultsToContext(
-      [result],
+      [{ ...result, sourceQuery: undefined }],
       'pogoda Kraków dzisiaj',
       0,
       4000,
@@ -80,7 +80,7 @@ describe('what the source row records', () => {
         displayQuery: 'pogoda Kraków dzisiaj',
       }
     );
-    expect(out.sourceDocuments[0]!.searchedQuery).toBeUndefined();
+    expect(out.sourceDocuments[0]!.sourceQuery).toBeUndefined();
   });
 });
 
