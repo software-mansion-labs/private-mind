@@ -9,6 +9,7 @@ import {
 import { todayISO } from '../todayISO';
 import { namesAnotherDay } from '../calendarFacts';
 import { foldForMatching } from '../queryTerms';
+import { conversationSubject, namedEntitiesIn } from './conversationSubject';
 
 export interface QueryRewriteMessage {
   role: 'system' | 'user' | 'assistant';
@@ -407,36 +408,8 @@ const NEEDS_REFERENT = new RegExp(
   'iu'
 );
 
-// At least two capitalized words in a row — a rough, precision-over-recall
-// proxy for "the query already names someone/something specific", so we
-// don't misfire on ordinary sentence-initial capitalization.
-const PROPER_NOUN_RUN =
-  /(?<!\p{L})\p{Lu}[\p{L}\p{N}'-]*(?:\s+\p{Lu}[\p{L}\p{N}'-]*)+/gu;
-
-export const namedEntitiesIn = (text: string): string[] =>
-  text.match(PROPER_NOUN_RUN) ?? [];
-
 const hasOwnEntity = (text: string): boolean =>
   namedEntitiesIn(text).length > 0;
-
-const lastEntityIn = (
-  history: { role: string; content: string }[],
-  roles: string[]
-): string | null => {
-  for (let i = history.length - 1; i >= 0; i--) {
-    const turn = history[i]!;
-    if (!roles.includes(turn.role)) continue;
-    const matches = turn.content.match(PROPER_NOUN_RUN);
-    if (matches && matches.length > 0) return matches[matches.length - 1]!;
-  }
-  return null;
-};
-
-const mostRecentEntity = (
-  history: { role: string; content: string }[]
-): string | null =>
-  lastEntityIn(history, ['user']) ??
-  lastEntityIn(history, ['user', 'assistant']);
 
 const SHORT_QUERY_MAX_WORDS = 6;
 const ELIDED_SUBJECT_MAX_WORDS = 8;
@@ -503,8 +476,8 @@ export const carryReferentIntoQuery = (
     looksLikeElidedSubject(query) ||
     looksLikeTemporalFollowUp(query);
   if (!looksIncomplete || hasOwnEntity(query)) return query;
-  const entity = mostRecentEntity(history);
-  if (entity) return `${query} ${entity}`;
+  const subject = conversationSubject(history);
+  if (subject) return `${query} ${subject}`;
   return digest?.trim() ? `${query} ${digest.trim()}` : query;
 };
 

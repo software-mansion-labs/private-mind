@@ -998,6 +998,33 @@ describe('carryReferentIntoQuery', () => {
     );
   });
 
+  it('carries the model the last answer settled on, not the last capitalised run in it (live #349-#351: "Smart TV")', () => {
+    const oledChat = [
+      {
+        role: 'user',
+        content: 'Podaj parametry techniczne tv samsung QE65QN90D',
+      },
+      {
+        role: 'assistant',
+        content:
+          'Samsung QE65QN90D ma matrycę 120Hz i obsługuje HDMI 2.1. Samsung QE65QN90D kosztuje 5999 zł.',
+      },
+      {
+        role: 'user',
+        content:
+          'Jeszcze raz wyszukaj tv do mojego salonu najlepszy tylko oled',
+      },
+      {
+        role: 'assistant',
+        content:
+          'Najlepszym telewizorem OLED jest Samsung QE65S99H, ponieważ zachwyci Cię paletą barw. Matowy ekran z powłoką Glare Free sprawdzi się w salonie. Wyróżnione modele oferują platformy Smart TV.',
+      },
+    ];
+    expect(carryReferentIntoQuery('Jaka jest jego cena?', oledChat)).toBe(
+      'Jaka jest jego cena? Samsung QE65S99H'
+    );
+  });
+
   it('is wired end to end through planWebSearch in verbatim mode', async () => {
     const generate = jest.fn();
     const plan = await planWebSearch(

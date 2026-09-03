@@ -1,7 +1,7 @@
 import type { WebSearchResult } from './types';
 import type { FetchFailure } from './fetchFailure';
 import { isHostLevelFailure, isRecoverableFailure } from './fetchFailure';
-import { namedEntitiesIn } from './buildSearchQuery';
+import { namedEntitiesIn } from './conversationSubject';
 import { hostname } from './webResultsToContext';
 import { extractQueryTerms, foldForMatching } from '../queryTerms';
 import {

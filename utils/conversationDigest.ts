@@ -1,8 +1,8 @@
 import {
-  namedEntitiesIn,
   type QueryRewriteFn,
   type QueryRewriteMessage,
 } from './web/buildSearchQuery';
+import { namedEntitiesIn } from './web/conversationSubject';
 import { parseThinkingContent, stripThinkBlocks } from './thinking';
 import { foldForMatching } from './queryTerms';
 
