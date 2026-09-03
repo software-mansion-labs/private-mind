@@ -526,7 +526,7 @@ export const buildMessageSources = async ({
 };
 
 const ABSENCE_CLAIM =
-  /nie (?:ma|zawieraj\w*|jest podan\w*|zosta\w* podan\w*|jest mo[żz]liwe)[^.!?]{0,40}(?:informacj|dan(?:e|ych)|ceny|kursu|kwoty)|[żz]r[óo]d[łl]a[^.!?]{0,30}nie (?:zawieraj|podaj)|brak (?:informacji|danych)|(?:sources?|search results|pages?)[^.!?]{0,30}(?:contain no|do not (?:contain|state|provide|include)|have no)|no (?:information|data) (?:about|on|for)|nie posiadam[^.!?]{0,30}informacj/i;
+  /nie (?:ma|zawieraj\w*|jest podan\w*|zosta\w* podan\w*|jest mo[żz]liwe)[^.!?]{0,40}(?:informacj|dan(?:e|ych)|ceny|kursu|kwoty)|[żz]r[óo]d[łl]a[^.!?]{0,30}nie (?:zawieraj|podaj)|brak (?:informacji|danych)|(?:sources?|search results|pages?)[^.!?]{0,30}(?:contain no|do not (?:contain|state|provide|include)|have no)|no (?:information|data) (?:about|on|for)|nie posiadam[^.!?]{0,30}informacj|nie jestem w stanie[^.!?]{0,40}(?:okre[śs]li|poda|wskaza|udzieli|odpowiedzie)|nie mam dost[ęe]pu|(?:don'?t|do not) have access|(?:cannot|can't|unable to|not able to) (?:determine|provide|state|give|tell)/i;
 
 const QUESTION_WANTS_DATE =
   /\bkiedy\b|\bwhen\b|\bwann\b|\bquand\b|\bcu[aá]ndo\b|\bquando\b|когда|कब/i;
