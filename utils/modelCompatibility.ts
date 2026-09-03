@@ -8,6 +8,7 @@ import {
 import { MODEL_MIN_RAM_GB } from '../constants/model-memory';
 import {
   ANDROID_SYSTEM_RESERVE_GB,
+  ANDROID_SYSTEM_RESERVE_SHARE,
   APP_RUNTIME_MEMORY_GB,
   IOS_JETSAM_SHARE,
   MEMORY_SAFETY_FACTOR,
@@ -57,11 +58,14 @@ export const isModelCompatibleWithRam = (
   return memoryRequirement <= deviceRamGB * USABLE_MEMORY_FRACTION;
 };
 
+const androidSystemReserveGB = (totalGB: number): number =>
+  Math.min(ANDROID_SYSTEM_RESERVE_GB, totalGB * ANDROID_SYSTEM_RESERVE_SHARE);
+
 export const getAppMemoryBudgetGB = (): number => {
   const total = getTotalMemoryGB();
   return Platform.OS === 'ios'
     ? total * IOS_JETSAM_SHARE * MEMORY_SAFETY_FACTOR
-    : Math.max(0, total - ANDROID_SYSTEM_RESERVE_GB);
+    : Math.max(0, total - androidSystemReserveGB(total));
 };
 
 const getModelBudgetGB = (): number =>
