@@ -532,11 +532,16 @@ export const webResultsToContext = (
     const budget = budgets[index]!;
     const select = (maxChars: number): string =>
       result.content
-        ? selectRelevantContent(result.content, query, maxChars, {
-            title: result.title,
-            verifiedPrice: result.product?.price,
-            intent: options.intent,
-          })
+        ? selectRelevantContent(
+            result.content,
+            result.sourceQuery ?? query,
+            maxChars,
+            {
+              title: result.title,
+              verifiedPrice: result.product?.price,
+              intent: options.intent,
+            }
+          )
         : '';
     const besideSnippet = select(
       snippet

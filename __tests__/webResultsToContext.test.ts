@@ -493,6 +493,61 @@ describe('selectRelevantContent — the kind of answer the question wants', () =
   });
 });
 
+describe('webResultsToContext — a page is read for the query that found it', () => {
+  const coin = (name: string, verb: string, amount: string): string[] =>
+    Array.from(
+      { length: 2 },
+      (_, i) =>
+        `Kurs ${name} wynosi dziś ${amount} USD i ${verb} od ${i === 0 ? 'tygodnia' : 'wczoraj'}, co analitycy rynku komentują z uwagą w porannych przeglądach notowań.`
+    );
+  const page = [
+    ...coin('bitcoina', 'rośnie', '98 000'),
+    ...coin('ethereum', 'spada', '3 200'),
+    'Redakcja portalu nie ponosi odpowiedzialności za decyzje inwestycyjne czytelników.',
+  ].join('\n');
+  const results = [
+    result({
+      url: 'https://a.com/btc',
+      snippet: '',
+      content: page,
+      sourceQuery: 'kurs bitcoin',
+    }),
+    result({
+      url: 'https://b.com/eth',
+      snippet: '',
+      content: page,
+      sourceQuery: 'kurs ethereum',
+    }),
+  ];
+
+  it('scores each page against its own sub-query, not the union of all of them', () => {
+    const { sourceDocuments } = webResultsToContext(
+      results,
+      'kurs bitcoin + kurs ethereum',
+      0,
+      450
+    );
+    const [btc, eth] = sourceDocuments.map((doc) => doc.passage ?? '');
+    expect(btc).toContain('98 000');
+    expect(btc).not.toContain('3 200');
+    expect(eth).toContain('3 200');
+    expect(eth).not.toContain('98 000');
+  });
+
+  it('records the joined query on the documents as before', () => {
+    const { sourceDocuments } = webResultsToContext(
+      results,
+      'kurs bitcoin + kurs ethereum',
+      0,
+      450
+    );
+    expect(sourceDocuments.map((doc) => doc.query)).toEqual([
+      'kurs bitcoin + kurs ethereum',
+      'kurs bitcoin + kurs ethereum',
+    ]);
+  });
+});
+
 describe('webResultsToContext — pages that were never opened', () => {
   it('still contributes its snippet to context even when another result has full content', () => {
     const { context, sourceDocuments } = webResultsToContext([
