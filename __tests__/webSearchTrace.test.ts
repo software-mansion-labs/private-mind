@@ -368,3 +368,170 @@ describe('buildRows — live search', () => {
     expect(hostsOf(rows)).toEqual(['live.com', 'final.com']);
   });
 });
+
+describe('buildRows — pages that could not be read', () => {
+  const pagesOf = (rows: Rows) =>
+    rows.flatMap((row) => (row.type === 'page' ? [row] : []));
+  const notesOf = (rows: Rows) =>
+    rows.flatMap((row) => (row.type === 'note' ? [row.label] : []));
+
+  it('marks a failed page and says why, instead of showing it like any other', () => {
+    const rows = buildRows(
+      false,
+      [
+        ev({ id: 1, type: 'searching', query: 'galaxy s25' }),
+        ev({
+          id: 2,
+          type: 'found',
+          host: 'shop.example',
+          url: 'https://shop.example/a',
+        }),
+        ev({
+          id: 3,
+          type: 'failed',
+          host: 'shop.example',
+          url: 'https://shop.example/a',
+          reason: 'blocked',
+        }),
+      ],
+      [],
+      false
+    );
+    expect(pagesOf(rows)).toEqual([
+      expect.objectContaining({
+        host: 'shop.example',
+        failed: true,
+        note: 'blocked the reader',
+      }),
+    ]);
+  });
+
+  it('does not mark a page that was read fine', () => {
+    const rows = buildRows(
+      false,
+      [
+        ev({ id: 1, type: 'searching', query: 'galaxy s25' }),
+        ev({
+          id: 2,
+          type: 'fetched',
+          host: 'samsung.com',
+          url: 'https://samsung.com/a',
+        }),
+      ],
+      [],
+      false
+    );
+    expect(pagesOf(rows)[0]).toMatchObject({ host: 'samsung.com' });
+    expect(pagesOf(rows)[0]!.failed).toBeFalsy();
+  });
+
+  it('clears the failed mark when a retry of the same page succeeds', () => {
+    const rows = buildRows(
+      false,
+      [
+        ev({ id: 1, type: 'searching', query: 'galaxy s25' }),
+        ev({
+          id: 2,
+          type: 'failed',
+          host: 'shop.example',
+          url: 'https://shop.example/a',
+          reason: 'timeout',
+        }),
+        ev({
+          id: 3,
+          type: 'fetched',
+          host: 'shop.example',
+          url: 'https://shop.example/a',
+        }),
+      ],
+      [],
+      false
+    );
+    expect(pagesOf(rows)[0]!.failed).toBeFalsy();
+    expect(pagesOf(rows)[0]!.note).toBeFalsy();
+  });
+
+  it('sums the failures up in one note before closing the trace', () => {
+    const rows = buildRows(
+      false,
+      [
+        ev({ id: 1, type: 'searching', query: 'galaxy s25' }),
+        ev({
+          id: 2,
+          type: 'failed',
+          host: 'a.example',
+          url: 'https://a.example/x',
+          reason: 'blocked',
+        }),
+        ev({
+          id: 3,
+          type: 'failed',
+          host: 'b.example',
+          url: 'https://b.example/x',
+          reason: 'blocked',
+        }),
+        ev({ id: 4, type: 'done' }),
+      ],
+      [],
+      false
+    );
+    expect(notesOf(rows)).toContain(
+      'Couldn’t read 2 pages — blocked the reader'
+    );
+  });
+
+  it('shows the recovery search as its own step', () => {
+    const rows = buildRows(
+      false,
+      [
+        ev({ id: 1, type: 'objectives' }),
+        ev({ id: 2, type: 'searching', query: 'galaxy s25 cena' }),
+        ev({
+          id: 3,
+          type: 'failed',
+          host: 'shop.example',
+          url: 'https://shop.example/a',
+          reason: 'blocked',
+        }),
+        ev({ id: 4, type: 'recovering', round: 2 }),
+        ev({
+          id: 5,
+          type: 'searching',
+          query: 'Galaxy S25 -site:shop.example',
+        }),
+        ev({
+          id: 6,
+          type: 'fetched',
+          host: 'samsung.com',
+          url: 'https://samsung.com/a',
+        }),
+        ev({ id: 7, type: 'done' }),
+      ],
+      [],
+      false
+    );
+    expect(labelsOf(rows)).toContain(
+      'Couldn’t read those — looking for another source'
+    );
+    expect(hostsOf(rows)).toEqual(['shop.example', 'samsung.com']);
+  });
+
+  it('leaves the trace unchanged when nothing failed', () => {
+    const rows = buildRows(
+      false,
+      [
+        ev({ id: 1, type: 'searching', query: 'galaxy s25' }),
+        ev({
+          id: 2,
+          type: 'fetched',
+          host: 'samsung.com',
+          url: 'https://samsung.com/a',
+        }),
+        ev({ id: 3, type: 'done' }),
+      ],
+      [],
+      false
+    );
+    expect(notesOf(rows)).toEqual([]);
+  });
+});

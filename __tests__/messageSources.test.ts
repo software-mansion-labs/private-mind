@@ -1,5 +1,8 @@
 import {
+  isCircularNonAnswer,
+  stripEchoedQuestionPrefix,
   assembleSourceDocuments,
+  buildMessageSources,
   detectGroundingCaveats,
   humanizeSourceReferences,
   isDanglingListAnswer,
@@ -14,6 +17,14 @@ import {
 } from '../utils/messageSources';
 import { SourceDocument } from '../database/chatRepository';
 import { formatContextChunks } from '../utils/contextUtils';
+import { hybridRetrieve } from '../utils/hybridRetrieval';
+import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
+
+jest.mock('../utils/hybridRetrieval', () => ({
+  hybridRetrieve: jest.fn().mockResolvedValue([]),
+}));
+
+const mockHybridRetrieve = hybridRetrieve as jest.Mock;
 
 const doc = (documentId: number | undefined, name: string): SourceDocument => ({
   documentId,
@@ -697,6 +708,32 @@ describe('detectGroundingCaveats', () => {
   });
 });
 
+describe('isQuestionEchoAnswer — diacritics (live-found)', () => {
+  it('catches an echo the model spelled with proper Polish diacritics', () => {
+    expect(
+      isQuestionEchoAnswer(
+        'Czy warto go kupić teraz, czy poczekać na promocje?',
+        'Czy warto go kupic teraz, czy poczekac na promocje?'
+      )
+    ).toBe(true);
+    expect(
+      isQuestionEchoAnswer(
+        'A gdzie kupię najtaniej?',
+        'A gdzie kupie najtaniej?'
+      )
+    ).toBe(true);
+  });
+
+  it('still does not call a real answer an echo', () => {
+    expect(
+      isQuestionEchoAnswer(
+        'Warto poczekać — promocja kończy się 6 września.',
+        'Czy warto go kupic teraz, czy poczekac na promocje?'
+      )
+    ).toBe(false);
+  });
+});
+
 describe('isQuestionEchoAnswer', () => {
   it('flags an answer that is just the question echoed back after a think block', () => {
     const question = 'Ile wazy i jakie ma wymiary?';
@@ -883,5 +920,271 @@ describe('isDanglingListAnswer', () => {
     const answer =
       '<think>let me think about this:</think>\n\nPrezydent ma dwie córki.';
     expect(isDanglingListAnswer(answer)).toBe(false);
+  });
+
+  it('flags a bare trailing list marker with nothing after it (dash)', () => {
+    const answer = 'Rzeczy do zabrania na wyjazd\n-';
+    expect(isDanglingListAnswer(answer)).toBe(true);
+  });
+
+  it('flags a bare trailing numbered marker with nothing after it', () => {
+    const answer = 'Oto co warto spakować\n1.';
+    expect(isDanglingListAnswer(answer)).toBe(true);
+  });
+
+  it('flags a bare trailing bullet marker with nothing after it', () => {
+    const answer = 'Things to pack\n•';
+    expect(isDanglingListAnswer(answer)).toBe(true);
+  });
+
+  it('does not flag a normal sentence that happens to contain a hyphen', () => {
+    const answer = 'Kup bilet w tanim terminie - polecam LOT.';
+    expect(isDanglingListAnswer(answer)).toBe(false);
+  });
+
+  it('does not flag a completed list whose last item starts with a marker', () => {
+    const answer = 'Rzeczy do zabrania:\n1. Paszport\n2. Bilet lotniczy';
+    expect(isDanglingListAnswer(answer)).toBe(false);
+  });
+});
+
+describe('buildMessageSources retrieval query', () => {
+  const vectorStore = {} as OPSQLiteVectorStore;
+  const sources: SourceRow[] = [{ id: 1, name: 'report.pdf' }];
+  const baseParams = {
+    attachmentSourceIds: [],
+    enabledSources: [1],
+    sources,
+    vectorStore,
+  };
+
+  beforeEach(() => {
+    mockHybridRetrieve.mockClear();
+    mockHybridRetrieve.mockResolvedValue([]);
+  });
+
+  it('retrieves with the raw query when it is not referentially incomplete', async () => {
+    await buildMessageSources({
+      ...baseParams,
+      userInput: 'jaka jest cena bitcoina?',
+      history: [
+        { role: 'user', content: 'kto jest prezydentem usa?' },
+        { role: 'assistant', content: 'Donald Trump.' },
+      ],
+      digest: 'Topic: some unrelated digest.',
+    });
+
+    expect(mockHybridRetrieve.mock.calls[0][0].prompt).toBe(
+      'jaka jest cena bitcoina?'
+    );
+  });
+
+  it('falls back to the digest for a referentially incomplete query with no entity in history', async () => {
+    await buildMessageSources({
+      ...baseParams,
+      userInput: 'ile ma lat prezydent?',
+      history: [
+        { role: 'user', content: 'hej, jak leci?' },
+        { role: 'assistant', content: 'Wszystko dobrze, dzięki!' },
+      ],
+      digest: 'Topic: the president discussed in the attached report.',
+    });
+
+    expect(mockHybridRetrieve.mock.calls[0][0].prompt).toBe(
+      'ile ma lat prezydent? Topic: the president discussed in the attached report.'
+    );
+  });
+
+  it('leaves the query unchanged when there is no digest and no history', async () => {
+    await buildMessageSources({
+      ...baseParams,
+      userInput: 'ile ma lat prezydent?',
+    });
+
+    expect(mockHybridRetrieve.mock.calls[0][0].prompt).toBe(
+      'ile ma lat prezydent?'
+    );
+  });
+});
+
+describe('humanizeSourceReferences — Polish declension (live-found)', () => {
+  const sources = [
+    {
+      name: 'Kurs złota i srebra (notowania)',
+      kind: 'web' as const,
+      url: 'https://a.example',
+    },
+    { name: 'CoinMarketCap', kind: 'web' as const, url: 'https://b.example' },
+  ];
+
+  it('replaces the locative "w źródle 1", not only "źródło 1"', () => {
+    expect(
+      humanizeSourceReferences('Kurs można sprawdzić w źródle 1.', sources)
+    ).toBe('Kurs można sprawdzić w Kurs złota i srebra (notowania).');
+  });
+
+  it('still replaces the forms it already handled', () => {
+    expect(humanizeSourceReferences('Zgodnie ze źródłem 2.', sources)).toBe(
+      'Zgodnie ze CoinMarketCap.'
+    );
+    expect(humanizeSourceReferences('See Source 2.', sources)).toBe(
+      'See CoinMarketCap.'
+    );
+  });
+
+  it('leaves a number with no matching source alone', () => {
+    expect(humanizeSourceReferences('w źródle 9', sources)).toBe('w źródle 9');
+  });
+});
+
+describe('stripEchoedQuestionPrefix — the model restating the question first', () => {
+  it('drops a verbatim question prefix and keeps the answer (live-found)', () => {
+    expect(
+      stripEchoedQuestionPrefix(
+        'A jaki ma aparat? Aparat Samsunga Galaxy S25 to 48MP.',
+        'A jaki ma aparat?'
+      )
+    ).toBe('Aparat Samsunga Galaxy S25 to 48MP.');
+  });
+
+  it('drops it from behind a think block, which is what is actually stored', () => {
+    expect(
+      stripEchoedQuestionPrefix(
+        '<think>\n\n</think>\n\nA jaki ma aparat? Aparat to 48MP.',
+        'A jaki ma aparat?'
+      )
+    ).toBe('<think>\n\n</think>\n\nAparat to 48MP.');
+  });
+
+  it('drops a restated opening question and the "Odpowiedź:" label', () => {
+    const answer =
+      'Czy warto go kupic teraz, czy poczekac na promocje?\n' +
+      'Odpowiedź:\n' +
+      'Dla nowych modeli warto poczekać na wrześniową promocję.';
+    expect(
+      stripEchoedQuestionPrefix(
+        answer,
+        'Czy warto go kupic teraz, czy poczekac na promocje?'
+      )
+    ).toBe('Dla nowych modeli warto poczekać na wrześniową promocję.');
+  });
+
+  it('leaves a restatement that resolves the pronoun, because it adds words the question never had', () => {
+    const answer =
+      'Czy warto kupić Samsung Galaxy S25 teraz, czy poczekać na promocje?\n' +
+      'Dla nowych modeli warto poczekać.';
+    expect(
+      stripEchoedQuestionPrefix(
+        answer,
+        'Czy warto go kupic teraz, czy poczekac na promocje?'
+      )
+    ).toBe(answer);
+  });
+
+  it("leaves an opening question that is not the user's own", () => {
+    const answer =
+      'Czy wiesz, ile kosztuje dostawa?\nCena telefonu to 2499 zl.';
+    expect(
+      stripEchoedQuestionPrefix(answer, 'Ile kosztuje Samsung Galaxy S25?')
+    ).toBe(answer);
+  });
+
+  it("does not cut when the answer continues the question's own sentence", () => {
+    const answer = 'Cena bitcoina dzisiaj to $64,949.96 USD.';
+    expect(stripEchoedQuestionPrefix(answer, 'Cena bitcoina dzisiaj')).toBe(
+      answer
+    );
+  });
+
+  it('does not cut a lead-in that merely contains the question', () => {
+    const answer =
+      'Tekst piosenki Sobty - Hej, jak leci?: Hej, jak leci? Czy wodka zaprawiasz?';
+    expect(stripEchoedQuestionPrefix(answer, 'Hej, jak leci?')).toBe(answer);
+  });
+
+  it('cuts a restated question that sits inline before the answer (live-found)', () => {
+    const answer =
+      'Jaka tam jest pogoda? W miesiacu wrzesniu w Barcelonie zachmurzenie wzrasta z 29% do 42%.';
+    expect(
+      stripEchoedQuestionPrefix(
+        answer,
+        'Planuje wyjazd do Barcelony we wrzesniu, jaka tam jest pogoda?'
+      )
+    ).toBe(
+      'W miesiacu wrzesniu w Barcelonie zachmurzenie wzrasta z 29% do 42%.'
+    );
+  });
+
+  it('keeps a pure echo intact, so the echo guard still sees it', () => {
+    expect(
+      stripEchoedQuestionPrefix('A jaki ma aparat?', 'A jaki ma aparat?')
+    ).toBe('A jaki ma aparat?');
+  });
+
+  it('leaves an answer that merely starts with similar words alone', () => {
+    const answer = 'A jaki ma aparat ten model? Nie wiem.';
+    expect(stripEchoedQuestionPrefix(answer, 'A jaki ma pamięć?')).toBe(answer);
+  });
+
+  it('is a no-op without a question', () => {
+    expect(stripEchoedQuestionPrefix('Cena to 3999 zł.', undefined)).toBe(
+      'Cena to 3999 zł.'
+    );
+  });
+});
+
+describe('isCircularNonAnswer — an answer that only talks about its sources', () => {
+  it('flags a reply that keeps pointing at the sources without naming one', () => {
+    expect(
+      isCircularNonAnswer(
+        'Informacje pochodzą ze źródeł podanych wyżej. Źródła opisują to dokładnie, ' +
+          'a szczegóły są w źródłach.'
+      )
+    ).toBe(true);
+    expect(
+      isCircularNonAnswer(
+        'The sources describe it that way. The sources cover it, and the sources agree.'
+      )
+    ).toBe(true);
+  });
+
+  it('counts Polish source words in every inflection, including "źródeł"', () => {
+    expect(
+      isCircularNonAnswer('ze źródeł, w źródłach, zgodnie ze źródłami')
+    ).toBe(true);
+  });
+
+  it('does not count numbered citations, which are the style the prompt asks for (live-found)', () => {
+    expect(
+      isCircularNonAnswer(
+        'Cena wynosi 684,80 zł (źródło 1), a cyna 32 500 zł (źródło 2), ' +
+          'zgodnie ze źródłem 3.'
+      )
+    ).toBe(false);
+    expect(
+      isCircularNonAnswer(
+        'Source 1 lists 162 g, Source 2 lists 146.9 x 70.5 x 7.2 mm, and Source 3 agrees.'
+      )
+    ).toBe(false);
+  });
+
+  it('leaves an answer that cites a source once or twice alone', () => {
+    expect(
+      isCircularNonAnswer(
+        'Cena wynosi 3200 zł (źródło 1), a dostawa jest darmowa.'
+      )
+    ).toBe(false);
+  });
+
+  it('ignores mentions that only appear inside a think block', () => {
+    expect(
+      isCircularNonAnswer(
+        '<think>źródło źródło źródło</think>Cena wynosi 3200 zł.'
+      )
+    ).toBe(false);
+  });
+
+  it('is false for an empty answer', () => {
+    expect(isCircularNonAnswer('')).toBe(false);
   });
 });

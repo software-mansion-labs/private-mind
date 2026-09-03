@@ -105,6 +105,7 @@ describe('runMigrations from a real old (pre-RAG) schema', () => {
     expect(has(db, 'messages', 'sourceDocuments')).toBe(true);
     expect(has(db, 'messages', 'groundingCaveats')).toBe(true);
     expect(has(db, 'chatSettings', 'thinkingEnabled')).toBe(true);
+    expect(has(db, 'chatSettings', 'digest')).toBe(true);
     expect(has(db, 'sources', 'firstChunk')).toBe(true);
   });
 
@@ -159,7 +160,7 @@ describe('runMigrations from a real old (pre-RAG) schema', () => {
         'sourceDocuments',
         'groundingCaveats',
       ],
-      chatSettings: ['id', 'chatId', 'thinkingEnabled'],
+      chatSettings: ['id', 'chatId', 'thinkingEnabled', 'digest'],
       sources: ['id', 'name', 'firstChunk'],
     });
 

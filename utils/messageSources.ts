@@ -13,12 +13,13 @@ import {
   sourcesPresentInContext,
 } from './contextUtils';
 import { hybridRetrieve } from './hybridRetrieval';
-import { extractQueryTerms, stemPrefix } from './queryTerms';
+import { extractQueryTerms, foldForMatching, stemPrefix } from './queryTerms';
 import {
   findUngroundedFigures,
   isUngroundedConversionClaim,
   isUngroundedTrendClaim,
 } from './web/figureGrounding';
+import { carryReferentIntoQuery } from './web/buildSearchQuery';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
 import {
   CITATION_SENTENCE_PATTERN,
@@ -159,7 +160,8 @@ export const answerCitationOverlaps = (
   );
 };
 
-const SOURCE_REFERENCE = /(?<![\p{L}\p{N}])(?:sources?|źródł\w*)\s*(\d+)\b/giu;
+const SOURCE_REFERENCE =
+  /(?<![\p{L}\p{N}])(?:sources?|źród[łl]\w*)\s*(\d+)\b/giu;
 
 export const humanizeSourceReferences = (
   answer: string,
@@ -192,10 +194,10 @@ export const detectGroundingCaveats = (
 };
 
 const normalizeForEchoCompare = (text: string): string =>
-  text
-    .trim()
-    .toLowerCase()
-    .replace(/[?!.,;:]+$/, '');
+  foldForMatching(text.trim())
+    .replace(/[?!.,;:]+$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const stripTrailingParenthetical = (text: string): string =>
   text.replace(/\s*\([^)]{0,80}\)\s*$/, '');
@@ -215,12 +217,94 @@ export const isQuestionEchoAnswer = (
   return answerWithoutAnchor === normalizedQuestion;
 };
 
+const THINK_PREFIX = /^\s*(?:<think>[\s\S]*?<\/think>)?\s*/;
+const ECHO_PREFIX_TRAILER = /^[\s?!.:,;–—-]+/;
+
+const ANSWER_LABEL = /^\s*(?:odpowied[źz]|answer)\s*[:：-]\s*/i;
+const RESTATED_QUESTION_OVERLAP = 0.8;
+
+const stemSet = (text: string): Set<string> =>
+  new Set([...extractQueryTerms(text)].map(stemPrefix));
+
+const restatesQuestion = (line: string, question: string): boolean => {
+  const asked = stemSet(question);
+  const written = stemSet(line);
+  if (asked.size === 0 || written.size === 0) return false;
+  let shared = 0;
+  for (const stem of written) {
+    if (asked.has(stem)) shared += 1;
+  }
+  return shared / written.size >= RESTATED_QUESTION_OVERLAP;
+};
+
+const startsLikeSentence = (text: string): boolean =>
+  /^[\p{Lu}\p{N}"'„«\-*#]/u.test(text.trim());
+
+export const stripEchoedQuestionPrefix = (
+  answer: string,
+  question: string | undefined
+): string => {
+  const asked = question?.trim().replace(/[?!.]+$/, '');
+  if (!asked) return answer;
+  const head = answer.match(THINK_PREFIX)?.[0] ?? '';
+  let rest = answer.slice(head.length);
+
+  if (rest.toLowerCase().startsWith(asked.toLowerCase())) {
+    const remainder = rest.slice(asked.length).replace(ECHO_PREFIX_TRAILER, '');
+    if (!remainder.trim()) return answer;
+    rest = remainder;
+  }
+
+  for (let guard = 0; guard < 3; guard++) {
+    const opener = rest.match(/^[^\n?]*\?/)?.[0] ?? '';
+    const openerTail = rest.slice(opener.length);
+    const openerRemainder = openerTail.replace(/^[\s\n]+/, '');
+    if (
+      opener.trim() &&
+      restatesQuestion(opener, asked) &&
+      startsLikeSentence(openerRemainder)
+    ) {
+      rest = openerRemainder;
+      continue;
+    }
+    const [firstLine = '', ...others] = rest.split('\n');
+    const label = firstLine.trim();
+    const rowTail = others.join('\n');
+    if (
+      rowTail.trim() &&
+      ANSWER_LABEL.test(label) &&
+      label.replace(ANSWER_LABEL, '').trim() === ''
+    ) {
+      rest = rowTail.replace(/^\n+/, '');
+      continue;
+    }
+    break;
+  }
+
+  const cleaned = rest.replace(ANSWER_LABEL, '');
+  return startsLikeSentence(cleaned) ? `${head}${cleaned}` : answer;
+};
+
 const DANGLING_LIST_INTRO = /[:：]\s*$/;
+const DANGLING_LIST_MARKER_ONLY = /^\s*(?:\d+[.)]|[-*•])\s*$/;
 
 export const isDanglingListAnswer = (answer: string): boolean => {
   const visible = stripThinkBlocks(answer);
   if (!visible) return false;
-  return DANGLING_LIST_INTRO.test(visible);
+  if (DANGLING_LIST_INTRO.test(visible)) return true;
+  const lastLine = visible.split('\n').at(-1) ?? '';
+  return DANGLING_LIST_MARKER_ONLY.test(lastLine);
+};
+
+const CIRCULAR_SOURCE_REFERENCE_THRESHOLD = 3;
+const SOURCE_REFERENCE_MARKER = /źród\w*|\bsources?\b/giu;
+
+export const isCircularNonAnswer = (answer: string): boolean => {
+  const visible = stripThinkBlocks(answer);
+  if (!visible) return false;
+  const withoutCitations = visible.replace(SOURCE_REFERENCE, ' ');
+  const mentions = withoutCitations.match(SOURCE_REFERENCE_MARKER)?.length ?? 0;
+  return mentions >= CIRCULAR_SOURCE_REFERENCE_THRESHOLD;
 };
 
 export const isWrongLanguageAnswer = (
@@ -361,6 +445,8 @@ export interface BuildMessageSourcesParams {
   vectorStore: OPSQLiteVectorStore;
   embeddings?: LFMEmbeddings | null;
   maxRelevantChunks?: number;
+  history?: { role: string; content: string }[];
+  digest?: string;
 }
 
 export interface MessageSources {
@@ -377,6 +463,8 @@ export const buildMessageSources = async ({
   vectorStore,
   embeddings,
   maxRelevantChunks,
+  history,
+  digest,
 }: BuildMessageSourcesParams): Promise<MessageSources> => {
   const empty: MessageSources = {
     context: [],
@@ -404,8 +492,13 @@ export const buildMessageSources = async ({
   let sourceDocuments: SourceDocument[] = [];
 
   if (userInput.trim()) {
-    const relevantChunks = await retrieveChunks(
+    const retrievalQuery = carryReferentIntoQuery(
       userInput,
+      history ?? [],
+      digest
+    );
+    const relevantChunks = await retrieveChunks(
+      retrievalQuery,
       allSourceIds,
       activeSources,
       attachmentSourceIds,

@@ -19,6 +19,9 @@ interface UseChatScreenLayoutOptions {
   theme: Theme;
 }
 
+const GRADIENT_FADE_MS = 900;
+const GRADIENT_UNMOUNT_SLACK_MS = 100;
+
 export const useChatScreenLayout = ({
   isEmpty,
   headerTitleBottom,
@@ -42,8 +45,20 @@ export const useChatScreenLayout = ({
   }, []);
 
   const gradientProgress = useSharedValue(isEmpty ? 1 : 0);
+  const [showGradient, setShowGradient] = useState(isEmpty);
   useEffect(() => {
-    gradientProgress.set(withTiming(isEmpty ? 1 : 0, { duration: 900 }));
+    gradientProgress.set(
+      withTiming(isEmpty ? 1 : 0, { duration: GRADIENT_FADE_MS })
+    );
+    if (isEmpty) {
+      setShowGradient(true);
+      return;
+    }
+    const timer = setTimeout(
+      () => setShowGradient(false),
+      GRADIENT_FADE_MS + GRADIENT_UNMOUNT_SLACK_MS
+    );
+    return () => clearTimeout(timer);
   }, [isEmpty, gradientProgress]);
   const gradientStyle = useAnimatedStyle(() => ({
     opacity: gradientProgress.get(),
@@ -92,6 +107,7 @@ export const useChatScreenLayout = ({
     setUserActionMenu,
     userActionMenuPosition,
     gradientStyle,
+    showGradient,
     fadeBottom,
     topFadeAnchor,
     emptyFadeColors,

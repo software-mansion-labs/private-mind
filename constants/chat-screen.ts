@@ -25,7 +25,5 @@ export const MESSAGE_PIN_SETTLE_MS = 500;
 
 export const REVEAL_FALLBACK_MS = 900;
 
-export const PIN_RELEASE_MS = 32;
-
 export const navBarInset = (theme: Theme) =>
   Platform.OS === 'android' ? theme.insets.bottom : 0;

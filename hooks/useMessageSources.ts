@@ -19,7 +19,10 @@ export const useMessageSources = (sourceDocuments?: SourceDocument[]) => {
   }, [sourceDocuments]);
 
   const displayedSources = useMemo(
-    () => deduped.filter((source) => source.kind !== 'web' || source.read !== false),
+    () =>
+      deduped.filter(
+        (source) => source.kind !== 'web' || source.read !== false
+      ),
     [deduped]
   );
 

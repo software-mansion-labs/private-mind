@@ -108,6 +108,7 @@ export default function ChatScreen({
     setUserActionMenu,
     userActionMenuPosition,
     gradientStyle,
+    showGradient,
     fadeBottom,
     topFadeAnchor,
     emptyFadeColors,
@@ -242,15 +243,17 @@ export default function ChatScreen({
       collapsable={false}
       onLayout={handleRootLayout}
     >
-      <Animated.View
-        style={[StyleSheet.absoluteFill, gradientStyle]}
-        pointerEvents="none"
-      >
-        <LinearGradient
-          colors={[theme.bg.softPrimary, theme.bg.main]}
-          style={StyleSheet.absoluteFill}
-        />
-      </Animated.View>
+      {showGradient && (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, gradientStyle]}
+          pointerEvents="none"
+        >
+          <LinearGradient
+            colors={[theme.bg.softPrimary, theme.bg.main]}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+      )}
       <View style={styles.messagesLayer} pointerEvents="box-none">
         <Messages
           ref={messagesRef}

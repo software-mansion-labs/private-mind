@@ -129,6 +129,14 @@ export const runMigrations = async (db: SQLiteDatabase) => {
     await db.execAsync(`ALTER TABLE chatSettings DROP COLUMN contextWindow`);
   }
 
+  const hasDigest = chatSettingsTableInfo.some((col) => col.name === 'digest');
+
+  if (!hasDigest) {
+    await db.execAsync(
+      `ALTER TABLE chatSettings ADD COLUMN digest TEXT DEFAULT NULL`
+    );
+  }
+
   // Add firstChunk column to sources
   const sourcesTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(sources)`
@@ -271,6 +279,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       chatId INTEGER PRIMARY KEY NOT NULL,
       systemPrompt TEXT DEFAULT '',
       thinkingEnabled INTEGER DEFAULT NULL,
+      digest TEXT DEFAULT NULL,
       FOREIGN KEY(chatId) REFERENCES chats(id) ON DELETE CASCADE
     );
   `);

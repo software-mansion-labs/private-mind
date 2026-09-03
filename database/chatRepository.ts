@@ -566,6 +566,33 @@ export const setChatSettings = async (
   }
 };
 
+export const getChatDigest = async (
+  db: SQLiteDatabase,
+  chatId: number
+): Promise<string | null> => {
+  const result = await db.getFirstAsync<{ digest: string | null }>(
+    'SELECT digest FROM chatSettings WHERE chatId = ?',
+    [chatId]
+  );
+  return result?.digest ?? null;
+};
+
+export const setChatDigest = async (
+  db: SQLiteDatabase,
+  chatId: number,
+  digest: string
+): Promise<void> => {
+  await db.runAsync(
+    `
+    INSERT INTO chatSettings (chatId, digest)
+    VALUES (?, ?)
+    ON CONFLICT(chatId) DO UPDATE SET
+      digest = excluded.digest
+  `,
+    [chatId, digest]
+  );
+};
+
 export const renameChat = async (
   db: SQLiteDatabase,
   id: number,

@@ -11,21 +11,31 @@ const CAVEAT_COPY: Record<GroundingCaveatKind, string> = {
   conversion: 'No real conversion rate was found in the sources',
 };
 
+const CAVEAT_PRIORITY: GroundingCaveatKind[] = [
+  'conversion',
+  'trend',
+  'figure',
+];
+
+export const leadingCaveat = (
+  caveats: GroundingCaveatKind[] | undefined
+): GroundingCaveatKind | null =>
+  CAVEAT_PRIORITY.find((kind) => caveats?.includes(kind)) ?? null;
+
 interface Props {
   caveats?: GroundingCaveatKind[];
 }
 
 const GroundingCaveatBadges = ({ caveats }: Props) => {
   const { styles } = useThemedStyles(createStyles);
-  if (!caveats?.length) return null;
+  const kind = leadingCaveat(caveats);
+  if (!kind) return null;
 
   return (
     <View style={styles.container}>
-      {caveats.map((kind) => (
-        <View key={kind} style={styles.badge}>
-          <Text style={styles.text}>{CAVEAT_COPY[kind]}</Text>
-        </View>
-      ))}
+      <View style={styles.badge}>
+        <Text style={styles.text}>{CAVEAT_COPY[kind]}</Text>
+      </View>
     </View>
   );
 };
