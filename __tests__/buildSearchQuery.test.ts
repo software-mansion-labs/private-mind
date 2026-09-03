@@ -444,7 +444,7 @@ describe('planWebSearch', () => {
           '{"needs_search": true, "intent": "current Tokyo weather", "queries": ["Tokyo weather today"]}'
         );
       const plan = await planWebSearch(
-        'Nie wiem czy zabrać parasol jutro, wybieram się do Warszawy.',
+        'what is the weather today in Warsaw, do I need an umbrella?',
         [],
         generate,
         { today: TODAY }
@@ -478,7 +478,7 @@ describe('planWebSearch', () => {
           '{"needs_search": true, "intent": "current Tokyo weather", "queries": ["Tokyo weather today"]}'
         );
       const plan = await planWebSearch(
-        'jaka jest teraz pogoda w Tokyo?',
+        'what is the weather in Tokyo right now?',
         [],
         generate,
         { today: TODAY }
@@ -493,7 +493,7 @@ describe('planWebSearch', () => {
           '{"needs_search": true, "intent": "weather and concert", "queries": ["Tokyo weather today", "Berlin concert traffic"]}'
         );
       const plan = await planWebSearch(
-        'Za tydzień jadę na koncert do Berlina, ciekawe jakie będą korki.',
+        'I am driving to a concert in Berlin today, how is the weather and the traffic?',
         [],
         generate,
         { today: TODAY }
@@ -537,7 +537,7 @@ describe('planWebSearch', () => {
       const generate = jest
         .fn()
         .mockResolvedValue(
-          '{"needs_search": true, "intent": "poland goals", "queries": ["poland national team top scorer"]}'
+          '{"needs_search": true, "intent": "poland goals", "queries": ["najwięcej bramek dla Polski reprezentacja"]}'
         );
       const plan = await planWebSearch(
         'sprawdź na stronie transfermarkt.pl kto strzelił najwięcej bramek dla Polski',
@@ -547,7 +547,7 @@ describe('planWebSearch', () => {
       );
       expect(plan.siteRestriction).toBe('transfermarkt.pl');
       expect(plan.queries).toEqual([
-        'poland national team top scorer site:transfermarkt.pl',
+        'najwięcej bramek dla Polski reprezentacja site:transfermarkt.pl',
       ]);
     });
 
@@ -555,7 +555,7 @@ describe('planWebSearch', () => {
       const generate = jest
         .fn()
         .mockResolvedValue(
-          '{"needs_search": true, "intent": "poland goals", "queries": ["poland top scorer site:transfermarkt.pl"]}'
+          '{"needs_search": true, "intent": "poland goals", "queries": ["najwięcej bramek site:transfermarkt.pl"]}'
         );
       const plan = await planWebSearch(
         'sprawdź na stronie transfermarkt.pl kto strzelił najwięcej bramek',
@@ -563,7 +563,7 @@ describe('planWebSearch', () => {
         generate,
         { today: TODAY }
       );
-      expect(plan.queries).toEqual(['poland top scorer site:transfermarkt.pl']);
+      expect(plan.queries).toEqual(['najwięcej bramek site:transfermarkt.pl']);
     });
 
     it('leaves queries and siteRestriction untouched when no site is named', async () => {
@@ -626,6 +626,71 @@ describe('planWebSearch', () => {
         }
       );
       expect(plan.queries).toEqual(['league champion 2025']);
+    });
+  });
+
+  describe('language of the planned queries', () => {
+    const oledHistory = [
+      { role: 'user', content: 'jaki jest najlepszy tv OLED?' },
+      {
+        role: 'assistant',
+        content:
+          'Model LG OLED65B65LA znalazł się w zestawieniu najlepszych telewizorów OLED 2026.',
+      },
+    ];
+    const question =
+      'wypisz jakie ma funkcje i parametry techniczne oraz powiedz czy sprawdzi się w salonie z dużymi oknami';
+    const driftedPlan =
+      '{"needs_search": true, "intent": "TV features and suitability", "queries": ["best TV for large living room features", "TV technical specifications", "TV suitability for large windows"]}';
+    const correctedPlan =
+      '{"needs_search": true, "intent": "TV features and suitability", "queries": ["funkcje i parametry techniczne LG OLED65B65LA", "telewizor OLED do salonu z dużymi oknami"]}';
+
+    it('asks the planner again when its queries are not in the language of the conversation (live #341)', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValueOnce(driftedPlan)
+        .mockResolvedValueOnce(correctedPlan);
+      const plan = await planWebSearch(question, oledHistory, generate, {
+        today: TODAY,
+      });
+      expect(generate).toHaveBeenCalledTimes(2);
+      const retry = generate.mock.calls[1]![0];
+      expect(retry.slice(0, 2)).toEqual(generate.mock.calls[0]![0]);
+      expect(retry[2]).toEqual({ role: 'assistant', content: driftedPlan });
+      expect(retry[3].role).toBe('user');
+      expect(retry[3].content).toMatch(/same language/);
+      expect(plan.queries).toEqual([
+        'funkcje i parametry techniczne LG OLED65B65LA',
+        'telewizor OLED do salonu z dużymi oknami',
+      ]);
+    });
+
+    it('falls back to the question itself when the retry drifts as well', async () => {
+      const generate = jest.fn().mockResolvedValue(driftedPlan);
+      const plan = await planWebSearch(question, oledHistory, generate, {
+        today: TODAY,
+      });
+      expect(generate).toHaveBeenCalledTimes(2);
+      expect(plan.queries).toEqual([toKeywordQuery(question)]);
+    });
+
+    it('keeps the queries that were in the right language when the retry fails', async () => {
+      const mixedPlan =
+        '{"needs_search": true, "intent": "TV features", "queries": ["parametry techniczne LG OLED65B65LA", "TV suitability for large windows"]}';
+      const generate = jest
+        .fn()
+        .mockResolvedValueOnce(mixedPlan)
+        .mockRejectedValueOnce(new Error('busy'));
+      const plan = await planWebSearch(question, oledHistory, generate, {
+        today: TODAY,
+      });
+      expect(plan.queries).toEqual(['parametry techniczne LG OLED65B65LA']);
+    });
+
+    it('does not ask twice when the plan already speaks the language of the conversation', async () => {
+      const generate = jest.fn().mockResolvedValue(correctedPlan);
+      await planWebSearch(question, oledHistory, generate, { today: TODAY });
+      expect(generate).toHaveBeenCalledTimes(1);
     });
   });
 });
@@ -1042,10 +1107,7 @@ describe('carryReferentIntoQuery', () => {
       JSON.stringify({
         needs_search: true,
         intent: "the president's children and wife",
-        queries: [
-          'how many children does the president have',
-          "name of the president's wife",
-        ],
+        queries: ['ile dzieci ma prezydent', 'jak nazywa sie zona prezydenta'],
       })
     );
     const plan = await planWebSearch(
@@ -1054,8 +1116,8 @@ describe('carryReferentIntoQuery', () => {
       generate
     );
     expect(plan.queries).toEqual([
-      'how many children does the president have Donald Trump',
-      "name of the president's wife Donald Trump",
+      'ile dzieci ma prezydent Donald Trump',
+      'jak nazywa sie zona prezydenta Donald Trump',
     ]);
   });
 

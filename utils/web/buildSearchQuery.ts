@@ -10,6 +10,7 @@ import { todayISO } from '../todayISO';
 import { namesAnotherDay } from '../calendarFacts';
 import { foldForMatching } from '../queryTerms';
 import { conversationSubject, namedEntitiesIn } from './conversationSubject';
+import { sharesLanguageWith } from './queryLanguage';
 
 export interface QueryRewriteMessage {
   role: 'system' | 'user' | 'assistant';
@@ -515,6 +516,48 @@ const ABOUT_THE_CONVERSATION =
 export const isAboutTheConversation = (query: string): boolean =>
   ABOUT_THE_CONVERSATION.test(query);
 
+const LANGUAGE_CORRECTION =
+  'Every query must be written in the same language and script as the latest user message, not translated. Output only the corrected JSON plan.';
+
+const languageReferenceFor = (
+  query: string,
+  history: { role: string; content: string }[],
+  digest?: string
+): string =>
+  [
+    query,
+    digest ?? '',
+    ...history
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => m.content),
+  ].join('\n');
+
+const inConversationLanguage = (
+  plan: WebSearchPlan,
+  reference: string
+): boolean => plan.queries.every((q) => sharesLanguageWith(q, reference));
+
+const replanInConversationLanguage = async (
+  messages: QueryRewriteMessage[],
+  raw: string,
+  generate: QueryRewriteFn,
+  reference: string
+): Promise<WebSearchPlan | null> => {
+  let corrected: string;
+  try {
+    corrected = await generate([
+      ...messages,
+      { role: 'assistant', content: raw },
+      { role: 'user', content: LANGUAGE_CORRECTION },
+    ]);
+  } catch {
+    return null;
+  }
+  const plan = parseSearchPlan(corrected);
+  if (!plan?.needsSearch || plan.queries.length === 0) return null;
+  return inConversationLanguage(plan, reference) ? plan : null;
+};
+
 export const planWebSearch = async (
   userInput: string,
   history: { role: string; content: string }[],
@@ -551,15 +594,16 @@ export const planWebSearch = async (
     ? `Conversation so far:\n${convo}\n\nLatest user message: ${query}\n\nJSON plan:`
     : `User message: ${query}\n\nJSON plan:`;
 
+  const messages: QueryRewriteMessage[] = [
+    {
+      role: 'system',
+      content: PLANNER_SYSTEM_PROMPT(opts?.today ?? todayISO()),
+    },
+    { role: 'user', content: userPrompt },
+  ];
   let raw: string;
   try {
-    raw = await generate([
-      {
-        role: 'system',
-        content: PLANNER_SYSTEM_PROMPT(opts?.today ?? todayISO()),
-      },
-      { role: 'user', content: userPrompt },
-    ]);
+    raw = await generate(messages);
   } catch {
     return verbatim();
   }
@@ -572,9 +616,22 @@ export const planWebSearch = async (
       : verbatim(parsed.intent);
   }
 
+  const reference = languageReferenceFor(query, history, opts?.digest);
+  const plan = inConversationLanguage(parsed, reference)
+    ? parsed
+    : ((await replanInConversationLanguage(
+        messages,
+        raw,
+        generate,
+        reference
+      )) ?? {
+        ...parsed,
+        queries: parsed.queries.filter((q) => sharesLanguageWith(q, reference)),
+      });
+
   const today = opts?.today ?? todayISO();
   const groundedText = foldForMatching(`${query} ${convo}`);
-  const safeQueries = parsed.queries
+  const safeQueries = plan.queries
     .filter((q) => !isLeakedQuery(q, groundedText))
     .map((q) => regroundYears(q, query, today))
     // The planner is told to "resolve pronouns/references from the
@@ -585,9 +642,9 @@ export const planWebSearch = async (
     .map((q) => carryReferentIntoQuery(q, history, opts?.digest))
     .map((q) => withSiteRestriction(q, siteRestriction));
 
-  if (safeQueries.length === 0) return verbatim(parsed.intent);
+  if (safeQueries.length === 0) return verbatim(plan.intent);
   return {
-    ...parsed,
+    ...plan,
     queries: safeQueries,
     ...(siteRestriction ? { siteRestriction } : {}),
   };
