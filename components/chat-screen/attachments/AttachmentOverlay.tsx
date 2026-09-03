@@ -271,7 +271,6 @@ const AttachmentOverlay = ({
             // The material is the panel's, not the menu's: it stays on through
             // the morph and goes only once the sheet is on its way out.
             glass={!panel.closing}
-            glassDuration={DURATION.panel / 1000}
             open={panel.open}
             morph={panel.morph}
             menuOpacity={panel.menuOpacity}
@@ -286,24 +285,21 @@ const AttachmentOverlay = ({
             }
             grid={
               !enteredSheet ? null : panel.sheet === 'camera' ? (
-                // Only while the camera is the mode, not merely the sheet. The
-                // preview is a native surface: `‹` back to the menu fades the
-                // layer to nothing on iOS, but on Android the surface ignores
-                // the opacity and stays on screen behind the rows.
-                panel.mode === 'camera' ? (
-                  <CameraSheet
-                    ref={cameraRef}
-                    width={gridWidth}
-                    height={gridHeight}
-                    facing={facing}
-                    flash={flash}
-                    preview={
-                      PREVIEW_FITS_PANEL ||
-                      (settled && !panel.closing && !isFlying)
-                    }
-                    lifting={isFlying}
-                  />
-                ) : null
+                <CameraSheet
+                  ref={cameraRef}
+                  width={gridWidth}
+                  height={gridHeight}
+                  facing={facing}
+                  flash={flash}
+                  preview={
+                    PREVIEW_FITS_PANEL ||
+                    (panel.mode === 'camera' &&
+                      settled &&
+                      !panel.closing &&
+                      !isFlying)
+                  }
+                  lifting={isFlying}
+                />
               ) : (
                 <PhotoGrid
                   ref={gridRef}

@@ -195,12 +195,11 @@ export const panelPalette = (theme: Theme) => ({
    */
   controlScrim: 'rgba(0, 0, 0, 0.18)',
   iconWell: withAlpha(theme.text.primary, 0.09),
-  /** Laid over the panel's blur to land on the reference's material. */
-  material: withAlpha(theme.text.primary, 0.047),
   /**
-   * The same material where there is no blur to lay it over — Android hosts the
-   * sheet in its own window, where a blur samples nothing. Dark resolves to
-   * #1f1f1f, the reference's measured #1E1E1E.
+   * The panel's surface. A flat fill rather than a blur or glass: those are a
+   * `UIVisualEffectView`, which on iOS keeps a corner of its own and would not
+   * take the panel's — see `PanelMaterial`. Dark resolves to #1f1f1f, the
+   * reference's measured #1E1E1E.
    */
   materialFlat: mixColors(theme.bg.softPrimary, theme.text.primary, 0.12),
   /** Fill behind a photo for the frames before it decodes. */

@@ -1,13 +1,13 @@
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import React, { ReactNode, useEffect, useState } from 'react';
-import {
-  Platform,
-  StyleSheet,
-  View,
-  type ViewProps,
-  type ViewStyle,
-} from 'react-native';
+import React, {
+  ReactNode,
+  useEffect,
+  useState,
+  type ComponentProps,
+  type ComponentType,
+} from 'react';
+import { StyleSheet, View, type ViewProps, type ViewStyle } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   type AnimatedProps,
@@ -21,14 +21,14 @@ import { panelPalette } from './constants';
 const LIQUID_GLASS = isLiquidGlassAvailable();
 
 /**
- * Whether a `BlurView` here actually samples what is behind it. On Android it
- * never does in this flow: the sheet is hosted over the keyboard in a window of
- * its own, so the blur finds nothing behind itself and comes out as the tint
- * alone. Those surfaces fall back to a flat fill.
+ * `borderRadius` is a native prop of the glass view, missing from the package's
+ * prop types. Passed anyway: on the small controls it is the difference between
+ * a circle and the effect's own fixed corner.
  */
-const BLURS_ITS_BACKDROP = Platform.OS !== 'android';
-
-const AnimatedGlassView = Animated.createAnimatedComponent(GlassView);
+type GlassSurfaceProps = ComponentProps<typeof GlassView> & {
+  borderRadius?: number;
+};
+const GlassSurface = GlassView as ComponentType<GlassSurfaceProps>;
 
 export type GlassStyleName = 'regular' | 'none';
 
@@ -43,8 +43,16 @@ function useGlassStyle(target: GlassStyleName, duration: number) {
   return { style, animate: true, animationDuration: duration };
 }
 
-/** Shape without a clip: clipping stops interactive glass rendering the bulge
- *  it makes under a finger. */
+/**
+ * Shape without a clip: clipping stops interactive glass rendering the bulge it
+ * makes under a finger.
+ *
+ * A `GlassView` takes its corner from the `borderRadius` **prop**, never from
+ * the style — `expo-glass-effect` feeds the prop to the effect's own
+ * `cornerConfiguration` and leaves the style to the container. So every glass
+ * surface here passes the radius both ways: as a style for the stand-in, and as
+ * a prop for the material.
+ */
 function shapeOf(radius: number): ViewStyle {
   return { borderRadius: radius, borderCurve: 'continuous' };
 }
@@ -61,7 +69,10 @@ export interface GlassProps extends ViewProps {
   /**
    * `theme` follows the app; `dark` pins the material dark whatever the theme
    * is. The floating controls take `dark`: they sit over photos, and their
-   * glyphs are light in both themes.
+   * glyphs are light in both themes — which needs the material to be dark
+   * whatever is behind it, not merely dark-schemed. Liquid glass is clear
+   * enough that over a white screenshot an untinted control and its white
+   * glyphs both disappear.
    */
   scheme?: 'theme' | 'dark';
   /**
@@ -131,80 +142,52 @@ export function Glass({
   }
 
   return (
-    <GlassView
+    <GlassSurface
       glassEffectStyle={glassEffectStyle}
       colorScheme={dark ? 'dark' : 'light'}
+      tintColor={scheme === 'dark' ? palette.controlScrim : undefined}
       isInteractive={interactive}
+      borderRadius={radius}
       style={[shapeOf(radius), style]}
       {...rest}
     >
       {children}
-    </GlassView>
+    </GlassSurface>
   );
 }
 
 /**
- * The panel's own surface. `style` carries the panel's live corner radius: the
- * material rounds itself rather than being clipped, so it can still bulge under
- * a press. It stays in the touch path, which is also what stops a tap on the
- * menu's padding falling through to the dismiss backdrop behind it.
+ * The panel's own surface: a plain fill, cut by the panel's own clip like
+ * everything else inside it.
+ *
+ * Deliberately neither glass nor blur. Both are a `UIVisualEffectView`, and on
+ * iOS one of those keeps a corner of its own — measured at ~20pt on the
+ * iPhone 17 simulator — that answers to nothing: not its own `borderRadius`,
+ * animated or static, not `expo-glass-effect`'s `borderRadius` prop, and not an
+ * ancestor's rounded `overflow: hidden`. Under a sheet rounded to 52 it stood
+ * out past the photos at every corner, which is the light border seen around
+ * the grid and around the camera. Proved by painting this surface red: the
+ * corners went red while the cells stayed inside their 52pt curve.
+ *
+ * It still must not be wrapped in an animated opacity: it is taken out of the
+ * tree by `variant` rather than made transparent.
  */
 export function PanelMaterial({
   variant,
-  duration,
   style,
 }: {
   variant: GlassStyleName;
-  duration: number;
-  /** Animated: the panel drives the material's corner radius through this. */
+  /** Animated: the panel's frame. The shape comes from the panel's clip. */
   style?: AnimatedProps<ViewProps>['style'];
 }) {
   const { theme } = useTheme();
-  const dark = isDarkTheme(theme);
   const palette = panelPalette(theme);
-  const glassEffectStyle = useGlassStyle(variant, duration);
 
-  if (!LIQUID_GLASS) {
-    if (variant === 'none') return null;
-    return (
-      <Animated.View pointerEvents="none" style={[styles.clip, style]}>
-        {BLURS_ITS_BACKDROP ? (
-          <BlurView
-            intensity={70}
-            tint={
-              dark
-                ? 'systemUltraThinMaterialDark'
-                : 'systemUltraThinMaterialLight'
-            }
-            style={StyleSheet.absoluteFill}
-          >
-            <View
-              pointerEvents="none"
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: palette.material },
-              ]}
-            />
-          </BlurView>
-        ) : (
-          <View
-            pointerEvents="none"
-            style={[
-              StyleSheet.absoluteFill,
-              { backgroundColor: palette.materialFlat },
-            ]}
-          />
-        )}
-      </Animated.View>
-    );
-  }
-
+  if (variant === 'none') return null;
   return (
-    <AnimatedGlassView
-      glassEffectStyle={glassEffectStyle}
-      colorScheme={dark ? 'dark' : 'light'}
-      isInteractive
-      style={[styles.shape, style]}
+    <Animated.View
+      pointerEvents="none"
+      style={[style, { backgroundColor: palette.materialFlat }]}
     />
   );
 }
