@@ -76,7 +76,7 @@ const coalesceLines = (text: string, target: number): string[] => {
     } else if (!buffer) {
       buffer = line;
     } else if (buffer.length + 1 + line.length <= target) {
-      buffer = `${buffer} ${line}`;
+      buffer = `${buffer}\n${line}`;
     } else {
       flush();
       buffer = line;
@@ -123,6 +123,17 @@ const containsNeedle = (folded: string, needle: string): boolean =>
     ? folded.includes(needle)
     : new RegExp(`(?<![\\p{L}\\p{N}])${needle}`, 'u').test(folded);
 
+const WHEN_QUESTION =
+  /\bkiedy\b|\bwhen\b|\bwann\b|\bquand\b|\bcu[aá]ndo\b|\bquando\b|когда|कब|\bمتى\b/i;
+const DATE_IN_TEXT =
+  /\b\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}\b|\b\d{1,2}\s?(?:sty|lut|mar|kwi|maj|cze|lip|sie|wrz|paz|lis|gru|jan|feb|apr|jun|jul|aug|sep|oct|nov|dec)/i;
+const DATE_BONUS = 2;
+
+const PRICE_QUESTION =
+  /\bile\s+kosztuj|\bcen[ay]\b|\bcennik|\bkoszt\b|\bhow much\b|\bprice\b|\bcost\b|\bprecio\b|\bpreis\b|\bprix\b|цена/i;
+const PRICE_BONUS = 4;
+const NO_PRICE_FACTOR = 0.35;
+
 export const MONEY_ANCHOR =
   /\d[\d\s.,]*\s?(?:zl|pln|eur|euro|usd|gbp|czk|chf)(?![\p{L}\p{N}])|[$€£¥]\s?\d|\d\s?[$€£¥]/giu;
 const MONEY_BONUS = 2;
@@ -130,12 +141,19 @@ const MONEY_BONUS = 2;
 const scorePassage = (
   folded: string,
   needles: string[],
-  weights: number[]
+  weights: number[],
+  wantsDate = false,
+  wantsPrice = false
 ): number => {
   let score = 0;
   needles.forEach((needle, index) => {
     if (containsNeedle(folded, needle)) score += 2 * weights[index]!;
   });
+  if (wantsDate && DATE_IN_TEXT.test(folded)) score += DATE_BONUS;
+  if (wantsPrice) {
+    if (folded.match(MONEY_ANCHOR) !== null) score += PRICE_BONUS;
+    else score *= NO_PRICE_FACTOR;
+  }
   const digits = (folded.match(/\d/g) ?? []).length;
   if (digits === 0) return score;
   const money = (folded.match(MONEY_ANCHOR) ?? []).length;
@@ -164,6 +182,8 @@ export const selectRelevantContent = (
     : [];
   if (needles.length === 0) return truncate(trimmed, maxChars);
 
+  const wantsDate = !!query && WHEN_QUESTION.test(query);
+  const wantsPrice = !!query && PRICE_QUESTION.test(query);
   const all = splitIntoPassages(trimmed, maxChars);
   const foldedAll = all.map(foldForMatching);
   const weights = idfWeights(foldedAll, needles);
@@ -177,7 +197,13 @@ export const selectRelevantContent = (
     .map((text, index) => ({
       text,
       index,
-      score: scorePassage(foldedAll[index]!, needles, weights),
+      score: scorePassage(
+        foldedAll[index]!,
+        needles,
+        weights,
+        wantsDate,
+        wantsPrice
+      ),
     }))
     .filter((passage) => {
       const key = foldedAll[passage.index]!;
@@ -276,11 +302,17 @@ const sourceBudgets = (
   );
 };
 
+interface WebContextOptions {
+  labelSubQueries?: boolean;
+  displayQuery?: string;
+}
+
 export const webResultsToContext = (
   results: WebSearchResult[],
   query?: string,
   startIndex = 0,
-  totalMaxChars?: number
+  totalMaxChars?: number,
+  options: WebContextOptions = {}
 ): WebContext => {
   const context: string[] = [];
   const sourceDocuments: WebSourceDocument[] = [];
@@ -291,8 +323,15 @@ export const webResultsToContext = (
   const used = withMaterial.length > 0 ? withMaterial : results;
   const budgets = sourceBudgets(totalMaxChars, used.length);
 
+  const recordedQuery = (options.displayQuery ?? query)?.trim() || undefined;
+  const searchedQuery =
+    options.displayQuery && query?.trim() !== recordedQuery
+      ? query?.trim() || undefined
+      : undefined;
   const distinctQueries = new Set(
-    used.map((result) => result.sourceQuery).filter((q): q is string => !!q)
+    (options.labelSubQueries ?? true)
+      ? used.map((result) => result.sourceQuery).filter((q): q is string => !!q)
+      : []
   );
 
   used.forEach((result, index) => {
@@ -326,7 +365,8 @@ export const webResultsToContext = (
       url: result.url,
       read: !!relevant,
       passage: cleanPassage,
-      query: query?.trim() || undefined,
+      query: recordedQuery,
+      ...(searchedQuery ? { searchedQuery } : {}),
       similarity: used.length > 1 ? 1 - index / used.length : 1,
     });
   });
@@ -338,7 +378,8 @@ export const webResultsToContext = (
       name: neutralizeDelimiters(result.title || hostname(result.url)),
       url: result.url,
       read: false,
-      query: query?.trim() || undefined,
+      query: recordedQuery,
+      ...(searchedQuery ? { searchedQuery } : {}),
     });
   }
 
