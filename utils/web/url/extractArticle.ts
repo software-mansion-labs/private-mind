@@ -79,9 +79,6 @@ const isolateMainContent = (html: string): string => {
   return body ? body[0] : html;
 };
 
-const BLOCK_BOUNDARY =
-  /<\/?(?:p|div|br|li|ul|ol|tr|td|th|table|section|article|h[1-6]|dt|dd|dl|blockquote|pre|figcaption|option|caption)\b[^>]*>/gi;
-
 const FOOTNOTE_LINE =
   /^(?:[↑^†]|\^)\s|(?:\bArchived from the original\b)|^Retrieved \d|^" ?\. [A-Z]/;
 const CITATION_MARKER =
@@ -129,6 +126,112 @@ const dropMenuRuns = (text: string): string => {
   return kept.join('\n');
 };
 
+const BLOCK_TAG =
+  /<(\/?)(p|div|br|li|ul|ol|tr|td|th|table|section|article|h[1-6]|dt|dd|dl|blockquote|pre|figcaption|option|caption)\b[^>]*>/gi;
+
+const VOID_BLOCK_TAGS = new Set(['br']);
+const ROW_TAGS = new Set(['tr']);
+
+const CELL_SEPARATOR = ' | ';
+const RECORD_MIN_CELLS = 2;
+const RECORD_MAX_CELLS = 16;
+const RECORD_CELL_MAX_CHARS = 40;
+const BLOCK_MAX_DEPTH = 120;
+
+interface BlockFrame {
+  tag: string;
+  parts: (string | BlockFrame)[];
+}
+
+const isBlockFrame = (part: string | BlockFrame): part is BlockFrame =>
+  typeof part !== 'string';
+
+const parseBlockFrames = (html: string): BlockFrame => {
+  const root: BlockFrame = { tag: 'root', parts: [] };
+  const stack: BlockFrame[] = [root];
+  let cursor = 0;
+  let skipped = 0;
+
+  for (const match of html.matchAll(BLOCK_TAG)) {
+    const top = stack[stack.length - 1]!;
+    top.parts.push(html.slice(cursor, match.index));
+    cursor = match.index + match[0].length;
+
+    const tag = match[2]!.toLowerCase();
+    if (VOID_BLOCK_TAGS.has(tag)) {
+      top.parts.push('\n');
+      continue;
+    }
+    if (match[1]) {
+      if (skipped > 0) skipped -= 1;
+      else if (stack.length > 1) stack.pop();
+      continue;
+    }
+    if (stack.length >= BLOCK_MAX_DEPTH) {
+      skipped += 1;
+      continue;
+    }
+    const frame: BlockFrame = { tag, parts: [] };
+    top.parts.push(frame);
+    stack.push(frame);
+  }
+
+  stack[stack.length - 1]!.parts.push(html.slice(cursor));
+  return root;
+};
+
+const flattenToCell = (part: string | BlockFrame): string =>
+  (isBlockFrame(part)
+    ? part.parts.map(flattenToCell).join(' ')
+    : part.replace(/<[^>]+>/g, ' ')
+  )
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const isLeafFrame = (frame: BlockFrame): boolean =>
+  !frame.parts.some(isBlockFrame);
+
+const looksLikeMenuRecord = (record: string): boolean =>
+  !MENU_LINE_KEEP.test(
+    record.replace(FACET_COUNT, ' ').replace(PROMO_PERCENT, ' ')
+  );
+
+const asRecord = (frame: BlockFrame, children: BlockFrame[]): string | null => {
+  const cells = children.map(flattenToCell);
+  if (cells.some((cell) => cell.length === 0)) return null;
+  const record = cells.join(CELL_SEPARATOR);
+
+  if (ROW_TAGS.has(frame.tag)) return record;
+
+  const fitsGrid =
+    children.length <= RECORD_MAX_CELLS &&
+    children.every(isLeafFrame) &&
+    cells.every((cell) => cell.length <= RECORD_CELL_MAX_CHARS);
+
+  return fitsGrid && !looksLikeMenuRecord(record) ? record : null;
+};
+
+const renderBlockFrame = (frame: BlockFrame): string => {
+  const children = frame.parts.filter(isBlockFrame);
+  const ownText = frame.parts
+    .filter((part): part is string => !isBlockFrame(part))
+    .join(' ')
+    .replace(/<[^>]+>/g, ' ')
+    .trim();
+
+  if (children.length >= RECORD_MIN_CELLS && ownText.length === 0) {
+    const record = asRecord(frame, children);
+    if (record !== null) return record;
+  }
+
+  return frame.parts
+    .map((part) => (isBlockFrame(part) ? renderBlockFrame(part) : part))
+    .join('\n');
+};
+
+export const groupBlockRecords = (html: string): string =>
+  renderBlockFrame(parseBlockFrames(html));
+
 const heuristicExtractText = (html: string): string => {
   let out = html
     .replace(/\sdata-mw=(["'])[\s\S]*?\1/g, ' ')
@@ -148,14 +251,13 @@ const heuristicExtractText = (html: string): string => {
     out = stripTagBlock(out, tag);
   }
   out = isolateMainContent(out);
-  return dropMenuRuns(
-    dropReferenceLines(
-      decodeEntities(out.replace(BLOCK_BOUNDARY, '\n').replace(/<[^>]+>/g, ' '))
-        .replace(/[^\S\n]+/g, ' ')
-        .replace(/ ?\n ?/g, '\n')
-        .replace(/\n{2,}/g, '\n')
-    )
-  ).trim();
+  const normalized = decodeEntities(
+    groupBlockRecords(out).replace(/<[^>]+>/g, ' ')
+  )
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/ ?\n ?/g, '\n')
+    .replace(/\n{2,}/g, '\n');
+  return dropMenuRuns(dropReferenceLines(normalized)).trim();
 };
 
 const JSON_LD_PATTERN =

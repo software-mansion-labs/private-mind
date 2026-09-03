@@ -591,3 +591,127 @@ describe('extractArticle — external abort signal', () => {
     ).rejects.toThrow(/aborted/i);
   });
 });
+
+describe('sibling blocks group into records (live-found: Nowy Sącz weather)', () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const forecast = `
+<html><body><article>
+  <h1>Pogoda Jutro, Nowy Sącz</h1>
+  <table>
+    <tr><td>Jutro</td><td>22°C</td><td>12°C</td></tr>
+    <tr><td>Piątek</td><td>24°C</td><td>18°C</td></tr>
+  </table>
+</article></body></html>`;
+
+  it('keeps each row on its own line instead of gluing them into one run', async () => {
+    mockFetch(forecast);
+    const article = await extractArticle('https://pogoda.interia.pl/x');
+
+    expect(article.text).not.toContain('12°C Piątek');
+    const rows = article.text.split('\n').map((line) => line.trim());
+    expect(rows).toContain('Jutro | 22°C | 12°C');
+    expect(rows).toContain('Piątek | 24°C | 18°C');
+  });
+
+  it('leaves no dangling cell separator at either end of a row', async () => {
+    mockFetch(forecast);
+    const article = await extractArticle('https://pogoda.interia.pl/x');
+
+    expect(article.text).not.toMatch(/\|\s*\n/);
+    expect(article.text).not.toMatch(/\n\s*\|/);
+    expect(article.text).not.toMatch(/\|\s*\|/);
+  });
+});
+
+describe('record grouping generalises past <table>', () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const page = (body: string) =>
+    `<html><body><article>${body}</article></body></html>`;
+
+  it('groups a div grid, the layout most forecast and price pages actually use', async () => {
+    mockFetch(
+      page(`
+        <div><div>Jutro</div><div>22°C</div><div>12°C</div></div>
+        <div><div>Piątek</div><div>24°C</div><div>18°C</div></div>`)
+    );
+    const article = await extractArticle('https://example.com/x');
+    const lines = article.text.split('\n').map((line) => line.trim());
+
+    expect(lines).toContain('Jutro | 22°C | 12°C');
+    expect(lines).toContain('Piątek | 24°C | 18°C');
+  });
+
+  it('groups list items the same way as divs', async () => {
+    mockFetch(
+      page(`
+        <ul><li>RAM</li><li>16 GB</li></ul>
+        <ul><li>Dysk</li><li>512 GB</li></ul>`)
+    );
+    const article = await extractArticle('https://example.com/x');
+    const lines = article.text.split('\n').map((line) => line.trim());
+
+    expect(lines).toContain('RAM | 16 GB');
+    expect(lines).toContain('Dysk | 512 GB');
+  });
+
+  it('keeps a table row whole even when one cell is long', async () => {
+    const long = 'Bardzo dluga nazwa produktu w jednej komorce tabeli cenowej';
+    mockFetch(page(`<table><tr><td>${long}</td><td>2499 zl</td></tr></table>`));
+    const article = await extractArticle('https://example.com/x');
+
+    expect(article.text).toContain(`${long} | 2499 zl`);
+  });
+
+  it('never glues prose paragraphs together', async () => {
+    mockFetch(
+      page(`
+        <div>
+          <p>Pierwszy akapit tekstu, ktory jest wystarczajaco dlugi.</p>
+          <p>Drugi akapit tekstu, rowniez odpowiednio dlugi.</p>
+        </div>`)
+    );
+    const article = await extractArticle('https://example.com/x');
+
+    expect(article.text).not.toContain('|');
+    expect(article.text.split('\n').length).toBeGreaterThan(1);
+  });
+
+  it('leaves a bare label menu ungrouped so the menu filter can still drop it', async () => {
+    const items = [
+      'Strona glowna',
+      'O nas',
+      'Kontakt',
+      'Kariera',
+      'Blog',
+      'Pomoc',
+      'Regulamin',
+      'Prywatnosc',
+    ]
+      .map((label) => `<li>${label}</li>`)
+      .join('');
+    mockFetch(page(`<ul>${items}</ul><p>Wlasciwa tresc artykulu tutaj.</p>`));
+    const article = await extractArticle('https://example.com/x');
+
+    expect(article.text).not.toContain('Strona glowna | O nas');
+    expect(article.text).not.toContain('Kontakt');
+    expect(article.text).toContain('Wlasciwa tresc artykulu tutaj.');
+  });
+
+  it('does not let facet counts promote a filter rail into a record', async () => {
+    const items = ['Buty (12)', 'Kurtki (8)', 'Spodnie (30)']
+      .map((label) => `<li>${label}</li>`)
+      .join('');
+    mockFetch(page(`<ul>${items}</ul>`));
+    const article = await extractArticle('https://example.com/x');
+
+    expect(article.text).not.toContain('Buty (12) | Kurtki (8)');
+  });
+});
