@@ -233,11 +233,16 @@ interface PassageScoring {
   verifiedAmount: number | null;
 }
 
+interface PassageScore {
+  score: number;
+  answersQuestion: boolean;
+}
+
 const scorePassage = (
   folded: string,
   scoring: PassageScoring,
   creditedRecord: boolean
-): number => {
+): PassageScore => {
   const {
     needles,
     weights,
@@ -247,22 +252,31 @@ const scorePassage = (
     wantsFigures,
   } = scoring;
   let score = 0;
+  let answersQuestion = creditedRecord;
   needles.forEach((needle, index) => {
     const topic = topicNeedles.has(needle);
     if (containsNeedle(folded, needle) || (creditedRecord && topic)) {
       score += 2 * weights[index]! * (topic ? TOPIC_NEEDLE_DISCOUNT : 1);
+      answersQuestion = true;
     }
   });
-  if (wantsDate && DATE_IN_TEXT.test(folded)) score += DATE_BONUS;
+  if (wantsDate && DATE_IN_TEXT.test(folded)) {
+    score += DATE_BONUS;
+    answersQuestion = true;
+  }
   const mentions = folded.match(MONEY_ANCHOR) ?? [];
   if (wantsPrice) {
-    if (mentions.length > 0) score += PRICE_BONUS;
-    else score *= NO_PRICE_FACTOR;
+    if (mentions.length > 0) {
+      score += PRICE_BONUS;
+      answersQuestion = true;
+    } else {
+      score *= NO_PRICE_FACTOR;
+    }
   }
   if (
     mentions.some((mention) => isOtherAmount(mention, scoring.verifiedAmount))
   ) {
-    return 0;
+    return { score: 0, answersQuestion: false };
   }
   if (mentions.length > 0)
     score += Math.min(1, mentions.length / 2) * MONEY_BONUS;
@@ -270,6 +284,7 @@ const scorePassage = (
     const figures = figuresOutsideNeedles(folded, needles);
     if (figures > 0) {
       score += Math.min(1, figures / FIGURES_SATURATION) * FIGURES_BONUS;
+      answersQuestion = true;
     } else {
       score *= NO_FIGURE_FACTOR;
     }
@@ -282,7 +297,7 @@ const scorePassage = (
       : Math.min(1, words / Math.max(4, digits / 2));
     score += Math.min(1, digits / 8) * proseRatio;
   }
-  return score;
+  return { score, answersQuestion };
 };
 
 const isSentenceLead = (passage: string): boolean =>
@@ -356,7 +371,7 @@ export const selectRelevantContent = (
     .map((text, index) => ({
       text,
       index,
-      score: scorePassage(foldedAll[index]!, scoring, credited.has(index)),
+      ...scorePassage(foldedAll[index]!, scoring, credited.has(index)),
     }))
     .filter((passage) => {
       const key = foldedAll[passage.index]!;
@@ -425,7 +440,12 @@ export const selectRelevantContent = (
   }
 
   const fillers = scored
-    .filter((passage) => passage.score > 0 && !claimed.has(passage.index))
+    .filter(
+      (passage) =>
+        passage.score > 0 &&
+        passage.answersQuestion &&
+        !claimed.has(passage.index)
+    )
     .sort(
       (a, b) =>
         b.score + leadBonus(b.index) - (a.score + leadBonus(a.index)) ||
