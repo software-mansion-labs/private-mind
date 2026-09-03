@@ -1,11 +1,8 @@
-import { useEffect } from 'react';
-import { Keyboard } from 'react-native';
+import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import {
-  useAnimatedReaction,
-  useDerivedValue,
-  useSharedValue,
-} from 'react-native-reanimated';
-import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+  useKeyboardHandler,
+  useReanimatedKeyboardAnimation,
+} from 'react-native-keyboard-controller';
 import { useTheme } from '../../context/ThemeContext';
 
 export const useKeyboardLift = () => {
@@ -13,25 +10,22 @@ export const useKeyboardLift = () => {
   const insetsBottom = useTheme().theme.insets.bottom;
   const keyboardGone = useSharedValue(false);
 
-  useAnimatedReaction(
-    () => progress.value,
-    (current, previous) => {
-      if (previous !== null && current > previous) keyboardGone.value = false;
-    }
+  // Runs on the UI thread on purpose. Sending a message dismisses the keyboard
+  // and then occupies the JS thread for seconds, so a JS-side keyboardDidHide
+  // listener cannot land and the bar stays stranded at the keyboard's height.
+  useKeyboardHandler(
+    {
+      onMove: (event) => {
+        'worklet';
+        if (event.height !== 0) keyboardGone.value = false;
+      },
+      onEnd: (event) => {
+        'worklet';
+        keyboardGone.value = event.height === 0;
+      },
+    },
+    []
   );
-
-  useEffect(() => {
-    const hidden = Keyboard.addListener('keyboardDidHide', () => {
-      keyboardGone.value = true;
-    });
-    const shown = Keyboard.addListener('keyboardDidShow', () => {
-      keyboardGone.value = false;
-    });
-    return () => {
-      hidden.remove();
-      shown.remove();
-    };
-  }, [keyboardGone]);
 
   return useDerivedValue(
     () =>

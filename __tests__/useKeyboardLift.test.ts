@@ -14,11 +14,19 @@ jest.mock('../context/ThemeContext', () => ({
   }),
 }));
 
+let keyboardHandler: {
+  onMove?: (event: { height: number; progress: number }) => void;
+  onEnd?: (event: { height: number; progress: number }) => void;
+} = {};
+
 jest.mock('react-native-keyboard-controller', () => ({
   useReanimatedKeyboardAnimation: () => ({
     height: mockHeight,
     progress: mockProgress,
   }),
+  useKeyboardHandler: (handler: typeof keyboardHandler) => {
+    keyboardHandler = handler;
+  },
 }));
 
 describe('useKeyboardLift', () => {
@@ -26,6 +34,7 @@ describe('useKeyboardLift', () => {
     mockHeight.value = 0;
     mockProgress.value = 0;
     mockInsetsBottom = 0;
+    keyboardHandler = {};
   });
 
   it('returns 0 when the keyboard is closed', () => {
@@ -63,26 +72,53 @@ describe('useKeyboardLift', () => {
     expect(result.current.value).toBe(-300);
   });
 
-  it('drops the bar back when the keyboard never actually appeared', () => {
+  it('drops the bar back when the keyboard finishes hiding', () => {
     mockInsetsBottom = 34;
     mockHeight.value = -346;
     mockProgress.value = 1;
-    const listeners: Record<string, () => void> = {};
-    const spy = jest
-      .spyOn(Keyboard, 'addListener')
-      .mockImplementation((event, handler) => {
-        listeners[event] = handler as () => void;
-        return { remove: () => undefined } as never;
-      });
 
     const { result, rerender } = renderHook(() => useKeyboardLift());
     expect(result.current.value).toBe(-312);
 
-    listeners.keyboardDidHide!();
+    keyboardHandler.onEnd!({ height: 0, progress: 0 });
+    rerender({});
+
+    expect(result.current.value).toBe(0);
+  });
+
+  // Sending a message dismisses the keyboard and then holds the JS thread for
+  // seconds. The bar was left stranded because the reset rode a JS listener.
+  it('resets without any JS-thread keyboard event', () => {
+    const spy = jest.spyOn(Keyboard, 'addListener');
+    mockInsetsBottom = 34;
+    mockHeight.value = -346;
+    mockProgress.value = 1;
+
+    const { result, rerender } = renderHook(() => useKeyboardLift());
+    keyboardHandler.onEnd!({ height: 0, progress: 0 });
+    rerender({});
+
+    expect(result.current.value).toBe(0);
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('lifts again as soon as the keyboard starts coming back', () => {
+    mockInsetsBottom = 34;
+    const { result, rerender } = renderHook(() => useKeyboardLift());
+
+    keyboardHandler.onEnd!({ height: 0, progress: 0 });
     rerender({});
     expect(result.current.value).toBe(0);
 
-    spy.mockRestore();
+    // The library reports the height as a translate here and as a raw height
+    // elsewhere, so the reset must not depend on its sign.
+    keyboardHandler.onMove!({ height: 346, progress: 1 });
+    mockHeight.value = -346;
+    mockProgress.value = 1;
+    rerender({});
+
+    expect(result.current.value).toBe(-312);
   });
 
   it('recomputes after the keyboard values change', () => {
