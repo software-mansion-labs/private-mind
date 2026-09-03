@@ -72,42 +72,53 @@ const withTimeout = async <T>(work: Promise<T>) => {
   }
 };
 
+type ResolvedPhoto =
+  | { uri: string }
+  /** The photo lives in iCloud and has no copy on this device. */
+  | { uri: null; inCloud: true }
+  | { uri: null; inCloud: false };
+
 /**
  * A library asset id is not a file. `expo-image` draws `ph://` directly, but
  * `persistImage` copies with the file system and ExecuTorch reads a path, so
  * the asset has to be resolved before either sees it. Android hands back a
  * `file://` uri already.
  *
- * Two steps, because asking for the local file alone is not enough: an asset
- * that is not materialised on disk answers in milliseconds with a null
- * `localUri` rather than an error, and only a fetch will produce a file. The
- * cheap local read comes first so the common case never touches the network.
+ * The local read comes first and is the whole answer for a photo that is on
+ * the device. When it is not, `getAssetInfoAsync` says so — `isNetworkAsset`,
+ * with no `localUri` at all — and the only way to a file is a download.
+ *
+ * That download is asked for, but its outcome is not waited on in silence.
+ * Measured on the iPhone 17 simulator, where every asset comes back
+ * `isNetworkAsset: true`: the download call never settles, and neither does
+ * `copyAssetsFileIOS`, because there is no iCloud behind the simulator to
+ * fetch from. On a real phone with Optimise Storage the same call does return
+ * — eventually, over the network. Either way the person deserves to be told
+ * which of the two they are waiting for.
  */
 const resolveLibraryUri = async (
   photo: LibraryImage
-): Promise<string | null> => {
-  if (!photo.uri.startsWith('ph://')) return photo.uri;
+): Promise<ResolvedPhoto> => {
+  if (!photo.uri.startsWith('ph://')) return { uri: photo.uri };
   try {
     const local = await withTimeout(
       MediaLibrary.getAssetInfoAsync(photo.id, {
         shouldDownloadFromNetwork: false,
       })
     );
-    if (local?.localUri) return local.localUri;
+    if (local?.localUri) return { uri: local.localUri };
+    const inCloud = !!local?.isNetworkAsset;
 
     const fetched = await withTimeout(
       MediaLibrary.getAssetInfoAsync(photo.id, {
         shouldDownloadFromNetwork: true,
       })
     );
-    // Still nothing means the asset has no file representation we can reach.
-    // Every photo in the iOS simulator's library answers this way; on hardware
-    // the first call normally returns a path. `expo-image`'s disk cache is not
-    // a way out — it does not cache local assets.
-    return fetched?.localUri ?? null;
+    if (fetched?.localUri) return { uri: fetched.localUri };
+    return { uri: null, inCloud };
   } catch (error) {
     console.error('Failed to resolve a library asset to a local file', error);
-    return null;
+    return { uri: null, inCloud: false };
   }
 };
 
@@ -187,7 +198,7 @@ export const useAttachment = () => {
     const resolved = await Promise.all(
       picked.map(async (photo) => ({
         id: photo.id,
-        uri: await resolveLibraryUri(photo),
+        ...(await resolveLibraryUri(photo)),
       }))
     );
     if (attachmentRequestRef.current !== requestId) return;
@@ -199,7 +210,9 @@ export const useAttachment = () => {
       });
       Toast.show({
         type: 'defaultToast',
-        text1: 'Could not open that photo.',
+        text1: failed.some((photo) => 'inCloud' in photo && photo.inCloud)
+          ? 'That photo is only in iCloud. Open it in Photos first.'
+          : 'Could not open that photo.',
       });
     }
 
