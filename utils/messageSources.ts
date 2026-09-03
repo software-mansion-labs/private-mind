@@ -586,6 +586,50 @@ export const answerUsesNoRetrievedEvidence = (
   return true;
 };
 
+const ASPECT_MIN_ANSWER_CHARS = 40;
+const SITE_OPERATOR = /\bsite:\S+/gi;
+
+const aspectStems = (query: string): string[] => {
+  const plain = query.replace(SITE_OPERATOR, ' ');
+  return [
+    ...new Set(
+      [...extractQueryTerms(plain, detectQuestionLanguage(plain)?.code)].map(
+        (term) => stemPrefix(foldForMatching(term))
+      )
+    ),
+  ];
+};
+
+const mentionsStem = (folded: string, stem: string): boolean =>
+  stem.length >= 4
+    ? folded.includes(stem)
+    : new RegExp(
+        `(?<![\\p{L}\\p{N}])${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
+        'u'
+      ).test(folded);
+
+export const aspectsMissingFromAnswer = (
+  answer: string,
+  subQueries: string[] | undefined,
+  context: string
+): string[] => {
+  if (!subQueries || subQueries.length < 2 || !context.trim()) return [];
+  const visible = foldForMatching(stripThinkBlocks(answer).trim());
+  if (visible.length < ASPECT_MIN_ANSWER_CHARS) return [];
+  const evidence = foldForMatching(context);
+  const stemsOf = subQueries.map(aspectStems);
+  return subQueries.filter((_, index) => {
+    const elsewhere = new Set(
+      stemsOf.flatMap((stems, other) => (other === index ? [] : stems))
+    );
+    const distinctive = stemsOf[index]!.filter((stem) => !elsewhere.has(stem));
+    return (
+      distinctive.some((stem) => mentionsStem(evidence, stem)) &&
+      !distinctive.some((stem) => mentionsStem(visible, stem))
+    );
+  });
+};
+
 export const claimsMissingEvidenceItHas = (
   answer: string,
   question: string | undefined,
