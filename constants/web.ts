@@ -1,5 +1,7 @@
 export const WEB_SEARCH_MAX_RESULTS = 5;
 
+export const WEB_VERBATIM_MIN_RESULTS = 3;
+
 export const WEB_MIN_SAME_SCRIPT_RESULTS = 1;
 export const WEB_SEARCH_TIMEOUT_MS = 8000;
 export const WEB_SEARCH_OVERALL_TIMEOUT_MS = 90000;
