@@ -18,7 +18,6 @@ import { usePhotoLibrary, type LibraryPhoto } from './usePhotoLibrary';
 interface Props {
   panel: ReturnType<typeof useAttachmentPanel>;
   width: number;
-  height: number;
   gridWidth: number;
   gridHeight: number;
   /** How low the menu shape may be drawn — see `useSheetGeometry`. */
@@ -51,7 +50,6 @@ interface Props {
 const AttachmentOverlay = ({
   panel,
   width,
-  height,
   gridWidth,
   gridHeight,
   menuMaxBottom,
@@ -70,7 +68,7 @@ const AttachmentOverlay = ({
 }: Props) => {
   /** The bar rides the sheet's bottom edge, computed the same way the panel
    *  computes its own — see `SheetBar`. */
-  const barTop = height - GUTTER - BOTTOM_BAR.inset - BOTTOM_BAR.controlSize;
+  const barTop = sheetBottom - BOTTOM_BAR.inset - BOTTOM_BAR.controlSize;
   const gridRef = useRef<PhotoGridHandle>(null);
   const cameraRef = useRef<CameraSheetHandle>(null);
   const [selected, setSelected] = useState<string[]>([]);
@@ -165,11 +163,11 @@ const AttachmentOverlay = ({
   }, [
     attachAndLeave,
     attachedIds,
-    composerBottom,
     gridHeight,
     gridWidth,
     photos,
     selected,
+    sheetTop,
   ]);
 
   /**
@@ -196,7 +194,7 @@ const AttachmentOverlay = ({
     } finally {
       capturing.current = false;
     }
-  }, [attachAndLeave, composerBottom, gridHeight, gridWidth]);
+  }, [attachAndLeave, gridHeight, gridWidth, sheetTop]);
 
   const flipCamera = useCallback(() => {
     Feedback.toggleOn();
@@ -235,7 +233,6 @@ const AttachmentOverlay = ({
             style={StyleSheet.absoluteFill}
           />
           <AttachmentPanel
-            screenHeight={height}
             gridWidth={gridWidth}
             gridHeight={gridHeight}
             menuMaxBottom={menuMaxBottom}

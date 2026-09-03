@@ -38,7 +38,6 @@ export interface PanelDrivers {
 }
 
 interface Props extends PanelDrivers {
-  screenHeight: number;
   gridWidth: number;
   gridHeight: number;
   /** How low the menu shape may be drawn. */
@@ -64,7 +63,6 @@ interface Props extends PanelDrivers {
  * and the menu blows up out of it.
  */
 const AttachmentPanel = ({
-  screenHeight,
   gridWidth,
   gridHeight,
   menuMaxBottom,
