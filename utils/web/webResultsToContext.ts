@@ -135,7 +135,7 @@ const PRICE_BONUS = 4;
 const NO_PRICE_FACTOR = 0.35;
 
 export const MONEY_ANCHOR =
-  /\d[\d\s.,]*\s?(?:zl|pln|eur|euro|usd|gbp|czk|chf)(?![\p{L}\p{N}])|[$€£¥]\s?\d|\d\s?[$€£¥]/giu;
+  /\d[\d\s.,]*\s?(?:zl(?:ot(?:ych|ego|emu|ymi|ym|y|e))?|pln|eur(?:o)?|usd|gbp|czk|chf|dolar(?:ow|ach|ami|em|a|y)?)(?![\p{L}\p{N}])|[$€£¥]\s?\d|\d\s?[$€£¥]/giu;
 const MONEY_BONUS = 2;
 
 const scorePassage = (
