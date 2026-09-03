@@ -2131,6 +2131,82 @@ panel after a completed search — "Deciding what to search for",
 "Searching 'Elon Musk's children'", "Reading the pages", and "Done" all
 show a checkmark, none left as a plain dot.
 
+## Trace-panel regressions that keep coming back
+
+These three have now been reported more than once each, which means they are
+being reintroduced rather than merely missed. They are written down here with
+the mechanism, not just the symptom, so the next change to the panel can be
+checked against them before it ships.
+
+All three were reported from the physical Pixel 10.
+
+🔁 **The running trace collapses to a single row when "Reading the pages"
+appears**
+Symptom: a search is running with the panel expanded. The moment the trace
+reaches the reading phase, every row above it disappears — the search steps
+and the pages found so far — and "Reading the pages" is left alone on screen.
+Mechanism: while `isSearching`,
+[WebSearchBlock](../components/chat-screen/WebSearchBlock.tsx) renders the
+trace as two separate pieces. The last row goes into its own always-mounted
+slot (`currentRow`), and everything before it (`historyRows =
+rows.slice(0, -1)`) is rendered by `WebSearchTraceList` — but only when
+`listMounted` is true. `handleCollapsed` sets `listMounted` back to false
+whenever the list finishes its collapse animation while a search is still
+running. So any state change that flips `expanded` to false for even one
+frame mid-search tears the history half down and leaves exactly the current
+row, which at that point is "Reading the pages". Nothing in `buildRows` drops
+those rows; they are still in the array.
+Why it comes back: the panel keeps its expanded flag in two places —
+`traceExpanded` in the store when the block is live, `localExpanded` when it
+is a saved one — and `expanded` picks between them via `isLiveBlock =
+isSearching || trace.length > 0`. Any change to what counts as "live" quietly
+changes which flag drives the panel, and the tear-down is a side effect two
+hops away from that decision.
+Guarded by: [__tests__/webSearchTrace.test.ts](../__tests__/webSearchTrace.test.ts)
+— "keeps every earlier row when the reading phase starts" holds the pure
+half, so a future failure localises straight to the component.
+
+🔁 **The panel replays its opening animation when generation finishes**
+Symptom: the answer finishes streaming and the whole panel animates as if the
+user had just expanded it. The user did nothing; only the message finished
+and the state changed.
+Mechanism: `isSearching` flipping to false swaps the entire subtree. The
+running branch renders a history list plus a separate current-row slot; the
+finished branch renders a single `WebSearchTraceList` over the full row set,
+with `animateRows` going from true to false. React cannot reconcile those
+two shapes, so the list unmounts and remounts and every row plays its
+`entering` animation again.
+Row keys are *not* the cause — measured, not assumed: the regression test
+below builds the same trace with `isSearching` true and false and the key
+lists come out identical, so `seenKeys` still recognises every row and
+`enterDelay` correctly hands out zero. The replay survives that, which is
+what pins it on the remount.
+Why it comes back: the running and finished states are two hand-written
+subtrees rather than one list told whether a search is still going. Any
+edit that changes the shape of either branch reintroduces the remount, and
+the stagger bookkeeping cannot suppress an animation on a view that has
+just been created.
+Guarded by: [__tests__/webSearchTrace.test.ts](../__tests__/webSearchTrace.test.ts)
+— "keeps row keys stable when the search stops running". That test rules
+out the cheap explanation; it cannot catch the remount itself.
+
+🔁 **The conversation goes blank white mid-generation and stays blank**
+Symptom: on the physical Pixel 10, the question and the partial answer both
+vanish and the conversation is an empty white screen. Generation is
+demonstrably still running — the stop button is there and works. When
+generation ends the screen stays blank.
+Mechanism: not established. Worth noting what it is *not*: a render throw
+would surface a red box, not a blank list, and the trace panel cannot blank
+the messages above it. That points at the message list's data or its
+measured height rather than at any one message.
+Next time it appears, capture before touching anything: `adb logcat` around
+the moment, the message rows for that chat straight from the device
+database, and whether the answer was persisted despite never being drawn.
+Without that the cause stays a guess.
+Guarded by: nothing. This one has no reproduction under instrumentation
+yet, and a test written against a guessed mechanism would be worse than
+none.
+
 ## User-facing communication
 
 ✅ **Internal-jargon leak fixed**
