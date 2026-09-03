@@ -129,6 +129,7 @@ const MessageItem = memo(
     const {
       isGenerating,
       isBusy,
+      isRefining,
       isSearchingThis,
       isAwaitingFirstToken,
       trace: webSearchTrace,
@@ -311,6 +312,9 @@ const MessageItem = memo(
                     onLinkPress={handleLinkPress}
                   />
                 )}
+              {isRefining ? (
+                <AnimatedChatLoading inline label="Refining…" />
+              ) : null}
               {attributionShown ? null : (
                 <DominantSourceBadge source={dominantWebSource} />
               )}

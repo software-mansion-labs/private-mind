@@ -54,6 +54,7 @@ export interface LLMStore {
   isLoading: boolean;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
+  isRefining: boolean;
   isBenchmarking: boolean;
   db: SQLiteDatabase | null;
   model: Model | null;
@@ -551,6 +552,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
   isGenerating: false,
   isProcessingPrompt: false,
+  isRefining: false,
   isBenchmarking: false,
   db: null,
   generatingForChatId: null,
@@ -919,22 +921,29 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       ): Promise<void> => {
         nudged = true;
         console.warn(reason);
-        updateChatStateForGeneration(set, 'generating');
-        const retryGeneration = await generateLLMResponse(
-          [
-            ...effectivePrepared,
-            { role: 'assistant', content: finalResponse as string },
-            {
-              role: 'user',
-              content:
-                prompt +
-                answerLanguageAnchor(
-                  detectQuestionLanguage(currentQuestion ?? '')
-                ),
-            },
-          ],
-          get
-        );
+        suppressUtilityStreaming = true;
+        set({ isRefining: true });
+        let retryGeneration: Awaited<ReturnType<typeof generateLLMResponse>>;
+        try {
+          retryGeneration = await generateLLMResponse(
+            [
+              ...effectivePrepared,
+              { role: 'assistant', content: finalResponse as string },
+              {
+                role: 'user',
+                content:
+                  prompt +
+                  answerLanguageAnchor(
+                    detectQuestionLanguage(currentQuestion ?? '')
+                  ),
+              },
+            ],
+            get
+          );
+        } finally {
+          suppressUtilityStreaming = false;
+          set({ isRefining: false });
+        }
         const retried = retryGeneration.response
           ? truncateAtRepeatedClause(
               normalizeModelText(retryGeneration.response)
@@ -942,7 +951,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           : retryGeneration.response;
         if (retried?.trim() && !stillBroken(retried)) {
           finalResponse = retried;
-          responsePerformance = retryGeneration.performance;
         }
       };
 
