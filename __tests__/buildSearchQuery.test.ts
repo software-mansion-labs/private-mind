@@ -5,6 +5,7 @@ import {
   sanitizeSearchQuery,
   extractSiteRestriction,
   carryReferentIntoQuery,
+  isAboutTheConversation,
   isConversationalIntent,
 } from '../utils/web/buildSearchQuery';
 
@@ -414,6 +415,27 @@ describe('planWebSearch', () => {
     expect(convo).toContain('turn 9');
   });
 
+  it('prepends the chat digest to the conversation sent to the LLM planner', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": true, "intent": "topic", "queries": ["topic query"]}'
+      );
+    await planWebSearch(
+      'a co z tym drugim?',
+      [
+        { role: 'user', content: 'porównaj model A i model B' },
+        { role: 'assistant', content: 'Model A jest szybszy.' },
+      ],
+      generate,
+      { today: TODAY, digest: 'Topic: comparing Model A and Model B.' }
+    );
+    const convo = generate.mock.calls[0][0][1].content as string;
+    expect(convo).toContain(
+      'Conversation summary so far: Topic: comparing Model A and Model B.'
+    );
+  });
+
   describe('example leak guard', () => {
     it("drops a query that echoes the planner's own example entity", async () => {
       const generate = jest
@@ -608,6 +630,76 @@ describe('planWebSearch', () => {
   });
 });
 
+describe('extractSiteRestriction', () => {
+  it('reads a real site the user names', () => {
+    expect(extractSiteRestriction('ile kosztuje RTX 4070 na allegro.pl?')).toBe(
+      'allegro.pl'
+    );
+    expect(
+      extractSiteRestriction('How much are Nike Air Max on nike.com?')
+    ).toBe('nike.com');
+    expect(extractSiteRestriction('check https://www.otomoto.pl/oferty')).toBe(
+      'otomoto.pl'
+    );
+  });
+
+  it('does not read a library name as a site (live-found: Node.js searched site:node.js)', () => {
+    for (const question of [
+      'What is the latest version of Node.js?',
+      'Jak zrobić routing w Next.js?',
+      'Vue.js vs React porównanie',
+      'How do I install pandas in main.py?',
+    ]) {
+      expect(extractSiteRestriction(question)).toBeNull();
+    }
+  });
+
+  it('finds nothing in a question that names no site at all', () => {
+    expect(
+      extractSiteRestriction('ile kosztuje Samsung Galaxy S25')
+    ).toBeNull();
+  });
+});
+
+describe('isAboutTheConversation', () => {
+  it('recognises a request to recap the thread (live-found: it triggered a fresh search)', () => {
+    for (const question of [
+      'Podsumuj wszystko czego sie dowiedzialem o tym telefonie',
+      'Streszcz nasza rozmowe',
+      'Summarise what we discussed',
+      'Can you recap what I learned?',
+      'To sum up, what did we cover?',
+    ]) {
+      expect(isAboutTheConversation(question)).toBe(true);
+    }
+  });
+
+  it('leaves a question about the world alone', () => {
+    for (const question of [
+      'Ile kosztuje Samsung Galaxy S25?',
+      'Jaka jest dzisiejsza pogoda w Warszawie?',
+      'What is the latest version of Node.js?',
+      'Porownaj cene bitcoina i ethereum',
+      'Podaj sume opadow w Krakowie',
+    ]) {
+      expect(isAboutTheConversation(question)).toBe(false);
+    }
+  });
+
+  it('stops the planner asking the web about the conversation', async () => {
+    const generate = jest.fn();
+    const plan = await planWebSearch(
+      'Podsumuj wszystko czego sie dowiedzialem',
+      [],
+      generate,
+      { rewrite: false }
+    );
+    expect(plan.needsSearch).toBe(false);
+    expect(plan.queries).toEqual([]);
+    expect(generate).not.toHaveBeenCalled();
+  });
+});
+
 describe('carryReferentIntoQuery', () => {
   const withPresident = [
     { role: 'user', content: 'kto jest prezydentem usa?' },
@@ -621,6 +713,26 @@ describe('carryReferentIntoQuery', () => {
     expect(
       carryReferentIntoQuery('ile dzieci ma prezydent?', withPresident)
     ).toBe('ile dzieci ma prezydent? Donald Trump');
+  });
+
+  it('keeps a model number that is part of the name, instead of truncating it', () => {
+    const aboutPhone = [
+      { role: 'user', content: 'co wiesz o Samsung Galaxy S25' },
+      { role: 'assistant', content: 'Samsung Galaxy S25 to flagowiec.' },
+    ];
+    expect(carryReferentIntoQuery('a ile on kosztuje?', aboutPhone)).toBe(
+      'a ile on kosztuje? Samsung Galaxy S25'
+    );
+  });
+
+  it('does not swallow a standalone number that follows a name', () => {
+    const aboutMusk = [
+      { role: 'user', content: 'ile dzieci ma Elon Musk' },
+      { role: 'assistant', content: 'Elon Musk ma 14 dzieci.' },
+    ];
+    expect(carryReferentIntoQuery('a ile on ma lat?', aboutMusk)).toBe(
+      'a ile on ma lat? Elon Musk'
+    );
   });
 
   it('does the same for an English pronoun follow-up', () => {
@@ -637,6 +749,25 @@ describe('carryReferentIntoQuery', () => {
     expect(
       carryReferentIntoQuery('ile dzieci ma Donald Trump?', withPresident)
     ).toBe('ile dzieci ma Donald Trump?');
+  });
+
+  it('does not mistake a capital letter mid-word for a proper noun (live-found: "iPhone Air" -> "Phone Air")', () => {
+    const comparingPhones = [
+      {
+        role: 'user',
+        content: 'Porownaj iPhone 17 Pro i iPhone Air pod wzgledem wagi.',
+      },
+      {
+        role: 'assistant',
+        content: '(1) iPhone 17 Pro weight: 206g\n(2) iPhone Air weight: 165g',
+      },
+    ];
+    expect(
+      carryReferentIntoQuery(
+        'A ile on kosztuje, ten pierwszy?',
+        comparingPhones
+      )
+    ).toBe('A ile on kosztuje, ten pierwszy?');
   });
 
   it('leaves a query alone with no referent marker at all', () => {
@@ -671,6 +802,185 @@ describe('carryReferentIntoQuery', () => {
     const longQuery =
       'czy zgadzasz się, że trzeba to zmienić w całym systemie edukacji?';
     expect(carryReferentIntoQuery(longQuery, withPresident)).toBe(longQuery);
+  });
+
+  it('falls back to the digest when no entity is in history at all', () => {
+    const smallTalk = [
+      { role: 'user', content: 'hej, jak leci?' },
+      { role: 'assistant', content: 'Wszystko dobrze, dzięki!' },
+    ];
+    expect(
+      carryReferentIntoQuery(
+        'ile ma lat prezydent?',
+        smallTalk,
+        'Topic: the president of some fictional country.'
+      )
+    ).toBe(
+      'ile ma lat prezydent? Topic: the president of some fictional country.'
+    );
+  });
+
+  it('falls back to the digest for a real comparison with no matchable entity (iPhone 17 Pro vs iPhone Air)', () => {
+    const comparingPhones = [
+      {
+        role: 'user',
+        content: 'Porownaj iPhone 17 Pro i iPhone Air pod wzgledem wagi.',
+      },
+      {
+        role: 'assistant',
+        content: '(1) iPhone 17 Pro weight: 206g\n(2) iPhone Air weight: 165g',
+      },
+    ];
+    expect(
+      carryReferentIntoQuery(
+        'A ile on kosztuje, ten pierwszy?',
+        comparingPhones,
+        'Topic: comparing iPhone 17 Pro and iPhone Air by weight.'
+      )
+    ).toBe(
+      'A ile on kosztuje, ten pierwszy? Topic: comparing iPhone 17 Pro and iPhone Air by weight.'
+    );
+  });
+
+  it('prefers a matched entity over the digest when both are available', () => {
+    expect(
+      carryReferentIntoQuery(
+        'ile dzieci ma prezydent?',
+        withPresident,
+        'Topic: some unrelated digest text.'
+      )
+    ).toBe('ile dzieci ma prezydent? Donald Trump');
+  });
+
+  it('leaves the query alone when there is neither an entity nor a digest', () => {
+    const smallTalk = [
+      { role: 'user', content: 'hej, jak leci?' },
+      { role: 'assistant', content: 'Wszystko dobrze, dzięki!' },
+    ];
+    expect(carryReferentIntoQuery('ile ma lat prezydent?', smallTalk)).toBe(
+      'ile ma lat prezydent?'
+    );
+  });
+
+  it('splices the entity into a Polish follow-up whose subject is dropped entirely (live: "A jaki ma aparat?" searched for nothing)', () => {
+    const aboutPhone = [
+      { role: 'user', content: 'Ile kosztuje Samsung Galaxy S25 w Polsce' },
+      { role: 'assistant', content: 'Ten model kosztuje 3999 zl.' },
+    ];
+    expect(carryReferentIntoQuery('A jaki ma aparat?', aboutPhone)).toBe(
+      'A jaki ma aparat? Samsung Galaxy S25'
+    );
+    expect(
+      carryReferentIntoQuery(
+        'Ile ma pamieci RAM i jakiego ma procesora?',
+        aboutPhone
+      )
+    ).toBe('Ile ma pamieci RAM i jakiego ma procesora? Samsung Galaxy S25');
+    expect(
+      carryReferentIntoQuery('Czy jest dostepny w kolorze czarnym?', aboutPhone)
+    ).toBe('Czy jest dostepny w kolorze czarnym? Samsung Galaxy S25');
+  });
+
+  it('does not read a subject that follows its verb as a dropped one', () => {
+    const aboutPhone = [
+      { role: 'user', content: 'Ile kosztuje Samsung Galaxy S25 w Polsce' },
+      { role: 'assistant', content: 'Ten model kosztuje 3999 zl.' },
+    ];
+    for (const selfContained of [
+      'Ile kosztuje aktualnie cyna?',
+      'Ile kalorii ma banan?',
+      'Jaka jest dzisiejsza pogoda w Warszawie?',
+    ]) {
+      expect(carryReferentIntoQuery(selfContained, aboutPhone)).toBe(
+        selfContained
+      );
+    }
+  });
+
+  it('splices the entity into a follow-up that points back with a demonstrative', () => {
+    const aboutMetals = [
+      { role: 'user', content: 'Ile kosztuje uncja Gold Bullion?' },
+      { role: 'assistant', content: 'Gold Bullion kosztuje 1573 USD.' },
+    ];
+    expect(
+      carryReferentIntoQuery('Porownaj je i daj mi wyniki', aboutMetals)
+    ).toBe('Porownaj je i daj mi wyniki Gold Bullion');
+    expect(
+      carryReferentIntoQuery(
+        'Who was the top scorer in that game?',
+        aboutMetals
+      )
+    ).toBe('Who was the top scorer in that game? Gold Bullion');
+  });
+
+  it('does not read a date expression as a demonstrative pointing back', () => {
+    const aboutMetals = [
+      { role: 'user', content: 'Ile kosztuje uncja Gold Bullion?' },
+      { role: 'assistant', content: 'Gold Bullion kosztuje 1573 USD.' },
+    ];
+    for (const temporal of [
+      'Jakie sa najwazniejsze wydarzenia na swiecie w tym tygodniu?',
+      'Ktory metal zyskal najwiecej w tym miesiacu?',
+      'What were the biggest stories this week?',
+    ]) {
+      expect(carryReferentIntoQuery(temporal, aboutMetals)).toBe(temporal);
+    }
+  });
+
+  it('does not carry a capitalized sentence opener glued to the entity (live: "Cena Samsunga Galaxy")', () => {
+    const aboutPhone = [
+      { role: 'user', content: 'Ile kosztuje Samsung Galaxy S25 w Polsce' },
+      {
+        role: 'assistant',
+        content: 'Cena Samsunga Galaxy S25 w Polsce wynosi 3999 zl.',
+      },
+    ];
+    expect(carryReferentIntoQuery('A jaki ma aparat?', aboutPhone)).toBe(
+      'A jaki ma aparat? Samsung Galaxy S25'
+    );
+  });
+
+  it('still carries an entity only the assistant ever named', () => {
+    expect(carryReferentIntoQuery('a kiedy się urodził?', withPresident)).toBe(
+      'a kiedy się urodził? Donald Trump'
+    );
+  });
+
+  it('treats "it" and Polish "go" as referents (live-found: two turns searched with no product)', () => {
+    const aboutPhone = [
+      { role: 'user', content: 'Ile kosztuje Samsung Galaxy S25 w Polsce?' },
+      { role: 'assistant', content: 'Cena to 2499 zl.' },
+    ];
+    expect(
+      carryReferentIntoQuery(
+        'Czy warto go kupic teraz, czy poczekac na promocje?',
+        aboutPhone
+      )
+    ).toBe(
+      'Czy warto go kupic teraz, czy poczekac na promocje? Samsung Galaxy S25'
+    );
+    expect(
+      carryReferentIntoQuery('Where can I buy it cheapest?', aboutPhone)
+    ).toBe('Where can I buy it cheapest? Samsung Galaxy S25');
+    expect(carryReferentIntoQuery('Ile on kosztuje?', aboutPhone)).toBe(
+      'Ile on kosztuje? Samsung Galaxy S25'
+    );
+  });
+
+  it('does not fire on a word that merely contains a pronoun', () => {
+    const aboutPhone = [
+      { role: 'user', content: 'Ile kosztuje Samsung Galaxy S25 w Polsce?' },
+      { role: 'assistant', content: 'Cena to 2499 zl.' },
+    ];
+    for (const selfContained of [
+      'Jaka jest dzisiejsza pogoda w Warszawie?',
+      'Ile kosztuje aktualnie cyna?',
+      'Ktory bank ma najlepsze oprocentowanie?',
+    ]) {
+      expect(carryReferentIntoQuery(selfContained, aboutPhone)).toBe(
+        selfContained
+      );
+    }
   });
 
   it('prefers the most recent entity over an earlier one', () => {
@@ -719,6 +1029,23 @@ describe('carryReferentIntoQuery', () => {
     expect(plan.queries).toEqual([
       'how many children does the president have Donald Trump',
       "name of the president's wife Donald Trump",
+    ]);
+  });
+
+  it('threads a chat-level digest through planWebSearch when no entity is in history', async () => {
+    const smallTalk = [
+      { role: 'user', content: 'hej, jak leci?' },
+      { role: 'assistant', content: 'Wszystko dobrze, dzięki!' },
+    ];
+    const generate = jest.fn();
+    const plan = await planWebSearch(
+      'ile ma lat prezydent?',
+      smallTalk,
+      generate,
+      { rewrite: false, digest: 'Topic: comparing Model A and Model B.' }
+    );
+    expect(plan.queries).toEqual([
+      'ile ma lat prezydent? Topic: comparing Model A and Model B.',
     ]);
   });
 });

@@ -4,7 +4,11 @@ import type {
   WebSearchResult,
   WebSourceDocument,
 } from './types';
-import { planWebSearch, type QueryRewriteFn } from './buildSearchQuery';
+import {
+  planWebSearch,
+  withVerbatimFallback,
+  type QueryRewriteFn,
+} from './buildSearchQuery';
 import type { ModelProfile } from '../../constants/model-profiles';
 import {
   enrichWebResults,
@@ -30,15 +34,28 @@ import { hostname, webResultsToContext } from './webResultsToContext';
 import { dedupeByBody, listingFingerprint } from './fingerprint';
 import { fairRankByListingRelevance } from './listingRelevance';
 import { promoteTitleConsensus } from './titleConsensus';
+import { promoteVerifiedProducts } from './promoteVerified';
 import { pageCache, serpCache } from './cache/webCache';
 import { extractArticle } from './url/extractArticle';
+import type { FetchFailure, FetchFailureReason } from './fetchFailure';
+import { isForeignScript } from './resultScript';
+import { topKForBudget } from './retrievalBudget';
+import { demoteUnaskedVariants } from './variantMatch';
+import {
+  planFetchRecovery,
+  promotePrimarySources,
+  type RecoveryStrategy,
+} from './fetchRecovery';
 import {
   WEB_ADAPTIVE_ENRICH,
   WEB_AGREEMENT_ENABLED,
   WEB_ENRICH_WAVE_FIRST,
   WEB_ENRICH_WAVE_STEP,
   WEB_FETCH_TOP_N_CONTENT,
+  WEB_MIN_SAME_SCRIPT_RESULTS,
   WEB_QUERY_GATE,
+  WEB_RECOVERY_ENABLED,
+  WEB_RECOVERY_MAX_RESULTS,
   WEB_RETRIEVAL_FETCH_TOP_N,
   WEB_SEARCH_MAX_RESULTS,
 } from '../../constants/web';
@@ -56,17 +73,20 @@ export interface WebSearchProgressEvent {
     | 'weak'
     | 'offline'
     | 'skipped'
+    | 'recovering'
     | 'timeout';
   query?: string;
   host?: string;
   url?: string;
   title?: string;
   round?: number;
+  reason?: FetchFailureReason;
 }
 
 export interface RunWebSearchInput {
   query: string;
   history: { role: string; content: string }[];
+  digest?: string;
   provider: WebSearchProvider;
   embeddings: LFMEmbeddings | null;
   embeddingModelReady: boolean;
@@ -108,6 +128,8 @@ export interface WebSearchTelemetry {
   finalConfidence: number;
   finalLabel: RetrievalLabel;
   agreement: SourceAgreement;
+  fetchFailures: FetchFailure[];
+  recovery: RecoveryStrategy[];
 }
 
 export interface RunWebSearchResult {
@@ -178,6 +200,8 @@ export const runWebSearch = async (
     finalConfidence: 0,
     finalLabel: 'incorrect',
     agreement: NO_AGREEMENT,
+    fetchFailures: [],
+    recovery: [],
   };
   const empty = (reason: WebSearchTelemetry['skippedReason']) => ({
     context: [] as string[],
@@ -195,8 +219,9 @@ export const runWebSearch = async (
   const plan = await planWebSearch(query, history, generate, {
     ...(input.today ? { today: input.today } : {}),
     ...(input.profile ? { rewrite: input.profile.webPlanner === 'llm' } : {}),
+    ...(input.digest ? { digest: input.digest } : {}),
   });
-  const baseQueries = plan.queries.length ? plan.queries : [query];
+  const baseQueries = withVerbatimFallback(plan.queries, query);
   telemetry.needsSearch = plan.needsSearch;
   telemetry.intent = plan.intent;
   telemetry.plannedQueries = baseQueries;
@@ -277,10 +302,18 @@ export const runWebSearch = async (
 
   const onPage = (page: EnrichPageEvent): void => {
     attempted.add(page.url);
+    if (!page.ok && page.reason) {
+      telemetry.fetchFailures.push({
+        url: page.url,
+        host: page.host,
+        reason: page.reason,
+      });
+    }
     emit({
       type: page.ok ? 'fetched' : 'failed',
       host: page.host,
       url: page.url,
+      ...(page.reason ? { reason: page.reason } : {}),
     });
   };
 
@@ -309,7 +342,10 @@ export const runWebSearch = async (
             embeddings!,
             embeddingCache,
             signal,
-            input.profile?.webRetrievalTopK
+            topKForBudget(
+              input.contextCharBudget,
+              input.profile?.webRetrievalTopK
+            )
           )
         );
       const retrieval = await (input.isolateEmbeddings
@@ -334,7 +370,8 @@ export const runWebSearch = async (
 
   const groundAndEvaluate = async (
     groups: WebSearchResult[][],
-    cap: number
+    cap: number,
+    singleWave = false
   ): Promise<{
     grounded: WebSearchResult[];
     evaluation: RetrievalEvaluation;
@@ -384,6 +421,7 @@ export const runWebSearch = async (
     let outcome = await runWave();
     const shouldWiden = (): boolean =>
       WEB_ADAPTIVE_ENRICH &&
+      !singleWave &&
       outcome.evaluation.shouldCorrect &&
       target < maxEnrich &&
       !signal?.aborted &&
@@ -397,12 +435,27 @@ export const runWebSearch = async (
   };
 
   const seen = new Set<string>();
-  const foundGroups = await runQueries(baseQueries, 1, seen);
+  const dropForeignScript = <T extends WebSearchResult>(group: T[]): T[] => {
+    const sameScript: T[] = [];
+    const foreign: T[] = [];
+    for (const item of group) {
+      const text = `${item.title} ${item.snippet ?? ''}`;
+      (isForeignScript(text, query) ? foreign : sameScript).push(item);
+    }
+    if (foreign.length === 0) return sameScript;
+    return sameScript.length >= WEB_MIN_SAME_SCRIPT_RESULTS
+      ? sameScript
+      : [...sameScript, ...foreign];
+  };
+  const foundGroups = (await runQueries(baseQueries, 1, seen)).map(
+    dropForeignScript
+  );
   const found = foundGroups.flat();
   const outcome = await groundAndEvaluate(foundGroups, WEB_SEARCH_MAX_RESULTS);
 
   let finalResults = outcome.grounded;
-  const { evaluation, agreement } = outcome;
+  let evaluation = outcome.evaluation;
+  let agreement = outcome.agreement;
   telemetry.rounds.push({
     round: 1,
     queries: baseQueries,
@@ -416,7 +469,61 @@ export const runWebSearch = async (
     corroboratedClaims: outcome.agreement.corroborated.length,
   });
 
-  finalResults = promoteTitleConsensus(finalResults, query);
+  if (WEB_RECOVERY_ENABLED && !signal?.aborted) {
+    const recovery = planFetchRecovery({
+      query,
+      ...(plan.intent ? { intent: plan.intent } : {}),
+      failures: telemetry.fetchFailures,
+      triedQueries: baseQueries,
+      needsMore: outcome.contentCount === 0 || evaluation.shouldCorrect,
+    });
+    telemetry.recovery = recovery.strategies;
+    if (recovery.strategies.length > 0) {
+      const recoveryQueries = recovery.strategies.map(
+        (strategy) => strategy.query
+      );
+      emit({ type: 'recovering', round: 2 });
+      const deadHosts = new Set(recovery.deadHosts);
+      const recoveryGroups = (await runQueries(recoveryQueries, 2, seen)).map(
+        (group) =>
+          promotePrimarySources(
+            dropForeignScript(group).filter(
+              (item) => !deadHosts.has(hostname(item.url))
+            ),
+            recovery.subject
+          )
+      );
+      const recovered = recoveryGroups.flat();
+      if (recovered.length > 0) {
+        const second = await groundAndEvaluate(
+          recoveryGroups,
+          WEB_RECOVERY_MAX_RESULTS,
+          true
+        );
+        const merged = dedupeByBody([...finalResults, ...second.grounded]);
+        const rescored = await score(merged, merged.length);
+        telemetry.rounds.push({
+          round: 2,
+          queries: recoveryQueries,
+          resultCount: recovered.length,
+          contentCount: rescored.contentCount,
+          confidence: rescored.evaluation.confidence,
+          label: rescored.evaluation.label,
+          enrichedPages: second.enrichedPages,
+          enrichWaves: second.waves,
+          independentHosts: rescored.agreement.independentHosts,
+          corroboratedClaims: rescored.agreement.corroborated.length,
+        });
+        finalResults = rescored.grounded;
+        evaluation = rescored.evaluation;
+        agreement = rescored.agreement;
+      }
+    }
+  }
+
+  finalResults = promoteVerifiedProducts(
+    demoteUnaskedVariants(promoteTitleConsensus(finalResults, query), query)
+  );
 
   if (evaluation.shouldCorrect && finalResults.length > 0) {
     emit({ type: 'weak' });
@@ -437,7 +544,8 @@ export const runWebSearch = async (
     finalResults,
     label,
     input.contextOffset ?? 0,
-    input.contextCharBudget
+    input.contextCharBudget,
+    { labelSubQueries: plan.queries.length > 1, displayQuery: query }
   );
   return {
     context: web.context,
