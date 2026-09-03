@@ -3991,3 +3991,126 @@ What is *not* in this list, on purpose: the five-source cap and the
 `similarity` rank placeholder (`1 - index / used.length`) are known
 approximations and documented as such; they are not what the conversation
 tripped over.
+
+## Content round: what a 300-character excerpt actually carried
+
+The previous round looked at the planner's side of chat 55. This one looks
+at the other end of the pipe: given the pages the Pixel conversation
+actually read, what did `selectRelevantContent` put in front of the model?
+The HTML of ten of those pages was saved (x-kom product page, jtk and p2p
+spec pages, two ranking pages, SamMobile, DisplayRatings, MediaExpert ×2,
+kitele) and replayed offline through `extractArticle` →
+`selectRelevantContent` at two budgets: 700 chars, and 300 chars — the
+per-source floor (`MIN_SOURCE_EXCERPT_CHARS`) that the 2048-token default
+leaves once the system prompt, the history and the generation reserve are
+taken out. At 2048 the 300-char case is not an edge case; it is what every
+source gets.
+
+| Page (turn) | Before, first 300 chars | After |
+|---|---|---|
+| x-kom product page (#339 "Ile kosztuje?") | "Kod producenta / OLED65B65LA / Kod x-kom / 1510638 / Rekomendowane akcesoria / Silver Monkey UT-800 / Cena: 229,00 zł / 229 / 00 zł Seagate Expansion … 159,00 zł …" — accessory prices, the TV's price absent | product header, "Przekątna ekranu : 65" Rozdzielczość : UHD 4K 3840 x 2160 Typ telewizora : OLED Klasa energetyczna : F", description lead; price from the verified JSON-LD line |
+| jtk "Samsung QN90D: specyfikacja techniczna" (#343) | marketing lead, no spec row | lead sentence + "Częstotliwość odświeżania: 120Hz (do 144Hz) Rozdzielczość: 4K … Moc RMS: 70W … HDMI (High Frame Rate): 4K 144Hz" |
+| p2p "QE65QN90D - parametry i specyfikacje" (#345) | prose about the series | "Częstotliwość odświeżania panelu \| 144 Hz", "Liczba wejść HDMI \| 4", "Przybliżona cena \| 6 100 zł" |
+| prorankingi "Ranking Telewizorów OLED 2026" (#347) | only the first of five `<article>`s was ever extracted (1 482 of 15 598 chars) | all five items extracted; at 700 chars the excerpt opens with "Najlepszy telewizor OLED to Samsung QE65S99H…"; at 300 chars it is the "salon z dużymi oknami" paragraph about the LG G4 — on topic, but the #1 pick is gone (see below) |
+| SamMobile S95H vs S99H (#361) | "Best Samsung Watch in 2026" (the related-links rail) then the lead | the lead |
+| zestawienie ranking (#347) | comparison table rows | the same rows plus "Jaki rozmiar telewizora OLED wybrać do salonu?…" |
+
+The gap between the two columns came from six defects, each of them
+reproducible offline and each now guarded by a test that is red without the
+fix (`__tests__/webResultsToContext.test.ts`, `__tests__/extractArticle.test.ts`):
+
+1. **Price hunting was entity-blind.** `PRICE_QUESTION` turned on a bonus
+   for *any* money anchor, so on a shop page the accessory rail (six prices
+   in 300 chars) out-scored the product. When JSON-LD verified the product
+   price, the excerpt still hunted. Now a verified price switches hunting
+   off and any passage naming a *different* amount (0.5 % tolerance) scores
+   zero. Guard: "stops hunting prices in the body once the product price is
+   verified" / "still hunts the price in the body when nothing verified it".
+2. **Spec rows could not win.** "Rozdzielczość: 4K" contains none of the
+   query's stems, and its digits were penalised as non-prose. Record-shaped
+   lines (`key: value`, `key | value`) in a run of at least two, whose key
+   repeats at most twice on the page, are credited with the needles the
+   *page title* carries and scored as prose — only when the title names the
+   subject, so a generic news page gets no credit. Guard: "brings the spec
+   rows of a page titled after the subject into the excerpt" / "leaves the
+   spec rows out when the page title says nothing about the subject".
+3. **Title words were paid twice.** On "Samsung QN90D: specyfikacja
+   techniczna" every passage mentions Samsung, so the needle discriminated
+   nothing and drowned the rarer ones. Needles present in the title are
+   worth half inside passages.
+4. **The lead bonus went to metadata.** Shop pages open with a run of
+   one-word lines (brand, model, "Zobacz recenzje", "100 %"); coalesced into
+   one passage it took the full `LEAD_BONUS`. Only a passage that ends like
+   a sentence takes it. Guard: "does not hand the lead bonus to a metadata
+   run at the top of the page".
+5. **Sentences were cut mid-word** every 320 chars ("eleme"), which the
+   model then completed from its prior. The cut moves back to the last
+   space when that keeps at least half the slice. Guard: "cuts an over-long
+   sentence at a word boundary".
+6. **The snippet was free and often redundant.** The SERP snippet was
+   appended on top of the budget, and on most pages it is the meta
+   description — a sentence the excerpt already contains. It now counts
+   against the source budget, is dropped when 60 % of its distinctive
+   tokens (and every figure) already appear in the excerpt, and the share
+   reserved for a dropped snippet goes back to the excerpt.
+
+And one upstream of the selector, in `extractArticle`:
+
+7. **Main-content isolation was first-`<article>`-or-everything.** A
+   ranking page with one `<article>` per item lost items 2–5; a shop page
+   with no landmark at all started at the promo rail; `role="main"` was
+   ignored. Order now: a single `<article>`, `<main>`, `role="main"`, all
+   articles joined, and for a bare body a cut at the first `<h1>` when at
+   least 20 % of the visible text follows it. Guards in
+   `extractArticle.test.ts` under "main-content isolation on pages without a
+   single landmark".
+
+### What is still weak, and why it was left
+
+⚠️ **Ranking items are prose, not records.** "Miejsce 1 / Samsung QE65S99H"
+is two short lines with no query stem in them; the paragraph that follows
+says "najlepszy" — a needle so common on a ranking page that idf makes it
+worthless — and the one that mentions "salon" wins. At 300 chars the
+prorankingi excerpt therefore names the LG G4 paragraph and not the winner.
+The fix is not a bigger lead window; it is the `recommendation` intent from
+P1.4 anchoring on ordinal + entity ("1.", "Miejsce 1", "#1", "TOP") so a
+ranked headline and its first sentence form one credited unit, the same way
+spec rows do for `specs`.
+
+⚠️ **The planner's language, not the page, decided #341/#359/#361.** Three
+English queries for a Polish question returned US/UK pages; no amount of
+excerpt selection turns those into a Polish answer about the LG B6. That is
+P1.2 and is untouched here.
+
+⚠️ **Split price markup produces phantom amounts.** x-kom renders "6 999,00
+zł" as `6 999` + `00 zł` in two spans; the extractor emits them as two lines
+and `MONEY_ANCHOR` reads "6 999\n00 zł" as 699 900. With a verified price the
+passage is dropped (it names an "other" amount), which is the right outcome
+for the wrong reason; without one it is a wrong figure in the context. A
+language-agnostic join — a digits-only line followed by a `NN <currency>`
+line is one amount — belongs in the extractor.
+
+⚠️ **Fillers accept any score above zero.** After the scored passages, the
+budget is topped up with the next passages in reading order; on x-kom that
+put "Logitech K270 Wireless Keyboard" into the 300-char excerpt because it
+contained a digit. A filler floor (at least one needle, or a credited
+record) is a one-line change waiting for a test that shows it matters.
+
+⚠️ **Per-source relevance still uses the joined label.** `webResultsToContext`
+scores every page against `baseQueries.join(' + ')`; for #341 that is three
+English sub-queries glued together, and the idf weights are computed over
+that union. The persisted `sourceQuery` per result is the right query for
+that result (P2.5).
+
+⚠️ **Sources that were never read are still marked used** (#346, #358 —
+snippet-only hits with `read: false, used: true`), which is what produces the
+badge-without-button inconsistency (P3.7). The content round did not touch
+attribution.
+
+How to keep this from regressing: the ten saved pages are not in the repo
+(they are copyrighted shop and review pages), but every defect above is
+reproduced by a synthetic fixture in the two test files, and the fixture
+shapes — accessory rail, metadata run, spec table with `:` and `|`
+separators, ranking with several `<article>`s, promo rail before the `<h1>`
+— are the shapes to reach for when a new page misbehaves. Add the page's
+shape as a fixture; do not tune the constants to the page.
