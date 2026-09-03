@@ -294,3 +294,38 @@ describe('removeModelFiles vs removeModel', () => {
     expect(mockRemoveModelFiles).toHaveBeenCalledWith(mockDb, remoteModel.id);
   });
 });
+
+describe('a second download for the same model must not start while one is in flight', () => {
+  it('ignores a repeat call and fetches only once', async () => {
+    mockFetch.mockReturnValue(new Promise(() => {}));
+
+    useModelStore.getState().downloadModel(baseModel);
+    useModelStore.getState().downloadModel(baseModel);
+    useModelStore.getState().downloadModel(baseModel);
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(useModelStore.getState().downloadStates[baseModel.id]!.status).toBe(
+      ModelState.Downloading
+    );
+  });
+
+  it('lets the model be downloaded again after a cancel', async () => {
+    mockFetch.mockReturnValue(new Promise(() => {}));
+    useModelStore.getState().downloadModel(baseModel);
+    await useModelStore.getState().cancelDownload(baseModel);
+
+    useModelStore.getState().downloadModel(baseModel);
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('lets a different model download at the same time', async () => {
+    mockFetch.mockReturnValue(new Promise(() => {}));
+    const other = { ...baseModel, id: 2 };
+
+    useModelStore.getState().downloadModel(baseModel);
+    useModelStore.getState().downloadModel(other);
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+});

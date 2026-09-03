@@ -18,6 +18,9 @@ jest.mock('../utils/promptUtils', () => ({
     { role: 'user', content: 'hello' },
     { role: 'assistant', content: '' },
   ]),
+  answerLanguageAnchor: jest.fn(
+    () => ' (Answer in the same language as this message.)'
+  ),
 }));
 jest.mock('../constants/default-benchmark', () => ({
   BENCHMARK_PROMPT: 'benchmark prompt text',
@@ -493,8 +496,12 @@ describe('sendChatMessage', () => {
 
   it('adds user message and assistant placeholder to activeChatMessages before generating', async () => {
     let messagesBeforeGenerate: Message[] = [];
+    let captured = false;
     mockInstance.generate.mockImplementation(async () => {
-      messagesBeforeGenerate = useLLMStore.getState().activeChatMessages;
+      if (!captured) {
+        captured = true;
+        messagesBeforeGenerate = useLLMStore.getState().activeChatMessages;
+      }
       return 'response';
     });
     useLLMStore.setState({
@@ -607,6 +614,418 @@ describe('sendChatMessage', () => {
     );
   });
 
+  it('retries once with a continuation nudge when the model produces a dangling list, then persists the combined answer', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Oto co warto zabrać:')
+      .mockResolvedValueOnce('- Paszport\n- Bilet lotniczy')
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Oto co warto zabrać:\n- Paszport\n- Bilet lotniczy'
+    );
+  });
+
+  it('shows what it has rather than a banner when the continuation retry is still a dangling list', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Oto co warto zabrać:')
+      .mockResolvedValueOnce('Oto lista:');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toContain(
+      'Oto co warto zabrać:'
+    );
+  });
+
+  it('keeps the original dangling text when the continuation nudge returns nothing', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Oto co warto zabrać:')
+      .mockResolvedValueOnce('   ');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Oto co warto zabrać:'
+    );
+  });
+
+  it('anchors the continuation nudge to the conversation language and continues from the dangling text', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Oto co warto zabrać:')
+      .mockResolvedValueOnce('- Paszport');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    const continuationMessages = mockInstance.generate.mock.calls[1][0];
+    const lastMessage = continuationMessages[continuationMessages.length - 1];
+    const echoedAssistantTurn =
+      continuationMessages[continuationMessages.length - 2];
+
+    expect(echoedAssistantTurn).toEqual({
+      role: 'assistant',
+      content: 'Oto co warto zabrać:',
+    });
+    expect(lastMessage.role).toBe('user');
+    expect(lastMessage.content).toContain(
+      'Continue now with ONLY the actual list items'
+    );
+    expect(lastMessage.content).toContain(
+      '(Answer in the same language as this message.)'
+    );
+  });
+
+  it('spends the echo nudge, not the list nudge, when the reply is both', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Co zabrać do samolotu?:')
+      .mockResolvedValueOnce('Zabierz paszport, bilet i ładowarkę.');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('Co zabrać do samolotu?', 1, noSources, settings);
+
+    const nudge = mockInstance.generate.mock.calls[1]![0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(nudge.at(-1)!.content).toContain('only repeated the question back');
+    expect(nudge.at(-1)!.content).not.toContain('ONLY the actual list items');
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Zabierz paszport, bilet i ładowarkę.'
+    );
+  });
+
+  it('nudges for the language, not the dangling list, when the answer drifted language (live-found)', async () => {
+    const question = 'Kim był Kazimierz Wielki i czego dokonał?';
+    const wrongLanguageDanglingAnswer =
+      "Kazimierz Wielki (1310–1370) Polska'nın en son piastıydı. İşte maddeler:";
+    mockInstance.generate
+      .mockResolvedValueOnce(wrongLanguageDanglingAnswer)
+      .mockResolvedValueOnce(
+        'Kazimierz Wielki był królem Polski i zreformował prawo.'
+      );
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(question, 1, noSources, settings);
+
+    const nudge = mockInstance.generate.mock.calls[1]![0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(nudge.at(-1)!.content).toContain('written in the wrong language');
+    expect(nudge.at(-1)!.content).not.toContain('ONLY the actual list items');
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Kazimierz Wielki był królem Polski i zreformował prawo.'
+    );
+  });
+
+  it('spends one nudge and then keeps the answer rather than losing the turn (live-found)', async () => {
+    const question = 'Kim był Kazimierz Wielki i czego dokonał?';
+    const turkish =
+      "Kazimierz Wielki (1310–1370) Polska'nın en son piastıydı. İşte maddeler:";
+    mockInstance.generate
+      .mockResolvedValueOnce(turkish)
+      .mockResolvedValueOnce(turkish);
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(question, 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      turkish
+    );
+  });
+
+  it('still generates a conversation digest after recovering via the continuation nudge', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Oto co warto zabrać:')
+      .mockResolvedValueOnce('- Paszport\n- Bilet lotniczy')
+      .mockResolvedValueOnce('Trip to London packing list.');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+      activeChatDigest: null,
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+    await flushFrame();
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().activeChatDigest).toBe(
+      'Trip to London packing list.'
+    );
+  });
+
+  it('retries once when the model only talks about its sources, instead of failing', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        'Dane pochodzą ze źródeł wyżej. Źródła to opisują, szczegóły są w źródłach.'
+      )
+      .mockResolvedValueOnce('Cena wynosi 3200 zł.')
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('ile kosztuje?', 1, noSources, settings);
+
+    const nudge = mockInstance.generate.mock.calls[1]![0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(nudge.at(-1)!.content).toContain('only talked about the sources');
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Cena wynosi 3200 zł.'
+    );
+  });
+
+  it('shows the reply rather than destroying the turn when the circular retry does not help (live-found)', async () => {
+    const circular =
+      'Dane pochodzą ze źródeł wyżej. Źródła to opisują, szczegóły są w źródłach.';
+    mockInstance.generate.mockResolvedValue(circular);
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('ile kosztuje?', 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      circular
+    );
+  });
+
+  it('keeps a well-cited answer that names its sources by number (live-found)', async () => {
+    const cited =
+      'Source 1 lists 162 g, Source 2 lists 146.9 x 70.5 x 7.2 mm, and Source 3 agrees.';
+    mockInstance.generate.mockResolvedValue(cited);
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'What are the dimensions and weight?',
+        1,
+        noSources,
+        settings
+      );
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(2);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      cited
+    );
+  });
+
+  it('retries once when the model echoes the question back, instead of failing the turn', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('co zabrać do samolotu?')
+      .mockResolvedValueOnce(
+        'Zabierz paszport, bilet, ładowarkę i lekką kurtkę.'
+      )
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Zabierz paszport, bilet, ładowarkę i lekką kurtkę.'
+    );
+  });
+
+  it('says plainly there is no answer instead of echoing the question back (live-found)', async () => {
+    mockInstance.generate.mockResolvedValue('co zabrać do samolotu?');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    const shown = useLLMStore.getState().activeChatMessages.at(-1)?.content;
+    expect(shown).not.toBe('co zabrać do samolotu?');
+    expect(shown).toContain('Nie udało mi się odpowiedzieć');
+  });
+
+  it('gives the no-answer line in the language of the question', async () => {
+    mockInstance.generate.mockResolvedValue('what should I pack for a flight?');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'what should I pack for a flight?',
+        1,
+        noSources,
+        settings
+      );
+
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toContain(
+      'could not answer this question'
+    );
+  });
+
+  it('fails the turn when the model produces only a think block (live-found)', async () => {
+    mockInstance.generate.mockResolvedValue('<think>\n\n</think>');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(useLLMStore.getState().generationError).toEqual({
+      chatId: 1,
+      message: 'Failed to generate a response.',
+    });
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).not.toBe(
+      '<think>\n\n</think>'
+    );
+  });
+
+  it('still fails the turn when the model returns nothing at all', async () => {
+    mockInstance.generate.mockResolvedValue('   ');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(useLLMStore.getState().generationError).toEqual({
+      chatId: 1,
+      message: 'Failed to generate a response.',
+    });
+  });
+
+  it('recovers via the continuation nudge when a looping list gets trimmed down to just the intro', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        'Oto rzeczy do zabrania:\n' +
+          '1. Paszport do podróży zagranicznej.\n' +
+          '2. Paszport do podróży zagranicznej.\n' +
+          '3. Paszport do podróży zagranicznej.'
+      )
+      .mockResolvedValueOnce(
+        '1. Paszport do podróży zagranicznej.\n' +
+          '2. Bilet lotniczy w formie elektronicznej.\n' +
+          '3. Ładowarka do telefonu komórkowego.'
+      )
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Oto rzeczy do zabrania:\n' +
+        '1. Paszport do podróży zagranicznej.\n' +
+        '2. Bilet lotniczy w formie elektronicznej.\n' +
+        '3. Ładowarka do telefonu komórkowego.'
+    );
+  });
+
   it('does not update performance metrics on last message when user navigated away', async () => {
     mockInstance.generate.mockImplementation(async () => {
       useLLMStore.setState({ activeChatId: 99 });
@@ -663,9 +1082,9 @@ describe('sendChatMessage — settings hydration barrier', () => {
     await sendPromise;
 
     expect(prepareMessagesForLLM).toHaveBeenCalledTimes(1);
-    expect((prepareMessagesForLLM as jest.Mock).mock.calls[0][4]).toBe(
-      'Always end replies with BANANA'
-    );
+    expect(
+      (prepareMessagesForLLM as jest.Mock).mock.calls[0][4].customSystemPrompt
+    ).toBe('Always end replies with BANANA');
   });
 
   it('reads customSystemPrompt immediately when settings are already hydrated', async () => {
@@ -679,9 +1098,9 @@ describe('sendChatMessage — settings hydration barrier', () => {
       .sendChatMessage('hi', 1, async () => ({ context: [] }), settings);
 
     expect(prepareMessagesForLLM).toHaveBeenCalledTimes(1);
-    expect((prepareMessagesForLLM as jest.Mock).mock.calls[0][4]).toBe(
-      'Be concise.'
-    );
+    expect(
+      (prepareMessagesForLLM as jest.Mock).mock.calls[0][4].customSystemPrompt
+    ).toBe('Be concise.');
   });
 });
 
@@ -960,5 +1379,41 @@ describe('runBenchmark', () => {
 
     expect(first?.timeToFirstToken).toBeGreaterThan(0);
     expect(second?.timeToFirstToken).toBeGreaterThan(0);
+  });
+});
+
+describe('a model picked just before sending must be the one that answers', () => {
+  const settings = { systemPrompt: 'be helpful' };
+  const otherModel = { ...baseModel, id: 2, modelName: 'Second LLM' };
+
+  beforeEach(async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    mockInstance.generate.mockResolvedValue('The answer is 42.');
+    useLLMStore.setState({ activeChatId: 1, activeChatMessages: [] });
+  });
+
+  it('stamps the reply with the newly selected model, not the previous one', async () => {
+    useLLMStore.getState().loadModel(otherModel);
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
+
+    const assistantWrites = mockPersistMessage.mock.calls.filter(
+      (call) => call[1]?.role === 'assistant'
+    );
+    expect(assistantWrites.length).toBeGreaterThan(0);
+    expect(assistantWrites.at(-1)![1].modelName).toBe('Second LLM');
+  });
+
+  it('leaves the store on the newly selected model after the turn', async () => {
+    useLLMStore.getState().loadModel(otherModel);
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
+
+    expect(useLLMStore.getState().model?.modelName).toBe('Second LLM');
   });
 });
