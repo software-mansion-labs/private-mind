@@ -239,6 +239,74 @@ describe('enrichWebResults', () => {
   });
 });
 
+describe('enrichWebResults — why a page could not be read', () => {
+  afterEach(() => jest.clearAllMocks());
+
+  const reasonFor = async (
+    behaviour: () => Promise<{
+      url: string;
+      title: string;
+      text: string;
+      siteName: string;
+    }>
+  ): Promise<string | undefined> => {
+    mockExtract.mockImplementation(behaviour);
+    let reason: string | undefined;
+    await enrichWebResults([result({ url: 'https://a.com/1' })], 1, (page) => {
+      reason = page.reason;
+    });
+    return reason;
+  };
+
+  it('passes the fetch error through, classified', async () => {
+    expect(
+      await reasonFor(async () => {
+        throw new Error('Fetch failed: 403 Forbidden');
+      })
+    ).toBe('blocked');
+    expect(
+      await reasonFor(async () => {
+        throw new Error('Fetch timed out: https://a.com/1');
+      })
+    ).toBe('timeout');
+    expect(
+      await reasonFor(async () => {
+        throw new Error('Unsupported content type: application/pdf');
+      })
+    ).toBe('unsupported');
+  });
+
+  it('separates a page that loaded but said nothing from one that blocked us', async () => {
+    expect(
+      await reasonFor(async () => ({
+        url: 'https://a.com/1',
+        title: 'x',
+        text: 'too short',
+        siteName: 'a.com',
+      }))
+    ).toBe('empty');
+    expect(
+      await reasonFor(async () => ({
+        url: 'https://a.com/1',
+        title: 'Just a moment...',
+        text: 'Please verify you are a human before continuing to the site.',
+        siteName: 'a.com',
+      }))
+    ).toBe('blocked');
+  });
+
+  it('reports no reason at all when the page was read fine', async () => {
+    expect(
+      await reasonFor(async () => ({
+        url: 'https://a.com/1',
+        title: 'x',
+        text: `real article ${'lorem ipsum dolor sit amet '.repeat(10)}`,
+        siteName: 'a.com',
+      }))
+    ).toBeUndefined();
+  });
+});
+
 describe('enrichWebResults — abort signal', () => {
   afterEach(() => jest.clearAllMocks());
 

@@ -143,6 +143,43 @@ describe('splitPriceOutliers', () => {
   });
 });
 
+describe('a reply that names the currency once and then states bare numbers (live-found)', () => {
+  const context =
+    '--- Source 1 --- Bitcoin price today is $96,240.10 USD. Ethereum price today is $3,180.55 USD.';
+
+  it('checks the bare numbers instead of letting them through unverified', () => {
+    const answer =
+      'Cena Bitcoin (BTC) i Ethereum (ETH) w dolarach (USD) obecnie wynosi 30 000 i 100 000, odpowiednio.';
+    expect(findUngroundedFigures(answer, context)).toEqual([30000, 100000]);
+  });
+
+  it('accepts bare numbers that do match the sources', () => {
+    const answer =
+      'Cena bitcoina w dolarach to 96 240.10, a ethereum 3 180.55.';
+    expect(findUngroundedFigures(answer, context)).toEqual([]);
+  });
+
+  it('says nothing about bare numbers when no currency is named at all', () => {
+    const answer = 'Model ma 16 GB pamięci i 512 GB dysku.';
+    expect(findUngroundedFigures(answer, context)).toEqual([]);
+  });
+
+  it('does not read a year as an amount', () => {
+    const answer = 'Cena w dolarach spadła w 2024 i 2025 roku.';
+    expect(findUngroundedFigures(answer, context)).toEqual([]);
+  });
+
+  it('ignores small counts that are not amounts', () => {
+    const answer = 'W dolarach rozliczane są 3 giełdy i 12 par walutowych.';
+    expect(findUngroundedFigures(answer, context)).toEqual([]);
+  });
+
+  it('still prefers currency-marked figures when the reply has them', () => {
+    const answer = 'Bitcoin kosztuje $96,240.10, a razem 5 rynków.';
+    expect(findUngroundedFigures(answer, context)).toEqual([]);
+  });
+});
+
 describe('findUngroundedFigures', () => {
   it('flags a figure the answer states that is nowhere in the context', () => {
     const context =
