@@ -938,6 +938,101 @@ describe('sendChatMessage', () => {
     );
   });
 
+  it('keeps the first answer on screen while a nudge retry generates, then swaps once', async () => {
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content:
+          'Kurs bitcoina wynosi dziś 98 000 USD. Kurs ethereum wynosi dziś 3 200 USD.\n\nporównaj kurs bitcoina i ethereum',
+      },
+    ]);
+    const partial =
+      'Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.';
+    const complete =
+      'Bitcoin kosztuje około 98 000 USD, a ethereum około 3 200 USD.';
+    const seenDuringRetry: { content?: string; isRefining: boolean }[] = [];
+    mockInstance.generate
+      .mockImplementationOnce(async () => {
+        capturedTokenCallback!(partial);
+        await flushFrame();
+        return partial;
+      })
+      .mockImplementationOnce(async () => {
+        capturedTokenCallback!('Bitcoin kosztuje');
+        capturedTokenCallback!(' około 98 000 USD, a ethereum');
+        await flushFrame();
+        seenDuringRetry.push({
+          content: useLLMStore.getState().activeChatMessages.at(-1)?.content,
+          isRefining: useLLMStore.getState().isRefining,
+        });
+        return complete;
+      })
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const withSubQueries = async () => ({
+      ...(await noSources()),
+      webSubQueries: ['kurs bitcoin', 'kurs ethereum'],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'porównaj kurs bitcoina i ethereum',
+        1,
+        withSubQueries,
+        settings
+      );
+
+    expect(seenDuringRetry).toEqual([{ content: partial, isRefining: true }]);
+    expect(useLLMStore.getState().isRefining).toBe(false);
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      complete
+    );
+  });
+
+  it('stops refining even when the retry generation throws', async () => {
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content:
+          'Kurs bitcoina wynosi dziś 98 000 USD. Kurs ethereum wynosi dziś 3 200 USD.\n\nporównaj kurs bitcoina i ethereum',
+      },
+    ]);
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        'Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.'
+      )
+      .mockRejectedValueOnce(new Error('interrupted'))
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const withSubQueries = async () => ({
+      ...(await noSources()),
+      webSubQueries: ['kurs bitcoin', 'kurs ethereum'],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'porównaj kurs bitcoina i ethereum',
+        1,
+        withSubQueries,
+        settings
+      );
+
+    expect(useLLMStore.getState().isRefining).toBe(false);
+    expect(useLLMStore.getState().isGenerating).toBe(false);
+  });
+
   it('keeps the first answer when the coverage retry still skips the aspect', async () => {
     (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
       { role: 'system', content: 'You are helpful.' },

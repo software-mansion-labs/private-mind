@@ -5,6 +5,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 type MockLLMState = {
   isGenerating: boolean;
   isProcessingPrompt: boolean;
+  isRefining?: boolean;
   isSearchingWeb?: boolean;
   webSearchTrace?: unknown[];
 };
@@ -78,7 +79,12 @@ jest.mock('../components/chat-screen/ThinkingBlock', () => {
   );
 });
 
-jest.mock('../components/chat-screen/AnimatedChatLoading', () => () => null);
+jest.mock('../components/chat-screen/AnimatedChatLoading', () => {
+  const { Text } = require('react-native');
+  return ({ label }: { label: string }) => (
+    <Text testID="chat-loading">{label}</Text>
+  );
+});
 
 jest.mock('../components/chat-screen/WebSearchBlock', () => {
   const { Text } = require('react-native');
@@ -495,6 +501,39 @@ describe('thinking block parsing', () => {
   it('does not render ThinkingBlock when thinking content is empty whitespace', () => {
     renderItem({ content: '<think>   </think>answer' });
     expect(screen.queryByTestId('thinking-block')).toBeNull();
+  });
+});
+
+describe('nudge retry', () => {
+  it('keeps the first answer visible and marks it as refining while the retry generates', () => {
+    setLLMState({
+      isGenerating: true,
+      isProcessingPrompt: false,
+      isRefining: true,
+    });
+    renderItem({
+      content: 'Bitcoin kosztuje 98 000 USD.',
+      isLastMessage: true,
+    });
+
+    expect(screen.getByTestId('markdown').props.children).toBe(
+      'Bitcoin kosztuje 98 000 USD.'
+    );
+    expect(screen.getByTestId('chat-loading').props.children).toBe('Refining…');
+  });
+
+  it('shows no refining indicator on a message that is not being retried', () => {
+    setLLMState({
+      isGenerating: true,
+      isProcessingPrompt: false,
+      isRefining: true,
+    });
+    renderItem({
+      content: 'Bitcoin kosztuje 98 000 USD.',
+      isLastMessage: false,
+    });
+
+    expect(screen.queryByTestId('chat-loading')).toBeNull();
   });
 });
 

@@ -22,6 +22,7 @@ export const useWebSearchActivity = ({
   const isProcessingPrompt = useLLMStore(
     (state) => isLastMessage && state.isProcessingPrompt
   );
+  const isRefining = useLLMStore((state) => isLastMessage && state.isRefining);
   const isSearchingWeb = useWebSearchStore(
     (state) => isLastMessage && state.isSearchingWeb
   );
@@ -43,6 +44,7 @@ export const useWebSearchActivity = ({
   return {
     isGenerating,
     isBusy,
+    isRefining,
     isSearchingThis,
     isAwaitingFirstToken,
     trace,
