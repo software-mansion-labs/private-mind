@@ -513,10 +513,6 @@ export const webResultsToContext = (
   const budgets = sourceBudgets(totalMaxChars, used.length);
 
   const recordedQuery = (options.displayQuery ?? query)?.trim() || undefined;
-  const searchedQuery =
-    options.displayQuery && query?.trim() !== recordedQuery
-      ? query?.trim() || undefined
-      : undefined;
   const distinctQueries = new Set(
     (options.labelSubQueries ?? true)
       ? used.map((result) => result.sourceQuery).filter((q): q is string => !!q)
@@ -575,7 +571,7 @@ export const webResultsToContext = (
       read: !!relevant,
       passage: cleanPassage,
       query: recordedQuery,
-      ...(searchedQuery ? { searchedQuery } : {}),
+      ...(result.sourceQuery ? { sourceQuery: result.sourceQuery } : {}),
       similarity: used.length > 1 ? 1 - index / used.length : 1,
     });
   });
@@ -588,7 +584,7 @@ export const webResultsToContext = (
       url: result.url,
       read: false,
       query: recordedQuery,
-      ...(searchedQuery ? { searchedQuery } : {}),
+      ...(result.sourceQuery ? { sourceQuery: result.sourceQuery } : {}),
     });
   }
 

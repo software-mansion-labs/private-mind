@@ -62,6 +62,7 @@ export type SourceDocument = {
   kind?: SourceKind;
   url?: string;
   query?: string;
+  sourceQuery?: string;
   used?: boolean;
   read?: boolean;
 };
@@ -130,6 +131,10 @@ const parseSourceDocuments = (
         query:
           source.kind === 'web' && typeof source.query === 'string'
             ? source.query
+            : undefined,
+        sourceQuery:
+          source.kind === 'web' && typeof source.sourceQuery === 'string'
+            ? source.sourceQuery
             : undefined,
         used: source.kind === 'web' && source.used === true ? true : undefined,
         read:
