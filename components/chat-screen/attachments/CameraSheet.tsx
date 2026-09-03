@@ -30,12 +30,15 @@ interface Props {
   /**
    * Whether the preview itself is showing. On Android it is a `SurfaceView`,
    * composited straight to the screen: nothing in React can clip it, round it
-   * or fade it, and only its own layout bounds decide what is seen. So it is
-   * handed over only while the panel is standing still at the sheet's rect —
+   * or fade it, and only its own layout bounds decide what is seen. So there it
+   * is handed over only while the panel is standing still at the sheet's rect —
    * see `AttachmentOverlay`. What is left in its place is this sheet's own
    * ground, an ordinary view that cuts to the panel like everything else.
    */
   preview: boolean;
+  /** True once the picture has left for the composer. The preview is cut on
+   *  that frame, not faded. */
+  lifting: boolean;
 }
 
 /**
@@ -46,7 +49,7 @@ interface Props {
  */
 const CameraSheet = forwardRef<CameraSheetHandle, Props>(
   function CameraSheetComponent(
-    { width, height, facing, flash, preview },
+    { width, height, facing, flash, preview, lifting },
     handle
   ) {
     const { styles } = useThemedStyles(createStyles);
@@ -109,7 +112,7 @@ const CameraSheet = forwardRef<CameraSheetHandle, Props>(
             onCameraReady={() => {
               ready.current = true;
             }}
-            style={StyleSheet.absoluteFill}
+            style={[StyleSheet.absoluteFill, lifting && styles.lifted]}
           />
         ) : null}
       </View>
@@ -131,5 +134,8 @@ const createStyles = (theme: Theme) =>
       borderRadius: GRID.panelRadius,
       borderCurve: 'continuous',
       overflow: 'hidden',
+    },
+    lifted: {
+      opacity: 0,
     },
   });

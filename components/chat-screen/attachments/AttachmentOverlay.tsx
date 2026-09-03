@@ -1,6 +1,6 @@
 import type { CameraType, FlashMode } from 'expo-camera';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { OverKeyboardView } from 'react-native-keyboard-controller';
 import type { SharedValue } from 'react-native-reanimated';
 import { Feedback } from '../../../utils/Feedback';
@@ -14,6 +14,13 @@ import PhotoGridBar from './PhotoGridBar';
 import { BOTTOM_BAR, DURATION, GRID, GUTTER } from './constants';
 import type { useAttachmentPanel } from './useAttachmentPanel';
 import { usePhotoLibrary, type LibraryPhoto } from './usePhotoLibrary';
+
+/**
+ * Whether the camera preview is cut to the panel like everything else. On
+ * Android it is not: it is a `SurfaceView`, composited straight to the screen
+ * past every clip, corner and opacity React can put in its way.
+ */
+const PREVIEW_FITS_PANEL = Platform.OS !== 'android';
 
 interface Props {
   panel: ReturnType<typeof useAttachmentPanel>;
@@ -111,15 +118,15 @@ const AttachmentOverlay = ({
   /**
    * Whether the panel is standing still at the sheet's own rect.
    *
-   * The camera preview is the one thing here that cannot be cut to the panel —
-   * see `CameraSheet`'s `preview`. Through the morph the sheet's contents are
-   * laid out at full size and scaled by the panel's width, which leaves them
-   * taller than the panel has yet become, and the preview was drawing through
-   * the bottom of the sheet and over the navigation bar. So it is given the
-   * preview only between one move and the next.
+   * Only Android asks. Through the morph the sheet's contents are laid out at
+   * full size and scaled by the panel's width, which leaves them taller than
+   * the panel has yet become — and there the preview was drawing through the
+   * bottom of the sheet and over the navigation bar rather than being cut. So
+   * it is given the preview only between one move and the next.
    */
   const [settled, setSettled] = useState(false);
   useEffect(() => {
+    if (PREVIEW_FITS_PANEL) return;
     if (panel.mode !== 'camera') {
       setSettled(false);
       return;
@@ -290,7 +297,11 @@ const AttachmentOverlay = ({
                     height={gridHeight}
                     facing={facing}
                     flash={flash}
-                    preview={settled && !panel.closing && !isFlying}
+                    preview={
+                      PREVIEW_FITS_PANEL ||
+                      (settled && !panel.closing && !isFlying)
+                    }
+                    lifting={isFlying}
                   />
                 ) : null
               ) : (
