@@ -524,3 +524,29 @@ export const buildMessageSources = async ({
 
   return { context, sourceDocuments, preferredSourceDocuments };
 };
+
+const ABSENCE_CLAIM =
+  /nie (?:ma|zawieraj\w*|jest podan\w*|zosta\w* podan\w*|jest mo[żz]liwe)[^.!?]{0,40}(?:informacj|dan(?:e|ych)|ceny|kursu|kwoty)|[żz]r[óo]d[łl]a[^.!?]{0,30}nie (?:zawieraj|podaj)|brak (?:informacji|danych)|(?:sources?|search results|pages?)[^.!?]{0,30}(?:contain no|do not (?:contain|state|provide|include)|have no)|no (?:information|data) (?:about|on|for)|nie posiadam[^.!?]{0,30}informacj/i;
+
+const QUESTION_WANTS_DATE =
+  /\bkiedy\b|\bwhen\b|\bwann\b|\bquand\b|\bcu[aá]ndo\b|\bquando\b|когда|कब/i;
+const QUESTION_WANTS_AMOUNT =
+  /\bile\b|\bilu\b|\bkurs\b|\bcen[ay]\b|\bkoszt\w*\b|\bhow (?:much|many)\b|\bprice\b|\bcost\b|\brate\b|\bpopulation\b|сколько|कितन/i;
+
+const CONTEXT_DATE =
+  /\b\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}\b|\b\d{1,2}\s?(?:sty|lut|mar|kwi|maj|cze|lip|sie|wrz|pa[źz]|lis|gru|jan|feb|apr|jun|jul|aug|sep|oct|nov|dec)/i;
+const CONTEXT_AMOUNT = /\d{1,3}(?:[.,\u00A0\u202F ]\d{3})+|\d+[.,]\d+|\d{4,}/;
+
+export const claimsMissingEvidenceItHas = (
+  answer: string,
+  question: string | undefined,
+  context: string
+): boolean => {
+  if (!question || !context.trim()) return false;
+  const visible = stripThinkBlocks(answer);
+  if (!visible || !ABSENCE_CLAIM.test(visible)) return false;
+  if (QUESTION_WANTS_DATE.test(question) && CONTEXT_DATE.test(context)) {
+    return true;
+  }
+  return QUESTION_WANTS_AMOUNT.test(question) && CONTEXT_AMOUNT.test(context);
+};
