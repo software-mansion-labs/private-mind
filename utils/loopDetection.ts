@@ -8,6 +8,27 @@ const normalizeClause = (clause: string): string =>
 
 const MAX_CLAUSE_CYCLE = 6;
 const CLAUSE_CYCLE_REPEATS = 2;
+const CLAUSE_REPEAT_LIMIT = 3;
+const LINE_REPEAT_LIMIT = 2;
+
+const secondOccurrences = (
+  units: { norm: string; start: number }[],
+  limit: number
+): number | null => {
+  const starts = new Map<string, number[]>();
+  for (const { norm, start } of units) {
+    const seen = starts.get(norm);
+    if (seen) seen.push(start);
+    else starts.set(norm, [start]);
+  }
+  let cut: number | null = null;
+  for (const occurrences of starts.values()) {
+    if (occurrences.length < limit) continue;
+    const repeat = occurrences[1]!;
+    if (cut === null || repeat < cut) cut = repeat;
+  }
+  return cut;
+};
 
 const findRepeatedClauseCut = (text: string): number | null => {
   const clauses = text.split(CLAUSE_SPLIT);
@@ -43,6 +64,11 @@ const findRepeatedClauseCut = (text: string): number | null => {
     }
   }
 
+  const repeated = secondOccurrences(substantial, CLAUSE_REPEAT_LIMIT);
+  if (repeated !== null && (earliestCut === null || repeated < earliestCut)) {
+    earliestCut = repeated;
+  }
+
   return earliestCut;
 };
 
@@ -51,9 +77,11 @@ const LIST_MARKER = /^\s*(?:\d+[.)]|[-*•])\s*/;
 
 const findRepeatedLineCut = (text: string): number | null => {
   const lines = text.split('\n');
+  const substantial: { norm: string; start: number }[] = [];
   let cursor = 0;
   let previousNorm: string | null = null;
   let previousStart = 0;
+  let adjacentCut: number | null = null;
 
   for (const line of lines) {
     const start = cursor;
@@ -62,12 +90,17 @@ const findRepeatedLineCut = (text: string): number | null => {
     const norm = normalizeClause(line.replace(LIST_MARKER, ''));
     if (norm.length < MIN_LINE_CHARS || !ALPHANUMERIC.test(norm)) continue;
 
-    if (norm === previousNorm) return previousStart;
+    substantial.push({ norm, start });
+    if (adjacentCut === null && norm === previousNorm)
+      adjacentCut = previousStart;
     previousNorm = norm;
     previousStart = start;
   }
 
-  return null;
+  const repeated = secondOccurrences(substantial, LINE_REPEAT_LIMIT);
+  if (adjacentCut === null) return repeated;
+  if (repeated === null) return adjacentCut;
+  return Math.min(adjacentCut, repeated);
 };
 
 const MIN_WORD_CHARS = 3;
@@ -158,6 +191,14 @@ const findRepeatedPhraseRun = (text: string): number | null => {
   return earliestCut;
 };
 
+const SALVAGE_UNIT = /[^.!?\n。！？।॥۔؟]+(?:[.!?\n。！？।॥۔؟]+|$)/;
+
+const salvageFirstUnit = (text: string): string => {
+  const sentence = text.trim().match(SALVAGE_UNIT)?.[0]?.trim();
+  if (sentence) return sentence;
+  return text.trim();
+};
+
 export const truncateAtRepeatedClause = (text: string): string => {
   const cuts = [
     findRepeatedClauseCut(text),
@@ -166,5 +207,7 @@ export const truncateAtRepeatedClause = (text: string): string => {
     findRepeatedPhraseRun(text),
   ].filter((cut): cut is number => cut !== null);
   if (cuts.length === 0) return text;
-  return text.slice(0, Math.min(...cuts)).trimEnd();
+  const kept = text.slice(0, Math.min(...cuts)).trimEnd();
+  if (kept.trim()) return kept;
+  return text.trim() ? salvageFirstUnit(text) : kept;
 };

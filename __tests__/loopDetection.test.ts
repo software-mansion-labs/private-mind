@@ -45,6 +45,79 @@ describe('truncateAtRepeatedClause', () => {
     expect(result).toBe('Podsumowanie:');
   });
 
+  it('cuts a padded list where whole items come back later, keeping the distinct ones (live-found)', () => {
+    const text =
+      'Oto lista 6 rzeczy, które powinieneś zabrać na tygodniowy wyjazd do Londynu:\n' +
+      '1. Paliwo – wymagane do podróży.\n' +
+      '2. Ochłonienie – np. kawa, herbatka, czekolada.\n' +
+      '3. Oświetlenie – np. lampa, lampka, kajuta.\n' +
+      '4. Ogół – np. lód, krem, krem na twarz.\n' +
+      '5. Oświetlenie – np. lampa, lampka, kajuta.\n' +
+      '6. Ochłonienie – np. kawa, herbatka, czekolada.';
+    const result = truncateAtRepeatedClause(text);
+    expect(result).toContain('1. Paliwo');
+    expect(result).toContain('2. Ochłonienie');
+    expect(result).toContain('3. Oświetlenie');
+    expect(result).toContain('4. Ogół');
+    expect(result).not.toContain('5. Oświetlenie');
+    expect(result).not.toContain('6. Ochłonienie');
+  });
+
+  it('does not cut an answer that merely names the same thing twice (live-found regression)', () => {
+    const text =
+      'To bake a chocolate cake, you need flour, sugar, cocoa powder, eggs, milk, and baking powder.\n' +
+      '1. Sift the flour and the cocoa powder into a bowl.\n' +
+      '2. Add the sugar and the baking powder, then mix.\n' +
+      '3. Beat in the eggs and the milk until smooth.\n' +
+      '4. Bake for 30 minutes and let it cool before serving.';
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
+  it('needs a third occurrence before a repeated clause counts as a loop', () => {
+    const twice =
+      'Rynek krypto zachowuje się dziś stabilnie. Cena bitcoina wynosi dzisiaj 64146 dolarów. ' +
+      'Ethereum zyskało więcej w tym miesiącu. Cena bitcoina wynosi dzisiaj 64146 dolarów.';
+    expect(truncateAtRepeatedClause(twice)).toBe(twice);
+
+    const thrice = `${twice} Rynek jest spokojny. Cena bitcoina wynosi dzisiaj 64146 dolarów.`;
+    const result = truncateAtRepeatedClause(thrice);
+    expect(result.match(/Cena bitcoina/g)).toHaveLength(1);
+    expect(result).toContain('Ethereum zyskało');
+    expect(result).not.toContain('Rynek jest spokojny');
+  });
+
+  it('cuts where the repetition starts, not where the content was first said', () => {
+    const text =
+      'Alfa to pierwszy istotny punkt tej odpowiedzi.\n' +
+      'Beta to drugi istotny punkt tej odpowiedzi.\n' +
+      'Gamma to trzeci istotny punkt tej odpowiedzi.\n' +
+      'Delta to czwarty istotny punkt tej odpowiedzi.\n' +
+      'Gamma to trzeci istotny punkt tej odpowiedzi.\n' +
+      'Alfa to pierwszy istotny punkt tej odpowiedzi.';
+    const result = truncateAtRepeatedClause(text);
+    expect(result).toContain('Alfa to pierwszy');
+    expect(result).toContain('Delta to czwarty');
+    expect(result.match(/Alfa to pierwszy/g)).toHaveLength(1);
+    expect(result.match(/Gamma to trzeci/g)).toHaveLength(1);
+  });
+
+  it('does not flag a list of genuinely distinct items with no duplicates', () => {
+    const text =
+      'Rzeczy do spakowania:\n' +
+      '1. Paszport i dokumenty podróży.\n' +
+      '2. Ładowarka do telefonu i powerbank.\n' +
+      '3. Wygodne buty na długie spacery.\n' +
+      '4. Lekka kurtka na chłodniejsze wieczory.';
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
+  it('does not flag two list items restating the same idea in different wording', () => {
+    const text =
+      '1. Zabierz ciepłą kurtkę na wieczory.\n' +
+      '2. Pamiętaj o cieplejszym okryciu, gdy zrobi się chłodniej wieczorem.';
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
   it('catches a loop across numbered list items whose marker resets clause memory (F22)', () => {
     const text =
       'Dokonał wielu reform, w tym:\n' +
