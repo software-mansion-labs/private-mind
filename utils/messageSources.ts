@@ -20,6 +20,7 @@ import {
   isUngroundedTrendClaim,
 } from './web/figureGrounding';
 import { carryReferentIntoQuery } from './web/buildSearchQuery';
+import type { WebIntentKind } from './web/intentKind';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
 import {
   CITATION_SENTENCE_PATTERN,
@@ -588,13 +589,15 @@ export const answerUsesNoRetrievedEvidence = (
 export const claimsMissingEvidenceItHas = (
   answer: string,
   question: string | undefined,
-  context: string
+  context: string,
+  intent?: WebIntentKind
 ): boolean => {
   if (!question || !context.trim()) return false;
   const visible = stripThinkBlocks(answer);
   if (!visible || !ABSENCE_CLAIM.test(visible)) return false;
-  if (QUESTION_WANTS_DATE.test(question) && CONTEXT_DATE.test(context)) {
-    return true;
-  }
-  return QUESTION_WANTS_AMOUNT.test(question) && CONTEXT_AMOUNT.test(context);
+  const wantsDate = intent === 'date' || QUESTION_WANTS_DATE.test(question);
+  if (wantsDate && CONTEXT_DATE.test(context)) return true;
+  const wantsAmount =
+    intent === 'price' || QUESTION_WANTS_AMOUNT.test(question);
+  return wantsAmount && CONTEXT_AMOUNT.test(context);
 };

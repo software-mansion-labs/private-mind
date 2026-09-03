@@ -13,6 +13,7 @@ import { extractQueryTerms, foldForMatching, stemPrefix } from '../queryTerms';
 import { detectQuestionLanguage } from '../questionLanguage';
 import { neutralizeDelimiters } from './security/untrustedContent';
 import { VERIFIED_PRODUCT_MARKER } from './figureGrounding';
+import type { WebIntentKind } from './intentKind';
 
 const formatVerifiedProduct = (
   product: StructuredProduct | undefined
@@ -150,6 +151,19 @@ export const MONEY_ANCHOR =
   /\d[\d\s.,]*\s?(?:zl(?:ot(?:ych|ego|emu|ymi|ym|y|e))?|pln|eur(?:o)?|usd|gbp|czk|chf|dolar(?:ow|ach|ami|em|a|y)?)(?![\p{L}\p{N}])|[$€£¥]\s?\d|\d\s?[$€£¥]/giu;
 const MONEY_BONUS = 2;
 
+const NUMBER_RUN = /\d[\d.,:]*\d|\d/g;
+const FIGURES_BONUS = 3;
+const FIGURES_SATURATION = 3;
+const NO_FIGURE_FACTOR = 0.5;
+
+const figuresOutsideNeedles = (folded: string, needles: string[]): number => {
+  const rest = needles.reduce(
+    (text, needle) => text.split(needle).join(' '),
+    folded
+  );
+  return (rest.match(NUMBER_RUN) ?? []).length;
+};
+
 const TOPIC_NEEDLE_DISCOUNT = 0.5;
 
 const RECORD_LINE =
@@ -215,6 +229,7 @@ interface PassageScoring {
   topicNeedles: Set<string>;
   wantsDate: boolean;
   wantsPrice: boolean;
+  wantsFigures: boolean;
   verifiedAmount: number | null;
 }
 
@@ -223,7 +238,14 @@ const scorePassage = (
   scoring: PassageScoring,
   creditedRecord: boolean
 ): number => {
-  const { needles, weights, topicNeedles, wantsDate, wantsPrice } = scoring;
+  const {
+    needles,
+    weights,
+    topicNeedles,
+    wantsDate,
+    wantsPrice,
+    wantsFigures,
+  } = scoring;
   let score = 0;
   needles.forEach((needle, index) => {
     const topic = topicNeedles.has(needle);
@@ -244,6 +266,14 @@ const scorePassage = (
   }
   if (mentions.length > 0)
     score += Math.min(1, mentions.length / 2) * MONEY_BONUS;
+  if (wantsFigures) {
+    const figures = figuresOutsideNeedles(folded, needles);
+    if (figures > 0) {
+      score += Math.min(1, figures / FIGURES_SATURATION) * FIGURES_BONUS;
+    } else {
+      score *= NO_FIGURE_FACTOR;
+    }
+  }
   const digits = (folded.match(/\d/g) ?? []).length;
   if (digits > 0) {
     const words = (folded.match(/\p{L}{3,}/gu) ?? []).length;
@@ -261,7 +291,10 @@ const isSentenceLead = (passage: string): boolean =>
 export interface SelectionOptions {
   title?: string;
   verifiedPrice?: string;
+  intent?: WebIntentKind;
 }
+
+const DATED_INTENTS: ReadonlySet<WebIntentKind> = new Set(['date', 'news']);
 
 export const selectRelevantContent = (
   content: string,
@@ -287,9 +320,14 @@ export const selectRelevantContent = (
     options.verifiedPrice !== undefined
       ? parseAmount(options.verifiedPrice)
       : null;
-  const wantsDate = !!query && WHEN_QUESTION.test(query);
+  const { intent } = options;
+  const wantsDate =
+    (!!intent && DATED_INTENTS.has(intent)) ||
+    (!!query && WHEN_QUESTION.test(query));
   const wantsPrice =
-    !!query && verifiedAmount === null && PRICE_QUESTION.test(query);
+    verifiedAmount === null &&
+    (intent === 'price' || (!!query && PRICE_QUESTION.test(query)));
+  const wantsFigures = intent === 'specs';
   const all = splitIntoPassages(trimmed, maxChars);
   const foldedAll = all.map(foldForMatching);
   const foldedTitle = foldForMatching(options.title ?? '');
@@ -301,6 +339,7 @@ export const selectRelevantContent = (
     ),
     wantsDate,
     wantsPrice,
+    wantsFigures,
     verifiedAmount,
   };
   const credited =
@@ -434,6 +473,7 @@ const sourceBudgets = (
 interface WebContextOptions {
   labelSubQueries?: boolean;
   displayQuery?: string;
+  intent?: WebIntentKind;
 }
 
 export const webResultsToContext = (
@@ -475,6 +515,7 @@ export const webResultsToContext = (
         ? selectRelevantContent(result.content, query, maxChars, {
             title: result.title,
             verifiedPrice: result.product?.price,
+            intent: options.intent,
           })
         : '';
     const besideSnippet = select(

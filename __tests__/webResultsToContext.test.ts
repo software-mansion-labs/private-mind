@@ -402,6 +402,78 @@ describe('selectRelevantContent', () => {
   });
 });
 
+describe('selectRelevantContent — the kind of answer the question wants', () => {
+  const shopTitle = 'Samsung QE65S99H telewizor OLED 65" | Sklep';
+  const shopPage = [
+    'Telewizor Samsung QE65S99H OLED to nowa jakość obrazu dla Twojego salonu.',
+    'Samsung QE65S99H OLED zachwyca głębią czerni i naturalnymi kolorami w każdym salonie.',
+    'Z telewizorem Samsung QE65S99H OLED każdy wieczór filmowy nabiera nowego wymiaru.',
+    'Częstotliwość odświeżania: 165 Hz',
+    'Jasność szczytowa: 2000 nitów',
+    'Złącza: 4 x HDMI 2.1, 3 x USB',
+  ].join('\n');
+  const specsQuery = 'Samsung QE65S99H parametry techniczne telewizor OLED';
+
+  it('hands a specs question the figure rows instead of the marketing copy that repeats its terms (live #343)', () => {
+    const out = selectRelevantContent(shopPage, specsQuery, 100, {
+      title: shopTitle,
+      intent: 'specs',
+    });
+    expect(out).toContain('165 Hz');
+    expect(out).toContain('2000 nitów');
+    expect(out).toContain('HDMI 2.1');
+    expect(out).not.toContain('nowa jakość');
+  });
+
+  it('does not read the digits of the model the user named as figures', () => {
+    const out = selectRelevantContent(shopPage, specsQuery, 100, {
+      title: shopTitle,
+    });
+    expect(out).toContain('nowa jakość');
+  });
+
+  const italianPage = [
+    'Il Samsung QE65S99H offre quanto di meglio la tecnologia OLED possa dare.',
+    'Con il Samsung QE65S99H ogni film costa poco in emozioni e molto in qualità.',
+    'Quanto vale il Samsung QE65S99H lo dice la sua immagine.',
+    'Samsung QE65S99H prezzo € 2.499,00',
+  ].join('\n');
+  const italianQuestion = 'quanto costa Samsung QE65S99H';
+
+  it('gives a price question the amount even in a language the price words are not listed for', () => {
+    expect(
+      selectRelevantContent(italianPage, italianQuestion, 80, {
+        intent: 'price',
+      })
+    ).toContain('€ 2.499,00');
+  });
+
+  it('still needs the intent for that: the words alone do not reach the amount', () => {
+    expect(
+      selectRelevantContent(italianPage, italianQuestion, 80)
+    ).not.toContain('€ 2.499,00');
+  });
+
+  it('threads the intent from webResultsToContext down to the passage selection', () => {
+    const marketing = Array.from(
+      { length: 6 },
+      (_, i) =>
+        `Telewizor Samsung QE65S99H OLED to nowa jakość obrazu ${'abcdef'[i]!} dla Twojego salonu.`
+    ).join('\n');
+    const page = `${marketing}\n${shopPage.split('\n').slice(3).join('\n')}`;
+    const passageFor = (intent?: 'specs'): string =>
+      webResultsToContext(
+        [result({ title: shopTitle, snippet: '', content: page })],
+        specsQuery,
+        0,
+        300,
+        intent ? { intent } : {}
+      ).sourceDocuments[0]!.passage ?? '';
+    expect(passageFor()).not.toContain('165 Hz');
+    expect(passageFor('specs')).toContain('165 Hz');
+  });
+});
+
 describe('webResultsToContext — pages that were never opened', () => {
   it('still contributes its snippet to context even when another result has full content', () => {
     const { context, sourceDocuments } = webResultsToContext([

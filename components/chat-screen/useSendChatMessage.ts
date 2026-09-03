@@ -15,6 +15,7 @@ import { LFMEmbeddings } from '../../utils/lfmEmbeddings';
 import { buildMessageSources } from '../../utils/messageSources';
 import { isDeviceOnline } from '../../utils/network';
 import { runWebSearch } from '../../utils/web/runWebSearch';
+import type { WebIntentKind } from '../../utils/web/intentKind';
 import { webViewScrapeProvider } from '../../utils/web/scrape/webViewScrapeProvider';
 import { webContextCharBudget } from '../../utils/web/contextBudget';
 import {
@@ -163,6 +164,7 @@ export const useSendChatMessage = ({
       let sourceDocuments: SourceDocument[] = [];
       let preferredSourceDocuments: SourceDocument[] = [];
       let webIntent: string | undefined;
+      let webIntentKind: WebIntentKind | undefined;
       let webSubQueries: string[] | undefined;
       let webWeak: boolean | undefined;
       let webSearchFailed: boolean | undefined;
@@ -269,6 +271,7 @@ export const useSendChatMessage = ({
           sourceDocuments = [...sourceDocuments, ...webSources];
           if (webSources.length > 0) {
             webIntent = webTelemetry.intent || undefined;
+            webIntentKind = webTelemetry.intentKind;
             webSubQueries = webTelemetry.plannedQueries;
             webWeak = webTelemetry.finalLabel === 'incorrect';
           } else {
@@ -312,6 +315,7 @@ export const useSendChatMessage = ({
         sourceDocuments,
         preferredSourceDocuments,
         webIntent,
+        webIntentKind,
         webSubQueries,
         webWeak,
         webSearchFailed,

@@ -33,6 +33,7 @@ import {
   type SourceAgreement,
 } from './sourceAgreement';
 import { hostname, webResultsToContext } from './webResultsToContext';
+import type { WebIntentKind } from './intentKind';
 import { dedupeByBody, listingFingerprint } from './fingerprint';
 import { fairRankByListingRelevance } from './listingRelevance';
 import { promoteTitleConsensus } from './titleConsensus';
@@ -124,6 +125,7 @@ export interface WebSearchTelemetry {
   needsSearch: boolean;
   skippedReason?: 'gated' | 'provider-not-ready' | 'offline';
   intent: string;
+  intentKind?: WebIntentKind;
   plannedQueries: string[];
   rounds: WebRoundTelemetry[];
   providerCalls: number;
@@ -232,6 +234,7 @@ export const runWebSearch = async (
   let baseQueries = dedupeQueries(plan.queries);
   telemetry.needsSearch = plan.needsSearch;
   telemetry.intent = plan.intent;
+  telemetry.intentKind = plan.kind;
   telemetry.plannedQueries = baseQueries;
   const rankingQuery = plan.intent ? `${query} ${plan.intent}` : query;
   const shouldSearch = WEB_QUERY_GATE
@@ -566,7 +569,11 @@ export const runWebSearch = async (
     label,
     input.contextOffset ?? 0,
     input.contextCharBudget,
-    { labelSubQueries: plan.queries.length > 1, displayQuery: query }
+    {
+      labelSubQueries: plan.queries.length > 1,
+      displayQuery: query,
+      intent: plan.kind,
+    }
   );
   return {
     context: web.context,

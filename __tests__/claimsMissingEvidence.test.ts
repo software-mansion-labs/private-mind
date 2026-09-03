@@ -12,6 +12,30 @@ const STARSHIP_CONTEXT =
   'Starship zaliczył pierwszy w pełni udany lot. Minionej nocy, z 26 na 27 sierpnia, SpaceX przeprowadził dziesiąty lot testowy.';
 
 describe('an answer that claims absence while the block holds the figure', () => {
+  it('trusts the planner that the question asks for a price when its words are not on the list', () => {
+    const question = 'Po jakiej cenie sprzedawany jest karnet narciarski?';
+    const refusal =
+      'Na podstawie dostarczonych źródeł nie ma informacji o cenie karnetu.';
+    expect(claimsMissingEvidenceItHas(refusal, question, SKI_CONTEXT)).toBe(
+      false
+    );
+    expect(
+      claimsMissingEvidenceItHas(refusal, question, SKI_CONTEXT, 'price')
+    ).toBe(true);
+  });
+
+  it('trusts the planner that the question asks for a date', () => {
+    const question = 'Który to był dzień, ten pierwszy udany lot Starship?';
+    const refusal =
+      'Zgodnie ze źródłami nie ma informacji o pierwszym udanym locie.';
+    expect(
+      claimsMissingEvidenceItHas(refusal, question, STARSHIP_CONTEXT)
+    ).toBe(false);
+    expect(
+      claimsMissingEvidenceItHas(refusal, question, STARSHIP_CONTEXT, 'date')
+    ).toBe(true);
+  });
+
   it('catches a refusal about a rate the context states', () => {
     expect(
       claimsMissingEvidenceItHas(
