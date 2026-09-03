@@ -18,10 +18,19 @@ export interface ModelProfile {
   webSearchMinDeviceMemoryGB?: number;
 }
 
+export const GENERATION_RESERVE_SHARE = 0.25;
+export const GENERATION_RESERVE_MIN_TOKENS = 256;
+
+export const scaledGenerationReserve = (contextWindowTokens: number): number =>
+  Math.max(
+    GENERATION_RESERVE_MIN_TOKENS,
+    Math.round(contextWindowTokens * GENERATION_RESERVE_SHARE)
+  );
+
 export const DEFAULT_PROFILE: ModelProfile = {
   webPlanner: 'verbatim',
   contextWindowTokens: 2048,
-  generationReserveTokens: 768,
+  generationReserveTokens: 512,
   repetitionPenalty: 1,
   webRetrievalTopK: WEB_RETRIEVAL_TOP_K,
   webFetchTopNContent: WEB_FETCH_TOP_N_CONTENT,
@@ -32,7 +41,7 @@ export const DEFAULT_PROFILE: ModelProfile = {
 
 export const WEB_PLANNER_MATRIX: Record<string, WebPlannerMode> = {
   'Qwen 3 - 0.6B': 'verbatim',
-  'Qwen 3 - 1.7B': 'llm',
+  'Qwen 3 - 1.7B': 'verbatim',
   'Qwen 2.5 - 0.5B': 'verbatim',
   'Qwen 2.5 - 1.5B': 'llm',
   'Qwen 2.5 - 3B': 'llm',
@@ -62,6 +71,16 @@ export const PLANNER_EVIDENCE: Record<string, string> = {
     '11/72 plans parsed; on the 2 items where a plan was actually used it ' +
     'mutated the entity ("Boeing 747-8" → "Boeing 749", "2023" → "2045") and ' +
     'both answers were wrong. Verbatim on the other 70: 100% retrieval, 85% correct.',
+};
+
+export const GENERATION_RESERVE_EVIDENCE: Record<string, string> = {
+  'Qwen 3 - 1.7B':
+    'Answer length over 259 stored answers from this model alone: p50 34 ' +
+    'tokens, p75 74, p90 122, p95 156, p99 698, max 1527. A 512-token reserve ' +
+    'would cut 4 of them (1.6%), the same count as 640 for twice the saving, ' +
+    'and 3 of those 4 are degenerate loops truncateAtRepeatedClause cuts ' +
+    'anyway. Every other model uses GENERATION_RESERVE_SHARE scaled from this ' +
+    'one measurement and is UNCONFIRMED — a more verbose model may need more.',
 };
 
 export const WEB_ANSWER_EVIDENCE: Record<string, string> = {
@@ -114,12 +133,23 @@ export const getModelProfile = (
   if (!model) return DEFAULT_PROFILE;
   const family = getModelFamily(model);
   const planner = WEB_PLANNER_MATRIX[model.modelName];
-  return {
+  const merged = {
     ...DEFAULT_PROFILE,
     ...(planner ? { webPlanner: planner } : {}),
     ...(PROFILE_BY_FAMILY[family] ?? {}),
     ...(PROFILE_BY_MODEL[model.modelName] ?? {}),
   };
+  const reserveIsExplicit =
+    PROFILE_BY_MODEL[model.modelName]?.generationReserveTokens !== undefined ||
+    PROFILE_BY_FAMILY[family]?.generationReserveTokens !== undefined;
+  return reserveIsExplicit
+    ? merged
+    : {
+        ...merged,
+        generationReserveTokens: scaledGenerationReserve(
+          merged.contextWindowTokens
+        ),
+      };
 };
 
 export const usesLlmPlanner = (

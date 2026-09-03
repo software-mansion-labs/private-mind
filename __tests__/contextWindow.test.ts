@@ -2,6 +2,8 @@ import {
   estimatePromptTokens,
   getContextWindowTokens,
   getPromptCharBudget,
+  getPromptTokenBudget,
+  PROMPT_TOKEN_SAFETY,
 } from '../constants/context-window';
 import { Model } from '../database/modelRepository';
 
@@ -74,8 +76,13 @@ describe('estimatePromptTokens', () => {
 
 describe('getPromptCharBudget', () => {
   it('falls back to a safe Latin density when given no sample', () => {
-    expect(getPromptCharBudget(makeModel('Gemma 4'))).toBe(3840);
-    expect(getPromptCharBudget(makeModel('Qwen 2.5'))).toBe(3840);
+    const flat = Math.floor(
+      Math.floor(
+        getPromptTokenBudget(makeModel('Gemma 4')) * PROMPT_TOKEN_SAFETY
+      ) * 3
+    );
+    expect(getPromptCharBudget(makeModel('Gemma 4'))).toBe(flat);
+    expect(getPromptCharBudget(makeModel('Qwen 2.5'))).toBe(flat);
   });
 
   it('grants Latin prose more characters than the flat fallback', () => {
@@ -85,7 +92,7 @@ describe('getPromptCharBudget', () => {
       );
 
     expect(getPromptCharBudget(makeModel('Gemma 4'), english)).toBeGreaterThan(
-      3840
+      getPromptTokenBudget(makeModel('Gemma 4')) * PROMPT_TOKEN_SAFETY * 3
     );
   });
 
@@ -94,11 +101,15 @@ describe('getPromptCharBudget', () => {
 
     const budget = getPromptCharBudget(makeModel('Gemma 4'), chinese);
 
-    expect(budget).toBeLessThanOrEqual(1280);
+    expect(budget).toBeLessThanOrEqual(
+      getPromptTokenBudget(makeModel('Gemma 4'))
+    );
     const filled = chinese
       .repeat(Math.ceil(budget / chinese.length) + 1)
       .slice(0, budget);
-    expect(estimatePromptTokens(filled)).toBeLessThanOrEqual(1280);
+    expect(estimatePromptTokens(filled)).toBeLessThanOrEqual(
+      getPromptTokenBudget(makeModel('Gemma 4'))
+    );
   });
 
   it('keeps any script under the prompt token budget when filled to capacity', () => {
@@ -115,7 +126,9 @@ describe('getPromptCharBudget', () => {
       const text = sample.repeat(200);
       const budget = getPromptCharBudget(makeModel('Gemma 4'), text);
       const filled = text.slice(0, budget);
-      expect(estimatePromptTokens(filled)).toBeLessThanOrEqual(1280);
+      expect(estimatePromptTokens(filled)).toBeLessThanOrEqual(
+        getPromptTokenBudget(makeModel('Gemma 4'))
+      );
     }
   });
 });
