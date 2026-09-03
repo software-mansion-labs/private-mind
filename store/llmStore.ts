@@ -28,6 +28,7 @@ import {
 import { detectQuestionLanguage } from '../utils/questionLanguage';
 import {
   detectGroundingCaveats,
+  claimsMissingEvidenceItHas,
   humanizeSourceReferences,
   isCircularNonAnswer,
   isDanglingListAnswer,
@@ -438,6 +439,11 @@ const noAnswerFallback = (question: string | undefined): string => {
   const code = detectQuestionLanguage(question ?? '')?.code ?? 'en';
   return NO_ANSWER_FALLBACK[code] ?? NO_ANSWER_FALLBACK.en!;
 };
+
+const EVIDENCE_PRESENT_RETRY_PROMPT =
+  'The block does contain a figure of the kind the question asks for. Read it ' +
+  'again, including the page titles, find that value and answer with it. Only ' +
+  'if it truly is not there, say so.';
 
 const WRONG_LANGUAGE_RETRY_PROMPT =
   'That reply was written in the wrong language. Write the same answer again, ' +
@@ -883,6 +889,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const priorAnswerText = get()
         .activeChatMessages.slice(0, -1)
         .findLast((msg) => msg.role === 'assistant')?.content;
+      const promptContext = ((last) =>
+        typeof last?.content === 'string'
+          ? last.content
+          : JSON.stringify(last?.content ?? ''))(effectivePrepared.at(-1));
 
       let nudged = false;
 
@@ -948,6 +958,23 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         ) {
           finalResponse = noAnswerFallback(currentQuestion);
         }
+      }
+
+      if (
+        !nudged &&
+        finalResponse &&
+        claimsMissingEvidenceItHas(
+          finalResponse,
+          currentQuestion,
+          promptContext
+        )
+      ) {
+        await nudgeOnce(
+          'Answer claims the sources are silent while they hold a figure, retrying once',
+          EVIDENCE_PRESENT_RETRY_PROMPT,
+          (retried) =>
+            claimsMissingEvidenceItHas(retried, currentQuestion, promptContext)
+        );
       }
 
       if (
