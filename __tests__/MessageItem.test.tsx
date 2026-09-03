@@ -270,6 +270,33 @@ describe('assistant messages', () => {
     expect(markdown.props.children).toBe('The total was 100.');
   });
 
+  it('offers the Sources button whenever a source badge is shown, even for a page known only from its listing (#357)', () => {
+    renderItem({
+      role: 'assistant',
+      content: 'Najlepszym modelem OLED w rankingu jest LG C5.',
+      userQuestion: 'najlepszy model telewizora OLED',
+      sourceDocuments: [
+        {
+          kind: 'web',
+          name: 'Ranking Telewizorów OLED 2026',
+          url: 'https://ranking.example/oled',
+          read: false,
+          used: true,
+        },
+        {
+          kind: 'web',
+          name: 'Sklep',
+          url: 'https://shop.example/tv',
+          read: true,
+          used: false,
+        },
+      ],
+    });
+
+    expect(screen.getByTestId('dominant-source-badge')).toBeTruthy();
+    expect(screen.getByTestId('source-action-button')).toBeTruthy();
+  });
+
   it('does not render source actions for user messages', () => {
     renderItem({
       role: 'user',
