@@ -544,3 +544,36 @@ describe('webResultsToContext — context budget', () => {
     expect(tight).toBeLessThan(roomy);
   });
 });
+
+describe('coalescing must not glue table rows together (live-found: Nowy Sącz weather)', () => {
+  const rows = [
+    'Pogoda Jutro, Nowy Sącz Czwartek, 3 Września',
+    'Jutro | 22°C | 12°C',
+    'Piątek | 24°C | 18°C',
+    'Sobota | 25°C | 17°C',
+  ].join('\n');
+
+  it('keeps a row boundary the extractor produced', () => {
+    const filler = 'Reklama i inne treści strony pogodowej. '.repeat(20);
+    const out = selectRelevantContent(
+      `${rows}\n${filler}`,
+      'pogoda Nowy Sącz jutro',
+      260
+    );
+
+    expect(out).not.toContain('12°C Piątek');
+    expect(out).not.toContain('18°C Sobota');
+  });
+
+  it('still keeps the rows themselves once the budget admits them', () => {
+    const filler = 'Reklama i inne treści strony pogodowej. '.repeat(20);
+    const out = selectRelevantContent(
+      `${rows}\n${filler}`,
+      'pogoda Nowy Sącz jutro',
+      400
+    );
+
+    expect(out).toContain('Jutro | 22°C | 12°C');
+    expect(out).toContain('Piątek | 24°C | 18°C');
+  });
+});

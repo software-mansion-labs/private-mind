@@ -31,6 +31,7 @@ export interface WebSourceDocument extends SourceDocument {
   kind: 'web';
   url: string;
   query?: string;
+  searchedQuery?: string;
   used?: boolean;
 }
 
