@@ -56,6 +56,8 @@ export function useAttachmentPanel({
   const [closing, setClosing] = useState(false);
   /** Pending panel mount, held back while the + gets out of the way. */
   const leadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Pending reset of `sheet` once the crossfade back to the menu is over. */
+  const sheetResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const open = useSharedValue(0);
   /**
@@ -72,6 +74,9 @@ export function useAttachmentPanel({
   useEffect(
     () => () => {
       if (leadTimer.current !== null) clearTimeout(leadTimer.current);
+      if (sheetResetTimer.current !== null) {
+        clearTimeout(sheetResetTimer.current);
+      }
     },
     []
   );
@@ -165,6 +170,10 @@ export function useAttachmentPanel({
    *  the footprint the grid does. */
   const showSheet = useCallback(
     (next: Sheet) => {
+      if (sheetResetTimer.current !== null) {
+        clearTimeout(sheetResetTimer.current);
+        sheetResetTimer.current = null;
+      }
       setSheet(next);
       setMode(next);
       pulseBlur();
@@ -182,6 +191,15 @@ export function useAttachmentPanel({
   const backToMenu = useCallback(() => {
     setMode('menu');
     onLeaveSheet?.();
+    // `sheet` outlives `mode` only for the length of the crossfade — long
+    // enough that going back does not flash the other sheet, and no longer.
+    // Holding it forever keeps the camera's layer mounted, and on Android the
+    // preview's surface stays painted where the menu no longer covers it.
+    if (sheetResetTimer.current !== null) clearTimeout(sheetResetTimer.current);
+    sheetResetTimer.current = setTimeout(() => {
+      sheetResetTimer.current = null;
+      setSheet('photos');
+    }, DURATION.crossfade);
     pulseBlur();
     morph.set(withSpring(0, SPRING.panel));
     menuOpacity.set(

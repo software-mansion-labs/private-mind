@@ -13,7 +13,7 @@ import React, {
 import { StyleSheet, View } from 'react-native';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
-import { CAMERA, PANEL_CONTENT } from './constants';
+import { CAMERA, GRID, PANEL_CONTENT } from './constants';
 import SheetPlaceholder from './SheetPlaceholder';
 
 export interface CameraSheetHandle {
@@ -116,6 +116,12 @@ const createStyles = (theme: Theme) =>
       // Black rather than the panel's material: a preview starts a frame or two
       // after it mounts, and black is what shows there.
       backgroundColor: theme.bg.lightbox,
+      // The panel's clip does not reach a native camera preview on Android, so
+      // the sheet rounds its own corners at the shape the panel wears once it
+      // has finished morphing — the only shape the camera is ever seen in.
+      borderRadius: GRID.panelRadius,
+      borderCurve: 'continuous',
+      overflow: 'hidden',
     },
     lifted: {
       opacity: 0,

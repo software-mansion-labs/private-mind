@@ -43,9 +43,10 @@ interface Props extends PanelDrivers {
   gridHeight: number;
   /** How low the menu shape may be drawn. */
   menuMaxBottom: number;
-  /** Window Y of the sheet's top edge — fixed, off the safe-area top. The
-   *  camera passes its own, shorter line. */
+  /** Window Y of the sheet's top edge — fixed, off the safe-area top. */
   sheetTop: number;
+  /** The sheet's own height, measured to the safe-area bottom. */
+  sheetHeight: number;
   /** Which layer takes touches. Both stay mounted through the morph, and a
    *  faded-out view still swallows taps. */
   interactive: 'menu' | 'grid' | 'none';
@@ -68,6 +69,7 @@ const AttachmentPanel = ({
   gridHeight,
   menuMaxBottom,
   sheetTop,
+  sheetHeight,
   interactive,
   glass,
   glassDuration,
@@ -101,7 +103,7 @@ const AttachmentPanel = ({
     let x = GUTTER;
     let y = mix(m, menuTop, sheetTop);
     let w = mix(m, MENU.width, gridWidth);
-    let h = mix(m, MENU_HEIGHT, screenHeight - sheetTop - GUTTER);
+    let h = mix(m, MENU_HEIGHT, sheetHeight);
     let r = mix(m, MENU.radius, GRID.panelRadius);
 
     // The panel begins as the circle wrapping the + button and grows out of it,

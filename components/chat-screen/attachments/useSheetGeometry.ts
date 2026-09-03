@@ -32,16 +32,20 @@ export function useSheetGeometry() {
    * allows. The camera needs that shape — a preview stretched down a 20:9 phone
    * crops most of what the lens sees — and the grid matching it is what keeps
    * the morph a single move rather than two destinations.
+   *
+   * The bottom is the safe area's, not the screen's: Android's navigation bar
+   * lives in that strip and the sheet was running underneath it.
    */
+  const sheetBottom = height - insets.bottom - GUTTER;
   const sheetTop = Math.max(
     insets.top + SHEET_TOP_GAP,
-    height - GUTTER - (width - GUTTER * 2) * CAMERA_ASPECT
+    sheetBottom - (width - GUTTER * 2) * CAMERA_ASPECT
   );
   const menuMaxBottom = height - insets.bottom - GUTTER;
   // The sheet keeps the composer's gutter rather than going full bleed, and
   // stops a gutter short of the bottom — so the grid inside it does too.
   const gridWidth = width - GUTTER * 2;
-  const gridHeight = height - sheetTop - GUTTER;
+  const gridHeight = sheetBottom - sheetTop;
 
   return {
     width,
@@ -51,6 +55,7 @@ export function useSheetGeometry() {
     gridWidth,
     gridHeight,
     sheetTop,
+    sheetBottom,
     menuMaxBottom,
   };
 }

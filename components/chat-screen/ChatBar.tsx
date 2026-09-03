@@ -127,6 +127,7 @@ const ChatBar = ({
     gridWidth,
     gridHeight,
     sheetTop,
+    sheetBottom,
     menuMaxBottom,
   } = useSheetGeometry();
 
@@ -558,6 +559,7 @@ const ChatBar = ({
             gridHeight={gridHeight}
             menuMaxBottom={menuMaxBottom}
             sheetTop={sheetTop}
+            sheetBottom={sheetBottom}
             composerBottom={composerBottom}
             rowsBelowStrip={rowsBelowStrip}
             strip={strip}
