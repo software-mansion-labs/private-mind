@@ -108,6 +108,26 @@ const AttachmentOverlay = ({
     else if (panel.mode === 'closed') setEnteredSheet(false);
   }, [panel.mode]);
 
+  /**
+   * Whether the panel is standing still at the sheet's own rect.
+   *
+   * The camera preview is the one thing here that cannot be cut to the panel —
+   * see `CameraSheet`'s `preview`. Through the morph the sheet's contents are
+   * laid out at full size and scaled by the panel's width, which leaves them
+   * taller than the panel has yet become, and the preview was drawing through
+   * the bottom of the sheet and over the navigation bar. So it is given the
+   * preview only between one move and the next.
+   */
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (panel.mode !== 'camera') {
+      setSettled(false);
+      return;
+    }
+    const timer = setTimeout(() => setSettled(true), DURATION.panel);
+    return () => clearTimeout(timer);
+  }, [panel.mode]);
+
   const togglePhoto = useCallback(
     (photo: LibraryPhoto) => {
       Feedback.toggleOn();
@@ -270,7 +290,7 @@ const AttachmentOverlay = ({
                     height={gridHeight}
                     facing={facing}
                     flash={flash}
-                    lifting={isFlying}
+                    preview={settled && !panel.closing && !isFlying}
                   />
                 ) : null
               ) : (

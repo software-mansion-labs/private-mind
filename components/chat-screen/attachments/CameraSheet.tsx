@@ -27,9 +27,15 @@ interface Props {
   height: number;
   facing: CameraType;
   flash: FlashMode;
-  /** True once the picture has left for the composer. The preview is cut on
-   *  that frame, not faded. */
-  lifting: boolean;
+  /**
+   * Whether the preview itself is showing. On Android it is a `SurfaceView`,
+   * composited straight to the screen: nothing in React can clip it, round it
+   * or fade it, and only its own layout bounds decide what is seen. So it is
+   * handed over only while the panel is standing still at the sheet's rect —
+   * see `AttachmentOverlay`. What is left in its place is this sheet's own
+   * ground, an ordinary view that cuts to the panel like everything else.
+   */
+  preview: boolean;
 }
 
 /**
@@ -40,7 +46,7 @@ interface Props {
  */
 const CameraSheet = forwardRef<CameraSheetHandle, Props>(
   function CameraSheetComponent(
-    { width, height, facing, flash, lifting },
+    { width, height, facing, flash, preview },
     handle
   ) {
     const { styles } = useThemedStyles(createStyles);
@@ -54,6 +60,10 @@ const CameraSheet = forwardRef<CameraSheetHandle, Props>(
         requestPermission();
       }
     }, [permission, requestPermission]);
+
+    useEffect(() => {
+      if (!preview) ready.current = false;
+    }, [preview]);
 
     useImperativeHandle(
       handle,
@@ -80,7 +90,13 @@ const CameraSheet = forwardRef<CameraSheetHandle, Props>(
 
     return (
       <View style={[styles.root, { width, height }]}>
-        {granted ? (
+        {!granted ? (
+          <SheetPlaceholder>
+            {permission && !permission.canAskAgain
+              ? 'Camera access is off. Turn it on in Settings to take a photo here.'
+              : 'Waiting for camera access…'}
+          </SheetPlaceholder>
+        ) : preview ? (
           <CameraView
             ref={cameraRef}
             facing={facing}
@@ -93,15 +109,9 @@ const CameraSheet = forwardRef<CameraSheetHandle, Props>(
             onCameraReady={() => {
               ready.current = true;
             }}
-            style={[StyleSheet.absoluteFill, lifting && styles.lifted]}
+            style={StyleSheet.absoluteFill}
           />
-        ) : (
-          <SheetPlaceholder>
-            {permission && !permission.canAskAgain
-              ? 'Camera access is off. Turn it on in Settings to take a photo here.'
-              : 'Waiting for camera access…'}
-          </SheetPlaceholder>
-        )}
+        ) : null}
       </View>
     );
   }
@@ -116,14 +126,10 @@ const createStyles = (theme: Theme) =>
       // Black rather than the panel's material: a preview starts a frame or two
       // after it mounts, and black is what shows there.
       backgroundColor: theme.bg.lightbox,
-      // The panel's clip does not reach a native camera preview on Android, so
-      // the sheet rounds its own corners at the shape the panel wears once it
-      // has finished morphing — the only shape the camera is ever seen in.
+      // The shape the panel wears once it has finished morphing, which is the
+      // only one the camera is ever seen in — see `preview`.
       borderRadius: GRID.panelRadius,
       borderCurve: 'continuous',
       overflow: 'hidden',
-    },
-    lifted: {
-      opacity: 0,
     },
   });
