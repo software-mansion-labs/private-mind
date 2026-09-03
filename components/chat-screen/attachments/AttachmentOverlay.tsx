@@ -249,11 +249,25 @@ const AttachmentOverlay = ({
   // The panel drops the selection on its way out of a sheet; this is the other
   // half of that, kept here because the selection is the overlay's own state.
   const clearSelection = useCallback(() => setSelected([]), []);
+  /**
+   * When the sheet's floating bar was last left behind. `‹` takes the panel
+   * back to the menu, which makes the bar untouchable on that very frame while
+   * it is still on screen fading — so a second `‹` a moment later fell through
+   * to the backdrop and shut the whole panel instead of doing nothing.
+   */
+  const barLeftAt = useRef(0);
   const previousMode = useRef(panel.mode);
   if (previousMode.current !== panel.mode) {
+    const was = previousMode.current;
     previousMode.current = panel.mode;
+    if (was === 'photos' || was === 'camera') barLeftAt.current = Date.now();
     if (panel.mode !== 'photos' && selected.length) clearSelection();
   }
+
+  const dismissFromBackdrop = useCallback(() => {
+    if (Date.now() - barLeftAt.current < DURATION.crossfade) return;
+    panel.dismiss();
+  }, [panel]);
 
   return (
     // The sheet overlaps the keyboard by design, so it is hosted in the window
@@ -273,7 +287,7 @@ const AttachmentOverlay = ({
           <Pressable
             accessibilityLabel="Close attachment menu"
             testID="attachment-backdrop"
-            onPress={panel.dismiss}
+            onPress={dismissFromBackdrop}
             style={StyleSheet.absoluteFill}
           />
           <AttachmentPanel
