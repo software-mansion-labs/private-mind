@@ -12,7 +12,7 @@ import {
   getPromptCharBudget,
   getPromptTokenBudget,
 } from '../constants/context-window';
-import { calendarFacts, mentionsTime } from './calendarFacts';
+import { calendarFacts, mentionsTime, namesAnotherDay } from './calendarFacts';
 import {
   detectThreadLanguage,
   type QuestionLanguage,
@@ -23,6 +23,8 @@ import {
   extractPriceStatementTokens,
   FOLLOWUP_CONVERSION_MARKERS,
   hasVerifiedProductData,
+  VERIFIED_PRODUCT_MARKER,
+  normalizeFigure,
   splitPriceOutliers,
   TREND_CLAIM_MARKERS,
   hasPeriodMatchedChangeData,
@@ -31,17 +33,29 @@ import { selectRelevantContent } from './web/webResultsToContext';
 
 const CONTEXT_CLOSE_TAG_RESERVE_CHARS = 64;
 
+const BLOCK_TAG = /<\s*\/?\s*(?:sources|context)\s*>/gi;
+
 const surrogateSafeEnd = (text: string, end: number): number => {
   if (end <= 0 || end >= text.length) return end;
   const code = text.charCodeAt(end - 1);
   return code >= 0xd800 && code <= 0xdbff ? end - 1 : end;
 };
 
+const MIN_USEFUL_PASSAGE_CHARS = 160;
+const MIN_USEFUL_BLOCK_CHARS = 200;
+
 const CONTEXT_BLOCK =
   /^\n --- ([^:\n]+): (.*?) --- \n ([\s\S]*?) \n --- End of \1 ---$/;
 
 const buildContextBlock = (label: string, name: string, passage: string) =>
   `\n --- ${label}: ${name} --- \n ${passage} \n --- End of ${label} ---`;
+
+const verifiedProductLine = (passage: string): string => {
+  const at = passage.indexOf(VERIFIED_PRODUCT_MARKER);
+  if (at === -1) return '';
+  const end = passage.indexOf('\n', at);
+  return end === -1 ? passage : passage.slice(0, end + 1);
+};
 
 const smartTrimContextBlocks = (
   blocks: string[],
@@ -61,12 +75,22 @@ const smartTrimContextBlocks = (
       const share = Math.floor((totalBudget * weights[index]!) / weightSum);
       const markerOverhead = buildContextBlock(label!, name!, '').length;
       const innerBudget = share - markerOverhead;
-      if (innerBudget <= 0) return null;
-      const trimmedPassage =
-        passage!.length <= innerBudget
-          ? passage!
-          : selectRelevantContent(passage!, query, innerBudget);
-      return buildContextBlock(label!, name!, trimmedPassage);
+      if (innerBudget < MIN_USEFUL_PASSAGE_CHARS) return null;
+      if (passage!.length <= innerBudget) {
+        return buildContextBlock(label!, name!, passage!);
+      }
+      const verifiedLine = verifiedProductLine(passage!);
+      if (!verifiedLine) {
+        const selected = selectRelevantContent(passage!, query, innerBudget);
+        return selected.length < MIN_USEFUL_PASSAGE_CHARS
+          ? null
+          : buildContextBlock(label!, name!, selected);
+      }
+      const rest = passage!.slice(verifiedLine.length);
+      const restBudget = innerBudget - verifiedLine.length;
+      const trimmedRest =
+        restBudget > 0 ? selectRelevantContent(rest, query, restBudget) : '';
+      return buildContextBlock(label!, name!, `${verifiedLine}${trimmedRest}`);
     })
     .filter((block): block is string => block !== null);
 
@@ -78,7 +102,8 @@ const smartTrimContextBlocks = (
 const getContextInstruction = (
   sources?: SourceDocument[],
   preferred?: SourceDocument[],
-  language?: QuestionLanguage | null
+  language?: QuestionLanguage | null,
+  multiQuery = false
 ): string => {
   const hasWeb = !!sources?.some((source) => sourceKind(source) === 'web');
   const hasDocs = !!sources?.some(
@@ -102,14 +127,11 @@ const getContextInstruction = (
   const scope = webOnly
     ? []
     : [
-        'Do not answer about any document that is not in the current <context> block, even if it appeared earlier in the chat — its text is not available to you.',
+        'Do not answer about any document that is not in the current <sources> block, even if it appeared earlier in the chat — its text is not available to you.',
       ];
 
   const missing = webOnly ? 'the search results' : 'the sources';
   const fallback = `If the block does not contain the answer, say ${missing} contain no information about it; only then may you add what you know, marked as your own knowledge.`;
-
-  const noLeakedJargon =
-    'Never say the word "context" (or its translation) to the user — it is this instruction set\'s internal name for the retrieved block, not something the user knows about. Say "the sources" or "the search results" instead, as used above.';
 
   const currentTurn = hasWeb
     ? [
@@ -118,7 +140,8 @@ const getContextInstruction = (
     : [];
 
   const direct =
-    'Answer the question that was asked, directly and first. Do not summarize the pages or add background the question did not ask for.';
+    'Answer the question that was asked, directly and first. Do not summarize the pages or add background the question did not ask for. ' +
+    'Lead with the value the question asks for — a date for "when", an amount for "how much", a count for "how many", a name for "who". Describing the thing without giving that value is not an answer.';
 
   const namedCitation = hasWeb
     ? [
@@ -132,10 +155,14 @@ const getContextInstruction = (
       ]
     : [];
 
+  const perQueryTag = multiQuery
+    ? ' When comparing several things, a source block may be tagged [Answers: <query>] — only use its figures for the entity that tag names, never for another entity in the same comparison.'
+    : '';
   const figures =
-    'Copy every number, price and date exactly as it is printed in the context. If the context does not state the figure the question asks about, say so — never estimate or invent one. ' +
-    'If the question names something that is not mentioned anywhere in the context at all, say you have no current data for it — do not give it a figure, even an approximate or well-known one. ' +
-    'When comparing several things, a source block may be tagged [Answers: <query>] — only use its figures for the entity that tag names, never for another entity in the same comparison.';
+    'Copy every number, price and date exactly as it is printed in the sources. If the sources do not state the figure the question asks about, say so — never estimate or invent one. ' +
+    'If the question names something that is not mentioned anywhere in the sources at all, say you have no current data for it — do not give it a figure, even an approximate or well-known one. ' +
+    'Before you say something is missing, re-read the whole block — a title or headline is part of it, and the answer is often worded differently from the question. Say it is missing only when it truly is not there.' +
+    perQueryTag;
 
   const SPECULATIVE_SOURCE_MARKERS =
     /\brumou?rs?\b|\bleak(?:ed|s)?\b|\bspeculat|\brumored\b|\bexpected to\b/i;
@@ -152,12 +179,11 @@ const getContextInstruction = (
       : [];
 
   const instruction = [
-    'IMPORTANT CONTEXT INFORMATION:',
-    `The <context>…</context> block below holds ${what}. It is the ONLY authoritative source for this question — answer strictly from it and prefer it over your own knowledge.`,
+    'IMPORTANT SOURCE INFORMATION:',
+    `The <sources>…</sources> block below holds ${what}. It is the ONLY authoritative source for this question — answer strictly from it and prefer it over your own knowledge.`,
     ...currentTurn,
     ...scope,
     fallback,
-    noLeakedJargon,
     direct,
     ...namedCitation,
     ...conflict,
@@ -197,9 +223,13 @@ const getDateInstruction = (
   if (webSources.length === 0 && !(question && mentionsTime(question))) {
     return '';
   }
-  const language = detectTopicLanguage(webSources);
+  const asksAboutTime = !!question && mentionsTime(question);
+  const language = asksAboutTime ? detectTopicLanguage(webSources) : null;
+  const resolveLine = asksAboutTime
+    ? '\nResolve "today", "tomorrow" and weekday names against those lines, quote them exactly, and never ask the user what day it is.'
+    : '';
 
-  return `\n\nCURRENT DATE — from the device clock, correct, and outranking any date found elsewhere:\n${calendarFacts(language?.code)}\nResolve "today", "tomorrow" and weekday names against those lines, quote them exactly, and never ask the user what day it is.`;
+  return `\n\nCURRENT DATE — from the device clock, correct, and outranking any date found elsewhere:\n${calendarFacts(language?.code)}${resolveLine}`;
 };
 
 const getIntentInstruction = (
@@ -223,10 +253,17 @@ const FIGURES_HINT_MAX = 8;
 
 const ANSWERS_TAG = /\[Answers: ([^\]]+)\]/g;
 
+const isZeroFigure = (token: string): boolean => {
+  const value = normalizeFigure(token);
+  return value !== null && value === 0;
+};
+
 const figureList = (text: string): string[] => {
   const clean = [...new Set(extractPriceStatementTokens(text))];
   const tokens = clean.length > 0 ? clean : extractCurrencyTokens(text);
-  return [...new Set(tokens)].slice(0, FIGURES_HINT_MAX);
+  return [...new Set(tokens)]
+    .filter((token) => !isZeroFigure(token))
+    .slice(0, FIGURES_HINT_MAX);
 };
 
 const RANGE_HINT_MIN_FIGURES = 3;
@@ -237,7 +274,7 @@ const getRangeHint = (tokenCount: number): string =>
 
 const getOutlierNote = (outliers: string[]): string =>
   outliers.length > 0
-    ? ` ${outliers.join(', ')} ${outliers.length > 1 ? 'stand' : 'stands'} far apart from the other figures found — that is more likely a filter default, shipping cost, financing installment, a rate/change value, or an unrelated listing than this product's actual price. Do not use it as the low (or high) end of a range, or as "the" price, unless the source text explicitly ties it to this exact product.`
+    ? ` ${outliers.join(', ')} ${outliers.length > 1 ? 'were' : 'was'} left out of that list on purpose — ${outliers.length > 1 ? 'they stand' : 'it stands'} far apart from the other figures found, which makes ${outliers.length > 1 ? 'them' : 'it'} a filter default, shipping cost, financing installment, a rate/change value, or an unrelated listing rather than this product's actual price. Never quote ${outliers.length > 1 ? 'them' : 'it'} as the price, or as either end of a range.`
     : '';
 
 const MIN_TOKENS_FOR_OUTLIER_CHECK = 3;
@@ -256,7 +293,11 @@ const getFiguresInstruction = (context: string): string => {
     const tokens = figureList(context);
     if (tokens.length === 0) return '';
     const outliers = outliersAmong(tokens, context);
-    return `Figures found in the sources: ${tokens.join(', ')}. State a price or amount only if it matches one of these — never one from memory.${getRangeHint(tokens.length)}${getOutlierNote(outliers)}`;
+    const usable = tokens.filter((token) => !outliers.includes(token));
+    if (usable.length === 0) {
+      return `No reliable figure was found in the sources — say you have no current figure for this rather than quoting one.${getOutlierNote(outliers)}`;
+    }
+    return `Figures found in the sources: ${usable.join(', ')}. State a price or amount only if it matches one of these — never one from memory.${getRangeHint(usable.length)}${getOutlierNote(outliers)}`;
   }
 
   const segments = new Map<string, string>();
@@ -283,7 +324,7 @@ const OPINION_MARKERS =
 
 const getOpinionInstruction = (question?: string): string =>
   question && OPINION_MARKERS.test(question)
-    ? '\n\nThe question asks for your assessment, not just facts. After grounding the relevant facts in the context above, add a brief, clearly-marked opinion — do not stop at a plain list of specifications or data.'
+    ? '\n\nThe question asks for your assessment, not just facts. After grounding the relevant facts in the sources above, add a brief, clearly-marked opinion — do not stop at a plain list of specifications or data.'
     : '';
 
 const INVESTMENT_COMPARISON_MARKERS =
@@ -341,7 +382,7 @@ const getVerifiedProductInstruction = (context: string): string =>
 
 const getWeakRetrievalInstruction = (weak?: boolean): string =>
   weak
-    ? "\n\nThis web search's results could not be confidently verified as relevant to the question. If the context above does not clearly answer it, say so plainly rather than stretching what's there into a fuller-sounding answer."
+    ? "\n\nThis web search's results could not be confidently verified as relevant to the question. If the sources above do not clearly answer it, say so plainly rather than stretching what's there into a fuller-sounding answer."
     : '';
 
 const PERIOD_SCOPE_MARKERS =
@@ -349,22 +390,32 @@ const PERIOD_SCOPE_MARKERS =
 const SUPERLATIVE_MARKERS =
   /najwi[eę]cej|najlepsz|najskuteczniejsz|\brekord|\bmost\b|\bbest\b|\btop\b|\bhighest\b|\bleading\b/i;
 
+const getTimeScopeInstruction = (question?: string): string =>
+  question && namesAnotherDay(question)
+    ? '\n\nThe question asks about a named day, not about right now. A page reporting a value that changes over time usually prints the current reading and the forecast for several days close together, often with the current one first and most prominent. Use only the value the page labels with the day the question asks about; a figure the page labels "now", "today", "current" or "at the moment" does not answer a question about a different day, and neither does the next day\'s. If the page carries no value for the day asked about, say so rather than quoting the nearest one.'
+    : '';
+
 const getPeriodScopeInstruction = (question?: string): string =>
   question &&
   PERIOD_SCOPE_MARKERS.test(question) &&
   SUPERLATIVE_MARKERS.test(question)
-    ? '\n\nThe question asks for a "most/best" figure within a specific recent window (this year, this season). Pages about who scored or achieved the most usually default to an all-time or career total unless they explicitly mention that same window — do not use an all-time figure to answer a this-year question; if nothing in the context is explicitly scoped to that window, say the sources do not give a figure limited to it.'
+    ? '\n\nThe question asks for a "most/best" figure within a specific recent window (this year, this season). Pages about who scored or achieved the most usually default to an all-time or career total unless they explicitly mention that same window — do not use an all-time figure to answer a this-year question; if nothing in the sources is explicitly scoped to that window, say the sources do not give a figure limited to it.'
     : '';
 
-const getScopeIntegrityInstruction = (): string =>
-  '\n\nBefore stating a total or count from a source, check whether that source scopes it to something narrower than the question asks about (e.g. one specific competition, tournament, region, or category rather than the overall figure) — if so, name that narrower scope explicitly instead of presenting the number as the general total.';
+const TOTAL_OR_COUNT_MARKERS =
+  /\bile\b|\bilu\b|liczba|łącznie|lacznie|\brazem\b|\bsuma\b|\bwszystkich\b|how many|how much|\btotal\b|\bcount\b|\boverall\b|\bcombined\b|\baltogether\b/iu;
+
+const getScopeIntegrityInstruction = (question?: string): string =>
+  question &&
+  (TOTAL_OR_COUNT_MARKERS.test(question) || SUPERLATIVE_MARKERS.test(question))
+    ? '\n\nBefore stating a total or count from a source, check whether that source scopes it to something narrower than the question asks about (e.g. one specific competition, tournament, region, or category rather than the overall figure) — if so, name that narrower scope explicitly instead of presenting the number as the general total.'
+    : '';
 
 const getWebSearchFailedInstruction = (failed?: boolean): string =>
   failed
     ? '\n\nA web search was just attempted for this question because it needs current or verifiable facts, but it found nothing usable. Do not guess a specific fact — a name, date, score, or number — from memory as if it were confirmed; say plainly that you do not have verified current information for this.'
     : '';
 
-// When an earlier turn in this thread searched the web, its <context> block
 // carried numbered "Source 1" / "Source 2" labels the model may have cited.
 // A later follow-up this app decided did not need a fresh search has no
 // such block — but without this reminder a small model keeps citing those
@@ -372,7 +423,7 @@ const getWebSearchFailedInstruction = (failed?: boolean): string =>
 // backs the numbers up.
 const getNoFreshContextInstruction = (hasPriorWebAnswer: boolean): string =>
   hasPriorWebAnswer
-    ? '\n\nNo new search results were retrieved for this message — there is no <context> block this time. Answer from the conversation so far, in your own words. Never write "Source 1", "Source 2" or similar numbered citations here; those labels only existed in an earlier message\'s context block, which is not part of this prompt.'
+    ? '\n\nNo new search results were retrieved for this message — there is no <sources> block this time. Answer from the conversation so far, in your own words. Never write "Source 1", "Source 2" or similar numbered citations here; those labels only existed in an earlier message\'s sources block, which is not part of this prompt.'
     : '';
 
 const getPreferredSourceInstruction = (sources?: SourceDocument[]) => {
@@ -385,20 +436,71 @@ CURRENT ATTACHMENT PRIORITY:
 The user just attached: ${sourceNames}. Treat these as the subject of the question — "this file", "the document", "it" refer to them. Base the answer on them; bring in another source only if they lack the answer. You may still use earlier conversation for continuity.`;
 };
 
+const HISTORY_REPLY_HEAD_CHARS = 220;
+const HISTORY_VERBATIM_REPLIES = 1;
+
+const headOf = (text: string): string => {
+  if (text.length <= HISTORY_REPLY_HEAD_CHARS) return text;
+  const cut = text.slice(0, HISTORY_REPLY_HEAD_CHARS);
+  const boundary = Math.max(
+    cut.lastIndexOf('. '),
+    cut.lastIndexOf('! '),
+    cut.lastIndexOf('? '),
+    cut.lastIndexOf('\n')
+  );
+  return `${(boundary > HISTORY_REPLY_HEAD_CHARS / 2 ? cut.slice(0, boundary + 1) : cut).trimEnd()}…`;
+};
+
+const compactOlderReplies = (
+  history: ExecutorchMessage[]
+): ExecutorchMessage[] => {
+  let repliesSeen = 0;
+  return [...history]
+    .reverse()
+    .map((message) => {
+      if (message.role !== 'assistant' || typeof message.content !== 'string') {
+        return message;
+      }
+      repliesSeen += 1;
+      return repliesSeen <= HISTORY_VERBATIM_REPLIES
+        ? message
+        : { ...message, content: headOf(message.content) };
+    })
+    .reverse();
+};
+
+const CONVERSATION_DIGEST_PREFIX = '\n\nConversation so far: ';
+
+export interface PrepareMessagesOptions {
+  customSystemPrompt?: string;
+  preferredSourceDocuments?: SourceDocument[];
+  sourceDocuments?: SourceDocument[];
+  budgetScale?: number;
+  webIntent?: string;
+  webSubQueries?: string[];
+  webWeak?: boolean;
+  webSearchFailed?: boolean;
+  digest?: string;
+}
+
 export const prepareMessagesForLLM = (
   activeChatMessages: Message[],
   context: string[],
   settings: ChatSettings,
   model: Model,
-  customSystemPrompt: string = '',
-  preferredSourceDocuments?: SourceDocument[],
-  sourceDocuments?: SourceDocument[],
-  budgetScale: number = 1,
-  webIntent?: string,
-  webSubQueries?: string[],
-  webWeak?: boolean,
-  webSearchFailed?: boolean
+  options: PrepareMessagesOptions = {}
 ): ExecutorchMessage[] => {
+  const {
+    customSystemPrompt = '',
+    preferredSourceDocuments,
+    sourceDocuments,
+    budgetScale = 1,
+    webIntent,
+    webSubQueries,
+    webWeak,
+    webSearchFailed,
+    digest,
+  } = options;
   const hasContext = context.some((chunk) => chunk.trim().length > 0);
   const question = activeChatMessages.findLast(
     (msg) => msg.role === 'user'
@@ -424,7 +526,8 @@ export const prepareMessagesForLLM = (
     systemPrompt += getContextInstruction(
       sourceDocuments,
       preferredSourceDocuments,
-      language
+      language,
+      [...contextText.matchAll(ANSWERS_TAG)].length >= 2
     );
     systemPrompt += getPreferredSourceInstruction(preferredSourceDocuments);
     systemPrompt += getOpinionInstruction(question);
@@ -436,7 +539,8 @@ export const prepareMessagesForLLM = (
     systemPrompt += getVariantGroundingInstruction(question);
     systemPrompt += getVerifiedProductInstruction(contextText);
     systemPrompt += getPeriodScopeInstruction(question);
-    systemPrompt += getScopeIntegrityInstruction();
+    systemPrompt += getTimeScopeInstruction(question);
+    systemPrompt += getScopeIntegrityInstruction(question);
     systemPrompt += getWeakRetrievalInstruction(webWeak);
   } else {
     systemPrompt += `\n\n${languageInstruction(language)}`;
@@ -495,13 +599,11 @@ export const prepareMessagesForLLM = (
   const systemChars = messagesWithSystemPrompt[0].content.length;
 
   if (hasContext) {
-    const safeContext = context
-      .map((c) => c.replace(/<\s*\/?\s*context\s*>/gi, ''))
-      .join(' ');
+    const safeContext = context.map((c) => c.replace(BLOCK_TAG, '')).join(' ');
 
     const userText = lastMessage.content;
     const groundingHint = preferredSourceDocuments?.length
-      ? 'The question is about the just-attached document(s) in the <context> above.'
+      ? 'The question is about the just-attached document(s) in the <sources> above.'
       : '';
     const hasWebSource = sourceDocuments?.some(
       (source) => sourceKind(source) === 'web'
@@ -513,7 +615,7 @@ export const prepareMessagesForLLM = (
     const intentHint = getIntentInstruction(webIntent, webSubQueries);
     const wrap = (ctx: string) =>
       [
-        `<context>${ctx}</context>`,
+        `<sources>${ctx}</sources>`,
         groundingHint,
         conflictHint,
         languageHint,
@@ -536,9 +638,7 @@ export const prepareMessagesForLLM = (
       const smartContext =
         hasWebSource && question
           ? smartTrimContextBlocks(
-              context.map((chunk) =>
-                chunk.replace(/<\s*\/?\s*context\s*>/gi, '')
-              ),
+              context.map((chunk) => chunk.replace(BLOCK_TAG, '')),
               question,
               room
             )
@@ -564,16 +664,22 @@ export const prepareMessagesForLLM = (
           lastOpenLabel &&
           !sliced.includes(`--- End of ${lastOpenLabel} ---`)
         ) {
-          const endMarker = ` \n --- End of ${lastOpenLabel} ---`;
-          const allowed =
-            room + CONTEXT_CLOSE_TAG_RESERVE_CHARS - endMarker.length;
-          if (sliced.length > allowed) {
-            sliced = sliced.slice(
-              0,
-              surrogateSafeEnd(sliced, Math.max(0, allowed))
-            );
+          const openedAt = sliced.lastIndexOf(`--- ${lastOpenLabel}:`);
+          const shard = sliced.length - openedAt < MIN_USEFUL_BLOCK_CHARS;
+          if (shard) {
+            finalContext = sliced.slice(0, openedAt).trimEnd();
+          } else {
+            const endMarker = ` \n --- End of ${lastOpenLabel} ---`;
+            const allowed =
+              room + CONTEXT_CLOSE_TAG_RESERVE_CHARS - endMarker.length;
+            if (sliced.length > allowed) {
+              sliced = sliced.slice(
+                0,
+                surrogateSafeEnd(sliced, Math.max(0, allowed))
+              );
+            }
+            finalContext = `${sliced}${endMarker}`;
           }
-          finalContext = `${sliced}${endMarker}`;
         } else {
           finalContext = sliced;
         }
@@ -582,27 +688,45 @@ export const prepareMessagesForLLM = (
     lastMessage.content = wrap(finalContext);
   }
 
-  const mandatoryChars = systemChars + lastMessage.content.length;
-  let remainingChars = budgetChars - mandatoryChars;
+  const digestLine = digest?.trim()
+    ? `${CONVERSATION_DIGEST_PREFIX}${digest.trim()}`
+    : '';
+  const mandatoryChars =
+    systemChars + lastMessage.content.length + digestLine.length;
+  const remainingChars = budgetChars - mandatoryChars;
   const history = messagesWithSystemPrompt.slice(1, -1);
-  const keptReversed: ExecutorchMessage[] = [];
-  for (let i = history.length - 1; i >= 0; i--) {
-    const cost = history[i].content.length;
-    if (remainingChars - cost < 0) {
-      break;
+  const fitFrom = (turns: ExecutorchMessage[]): ExecutorchMessage[] => {
+    let room = remainingChars;
+    const takenReversed: ExecutorchMessage[] = [];
+    for (let i = turns.length - 1; i >= 0; i--) {
+      const cost = turns[i]!.content.length;
+      if (room - cost < 0) break;
+      room -= cost;
+      takenReversed.push(turns[i]!);
     }
-    remainingChars -= cost;
-    keptReversed.push(history[i]);
-  }
+    return takenReversed.reverse();
+  };
 
-  const kept = keptReversed.reverse();
+  let kept = fitFrom(history);
+  if (kept.length < history.length) {
+    kept = fitFrom(compactOlderReplies(history));
+  }
   if (kept.length < history.length) {
     while (kept[0]?.role === 'assistant') {
       kept.shift();
     }
   }
 
-  const finalMessages = [messagesWithSystemPrompt[0], ...kept, lastMessage];
+  const droppedTurns = kept.length < history.length;
+  const systemMessage =
+    droppedTurns && digestLine
+      ? {
+          ...messagesWithSystemPrompt[0],
+          content: `${messagesWithSystemPrompt[0].content}${digestLine}`,
+        }
+      : messagesWithSystemPrompt[0];
+
+  const finalMessages = [systemMessage, ...kept, lastMessage];
 
   if (hasContext && budgetScale > 0.75) {
     const assembled = finalMessages.map((msg) => msg.content).join(' ');
@@ -612,12 +736,10 @@ export const prepareMessagesForLLM = (
         context,
         settings,
         model,
-        customSystemPrompt,
-        preferredSourceDocuments,
-        sourceDocuments,
-        budgetScale * 0.97,
-        webIntent,
-        webSubQueries
+        {
+          ...options,
+          budgetScale: budgetScale * 0.97,
+        }
       );
     }
   }
