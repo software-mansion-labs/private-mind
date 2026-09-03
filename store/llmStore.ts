@@ -29,7 +29,7 @@ import { detectQuestionLanguage } from '../utils/questionLanguage';
 import {
   detectGroundingCaveats,
   claimsMissingEvidenceItHas,
-  refusesWhileSourcesCoverTopic,
+  answerUsesNoRetrievedEvidence,
   humanizeSourceReferences,
   isCircularNonAnswer,
   isDanglingListAnswer,
@@ -986,17 +986,17 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       if (
         !nudged &&
         finalResponse &&
-        refusesWhileSourcesCoverTopic(
+        answerUsesNoRetrievedEvidence(
           finalResponse,
           currentQuestion,
           promptContext
         )
       ) {
         await nudgeOnce(
-          'Answer refuses while the sources cover the topic, retrying once',
+          'Answer uses none of the evidence the sources carry, retrying once',
           SOURCES_COVER_TOPIC_RETRY_PROMPT,
           (retried) =>
-            refusesWhileSourcesCoverTopic(
+            answerUsesNoRetrievedEvidence(
               retried,
               currentQuestion,
               promptContext

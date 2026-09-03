@@ -1,6 +1,7 @@
 import {
+  answerUsesNoRetrievedEvidence,
   claimsMissingEvidenceItHas,
-  refusesWhileSourcesCoverTopic,
+  distinctiveEvidence,
 } from '../utils/messageSources';
 
 const NBP_CONTEXT =
@@ -127,65 +128,75 @@ describe('refusals measured on the Pixel 10, Gemma 4 - 2B', () => {
   });
 });
 
-describe('refusals on questions that ask for no figure at all', () => {
+describe('an answer that uses none of the evidence retrieved', () => {
   const CAMERA_CONTEXT = [
-    'iPhone 17 Pro aparat: potrojny uklad 48 Mpix z teleobiektywem i trybem nocnym.',
-    'Samsung Galaxy S25 Ultra aparat: matryca 200 Mpix, piecio-krotny zoom optyczny.',
-    'W testach nocnych aparat Galaxy S25 Ultra zachowuje wiecej detali, natomiast',
-    'iPhone 17 Pro lepiej odwzorowuje kolory skory w swietle dziennym.',
-    'Oba telefony nagrywaja wideo w 8K, a stabilizacja jest porownywalna.',
-    'Recenzenci zwracaja uwage na inny charakter przetwarzania obrazu w obu aparatach.',
-    'Zoom cyfrowy w Galaxy S25 Ultra siega 100x, w iPhone 17 Pro jest ograniczony.',
-    'Aparat przedni w obu modelach oferuje autofokus i nagrywanie w wysokiej jakosci.',
+    'Nikon Coolpix P1100 oferuje zoom optyczny 125x oraz matryce CMOS 16 MP.',
+    'Canon PowerShot V1 nagrywa wideo w 4K 60p i kosztuje 3499 zlotych.',
+    'Sony ZV-1 II pozostaje wyborem dla vlogerow, cena to 2899 zlotych.',
+    'Ranking obejmuje rowniez Panasonic Lumix TZ200 oraz Fujifilm X100VI.',
   ].join(' ');
 
-  it('retries a refusal when the sources plainly discuss the subject', () => {
+  it('fires on a refusal written in a language no phrase list covers', () => {
     expect(
-      refusesWhileSourcesCoverTopic(
-        'Na podstawie dostarczonych źródeł nie jestem w stanie porównać jakości aparatów między tymi telefonami.',
-        'Ktory z nich ma lepszy aparat?',
+      answerUsesNoRetrievedEvidence(
+        'Ich habe keine Informationen, die den Preis des Samsung Galaxy S25 Ultra betreffen, in den bereitgestellten Quellen gefunden.',
+        'Ile kosztuje Samsung Galaxy S25 Ultra?',
         CAMERA_CONTEXT
       )
     ).toBe(true);
   });
 
-  it('leaves a price question to the stricter figure rule', () => {
+  it('fires on a Polish phrasing that no list happened to carry', () => {
     expect(
-      refusesWhileSourcesCoverTopic(
-        'Na podstawie dostarczonych źródeł nie ma informacji o cenie.',
-        'Ile kosztuje iPhone 17 Pro?',
+      answerUsesNoRetrievedEvidence(
+        'Informacje zawarte w dostarczonych źródłach nie precyzują, ile dokladnie trzeba zaplacic za ten model aparatu.',
+        'Ile kosztuje ten aparat?',
+        CAMERA_CONTEXT
+      )
+    ).toBe(true);
+  });
+
+  it('stays quiet when the answer quotes something the sources carry', () => {
+    expect(
+      answerUsesNoRetrievedEvidence(
+        'Canon PowerShot V1 kosztuje 3499 zlotych i nagrywa w 4K 60p.',
+        'Ile kosztuje ten aparat?',
         CAMERA_CONTEXT
       )
     ).toBe(false);
   });
 
-  it('does not retry when barely anything was retrieved', () => {
+  it('stays quiet when barely anything was retrieved', () => {
     expect(
-      refusesWhileSourcesCoverTopic(
-        'Nie ma informacji na ten temat w źródłach.',
-        'Ktory z nich ma lepszy aparat?',
-        'Sklep internetowy. Koszyk jest pusty.'
+      answerUsesNoRetrievedEvidence(
+        'Na podstawie dostarczonych źródeł nie moge tego ustalic w tej chwili.',
+        'Ile kosztuje ten aparat?',
+        'Koszyk jest pusty.'
       )
     ).toBe(false);
   });
 
-  it('does not retry when the sources are about something else', () => {
+  it('ignores a one-line reply that was never an answer attempt', () => {
     expect(
-      refusesWhileSourcesCoverTopic(
-        'Nie ma informacji na ten temat w źródłach.',
-        'Ktory z nich ma lepszy aparat?',
-        'Rozklad jazdy pociagow z Krakowa do Zakopanego. '.repeat(20)
-      )
-    ).toBe(false);
-  });
-
-  it('does not fire on an answer that actually answers', () => {
-    expect(
-      refusesWhileSourcesCoverTopic(
-        'Galaxy S25 Ultra ma lepszy zoom, a iPhone 17 Pro wierniejsze kolory.',
-        'Ktory z nich ma lepszy aparat?',
+      answerUsesNoRetrievedEvidence(
+        'Dziękuję bardzo.',
+        'Dzieki za pomoc.',
         CAMERA_CONTEXT
       )
     ).toBe(false);
+  });
+
+  it('does not credit a name the question already carried', () => {
+    expect(
+      answerUsesNoRetrievedEvidence(
+        'Nikon nie zostal opisany w zrodlach w sposob pozwalajacy na odpowiedz.',
+        'Co wiesz o Nikon?',
+        CAMERA_CONTEXT
+      )
+    ).toBe(true);
+  });
+
+  it('reads figures written in another numeral system', () => {
+    expect(distinctiveEvidence('कीमत १२५ रुपये').has('125')).toBe(true);
   });
 });
