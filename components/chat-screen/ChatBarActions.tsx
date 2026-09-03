@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import {
+import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedStyle,
@@ -53,8 +53,10 @@ const ChatBarActions = ({
   plusOut,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
-  // Only the glyph moves: the hit target stays where it is, so the tap that
-  // dismisses the panel lands on the same spot the one that opened it did.
+  // The whole button, not the glyph inside it: the disc is opaque, and fading
+  // the glyph alone leaves a blank one wherever the panel does not cover the
+  // composer. Only the drawing moves — the backdrop is what takes the tap that
+  // dismisses the panel.
   const plusStyle = useAnimatedStyle(() => ({
     opacity: interpolate(plusOut.get(), [0, 0.75], [1, 0], Extrapolation.CLAMP),
     transform: [{ translateX: plusOut.get() * COMPOSER.plusSlide }],
@@ -141,15 +143,16 @@ const ChatBarActions = ({
           testID="attach-btn-container"
           style={isAttachmentBlocked ? styles.blockedAttachment : undefined}
         >
-          <CircleButton
-            icon={PlusIcon}
-            size={14}
-            onPress={handleAttach}
-            backgroundColor={theme.bg.attachButton}
-            color={theme.text.onAttachButton}
-            iconStyle={plusStyle}
-            testID="attach-btn"
-          />
+          <Animated.View style={plusStyle}>
+            <CircleButton
+              icon={PlusIcon}
+              size={14}
+              onPress={handleAttach}
+              backgroundColor={theme.bg.attachButton}
+              color={theme.text.onAttachButton}
+              testID="attach-btn"
+            />
+          </Animated.View>
         </View>
         <TouchableOpacity
           disabled={disabled}
