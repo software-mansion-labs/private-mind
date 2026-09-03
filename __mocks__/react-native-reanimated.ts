@@ -55,6 +55,9 @@ module.exports = {
   useAnimatedRef: () => ({ current: null }),
   useDerivedValue: <T>(fn: () => T) => makeSharedValue(fn()),
   useAnimatedScrollHandler: (fn: any) => fn,
+  // No-op: the reaction exists to observe a real animation settling, which
+  // never happens here. Running it eagerly would fire at the initial value.
+  useAnimatedReaction: () => {},
   withTiming: (
     val: any,
     _config: any,
@@ -63,7 +66,10 @@ module.exports = {
     callback?.(true);
     return val;
   },
-  withSpring: (val: any) => val,
+  withSpring: (val: any, _config: any, callback?: (finished: boolean) => void) => {
+    callback?.(true);
+    return val;
+  },
   withRepeat: (val: any) => val,
   withDelay: (_d: any, val: any) => val,
   withSequence: (val: any) => val,
@@ -72,11 +78,12 @@ module.exports = {
     linear: (t: any) => t,
     ease: (t: any) => t,
     quad: (t: any) => t,
+    cubic: (t: any) => t,
+    poly: () => (t: any) => t,
     bezier: () => (t: any) => t,
     inOut: (fn: any) => fn,
     out: (fn: any) => fn,
     in: (fn: any) => fn,
-    bezier: () => (t: any) => t,
   },
   interpolate: (val: any, inputRange: any, outputRange: any) => {
     if (val <= inputRange[0]) return outputRange[0];
@@ -85,6 +92,7 @@ module.exports = {
     return outputRange[0];
   },
   interpolateColor: (val: any, _r: any, outputRange: any) => outputRange[0],
+  Extrapolation: { CLAMP: 'clamp', EXTEND: 'extend', IDENTITY: 'identity' },
   runOnJS: (fn: any) => fn,
   runOnUI: (fn: any) => fn,
   configureReanimatedLogger: () => {},

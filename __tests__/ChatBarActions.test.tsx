@@ -20,8 +20,21 @@ jest.mock('../components/CircleButton', () => {
 });
 
 import ChatBarActions from '../components/chat-screen/ChatBarActions';
+import type { SharedValue } from 'react-native-reanimated';
+
+const makeSharedValue = (init: number) => {
+  const shared = {
+    value: init,
+    get: () => shared.value,
+    set: (next: number) => {
+      shared.value = next;
+    },
+  };
+  return shared;
+};
 
 const defaultProps = {
+  plusOut: makeSharedValue(0) as unknown as SharedValue<number>,
   userInput: '',
   onSend: jest.fn(),
   isGenerating: false,

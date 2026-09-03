@@ -1,5 +1,11 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -12,6 +18,7 @@ import LightBulbIcon from '../../assets/icons/light_bulb.svg';
 import PlusIcon from '../../assets/icons/plus.svg';
 import { Feedback } from '../../utils/Feedback';
 import Toast from 'react-native-toast-message';
+import { COMPOSER } from './attachments/constants';
 
 interface Props {
   onAttach: () => void;
@@ -26,6 +33,8 @@ interface Props {
   onSpeechInput: () => void;
   thinkingEnabled: boolean;
   onThinkingToggle?: () => void;
+  /** 0 the + is in place → 1 it has cleared the space the panel opens on. */
+  plusOut: SharedValue<number>;
 }
 
 const ChatBarActions = ({
@@ -41,8 +50,17 @@ const ChatBarActions = ({
   onSpeechInput,
   thinkingEnabled = false,
   onThinkingToggle,
+  plusOut,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
+  // The whole button, not the glyph inside it: the disc is opaque, and fading
+  // the glyph alone leaves a blank one wherever the panel does not cover the
+  // composer. Only the drawing moves — the backdrop is what takes the tap that
+  // dismisses the panel.
+  const plusStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(plusOut.get(), [0, 0.75], [1, 0], Extrapolation.CLAMP),
+    transform: [{ translateX: plusOut.get() * COMPOSER.plusSlide }],
+  }));
   const isResponding = isGenerating || isProcessingPrompt;
   const isAttachmentBlocked = isResponding || isLoadingAttachment;
 
@@ -125,14 +143,16 @@ const ChatBarActions = ({
           testID="attach-btn-container"
           style={isAttachmentBlocked ? styles.blockedAttachment : undefined}
         >
-          <CircleButton
-            icon={PlusIcon}
-            size={14}
-            onPress={handleAttach}
-            backgroundColor={theme.bg.attachButton}
-            color={theme.text.onAttachButton}
-            testID="attach-btn"
-          />
+          <Animated.View style={plusStyle}>
+            <CircleButton
+              icon={PlusIcon}
+              size={14}
+              onPress={handleAttach}
+              backgroundColor={theme.bg.attachButton}
+              color={theme.text.onAttachButton}
+              testID="attach-btn"
+            />
+          </Animated.View>
         </View>
         <TouchableOpacity
           disabled={disabled}

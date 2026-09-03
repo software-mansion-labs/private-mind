@@ -36,43 +36,58 @@ jest.mock('../store/llmStore', () => ({
 
 const mockUseAttachment = {
   attachments: [] as Attachment[],
-  sheetRef: { current: null },
-  pickFromLibrary: jest.fn(),
-  pickFromCamera: jest.fn(),
-  pickDocument: jest.fn(),
+  embeddingDownloadSheetRef: { current: null },
+  addImages: jest.fn(async () => {}),
+  pickDocument: jest.fn(async () => {}),
+  downloadModelAndContinue: jest.fn(),
+  markDownloadSheetClosed: jest.fn(),
+  markPanelOpen: jest.fn(),
+  markPanelClosed: jest.fn(),
   removeAttachment: jest.fn(),
   clearAll: jest.fn(),
-  openSheet: jest.fn(),
   addPastedAttachment: jest.fn(),
 };
 
 jest.mock('../hooks/useAttachment', () => ({
   useAttachment: () => mockUseAttachment,
+  MAX_IMAGE_ATTACHMENTS: 1,
 }));
 
-jest.mock('../components/bottomSheets/AttachmentSheet', () => {
+jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
   return ({
-    onPickFromLibrary,
-    onPickFromCamera,
-    onPickDocument,
-    isVisionModel,
+    panel,
+    imagesEnabled,
+    maxSelection,
   }: {
-    onPickFromLibrary: () => void;
-    onPickFromCamera: () => void;
-    onPickDocument: () => void;
-    isVisionModel: boolean;
+    panel: {
+      mode: string;
+      onMenuAction: (action: 'camera' | 'photos' | 'files') => void;
+    };
+    imagesEnabled: boolean;
+    maxSelection: number;
   }) => (
-    <View testID="attachment-sheet">
-      <Text>{`vision:${isVisionModel}`}</Text>
-      <TouchableOpacity testID="pick-library-btn" onPress={onPickFromLibrary}>
-        <Text>Library</Text>
+    <View testID="attachment-overlay">
+      <Text>{`mode:${panel.mode}`}</Text>
+      <Text>{`vision:${imagesEnabled}`}</Text>
+      <Text>{`max:${maxSelection}`}</Text>
+      <TouchableOpacity
+        testID="menu-photos"
+        onPress={() => panel.onMenuAction('photos')}
+      >
+        <Text>Photos</Text>
       </TouchableOpacity>
-      <TouchableOpacity testID="pick-camera-btn" onPress={onPickFromCamera}>
+      <TouchableOpacity
+        testID="menu-camera"
+        onPress={() => panel.onMenuAction('camera')}
+      >
         <Text>Camera</Text>
       </TouchableOpacity>
-      <TouchableOpacity testID="pick-document-btn" onPress={onPickDocument}>
-        <Text>Document</Text>
+      <TouchableOpacity
+        testID="menu-files"
+        onPress={() => panel.onMenuAction('files')}
+      >
+        <Text>Files</Text>
       </TouchableOpacity>
     </View>
   );
@@ -228,6 +243,17 @@ const defaultProps = {
 const renderBar = (props: Partial<typeof defaultProps> = {}) =>
   render(<ChatBar {...defaultProps} {...props} />);
 
+/**
+ * Taps + and waits out the panel's 30ms lead — the glyph moves first and the
+ * panel only mounts after it.
+ */
+const openPanel = async () => {
+  await act(async () => {
+    fireEvent.press(screen.getByTestId('attach-btn'));
+    await new Promise((resolve) => setTimeout(resolve, 60));
+  });
+};
+
 beforeEach(() => {
   mockUseLLMStore.mockImplementation(
     (selector?: (state: Partial<LLMStore>) => unknown) => {
@@ -244,7 +270,8 @@ beforeEach(() => {
     }
   );
   mockUseAttachment.attachments = [];
-  mockUseAttachment.openSheet.mockClear();
+  mockUseAttachment.addImages.mockClear();
+  mockUseAttachment.pickDocument.mockClear();
   mockUseAttachment.clearAll.mockClear();
   mockUseAttachment.removeAttachment.mockClear();
   mockRunWithModelOffloaded.mockClear();
@@ -527,16 +554,34 @@ describe('attachment', () => {
     expect(screen.getByTestId('attach-btn')).toBeTruthy();
   });
 
-  it('offloads the LLM before opening the attachment sheet', async () => {
+  it('opens the panel without offloading the model or dropping the keyboard', async () => {
     renderBar();
+    await openPanel();
+    expect(screen.getByText('mode:menu')).toBeTruthy();
+    // The menu costs nothing; only a sheet is worth unloading the model for.
+    expect(mockRunWithModelOffloaded).not.toHaveBeenCalled();
+    expect(mockUseAttachment.markPanelOpen).toHaveBeenCalled();
+  });
+
+  it('keeps the model loaded when the photo sheet opens', async () => {
+    renderBar({ isVisionModel: true });
+    await openPanel();
     await act(async () => {
-      fireEvent.press(screen.getByTestId('attach-btn'));
+      fireEvent.press(screen.getByTestId('menu-photos'));
     });
-    expect(mockRunWithModelOffloaded).toHaveBeenCalledWith(
-      expect.any(Function),
-      { restore: false }
-    );
-    expect(mockUseAttachment.openSheet).toHaveBeenCalled();
+    expect(screen.getByText('mode:photos')).toBeTruthy();
+    // The picker is in-process now. Unloading only to load again seconds later
+    // is pure cost, and on a 6GB device that reload got the app killed.
+    expect(mockRunWithModelOffloaded).not.toHaveBeenCalled();
+  });
+
+  it('sends the Files row to the document picker', async () => {
+    renderBar();
+    await openPanel();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('menu-files'));
+    });
+    expect(mockUseAttachment.pickDocument).toHaveBeenCalled();
   });
 
   it('shows a toast instead of opening attachments while switching models', () => {
@@ -544,7 +589,8 @@ describe('attachment', () => {
 
     fireEvent.press(screen.getByTestId('attach-btn'));
 
-    expect(mockUseAttachment.openSheet).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('attachment-overlay')).not.toBeNull();
+    expect(screen.getByText('mode:closed')).toBeTruthy();
     expect(mockRunWithModelOffloaded).not.toHaveBeenCalled();
     expect(Toast.show).toHaveBeenCalledWith({
       type: 'defaultToast',
@@ -611,19 +657,32 @@ describe('attachment', () => {
     ]);
   });
 
-  it('forwards isVisionModel=true and renders image options in AttachmentSheet', () => {
+  it('forwards isVisionModel=true to the panel', () => {
     renderBar({ isVisionModel: true });
     expect(screen.getByText('vision:true')).toBeTruthy();
-    expect(screen.getByTestId('pick-library-btn')).toBeTruthy();
-    expect(screen.getByTestId('pick-camera-btn')).toBeTruthy();
   });
 
-  it('keeps image options visible and forwards isVisionModel=false for non-vision models', () => {
+  it('forwards isVisionModel=false and blocks the image rows', async () => {
     renderBar({ isVisionModel: false });
     expect(screen.getByText('vision:false')).toBeTruthy();
-    expect(screen.getByTestId('pick-library-btn')).toBeTruthy();
-    expect(screen.getByTestId('pick-camera-btn')).toBeTruthy();
-    expect(screen.getByTestId('pick-document-btn')).toBeTruthy();
+
+    await openPanel();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('menu-photos'));
+    });
+
+    // The panel stays on the menu rather than morphing into a grid the model
+    // cannot use.
+    expect(screen.getByText('mode:menu')).toBeTruthy();
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'This model does not support images',
+    });
+  });
+
+  it('caps the grid selection at the single image the send path carries', () => {
+    renderBar({ isVisionModel: true });
+    expect(screen.getByText('max:1')).toBeTruthy();
   });
 });
 

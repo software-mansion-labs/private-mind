@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 import {
   View,
-  Image,
   Text,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
+import { Image } from 'expo-image';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -43,6 +43,33 @@ const AttachmentThumbnail = ({ attachment, onRemove }: Props) => {
   const fillStyle = useAnimatedStyle(() => ({ width: fill.get() }));
 
   const renderContent = () => {
+    if (attachment.type === 'image') {
+      // Drawn even while the attachment is still resolving to a file: this is
+      // the thumbnail a flying copy lands on, and a spinner in its place would
+      // be the photo disappearing at the end of its own flight.
+      return (
+        <>
+          <Image
+            // expo-image, not RN's: an attachment wears the library's own uri
+            // until it resolves to a file, and `ph://` is not something
+            // RCTImageLoader can load.
+            source={attachment.uri}
+            recyclingKey={attachment.id}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={0}
+            style={styles.thumbnail}
+            testID="attachment-image-preview"
+          />
+          {attachment.status === 'loading' && (
+            <View style={[styles.thumbnail, styles.imageLoading]}>
+              <ActivityIndicator color={theme.text.contrastPrimary} />
+            </View>
+          )}
+        </>
+      );
+    }
+
     if (attachment.status === 'loading') {
       if (attachment.progress == null) {
         return (
@@ -66,16 +93,6 @@ const AttachmentThumbnail = ({ attachment, onRemove }: Props) => {
             <Animated.View style={[styles.progressFill, fillStyle]} />
           </View>
         </View>
-      );
-    }
-
-    if (attachment.type === 'image') {
-      return (
-        <Image
-          source={{ uri: attachment.uri }}
-          style={styles.thumbnail}
-          testID="attachment-image-preview"
-        />
       );
     }
 
@@ -118,6 +135,14 @@ const createStyles = (theme: Theme) =>
       width: 72,
       height: 72,
       borderRadius: 8,
+    },
+    imageLoading: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.bg.overlay,
     },
     placeholder: {
       width: 72,
