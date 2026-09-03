@@ -90,6 +90,10 @@ export const useModelStore = create<ModelStore>((set, get) => ({
   },
 
   downloadModel: async (model: Model) => {
+    if (get().downloadStates[model.id]?.status === ModelState.Downloading) {
+      return;
+    }
+
     const setDownloading = (
       progress: number,
       status: DownloadState['status']
