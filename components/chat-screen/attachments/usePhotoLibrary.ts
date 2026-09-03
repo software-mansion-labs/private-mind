@@ -30,7 +30,7 @@ function isReadable(permission: MediaLibrary.PermissionResponse | null) {
  * selection on iOS reads as granted — the OS hands back only what the user
  * shared, which is exactly the set the grid should show.
  */
-export function usePhotoLibrary(active: boolean): PhotoLibrary {
+export function usePhotoLibrary(read: boolean, ask: boolean): PhotoLibrary {
   const [permission, requestPermission] = MediaLibrary.usePermissions({
     granularPermissions: ['photo'],
   });
@@ -55,20 +55,25 @@ export function usePhotoLibrary(active: boolean): PhotoLibrary {
   // Asked for only once the grid is actually on its way up — a privacy-first
   // app has no business prompting for the library while the menu is shut.
   useEffect(() => {
-    if (!active) return;
+    if (!ask) return;
     if (permission && !permission.granted && permission.canAskAgain) {
       requestPermission();
     }
-  }, [active, permission, requestPermission]);
+  }, [ask, permission, requestPermission]);
 
+  // Read as soon as the panel is up, which is a beat before the grid can be
+  // asked for: reading it on the way into the sheet put the library, the list
+  // and two dozen decoding images on the frames the morph was trying to run,
+  // and the first tap after that had to wait its turn. Nothing is prompted
+  // here — an unanswered permission leaves this waiting for `ask`.
   useEffect(() => {
-    if (!active || !permission) return;
+    if (!read || !permission) return;
     if (isReadable(permission)) {
       load();
     } else if (!permission.canAskAgain) {
       setStatus('denied');
     }
-  }, [active, permission, load]);
+  }, [read, permission, load]);
 
   return { photos, status };
 }

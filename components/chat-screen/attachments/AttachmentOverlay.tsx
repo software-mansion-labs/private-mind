@@ -2,7 +2,12 @@ import type { CameraType, FlashMode } from 'expo-camera';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { OverKeyboardView } from 'react-native-keyboard-controller';
-import type { SharedValue } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  type SharedValue,
+} from 'react-native-reanimated';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
+import { Theme } from '../../../styles/colors';
 import { Feedback } from '../../../utils/Feedback';
 import AttachmentFlight, { type Flight } from './AttachmentFlight';
 import AttachmentMenu from './AttachmentMenu';
@@ -11,7 +16,7 @@ import CameraBar from './CameraBar';
 import CameraSheet, { type CameraSheetHandle } from './CameraSheet';
 import PhotoGrid, { type PhotoGridHandle } from './PhotoGrid';
 import PhotoGridBar from './PhotoGridBar';
-import { BOTTOM_BAR, DURATION, GRID, GUTTER } from './constants';
+import { BOTTOM_BAR, DURATION, GRID, GUTTER, panelPalette } from './constants';
 import type { useAttachmentPanel } from './useAttachmentPanel';
 import { usePhotoLibrary, type LibraryPhoto } from './usePhotoLibrary';
 
@@ -73,6 +78,7 @@ const AttachmentOverlay = ({
   maxSelection,
   imagesEnabled,
 }: Props) => {
+  const { styles } = useThemedStyles(createStyles);
   /** The bar rides the sheet's bottom edge, computed the same way the panel
    *  computes its own — see `SheetBar`. */
   const barTop = sheetBottom - BOTTOM_BAR.inset - BOTTOM_BAR.controlSize;
@@ -95,7 +101,12 @@ const AttachmentOverlay = ({
   useEffect(() => {
     if (panel.mode === 'photos') setPhotosOpened(true);
   }, [panel.mode]);
-  const { photos, status } = usePhotoLibrary(photosOpened);
+  /** Reading starts a beat earlier than asking — see `usePhotoLibrary`. */
+  const [panelOpened, setPanelOpened] = useState(false);
+  useEffect(() => {
+    if (panel.mode !== 'closed') setPanelOpened(true);
+  }, [panel.mode]);
+  const { photos, status } = usePhotoLibrary(panelOpened, photosOpened);
 
   /**
    * Whether this visit to the panel has been inside a sheet yet.
@@ -134,6 +145,8 @@ const AttachmentOverlay = ({
     const timer = setTimeout(() => setSettled(true), DURATION.panel);
     return () => clearTimeout(timer);
   }, [panel.mode]);
+
+  const backdropStyle = useAnimatedStyle(() => ({ opacity: panel.open.get() }));
 
   const togglePhoto = useCallback(
     (photo: LibraryPhoto) => {
@@ -253,6 +266,10 @@ const AttachmentOverlay = ({
           pointerEvents={isFlying ? 'none' : 'box-none'}
           style={StyleSheet.absoluteFill}
         >
+          <Animated.View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}
+          />
           <Pressable
             accessibilityLabel="Close attachment menu"
             testID="attachment-backdrop"
@@ -321,7 +338,7 @@ const AttachmentOverlay = ({
             <CameraBar
               width={gridWidth}
               top={barTop}
-              active={panel.mode === 'camera' && !isFlying}
+              active={panel.mode === 'camera' && !panel.closing && !isFlying}
               fade={panel.gridOpacity}
               flash={flash}
               onBack={panel.backToMenu}
@@ -334,7 +351,7 @@ const AttachmentOverlay = ({
               width={gridWidth}
               top={barTop}
               selected={selected}
-              active={panel.mode === 'photos' && !isFlying}
+              active={panel.mode === 'photos' && !panel.closing && !isFlying}
               fade={panel.gridOpacity}
               onBack={panel.backToMenu}
               onConfirm={confirmSelection}
@@ -356,5 +373,12 @@ const AttachmentOverlay = ({
     </OverKeyboardView>
   );
 };
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    backdrop: {
+      backgroundColor: panelPalette(theme).backdrop,
+    },
+  });
 
 export default AttachmentOverlay;
