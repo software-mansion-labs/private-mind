@@ -1,4 +1,6 @@
 export const WEB_SEARCH_MAX_RESULTS = 5;
+
+export const WEB_MIN_SAME_SCRIPT_RESULTS = 1;
 export const WEB_SEARCH_TIMEOUT_MS = 8000;
 export const WEB_SEARCH_OVERALL_TIMEOUT_MS = 90000;
 export const WEB_SNIPPET_MAX_CHARS = 500;
@@ -22,6 +24,7 @@ export const WEB_RETRIEVAL_CHUNK_CHARS = 500;
 export const WEB_RETRIEVAL_CHUNK_OVERLAP = 80;
 export const WEB_RETRIEVAL_MAX_CHUNKS = 40;
 export const WEB_RETRIEVAL_TOP_K = 6;
+export const WEB_RETRIEVAL_MIN_TOP_K = 2;
 export const WEB_RETRIEVAL_MAX_PER_PAGE = 3;
 
 export const WEB_FAVICON_URL = (host: string): string =>
@@ -35,6 +38,13 @@ export const WEB_AGREEMENT_SINGLE_HOST_FACTOR = 0.85;
 export const WEB_AGREEMENT_MAX_CLAIMS = 12;
 export const WEB_AGREEMENT_MAX_TEXT_CHARS = 4000;
 export const WEB_AGREEMENT_MIN_BARE_VALUE = 10;
+
+export const WEB_RECOVERY_ENABLED = true;
+export const WEB_RECOVERY_MAX_QUERIES = 1;
+export const WEB_RECOVERY_MAX_RESULTS = 3;
+export const WEB_RECOVERY_SUBJECT_MAX_TERMS = 4;
+export const WEB_RECOVERY_MAX_EXCLUSIONS = 2;
+export const WEB_RECOVERY_HOST_FAILURE_LIMIT = 2;
 
 export const WEB_QUERY_REWRITE = true;
 export const WEB_QUERY_CONTEXT_TURNS = 3;

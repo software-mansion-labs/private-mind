@@ -7,6 +7,7 @@ import {
   WEB_QUERY_REWRITE,
 } from '../../constants/web';
 import { todayISO } from '../todayISO';
+import { namesAnotherDay } from '../calendarFacts';
 import { foldForMatching } from '../queryTerms';
 
 export interface QueryRewriteMessage {
@@ -79,6 +80,18 @@ const PLANNER_EXAMPLES: {
     intent: 'most streamed song this year',
     queries: ['most streamed song Spotify 2025'],
   },
+  {
+    user: 'jaka jest pogoda w Krakowie dzisiaj',
+    needsSearch: true,
+    intent: 'current Krakow weather',
+    queries: ['pogoda Kraków dzisiaj'],
+  },
+  {
+    user: 'दिल्ली में आज का मौसम कैसा है',
+    needsSearch: true,
+    intent: 'current Delhi weather',
+    queries: ['दिल्ली मौसम आज'],
+  },
 ];
 
 const PLANNER_EXAMPLES_TEXT = PLANNER_EXAMPLES.map(
@@ -114,6 +127,14 @@ const PLANNER_SYSTEM_PROMPT = (today: string): string =>
   'message is clearly conversational (greeting, opinion, chit-chat) with ' +
   'nothing to verify.\n' +
   'Each query is concise search KEYWORDS under 12 words, not a sentence. ' +
+  "Write every query in the SAME language and script as the user's message. " +
+  'Do not translate it — a local question is answered by pages in that ' +
+  'language, and the query language is the only signal that reaches them. ' +
+  'Use English only when the user wrote in English. ' +
+  'Keep the names, places and numbers the user gave, exactly as given; never ' +
+  'swap in a related one (a question about the euro is not about the dollar). ' +
+  'Use only the latest message and what it refers to — never pull in a name ' +
+  'from an earlier, unrelated turn. ' +
   'Resolve pronouns/references (it, that, they) from the conversation. ' +
   `Turn relative time words (today, latest, now, current, this year, this ` +
   `season, so far) into a concrete date, year, or season using today's date ` +
@@ -167,12 +188,116 @@ export const toKeywordQuery = (text: string): string => {
   return cleaned || text.trim();
 };
 
+const WEB_MAX_BASE_QUERIES = 4;
+
+export const withVerbatimFallback = (
+  plannedQueries: string[],
+  question: string
+): string[] => {
+  const candidates = [...plannedQueries, toKeywordQuery(question)];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const candidate of candidates) {
+    const text = candidate.trim();
+    if (!text) continue;
+    const key = foldForMatching(text);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(text);
+  }
+  return out.slice(0, WEB_MAX_BASE_QUERIES);
+};
+
 const DOMAIN_PATTERN =
-  /\b(?:https?:\/\/)?(?:www\.)?([a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,})\b/i;
+  /\b(?:https?:\/\/)?(?:www\.)?([a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*\.([a-z]{2,}))\b/i;
+
+const KNOWN_TLDS = new Set([
+  'com',
+  'org',
+  'net',
+  'edu',
+  'gov',
+  'int',
+  'info',
+  'biz',
+  'name',
+  'io',
+  'ai',
+  'dev',
+  'app',
+  'co',
+  'me',
+  'tv',
+  'cc',
+  'xyz',
+  'shop',
+  'store',
+  'online',
+  'site',
+  'cloud',
+  'tech',
+  'news',
+  'blog',
+  'eu',
+  'pl',
+  'de',
+  'at',
+  'ch',
+  'uk',
+  'ie',
+  'fr',
+  'es',
+  'pt',
+  'it',
+  'nl',
+  'be',
+  'lu',
+  'dk',
+  'se',
+  'no',
+  'fi',
+  'is',
+  'cz',
+  'sk',
+  'hu',
+  'ro',
+  'bg',
+  'hr',
+  'si',
+  'gr',
+  'tr',
+  'ua',
+  'ru',
+  'by',
+  'lt',
+  'lv',
+  'ee',
+  'us',
+  'ca',
+  'mx',
+  'br',
+  'ar',
+  'cl',
+  'au',
+  'nz',
+  'in',
+  'jp',
+  'cn',
+  'kr',
+  'sg',
+  'hk',
+  'tw',
+  'za',
+  'ae',
+  'il',
+]);
 
 export const extractSiteRestriction = (userInput: string): string | null => {
   const match = userInput.match(DOMAIN_PATTERN);
-  return match ? match[1]!.toLowerCase() : null;
+  if (!match) return null;
+  return KNOWN_TLDS.has(match[2]!.toLowerCase())
+    ? match[1]!.toLowerCase()
+    : null;
 };
 
 const withSiteRestriction = (query: string, domain: string | null): string =>
@@ -253,7 +378,7 @@ export const parseSearchPlan = (raw: string): WebSearchPlan | null => {
 const REFERENT_ROLE_MARKERS =
   /\b(prezydent\w*|premier\w*|kr[oó]l\w*|papie[żz]\w*|prezes\w*|szef\w*|dyrektor\w*|the president|the prime minister|the king|the pope|the ceo|the boss)\b/iu;
 const PRONOUN_MARKERS =
-  /\b(on|ona|jego|jemu|niego|niej|nim|ni[ąa]|jej|he|she|him|her|his|hers|they|them|their)\b/iu;
+  /(?<![\p{L}\p{N}])(?:on|ona|ono|jego|jemu|niego|niej|nim|ni[ąa]|nich|jej|go|j[ąa]|ich|im|he|she|it|its|him|her|his|hers|they|them|their)(?![\p{L}\p{N}])/iu;
 const NEEDS_REFERENT = new RegExp(
   `${REFERENT_ROLE_MARKERS.source}|${PRONOUN_MARKERS.source}`,
   'iu'
@@ -262,26 +387,37 @@ const NEEDS_REFERENT = new RegExp(
 // At least two capitalized words in a row — a rough, precision-over-recall
 // proxy for "the query already names someone/something specific", so we
 // don't misfire on ordinary sentence-initial capitalization.
-const PROPER_NOUN_RUN = /\p{Lu}[\p{L}'-]*(?:\s+\p{Lu}[\p{L}'-]*)+/gu;
+const PROPER_NOUN_RUN =
+  /(?<!\p{L})\p{Lu}[\p{L}\p{N}'-]*(?:\s+\p{Lu}[\p{L}\p{N}'-]*)+/gu;
+
+export const namedEntitiesIn = (text: string): string[] =>
+  text.match(PROPER_NOUN_RUN) ?? [];
 
 const hasOwnEntity = (text: string): boolean =>
-  (text.match(PROPER_NOUN_RUN) ?? []).length > 0;
+  namedEntitiesIn(text).length > 0;
 
-const mostRecentEntity = (
-  history: { role: string; content: string }[]
+const lastEntityIn = (
+  history: { role: string; content: string }[],
+  roles: string[]
 ): string | null => {
   for (let i = history.length - 1; i >= 0; i--) {
     const turn = history[i]!;
-    if (turn.role !== 'user' && turn.role !== 'assistant') continue;
+    if (!roles.includes(turn.role)) continue;
     const matches = turn.content.match(PROPER_NOUN_RUN);
     if (matches && matches.length > 0) return matches[matches.length - 1]!;
   }
   return null;
 };
 
+const mostRecentEntity = (
+  history: { role: string; content: string }[]
+): string | null =>
+  lastEntityIn(history, ['user']) ??
+  lastEntityIn(history, ['user', 'assistant']);
+
 const SHORT_QUERY_MAX_WORDS = 6;
-const REFLEXIVE_DROPPED_SUBJECT =
-  /(?<![\p{L}\p{N}])się(?![\p{L}\p{N}])/iu;
+const ELIDED_SUBJECT_MAX_WORDS = 8;
+const REFLEXIVE_DROPPED_SUBJECT = /(?<![\p{L}\p{N}])się(?![\p{L}\p{N}])/iu;
 
 const wordCount = (text: string): number =>
   (text.trim().match(/\S+/gu) ?? []).length;
@@ -290,21 +426,63 @@ const looksLikeDroppedSubject = (query: string): boolean =>
   wordCount(query) <= SHORT_QUERY_MAX_WORDS &&
   REFLEXIVE_DROPPED_SUBJECT.test(query);
 
+const DEMONSTRATIVE_MARKERS =
+  /(?<![\p{L}\p{N}])(?:tego|tej|tym|tych|tamt\w+|je|ich|that|those|these)(?![\p{L}\p{N}])/giu;
+const TIME_NOUN_AFTER_DEMONSTRATIVE =
+  /^\s*(?:tygodni\w*|miesi[\u0105a]c\w*|rok\w*|roku|sezon\w*|dni\w*|week|month|year|season|day)/iu;
+const DEMONSTRATIVE_LOOKAHEAD_CHARS = 14;
+
+const hasAnaphoricReference = (query: string): boolean => {
+  for (const match of query.matchAll(DEMONSTRATIVE_MARKERS)) {
+    const after = query.slice(
+      match.index! + match[0].length,
+      match.index! + match[0].length + DEMONSTRATIVE_LOOKAHEAD_CHARS
+    );
+    if (!TIME_NOUN_AFTER_DEMONSTRATIVE.test(after)) return true;
+  }
+  return false;
+};
+
+const ELIDED_POSSESSOR =
+  /(?<![\p{L}])(?:jaki\w*|jaka|jakie|ile|co|kt[o\u00f3]r\w*)\s+(?:ma|maj[\u0105a]|posiada)(?![\p{L}])/iu;
+const ELIDED_COPULA = /^\s*(?:a\s+)?czy\s+(?:jest|s[\u0105a])(?![\p{L}])/iu;
+
+const looksLikeElidedSubject = (query: string): boolean =>
+  wordCount(query) <= ELIDED_SUBJECT_MAX_WORDS &&
+  (ELIDED_POSSESSOR.test(query) || ELIDED_COPULA.test(query));
+
 // A bare-role or pronoun follow-up ("how many kids does the president
 // have", "ile dzieci ma prezydent") searches badly on its own — verbatim
 // mode has no LLM step to resolve who "the president" is, so without this
 // the query goes out under-specified and retrieval comes back generic.
 // Splices in the most recently named entity from the conversation so far,
 // when the query doesn't already name someone itself.
+const TEMPORAL_FOLLOW_UP_MAX_WORDS = 4;
+
+const looksLikeTemporalFollowUp = (query: string): boolean => {
+  const words = query.trim().split(/\s+/).filter(Boolean);
+  return (
+    words.length > 0 &&
+    words.length <= TEMPORAL_FOLLOW_UP_MAX_WORDS &&
+    namesAnotherDay(query)
+  );
+};
+
 export const carryReferentIntoQuery = (
   query: string,
-  history: { role: string; content: string }[]
+  history: { role: string; content: string }[],
+  digest?: string
 ): string => {
   const looksIncomplete =
-    NEEDS_REFERENT.test(query) || looksLikeDroppedSubject(query);
+    NEEDS_REFERENT.test(query) ||
+    looksLikeDroppedSubject(query) ||
+    hasAnaphoricReference(query) ||
+    looksLikeElidedSubject(query) ||
+    looksLikeTemporalFollowUp(query);
   if (!looksIncomplete || hasOwnEntity(query)) return query;
   const entity = mostRecentEntity(history);
-  return entity ? `${query} ${entity}` : query;
+  if (entity) return `${query} ${entity}`;
+  return digest?.trim() ? `${query} ${digest.trim()}` : query;
 };
 
 const CONVERSATIONAL_INTENT_MARKERS =
@@ -314,9 +492,10 @@ export const isConversationalIntent = (intent: string): boolean =>
   !!intent.trim() && CONVERSATIONAL_INTENT_MARKERS.test(intent);
 
 const buildConversation = (
-  history: { role: string; content: string }[]
-): string =>
-  history
+  history: { role: string; content: string }[],
+  digest?: string
+): string => {
+  const turns = history
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .filter((m) => m.content.trim())
     .slice(-WEB_QUERY_CONTEXT_TURNS)
@@ -328,16 +507,34 @@ const buildConversation = (
         )}`
     )
     .join('\n');
+  const digestLine = digest?.trim()
+    ? `Conversation summary so far: ${digest.trim()}`
+    : '';
+  return [digestLine, turns].filter(Boolean).join('\n');
+};
+
+const ABOUT_THE_CONVERSATION =
+  /(?<![\p{L}])(?:podsumuj\w*|streszcz\w*|czego\s+si[eę]\s+dowiedzia\w*|co\s+ustalili[sś]my|powt[oó]rz\s+co|summari[sz]e|summar(?:y|ise)|recap|what\s+(?:have\s+)?(?:we|i)\s+(?:just\s+)?(?:learn|discussed|covered|said)\w*|to\s+sum\s+up)(?![\p{L}])/iu;
+
+export const isAboutTheConversation = (query: string): boolean =>
+  ABOUT_THE_CONVERSATION.test(query);
 
 export const planWebSearch = async (
   userInput: string,
   history: { role: string; content: string }[],
   generate: QueryRewriteFn,
-  opts?: { today?: string; rewrite?: boolean }
+  opts?: { today?: string; rewrite?: boolean; digest?: string }
 ): Promise<WebSearchPlan> => {
   const query = userInput.trim();
+  if (isAboutTheConversation(query)) {
+    return {
+      needsSearch: false,
+      intent: 'recap of this conversation',
+      queries: [],
+    };
+  }
   const siteRestriction = extractSiteRestriction(query);
-  const searchQuery = carryReferentIntoQuery(query, history);
+  const searchQuery = carryReferentIntoQuery(query, history, opts?.digest);
   const verbatim = (intent = ''): WebSearchPlan => ({
     needsSearch: true,
     intent,
@@ -353,7 +550,7 @@ export const planWebSearch = async (
   if (!query) return { needsSearch: false, intent: '', queries: [] };
   if (!(opts?.rewrite ?? WEB_QUERY_REWRITE)) return verbatim();
 
-  const convo = buildConversation(history);
+  const convo = buildConversation(history, opts?.digest);
   const userPrompt = convo
     ? `Conversation so far:\n${convo}\n\nLatest user message: ${query}\n\nJSON plan:`
     : `User message: ${query}\n\nJSON plan:`;
@@ -389,7 +586,7 @@ export const planWebSearch = async (
     // this is the same under-specified-follow-up gap the verbatim path
     // has, just reached via a query the LLM did produce rather than one
     // it failed to.
-    .map((q) => carryReferentIntoQuery(q, history))
+    .map((q) => carryReferentIntoQuery(q, history, opts?.digest))
     .map((q) => withSiteRestriction(q, siteRestriction));
 
   if (safeQueries.length === 0) return verbatim(parsed.intent);

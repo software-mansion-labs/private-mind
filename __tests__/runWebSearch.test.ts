@@ -78,6 +78,11 @@ const WEATHER_TEXT =
 const SPORT_TEXT =
   'Football match score last night in the league recap report. '.repeat(12);
 
+const PHONE_TEXT =
+  'Samsung Galaxy S25 price and specifications, display, battery and camera. '.repeat(
+    12
+  );
+
 const bareResult = (url: string): WebSearchResult => ({
   title: url,
   url,
@@ -123,6 +128,32 @@ describe('runWebSearch', () => {
     });
     expect(out.telemetry.skippedReason).toBe('provider-not-ready');
     expect(provider.calls).toHaveLength(0);
+  });
+
+  it('never fetches a result written in another script than the question (live-found)', async () => {
+    const provider = new MockProvider({
+      'warsaw weather': [
+        {
+          title: 'الطقس في وارسو اليوم ودرجات الحرارة',
+          url: 'https://arabic.example/1',
+          snippet: 'توقعات الطقس في وارسو لهذا اليوم مع درجات الحرارة',
+        },
+        weatherPage('https://weather.example/1'),
+      ],
+    });
+    const out = await runWebSearch({
+      query: 'warsaw weather',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: noGen,
+      today: '2026-07-20',
+    });
+    expect(out.sourceDocuments.map((doc) => doc.url)).toEqual([
+      'https://weather.example/1',
+    ]);
+    expect(out.context.join(' ')).not.toContain('وارسو');
   });
 
   it('runs one round and reports it on strong retrieval', async () => {
@@ -228,6 +259,162 @@ describe('runWebSearch', () => {
     });
     expect(out.sourceDocuments).toHaveLength(1);
     expect(out.sourceDocuments[0]!.url).toContain('transfermarkt.pl');
+  });
+
+  describe('when a page cannot be read', () => {
+    const readableExcept = (blocked: (url: string) => Error | null) =>
+      (extractArticle as jest.Mock).mockImplementation(async (url: string) => {
+        const failure = blocked(url);
+        if (failure) throw failure;
+        return { url, title: url, text: PHONE_TEXT, siteName: url };
+      });
+
+    it('searches the subject again away from the host that blocked the reader', async () => {
+      const provider = new MockProvider({
+        'Samsung Galaxy S25 cena': [bareResult('https://shop.example/s25')],
+        'Samsung Galaxy S25 -site:shop.example': [
+          bareResult('https://samsung.com/s25'),
+        ],
+      });
+      readableExcept((url) =>
+        url.includes('shop.example')
+          ? new Error('Fetch failed: 403 Forbidden')
+          : null
+      );
+      const events: WebSearchProgressEvent[] = [];
+
+      const out = await runWebSearch({
+        query: 'Samsung Galaxy S25 cena',
+        history: [],
+        provider,
+        embeddings: null,
+        embeddingModelReady: false,
+        generate: noGen,
+        onProgress: (e) => events.push(e),
+        today: '2026-07-20',
+      });
+
+      expect(provider.calls).toContain('Samsung Galaxy S25 -site:shop.example');
+      expect(out.telemetry.recovery[0]).toMatchObject({
+        kind: 'primary-source',
+      });
+      expect(out.telemetry.rounds).toHaveLength(2);
+      expect(out.context.join('\n')).toContain('Samsung Galaxy S25 price');
+      expect(
+        out.sourceDocuments.filter((d) => d.read).map((d) => d.url)
+      ).toEqual(['https://samsung.com/s25']);
+    });
+
+    it('records why the page could not be read, and says so on the way past', async () => {
+      const provider = new MockProvider({
+        'Samsung Galaxy S25 cena': [bareResult('https://shop.example/s25')],
+      });
+      readableExcept(() => new Error('Fetch failed: 403 Forbidden'));
+      const events: WebSearchProgressEvent[] = [];
+
+      const out = await runWebSearch({
+        query: 'Samsung Galaxy S25 cena',
+        history: [],
+        provider,
+        embeddings: null,
+        embeddingModelReady: false,
+        generate: noGen,
+        onProgress: (e) => events.push(e),
+        today: '2026-07-20',
+      });
+
+      expect(out.telemetry.fetchFailures).toEqual([
+        {
+          url: 'https://shop.example/s25',
+          host: 'shop.example',
+          reason: 'blocked',
+        },
+      ]);
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: 'failed', reason: 'blocked' })
+      );
+      expect(events.some((e) => e.type === 'recovering')).toBe(true);
+    });
+
+    it('retries the same host on another page when only that page was missing', async () => {
+      const provider = new MockProvider({
+        'Samsung Galaxy S25 cena': [bareResult('https://shop.example/gone')],
+        'site:shop.example Samsung Galaxy S25': [
+          bareResult('https://shop.example/s25'),
+        ],
+      });
+      readableExcept((url) =>
+        url.includes('/gone') ? new Error('Fetch failed: 404 Not Found') : null
+      );
+
+      const out = await runWebSearch({
+        query: 'Samsung Galaxy S25 cena',
+        history: [],
+        provider,
+        embeddings: null,
+        embeddingModelReady: false,
+        generate: noGen,
+        today: '2026-07-20',
+      });
+
+      expect(provider.calls).toContain('site:shop.example Samsung Galaxy S25');
+      expect(
+        out.sourceDocuments.filter((d) => d.read).map((d) => d.url)
+      ).toEqual(['https://shop.example/s25']);
+    });
+
+    it('does not spend a second fetch on a host that just blocked us', async () => {
+      const provider = new MockProvider({
+        'Samsung Galaxy S25 cena': [bareResult('https://shop.example/s25')],
+        'Samsung Galaxy S25 -site:shop.example': [
+          bareResult('https://shop.example/other'),
+          bareResult('https://samsung.com/s25'),
+        ],
+      });
+      readableExcept((url) =>
+        url.includes('shop.example')
+          ? new Error('Fetch failed: 403 Forbidden')
+          : null
+      );
+
+      await runWebSearch({
+        query: 'Samsung Galaxy S25 cena',
+        history: [],
+        provider,
+        embeddings: null,
+        embeddingModelReady: false,
+        generate: noGen,
+        today: '2026-07-20',
+      });
+
+      const fetched = (extractArticle as jest.Mock).mock.calls.map(
+        (call) => call[0]
+      );
+      expect(fetched).not.toContain('https://shop.example/other');
+      expect(fetched).toContain('https://samsung.com/s25');
+    });
+
+    it('leaves a healthy search alone — no failures, no extra round', async () => {
+      const provider = new MockProvider({
+        'Samsung Galaxy S25 cena': [bareResult('https://samsung.com/s25')],
+      });
+      readableExcept(() => null);
+
+      const out = await runWebSearch({
+        query: 'Samsung Galaxy S25 cena',
+        history: [],
+        provider,
+        embeddings: null,
+        embeddingModelReady: false,
+        generate: noGen,
+        today: '2026-07-20',
+      });
+
+      expect(out.telemetry.fetchFailures).toEqual([]);
+      expect(out.telemetry.recovery).toEqual([]);
+      expect(out.telemetry.rounds).toHaveLength(1);
+      expect(provider.calls).toEqual(['Samsung Galaxy S25 cena']);
+    });
   });
 
   it('reports the shortfall when retrieval is thin', async () => {
