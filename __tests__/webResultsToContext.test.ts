@@ -1,4 +1,5 @@
 import {
+  MONEY_ANCHOR,
   webResultsToContext,
   hostname,
   selectRelevantContent,
@@ -575,5 +576,45 @@ describe('coalescing must not glue table rows together (live-found: Nowy Sącz w
 
     expect(out).toContain('Jutro | 22°C | 12°C');
     expect(out).toContain('Piątek | 24°C | 18°C');
+  });
+});
+
+describe('Polish prices spelled out as "zlotych"', () => {
+  const LEAD = [
+    'Ile kosztuje iPhone 17 Pro w Polsce? Cena iPhone 17 Pro w Polsce to temat, ktory wraca.',
+    'Sprawdzamy, ile kosztuje iPhone 17 Pro w Polsce i jaka jest cena iPhone 17 Pro w Polsce.',
+    'Cena iPhone 17 Pro w Polsce, czyli ile kosztuje iPhone 17 Pro w Polsce wedlug Apple.',
+  ].join('\n\n');
+  const PRICES = [
+    'iPhone 17 Pro 256 GB to 5299 zlotych.',
+    'iPhone 17 Pro 512 GB to 6299 zlotych.',
+  ].join('\n\n');
+  const ARTICLE = `${LEAD}\n\n${PRICES}`;
+
+  it('keeps the amounts rather than the paragraph echoing the question', () => {
+    const out = selectRelevantContent(
+      ARTICLE,
+      'Ile kosztuje iPhone 17 Pro w Polsce?',
+      120
+    );
+    expect(out).toMatch(/5299|6299/);
+  });
+
+  it('reads an amount written with the inflected currency word', () => {
+    expect('5299 zlotych'.match(MONEY_ANCHOR)).not.toBeNull();
+    expect('6299 zlote'.match(MONEY_ANCHOR)).not.toBeNull();
+    expect('7299 zloty'.match(MONEY_ANCHOR)).not.toBeNull();
+    expect('120 dolarow'.match(MONEY_ANCHOR)).not.toBeNull();
+  });
+
+  it('still reads the short forms', () => {
+    expect('5299 zl'.match(MONEY_ANCHOR)).not.toBeNull();
+    expect('5299 pln'.match(MONEY_ANCHOR)).not.toBeNull();
+    expect('$5299'.match(MONEY_ANCHOR)).not.toBeNull();
+  });
+
+  it('does not read a bare number followed by an unrelated word', () => {
+    expect('5299 zlecen'.match(MONEY_ANCHOR)).toBeNull();
+    expect('5299 zlozen'.match(MONEY_ANCHOR)).toBeNull();
   });
 });
