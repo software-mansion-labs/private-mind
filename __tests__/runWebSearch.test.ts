@@ -250,7 +250,7 @@ describe('runWebSearch', () => {
 
   it('drops results whose host does not match a site named in the question', async () => {
     const provider = new MockProvider({
-      'transfermarkt poland top scorer site:transfermarkt.pl': [
+      'transfermarkt najwięcej bramek dla Polski site:transfermarkt.pl': [
         {
           title: 'Transfermarkt page',
           url: 'https://www.transfermarkt.pl/poland/topscorer',
@@ -271,7 +271,7 @@ describe('runWebSearch', () => {
       embeddings: fakeEmbeddings,
       embeddingModelReady: true,
       generate: async () =>
-        '{"needs_search": true, "intent": "poland top scorer", "queries": ["transfermarkt poland top scorer"]}',
+        '{"needs_search": true, "intent": "poland top scorer", "queries": ["transfermarkt najwięcej bramek dla Polski"]}',
       today: '2026-07-20',
     });
     expect(out.sourceDocuments).toHaveLength(1);
@@ -652,11 +652,11 @@ describe('runWebSearch — reusing a previous turn', () => {
 
 describe('searching the question itself is a fallback, not a habit', () => {
   const plan =
-    '{"needs_search": true, "intent": "weather", "queries": ["warsaw weather forecast"]}';
+    '{"needs_search": true, "intent": "weather", "queries": ["pogoda Warszawa prognoza"]}';
 
   it('leaves the question unsearched when the plan already found enough', async () => {
     const provider = new MockProvider({
-      'warsaw weather forecast': [
+      'pogoda Warszawa prognoza': [
         weatherPage('https://a.example/1'),
         weatherPage('https://b.example/2'),
         weatherPage('https://c.example/3'),
@@ -671,12 +671,12 @@ describe('searching the question itself is a fallback, not a habit', () => {
       generate: async () => plan,
       today: '2026-07-20',
     });
-    expect(provider.calls).toEqual(['warsaw weather forecast']);
+    expect(provider.calls).toEqual(['pogoda Warszawa prognoza']);
   });
 
   it('searches the question when the plan came back nearly empty', async () => {
     const provider = new MockProvider({
-      'warsaw weather forecast': [weatherPage('https://a.example/1')],
+      'pogoda Warszawa prognoza': [weatherPage('https://a.example/1')],
       'Jaka jest pogoda w Warszawie?': [
         weatherPage('https://d.example/4'),
         weatherPage('https://e.example/5'),
