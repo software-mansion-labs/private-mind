@@ -39,22 +39,22 @@ Fix: `WEB_PLANNER_MATRIX['Qwen 3 - 1.7B']` changed from `'llm'` to
 `Qwen 2.5 - 0.5B`, `LFM 2.5 VL - 450M`) whose matrix entry already agreed
 with their own evidence. This also skips an extra on-device generation call
 per search, so it's a latency win too.
-Verify: [__tests__/modelProfiles.test.ts](../__tests__/modelProfiles.test.ts)
+Verify: [**tests**/modelProfiles.test.ts](../__tests__/modelProfiles.test.ts)
 (F13) — a general check that fails for ANY model whose evidence says
 verbatim outperformed it while the matrix still says `'llm'`, not just this
 one. Confirmed live: the in-progress "Searching '...'" line now shows the
 literal user question verbatim (previously it showed a separate, sometimes
 mutated, LLM-generated query).
-⚠️ **Status note (this round)**: this fix was re-derived and re-staged
-during this round's git-history cleanup, then the `constants/model-profiles.ts`
-edit itself reverted back to `'llm'` on disk — in the working tree, the
-index, and confirmed identical to HEAD — with no corresponding action taken
-from this session (most likely an editor "discard changes" on that one file).
-F13 is currently **failing** as a result. The fix described above is
-correct and was live-confirmed in an earlier round; it just isn't
-consistently present on disk right now. Re-apply
-`WEB_PLANNER_MATRIX['Qwen 3 - 1.7B']: 'llm' → 'verbatim'` and re-run F13
-before trusting this item again.
+✅ **Status note (resolved)**: this fix kept disappearing from disk across
+rounds — re-derived, re-staged, then found reverted to `'llm'` again in the
+working tree, the index, and identical to HEAD, with no corresponding action
+taken from the session that had just applied it. It was re-applied once more
+(`WEB_PLANNER_MATRIX['Qwen 3 - 1.7B']: 'llm' → 'verbatim'`) and F13 passes.
+Nothing in this repo has been shown to revert it; the most likely cause
+remains an out-of-band editor "discard changes" on that one file. If F13
+starts failing again with no matching edit in the session log, check
+`git diff constants/model-profiles.ts` first rather than re-deriving the
+reasoning above.
 
 ⚠️ **This fix trades away query reformulation — verbatim is a fallback, not a
 strictly better replacement**
@@ -66,7 +66,7 @@ multi-part question, a follow-up that only makes sense against earlier
 turns — "a ten drugi model?") — needs an actual reformulation step to become
 a good query at all; verbatim just fires the user's raw wording at the search
 engine and hopes it resembles a query. The fix above is correct specifically
-for `Qwen 3 - 1.7B`, because *this model's own* planner implementation is
+for `Qwen 3 - 1.7B`, because _this model's own_ planner implementation is
 broken (89% unparseable, and the 11% that parsed made things worse) — not
 because query planning as a concept is unnecessary. Switching it to
 `'verbatim'` was choosing the reliably-mediocre path over the rarely-good/
@@ -81,6 +81,7 @@ a benchmarking effort, not a one-line config change, so it's listed as
 proposed work below rather than attempted this round.
 
 💡 **Proposed / to monitor**
+
 - The other `'llm'`-planner models (`Qwen 2.5 - 1.5B`, `Qwen 2.5 - 3B`,
   `LLaMA 3.2` family, `LFM 2.5 - 1.2B`, `LFM 2.5 VL - 1.6B`, `Bielik - v3.0`,
   `Gemma 4` family) have no `PLANNER_EVIDENCE` entry at all — meaning nobody
@@ -113,6 +114,7 @@ its own stated rule under uncertainty, and the prompt's own fallback line
 — "If the message is conversational and you are unsure, choose false" —
 was actively pushing it the wrong way whenever it hesitated.
 Fix, two layers:
+
 - Prompt: reworded the unsure-fallback to bias toward `true` ("search is
   cheap, a confident wrong or stale answer is not"), narrowing the
   false-by-default case to clearly conversational messages only.
@@ -122,7 +124,7 @@ Fix, two layers:
   — override to a real search when the planner says `false` but the query
   names a capitalized entity or a bare office/title. Flagged in review as
   too narrow: a hardcoded role/title word list only ever covers the
-  entity *types* someone thought to enumerate (president, CEO, king, …),
+  entity _types_ someone thought to enumerate (president, CEO, king, …),
   not the general shape of the problem — any specific, checkable claim
   the planner waves off, not just ones about a named person's role.
 - Deterministic backstop, v2 (current): `isConversationalIntent`
@@ -148,23 +150,23 @@ Fix, two layers:
   `hasOwnEntity`/`REFERENT_ROLE_MARKERS` remain in place for their
   original, unrelated job (carrying a referent into a follow-up query),
   just no longer doing double duty as the needs_search override.
-Caveat: `isConversationalIntent` trusts the planner's self-reported
-`intent` string rather than re-deriving it from the question text — if the
-model mislabels its own intent (e.g. calls a factual lookup "general
-knowledge"), the override won't catch it. This is a smaller, more general
-failure surface than the old per-entity-type list, but not a zero-risk one.
-Verify: [__tests__/buildSearchQuery.test.ts](../__tests__/buildSearchQuery.test.ts)
-— `isConversationalIntent` unit cases (each defined category, an empty
-string, and a factual-sounding intent that must NOT match), plus
-`planWebSearch` override tests using mock `intent` values including the
-exact captured live query (`"elon musk children"`), a bare-role follow-up
-(`"president children"`), and a plain-greeting control confirming
-`needs_search: false` still stands when the intent is genuinely
-conversational. Confirmed live on Pixel 10, same model, same lowercase-typed
-query, re-tested after the v2 switch: "ile dzieci ma elon musk" searches
-("Searching 'Elon Musk's children'…") and answers correctly in Polish
-("Elon Musk miał 14 dzieci"), with the trace showing "Deciding what to
-search for" → "Searching…" → "Reading the pages" → "Done".
+  Caveat: `isConversationalIntent` trusts the planner's self-reported
+  `intent` string rather than re-deriving it from the question text — if the
+  model mislabels its own intent (e.g. calls a factual lookup "general
+  knowledge"), the override won't catch it. This is a smaller, more general
+  failure surface than the old per-entity-type list, but not a zero-risk one.
+  Verify: [**tests**/buildSearchQuery.test.ts](../__tests__/buildSearchQuery.test.ts)
+  — `isConversationalIntent` unit cases (each defined category, an empty
+  string, and a factual-sounding intent that must NOT match), plus
+  `planWebSearch` override tests using mock `intent` values including the
+  exact captured live query (`"elon musk children"`), a bare-role follow-up
+  (`"president children"`), and a plain-greeting control confirming
+  `needs_search: false` still stands when the intent is genuinely
+  conversational. Confirmed live on Pixel 10, same model, same lowercase-typed
+  query, re-tested after the v2 switch: "ile dzieci ma elon musk" searches
+  ("Searching 'Elon Musk's children'…") and answers correctly in Polish
+  ("Elon Musk miał 14 dzieci"), with the trace showing "Deciding what to
+  search for" → "Searching…" → "Reading the pages" → "Done".
 
 ✅ **Follow-up query planning ignored conversation context far more often than
 it needed to — `carryReferentIntoQuery`'s trigger widened from "one specific
@@ -214,7 +216,7 @@ of bug already fixed once this session in `humanizeSourceReferences` and
 `questionLanguage.ts`'s tie-break, now fixed a third time here with the
 same `(?<![\p{L}\p{N}])…(?![\p{L}\p{N}])` Unicode-aware lookaround pattern
 instead of a bare `\b`.
-Verify: [__tests__/buildSearchQuery.test.ts](../__tests__/buildSearchQuery.test.ts)
+Verify: [**tests**/buildSearchQuery.test.ts](../__tests__/buildSearchQuery.test.ts)
 (F31) — the exact motivating case ("a kiedy się urodził?" → carries the
 entity), the regression guard for the naive brevity-only version (the
 bitcoin question, left untouched), and "się" appearing deep inside an
@@ -228,7 +230,7 @@ correctly reads "Urodził się 21 grudnia 1977 roku." — Macron's real
 birthdate.
 💡 **Scope note, not fixed this round**: this closes the single largest,
 most-repeatedly-observed gap (Polish zero-subject follow-ups), but
-`carryReferentIntoQuery` still only ever carries one *entity* (a
+`carryReferentIntoQuery` still only ever carries one _entity_ (a
 capitalized proper noun), not a general topic/object referent — "a ten
 drugi model?" ("and that other model?", Sports section above) or "w tym
 meczu" ("in that game") still carry nothing, since there's no proper noun
@@ -248,6 +250,507 @@ itself reverted back to `'llm'` on disk") — confirmed still present
 matters when the model is actually in `'verbatim'` mode. Fixed the same way
 as before: `WEB_PLANNER_MATRIX['Qwen 3 - 1.7B']: 'llm' → 'verbatim'`. F13
 passes again; full suite (1491 tests) and `tsc` clean.
+
+## Unreadable pages (fetch failure → informed fallback)
+
+✅ **A page the reader can’t fetch used to vanish silently; it now says what
+went wrong and searches somewhere else instead**
+Scenario/request: the user asked for the flow Claude’s own web search has
+around a failed fetch — tell the user, then take a substitute action (their
+example: if a shop page can’t be read, go look the product up on the
+manufacturer’s own site) so the turn still comes back with usable context.
+Before this, `enrichWebResults`’s `enrichOne` caught **every** failure into a
+single `ok: false` boolean: a 403 bot wall, a 404, a PDF, a timeout and a
+page that simply had no text were indistinguishable, the reason was thrown
+away at the catch site, the trace drew a failed page exactly like a
+successfully read one, and the only reaction was the existing adaptive
+widening — read _more of the same SERP_. Once that SERP was exhausted the
+search just ended with whatever snippets it had.
+
+Three layers, each independently tested:
+
+1. **Classification** — `utils/web/fetchFailure.ts` turns the errors
+   `security/outboundFetch.ts` actually throws into a
+   `FetchFailureReason` (`blocked` | `not-found` | `server-error` | `timeout`
+   | `unsupported` | `too-large` | `empty` | `network` | `aborted`), plus the
+   content-side verdict (`looksLikeBotWall` → `blocked`, too short →
+   `empty`). The tests assert against the literal message strings
+   `outboundFetch` produces, so a reworded throw there fails the suite
+   rather than silently degrading every reason to `network`. `aborted` is
+   deliberately **not** recoverable — a user who stopped the generation
+   should not trigger a second round of searching on their way out.
+2. **Propagation** — `EnrichPageEvent` and `WebSearchProgressEvent` carry the
+   reason; `runWebSearch` accumulates `telemetry.fetchFailures`.
+3. **Recovery** — `utils/web/fetchRecovery.ts` plans a second round, run
+   through the _existing_ `runQueries`/`groundAndEvaluate` machinery as
+   `round: 2` (the `rounds` array and the `round` parameter were already
+   there, anticipating exactly this). Results from both rounds are merged
+   and re-scored together, so a recovered page competes with round 1 on
+   retrieval rather than replacing it.
+
+The recovery strategies, in order:
+
+- `primary-source` — re-search the **subject** with the dead hosts excluded
+  (`Samsung Galaxy S25 -site:shop.example`). This is the "go to the
+  manufacturer instead" behaviour, built **without a brand→domain table**:
+  the subject is the query's own named entity (or its content words), the
+  `-site:` exclusion guarantees a genuinely different SERP, and
+  `promotePrimarySources` then floats results whose registrable domain
+  carries a subject token (`samsung.com`, `zalando.pl`) to the front of
+  their group — where `rankByListingRelevance`'s "keep the group's first
+  result in the top 2" rule keeps them. Deliberately **not** a hardcoded
+  vendor list and **not** an "official site" phrase appended per language:
+  both are the shape of mechanism this doc has already been burned by
+  (`REFERENT_ROLE_MARKERS` doing double duty, see Search frequency above).
+- `alternate-page` — `site:<host> <subject>`, but only for _page_-level
+  failures (`not-found`, `unsupported`, `too-large`, `empty`), where a
+  different page on the same host plausibly works. A host that returned
+  `blocked` or `server-error` is recorded in `deadHosts` and excluded from
+  the recovery SERP entirely, so the second round never spends a fetch on a
+  site that just refused us.
+- `restate` — the planner's own `intent` as a query, which only exists in
+  `'llm'` planner mode.
+  Capped at `WEB_RECOVERY_MAX_QUERIES = 2` and gated on
+  `needsMore` (no usable content, or `evaluation.shouldCorrect`) **and** at
+  least one recoverable failure — a merely-weak search with no failed fetch
+  does not buy an extra scrape round.
+
+**Deliberately not done: nothing is injected into the model's context about
+the failed sources.** Telling the model "source X could not be read" is the
+exact shape of prompt-side addition that the Real estate section above
+records causing a _worse_ regression (the "sandwiched" instruction that made
+the model echo an unrelated question back five times). The failure
+information is user-facing and telemetry-only.
+
+**Two bugs found by the tests while building this:**
+
+1. **`PROPER_NOUN_RUN` truncated every model number** — the run allowed only
+   letters inside a token (`[\p{L}'-]*`), so `Samsung Galaxy S25` was read as
+   the entity "Samsung Galaxy S", `RTX 4070` lost its number, and so on.
+   This was never a recovery-only bug: `carryReferentIntoQuery` uses the same
+   regex, so a follow-up about a phone has been carrying a truncated product
+   name into the search query all along. Fixed by allowing digits _inside_ a
+   capitalized token (`[\p{L}\p{N}'-]*`). Deliberately **not** extended to
+   swallow a following standalone number — that would turn "Elon Musk ma 14
+   dzieci" into the entity "Elon Musk 14"; both the fix and that boundary are
+   pinned by tests in
+   [**tests**/buildSearchQuery.test.ts](../__tests__/buildSearchQuery.test.ts).
+2. **The first recovery design produced no strategies at all in its most
+   important case.** With only a `blocked` host, `alternate-page` was
+   correctly suppressed, `restate` needs an intent that verbatim mode never
+   has, and the `primary-source` query was byte-identical to the query
+   already tried — so it was deduped away and the recovery silently did
+   nothing, in exactly the "the shop blocked us" scenario the feature exists
+   for. Caught by the unit test before any of it ran on a device; fixed by
+   making `primary-source` carry the `-site:` exclusions, which by
+   construction differ from anything already tried.
+
+Verify: [**tests**/fetchFailure.test.ts](../__tests__/fetchFailure.test.ts),
+[**tests**/fetchRecovery.test.ts](../__tests__/fetchRecovery.test.ts),
+the `when a page cannot be read` block in
+[**tests**/runWebSearch.test.ts](../__tests__/runWebSearch.test.ts)
+(end-to-end: blocked host → second SERP → vendor page read → context, and
+the negative cases: no failures → no extra round, dead host never re-fetched),
+`enrichWebResults — why a page could not be read` in
+[**tests**/enrichResults.test.ts](../__tests__/enrichResults.test.ts), and
+`buildRows — pages that could not be read` in
+[**tests**/webSearchTrace.test.ts](../__tests__/webSearchTrace.test.ts).
+
+💡 **Not yet verified live.** All of the above is unit- and integration-tested
+against mocked SERPs and a mocked `extractArticle`; none of it has been run
+against a real bot wall on a device. The specific things a live pass should
+confirm: that the scrape engines in `SCRAPE_ENGINES` actually honour the
+`-site:` and `site:` operators the recovery queries rely on (DuckDuckGo,
+Brave and Mojeek all document them, but the app reads them through the
+HTML-scraping provider, not an API), and that a second scrape round stays
+inside `WEB_SEARCH_OVERALL_TIMEOUT_MS` on a real device with
+`SCRAPE_MIN_DELAY_MS` between engine hits.
+
+## Live QA round — iOS simulator (iPhone 17 Pro, Qwen 3 - 1.7B, verbatim planner)
+
+Everything below was run on the iPhone 17 Pro simulator against the real web,
+with `Qwen 3 - 1.7B` — which is on `'verbatim'` planner mode again after the
+F13 re-fix, so this round finally exercises the verbatim path the two features
+below were built for and that earlier rounds could not reach.
+
+✅ **Fetch-failure classification and the failure line are real, not just
+unit-tested**
+First query, `"ile kosztuje Samsung Galaxy S25"`: the trace showed
+`mediaexpert.pl` read normally, **two `allegro.pl` results struck through with
+"blocked the reader"**, an `oix.pl` result struck through with "page too big",
+and the summary note **"Couldn't read 3 pages — blocked the reader"**. Real bot
+walls, correctly classified, with the reason on the row. Recovery correctly did
+**not** run: one page was readable, so `needsMore` was false — the extra scrape
+round is spent only when the retrieval is actually short.
+
+✅ **The recovery round fires live and lands on the manufacturer's own site —
+the behaviour this feature was asked for**
+Second query, `"ile kosztuje używana Toyota Corolla 2018"`: round 1 read
+`otomoto.pl` and `autouncle.pl`, lost `allegro.pl` to a bot wall and `olx.pl`
+twice to "page too big", and the retrieval came back short. The trace then
+showed, in order:
+
+- `Couldn't read those — looking for another source`
+- `Searching "Toyota Corolla -site:allegro.pl"` → **`toyota.pl`** (plus
+  `autocentrum.pl`, `autoplac.pl`)
+- `Searching "site:olx.pl Toyota Corolla"`
+  Both strategies behaved exactly as designed, and — the point of the exercise —
+  excluding the host that blocked us surfaced the vendor's own page. It also
+  confirms the open question from the section above: **the scrape engines do
+  honour `-site:` and `site:` through the HTML-scraping provider**, not just
+  through an API. Answer generation for that turn then failed on the pre-existing
+  `isQuestionEchoAnswer` guard (the model echoed the question); the search itself
+  was healthy, and the log confirmed the error was
+  `The model echoed the question back with no actual answer`, not anything from
+  the recovery path.
+
+🔧 **Live-found and fixed: a host that keeps failing the same way kept eating
+the fetch budget**
+In that same run `olx.pl` failed **four times** with `page too big`, and still
+got an `alternate-page` recovery query (`site:olx.pl Toyota Corolla`) spent on
+it, which returned more `olx.pl` pages that also failed. `deadHosts` only
+covered `blocked`/`server-error`, on the theory that a page-level failure means
+another page might work — true in principle, empirically false for a site whose
+pages are uniformly too big. Fix: `WEB_RECOVERY_HOST_FAILURE_LIMIT = 2` — a
+host with two or more recoverable failures in a run is dead **whatever the
+reason**, so it is excluded from the recovery SERP and never gets a same-host
+retry. Covered by two tests in
+[**tests**/fetchRecovery.test.ts](../__tests__/fetchRecovery.test.ts) (two
+misses → dead and excluded; one miss → still gets its second chance). The fix
+is in the running bundle but was not re-run against a live SERP this round.
+
+✅ **The conversation digest is written per turn on a real device, and its
+fallback reaches a live search query** — the two things the section above
+listed as unverified. `chatSettings.digest` gained a row after every completed
+turn across five real chats, and a follow-up with a dropped subject
+(`"a ile się ja parzy?"`, no entity anywhere in the history) produced the trace
+line `Searching "A ile się ja parzy? <digest>"`. Without the digest that query
+would have gone out as four context-free words.
+
+🔧 **Live-found and fixed: the digest was written for a prompt, but it is
+spliced into a search query**
+The digest the model produced was meta-commentary about the conversation —
+_"The user is asking about the process of making a good cup of coffee in a
+café. The key entities are coffee and café."_ — 120 characters of English
+framing, for a Polish conversation. Appended to the follow-up it made the live
+search query `A ile się ja parzy? The user is asking about the process of…`,
+and retrieval drifted to **English** sources (`en.wikipedia.org` "Coffee
+preparation", `coffeeplusthree.com`, `tasteofhome.com`) for a Polish question:
+the useful terms were diluted by "the user is asking about", and the digest's
+language overrode the question's. Fix, at the root rather than at the splice:
+`DIGEST_SYSTEM_PROMPT` now asks for **the topic as a short noun phrase that
+reads like a search phrase**, in the conversation's language, with an explicit
+counter-example (`"parzenie kawy w kawiarce, stopień zmielenia"`, never
+`"The user is asking about..."`), plus `stripMetaFrame` as a deterministic
+cleanup for when the model writes the framing anyway (it also drops a trailing
+"The key entities are …" inventory, and never strips a digest to nothing).
+Re-run live on the same question after the fix: the stored digest became
+**`"zaporanie kawy w kawiarce"`** (25 chars, Polish, query-shaped — the
+model's own typo for "zaparzanie" included), the search line became
+`Searching "A ile się ja parzy? zaporanie kawy w kawia…"`, and retrieval moved
+to **`coffeepolska.pl` "Jak parzyć kawę w kawiarce?" and `inpostfresh.pl`
+"Jak parzyć kawę…"** — the right language, the right topic, on a query that
+carries no context of its own.
+
+🔧 **Live-found and fixed: the digest parroted the answer back instead of
+summarizing, and persisted a fabricated figure**
+Across twelve stored chats the pattern was consistent: **English** digests were
+real summaries, **Polish** ones were the answer's opening sentence copied
+verbatim. The worst case is not cosmetic — chat 177's digest was
+`"Cena Samsunga Galaxy S25 wynosi 299 zł."`, i.e. the model's own hallucinated
+price (the answer that produced it was flagged by the grounding badge as
+unverifiable) promoted into durable per-chat state that a later follow-up
+splices straight into a search query. Fix: `looksLikeAnswerEcho` rejects a
+digest that is contained in the answer or opens with the answer's own first
+words, and falls back to the user's question — which names the topic and
+carries no invented numbers.
+
+🔧 **Open: the digest stops accumulating after the first turn**
+In a three-turn conversation the digest set on turn 1 was still byte-identical
+after turn 2 (polled for two minutes), even though turn 2 introduced a new
+sub-topic (which coffee to grind). Whether the model returns the previous
+summary unchanged or the update never runs was not separated this round —
+distinguishing them needs instrumentation on `updateConversationDigest`'s
+return value, not another live run. Consequence: the digest tracks the
+conversation's **opening** topic, not its current one, so anaphora pointing at
+a later sub-topic ("a ten drugi?") still resolves to the wrong thing. Not
+fixed; this is the next thing to look at on the digest.
+
+⚠️ **Answer quality on this model/language is the limiting factor, not
+retrieval.** Three of the six live turns this round ended in
+`Failed to generate a response.` from the existing `isQuestionEchoAnswer`
+guard — `Qwen 3 - 1.7B` echoed the Polish follow-up back instead of answering
+it, on turns where the search itself had returned correct, on-topic Polish
+sources. The guard is doing its job (a non-answer is rejected rather than
+shown), but it means this round could verify **retrieval** end-to-end and could
+not verify the **answers** built on it. That is a model-capability limit on the
+simulator's smallest downloaded model, not a regression in anything above.
+
+## "Failed to generate a response." — one real regression, one long-standing rough edge
+
+✅ **Regression on this branch: the widened loop detector was destroying good
+answers — found by measuring against HEAD on 60 real device answers, fixed**
+The non-adjacent repetition widening added to `utils/loopDetection.ts` cut the
+answer at the **first** occurrence of _any_ clause that appeared twice
+anywhere. Measured by running HEAD's `truncateAtRepeatedClause` and the working
+tree's side by side over the 60 assistant messages actually stored on the test
+device: **8 of 60 were truncated harder than HEAD**, several catastrophically —
+a chocolate-cake recipe went from 986 characters to **158**, a packing list
+from 495 to 133, a weather answer from 382 to 105. Inspecting what repeated in
+those eight settled the design: **every false positive was a clause appearing
+exactly twice** — `"cocoa powder"` and `"baking powder"` (named once in the
+ingredients and again in the steps), `"zgodnie z źródłami"`, `"**Ochłonienie**
+– np"` — while the one genuine loop in the sample repeated its clauses
+**four to six times**. Six of the eight had **no repeated whole line at all**;
+the damage was entirely the clause rule firing on `x2` fragments.
+Fix, straight from that data:
+
+- clause rule: a repeat counts as a loop only from **three** occurrences
+  (`CLAUSE_REPEAT_LIMIT`), and cuts at the **second** occurrence, so the first
+  legitimate use of the phrase survives;
+- line rule: a repeated **whole line** still counts at two occurrences
+  (`LINE_REPEAT_LIMIT`) — that is the padded-list shape this widening was for —
+  keeping HEAD's adjacent-duplicate behaviour and adding the non-adjacent case,
+  again cutting at the second occurrence.
+  Re-measured over the same 60 answers afterwards: **59 identical to HEAD, 0
+  where it now keeps less than HEAD except one — the genuine padded list, which
+  goes from untouched to 277/495 with its four distinct items intact.** So the
+  detector is never more destructive than HEAD on real data and still gains the
+  case it was widened for. Verify: the false-positive shape is pinned as its own
+  test (`does not cut an answer that merely names the same thing twice`), as is
+  the three-occurrence threshold and the cut-at-the-repeat rule, in
+  [**tests**/loopDetection.test.ts](../__tests__/loopDetection.test.ts).
+  Live-confirmed on the simulator: a genuinely looping coffee answer (items 6-12
+  all `"Zapar zimną wodą"`) is still cut and still persists as an answer.
+
+✅ **Not a regression, but fixed anyway: an echoed question ended the turn
+instead of getting one retry**
+The remaining `Failed to generate a response.` turns were all
+`The model echoed the question back with no actual answer` — `Qwen 3 - 1.7B`
+restating the Polish follow-up instead of answering it. That detector
+(`isQuestionEchoAnswer`) and the gate that fails the turn on it are **byte-for-
+byte HEAD code**; this branch changed neither, and the doc above already
+records this echo shape as a reliable model tendency. So it is a long-standing
+rough edge, not something this branch introduced — but the user-visible outcome
+was still wrong: the search had succeeded and returned correct, on-topic Polish
+sources, and the turn ended on a red error with a Retry button.
+Fix: the same treatment the dangling-list case already had — one nudge and one
+retry (`QUESTION_ECHO_RETRY_PROMPT`, anchored to the question's language),
+before falling back to the failure. A turn now spends **at most one** nudge:
+`nudged` gates the dangling-list retry, so a reply that is both an echo and a
+dangling list gets the echo nudge and not both. If the retry echoes as well,
+the turn fails exactly as it did before.
+Verify: three cases in [**tests**/llmStore.test.ts](../__tests__/llmStore.test.ts)
+— recovery, failure when the retry echoes too, and "echo nudge not list nudge"
+for a reply that is both. Live-confirmed: `"ile kosztuje używana Toyota
+Corolla 2018"`, which failed this way twice earlier in the session, now
+persists an answer with its Sources row.
+⚠️ The recovered answer is still weak (_"kosztuje od 2026-09-01 do
+2026-09-02"_ — the model handed back dates instead of a price). The retry
+converts a hard failure into a poor answer; it does not make the model better.
+
+## Follow-up round: digest accumulation, prompt injection, circular non-answers
+
+✅ **Root cause of "the digest stops accumulating" found by instrumenting the
+device — it was never the model refusing to update**
+The previous round left this open with two competing hypotheses (the model
+returns the previous topic unchanged, or the update never runs). A temporary
+probe logging the raw `generateUtility` output settled it in two turns:
+
+```
+[digest-probe] prev=null rawLen=52 raw="<think>\n\nrowery górskie dla początkujących" ... stripped="rowery górskie dla początkujących"
+[digest-probe] prev="rowery górskie dla początkujących" rawLen=32 raw="<think>\n\nhamulce tarczowe lepsze" stripped=""
+```
+
+The model wrote **the correct new topic** — `"hamulce tarczowe lepsze"` — and
+then ran out of budget **before closing its `<think>` tag**. `stripThinkBlocks`
+treats an unterminated block as reasoning all the way to the end, so it
+returned `""`, and `updateConversationDigest` fell back to the previous digest.
+The digest was not freezing; it was being thrown away every turn after the
+first.
+Fix: `visibleDigestText` — when stripping leaves nothing and the raw output has
+an **unterminated** think block, take the text inside it, but only when it is
+short enough to be a topic phrase (`≤ DIGEST_MAX_CHARS`), so a genuine
+reasoning ramble still falls back to the previous digest. Deliberately local to
+the digest: changing `stripThinkBlocks` itself would start surfacing
+unterminated reasoning as answer text everywhere.
+Live-confirmed: the same two-turn bike conversation that previously left the
+digest on turn 1's topic now moves to `"hamulce tarczowe vs szczekowe"` after
+turn 2. Note it _replaces_ rather than accumulates — for referent resolution
+the current topic is what matters, and it is bounded at 200 characters, but it
+does mean the opening topic is dropped once the conversation moves on.
+
+✅ **Second live-found bug in the same probe: the echo guard was eating good
+digests**
+The probe also showed `prev="Jaki jest najlepszy rower górski dla
+poczatkujacego"` — the **question**, not turn 1's digest
+(`"najlepszy rower górski dla początkujących"`). `looksLikeAnswerEcho` was
+firing on a legitimate topic phrase, because the answer opened by restating the
+subject (`"Najlepszy rower górski dla początkujących to rower z…"`) — completely
+normal Polish phrasing, and the digest is a substring of it.
+Fix: containment now only counts as an echo when the digest covers most of the
+answer (`ECHO_COVERAGE_RATIO = 0.6`), and the lead-words rule needs a full
+eight-word window. This keeps both cases the guard exists for — the fabricated
+`"Cena Samsunga Galaxy S25 wynosi 299 zł."` (the digest _was_ the whole answer,
+ratio 1.0) and the long coffee-recipe copy (17 words, lead-word match) — while
+leaving a short topic phrase alone.
+
+✅ **`prepareMessagesForLLM` takes an options object**
+It had grown to twelve positional parameters and adding the digest would have
+made thirteen. Now `(messages, context, settings, model, options)` with a
+`PrepareMessagesOptions` interface; the four genuinely required arguments stay
+positional. The 47 test call sites and both `llmStore` call sites were
+converted by a codemod that parses balanced arguments and drops the ones that
+were `undefined`, so the diff is mechanical; the suite is the verification.
+
+✅ **The digest now also reaches the model's prompt, but only where it replaces
+something that was actually lost**
+`prepareMessagesForLLM` already trims old turns against a character budget.
+When — and only when — that trimming actually dropped turns, the digest is
+appended to the system prompt as `Conversation so far: <topic>`. A short
+conversation is untouched. The digest's length is counted into `mandatoryChars`
+**before** the trimming loop, so it is paid for out of the history budget
+rather than added on top of it; the test asserts the prompt can only ever grow
+by at most the digest line itself. Deliberately gated this way because of the
+⚠️ lesson recorded under Real estate: a prompt-side addition that is always
+present is exactly the shape that caused a worse regression there.
+⚠️ Not yet observed live — reaching the gate needs a conversation long enough
+for the budget to drop turns, which the simulator session did not produce.
+
+✅ **`isCircularNonAnswer` restored — but wired into the retry, not into a hard
+failure**
+The plan called this "a straight revert of the two deletions in `9d3476a`". A
+straight revert would have re-introduced exactly the outcome that was just
+fixed: an answer that only talks about its sources would end the turn on
+`Failed to generate a response.` Restored the detector and its persistence
+gate, but routed it through the same one-nudge retry as the question echo and
+the dangling list. The three near-identical retry blocks are now one
+`nudgeOnce(reason, prompt, stillBroken)` helper, and a turn still spends **at
+most one** nudge in total.
+While restoring it, its marker regex turned out not to match `"źródeł"` — the
+genitive plural, and the most natural form in exactly the phrasing this
+detector is for (`"ze źródeł podanych wyżej"`). Widened `źródł\w*` to
+`źród\w*`; low risk now that a hit means a retry rather than a failed turn.
+
+✅ **Dead-host recovery confirmed live** — the fix that was implemented but
+unverified last round. Re-running `"ile kosztuje używana Toyota Corolla 2018"`:
+`olx.pl` failed twice (`took too long`), `allegro.pl` once (`blocked the
+reader`), and the recovery query came back as
+**`Searching "Toyota Corolla -site:olx.pl -site:allegro.pl"`** — both hosts
+excluded, and, unlike the previous round, **no `site:olx.pl` retry was spent at
+all**. The freed budget went to readable hosts (`toyota.pl` twice,
+`autocentrum.pl`, `autoplac.pl`) and the turn persisted an answer with its
+Sources row.
+
+## Test harness
+
+✅ **The jest run was silently loading a second, stale copy of the repo — two
+suites failed for reasons that had nothing to do with their code, and every
+reported test count on this branch was inflated**
+Symptom: `__tests__/useKeyboardLift.test.ts` failed with
+`useAnimatedReaction is not a function` even though
+`__mocks__/react-native-reanimated.ts` plainly exports it, and
+`__tests__/WebFavicon.test.tsx` failed its retry assertions. Probing the
+resolved module showed it was missing exactly the exports that the root mock
+has and an older revision of that file did not (`useAnimatedReaction`,
+`FadeInUp`, `FadeOutDown`, `FadeOutUp`, the `useRef`-backed `useSharedValue`).
+Cause: a leftover agent git worktree at
+`.claude/worktrees/agent-a5ab2d870064da294` (branch
+`fix/chat-input-first-paste-clears`) sits **inside** the project root, so it
+contains a full second checkout — including its own
+`__mocks__/react-native-reanimated.ts` from before that mock was extended.
+jest-haste-map saw two manual mocks under the same name and resolved the stale
+one; it also collected that worktree's `__tests__/**` as real suites, which is
+why the run reported 161 suites / 2340 tests (and, in an earlier round, 1491)
+instead of this project's actual 98 suites / 1534 tests, with every duplicated
+suite listed twice.
+Fix: `modulePathIgnorePatterns: ["<rootDir>/.claude/worktrees/"]` in the jest
+config in `package.json`. This is deliberately a pattern, not a one-off
+cleanup — the worktree directory is created by tooling and will come back;
+the worktree itself was left alone because its branch is not merged.
+Verify: `npx jest` reports 98 suites / 1534 tests with no duplicated suite
+names, and both suites above pass. A regression here looks like a test failing
+on an export that demonstrably exists in the file it is supposed to be reading.
+
+## Conversation digest (cross-turn context for referent resolution)
+
+✅ **Per-chat rolling "digest" now backs `carryReferentIntoQuery`'s fallback
+for non-entity topic anaphora — the scope gap noted directly above ("a ten
+drugi model?", "w tym meczu")**
+Entity-carrying only ever solves referents that are proper nouns. General
+topic anaphora ("the other one", "in that match") has no proper noun to
+extract at all — closing that gap requires knowing what the conversation is
+currently _about_, which needs a real summary, not a regex. Chosen approach
+(confirmed with the user, weighed against `PLANNER_EVIDENCE`'s documented
+small-model unreliability at structured tasks): run one cheap on-device
+`generateUtility` summarization **per completed turn**, not per query —
+`utils/conversationDigest.ts`'s `updateConversationDigest(generate,
+previousDigest, question, answer)` builds an incremental prompt (`previous
+digest + latest exchange → updated digest`, capped at `DIGEST_MAX_CHARS =
+200`) so the prompt stays bounded regardless of conversation length. Stored
+per-chat in a new `chatSettings.digest` column (`database/db.ts` schema +
+migration, `getChatDigest`/`setChatDigest` in `database/chatRepository.ts`),
+mirrored in `store/llmStore.ts` as `activeChatDigest: string | null` (loaded
+in `setActiveChatId`, updated fire-and-forget right after
+`persistMessage`/`updateChatStateForGeneration('complete', ...)` in
+`sendChatMessage`, guarded by `!get().isGenerating` so it can't collide with
+a new turn starting — `llmInstance.generate()` isn't reentrant).
+`carryReferentIntoQuery(query, history, digest?)`: when a query looks
+referentially incomplete and no entity is found in history, falls back to
+appending the digest instead of leaving the query bare; `buildConversation`
+also prepends `Conversation summary so far: {digest}` to the LLM-planner's
+own prompt. The same `carryReferentIntoQuery` call is reused (not
+reimplemented) inside `utils/messageSources.ts`'s `buildMessageSources` for
+the local-document RAG retrieval query, wired through
+`components/chat-screen/useSendChatMessage.ts`'s existing `messageHistory`/
+`activeChatDigest` — same mechanism, same fallback rule, both call sites.
+
+Two real bugs found live while verifying this (both fixed, both regression-
+tested):
+
+1. **`PROPER_NOUN_RUN` matched capital letters mid-word, not just at word
+   start** — "iPhone Air" was misread as the two-word proper-noun run "Phone
+   Air" (the regex had no boundary anchor, so it happily started matching at
+   the capital "P" inside "iPhone"), which meant `mostRecentEntity` returned
+   garbage and the digest fallback never even got a chance to run — the
+   entity branch always "won" first, incorrectly. Fixed with a
+   `(?<!\p{L})` lookbehind before the first capital. Live-repro: compared
+   "iPhone 17 Pro" vs "iPhone Air" by weight, then asked "A ile on kosztuje,
+   ten pierwszy?" — before the fix, the query became "...ten pierwszy? Phone
+   Air"; after, this correctly falls through to the digest.
+2. **Raw `<think>...</think>` tags leaking into the stored digest** —
+   `updateConversationDigest` never stripped the model's think block before
+   clamping/storing, so a thinking-capable model's reasoning wrapper (even
+   an empty `<think>\n\n</think>`) got persisted verbatim into
+   `chatSettings.digest` and would have been spliced straight into a live
+   search query. Caught by inspecting the actual persisted SQLite row
+   (`chatSettings` table) after a real on-device turn, not by the unit
+   suite. Fixed by running the generated text through the existing
+   `stripThinkBlocks` (`utils/thinking.ts`) — the same utility already used
+   elsewhere in this file for `isQuestionEchoAnswer`/answer-language
+   detection, not a new mechanism.
+
+Live-verified end-to-end: schema migration applies cleanly to an existing
+on-device database (no crash across two real chats), `chatSettings.digest`
+rows are written after real turns, and after both fixes above the persisted
+digest is clean (`"iPhone 17 Pro and iPhone Air weight comparison."`, no
+leaked tags). 💡 **Scope note**: full live verification of the
+verbatim-mode digest-append specifically (i.e. seeing `"<query> <digest>"`
+in an actual on-device search trace) was blocked by an orthogonal,
+already-known, user-accepted condition — the only downloaded models on the
+test device (`Qwen 3 - 1.7B`, `Gemma 4 - 2B`) are currently pinned to
+`'llm'` planner mode, which dominates query construction before the
+verbatim fallback path would engage; the LLM planner's own hallucination
+risk in that mode is the pre-existing, documented `F13` regression, not a
+digest bug. `carryReferentIntoQuery`'s digest fallback itself is covered
+directly and thoroughly by unit tests (entity found → digest ignored; no
+entity, digest present → appended; no entity, no digest → unchanged;
+end-to-end through `planWebSearch` and through `buildMessageSources`). The
+local-document RAG side of this (`buildMessageSources`) was not live-tested
+with an attached document this round (would require downloading the
+embedding model + attaching a file) — verified via unit tests asserting the
+exact `prompt` string reaching `hybridRetrieve`, reusing the digest pipeline
+already proven live on the web-search side.
 
 ## Cross-feature: web search vs. local document RAG (mutual exclusion)
 
@@ -303,7 +806,7 @@ Scenario: after attaching a document and asking it a question, a
 completely unrelated follow-up in the same chat ("Jaka jest dzisiejsza
 pogoda w Warszawie?" — today's weather in Warsaw) also skipped web search,
 because `hasRagSources` is based on whether the chat has any RAG sources
-*enabled* — which, per the existing (pre-dating this change) "enable this
+_enabled_ — which, per the existing (pre-dating this change) "enable this
 source for the chat" behavior in `useSendChatMessage.ts`, persists for
 every future message once a document has been attached and used once, not
 just the turn it was attached on. The model answered the weather question
@@ -337,20 +840,20 @@ many children does Elon Musk have") got answered **in English**. The
 answer-language guard (`isWrongLanguageAnswer` in
 [utils/messageSources.ts](../utils/messageSources.ts)) exists specifically
 to catch and retry this shape of failure — but it never fired, because
-`detectQuestionLanguage` couldn't name the *question's* language at all
+`detectQuestionLanguage` couldn't name the _question's_ language at all
 (`null`), and the guard is a no-op without an expected language to compare
 against.
 Root cause, and why this is a **class** of bug, not one word: each
 language in [utils/questionLanguage.ts](../utils/questionLanguage.ts) is
 scored from a hand-curated marker-word list. A word absent from every
-*other* language's list scores as if it were exclusive to its own language
+_other_ language's list scores as if it were exclusive to its own language
 — regardless of whether it's actually distinctive. "ma" (a common Polish
 verb, "has") isn't in the Polish list, but happens to also be an exclusive
 French marker ("my", possessive) — so a Polish sentence containing "ma"
 picked up a phantom French vote. Here it tied the genuine Polish signal
 ("ile") exactly, and the old tie-break gave up (`null`) the moment any two
 languages tied on raw score, without asking whether that tie was between
-two *real* signals or one real signal and one coincidence. With close to
+two _real_ signals or one real signal and one coincidence. With close to
 25 languages each contributing a marker list, this exact shape of
 collision — some short, ordinary word that one list-author didn't think to
 add — can happen between any pair, not just Polish/French. Audited the
@@ -360,25 +863,25 @@ such words** across the current language set.
 Fix: `pickCandidate`'s tie-break
 ([utils/questionLanguage.ts](../utils/questionLanguage.ts)) no longer
 treats every raw-score tie as unresolvable. A tie is now broken in favor
-of whichever tied candidate has genuine *decisive* evidence (a marker word
+of whichever tied candidate has genuine _decisive_ evidence (a marker word
 of 3+ characters, or one carrying a language-specific diacritic) — and
 only when exactly one of the tied candidates has that; if two languages
 both have decisive evidence, or neither does, it still abstains (`null`)
 rather than guess. Nothing in the fix references "ma", French, or Polish
 specifically — it's a property of the scoring, so it applies uniformly to
 every language pair sharing the list-completeness gap.
-Verify: [__tests__/questionLanguage.test.ts](../__tests__/questionLanguage.test.ts)
+Verify: [**tests**/questionLanguage.test.ts](../__tests__/questionLanguage.test.ts)
 — the original captured case, plus a systematic audit test that
 cross-pairs all 24 identified short-exclusive words against 13 other
 languages' own decisive markers (276 synthetic sentence pairs) and asserts
-the *safety* invariant that actually matters: a short-word collision must
+the _safety_ invariant that actually matters: a short-word collision must
 never make the detector confidently name the wrong language — landing on
-the correct language or abstaining are both acceptable, being *confidently
-wrong* is not. All 276 pairs pass that bar (a handful abstain via `null`
+the correct language or abstaining are both acceptable, being _confidently
+wrong_ is not. All 276 pairs pass that bar (a handful abstain via `null`
 instead of naming the technically-correct language — safe, just not
 maximally precise, and out of scope for this fix). The existing 500+ item
 multilingual corpus regression suite
-([__tests__/fixtures/multilingualQueries.ts](../__tests__/fixtures/multilingualQueries.ts))
+([**tests**/fixtures/multilingualQueries.ts](../__tests__/fixtures/multilingualQueries.ts))
 still reports 100% per-language accuracy with zero cross-language
 misnamings — confirming the tie-break change doesn't trade the new safety
 property for the old precision. Confirmed live: reloaded, re-asked the
@@ -420,10 +923,10 @@ present in what the model actually read, and `findUngroundedFigures`
 treat such a figure as self-confirmed.
 Fix: `wrap()` now derives the figures whitelist from whatever `ctx` it is
 called with, instead of a fixed outer value — since `finalContext` is
-always a truncated *prefix* of `safeContext`, the whitelist is now
+always a truncated _prefix_ of `safeContext`, the whitelist is now
 guaranteed to be a subset of what the model actually sees, for every call
 site.
-Verify: [__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) —
+Verify: [**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) —
 "never whitelists a price figure that truncation cut out of the context
 (F9)"; confirmed live via debug log (see Shopping below) — the whitelist
 sent to the model now exactly matches the figures present in the truncated
@@ -442,6 +945,7 @@ on top**
 Scenario: asked the gold price ($1573, itself already correctly flagged
 unverified), then asked the natural follow-up "And how much is that in
 euros?". Two things went wrong:
+
 1. The fresh web search built from the follow-up alone has no way to
    resolve "that" — it retrieved three generic USD/EUR converter pages
    (calculator.net, wise.com ×2, themoneyconverter.com), nothing tied to
@@ -452,47 +956,47 @@ euros?". Two things went wrong:
    conversion the question actually asked for, despite the model's own
    previous answer (with the real number) being right there in the same
    conversation's history.
-Added `getFollowUpConversionInstruction` (marker: "how much is that/it in
-X", "convert that to X", Polish equivalents) telling the model to use the
-exact figure from its own previous answer as the conversion base. Verify:
-[__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F21).
-Confirmed wired correctly live, but the instruction alone did not change
-the answer on re-test ("The price of 1 USD in euros is 1.00." again) — the
-same class of gap as "weak retrieval, model answers anyway" under
-Beauty/cosmetics below: this asks the 1.7B model to locate a number
-several turns back and do arithmetic on it, which a prompt instruction
-alone doesn't reliably fix.
-Added a second, deterministic layer instead of relying on compliance:
-`hasGenuineConversionRate`/`isUngroundedConversionClaim`
-([utils/web/figureGrounding.ts](../utils/web/figureGrounding.ts)) — the
-same "detect after the fact, append a visible caveat" pattern already
-proven for price and trend figures
-(`withFigureGroundingCaveat`/`withTrendGroundingCaveat`), now extended with
-`withConversionGroundingCaveat`
-([utils/messageSources.ts](../utils/messageSources.ts), wired into
-[store/llmStore.ts](../store/llmStore.ts)). `findUngroundedFigures` alone
-does not catch this case: a converter page's own title/snippet almost
-always carries its normalization baseline as boilerplate ("1 USD to EUR",
-"1 Euro to US dollars") — plain text that trivially "confirms" any
-fabricated answer figure of exactly 1, which is exactly what tripped up
-the existing figure-grounding check on the live failure above. A genuine
-exchange rate is virtually never exactly 1 between two different
-currencies, so `hasGenuineConversionRate` requires a context figure other
-than a bare 1 before trusting that any conversion is actually grounded.
-Verify: [__tests__/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
-and [__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts),
-both asserting against the literal captured failure text ("The price of 1
-USD in euros is 1.00.").
-Live status (superseded — see the two follow-ups directly below): confirmed
-the caveat pipeline is wired end to end (full suite/tsc/eslint clean, no
-regressions), but several live re-tests this round did not reproduce the
-exact original wrong-figure text again — the model's output for this
-question shape is highly non-deterministic run to run (seen instead: an
-honest "no specific price found" refusal, a different fabricated figure not
-shaped like "1:1", and once a raw instruction-text leak unrelated to
-conversion at all — see the note below). So this was unit-verified against
-the exact captured failure, and wired correctly, but not live-reconfirmed
-to the same standard as the blank-screen fix below at the time.
+   Added `getFollowUpConversionInstruction` (marker: "how much is that/it in
+   X", "convert that to X", Polish equivalents) telling the model to use the
+   exact figure from its own previous answer as the conversion base. Verify:
+   [**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F21).
+   Confirmed wired correctly live, but the instruction alone did not change
+   the answer on re-test ("The price of 1 USD in euros is 1.00." again) — the
+   same class of gap as "weak retrieval, model answers anyway" under
+   Beauty/cosmetics below: this asks the 1.7B model to locate a number
+   several turns back and do arithmetic on it, which a prompt instruction
+   alone doesn't reliably fix.
+   Added a second, deterministic layer instead of relying on compliance:
+   `hasGenuineConversionRate`/`isUngroundedConversionClaim`
+   ([utils/web/figureGrounding.ts](../utils/web/figureGrounding.ts)) — the
+   same "detect after the fact, append a visible caveat" pattern already
+   proven for price and trend figures
+   (`withFigureGroundingCaveat`/`withTrendGroundingCaveat`), now extended with
+   `withConversionGroundingCaveat`
+   ([utils/messageSources.ts](../utils/messageSources.ts), wired into
+   [store/llmStore.ts](../store/llmStore.ts)). `findUngroundedFigures` alone
+   does not catch this case: a converter page's own title/snippet almost
+   always carries its normalization baseline as boilerplate ("1 USD to EUR",
+   "1 Euro to US dollars") — plain text that trivially "confirms" any
+   fabricated answer figure of exactly 1, which is exactly what tripped up
+   the existing figure-grounding check on the live failure above. A genuine
+   exchange rate is virtually never exactly 1 between two different
+   currencies, so `hasGenuineConversionRate` requires a context figure other
+   than a bare 1 before trusting that any conversion is actually grounded.
+   Verify: [**tests**/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
+   and [**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts),
+   both asserting against the literal captured failure text ("The price of 1
+   USD in euros is 1.00.").
+   Live status (superseded — see the two follow-ups directly below): confirmed
+   the caveat pipeline is wired end to end (full suite/tsc/eslint clean, no
+   regressions), but several live re-tests this round did not reproduce the
+   exact original wrong-figure text again — the model's output for this
+   question shape is highly non-deterministic run to run (seen instead: an
+   honest "no specific price found" refusal, a different fabricated figure not
+   shaped like "1:1", and once a raw instruction-text leak unrelated to
+   conversion at all — see the note below). So this was unit-verified against
+   the exact captured failure, and wired correctly, but not live-reconfirmed
+   to the same standard as the blank-screen fix below at the time.
 
 ✅ **Root cause of "not live-reconfirmed" found and fixed: `groundingCaveats`
 was persisted to the DB correctly but never reached the live, currently-open
@@ -562,7 +1066,7 @@ assistant turn by dropping the in-progress placeholder
 (`activeChatMessages.slice(0, -1).findLast(...)`) rather than trusting the
 array's last element, since that's always the still-generating placeholder
 at this point in the flow.
-Verify: [__tests__/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
+Verify: [**tests**/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
 — the exact captured live text (77 493 USD anchor, 23,19 EUR answer,
 flagged), a plausible conversion against the same anchor (not flagged), and
 the case with no prior answer to anchor against (not flagged, consistent
@@ -577,11 +1081,11 @@ doesn't match).
 🔧 **New, unrelated finding along the way: raw instruction text leaking
 into a visible answer**
 While repeatedly re-testing the conversion follow-up above, one run
-produced: *"$1. 366 stands far apart from the other figures found — that
+produced: _"$1. 366 stands far apart from the other figures found — that
 is more likely a filter default, shipping cost, financing installment, or
 an unrelated listing than this product's actual price. Do not use it as
 the low (or high) end of a range, or as "the" price, unless the source
-text explicitly ties it to this exact product..."* — this is the model
+text explicitly ties it to this exact product..."_ — this is the model
 echoing back the shape of `getOutlierNote`'s own instruction text
 (the price-outlier grounding instruction, `utils/promptUtils.ts`) as if it
 were the answer, rather than following it. Not reproduced a second time,
@@ -647,7 +1151,7 @@ Fix: `getRecentEventCompletenessInstruction` (`utils/promptUtils.ts`),
 triggered by "last/latest match/game" markers, tells the model to include
 who else was involved and when, not just the headline figure, when the
 sources name that. Verify:
-[__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F19).
+[**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F19).
 Confirmed live, but only a partial win: re-asked the identical question, the
 answer grew from a bare "2-0" to "Ostatni mecz Realu Madryt [...] mecz w
 Międzyklubowe towarzyskie, w którym Real Madryt wygrał 4-2" — now names the
@@ -691,7 +1195,7 @@ teams/date, so the search query itself stays under-specified — is
 untouched and out of scope; this fix only stops an all-time page from being
 used to answer that under-specified query, same as the existing period-
 scope guard does for "this year" questions. Verify:
-[__tests__/listingRelevance.test.ts](../__tests__/listingRelevance.test.ts)
+[**tests**/listingRelevance.test.ts](../__tests__/listingRelevance.test.ts)
 — the exact captured Basketball-Reference title dropped alone, dropped
 alongside a real boxscore page (keeping only the boxscore), and NOT dropped
 for a plain all-time question with no event/period scope. Confirmed live:
@@ -726,6 +1230,7 @@ was **3,698.96–3,746.00 zł** across two separate live runs; the real price
 (independently verified, and present verbatim in the scraped page) is
 **~5,099–5,187 zł**. The source (Ceneo.pl) was the correct listing, so this
 was never a variant-selection bug.
+
 - Whitelist/truncation-order bug (see Finance/crypto above): this was
   suspected to be the root cause and is fixed and verified — the whitelist
   sent to the model is confirmed (via live debug log) to always match the
@@ -734,7 +1239,7 @@ was never a variant-selection bug.
   consistent with a context that was itself already wrong.
 - **Real root cause (confirmed live, now fixed)**: the truncation itself
   was cutting the correct price out of context entirely. Ceneo's scraped
-  page layout puts a "customers also viewed" carousel of *other* iPhone
+  page layout puts a "customers also viewed" carousel of _other_ iPhone
   models/variants (iPhone Air, iPhone 17, iPhone 17 Pro Max, other colors)
   — each with its own `od X zł` price — **before** the actual target
   listing's own price in the page's linear text. The old truncation kept a
@@ -752,7 +1257,7 @@ was never a variant-selection bug.
     search far more room than the model's real prompt budget had left.
     Fixed by measuring the actual current system prompt length instead of
     guessing. Verify:
-    [__tests__/contextBudget.test.ts](../__tests__/contextBudget.test.ts)
+    [**tests**/contextBudget.test.ts](../__tests__/contextBudget.test.ts)
     (F12).
   - Fix, downstream / defense-in-depth (`utils/promptUtils.ts`): when
     truncation is still unavoidable and a web source is present, the
@@ -762,10 +1267,10 @@ was never a variant-selection bug.
     (`selectRelevantContent` in `webResultsToContext.ts`), but runs it at
     THIS layer's true final budget instead of an upstream estimate. It only
     touches well-formed, self-closed `--- <label>: <name> --- ... --- End
-    of <label> ---` blocks, so every kept block stays fully attributed and
+of <label> ---` blocks, so every kept block stays fully attributed and
     closed; anything else falls back to the original naive-slice path
     unchanged. Verify:
-    [__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F11).
+    [**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F11).
   - Confirmed live on-device: the same question ("Ile kosztuje iPhone 17
     Pro 256GB w Polsce?") now answers "5099,00 zł" — the real price — with
     Sources still correctly populated.
@@ -773,7 +1278,7 @@ was never a variant-selection bug.
   ([utils/web/figureGrounding.ts](../utils/web/figureGrounding.ts)) prefers
   figures actually governed by the word "price"/"cena" over any currency
   figure in context — real and tested
-  ([__tests__/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)),
+  ([**tests**/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)),
   but wasn't the fix here: Polish e-commerce pages write "od X zł" ("from
   X zł"), not "cena: X zł", so the tight extraction found nothing and fell
   back to the loose match — which can't distinguish the target product's
@@ -784,8 +1289,8 @@ was never a variant-selection bug.
 Scenario: asked for the price of Sony WH-1000XM5 headphones on Amazon, the
 answer stated **$278** — a number not present in any retrieved source (the
 sources say $150 "lowest price ever" and "nearly 40% off"). The
-⚠️ *"A figure in this answer could not be verified against the retrieved
-sources"* caveat correctly fired, with Sources still populated so the user
+⚠️ _"A figure in this answer could not be verified against the retrieved
+sources"_ caveat correctly fired, with Sources still populated so the user
 can check the real figure themselves.
 Verify: `withFigureGroundingCaveat` in
 [utils/messageSources.ts](../utils/messageSources.ts) — this is the same
@@ -804,21 +1309,22 @@ page — but a real answer-quality gap distinct from fabrication; no existing
 instruction targeted "the source is a listing page with many valid prices
 for different variants," only single-figure grounding.
 Fix: `getFiguresInstruction` (`utils/promptUtils.ts`) now adds a range hint
-whenever 3+ distinct figures are found for one unlabeled product: *"These
+whenever 3+ distinct figures are found for one unlabeled product: _"These
 are prices for different variants or listings of the same product, not one
 figure to quote directly — do not list them out. Respond with ONLY a range
-(lowest to highest) or ONLY the single most relevant one."* Two figures
+(lowest to highest) or ONLY the single most relevant one."_ Two figures
 (e.g. current vs. previous price) don't trigger it, since stating both is
 usually the right answer there.
+
 - First attempt used softer wording ("state a range... not every one as a
   list") — live-tested, and the model added a range but ALSO kept the full
   list ("...$65, $64, $102, ... The lowest price is $64 and the highest is
   $160."). Strengthened to the imperative "do not list them out... ONLY a
   range" above, which live-tested clean: "The prices for Nike Air Max 90
   shoes on Nike.com range from $65 to $160." — no list, no caveat.
-Verify: [__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts)
-(F14 and the two-figure negative case); confirmed live on-device with the
-exact scenario above.
+  Verify: [**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts)
+  (F14 and the two-figure negative case); confirmed live on-device with the
+  exact scenario above.
 
 ✅ **Refusal answered in the wrong language — not reproduced, not a bug**
 Scenario: asked (in Polish) for the price of an RTX 4070 GPU on Allegro,
@@ -833,7 +1339,7 @@ single, unreproduced instance.
 
 ✅ **Suspiciously low outlier price stated as the low end of a range — fixed**
 Scenario: re-testing the RTX 4070 question above (after the query-planner
-fix) got a *different* third outcome: a Polish, sourced-looking answer —
+fix) got a _different_ third outcome: a Polish, sourced-looking answer —
 "...najniższe ceny mogą być dostępne w zakresie od 399 zł" (from 399 zł) —
 but 399 zł is roughly 5-8x below any real price for that card. Real prices
 cluster in the 2,000-3,000 zł range; a figure that far outside the cluster is
@@ -852,9 +1358,9 @@ source text explicitly ties it to this exact product. Median-relative rather
 than a fixed threshold, since normal price variance differs by product
 category (compare: Nike Air Max colorways cluster within ~2.5x of each other
 and correctly trigger no outlier flag).
-Verify: [__tests__/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
+Verify: [**tests**/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
 (F15 — `splitPriceOutliers`, both a low and a high outlier, and the Nike
-listing as a true-negative); [__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts)
+listing as a true-negative); [**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts)
 (same scenario end-to-end through `prepareMessagesForLLM`, plus a
 true-negative for a normally-clustered listing). Re-tested live twice after
 the fix (identical and reworded RTX 4070 questions): neither run produced a
@@ -866,6 +1372,7 @@ runs, that's supporting evidence rather than a byte-for-byte repro of "399 zł
 the unit tests above using the exact real-world figures.
 
 💡 **Proposed**
+
 - Consider a retrieval-side filter analogous to
   `excludeCrossAssetIfAlternatives` for product variants if the prompt-side
   warning proves insufficient under further testing.
@@ -876,7 +1383,7 @@ Every price-grounding bug fixed this round before this one — the variant
 mixup, the carousel-of-decoys truncation bug, the raw Nike listing dump, and
 the RTX 4070 outlier above — was a downstream symptom of the same root gap:
 once a page is fetched, the pipeline reduced it to plain prose and then had
-to *infer* which number in that prose was the actual price, with layered
+to _infer_ which number in that prose was the actual price, with layered
 regex heuristics (`extractPriceStatementTokens`, `splitPriceOutliers`,
 `getVariantGroundingInstruction`, the range hint, …) doing the inferring.
 Most e-commerce pages already state the answer unambiguously in a form
@@ -920,15 +1427,15 @@ to resolve, not reintroduced in a new form — and falls back to exactly the
 existing heuristic pipeline unchanged. This is additive, not a replacement:
 a page with no structured markup at all gets no `[Verified product data]`
 block and behaves exactly as before.
-Verify: [__tests__/extractArticle.test.ts](../__tests__/extractArticle.test.ts)
+Verify: [**tests**/extractArticle.test.ts](../__tests__/extractArticle.test.ts)
 (single Product/Offer with normalized availability, array-wrapped offer,
 multiple disagreeing offers, a multi-product category page, OG-tag fallback,
 no structured data at all, a `Product` nested in `@graph`);
-[__tests__/enrichResults.test.ts](../__tests__/enrichResults.test.ts)
+[**tests**/enrichResults.test.ts](../__tests__/enrichResults.test.ts)
 (propagation onto the enriched result);
-[__tests__/webResultsToContext.test.ts](../__tests__/webResultsToContext.test.ts)
+[**tests**/webResultsToContext.test.ts](../__tests__/webResultsToContext.test.ts)
 (the marker line renders only with a price present);
-[__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F16 — the
+[**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F16 — the
 trust instruction appears only when a source actually carries structured
 data). Confirmed live: asked for the current price of an iPhone 17 Pro from
 Apple's own Polish store, the answer was a single clean figure — "5799 zł"
@@ -954,7 +1461,7 @@ Root cause: `findUngroundedFigures`
 `contextFigures` (real currency figures found in context) and, when that
 list came back empty, returned `[]` — "nothing to compare against" was
 being treated as "nothing to flag." That's backwards: context existing but
-containing zero currency figures at all is the *strongest* ungrounded case,
+containing zero currency figures at all is the _strongest_ ungrounded case,
 not a reason to wave a stated figure through. Every earlier fix in this
 file targeted "wrong figure among several real ones in context"
 (installment vs. price, a filter-widget default, a different asset); this
@@ -962,12 +1469,12 @@ is the first case of "context has no price data whatsoever, yet the model
 still states one."
 Fix: `contextFigures.length === 0` now returns every figure the answer
 states, instead of `[]`. Verify:
-[__tests__/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
+[**tests**/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
 (replaces the old "returns nothing" test, which asserted the previous,
 backwards behavior, with one asserting the answer's figure is flagged; a
 second test covers the still-correct "answer states no figure either" case
 alongside it);
-[__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts)
+[**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts)
 confirms `withFigureGroundingCaveat`'s two closest existing tests are
 unaffected (an answer whose figure matches context, and an answer with no
 currency figure at all — neither passes through the new zero-context
@@ -1017,7 +1524,7 @@ here was already close to empty. Isolated the cause by elimination: turning
 web search off for the identical question got a full, coherent (if
 hallucinated, ungrounded) answer — proving the failure was specific to the
 web/RAG prompt-assembly path, not the model or question in general. The
-newly-added reminder was the only *unconditional* new instruction line this
+newly-added reminder was the only _unconditional_ new instruction line this
 round (the comparison/recent-event instructions above only add text when
 their question markers match, which they don't here) — the working theory
 is that stacking one more instruction onto an already near-empty, low-
@@ -1030,7 +1537,7 @@ skonsultować się z ogłoszeniami na OLX" — no echo, no jargon leak either.
 Net effect: the original jargon-leak instruction (with "or its translation")
 stays as the only defense — not strengthened this round, since the
 strengthening attempt cost far more than the one-off leak it targeted.
-Verify: [__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) —
+Verify: [**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) —
 the sandwiched-reminder test and its assertion were added and then reverted
 together with the code; `git diff` shows no net change to `wrap()`'s output
 shape. This is a documented dead end, not a shipped fix — kept here so a
@@ -1049,7 +1556,7 @@ that one node. This is a legitimate, independently-justified correctness
 fix — verified with its own tests — but it did **not** turn out to explain
 the echo regression above (the OLX pages here never got far enough to have
 their JSON-LD parsed at all — enrichment itself found nothing usable).
-Verify: [__tests__/extractArticle.test.ts](../__tests__/extractArticle.test.ts)
+Verify: [**tests**/extractArticle.test.ts](../__tests__/extractArticle.test.ts)
 (F20).
 
 ## Beauty / cosmetics
@@ -1104,7 +1611,7 @@ content. Routed through the same `store/llmStore.ts` gate as the
 question-echo check below — a match is treated as a failed generation
 (`markGenerationFailed` → "Failed to generate a response." with Retry)
 instead of being persisted as a real reply. Verify:
-[__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts) —
+[**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts) —
 the exact captured live text, an English-language version of the same
 shape, a genuine answer that names a real entity (not flagged), a single
 ordinary "source" mention (not flagged), two mentions — below the
@@ -1124,9 +1631,9 @@ sites in `store/llmStore.ts` (`describeGenerationFailure` and the
 persistence gate) were removed in the tip commit on this branch, `9d3476a
 "feat(web): move grounding caveats out of the answer text into badges"` —
 apparently collateral damage from that refactor, since the two are
-unrelated (that commit moved *caveats* — figure/trend/conversion warnings
+unrelated (that commit moved _caveats_ — figure/trend/conversion warnings
 appended to answer text — into separate badge components; the circular
-detector was a *reject-and-retry* gate, not a caveat). Live testing this
+detector was a _reject-and-retry_ gate, not a caveat). Live testing this
 round reproduced exactly this failure shape again on Pixel: literal
 "źródło 2" phrases in the answer, and no Sources shown underneath (see
 Citations / Sources below for why the latter half also happens on a
@@ -1173,7 +1680,7 @@ Fix: `getComparisonStructureInstruction` (`utils/promptUtils.ts`), triggered
 by "how do X and Y differ" / "czym się różni" markers, tells the model to
 address each side under its own clear heading or point rather than blending
 them into one paragraph. Verify:
-[__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F18).
+[**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F18).
 Confirmed live on the identical question: the answer now opens with "Grypa
 i przeziębienie różnią się objawami i przebiegiem," then presents **Grypa:**
 and **Przeziębienie:** as two clearly separated bulleted sections, closing
@@ -1197,14 +1704,14 @@ short (2–5-word) phrase repeated back-to-back with no punctuation between
 copies — this loop's repeating unit is a full ~12+-word sentence, and each
 copy sits inside its OWN numbered list item (i.e. separated by list-item
 punctuation/numbering, not glued together with no separator), which is
-exactly the shape those two detectors were built to catch the *absence* of
-punctuation for, not a *presence* of structural separators between longer
+exactly the shape those two detectors were built to catch the _absence_ of
+punctuation for, not a _presence_ of structural separators between longer
 repeated units. `truncateAtRepeatedClause` operates at the clause level and
 likewise wasn't built for a unit this long recurring across structurally
 distinct list items — a genuine fourth granularity in the loop-detection
 family, not a variant of an already-covered case.
 A candidate fix (`findRepeatedClauseCycle`, generalizing the existing
-single-clause check to a *cycle* of 2–4 distinct clauses repeating 3+
+single-clause check to a _cycle_ of 2–4 distinct clauses repeating 3+
 times) was prototyped and confirmed live to cut the loop cleanly after step
 2 instead of running to 18+ steps. Decision: this is being tracked as a
 separate task rather than shipped in this round — reverted out of
@@ -1258,12 +1765,12 @@ Verify: `findRepeatedWordRun` in
 [utils/loopDetection.ts](../utils/loopDetection.ts) — flags the same word
 repeated 4+ times in a row (2–3 repeats is normal emphasis/stutter, not a
 loop) and cuts before the first copy. Covered by
-[__tests__/loopDetection.test.ts](../__tests__/loopDetection.test.ts);
+[**tests**/loopDetection.test.ts](../__tests__/loopDetection.test.ts);
 confirmed live — the same question stopped looping after the fix.
 
 ✅ **Multi-word phrase loop with no punctuation between copies**
 Scenario: the single-word fix generalized one level up — a model can just
-as easily loop on a short *phrase* ("bardzo dobrze bardzo dobrze bardzo
+as easily loop on a short _phrase_ ("bardzo dobrze bardzo dobrze bardzo
 dobrze...") with no punctuation between repeats, which neither the
 clause-level nor the single-word check can see (each word alone isn't
 repeating — the pair is).
@@ -1272,7 +1779,7 @@ Verify: `findRepeatedPhraseRun` in
 windows and flags one repeated 3+ times back-to-back, gated by a minimum
 combined phrase length so short connector pairs ("no i", "tak jak") can't
 trip it on ordinary prose. Covered by
-[__tests__/loopDetection.test.ts](../__tests__/loopDetection.test.ts)
+[**tests**/loopDetection.test.ts](../__tests__/loopDetection.test.ts)
 (F10 and adjacent cases).
 
 🔧 **A fourth granularity found, prototyped, but deferred: long
@@ -1314,7 +1821,7 @@ own last question; `store/llmStore.ts` now routes a match through the same
 "failed generation" path as a genuinely empty response (`markGenerationFailed`
 → visible "Failed to generate a response." with a Retry button) instead of
 persisting the echo as if it were a real reply. Verify:
-[__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts) —
+[**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts) —
 the exact captured raw text, a plain echo with different trailing
 punctuation, case-insensitivity, a genuine answer (not flagged), no
 question to compare against (not flagged), and an unclosed `<think>` block
@@ -1347,7 +1854,7 @@ clause from the visible answer before comparing — if what's left matches
 the question, it's still an echo, just with a leaked reminder riding along.
 This doesn't require recognizing the reminder's text in any specific
 language, since it only cares about the parenthetical's position, not its
-content. Verify: [__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts)
+content. Verify: [**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts)
 — the captured shape (echo + leaked reminder, flagged) and a genuine answer
 that happens to end in an unrelated parenthetical clause (not flagged,
 since the part before it doesn't match the question). Caveat: the original
@@ -1389,7 +1896,7 @@ named-entity fact is "already known" is a planner-quality problem, not
 something a text-shape detector can correct) — it only stops the resulting
 dangling-list reply from being persisted as if it were a complete answer.
 Verify:
-[__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts) —
+[**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts) —
 the exact captured text, an English equivalent, a filled-in list (not
 flagged), an ordinary answer with no trailing colon (not flagged), and a
 colon left inside `<think>` only (not flagged). Live re-attempt on Pixel
@@ -1421,7 +1928,7 @@ the page in your own words... instead of a vague 'the sources say'") was
 deleted from [utils/promptUtils.ts](../utils/promptUtils.ts) and replaced
 with `DominantSourceBadge` — a deterministic UI pill shown when exactly one
 web source ends up cited. That works well for the single-source case, but
-the badge is computed *after* generation from the final answer's citation
+the badge is computed _after_ generation from the final answer's citation
 overlap, so it can't be known while the prompt is being built, and it
 never fires at all for 0 or 2+ cited sources. Removing the instruction
 outright meant those cases — which turned out to be the common ones —
@@ -1438,7 +1945,7 @@ First fix attempted (reverted): restored `namedCitation` in
 words instead of writing "Source N". Live-tested clean at the time — but
 this is exactly the shape of fix the project has already decided against
 elsewhere in this doc (the `DominantSourceBadge` switch itself was a move
-*away* from trusting prompt-instruction compliance toward a deterministic
+_away_ from trusting prompt-instruction compliance toward a deterministic
 mechanism, for the single-source case). Re-adding an LLM-compliance
 instruction for the multi-source case was flagged as solving one instance
 rather than the class, and reverted per explicit instruction to replace it
@@ -1460,7 +1967,7 @@ success gate opens: the humanized text — not the raw model output — is
 what gets used for citation-picking, grounding-caveat detection,
 persistence, and the in-memory chat state, so every downstream consumer
 sees the cleaned-up answer, not just what's rendered on screen.
-Verify: [__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts)
+Verify: [**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts)
 — the exact captured live 4-source text, a Polish "źródła 2" case, and a
 no-op case (no source documents, text left untouched). Confirmed live on
 Pixel 10 as part of the same round's language-detection re-test: the humanizer
@@ -1496,7 +2003,7 @@ zero Sources"**
   context (`presentNames`) instead of hiding all of them. This checks
   whether the heuristic has any signal at all — not any specific language.
   Verify: new cases in
-  [__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts);
+  [**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts);
   full suite (1343 tests) passes; confirmed live — the same vitamin D
   question now correctly shows both sources under "Sources".
 - **Supporting fix — refusal-detection gaps**
@@ -1527,7 +2034,7 @@ nothing to cite this time. This is a different mechanism from the
 one only ever applied when a fresh context block existed this turn, so it
 never covered this no-context-follow-up path either, before or after the
 switch) — the empty "Sources" here isn't a bug in isolation, it's the
-*correct* half of an inconsistent pair; the bug is the model still act like
+_correct_ half of an inconsistent pair; the bug is the model still act like
 sources exist when this turn has none.
 Fix: `getNoFreshContextInstruction`
 ([utils/promptUtils.ts](../utils/promptUtils.ts)) — when a turn has no
@@ -1538,7 +2045,7 @@ conversation in its own words instead. Scoped to threads that have actually
 searched before (not added unconditionally to every prompt), following this
 doc's documented lesson that stacking an unconditional instruction onto a
 small model risks new regressions of its own (see Real estate, above).
-Verify: [__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) —
+Verify: [**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) —
 the exact captured shape (a president-follow-up thread reused as the
 fixture, since it is the same no-context-after-web-turn pattern) gets the
 warning, and an ordinary thread that never searched does not. Live
@@ -1560,6 +2067,7 @@ all, not evidence this specific instruction works — its trigger condition
 just keeps not coming up. Left at 🔧 until it's actually seen to fire.
 
 💡 **Proposed / to monitor**
+
 - Watch whether "trust present sources on zero overlap" starts showing
   sources on genuine refusals in languages other than PL/EN (the refusal
   regex only covers those two) — needs more live testing.
@@ -1586,7 +2094,7 @@ result (nothing reaches `SourceRow` with `read === false` anymore) and
 were removed. `webResults` (used for the search-trace panel and the
 `DominantSourceBadge` computation) is unaffected — unread pages still show
 up in the "Searched the web" trace, just not in the Sources sheet.
-Verify: [__tests__/useMessageSources.test.ts](../__tests__/useMessageSources.test.ts)
+Verify: [**tests**/useMessageSources.test.ts](../__tests__/useMessageSources.test.ts)
 — updated the case that used to assert an unread-but-used source was kept
 to assert it's now excluded. Confirmed live on Pixel 10: a recipe question
 ("jaki jest przepis na sernik nowojorski") that searched multiple pages
@@ -1615,7 +2123,7 @@ finished by definition (the trace already moved past it) and gets `done:
 true`; the last incomplete one gets `active: true` (the pulsing state).
 Once nothing is running anymore, every step that made it into the trace at
 all is done — a finished trace has no such thing as a still-pending step.
-Verify: [__tests__/webSearchTrace.test.ts](../__tests__/webSearchTrace.test.ts)
+Verify: [**tests**/webSearchTrace.test.ts](../__tests__/webSearchTrace.test.ts)
 — a mid-search case (checkmarks on every step before the active one, no
 checkmark on the active one) and a fully-completed case (checkmarks on
 every step). Confirmed live on Pixel 10: expanded the "Searched the web"
@@ -1643,7 +2151,7 @@ information about..."). "Sources" stays allowed — it's already used
 elsewhere and matches the visible "Sources" button in the UI, so it's
 meaningful to the user.
 Verify: new case in
-[__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts);
+[**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts);
 confirmed live — the same Kraków weather question now says "source"
 instead of "context".
 
@@ -1712,7 +2220,7 @@ never subject to this race), giving the outgoing screen's teardown a
 macrotask to settle first. This is the single call site behind every
 "new chat" entry point (header button, drawer nav, drawer empty state), so
 one change covers all of them.
-Verify: [__tests__/startPhantomChat.test.ts](../__tests__/startPhantomChat.test.ts)
+Verify: [**tests**/startPhantomChat.test.ts](../__tests__/startPhantomChat.test.ts)
 — asserts `router.replace` is not called before the delay elapses, and
 that `'push'` is unaffected. Confirmed live: reproduced the original
 failure signature 5 times in a row post-fix (tap "New chat" → immediately
@@ -1769,6 +2277,7 @@ immediately if enough content already exists, or defers via
 `pinScrollPendingRef.current = true` for `handleContentSizeChange` to
 catch once the streaming answer grows content past
 `pinOffset + containerHeight`. Two things combined to break this:
+
 1. That growth check (`h >= pinOffset.current + containerHeight.current`)
    is an exact floating-point comparison between two independently-derived
    layout measurements — observed live failing by a razor-thin margin
@@ -1782,28 +2291,28 @@ catch once the streaming answer grows content past
    streaming, and this silent clear was the only thing that ever ran —
    the view was abandoned wherever it happened to be, permanently, since
    nothing else was left to trigger the scroll.
-Fix: the pin-release effect now performs the deferred `scrollToPin()`
-itself if it's still pending when generation ends, instead of discarding
-it — generation finishing is treated as a hard deadline to honor the
-scroll against the final, settled content, not a reason to give up.
-Also added a 1px tolerance (`PIN_READY_SLACK_PX`,
-[constants/chat-screen.ts](../constants/chat-screen.ts)) to both threshold
-checks so the fast path succeeds more often without needing the fallback.
-Verify: `npx tsc`/`eslint` clean, full suite unaffected (this exact
-component has no dedicated unit tests — it depends on native
-ScrollView/Reanimated layout events that aren't practical to mock here;
-this was tested live, consistent with how this area has always been
-verified in this repo). Confirmed live twice: scrolled several screens up
-in a long thread, sent a message — the composer jumps to top immediately
-on send (this part already worked), and where the answer previously
-vanished with the view frozen in place, it now reliably becomes visible
-once generation completes. One honest caveat: the final settled position
-sometimes sits just short of the literal last pixel (the scroll-to-bottom
-chevron can still show), which looks like a separate, pre-existing, minor
-quirk in how the pin position relates to "distance from absolute bottom"
-for a short final answer — not the same failure as the one fixed here (the
-message and its full answer are visible either way, nothing is lost or
-hidden anymore).
+   Fix: the pin-release effect now performs the deferred `scrollToPin()`
+   itself if it's still pending when generation ends, instead of discarding
+   it — generation finishing is treated as a hard deadline to honor the
+   scroll against the final, settled content, not a reason to give up.
+   Also added a 1px tolerance (`PIN_READY_SLACK_PX`,
+   [constants/chat-screen.ts](../constants/chat-screen.ts)) to both threshold
+   checks so the fast path succeeds more often without needing the fallback.
+   Verify: `npx tsc`/`eslint` clean, full suite unaffected (this exact
+   component has no dedicated unit tests — it depends on native
+   ScrollView/Reanimated layout events that aren't practical to mock here;
+   this was tested live, consistent with how this area has always been
+   verified in this repo). Confirmed live twice: scrolled several screens up
+   in a long thread, sent a message — the composer jumps to top immediately
+   on send (this part already worked), and where the answer previously
+   vanished with the view frozen in place, it now reliably becomes visible
+   once generation completes. One honest caveat: the final settled position
+   sometimes sits just short of the literal last pixel (the scroll-to-bottom
+   chevron can still show), which looks like a separate, pre-existing, minor
+   quirk in how the pin position relates to "distance from absolute bottom"
+   for a short final answer — not the same failure as the one fixed here (the
+   message and its full answer are visible either way, nothing is lost or
+   hidden anymore).
 
 ✅ **Follow-up: the pin-scroll above animated instead of jumping instantly**
 User feedback after the fix above: the pinned message should land at the
@@ -1891,7 +2400,7 @@ but not fixed with confidence, since this exact area has broken from subtle
 timing races twice before per this repo's history; flagged with that
 pointer for whoever picks it up next, rather than guessed at blind.*
 
-*A later round fixed the blank-screen bug above with confidence (the 50ms
+_A later round fixed the blank-screen bug above with confidence (the 50ms
 `startPhantomChat` delay) and, separately, root-caused and fixed the
 message-pin bug as a plain JS logic error rather than a library race — a
 floating-point epsilon on the "has enough content streamed yet" check,
@@ -1925,9 +2434,9 @@ from the actual game) as if he'd played in it; and a "which airline"
 follow-up produced a five-sentence answer that only ever restated "a
 source exists and compares prices," in different phrasing each time, never
 naming an actual airline — circular in a way none of the three loop
-detectors catch, since no exact clause, word, or phrase repeats verbatim.*
+detectors catch, since no exact clause, word, or phrase repeats verbatim._
 
-*A later round fixed both findings flagged above. The anachronistic-player
+_A later round fixed both findings flagged above. The anachronistic-player
 bug was fixed at the retrieval layer: `EVENT_SCOPE_MARKERS` (Sports,
 above) extends the existing all-time-page exclusion to anaphoric
 event-scoped follow-ups ("in that game") alongside the period-scoped ones
@@ -1947,9 +2456,9 @@ or anti-circularity systems the earlier round's flags gestured at — the
 lesson from this file's own history (the reverted "sandwiched instruction"
 attempt above) is that broad, ambitious fixes on a small model tend to cost
 more than they're worth; the narrow, testable pattern this file has used
-throughout keeps winning.*
+throughout keeps winning._
 
-*A later round, prompted by two fresh live-caught bugs on the same "ile
+_A later round, prompted by two fresh live-caught bugs on the same "ile
 dzieci ma elon musk" thread shape, fixed: (1) a dangling list-intro answer
 ("Prezydent USA ma następujące dzieci:" with nothing after the colon) on a
 `needs_search: false` follow-up — `isDanglingListAnswer`
@@ -1990,4 +2499,1266 @@ on-device verification. And the blank-screen bug (fixed with confidence
 two rounds ago) recurred live under circumstances that don't obviously
 implicate the same fix (see the status note above) — recovered via
 `restart-app`, root cause of the recurrence left open for a future round
-with a non-Fast-Refresh repro environment.*
+with a non-Fast-Refresh repro environment._
+
+## Corpus round: the guards measured, and the follow-ups that never reached a search
+
+✅ **The digest prompt injection is now confirmed live — three times, and it
+fires far earlier than expected**
+The previous round left this as the one unverified piece ("reaching the gate
+needs a conversation long enough for the budget to drop turns"). A temporary
+probe in `prepareMessagesForLLM` settled it on **turn 2** of a web-search
+conversation:
+
+```
+turn 1  budget 4667  system 3697  last  881  digest  0  history 0  kept 0  dropped false
+turn 2  budget 4733  system 3239  last 1401  digest 55  history 2  kept 0  dropped TRUE  injected TRUE
+turn 4  budget 4694  system 3697  last  888  digest 62  history 8  kept 1  dropped TRUE  injected TRUE
+```
+
+The system prompt alone is ~3.7k of a ~4.7k character budget, and a `<context>`
+block pushes the last message past 1.4k — so in web-search mode **the whole
+history is dropped from turn 2 onwards**. The digest is not a nice-to-have for
+long conversations; it is the _only_ cross-turn memory the model gets on this
+model profile. The probe was removed after verification.
+
+✅ **A corpus of real device answers, checked in, so guard changes are measured
+instead of argued**
+`__tests__/fixtures/deviceConversations.json` — 175 conversations / 518 turns /
+254 assistant answers pulled from the simulator's own database, covering every
+category this doc tests. `__tests__/deviceAnswerCorpus.test.ts` asserts what
+each guard does to them:
+
+| guard                      | fires on | verdict                     |
+| -------------------------- | -------- | --------------------------- |
+| `truncateAtRepeatedClause` | 12 / 254 | every one is a genuine loop |
+| `isQuestionEchoAnswer`     | 9 / 254  |                             |
+| `isCircularNonAnswer`      | 4 / 254  |                             |
+| `isDanglingListAnswer`     | 0 / 254  | never fires on real traffic |
+
+The four largest cuts were read end to end before the numbers were frozen —
+`4822→107` ("Lecie w przestrzeni, pośród gwiazd i planet." ×105), `3852→151`
+("dostosowanego" ×261), `5609→116` (a Turkish phrase block ×76) and
+`2608→453` (the same list item renumbered 2–5). This answers the open worry
+from the plan: the detector is not eating real answers, and a change that
+starts eating them now fails a test instead of needing another 60-answer
+manual comparison.
+
+❌ **Live-found: a follow-up whose subject is dropped never reached a usable
+search at all**
+`"A jaki ma aparat?"` after a Samsung Galaxy S25 turn produced
+`Failed to generate a response.` The chain, read off the trace and the log:
+the search went out as the bare `"A jaki ma aparat?"` (no entity), retrieval
+came back with nothing about a camera, the history was dropped by the budget,
+so the model had a digest line and useless context — and echoed the question
+back. The echo nudge fired, echoed again, and the turn failed.
+`carryReferentIntoQuery` only recognised a query as incomplete when it carried
+a pronoun, a bare role ("prezydent"), or reflexive `się`. Measured against the
+corpus, that caught **7 of 64** real follow-ups.
+Fix — two rules, both chosen by measuring candidates against the corpus rather
+than by reasoning about grammar:
+
+- **anaphora**: `tego|tej|tym|tych|tamt*|je|ich|that|those|these`, but _not_
+  when the next word is a time noun — `"w tym tygodniu"`, `"w tym miesiącu"`
+  are dates, not pointers. Catches `"Porównaj je i daj mi wyniki"`,
+  `"Who was the top scorer in that game?"`, `"A jaką kawę do tego zmielić"`.
+- **elided subject**: an interrogative _immediately_ followed by a possession
+  verb — `jaki ma`, `ile ma`, `jakie ma`, `czy jest` — capped at 8 words.
+  The adjacency is what makes it safe: `"Ile kalorii ma banan?"` has a noun
+  between the two and is left alone, while `"A jaki ma aparat?"` and
+  `"Ile ma pamięci RAM i jakiego ma procesora?"` are not.
+  Result on the corpus: **7 → 22 of 64**, with the self-contained questions
+  (`"Ile kosztuje aktualnie cyna?"`, `"A ile to jest 10 razy 10?"`,
+  `"Jaka jest dzisiejsza pogoda w Warszawie?"`) still untouched. Both boundaries
+  are pinned by tests.
+  Live: the same question now searches `"A jaki ma aparat? …"` and answers
+  `"Aparat Samsunga Galaxy S25 to 48MP"` with a source;
+  `"Ile ma pamięci RAM i jakiego ma procesora?"` answers
+  `"Samsung Galaxy S25 ma pamięć RAM 16 GB…"` off fonio.pl and telepolis.pl.
+
+✅ **Live-found in the same run: the carried entity was `"Cena Samsunga
+Galaxy"`**
+`mostRecentEntity` walks history backwards and takes the last proper-noun run,
+which on the assistant's own sentence `"Cena Samsunga Galaxy S25 w Polsce
+wynosi…"` swallows the capitalised sentence opener. Dropping a leading token is
+not safe (it would turn `"Samsung Galaxy S25 to flagowiec."` into
+`"Galaxy S25"`), so instead the entity is now taken from the **user's** turns
+when they name one, falling back to the assistant's. The user names the subject;
+the assistant's prose is where sentence-initial noise comes from. Every existing
+case still resolves — including the ones where only the assistant ever named the
+entity (`"Prezydentem USA jest obecnie Donald Trump."`).
+
+✅ **The echo fallback no longer throws the subject away**
+The probe caught the digest degrading from `"cena samsung Galaxy S25 w Polsce"`
+to `"A jaki ma aparat?"`: the echo guard fired and fell back to the question,
+which for a follow-up names nothing at all. Now the fallback is only taken when
+it does not lose ground — if the question names no entity and the previous
+digest does, the previous digest stands.
+
+✅ **A wrong-language answer gets a nudge instead of a hard failure**
+Live: `"Ile wazy i jakie ma wymiary?"` came back as
+`The model answered in the wrong language` — a red error, with all the search
+work thrown away. Wrong-language was the one non-answer shape with no recovery,
+and it also _suppressed_ the other three nudges (each is guarded by
+`!isWrongLanguageAnswer`). It now takes the first nudge slot, re-asking for the
+same answer in the question's language; the one-nudge-per-turn budget is
+unchanged.
+
+⚠️ **Still failing: the model echoes when the context genuinely lacks the fact**
+`"Ile wazy i jakie ma wymiary?"` now searches with the right entity, but the
+pages retrieved do not state a weight, and the 1.7B echoes the question rather
+than following the "say the sources contain no information about it"
+instruction. The echo nudge fires, echoes again, and the turn ends on
+`Failed to generate a response.` — losing the search that did work. Worth
+deciding separately whether a second failed nudge should fall back to an honest
+"not found in the sources" reply instead of a red error; that is a product-voice
+call, not a bug fix.
+
+## Stabilisation round: why "Failed to generate a response." kept appearing
+
+✅ **The guards were accurate; the failure _policy_ was the bug**
+Measured on the 254-answer device corpus, both remaining failure guards are
+clean: `isQuestionEchoAnswer` fires 9 times and every one is a verbatim echo;
+`isWrongLanguageAnswer` fires 5 times and every one is real (a Polish question
+answered in English or Turkish). Zero false positives.
+The corpus, though, only contains answers that **succeeded and were stored** —
+failed turns are never persisted, so it systematically under-counts. Live, on
+Qwen 3 1.7B, roughly a third of web-search turns tripped one of these shapes.
+The damage was the policy: a tripped guard **erased the whole turn** — answer,
+sources, and the search trace — and left a red banner with a Retry button. The
+search had worked; the user lost all of it.
+New rule: **a turn fails only when there is nothing to show.** Every guard still
+fires its one nudge; if the retry does not help, the answer is kept along with
+its sources. `describeGenerationFailure` collapses to the single honest case,
+an empty response.
+
+✅ **A well-cited answer was being classified as a circular non-answer**
+The context labels every passage `--- Source 1: … ---` and the system prompt
+asks the model to name its sources; `humanizeSourceReferences` exists to turn
+`Source 1` into the page title afterwards. Widening
+`isCircularNonAnswer` to `\bsources?\b` on this branch therefore made an answer
+that cites Source 1, Source 2 and Source 3 — the exact style the pipeline sets
+up — score three "source" mentions and fail. On the corpus, **3 of its 4 fires
+were false positives**, including
+`Aktualne ceny miedzi i cyny … **684,80 zł** (źródło 1)`. Numbered citations are
+now stripped before counting (4 fires → 2), and neither remaining fire can end a
+turn.
+
+✅ **`Node.js` was being read as a website (live-found by the user)**
+`extractSiteRestriction` accepted any `\.[a-z]{2,}` suffix as a TLD, so
+"What is the latest version of Node.js?" searched `… site:node.js`, matched
+nothing, and the turn fell back to "couldn't find anything online" plus a
+from-memory answer (`20.12.0`). The TLD is now checked against a list of real
+ones, so `Node.js`, `Next.js`, `Vue.js` and `main.py` are left alone while
+`allegro.pl`, `nike.com` and a pasted URL still restrict the search.
+Live: the same question now reads pages and answers `Node.js 24.11.0 LTS` with
+sources.
+
+✅ **The recovery round is one query, chosen by what actually failed**
+It used to build a list of strategies and truncate it. Now it picks a single
+one from the failure shape: whole-site failures (blocked, 5xx) → search the
+subject away from those hosts (`-site:`); page-level failures on a host that
+still answers → `site:<host> <subject>`; nothing else usable → restate the
+planner's intent. The recovery round is also capped to one enrichment wave and
+three results, so it can no longer widen its own budget the way round 1 can.
+Cost measured over four English queries before the change: 1 provider call, 5
+SERP results, **2 pages fetched**, 4.8–13.5 s per query — and the recovery round
+did not fire once, including on a query with three failed fetches. The "very
+many pages" impression comes from the trace panel listing every SERP hit and
+fetch attempt, not from the number of pages actually read.
+
+✅ **Results in a foreign script are dropped before they are fetched**
+No search engine in `SCRAPE_ENGINES` receives a language or region parameter —
+`html.duckduckgo.com/html/?q=`, Brave and Mojeek all get a bare `q`, so the
+engine guesses from the IP. Rather than guess at per-engine locale parameters
+that cannot be verified offline, a result whose title and snippet are written in
+a different **script** than the question is now discarded before enrichment. An
+English page still answers a Polish question (same script); an Arabic-titled one
+does not. A mixed title whose Latin brand name dominates is kept.
+⚠️ The original report could not be reproduced — the probe was added after the
+fact and no non-Latin title appears in this session's logs. The mechanism is
+structural, the filter is tested, but the specific sighting is unconfirmed.
+
+✅ **The answer no longer opens by restating the question**
+`stripEchoedQuestionPrefix` removes a verbatim question prefix (including from
+behind a `<think>` block) when something substantive follows. A pure echo is
+left intact so the echo guard still sees it.
+
+✅ **The sent message stays at the top of the screen**
+`Messages` already pinned the question to the top during generation, then
+deliberately released the pin when generation ended: `blankSpace` collapsed and
+`settlePinRelease` scrolled back, dropping the finished exchange to the bottom,
+under the chat bar. The pin is now held until the user scrolls, which is what
+releases it.
+
+✅ **The empty-state gradient could stay on screen behind a conversation**
+Reproducible on a slow first turn in a freshly created chat: `isEmpty` flips to
+false and the 900 ms fade runs, but the animated value could be left showing.
+The gradient node is now unmounted once the fade has had time to finish, so a
+stuck value cannot keep it painted.
+
+⚠️ **Superseded — see "The `1 zł` case, diagnosed properly" below. The
+direction was right but the mechanism named here was wrong.**
+**Trimming drops the source block that holds the real price**
+`"The Samsung Galaxy S25 costs 1 zł in Poland."` survives every figure guard
+because the guards are working on the wrong input. A probe on the figures
+whitelist showed two lists built in a single turn:
+
+```
+full context     tokens=["3199 PLN"]
+trimmed context  tokens=["1 zł"]
+```
+
+Context trimming kept a passage carrying a financing teaser and dropped the one
+with the actual price, and the whitelist then faithfully offered the only figure
+left. Zero-valued figures are now never offered and outliers are removed from
+the list rather than listed with a warning, but neither helps when the good
+block is already gone. The fix belongs in `smartTrimContextBlocks` /
+`selectRelevantContent` and has not been made.
+
+## The "1 zł" case, diagnosed properly
+
+The previous section blamed trimming for dropping a block containing
+`3199 PLN`. That was inferred from two figure-whitelist probe lines that came
+from **different turns**, not from a full/trimmed pair of the same one. A probe
+over the whole trimming path gave the actual chain:
+
+```
+budget 4655   system prompt 3698   left for context + question: 957
+context 2947 chars → trimmed to 566
+
+block 1  Media Expert (category listing)
+   [1400 zł] … CENA zł _ zł DOSTĘPNOŚĆ … PROMOCJE Bonus do 1400 zł w Programie Odkup
+   [1 zł]    … Drugi -30% lub piąty za 1 zł!  … RATY Do 40 rat 0%
+block 2  Allegro (category listing)      — no money at all
+block 3  euro.com.pl
+   [3199 PLN] … [Verified product data] name="Samsung Galaxy S25 12/128GB…", price=3199 PLN, availability=in stock
+
+FINAL money  []
+```
+
+1. **`1 zł` is a promotion slogan, not a price** — `Drugi -30% lub piąty za 1 zł!`
+   on a Media Expert _category_ page. `1400 zł` next to it is a trade-in bonus,
+   and `CENA zł _ zł` is an empty price filter. Two of the four blocks carry no
+   money token at all: these are listing pages, not product pages.
+2. **The real price was fetched and parsed correctly.** Block 3 carries
+   `[Verified product data] … price=3199 PLN` — the structured-data path works.
+3. **The system prompt takes 3698 of 4655 characters — 79% of the budget** —
+   leaving 957 for the context block and the question together.
+4. **`smartTrimContextBlocks` allocates by position**, weight `1/(index+1)`. The
+   junk listing is Source 1 and takes the largest share; the block holding
+   `price=3199 PLN` is Source 3 and takes the smallest, which at 566 characters
+   is not even enough for that one line. In this run **no money token survived
+   into the prompt at all**.
+
+Two fixes, both aimed at the chain above:
+
+- `promoteVerifiedProducts` moves any result whose price came from structured
+  data to the front, so it becomes Source 1 and gets the largest share of the
+  budget — the same shape as the existing `promoteTitleConsensus` and
+  `promotePrimarySources` steps.
+- `smartTrimContextBlocks` now keeps a `[Verified product data]` line whole and
+  trims only the prose after it, so a tight budget can no longer cut the ground
+  truth out of a block it did keep.
+
+Live: the same question now answers **"The Samsung Galaxy S25 costs 4 199 zł in
+Poland."** with sources.
+
+⚠️ **The 79% figure is the real structural finding.** On a 2048-token profile the
+accumulated instruction stack leaves a fifth of the prompt for evidence. Every
+grounding guard in this document is working on whatever survives that split.
+That is a bigger change than a promotion step and has not been made.
+
+## Prompt budget round: making room for evidence
+
+Starting point, measured on device for a price question:
+`2048 window − 768 reserve = 1280 prompt tokens ≈ 4655 chars`, of which the
+system prompt took **3698 (79%)**, leaving 957 for the retrieved block and the
+question together.
+
+✅ **Generation reserve 768 → 512, chosen from the real answer distribution**
+Token length of 254 stored device answers: p50 **34**, p75 74, p90 122, p95 156,
+p99 698, max 1527.
+
+| reserve   | answers it would cut | tokens freed |
+| --------- | -------------------- | ------------ |
+| 768 (was) | 3 / 254 (1.2%)       | 0            |
+| 640       | 4 / 254 (1.6%)       | 128          |
+| **512**   | **4 / 254 (1.6%)**   | **256**      |
+| 448       | 6 / 254 (2.4%)       | 320          |
+| 384       | 7 / 254 (2.8%)       | 384          |
+
+512 is where the curve bends — the same coverage as 640 for twice the saving,
+and the three answers already over 768 are the degenerate loops
+`truncateAtRepeatedClause` cuts anyway. The budget tests no longer hard-code
+1280/3840; they read `getPromptTokenBudget` so the next change to the profile
+cannot leave them asserting a stale number.
+`getPromptCharBudget` also gained a one-token safety margin: the density is
+measured over the whole sample, but a _prefix_ can be denser, and at the new
+budget that produced a 1537-token slice for a 1536-token budget.
+
+✅ **`<context>` renamed to `<sources>`, and the rule about it deleted**
+233 characters of the system prompt existed only to stop the model saying the
+word "context" to the user — a word that was in the prompt only because the
+wrapper tag was called that. The tag is now `<sources>`, the header is
+`IMPORTANT SOURCE INFORMATION:`, every instruction says "the sources", and the
+leak rule is gone: there is nothing left to leak. A test asserts the assembled
+prompt contains no "context" at all. The sanitiser that strips wrapper tags out
+of untrusted page text now strips **both** names, so a page cannot smuggle in
+either.
+
+✅ **Three always-on instructions are now conditional**
+
+- `getScopeIntegrityInstruction` (329 chars) was the only instruction added
+  unconditionally on every web turn. It is about totals and counts scoped
+  narrower than the question, so it now fires on the same kind of marker its
+  neighbours already use — a total/count word or a superlative.
+- The `[Answers: <query>]` sentence (~180 chars) is only meaningful when the
+  block actually carries two or more of those tags, which is known while the
+  prompt is being built.
+- The weekday table (~200 chars in Polish) and the "resolve today/tomorrow"
+  line are only added when the question is actually about time
+  (`mentionsTime`), instead of on every turn that has a web source.
+
+**Result** (same scenario, measured locally):
+
+|                                                            | before | after           |
+| ---------------------------------------------------------- | ------ | --------------- |
+| system prompt, price question                              | 2857   | **2312** (−19%) |
+| system prompt, worst case (comparison + variant + opinion) | 3949   | **3073** (−22%) |
+| prompt char budget                                         | 4655   | **5823** (+25%) |
+| left for the retrieved block + question                    | 1798   | **3511** (+95%) |
+
+Live check, no quality loss on either shape: the Samsung price question answers
+`2662.21 PLN.` off a real product page, and `Jaka będzie jutro pogoda w
+Warszawie?` answers `Jutro będzie słonecznie z szansą opadów 47%.` — the
+weekday gate keeps the table where it is needed.
+
+⏭️ **Not done: the duplicated instructions.** The language rule appears three
+times (system prompt, a line beside the question, and the anchor appended to the
+question itself) and the source-conflict rule twice — about 360 characters. The
+repetition may well be deliberate, since a small model follows an instruction
+that sits next to the question better than one 3000 characters earlier. Removing
+the right copy needs an A/B, not an assumption.
+
+## Research: better extraction for a small context window
+
+Grounded in what the pipeline does today, not in what a larger model could do.
+
+**The stack that decides what the model sees, in order:**
+
+1. `extractArticle` + structured product data — page text and typed fields.
+2. `retrieveWebPassages` — chunks of `WEB_RETRIEVAL_CHUNK_CHARS` (500) with 80
+   overlap, each embedded with LFM 2.5 350M, cosine similarity, term coverage,
+   reciprocal-rank fusion of a vector and a keyword ranking, MMR for diversity,
+   `WEB_RETRIEVAL_TOP_K` (6), at most 3 per page, 40 chunks total.
+3. `selectRelevantContent` — a **second, entirely different** relevance model:
+   IDF-weighted needle matching, a money/digit bonus, a lead-position bonus, a
+   percentile cutoff and neighbour gluing, applied when a source block has to fit
+   its share of the budget.
+4. `smartTrimContextBlocks` — allocates that share by **position**, weight
+   `1/(index+1)`.
+
+**Finding 1 — the last word goes to the layer with the least information.**
+Layer 2 knows semantic similarity. Layer 3 re-derives relevance lexically,
+ignoring layer 2's scores. Layer 4 then decides how much of each source survives
+using neither, only its position in the list. The `1 zł` case is exactly this:
+the block holding `price=3199 PLN` was Source 3 and was starved by a rule that
+never looked at its content.
+
+**Finding 2 — the embedding scores are computed and thrown away.**
+`chunk.similarity` exists per chunk and never leaves `retrieveWebPassages`.
+Carrying it into the context assembly would let layer 4 allocate by evidence
+density instead of position, and would let layer 3 stop guessing — it would be
+trimming passages whose relevance is already known.
+
+**Finding 3 — extraction already beats summarisation here, and it is measured.**
+`[Verified product data] name=…, price=3199 PLN, availability=in stock` is about
+100 characters that answer a price question completely. The 1500 characters of
+scraped prose from the same category page answered nothing — its money tokens
+were `Bonus do 1400 zł w Programie Odkup` and `piąty za 1 zł`. On a 2048-token
+window, one typed fact is worth more than fifteen times its length in prose.
+
+**Finding 4 — the retrieval layer produces far more than can ever fit.**
+Top-K 6 × 500 chars ≈ 3000 characters of chunks, against a context budget that
+was 957 before this round and is ~3500 now for _all_ sources plus the question.
+The surplus is discarded downstream by layers 3 and 4. Deriving `topK` from the
+remaining character budget would move that decision back to the layer that can
+actually judge relevance.
+
+**Finding 5 — boilerplate is scored, not filtered.**
+`scorePassage` already computes a `proseRatio` from the ratio of words to
+digits, and uses it only to _scale a bonus_. The Media Expert passage
+(`CENA zł _ zł DOSTĘPNOŚĆ Dostępny natychmiast PROMOCJE … RATY Do 40 rat 0%`) is
+navigation chrome with a very low prose ratio and it still reached the prompt.
+The same signal used as a filter at chunk level would have dropped it.
+
+**Proposed order of work, cheapest and most certain first:**
+
+1. **Budget-aware `topK`** — compute how many chunks can fit before retrieving,
+   so the semantic layer decides what survives instead of the positional one.
+2. **Carry `similarity` into the context blocks** and allocate the trimming
+   budget by evidence density rather than `1/(index+1)`.
+3. **Generalise `[Verified product data]` into a typed-fact header.** The
+   planner already produces an `intent`, and `figureGrounding` already has the
+   primitives (currency tokens, price statements, period-matched change data).
+   A deterministic per-intent extractor — price, date, version, score,
+   temperature — would give every source a compact answer-candidate line, with
+   no extra model call.
+4. **Use `proseRatio` as a chunk-level filter**, not only as a bonus.
+5. **Only then consider LLM summarisation of a page.** It costs a full
+   generation pass on a 1.7B — the same budget this whole round was spent
+   freeing — and the model that would do the summarising is the one whose
+   grounding failures this document is full of. Extraction first is not a
+   compromise here; it is the better fit for the constraint.
+
+## Retrieval sized to the budget, compaction, and what a bigger window actually did
+
+✅ **`topK` is derived from the remaining character budget**
+`retrieveWebPassages` always asked for `WEB_RETRIEVAL_TOP_K` (6) chunks of 500
+characters — about 3000 characters — no matter how much room was left. The
+surplus was discarded downstream by `selectRelevantContent` and
+`smartTrimContextBlocks`, the two layers least able to judge it. `topKForBudget`
+now derives k from `contextCharBudget`, clamped between
+`WEB_RETRIEVAL_MIN_TOP_K` (2) and the model profile's value.
+`webContextCharBudget` was fixed at the same time: it used the flat
+character-density fallback (no sample) and reserved a 1200-character margin for
+an instruction stack that actually measures ~2600. Both errors happened to
+cancel; now it takes the question as a density sample — so a CJK question gets
+less room than a Latin one — and reserves `ASSEMBLED_INSTRUCTION_CHARS`.
+
+Measured on device, same reference query, before and after this round:
+
+|                               | before  | after    |
+| ----------------------------- | ------- | -------- |
+| prompt char budget            | 4655    | 5595     |
+| system prompt                 | 3698    | 2964     |
+| room for the block + question | 957     | **2631** |
+| retrieved context             | 2947    | 2352     |
+| **discarded by trimming**     | **81%** | **19%**  |
+| evidence reaching the model   | 566     | **1912** |
+
+The answer went from `The Samsung Galaxy S25 costs 1 zł in Poland.` to
+`The price of the Samsung Galaxy S25 in Poland is 2662.21 PLN.`
+
+✅ **Long conversations: 27 tests, and compaction instead of dropping turns**
+`__tests__/longConversation.test.ts` runs 1–64 turns and asserts the invariants
+that had none: the assembled prompt stays inside the token budget, the system
+prompt and the latest question are always kept, the kept history is an unbroken
+**suffix**, it never opens on an assistant reply whose question was cut, the
+digest appears once turns are dropped, and the prompt stops growing once
+saturated.
+The measurement those tests made possible: with a realistic ~1900-character
+retrieved block, history saturated at **3 turns**. Older assistant replies are
+now shortened to a sentence-boundary head of 220 characters — the most recent
+reply is always kept verbatim — before any turn is dropped. On the real corpus
+**27.6% of replies exceed 220 characters and shortening them frees 48.6% of all
+reply characters** (reply length p50 117, p75 266, p90 453). Replayed with real
+reply lengths, kept turns went 1 → 4 at four turns and 2 → 4 at sixteen.
+Worth recording: the first synthetic fixture had 187-character replies, below
+the threshold, and showed no gain at all. The corpus is what corrected it.
+
+❌ **A 4096-token window works, and makes the answers worse**
+`contextWindowTokens` is a flat 2048 for every model — `PROFILE_BY_FAMILY` is
+empty and `PROFILE_BY_MODEL` overrides only search readiness. The React Native
+ExecuTorch API exposes no sequence-length setting, so the ceiling lives in the
+exported `.pte` and can only be found by trying it.
+Tried: Qwen 3 1.7B at 4096. It runs — no error, no truncation, generation
+completes normally, so **the export supports it**. But the same price question
+that answers `2662.21 PLN` at 2048 answers **`1400 zł` at 4096, twice in a
+row** — `Bonus do 1400 zł w Programie Odkup`, the trade-in bonus from the
+listing page that the tighter budget used to trim away.
+More context made the answer worse. The extra room was filled by the
+lowest-quality evidence, because the layer that decides what fills it ranks by
+position. Reverted. The window increase is unlocked but blocked on the selection
+work in #306 — capacity is not the bottleneck, selection is.
+
+🔎 **`getPromptTokensCount()` is available and unused**
+The runtime reports the real prompt token count after every generation
+([LLMModule](node_modules/react-native-executorch)); the app only reads
+`getGeneratedTokenCount()`. Every budget decision in this document rests on
+`estimatePromptTokens`, a character-density heuristic that has never been
+checked against the tokenizer. Comparing the two over a few turns would say
+whether the budget is leaving window unused — and unlike raising the window, it
+cannot make answers worse. It needs a numeric probe in `llmStore`, which is why
+it has not been done here.
+
+## One model is not every model, and shards are not evidence
+
+❌ **Every number in this document came from one model**
+The corpus is 178 conversations and 259 answers, and a join against the `chats`
+table says all of them are **Qwen 3 - 1.7B**. The reserve, the reply-length
+threshold and the instruction-overhead margin were all derived from that single
+distribution and then applied to every model in the catalogue.
+Fixed structurally rather than by adjusting a number:
+
+- `__tests__/fixtures/deviceConversations.json` now records the `model` that
+  produced each conversation, and a test asserts the corpus reports exactly one
+  — so the limitation is visible in the fixture instead of living in a commit
+  message.
+- `generationReserveTokens` is no longer a measured constant applied everywhere.
+  `scaledGenerationReserve` derives it as `GENERATION_RESERVE_SHARE` (0.25 — the
+  Qwen measurement expressed as a share of its window) with a floor of 256, and
+  `getModelProfile` applies it to any model without an explicit override. A
+  bigger window therefore gets a proportionally bigger reserve.
+- `GENERATION_RESERVE_EVIDENCE` follows the existing `PLANNER_EVIDENCE` /
+  `WEB_ANSWER_EVIDENCE` convention: it carries the Qwen distribution and states
+  in as many words that every other model is **UNCONFIRMED**.
+- `__tests__/generationReserve.test.ts` checks every shipped model still gets a
+  positive prompt budget and a reserve above the floor, so a future per-model
+  override cannot silently starve one.
+
+**To confirm on Gemma 4 - 2B and the weaker models:** run a session, pull the
+device DB, re-export the fixture (it now carries the model name), and read the
+answer-length percentiles per model. If a model's p95 exceeds its scaled
+reserve, give it an explicit `generationReserveTokens` in `PROFILE_BY_MODEL`
+plus an evidence entry. Gemma is the one to watch — `WEB_ANSWER_EVIDENCE`
+already records it as verbose and prone to LaTeX-wrapped numbers.
+
+✅ **A source trimmed to a shard is dropped instead of passed off as evidence**
+`smartTrimContextBlocks` would keep a block with as little as one character of
+passage, and the hard-slice fallback could leave a partial trailing block of
+similar size. A shard still reads as evidence, and what gets cut first is
+usually the qualifier that gave a figure its meaning — `Bonus do`, `rata`,
+`od`, `piąty za`. That is the ideal substrate for a confident wrong answer.
+Now a block is dropped unless it keeps `MIN_USEFUL_PASSAGE_CHARS` (160) of
+passage — checked on the **selected text**, not on the budget, because
+`selectRelevantContent` can return less than it was given — and the hard-slice
+path drops a trailing block below `MIN_USEFUL_BLOCK_CHARS` (200) rather than
+closing it. A block carrying a `[Verified product data]` line is exempt: those
+~100 characters are the answer, not a fragment of one.
+
+✅ **A conversation that shows every grounding badge**
+Seeded on the simulator as _"Grounding badges — all cases"_: a clean grounded
+answer with no badge, then one turn each for `conversion` ("No real conversion
+rate was found in the sources"), `figure` ("A number here couldn't be confirmed
+against the sources") and `trend` ("No data on the change over time was found in
+the sources"), and a final turn carrying all three at once. Each turn has real
+`sourceDocuments`, so the source chips and the Sources sheet render too. Useful
+for reviewing the copy and the layout without having to provoke each caveat
+through a live search.
+
+## The prompt was overflowing the window, silently
+
+`getPromptTokensCount()` is now read after every generation in dev and compared
+against `estimatePromptTokens` for the same prompt. Four turns on device,
+Qwen 3 - 1.7B, prompt token budget 1536:
+
+| question language | estimated | **actual** | ratio     |
+| ----------------- | --------- | ---------- | --------- |
+| Polish            | 1324      | 1421       | 0.932     |
+| Polish            | 1382      | 1440       | 0.960     |
+| English           | 1528      | 1456       | 1.049     |
+| Polish            | 1508      | **1716**   | **0.879** |
+
+The estimator **under-counts Polish by 4–14%** and over-counts English by 5%.
+The fourth turn assembled **1716 real tokens against a 1536 budget** — 180 over,
+with no error and no sign in the UI. Its answer was the generic
+_"Tak, w Polsce są aktualne promocje w sklepach. Gazetki promocyjne dostarczane
+przez Gazetkowo.pl…"_ — a confident non-answer produced from a prompt whose
+evidence had been squeezed out from underneath it.
+This is the concrete mechanism behind "the context runs out, so it hallucinates",
+and it had been invisible because nothing ever compared the estimate with the
+tokenizer.
+
+Fix: `PROMPT_TOKEN_SAFETY = 0.85` holds the character budget below what the
+estimate alone would allow, sized from the worst measured ratio. Same question
+after the change: 1280 estimated / **1342 actual**, inside the budget, and the
+answer became _"Cena Samsung Galaxy S25 w Polsce wynosi 2499 złotych w ramach
+urodzinowej promocji w sklepie Proshop, która potrwa do 6 września 2026 roku."_
+— a price, a named shop, an end date and a source, answering both halves of the
+question.
+The proper fix is a per-language density coefficient rather than a flat safety
+factor; the harness to derive one now exists, and the same probe will size it
+for Gemma and the other models tomorrow.
+
+✅ **One badge, not three**
+The combined case stacked all three caveats under a single answer. The DB still
+stores every caveat the detectors found; `leadingCaveat` picks one for display,
+most specific first — `conversion`, then `trend`, then `figure` — because a
+conversion or trend caveat already implies an unconfirmed number, so printing
+the general line on top of it adds nothing and buries the one worth reading.
+
+## Sources attached per section, and what that actually changes
+
+`attributeSourcesByBlock` ([utils/attributeSources.ts](utils/attributeSources.ts))
+splits the visible answer into markdown **blocks** — paragraphs, but a list, a
+table and a fenced code block each stay whole — scores every sentence in a block
+against each used web source with the existing stem-overlap helper, and gives
+the block the source most of its sentences point at. A block below
+`CITATION_MIN_MATCH_SCORE` gets nothing rather than a guess, a block with no
+match of its own inherits the previous one's source, and neighbouring blocks
+that land on the same source are merged so a four-sentence answer from one page
+does not sprout four identical chips.
+
+Measured over 252 stored answers that carry their `sourceDocuments`:
+
+|                                                      |              |
+| ---------------------------------------------------- | ------------ |
+| answers with at least one used web source            | 208          |
+| **today: one chip** (exactly one used source)        | 97           |
+| **today: no chip at all** (two or more used sources) | **111**      |
+| of those, would now show attribution                 | **92** (83%) |
+| of those, with more than one chip                    | 2            |
+
+The framing this started from — "two sentences, two sources, a chip under each"
+— turns out to be about **1% of real answers**, because current answers are
+short (p50 117 characters) and the merge rule collapses same-source neighbours.
+The real gain is elsewhere: `dominantWebSource` only ever showed a badge when
+exactly **one** source was used, so an answer resting on two pages showed
+nothing. 92 answers move from no attribution at all to an attributed block.
+The bottom badge is suppressed only when block attribution actually produced
+something, so every answer that shows a chip today still shows exactly one.
+
+❌ **Smoke test caught a real one: an answer that was only a think block**
+`A ile bitcoina mogę kupić za 5000 dolarów po tej cenie?` produced
+`<think>\n\n</think>` and nothing else. The success gate checked
+`finalResponse?.trim()` on the **raw** string, which contains the think markers,
+so the turn counted as successful and an empty bubble was persisted — no text,
+no error, no retry. It now checks the **visible** text. This one predates the
+"only empty fails" rule (the old guards also returned false on empty visible
+text); removing the other guards is what made it reachable.
+
+✅ **`w źródle 1` was not being humanized**
+`humanizeSourceReferences` matched `źródł\w*` — but Polish declines
+_źródło_ → _w źródle_, with `l`, not `ł`. The locative slipped through and the
+model's numbered citation reached the user verbatim. Widened to `źród[łl]\w*`.
+
+Prompt-token accuracy over the smoke-test turns, with `PROMPT_TOKEN_SAFETY` in
+place: 1.022, 0.981, 0.970, 1.012 — all inside the budget, no overflow.
+
+## A twelve-turn shopping conversation, and what it broke
+
+Driven on device as a user would: one topic (buying a Galaxy S25), follow-ups
+in Polish and English mixed, referents left implicit. What came back:
+
+| turn             | result                                                               |
+| ---------------- | -------------------------------------------------------------------- |
+| price            | ✅ `2499 złotych w ramach urodzinowej promocji`                      |
+| camera           | ⚠️ answered for the **S25+**, not the S25                            |
+| RAM / CPU        | ⚠️ S25+ again — `16 GB, Snapdragon 8 Elite`                          |
+| vs iPhone 17 Pro | ⚠️ gave the iPhone price instead of comparing                        |
+| buy now or wait  | ❌ **the question, echoed back, stored as the answer**               |
+| cheapest shop    | ❌ **echoed back again**                                             |
+| summarise        | ⚠️ `12 GB RAM` — contradicts the `16 GB` it said three turns earlier |
+
+❌ **Two turns stored the user's own question as the answer**
+This is what "only an empty response fails the turn" bought: an echo is not
+empty, so it was shown. On screen it reads as a broken app.
+Root cause of the miss, though, was elsewhere: `normalizeForEchoCompare`
+lowercased and stripped punctuation but **did not fold diacritics**. The user
+typed `Czy warto go kupic teraz` and the model wrote back
+`Czy warto go kupić teraz` — the same sentence to a reader, two different
+strings to the detector. This is the normal case in Polish, where people type
+without diacritics and the model puts them back. Now folded through
+`foldForMatching`, the same helper the rest of the retrieval code uses.
+And when a retry still comes back as an echo, the reply is replaced with a
+plain `Nie udało mi się odpowiedzieć na to pytanie na podstawie znalezionych
+źródeł.` (or its English form, picked by the question's language) instead of the
+echo. The sources and the search trace stay — the search that worked is not
+thrown away, and the user is not shown their own words as an answer.
+Live after the fix: `A gdzie kupię ten telefon najtaniej?` →
+`Najtańsze oferty na telefonach komórkowych znajdziesz na Ceneo.pl.` with the
+Ceneo chip attached.
+
+✅ **The `figure` badge was blind to bare amounts**
+`Cena Bitcoin i Ethereum w dolarach (USD) obecnie wynosi 30 000 i 100 000` drew
+no caveat: the currency is named once at the start of the sentence and the
+figures themselves carry no currency token, so `extractCurrencyFigures` found
+nothing to check. `extractBareAmounts` now reads those numbers when the reply
+names a currency somewhere, skipping years and values under 100 so counts and
+model numbers are not mistaken for amounts.
+Kept deliberately unchanged: the context pool still prefers price-statement
+figures over every figure on the page. Widening it to the union made a synthetic
+test pass and broke F8 — a real case where a page's `3 746,00 zł` is the total
+interest on an instalment plan, not the price. The evidence-backed rule wins
+over the invented fixture.
+
+**Prompt-token accuracy across the twelve turns** (safety factor in place):
+1.098, 0.973, 1.065, 1.029, 0.959, 0.937, 0.949, 0.964 — Polish still runs
+denser than the estimator thinks, but every turn stayed inside the window.
+
+⚠️ **Still open, and it is model quality, not plumbing:** the S25/S25+ variant
+confusion, a comparison question answered with one side's price, and a summary
+that contradicts an earlier turn. The retrieval fed the right pages each time;
+the 1.7B is what turns them into those answers.
+
+## Session summary — what today actually established
+
+**The measurements that changed decisions, not the ones that confirmed them:**
+
+- **The prompt was overflowing the context window and nothing noticed.** A Polish
+  turn assembled 1716 real tokens against a 1536 budget. `estimatePromptTokens`
+  under-counts Polish by 4–14% and over-counts English by 5%, and until today
+  nothing had ever compared it with `getPromptTokensCount()`, which the runtime
+  exposes and the app never read. This is the concrete mechanism behind "it runs
+  out of context and hallucinates" — the overflowing turn answered with generic
+  filler, the same question inside the budget answered with a price, a shop and
+  a date.
+- **A bigger window made answers worse.** Qwen 3 1.7B runs fine at 4096 — the
+  `.pte` supports it — but the same price question answered `1400 zł` (a trade-in
+  bonus) instead of `2662.21 PLN`, twice. The extra room filled with the
+  lowest-quality evidence, because the layer that decides what fills it ranks by
+  position. **Capacity is not the bottleneck; selection is.** Reverted, and the
+  reasoning is now issue #306.
+- **The system prompt was 79% of the budget.** Cutting it to ~2300 characters —
+  by renaming `<context>` to `<sources>` (which deleted the rule that existed
+  only to stop the model leaking the word), and by gating three always-on
+  instructions — plus lowering the generation reserve from a measured answer
+  distribution took the room for evidence from 957 characters to 2631.
+- **Retrieval produced three times what could fit.** `topKForBudget` now derives
+  k from the remaining budget: context discarded by trimming fell from **81% to
+  19%**, evidence reaching the model rose from 566 to 1912 characters.
+
+**The guards were the problem more often than the model was:**
+
+- `isCircularNonAnswer`, widened on this branch to match `\bsources?\b`, was
+  killing answers that cited `Source 1`, `Source 2`, `Source 3` — the exact
+  citation style the pipeline sets up. 3 of its 4 fires on the corpus were false
+  positives.
+- The failure policy erased the whole turn — answer, sources and trace — for any
+  tripped guard. Now only an answer with no visible text fails; everything else
+  is shown. The one exception is a pure question echo, which is replaced with a
+  plain "I could not answer this from the sources I found", because showing the
+  user their own question reads like a broken app.
+- The echo detector was diacritic-blind: users type `kupic`, the model writes
+  `kupić`, and two turns in a twelve-turn conversation stored the question as the
+  answer.
+
+**Discipline that kept paying off:**
+
+- Every number in this document came from **one model**, Qwen 3 - 1.7B — all 178
+  corpus conversations. That is now recorded in the fixture and in
+  `GENERATION_RESERVE_EVIDENCE`, and the reserve scales from the window rather
+  than being one measured constant applied everywhere. Gemma and the weaker
+  models still need their own run.
+- Two fixes were nearly shipped on synthetic fixtures that real data then
+  contradicted: reply compaction looked worthless against 187-character test
+  replies (real p75 is 266, and shortening frees 48.6% of history characters),
+  and widening the figure-grounding pool passed an invented test while breaking
+  F8, a case observed live. **When a synthetic test and the corpus disagree, the
+  corpus is right.**
+- The per-section source attribution was justified by the wrong argument. The
+  "two sentences, two sources" case is 1% of real answers. The actual gain is
+  that 111 answers rest on two or more sources and therefore showed **no**
+  attribution at all; 92 of them now show one.
+
+**Still open, and honestly out of reach of the plumbing:** S25 vs S25+ variant
+confusion, comparison questions answered with one side's figure, and a summary
+contradicting an earlier turn in the same conversation. Retrieval fed the right
+pages every time.
+
+## Extraction round: records, time scope, and two races
+
+Driven from a live QA session on a physical Pixel 10 (Android 16), after the
+compact round was committed. The question that started it: "Jaka będzie pogoda
+w nowym Sączu jutro" answered with "nie posiadam wystarczających informacji".
+
+✅ **Retrieval was never the problem — extraction was flattening the table**
+Diagnosis, from the device's own DB rather than a guess: the INTERIA page was
+fetched with `similarity 1.0`, `read: true`, `used: true`, and its stored
+passage contained `Pogoda Jutro, Nowy Sącz Czwartek, 3 Września` along with the
+hourly rows. The prompt was reconstructed with the app's own code and came to
+**1203 tokens against a 1536 budget** — no truncation, 333 tokens spare. The
+date block was correct (`Tomorrow: Thursday, 3 September 2026` plus the Polish
+weekday map). The weak-retrieval hedge could not have fired either: with
+`maxSimilarity ≥ 0.4` and two pages the floor is 0.5, and
+`WEB_AGREEMENT_SINGLE_HOST_FACTOR` is 0.85, so the label was at worst
+`ambiguous` and `webWeak` needs `incorrect`.
+What the model actually saw was `Jutro 22°C 12°C Piątek 24°C 18°C` — one run
+with no boundary. `extractArticle` turned every block tag into a newline, then
+`coalesceLines` glued the short lines back together **with a plain space**. The
+row structure the extractor preserved was destroyed one step later, and the
+model answered with Friday's numbers.
+Fix: extraction now rebuilds the block tree and decides whether siblings form a
+record. `<tr>` is always a record; any other parent qualifies only with 2–16
+leaf children, each within the cell length limit, and no text of its own.
+Verify: `__tests__/extractArticle.test.ts` — div grids, `li` grids, a long cell
+in a row, prose, a bare menu, and a facet rail.
+Confirmed against the **live page**, not a fixture: the boundary now falls
+between the days — `Jutro 22°C 12°C | Piątek 24°C 18°C`.
+
+⚠️ **The menu filter is what constrains the rule, and it is easy to break**
+Joining a nav run into one long line would push it past `MENU_LINE_MAX_CHARS`
+and hide it from `dropMenuRuns`. A record therefore has to satisfy the same
+`MENU_LINE_KEEP` predicate that filter uses, after facet counts and promo
+badges are discounted — so a record is exactly what the menu filter would have
+kept anyway. Anyone loosening the grouping rule has to re-check that pairing,
+or filter rails start reaching the model.
+
+🔧 **Fixing the representation did not fix the answer**
+Three post-fix runs on device, all with correct retrieval and all wrong:
+Qwen 3 - 1.7B said "24°C na dołu i 18°C na górze" (Friday's row, plus phrasing
+that is not Polish), then on another page took the _current_ conditions and
+presented them as tomorrow's. This is the model, not the plumbing — the same
+conclusion the twelve-turn shopping conversation reached.
+
+✅ **A question about a named day is now told the "now" reading is off-limits**
+`getTimeScopeInstruction` fires when the question names a day other than the
+present. `namesAnotherDay` is deliberately narrower than `mentionsTime`, which
+matches "now", "current" and bare years — right for deciding whether to state
+the date, wrong for deciding whether the current reading is off-limits.
+Verify: `__tests__/promptUtils.test.ts`.
+
+🔧 **…and on device it did not help, which located the real cause**
+Same question, `Qwen 3 - 1.7B`, instruction live: "Pogoda w Nowym Sączu jutro
+będzie idealna na trening… Odczuwalna temperatura: 25°C". The passage it drew
+from says **"Pogoda jest dziś idealna na trening… Odczuwalna temperatura:
+25°C | Szansa opadów: 0% 12:00"** — today's block, presented as tomorrow's.
+The instruction cannot be blamed alone, because of what the source list shows:
+of five results, **one** was used. Onet (similarity 1.0) was used and
+contributed only its "dziś" section; **INTERIA was fetched and `read: true`
+but `used: false`** — and INTERIA is the page carrying `Jutro 22°C 12°C`.
+So the page that answers the question was retrieved, read, and dropped before
+the prompt was built. No prompt instruction can recover from that.
+The failure is in selection, at two levels: which sources reach the context,
+and which passage within a page is kept. Neither is aware of the day the
+question asks about, while `selectRelevantContent` scores on query terms that
+the "today" block matches just as well.
+Not attempted here: this is the source-ranking layer, and F8 above records
+what happened the last time that pool was widened on a hunch.
+
+✅ **A bare temporal follow-up reached the search with no subject at all**
+Found by testing a long conversation that changes subject halfway, which
+nothing had covered: the corpus median is one user turn and only five of its
+178 conversations reach four. `A pojutrze?` matched none of the incompleteness
+rules — no pronoun, no dropped subject, no elision — so
+`carryReferentIntoQuery` passed it through and the search ran on the literal
+string. A short query naming only a day now counts as needing its referent.
+Verify: `__tests__/longConversation.test.ts`.
+
+✅ **The chat header could show one model while another answered**
+`llmStore.loadModel` awaited `NetInfo.fetch()` **before** extending
+`modelLoadChain`, so a send waiting on that chain could not see a selection
+made moments earlier. Observed on device: header `Gemma 4 - 2B`, stored
+`modelName` `Qwen 3 - 1.7B`. Worse than a label bug — `sendChatMessage`
+captures the model up front and later reloads it, so the stale model was
+actively restored. The network check now runs inside the queued task.
+Confirmed on device after the fix: sending mid-load is answered and stamped by
+the newly selected model.
+
+⚠️ **`Software caused connection abort` — hardened, not reproduced**
+Twelve aborts in 2.84 s with shrinking gaps, from the `catch` in
+`modelStore.downloadModel`. The code is a locally closed socket — a
+cancellation, not a network failure — and `ModelCard.handlePress` awaits
+`NetInfo.fetch()` before the state flips to `Downloading`, so repeated entry
+starts parallel fetches of the same URLs. A guard now lives in `downloadModel`
+so it covers every call site. **The original burst was never reproduced**; a
+single tap downloads cleanly. Treat this as consistent-with-evidence
+hardening, not a confirmed fix.
+
+✅ **Resolved, and not an app bug: "one tap downloaded a model nobody asked
+for"**
+Tapping download on Qwen 3 - 1.7B appeared to also fetch Qwen 3 - 0.6B
+(505 MB): 1.7B `.pte` complete 11:40:19, family tokenizer 11:40:21, a second
+`ResourceFetcher.fetch` at 11:40:26 with no screen interaction of mine, 0.6B
+`.pte` complete 11:40:49. No JS path explained it — the only callers of
+`downloadModel` are `ModelCard`, and `editModel` is reachable only from the
+edit modal.
+Tested directly: both variants deleted, then **only** 0.6B downloaded. Only
+0.6B's three files appeared. The app does not pull sibling variants.
+The real explanation is that **someone else was using the same physical phone
+at the same time**, which the rest of the session corroborates: the
+`adb reverse` tunnel was re-pointed to another checkout's Metro, and the APK
+was replaced with a build from that checkout at 12:26. The 11:40 download was
+their tap, not the app's doing.
+Worth keeping as a method note: on a shared device, "no interaction" means no
+interaction _from this session_. Confirm the installed build and the tunnel
+before attributing an unexplained event to the code.
+
+🔧 **Open: Gemma's `'llm'` planner sent a good question to unusable pages**
+Same question, same device, `Gemma 4 - 2B`: the planner reformulated the query
+and retrieval landed on meteoblue and AccuWeather with **`used: 0`** — nothing
+extractable. Its refusal was correct _given those sources_, which also means
+the run is not comparable to the verbatim-planner runs above. `Gemma 4 - 2B`
+still has no `PLANNER_EVIDENCE` entry at all, and this is exactly the silent
+under-retrieval the planner section warns about.
+
+⚠️ **Device note: the Pixel stopped running this checkout mid-session**
+Two separate ways, both worth knowing before trusting any device result:
+the `adb reverse` tunnel was re-pointed from `tcp:8081→8081` to `8081→8090`
+(checkout B's Metro), and then the app itself was replaced — installed
+`versionCode` went from the 65 built here at 11:15 to 68 at 12:26, from a
+checkout with no `expo-web-browser`, which red-boxes this bundle with
+`Cannot find native module 'ExpoWebBrowser'`. The fastest tell is that red box;
+the second fastest is `dumpsys package … | grep lastUpdateTime`. Verify both
+the tunnel and the installed build before reading anything into a device run.
+
+## Device round: what web search does to a real conversation
+
+A sixteen-turn Polish conversation driven through the UI on a physical Pixel 10
+(Android 16, `Gemma 4 - 2B`, `webPlanner: 'llm'`, 2048-token window), twelve
+turns with web search on and four with it off, plus a planner corpus run and an
+attachment round. Every turn was read back from the device's own `messages`
+table — question, answer, per-source `read`/`used`, `timeToFirstToken` — not
+from the screen.
+
+🔧 **Web search made this conversation worse, not better**
+Four of four web-off turns were correct. Four of twelve web-on turns were.
+The failures were not the model running out of context: turn 15 summarised all
+fourteen preceding turns accurately under the same 2048-token window, and turn
+11 resolved "the city I asked about in my first message" back to Kraków ten
+turns later. Conversation state holds. Retrieval is what breaks.
+
+🔧 **The planner rewrites non-English questions into English**
+59-item corpus (8 languages) run through `planWebSearch` on device: 0 parse
+failures, but **25 of 47 non-English items came back as English queries**.
+Split by script: non-Latin 16/18 (hi 10/10, ur 6/8), Latin 9/29.
+`PLANNER_SYSTEM_PROMPT` never states what language a query should be in — its
+"in ANY language" clause governs `needs_search` only — and all eight
+`PLANNER_EXAMPLES` are English question _and_ English query. The Tokyo example
+(`"whats the weather in tokyo right now"` → `"Tokyo weather today"`) is the
+template the model reproduced verbatim for Delhi, Lahore, Berlin and Kraków.
+Nothing downstream compensates: `webViewScrapeProvider` concatenates
+`engine.url + query` with no region or language parameter, so query language is
+the only locality signal there is.
+Live consequence, turn 4: "Jak daleko jest z Krakowa do Zakopanego?" planned as
+`distance between Krakow and Zakopane`, returned two English Rome2rio pages and
+answered "nie jest możliwe podanie konkretnej odległości" — a distance every
+Polish page states outright.
+
+🔧 **Translation plus the foreign-script filter discards almost every result**
+`runWebSearch.ts:433` drops any result whose dominant script differs from the
+**question**'s, and `:219` searches only `plan.queries` when the plan is
+non-empty — the original question is never searched. So a non-Latin question
+produces an English query, English results, and a filter that rejects them.
+Measured, not reasoned: the same engine the app uses
+(`html.duckduckgo.com`, first entry in `SCRAPE_ENGINES`) was queried with the
+plan text, and each result's title+snippet run through the repo's own
+`isForeignScript` against the original question.
+
+- Hindi `दिल्ली में आज का मौसम कैसा है` → plan `weather in Delhi today`
+  (the plan the corpus actually produced for this item): **1 of 10 results
+  survives** — the single page whose title carries Devanagari.
+- Russian `какая сегодня погода в Москве` → `current weather in Moscow`:
+  **0 of 10 survive.**
+  Two caveats on the method. The fetch was made from the host rather than through
+  the device's WebView, so region and personalisation may differ slightly. And the
+  Russian plan text is a reconstruction — the corpus run stopped before its
+  Russian block — while the Hindi one is measured output.
+  The earlier form of this note claimed zero results outright. Hindi shows that is
+  too strong: the failure is 90% of retrieval discarded, and total only when no
+  returned page happens to carry the question's script.
+
+🔧 **Ranking matches sentence shape, not the entity**
+Turn 7, "Kiedy odbył się pierwszy w pełni udany lot Starship?": of five results,
+three were about a heart transplant and a V-2 rocket — pages matching the Polish
+frame "pierwszy udany … odbył się", not Starship. The heart-transplant page
+ranked **first** and was marked `used`. The answer invented a date, 24 July 2026.
+`rankingQuery` is `query + intent`, i.e. the Polish question, so Polish pages on
+an unrelated topic outscore the on-topic English SpaceX page the search returned.
+
+🔧 **Evidence is retrieved and then not used**
+Turn 9, cost of a Falcon 9 launch: five relevant results, one titled
+"SpaceX Increases Falcon 9 Launch Prices to $74M", `used: 0` across all five,
+answer "nie ma informacji". That title was rank 3 and `WEB_FETCH_TOP_N_CONTENT`
+is 2, so its body was never fetched — but the title is in the prompt via
+`sourceBlock` and carried the answer on its own.
+Turn 16, "Jaki jest kurs euro do złotego?": query stayed Polish, retrieval
+returned exactly one source — **NBP**, the authoritative one — `read: true`,
+`used: 0`, answer "nie jest możliwe określenie aktualnego kursu". Query and
+retrieval were both right here; selection alone lost it.
+
+🔧 **The planner never declines a search**
+0 of 59 corpus items returned `needs_search: false`. Recorded initially as a
+strength — no silent disabling, unlike LFM 2.5 VL 450M's 37/72 — the corpus
+could not show the other side, because it contained only searchable questions.
+Turn 12 did: "Dzięki, to bardzo pomocne." was planned verbatim as a query,
+fetched five pages about how to thank people, marked three of them `used`, and
+spent 43 seconds answering "Dziękuję bardzo." The prompt lists "greetings,
+thanks, chit-chat" as `false` cases and Gemma ignores them.
+
+⚠️ **Conversation history leaks into the query**
+Turn 13 asked about tomorrow's weather in Zakopane and was planned as
+`weather in Zakopane tomorrow Statistical Office` — "Statistical Office" came
+from the sources of turn 10, six turns earlier. The date scoping itself worked
+(the answer correctly said 3 September 2026), so `getTimeScopeInstruction` is
+holding; the contamination is separate and needs its own guard.
+
+🔧 **The planner costs 27 seconds before a search begins**
+Corpus latency: p50 27.5 s, p90 32.7 s, max 70.3 s per planner call, on top of
+retrieval and generation. End-to-end `timeToFirstToken` in the conversation ran
+30–73 s. `verbatim` pays none of this. The corpus ran while other models were downloading
+in the background, so the figure was checked for contention: median 27.6 s over
+the first half of the run against 27.5 s over the second. The cost is the
+model's, not the download's.
+
+✅ **Documents work, and they switch web search off**
+`raport-kwartalny.txt` attached to a fresh chat, asked for net profit and
+headcount: "3 630 000 zł … 148 osób", both exact. `RAG_PRIORITY_OVER_WEB_SEARCH`
+is visible in the UI as a disabled Web toggle rather than only the coded toast.
+
+⚠️ **An image replaces an attached document**
+With `Gemma 4 VL - 2B` loaded, attaching an image to a chat that already had the
+report attached produced a message row with `imagePath` set and `documentName`
+NULL, and `chatSources` for that chat empty. The document was dropped, not
+combined. A question spanning both — "does the chart agree with the report?" —
+cannot currently be asked.
+
+⚠️ **The image question never produced an answer, but the run is not clean**
+The same question on `Gemma 4 VL - 2B` was still at ~79% CPU with no first token
+when the run was abandoned, against 30–70 s for the text sibling. It is not a
+usable measurement: partway through, the phone's screen timed out and the app
+went to the background, so an unknown share of that time was spent throttled.
+`stay_on_while_plugged_in` is now set on the device; the case needs re-running
+with the screen held awake before any latency claim is made about it.
+
+## Fix round: language, a fallback query, a floor, and an anchor
+
+Five of the six fixes the device round pointed at, implemented and measured.
+The chit-chat gate was left out deliberately. Verification of the prompt change
+is a paired re-run: the same 27 corpus items, same model, same device, compared
+against their own earlier output rather than against a fresh sample.
+
+✅ **Telling the planner to keep the question's language fixed 10 of 14 cases**
+`PLANNER_SYSTEM_PROMPT` now states the query must be in the user's language and
+script, and `PLANNER_EXAMPLES` carries a Polish and a Hindi example beside the
+eight English ones. On the 25 non-English items of the paired subset,
+translation into English fell from **14 to 4**, with no item newly translated.
+`jaka jest pogoda w Krakowie dzisiaj` → `pogoda Kraków dzisiaj`;
+`दिल्ली में आज का मौसम कैसा है` → `दिल्ली मौसम आज`.
+Two further rules went into the same prompt, aimed at defects with the same
+root: keep the names and numbers the user gave (the `kurs euro` →
+`euro to dollar exchange rate today` swap is gone — it now returns
+`kurs euro dzisiaj`), and never pull a name in from an earlier unrelated turn.
+
+⚠️ **Non-Latin scripts still translate half the time**
+The four survivors are all Devanagari or Arabic: `पेट्रोल की कीमत आज कितनी है` →
+`petrol price today`, `ڈالر کا آج کا ریٹ کیا ہے` → `current dollar exchange rate`.
+Latin-script languages are now clean (de, pt, pl, es, fr: 7 before, 0 after).
+The instruction is not enough on its own for a script the model has less of;
+the fallback query below is what stops those turns from failing outright.
+
+⚠️ **The longer prompt costs 5.5 s per search**
+Median planner latency on the same items went from **28.3 s to 33.8 s**. That is
+a real regression and the rules are what bought it. It is worth paying only
+because the alternative was retrieval that misses the question's language
+entirely — and it sharpens the case for not running the planner on every turn.
+
+✅ **The question is now always searched alongside the plan**
+`withVerbatimFallback` appends the user's own words to the planned queries,
+deduplicated and capped at four. Before, `baseQueries = plan.queries.length ?
+plan.queries : [query]` meant that whenever the planner produced anything, the
+question itself was never sent to the engine — so a single bad plan decided the
+whole turn. Verify: `__tests__/verbatimFallback.test.ts`.
+
+✅ **The foreign-script filter no longer empties the result set**
+It now discards foreign-script results only while at least one same-script
+result survives. Measured beforehand against the real engine: a Cyrillic
+question left 0 of 10, a Hindi one 1 of 10.
+A first attempt set the floor at three same-script results, and the existing
+`never fetches a result written in another script` test caught it — with one
+good English result and an Arabic one, that threshold fed the Arabic page to the
+model. The floor is one: prefer the question's script whenever anything in it
+came back, and keep foreign results only when nothing did.
+Verify: `__tests__/scriptFloor.test.ts`.
+
+✅ **Ranking anchors on the question's subject, not its sentence frame**
+`anchorTerms` picks out the words that carry the subject — a name away from the
+opening word, or any token with a digit. A result matching them is boosted, one
+matching none is penalised, and the engine's own top result is no longer pulled
+back up when it matches no anchor. On the turn-7 fixture the Starship page now
+ranks first and the heart-transplant page falls below second.
+A result whose **title** carries a figure gets a further bonus: that is evidence
+already in hand, costing no fetch, and it is what the Falcon 9 turn threw away
+by ranking `SpaceX Increases Falcon 9 Launch Prices to $74M` third against a
+fetch budget of two. Short anchors ("9" in "Falcon 9") match as whole tokens
+only, or they would hit inside 1999 and 2029.
+Verify: `__tests__/entityAnchor.test.ts`.
+
+🔧 **What these fixes do not touch**
+The planner still never returns `needs_search: false` — 0 of 27, unchanged, as
+the gate was deliberately left alone. The NBP case (right query, right source,
+fetched, `used: 0`) is untouched and still needs its prompt context dumped
+before a fix can be designed. And none of this has been re-run as a
+conversation: the paired subset measures the planner, not the answers.
+
+## Re-test round: what the fixes moved, and where the failure went
+
+The sixteen-turn conversation was re-run on device against the fixed pipeline.
+It is **not** a clean A/B: the answer prompt was changed after turn 7, once the
+turns kept pointing at the same defect, so turns 1–7 and anything after them ran
+on different code. The per-turn comparisons below stand on their own; the
+aggregate "web on 4/12" figure does not yet have a matching re-measurement.
+
+✅ **The language fix reaches the answer**
+Turn 4, "Jak daleko jest z Krakowa do Zakopanego?", previously answered "nie jest
+możliwe podanie konkretnej odległości" off two English Rome2rio pages. It now
+answers "około 100-110 kilometrów" from Polish route pages. The chain the
+corpus predicted — Polish query, Polish sources, usable answer — holds
+end-to-end.
+
+✅ **A figure in the title now gets the page read**
+Turn 1 went from a truncated reply, and before that "Kraków ma 4 000
+mieszkańców" taken from a medieval population table, to "804 237 … 816 614 (GUS)"
+with both figures attributed. The ranking change is visible in the source order:
+`Kraków Population 2026 — 804,237 People` moved from rank 5 to rank 1 and
+`Statistical Office in Krakow` — a voivodship bulletin with no answer in it —
+fell from rank 1 to rank 5. Under a fetch budget of two, that is the difference
+between reading the answer and reading a bulletin.
+
+✅ **Anchoring removed the off-subject sources entirely**
+Turn 7 previously retrieved three pages about a heart transplant and a V-2
+rocket, ranked the transplant first, and invented a launch date. All five
+results are now genuinely about Starship.
+
+🔧 **The bottleneck moved from retrieval to the answer step**
+That same turn 7 then answered "nie ma informacji o pierwszym w pełni udanym
+locie Starshipa" with `used: 0` — while holding a fetched page whose stored
+passage reads "Starship zaliczył pierwszy w pełni udany lot … 27 SIE 2025 …
+z 26 na 27 sierpnia … dziesiąty lot testowy". The evidence was in the prompt, in
+plain Polish, and was refused. The same shape appeared on turn 2 (five relevant
+Polish pages, three marked used, "źródła nie zawierają konkretnej listy") and in
+the earlier round on the NBP and Falcon 9 turns. No further retrieval work
+addresses this.
+Diagnosis: three separate instructions in `sourceGroundingInstructions` push
+toward declaring absence — the figures rule, the fallback rule, and the
+per-turn subject rule. They are what stops invention, and on a 2B model they
+also stop recognition. A counterweight was added: re-read the whole block,
+titles included, before declaring something missing.
+Effect, same question re-asked on a fresh chat: `used` went 0 → 1 and the
+refusal became a substantive answer — but it described the flight instead of
+dating it, so the "when" still went unanswered. Partial, not fixed. The page's
+own date is a byline ("27 SIE 2025") and the in-text date ("z 26 na 27
+sierpnia") carries no year, which makes this a harder case than it first looked.
+
+⚠️ **One regression found and fixed inside this round**
+Searching the user's words beside the plan meant results always arrived under two
+different `sourceQuery` values, so the `[Answers: …]` sub-question tag started
+firing on every turn — and Gemma copied it verbatim into its reply on turn 2.
+The tag is now emitted only for a plan that really asked more than one thing.
+The first attempt at that defaulted the flag off and broke every other caller;
+the existing `webResultsToContext` test caught it, and the default is on.
+Verify: `__tests__/subQueryLabel.test.ts`.
+
+⚠️ **Turns that came out worse**
+Turn 2 answered well before and refuses now. Turn 6 named Gwynne Shotwell before
+— correct for "president of SpaceX" — and now names Elon Musk off a Polish page
+titled "SpaceX - kto jest właścicielem?", because the language fix moved
+retrieval onto Polish pages that frame the question as ownership. Neither is
+attributable to a single change with one sample; both need the clean re-run.
+
+🔧 **An unrelated bug the fixtures exposed**
+`CROSS_ASSET_PATTERN` carried `/i`, so its currency-pair half
+(`[A-Z]{2,6}[/-][A-Z]{2,6}`) matched ordinary URL path segments — `com/Krak`,
+`com/cities` — and charged legitimate results the converter-page penalty
+depending on how long their first path segment happened to be. The pair half is
+now case-sensitive, which is what currency codes are.
+
+🔧 **A diagnostic that was lost**
+Source rows now record the user's question rather than the joined retrieval
+query, which is right for the sources UI but means the planner's actual query is
+no longer visible in the database. Reading `telemetry.plannedQueries` is the
+only way to see it now, and it is not persisted.
+
+## Controlled re-run: 4/12 → 6/12, and what still fails
+
+Sixteen turns on device, same script, same model, same web-on/off pattern, and
+**no code changed during the run** — the condition the previous round could not
+meet. Three further fixes went in before it started: the answer prompt now says
+to lead with the value the question asks for; passage selection rewards a
+specific date when the question asks "when"; and the retrieval query is stored
+beside the user's question again, after the display change hid it.
+
+**Web on: 4 of 12 correct before, 6 of 12 after, plus one partial.**
+**Web off: 4 of 4 before, 3 of 4 after, plus one partial.**
+One conversation, one model, one run. The direction is consistent with the
+per-turn evidence below, but nobody should read 6/12 as a stable rate.
+
+✅ **Four turns that failed before now answer**
+
+- Turn 4, distance to Zakopane: "około 100-110 kilometrów" off Polish route
+  pages, against "nie jest możliwe podanie konkretnej odległości" off English
+  aggregators.
+- Turn 9, Falcon 9: "$74M (około $3,246/kg do LEO)" with the page named,
+  against "nie ma informacji" with 0 of 5 sources used while `$74M` sat in a
+  title.
+- Turn 1, Kraków: "804 237 … 816 614 (GUS)" with both figures attributed,
+  against a truncated reply — and, the run before that, "4 000 mieszkańców"
+  lifted from a medieval population table.
+- Turn 7, Starship: a date at last ("5 maja 2021, SN15"), against an invented
+  "24 lipca 2026" in the baseline and a flat refusal mid-round. The
+  lead-with-the-value instruction is what moved it.
+  Turn 13 also improved without changing category: all five weather sources are
+  now Polish rather than meteoblue and AccuWeather, and the "Statistical Office"
+  leak from six turns earlier did not recur.
+
+🔧 **Refusal on top of correct retrieval is still the main failure**
+Turn 14 fetched `Cennik skipassów - Polana Szymoszkowa` and `Ceny skipassów
+Zakopane - Kasprowy Wierch` — the official price lists — and answered "nie jest
+podana informacja o cenie", `used: 0`. Turn 16 held NBP, Walutomat and
+InternetowyKantor and said the same. Both are price tables, which suggests the
+extractor is handing over navigation rather than rows, but that is a hypothesis:
+the passages were not dumped for those two turns.
+The prompt counterweight helps and does not solve it. It is worth noting the
+baseline had the same shape on the same kind of page, so this is unfixed rather
+than newly broken.
+
+⚠️ **Two turns came out worse than the baseline**
+Turn 10 answered "the current population of Warsaw is 1." — a number cut off
+mid-figure, against 1,863,578 / 1,866,729 before. The page carrying
+`Warsaw Population 2026 — 1,862,402 People` in its title ranked fourth and was
+never read, so the title-figure bonus did not decide this one.
+Turn 6 names Elon Musk as president of SpaceX where the baseline named Gwynne
+Shotwell, who actually holds the title. This reproduced across two runs, so it
+is not noise: the language fix moves retrieval onto Polish pages that frame the
+question as ownership ("SpaceX - kto jest właścicielem?"), and the Polish
+Wikipedia page on Shotwell sits in the results unused. A correctness cost of the
+language change, and the clearest argument that it needs a follow-up.
+
+⚠️ **Untouched by design**
+The planner still never returns `needs_search: false`: turn 12, "Dzięki, to
+bardzo pomocne", again fetched five pages about how to thank people and spent
+46 s answering "Dziękuję". The chit-chat gate was excluded from this round of
+fixes deliberately.
+
+## The refusals, split apart
+
+The controlled run left two turns refusing on top of good retrieval — the ski
+pass and the euro rate. They looked like one defect. Dumping the stored passages
+showed they are two, with opposite conclusions.
+
+✅ **The ski-pass refusal was the pipeline's fault, and is fixed**
+Both fetched passages contained **no amount at all**: the model was handed a
+resort roll-call and an intro blurb, so "nie jest podana informacja o cenie" was
+the correct answer to what it was given.
+Traced layer by layer against the live page:
+
+- the raw HTML holds the prices (`150,00 PLN`, `285,00 PLN`, `410,00 PLN`);
+- `heuristicExtractText` keeps them — 13 355 characters including every figure;
+- `selectRelevantContent` drops all of them.
+  The reason is the same shape as the ranking defect one layer up. The term score
+  is unbounded — every question word that appears adds twice its IDF weight — so
+  the roll-call ("Tatry Super **Ski** … **ZAKOPANE**: Polana Szymoszkowa") matching
+  six of the question's words beats a `150,00 PLN` cell that matches none.
+  A bonus alone could not fix it: at 4 points it changed nothing, and only an
+  absurd 50 flipped the selection. So passages carrying no figure are damped
+  instead when the question asks a price, which puts the two on comparable footing
+  without a magic constant.
+  On device, the same question now answers "170 zł dla osoby dorosłej i 160 zł
+  ulgowy" with the page named.
+  Verify: `__tests__/questionShape.test.ts`, against a fixture trimmed from the
+  real szymoszkowa.pl page rather than an invented one.
+
+🔧 **The euro-rate refusal is not the pipeline's**
+Its passage does contain the answer — "Kurs kupna EUR InternetowyKantor.pl
+**4,3327**" — and the model still said the sources hold no rate. Retrieval,
+extraction and selection all did their job. This one sits with the answer step,
+alongside the cases the prompt counterweight only partly moved.
+
+⚠️ **One source of the ski-pass failure is nobody's bug**
+The second page, skiinfo.pl, has no prices in its HTML at all — they are drawn
+by JavaScript. The scraper fetches HTML, so that page can never contribute a
+figure, and ranking it highly wastes one of the two fetch slots. Worth a
+follow-up: a page whose fetched text contains none of what the question asks for
+could release its slot to the next candidate.
+
+🔧 **A stateful-regex bug, caught before it shipped**
+The first version of the price check called `MONEY_ANCHOR.test(...)`. That regex
+carries the `g` flag, so `.test` advances `lastIndex` and would have answered
+differently for every other passage — a scoring function that silently alternates.
+It uses `.match` now, as `hasMoneyAnchor` already did.
+
+`heuristicExtractText` is now exported. It was the only way to tell "extraction
+lost it" from "selection lost it" without guessing, and that distinction decided
+which layer to change.
