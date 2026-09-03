@@ -3838,3 +3838,156 @@ It uses `.match` now, as `hasMoneyAnchor` already did.
 `heuristicExtractText` is now exported. It was the only way to tell "extraction
 lost it" from "selection lost it" without guessing, and that distinction decided
 which layer to change.
+
+## Pixel round: a fifteen-turn OLED conversation, read from the database
+
+Physical Pixel 10, Gemma 4 - 2B, branch `web-search-compact`, 2026-09-02,
+chat 55 (message ids 335–362). The user rated the conversation as the best the
+feature has produced so far, and it is exported verbatim as the reference
+example (`web-search-przyklad-oled-tv.md` / `.json` on the desktop; the
+exporter lives in the session scratchpad as `export_chat.py`). What follows is
+what the same conversation looks like from the planner's side: for each turn,
+what the user asked, what was actually sent to the search engine, and what
+came back. Every finding below was measured against the persisted rows, not
+recalled from the screen.
+
+| # | User asked | Planner sent | What went wrong |
+|---|---|---|---|
+| 335 | jaki jest najlepszy tv OLED? | `najlepszy tv OLED` | ✅ |
+| 337 | Jaki jest najlepszy w stosunku do ceny? | `najlepszy telewizor OLED w stosunku do ceny` | ✅ topic carried |
+| 339 | Ile kosztuje? | `cena LG OLED65B65LA` | ✅ referent carried |
+| 341 | …wypisz jakie ma funkcje i parametry techniczne oraz powiedz czy sprawdzi się w salonie z dużymi oknami | `best TV for large living room features` + `TV technical specifications` + `TV suitability for large windows` | ⚠️ three English queries for a Polish question; no referent (LG OLED65B65LA), no OLED; US sources; the answer covered one aspect of three |
+| 343 | A co z parametrami technicznymi? | `parametry techniczne Samsung QN90D` | ⚠️ referent jumped to a model the *previous answer* had introduced; passages were marketing copy, the "specs" in the answer were not specs |
+| 345 | Podaj parametry techniczne tv samsung QE65QN90D | `parametry techniczne telewizora Samsung QE65QN90D` | ✅ |
+| 347 | Jeszcze raz wyszukaj tv do mojego salonu najlepszy tylko oled | `najlepszy oled tv dla salonu` | ✅ |
+| 349, 350 | Jaka jest jego cena? | — | ⚠️ no answer at all, twice (native crash, see [CHAT_UX_ISSUES.md](CHAT_UX_ISSUES.md)) |
+| 351 | Jaka jest jego cena? | `cena samsung QE65S99H` | ✅ third attempt |
+| 353 | Trochę za drogi znajdź tańszy spełniający moje wymagania | `tańszy telewizor podobny` | ⚠️ every constraint dropped (OLED, large room, windows, "cheaper than QE65S99H"); five "cheap TV" rankings; refusal |
+| 355 | Czego dotyczy ta konwersacja? | — | ✅ correct recap without a search |
+| 357 | Znajdź najlepszy model tv spełniający te wymagania | `najlepszy model telewizora OLED` | ✅ OLED recovered; ⚠️ badge shown, no Sources button |
+| 359 | Dlaczego ten model najlepiej spełnia moje wymagania? | `Samsung QE65S99H benefits` | ⚠️ English; UK sources |
+| 361 | W czym jest lepszy od innych modeli? | `Samsung QE65S99H vs other models` | ⚠️ English; UK sources |
+
+Three of the fourteen answers open with a corrupted first word ("Zgodnieć z",
+"Zgodniewniałem się") — that is native generation, not the prompt, and it is
+tracked in the UX document.
+
+### What the table says about the planner
+
+⚠️ **The planner drifts into English when the question is long.** Both drifts
+(#341, #359/#361) happen on questions that are either long or refer to an
+entity by pronoun. The planner prompt is English, the few-shot examples are
+English, and nothing in the pipeline checks that the query shares a language
+with the question — `isLeakedQuery` and `regroundYears` look at content, not
+language. A language-agnostic check is available: stem overlap between the
+query's non-entity tokens (≥4 chars) and the question plus recent turns. Zero
+overlap means the query was written in a language the conversation never
+used; one planner retry with that correction, then the verbatim keyword
+fallback that already exists.
+
+⚠️ **The referent machinery is a word list, and it has gaps.**
+[`DEMONSTRATIVE_MARKERS`](../utils/web/buildSearchQuery.ts) knows
+tego/tej/tym/tych/that/those but not "jego", so "Jaka jest jego cena?" is a
+literal search until the LLM planner happens to expand it — the user called
+it a lottery, and #349–#351 shows why. The same list-based approach is what
+produces #343: `mostRecentEntity` scans user turns first, then assistant
+turns, and picks the *first* proper-noun run it finds in the last answer,
+which was a model the assistant had mentioned in passing. The fix that does
+not grow the list: the conversation subject is the entity most repeated in
+the last answer (fallback: the last user-turn entity), an entity being a
+capitalised run *or* a letters-plus-digits model token (`QE65S99H`,
+`OLED65B65LA`). If neither the question nor the planner's queries contain
+any entity or number and a subject exists, the subject is appended to every
+query. That rule fires on "jego", on "cena", on "parametry" and on any
+language, because it never looks at the words — only at the absence of a
+referent.
+
+⚠️ **The topic anchor is lost after one detour.** "OLED" is in turns 335,
+337, 347 and 357, and the digest names it, but #341 and #353 send queries
+without it and land on generic "best TV" and "cheap TV" pages. A
+distinctive token — acronym, capitals, number shape — that recurs in two or
+more user turns or in the digest is a topic anchor; when the planner's query
+lacks every anchor, append them. This is the same shape of rule as the
+subject rule above and shares its language independence.
+
+⚠️ **Intent exists in the prompt but not in the pipeline.**
+[`getIntentInstruction`](../utils/promptUtils.ts) already tells the model
+"answer every one of them" for multi-part questions, and the planner returns
+an `intent` string. Nothing downstream reads it. `selectRelevantContent`
+decides what a "relevant" passage is with
+[`PRICE_QUESTION` / `WHEN_QUESTION`](../utils/web/webResultsToContext.ts),
+two Polish/English regexes — which is why #343's specs question was fed
+marketing paragraphs: nothing asked the selector for number-and-unit
+density. A closed intent enum from the planner
+(`price | specs | comparison | recommendation | news | fact | howto | recap`)
+would drive passage anchors (specs → number+unit density, price → money
+anchor, comparison → two entities present) and the answer checks, and would
+replace the two regexes with one language-neutral field.
+
+⚠️ **Multi-aspect questions are answered on one aspect.** #341 asked for
+features, technical parameters and suitability for a bright room; the answer
+named three TVs and their prices. The planner's three sub-queries are the
+aspect list. A coverage check — for each sub-query, do its stems appear in
+the answer — is cheap, language-agnostic, and gives `nudgeOnce` a precise
+instruction ("the answer does not address: …") instead of a generic retry.
+Per-source relevance should use that source's own `sourceQuery` plus the
+question, not the joined label `baseQueries.join(' + ')` that
+`webResultsToContext` currently receives.
+
+### Two UI inconsistencies with a mechanism
+
+🔁 **A source badge with no Sources button.** #357 shows "Ranking Telewizorów
+OLED 2026…" as the dominant-source badge and no Sources action on the
+message. [`useMessageSources`](../hooks/useMessageSources.ts) builds
+`displayedSources` by dropping web sources with `read === false`, then
+`documentSources` as displayed ∩ used — while `dominantWebSource` is picked
+from the *unfiltered* list. When the source the answer actually used was a
+snippet-only hit (`read: false`, `used: true`), the badge sees it and the
+button does not: [`canShowSourcesAction`](../components/chat-screen/MessageItem.tsx)
+requires `documentSources.length > 0`. The fix is one predicate: a used
+source is displayed regardless of `read`. Guard with a test that builds a
+message whose only used source is unread and asserts both the badge and the
+button agree.
+
+🔁 **"3 searches become 5 pages" after re-entering the chat.** While the
+search runs, the trace shows the real steps: one "Searching “…”" per planner
+query, then the pages read. After leaving and re-entering, the saved block is
+rebuilt by [`savedSteps()`](../components/chat-screen/webSearchTrace.ts) from
+the persisted sources only: it takes the *first* source's `query` and emits a
+single "Searching “<display question>”" step, then every source — read or
+not — becomes a page row. The persisted rows do carry `sourceQuery` per
+result and `searchedQuery` on the document, so the information is not lost,
+only unused. Rebuild one step per distinct `sourceQuery`, page rows only for
+`read: true`, failures as a note, and pass `animateRows: false` on a DB
+replay so the entering animation does not fire for rows that were never new.
+This is the same family as the two 🔁 entries under "Trace-panel regressions
+that keep coming back": the live and saved shapes are hand-written twice.
+
+### Plan, in the order it should be built
+
+Each item lands with a test that is red without the fix; each is
+language-agnostic by construction — no word lists, no per-language branches.
+
+1. **P1.1 conversation subject** — most-repeated entity of the last answer,
+   appended when the query has no entity/number. If the existing
+   `NEEDS_REFERENT` / `DEMONSTRATIVE_MARKERS` / `ELIDED_*` tests all pass
+   under the new rule, the regex lists go.
+2. **P1.2 language-drift guard** — stem overlap between query and
+   conversation; zero → one corrected planner pass → verbatim fallback.
+3. **P3.7 badge ↔ Sources button** — used sources are always displayed.
+4. **P2.6 nudge flicker** — the retry generates with streaming suppressed
+   (`suppressUtilityStreaming` already exists for utility calls), the bubble
+   shows a refining state, and the text is swapped once, only if accepted.
+5. **P1.3 topic anchors** — recurring distinctive tokens appended when
+   missing.
+6. **P1.4 intent enum** — planner emits it, passage selection and answer
+   checks consume it, `PRICE_QUESTION` / `WHEN_QUESTION` are retired.
+7. **P2.5 aspect coverage** — one nudge naming the missing sub-queries;
+   per-source relevance from `sourceQuery`.
+8. **P3.8 trace rebuild** — steps from distinct `sourceQuery`, pages only for
+   read sources, no replayed animations.
+
+What is *not* in this list, on purpose: the five-source cap and the
+`similarity` rank placeholder (`1 - index / used.length`) are known
+approximations and documented as such; they are not what the conversation
+tripped over.
