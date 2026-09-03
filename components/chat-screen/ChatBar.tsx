@@ -122,7 +122,6 @@ const ChatBar = ({
 
   const {
     width: screenWidth,
-    height: screenHeight,
     composerBottom,
     gridWidth,
     gridHeight,
@@ -554,7 +553,6 @@ const ChatBar = ({
           <AttachmentOverlay
             panel={panel}
             width={screenWidth}
-            height={screenHeight}
             gridWidth={gridWidth}
             gridHeight={gridHeight}
             menuMaxBottom={menuMaxBottom}
