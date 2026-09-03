@@ -43,6 +43,7 @@ import { sourcesPresentInContext } from '../utils/contextUtils';
 import { normalizeModelText } from '../utils/normalizeModelText';
 import { truncateAtRepeatedClause } from '../utils/loopDetection';
 import { updateConversationDigest } from '../utils/conversationDigest';
+import type { WebIntentKind } from '../utils/web/intentKind';
 import { useSettingsStore } from './settingsStore';
 import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
@@ -80,6 +81,7 @@ export interface LLMStore {
       sourceDocuments?: SourceDocument[];
       preferredSourceDocuments?: SourceDocument[];
       webIntent?: string;
+      webIntentKind?: WebIntentKind;
       webSubQueries?: string[];
       webWeak?: boolean;
       webSearchFailed?: boolean;
@@ -775,6 +777,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         sourceDocuments,
         preferredSourceDocuments,
         webIntent,
+        webIntentKind,
         webSubQueries,
         webWeak,
         webSearchFailed,
@@ -972,14 +975,20 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         claimsMissingEvidenceItHas(
           finalResponse,
           currentQuestion,
-          promptContext
+          promptContext,
+          webIntentKind
         )
       ) {
         await nudgeOnce(
           'Answer claims the sources are silent while they hold a figure, retrying once',
           EVIDENCE_PRESENT_RETRY_PROMPT,
           (retried) =>
-            claimsMissingEvidenceItHas(retried, currentQuestion, promptContext)
+            claimsMissingEvidenceItHas(
+              retried,
+              currentQuestion,
+              promptContext,
+              webIntentKind
+            )
         );
       }
 

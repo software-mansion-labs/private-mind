@@ -10,6 +10,7 @@ import { todayISO } from '../todayISO';
 import { namesAnotherDay } from '../calendarFacts';
 import { foldForMatching } from '../queryTerms';
 import { conversationSubject, namedEntitiesIn } from './conversationSubject';
+import { parseIntentKind, type WebIntentKind } from './intentKind';
 import { sharesLanguageWith } from './queryLanguage';
 import { topicAnchorer } from './topicAnchors';
 
@@ -25,6 +26,7 @@ export type QueryRewriteFn = (
 export interface WebSearchPlan {
   needsSearch: boolean;
   intent: string;
+  kind?: WebIntentKind;
   queries: string[];
   siteRestriction?: string;
 }
@@ -33,66 +35,77 @@ const PLANNER_EXAMPLES: {
   user: string;
   needsSearch: boolean;
   intent: string;
+  kind: WebIntentKind;
   queries: string[];
 }[] = [
   {
     user: "hey, how's it going?",
     needsSearch: false,
     intent: 'casual greeting',
+    kind: 'chat',
     queries: [],
   },
   {
     user: 'write a short poem about autumn',
     needsSearch: false,
     intent: 'creative writing',
+    kind: 'chat',
     queries: [],
   },
   {
     user: 'I feel tired, how can I sleep better?',
     needsSearch: false,
     intent: 'personal advice',
+    kind: 'chat',
     queries: [],
   },
   {
     user: 'python vs javascript, which should a beginner learn?',
     needsSearch: false,
     intent: 'programming language opinion',
+    kind: 'chat',
     queries: [],
   },
   {
     user: 'whats the weather in tokyo right now',
     needsSearch: true,
     intent: 'current Tokyo weather',
+    kind: 'fact',
     queries: ['Tokyo weather today'],
   },
   {
     user: 'how much does bitcoin cost right now',
     needsSearch: true,
     intent: 'current bitcoin price',
+    kind: 'price',
     queries: ['bitcoin price today'],
   },
   {
     user: 'compare the prices of bitcoin and ethereum',
     needsSearch: true,
     intent: 'compare Bitcoin and Ethereum prices',
+    kind: 'comparison',
     queries: ['bitcoin price today', 'ethereum price today'],
   },
   {
     user: 'which song has been streamed the most on spotify this year',
     needsSearch: true,
     intent: 'most streamed song this year',
+    kind: 'fact',
     queries: ['most streamed song Spotify 2025'],
   },
   {
     user: 'jaka jest pogoda w Krakowie dzisiaj',
     needsSearch: true,
     intent: 'current Krakow weather',
+    kind: 'fact',
     queries: ['pogoda Kraków dzisiaj'],
   },
   {
     user: 'दिल्ली में आज का मौसम कैसा है',
     needsSearch: true,
     intent: 'current Delhi weather',
+    kind: 'fact',
     queries: ['दिल्ली मौसम आज'],
   },
 ];
@@ -100,7 +113,7 @@ const PLANNER_EXAMPLES: {
 const PLANNER_EXAMPLES_TEXT = PLANNER_EXAMPLES.map(
   (ex) =>
     `User: ${ex.user}\n` +
-    `{"needs_search": ${ex.needsSearch}, "intent": "${ex.intent}", "queries": [${ex.queries
+    `{"needs_search": ${ex.needsSearch}, "intent": "${ex.intent}", "kind": "${ex.kind}", "queries": [${ex.queries
       .map((q) => `"${q}"`)
       .join(', ')}]}\n`
 ).join('');
@@ -116,7 +129,12 @@ const EXAMPLE_LEAK_TOKENS: string[] = [
 const PLANNER_SYSTEM_PROMPT = (today: string): string =>
   "You turn the user's latest message into a web-search plan. " +
   'Output ONLY one JSON object, no other text and no reasoning:\n' +
-  '{"needs_search": true|false, "intent": "<goal, max 8 words>", "queries": ["<q1>", "<optional q2>"]}\n' +
+  '{"needs_search": true|false, "intent": "<goal, max 8 words>", "kind": "<kind>", "queries": ["<q1>", "<optional q2>"]}\n' +
+  '"kind" is exactly one of: price (an amount of money), specs (technical ' +
+  'parameters and figures), comparison (two or more named things side by ' +
+  'side), recommendation (which one to choose), news (recent events), date ' +
+  '(when something happens or happened), fact (one checkable fact), howto ' +
+  '(steps to do something), chat (no search needed).\n' +
   'Set needs_search by what the best answer truly needs, in ANY language:\n' +
   '- false when you can answer well on your own: greetings, thanks, chit-chat, ' +
   'opinions, advice, math, coding, translation, rewriting, or timeless general ' +
@@ -398,7 +416,8 @@ export const parseSearchPlan = (raw: string): WebSearchPlan | null => {
     .filter(Boolean)
     .slice(0, WEB_QUERY_MAX_SUBQUERIES);
 
-  return { needsSearch, intent, queries };
+  const kind = parseIntentKind(obj.kind);
+  return { needsSearch, intent, ...(kind ? { kind } : {}), queries };
 };
 
 const REFERENT_ROLE_MARKERS =
@@ -578,9 +597,10 @@ export const planWebSearch = async (
   const searchQuery = anchorTopic(
     carryReferentIntoQuery(query, history, opts?.digest)
   );
-  const verbatim = (intent = ''): WebSearchPlan => ({
+  const verbatim = (intent = '', kind?: WebIntentKind): WebSearchPlan => ({
     needsSearch: true,
     intent,
+    ...(kind ? { kind } : {}),
     queries: [
       withSiteRestriction(
         clampQuery(toKeywordQuery(searchQuery)),
@@ -647,7 +667,7 @@ export const planWebSearch = async (
     .map(anchorTopic)
     .map((q) => withSiteRestriction(q, siteRestriction));
 
-  if (safeQueries.length === 0) return verbatim(plan.intent);
+  if (safeQueries.length === 0) return verbatim(plan.intent, plan.kind);
   return {
     ...plan,
     queries: safeQueries,

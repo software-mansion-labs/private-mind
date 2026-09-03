@@ -141,6 +141,22 @@ describe('parseSearchPlan', () => {
     expect(parseSearchPlan('')).toBeNull();
   });
 
+  it('reads the plan kind from the closed set, whatever its case', () => {
+    expect(
+      parseSearchPlan(
+        '{"needs_search": true, "intent": "x", "kind": "Specs", "queries": ["a"]}'
+      )?.kind
+    ).toBe('specs');
+  });
+
+  it('drops a kind outside the closed set instead of passing it on', () => {
+    expect(
+      parseSearchPlan(
+        '{"needs_search": true, "intent": "x", "kind": "shopping", "queries": ["a"]}'
+      )
+    ).toEqual({ needsSearch: true, intent: 'x', queries: ['a'] });
+  });
+
   it('never parses deliberation from an unterminated <think> as a plan', () => {
     expect(
       parseSearchPlan(
@@ -718,6 +734,52 @@ describe('planWebSearch', () => {
       const generate = jest.fn().mockResolvedValue(correctedPlan);
       await planWebSearch(question, oledHistory, generate, { today: TODAY });
       expect(generate).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('kind of answer the question wants', () => {
+    it('carries the planner kind out with the plan', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "TV specs", "kind": "specs", "queries": ["Samsung QE65S99H parametry techniczne"]}'
+        );
+      const plan = await planWebSearch(
+        'Podaj parametry techniczne Samsung QE65S99H',
+        [],
+        generate,
+        { today: TODAY }
+      );
+      expect(plan.kind).toBe('specs');
+    });
+
+    it('keeps the kind when every planned query is thrown out and the question is searched verbatim', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "TV price", "kind": "price", "queries": ["Tokyo weather today"]}'
+        );
+      const plan = await planWebSearch(
+        'ile kosztuje Samsung QE65S99H?',
+        [],
+        generate,
+        { today: TODAY }
+      );
+      expect(plan.queries).toEqual([
+        toKeywordQuery('ile kosztuje Samsung QE65S99H?'),
+      ]);
+      expect(plan.kind).toBe('price');
+    });
+
+    it('tells the planner which kinds exist and shows one per example', async () => {
+      const generate = jest.fn().mockResolvedValue('');
+      await planWebSearch('ile kosztuje Samsung QE65S99H?', [], generate, {
+        today: TODAY,
+      });
+      const system: string = generate.mock.calls[0]![0][0].content;
+      expect(system).toMatch(/"kind": "<kind>"/);
+      expect(system).toMatch(/"kind": "price"/);
+      expect(system).toMatch(/"kind": "chat"/);
     });
   });
 });
