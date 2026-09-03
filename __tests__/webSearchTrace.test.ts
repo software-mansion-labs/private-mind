@@ -92,6 +92,67 @@ describe('buildRows — finished search', () => {
   });
 });
 
+describe('buildRows — rebuilt from saved sources after re-entering the chat', () => {
+  it('rebuilds one search step per query that found a source, in the order they ran', () => {
+    const rows = buildRows(
+      false,
+      [],
+      [
+        src({
+          url: 'https://a.com/btc',
+          query: 'porównaj kurs bitcoina i ethereum',
+          sourceQuery: 'kurs bitcoin',
+          read: true,
+        }),
+        src({
+          url: 'https://b.com/eth',
+          query: 'porównaj kurs bitcoina i ethereum',
+          sourceQuery: 'kurs ethereum',
+          read: true,
+        }),
+        src({
+          url: 'https://c.com/btc',
+          query: 'porównaj kurs bitcoina i ethereum',
+          sourceQuery: 'kurs bitcoin',
+          read: true,
+        }),
+      ],
+      false
+    );
+    expect(labelsOf(rows)).toEqual([
+      'Deciding what to search for',
+      'Searching “kurs bitcoin”',
+      'Searching “kurs ethereum”',
+      'Done',
+    ]);
+  });
+
+  it('lists the pages that were read or used, not every result the search surfaced (live: 3 searches became 5 pages)', () => {
+    const rows = buildRows(
+      false,
+      [],
+      [
+        src({ url: 'https://a.com/x', read: true }),
+        src({ url: 'https://b.com/x', read: false, used: true }),
+        src({ url: 'https://c.com/x', read: false }),
+        src({ url: 'https://d.com/x', read: false }),
+      ],
+      false
+    );
+    expect(hostsOf(rows)).toEqual(['a.com', 'b.com']);
+  });
+
+  it('keeps every row of a source saved before the read flag existed', () => {
+    const rows = buildRows(
+      false,
+      [],
+      [src({ url: 'https://a.com/x' }), src({ url: 'https://b.com/x' })],
+      false
+    );
+    expect(hostsOf(rows)).toEqual(['a.com', 'b.com']);
+  });
+});
+
 describe('buildRows — the search ran out without an answer', () => {
   const thin = [
     ev({ id: 1, type: 'searching', query: 'wanna olx' }),

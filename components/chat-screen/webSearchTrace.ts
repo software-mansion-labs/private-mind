@@ -32,6 +32,9 @@ export type NoteRow = {
 };
 export type Row = StepRow | PageRow | ChallengeRow | NoteRow;
 
+const isUnopenedAndUnused = (source: SourceDocument): boolean =>
+  source.read === false && source.used !== true;
+
 export const buildRows = (
   isSearching: boolean,
   trace: WebSearchTraceEntry[],
@@ -201,6 +204,7 @@ export const buildRows = (
       });
     }
     for (const result of results) {
+      if (isUnopenedAndUnused(result)) continue;
       const host = result.url ? hostname(result.url) : result.name;
       remember(keyOf(result.url, host), {
         url: result.url,
@@ -282,18 +286,22 @@ export const buildRows = (
     .map(stepFor);
 
   const savedSteps = (): StepRow[] => {
-    const query = results.find((result) => result.query)?.query;
+    const searched = [
+      ...new Set(
+        results
+          .map((result) => result.sourceQuery)
+          .filter((query): query is string => !!query)
+      ),
+    ];
+    const recorded = results.find((result) => result.query)?.query;
+    const queries = searched.length > 0 ? searched : recorded ? [recorded] : [];
     return [
       { type: 'step', key: 'objectives', label: 'Deciding what to search for' },
-      ...(query
-        ? [
-            {
-              type: 'step' as const,
-              key: 'query',
-              label: `Searching “${query}”`,
-            },
-          ]
-        : []),
+      ...queries.map((query, index) => ({
+        type: 'step' as const,
+        key: index === 0 ? 'query' : `query-${index}`,
+        label: `Searching “${query}”`,
+      })),
     ];
   };
 
