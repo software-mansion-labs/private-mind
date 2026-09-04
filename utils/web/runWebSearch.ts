@@ -1,10 +1,12 @@
 import type { LFMEmbeddings } from '../lfmEmbeddings';
+import { foldForMatching } from '../queryTerms';
 import type {
   WebSearchProvider,
   WebSearchResult,
   WebSourceDocument,
 } from './types';
 import {
+  anchorRescueQuery,
   isSmallTalk,
   planWebSearch,
   dedupeQueries,
@@ -488,17 +490,26 @@ export const runWebSearch = async (
     baseQueries = [...baseQueries, verbatim];
     telemetry.plannedQueries = baseQueries;
   }
-  const fallbackQueries = plan.fallbackQueries ?? [];
+  const anchorRescue = anchorRescueQuery(query, plan.expects);
+  const zeroResultRescues = dedupeQueries([
+    ...(plan.fallbackQueries ?? []),
+    ...(anchorRescue ? [anchorRescue] : []),
+  ]).filter(
+    (candidate) =>
+      !baseQueries.some(
+        (tried) => foldForMatching(tried) === foldForMatching(candidate)
+      )
+  );
   if (
     foundGroups.flat().length === 0 &&
-    fallbackQueries.length > 0 &&
+    zeroResultRescues.length > 0 &&
     !signal?.aborted
   ) {
-    const rescued = (await runQueries(fallbackQueries, 1, seen)).map(
+    const rescued = (await runQueries(zeroResultRescues, 1, seen)).map(
       dropForeignScript
     );
     foundGroups = [...foundGroups, ...rescued];
-    baseQueries = [...baseQueries, ...fallbackQueries];
+    baseQueries = [...baseQueries, ...zeroResultRescues];
     telemetry.plannedQueries = baseQueries;
   }
   const found = foundGroups.flat();
