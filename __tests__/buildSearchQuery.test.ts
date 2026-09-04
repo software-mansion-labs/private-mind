@@ -633,7 +633,7 @@ describe('planWebSearch', () => {
       const generate = jest
         .fn()
         .mockResolvedValue(
-          '{"needs_search": true, "intent": "Nobel Prize in Literature", "queries": ["Nobel Prize in Literature 2023"]}'
+          '{"needs_search": true, "intent": "Nobel Prize in Literature", "queries": ["Nagroda Nobla literatura 2023"]}'
         );
       const plan = await planWebSearch(
         'kto ostatnio dostał Nobla z literatury?',
@@ -641,7 +641,7 @@ describe('planWebSearch', () => {
         generate,
         { today: '2026-07-17' }
       );
-      expect(plan.queries).toEqual(['Nobel Prize in Literature 2026']);
+      expect(plan.queries).toEqual(['Nagroda Nobla literatura 2026']);
     });
 
     it('trusts a year the user explicitly asked about', async () => {
@@ -720,6 +720,20 @@ describe('planWebSearch', () => {
       });
       expect(generate).toHaveBeenCalledTimes(2);
       expect(plan.queries).toEqual([toKeywordQuery(question)]);
+    });
+
+    it('replaces a short English follow-up query with the question and keeps it as a fallback (smoke T5)', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "TV price", "kind": "price", "queries": ["cost of OLED TV"]}'
+        );
+      const plan = await planWebSearch('Ile kosztuje?', oledHistory, generate, {
+        today: TODAY,
+      });
+      expect(plan.queries).toHaveLength(1);
+      expect(plan.queries[0]).toMatch(/kosztuje/);
+      expect(plan.fallbackQueries).toEqual(['cost of OLED TV']);
     });
 
     it('keeps the drifted queries as a fallback behind the verbatim question', async () => {

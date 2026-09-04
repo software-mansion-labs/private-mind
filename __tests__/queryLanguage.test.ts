@@ -19,6 +19,21 @@ describe('sharesLanguageWith', () => {
     }
   });
 
+  it('throws out a short English query that carries no code from a Polish conversation (smoke T5)', () => {
+    expect(sharesLanguageWith('cost of OLED TV', OLED_CONVERSATION)).toBe(
+      false
+    );
+  });
+
+  it('keeps a short query in the language of the conversation', () => {
+    expect(
+      sharesLanguageWith(
+        'cost of the TV',
+        'User: which OLED TV is best?\nAssistant: The LG OLED65B65LA tops the list.\nUser: How much is it?'
+      )
+    ).toBe(true);
+  });
+
   it('lets a two-word query through when the one word it shares is international (live #361)', () => {
     expect(
       sharesLanguageWith('Samsung QE65S99H vs other models', OLED_CONVERSATION)
