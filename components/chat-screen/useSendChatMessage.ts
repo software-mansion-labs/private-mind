@@ -23,6 +23,7 @@ import {
   WEB_BENCH_LOGS,
   WEB_OFFLOAD_LLM_FOR_EMBEDDINGS,
   WEB_SEARCH_ENABLED,
+  WEB_SEARCH_OVERALL_TIMEOUT_MS,
 } from '../../constants/web';
 import {
   getModelProfile,
@@ -247,6 +248,7 @@ export const useSendChatMessage = ({
               trimmedInput
             ),
             signal,
+            searchTimeoutMs: WEB_SEARCH_OVERALL_TIMEOUT_MS,
             lowMemory,
             useCache: true,
             isolateEmbeddings: WEB_OFFLOAD_LLM_FOR_EMBEDDINGS

@@ -49,7 +49,6 @@ import type { WebIntentKind } from '../utils/web/intentKind';
 import { useSettingsStore } from './settingsStore';
 import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
-import { WEB_SEARCH_OVERALL_TIMEOUT_MS } from '../constants/web';
 
 export interface LLMStore {
   isLoading: boolean;
@@ -775,19 +774,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       const abortController = new AbortController();
       sendAbortController = abortController;
-      const searchTimeout = setTimeout(() => {
-        const webSearch = useWebSearchStore.getState();
-        if (webSearch.isSearchingWeb) {
-          webSearch.pushWebSearchEvent({ type: 'timeout' });
-        }
-        abortController.abort();
-      }, WEB_SEARCH_OVERALL_TIMEOUT_MS);
-      let built;
-      try {
-        built = await buildSources(abortController.signal);
-      } finally {
-        clearTimeout(searchTimeout);
-      }
+      const built = await buildSources(abortController.signal);
       const {
         context,
         sourceDocuments,

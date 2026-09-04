@@ -293,6 +293,87 @@ describe('runWebSearch', () => {
     expect(out.sourceDocuments.map((doc) => doc.url)).toEqual([specPage.url]);
   });
 
+  const delay = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+
+  it('keeps searching when the planner outlives the deadline', async () => {
+    const provider = new MockProvider({
+      'warsaw weather': [weatherPage('https://weather.example/1')],
+    });
+    const events: WebSearchProgressEvent[] = [];
+    const out = await runWebSearch({
+      query: 'warsaw weather',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () => {
+        await delay(40);
+        return '{"needs_search": true, "intent": "weather", "kind": "fact", "queries": ["warsaw weather"]}';
+      },
+      searchTimeoutMs: 10,
+      onProgress: (event) => events.push(event),
+      today: '2026-07-20',
+    });
+    expect(out.telemetry.aborted).toBeUndefined();
+    expect(events.some((event) => event.type === 'timeout')).toBe(false);
+    expect(out.sourceDocuments).toHaveLength(1);
+  });
+
+  it('gives up with a timeout when the search itself outlives the deadline', async () => {
+    const provider = new MockProvider({
+      'warsaw weather': [weatherPage('https://weather.example/1')],
+    });
+    const slowSearch = provider.search.bind(provider);
+    provider.search = async (query: string) => {
+      await delay(40);
+      return slowSearch(query);
+    };
+    const events: WebSearchProgressEvent[] = [];
+    const out = await runWebSearch({
+      query: 'jaka jest pogoda w warszawie',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () =>
+        '{"needs_search": true, "intent": "weather", "kind": "fact", "queries": ["Warsaw weather"]}',
+      searchTimeoutMs: 10,
+      onProgress: (event) => events.push(event),
+      today: '2026-07-20',
+    });
+    expect(out.telemetry.aborted).toBe('timeout');
+    expect(events.some((event) => event.type === 'timeout')).toBe(true);
+    expect(provider.calls).toHaveLength(1);
+    expect(out.sourceDocuments).toHaveLength(0);
+  });
+
+  it('records a stop when the caller aborts after the plan', async () => {
+    const controller = new AbortController();
+    const provider = new MockProvider({
+      'warsaw weather': [weatherPage('https://weather.example/1')],
+    });
+    const events: WebSearchProgressEvent[] = [];
+    const out = await runWebSearch({
+      query: 'warsaw weather',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () => {
+        controller.abort();
+        return '{"needs_search": true, "intent": "weather", "kind": "fact", "queries": ["warsaw weather"]}';
+      },
+      signal: controller.signal,
+      searchTimeoutMs: 1000,
+      onProgress: (event) => events.push(event),
+      today: '2026-07-20',
+    });
+    expect(out.telemetry.aborted).toBe('stopped');
+    expect(events.some((event) => event.type === 'timeout')).toBe(false);
+    expect(provider.calls).toHaveLength(0);
+  });
+
   it('threads the planned intent into telemetry instead of dropping it', async () => {
     const provider = new MockProvider({
       'warsaw weather': [weatherPage('https://weather.example/1')],
