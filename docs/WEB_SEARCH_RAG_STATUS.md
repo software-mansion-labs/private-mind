@@ -4437,9 +4437,21 @@ treat `expects: ["recommended TV model"]` unmet as a missing aspect.
   tool-server teardown.
 - "Zgodniebnymi" (T2 draft): a merged token, not a loop; model artifact.
 
-Order of work: 1 (deadline after the plan, aborted flag in the log and the
-trace note) → 2 (Stop reaches the planner) → 3 (retry prompt and the
-figure-in-first-sentence rule) → 4 (guard fallback for undetectable
-queries). Fixtures: T2's passage and draft; a run with a planner slower
-than the deadline; Stop between send and the plan line.
+### Plan, in the order it should be built
+
+| # | Change | Where | Red-before-fix test |
+|---|---|---|---|
+| 1 | The deadline starts when the first query starts. `runWebSearch` takes `searchTimeoutMs`, arms its own controller after the gate, links the external Stop signal to it, records `telemetry.aborted: 'timeout' \| 'stopped'`; the store's timer around `buildSources` goes. Outcome log carries `aborted`, `enginesTried`, `plannedQueries`. | `utils/web/runWebSearch.ts`, `store/llmStore.ts` (timer), `components/chat-screen/useSendChatMessage.ts` (pass the constant) | runWebSearch: a planner slower than the deadline still searches and finds; a provider slower than the deadline ends with `aborted: 'timeout'`, the `timeout` event and no rescue queries; an external abort ends with `'stopped'` |
+| 2 | Stop reaches the planner: `interrupt()` interrupts the LLM when `utilityGenerating` too, pushes a `stopped` trace event, clears `isSearchingWeb`; the `failed` phase resets the live trace. `buildRows` renders `stopped` as a note. | `store/llmStore.ts`, `store/webSearchStore.ts`, `components/chat-screen/webSearchTrace.ts` | llmStore: interrupt while the planner call is pending calls `interrupt` on the instance, resets state within the same tick, leaves no placeholder; webSearchTrace: a `stopped` trace shows the note and no running step |
+| 3 | Evidence retry answers first. Prompt: the first sentence states the fact or figure the sources give; no describing or listing sources. Structural check `leadsWithFigureWhenContextHas` (a context sentence shares a question stem and holds a digit, kind ∈ fact/price/specs → the answer's first two sentences must hold a digit) joins the trigger and `stillBroken`; when the retry is still broken but states a figure the draft lacks, the retry is kept. | `store/llmStore.ts` (prompt, nudge), `utils/messageSources.ts` | fixtures from T2: draft, passage, retry text — draft triggers; the digest retry is still broken; a one-sentence answer with 1,86 mln passes |
+| 4 | A planner query with no detectable language, when the conversation's language is detectable, is kept only if it shares a non-anchor token with the question or the last two user turns; otherwise it becomes a fallback and the verbatim+referent query takes its place. | `utils/web/buildSearchQuery.ts` | `Ile kosztuje?` after the OLED turn with planner `cost of OLED TV` → plan is the verbatim query with the referent, fallback holds the English one |
+| 5 | "Checking whether to search…" while the trace holds only `objectives`; "Searching the web…" from the first `searching` event. | `components/chat-screen/WebSearchBlock.tsx` | title test on the two trace shapes |
+| 6 | Planner cost: log `[prompt-tokens]` for utility calls; if the planner prompt is ≥ 800 tokens on Gemma, trim examples to one per kind and measure the plan latency again — the deadline fix stops the bleeding, the planner at 60–120 s is still the largest part of the wait. | `store/llmStore.ts` (log), `utils/web/buildSearchQuery.ts` (prompt) | device measurement, not a unit test: plan line ≤ 60 s after the send on Gemma 4 - 2B |
+
+Not planned, recorded: the recommendation turn that names no model (T4 answered
+from memory because of 1; with sources the answer may still hedge — a fixture
+once a real run shows it); um.warszawa.pl unused at similarity 0.4 (the
+qualification line is a tuning question, not a defect); Stop during
+generation saving no sources is by design — citations are picked from the
+answer, and the partial answer cited none.
 
