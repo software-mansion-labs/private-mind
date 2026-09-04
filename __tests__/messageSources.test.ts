@@ -19,6 +19,8 @@ import {
   contextOffersFigureFor,
   answerStatesFigure,
   evidenceLinesFor,
+  answerUsesNoRetrievedEvidence,
+  distinctiveEvidence,
   claimsMissingEvidenceItHas,
 } from '../utils/messageSources';
 import { SourceDocument } from '../database/chatRepository';
@@ -1411,5 +1413,73 @@ describe('claimsMissingEvidenceItHas — a refusal that names the model code (re
         'specs'
       )
     ).toBe(true);
+  });
+});
+
+describe('honest refusals the evidence nudges must leave alone (release A-7, A-9)', () => {
+  it('does not treat a soft-404 page as evidence the answer ignored (A-7)', () => {
+    const question = 'Ile kosztuje karnet narciarski w Zakopanem?';
+    const context =
+      '\n --- Source 1: Karnet Zakopane - strona niedostepna --- \n ' +
+      '404 - Strona nie istnieje\nPrzepraszamy, strona ktorej szukasz nie istnieje lub zostala usunieta.\nSprawdz adres URL lub wroc na strone glowna. \n' +
+      ' --- End of Source 1 ---\n\n' +
+      question;
+    expect(
+      answerUsesNoRetrievedEvidence(
+        'Istniejące dokumenty nie zawierają informacji o cenie karnetu narciarskiego w Zakopanem.',
+        question,
+        context
+      )
+    ).toBe(false);
+  });
+
+  it('does not read a Cloudflare ray id as the price the question asked for (A-9)', () => {
+    const question = 'Jaka jest cena Samsung Galaxy S26 Ultra?';
+    const context =
+      '\n --- Source 1: Samsung Galaxy S26 Ultra – cena i dostępność --- \n ' +
+      'Just a moment...\nSprawdzanie, czy połączenie z witryną jest bezpieczne.\nRay ID: 8f3a9c2b1e4d0000\nPerformance & security by Cloudflare \n' +
+      ' --- End of Source 1 ---\n\n' +
+      question;
+    expect(
+      claimsMissingEvidenceItHas(
+        'Źródła nie zawierają informacji o cenie Samsung Galaxy S26 Ultra.',
+        question,
+        context,
+        'price'
+      )
+    ).toBe(false);
+    expect(evidenceLinesFor(question, context)).toEqual([]);
+  });
+
+  it('still fires on the refusal when the same page states the price', () => {
+    const question = 'Jaka jest cena Samsung Galaxy S26 Ultra?';
+    const context =
+      '\n --- Source 1: Samsung Galaxy S26 Ultra – cena i dostępność --- \n ' +
+      'Samsung Galaxy S26 Ultra 256 GB kosztuje 6299 zł w przedsprzedaży. \n --- End of Source 1 ---\n\n' +
+      question;
+    expect(
+      claimsMissingEvidenceItHas(
+        'Źródła nie zawierają informacji o cenie Samsung Galaxy S26 Ultra.',
+        question,
+        context,
+        'price'
+      )
+    ).toBe(true);
+  });
+
+  it('keeps a number glued to its unit while dropping hex and mixed codes', () => {
+    expect(answerStatesFigure('Matryca 144Hz i 4K.')).toBe(true);
+    expect(answerStatesFigure('Ray ID: 8f3a9c2b1e4d0000, build v2a4.')).toBe(
+      false
+    );
+  });
+
+  it('does not count sentence-opening words as retrieved names', () => {
+    const offered = distinctiveEvidence(
+      '404 - Strona nie istnieje\nPrzepraszamy, strona ktorej szukasz nie istnieje.\nSprawdz adres URL.'
+    );
+    expect(offered.has('przepraszamy')).toBe(false);
+    expect(offered.has('sprawdz')).toBe(false);
+    expect(offered.has('url')).toBe(true);
   });
 });

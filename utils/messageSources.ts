@@ -561,6 +561,12 @@ const toAsciiDigits = (text: string): string =>
     return char;
   });
 
+const SOURCE_MARKER_LINE = /^[ \t]*--- (?:End of )?Source \d+.*?---[ \t]*$/gmu;
+const SENTENCE_OPENING = /(?:^|[.!?…:\n])[\s"'„«»()[\]—–-]*$/u;
+
+const opensSentence = (text: string, at: number): boolean =>
+  SENTENCE_OPENING.test(text.slice(Math.max(0, at - 24), at));
+
 export const distinctiveEvidence = (text: string): Set<string> => {
   const found = new Set<string>();
   if (!text) return found;
@@ -569,8 +575,9 @@ export const distinctiveEvidence = (text: string): Set<string> => {
     const value = match.replace(/[.,]+$/, '');
     if (value.length >= 2) found.add(value);
   }
-  for (const match of text.match(NAME_RUN) ?? []) {
-    found.add(foldForMatching(match));
+  for (const match of text.matchAll(NAME_RUN)) {
+    if (opensSentence(text, match.index ?? 0)) continue;
+    found.add(foldForMatching(match[0]));
   }
   return found;
 };
@@ -583,7 +590,7 @@ export const answerUsesNoRetrievedEvidence = (
   const visible = stripThinkBlocks(answer).trim();
   if (visible.length < EVIDENCE_MIN_ANSWER_CHARS) return false;
   const asked = distinctiveEvidence(question ?? '');
-  const offered = distinctiveEvidence(context);
+  const offered = distinctiveEvidence(context.replace(SOURCE_MARKER_LINE, ''));
   for (const term of asked) offered.delete(term);
   if (offered.size < EVIDENCE_MIN_TOKENS) return false;
   for (const term of distinctiveEvidence(visible)) {
@@ -637,15 +644,21 @@ export const aspectsMissingFromAnswer = (
 };
 
 const YEAR_TOKEN = /(?<![\p{N}])(?:19|20)\d{2}(?![\p{N}])/gu;
-const CODE_TOKEN = /(?<![\p{L}\p{N}])\p{L}[\p{L}\p{N}-]*\p{N}[\p{L}\p{N}-]*/gu;
+const MIXED_TOKEN =
+  /(?<![\p{L}\p{N}])(?=[\p{L}\p{N}-]*\p{L})(?=[\p{L}\p{N}-]*\p{N})[\p{L}\p{N}-]+/gu;
+const NUMBER_WITH_UNIT = /^\p{N}[\p{N}.,]*\p{L}+$/u;
+
+const withoutCodes = (text: string): string =>
+  text.replace(MIXED_TOKEN, (token) =>
+    NUMBER_WITH_UNIT.test(token) ? token : ' '
+  );
 
 const IDENTIFIER_RUN = /^\d{8,}$/;
 
 const figuresStated = (text: string): Set<string> =>
   new Set(
     (
-      toAsciiDigits(text)
-        .replace(CODE_TOKEN, ' ')
+      withoutCodes(toAsciiDigits(text))
         .replace(YEAR_TOKEN, ' ')
         .match(NUMBER_RUN) ?? []
     )
@@ -666,7 +679,6 @@ export const answerStatesFigure = (
 
 const LEAD_SENTENCES = 1;
 const SENTENCE_BREAK = /(?<=[.!?…])\s+|\n+/u;
-const SOURCE_MARKER_LINE = /^[ \t]*--- (?:End of )?Source \d+.*?---[ \t]*$/gmu;
 const FIGURE_LEAD_KINDS: ReadonlySet<string> = new Set([
   'fact',
   'price',
@@ -871,11 +883,12 @@ export const claimsMissingEvidenceItHas = (
   if (!question || !context.trim()) return false;
   const visible = stripThinkBlocks(answer);
   if (!visible) return false;
+  const evidence = withoutCodes(context.replace(SOURCE_MARKER_LINE, ''));
   const wantsDate =
     intent === 'date' ||
     intent === 'event' ||
     QUESTION_WANTS_DATE.test(question);
-  if (wantsDate && CONTEXT_DATE.test(context)) {
+  if (wantsDate && CONTEXT_DATE.test(evidence)) {
     return (
       !CONTEXT_DATE.test(visible) && !answerStatesFigure(visible, question)
     );
@@ -885,8 +898,8 @@ export const claimsMissingEvidenceItHas = (
     intent === 'specs' ||
     QUESTION_WANTS_AMOUNT.test(question);
   const contextStatesAmount =
-    CONTEXT_AMOUNT.test(context) ||
-    (intent === 'specs' && CONTEXT_SPEC_FIGURE.test(context));
+    CONTEXT_AMOUNT.test(evidence) ||
+    (intent === 'specs' && CONTEXT_SPEC_FIGURE.test(evidence));
   return (
     wantsAmount && contextStatesAmount && !answerStatesFigure(visible, question)
   );
