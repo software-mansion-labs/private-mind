@@ -8,6 +8,9 @@ export const WEB_INTENT_KINDS = [
   'date',
   'fact',
   'howto',
+  'place',
+  'person',
+  'event',
 ] as const;
 
 export type WebIntentKind = (typeof WEB_INTENT_KINDS)[number];

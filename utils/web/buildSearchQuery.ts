@@ -147,15 +147,19 @@ const PLANNER_SYSTEM_PROMPT = (today: string): string =>
   '"kind" is exactly one of: price (an amount of money), specs (technical ' +
   'parameters and figures), comparison (two or more named things side by ' +
   'side), recommendation (which one to choose), news (recent events), date ' +
-  '(when something happens or happened), fact (one checkable fact), howto ' +
-  '(steps to do something), chat (no search needed).\n' +
+  '(when something happens or happened), event (a scheduled happening: ' +
+  'where and when), place (a location: address, opening hours, contact), ' +
+  'person (who someone is or who holds a position), fact (one checkable ' +
+  'fact), howto (steps to do something), chat (no search needed).\n' +
   'Set needs_search by what the best answer truly needs, in ANY language:\n' +
   '- false when you can answer well on your own: greetings, thanks, chit-chat, ' +
   'opinions, advice, math, coding, translation, rewriting, or timeless general ' +
   'knowledge. Then "queries": [].\n' +
   '- true only when the best answer needs fresh, local, or verifiable outside ' +
   'facts: current events, news, prices, weather, scores, schedules, releases, ' +
-  'specs, or specific people, places or organisations.\n' +
+  'specs, a product or model code, who currently holds a position, the ' +
+  'current version of something, opening hours or an address, or specific ' +
+  'people, places or organisations.\n' +
   'When unsure whether you can answer a specific, checkable question ' +
   'accurately from memory alone, choose true — a search is cheap, a ' +
   'confident wrong or stale answer is not. Only choose false when the ' +
