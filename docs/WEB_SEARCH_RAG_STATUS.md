@@ -4174,3 +4174,85 @@ come back — the trace still shows the two searches and only the pages that
 were read or cited; (3) a source badge always comes with a Sources button;
 (4) a shop page at the 2048 default — the excerpt carries the price line,
 not an accessory rail.
+
+
+## Pixel round on the landing round: S8 on the reference model, and what it moved
+
+Run on 2026-09-04 by a separate test session (plan and results are untracked
+working sheets: `docs/WEAK_MODEL_TEST_PLAN.md`, `docs/WEAK_MODEL_TEST_RESULTS.md`,
+evidence in `docs/test-evidence/gemma-4-2b/`). Pixel 10, Gemma 4 - 2B, build
+versionCode 68, HEAD `ee8005a`. S1–S5 (20 graded turns) plus the S8 gate;
+the ten weak models were not started because S8 went red on the reference,
+which is what the plan says to do.
+
+### S8 on Gemma 4 - 2B
+
+| # | Fix | Result | What was actually wrong |
+|---|---|---|---|
+| 1 | P1.1 conversation subject | pass | — |
+| 2 | P1.2 language-drift guard | fail (partial) | the *query* stayed German; the *answer* came back English — a generation drift past the guard, see below |
+| 3 | P1.3 topic anchors | pass | — |
+| 4 | P1.4 intent kind | fail | nothing was ever logged; the feature had no dev-log line, so the row could not be graded |
+| 5 | split-price join | pass | — |
+| 6 | filler floor | pass | — |
+| 7 | P2.5 per-source relevance | pass | — |
+| 8 | P2.5 aspect coverage | pass | first draft already covered both coins; no nudge, correctly |
+| 9 | P2.6 refining without flicker | pass | four nudged turns, one swap each |
+| 10 | P3.7 badge ↔ Sources | pass | — |
+| 11 | P3.8 trace rebuild | fail | the rebuild never ran: the previous search's live trace survived the chat switch and rendered every surfaced result |
+
+### Shared-code findings from S1–S5, and the commits that answer them
+
+| Finding (results file §"Znaleziska") | Commit |
+|---|---|
+| needs-search gate wrong both ways: S1.4 skipped a spec question naming a model code; S2.6/S5.2 searched recap questions with the raw question as the query | `a7a3642` — a code-like token or a ≥3-digit number forces the search; recap / previous-answer intents count as conversational, with two planner examples |
+| no `intent:` log line (S8.4) | `f06f389` — one dev-only "Web search plan" line: needs_search, kind, intent, queries, expects |
+| `groundingCaveats: ["figure"]` false positive on an exact match (S1.5, S8.7) | `0c9a6b2` — a page figure without a currency token beside it still grounds the answer |
+| our own plumbing in the answer: "według Ile mieszkańców ma Warszawa…," (S4.1) and "[Answers: …] -" (S3.1) | `c50f811` — a cited web source is named by host; copied block labels are stripped |
+| ten page rows on reopen (S8.11) | `98ec275` — the live trace is cleared when another chat opens, unless a search is running |
+| evasive price answer with the amount on the page (S1.8), refusal in a language no phrase list covers | `74d8def` — the absence claim is structural: figure wanted, figure in context, none in the answer |
+
+### The rest of this round, driven by the same evidence and the intent research
+
+| Change | Commit | Why |
+|---|---|---|
+| `place`, `person`, `event` intent kinds; "search when" list names model codes, position holders, versions, hours | `5bede3d` | the Li & Roth classes we lacked (LOC, HUM, ENTY:event) are where a 2B model answers from memory |
+| listing ranking by intent kind and scoped year — the nine-language quantity list, the period/superlative markers and the all-time page pattern are gone | `ddb0a4b` | the last per-language rules in the search path; the year the planner writes into its queries carries the period scope instead |
+| `expects`: the plan names 1–4 things a complete answer must contain; their stems join the passage needles | `0ea625d` | a kind names the shape of the evidence, not the thing; "data premiery" credits the launch-date sentence the question never named |
+| refined answer crossfades; `isRefining` clears at the complete/failed phase | `2a79253` | the single swap read as a glitch |
+| loop guard extracted to its own PR | [#311](https://github.com/software-mansion-labs/private-mind/pull/311), issue #255 reopened | not web-search work; #289 named it as the follow-up to the penalty revert |
+
+### Still open after this round
+
+⚠️ **S8.2 — German question, English answer, German sources.** `sourceQuery`
+stayed German, the used source was German Statista, and the answer was
+English. `isWrongLanguageAnswer` compares detected languages and should
+have nudged; the dev log for that turn was lost with a debugger teardown,
+so whether the nudge fired and the retry stayed English is unknown. Next:
+reproduce with the log intact; if the retry also drifts, the wrong-language
+retry needs the target language named in the prompt (`answerLanguageAnchor`
+already does when detection succeeds — check what it detected).
+
+⚠️ **Verbatim query for a conversational question.** When the gate fires on
+a question that only refers to the conversation, the query is the raw
+question. The recap intents now short-circuit that path; a question about
+the conversation that the planner does not label as such still reaches
+search. No language-agnostic lexical test separates "what did you say" from
+a genuine topic change; the planner is the right tool, and the two examples
+are the lever.
+
+⚠️ **Price conflicts across shops (S1.1).** Ceneo 6299 PLN (`read: false,
+used: true`) vs MediaMarkt 6999 zł (`read: true`). The answer took the
+listing's figure. Whether a "[Verified product data]" passage should count
+as read for the retrieval-hit rule is a plan question, not a code one, and
+is left to the next test round.
+
+⚠️ **S3.2 — the coverage nudge made the answer shorter.** Three aspects asked,
+one answered, the retry answered one differently. The nudge names the
+missing aspects; the model's retry dropped the one it had. Whether keeping
+the first draft when the retry covers *fewer* distinctive stems is the
+right rule is worth a fixture from msg 396.
+
+The window stays at 2048: the note in `constants/model-profiles.ts` and the
+"A 4096-token window works, and makes the answers worse" section above
+still hold, and this round changed nothing there.
