@@ -419,6 +419,7 @@ const updateChatStateForGeneration = (
           isProcessingPrompt: false,
         };
       });
+      useWebSearchStore.getState().resetTrace();
       break;
   }
 };
@@ -1302,7 +1303,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   interrupt: () => {
     sendAbortController?.abort();
     const state = get();
-    if (state.isGenerating && llmInstance) {
+    if ((state.isGenerating || utilityGenerating) && llmInstance) {
       llmInstance.interrupt();
     }
 

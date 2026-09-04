@@ -430,6 +430,24 @@ describe('interrupt', () => {
     useLLMStore.setState({ isGenerating: false, isProcessingPrompt: false });
     expect(() => useLLMStore.getState().interrupt()).not.toThrow();
   });
+
+  it('interrupts a pending utility call such as the search planner', async () => {
+    await loadModel();
+    let release: (value: string) => void = () => {};
+    mockInstance.generate.mockImplementationOnce(
+      () => new Promise<string>((resolve) => (release = resolve))
+    );
+    const planning = useLLMStore
+      .getState()
+      .generateUtility([{ role: 'user', content: 'plan' }]);
+    useLLMStore.setState({ isGenerating: false, isProcessingPrompt: true });
+
+    useLLMStore.getState().interrupt();
+
+    expect(mockInstance.interrupt).toHaveBeenCalled();
+    release('');
+    await planning;
+  });
 });
 
 // ─── sendChatMessage ──────────────────────────────────────────────────────────
@@ -493,6 +511,27 @@ describe('sendChatMessage', () => {
 
     expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
     expect(useLLMStore.getState().isGenerating).toBe(false);
+  });
+
+  it('clears the live web trace when generation fails before any token', async () => {
+    mockInstance.generate
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockRejectedValueOnce(new Error('boom'));
+    useWebSearchStore.getState().pushWebSearchEvent({ type: 'objectives' });
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('ping', 1, noSources, settings);
+
+    expect(useWebSearchStore.getState().webSearchTrace).toEqual([]);
+    expect(
+      useLLMStore.getState().activeChatMessages.map((m) => m.role)
+    ).toEqual(['user']);
   });
 
   it('adds user message and assistant placeholder to activeChatMessages before generating', async () => {
