@@ -479,7 +479,8 @@ const describeGenerationFailure = (): string =>
 
 const reportPromptEstimateAccuracy = (
   messages: ExecutorchMessage[],
-  instance: { getPromptTokensCount?: () => number }
+  instance: { getPromptTokensCount?: () => number },
+  role: 'chat' | 'utility' = 'chat'
 ): void => {
   if (!__DEV__ || typeof instance.getPromptTokensCount !== 'function') {
     return;
@@ -497,6 +498,7 @@ const reportPromptEstimateAccuracy = (
   console.log(
     '[prompt-tokens]',
     JSON.stringify({
+      role,
       estimated,
       actual,
       ratio: +(estimated / actual).toFixed(3),
@@ -1296,6 +1298,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         });
       }
       const result = await llmInstance.generate(prepared);
+      reportPromptEstimateAccuracy(prepared, llmInstance, 'utility');
       return typeof result === 'string' ? result : '';
     } catch (error) {
       console.warn('generateUtility failed', error);
