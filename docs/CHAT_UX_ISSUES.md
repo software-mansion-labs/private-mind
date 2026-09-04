@@ -242,6 +242,16 @@ and clamp so the bubble's top cannot rise above the viewport).
 
 ## 🔁 The keyboard is gone but the composer stays lifted
 
+Update 2026-09-04 (`20ad5a6`): seen again during a scripted device round
+(new chat, field focused, message typed and sent through adb). The
+trigger was not caught, so the fix is the belt-and-braces path described
+below: the system's `keyboardDidHide` / `keyboardDidShow` events and the
+foreground transition (`AppState` → active with no keyboard showing) flip
+the same `keyboardGone` flag the UI-thread handler owns. The UI-thread
+path stays primary for the send case. If it strands again, capture the
+trigger first — the measurement below still applies.
+
+
 Reported again 2026-09-04: the keyboard dismisses, the composer bar and the
 list keep the keyboard's height under them, and the bottom of the screen is
 empty until something else moves the keyboard. This came back after
@@ -274,6 +284,26 @@ belt-and-braces path for the cases where the JS thread is free. If the log
 does show `onEnd(0)` and the bar still stays, the derived value is not being
 re-evaluated and the bug is in how the lift is consumed by
 [`ChatScreen`](../components/chat-screen/ChatScreen.tsx) and `Messages`.
+
+## ⚠️ The message list renders white with the conversation in the tree
+
+Seen 2026-09-04 on the Pixel 10: a new chat sent with web search on showed
+a white list for minutes while `describe` returned the question, the
+trace block and the streamed answer at their normal frames — the views
+were laid out and invisible. The list's visibility is an animated opacity
+in [`Messages`](../components/chat-screen/Messages.tsx) that starts at 0
+and is raised by the initial-scroll reveal timers and a 900 ms fallback;
+if the animated binding stops applying, nothing else makes the list
+visible. A fresh launch reproduced neither this nor the same flow after a
+forced Fast Refresh, so the trigger is not pinned; the app had taken a
+dozen Fast Refresh rounds before the blank one.
+
+Fix (`d77455c`): once a reveal has run its fade, the container switches to
+a plain `opacity: 1` style and stops depending on the animated value;
+clearing the history for a reload switches it back so the fade-in still
+plays. Whatever loses the binding can no longer keep the list hidden. If
+white returns: `describe` (to prove the tree is there), then check whether
+`revealed` flipped — a `console.log` in `settleReveal` is enough.
 
 ## What was not investigated this round
 
