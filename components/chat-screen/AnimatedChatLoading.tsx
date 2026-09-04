@@ -11,19 +11,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 
-/**
- * Slim "Thinking…" indicator shown in the assistant bubble's modelName
- * slot while the model is processing the prompt. Matches the modelName
- * text style exactly so swapping it for the real model name when the
- * first token arrives causes no layout shift.
- */
-const AnimatedChatLoading = ({
-  label = 'Thinking…',
-  inline = false,
-}: {
-  label?: string;
-  inline?: boolean;
-}) => {
+const AnimatedChatLoading = ({ label = 'Thinking…' }: { label?: string }) => {
   const { styles } = useThemedStyles(createStyles);
 
   const opacity = useSharedValue(0.4);
@@ -43,11 +31,7 @@ const AnimatedChatLoading = ({
   }));
 
   return (
-    <Animated.Text
-      style={[styles.label, inline && styles.inline, animatedStyle]}
-    >
-      {label}
-    </Animated.Text>
+    <Animated.Text style={[styles.label, animatedStyle]}>{label}</Animated.Text>
   );
 };
 
@@ -56,18 +40,8 @@ export default AnimatedChatLoading;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     label: {
-      // Absolutely positioned so the label is visible but contributes
-      // zero height to the assistant bubble's layout. Keeps the
-      // user message pinned at the top while we wait for the first
-      // token to arrive.
-      position: 'absolute',
-      top: 0,
-      left: 0,
       fontSize: fontSizes.xs,
       fontFamily: fontFamily.medium,
       color: theme.text.defaultSecondary,
-    },
-    inline: {
-      position: 'relative',
     },
   });

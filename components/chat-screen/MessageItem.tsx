@@ -285,7 +285,7 @@ const MessageItem = memo(
         ) : (
           <View style={styles.aiMessage}>
             <View style={styles.bubbleContent}>
-              {content.trim() ? (
+              {content.trim() || isAwaitingFirstToken ? (
                 <Animated.Text
                   style={styles.modelName}
                   entering={FadeIn.duration(WEB_TRACE_TRANSITION_MS)}
@@ -301,7 +301,7 @@ const MessageItem = memo(
                 />
               )}
               {isAwaitingFirstToken ? (
-                <AnimatedChatLoading inline={webActive} label="Thinking…" />
+                <AnimatedChatLoading label="Thinking…" />
               ) : null}
               <Animated.View
                 key={refinedSwap}
@@ -345,7 +345,7 @@ const MessageItem = memo(
                   entering={FadeIn.duration(REFINED_SWAP_MS)}
                   exiting={FadeOut.duration(REFINED_SWAP_MS / 2)}
                 >
-                  <AnimatedChatLoading inline label="Refining…" />
+                  <AnimatedChatLoading label="Refining…" />
                 </Animated.View>
               ) : null}
               {attributionShown ? null : (

@@ -35,9 +35,7 @@ export const useWebSearchActivity = ({
   const isSearchingThis = isSearchingWeb && !hasContent;
   const webActive =
     WEB_SEARCH_ENABLED &&
-    (hasWebResults ||
-      isSearchingThis ||
-      (isLastMessage && isProcessingPrompt && !hasContent && trace.length > 0));
+    (hasWebResults || isSearchingThis || (isLastMessage && trace.length > 0));
   const isAwaitingFirstToken =
     !hasContent && isLastMessage && isProcessingPrompt;
 
