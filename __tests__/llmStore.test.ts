@@ -431,6 +431,28 @@ describe('interrupt', () => {
     expect(() => useLLMStore.getState().interrupt()).not.toThrow();
   });
 
+  it('drops the empty placeholder and the live trace at once when stopped before any token', () => {
+    useWebSearchStore.getState().setSearchingWeb(true);
+    useWebSearchStore.getState().pushWebSearchEvent({ type: 'objectives' });
+    useLLMStore.setState({
+      isGenerating: false,
+      isProcessingPrompt: true,
+      activeChatMessages: [
+        { id: 5, role: 'user', content: 'ping', chatId: 1, timestamp: 0 },
+        { id: -1, role: 'assistant', content: '', chatId: 1, timestamp: 0 },
+      ] as Message[],
+    });
+
+    useLLMStore.getState().interrupt();
+
+    expect(
+      useLLMStore.getState().activeChatMessages.map((m) => m.role)
+    ).toEqual(['user']);
+    expect(useWebSearchStore.getState().webSearchTrace).toEqual([]);
+    expect(useWebSearchStore.getState().isSearchingWeb).toBe(false);
+    expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
+  });
+
   it('interrupts a pending utility call such as the search planner', async () => {
     await loadModel();
     let release: (value: string) => void = () => {};
