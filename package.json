@@ -1,6 +1,6 @@
 {
   "name": "private-mind",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
