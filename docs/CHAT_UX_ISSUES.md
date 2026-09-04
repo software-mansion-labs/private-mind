@@ -165,6 +165,11 @@ streaming boundary and a multi-byte sequence is cut. The first hypothesis
 predicts the fault follows this one word regardless of position; the second
 predicts it follows the *first* token whatever the word.
 
+Seen again in the release round of 2026-09-04: "Zgodnieć z dostarczonymi
+źródłami" opened the R-17 answer (chat 91, id 494), and the tester counted
+three occurrences in the session, always on this opener. Still the same
+word, still the second token — consistent with the first hypothesis.
+
 Next step: collect the raw token callbacks for the first five tokens of ten
 answers (log them from the token callback in
 [`llmStore`](../store/llmStore.ts) behind a dev flag, do not persist), and

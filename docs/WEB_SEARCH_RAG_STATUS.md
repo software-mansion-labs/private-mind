@@ -4471,3 +4471,130 @@ qualification line is a tuning question, not a defect); Stop during
 generation saving no sources is by design — citations are picked from the
 answer, and the partial answer cited none.
 
+
+## Release round, first half: the code in the refusal counted as the figure
+
+Tester's sheet: `docs/WEB_SEARCH_RELEASE_TEST_RESULTS.md` (untracked), 10
+of 24 regression rows run on the Pixel 10 with Gemma 4 - 2B, 8 PASS, 2
+FAIL, 10.A stopped at A-1. Databases in `docs/test-evidence/release/`.
+
+What passed is worth a line each, because every one of them was a FAIL
+or a "not graded" one round ago: the 90 s deadline no longer eats the
+planner (R-1, a 127 s turn with `aborted: null`); Stop during "Deciding
+what to search for" clears the screen and leaves no orphan row (R-2);
+the recommendation turn names a model and the follow-up "Ile kosztuje?"
+keeps it (R-4, `cost of Samsung QE65S99H OLED`); no `[Answers:` label
+(R-14); the gold price to the cent (R-15); the Polish question searched
+verbatim (R-17); typing the just-sent text by hand survives the echo
+guard (R-10).
+
+### R-16 and R-3 are one mechanism, and it is not the one the sheet names
+
+The sheet reads both FAILs as "refusal despite evidence" and, for R-3,
+suspects the `used` ranking: the source with the figure was `used:
+false`, the one without it `used: true`. `used` is not a ranking. It is
+attribution after the fact — `flagUsedWebDocuments` marks the sources
+whose terms the answer overlaps. The answer cited Wikipedia and talked
+about a table of districts, so Wikipedia got the flag. Fixing selection
+would change nothing; the model had all five passages in the prompt.
+
+R-16 is the informative one. The `used` passage held "Częstotliwość
+odświeżania 144 Hz" and the answer was "Częstotliwość odświeżania
+telewizora Samsung QE65QN90D nie jest podana w dostarczonych źródłach."
+Two checks should have caught it: `claimsMissingEvidenceItHas` (specs
+intent, a figure in the context, none in the answer) and
+`buriesFigureContextOffers`. Neither fired, and the log confirms no
+`retrying once` line. Both end in `answerStatesFigure`, which tested for
+any digit — and `QE65QN90D` has four. Every refusal that names the
+product it refuses about passed as "states a figure": M4, RTX 5090, and
+any question carrying a number ("iPhone 17 Pro").
+
+R-3 is the other half. The log was lost (the debugger session was torn
+down from another session mid-turn), but the fixture matches smoke T2
+exactly, where the nudge did fire and the retry described the sources
+instead of reading them. The retry prompt said "the sources do discuss
+what the question asks about" and left the model to find the sentence
+again in ~2 000 characters of passages. It did not.
+
+### What changed (`5f93afb`)
+
+- `answerStatesFigure(visible, question)` drops tokens that start with a
+  letter and hold a digit (`QE65QN90D`, `M4`), runs of eight or more bare
+  digits (EAN `8806095414850`, product id `14206893`), and any number the
+  question itself carries. All callers pass the question, including
+  `retryStatesWhatDraftLacks`.
+- `evidenceLinesFor(question, context)` picks up to three lines from the
+  sources that mention the question and hold a figure, and both evidence
+  nudges append them: `The lines in question, quoted from the sources:
+  "…"`. Ranking follows the excerpt selector's topic rule: stems that
+  appear in a `--- Source N: title ---` line are the topic (Samsung, the
+  model code) and count half; the other stems count only when a figure
+  sits within twelve words. A table dump longer than 200 characters is
+  clipped to that window, so the R-16 nudge quotes `Rozdzielczość 3840 x
+  2160 Częstotliwość odświeżania 144 Hz`, not the EAN line. The numbered
+  source markers are stripped before scanning — `Source 1` used to count
+  as a figure for any question whose stems appeared in a title, which
+  made `contextOffersFigureFor` true for person questions too.
+- Red-before-fix tests: the R-16 refusal is not a figure, the EAN line is
+  not quoted, the R-3 sentence ranks first, a person question with only
+  the marker's digit yields no lines; `llmStore` fires the nudge on the
+  R-16 draft with `144 Hz` in it and keeps the retry that states it.
+
+What this does not do: make the 2B model read a spec table on the first
+pass. Each retry costs another 30 s of prefill on the Pixel. If the
+release round shows the quoted lines landing, the next step is to put
+the same lines under the question in the first prompt for fact, price
+and specs intents, and skip the retry.
+
+### 10.A was blocked by the URL path, not by hosting (`e4e0404`)
+
+The tester's three attempts to index a page ended in "Error reading
+link." / "Failed to process document." with `TextEmbeddingsModule not
+loaded. Call load() first.` in the log. `runUrlSource` called `addSource`
+directly; the picker path wraps it in `runWithModelOffloaded(() =>
+embeddings.runWithLoadedModel(…))`. The readiness flag only says the
+model is on disk; after any web-search turn the native module is
+unloaded, so the URL path failed every time it ran after a search. The
+URL path now uses the same wrapper, and the catch block logs the error
+as its own argument instead of a nested field (the registry printed
+`Object`).
+
+Two hosting notes from the same attempt, both by design: `assertPublicHttpUrl`
+rejects `localhost`, `adb reverse` and LAN addresses by hostname (SSRF
+protection), and a JS-rendered page returns its shell to a bare `fetch`.
+`python3 -m http.server` behind `npx localtunnel` worked. The plan and
+the tester prompt say so now; the pages in
+`docs/test-evidence/release/pages/` are ready for the rerun.
+
+### Seen again, not chased
+
+- "Zgodnieć z dostarczonymi źródłami" opened R-17 (id 494); three times
+  in the session, always this opener. `docs/CHAT_UX_ISSUES.md` has the
+  two hypotheses and the token-callback experiment that decides between
+  them.
+- `zgodnie ze pl.wikipedia.org` — `humanizeSourceReferences` swaps
+  "źródłem 2" for the hostname and leaves the preposition the model
+  chose for the numeral. Cosmetic, Polish-specific, left alone.
+- `sidebar#stuck disappear@window->sidebar#unstuck">` inside the morele.net
+  passage: an attribute value the extractor kept as text. Did not affect
+  the turn; a generic markup-residue filter is a tuning question.
+- R-14 gave the iPhone 17 Pro at 5021.9 PLN from a source that said so.
+  Source quality, not pipeline.
+
+### What the second half of the round has to cover
+
+In this order, on the Pixel, with the build at `e4e0404` or later:
+
+1. **R-25, R-26, R-27** (new rows in the plan): the R-16 question must
+   produce a `claims the sources are silent` or `buries the figure` line
+   and a nudge carrying `quoted from the sources` with `144 Hz`; the R-3
+   question's nudge (if any) must quote `1,86` or `1 864`; a URL pasted
+   right after a web-search turn must index without a toast.
+2. **10.A in full** — the ten adversarial pages, served through the
+   tunnel. Nothing of this group has run yet.
+3. **Regression rows not yet run**: R-5…R-9, R-11…R-13, R-18…R-24. R-6
+   (first line under another component) and R-13, R-18 need recordings.
+4. **10.B–10.D**, D-11 soak last; **10.E/10.F** as time allows.
+
+Seven rows passed today and do not need a rerun: R-1, R-2, R-4, R-10,
+R-14, R-15, R-17.
