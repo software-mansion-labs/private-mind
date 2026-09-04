@@ -112,6 +112,11 @@ export const extractBareAmounts = (answer: string): number[] => {
     );
 };
 
+const extractBareFigures = (text: string): number[] =>
+  [...text.matchAll(BARE_NUMBER)]
+    .map((match) => normalizeFigure(match[0]!.trim()))
+    .filter((value): value is number => value !== null);
+
 export const findUngroundedFigures = (
   answer: string,
   context: string
@@ -123,8 +128,10 @@ export const findUngroundedFigures = (
   const priceFigures = extractPriceStatementTokens(context)
     .map(normalizeFigure)
     .filter((n): n is number => n !== null);
-  const contextFigures =
+  const currencyFigures =
     priceFigures.length > 0 ? priceFigures : extractCurrencyFigures(context);
+  const contextFigures =
+    currencyFigures.length > 0 ? currencyFigures : extractBareFigures(context);
   if (contextFigures.length === 0) return answerFigures;
 
   return answerFigures.filter(
