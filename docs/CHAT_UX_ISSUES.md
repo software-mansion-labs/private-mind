@@ -1,7 +1,8 @@
 # Chat UX issues found around web search
 
 Problems that surfaced while testing web search on a physical Pixel 10
-(Gemma 4 - 2B, branch `web-search-compact`, 2026-09-02/03) but whose cause
+(Gemma 4 - 2B, branch `web-search-compact`, 2026-09-02/03, two more reported
+2026-09-04) but whose cause
 lives outside the retrieval pipeline: model lifecycle, the composer, the
 message list, the dev toolchain. Anything that is about what gets searched,
 read or answered stays in [WEB_SEARCH_RAG_STATUS.md](WEB_SEARCH_RAG_STATUS.md).
@@ -196,6 +197,86 @@ label wider than the remaining row width keeps its intrinsic width and paints
 over the badge padding instead of wrapping inside it. `flexShrink: 1` on the
 label plus `numberOfLines` would confirm it in one build. Not yet verified on
 the device.
+
+## ⚠️ The first line of a streaming answer is clipped; only the lower part shows
+
+Reported 2026-09-04, intermittent: while an answer streams, the top of the
+assistant bubble sits above the viewport — the first line is cut and the
+reader sees the answer from its second line down. It must not happen at all:
+the pinned layout exists so that the user's question and the start of the
+answer are the two things always in view.
+
+What is known. After send, [`Messages`](../components/chat-screen/Messages.tsx)
+pins the new user row at the top of the viewport with an inflated bottom
+inset (`blankSpace`), measures the assistant row
+(`handleLastAssistantLayout` → `applyPendingPin`) and scrolls to `pinOffset`
+once the content height reaches `pinOffset + containerHeight` minus a slack.
+Two things then move the answer's top edge without moving the scroll offset:
+
+1. **The model-name header mounts on the first token.** While the prompt is
+   processed, the slot above the answer holds `AnimatedChatLoading`, which is
+   absolutely positioned on purpose so it contributes no height. When the
+   first token arrives, [`MessageItem`](../components/chat-screen/MessageItem.tsx)
+   renders `modelName` in flow (`entering={FadeIn}`), one `xs` line tall, and
+   the answer text below it shifts down by exactly that height. The pin was
+   computed against the zero-height label, so the bubble's top now sits one
+   small line above the offset the list is holding. A one-line clip is the
+   signature of this path.
+2. **The assistant measurement lags the stream.** `lastAssistantHeight` is
+   refreshed from layout events on the JS thread, which during generation is
+   busy in bursts; `applyPendingPin` may run against a height that is
+   already stale, and the inset it derives lands the offset a few lines past
+   the bubble's top. A clip taller than one line, or one that varies between
+   runs, is this path.
+
+To measure: `screen-recording-start` on a fresh chat, send a question, stop
+after ~20 tokens. Read `contentOffset.y` from the scroll handler (a temporary
+`console.log` in `handleScroll`) and the assistant row's `layout.y` from
+`handleLastAssistantLayout` at the first token and 500 ms later. If the
+offset is constant and `layout.y` grows by one `xs` line at the first token,
+it is (1); if `layout.y` and the pin disagree by more and the gap changes
+with token rate, it is (2). Fix for (1) without waiting for the reading:
+reserve the header's height from the start — render the model-name slot with
+a fixed `minHeight` equal to the `xs` line (or keep `AnimatedChatLoading` in
+flow at that height) so the first token causes no layout shift. Fix for (2):
+recompute the pin from the assistant row's `onLayout` after every growth
+while streaming, not only once, and clamp the offset so the bubble's top can
+never rise above the viewport's top edge.
+
+## 🔁 The keyboard is gone but the composer stays lifted
+
+Reported again 2026-09-04: the keyboard dismisses, the composer bar and the
+list keep the keyboard's height under them, and the bottom of the screen is
+empty until something else moves the keyboard. This came back after
+[`useKeyboardLift`](../components/chat-screen/useKeyboardLift.ts) moved the
+"keyboard gone" flag to a UI-thread `useKeyboardHandler`, which was the fix
+for the same symptom on send (JS-side `keyboardDidHide` listeners could not
+land while the JS thread was busy generating).
+
+What is known. The lift is `keyboardGone ? 0 : height + progress·inset`,
+all shared values from `react-native-keyboard-controller`. A stranded bar
+therefore means the controller never delivered the hide: no `onEnd` with
+height 0 and no `height`/`progress` update to 0. That happens when the IME is
+hidden by something other than an animated dismissal the controller tracks —
+a system dialog or sheet taking the window (permission prompt, share sheet,
+notification shade), the app going to background and back, a Fast Refresh or
+red box that remounts under `KeyboardProvider`, or the composer losing focus
+while an overlay is presented with `freeze` set. Which of those it was this
+time is not recorded.
+
+To measure: at the next occurrence, before touching anything, run
+`adb -s 56211FDCR005KT shell dumpsys input_method | grep -E 'mInputShown|mImeWindowVis'`
+to confirm the IME is really hidden, and note what happened just before
+(dialog, background, reload). Then add a temporary `runOnJS(console.log)` in
+the hook's `onMove`/`onEnd` and reproduce that trigger; if the log shows no
+`onEnd` for the hide, the controller missed it and the fix is a watchdog, not
+a listener: on the UI thread, when `progress` has been 0 for a few frames
+while `height` is non-zero, treat the keyboard as gone; on the JS side, reset
+`keyboardGone` on `AppState` → active and on `Keyboard` `keyboardDidHide` as a
+belt-and-braces path for the cases where the JS thread is free. If the log
+does show `onEnd(0)` and the bar still stays, the derived value is not being
+re-evaluated and the bug is in how the lift is consumed by
+[`ChatScreen`](../components/chat-screen/ChatScreen.tsx) and `Messages`.
 
 ## What was not investigated this round
 
