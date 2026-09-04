@@ -305,6 +305,35 @@ plays. Whatever loses the binding can no longer keep the list hidden. If
 white returns: `describe` (to prove the tree is there), then check whether
 `revealed` flipped — a `console.log` in `settleReveal` is enough.
 
+## ❓ The first paste of a copied message makes the input disappear
+
+Reported 2026-09-04, no platform or screenshot given: copy a message, paste
+it into the composer for the first time, and the input disappears.
+
+Not reproduced on the Pixel 10 (this checkout, fresh process each time):
+
+| Path | Text | Result |
+|---|---|---|
+| long-press → Paste, existing chat | 3-line paragraph | pasted, field grows to 3 lines |
+| long-press → Paste, new chat (empty state), first paste after launch | same | pasted |
+| Gboard clipboard panel, first paste after launch | same | pasted |
+| long-press → Paste | full answer with lists and LaTeX, ~1.5k chars | pasted, field capped at 3 lines, scrolled to the end |
+
+iPhone 17 Pro simulator (older bundle) with a 15-line paste: field capped
+at two visible lines, scrollable. Nothing vanished in any run; the state
+also survived switching chats.
+
+What would settle it, in this order: which device; whether the *text*
+vanishes (field shows the placeholder again) or the *bar* (composer gone
+from the screen); whether the first paste was the first ever after
+install; a screenshot right after the paste. Candidates that fit "first
+time" and are not covered above: the paste arriving while the first
+`onFocus` model load runs (`disabled` composer), and a copied message that
+ends in blank lines so the 3-line viewport shows only whitespace.
+
+Seen on the way: the Copy action copies the raw markdown, LaTeX included
+(`$\\text{CO}_2$` lands in the composer as typed). Cosmetic, filed here.
+
 ## What was not investigated this round
 
 - The camera screen's back button reacting late on Android — reported
