@@ -4331,13 +4331,20 @@ message while its live trace exists.
 
 ### Seen once, not chased
 
-- **French answer to a Polish question typed without diacritics**
-  (`Jaka czestotliwosc odswiezania ma Samsung QE65QN90D?` → "Je suis
-  désolé…"), no wrong-language nudge in the log. The question was ASCII-only
-  (typed through adb), which the language detector likely reads as
-  undetermined, so no anchor and no check. Real users type diacritics; the
-  tester's T8 (German, with umlauts) answered in German first time. Worth a
-  fixture only if it shows up with a normally typed question.
+- **French answer to a Polish question typed without diacritics**, three
+  out of three sends (`Jaka czestotliwosc odswiezania ma Samsung QE65QN90D?`
+  → "Je suis désolé…", "Je n'ai pas d'informations…", "La fréquence de
+  rafraîchissement…"), with and without sources, never a wrong-language
+  line in the log. Mechanism: `detectQuestionLanguage` finds no Latin
+  candidate in an ASCII-only Polish sentence and returns null, and
+  `isWrongLanguageAnswer` returns false on a null expectation — so there is
+  no language anchor in the prompt and no check on the answer. Real users
+  type diacritics (the tester's German T8 answered in German first time),
+  so this is filed, not fixed. A language-agnostic route when the question
+  is undetermined: expect the thread's last detected language, and failing
+  that treat a confidently detected answer language that shares no
+  function words with the question as wrong. Fixture: the three answers
+  above against the ASCII question.
 - **`kind: "comparison"` for a single-model spec question.** Wrong class,
   harmless here (no results to rank), but the ranking would have skipped
   the figure bonus that `specs` gets.
