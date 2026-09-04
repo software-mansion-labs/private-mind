@@ -108,6 +108,7 @@ export interface RunWebSearchInput {
   lowMemory?: boolean;
   fetchArticle?: ArticleFetcher;
   useCache?: boolean;
+  searchTimeoutMs?: number;
 }
 
 export interface WebRoundTelemetry {
@@ -126,6 +127,7 @@ export interface WebRoundTelemetry {
 export interface WebSearchTelemetry {
   needsSearch: boolean;
   skippedReason?: 'gated' | 'provider-not-ready' | 'offline';
+  aborted?: 'timeout' | 'stopped';
   intent: string;
   intentKind?: WebIntentKind;
   plannedQueries: string[];
@@ -176,7 +178,7 @@ export const runWebSearch = async (
     embeddingModelReady,
     generate,
     onProgress,
-    signal,
+    signal: stopSignal,
   } = input;
   const emit = (event: WebSearchProgressEvent): void => onProgress?.(event);
   const useEmbeddings =
@@ -262,6 +264,27 @@ export const runWebSearch = async (
     console.warn('Web search skipped: provider not ready');
     return empty('provider-not-ready');
   }
+
+  const run = new AbortController();
+  const signal = run.signal;
+  const abortRun = (reason: NonNullable<WebSearchTelemetry['aborted']>) => {
+    if (signal.aborted) return;
+    telemetry.aborted = reason;
+    if (reason === 'timeout') emit({ type: 'timeout' });
+    run.abort();
+  };
+  if (stopSignal?.aborted) abortRun('stopped');
+  stopSignal?.addEventListener('abort', () => abortRun('stopped'), {
+    once: true,
+  });
+  const deadline =
+    input.searchTimeoutMs !== undefined
+      ? setTimeout(() => abortRun('timeout'), input.searchTimeoutMs)
+      : undefined;
+  const finish = <T>(result: T): T => {
+    clearTimeout(deadline);
+    return result;
+  };
 
   const runQueries = async (
     queries: string[],
@@ -600,6 +623,9 @@ export const runWebSearch = async (
     withContent: contentCountOf(finalResults),
     confidence: Number(evaluation.confidence.toFixed(2)),
     label: evaluation.label,
+    aborted: telemetry.aborted ?? null,
+    enginesTried: telemetry.enginesTried,
+    plannedQueries: baseQueries,
     rounds: telemetry.rounds.map((round) => ({
       queries: round.queries,
       results: round.resultCount,
@@ -612,7 +638,7 @@ export const runWebSearch = async (
   });
 
   if (finalResults.length === 0) {
-    return { context: [], sourceDocuments: [], telemetry };
+    return finish({ context: [], sourceDocuments: [], telemetry });
   }
 
   const label =
@@ -629,9 +655,9 @@ export const runWebSearch = async (
       intent: plan.kind,
     }
   );
-  return {
+  return finish({
     context: web.context,
     sourceDocuments: web.sourceDocuments,
     telemetry,
-  };
+  });
 };
