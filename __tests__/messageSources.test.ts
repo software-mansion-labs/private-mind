@@ -17,6 +17,9 @@ import {
   type SourceRow,
   buriesFigureContextOffers,
   contextOffersFigureFor,
+  answerStatesFigure,
+  evidenceLinesFor,
+  claimsMissingEvidenceItHas,
 } from '../utils/messageSources';
 import { SourceDocument } from '../database/chatRepository';
 import { formatContextChunks } from '../utils/contextUtils';
@@ -1295,5 +1298,118 @@ describe('buriesFigureContextOffers — the figure is in the sources but not in 
         'Canberra jest stolicą Australii od 1913 roku.'
       )
     ).toBe(false);
+  });
+});
+
+describe('answerStatesFigure — digits inside a product code are not a figure (release R-16)', () => {
+  const question = 'Jaką częstotliwość odświeżania ma Samsung QE65QN90D?';
+
+  it('does not credit the model code the refusal repeats from the question', () => {
+    expect(
+      answerStatesFigure(
+        'Częstotliwość odświeżania telewizora Samsung QE65QN90D nie jest podana w dostarczonych źródłach.',
+        question
+      )
+    ).toBe(false);
+    expect(
+      answerStatesFigure('Nowy MacBook Air M4 nie ma ceny w źródłach.')
+    ).toBe(false);
+  });
+
+  it('does not credit an identifier run such as an EAN or a product id', () => {
+    expect(answerStatesFigure('EAN 8806095414850, ID produktu 14206893.')).toBe(
+      false
+    );
+    expect(answerStatesFigure('Populacja wynosi 1863578 osób.')).toBe(true);
+  });
+
+  it('credits a figure stated beside the code', () => {
+    expect(answerStatesFigure('Samsung QE65QN90D ma 144 Hz.', question)).toBe(
+      true
+    );
+    expect(answerStatesFigure('Matryca 144Hz, 65 cali.')).toBe(true);
+  });
+
+  it('does not credit a bare number the question itself carries', () => {
+    const asked = 'Podaj cenę iPhone 17 Pro w złotych.';
+    expect(
+      answerStatesFigure('Nie ma informacji o cenie iPhone 17 Pro.', asked)
+    ).toBe(false);
+    expect(
+      answerStatesFigure('iPhone 17 Pro kosztuje 5021.9 PLN.', asked)
+    ).toBe(true);
+  });
+});
+
+describe('evidenceLinesFor — the lines the retry should quote (release R-3, R-16)', () => {
+  const specQuestion = 'Jaką częstotliwość odświeżania ma Samsung QE65QN90D?';
+  const specContext =
+    "\n --- Source 1: Telewizor Samsung QE65QN90D QLED 65'' 4K Ultra HD Tizen --- \n " +
+    '[Verified product data] name="Telewizor Samsung QE65QN90D QLED 65\'\' 4K Ultra HD Tizen", price=5933.04 PLN, availability=out of stock\n' +
+    "Telewizor Samsung QE65QN90D QLED 65'' 4K Ultra HD Tizen ID produktu: 14206893 Marka Samsung | Kod producenta QE65QN90DATXXH | EAN 8806095414850 Częstotliwość odświeżania\n" +
+    "Przekątna ekranu w calach 65'' Format HD 4K Ultra HD Rozdzielczość 3840 x 2160 Częstotliwość odświeżania 144 Hz Tuner Analogowe , DVB-C , DVB-S2 , DVB-T2 (HEVC) Technologia HDR HDR10+ , HLG Tryb gra Dla graczy Smart TV Tizen Wi-Fi Bluetooth HDMI 4 USB 2 Klasa energetyczna G Waga 25 kg \n" +
+    ' --- End of Source 1 ---\n' +
+    '\n --- Source 2: Telewizor Neo QLED Samsung QE65QN90D 65 cali UHD --- \n ' +
+    'Dzięki unikalnej technologii dynamicznego odświeżania marki Samsung Upłynniacz Ruchu 144 Hz zapewnia zróżnicowany pod względem wydajności ruch i obsługę gier VRR do 4K 144 Hz. \n' +
+    ' --- End of Source 2 ---\n\n' +
+    specQuestion;
+
+  it('quotes at most three lines and one of them carries the refresh rate', () => {
+    const lines = evidenceLinesFor(specQuestion, specContext);
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.length).toBeLessThanOrEqual(3);
+    expect(lines.some((line) => line.includes('144 Hz'))).toBe(true);
+    for (const line of lines) expect(line.length).toBeLessThan(260);
+  });
+
+  it('leads with the spec line clipped to the words around the asked term', () => {
+    const lines = evidenceLinesFor(specQuestion, specContext);
+    expect(lines[0]).toContain('Częstotliwość odświeżania 144 Hz');
+    expect(lines[0]).not.toContain('Klasa energetyczna');
+  });
+
+  it('does not quote the line whose only figures are the EAN and the product id', () => {
+    const lines = evidenceLinesFor(specQuestion, specContext);
+    expect(lines.some((line) => line.includes('8806095414850'))).toBe(false);
+  });
+
+  it('puts the sentence that answers the population question first (R-3)', () => {
+    const question = 'Jaka jest populacja Warszawy?';
+    const context =
+      '\n --- Source 1: Ile mieszkańców ma Warszawa w 2025 roku? Aktualne dane --- \n ' +
+      'W ciągu doby na terenie Warszawy przebywa średnio około 2,24 miliona osób, co znacznie przewyższa liczbę stałych mieszkańców. ' +
+      'Warszawa z populacją 1,86 miliona mieszkańców jest ósmym co do wielkości miastem w Unii Europejskiej. \n' +
+      ' --- End of Source 1 ---\n' +
+      '\n --- Source 2: Ludność Warszawy - Wikipedia --- \n ' +
+      'Ludność Warszawy w dzielnicach Tabela przedstawia liczbę ludności w poszczególnych dzielnicach Warszawy w 2005, 2020 oraz 2024 roku. \n' +
+      ' --- End of Source 2 ---\n\n' +
+      question;
+    const lines = evidenceLinesFor(question, context);
+    expect(lines[0]).toContain('1,86 miliona');
+    expect(lines).not.toContain(
+      'Ludność Warszawy w dzielnicach Tabela przedstawia liczbę ludności w poszczególnych dzielnicach Warszawy w 2005, 2020 oraz 2024 roku.'
+    );
+  });
+
+  it('ignores the numbered source markers and the question echoed under the sources', () => {
+    const question = 'Kto jest prezydentem Polski?';
+    const context =
+      '\n --- Source 1: Prezydent Polski - Wikipedia --- \n Prezydentem Polski jest Karol Nawrocki. \n --- End of Source 1 ---\n\n' +
+      question;
+    expect(evidenceLinesFor(question, context)).toEqual([]);
+    expect(contextOffersFigureFor(question, context)).toBe(false);
+  });
+});
+
+describe('claimsMissingEvidenceItHas — a refusal that names the model code (release R-16)', () => {
+  it('flags the refusal although the code carries digits', () => {
+    expect(
+      claimsMissingEvidenceItHas(
+        'Częstotliwość odświeżania telewizora Samsung QE65QN90D nie jest podana w dostarczonych źródłach.',
+        'Jaką częstotliwość odświeżania ma Samsung QE65QN90D?',
+        'Rozdzielczość 3840 x 2160 Częstotliwość odświeżania 144 Hz Tuner Analogowe',
+        'specs'
+      )
+    ).toBe(true);
   });
 });

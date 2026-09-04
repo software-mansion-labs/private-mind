@@ -637,13 +637,36 @@ export const aspectsMissingFromAnswer = (
 };
 
 const YEAR_TOKEN = /(?<![\p{N}])(?:19|20)\d{2}(?![\p{N}])/gu;
-const ANY_FIGURE = /\p{Nd}/u;
+const CODE_TOKEN = /(?<![\p{L}\p{N}])\p{L}[\p{L}\p{N}-]*\p{N}[\p{L}\p{N}-]*/gu;
 
-export const answerStatesFigure = (visible: string): boolean =>
-  ANY_FIGURE.test(toAsciiDigits(visible).replace(YEAR_TOKEN, ''));
+const IDENTIFIER_RUN = /^\d{8,}$/;
+
+const figuresStated = (text: string): Set<string> =>
+  new Set(
+    (
+      toAsciiDigits(text)
+        .replace(CODE_TOKEN, ' ')
+        .replace(YEAR_TOKEN, ' ')
+        .match(NUMBER_RUN) ?? []
+    )
+      .map((run) => run.replace(/[.,]+$/, ''))
+      .filter((run) => !IDENTIFIER_RUN.test(run))
+  );
+
+export const answerStatesFigure = (
+  visible: string,
+  question: string = ''
+): boolean => {
+  const asked = figuresStated(question);
+  for (const figure of figuresStated(visible)) {
+    if (!asked.has(figure)) return true;
+  }
+  return false;
+};
 
 const LEAD_SENTENCES = 1;
 const SENTENCE_BREAK = /(?<=[.!?…])\s+|\n+/u;
+const SOURCE_MARKER_LINE = /^[ \t]*--- (?:End of )?Source \d+.*?---[ \t]*$/gmu;
 const FIGURE_LEAD_KINDS: ReadonlySet<string> = new Set([
   'fact',
   'price',
@@ -658,20 +681,175 @@ const leadOf = (answer: string): string =>
     .slice(0, LEAD_SENTENCES)
     .join(' ');
 
+const EVIDENCE_LINES_MAX = 3;
+const EVIDENCE_LINE_MAX_CHARS = 200;
+const EVIDENCE_WINDOW_WORDS = 12;
+const EVIDENCE_WINDOW_PADDING = 3;
+const TOPIC_STEM_DISCOUNT = 0.5;
+const SOURCE_TITLE_LINE = /^[ \t]*--- Source \d+: (.*?) ---[ \t]*$/gmu;
+
+const stemWeights = (
+  sentences: string[],
+  stems: string[]
+): Map<string, number> => {
+  const folded = sentences.map(foldForMatching);
+  return new Map(
+    stems.map((stem) => {
+      const hits = folded.filter((sentence) =>
+        mentionsStem(sentence, stem)
+      ).length;
+      return [stem, hits === 0 ? 0 : Math.log((sentences.length + 1) / hits)];
+    })
+  );
+};
+
+const topicStemsOf = (context: string, stems: string[]): Set<string> => {
+  const titles = [...context.matchAll(SOURCE_TITLE_LINE)].map((match) =>
+    foldForMatching(match[1] ?? '')
+  );
+  const topic = new Set(
+    stems.filter((stem) => titles.some((title) => mentionsStem(title, stem)))
+  );
+  return topic.size === stems.length ? new Set() : topic;
+};
+
+interface EvidenceCandidate {
+  words: string[];
+  index: number;
+  score: number;
+  anchor: number;
+  figure: number;
+}
+
+const locateEvidence = (
+  sentence: string,
+  index: number,
+  stems: string[],
+  topic: Set<string>,
+  weights: Map<string, number>,
+  question: string
+): EvidenceCandidate => {
+  const words = sentence.split(/\s+/);
+  const figures = words.flatMap((word, at) =>
+    answerStatesFigure(word, question) ? [at] : []
+  );
+  const nearest = (at: number): number =>
+    figures.reduce(
+      (best, figure) =>
+        best === -1 || Math.abs(figure - at) < Math.abs(best - at)
+          ? figure
+          : best,
+      -1
+    );
+  let score = 0;
+  let anchor = -1;
+  let anchorRank = -1;
+  let figure = -1;
+  let topicAnchor = -1;
+  let topicRank = -1;
+  for (const stem of stems) {
+    const at = words.findIndex((word) =>
+      mentionsStem(foldForMatching(word), stem)
+    );
+    if (at === -1) continue;
+    const weight = weights.get(stem) ?? 0;
+    if (topic.has(stem)) {
+      score += weight * TOPIC_STEM_DISCOUNT;
+      if (weight > topicRank) {
+        topicRank = weight;
+        topicAnchor = at;
+      }
+      continue;
+    }
+    const near = nearest(at);
+    const close = near !== -1 && Math.abs(near - at) <= EVIDENCE_WINDOW_WORDS;
+    if (close) score += weight;
+    const rank = weight + (close ? 1 : 0);
+    if (rank > anchorRank) {
+      anchorRank = rank;
+      anchor = at;
+      figure = close ? near : -1;
+    }
+  }
+  if (anchor === -1) {
+    anchor = Math.max(0, topicAnchor);
+    const near = nearest(anchor);
+    figure =
+      near !== -1 && Math.abs(near - anchor) <= EVIDENCE_WINDOW_WORDS
+        ? near
+        : -1;
+  }
+  return {
+    words,
+    index,
+    score: figures.length === 0 ? 0 : score,
+    anchor,
+    figure,
+  };
+};
+
+const figureDistance = (candidate: EvidenceCandidate): number =>
+  candidate.figure === -1
+    ? Number.POSITIVE_INFINITY
+    : Math.abs(candidate.figure - candidate.anchor);
+
+const clipAroundStem = (candidate: EvidenceCandidate): string => {
+  const { words, anchor, figure } = candidate;
+  const sentence = words.join(' ');
+  if (sentence.length <= EVIDENCE_LINE_MAX_CHARS) return sentence;
+  const span = figure === -1 ? [anchor, anchor] : [anchor, figure];
+  const lo = Math.min(...span);
+  const hi = Math.max(...span);
+  return words
+    .slice(
+      Math.max(0, lo - EVIDENCE_WINDOW_PADDING),
+      hi + EVIDENCE_WINDOW_PADDING + 1
+    )
+    .join(' ');
+};
+
+export const evidenceLinesFor = (
+  question: string | undefined,
+  context: string
+): string[] => {
+  const asked = question ?? '';
+  const stems = aspectStems(asked);
+  if (stems.length === 0) return [];
+  const topic = topicStemsOf(context, stems);
+  const sentences = context
+    .replace(SOURCE_MARKER_LINE, '')
+    .split(SENTENCE_BREAK)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+  const weights = stemWeights(sentences, stems);
+  const candidates = sentences
+    .map((sentence, index) =>
+      locateEvidence(sentence, index, stems, topic, weights, asked)
+    )
+    .filter((candidate) => candidate.score > 0)
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        figureDistance(a) - figureDistance(b) ||
+        a.index - b.index
+    );
+  const lines: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    const line = clipAroundStem(candidate);
+    const key = foldForMatching(line);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    lines.push(line);
+    if (lines.length === EVIDENCE_LINES_MAX) break;
+  }
+  return lines;
+};
+
 export const contextOffersFigureFor = (
   question: string | undefined,
   context: string
-): boolean => {
-  const stems = aspectStems(question ?? '');
-  if (stems.length === 0) return false;
-  return context.split(SENTENCE_BREAK).some((sentence) => {
-    const folded = foldForMatching(sentence);
-    return (
-      stems.some((stem) => mentionsStem(folded, stem)) &&
-      answerStatesFigure(sentence)
-    );
-  });
-};
+): boolean => evidenceLinesFor(question, context).length > 0;
 
 export const buriesFigureContextOffers = (
   answer: string,
@@ -682,7 +860,7 @@ export const buriesFigureContextOffers = (
   !!kind &&
   FIGURE_LEAD_KINDS.has(kind) &&
   contextOffersFigureFor(question, context) &&
-  !answerStatesFigure(leadOf(answer));
+  !answerStatesFigure(leadOf(answer), question);
 
 export const claimsMissingEvidenceItHas = (
   answer: string,
@@ -698,7 +876,9 @@ export const claimsMissingEvidenceItHas = (
     intent === 'event' ||
     QUESTION_WANTS_DATE.test(question);
   if (wantsDate && CONTEXT_DATE.test(context)) {
-    return !CONTEXT_DATE.test(visible) && !answerStatesFigure(visible);
+    return (
+      !CONTEXT_DATE.test(visible) && !answerStatesFigure(visible, question)
+    );
   }
   const wantsAmount =
     intent === 'price' ||
@@ -707,5 +887,7 @@ export const claimsMissingEvidenceItHas = (
   const contextStatesAmount =
     CONTEXT_AMOUNT.test(context) ||
     (intent === 'specs' && CONTEXT_SPEC_FIGURE.test(context));
-  return wantsAmount && contextStatesAmount && !answerStatesFigure(visible);
+  return (
+    wantsAmount && contextStatesAmount && !answerStatesFigure(visible, question)
+  );
 };

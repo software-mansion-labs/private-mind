@@ -32,6 +32,7 @@ import {
   answerUsesNoRetrievedEvidence,
   answerStatesFigure,
   buriesFigureContextOffers,
+  evidenceLinesFor,
   aspectsMissingFromAnswer,
   humanizeSourceReferences,
   isCircularNonAnswer,
@@ -462,6 +463,13 @@ const SOURCES_COVER_TOPIC_RETRY_PROMPT =
   'sources give, exactly as they give it. Do not describe, list or ' +
   'summarize the sources. If they cover it only in part, give that part ' +
   'instead of refusing.';
+
+const withEvidenceLines = (prompt: string, lines: string[]): string =>
+  lines.length === 0
+    ? prompt
+    : `${prompt}\nThe lines in question, quoted from the sources:\n${lines
+        .map((line) => `"${line}"`)
+        .join('\n')}`;
 
 const aspectCoverageRetryPrompt = (aspects: string[]): string =>
   'The answer does not address: ' +
@@ -996,7 +1004,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       ) {
         await nudgeOnce(
           'Answer claims the sources are silent while they hold a figure, retrying once',
-          EVIDENCE_PRESENT_RETRY_PROMPT,
+          withEvidenceLines(
+            EVIDENCE_PRESENT_RETRY_PROMPT,
+            evidenceLinesFor(currentQuestion, promptContext)
+          ),
           (retried) =>
             claimsMissingEvidenceItHas(
               retried,
@@ -1023,12 +1034,16 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       ) {
         const draft = finalResponse;
         const retryStatesWhatDraftLacks = (retried: string): boolean =>
-          answerStatesFigure(retried) && !answerStatesFigure(draft);
+          answerStatesFigure(retried, currentQuestion) &&
+          !answerStatesFigure(draft, currentQuestion);
         await nudgeOnce(
           ignoresEvidence(finalResponse)
             ? 'Answer uses none of the evidence the sources carry, retrying once'
             : 'Answer buries the figure the sources offer, retrying once',
-          SOURCES_COVER_TOPIC_RETRY_PROMPT,
+          withEvidenceLines(
+            SOURCES_COVER_TOPIC_RETRY_PROMPT,
+            evidenceLinesFor(currentQuestion, promptContext)
+          ),
           (retried) =>
             (ignoresEvidence(retried) || buriesFigure(retried)) &&
             !retryStatesWhatDraftLacks(retried)

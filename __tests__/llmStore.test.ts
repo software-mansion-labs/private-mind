@@ -990,8 +990,53 @@ describe('sendChatMessage', () => {
       content: string;
     }[];
     expect(nudge.at(-1)!.content).toContain('first sentence');
+    expect(nudge.at(-1)!.content).toContain('1,86 miliona');
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
       digest
+    );
+  });
+
+  it('retries a refusal that names the model code and quotes the spec line holding the figure (release R-16)', async () => {
+    const question = 'Jaką częstotliwość odświeżania ma Samsung QE65QN90D?';
+    const specLine =
+      "Przekątna ekranu w calach 65'' Format HD 4K Ultra HD Rozdzielczość 3840 x 2160 Częstotliwość odświeżania 144 Hz Tuner Analogowe , DVB-C , DVB-S2 , DVB-T2 (HEVC) Technologia HDR HDR10+ , HLG Tryb gra Dla graczy Smart TV Tizen Wi-Fi Bluetooth HDMI 4 USB 2 Klasa energetyczna G Waga 25 kg";
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content: `\n --- Source 1: Telewizor Samsung QE65QN90D QLED 65'' 4K Ultra HD Tizen --- \n ${specLine} \n --- End of Source 1 ---\n\n${question}`,
+      },
+    ]);
+    const answer = 'Samsung QE65QN90D ma częstotliwość odświeżania 144 Hz.';
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        'Częstotliwość odświeżania telewizora Samsung QE65QN90D nie jest podana w dostarczonych źródłach.'
+      )
+      .mockResolvedValueOnce(answer)
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const specsSources = async () => ({
+      ...(await noSources()),
+      webIntentKind: 'specs' as const,
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(question, 1, specsSources, settings);
+
+    const nudge = mockInstance.generate.mock.calls[1]![0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(nudge.at(-1)!.content).toContain('quoted from the sources');
+    expect(nudge.at(-1)!.content).toContain('144 Hz');
+    expect(nudge.at(-1)!.content).not.toContain('Klasa energetyczna');
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      answer
     );
   });
 
