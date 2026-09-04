@@ -207,6 +207,23 @@ const Messages = ({
   // https://vercel.com/blog/how-we-built-the-v0-ios-app
   const opacity = useSharedValue(0);
   const revealTranslateY = useSharedValue(revealFromTop ? -28 : 0);
+  const [revealed, setRevealed] = useState(false);
+  const revealSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const settleReveal = useCallback((afterMs: number) => {
+    if (revealSettleTimer.current) clearTimeout(revealSettleTimer.current);
+    revealSettleTimer.current = setTimeout(() => setRevealed(true), afterMs);
+  }, []);
+  const unsettleReveal = useCallback(() => {
+    if (revealSettleTimer.current) clearTimeout(revealSettleTimer.current);
+    revealSettleTimer.current = null;
+    setRevealed(false);
+  }, []);
+  useEffect(
+    () => () => {
+      if (revealSettleTimer.current) clearTimeout(revealSettleTimer.current);
+    },
+    []
+  );
   const hasScrolledToEnd = useRef(false);
   const contentHeight = useRef(0);
   const initialScrollSettlingUntil = useRef(0);
@@ -239,6 +256,7 @@ const Messages = ({
       snapToEnd();
       opacity.set(withTiming(1, { duration }));
       revealTranslateY.set(withTiming(0, { duration }));
+      settleReveal(duration);
     };
 
     let settledHeight = -1;
@@ -257,7 +275,13 @@ const Messages = ({
     });
 
     schedule(500, () => reveal(350));
-  }, [clearInitialScrollTimers, opacity, revealTranslateY, snapToEnd]);
+  }, [
+    clearInitialScrollTimers,
+    opacity,
+    revealTranslateY,
+    settleReveal,
+    snapToEnd,
+  ]);
 
   const latestBranchMarkerByMessageId = useMemo(() => {
     const byMessageId = new Map<number, ChatBranchMarker>();
@@ -321,6 +345,7 @@ const Messages = ({
     ) {
       hasScrolledToEnd.current = false;
       opacity.set(0);
+      unsettleReveal();
       pinActive.current = false;
       pinScrollPendingRef.current = false;
       setPinAnchor(null);
@@ -335,7 +360,13 @@ const Messages = ({
     if (historyCameBackUnrevealed) {
       scheduleInitialScrollToEnd();
     }
-  }, [chatHistory.length, opacity, blankSpace, scheduleInitialScrollToEnd]);
+  }, [
+    chatHistory.length,
+    opacity,
+    blankSpace,
+    scheduleInitialScrollToEnd,
+    unsettleReveal,
+  ]);
 
   useEffect(() => {
     if (chatHistory.length === 0) return;
@@ -346,18 +377,20 @@ const Messages = ({
       }
       opacity.set(withTiming(1, { duration: 350 }));
       revealTranslateY.set(withTiming(0, { duration: 350 }));
+      settleReveal(350);
     }, REVEAL_FALLBACK_MS);
     return () => clearTimeout(timer);
-  }, [chatHistory.length, opacity, revealTranslateY, snapToEnd]);
+  }, [chatHistory.length, opacity, revealTranslateY, settleReveal, snapToEnd]);
 
   useEffect(() => {
     if (chatHistory.length > 0) return;
     const timer = setTimeout(() => {
       opacity.set(withTiming(1, { duration: 350 }));
       revealTranslateY.set(withTiming(0, { duration: 350 }));
+      settleReveal(350);
     }, REVEAL_FALLBACK_MS);
     return () => clearTimeout(timer);
-  }, [chatHistory.length, opacity, revealTranslateY]);
+  }, [chatHistory.length, opacity, revealTranslateY, settleReveal]);
 
   useLayoutEffect(() => clearInitialScrollTimers, [clearInitialScrollTimers]);
 
@@ -561,6 +594,7 @@ const Messages = ({
         if (!hasScrolledToEnd.current) {
           hasScrolledToEnd.current = true;
           opacity.set(1);
+          settleReveal(0);
         }
         if (!isAtBottomRef.current) {
           isAtBottomRef.current = true;
@@ -583,7 +617,7 @@ const Messages = ({
         blankSpace.set(0);
       },
     }),
-    [blankSpace, closeUserActionMenu, opacity, snapToEnd]
+    [blankSpace, closeUserActionMenu, opacity, settleReveal, snapToEnd]
   );
 
   const handleContainerLayout = useCallback(
@@ -860,7 +894,12 @@ const Messages = ({
 
   return (
     <View style={styles.container}>
-      <Reanimated.View style={[styles.container, animatedContainerStyle]}>
+      <Reanimated.View
+        style={[
+          styles.container,
+          revealed ? styles.revealed : animatedContainerStyle,
+        ]}
+      >
         <KeyboardChatScrollView
           ref={scrollRef}
           keyboardLiftBehavior="whenAtEnd"
@@ -1055,6 +1094,9 @@ const createStyles = (theme: Theme) => {
     container: {
       flex: 1,
       width: '100%',
+    },
+    revealed: {
+      opacity: 1,
     },
     contentContainer: {
       paddingHorizontal: 16,
