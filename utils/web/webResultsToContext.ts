@@ -24,7 +24,7 @@ const formatVerifiedProduct = (
     `price=${product.price}${product.currency ? ` ${product.currency}` : ''}`,
     product.availability ? `availability=${product.availability}` : null,
   ].filter((part): part is string => part !== null);
-  return `${VERIFIED_PRODUCT_MARKER} ${parts.join(', ')}\n`;
+  return `${VERIFIED_PRODUCT_MARKER} ${neutralizeDelimiters(parts.join(', '))}\n`;
 };
 
 const truncate = (text: string, max: number): string =>
@@ -563,12 +563,11 @@ export const webResultsToContext = (
         ? `${relevant}\n${snippet}`
         : relevant
       : snippet;
-    const rawPassage = `${formatVerifiedProduct(result.product)}${bodyPassage}`;
+    const cleanPassage = `${formatVerifiedProduct(result.product)}${neutralizeDelimiters(bodyPassage)}`;
     const queryLabel =
       distinctQueries.size > 1 && result.sourceQuery
         ? `[Answers: ${result.sourceQuery}]\n`
         : '';
-    const cleanPassage = neutralizeDelimiters(rawPassage);
 
     context.push(
       sourceBlock(startIndex + index, name, `${queryLabel}${cleanPassage}`)

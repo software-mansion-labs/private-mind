@@ -63,5 +63,7 @@ export const parseSerpMessage = (raw: string): SerpMessage | null => {
   }
 };
 
+const FORGED_VERIFIED_MARKER = /\[\s*verified\s+product\s+data\s*\]/gi;
+
 export const neutralizeDelimiters = (text: string): string =>
-  text.replace(/-{3,}/g, '—');
+  text.replace(/-{3,}/g, '—').replace(FORGED_VERIFIED_MARKER, '');

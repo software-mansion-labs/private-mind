@@ -1,5 +1,6 @@
 import { MIN_STITCH_OVERLAP, SOURCE_HEADER } from '../constants/retrieval';
 import type { SourceDocument } from '../database/chatRepository';
+import { neutralizeDelimiters } from './web/security/untrustedContent';
 
 export type ContextChunk = {
   document?: string;
@@ -94,7 +95,11 @@ export const sourceBlock = (
 
 export const formatContextChunks = (chunks: ContextChunk[]): string[] =>
   groupChunksByDocument(chunks).map((group, index) =>
-    sourceBlock(index, group.name, joinGroupPassages(group))
+    sourceBlock(
+      index,
+      neutralizeDelimiters(group.name),
+      neutralizeDelimiters(joinGroupPassages(group))
+    )
   );
 
 export const getSourceDocumentsFromChunks = (
@@ -125,6 +130,6 @@ export const formatFirstChunks = (
     .filter((s) => s.firstChunk)
     .map(
       (s) =>
-        `\n --- ${label}: ${s.name} (Overview) --- \n ${s.firstChunk!.trim()} \n --- End of ${label} ---`
+        `\n --- ${label}: ${neutralizeDelimiters(s.name)} (Overview) --- \n ${neutralizeDelimiters(s.firstChunk!.trim())} \n --- End of ${label} ---`
     );
 };
