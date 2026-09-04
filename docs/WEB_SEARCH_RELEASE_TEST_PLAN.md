@@ -283,6 +283,7 @@ Nagranie `screen-recording` na każdą pozycję, 5 powtórzeń tam, gdzie
 | klawiatura | po wysłaniu pasek schodzi razem z klawiaturą; po powrocie z tła / share sheet / dialogu uprawnień pasek **nie** wisi na wysokości klawiatury (bug z 4 IX, otwarty) |
 | przycisk Web | stan widoczny przed wysyłką; po reloadzie JS wraca do off — **decyzja produktowa**: czy ma pamiętać wybór między rozmowami |
 | badge / Sources | "Searched the web" ↔ arkusz Sources z tymi samymi stronami; host, nie tytuł, jako nazwa |
+| wklejenie do inputa | wyślij `test echo`, skopiuj ten tekst, wklej jako pierwszą rzecz po wysyłce — tekst zostaje w polu (pierwsze i drugie wklejenie); zaraz po wysyłce wklejony **inny** tekst też zostaje. Przy FAIL: oba teksty, odstęp od wysyłki, stan pola z `describe` |
 | ponowne wejście do rozmowy | trace z bazy: kroki = zapytania, strony = `read`/`used`, bez animacji wejścia |
 | pusta bańka / biały ekran | nigdy (bug "conversation goes blank" — kapturowanie opisane w STATUS) |
 
