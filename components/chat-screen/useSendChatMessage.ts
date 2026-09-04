@@ -296,7 +296,7 @@ export const useSendChatMessage = ({
           useWebSearchStore.getState().setSearchingWeb(false);
           webViewScrapeProvider.releaseHost();
         }
-        if (webSearchFailed) {
+        if (webSearchFailed && !signal?.aborted) {
           Toast.show({
             type: 'defaultToast',
             text1:
