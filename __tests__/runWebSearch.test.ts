@@ -257,10 +257,39 @@ describe('runWebSearch', () => {
     expect(provider.calls).toEqual([
       'jaką częstotliwość odświeżania ma Samsung QE65QN90D?',
       'Samsung QE65QN90D refresh rate',
+      'Samsung QE65QN90D',
     ]);
     expect(out.telemetry.plannedQueries).toContain(
       'Samsung QE65QN90D refresh rate'
     );
+    expect(out.sourceDocuments.map((doc) => doc.url)).toEqual([specPage.url]);
+  });
+
+  it('retries a zero-result search with the question’s anchors and the expected terms', async () => {
+    const specPage: WebSearchResult = {
+      title: 'Samsung QE65QN90D — dane techniczne',
+      url: 'https://sklep.example/qn90d',
+      snippet: 'Samsung QE65QN90D częstotliwość odświeżania 144 Hz',
+      content:
+        'Samsung QE65QN90D częstotliwość odświeżania 144 Hz, 4K. '.repeat(12),
+    };
+    const provider = new MockProvider({
+      'Samsung QE65QN90D częstotliwość odświeżania': [specPage],
+    });
+    const out = await runWebSearch({
+      query: 'Jaka częstotliwość odświeżania ma Samsung QE65QN90D?',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () =>
+        '{"needs_search": true, "intent": "TV refresh rate", "kind": "specs", "queries": ["Jaka częstotliwość odświeżania ma Samsung QE65QN90D?"], "expects": ["częstotliwość odświeżania"]}',
+      today: '2026-07-20',
+    });
+    expect(provider.calls).toEqual([
+      'Jaka częstotliwość odświeżania ma Samsung QE65QN90D?',
+      'Samsung QE65QN90D częstotliwość odświeżania',
+    ]);
     expect(out.sourceDocuments.map((doc) => doc.url)).toEqual([specPage.url]);
   });
 

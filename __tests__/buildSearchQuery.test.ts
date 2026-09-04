@@ -7,6 +7,7 @@ import {
   carryReferentIntoQuery,
   isAboutTheConversation,
   isConversationalIntent,
+  anchorRescueQuery,
 } from '../utils/web/buildSearchQuery';
 
 const history = [
@@ -832,6 +833,21 @@ describe('planWebSearch', () => {
       expect(system).toMatch(/"kind": "price"/);
       expect(system).toMatch(/"kind": "chat"/);
     });
+  });
+});
+
+describe('anchorRescueQuery', () => {
+  it('keeps the model code and the proper noun of a question and adds what the plan expects', () => {
+    expect(
+      anchorRescueQuery(
+        'Jaka czestotliwosc odswiezania ma Samsung QE65QN90D?',
+        ['czestotliwosc odswiezania']
+      )
+    ).toBe('Samsung QE65QN90D czestotliwosc odswiezania');
+  });
+
+  it('has nothing to offer for a question without a code or a name', () => {
+    expect(anchorRescueQuery('jaka jest dzisiaj pogoda?', [])).toBeNull();
   });
 });
 

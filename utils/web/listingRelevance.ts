@@ -2,6 +2,7 @@ import type { WebSearchResult } from './types';
 import type { WebIntentKind } from './intentKind';
 import { foldForMatching, stemPrefix } from '../queryTerms';
 import { MONEY_ANCHOR } from './webResultsToContext';
+import { anchorTokens } from './anchorTokens';
 
 const questionTerms = (query: string): string[] => [
   ...new Set(
@@ -17,19 +18,11 @@ const MONEY_BONUS = 1.5;
 const hasMoneyAnchor = (folded: string): boolean =>
   folded.match(MONEY_ANCHOR) !== null;
 
-const ANCHOR_TAIL = /^[\p{Lu}\p{Lt}][\p{L}\p{N}'’-]*$/u;
-const HAS_DIGIT = /\p{N}/u;
-
-export const anchorTerms = (query: string): string[] => {
-  const raw = query.split(/[^\p{L}\p{N}'’-]+/u).filter(Boolean);
-  const anchors = raw.filter((token, index) => {
-    if (HAS_DIGIT.test(token)) return true;
-    return index > 0 && ANCHOR_TAIL.test(token) && token.length >= 2;
-  });
-  return [
-    ...new Set(anchors.map((token) => stemPrefix(foldForMatching(token)))),
-  ];
-};
+export const anchorTerms = (query: string): string[] => [
+  ...new Set(
+    anchorTokens(query).map((token) => stemPrefix(foldForMatching(token)))
+  ),
+];
 
 const ANCHOR_BONUS = 3;
 const OFF_SUBJECT_FACTOR = 0.25;

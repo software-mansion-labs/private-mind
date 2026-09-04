@@ -12,6 +12,7 @@ import { foldForMatching } from '../queryTerms';
 import { conversationSubject, namedEntitiesIn } from './conversationSubject';
 import { parseIntentKind, type WebIntentKind } from './intentKind';
 import { sharesLanguageWith } from './queryLanguage';
+import { anchorTokens } from './anchorTokens';
 import { topicAnchorer } from './topicAnchors';
 
 export interface QueryRewriteMessage {
@@ -270,6 +271,22 @@ export const dedupeQueries = (queries: string[]): string[] => {
     out.push(text);
   }
   return out.slice(0, WEB_MAX_BASE_QUERIES);
+};
+
+export const anchorRescueQuery = (
+  question: string,
+  expects: string[] = []
+): string | null => {
+  const anchors = anchorTokens(toKeywordQuery(question));
+  if (anchors.length === 0) return null;
+  const seen = new Set<string>();
+  const parts = [...anchors, ...expects].filter((part) => {
+    const key = foldForMatching(part);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return clampQuery(parts.join(' '));
 };
 
 export const verbatimQueryFor = (
