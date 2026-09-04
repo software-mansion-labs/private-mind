@@ -196,6 +196,32 @@ describe('runWebSearch', () => {
     expect(events.some((e) => e.type === 'weak')).toBe(false);
   });
 
+  it('logs the plan it is about to run, kind included, so a device session can grade the planner (S8.4)', async () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const provider = new MockProvider({
+      'warsaw weather': [weatherPage('https://weather.example/1')],
+    });
+    await runWebSearch({
+      query: 'jaka jest dzisiaj pogoda w warszawie',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () =>
+        '{"needs_search": true, "intent": "current Warsaw weather", "kind": "fact", "queries": ["warsaw weather"]}',
+      today: '2026-07-20',
+    });
+    expect(log).toHaveBeenCalledWith(
+      'Web search plan',
+      expect.objectContaining({
+        needsSearch: true,
+        kind: 'fact',
+        queries: ['jaka jest dzisiaj pogoda w warszawie'],
+      })
+    );
+    log.mockRestore();
+  });
+
   it('threads the planned intent into telemetry instead of dropping it', async () => {
     const provider = new MockProvider({
       'warsaw weather': [weatherPage('https://weather.example/1')],

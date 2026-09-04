@@ -235,6 +235,14 @@ export const runWebSearch = async (
   telemetry.needsSearch = plan.needsSearch;
   telemetry.intent = plan.intent;
   telemetry.intentKind = plan.kind;
+  if (__DEV__) {
+    console.log('Web search plan', {
+      needsSearch: plan.needsSearch,
+      kind: plan.kind,
+      intent: plan.intent,
+      queries: baseQueries,
+    });
+  }
   telemetry.plannedQueries = baseQueries;
   const rankingQuery = plan.intent ? `${query} ${plan.intent}` : query;
   const shouldSearch = WEB_QUERY_GATE
