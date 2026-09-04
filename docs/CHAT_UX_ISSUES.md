@@ -354,6 +354,35 @@ and the field's state from `describe` (empty placeholder vs text present).
 Seen on the way: the Copy action copies the raw markdown, LaTeX included
 (`$\\text{CO}_2$` lands in the composer as typed). Cosmetic, filed here.
 
+## ❔ Leaving the chat while it decides whether to search drops the turn without a word
+
+Symptom (release round, chat 108, id 535): the user sent "Jaki jest
+dzisiaj kurs dolara amerykanskiego do zlotego?" with Web on and switched
+to another chat before any search step appeared. A toast said "Couldn't
+find anything useful online — answering without the web." Back in the
+chat the question sits there with no answer, no "Thinking…", no Stop, no
+error, and the database has no assistant row. In the same session,
+leaving *after* the first `Searching "…"` step (R-12) let the turn finish
+and the trace survive.
+
+Mechanism: the chat screen's blur cleanup calls `interrupt()` when the
+user leaves a chat that is generating or processing
+([`app/(drawer)/chat/[id].tsx`](../app/(drawer)/chat/[id].tsx)). That is
+deliberate — leaving is treated like Stop. Since `a99aa6f`, Stop before the
+first token drops the placeholder and the trace in the same tick, so the
+turn vanishes cleanly. The abort also reaches the web search, which
+reports `aborted: 'stopped'`; `useSendChatMessage` read that as "the
+search failed" and showed the no-results toast. Why R-12 survived is not
+established: the drawer's own `interrupt()` calls and the focus/blur order
+differ between the two paths, and the tester did not record which one
+they used.
+
+Done: the toast no longer shows when the abort came from the user or from
+leaving the chat. Open: whether leaving should interrupt at all (the
+comment in the screen says yes), and if it should, whether the abandoned
+question deserves a visible "stopped" state instead of silence. Product
+call, not a bug fix.
+
 ## What was not investigated this round
 
 - The camera screen's back button reacting late on Android — reported
