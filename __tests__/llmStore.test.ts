@@ -447,6 +447,27 @@ describe('sendChatMessage', () => {
     expect(mockPersistMessage).not.toHaveBeenCalled();
   });
 
+  it('cuts a reply that collapsed into a repeated clause before persisting it (#255)', async () => {
+    mockInstance.generate.mockResolvedValue(
+      'Czapka kosztuje 45 zł. Czapka kosztuje 45 zł. Czapka kosztuje 45 zł. Czapka kosztuje 45 zł.'
+    );
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('ile kosztuje czapka?', 1, noSources, settings);
+
+    const persisted = mockPersistMessage.mock.calls
+      .map((call) => call[1] as { role: string; content: string })
+      .find((message) => message.role === 'assistant');
+    expect(persisted?.content).toContain('45 zł');
+    expect(persisted?.content.split('Czapka kosztuje').length - 1).toBe(1);
+  });
+
   it('persists user message and assistant response', async () => {
     useLLMStore.setState({
       model: baseModel,
