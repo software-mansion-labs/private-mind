@@ -4345,6 +4345,14 @@ message while its live trace exists.
   that treat a confidently detected answer language that shares no
   function words with the question as wrong. Fixture: the three answers
   above against the ASCII question.
+- **The question-echo retry answered the nudge itself.** A throwaway
+  `test echo` turn drafted "test echo", the echo nudge fired, and the retry
+  was a paragraph about "the instruction to answer the question directly
+  … the direct answer is: Answer the question now" — the retry prompt read
+  back as content. A 2B model with nothing to say fills the retry with the
+  instruction. Worth a rule that keeps the draft when the retry quotes the
+  nudge's own wording; low priority, since real questions give it
+  something to answer.
 - **`kind: "comparison"` for a single-model spec question.** Wrong class,
   harmless here (no results to rank), but the ranking would have skipped
   the figure bonus that `specs` gets.

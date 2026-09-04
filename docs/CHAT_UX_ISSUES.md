@@ -326,6 +326,8 @@ Fix (this branch): the guard is time-boxed. The echo arrives within the
 same frame as the send; a paste cannot. A change equal to the sent text is
 dropped only within 300 ms of the send (`SENT_ECHO_WINDOW_MS`). Test:
 "keeps a paste of the just-sent message once the echo window has passed".
+Confirmed on the Pixel 10 (`5efec17`): send `test echo`, copy the user
+bubble, paste — the text stays.
 
 **To verify in the test round (Pixel 10, this branch):**
 
