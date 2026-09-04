@@ -35,6 +35,22 @@ export type Row = StepRow | PageRow | ChallengeRow | NoteRow;
 const isUnopenedAndUnused = (source: SourceDocument): boolean =>
   source.read === false && source.used !== true;
 
+export const deriveTitle = (
+  isSearching: boolean,
+  trace: WebSearchTraceEntry[]
+): string => {
+  if (isSearching) {
+    return trace.some((entry) => entry.type === 'searching')
+      ? 'Searching the web…'
+      : 'Checking whether to search…';
+  }
+  if (trace.some((entry) => entry.type === 'offline'))
+    return 'No internet connection';
+  if (trace.some((entry) => entry.type === 'skipped'))
+    return 'Answered without searching';
+  return 'Searched the web';
+};
+
 export const buildRows = (
   isSearching: boolean,
   trace: WebSearchTraceEntry[],

@@ -24,7 +24,7 @@ import {
   useWebSearchStore,
   type WebSearchTraceEntry,
 } from '../../store/webSearchStore';
-import { buildRows } from './webSearchTrace';
+import { buildRows, deriveTitle } from './webSearchTrace';
 import {
   ROW_HEIGHT,
   ROW_INDENT,
@@ -39,18 +39,6 @@ interface Props {
   trace: WebSearchTraceEntry[];
   results: SourceDocument[];
 }
-
-const deriveTitle = (
-  isSearching: boolean,
-  trace: WebSearchTraceEntry[]
-): string => {
-  if (isSearching) return 'Searching the web…';
-  if (trace.some((entry) => entry.type === 'offline'))
-    return 'No internet connection';
-  if (trace.some((entry) => entry.type === 'skipped'))
-    return 'Answered without searching';
-  return 'Searched the web';
-};
 
 const WebSearchBlock = memo(({ isSearching, trace, results }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
