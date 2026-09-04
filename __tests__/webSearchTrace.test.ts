@@ -1,4 +1,7 @@
-import { buildRows } from '../components/chat-screen/webSearchTrace';
+import {
+  buildRows,
+  deriveTitle,
+} from '../components/chat-screen/webSearchTrace';
 import { type WebSearchTraceEntry } from '../store/webSearchStore';
 import { type SourceDocument } from '../database/chatRepository';
 
@@ -20,6 +23,30 @@ const labelsOf = (rows: Rows) =>
 const hostsOf = (rows: Rows) =>
   rows.flatMap((row) => (row.type === 'page' ? [row.host] : []));
 const types = (rows: Rows) => rows.map((row) => row.type);
+
+describe('deriveTitle', () => {
+  it('says the search is still being decided until the first query runs', () => {
+    expect(deriveTitle(true, [{ id: 1, type: 'objectives' }])).toBe(
+      'Checking whether to search…'
+    );
+    expect(
+      deriveTitle(true, [
+        { id: 1, type: 'objectives' },
+        { id: 2, type: 'searching', query: 'pogoda' },
+      ])
+    ).toBe('Searching the web…');
+  });
+
+  it('names the outcome once the search is over', () => {
+    expect(deriveTitle(false, [{ id: 1, type: 'skipped' }])).toBe(
+      'Answered without searching'
+    );
+    expect(deriveTitle(false, [{ id: 1, type: 'offline' }])).toBe(
+      'No internet connection'
+    );
+    expect(deriveTitle(false, [])).toBe('Searched the web');
+  });
+});
 
 describe('buildRows — finished search', () => {
   it('is empty when the search produced no pages', () => {
