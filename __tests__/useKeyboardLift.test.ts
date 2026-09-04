@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react-native';
-import { Keyboard } from 'react-native';
+import { AppState, Keyboard } from 'react-native';
 import { useKeyboardLift } from '../components/chat-screen/useKeyboardLift';
 
 let mockInsetsBottom = 0;
@@ -35,6 +35,18 @@ describe('useKeyboardLift', () => {
     mockProgress.value = 0;
     mockInsetsBottom = 0;
     keyboardHandler = {};
+    jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation(
+        () =>
+          ({ remove: jest.fn() }) as unknown as ReturnType<
+            typeof AppState.addEventListener
+          >
+      );
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('returns 0 when the keyboard is closed', () => {
@@ -89,7 +101,14 @@ describe('useKeyboardLift', () => {
   // Sending a message dismisses the keyboard and then holds the JS thread for
   // seconds. The bar was left stranded because the reset rode a JS listener.
   it('resets without any JS-thread keyboard event', () => {
-    const spy = jest.spyOn(Keyboard, 'addListener');
+    const listeners = new Map<string, () => void>();
+    const spy = jest.spyOn(Keyboard, 'addListener').mockImplementation(((
+      name: string,
+      handler: () => void
+    ) => {
+      listeners.set(name, handler);
+      return { remove: jest.fn() };
+    }) as unknown as typeof Keyboard.addListener);
     mockInsetsBottom = 34;
     mockHeight.value = -346;
     mockProgress.value = 1;
@@ -99,8 +118,57 @@ describe('useKeyboardLift', () => {
     rerender({});
 
     expect(result.current.value).toBe(0);
-    expect(spy).not.toHaveBeenCalled();
+    expect(listeners.size).toBe(2);
     spy.mockRestore();
+  });
+
+  it('drops the bar when the system reports the keyboard hidden and the controller never did', () => {
+    const listeners = new Map<string, () => void>();
+    const spy = jest.spyOn(Keyboard, 'addListener').mockImplementation(((
+      name: string,
+      handler: () => void
+    ) => {
+      listeners.set(name, handler);
+      return { remove: jest.fn() };
+    }) as unknown as typeof Keyboard.addListener);
+    mockInsetsBottom = 34;
+    mockHeight.value = -346;
+    mockProgress.value = 1;
+
+    const { result, rerender } = renderHook(() => useKeyboardLift());
+    expect(result.current.value).toBe(-312);
+
+    listeners.get('keyboardDidHide')!();
+    rerender({});
+    expect(result.current.value).toBe(0);
+
+    listeners.get('keyboardDidShow')!();
+    rerender({});
+    expect(result.current.value).toBe(-312);
+    spy.mockRestore();
+  });
+
+  it('drops the bar on return to the foreground when no keyboard is showing', () => {
+    let onChange: ((state: string) => void) | undefined;
+    const appSpy = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation(((_: string, handler: (state: string) => void) => {
+        onChange = handler;
+        return { remove: jest.fn() };
+      }) as unknown as typeof AppState.addEventListener);
+    const visibleSpy = jest.spyOn(Keyboard, 'isVisible').mockReturnValue(false);
+    mockInsetsBottom = 34;
+    mockHeight.value = -346;
+    mockProgress.value = 1;
+
+    const { result, rerender } = renderHook(() => useKeyboardLift());
+    expect(result.current.value).toBe(-312);
+
+    onChange!('active');
+    rerender({});
+    expect(result.current.value).toBe(0);
+    appSpy.mockRestore();
+    visibleSpy.mockRestore();
   });
 
   it('lifts again as soon as the keyboard starts coming back', () => {
