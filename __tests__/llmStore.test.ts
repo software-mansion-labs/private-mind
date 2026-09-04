@@ -929,6 +929,50 @@ describe('sendChatMessage', () => {
     );
   });
 
+  it('retries once when the answer buries the figure the sources offer, and keeps a retry that states it (smoke T2)', async () => {
+    const passage =
+      'Warszawa z populacją 1,86 miliona mieszkańców jest ósmym co do wielkości miastem w Unii Europejskiej.';
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      { role: 'user', content: `${passage}\n\nJaka jest populacja Warszawy?` },
+    ]);
+    const digest =
+      'Źródła nie podają jednej, ostatecznej liczby populacji Warszawy. Mazowieckietg.pl pisze, że Warszawa z populacją 1,86 miliona mieszkańców jest ósmym miastem Unii.';
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        'Zgodnie z dostępnymi źródłami nie jest podana konkretna liczba ludności Warszawy.'
+      )
+      .mockResolvedValueOnce(digest)
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const factSources = async () => ({
+      ...(await noSources()),
+      webIntentKind: 'fact' as const,
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'Jaka jest populacja Warszawy?',
+        1,
+        factSources,
+        settings
+      );
+
+    const nudge = mockInstance.generate.mock.calls[1]![0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(nudge.at(-1)!.content).toContain('first sentence');
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      digest
+    );
+  });
+
   it('retries once when the answer skips a sub-query the sources cover, naming that part', async () => {
     (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
       { role: 'system', content: 'You are helpful.' },
