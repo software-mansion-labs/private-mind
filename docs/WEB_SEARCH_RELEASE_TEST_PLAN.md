@@ -249,7 +249,7 @@ ląduje w tej rozmowie), przełączenie modelu w trakcie szukania.
 | tryb samolotowy przed wysłaniem | trace "No internet — answered without the web", odpowiedź bez odmowy "nie mam internetu" w treści, `telemetry.skippedReason: offline` |
 | sieć znika w trakcie czytania stron | `fetchFailures` w outcome, trace z notą o błędach, odpowiedź z tego, co było |
 | wolna sieć (200 ms RTT, 1 Mb/s) | `timeout` w trace najpóźniej po limicie; TTFT do zapisu |
-| wyszukiwarka zwraca 0 wyników (np. zapytanie z losowym ciągiem `Ile kosztuje QZX-99817-B?`) | `outcome.rounds[0]` ma zapytanie z kotwic; jeśli nadal 0 — odpowiedź uczciwa, trace bez "Reading the pages" |
+| wyszukiwarka zwraca 0 wyników (np. zapytanie z losowym ciągiem `Ile kosztuje QZX-99817-B?`) | `outcome.rounds[0]` ma zapytanie z kotwic; jeśli nadal 0 — odpowiedź uczciwa, trace bez "Reading the pages". **Najpierw sprawdź, czy to nie limit 90 s**: `results: 0` z jednym zapytaniem i bez ratunków oznacza przerwany sygnał, nie pustą wyszukiwarkę (trace ma "Search took too long") |
 | wszystkie strony 403/paywall (pytanie o artykuł z wyborcza.pl) | `fetchFailures` z `host:reason`, `recovery` w telemetrii, odpowiedź ze snippetów albo uczciwa odmowa |
 | strona-olbrzym (Wikipedia "Polska") | brak zawieszenia UI, pobranie w limicie, `passage` ≤ budżet |
 | strony innym pismem dla pytania łacińskiego (pytanie po polsku, wyniki z .ru) | filtr pisma zostawia ≥ `WEB_MIN_SAME_SCRIPT_RESULTS` łacińskich |

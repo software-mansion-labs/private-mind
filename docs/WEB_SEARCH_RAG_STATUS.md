@@ -4349,3 +4349,97 @@ message while its live trace exists.
   harmless here (no results to rank), but the ranking would have skipped
   the figure bonus that `specs` gets.
 
+## Smoke round on the release plan: the deadline eats the planner
+
+Section 5.1 of the release plan ran on Gemma 4 - 2B (tester's file, section
+"Smoke (5.1)"): 2 pass, 3 fail, one Stop case failed, one exposed a
+mismatch. Read against the code, the failures are four mechanisms, and the
+biggest one also explains T1 of the minimal round and three of today's own
+runs.
+
+### 1. The 90-second search deadline starts before the planner
+
+`sendChatMessage` arms `WEB_SEARCH_OVERALL_TIMEOUT_MS` (90 s) and then
+awaits `buildSources`, whose first step is the planner — an LLM call that
+on Gemma 4 - 2B takes 60–120 s (today's device logs: plan line 57 s after
+the send when it worked, ~2 min when it did not). When the planner is slow,
+the controller aborts *before the first query*: the provider returns `[]`
+on an aborted signal, both zero-result rescues and the verbatim rescue are
+gated on `!signal.aborted`, page reading is skipped, and the outcome log
+says `results: 0, label: incorrect` — indistinguishable from an engine that
+found nothing. That is smoke T4 (`najlepszy telewizor OLED do salonu`, a
+query no engine returns empty for; offline the same plan runs three
+queries), the minimal round's T1, and this session's two empty
+`QE65QN90D` runs versus the one that succeeded 57 s after the send.
+
+The rescues added today (`2d2fde8`, `ec15b16`) are real but secondary:
+they run only when the engine genuinely returns nothing. The fix that
+matters is to start the deadline when the first query starts (or not count
+planner time at all — the planner has its own generation bound), write
+`aborted: true` and the reason into the outcome log, and show the
+"Search took too long" note in the trace whenever the abort fired — the
+event is pushed today but nothing in the results file mentions seeing it.
+
+### 2. Stop during "Deciding what to search for" does not stop the planner
+
+`interrupt()` aborts the send controller and calls `llmInstance.interrupt()`
+only when `isGenerating` — during the planner `isGenerating` is false and
+`utilityGenerating` is true, so the LLM keeps generating the plan for up to
+two minutes. The abort takes effect only when the planner returns: the
+search then yields nothing, `isProcessingPrompt` is already false, the
+placeholder is dropped in the `failed` phase and the block disappears. The
+tester's "stuck forever" is "stuck for the rest of the planner call"
+(they waited a minute). Fix: interrupt the LLM when `utilityGenerating` as
+well, push a `stopped` trace entry, and let the failed phase clear the live
+trace.
+
+### 3. The evidence nudge asks the model to read the sources, and it does — aloud
+
+Smoke T2: the draft said no source gives a figure; `Answer uses none of the
+evidence` fired; the retry quoted "1,86 miliona mieszkańców" inside a
+per-source digest and still closed with "the sources do not give one
+definitive number". `stillBroken` passed because the retry uses the
+evidence — the nudge did what it checks for. The prompt
+(`SOURCES_COVER_TOPIC_RETRY_PROMPT`: "read them again, including the page
+titles, and answer from what they actually say") invites exactly this on a
+2B model. Fix candidates: ask for the direct answer in the first sentence
+and forbid describing the sources; and for a question whose plan `expects`
+a figure, treat a retry without one in its first sentence as still broken.
+Also from the same turn: the strongest passage (um.warszawa.pl, "1 864
+tys.") was `used: false` at similarity 0.4, below the qualification line.
+
+### 4. R1 cascade: no model in turn 1, a generic English query in turn 2
+
+T4 answered from memory (deadline → no sources) and refused to name a
+model; T5's "Ile kosztuje?" then had no referent, the planner wrote
+`cost of OLED TV`, the language guard let it through (three short tokens,
+two of them acronyms — no language to detect), and the answer listed two
+US prices in USD for models never mentioned. Two separate gaps: the guard
+cannot judge a query with no detectable language (fall back to the script
+and the presence of a question token), and a recommendation turn that
+ends without a named model has nothing to carry — the coverage nudge could
+treat `expects: ["recommended TV model"]` unmet as a missing aspect.
+
+### Smaller
+
+- T1 `expects: []` and an English `sourceQuery` (`cost of LG OLED65B65LA`)
+  for a Polish question — the code carries the query, the guard cannot
+  see a language in it; harmless here (Ceneo answered), noted.
+- T3 shows "Searching the web… / Deciding what to search for" before the
+  planner decides not to search. The label is right about the state but
+  reads as a search; "Checking whether to search…" during the objectives
+  step would stop testers grading the gate by the transient label.
+- Stop during generation saved the partial answer without
+  `sourceDocuments` while the trace block said "Searched the web". Since
+  today the block stays while the live trace exists, so it is honest
+  in-session and gone on reopen; the refusal text points at another
+  deadline abort, but the log for that turn was lost to a shared
+  tool-server teardown.
+- "Zgodniebnymi" (T2 draft): a merged token, not a loop; model artifact.
+
+Order of work: 1 (deadline after the plan, aborted flag in the log and the
+trace note) → 2 (Stop reaches the planner) → 3 (retry prompt and the
+figure-in-first-sentence rule) → 4 (guard fallback for undetectable
+queries). Fixtures: T2's passage and draft; a run with a planner slower
+than the deadline; Stop between send and the plan line.
+
