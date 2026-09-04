@@ -1,4 +1,5 @@
 import { extractQueryTerms, foldForMatching } from '../queryTerms';
+import { detectQuestionLanguage } from '../questionLanguage';
 import { namedEntitiesIn } from './conversationSubject';
 
 const CONTENT_TERM_MIN_CHARS = 4;
@@ -39,13 +40,37 @@ export const sharedStemCount = (query: string, text: string): number => {
   ).length;
 };
 
+const CODE_TOKEN =
+  /(?<![\p{L}\p{N}])(?=[^\s]*\p{N})[\p{L}\p{N}-]{3,}(?![\p{L}\p{N}])/gu;
+
+const carriesCodeFrom = (query: string, conversation: string): boolean => {
+  const known = foldForMatching(conversation);
+  return (query.match(CODE_TOKEN) ?? []).some((code) =>
+    known.includes(foldForMatching(code))
+  );
+};
+
+const detectedLanguagesDiffer = (
+  query: string,
+  conversation: string
+): boolean => {
+  const expected = detectQuestionLanguage(conversation)?.code;
+  const actual = detectQuestionLanguage(query)?.code;
+  return !!expected && !!actual && expected !== actual;
+};
+
 export const sharesLanguageWith = (
   query: string,
   conversation: string
 ): boolean => {
   const named = namedPartsOf(query);
   const queryTerms = termsIn(query).filter((term) => !named.has(term));
-  if (queryTerms.length < JUDGEABLE_MIN_TERMS) return true;
+  if (queryTerms.length < JUDGEABLE_MIN_TERMS) {
+    return (
+      carriesCodeFrom(query, conversation) ||
+      !detectedLanguagesDiffer(query, conversation)
+    );
+  }
   const known = termsIn(conversation);
   const shared = queryTerms.filter((term) =>
     known.some((word) => sharesStem(term, word))
