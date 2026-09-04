@@ -1,6 +1,7 @@
 import {
   rankByListingRelevance,
   fairRankByListingRelevance,
+  scopeYearsOf,
 } from '../utils/web/listingRelevance';
 import type { WebSearchResult } from '../utils/web/types';
 
@@ -147,7 +148,7 @@ describe('rankByListingRelevance', () => {
     expect(ranked).toHaveLength(2);
   });
 
-  it('drops an all-time record page once a real this-year page is available', () => {
+  it('puts the page that names the scoped year first, whatever language the all-time page speaks', () => {
     const ranked = rankByListingRelevance(
       [
         result({
@@ -159,53 +160,45 @@ describe('rankByListingRelevance', () => {
           title: 'Poland National Team Stats, Form & Top Scorers 2026',
         }),
       ],
-      'Kto zdobyl najwiecej bramek w reprezentacji Polski w tym roku'
+      'najwięcej bramek reprezentacja Polski',
+      { scopeYears: ['2026'] }
     );
-    expect(ranked).toHaveLength(1);
     expect(ranked[0]!.url).toBe(
       'https://footystats.org/statistics-poland-national-team'
     );
   });
 
-  it('drops every all-time page for a this-year record question rather than falling back to them', () => {
-    const results = [
-      result({
-        url: 'https://www.transfermarkt.pl/spieler/rekordnationalspieler/statistik',
-        title: 'Najwięcej występów w reprezentacji | Transfermarkt',
-      }),
-      result({
-        url: 'https://sport.tvp.pl/najlepsi-strzelcy',
-        title: 'Najlepsi strzelcy reprezentacji narodowych wszech czasów',
-      }),
-    ];
-    const ranked = rankByListingRelevance(
-      results,
-      'Kto zdobyl najwiecej bramek w reprezentacji Polski w tym roku'
-    );
-    expect(ranked).toHaveLength(0);
-  });
-
-  it('drops an English "record scorers" all-time page for a this-year question', () => {
+  it('reads the year from the URL or the snippet too', () => {
     const ranked = rankByListingRelevance(
       [
         result({
-          url: 'https://www.transfermarkt.com/poland/rekordtorschuetzen',
-          title: 'Poland – Record goal scorers | Transfermarkt',
+          url: 'https://sport.tvp.pl/najlepsi-strzelcy',
+          title: 'Najlepsi strzelcy reprezentacji narodowych wszech czasów',
         }),
         result({
-          url: 'https://footystats.org/statistics-poland-national-team',
-          title: 'Poland National Team Stats, Form & Top Scorers 2026',
+          url: 'https://sport.tvp.pl/strzelcy/sezon-2026',
+          title: 'Strzelcy reprezentacji w bieżącym sezonie',
         }),
       ],
-      'Kto zdobyl najwiecej bramek w reprezentacji Polski w tym roku'
+      'strzelcy reprezentacji',
+      { scopeYears: ['2026'] }
     );
-    expect(ranked).toHaveLength(1);
-    expect(ranked[0]!.url).toBe(
-      'https://footystats.org/statistics-poland-national-team'
-    );
+    expect(ranked[0]!.url).toBe('https://sport.tvp.pl/strzelcy/sezon-2026');
   });
 
-  it('does not drop an all-time record page for a plain all-time question', () => {
+  it('leaves the order alone when no listing names the scoped year', () => {
+    const results = [
+      result({ url: 'https://a.com', title: 'Strzelcy reprezentacji Polski' }),
+      result({ url: 'https://b.com', title: 'Reprezentacja Polski strzelcy' }),
+    ];
+    expect(
+      rankByListingRelevance(results, 'strzelcy reprezentacji Polski', {
+        scopeYears: ['2026'],
+      })
+    ).toEqual(results);
+  });
+
+  it('keeps every page for a question that carries no year', () => {
     const results = [
       result({
         url: 'https://www.transfermarkt.pl/spieler/rekordnationalspieler/statistik',
@@ -223,57 +216,34 @@ describe('rankByListingRelevance', () => {
     expect(ranked).toHaveLength(2);
   });
 
-  it('drops an all-time single-game-records page for a "who scored most in that game" follow-up', () => {
+  it('gives the title figure its bonus from the intent kind, not from the question’s wording', () => {
     const results = [
+      result({ url: 'https://a.com', title: 'Warsaw population and history' }),
       result({
-        url: 'https://www.basketball-reference.com/leaders/pts_single_game.html',
-        title:
-          'NBA Single Game Leaders and Records for Points | Basketball-Reference.com',
+        url: 'https://b.com',
+        title: 'Warsaw Population 2026 — 1,862,402 People',
       }),
     ];
-    const ranked = rankByListingRelevance(
-      results,
-      'Who was the top scorer in that game?'
-    );
-    expect(ranked).toHaveLength(0);
+    expect(
+      rankByListingRelevance(results, 'Einwohner Warschau', {
+        kind: 'fact',
+      })[0]!.url
+    ).toBe('https://b.com');
+    expect(
+      rankByListingRelevance(results, 'Einwohner Warschau', { kind: 'howto' })
+    ).toEqual(results);
+  });
+});
+
+describe('scopeYearsOf', () => {
+  it('collects the years the planner put into its queries', () => {
+    expect(
+      scopeYearsOf(['strzelcy Ekstraklasa sezon 2025/26', 'cena iPhone 17'])
+    ).toEqual(['2025']);
   });
 
-  it('drops an all-time page once a real game-specific page is available for an "in that game" follow-up', () => {
-    const ranked = rankByListingRelevance(
-      [
-        result({
-          url: 'https://www.basketball-reference.com/leaders/pts_single_game.html',
-          title:
-            'NBA Single Game Leaders and Records for Points | Basketball-Reference.com',
-        }),
-        result({
-          url: 'https://www.espn.com/boxscore/401585123',
-          title: 'Rockets 99-93 Lakers (Apr 29, 2026) Box Score - ESPN',
-        }),
-      ],
-      'Who was the top scorer in that game?'
-    );
-    expect(ranked).toHaveLength(1);
-    expect(ranked[0]!.url).toContain('boxscore');
-  });
-
-  it('does not drop an all-time page for a superlative question with no event/period scope at all', () => {
-    const results = [
-      result({
-        url: 'https://www.basketball-reference.com/leaders/pts_single_game.html',
-        title:
-          'NBA Single Game Leaders and Records for Points | Basketball-Reference.com',
-      }),
-      result({
-        url: 'https://example.com/unrelated',
-        title: 'Unrelated page',
-      }),
-    ];
-    const ranked = rankByListingRelevance(
-      results,
-      'Who scored the most points in a single NBA game ever?'
-    );
-    expect(ranked).toHaveLength(2);
+  it('is empty when no query names a year', () => {
+    expect(scopeYearsOf(['pogoda Kraków dzisiaj'])).toEqual([]);
   });
 });
 

@@ -35,7 +35,7 @@ import {
 import { hostname, webResultsToContext } from './webResultsToContext';
 import type { WebIntentKind } from './intentKind';
 import { dedupeByBody, listingFingerprint } from './fingerprint';
-import { fairRankByListingRelevance } from './listingRelevance';
+import { fairRankByListingRelevance, scopeYearsOf } from './listingRelevance';
 import { promoteTitleConsensus } from './titleConsensus';
 import { promoteVerifiedProducts } from './promoteVerified';
 import { pageCache, serpCache } from './cache/webCache';
@@ -399,7 +399,10 @@ export const runWebSearch = async (
     enrichedPages: number;
     waves: number;
   }> => {
-    const capped = fairRankByListingRelevance(groups, rankingQuery, cap);
+    const capped = fairRankByListingRelevance(groups, rankingQuery, cap, {
+      kind: plan.kind,
+      scopeYears: scopeYearsOf([...baseQueries, query]),
+    });
     let enriched = capped;
     let target = WEB_ADAPTIVE_ENRICH
       ? Math.min(Math.max(1, WEB_ENRICH_WAVE_FIRST), maxEnrich)
