@@ -143,6 +143,29 @@ describe('splitPriceOutliers', () => {
   });
 });
 
+describe('a figure the page states without a currency token beside it (live: Pixel S1.5)', () => {
+  const context =
+    '[1] Gold Price Today\nGold Price in Spot Today: per oz 4,469.70, change +0.4%';
+
+  it('is grounded when the answer repeats it exactly', () => {
+    expect(
+      findUngroundedFigures(
+        'The gold price today is 4,469.70 USD per ounce.',
+        context
+      )
+    ).toEqual([]);
+  });
+
+  it('is still flagged when the answer invents a different amount', () => {
+    expect(
+      findUngroundedFigures(
+        'The gold price today is 3,900 USD per ounce.',
+        context
+      )
+    ).toEqual([3900]);
+  });
+});
+
 describe('a reply that names the currency once and then states bare numbers (live-found)', () => {
   const context =
     '--- Source 1 --- Bitcoin price today is $96,240.10 USD. Ethereum price today is $3,180.55 USD.';
