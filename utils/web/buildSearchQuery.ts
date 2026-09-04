@@ -28,6 +28,7 @@ export interface WebSearchPlan {
   intent: string;
   kind?: WebIntentKind;
   queries: string[];
+  fallbackQueries?: string[];
   expects?: string[];
   siteRestriction?: string;
 }
@@ -720,26 +721,37 @@ export const planWebSearch = async (
 
   const today = opts?.today ?? todayISO();
   const groundedText = foldForMatching(`${query} ${convo}`);
-  const safeQueries = plan.queries
-    .filter((q) => !isLeakedQuery(q, groundedText))
-    .map((q) => regroundYears(q, query, today))
-    // The planner is told to "resolve pronouns/references from the
-    // conversation," but a small model doesn't reliably do that itself —
-    // this is the same under-specified-follow-up gap the verbatim path
-    // has, just reached via a query the LLM did produce rather than one
-    // it failed to.
-    .map((q) => carryReferentIntoQuery(q, history, opts?.digest))
-    .map(anchorTopic)
-    .map((q) => withSiteRestriction(q, siteRestriction));
+  const groundQueries = (queries: string[]): string[] =>
+    queries
+      .filter((q) => !isLeakedQuery(q, groundedText))
+      .map((q) => regroundYears(q, query, today))
+      // The planner is told to "resolve pronouns/references from the
+      // conversation," but a small model doesn't reliably do that itself —
+      // this is the same under-specified-follow-up gap the verbatim path
+      // has, just reached via a query the LLM did produce rather than one
+      // it failed to.
+      .map((q) => carryReferentIntoQuery(q, history, opts?.digest))
+      .map(anchorTopic)
+      .map((q) => withSiteRestriction(q, siteRestriction));
+  const safeQueries = groundQueries(plan.queries);
+  const withFallback = (result: WebSearchPlan): WebSearchPlan => {
+    const kept = new Set(result.queries.map((q) => foldForMatching(q)));
+    const fallbackQueries = dedupeQueries(
+      groundQueries(parsed.queries).filter((q) => !kept.has(foldForMatching(q)))
+    );
+    return fallbackQueries.length > 0 ? { ...result, fallbackQueries } : result;
+  };
 
-  if (safeQueries.length === 0) return verbatim(plan.intent, plan.kind);
+  if (safeQueries.length === 0) {
+    return withFallback(verbatim(plan.intent, plan.kind));
+  }
   const expects = (plan.expects ?? []).filter(
     (item) => !isLeakedQuery(item, groundedText)
   );
-  return {
+  return withFallback({
     ...plan,
     queries: safeQueries,
     ...(expects.length > 0 ? { expects } : { expects: undefined }),
     ...(siteRestriction ? { siteRestriction } : {}),
-  };
+  });
 };
