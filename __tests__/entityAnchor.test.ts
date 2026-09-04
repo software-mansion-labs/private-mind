@@ -144,7 +144,8 @@ describe('a figure that answers a quantity question', () => {
           'The population of Kraków, Poland is 804,237 in 2026. Explore live stats and growth rate.'
         ),
       ],
-      'Ile mieszkancow ma Krakow?'
+      'Ile mieszkancow ma Krakow?',
+      { kind: 'fact' }
     );
 
     expect(ranked[0]!.title).toContain('804,237');
@@ -170,7 +171,8 @@ describe('a figure that answers a quantity question', () => {
         result('Kraków w 2026 roku', 'Wydarzenia w Krakowie w 2026.'),
         result('Kraków — 804,237 mieszkańców', 'Liczba ludności Krakowa.'),
       ],
-      'Ile mieszkancow ma Krakow?'
+      'Ile mieszkancow ma Krakow?',
+      { kind: 'fact' }
     );
     expect(ranked[0]!.title).toContain('804,237');
   });

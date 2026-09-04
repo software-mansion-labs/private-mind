@@ -1,4 +1,5 @@
 import type { WebSearchResult } from './types';
+import type { WebIntentKind } from './intentKind';
 import { foldForMatching, stemPrefix } from '../queryTerms';
 import { MONEY_ANCHOR } from './webResultsToContext';
 
@@ -50,8 +51,11 @@ const anchorMatcher = (anchor: string): ((text: string) => boolean) => {
 const TITLE_FIGURE_BONUS = 1.5;
 const ANSWER_FIGURE_BONUS = 2;
 
-const QUANTITY_QUESTION =
-  /\bil[eu]\b|\bhow many\b|\bhow much\b|\bpopulation\b|liczba (?:mieszka|ludno)|\bwie viel|\bcombien\b|\bcu[aá]nt|\bquant[oi]\b|сколько|कितन|\bكم\b/i;
+const FIGURE_KINDS: ReadonlySet<WebIntentKind> = new Set([
+  'price',
+  'specs',
+  'fact',
+]);
 
 const SEPARATED_OR_DECIMAL_FIGURE =
   /\d{1,3}(?:[.,\u00A0\u202F ]\d{3})+(?:[.,]\d+)?|\d{5,}|\d+[.,]\d+/;
@@ -60,14 +64,12 @@ const hasAnswerFigure = (text: string): boolean =>
   SEPARATED_OR_DECIMAL_FIGURE.test(text);
 
 const CURRENCY_PAIR_PATTERN = /\b[A-Z]{2,6}[/-][A-Z]{2,6}\b/;
-const CONVERTER_WORD_PATTERN =
-  /\bconvert(?:er|ing)?\b|\bcalculat(?:e|or)\b|\bexchange\s?rate\b|\bcross\s?rate\b/i;
+const CONVERTER_SLUG_PATTERN = /convert|calculat|exchange-?rate|cross-?rate/i;
 const CROSS_ASSET_PENALTY = 2;
 
-const looksLikeCrossAssetPage = (result: WebSearchResult): boolean => {
-  const text = `${result.title ?? ''} ${result.url}`;
-  return CURRENCY_PAIR_PATTERN.test(text) || CONVERTER_WORD_PATTERN.test(text);
-};
+const looksLikeCrossAssetPage = (result: WebSearchResult): boolean =>
+  CURRENCY_PAIR_PATTERN.test(`${result.title ?? ''} ${result.url}`) ||
+  CONVERTER_SLUG_PATTERN.test(result.url);
 
 const excludeCrossAssetIfAlternatives = <T extends WebSearchResult>(
   results: T[]
@@ -76,46 +78,39 @@ const excludeCrossAssetIfAlternatives = <T extends WebSearchResult>(
   return clean.length > 0 ? clean : results;
 };
 
-const PERIOD_SCOPE_MARKERS =
-  /w tym roku|tego roku|w tym sezonie|tego sezonu|dotychczas w (?:tym roku|sezonie)|this year|this season|so far this (?:year|season)/i;
-const EVENT_SCOPE_MARKERS =
-  /\bin (?:that|this) (?:game|match)\b|\bfrom (?:that|this) (?:game|match)\b|\bduring (?:that|this) (?:game|match)\b|w (?:tym|tamtym) meczu|z (?:tego|tamtego) meczu|w (?:tej|tamtej) grze/i;
-const SUPERLATIVE_MARKERS =
-  /najwi[eę]cej|najlepsz|najskuteczniejsz|\brekord|\bmost\b|\bbest\b|\btop\b|\bhighest\b|\bleading\b/i;
-const ALL_TIME_PAGE_PATTERN =
-  /\ball[\s-]?time\b|\bcareer\b|wszech ?czas[óo]w|w (?:całej )?karierze|rekordzist|rekordnationalspieler|hall of fame|\brecord\b[^.!?]{0,20}\b(?:scorers?|holders?|goalscorers?|leaders?)\b|\ball-time leaders?\b|single[\s-]game leaders? and records?/i;
-const ALL_TIME_PAGE_PENALTY = 2;
+const YEAR_TOKEN = /(?<![\p{N}])(?:19|20)\d{2}(?![\p{N}])/gu;
+const YEAR_BONUS = 2;
+const OFF_YEAR_FACTOR = 0.25;
 
-const isPeriodScopedRecordQuery = (query: string | undefined): boolean =>
-  !!query &&
-  (PERIOD_SCOPE_MARKERS.test(query) || EVENT_SCOPE_MARKERS.test(query)) &&
-  SUPERLATIVE_MARKERS.test(query);
+export const scopeYearsOf = (queries: string[]): string[] => [
+  ...new Set(queries.flatMap((query) => query.match(YEAR_TOKEN) ?? [])),
+];
 
-const looksLikeAllTimePage = (result: WebSearchResult): boolean =>
-  ALL_TIME_PAGE_PATTERN.test(`${result.title ?? ''} ${result.url}`);
+const mentionsAnyYear = (result: WebSearchResult, years: string[]): boolean => {
+  const text = `${result.title ?? ''} ${result.snippet ?? ''} ${result.url}`;
+  return years.some((year) => text.includes(year));
+};
 
-const excludeAllTimeIfPeriodScoped = <T extends WebSearchResult>(
-  results: T[],
-  query: string | undefined
-): T[] =>
-  isPeriodScopedRecordQuery(query)
-    ? results.filter((result) => !looksLikeAllTimePage(result))
-    : results;
+export interface ListingRankOptions {
+  kind?: WebIntentKind;
+  scopeYears?: string[];
+}
 
 export const rankByListingRelevance = <T extends WebSearchResult>(
   rawResults: T[],
-  query: string | undefined
+  query: string | undefined,
+  options: ListingRankOptions = {}
 ): T[] => {
-  const periodScoped = isPeriodScopedRecordQuery(query);
-  const results = excludeAllTimeIfPeriodScoped(
-    excludeCrossAssetIfAlternatives(rawResults),
-    query
-  );
+  const results = excludeCrossAssetIfAlternatives(rawResults);
   if (results.length < 2 || !query?.trim()) return results;
   const needles = questionTerms(query);
   if (needles.length === 0) return results;
 
-  const quantityAsked = QUANTITY_QUESTION.test(query);
+  const quantityAsked = !!options.kind && FIGURE_KINDS.has(options.kind);
+  const scopeYears = options.scopeYears ?? [];
+  const yearsDiscriminate =
+    scopeYears.length > 0 &&
+    results.some((result) => mentionsAnyYear(result, scopeYears));
   const anchors = anchorTerms(query);
   const foldedTitles = results.map((result) =>
     foldForMatching(result.title ?? '')
@@ -133,8 +128,12 @@ export const rankByListingRelevance = <T extends WebSearchResult>(
     anchorsDiscriminate
       ? ANCHOR_BONUS * (anchorHits[index]! / anchors.length)
       : 0;
+  const inScope = results.map((result) =>
+    yearsDiscriminate ? mentionsAnyYear(result, scopeYears) : true
+  );
   const frameFactor = (index: number): number =>
-    anchorsDiscriminate && anchorHits[index] === 0 ? OFF_SUBJECT_FACTOR : 1;
+    (anchorsDiscriminate && anchorHits[index] === 0 ? OFF_SUBJECT_FACTOR : 1) *
+    (inScope[index] ? 1 : OFF_YEAR_FACTOR);
   const weights = needles.map((needle) => {
     const hits = folded.reduce(
       (count, text) => count + (text.includes(needle) ? 1 : 0),
@@ -159,11 +158,9 @@ export const rankByListingRelevance = <T extends WebSearchResult>(
         (quantityAsked && hasAnswerFigure(foldedTitles[index]!)
           ? ANSWER_FIGURE_BONUS
           : 0) +
-        anchorScore(index) -
-        (looksLikeCrossAssetPage(result) ? CROSS_ASSET_PENALTY : 0) -
-        (periodScoped && looksLikeAllTimePage(result)
-          ? ALL_TIME_PAGE_PENALTY
-          : 0),
+        anchorScore(index) +
+        (yearsDiscriminate && inScope[index] ? YEAR_BONUS : 0) -
+        (looksLikeCrossAssetPage(result) ? CROSS_ASSET_PENALTY : 0),
     }))
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((entry) => entry.result);
@@ -181,14 +178,20 @@ export const rankByListingRelevance = <T extends WebSearchResult>(
 export const fairRankByListingRelevance = <T extends WebSearchResult>(
   groups: T[][],
   query: string | undefined,
-  cap: number
+  cap: number,
+  options: ListingRankOptions = {}
 ): T[] => {
   const nonEmpty = groups.filter((group) => group.length > 0);
   if (nonEmpty.length <= 1) {
-    return rankByListingRelevance(nonEmpty[0] ?? [], query).slice(0, cap);
+    return rankByListingRelevance(nonEmpty[0] ?? [], query, options).slice(
+      0,
+      cap
+    );
   }
 
-  const ranked = nonEmpty.map((group) => rankByListingRelevance(group, query));
+  const ranked = nonEmpty.map((group) =>
+    rankByListingRelevance(group, query, options)
+  );
   const result: T[] = [];
   for (let round = 0; result.length < cap; round++) {
     const before = result.length;
