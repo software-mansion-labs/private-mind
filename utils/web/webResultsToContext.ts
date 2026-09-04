@@ -309,7 +309,11 @@ export interface SelectionOptions {
   intent?: WebIntentKind;
 }
 
-const DATED_INTENTS: ReadonlySet<WebIntentKind> = new Set(['date', 'news']);
+const DATED_INTENTS: ReadonlySet<WebIntentKind> = new Set([
+  'date',
+  'news',
+  'event',
+]);
 
 export const selectRelevantContent = (
   content: string,

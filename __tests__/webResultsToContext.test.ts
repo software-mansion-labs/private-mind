@@ -959,3 +959,18 @@ describe('webResultsToContext — the snippet against the source budget', () => 
     expect(passage.length).toBeGreaterThan(1000 - snippet.length);
   });
 });
+
+describe('the new intent kinds from the intent round', () => {
+  it('reads an event question for its date, like a date question', () => {
+    const page = [
+      'Koncert odbędzie się 12 października 2026 w Tauron Arenie Kraków, bramy otwarte od 18:00.',
+      'Zespół powstał w Manchesterze i ma na koncie osiem albumów studyjnych, z których trzy zdobyły platynę.',
+      'Bilety w sprzedaży w sieci eBilet oraz w kasie areny w dniu koncertu.',
+    ].join('\n');
+    const excerpt = selectRelevantContent(page, 'koncert Kraków', 110, {
+      intent: 'event',
+    });
+    expect(excerpt).toContain('12 października 2026');
+    expect(excerpt).not.toContain('Manchesterze');
+  });
+});
