@@ -151,6 +151,10 @@ const matchesSiteRestriction = (url: string, domain: string): boolean => {
   return host === domain || host.endsWith(`.${domain}`);
 };
 
+const logDevWebSearch = (label: string, payload: object): void => {
+  if (__DEV__) console.log(`${label} ${JSON.stringify(payload)}`);
+};
+
 const NO_AGREEMENT: SourceAgreement = {
   independentHosts: 0,
   repeatedHostResults: 0,
@@ -235,15 +239,13 @@ export const runWebSearch = async (
   telemetry.needsSearch = plan.needsSearch;
   telemetry.intent = plan.intent;
   telemetry.intentKind = plan.kind;
-  if (__DEV__) {
-    console.log('Web search plan', {
-      needsSearch: plan.needsSearch,
-      kind: plan.kind,
-      intent: plan.intent,
-      queries: baseQueries,
-      expects: plan.expects ?? [],
-    });
-  }
+  logDevWebSearch('Web search plan', {
+    needsSearch: plan.needsSearch,
+    kind: plan.kind,
+    intent: plan.intent,
+    queries: baseQueries,
+    expects: plan.expects ?? [],
+  });
   telemetry.plannedQueries = baseQueries;
   const rankingQuery = plan.intent ? `${query} ${plan.intent}` : query;
   const shouldSearch = WEB_QUERY_GATE
@@ -569,6 +571,21 @@ export const runWebSearch = async (
   telemetry.finalConfidence = evaluation.confidence;
   telemetry.finalLabel = evaluation.label;
   telemetry.agreement = agreement;
+  logDevWebSearch('Web search outcome', {
+    results: finalResults.length,
+    withContent: contentCountOf(finalResults),
+    confidence: Number(evaluation.confidence.toFixed(2)),
+    label: evaluation.label,
+    rounds: telemetry.rounds.map((round) => ({
+      queries: round.queries,
+      results: round.resultCount,
+      withContent: round.contentCount,
+      label: round.label,
+    })),
+    fetchFailures: telemetry.fetchFailures.map(
+      (failure) => `${failure.host}:${failure.reason}`
+    ),
+  });
 
   if (finalResults.length === 0) {
     return { context: [], sourceDocuments: [], telemetry };
