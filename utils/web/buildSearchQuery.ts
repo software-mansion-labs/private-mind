@@ -28,6 +28,7 @@ export interface WebSearchPlan {
   intent: string;
   kind?: WebIntentKind;
   queries: string[];
+  expects?: string[];
   siteRestriction?: string;
 }
 
@@ -37,6 +38,7 @@ const PLANNER_EXAMPLES: {
   intent: string;
   kind: WebIntentKind;
   queries: string[];
+  expects?: string[];
 }[] = [
   {
     user: "hey, how's it going?",
@@ -86,6 +88,7 @@ const PLANNER_EXAMPLES: {
     intent: 'current Tokyo weather',
     kind: 'fact',
     queries: ['Tokyo weather today'],
+    expects: ['temperature', 'rain or sun'],
   },
   {
     user: 'how much does bitcoin cost right now',
@@ -93,6 +96,7 @@ const PLANNER_EXAMPLES: {
     intent: 'current bitcoin price',
     kind: 'price',
     queries: ['bitcoin price today'],
+    expects: ['price in USD'],
   },
   {
     user: 'compare the prices of bitcoin and ethereum',
@@ -100,6 +104,7 @@ const PLANNER_EXAMPLES: {
     intent: 'compare Bitcoin and Ethereum prices',
     kind: 'comparison',
     queries: ['bitcoin price today', 'ethereum price today'],
+    expects: ['bitcoin price', 'ethereum price'],
   },
   {
     user: 'which song has been streamed the most on spotify this year',
@@ -114,6 +119,7 @@ const PLANNER_EXAMPLES: {
     intent: 'current Krakow weather',
     kind: 'fact',
     queries: ['pogoda Kraków dzisiaj'],
+    expects: ['temperatura', 'opady'],
   },
   {
     user: 'दिल्ली में आज का मौसम कैसा है',
@@ -124,18 +130,22 @@ const PLANNER_EXAMPLES: {
   },
 ];
 
+const quoted = (items: string[]): string =>
+  items.map((item) => `"${item}"`).join(', ');
+
 const PLANNER_EXAMPLES_TEXT = PLANNER_EXAMPLES.map(
   (ex) =>
     `User: ${ex.user}\n` +
-    `{"needs_search": ${ex.needsSearch}, "intent": "${ex.intent}", "kind": "${ex.kind}", "queries": [${ex.queries
-      .map((q) => `"${q}"`)
-      .join(', ')}]}\n`
+    `{"needs_search": ${ex.needsSearch}, "intent": "${ex.intent}", "kind": "${ex.kind}", "queries": [${quoted(ex.queries)}], "expects": [${quoted(ex.expects ?? [])}]}\n`
 ).join('');
 
 const EXAMPLE_LEAK_TOKENS: string[] = [
   ...new Set(
     PLANNER_EXAMPLES.flatMap(
-      (ex) => ex.queries.join(' ').match(/\p{Lu}[\p{L}]+/gu) ?? []
+      (ex) =>
+        [...ex.queries, ...(ex.expects ?? [])]
+          .join(' ')
+          .match(/\p{Lu}[\p{L}]+/gu) ?? []
     )
   ),
 ];
@@ -143,7 +153,10 @@ const EXAMPLE_LEAK_TOKENS: string[] = [
 const PLANNER_SYSTEM_PROMPT = (today: string): string =>
   "You turn the user's latest message into a web-search plan. " +
   'Output ONLY one JSON object, no other text and no reasoning:\n' +
-  '{"needs_search": true|false, "intent": "<goal, max 8 words>", "kind": "<kind>", "queries": ["<q1>", "<optional q2>"]}\n' +
+  '{"needs_search": true|false, "intent": "<goal, max 8 words>", "kind": "<kind>", "queries": ["<q1>", "<optional q2>"], "expects": ["<what a complete answer must contain>"]}\n' +
+  '"expects" names the 1-4 things a complete answer must contain (a value ' +
+  "with its unit, a date, a name), each in the user's language; [] when " +
+  'needs_search is false.\n' +
   '"kind" is exactly one of: price (an amount of money), specs (technical ' +
   'parameters and figures), comparison (two or more named things side by ' +
   'side), recommendation (which one to choose), news (recent events), date ' +
@@ -435,7 +448,33 @@ export const parseSearchPlan = (raw: string): WebSearchPlan | null => {
     .slice(0, WEB_QUERY_MAX_SUBQUERIES);
 
   const kind = parseIntentKind(obj.kind);
-  return { needsSearch, intent, ...(kind ? { kind } : {}), queries };
+  const expects = parseExpects(obj.expects);
+  return {
+    needsSearch,
+    intent,
+    ...(kind ? { kind } : {}),
+    queries,
+    ...(expects.length > 0 ? { expects } : {}),
+  };
+};
+
+const EXPECTS_MAX_ITEMS = 4;
+const EXPECTS_MAX_CHARS = 40;
+
+const parseExpects = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string') continue;
+    const text = truncate(item.replace(/\s+/g, ' ').trim(), EXPECTS_MAX_CHARS);
+    const key = foldForMatching(text);
+    if (!text || seen.has(key)) continue;
+    seen.add(key);
+    out.push(text);
+    if (out.length === EXPECTS_MAX_ITEMS) break;
+  }
+  return out;
 };
 
 const REFERENT_ROLE_MARKERS =
@@ -694,9 +733,13 @@ export const planWebSearch = async (
     .map((q) => withSiteRestriction(q, siteRestriction));
 
   if (safeQueries.length === 0) return verbatim(plan.intent, plan.kind);
+  const expects = (plan.expects ?? []).filter(
+    (item) => !isLeakedQuery(item, groundedText)
+  );
   return {
     ...plan,
     queries: safeQueries,
+    ...(expects.length > 0 ? { expects } : { expects: undefined }),
     ...(siteRestriction ? { siteRestriction } : {}),
   };
 };

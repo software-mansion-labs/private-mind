@@ -1292,3 +1292,34 @@ describe('isConversationalIntent', () => {
     expect(isConversationalIntent('   ')).toBe(false);
   });
 });
+
+describe('the plan says what a complete answer must contain', () => {
+  it('keeps up to four short, distinct expectations from the planner', () => {
+    expect(
+      parseSearchPlan(
+        '{"needs_search": true, "intent": "iPhone 17 Pro launch", "kind": "date", "queries": ["premiera iPhone 17 Pro"], "expects": ["data premiery", "cena w PLN", "Data premiery", "", 42, "a", "b", "c"]}'
+      )?.expects
+    ).toEqual(['data premiery', 'cena w PLN', 'a', 'b']);
+  });
+
+  it('records no expectations when the planner gives none', () => {
+    expect(
+      parseSearchPlan('{"needs_search": true, "intent": "x", "queries": ["x"]}')
+        ?.expects
+    ).toBeUndefined();
+  });
+
+  it('carries the expectations through planning and drops one copied from the examples', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": true, "intent": "iPhone 17 Pro launch", "kind": "date", "queries": ["premiera iPhone 17 Pro"], "expects": ["data premiery", "Tokyo weather"]}'
+      );
+    const plan = await planWebSearch(
+      'kiedy premiera iPhone 17 Pro?',
+      [],
+      generate
+    );
+    expect(plan.expects).toEqual(['data premiery']);
+  });
+});
