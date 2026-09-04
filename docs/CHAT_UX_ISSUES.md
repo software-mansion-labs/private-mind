@@ -198,50 +198,47 @@ over the badge padding instead of wrapping inside it. `flexShrink: 1` on the
 label plus `numberOfLines` would confirm it in one build. Not yet verified on
 the device.
 
-## ⚠️ The first line of a streaming answer is clipped; only the lower part shows
+## ⚠️ The first line of a streaming answer starts under another component
 
-Reported 2026-09-04, intermittent: while an answer streams, the top of the
-assistant bubble sits above the viewport — the first line is cut and the
-reader sees the answer from its second line down. It must not happen at all:
-the pinned layout exists so that the user's question and the start of the
-answer are the two things always in view.
+Reported 2026-09-04 twice: first as "the first line is clipped, only the
+lower part of the answer shows", then as "the first generated line often
+starts under another component". It must not happen at all: the pinned
+layout exists so that the question and the start of the answer are the two
+things always in view.
 
-What is known. After send, [`Messages`](../components/chat-screen/Messages.tsx)
-pins the new user row at the top of the viewport with an inflated bottom
-inset (`blankSpace`), measures the assistant row
-(`handleLastAssistantLayout` → `applyPendingPin`) and scrolls to `pinOffset`
-once the content height reaches `pinOffset + containerHeight` minus a slack.
-Two things then move the answer's top edge without moving the scroll offset:
+Measured the same day on the Pixel 10 (three recorded sends, 30 fps, frames
+tiled around the first token): a fresh chat without web, a follow-up with
+web on, and a follow-up sent from the bottom of a long chat with the
+keyboard open. None clipped. What the recordings did show is a deterministic
+jump at the first token, in the slot right above the answer:
 
-1. **The model-name header mounts on the first token.** While the prompt is
-   processed, the slot above the answer holds `AnimatedChatLoading`, which is
-   absolutely positioned on purpose so it contributes no height. When the
-   first token arrives, [`MessageItem`](../components/chat-screen/MessageItem.tsx)
-   renders `modelName` in flow (`entering={FadeIn}`), one `xs` line tall, and
-   the answer text below it shifts down by exactly that height. The pin was
-   computed against the zero-height label, so the bubble's top now sits one
-   small line above the offset the list is holding. A one-line clip is the
-   signature of this path.
-2. **The assistant measurement lags the stream.** `lastAssistantHeight` is
-   refreshed from layout events on the JS thread, which during generation is
-   busy in bursts; `applyPendingPin` may run against a height that is
-   already stale, and the inset it derives lands the offset a few lines past
-   the bubble's top. A clip taller than one line, or one that varies between
-   runs, is this path.
+1. **Without web:** "Thinking…" was absolutely positioned (zero height) in
+   the model-name slot; the name mounted in flow on the first token. Same
+   metrics, so the top edge held — but the layout the pin was computed
+   against was not the layout the answer streams into.
+2. **With web, no usable source:** the trace block rendered only while
+   `isProcessingPrompt` held or sources existed. A search that found nothing
+   (T1 of the minimal round: zero results) left the placeholder without
+   sources, so at the first token "Searched the web" and "Thinking…" both
+   unmounted and the answer snapped up ~50 px into their place.
+3. **With web and sources:** "Thinking…" sat *below* the trace block, the
+   model name mounted *above* it on the first token — the block moved down
+   one line as the answer appeared.
 
-To measure: `screen-recording-start` on a fresh chat, send a question, stop
-after ~20 tokens. Read `contentOffset.y` from the scroll handler (a temporary
-`console.log` in `handleScroll`) and the assistant row's `layout.y` from
-`handleLastAssistantLayout` at the first token and 500 ms later. If the
-offset is constant and `layout.y` grows by one `xs` line at the first token,
-it is (1); if `layout.y` and the pin disagree by more and the gap changes
-with token rate, it is (2). Fix for (1) without waiting for the reading:
-reserve the header's height from the start — render the model-name slot with
-a fixed `minHeight` equal to the `xs` line (or keep `AnimatedChatLoading` in
-flow at that height) so the first token causes no layout shift. Fix for (2):
-recompute the pin from the assistant row's `onLayout` after every growth
-while streaming, not only once, and clamp the offset so the bubble's top can
-never rise above the viewport's top edge.
+Fixed in the same round: the model name renders from the start of the turn
+(the slot never changes height), "Thinking…" is a normal in-flow line in the
+answer's own slot (so the first token replaces it in place, in both paths),
+and the trace block stays mounted on the last message for as long as its live
+trace exists, sources or not. `AnimatedChatLoading` lost its `inline` prop —
+it is always in flow now.
+
+Still open: the *clip* itself was not reproduced. If it comes back, the
+measurement is unchanged — `screen-recording-start` on the send, read
+`contentOffset.y` from the scroll handler and the assistant row's `layout.y`
+from `handleLastAssistantLayout` at the first token and 500 ms later. A
+constant offset with a growing `layout.y` is the pin holding a stale height
+(`applyPendingPin` runs once; recompute it from every growth while streaming
+and clamp so the bubble's top cannot rise above the viewport).
 
 ## 🔁 The keyboard is gone but the composer stays lifted
 

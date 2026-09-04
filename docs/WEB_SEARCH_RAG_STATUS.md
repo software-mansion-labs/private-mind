@@ -4256,3 +4256,89 @@ right rule is worth a fixture from msg 396.
 The window stays at 2048: the note in `constants/model-profiles.ts` and the
 "A 4096-token window works, and makes the answers worse" section above
 still hold, and this round changed nothing there.
+
+## Minimal round on the landing round: the toggle, the empty search, the first token
+
+The eleven-turn minimal test (`docs/WEAK_MODEL_TEST_MINIMAL.md`, results in
+the tester's file) came back 9/11 FAIL with one headline: the planner logged
+"Web search plan" twice in the whole session and never again. Read from the
+database snapshots and the device, that is two separate things, neither a
+gate limit.
+
+### Seven of the nine were the Web toggle
+
+The Web toggle is per chat, in memory, default off
+(`useWebSearchStore.enabledByChat`, `isEnabled(chatId) ?? false`), and the
+tester enabled it once, in chat 64, before T1. T3–T11 each opened a new
+chat and never touched it — `chatSettings` for chats 65–72 carry no web
+state, and the tester's own screenshot of T11 shows the slashed globe. With
+the toggle off, `shouldRunWebSearch` is false before the planner exists, so
+no plan line, no "Searching the web…", no sources. The minimal test now says
+so in its rules: **Web on in every new chat, and again after any JS reload**
+(a reload drops the in-memory map — this session lost it to a Fast Refresh).
+
+Whether the toggle should follow the user across chats instead is a product
+question and is left as one; the code does what it was written to do.
+
+### T1 and T2: the plan ran, the search found nothing, and nobody said so
+
+T1 (`Jaką częstotliwość odświeżania ma Samsung QE65QN90D?`) reproduced on
+the Pixel with the new JSON logs:
+
+```
+Web search plan {"needsSearch":true,"kind":"comparison","intent":"find refresh rate for TV",
+  "queries":["Jaka czestotliwosc odswiezania ma Samsung QE65QN90D"],"expects":["refresh rate in Hz"]}
+Web search outcome {"results":0,"withContent":0,"confidence":0,"label":"incorrect",
+  "rounds":[{"queries":["Jaka czestotliwosc odswiezania ma Samsung QE65QN90D"],"results":0,...}],"fetchFailures":[]}
+```
+
+The planner wrote English queries for a Polish question, the language guard
+threw them out, the retry drifted too, and the plan degraded to the verbatim
+question — a full sentence with a model code, which the engine answered with
+zero results. The verbatim rescue in round 1 does not apply (the verbatim
+query *was* the plan), fetch recovery has nothing to recover from without
+results, so the turn ended with an empty context and a refusal. Three
+changes:
+
+- `WebSearchPlan.fallbackQueries` — the planner's own queries that the
+  language guard or the leak filter discarded, grounded through the same
+  pipeline (years, referent, topic anchor, site restriction), minus any
+  already planned. Attached whenever they differ from the plan.
+- a zero-result rescue in round 1: when the planned queries (verbatim rescue
+  included) find nothing, the fallback queries run before grounding. The
+  script filter still applies, so a Latin-script English page for a Polish
+  question is kept, a Cyrillic one is not. Test: `runWebSearch` "searches the
+  planner's discarded queries when the verbatim question finds nothing".
+- the two dev log lines are JSON strings, not objects — the RN console
+  flattens an object to `Object`, which is why the tester could read
+  neither the plan nor why T1 came back empty. `Web search outcome` adds
+  results, content count, confidence/label, per-round counts and fetch
+  failures as `host:reason`.
+
+T2 (`Czego dotyczyła ta rozmowa?`) searched because the planner did not
+label it and `isAboutTheConversation` did not match; the recap was correct
+anyway because the context was empty. Same open item as before: the planner
+examples are the lever, not a phrase list.
+
+### The first token, measured
+
+Three recorded sends found no clipped first line but a deterministic jump at
+the first token, different in each path; the mechanism and the fix are in
+`docs/CHAT_UX_ISSUES.md` ("The first line of a streaming answer starts under
+another component"). In short: model name from the start of the turn,
+"Thinking…" in flow where the answer will start, trace block kept on the last
+message while its live trace exists.
+
+### Seen once, not chased
+
+- **French answer to a Polish question typed without diacritics**
+  (`Jaka czestotliwosc odswiezania ma Samsung QE65QN90D?` → "Je suis
+  désolé…"), no wrong-language nudge in the log. The question was ASCII-only
+  (typed through adb), which the language detector likely reads as
+  undetermined, so no anchor and no check. Real users type diacritics; the
+  tester's T8 (German, with umlauts) answered in German first time. Worth a
+  fixture only if it shows up with a normally typed question.
+- **`kind: "comparison"` for a single-model spec question.** Wrong class,
+  harmless here (no results to rank), but the ranking would have skipped
+  the figure bonus that `specs` gets.
+
