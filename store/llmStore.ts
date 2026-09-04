@@ -37,6 +37,7 @@ import {
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
   stripEchoedQuestionPrefix,
+  stripSourceLabels,
   pickCitationsByAnswer,
   restrictCitationsToContext,
 } from '../utils/messageSources';
@@ -1094,7 +1095,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       if (finalResponse && stripThinkBlocks(finalResponse).trim()) {
         const humanizedResponse = humanizeSourceReferences(
-          stripEchoedQuestionPrefix(finalResponse, currentQuestion),
+          stripSourceLabels(
+            stripEchoedQuestionPrefix(finalResponse, currentQuestion)
+          ),
           sourceDocuments ?? []
         );
         const effectiveLast = effectivePrepared.at(-1);
