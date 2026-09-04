@@ -345,6 +345,22 @@ describe('downloaded model — text input', () => {
     expect(textInput().props.value).toBe('');
   });
 
+  it('keeps a paste of the just-sent message once the echo window has passed (live: first paste vanished)', () => {
+    const now = jest.spyOn(Date, 'now');
+    now.mockReturnValue(10_000);
+    renderBar();
+    const textInput = () =>
+      screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(textInput(), 'czesc test wysylki');
+    fireEvent.press(screen.getByTestId('send-btn'));
+    expect(textInput().props.value).toBe('');
+
+    now.mockReturnValue(12_000);
+    fireEvent.changeText(textInput(), 'czesc test wysylki');
+    expect(textInput().props.value).toBe('czesc test wysylki');
+    now.mockRestore();
+  });
+
   it('accepts genuine typing right after a send', () => {
     renderBar();
     const textInput = () =>

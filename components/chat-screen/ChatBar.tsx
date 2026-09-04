@@ -56,6 +56,8 @@ const BAR_GROW_EASING = Easing.out(Easing.ease);
 const BAR_GROW_LAYOUT =
   LinearTransition.duration(BAR_GROW_DURATION).easing(BAR_GROW_EASING);
 
+const SENT_ECHO_WINDOW_MS = 300;
+
 interface Props {
   chatId: number | null;
   onSend: (
@@ -110,12 +112,18 @@ const ChatBar = ({
   );
 
   const [userInput, setUserInput] = useState('');
-  const lastSentRef = useRef<string | null>(null);
+  const lastSentRef = useRef<{ text: string; at: number } | null>(null);
 
   const handleChangeText = useCallback((text: string) => {
     const justSent = lastSentRef.current;
     lastSentRef.current = null;
-    if (justSent !== null && text === justSent) return;
+    if (
+      justSent &&
+      text === justSent.text &&
+      Date.now() - justSent.at < SENT_ECHO_WINDOW_MS
+    ) {
+      return;
+    }
     setUserInput(text);
   }, []);
   const {
@@ -327,7 +335,9 @@ const ChatBar = ({
     const imageUriToSend = imageAttachment?.uri;
     const inputToSend = userInput;
 
-    lastSentRef.current = inputToSend || null;
+    lastSentRef.current = inputToSend
+      ? { text: inputToSend, at: Date.now() }
+      : null;
     if (Platform.OS === 'ios') {
       textInputRef.current?.blur();
       setIosInputKey((key) => key + 1);
