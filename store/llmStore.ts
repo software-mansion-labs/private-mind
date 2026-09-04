@@ -30,6 +30,8 @@ import {
   detectGroundingCaveats,
   claimsMissingEvidenceItHas,
   answerUsesNoRetrievedEvidence,
+  answerStatesFigure,
+  buriesFigureContextOffers,
   aspectsMissingFromAnswer,
   humanizeSourceReferences,
   isCircularNonAnswer,
@@ -455,9 +457,11 @@ const EVIDENCE_PRESENT_RETRY_PROMPT =
   'if it truly is not there, say so.';
 
 const SOURCES_COVER_TOPIC_RETRY_PROMPT =
-  'The sources do discuss what the question asks about. Read them again, ' +
-  'including the page titles, and answer from what they actually say. If ' +
-  'they cover it only in part, give that part instead of refusing.';
+  'The sources do discuss what the question asks about. Answer the ' +
+  'question directly in your first sentence with the fact or figure the ' +
+  'sources give, exactly as they give it. Do not describe, list or ' +
+  'summarize the sources. If they cover it only in part, give that part ' +
+  'instead of refusing.';
 
 const aspectCoverageRetryPrompt = (aspects: string[]): string =>
   'The answer does not address: ' +
@@ -1001,24 +1005,31 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         );
       }
 
+      const ignoresEvidence = (text: string): boolean =>
+        answerUsesNoRetrievedEvidence(text, currentQuestion, promptContext);
+      const buriesFigure = (text: string): boolean =>
+        buriesFigureContextOffers(
+          text,
+          currentQuestion,
+          promptContext,
+          webIntentKind
+        );
       if (
         !nudged &&
         finalResponse &&
-        answerUsesNoRetrievedEvidence(
-          finalResponse,
-          currentQuestion,
-          promptContext
-        )
+        (ignoresEvidence(finalResponse) || buriesFigure(finalResponse))
       ) {
+        const draft = finalResponse;
+        const retryStatesWhatDraftLacks = (retried: string): boolean =>
+          answerStatesFigure(retried) && !answerStatesFigure(draft);
         await nudgeOnce(
-          'Answer uses none of the evidence the sources carry, retrying once',
+          ignoresEvidence(finalResponse)
+            ? 'Answer uses none of the evidence the sources carry, retrying once'
+            : 'Answer buries the figure the sources offer, retrying once',
           SOURCES_COVER_TOPIC_RETRY_PROMPT,
           (retried) =>
-            answerUsesNoRetrievedEvidence(
-              retried,
-              currentQuestion,
-              promptContext
-            )
+            (ignoresEvidence(retried) || buriesFigure(retried)) &&
+            !retryStatesWhatDraftLacks(retried)
         );
       }
 

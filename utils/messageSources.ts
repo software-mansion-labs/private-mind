@@ -639,8 +639,50 @@ export const aspectsMissingFromAnswer = (
 const YEAR_TOKEN = /(?<![\p{N}])(?:19|20)\d{2}(?![\p{N}])/gu;
 const ANY_FIGURE = /\p{Nd}/u;
 
-const answerStatesFigure = (visible: string): boolean =>
+export const answerStatesFigure = (visible: string): boolean =>
   ANY_FIGURE.test(toAsciiDigits(visible).replace(YEAR_TOKEN, ''));
+
+const LEAD_SENTENCES = 1;
+const SENTENCE_BREAK = /(?<=[.!?…])\s+|\n+/u;
+const FIGURE_LEAD_KINDS: ReadonlySet<string> = new Set([
+  'fact',
+  'price',
+  'specs',
+]);
+
+const leadOf = (answer: string): string =>
+  stripThinkBlocks(answer)
+    .trim()
+    .split(SENTENCE_BREAK)
+    .filter((sentence) => sentence.trim())
+    .slice(0, LEAD_SENTENCES)
+    .join(' ');
+
+export const contextOffersFigureFor = (
+  question: string | undefined,
+  context: string
+): boolean => {
+  const stems = aspectStems(question ?? '');
+  if (stems.length === 0) return false;
+  return context.split(SENTENCE_BREAK).some((sentence) => {
+    const folded = foldForMatching(sentence);
+    return (
+      stems.some((stem) => mentionsStem(folded, stem)) &&
+      answerStatesFigure(sentence)
+    );
+  });
+};
+
+export const buriesFigureContextOffers = (
+  answer: string,
+  question: string | undefined,
+  context: string,
+  kind?: string
+): boolean =>
+  !!kind &&
+  FIGURE_LEAD_KINDS.has(kind) &&
+  contextOffersFigureFor(question, context) &&
+  !answerStatesFigure(leadOf(answer));
 
 export const claimsMissingEvidenceItHas = (
   answer: string,

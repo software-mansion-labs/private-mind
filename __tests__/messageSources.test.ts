@@ -15,6 +15,8 @@ import {
   restrictCitationsToContext,
   visibleAnswer,
   type SourceRow,
+  buriesFigureContextOffers,
+  contextOffersFigureFor,
 } from '../utils/messageSources';
 import { SourceDocument } from '../database/chatRepository';
 import { formatContextChunks } from '../utils/contextUtils';
@@ -1237,5 +1239,61 @@ describe('isCircularNonAnswer — an answer that only talks about its sources', 
 
   it('is false for an empty answer', () => {
     expect(isCircularNonAnswer('')).toBe(false);
+  });
+});
+
+describe('buriesFigureContextOffers — the figure is in the sources but not in the lead (smoke T2)', () => {
+  const question = 'Jaka jest populacja Warszawy?';
+  const context =
+    'W ciągu doby na terenie Warszawy przebywa średnio około 2,24 miliona osób, co znacznie przewyższa liczbę stałych mieszkańców. ' +
+    'Warszawa z populacją 1,86 miliona mieszkańców jest ósmym co do wielkości miastem w Unii Europejskiej.';
+  const draft =
+    'Zgodniebnymi źródłami nie jest podana konkretna liczba ludności Warszawy.';
+  const digest =
+    'Źródła, które podałeś, dotyczą kwestii liczby mieszkańców Warszawy w różnych kontekstach, ale nie podają jednej, ostatecznej liczby populacji w sposób bezpośredni i kompletny dla Twojego pytania.\n\n' +
+    '*   **mazowieckietg.pl:** W tej części mowa o przebywaniu osób na terenie Warszawy, wskazując, że w ciągu doby przebywa średnio około 2,24 miliona osób. ' +
+    'W dalszej części stwierdza, że Warszawa z populacją 1,86 miliona mieszkańców jest ósmym co do wielkości miastem w Unii Europejskiej.';
+
+  it('sees the figure the sources offer for the question', () => {
+    expect(contextOffersFigureFor(question, context)).toBe(true);
+  });
+
+  it('flags the draft that claims no figure is given', () => {
+    expect(buriesFigureContextOffers(draft, question, context, 'fact')).toBe(
+      true
+    );
+  });
+
+  it('flags the retry that buries the figure inside a digest of the sources', () => {
+    expect(buriesFigureContextOffers(digest, question, context, 'fact')).toBe(
+      true
+    );
+  });
+
+  it('passes an answer that leads with the figure', () => {
+    expect(
+      buriesFigureContextOffers(
+        'Warszawa ma 1,86 miliona mieszkańców. Jest ósmym miastem Unii Europejskiej.',
+        question,
+        context,
+        'fact'
+      )
+    ).toBe(false);
+  });
+
+  it('does not apply to a question about a person or with no kind', () => {
+    expect(buriesFigureContextOffers(draft, question, context, 'person')).toBe(
+      false
+    );
+    expect(buriesFigureContextOffers(draft, question, context)).toBe(false);
+  });
+
+  it('ignores a context whose only figures are years', () => {
+    expect(
+      contextOffersFigureFor(
+        'Jaka jest stolica Australii?',
+        'Canberra jest stolicą Australii od 1913 roku.'
+      )
+    ).toBe(false);
   });
 });
