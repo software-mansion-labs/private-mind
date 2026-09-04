@@ -974,3 +974,23 @@ describe('the new intent kinds from the intent round', () => {
     expect(excerpt).not.toContain('Manchesterze');
   });
 });
+
+describe('the planner’s expectations steer the excerpt', () => {
+  const page = [
+    'iPhone 17 Pro to najnowszy flagowiec Apple z tytanową obudową i nowym układem A19 Pro, dostępny w czterech kolorach.',
+    'Premiera odbyła się 9 września 2025, a sprzedaż w Polsce ruszyła tydzień później.',
+    'W zestawie znajduje się kabel USB-C, a ładowarkę trzeba dokupić osobno w sklepie Apple.',
+  ].join('\n');
+
+  it('brings in the passage that carries what the answer must contain', () => {
+    const excerpt = selectRelevantContent(page, 'iPhone 17 Pro', 110, {
+      expects: ['data premiery'],
+    });
+    expect(excerpt).toContain('9 września 2025');
+  });
+
+  it('falls back to the question alone when nothing is expected', () => {
+    const excerpt = selectRelevantContent(page, 'iPhone 17 Pro', 110, {});
+    expect(excerpt).toContain('iPhone 17 Pro');
+  });
+});

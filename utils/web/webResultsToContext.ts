@@ -306,6 +306,7 @@ const isSentenceLead = (passage: string): boolean =>
 export interface SelectionOptions {
   title?: string;
   verifiedPrice?: string;
+  expects?: string[];
   intent?: WebIntentKind;
 }
 
@@ -324,11 +325,14 @@ export const selectRelevantContent = (
   const trimmed = content.trim();
   if (trimmed.length <= maxChars) return trimmed;
 
-  const needles = query
+  const asked = [query ?? '', ...(options.expects ?? [])]
+    .filter((text) => text.trim())
+    .join(' ');
+  const needles = asked
     ? [
         ...new Set(
           [
-            ...extractQueryTerms(query, detectQuestionLanguage(query)?.code),
+            ...extractQueryTerms(asked, detectQuestionLanguage(asked)?.code),
           ].map((term) => stemPrefix(foldForMatching(term)))
         ),
       ]
@@ -498,6 +502,7 @@ interface WebContextOptions {
   labelSubQueries?: boolean;
   displayQuery?: string;
   intent?: WebIntentKind;
+  expects?: string[];
 }
 
 export const webResultsToContext = (
@@ -540,6 +545,7 @@ export const webResultsToContext = (
               title: result.title,
               verifiedPrice: result.product?.price,
               intent: options.intent,
+              expects: options.expects,
             }
           )
         : '';

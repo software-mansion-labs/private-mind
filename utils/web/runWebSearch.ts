@@ -241,6 +241,7 @@ export const runWebSearch = async (
       kind: plan.kind,
       intent: plan.intent,
       queries: baseQueries,
+      expects: plan.expects ?? [],
     });
   }
   telemetry.plannedQueries = baseQueries;
@@ -582,6 +583,7 @@ export const runWebSearch = async (
     input.contextCharBudget,
     {
       labelSubQueries: plan.queries.length > 1,
+      expects: plan.expects,
       displayQuery: query,
       intent: plan.kind,
     }
