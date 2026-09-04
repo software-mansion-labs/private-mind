@@ -388,12 +388,14 @@ const updateChatStateForGeneration = (
               : msg
           ),
           isGenerating: false,
+          isRefining: false,
           generatingForChatId: null,
           isProcessingPrompt: false,
         }));
       } else {
         set({
           isGenerating: false,
+          isRefining: false,
           generatingForChatId: null,
           isProcessingPrompt: false,
         });
@@ -413,6 +415,7 @@ const updateChatStateForGeneration = (
         return {
           activeChatMessages: cleaned,
           isGenerating: false,
+          isRefining: false,
           generatingForChatId: null,
           isProcessingPrompt: false,
         };
@@ -946,7 +949,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           );
         } finally {
           suppressUtilityStreaming = false;
-          set({ isRefining: false });
         }
         const retried = retryGeneration.response
           ? truncateAtRepeatedClause(

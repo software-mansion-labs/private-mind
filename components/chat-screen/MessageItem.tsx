@@ -1,4 +1,11 @@
-import React, { memo, useCallback, useMemo, useState } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   View,
   StyleSheet,
@@ -7,7 +14,7 @@ import {
   Pressable,
   Linking,
 } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import ThinkingBlock from './ThinkingBlock';
 import AnimatedChatLoading from './AnimatedChatLoading';
 import WebSearchBlock from './WebSearchBlock';
@@ -64,6 +71,18 @@ const splitDocumentName = (name: string) => {
   }
 
   return { title: name.slice(0, dotIndex), type: extension.toUpperCase() };
+};
+
+const REFINED_SWAP_MS = 320;
+
+const useRefinedSwap = (isRefining: boolean): number => {
+  const [swap, setSwap] = useState(0);
+  const wasRefining = useRef(false);
+  useEffect(() => {
+    if (wasRefining.current && !isRefining) setSwap((count) => count + 1);
+    wasRefining.current = isRefining;
+  }, [isRefining]);
+  return swap;
 };
 
 const MessageItem = memo(
@@ -139,6 +158,7 @@ const MessageItem = memo(
       content,
       hasWebResults: webResults.length > 0,
     });
+    const refinedSwap = useRefinedSwap(isRefining);
     const attributionShown = useMemo(() => {
       if (isLastMessage && isGenerating) return false;
       return [contentParts.normalContent, contentParts.normalAfterThink ?? '']
@@ -283,37 +303,50 @@ const MessageItem = memo(
               {isAwaitingFirstToken ? (
                 <AnimatedChatLoading inline={webActive} label="Thinking…" />
               ) : null}
-              {contentParts.normalContent.trim() && (
-                <AttributedAnswer
-                  text={normalContent}
-                  sources={webResults}
-                  streaming={isLastMessage && isGenerating}
-                  onLinkPress={handleLinkPress}
-                />
-              )}
-              {contentParts.hasThinking &&
-                contentParts.thinkingContent?.trim() && (
-                  <ThinkingBlock
-                    content={contentParts.thinkingContent || ''}
-                    isComplete={contentParts.isThinkingComplete}
-                    inProgress={
-                      isLastMessage &&
-                      isGenerating &&
-                      !contentParts.isThinkingComplete
-                    }
-                  />
-                )}
-              {contentParts.normalAfterThink &&
-                contentParts.normalAfterThink.trim() && (
+              <Animated.View
+                key={refinedSwap}
+                entering={
+                  refinedSwap > 0 ? FadeIn.duration(REFINED_SWAP_MS) : undefined
+                }
+                exiting={FadeOut.duration(REFINED_SWAP_MS / 2)}
+              >
+                {contentParts.normalContent.trim() && (
                   <AttributedAnswer
-                    text={normalAfterThink}
+                    text={normalContent}
                     sources={webResults}
                     streaming={isLastMessage && isGenerating}
                     onLinkPress={handleLinkPress}
                   />
                 )}
+                {contentParts.hasThinking &&
+                  contentParts.thinkingContent?.trim() && (
+                    <ThinkingBlock
+                      content={contentParts.thinkingContent || ''}
+                      isComplete={contentParts.isThinkingComplete}
+                      inProgress={
+                        isLastMessage &&
+                        isGenerating &&
+                        !contentParts.isThinkingComplete
+                      }
+                    />
+                  )}
+                {contentParts.normalAfterThink &&
+                  contentParts.normalAfterThink.trim() && (
+                    <AttributedAnswer
+                      text={normalAfterThink}
+                      sources={webResults}
+                      streaming={isLastMessage && isGenerating}
+                      onLinkPress={handleLinkPress}
+                    />
+                  )}
+              </Animated.View>
               {isRefining ? (
-                <AnimatedChatLoading inline label="Refining…" />
+                <Animated.View
+                  entering={FadeIn.duration(REFINED_SWAP_MS)}
+                  exiting={FadeOut.duration(REFINED_SWAP_MS / 2)}
+                >
+                  <AnimatedChatLoading inline label="Refining…" />
+                </Animated.View>
               ) : null}
               {attributionShown ? null : (
                 <DominantSourceBadge source={dominantWebSource} />
