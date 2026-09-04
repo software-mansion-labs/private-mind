@@ -50,27 +50,6 @@ const PLANNER_EXAMPLES: {
     queries: [],
   },
   {
-    user: 'write a short poem about autumn',
-    needsSearch: false,
-    intent: 'creative writing',
-    kind: 'chat',
-    queries: [],
-  },
-  {
-    user: 'I feel tired, how can I sleep better?',
-    needsSearch: false,
-    intent: 'personal advice',
-    kind: 'chat',
-    queries: [],
-  },
-  {
-    user: 'python vs javascript, which should a beginner learn?',
-    needsSearch: false,
-    intent: 'programming language opinion',
-    kind: 'chat',
-    queries: [],
-  },
-  {
     user: 'czego dotyczyła ta rozmowa?',
     needsSearch: false,
     intent: 'recap of this conversation',
@@ -107,6 +86,14 @@ const PLANNER_EXAMPLES: {
     kind: 'comparison',
     queries: ['bitcoin price today', 'ethereum price today'],
     expects: ['bitcoin price', 'ethereum price'],
+  },
+  {
+    user: 'which e-reader is best for reading in the sun?',
+    needsSearch: true,
+    intent: 'e-reader recommendation',
+    kind: 'recommendation',
+    queries: ['best e-reader for reading in sunlight'],
+    expects: ['model name', 'why'],
   },
   {
     user: 'which song has been streamed the most on spotify this year',
@@ -156,52 +143,39 @@ const PLANNER_SYSTEM_PROMPT = (today: string): string =>
   "You turn the user's latest message into a web-search plan. " +
   'Output ONLY one JSON object, no other text and no reasoning:\n' +
   '{"needs_search": true|false, "intent": "<goal, max 8 words>", "kind": "<kind>", "queries": ["<q1>", "<optional q2>"], "expects": ["<what a complete answer must contain>"]}\n' +
-  '"expects" names the 1-4 things a complete answer must contain (a value ' +
-  "with its unit, a date, a name), each in the user's language; [] when " +
-  'needs_search is false.\n' +
-  '"kind" is exactly one of: price (an amount of money), specs (technical ' +
-  'parameters and figures), comparison (two or more named things side by ' +
-  'side), recommendation (which one to choose), news (recent events), date ' +
-  '(when something happens or happened), event (a scheduled happening: ' +
-  'where and when), place (a location: address, opening hours, contact), ' +
-  'person (who someone is or who holds a position), fact (one checkable ' +
-  'fact), howto (steps to do something), chat (no search needed).\n' +
-  'Set needs_search by what the best answer truly needs, in ANY language:\n' +
-  '- false when you can answer well on your own: greetings, thanks, chit-chat, ' +
-  'opinions, advice, math, coding, translation, rewriting, or timeless general ' +
-  'knowledge. Then "queries": [].\n' +
-  '- true only when the best answer needs fresh, local, or verifiable outside ' +
-  'facts: current events, news, prices, weather, scores, schedules, releases, ' +
-  'specs, a product or model code, who currently holds a position, the ' +
-  'current version of something, opening hours or an address, or specific ' +
-  'people, places or organisations.\n' +
-  'When unsure whether you can answer a specific, checkable question ' +
-  'accurately from memory alone, choose true — a search is cheap, a ' +
-  'confident wrong or stale answer is not. Only choose false when the ' +
-  'message is clearly conversational (greeting, opinion, chit-chat) with ' +
-  'nothing to verify.\n' +
-  'Each query is concise search KEYWORDS under 12 words, not a sentence. ' +
-  "Write every query in the SAME language and script as the user's message. " +
-  'Do not translate it — a local question is answered by pages in that ' +
-  'language, and the query language is the only signal that reaches them. ' +
-  'Use English only when the user wrote in English. ' +
-  'Keep the names, places and numbers the user gave, exactly as given; never ' +
-  'swap in a related one (a question about the euro is not about the dollar). ' +
-  'Use only the latest message and what it refers to — never pull in a name ' +
-  'from an earlier, unrelated turn. ' +
-  'Resolve pronouns/references (it, that, they) from the conversation. ' +
-  `Turn relative time words (today, latest, now, current, this year, this ` +
-  `season, so far) into a concrete date, year, or season using today's date ` +
-  `— today is ${today}. For a "most/best/top X" question scoped to a recent ` +
-  'period, put that concrete year or season in the query itself, so results ' +
-  'are about that period and not an all-time or career ranking (a page ' +
-  'about "most/best ever" is the wrong answer to a this-year question even ' +
-  'when it looks authoritative). ' +
-  'Give 1 query normally, one query per item ONLY for a clear comparison of ' +
-  '2 or 3 named things (max 3 queries total, even if more things are named).\n' +
+  '"expects": the 1-4 things a complete answer must contain (a value with ' +
+  "its unit, a date, a name), in the user's language; [] when needs_search " +
+  'is false.\n' +
+  '"kind": one of price (an amount of money), specs (technical figures), ' +
+  'comparison (named things side by side), recommendation (which one to ' +
+  'choose), news (recent events), date (when something happens or ' +
+  'happened), event (a scheduled happening: where and when), place (an ' +
+  'address, opening hours, contact), person (who someone is or who holds a ' +
+  'position), fact (one checkable fact), howto (steps), chat (no search).\n' +
+  'needs_search is false for greetings, chit-chat, opinions, advice, math, ' +
+  'coding, translation, rewriting, questions about this conversation, and ' +
+  'timeless general knowledge — then "queries": []. It is true when the ' +
+  'best answer needs fresh, local or verifiable facts: news, prices, ' +
+  'weather, scores, schedules, releases, specs, a product or model code, ' +
+  'who currently holds a position, the current version of something, ' +
+  'opening hours or an address, specific people, places or organisations. ' +
+  'Unsure about a specific, checkable question? Choose true — a search is ' +
+  'cheap, a confident stale answer is not.\n' +
+  'Each query is search KEYWORDS under 12 words, not a sentence, in the ' +
+  "SAME language and script as the user's message — never translated; " +
+  'English only when the user wrote in English. Keep the names, places and ' +
+  'numbers the user gave, exactly as given; never swap in a related one. ' +
+  'Use only the latest message and what it refers to; resolve it/that/they ' +
+  'from the conversation. Turn relative time words (today, latest, now, ' +
+  'current, this year, this season, so far) into a concrete date, year or ' +
+  `season — today is ${today}; for a "most/best/top X" question about a ` +
+  'recent period put that year or season in the query itself, so results ' +
+  'are about that period and not an all-time ranking. ' +
+  'Give 1 query normally, one per item ONLY for a clear comparison of 2 or ' +
+  '3 named things (max 3 queries).\n' +
   PLANNER_EXAMPLES_TEXT +
-  'Those are only format examples — plan for the actual user message below and ' +
-  'never copy their words or topics.';
+  'Those are only format examples — plan for the actual user message below ' +
+  'and never copy their words or topics.';
 
 const isLeakedQuery = (query: string, groundedText: string): boolean =>
   EXAMPLE_LEAK_TOKENS.some(
