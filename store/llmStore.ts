@@ -464,12 +464,15 @@ const SOURCES_COVER_TOPIC_RETRY_PROMPT =
   'summarize the sources. If they cover it only in part, give that part ' +
   'instead of refusing.';
 
-const withEvidenceLines = (prompt: string, lines: string[]): string =>
-  lines.length === 0
-    ? prompt
-    : `${prompt}\nThe lines in question, quoted from the sources:\n${lines
-        .map((line) => `"${line}"`)
-        .join('\n')}`;
+const quotedEvidenceLines = (lines: string[]): string =>
+  lines.map((line) => `"${line}"`).join('\n');
+
+const focusedEvidencePrompt = (question: string, lines: string[]): string =>
+  'These lines were quoted from the sources retrieved for the question ' +
+  'below. Answer it in one or two sentences, giving the figure they state ' +
+  'in the first sentence, exactly as they give it. If the lines do not ' +
+  'hold it, say the sources do not state it.\n' +
+  `${quotedEvidenceLines(lines)}\n\nQuestion: ${question}`;
 
 const aspectCoverageRetryPrompt = (aspects: string[]): string =>
   'The answer does not address: ' +
@@ -923,9 +926,32 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       let nudged = false;
 
+      const questionLanguage = detectQuestionLanguage(currentQuestion ?? '');
+      const continuedRetry = (prompt: string): ExecutorchMessage[] => [
+        ...effectivePrepared,
+        { role: 'assistant', content: finalResponse as string },
+        {
+          role: 'user',
+          content: prompt + answerLanguageAnchor(questionLanguage),
+        },
+      ];
+      const focusedRetry = (lines: string[]): ExecutorchMessage[] => [
+        ...effectivePrepared.filter((message) => message.role === 'system'),
+        {
+          role: 'user',
+          content:
+            focusedEvidencePrompt(currentQuestion ?? '', lines) +
+            answerLanguageAnchor(questionLanguage),
+        },
+      ];
+      const evidenceRetry = (prompt: string): ExecutorchMessage[] => {
+        const lines = evidenceLinesFor(currentQuestion, promptContext);
+        return lines.length > 0 ? focusedRetry(lines) : continuedRetry(prompt);
+      };
+
       const nudgeOnce = async (
         reason: string,
-        prompt: string,
+        messages: ExecutorchMessage[],
         stillBroken: (retried: string) => boolean
       ): Promise<void> => {
         nudged = true;
@@ -934,21 +960,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         set({ isRefining: true });
         let retryGeneration: Awaited<ReturnType<typeof generateLLMResponse>>;
         try {
-          retryGeneration = await generateLLMResponse(
-            [
-              ...effectivePrepared,
-              { role: 'assistant', content: finalResponse as string },
-              {
-                role: 'user',
-                content:
-                  prompt +
-                  answerLanguageAnchor(
-                    detectQuestionLanguage(currentQuestion ?? '')
-                  ),
-              },
-            ],
-            get
-          );
+          retryGeneration = await generateLLMResponse(messages, get);
         } finally {
           suppressUtilityStreaming = false;
         }
@@ -968,7 +980,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       ) {
         await nudgeOnce(
           'Answer in the wrong language, retrying once with a nudge',
-          WRONG_LANGUAGE_RETRY_PROMPT,
+          continuedRetry(WRONG_LANGUAGE_RETRY_PROMPT),
           (retried) => isWrongLanguageAnswer(retried, currentQuestion)
         );
       }
@@ -981,7 +993,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       ) {
         await nudgeOnce(
           'Question echoed back, retrying once with a nudge',
-          QUESTION_ECHO_RETRY_PROMPT,
+          continuedRetry(QUESTION_ECHO_RETRY_PROMPT),
           (retried) => isQuestionEchoAnswer(retried, currentQuestion)
         );
         if (
@@ -1004,17 +1016,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       ) {
         await nudgeOnce(
           'Answer claims the sources are silent while they hold a figure, retrying once',
-          withEvidenceLines(
-            EVIDENCE_PRESENT_RETRY_PROMPT,
-            evidenceLinesFor(currentQuestion, promptContext)
-          ),
+          evidenceRetry(EVIDENCE_PRESENT_RETRY_PROMPT),
           (retried) =>
             claimsMissingEvidenceItHas(
               retried,
               currentQuestion,
               promptContext,
               webIntentKind
-            )
+            ) || isWrongLanguageAnswer(retried, currentQuestion)
         );
       }
 
@@ -1040,13 +1049,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           ignoresEvidence(finalResponse)
             ? 'Answer uses none of the evidence the sources carry, retrying once'
             : 'Answer buries the figure the sources offer, retrying once',
-          withEvidenceLines(
-            SOURCES_COVER_TOPIC_RETRY_PROMPT,
-            evidenceLinesFor(currentQuestion, promptContext)
-          ),
+          evidenceRetry(SOURCES_COVER_TOPIC_RETRY_PROMPT),
           (retried) =>
-            (ignoresEvidence(retried) || buriesFigure(retried)) &&
-            !retryStatesWhatDraftLacks(retried)
+            ((ignoresEvidence(retried) || buriesFigure(retried)) &&
+              !retryStatesWhatDraftLacks(retried)) ||
+            isWrongLanguageAnswer(retried, currentQuestion)
         );
       }
 
@@ -1058,7 +1065,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       ) {
         await nudgeOnce(
           'Circular non-answer, retrying once with a nudge',
-          CIRCULAR_ANSWER_RETRY_PROMPT,
+          continuedRetry(CIRCULAR_ANSWER_RETRY_PROMPT),
           isCircularNonAnswer
         );
       }
@@ -1074,7 +1081,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       ) {
         await nudgeOnce(
           'Answer skips an aspect the sources cover, retrying once with a nudge',
-          aspectCoverageRetryPrompt(missingAspects),
+          continuedRetry(aspectCoverageRetryPrompt(missingAspects)),
           (retried) =>
             aspectsMissingFromAnswer(retried, webSubQueries, promptContext)
               .length > 0

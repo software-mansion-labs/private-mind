@@ -1032,9 +1032,12 @@ describe('sendChatMessage', () => {
       role: string;
       content: string;
     }[];
+    expect(nudge.map((message) => message.role)).toEqual(['system', 'user']);
     expect(nudge.at(-1)!.content).toContain('quoted from the sources');
     expect(nudge.at(-1)!.content).toContain('144 Hz');
+    expect(nudge.at(-1)!.content).toContain(question);
     expect(nudge.at(-1)!.content).not.toContain('Klasa energetyczna');
+    expect(nudge.at(-1)!.content).not.toContain('--- Source 1');
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
       answer
     );
