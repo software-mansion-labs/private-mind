@@ -197,6 +197,14 @@ describe('event messages', () => {
 // ─── assistant messages ───────────────────────────────────────────────────────
 
 describe('assistant messages', () => {
+  it('shows the model name above the thinking label before the first token', () => {
+    setLLMState({ isGenerating: false, isProcessingPrompt: true });
+    renderItem({ content: '', isLastMessage: true, modelName: 'Llama-3B' });
+
+    expect(screen.getByText('Llama-3B')).toBeTruthy();
+    expect(screen.getByTestId('chat-loading').props.children).toBe('Thinking…');
+  });
+
   it('renders the model name', () => {
     renderItem({ role: 'assistant', content: 'Hi', modelName: 'Llama-3B' });
     expect(screen.getByText('Llama-3B')).toBeTruthy();
@@ -562,6 +570,22 @@ describe('live web-search trace', () => {
     renderItem({ content: 'Dzisiaj jest słonecznie', isLastMessage: true });
 
     expect(screen.queryByTestId('web-search-block')).toBeNull();
+  });
+
+  it('keeps the trace on the last message while it streams after a search that found nothing', () => {
+    setLLMState({
+      isGenerating: true,
+      isProcessingPrompt: false,
+      isSearchingWeb: false,
+      webSearchTrace: [
+        { type: 'searching', query: 'Samsung QE65QN90D Hz' },
+        { type: 'done' },
+      ],
+    });
+    renderItem({ content: 'Nie znalazłem tej danej.', isLastMessage: true });
+
+    const block = screen.getByTestId('web-search-block');
+    expect(block.props.accessibilityLabel).toBe('searching:false');
   });
 
   it('does not show the searching trace on a non-last message', () => {
