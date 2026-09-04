@@ -1321,6 +1321,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       llmInstance.interrupt();
     }
 
+    if (state.isProcessingPrompt && !state.isGenerating) {
+      useWebSearchStore.getState().setSearchingWeb(false);
+      updateChatStateForGeneration(set, 'failed');
+      return;
+    }
+
     if (state.isGenerating || state.isProcessingPrompt) {
       set({
         isGenerating: false,
