@@ -117,6 +117,63 @@ describe('an answer that claims absence while the block holds the figure', () =>
   });
 });
 
+describe('the absence claim is read from the shape of the answer, not from a phrase list', () => {
+  it('fires on a refusal in a language no phrase list covers', () => {
+    expect(
+      claimsMissingEvidenceItHas(
+        'Die Quellen enthalten keinen Preis für den Skipass.',
+        'Was kostet ein Skipass in Zakopane?',
+        SKI_CONTEXT,
+        'price'
+      )
+    ).toBe(true);
+  });
+
+  it('fires on an evasive answer that gives no figure although the page has one (Pixel S1.8)', () => {
+    expect(
+      claimsMissingEvidenceItHas(
+        'Ceny karnetów zależą od sezonu i rodzaju karnetu, warto sprawdzić aktualny cennik.',
+        'Ile kosztuje karnet dzienny w Zakopanem w sezonie 2026/27?',
+        'Karnety dzienne w cenie od 130 do 200 zł w sezonie 2026/2027.',
+        'price'
+      )
+    ).toBe(true);
+  });
+
+  it('fires on a spec answer without a single figure while the page states one', () => {
+    expect(
+      claimsMissingEvidenceItHas(
+        'Nie udało mi się ustalić parametrów tego modelu.',
+        'Jaką częstotliwość odświeżania ma Samsung QE65QN90D?',
+        'Samsung QE65QN90D: częstotliwość odświeżania 144 Hz, matryca Neo QLED.',
+        'specs'
+      )
+    ).toBe(true);
+  });
+
+  it('does not count a year as the figure the question asked for', () => {
+    expect(
+      claimsMissingEvidenceItHas(
+        'W 2026 roku źródła nie podają ceny karnetu.',
+        'Ile kosztuje karnet narciarski w Zakopanem?',
+        SKI_CONTEXT,
+        'price'
+      )
+    ).toBe(true);
+  });
+
+  it('stays quiet when the answer states any figure at all', () => {
+    expect(
+      claimsMissingEvidenceItHas(
+        'Karnet kosztuje około 150 zł, zależnie od dnia.',
+        'Ile kosztuje karnet narciarski w Zakopanem?',
+        SKI_CONTEXT,
+        'price'
+      )
+    ).toBe(false);
+  });
+});
+
 describe('refusals measured on the Pixel 10, Gemma 4 - 2B', () => {
   const GOLD_CONTEXT =
     'Gold Price in US Today: per oz 4,438.55 United States dollars. United States gold price today at livepriceofgold.com.';

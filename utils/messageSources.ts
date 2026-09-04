@@ -534,9 +534,6 @@ export const buildMessageSources = async ({
   return { context, sourceDocuments, preferredSourceDocuments };
 };
 
-const ABSENCE_CLAIM =
-  /nie (?:ma|zawieraj\w*|jest podan\w*|zosta\w* podan\w*|jest mo[żz]liwe)[^.!?]{0,40}(?:informacj|dan(?:e|ych)|ceny|kursu|kwoty)|[żz]r[óo]d[łl]a[^.!?]{0,30}nie (?:zawieraj|podaj)|brak (?:informacji|danych)|(?:sources?|search results|pages?)[^.!?]{0,30}(?:contain no|do not (?:contain|state|provide|include)|have no)|no (?:information|data) (?:about|on|for)|nie posiadam[^.!?]{0,30}informacj|nie jestem w stanie[^.!?]{0,40}(?:okre[śs]li|poda|wskaza|udzieli|odpowiedzie|por[óo]wna|oceni|stwierdzi|ustali|przedstawi|znale[źz])|nie mam dost[ęe]pu|(?:don'?t|do not) have access|(?:cannot|can't|unable to|not able to) (?:determine|provide|state|give|tell)/i;
-
 const QUESTION_WANTS_DATE =
   /\bkiedy\b|\bwhen\b|\bwann\b|\bquand\b|\bcu[aá]ndo\b|\bquando\b|когда|कब/i;
 const QUESTION_WANTS_AMOUNT =
@@ -545,6 +542,7 @@ const QUESTION_WANTS_AMOUNT =
 const CONTEXT_DATE =
   /\b\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}\b|\b\d{1,2}\s?(?:sty|lut|mar|kwi|maj|cze|lip|sie|wrz|pa[źz]|lis|gru|jan|feb|apr|jun|jul|aug|sep|oct|nov|dec)/i;
 const CONTEXT_AMOUNT = /\d{1,3}(?:[.,\u00A0\u202F ]\d{3})+|\d+[.,]\d+|\d{4,}/;
+const CONTEXT_SPEC_FIGURE = /\d{2,}\s?\p{L}/u;
 
 const EVIDENCE_MIN_TOKENS = 5;
 const EVIDENCE_MIN_ANSWER_CHARS = 40;
@@ -638,6 +636,12 @@ export const aspectsMissingFromAnswer = (
   });
 };
 
+const YEAR_TOKEN = /(?<![\p{N}])(?:19|20)\d{2}(?![\p{N}])/gu;
+const ANY_FIGURE = /\p{Nd}/u;
+
+const answerStatesFigure = (visible: string): boolean =>
+  ANY_FIGURE.test(toAsciiDigits(visible).replace(YEAR_TOKEN, ''));
+
 export const claimsMissingEvidenceItHas = (
   answer: string,
   question: string | undefined,
@@ -646,10 +650,20 @@ export const claimsMissingEvidenceItHas = (
 ): boolean => {
   if (!question || !context.trim()) return false;
   const visible = stripThinkBlocks(answer);
-  if (!visible || !ABSENCE_CLAIM.test(visible)) return false;
-  const wantsDate = intent === 'date' || QUESTION_WANTS_DATE.test(question);
-  if (wantsDate && CONTEXT_DATE.test(context)) return true;
+  if (!visible) return false;
+  const wantsDate =
+    intent === 'date' ||
+    intent === 'event' ||
+    QUESTION_WANTS_DATE.test(question);
+  if (wantsDate && CONTEXT_DATE.test(context)) {
+    return !CONTEXT_DATE.test(visible) && !answerStatesFigure(visible);
+  }
   const wantsAmount =
-    intent === 'price' || QUESTION_WANTS_AMOUNT.test(question);
-  return wantsAmount && CONTEXT_AMOUNT.test(context);
+    intent === 'price' ||
+    intent === 'specs' ||
+    QUESTION_WANTS_AMOUNT.test(question);
+  const contextStatesAmount =
+    CONTEXT_AMOUNT.test(context) ||
+    (intent === 'specs' && CONTEXT_SPEC_FIGURE.test(context));
+  return wantsAmount && contextStatesAmount && !answerStatesFigure(visible);
 };
