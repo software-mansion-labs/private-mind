@@ -488,6 +488,19 @@ export const runWebSearch = async (
     baseQueries = [...baseQueries, verbatim];
     telemetry.plannedQueries = baseQueries;
   }
+  const fallbackQueries = plan.fallbackQueries ?? [];
+  if (
+    foundGroups.flat().length === 0 &&
+    fallbackQueries.length > 0 &&
+    !signal?.aborted
+  ) {
+    const rescued = (await runQueries(fallbackQueries, 1, seen)).map(
+      dropForeignScript
+    );
+    foundGroups = [...foundGroups, ...rescued];
+    baseQueries = [...baseQueries, ...fallbackQueries];
+    telemetry.plannedQueries = baseQueries;
+  }
   const found = foundGroups.flat();
   const outcome = await groundAndEvaluate(foundGroups, WEB_SEARCH_MAX_RESULTS);
 

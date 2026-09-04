@@ -721,6 +721,26 @@ describe('planWebSearch', () => {
       expect(plan.queries).toEqual([toKeywordQuery(question)]);
     });
 
+    it('keeps the drifted queries as a fallback behind the verbatim question', async () => {
+      const generate = jest.fn().mockResolvedValue(driftedPlan);
+      const plan = await planWebSearch(question, oledHistory, generate, {
+        today: TODAY,
+      });
+      expect(plan.queries).toEqual([toKeywordQuery(question)]);
+      expect(plan.fallbackQueries).toHaveLength(3);
+      expect(plan.fallbackQueries![0]).toMatch(
+        /^best TV for large living room features/
+      );
+    });
+
+    it('attaches no fallback when the plan already speaks the conversation language', async () => {
+      const generate = jest.fn().mockResolvedValue(correctedPlan);
+      const plan = await planWebSearch(question, oledHistory, generate, {
+        today: TODAY,
+      });
+      expect(plan.fallbackQueries).toBeUndefined();
+    });
+
     it('keeps the queries that were in the right language when the retry fails', async () => {
       const mixedPlan =
         '{"needs_search": true, "intent": "TV features", "queries": ["parametry techniczne LG OLED65B65LA", "TV suitability for large windows"]}';
