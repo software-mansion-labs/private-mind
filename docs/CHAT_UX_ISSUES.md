@@ -305,31 +305,44 @@ plays. Whatever loses the binding can no longer keep the list hidden. If
 white returns: `describe` (to prove the tree is there), then check whether
 `revealed` flipped — a `console.log` in `settleReveal` is enough.
 
-## ❓ The first paste of a copied message makes the input disappear
+## ✅ The first paste of a copied message makes the input disappear
 
-Reported 2026-09-04, no platform or screenshot given: copy a message, paste
-it into the composer for the first time, and the input disappears.
+Reported 2026-09-04. Four paste paths on the Pixel 10 (context menu in an
+existing chat and in a new chat, the Gboard clipboard panel, a 1.5k-char
+answer with lists) did not reproduce it — because none of them pasted the
+text the user had **just sent**. That is the case: copy your own message,
+send it (or send anything and copy that bubble), paste it as the next
+thing. The composer's send-echo guard (`8543f15`, this branch only — main
+does not have it) drops the first text change after a send when it equals
+the sent text, so the Android IME's echo of the cleared field cannot
+resurrect the message. A paste of the same text is indistinguishable from
+that echo by content alone: the change is dropped, the controlled `value`
+stays empty, and React Native writes the empty value back into the native
+field — the pasted text vanishes. Only the first time, because the guard
+clears itself after one use; the second paste sticks. That is the
+"pierwszy raz".
 
-Not reproduced on the Pixel 10 (this checkout, fresh process each time):
+Fix (this branch): the guard is time-boxed. The echo arrives within the
+same frame as the send; a paste cannot. A change equal to the sent text is
+dropped only within 300 ms of the send (`SENT_ECHO_WINDOW_MS`). Test:
+"keeps a paste of the just-sent message once the echo window has passed".
 
-| Path | Text | Result |
-|---|---|---|
-| long-press → Paste, existing chat | 3-line paragraph | pasted, field grows to 3 lines |
-| long-press → Paste, new chat (empty state), first paste after launch | same | pasted |
-| Gboard clipboard panel, first paste after launch | same | pasted |
-| long-press → Paste | full answer with lists and LaTeX, ~1.5k chars | pasted, field capped at 3 lines, scrolled to the end |
+**To verify in the test round (Pixel 10, this branch):**
 
-iPhone 17 Pro simulator (older bundle) with a 15-line paste: field capped
-at two visible lines, scrollable. Nothing vanished in any run; the state
-also survived switching chats.
+1. New chat, type `test echo`, send. Wait for the answer.
+2. Long-press the *user* bubble → Copy (or copy the text from anywhere).
+3. Tap the composer, long-press → Paste. PASS: `test echo` is in the field
+   and stays; FAIL: the field shows the placeholder again.
+4. Repeat step 3 once more (second paste). Both must pass; before the fix,
+   only the second did.
+5. Also send a message and, right after, paste a *different* text — it
+   must stay too (the guard compares content, so this never failed; it is
+   the regression check for the window).
 
-What would settle it, in this order: which device; whether the *text*
-vanishes (field shows the placeholder again) or the *bar* (composer gone
-from the screen); whether the first paste was the first ever after
-install; a screenshot right after the paste. Candidates that fit "first
-time" and are not covered above: the paste arriving while the first
-`onFocus` model load runs (`disabled` composer), and a copied message that
-ends in blank lines so the 3-line viewport shows only whitespace.
+**What to collect if it fails:** the exact sent text and the pasted text
+(equal or not), the time between send and paste, whether the keyboard was
+still open at the send, `adb logcat -s ReactNativeJS` around the paste,
+and the field's state from `describe` (empty placeholder vs text present).
 
 Seen on the way: the Copy action copies the raw markdown, LaTeX included
 (`$\\text{CO}_2$` lands in the composer as typed). Cosmetic, filed here.
