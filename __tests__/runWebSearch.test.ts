@@ -199,7 +199,9 @@ describe('runWebSearch', () => {
   it('logs the plan it is about to run, kind included, so a device session can grade the planner (S8.4)', async () => {
     const log = jest.spyOn(console, 'log').mockImplementation(() => {});
     const provider = new MockProvider({
-      'warsaw weather': [weatherPage('https://weather.example/1')],
+      'jaka jest dzisiaj pogoda w warszawie': [
+        weatherPage('https://weather.example/1'),
+      ],
     });
     await runWebSearch({
       query: 'jaka jest dzisiaj pogoda w warszawie',
@@ -211,15 +213,55 @@ describe('runWebSearch', () => {
         '{"needs_search": true, "intent": "current Warsaw weather", "kind": "fact", "queries": ["warsaw weather"]}',
       today: '2026-07-20',
     });
-    expect(log).toHaveBeenCalledWith(
-      'Web search plan',
-      expect.objectContaining({
-        needsSearch: true,
-        kind: 'fact',
-        queries: ['jaka jest dzisiaj pogoda w warszawie'],
-      })
-    );
+    const logged = (label: string) => {
+      const line = log.mock.calls
+        .map((call) => String(call[0]))
+        .find((entry) => entry.startsWith(`${label} `));
+      return line ? JSON.parse(line.slice(label.length + 1)) : undefined;
+    };
+    expect(logged('Web search plan')).toMatchObject({
+      needsSearch: true,
+      kind: 'fact',
+      queries: ['jaka jest dzisiaj pogoda w warszawie'],
+    });
+    expect(logged('Web search outcome')).toMatchObject({
+      results: 1,
+      withContent: 1,
+      rounds: [{ results: 1 }],
+    });
     log.mockRestore();
+  });
+
+  it('searches the planner’s discarded queries when the verbatim question finds nothing', async () => {
+    const specPage: WebSearchResult = {
+      title: 'Samsung QE65QN90D specs',
+      url: 'https://specs.example/qn90d',
+      snippet: 'Samsung QE65QN90D refresh rate 144 Hz',
+      content: 'Samsung QE65QN90D refresh rate 144 Hz, 4K, Neo QLED. '.repeat(
+        12
+      ),
+    };
+    const provider = new MockProvider({
+      'Samsung QE65QN90D refresh rate': [specPage],
+    });
+    const out = await runWebSearch({
+      query: 'jaką częstotliwość odświeżania ma Samsung QE65QN90D?',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () =>
+        '{"needs_search": true, "intent": "TV refresh rate", "kind": "specs", "queries": ["Samsung QE65QN90D refresh rate"]}',
+      today: '2026-07-20',
+    });
+    expect(provider.calls).toEqual([
+      'jaką częstotliwość odświeżania ma Samsung QE65QN90D?',
+      'Samsung QE65QN90D refresh rate',
+    ]);
+    expect(out.telemetry.plannedQueries).toContain(
+      'Samsung QE65QN90D refresh rate'
+    );
+    expect(out.sourceDocuments.map((doc) => doc.url)).toEqual([specPage.url]);
   });
 
   it('threads the planned intent into telemetry instead of dropping it', async () => {
