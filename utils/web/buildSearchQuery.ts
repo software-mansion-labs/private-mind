@@ -67,6 +67,20 @@ const PLANNER_EXAMPLES: {
     queries: [],
   },
   {
+    user: 'czego dotyczyła ta rozmowa?',
+    needsSearch: false,
+    intent: 'recap of this conversation',
+    kind: 'chat',
+    queries: [],
+  },
+  {
+    user: 'was your first answer in polish?',
+    needsSearch: false,
+    intent: 'about a previous answer',
+    kind: 'chat',
+    queries: [],
+  },
+  {
     user: 'whats the weather in tokyo right now',
     needsSearch: true,
     intent: 'current Tokyo weather',
@@ -503,7 +517,14 @@ export const carryReferentIntoQuery = (
 };
 
 const CONVERSATIONAL_INTENT_MARKERS =
-  /\b(greet\w*|hello|hi there|thank\w*|chit.?chat|small talk|casual|opinion|advice|\bmath\b|coding|programming|\bcode\b|translat\w*|rewrit\w*|paraphras\w*|creative writing|\bpoem\w*|poetry|\bstory\b|\bjoke\w*|recipe idea|general knowledge|timeless)\b/i;
+  /\b(greet\w*|hello|hi there|thank\w*|chit.?chat|small talk|casual|opinion|advice|\bmath\b|coding|programming|\bcode\b|translat\w*|rewrit\w*|paraphras\w*|creative writing|\bpoem\w*|poetry|\bstory\b|\bjoke\w*|recipe idea|general knowledge|timeless|recap|summar\w*|conversation|chat history|(?:previous|earlier|last|first) (?:answer|reply|message|response)s?)\b/i;
+
+const CODE_TOKEN =
+  /(?<![\p{L}\p{N}])(?=[\p{L}\p{N}-]*\p{N})(?=[\p{L}\p{N}-]*\p{L})[\p{L}\p{N}-]{3,}(?![\p{L}\p{N}])/u;
+const LONG_NUMBER = /(?<![\p{L}\p{N}])\p{N}{3,}(?![\p{L}\p{N}])/u;
+
+export const hasHardSearchSignal = (query: string): boolean =>
+  CODE_TOKEN.test(query) || LONG_NUMBER.test(query);
 
 export const isConversationalIntent = (intent: string): boolean =>
   !!intent.trim() && CONVERSATIONAL_INTENT_MARKERS.test(intent);
@@ -635,6 +656,7 @@ export const planWebSearch = async (
   const parsed = parseSearchPlan(raw);
   if (!parsed) return verbatim();
   if (!parsed.needsSearch) {
+    if (hasHardSearchSignal(query)) return verbatim(parsed.intent, parsed.kind);
     return isConversationalIntent(parsed.intent)
       ? { needsSearch: false, intent: parsed.intent, queries: [] }
       : verbatim(parsed.intent);

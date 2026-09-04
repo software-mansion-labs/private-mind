@@ -186,6 +186,37 @@ describe('planWebSearch', () => {
     expect(plan.queries).toEqual(['bitcoin price usd today']);
   });
 
+  it('searches anyway when the planner waves off a question that names a model code (live: Pixel S1.4)', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": false, "intent": "general knowledge about TVs", "kind": "chat", "queries": []}'
+      );
+    const plan = await planWebSearch(
+      'Jaką częstotliwość odświeżania ma Samsung QE65QN90D?',
+      [],
+      generate
+    );
+    expect(plan.needsSearch).toBe(true);
+    expect(plan.queries).toEqual([
+      'Jaką częstotliwość odświeżania ma Samsung QE65QN90D?',
+    ]);
+  });
+
+  it('keeps trusting the planner’s no-search call when the question carries no code or figure', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": false, "intent": "general knowledge", "kind": "chat", "queries": []}'
+      );
+    const plan = await planWebSearch(
+      'dlaczego niebo jest niebieskie?',
+      [],
+      generate
+    );
+    expect(plan.needsSearch).toBe(false);
+  });
+
   it('lets the planner gate a short greeting that is not a search', async () => {
     const generate = jest
       .fn()
@@ -1229,6 +1260,13 @@ describe('carryReferentIntoQuery', () => {
 });
 
 describe('isConversationalIntent', () => {
+  it('treats a recap or a question about an earlier answer as conversation, not a search (live: Pixel S2.6, S5.2)', () => {
+    expect(isConversationalIntent('recap of this conversation')).toBe(true);
+    expect(isConversationalIntent('about a previous answer')).toBe(true);
+    expect(isConversationalIntent('language of the first reply')).toBe(true);
+    expect(isConversationalIntent('current bitcoin price')).toBe(false);
+  });
+
   it('recognizes every conversational category the planner prompt itself defines as needing no search', () => {
     expect(isConversationalIntent('casual greeting')).toBe(true);
     expect(isConversationalIntent('creative writing')).toBe(true);
