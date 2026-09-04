@@ -310,15 +310,26 @@ export const useAttachment = () => {
           );
         };
 
-        const result = await addSource(
-          buildUrlSource(url, article),
-          url,
-          vectorStore!,
-          embeddings,
-          handleProgress,
-          abortController.signal,
-          article.text
-        );
+        const addArticleSource = () =>
+          addSource(
+            buildUrlSource(url, article),
+            url,
+            vectorStore!,
+            embeddings,
+            handleProgress,
+            abortController.signal,
+            article.text
+          );
+        const indexArticleSource = () =>
+          embeddings
+            ? useLLMStore
+                .getState()
+                .runWithModelOffloaded(
+                  () => embeddings.runWithLoadedModel(addArticleSource),
+                  { restore: false }
+                )
+            : addArticleSource();
+        const result = await indexArticleSource();
 
         if (result.cancelled) return;
         if (result.success) {
@@ -346,10 +357,9 @@ export const useAttachment = () => {
           });
         }
       } catch (error) {
-        console.error('URL source processing threw', {
+        console.error('URL source processing threw', error, {
           attachmentId,
           url,
-          error,
         });
         if (attachmentRequestRef.current !== requestId) return;
         setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
