@@ -7,6 +7,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import * as Feedback from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { useSettingsStore } from '../store/settingsStore';
+import { useWebSearchStore } from '../store/webSearchStore';
 
 jest.mock('../database/chatRepository');
 jest.mock('../utils/Feedback', () => ({
@@ -1315,6 +1316,38 @@ describe('sendEventMessage', () => {
 // ─── setActiveChatId ──────────────────────────────────────────────────────────
 
 describe('setActiveChatId', () => {
+  it('drops the previous chat’s live trace when another chat is opened, so the saved trace is rebuilt from the database (S8.11)', async () => {
+    useWebSearchStore.setState({
+      isSearchingWeb: false,
+      webSearchTrace: [
+        { id: 1, type: 'found', url: 'https://a.com/x', host: 'a.com' },
+      ],
+    });
+    mockGetChatMessages.mockResolvedValue([]);
+    useLLMStore.setState({ db: mockDb, activeChatId: 4 });
+
+    await useLLMStore.getState().setActiveChatId(5);
+
+    expect(useWebSearchStore.getState().webSearchTrace).toEqual([]);
+  });
+
+  it('keeps the trace of a search that is still running when chats are switched', async () => {
+    const running = [
+      { id: 1, type: 'searching' as const, query: 'kurs bitcoin' },
+    ];
+    useWebSearchStore.setState({
+      isSearchingWeb: true,
+      webSearchTrace: running,
+    });
+    mockGetChatMessages.mockResolvedValue([]);
+    useLLMStore.setState({ db: mockDb, activeChatId: 4 });
+
+    await useLLMStore.getState().setActiveChatId(5);
+
+    expect(useWebSearchStore.getState().webSearchTrace).toEqual(running);
+    useWebSearchStore.setState({ isSearchingWeb: false, webSearchTrace: [] });
+  });
+
   it('loads messages for the given chat id', async () => {
     const messages = [
       { id: 1, chatId: 5, role: 'user', content: 'hi', timestamp: 0 },

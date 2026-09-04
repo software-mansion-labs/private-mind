@@ -585,6 +585,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         set({ activeChatId: chatId });
         return;
       }
+      if (!useWebSearchStore.getState().isSearchingWeb) {
+        useWebSearchStore.getState().resetTrace();
+      }
       const [messageHistory, digest] = await Promise.all([
         getChatMessages(db, chatId),
         getChatDigest(db, chatId),
