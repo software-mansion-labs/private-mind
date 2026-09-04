@@ -22,6 +22,7 @@ import {
 } from '../utils/messageSources';
 import { useSettingsStore } from './settingsStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
+import { truncateAtRepeatedClause } from '../utils/loopDetection';
 
 export interface LLMStore {
   isLoading: boolean;
@@ -628,8 +629,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       // Set generation state and generate response
       updateChatStateForGeneration(set, 'generating');
-      const { response: finalResponse, performance: responsePerformance } =
+      const { response: rawResponse, performance: responsePerformance } =
         await generateLLMResponse(messagesWithSystemPrompt, get);
+      const finalResponse = rawResponse
+        ? truncateAtRepeatedClause(rawResponse)
+        : rawResponse;
       // Handle successful response
       if (finalResponse) {
         const citedSourceDocuments = pickCitationsByAnswer(
