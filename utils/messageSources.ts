@@ -21,6 +21,7 @@ import {
 } from './web/figureGrounding';
 import { carryReferentIntoQuery } from './web/buildSearchQuery';
 import type { WebIntentKind } from './web/intentKind';
+import { hostname } from './web/webResultsToContext';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
 import {
   CITATION_SENTENCE_PATTERN,
@@ -163,6 +164,10 @@ export const answerCitationOverlaps = (
 
 const SOURCE_REFERENCE =
   /(?<![\p{L}\p{N}])(?:sources?|źród[łl]\w*)\s*(\d+)\b/giu;
+const SOURCE_LABEL = /\[Answers:[^\]\n]*\]\s*[-–—:]?\s*/gi;
+
+const sourceDisplayName = (doc: SourceDocument): string =>
+  sourceKind(doc) === 'web' && doc.url ? hostname(doc.url) : doc.name;
 
 export const humanizeSourceReferences = (
   answer: string,
@@ -171,9 +176,12 @@ export const humanizeSourceReferences = (
   if (sourceDocuments.length === 0) return answer;
   return answer.replace(SOURCE_REFERENCE, (match, numeral: string) => {
     const doc = sourceDocuments[Number(numeral) - 1];
-    return doc ? doc.name : match;
+    return doc ? sourceDisplayName(doc) : match;
   });
 };
+
+export const stripSourceLabels = (answer: string): string =>
+  answer.replace(SOURCE_LABEL, '');
 
 export const detectGroundingCaveats = (
   answer: string,

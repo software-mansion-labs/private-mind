@@ -5,6 +5,7 @@ import {
   buildMessageSources,
   detectGroundingCaveats,
   humanizeSourceReferences,
+  stripSourceLabels,
   isDanglingListAnswer,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
@@ -1007,6 +1008,56 @@ describe('buildMessageSources retrieval query', () => {
   });
 });
 
+describe('a source reference names the host, not the page title (live: Pixel S4.1)', () => {
+  const sources = [
+    {
+      name: 'Ile mieszkańców ma Warszawa w 2025 roku? Aktualne dane',
+      kind: 'web' as const,
+      url: 'https://www.wp.pl/artykul/warszawa',
+    },
+    { name: 'raport.pdf', documentId: 3 },
+  ];
+
+  it('does not splice a question-shaped title into the sentence', () => {
+    expect(
+      humanizeSourceReferences(
+        'Według źródła 1, Warszawa ma 1,86 mln.',
+        sources
+      )
+    ).toBe('Według wp.pl, Warszawa ma 1,86 mln.');
+  });
+
+  it('keeps a document’s own name, which is what the user attached', () => {
+    expect(humanizeSourceReferences('See Source 2.', sources)).toBe(
+      'See raport.pdf.'
+    );
+  });
+});
+
+describe('stripSourceLabels (live: Pixel S3.1)', () => {
+  it('removes a copied "[Answers: …]" block label with its dash', () => {
+    expect(
+      stripSourceLabels(
+        '[Answers: cena iPhone 17 Pro w złotych] - iPhone 17 Pro kosztuje 5021,9 PLN.'
+      )
+    ).toBe('iPhone 17 Pro kosztuje 5021,9 PLN.');
+  });
+
+  it('removes every label, wherever the model pasted it', () => {
+    expect(
+      stripSourceLabels(
+        'W PLN: [Answers: cena w złotych] 5021,9 PLN. W EUR: [Answers: cena w euro]: brak danych.'
+      )
+    ).toBe('W PLN: 5021,9 PLN. W EUR: brak danych.');
+  });
+
+  it('leaves an answer without labels untouched', () => {
+    expect(stripSourceLabels('Cena to 5021,9 PLN [1].')).toBe(
+      'Cena to 5021,9 PLN [1].'
+    );
+  });
+});
+
 describe('humanizeSourceReferences — Polish declension (live-found)', () => {
   const sources = [
     {
@@ -1020,15 +1071,15 @@ describe('humanizeSourceReferences — Polish declension (live-found)', () => {
   it('replaces the locative "w źródle 1", not only "źródło 1"', () => {
     expect(
       humanizeSourceReferences('Kurs można sprawdzić w źródle 1.', sources)
-    ).toBe('Kurs można sprawdzić w Kurs złota i srebra (notowania).');
+    ).toBe('Kurs można sprawdzić w a.example.');
   });
 
   it('still replaces the forms it already handled', () => {
     expect(humanizeSourceReferences('Zgodnie ze źródłem 2.', sources)).toBe(
-      'Zgodnie ze CoinMarketCap.'
+      'Zgodnie ze b.example.'
     );
     expect(humanizeSourceReferences('See Source 2.', sources)).toBe(
-      'See CoinMarketCap.'
+      'See b.example.'
     );
   });
 
