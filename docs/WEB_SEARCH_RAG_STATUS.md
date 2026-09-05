@@ -4708,3 +4708,33 @@ Order for the tester prompt, on a build at `ae2725b` or later:
 
 Passed and closed: R-1, R-2, R-4, R-5, R-9…R-17, R-20, R-23, R-24, R-26,
 R-27, A-1…A-3, A-5, A-6, A-8.
+
+### Addendum, 2026-09-05: the round closed on R-19, and the plan grew a coverage section
+
+The tester finished with R-19 (PASS after a full reinstall — the download
+sheet showed once, then never again, including after a process restart;
+the 113-chat history is preserved in `pre-reinstall-final.db`). None of
+the five fixes above (`0a68805`…`ae2725b`) ran on the device: the tester
+followed the old order, R-28…R-31 were not executed, and the R-19 entry
+carries no bundle hash. Three lines of the tester's summary were
+corrected in the sheet: 10.A's failures are A-4 and A-10 (not A-7); R-3's
+PASS is R-26 on build `b053d79`; the abandoned turn is a deliberate
+interrupt with a wrong toast, not a variant of the silent generation
+failure. R-6, R-7 and R-8 were skipped as "not web search" — they are the
+owner's own fix-asap items on this branch and go back into the order as
+release-blocking.
+
+The plan's new section 11 widens the single-turn set beyond prices and
+electronics: 22 areas that carry most information-seeking traffic
+(health, everyday money, government and law, travel, weather, sport,
+news, entertainment, recipes, home, cars, housing, software how-to,
+non-electronics shopping, local, people, changing science facts, slang,
+pets and parenting, games, holidays), 18 no-search rows (writing, math,
+conversions, stable facts, opinions, code, translation, transactional
+requests the app cannot fulfil), and 6 intent pairs where the same
+subject carries different goals. Three new grading rules: a zero-result
+turn is a coverage result, YMYL areas fail on any figure not in the
+passage, and "nearest" without a city must ask, not invent. Sources for
+the taxonomy (Broder, Google's rater guidelines, NBER 2025) are in
+section 12. The tester prompt runs section 11 before 10.B.
+
