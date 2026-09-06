@@ -541,7 +541,8 @@ const QUESTION_WANTS_AMOUNT =
 
 const CONTEXT_DATE =
   /\b\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}\b|\b\d{1,2}\s?(?:sty|lut|mar|kwi|maj|cze|lip|sie|wrz|pa[źz]|lis|gru|jan|feb|apr|jun|jul|aug|sep|oct|nov|dec)/i;
-const CONTEXT_AMOUNT = /\d{1,3}(?:[.,\u00A0\u202F ]\d{3})+|\d+[.,]\d+|\d{4,}/;
+const CONTEXT_AMOUNT =
+  /\d{1,3}(?:[.,\u00A0\u202F ]\d{3})+|\d+[.,]\d+|\p{Sc}\s?\d+|\d{2,}\s?(?:\p{Sc}|\p{L}{1,3}(?!\p{L}))/u;
 const CONTEXT_SPEC_FIGURE = /\d{2,}\s?\p{L}/u;
 
 const EVIDENCE_MIN_TOKENS = 5;
@@ -581,6 +582,11 @@ export const distinctiveEvidence = (text: string): Set<string> => {
   }
   return found;
 };
+
+const SOURCES_BLOCK = /<sources>([\s\S]*?)<\/sources>/;
+
+export const sourcesBlockOf = (promptContent: string): string =>
+  promptContent.match(SOURCES_BLOCK)?.[1] ?? promptContent;
 
 export const answerUsesNoRetrievedEvidence = (
   answer: string,
@@ -883,7 +889,9 @@ export const claimsMissingEvidenceItHas = (
   if (!question || !context.trim()) return false;
   const visible = stripThinkBlocks(answer);
   if (!visible) return false;
-  const evidence = withoutCodes(context.replace(SOURCE_MARKER_LINE, ''));
+  const evidence = withoutCodes(
+    context.replace(SOURCE_MARKER_LINE, '')
+  ).replace(YEAR_TOKEN, ' ');
   const wantsDate =
     intent === 'date' ||
     intent === 'event' ||

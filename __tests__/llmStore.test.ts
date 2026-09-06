@@ -996,6 +996,43 @@ describe('sendChatMessage', () => {
     );
   });
 
+  it('judges the draft against the sources block only, not the question or the hints', async () => {
+    const question = 'Ile to jest 2500 EUR w złotych?';
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content: `<sources>\n --- Source 1: Kantor --- \n Kantor czynny codziennie. \n --- End of Source 1 ---\n</sources>\n\nFigures found in the sources: 2500 EUR\n${question}`,
+      },
+    ]);
+    mockInstance.generate
+      .mockResolvedValueOnce('Źródła nie podają kursu euro.')
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const priceSources = async () => ({
+      ...(await noSources()),
+      webIntentKind: 'price' as const,
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(question, 1, priceSources, settings);
+
+    const prompts = mockInstance.generate.mock.calls.map((call) =>
+      JSON.stringify(call[0])
+    );
+    expect(
+      prompts.some((prompt) => prompt.includes('does contain a figure'))
+    ).toBe(false);
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Źródła nie podają kursu euro.'
+    );
+  });
+
   it('retries a refusal that names the model code and quotes the spec line holding the figure (release R-16)', async () => {
     const question = 'Jaką częstotliwość odświeżania ma Samsung QE65QN90D?';
     const specLine =

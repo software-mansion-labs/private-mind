@@ -43,6 +43,7 @@ import {
   stripSourceLabels,
   pickCitationsByAnswer,
   restrictCitationsToContext,
+  sourcesBlockOf,
 } from '../utils/messageSources';
 import { sourcesPresentInContext } from '../utils/contextUtils';
 import { normalizeModelText } from '../utils/normalizeModelText';
@@ -957,10 +958,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const priorAnswerText = get()
         .activeChatMessages.slice(0, -1)
         .findLast((msg) => msg.role === 'assistant')?.content;
-      const promptContext = ((last) =>
-        typeof last?.content === 'string'
-          ? last.content
-          : JSON.stringify(last?.content ?? ''))(effectivePrepared.at(-1));
+      const promptContext = sourcesBlockOf(
+        ((last) =>
+          typeof last?.content === 'string'
+            ? last.content
+            : JSON.stringify(last?.content ?? ''))(effectivePrepared.at(-1))
+      );
 
       let nudged = false;
 

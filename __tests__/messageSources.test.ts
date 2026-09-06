@@ -17,6 +17,7 @@ import {
   type SourceRow,
   buriesFigureContextOffers,
   contextOffersFigureFor,
+  sourcesBlockOf,
   answerStatesFigure,
   evidenceLinesFor,
   answerUsesNoRetrievedEvidence,
@@ -1481,5 +1482,38 @@ describe('honest refusals the evidence nudges must leave alone (release A-7, A-9
     expect(offered.has('przepraszamy')).toBe(false);
     expect(offered.has('sprawdz')).toBe(false);
     expect(offered.has('url')).toBe(true);
+  });
+});
+
+describe('the evidence checks read the sources block, not the whole prompt', () => {
+  it('returns the block content when the prompt carries one', () => {
+    expect(
+      sourcesBlockOf(
+        'Rules.\n<sources>\n --- Source 1: A --- \n text \n --- End of Source 1 ---\n</sources>\n\nFigures found in the sources: 2500 EUR\nIle to 2500 EUR?'
+      )
+    ).toBe('\n --- Source 1: A --- \n text \n --- End of Source 1 ---\n');
+  });
+
+  it('falls back to the whole prompt when there is no block', () => {
+    expect(sourcesBlockOf('passage\n\nquestion')).toBe('passage\n\nquestion');
+  });
+
+  it('does not read a bare year as the amount a price question asked for', () => {
+    expect(
+      claimsMissingEvidenceItHas(
+        'Źródła nie podają ceny biletu.',
+        'Ile kosztuje bilet do Energylandii?',
+        'Energylandia otwarta w sezonie 2026 od kwietnia do października.',
+        'price'
+      )
+    ).toBe(false);
+    expect(
+      claimsMissingEvidenceItHas(
+        'Źródła nie podają ceny biletu.',
+        'Ile kosztuje bilet do Energylandii?',
+        'Bilet jednodniowy do Energylandii kosztuje 219 zł w sezonie 2026.',
+        'price'
+      )
+    ).toBe(true);
   });
 });
