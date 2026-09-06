@@ -214,6 +214,14 @@ const languageInstruction = (language?: QuestionLanguage | null): string => {
   return `Write the whole answer in ${language.name}${inScript} — the language of the question — and do not switch language or script partway through.${noLatin}`;
 };
 
+export const focusedRetrySystemPrompt = (
+  language: QuestionLanguage | null
+): string =>
+  [
+    'The user message quotes lines taken from the sources retrieved for the question. They are the only material to answer from; do not add anything from memory.',
+    languageInstruction(language),
+  ].join('\n');
+
 export const answerLanguageAnchor = (
   language: QuestionLanguage | null
 ): string =>

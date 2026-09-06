@@ -1,4 +1,7 @@
-import { prepareMessagesForLLM } from '../utils/promptUtils';
+import {
+  focusedRetrySystemPrompt,
+  prepareMessagesForLLM,
+} from '../utils/promptUtils';
 import { looksLikeNoAnswer } from '../utils/messageSources';
 import { sourceBlock } from '../utils/contextUtils';
 import {
@@ -2723,6 +2726,21 @@ describe('a question about a named day must not be answered with "now"', () => {
   it('stays silent for a question with no day in it at all', () => {
     expect(systemPromptFor('Ile kosztuje Samsung Galaxy S25?')).not.toContain(
       'does not answer a question about a different day'
+    );
+  });
+});
+
+describe('focusedRetrySystemPrompt', () => {
+  it('names the quoted lines as the only material and pins the language', () => {
+    const prompt = focusedRetrySystemPrompt({ code: 'pl', name: 'Polish' });
+    expect(prompt).toContain('quotes lines taken from the sources');
+    expect(prompt).toContain('Write the whole answer in Polish');
+    expect(prompt).not.toContain('<sources>');
+  });
+
+  it('falls back to the language of the latest message when none was detected', () => {
+    expect(focusedRetrySystemPrompt(null)).toContain(
+      'language of the latest user message'
     );
   });
 });

@@ -22,6 +22,7 @@ jest.mock('../utils/promptUtils', () => ({
   answerLanguageAnchor: jest.fn(
     () => ' (Answer in the same language as this message.)'
   ),
+  focusedRetrySystemPrompt: jest.fn(() => 'Answer from the quoted lines.'),
 }));
 jest.mock('../constants/default-benchmark', () => ({
   BENCHMARK_PROMPT: 'benchmark prompt text',
@@ -1070,6 +1071,7 @@ describe('sendChatMessage', () => {
       content: string;
     }[];
     expect(nudge.map((message) => message.role)).toEqual(['system', 'user']);
+    expect(nudge[0]!.content).toBe('Answer from the quoted lines.');
     expect(nudge.at(-1)!.content).toContain('quoted from the sources');
     expect(nudge.at(-1)!.content).toContain('144 Hz');
     expect(nudge.at(-1)!.content).toContain(question);

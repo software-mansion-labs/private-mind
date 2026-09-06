@@ -23,6 +23,7 @@ import Toast from 'react-native-toast-message';
 import { Feedback } from '../utils/Feedback';
 import {
   answerLanguageAnchor,
+  focusedRetrySystemPrompt,
   prepareMessagesForLLM,
 } from '../utils/promptUtils';
 import { detectQuestionLanguage } from '../utils/questionLanguage';
@@ -977,7 +978,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         },
       ];
       const focusedRetry = (lines: string[]): ExecutorchMessage[] => [
-        ...effectivePrepared.filter((message) => message.role === 'system'),
+        {
+          role: 'system',
+          content: focusedRetrySystemPrompt(questionLanguage),
+        },
         {
           role: 'user',
           content:
