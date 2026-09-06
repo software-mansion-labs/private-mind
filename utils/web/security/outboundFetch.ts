@@ -2,11 +2,20 @@ import {
   BINARY_BODY_SIGNATURES,
   URL_FETCH_MAX_BYTES,
 } from '../../../constants/web';
+import { decodeBytes, latin1, sniffCharset } from './charset';
 
 const XHR_HEADERS_RECEIVED = 2;
+const BINARY_SIGNATURE_BYTES = 8;
 
-const looksBinary = (body: string): boolean =>
-  BINARY_BODY_SIGNATURES.some((signature) => body.startsWith(signature));
+const looksBinary = (bytes: Uint8Array): boolean => {
+  const head = latin1(bytes.subarray(0, BINARY_SIGNATURE_BYTES));
+  return BINARY_BODY_SIGNATURES.some((signature) => head.startsWith(signature));
+};
+
+const responseBytes = (xhr: XMLHttpRequest): Uint8Array => {
+  const body: unknown = xhr.response;
+  return body instanceof ArrayBuffer ? new Uint8Array(body) : new Uint8Array(0);
+};
 
 export const isHttpUrl = (url: string): boolean => /^https?:\/\//i.test(url);
 
@@ -212,24 +221,29 @@ export const fetchTextWithLimit = (
         return;
       }
       if (refusePrivateRedirect()) return;
-      const body = xhr.responseText ?? '';
-      if (body.length > maxBytes) {
+      const bytes = responseBytes(xhr);
+      if (bytes.byteLength > maxBytes) {
         finish(() =>
-          reject(new Error(`Response too large: ${body.length} bytes`))
+          reject(new Error(`Response too large: ${bytes.byteLength} bytes`))
         );
         return;
       }
-      if (contentTypePattern && looksBinary(body)) {
+      if (contentTypePattern && looksBinary(bytes)) {
         finish(() =>
           reject(new Error(`Refusing to read a binary body: ${url}`))
         );
         return;
       }
-      finish(() => resolve(body));
+      const charset = sniffCharset(
+        bytes,
+        xhr.getResponseHeader?.('content-type')
+      );
+      finish(() => resolve(decodeBytes(bytes, charset)));
     };
 
     try {
       xhr.open('GET', url);
+      xhr.responseType = 'arraybuffer';
       for (const [name, value] of Object.entries(headers)) {
         xhr.setRequestHeader(name, value);
       }

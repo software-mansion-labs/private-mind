@@ -24,13 +24,15 @@ const html = `
 
 class FakeXhr {
   static body = '';
+  static bytes: Uint8Array | null = null;
   static ok = true;
   static chunkSize: number | null = null;
   static contentType: string | null = null;
 
   status = 0;
   statusText = '';
-  responseText = '';
+  response: ArrayBuffer | null = null;
+  responseType = '';
   readyState = 0;
   onload: (() => void) | null = null;
   onerror: (() => void) | null = null;
@@ -62,13 +64,18 @@ class FakeXhr {
     if (this.aborted) return;
     this.status = FakeXhr.ok ? 200 : 500;
     this.statusText = FakeXhr.ok ? 'OK' : 'Error';
-    this.responseText = body;
+    const bytes = FakeXhr.bytes ?? new TextEncoder().encode(body);
+    this.response = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength
+    ) as ArrayBuffer;
     this.onload?.();
   }
 }
 
 const mockFetch = (body: string, ok = true) => {
   FakeXhr.body = body;
+  FakeXhr.bytes = null;
   FakeXhr.ok = ok;
   FakeXhr.chunkSize = null;
   FakeXhr.contentType = null;
@@ -131,6 +138,46 @@ describe('extractArticle', () => {
     mockFetch('<html><body><p>no title here</p></body></html>');
     const noTitle = await extractArticle('https://www.example.com/page');
     expect(noTitle.title).toBe('example.com');
+  });
+
+  it('decodes a windows-1250 page by its meta charset when the header has none', async () => {
+    const xhr = mockFetch('');
+    xhr.contentType = 'text/html';
+    const head =
+      '<html><head><meta charset="windows-1250"><title>Cennik</title></head><body><main><p>';
+    const body = 'Bilet ulgowy kosztuje 12 z';
+    const tail = ' od kwietnia. Kasa czynna codziennie do wieczora.'.repeat(3);
+    xhr.bytes = Uint8Array.from([
+      ...new TextEncoder().encode(head),
+      ...new TextEncoder().encode(body),
+      0xb3,
+      ...new TextEncoder().encode(tail),
+      ...new TextEncoder().encode('</p></main></body></html>'),
+    ]);
+
+    const article = await extractArticle('https://example.com/cennik');
+
+    expect(article.text).toContain('12 zł');
+  });
+
+  it('trusts the header charset over the meta tag', async () => {
+    const xhr = mockFetch('');
+    xhr.contentType = 'text/html; charset=iso-8859-2';
+    xhr.bytes = Uint8Array.from([
+      ...new TextEncoder().encode(
+        '<html><head><meta charset="windows-1252"></head><body><main><p>Cena od 5 z'
+      ),
+      0xb3,
+      ...new TextEncoder().encode(
+        ' za sztukę w hurcie, dostawa w dwa dni robocze na terenie kraju.'.repeat(
+          3
+        ) + '</p></main></body></html>'
+      ),
+    ]);
+
+    const article = await extractArticle('https://example.com/hurt');
+
+    expect(article.text).toContain('5 zł');
   });
 
   it('keeps the price inside a buy-box form and drops its controls', async () => {

@@ -146,7 +146,8 @@ class RedirectingXhr {
   readyState = 0;
   status = 0;
   statusText = 'OK';
-  responseText = '';
+  response: ArrayBuffer | null = null;
+  responseType = '';
   responseURL = '';
   aborted = false;
   onload: (() => void) | null = null;
@@ -169,7 +170,8 @@ class RedirectingXhr {
     if (this.aborted) return;
     RedirectingXhr.delivered = true;
     this.status = 200;
-    this.responseText = '<html>secret</html>';
+    this.response = new TextEncoder().encode('<html>secret</html>')
+      .buffer as ArrayBuffer;
     this.onload?.();
   }
 }
