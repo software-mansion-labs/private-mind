@@ -972,12 +972,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         const retried = retryGeneration.response
           ? tidyVisibleAnswer(retryGeneration.response)
           : retryGeneration.response;
-        if (retried?.trim() && !stillBroken(retried)) {
+        if (retried?.trim() && get().isGenerating && !stillBroken(retried)) {
           finalResponse = retried;
         }
       };
 
       if (
+        get().isGenerating &&
         finalResponse &&
         isWrongLanguageAnswer(finalResponse, currentQuestion)
       ) {
@@ -990,6 +991,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       if (
         !nudged &&
+        get().isGenerating &&
         finalResponse &&
         isQuestionEchoAnswer(finalResponse, currentQuestion) &&
         !isWrongLanguageAnswer(finalResponse, currentQuestion)
@@ -1009,6 +1011,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       if (
         !nudged &&
+        get().isGenerating &&
         finalResponse &&
         claimsMissingEvidenceItHas(
           finalResponse,
@@ -1041,6 +1044,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         );
       if (
         !nudged &&
+        get().isGenerating &&
         finalResponse &&
         (ignoresEvidence(finalResponse) || buriesFigure(finalResponse))
       ) {
@@ -1062,6 +1066,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       if (
         !nudged &&
+        get().isGenerating &&
         finalResponse &&
         isCircularNonAnswer(finalResponse) &&
         !isWrongLanguageAnswer(finalResponse, currentQuestion)
@@ -1078,6 +1083,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         : [];
       if (
         !nudged &&
+        get().isGenerating &&
         finalResponse &&
         missingAspects.length > 0 &&
         !isDanglingListAnswer(finalResponse)
@@ -1093,6 +1099,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       if (
         !nudged &&
+        get().isGenerating &&
         finalResponse &&
         isDanglingListAnswer(finalResponse) &&
         !isQuestionEchoAnswer(finalResponse, currentQuestion) &&

@@ -1313,6 +1313,61 @@ describe('sendChatMessage', () => {
     );
   });
 
+  it('persists a stopped draft as it is, without any refinement', async () => {
+    mockInstance.generate.mockImplementationOnce(async () => {
+      useLLMStore.getState().interrupt();
+      return 'Here are the options:';
+    });
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('what are my options?', 1, noSources, settings);
+
+    const prompts = mockInstance.generate.mock.calls.map((call) =>
+      JSON.stringify(call[0])
+    );
+    expect(prompts.some((prompt) => prompt.includes('started a list'))).toBe(
+      false
+    );
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Here are the options:'
+    );
+    expect(useLLMStore.getState().isGenerating).toBe(false);
+  });
+
+  it('keeps the draft when the user stops during the retry', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Sorry, I do not have the sources.')
+      .mockImplementationOnce(async () => {
+        useLLMStore.getState().interrupt();
+        return 'The sources say';
+      })
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'Sorry, I do not have the sources.',
+        1,
+        noSources,
+        settings
+      );
+
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).not.toBe(
+      'The sources say'
+    );
+  });
+
   it('keeps the answer when only the think block loops', async () => {
     const reasoning = 'I should check every source again carefully. '.repeat(4);
     mockInstance.generate.mockResolvedValue(
