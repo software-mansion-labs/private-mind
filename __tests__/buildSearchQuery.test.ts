@@ -534,6 +534,38 @@ describe('planWebSearch', () => {
       expect(plan.queries).toEqual(['Tokyo weather today']);
     });
 
+    it('keeps a currency code the planner adds to a price query', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "current bitcoin price", "kind": "price", "queries": ["bitcoin price USD"]}'
+        );
+      const plan = await planWebSearch(
+        'how much is bitcoin right now',
+        [],
+        generate,
+        { today: TODAY }
+      );
+      expect(plan.queries).toEqual(['bitcoin price USD']);
+    });
+
+    it('drops the example entity written in a script without case', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "current weather", "kind": "fact", "queries": ["दिल्ली मौसम आज"]}'
+        );
+      const plan = await planWebSearch(
+        'jaka jest pogoda w Gdańsku',
+        [],
+        generate,
+        {
+          today: TODAY,
+        }
+      );
+      expect(plan.queries).not.toContain('दिल्ली मौसम आज');
+    });
+
     it('keeps an unrelated multi-query plan alongside a leaked one', async () => {
       const generate = jest
         .fn()

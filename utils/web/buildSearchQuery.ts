@@ -41,6 +41,7 @@ const PLANNER_EXAMPLES: {
   kind: WebIntentKind;
   queries: string[];
   expects?: string[];
+  leaks?: string[];
 }[] = [
   {
     user: "hey, how's it going?",
@@ -70,6 +71,7 @@ const PLANNER_EXAMPLES: {
     kind: 'fact',
     queries: ['Tokyo weather today'],
     expects: ['temperature', 'rain or sun'],
+    leaks: ['Tokyo'],
   },
   {
     user: 'how much does bitcoin cost right now',
@@ -101,6 +103,7 @@ const PLANNER_EXAMPLES: {
     intent: 'most streamed song this year',
     kind: 'fact',
     queries: ['most streamed song Spotify 2025'],
+    leaks: ['Spotify'],
   },
   {
     user: 'jaka jest pogoda w Krakowie dzisiaj',
@@ -109,6 +112,7 @@ const PLANNER_EXAMPLES: {
     kind: 'fact',
     queries: ['pogoda Kraków dzisiaj'],
     expects: ['temperatura', 'opady'],
+    leaks: ['Kraków'],
   },
   {
     user: 'दिल्ली में आज का मौसम कैसा है',
@@ -116,6 +120,7 @@ const PLANNER_EXAMPLES: {
     intent: 'current Delhi weather',
     kind: 'fact',
     queries: ['दिल्ली मौसम आज'],
+    leaks: ['दिल्ली'],
   },
 ];
 
@@ -129,14 +134,7 @@ const PLANNER_EXAMPLES_TEXT = PLANNER_EXAMPLES.map(
 ).join('');
 
 const EXAMPLE_LEAK_TOKENS: string[] = [
-  ...new Set(
-    PLANNER_EXAMPLES.flatMap(
-      (ex) =>
-        [...ex.queries, ...(ex.expects ?? [])]
-          .join(' ')
-          .match(/\p{Lu}[\p{L}]+/gu) ?? []
-    )
-  ),
+  ...new Set(PLANNER_EXAMPLES.flatMap((ex) => ex.leaks ?? [])),
 ];
 
 const PLANNER_SYSTEM_PROMPT = (today: string): string =>
