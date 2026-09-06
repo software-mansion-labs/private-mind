@@ -133,6 +133,20 @@ describe('extractArticle', () => {
     expect(noTitle.title).toBe('example.com');
   });
 
+  it('folds a title spread over several lines into one, so the source header stays a line', async () => {
+    mockFetch(
+      '<html><head><title>\n    Karta graficzna\n\t\tRTX 5080\n  </title></head><body><p>x</p></body></html>'
+    );
+    const fromTitle = await extractArticle('https://example.com/a');
+    expect(fromTitle.title).toBe('Karta graficzna RTX 5080');
+
+    mockFetch(
+      '<html><head><meta property="og:title" content="Sklep\n  online" /></head><body><p>x</p></body></html>'
+    );
+    const fromOg = await extractArticle('https://example.com/b');
+    expect(fromOg.title).toBe('Sklep online');
+  });
+
   it('throws on a non-ok response', async () => {
     mockFetch('', false);
     await expect(extractArticle('https://x.com')).rejects.toThrow();

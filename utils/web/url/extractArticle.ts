@@ -207,10 +207,12 @@ const extractTitle = (
   metaTags: Map<string, string>
 ): string | undefined => {
   const og = metaTags.get('og:title');
-  if (og) return decodeEntities(og).trim();
+  if (og) return singleLine(decodeEntities(og));
   const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  return title?.[1] ? decodeEntities(title[1]).trim() : undefined;
+  return title?.[1] ? singleLine(decodeEntities(title[1])) : undefined;
 };
+
+const singleLine = (text: string): string => text.replace(/\s+/g, ' ').trim();
 
 const HEADLINE_TAIL_MIN_SHARE = 0.2;
 
