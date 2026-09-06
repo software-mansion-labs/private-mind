@@ -1,0 +1,149 @@
+# Code review of `web-search-compact` against `main` — findings and work plan
+
+Reviewed 2026-09-05/06 at `cdced05`. Method: five independent read-only
+passes (retrieval pipeline, scraping and security, store and answer
+post-processing, chat UI and hooks, tests and conventions), each finding
+verified against the code path, then the ones that decide merge order
+re-checked by hand (trailer count, the `USD` example leak, the deadline
+timer leak, the sticky sheet context, the IDN gap, the lean confidence
+constant). Nothing was changed; this document is the plan.
+
+Size: 170 commits, 125 non-test files (+19.5k lines), 85 test files
+(+21.7k lines, ~1 580 cases), two new dependencies
+(`react-native-webview` 13.16.0, `expo-web-browser`). No import cycles
+touch the new modules. tsc clean, 2 070 tests green.
+
+## Verdict in one paragraph
+
+The architecture is sound and the hard parts are done well: the
+AbortSignal is threaded from the store to the per-chunk embedding loop,
+the SSRF check covers every classic ASCII bypass, response size is bounded
+three ways, the WebView message channel is validated, the streaming hot
+path below `Messages` is isolated so history rows do not re-render per
+token, `webSearchTrace` is pure and tested, and the test suite has no
+padding (no snapshots, no `.only`, passes in randomized order). What
+stands between this and a senior-quality merge is concentrated: six
+security gaps in the extractor and delimiter layer, a handful of
+lifecycle races in the store, an answer-quality nudge chain that fires on
+answers it should leave alone, ~560 tokens of instruction overhead on a
+2 048-token window, and repository hygiene the project's own rules
+forbid (17 attribution trailers, 58 explanatory comments, a dozen
+per-language word lists).
+
+## Blockers — fix before merge (P0)
+
+### Security
+
+| # | Finding | Where | Fix |
+|---|---|---|---|
+| S1 | IDN hostnames bypass `isPrivateHost`: the runtime `URL` does no IDNA mapping, OkHttp does, so `http://ⓛⓞⓒⓐⓛⓗⓞⓢⓣ/` or fullwidth `ｌｏｃａｌｈｏｓｔ` reaches 127.0.0.1 from a pasted URL or a planted SERP result. | `utils/web/security/outboundFetch.ts:108-122` | Reject any non-ASCII hostname unless every label is `xn--`; or NFKC-normalise and re-run the check. Add the cases to `outboundFetch.test.ts`. State DNS rebinding as out of scope in the commit. |
+| S2 | `neutralizeDelimiters` does not cover `<sources>`/`</sources>` or `[Answers: …]`; `promptUtils` re-parses `[Answers:` out of context text. A page can close the quarantine block or mis-attribute figures in a comparison. | `utils/web/security/untrustedContent.ts:68-69`, `utils/promptUtils.ts:262,299,538,626` | Break `<\/?sources` and `[Answers:` in the sanitizer; derive the answers-tag count from `sourceDocuments`, not from the text. |
+| S3 | `stripTagBlock` and the main-content regexes are quadratic on unclosed tags: 320 KB of `<script ` stalls the JS thread ~15 s, `URL_FETCH_MAX_BYTES` is 2 MB. On Android a 250 ms stall makes the WebView navigation gate default to allow (S6). | `utils/web/url/extractArticle.ts:15-19,69,92-96` | Replace the regex family with a single-pass `indexOf` tokenizer that strips `script/style/noscript/svg/template/nav/header/footer/aside` depth-aware; cap HTML handed to the extractor (~512 KB) and the `<` count. Fixtures: unterminated `<script>`, 130-deep nest, no `<body>`. |
+| S4 | Tag stripping is not quote-aware; attribute text after a `>` inside quotes leaks into passages (the `sidebar#stuck…` residue from the release round). Text hidden in an attribute reaches the prompt while invisible on the page. | `extractArticle.ts:77,151,207,240,303` | One quote-aware tag pattern, or attribute-stripping in the S3 tokenizer, applied to `BLOCK_TAG` and `META_TAG_PATTERN` too. |
+| S5 | Control and format characters (`&#0;`, `&#8203;`, `&#x202e;`) survive entity decoding; only six named entities are decoded; SERP snippets get no cleaning. Invisible or bidi-obfuscated injection text. | `extractArticle.ts:30-41,305`, `untrustedContent.ts:33` | One `sanitizeUntrustedText` (strip `\p{Cc}` except `\n`, strip `\p{Cf}`, HTML4 entity table) applied to page text, titles, snippets, JSON-LD strings. |
+| S6 | Redirect target is validated after the whole body downloaded; `responseURL` is available at `HEADERS_RECEIVED`. Android navigation allowlist fails open on a JS stall (`RNCWebViewClient` "defaulting to allow"). `serp-error` text is uncapped and logged verbatim. | `outboundFetch.ts:193-203`, `WebScrapeSheet.tsx:57-60`, `untrustedContent.ts:48-50`, `webViewScrapeProvider.ts:133` | Check `responseURL` in `HEADERS_RECEIVED` and abort; add `onNavigationStateChange` that resets to idle when off-allowlist; cap `serp-error` to ~200 chars, log the engine id only. |
+
+### Correctness
+
+| # | Finding | Where | Fix |
+|---|---|---|---|
+| C1 | `loadModel` refuses to load an already-downloaded model when offline (`NetInfo.isConnected === false` → toast and return); `sendChatMessage` then toasts again and throws. The on-device app is unusable in airplane mode. | `store/llmStore.ts:636-644,814` | Gate on "model file not in cache", not on connectivity; `ModelCard` already gates downloads. Test: offline + downloaded model → loads. |
+| C2 | The deadline timer and the Stop listener in `runWebSearch` are released only on the two happy-path returns; any throw leaks both. A leaked timer later pushes a phantom `timeout` row into the next search's trace; the listener mutates returned telemetry. | `utils/web/runWebSearch.ts:280-292,641,658` | `try/finally` around the body: clear the timer, remove the listener; drop `finish`. Test: provider throws → no timer pending (fake timers). |
+| C3 | The nudge chain runs on an interrupted draft, and the dangling-list continuation re-arms `isGenerating` after Stop. | `store/llmStore.ts:952-1116,1101` | Capture `interrupted = () => !get().isGenerating` after the first generation; gate every nudge and the continuation on it; persist the partial draft directly when interrupted. Test per phase (see T2). |
+| C4 | The post-turn digest generation is fire-and-forget: not serialized with the next turn (`utilityGenerating` guards only other utility calls), `runWithModelOffloaded` can `delete()` the module mid-digest, and `suppressUtilityStreaming` stays true into the user's next answer so its first tokens do not stream and the planner call returns `''`. | `store/llmStore.ts:1186-1201,1310-1336,223` | A `utilityChain` promise awaited (or interrupted) by `sendChatMessage` and `runWithModelOffloaded`; `waitForModelToBecomeIdle` includes `utilityGenerating`; the suppress flag scoped to the utility call, not global. |
+| C5 | Embedding-download sheet state: downloading from the Web toggle then opens the document picker (`pendingDocumentPickRef` set unconditionally); `embeddingSheetContext`/`embeddingSheetRequiredRef` are set to the web values and never reset, so a later document flow shows the web copy, blocks dismissal and flips the Web toggle; the prompt fires even when the parent refused to enable web search. | `hooks/useAttachment.ts:441-444,381-391`, `components/chat-screen/ChatBar.tsx:147-186`, `useChatScreenActions.ts:83-100` | Make the resume action explicit (`presentDownloadSheet({ resume: 'picker' \| 'url' \| 'none' })`), derive context/required per presentation and reset on dismiss, have the toggle handler return whether it accepted. Three tests, one per bug. |
+| C6 | `claimsMissingEvidenceItHas` fires on any figure-less answer to a how-much/when question, not on refusals ("Bilet jest darmowy." → retried with "the block does contain a figure… answer with it" → the model is pushed to invent one); its context test counts numbers from the question itself and bare years. `buriesFigureContextOffers` includes `'fact'`, so "Who is the CEO?" answered by a name is nudged to lead with a number. | `utils/messageSources.ts:682-686,866-906`, `store/llmStore.ts:922-927` | Pass only the `<sources>` content to the checks, not the whole wrapped user message; require a refusal signal for the silence check; drop `'fact'` from `FIGURE_LEAD_KINDS`; exclude question figures from the evidence test. Fixtures: "darmowy", the CEO answer, a question carrying a number. |
+| C7 | Without embeddings (low memory, model not ready) retrieval confidence is the constant 0.5, strictly between the 0.35/0.6 thresholds: every search is `ambiguous`, `weak` fires in the trace, a recovery round runs whenever any fetch failed; the caller defines weak as `incorrect`, a third definition. | `utils/web/retrievalEvaluator.ts:42-66`, `runWebSearch.ts:613-615`, `useSendChatMessage.ts:278` | Make the lean label observable (content count vs result count, agreement); one definition of "weak" in one place. |
+| C8 | `EXAMPLE_LEAK_TOKENS` is built from example `expects` too, so `USD` is a "leaked" token: "how much is bitcoin" → planner `bitcoin price USD` → dropped → verbatim fallback. Devanagari examples are unprotected (`\p{Lu}` never matches). | `utils/web/buildSearchQuery.ts:131-140,180-185` | Build the list from proper nouns of the example prompts only; exclude currency codes; handle non-cased scripts explicitly. Test: `bitcoin price USD` survives. |
+| C9 | `truncateAtRepeatedClause` and `normalizeModelText` run over the raw response including `<think>`; a repetitive reasoning trace cuts off `</think>`, `stripThinkBlocks` yields `''`, the user sees "Failed to generate a response". | `store/llmStore.ts:912-915,963-969`, `utils/thinking.ts:78` | Apply both to `outsideThinkSegments` only. Test with a Qwen-style think block. |
+
+### Repository hygiene the project rules make mandatory
+
+| # | Finding | Fix |
+|---|---|---|
+| H1 | 17 commits carry `Co-Authored-By: Claude …` trailers; CLAUDE.md requires zero. | Rewrite the branch history once (`git rebase -x` or `filter-repo --message-callback` stripping the trailer), force-push with lease. **Owner decision: the branch is pushed; agree the moment.** |
+| H2 | 58 explanatory comments added (22 in non-test code: `buildSearchQuery.ts` 11, `promptUtils.ts` 5, `useKeyboardLift.ts` 5, `useSendChatMessage.ts` 1; 36 in tests, mostly narrative headers in `entityAnchor`, `questionShape`, `loopTruncationKeepsAnswer`). Allowed as they stand: 5 pragmas, 2 one-line invariants. Three `*_EVIDENCE` prose constants in `constants/model-profiles.ts` (~3 KB shipped in the bundle) are comments in disguise. | Delete; move the reasoning into commit messages or `docs/`; cut the `useKeyboardLift` block to its first line. |
+| H3 | Per-language word lists (owner rule): 30+ instances. Largest: `questionLanguage.ts` `WORDS` (15-language function words), `queryTerms.ts` 14 stopword sets, `promptUtils.ts` eight PL/EN marker lists gating 200–570-char paragraphs, `messageSources.ts` `QUESTION_WANTS_*`, `buildSearchQuery.ts` nine PL/EN marker lists, `webResultsToContext.ts` `WHEN/PRICE/MONEY/DATE`, `calendarFacts.ts` temporal stems, `constants/citations.ts` refusal grammar. | Phase 4 below, list by list, each with its red-before-fix test. **Owner decision** where a replacement costs precision (refusal grammar, same-script language detection). |
+
+## Should fix before release (P1)
+
+Store and answers:
+- P1-1 `focusedRetry` keeps the grounded system prompt that says "the `<sources>` block below is the ONLY authoritative source" while sending no block (`llmStore.ts:938-946`). Build the focused retry with a minimal system prompt (language, date, "answer from these quoted lines").
+- P1-2 Instruction overhead on a web turn ≈ 2 240 chars ≈ 560 tokens of a ~1 305-token budget, leaving ~400–550 tokens for sources; the conflict rule is stated twice, language three times, figures twice; `fallback` ("only then may you add what you know") contradicts `figures` ("never estimate… even a well-known one") (`promptUtils.ts:106-205,593,619-622`). Each rule in one place, system prompt under a token cap, the ten `get*Instruction` paragraphs folded into ≤3 keyed on planner `kind`.
+- P1-3 `isWrongLanguageAnswer` compares two word-list guesses and is the first nudge, so a pt/es or cs/pl confusion short-circuits every other check (`messageSources.ts:319-331`, `llmStore.ts:977-984`). Flag only when scripts differ or both detections are decisive.
+- P1-4 `calendarFacts` prefix stems misfire (`now`→"nowy", `current`→"currency", `srod`→"środek", `dat`→"data"), injecting the weekday and time-scope paragraphs on non-temporal questions (`calendarFacts.ts:30-46,64-74,101-112`). Whole-word tokens for the short stems, or planner `kind`.
+- P1-5 `answerUsesNoRetrievedEvidence` compares unstemmed names and exact digit runs ("3 999" vs "3999"; Polish declension) (`messageSources.ts:585-600`). Stem names, normalise grouping, require ≥2 distinctive tokens.
+- P1-6 Loop limits cut legitimate structured answers ("Price: not listed" under two products; "Yes | Yes" table rows) (`loopDetection.ts:9-12,67-68,100-103`). Require adjacency, exempt table/list rows whose label differs.
+- P1-7 `used: false` is dropped on reload while `attributeSourcesByBlock` filters `used !== false`: attribution differs before and after restart (`chatRepository.ts:139`, `attributeSources.ts:109-111`). Persist booleans as-is.
+- P1-8 `aspectsMissingFromAnswer` takes sub-query tokens (`pln`, `eur`, `site:`) as aspects (`messageSources.ts:624-649`). Strip currency/unit codes and planner boilerplate.
+- P1-9 `markGenerationFailed` unloads the LLM on interrupt too, so stopping a web search forces a full model reload (`llmStore.ts:743-745`). Unload on real errors only.
+- P1-10 Reduced-prompt retry streams into a placeholder still holding the failed attempt's tokens (`llmStore.ts:886-905`); returning to a generating chat appends an empty placeholder and loses streamed text (`:597-624`); `interrupt()` during `isRefining` can accept a truncated retry (`:1339-1357`); `NO_ANSWER_FALLBACK` has only pl/en (`:445-452`); `humanizeSourceReferences` maps "Source N" by array position while RAG blocks may be reordered (`messageSources.ts:165-180`); `visibleDigestText` returns an unterminated think block as the digest (`conversationDigest.ts:40-49`).
+
+Pipeline:
+- P1-11 Recovery round re-embeds every round-1 page (stitched passages miss the cache) (`runWebSearch.ts:583-604`). Split enrich from score; score the merged raw set once.
+- P1-12 `totalMaxChars` is not enforced: 300-char floor per source plus a 500-char snippet on top → 5–8× the budget with five sources (`webResultsToContext.ts:486-499,552-565`). Allocate from a running remainder.
+- P1-13 `regroundYears` rewrites any planner year outside the last two to the current one unless the latest message carries it; historical follow-ups become 2026; UTC parse + local getter off by one at New Year (`buildSearchQuery.ts:187-203`). Reground only with a relative-time marker; check the conversation window.
+- P1-14 `sharesLanguageWith` folds and tokenizes the whole chat history per planner query; `conversationSubject` is recomputed per query with O(occurrences × corpus) scans (`buildSearchQuery.ts:598-614,700-711`, `conversationSubject.ts:68-78,196-226`). Compute once per plan, cap to the prompt's turn window.
+- P1-15 Page cache stores bot walls and empty articles (sticky for 10 min, zero eviction cost) (`runWebSearch.ts:196-204`, `cache/webCache.ts:35-36`). Cache only usable articles; minimum cost per entry.
+- P1-16 `fetchFailure` reads a 3-digit path segment as an HTTP status (`fetchFailure.ts:18,39-41`). Typed error with `status` from `outboundFetch`.
+- P1-17 `cancelPending` is lost during the throttle delay; a late `serp-results` from engine A can settle engine B; re-injection is suppressed for the whole challenge (`webViewScrapeProvider.ts:38-42,79-99,117,143`, `useScrapeHost.ts:43-50`). Per-run generation counter, nonce in the injected parser, one recheck on `loadEnd` during a challenge.
+- P1-18 No charset handling (windows-1250 pages arrive as mojibake) (`outboundFetch.ts:204`); titles keep newlines and break the `--- Source N: name ---` header (`extractArticle.ts:63-71`); `<form>` stripping removes buy-box prices (`:287-300`).
+- P1-19 `console.warn('Web query failed', q, error)` logs the user-derived query in production (`runWebSearch.ts:339`).
+
+UI:
+- P1-20 Whole-store `useLLMStore()` subscriptions in `ChatScreen`, `useChatScreenActions`, `useSendChatMessage`, `ChatBar`, `[id].tsx` re-render the shell above `Messages` on every streamed token; `useSendChatMessage` returns a new function per render; `handleUserLongPress` depends on `chatHistory`. Selectors with `useShallow`, `useCallback`, refs.
+- P1-21 `WebSearchBlock` renders `WebSearchTraceList` at two JSX positions, so the open list snaps shut and re-animates when the search completes (`WebSearchBlock.tsx:147-196`). One instance at a stable position.
+- P1-22 A live, JS-enabled WebView is mounted for the app's lifetime from `_layout.tsx:69`, remounted per engine in incognito (challenge cookies lost each search). Render only while a search is pending; navigate by `source`.
+- P1-23 Accessibility: `ChatBarToggle` has no role/state/label and is 36 pt; trace header ≈ 20 pt, rows 30 pt, no `hitSlop`; fixed `height: ROW_HEIGHT` clips at large font scale. Roles, states, `hitSlop`, `minHeight`.
+- P1-24 `messageRowKey` flips from `local-*` to `msg-*` on store reload, remounting every row (FadeIn replays, trace expansion and lightbox state lost) (`utils/messageRowKey.ts:4-5`). Prefer `msg-${id}` once `id > 0`.
+- P1-25 `attributeSourcesByBlock` runs twice per answer part (`MessageItem.tsx:162-177`, `AttributedAnswer.tsx:16-19`); pin release scrolls during an active drag (`Messages.tsx:767-780`); `WebFavicon` has no shared negative cache.
+
+## Structure and cleanup (P2)
+
+- Split: `llmStore.ts` (1 368 lines: model lifecycle / send + nudge table / benchmark), `sendChatMessage` (~500 lines; the seven `if (!nudged && …)` blocks become a `{detect, prompt, stillBroken}` table), `runWebSearch` (~490 lines with six closures sharing mutable state → module-level stages with an explicit context), `messageSources.ts` (answer-quality predicates are their own module), `buildSearchQuery.ts` (planner parsing vs `carryReferentIntoQuery`), `prepareMessagesForLLM` (~260 lines → `buildSystemPrompt` / `fitContext` / `fitHistory`), `webSearchTrace.buildRows` (~300 lines, two branches re-implementing closing rows), `useAttachment` (`runDocumentPicker` and `runUrlSource` share ~120 lines).
+- Duplicates: stable partition ×3 (`promoteVerified`, `variantMatch`, `fetchRecovery`), `escapeRegExp` ×3, `wordCount` ×2, `truncate` ×2 with different semantics, two reveal-fallback effects in `Messages.tsx`, `useKeyboardLift` instantiated twice, `Keyboard.dismiss()` in two places, `mentionsStem` building a `RegExp` per call.
+- Dead code and flags: `enrichedByUrl`, `blankSpace` (only ever 0), `pinFloorRef`, `if (fenced) flush(); else flush();`, `WEB_SEARCH_TIMEOUT_MS`, `WEB_QUERY_CONCISE_MAX_WORDS`, compile-time booleans that leave permanently dead branches (`WEB_ADAPTIVE_ENRICH`, `WEB_AGREEMENT_ENABLED`, `WEB_RECOVERY_ENABLED`, `WEB_QUERY_GATE`, `WEB_QUERY_REWRITE`, `WEB_OFFLOAD_LLM_FOR_EMBEDDINGS`, `WEB_BENCH_LOGS`), `WEB_RECOVERY_MAX_QUERIES = 1` applied as a no-op slice, the `grounded` repetition-penalty flag (`GROUNDED_REPETITION_PENALTY === default`), `PROFILE_BY_FAMILY = {}`, ~50 exports with no importer outside tests (un-export or move to a `testing` barrel).
+- API shape: `enrichWebResults` (7 positional params), `retrieveWebPassages` (6), `webResultsToContext` (5) → options objects; `WebSearchResult.title/snippet` typed required while six sites defend with `?? ''`; `labelSubQueries` redundant and wrong after rescues; `enrichedPages` reports the target, not pages read; `hostname()` exported from the context formatter and imported by nine modules and UI → `utils/web/url/`; `SourceRow` borrows `SheetStyles` from `SourcesSheet` (circular type import) → own `useThemedStyles`.
+- Constants: two caps for one concept (`WEB_MAX_BASE_QUERIES` 4 vs `WEB_QUERY_MAX_SUBQUERIES` 3); `PLANNER_EXAMPLES` hard-codes 2025 while the prompt injects 2026.
+
+## Tests (T)
+
+- T1 Coverage gaps with no test at all: `useSendChatMessage` (send orchestration and persistence order), `WebScrapeSheet`, the redirect branch of `fetchTextWithLimit` (dead in every run — no fixture sets `responseURL`), `interrupt()` during search / enrich / mid-stream / digest, `webViewScrapeProvider` malformed payload / stray message / throttle, `extractArticle` malformed HTML, `AttributedAnswer`, `ChatBarToggle`, `useWebSearchActivity`, `fingerprint`, `anchorTokens`.
+- T2 Brittleness concentrated in `promptUtils.test.ts`: ~90 of 128 cases assert verbatim prompt prose; "keeps the assembled prompt within budget" restates the implementation's loop predicate; whole-prompt `toBe`. Replace with behavioural probes (marker present, source dropped) and at most one golden per section.
+- T3 Golden counts in `deviceAnswerCorpus.test.ts` (`cut 12`, `untouched 247`, …) re-baseline on every heuristic tweak → named exemplars plus bounds.
+- T4 Real timers in `runWebSearch.test.ts:296-349` and a vacuous negative after a 10 ms sleep in `llmStore.test.ts:1411` → fake timers / deterministic barriers. `mockResolvedValueOnce` queues keyed on call order (`llmStore.test.ts:586,649-653,857-860`) → `mockImplementation` keyed on argument. Fourteen `toHaveBeenCalledTimes` on internal retry counts.
+- T5 Duplication: twelve files define their own `result()`/`page()` builders, six mock `react-native-rag`, four fake providers, ~50 hand-written planner JSON replies, the Warsaw passage pasted twice → `__tests__/helpers/webFixtures.ts` and `__mocks__/react-native-rag.ts`.
+- T6 Titles: 100 cases carry opaque incident tags (`F31`, `S4.1`, `A-10`); half the "live" tests assert one exact output string. Rule in the title, provenance in the fixture name, `it.each` over the class of inputs.
+- T7 `multilingualWebSearch.eval.test.ts` (103 end-to-end scenarios) runs in the unit suite → `*.eval.test.ts` excluded from default `testMatch`, `test:eval` script.
+
+## Work plan
+
+Rules for every step: one behavioural change plus its red-before-fix test per commit; `npx jest`, `tsc --noEmit`, `eslint` green before the next step; no comments in added code; no attribution trailers. Sizes: S ≤ half a day, M ≈ a day, L ≈ two to three days.
+
+**Phase 0 — decisions (owner, before any code)**
+1. H1: when to rewrite the branch history to strip the 17 trailers (all other work rebases on top).
+2. C1: offline model loading — confirm the intended rule is "loadable if cached".
+3. H3: which word lists may lose precision (refusal grammar, same-script language detection) and which must stay behind an explicit exemption.
+4. Leaving a chat during a turn interrupts it by design; keep, or give the abandoned question a visible state (already in `docs/CHAT_UX_ISSUES.md`).
+
+**Phase 1 — security (L, ~3 days)** S3 tokenizer first (S4 and S5 build on it), then S1, S2, S6, then the P1-17/P1-18 scraper fixes. Tests: IDN table, forged `</sources>` and `[Answers:`, unterminated `<script>` under a time budget, attribute leak fixture, control-char fixture, redirect `responseURL` fixture.
+
+**Phase 2 — store lifecycle (M–L, ~2 days)** C1, C2, C4, C3, C9, P1-9, P1-10. Test per interrupt phase with a deferred `buildSources`; offline load; timer leak with fake timers; digest serialization.
+
+**Phase 3 — answer quality checks (M, ~1.5 days)** C6, then P1-3, P1-5, P1-8, P1-1 (minimal focused system prompt), P1-6, P1-7; then the nudge table refactor (P2) once behaviour is pinned. Fixtures: "darmowy", CEO name, question with a number, pt/es answer, declined Polish names, two-product comparison.
+
+**Phase 4 — prompt budget and word lists (L, ~3 days)** P1-2 (one rule, one place; token cap; ≤3 intent paragraphs), P1-4, then H3 list by list in this order: `promptUtils` marker lists → planner `kind`; `messageSources` `QUESTION_WANTS_*` → `kind`; `webResultsToContext` `WHEN/PRICE/MONEY/DATE` → `kind`/`expects`/`Intl`; `buildSearchQuery` pronoun/demonstrative/opener lists → content-term ratio; `calendarFacts` stems → `kind` + whole words; `queryTerms` stopwords → IDF; `normalizeModelText.UNIT_FORMS` → drop. Leave, with an explicit note in the commit: `LETTERS`/`SCRIPTS`/`NAMES` (character-level), `FOLD_MAP`, `VARIANT_TOKENS` (marketing vocabulary), the LLM-output scrub. Measure planner and answer gate metrics on the device after each removal.
+
+**Phase 5 — pipeline correctness (M, ~1.5 days)** C7, C8, P1-11, P1-12, P1-13, P1-14, P1-15, P1-16, P1-19; dead flags and constants from P2.
+
+**Phase 6 — UI (M, ~1.5 days)** C5 first (three tests), then P1-20, P1-21, P1-22, P1-23, P1-24, P1-25, and the `Messages.tsx`/`useKeyboardLift` duplicates.
+
+**Phase 7 — structure (L, spread across phases)** The splits in P2, done only after the behaviour they touch is pinned by the tests above: `llmStore` after Phase 2 and 3, `runWebSearch` after Phase 5, `prepareMessagesForLLM` after Phase 4, `buildRows` and `useAttachment` after Phase 6. Then the duplicate helpers, options objects, `hostname` move, `SourceRow` styles, un-exports.
+
+**Phase 8 — tests (M, ~1.5 days, can start any time)** T5 helpers first (every later test uses them), then T1 gaps in the order Phase 1–2 needs them, then T2–T4, T6, T7. H2 comment removal rides along with whichever phase touches the file.
+
+Total: roughly three to four engineer-weeks, with Phases 1 and 2 as the merge gate and Phases 3–8 acceptable as fast follow-ups on the same branch if the release date demands it — in that case Phase 1, 2, C5–C8 and H1–H2 are the minimum.
+
+## Verified non-issues
+
+No `g`-flag regex used through `.test()` anywhere in the diff. No import cycles among the new modules. Every themed component uses `useThemedStyles`. No unguarded `console.log`; no TODO/FIXME. Commit subjects follow `type(scope): summary` (166/170; the four outliers are merges). The blur cleanup cannot double-interrupt on the phantom→real route swap. Timers in `Messages.tsx`, `SourcesSheet`, `WebFavicon` and `useChatScreenLayout` are cleared on unmount.
