@@ -42,6 +42,8 @@ const mockUseAttachment = {
   sheetRef: { current: null },
   embeddingDownloadSheetRef: { current: null },
   presentDownloadSheet: mockPresentDownloadSheet,
+  markDownloadSheetClosed: jest.fn(),
+  downloadModelAndContinue: jest.fn(),
   pickFromLibrary: jest.fn(),
   pickFromCamera: jest.fn(),
   pickDocument: jest.fn(),
@@ -53,6 +55,22 @@ const mockUseAttachment = {
 
 jest.mock('../hooks/useAttachment', () => ({
   useAttachment: () => mockUseAttachment,
+}));
+
+const mockSheetProps: {
+  current: { context?: string; required?: boolean; onDismiss?: () => void };
+} = { current: {} };
+
+jest.mock('../components/bottomSheets/EmbeddingDownloadSheet', () => ({
+  __esModule: true,
+  default: (props: {
+    context?: string;
+    required?: boolean;
+    onDismiss?: () => void;
+  }) => {
+    mockSheetProps.current = props;
+    return null;
+  },
 }));
 
 jest.mock('../components/bottomSheets/AttachmentSheet', () => {
@@ -904,6 +922,41 @@ describe('web search toggle and the embedding download sheet', () => {
     await flush();
 
     expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
+  });
+
+  it('tells the attachment hook to resume nothing after the download', async () => {
+    useEmbeddingModelStore.setState({ status: 'not_downloaded' });
+    toggleWebOn();
+    await flush();
+
+    expect(mockPresentDownloadSheet).toHaveBeenCalledWith('none');
+  });
+
+  it('stays quiet when the screen refused to enable web search', async () => {
+    useEmbeddingModelStore.setState({ status: 'not_downloaded' });
+    const onWebSearchToggle = jest.fn(() => false);
+    renderBar({
+      webSearchEnabled: false,
+      onWebSearchToggle,
+    } as Partial<typeof defaultProps>);
+    fireEvent.press(screen.getByTestId('web-search-toggle'));
+    await flush();
+
+    expect(onWebSearchToggle).toHaveBeenCalledTimes(1);
+    expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
+  });
+
+  it('shows the document copy again once the web prompt is dismissed', async () => {
+    useEmbeddingModelStore.setState({ status: 'not_downloaded' });
+    toggleWebOn();
+    await flush();
+    expect(mockSheetProps.current.context).toBe('web');
+
+    act(() => mockSheetProps.current.onDismiss?.());
+    await flush();
+
+    expect(mockSheetProps.current.context).toBe('document');
+    expect(mockSheetProps.current.required).toBe(false);
   });
 
   it('drops the pending offer when web search is switched off in the meantime', async () => {

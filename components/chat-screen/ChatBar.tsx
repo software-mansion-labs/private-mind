@@ -78,7 +78,7 @@ interface Props {
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
   webSearchEnabled?: boolean;
-  onWebSearchToggle?: () => void;
+  onWebSearchToggle?: () => boolean | void;
   hasMessages: boolean;
   disabled?: boolean;
   modelSwitching?: boolean;
@@ -155,8 +155,8 @@ const ChatBar = ({
     const enabling = !webSearchEnabled;
     const toggleSeq = webToggleSeqRef.current + 1;
     webToggleSeqRef.current = toggleSeq;
-    onWebSearchToggle?.();
-    if (!enabling) return;
+    const accepted = onWebSearchToggle?.();
+    if (!enabling || accepted === false) return;
     if (isMemoryConstrained(model)) return;
 
     const required = isHighMemoryDevice(model);
@@ -167,7 +167,7 @@ const ChatBar = ({
       if (!embeddingModelNeedsDownloadPrompt(status)) return;
       setEmbeddingSheetContext('web');
       embeddingSheetRequiredRef.current = required;
-      presentDownloadSheet();
+      presentDownloadSheet('none');
     });
   }, [webSearchEnabled, onWebSearchToggle, model, presentDownloadSheet]);
 
@@ -180,6 +180,8 @@ const ChatBar = ({
       } else {
         webEmbeddingPromptDismissedRef.current = true;
       }
+      setEmbeddingSheetContext('document');
+      embeddingSheetRequiredRef.current = false;
     }
     markDownloadSheetClosed();
   }, [embeddingSheetContext, markDownloadSheetClosed, onWebSearchToggle]);

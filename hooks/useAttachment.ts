@@ -12,6 +12,8 @@ import { extractArticle } from '../utils/web/url/extractArticle';
 import { buildUrlSource } from '../utils/web/url/urlSource';
 import { hostname } from '../utils/web/webResultsToContext';
 
+export type DownloadResume = 'attachment' | 'none';
+
 export interface Attachment {
   id: string;
   type: 'image' | 'document';
@@ -56,6 +58,7 @@ export const useAttachment = () => {
   const attachmentSheetOpenRef = useRef(false);
   const embeddingDownloadSheetRef = useRef<BottomSheetModal>(null);
   const embeddingDownloadSheetOpenRef = useRef(false);
+  const downloadResumeRef = useRef<DownloadResume>('attachment');
   const pendingDownloadSheetRef = useRef(false);
   const pendingDocumentPickRef = useRef(false);
   const { vectorStore, embeddings } = useVectorStore();
@@ -372,10 +375,14 @@ export const useAttachment = () => {
     [vectorStore, embeddings]
   );
 
-  const presentDownloadSheet = useCallback(() => {
-    embeddingDownloadSheetOpenRef.current = true;
-    embeddingDownloadSheetRef.current?.present();
-  }, []);
+  const presentDownloadSheet = useCallback(
+    (resume: DownloadResume = 'attachment') => {
+      downloadResumeRef.current = resume;
+      embeddingDownloadSheetOpenRef.current = true;
+      embeddingDownloadSheetRef.current?.present();
+    },
+    []
+  );
 
   const markDownloadSheetClosed = useCallback(() => {
     embeddingDownloadSheetOpenRef.current = false;
@@ -439,7 +446,7 @@ export const useAttachment = () => {
       return;
     }
     if (!embeddingDownloadSheetOpenRef.current) return;
-    pendingDocumentPickRef.current = true;
+    pendingDocumentPickRef.current = downloadResumeRef.current === 'attachment';
     embeddingDownloadSheetRef.current?.dismiss();
   }, [vectorStore, embeddings]);
 
