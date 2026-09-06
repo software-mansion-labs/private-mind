@@ -373,7 +373,8 @@ const searchWithCleanup = async (
 
   const score = async (
     enriched: WebSearchResult[],
-    resultCount: number
+    resultCount: number,
+    embed = useEmbeddings
   ): Promise<{
     grounded: WebSearchResult[];
     evaluation: RetrievalEvaluation;
@@ -383,7 +384,7 @@ const searchWithCleanup = async (
     let grounded = enriched;
     let signals: WebRetrievalSignals | null = null;
     emit({ type: 'ranking' });
-    if (useEmbeddings) {
+    if (embed) {
       const retrievalQuery: WebRetrievalQuery = {
         semanticQuery: plan.intent ? `${plan.intent}. ${query}` : query,
         keywordQuery: baseQueries.join(' '),
@@ -425,7 +426,7 @@ const searchWithCleanup = async (
   const groundAndEvaluate = async (
     groups: WebSearchResult[][],
     cap: number,
-    singleWave = false
+    { singleWave = false, embed = useEmbeddings } = {}
   ): Promise<{
     grounded: WebSearchResult[];
     evaluation: RetrievalEvaluation;
@@ -467,7 +468,7 @@ const searchWithCleanup = async (
         if (result.content?.trim()) enrichedByUrl.set(result.url, result);
       }
       waves += 1;
-      return score(enriched, capped.length);
+      return score(enriched, capped.length, embed);
     };
 
     const hasUntriedPageInReach = (): boolean =>
@@ -590,9 +591,13 @@ const searchWithCleanup = async (
         const second = await groundAndEvaluate(
           recoveryGroups,
           WEB_RECOVERY_MAX_RESULTS,
-          true
+          { singleWave: true, embed: false }
         );
-        const merged = dedupeByBody([...finalResults, ...second.grounded]);
+        const merged = dedupeByBody(
+          [...finalResults, ...second.grounded].map(
+            (result) => enrichedByUrl.get(result.url) ?? result
+          )
+        );
         const rescored = await score(merged, merged.length);
         telemetry.rounds.push({
           round: 2,

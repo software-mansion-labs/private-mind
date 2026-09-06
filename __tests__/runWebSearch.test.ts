@@ -20,8 +20,16 @@ jest.mock('../utils/web/url/extractArticle', () => ({
   ...jest.requireActual('../utils/web/url/extractArticle'),
   extractArticle: jest.fn(),
 }));
+jest.mock('../utils/web/transientRetrieval', () => {
+  const actual = jest.requireActual('../utils/web/transientRetrieval');
+  return {
+    ...actual,
+    retrieveWebPassages: jest.fn(actual.retrieveWebPassages),
+  };
+});
 
 import { runWebSearch } from '../utils/web/runWebSearch';
+import { retrieveWebPassages } from '../utils/web/transientRetrieval';
 import type { WebSearchProgressEvent } from '../utils/web/runWebSearch';
 import { extractArticle } from '../utils/web/url/extractArticle';
 import { clearWebCaches } from '../utils/web/cache/webCache';
@@ -498,6 +506,43 @@ describe('runWebSearch', () => {
       expect(
         out.sourceDocuments.filter((d) => d.read).map((d) => d.url)
       ).toEqual(['https://samsung.com/s25']);
+    });
+
+    it('scores the recovered pages once, together with the first round, from their raw text', async () => {
+      const provider = new MockProvider({
+        'Samsung Galaxy S25 cena': [bareResult('https://shop.example/s25')],
+        'Samsung Galaxy S25 -site:shop.example': [
+          bareResult('https://samsung.com/s25'),
+        ],
+      });
+      readableExcept((url) =>
+        url.includes('shop.example')
+          ? new Error('Fetch failed: 403 Forbidden')
+          : null
+      );
+      (retrieveWebPassages as jest.Mock).mockClear();
+
+      const out = await runWebSearch({
+        query: 'Samsung Galaxy S25 cena',
+        history: [],
+        provider,
+        embeddings: fakeEmbeddings,
+        embeddingModelReady: true,
+        generate: noGen,
+        today: '2026-07-20',
+      });
+
+      expect(out.telemetry.rounds).toHaveLength(2);
+      expect(retrieveWebPassages).toHaveBeenCalledTimes(2);
+      const mergedCall = (retrieveWebPassages as jest.Mock).mock.calls.at(-1)!;
+      const scored = mergedCall[0] as { url: string; content?: string }[];
+      expect(scored.map((result) => result.url)).toContain(
+        'https://samsung.com/s25'
+      );
+      expect(
+        scored.find((result) => result.url === 'https://samsung.com/s25')
+          ?.content
+      ).toBe(PHONE_TEXT.trim());
     });
 
     it('records why the page could not be read, and says so on the way past', async () => {
