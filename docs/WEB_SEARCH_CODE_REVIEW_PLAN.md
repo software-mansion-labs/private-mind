@@ -149,8 +149,8 @@ Total: roughly three to four engineer-weeks, with Phases 1 and 2 as the merge ga
 Built in a worktree off `450a70f` while the release round's series 3 ran
 on the main checkout; merge into `web-search-compact` once the tester's
 session is idle, since Metro serves that checkout to the Pixel. Every
-commit carries its red-before-fix test; 2 156 tests, tsc and eslint
-green at `0ba1f2e`.
+commit carries its red-before-fix test; 2 157 tests, tsc and eslint
+green at `0229f7c`.
 
 | Item | Commit | Note |
 |---|---|---|
@@ -177,6 +177,7 @@ green at `0ba1f2e`.
 | P1-13 `regroundYears` | `2d05234` | conversation window checked; year read off the ISO date |
 | P1-11 recovery re-embeds round 1 | `0ba1f2e` | recovery enriched without scoring; merged raw set scored once |
 | Series 3 K-2: `5. 95 zł` | `b2148f8` | decimal split by a stop before a unit rejoined |
+| P1-8 currency codes as aspects | `0229f7c` | ISO 4217 codes filtered like the site: operator |
 
 P1-10, digest from an unterminated think block: not a bug. A utility
 generation that opens `<think>` and never closes it is a live-found
@@ -186,7 +187,7 @@ wrote. Left as is.
 Still open from P0: C1 (offline model load — owner decision), H1 (17
 trailers — history rewrite, owner decision), H2 (58 comments), H3 (word
 lists — Phase 4, owner decision on precision). From P1: P1-3, P1-5,
-P1-6, P1-8 (Phase 3), P1-10 remainder (placeholder streaming,
+P1-6 (Phase 3), P1-10 remainder (placeholder streaming,
 `humanizeSourceReferences` by position), P1-14 (planner cost).
 
 ## Verified non-issues
