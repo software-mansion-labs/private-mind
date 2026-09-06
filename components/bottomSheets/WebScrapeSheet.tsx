@@ -24,6 +24,7 @@ const WebScrapeSheet = () => {
     recheck,
     handleMessage,
     handleLoadEnd,
+    handleNavigationStateChange,
   } = useScrapeHost();
 
   return (
@@ -65,6 +66,7 @@ const WebScrapeSheet = () => {
           injectedJavaScript={SERP_PARSER_JS_ONLOAD}
           onMessage={handleMessage}
           onLoadEnd={handleLoadEnd}
+          onNavigationStateChange={handleNavigationStateChange}
           style={styles.webview}
         />
       </View>

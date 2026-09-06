@@ -119,4 +119,43 @@ describe('useScrapeHost', () => {
     expect(useWebSearchStore.getState().challengeActive).toBe(false);
     expect(cancelPending).toHaveBeenCalledTimes(1);
   });
+
+  it('resets the WebView and skips the engine when a page navigates off the allowlist', () => {
+    const { result } = renderHook(() => useScrapeHost());
+    act(() =>
+      registeredHost().navigate('https://html.duckduckgo.com/html/?q=x')
+    );
+    expect(result.current.nav?.uri).toContain('duckduckgo.com');
+
+    act(() =>
+      result.current.handleNavigationStateChange({
+        url: 'https://evil.example/collect',
+      })
+    );
+
+    expect(result.current.nav).toBeNull();
+    expect(skipEngine).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves an allowed navigation alone', () => {
+    const { result } = renderHook(() => useScrapeHost());
+    act(() =>
+      registeredHost().navigate('https://html.duckduckgo.com/html/?q=x')
+    );
+    act(() =>
+      result.current.handleNavigationStateChange({
+        url: 'https://duckduckgo.com/?q=x',
+      })
+    );
+    expect(result.current.nav).not.toBeNull();
+    expect(skipEngine).not.toHaveBeenCalled();
+  });
+
+  it('ignores navigation reports while idle', () => {
+    const { result } = renderHook(() => useScrapeHost());
+    act(() =>
+      result.current.handleNavigationStateChange({ url: 'about:blank' })
+    );
+    expect(skipEngine).not.toHaveBeenCalled();
+  });
 });

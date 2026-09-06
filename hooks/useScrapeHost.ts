@@ -3,6 +3,7 @@ import type { WebView } from 'react-native-webview';
 import { SERP_PARSER_JS } from '../utils/web/scrape/serpParser';
 import { parseSerpMessage } from '../utils/web/security/untrustedContent';
 import { webViewScrapeProvider } from '../utils/web/scrape/webViewScrapeProvider';
+import { isAllowedScrapeNavigation } from '../utils/web/security/scrapeNavigation';
 import { useWebSearchStore } from '../store/webSearchStore';
 import {
   SCRAPE_REINJECT_DELAY_MAX_MS,
@@ -49,6 +50,13 @@ export const useScrapeHost = () => {
       }
     }, jitter);
   }, [nav, recheck]);
+
+  const handleNavigationStateChange = useCallback((state: { url: string }) => {
+    if (navKeyRef.current === null) return;
+    if (isAllowedScrapeNavigation(state.url)) return;
+    setNav(null);
+    webViewScrapeProvider.skipEngine();
+  }, []);
 
   const handleMessage = useCallback(
     (event: { nativeEvent: { data: string } }) => {
@@ -99,5 +107,6 @@ export const useScrapeHost = () => {
     recheck,
     handleMessage,
     handleLoadEnd,
+    handleNavigationStateChange,
   };
 };
