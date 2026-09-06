@@ -1,5 +1,6 @@
 import {
   extractArticle,
+  joinSplitAmounts,
   looksLikeBotWall,
 } from '../utils/web/url/extractArticle';
 
@@ -910,6 +911,26 @@ describe('main-content isolation on pages without a single landmark', () => {
 
     const article = await extractArticle('https://blog.example/recenzja');
     expect(article.text).toContain('czernie głębokie');
+  });
+});
+
+describe('joinSplitAmounts — a decimal the page rendered as a sentence stop (release K-2)', () => {
+  it('rejoins a small integer and its cents split by ". " before a unit', () => {
+    expect(
+      joinSplitAmounts('Cena benzyny w Polsce: średnia krajowa to 5. 95 zł/l.')
+    ).toBe('Cena benzyny w Polsce: średnia krajowa to 5,95 zł/l.');
+    expect(joinSplitAmounts('Kurs wynosi 4. 27 PLN za euro')).toBe(
+      'Kurs wynosi 4,27 PLN za euro'
+    );
+  });
+
+  it('leaves a real sentence boundary alone', () => {
+    expect(joinSplitAmounts('Zebrano 2025. 95 osób przyszło.')).toBe(
+      'Zebrano 2025. 95 osób przyszło.'
+    );
+    expect(joinSplitAmounts('Rozdział 5. Warszawa')).toBe(
+      'Rozdział 5. Warszawa'
+    );
   });
 });
 

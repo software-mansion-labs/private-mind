@@ -439,11 +439,21 @@ const AMOUNT_AFTER_SYMBOL = new RegExp(
   'gu'
 );
 
+const AMOUNT_SPLIT_BY_STOP = new RegExp(
+  `(?<![\\p{L}\\p{N}])(\\d{1,3}(?: \\d{3})*)\\. (\\d{2}) ?(\\p{L}{1,3}|\\p{Sc})(?![\\p{L}\\p{N}])`,
+  'gu'
+);
+
 const decimalMarkFor = (integerPart: string): string =>
   integerPart.includes(',') ? '.' : ',';
 
 export const joinSplitAmounts = (text: string): string =>
   text
+    .replace(
+      AMOUNT_SPLIT_BY_STOP,
+      (_, integerPart: string, cents: string, unit: string) =>
+        `${integerPart}${decimalMarkFor(integerPart)}${cents} ${unit}`
+    )
     .replace(
       AMOUNT_BEFORE_UNIT,
       (_, integerPart: string, cents: string, unit: string) =>
