@@ -872,3 +872,61 @@ describe('searching the question itself is a fallback, not a habit', () => {
     expect(provider.calls).toContain('Jaka jest pogoda w Warszawie?');
   });
 });
+
+describe('runWebSearch — the deadline and the stop listener are released on every exit', () => {
+  const planned =
+    '{"needs_search": true, "intent": "weather", "kind": "fact", "queries": ["warsaw weather"]}';
+
+  it('clears the deadline when the search throws after the gate', async () => {
+    jest.useFakeTimers();
+    try {
+      const provider = new MockProvider({
+        'warsaw weather': [weatherPage('https://weather.example/1')],
+      });
+      await expect(
+        runWebSearch({
+          query: 'warsaw weather',
+          history: [],
+          provider,
+          embeddings: fakeEmbeddings,
+          embeddingModelReady: true,
+          generate: async () => planned,
+          searchTimeoutMs: 5000,
+          onProgress: (event) => {
+            if (event.type === 'searching') throw new Error('boom');
+          },
+          today: '2026-07-20',
+        })
+      ).rejects.toThrow('boom');
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('stops listening to the caller once it has returned', async () => {
+    const controller = new AbortController();
+    const provider = new MockProvider({
+      'warsaw weather': [weatherPage('https://weather.example/1')],
+    });
+    const events: WebSearchProgressEvent[] = [];
+    const out = await runWebSearch({
+      query: 'warsaw weather',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () => planned,
+      signal: controller.signal,
+      searchTimeoutMs: 5000,
+      onProgress: (event) => events.push(event),
+      today: '2026-07-20',
+    });
+    expect(out.telemetry.aborted).toBeUndefined();
+
+    controller.abort();
+
+    expect(out.telemetry.aborted).toBeUndefined();
+    expect(events.some((event) => event.type === 'timeout')).toBe(false);
+  });
+});

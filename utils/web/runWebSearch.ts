@@ -167,8 +167,9 @@ const NO_AGREEMENT: SourceAgreement = {
   agreementRatio: 0,
 };
 
-export const runWebSearch = async (
-  input: RunWebSearchInput
+const searchWithCleanup = async (
+  input: RunWebSearchInput,
+  cleanups: (() => void)[]
 ): Promise<RunWebSearchResult> => {
   const {
     query,
@@ -274,17 +275,16 @@ export const runWebSearch = async (
     run.abort();
   };
   if (stopSignal?.aborted) abortRun('stopped');
-  stopSignal?.addEventListener('abort', () => abortRun('stopped'), {
-    once: true,
-  });
+  const onStop = () => abortRun('stopped');
+  stopSignal?.addEventListener('abort', onStop, { once: true });
   const deadline =
     input.searchTimeoutMs !== undefined
       ? setTimeout(() => abortRun('timeout'), input.searchTimeoutMs)
       : undefined;
-  const finish = <T>(result: T): T => {
+  cleanups.push(() => {
     clearTimeout(deadline);
-    return result;
-  };
+    stopSignal?.removeEventListener('abort', onStop);
+  });
 
   const runQueries = async (
     queries: string[],
@@ -638,7 +638,7 @@ export const runWebSearch = async (
   });
 
   if (finalResults.length === 0) {
-    return finish({ context: [], sourceDocuments: [], telemetry });
+    return { context: [], sourceDocuments: [], telemetry };
   }
 
   const label =
@@ -655,9 +655,20 @@ export const runWebSearch = async (
       intent: plan.kind,
     }
   );
-  return finish({
+  return {
     context: web.context,
     sourceDocuments: web.sourceDocuments,
     telemetry,
-  });
+  };
+};
+
+export const runWebSearch = async (
+  input: RunWebSearchInput
+): Promise<RunWebSearchResult> => {
+  const cleanups: (() => void)[] = [];
+  try {
+    return await searchWithCleanup(input, cleanups);
+  } finally {
+    for (const cleanup of cleanups) cleanup();
+  }
 };
