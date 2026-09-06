@@ -2,6 +2,7 @@ import {
   isHttpUrl,
   isPrivateHost,
   assertPublicHttpUrl,
+  fetchTextWithLimit,
 } from '../utils/web/security/outboundFetch';
 
 describe('isHttpUrl', () => {
@@ -115,5 +116,91 @@ describe('assertPublicHttpUrl', () => {
 
   it('throws on a malformed url', () => {
     expect(() => assertPublicHttpUrl('http://')).toThrow();
+  });
+});
+
+describe('assertPublicHttpUrl — hosts the runtime URL leaves un-mapped', () => {
+  it('rejects a host that folds to loopback under compatibility mapping', () => {
+    expect(() => assertPublicHttpUrl('http://ⓛⓞⓒⓐⓛⓗⓞⓢⓣ/')).toThrow();
+    expect(() => assertPublicHttpUrl('http://ｌｏｃａｌｈｏｓｔ/')).toThrow();
+    expect(() => assertPublicHttpUrl('http://１２７.０.０.１/')).toThrow();
+  });
+
+  it('rejects any host that stays outside ASCII, since IDNA is not validated here', () => {
+    expect(() => assertPublicHttpUrl('http://bücher.example/')).toThrow(
+      /non-ASCII/
+    );
+  });
+
+  it('accepts the punycode form of the same host', () => {
+    expect(assertPublicHttpUrl('http://xn--bcher-kva.example/')).toBe(
+      'xn--bcher-kva.example'
+    );
+  });
+});
+
+class RedirectingXhr {
+  static responseURL = '';
+  static delivered = false;
+
+  readyState = 0;
+  status = 0;
+  statusText = 'OK';
+  responseText = '';
+  responseURL = '';
+  aborted = false;
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  onprogress: ((event: { loaded: number }) => void) | null = null;
+  onreadystatechange: (() => void) | null = null;
+
+  open() {}
+  setRequestHeader() {}
+  getResponseHeader(): string | null {
+    return null;
+  }
+  abort() {
+    this.aborted = true;
+  }
+  send() {
+    this.readyState = 2;
+    this.responseURL = RedirectingXhr.responseURL;
+    this.onreadystatechange?.();
+    if (this.aborted) return;
+    RedirectingXhr.delivered = true;
+    this.status = 200;
+    this.responseText = '<html>secret</html>';
+    this.onload?.();
+  }
+}
+
+describe('fetchTextWithLimit — a redirect into a private range', () => {
+  const originalXhr = (global as unknown as { XMLHttpRequest: unknown })
+    .XMLHttpRequest;
+
+  beforeEach(() => {
+    RedirectingXhr.delivered = false;
+    (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest =
+      RedirectingXhr;
+  });
+
+  afterEach(() => {
+    (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest =
+      originalXhr;
+  });
+
+  it('is refused when the headers arrive, before any body is read', async () => {
+    RedirectingXhr.responseURL = 'http://192.168.1.1/admin';
+    await expect(
+      fetchTextWithLimit('https://example.com/go', { timeoutMs: 1000 })
+    ).rejects.toThrow(/Refusing redirect to private url/);
+    expect(RedirectingXhr.delivered).toBe(false);
+  });
+
+  it('follows a redirect that stays public', async () => {
+    RedirectingXhr.responseURL = 'https://example.org/landing';
+    await expect(
+      fetchTextWithLimit('https://example.com/go', { timeoutMs: 1000 })
+    ).resolves.toContain('secret');
   });
 });

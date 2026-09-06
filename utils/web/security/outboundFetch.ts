@@ -105,15 +105,23 @@ export const isPrivateHost = (rawHost: string): boolean => {
   return false;
 };
 
+const ASCII_HOST = /^[\x21-\x7e]*$/;
+
+const foldHost = (host: string): string =>
+  typeof host.normalize === 'function' ? host.normalize('NFKC') : host;
+
 export const assertPublicHttpUrl = (url: string): string => {
   if (!isHttpUrl(url)) {
     throw new Error(`Refusing to fetch non-http(s) url: ${url}`);
   }
   let host: string;
   try {
-    host = new URL(url).hostname;
+    host = foldHost(new URL(url).hostname);
   } catch {
     throw new Error(`Refusing to fetch malformed url: ${url}`);
+  }
+  if (!ASCII_HOST.test(host)) {
+    throw new Error(`Refusing to fetch a non-ASCII host: ${host}`);
   }
   if (isPrivateHost(host)) {
     throw new Error(`Refusing to fetch private-range host: ${host}`);
@@ -161,8 +169,21 @@ export const fetchTextWithLimit = (
     }
     signal?.addEventListener('abort', onAbort);
 
+    const refusePrivateRedirect = (): boolean => {
+      const finalUrl = xhr.responseURL;
+      if (!finalUrl || finalUrl === url) return false;
+      try {
+        assertPublicHttpUrl(finalUrl);
+        return false;
+      } catch {
+        fail(`Refusing redirect to private url: ${finalUrl}`);
+        return true;
+      }
+    };
+
     xhr.onreadystatechange = () => {
       if (xhr.readyState !== XHR_HEADERS_RECEIVED) return;
+      if (refusePrivateRedirect()) return;
       const declaredLength = Number(
         xhr.getResponseHeader?.('content-length') ?? ''
       );
@@ -190,17 +211,7 @@ export const fetchTextWithLimit = (
         );
         return;
       }
-      const finalUrl = xhr.responseURL;
-      if (finalUrl && finalUrl !== url) {
-        try {
-          assertPublicHttpUrl(finalUrl);
-        } catch {
-          finish(() =>
-            reject(new Error(`Refusing redirect to private url: ${finalUrl}`))
-          );
-          return;
-        }
-      }
+      if (refusePrivateRedirect()) return;
       const body = xhr.responseText ?? '';
       if (body.length > maxBytes) {
         finish(() =>
