@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { WebView } from 'react-native-webview';
-import { SERP_PARSER_JS } from '../utils/web/scrape/serpParser';
+import { buildSerpParserJs } from '../utils/web/scrape/serpParser';
 import { parseSerpMessage } from '../utils/web/security/untrustedContent';
 import { webViewScrapeProvider } from '../utils/web/scrape/webViewScrapeProvider';
 import { isAllowedScrapeNavigation } from '../utils/web/security/scrapeNavigation';
@@ -10,22 +10,33 @@ import {
   SCRAPE_REINJECT_DELAY_MIN_MS,
 } from '../constants/web';
 
-type Navigation = { uri: string; key: number };
+type Navigation = { uri: string; key: number; nonce: number };
 
 export const useScrapeHost = () => {
   const webRef = useRef<WebView>(null);
   const reinjectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const navKeyRef = useRef<number | null>(null);
+  const navRef = useRef<Navigation | null>(null);
   const [nav, setNav] = useState<Navigation | null>(null);
   const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
-    navKeyRef.current = nav?.key ?? null;
-  }, [nav?.key]);
+    navRef.current = nav;
+  }, [nav]);
 
-  const recheck = useCallback(() => {
-    webRef.current?.injectJavaScript(SERP_PARSER_JS);
+  const onLoadScript = useMemo(
+    () => (nav ? buildSerpParserJs(false, nav.nonce) : undefined),
+    [nav]
+  );
+
+  const inject = useCallback((reportEmpty: boolean) => {
+    const current = navRef.current;
+    if (!current) return;
+    webRef.current?.injectJavaScript(
+      buildSerpParserJs(reportEmpty, current.nonce)
+    );
   }, []);
+
+  const recheck = useCallback(() => inject(true), [inject]);
 
   const closeAndCancel = useCallback(() => {
     setRevealed(false);
@@ -42,17 +53,13 @@ export const useScrapeHost = () => {
       Math.random() *
         (SCRAPE_REINJECT_DELAY_MAX_MS - SCRAPE_REINJECT_DELAY_MIN_MS);
     reinjectTimer.current = setTimeout(() => {
-      if (
-        navKeyRef.current === scheduledKey &&
-        !useWebSearchStore.getState().challengeActive
-      ) {
-        recheck();
-      }
+      if (navRef.current?.key !== scheduledKey) return;
+      inject(!useWebSearchStore.getState().challengeActive);
     }, jitter);
-  }, [nav, recheck]);
+  }, [nav, inject]);
 
   const handleNavigationStateChange = useCallback((state: { url: string }) => {
-    if (navKeyRef.current === null) return;
+    if (navRef.current === null) return;
     if (isAllowedScrapeNavigation(state.url)) return;
     setNav(null);
     webViewScrapeProvider.skipEngine();
@@ -78,9 +85,9 @@ export const useScrapeHost = () => {
     });
 
     webViewScrapeProvider.attachHost({
-      navigate: (uri) => setNav((prev) => ({ uri, key: (prev?.key ?? 0) + 1 })),
+      navigate: (uri, nonce) =>
+        setNav((prev) => ({ uri, nonce, key: (prev?.key ?? 0) + 1 })),
       reset: () => setNav(null),
-      recheck,
       onChallenge: () => {
         const current = useWebSearchStore.getState();
         if (current.challengePolicy === 'skip') {
@@ -97,11 +104,12 @@ export const useScrapeHost = () => {
       webViewScrapeProvider.detachHost();
       useWebSearchStore.getState().registerChallengeHandlers(null);
     };
-  }, [closeAndCancel, recheck]);
+  }, [closeAndCancel]);
 
   return {
     webRef,
     nav,
+    onLoadScript,
     revealed,
     closeAndCancel,
     recheck,

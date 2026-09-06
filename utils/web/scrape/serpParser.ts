@@ -1,8 +1,10 @@
 export const buildSerpParserJs = (
-  reportEmpty: boolean
+  reportEmpty: boolean,
+  nonce?: number
 ): string => `(function () {
   try {
     var post = function (msg) {
+      ${nonce === undefined ? '' : `msg.nonce = ${nonce};`}
       window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify(msg));
     };
 
@@ -120,11 +122,8 @@ export const buildSerpParserJs = (
     ${reportEmpty ? "post({ type: 'serp-results', results: [] });" : ''}
   } catch (e) {
     window.ReactNativeWebView && window.ReactNativeWebView.postMessage(
-      JSON.stringify({ type: 'serp-error', message: String(e) })
+      JSON.stringify({ type: 'serp-error', message: String(e)${nonce === undefined ? '' : `, nonce: ${nonce}`} })
     );
   }
 })();
 true;`;
-
-export const SERP_PARSER_JS = buildSerpParserJs(true);
-export const SERP_PARSER_JS_ONLOAD = buildSerpParserJs(false);

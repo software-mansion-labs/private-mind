@@ -1,10 +1,11 @@
 import type { WebSearchResult } from '../types';
 import { isHttpUrl } from './outboundFetch';
 
-export type SerpMessage =
+export type SerpMessage = { nonce?: number } & (
   | { type: 'serp-results'; results: WebSearchResult[] }
   | { type: 'serp-challenge' }
-  | { type: 'serp-error'; message: string };
+  | { type: 'serp-error'; message: string }
+);
 
 const SERP_HARD_MAX_RESULTS = 20;
 const SERP_MAX_URL_CHARS = 2048;
@@ -58,10 +59,21 @@ export const parseSerpMessage = (raw: string): SerpMessage | null => {
       type?: string;
       results?: unknown;
       message?: unknown;
+      nonce?: unknown;
     };
-    if (parsed.type === 'serp-challenge') return { type: 'serp-challenge' };
+    const stamp =
+      typeof parsed.nonce === 'number' && Number.isFinite(parsed.nonce)
+        ? { nonce: parsed.nonce }
+        : {};
+    if (parsed.type === 'serp-challenge') {
+      return { type: 'serp-challenge', ...stamp };
+    }
     if (parsed.type === 'serp-error') {
-      return { type: 'serp-error', message: boundedErrorText(parsed.message) };
+      return {
+        type: 'serp-error',
+        message: boundedErrorText(parsed.message),
+        ...stamp,
+      };
     }
     if (parsed.type === 'serp-results') {
       const results = Array.isArray(parsed.results)
@@ -70,7 +82,7 @@ export const parseSerpMessage = (raw: string): SerpMessage | null => {
             .slice(0, SERP_HARD_MAX_RESULTS)
             .map(sanitizeResult)
         : [];
-      return { type: 'serp-results', results };
+      return { type: 'serp-results', results, ...stamp };
     }
     return null;
   } catch {

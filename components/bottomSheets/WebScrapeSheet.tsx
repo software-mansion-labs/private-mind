@@ -5,7 +5,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
-import { SERP_PARSER_JS_ONLOAD } from '../../utils/web/scrape/serpParser';
 import {
   SCRAPE_IDLE_SOURCE,
   SCRAPE_HOST_OFFSCREEN_TOP,
@@ -19,6 +18,7 @@ const WebScrapeSheet = () => {
   const {
     webRef,
     nav,
+    onLoadScript,
     revealed,
     closeAndCancel,
     recheck,
@@ -63,7 +63,7 @@ const WebScrapeSheet = () => {
           javaScriptEnabled
           domStorageEnabled
           thirdPartyCookiesEnabled
-          injectedJavaScript={SERP_PARSER_JS_ONLOAD}
+          injectedJavaScript={onLoadScript}
           onMessage={handleMessage}
           onLoadEnd={handleLoadEnd}
           onNavigationStateChange={handleNavigationStateChange}
