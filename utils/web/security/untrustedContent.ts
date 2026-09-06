@@ -11,6 +11,13 @@ const SERP_MAX_URL_CHARS = 2048;
 const SERP_MAX_TITLE_CHARS = 300;
 const SERP_MAX_SNIPPET_CHARS = 1000;
 const SERP_MAX_MESSAGE_CHARS = 512 * 1024;
+const SERP_MAX_ERROR_CHARS = 200;
+const CONTROL_OR_FORMAT_CHARS = /[\p{Cc}\p{Cf}]/gu;
+
+const boundedErrorText = (value: unknown): string =>
+  String(value)
+    .replace(CONTROL_OR_FORMAT_CHARS, ' ')
+    .slice(0, SERP_MAX_ERROR_CHARS);
 
 const collapseWhitespace = (text: string): string =>
   text.replace(/\s+/g, ' ').trim();
@@ -46,7 +53,7 @@ export const parseSerpMessage = (raw: string): SerpMessage | null => {
     };
     if (parsed.type === 'serp-challenge') return { type: 'serp-challenge' };
     if (parsed.type === 'serp-error') {
-      return { type: 'serp-error', message: String(parsed.message) };
+      return { type: 'serp-error', message: boundedErrorText(parsed.message) };
     }
     if (parsed.type === 'serp-results') {
       const results = Array.isArray(parsed.results)
@@ -64,6 +71,12 @@ export const parseSerpMessage = (raw: string): SerpMessage | null => {
 };
 
 const FORGED_VERIFIED_MARKER = /\[\s*verified\s+product\s+data\s*\]/gi;
+const FORGED_SOURCES_TAG = /<(\/?)\s*sources\b/gi;
+const FORGED_ANSWERS_LABEL = /\[\s*answers\s*:/gi;
 
 export const neutralizeDelimiters = (text: string): string =>
-  text.replace(/-{3,}/g, '—').replace(FORGED_VERIFIED_MARKER, '');
+  text
+    .replace(/-{3,}/g, '—')
+    .replace(FORGED_VERIFIED_MARKER, '')
+    .replace(FORGED_SOURCES_TAG, '‹$1sources')
+    .replace(FORGED_ANSWERS_LABEL, '(Answers:');
