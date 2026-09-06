@@ -1313,6 +1313,27 @@ describe('sendChatMessage', () => {
     );
   });
 
+  it('keeps the answer when only the think block loops', async () => {
+    const reasoning = 'I should check every source again carefully. '.repeat(4);
+    mockInstance.generate.mockResolvedValue(
+      `<think>${reasoning}</think>Bilet kosztuje 150 zł.`
+    );
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('ile kosztuje bilet?', 1, noSources, settings);
+
+    expect(useLLMStore.getState().generationError).toBeNull();
+    const content = useLLMStore.getState().activeChatMessages.at(-1)?.content;
+    expect(content).toContain('Bilet kosztuje 150 zł.');
+    expect(content).toContain('</think>');
+  });
+
   it('still fails the turn when the model returns nothing at all', async () => {
     mockInstance.generate.mockResolvedValue('   ');
     useLLMStore.setState({

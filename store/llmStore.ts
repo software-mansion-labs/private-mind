@@ -1,5 +1,5 @@
 import { estimatePromptTokens } from '../constants/context-window';
-import { stripThinkBlocks } from '../utils/thinking';
+import { mapOutsideThink, stripThinkBlocks } from '../utils/thinking';
 import { create } from 'zustand';
 import { LLMModule } from 'react-native-executorch';
 import { Model } from '../database/modelRepository';
@@ -485,6 +485,11 @@ const WRONG_LANGUAGE_RETRY_PROMPT =
   'with the same facts, in the language of the question, and do not switch ' +
   'language or script partway through.';
 
+const tidyVisibleAnswer = (response: string): string =>
+  mapOutsideThink(response, (segment) =>
+    truncateAtRepeatedClause(normalizeModelText(segment))
+  );
+
 const describeGenerationFailure = (): string =>
   'The model returned an empty response';
 
@@ -911,7 +916,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const { response: rawResponse } = generation;
       let responsePerformance = generation.performance;
       let finalResponse = rawResponse
-        ? truncateAtRepeatedClause(normalizeModelText(rawResponse))
+        ? tidyVisibleAnswer(rawResponse)
         : rawResponse;
       const currentQuestion = get().activeChatMessages.findLast(
         (msg) => msg.role === 'user'
@@ -965,9 +970,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           suppressUtilityStreaming = false;
         }
         const retried = retryGeneration.response
-          ? truncateAtRepeatedClause(
-              normalizeModelText(retryGeneration.response)
-            )
+          ? tidyVisibleAnswer(retryGeneration.response)
           : retryGeneration.response;
         if (retried?.trim() && !stillBroken(retried)) {
           finalResponse = retried;
