@@ -76,6 +76,7 @@ export const BINARY_BODY_SIGNATURES = [
 export const WEB_CACHE_TTL_MS = 10 * 60 * 1000;
 export const WEB_SERP_CACHE_MAX_ENTRIES = 32;
 export const WEB_PAGE_CACHE_MAX_CHARS = 250_000;
+export const WEB_PAGE_CACHE_MIN_COST = 1_000;
 
 export const WEB_SEARCH_ENABLED = true;
 

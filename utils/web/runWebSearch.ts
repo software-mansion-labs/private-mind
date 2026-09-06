@@ -64,6 +64,7 @@ import {
   WEB_RECOVERY_MAX_RESULTS,
   WEB_RETRIEVAL_FETCH_TOP_N,
   WEB_SEARCH_MAX_RESULTS,
+  WEB_PAGE_CACHE_MIN_COST,
 } from '../../constants/web';
 
 export interface WebSearchProgressEvent {
@@ -199,7 +200,13 @@ const searchWithCleanup = async (
         const hit = pageCache.get(url);
         if (hit) return hit;
         const article = await baseFetchArticle(url, timeoutMs, abort);
-        pageCache.set(url, article, article.text.length);
+        if (article.text.trim()) {
+          pageCache.set(
+            url,
+            article,
+            Math.max(article.text.length, WEB_PAGE_CACHE_MIN_COST)
+          );
+        }
         return article;
       }
     : baseFetchArticle;

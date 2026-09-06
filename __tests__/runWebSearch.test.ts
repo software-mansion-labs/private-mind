@@ -818,6 +818,24 @@ describe('runWebSearch — reusing a previous turn', () => {
     expect(extractArticle).toHaveBeenCalledTimes(2);
   });
 
+  it('does not cache a page that gave no text, so a bot wall is retried next time', async () => {
+    const provider = new MockProvider({
+      'warsaw weather': [bareResult('https://weather.example/1')],
+    });
+    (extractArticle as jest.Mock).mockResolvedValueOnce({
+      url: 'https://weather.example/1',
+      title: 'Just a moment...',
+      text: '',
+      siteName: 'weather.example',
+    });
+
+    await run(provider, true);
+    const second = await run(provider, true);
+
+    expect(extractArticle).toHaveBeenCalledTimes(2);
+    expect(second.context.join('\n')).toContain('weather');
+  });
+
   it('does not cache an empty SERP, which is as likely to be a bot wall', async () => {
     const provider = new MockProvider({ 'warsaw weather': [] });
 
