@@ -467,7 +467,9 @@ const STRIPPED_NESTED_ELEMENTS: ReadonlySet<string> = new Set([
   'header',
   'footer',
   'aside',
-  'form',
+  'select',
+  'button',
+  'textarea',
 ]);
 
 const heuristicExtractText = (html: string): string => {

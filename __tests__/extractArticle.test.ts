@@ -133,6 +133,23 @@ describe('extractArticle', () => {
     expect(noTitle.title).toBe('example.com');
   });
 
+  it('keeps the price inside a buy-box form and drops its controls', async () => {
+    mockFetch(
+      `<html><body><main><h1>Buty biegowe</h1>
+      <form class="buy-box" action="/cart">
+        <div class="price">219,99 zł</div>
+        <select name="size"><option>Wybierz rozmiar</option><option>41</option><option>42</option></select>
+        <button type="submit">Dodaj do koszyka</button>
+      </form>
+      ${'<p>Lekkie buty do biegania po asfalcie, z amortyzacją na długie dystanse.</p>'.repeat(3)}
+      </main></body></html>`
+    );
+    const article = await extractArticle('https://sklep.example/buty');
+    expect(article.text).toContain('219,99 zł');
+    expect(article.text).not.toContain('Wybierz rozmiar');
+    expect(article.text).not.toContain('Dodaj do koszyka');
+  });
+
   it('folds a title spread over several lines into one, so the source header stays a line', async () => {
     mockFetch(
       '<html><head><title>\n    Karta graficzna\n\t\tRTX 5080\n  </title></head><body><p>x</p></body></html>'
