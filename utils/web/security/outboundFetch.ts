@@ -12,6 +12,16 @@ const looksBinary = (bytes: Uint8Array): boolean => {
   return BINARY_BODY_SIGNATURES.some((signature) => head.startsWith(signature));
 };
 
+export class FetchStatusError extends Error {
+  constructor(
+    readonly status: number,
+    statusText: string
+  ) {
+    super(`Fetch failed: ${status} ${statusText}`);
+    this.name = 'FetchStatusError';
+  }
+}
+
 const responseBytes = (xhr: XMLHttpRequest): Uint8Array => {
   const body: unknown = xhr.response;
   return body instanceof ArrayBuffer ? new Uint8Array(body) : new Uint8Array(0);
@@ -215,9 +225,7 @@ export const fetchTextWithLimit = (
     xhr.onerror = () => finish(() => reject(new Error(`Fetch failed: ${url}`)));
     xhr.onload = () => {
       if (xhr.status < 200 || xhr.status >= 300) {
-        finish(() =>
-          reject(new Error(`Fetch failed: ${xhr.status} ${xhr.statusText}`))
-        );
+        finish(() => reject(new FetchStatusError(xhr.status, xhr.statusText)));
         return;
       }
       if (refusePrivateRedirect()) return;
