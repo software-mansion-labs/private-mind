@@ -555,7 +555,7 @@ describe('webResultsToContext — a page is read for the query that found it', (
       results,
       'kurs bitcoin + kurs ethereum',
       0,
-      450
+      560
     );
     const [btc, eth] = sourceDocuments.map((doc) => doc.passage ?? '');
     expect(btc).toContain('98 000');
@@ -676,8 +676,40 @@ describe('webResultsToContext — context budget', () => {
     const results = [page(1), page(2), page(3), page(4)];
     const { context } = webResultsToContext(results, 'pogoda jutro', 0, 2000);
     const total = context.join('').length;
-    expect(context).toHaveLength(4);
-    expect(total).toBeLessThan(2000 * 2);
+    expect(context.length).toBeGreaterThanOrEqual(3);
+    expect(total).toBeLessThanOrEqual(2000);
+  });
+
+  it('stays within a small budget instead of granting every source a floor', () => {
+    const results = [1, 2, 3, 4, 5].map((n) => ({
+      ...page(n),
+      snippet: `Snippet ${n} `.repeat(40),
+    }));
+    const { context, sourceDocuments } = webResultsToContext(
+      results,
+      'pogoda jutro',
+      0,
+      900
+    );
+    expect(context.join('').length).toBeLessThanOrEqual(900);
+    expect(context.length).toBeLessThan(5);
+    expect(sourceDocuments).toHaveLength(5);
+    expect(
+      sourceDocuments.filter((source) => source.read === false)
+    ).not.toHaveLength(0);
+    expect(context[0]).toContain('--- Source 1:');
+    expect(context.at(-1)).toContain(`--- Source ${context.length}:`);
+  });
+
+  it('lets a snippet-only source spend the whole of its share on the snippet', () => {
+    const snippet = 'Prognoza pogody dla Gdanska na jutro. '.repeat(20);
+    const { sourceDocuments } = webResultsToContext(
+      [{ url: 'https://a.example/x', title: 'A', snippet }],
+      'pogoda jutro',
+      0,
+      600
+    );
+    expect(sourceDocuments[0]!.passage!.length).toBeGreaterThan(300);
   });
 
   it('gives the best-fitting source more room than the tail', () => {

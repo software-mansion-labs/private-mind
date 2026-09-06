@@ -6,6 +6,7 @@ import type {
 } from './types';
 import {
   WEB_CONTENT_MAX_CHARS,
+  WEB_CONTENT_MIN_CHARS,
   WEB_SNIPPET_MAX_CHARS,
 } from '../../constants/web';
 import { sourceBlock } from '../contextUtils';
@@ -520,6 +521,8 @@ export const webResultsToContext = (
   );
   const used = withMaterial.length > 0 ? withMaterial : results;
   const budgets = sourceBudgets(totalMaxChars, used.length);
+  let remaining = totalMaxChars ?? Number.POSITIVE_INFINITY;
+  const cited: WebSearchResult[] = [];
 
   const recordedQuery = (options.displayQuery ?? query)?.trim() || undefined;
   const distinctQueries = new Set(
@@ -530,11 +533,18 @@ export const webResultsToContext = (
 
   used.forEach((result, index) => {
     const name = neutralizeDelimiters(result.title || hostname(result.url));
+    const headerChars = sourceBlock(startIndex + cited.length, name, '').length;
+    const share = Math.min(budgets[index]!, remaining) - headerChars;
+    if (share < WEB_CONTENT_MIN_CHARS && cited.length > 0) return;
+    const budget =
+      cited.length === 0 ? Math.max(share, MIN_SOURCE_EXCERPT_CHARS) : share;
     const snippet = truncate(
       (result.snippet ?? '').trim(),
-      WEB_SNIPPET_MAX_CHARS
+      Math.min(
+        WEB_SNIPPET_MAX_CHARS,
+        result.content ? Math.floor(budget / 2) : budget
+      )
     );
-    const budget = budgets[index]!;
     const select = (maxChars: number): string =>
       result.content
         ? selectRelevantContent(
@@ -551,7 +561,7 @@ export const webResultsToContext = (
         : '';
     const besideSnippet = select(
       snippet
-        ? Math.max(MIN_SOURCE_EXCERPT_CHARS, budget - snippet.length - 1)
+        ? Math.max(WEB_CONTENT_MIN_CHARS, budget - snippet.length - 1)
         : budget
     );
     const snippetKept =
@@ -569,9 +579,14 @@ export const webResultsToContext = (
         ? `[Answers: ${result.sourceQuery}]\n`
         : '';
 
-    context.push(
-      sourceBlock(startIndex + index, name, `${queryLabel}${cleanPassage}`)
+    const block = sourceBlock(
+      startIndex + cited.length,
+      name,
+      `${queryLabel}${cleanPassage}`
     );
+    context.push(block);
+    remaining -= block.length;
+    cited.push(result);
 
     sourceDocuments.push({
       kind: 'web',
@@ -586,7 +601,7 @@ export const webResultsToContext = (
   });
 
   for (const result of results) {
-    if (used.includes(result)) continue;
+    if (cited.includes(result)) continue;
     sourceDocuments.push({
       kind: 'web',
       name: neutralizeDelimiters(result.title || hostname(result.url)),
