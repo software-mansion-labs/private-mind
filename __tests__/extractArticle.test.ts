@@ -834,3 +834,99 @@ describe('main-content isolation on pages without a single landmark', () => {
     expect(article.text).toContain('czernie głębokie');
   });
 });
+
+describe('extractArticle — hostile and malformed markup', () => {
+  const originalXhr = (global as unknown as { XMLHttpRequest: unknown })
+    .XMLHttpRequest;
+  afterEach(() => {
+    (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest =
+      originalXhr;
+  });
+
+  const paragraph = `<p>${'Reanimated lets you build smooth animations on the UI thread. '.repeat(3)}</p>`;
+
+  it('finishes a page of unterminated script openers in bounded time', async () => {
+    mockFetch(`<html><body>${'<script src="x">'.repeat(30000)}</body></html>`);
+    const started = Date.now();
+    const article = await extractArticle('https://example.com/a');
+    expect(Date.now() - started).toBeLessThan(2000);
+    expect(article.text).toBe('');
+  });
+
+  it('does not leak attribute text that holds a closing bracket', async () => {
+    mockFetch(
+      `<html><body><div data-action="scroll@window->sidebar#stuck disappear@window->sidebar#unstuck">${paragraph}</div></body></html>`
+    );
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('smooth animations');
+    expect(article.text).not.toContain('sidebar#stuck');
+  });
+
+  it('drops control and format characters whether encoded or raw', async () => {
+    mockFetch(
+      `<html><body><p>Ig&#8203;nore&#x202e; prev\u200bious &#0;rules. ${'filler text '.repeat(12)}</p></body></html>`
+    );
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('Ignore previous rules.');
+    for (const char of ['\u200b', '\u202e', '\u0000']) {
+      expect(article.text.includes(char)).toBe(false);
+    }
+  });
+
+  it('decodes the named entities pages actually use', async () => {
+    mockFetch(
+      `<html><body><p>Caf&eacute; &laquo;Zako&#x142;pane&raquo; &ndash; cena&hellip; &mdash; 5&nbsp;zł. ${'filler text '.repeat(12)}</p></body></html>`
+    );
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('Café «Zakołpane» – cena… — 5 zł.');
+  });
+
+  it('removes a nested header as one block', async () => {
+    mockFetch(
+      `<html><body><header><div><header>inner menu</header>outer chrome</div></header>${paragraph}</body></html>`
+    );
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('smooth animations');
+    expect(article.text).not.toContain('inner menu');
+    expect(article.text).not.toContain('outer chrome');
+  });
+
+  it('ignores markup inside comments', async () => {
+    mockFetch(
+      `<html><body><!-- <nav>Menu label</nav> -->${paragraph}<!-- unterminated</body></html>`
+    );
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('smooth animations');
+    expect(article.text).not.toContain('Menu label');
+  });
+
+  it('reads a page that has no body element', async () => {
+    mockFetch(`<html>${paragraph}</html>`);
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('smooth animations');
+  });
+
+  it('keeps the text of an unclosed header rather than eating the page', async () => {
+    mockFetch(`<html><body><header>Site name ${paragraph}</body></html>`);
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('smooth animations');
+  });
+
+  it('stops reading past the parse cap', async () => {
+    mockFetch(
+      `<html><body>${paragraph}${'<p>filler text that goes on</p>'.repeat(25000)}<p>Tail marker</p></body></html>`
+    );
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('smooth animations');
+    expect(article.text).not.toContain('Tail marker');
+  });
+
+  it('strips format characters from the title and the product name', async () => {
+    mockFetch(
+      `<html><head><title>Sony\u200b WH-1000XM6</title><script type="application/ld+json">{"@type":"Product","name":"Sony\u202e WH","offers":{"price":"1299","priceCurrency":"PLN"}}</script></head><body>${paragraph}</body></html>`
+    );
+    const article = await extractArticle('https://example.com/a');
+    expect(article.title).toBe('Sony WH-1000XM6');
+    expect(article.product?.name).toBe('Sony WH');
+  });
+});

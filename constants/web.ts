@@ -59,6 +59,7 @@ export const WEB_QUERY_INTENT_MAX_CHARS = 80;
 
 export const URL_FETCH_TIMEOUT_MS = 12000;
 export const URL_FETCH_MAX_BYTES = 2_000_000;
+export const URL_PARSE_MAX_CHARS = 600_000;
 export const URL_FETCH_USER_AGENT =
   'Mozilla/5.0 (compatible; PrivateMind/1.0; +on-device)';
 

@@ -75,6 +75,7 @@ describe('parseSerpMessage — error text from the page is bounded', () => {
     expect(message).toMatchObject({ type: 'serp-error' });
     const text = (message as { message: string }).message;
     expect(text.length).toBeLessThanOrEqual(200);
-    expect(text).not.toMatch(/[\u0000\u202e]/);
+    expect(text.includes('\u0000')).toBe(false);
+    expect(text.includes('\u202e')).toBe(false);
   });
 });

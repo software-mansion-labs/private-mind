@@ -32,12 +32,20 @@ const isWebSearchResult = (value: unknown): value is WebSearchResult => {
   );
 };
 
+export const sanitizeUntrustedText = (text: string): string =>
+  text.replace(CONTROL_OR_FORMAT_CHARS, (char) =>
+    char === '\n' ? '\n' : char === '\t' ? ' ' : ''
+  );
+
 const sanitizeResult = (result: WebSearchResult): WebSearchResult => ({
-  title: collapseWhitespace(result.title).slice(0, SERP_MAX_TITLE_CHARS),
+  title: collapseWhitespace(sanitizeUntrustedText(result.title)).slice(
+    0,
+    SERP_MAX_TITLE_CHARS
+  ),
   url: result.url.slice(0, SERP_MAX_URL_CHARS),
   snippet:
     typeof result.snippet === 'string'
-      ? result.snippet.slice(0, SERP_MAX_SNIPPET_CHARS)
+      ? sanitizeUntrustedText(result.snippet).slice(0, SERP_MAX_SNIPPET_CHARS)
       : '',
 });
 
