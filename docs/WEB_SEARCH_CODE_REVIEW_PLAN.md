@@ -149,8 +149,8 @@ Total: roughly three to four engineer-weeks, with Phases 1 and 2 as the merge ga
 Built in a worktree off `450a70f` while the release round's series 3 ran
 on the main checkout; merge into `web-search-compact` once the tester's
 session is idle, since Metro serves that checkout to the Pixel. Every
-commit carries its red-before-fix test; 2 112 tests, tsc and eslint
-green at `04cedcd`.
+commit carries its red-before-fix test; 2 156 tests, tsc and eslint
+green at `0ba1f2e`.
 
 | Item | Commit | Note |
 |---|---|---|
@@ -166,11 +166,28 @@ green at `04cedcd`.
 | C4 digest not serialized | `6b340a5` | the next turn waits for the digest rather than interrupting it |
 | C5 download-sheet state | `0739c04` | |
 | C6 evidence context and the amount test | `04cedcd` | `'fact'` kept in `FIGURE_LEAD_KINDS`: the Warsaw population question is a `fact` and needs the nudge; the refusal-signal gate was not added because the S1.8 evasive-answer case is a wanted trigger |
+| P1-17 scraper races | `b325469` | nonce per navigation stamped into every parser message; cancel honoured in the throttle; silent recheck after a load during a challenge; dead `recheck()` removed |
+| P1-18 title newlines, `<form>`, charset | `eb5257c`, `dc653bc`, `d0ac7a0` | forms kept, `select`/`button`/`textarea` stripped; bytes decoded by BOM → header → meta → UTF-8, tables for windows-1250, iso-8859-2, windows-1252 |
+| P1-1 focused retry system prompt | `62874ea` | |
+| P1-9 unload on interrupt | `5bad912` | unload only when the failure is shown |
+| P1-7 `used: false` round-trip | `1506ce2` | |
+| P1-16 status parsed from the message | `eba3f00` | `FetchStatusError` carries the status; message fallback anchored |
+| P1-15 cache holds bot walls | `d3d4114` | text required, cost ≥ 1 000 |
+| P1-12 `totalMaxChars` unenforced | `87aa305` | running remainder, headers counted, snippet ≤ half the room beside body text, tail sources recorded unread; first source keeps the 300 floor |
+| P1-13 `regroundYears` | `2d05234` | conversation window checked; year read off the ISO date |
+| P1-11 recovery re-embeds round 1 | `0ba1f2e` | recovery enriched without scoring; merged raw set scored once |
+| Series 3 K-2: `5. 95 zł` | `b2148f8` | decimal split by a stop before a unit rejoined |
+
+P1-10, digest from an unterminated think block: not a bug. A utility
+generation that opens `<think>` and never closes it is a live-found
+case with its own tests; the text inside is the topic the model
+wrote. Left as is.
 
 Still open from P0: C1 (offline model load — owner decision), H1 (17
 trailers — history rewrite, owner decision), H2 (58 comments), H3 (word
-lists — Phase 4, owner decision on precision). P1-17/P1-18 of the
-scraper are next in Phase 1.
+lists — Phase 4, owner decision on precision). From P1: P1-3, P1-5,
+P1-6, P1-8 (Phase 3), P1-10 remainder (placeholder streaming,
+`humanizeSourceReferences` by position), P1-14 (planner cost).
 
 ## Verified non-issues
 
