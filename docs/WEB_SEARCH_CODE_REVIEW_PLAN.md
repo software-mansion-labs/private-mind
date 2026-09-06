@@ -144,6 +144,34 @@ Rules for every step: one behavioural change plus its red-before-fix test per co
 
 Total: roughly three to four engineer-weeks, with Phases 1 and 2 as the merge gate and Phases 3–8 acceptable as fast follow-ups on the same branch if the release date demands it — in that case Phase 1, 2, C5–C8 and H1–H2 are the minimum.
 
+## Progress — branch `cr/phase1-security` (2026-09-06)
+
+Built in a worktree off `450a70f` while the release round's series 3 ran
+on the main checkout; merge into `web-search-compact` once the tester's
+session is idle, since Metro serves that checkout to the Pixel. Every
+commit carries its red-before-fix test; 2 112 tests, tsc and eslint
+green at `04cedcd`.
+
+| Item | Commit | Note |
+|---|---|---|
+| S1 non-ASCII hosts, S6 redirect at headers | `d987615` | IDN typed in Unicode is refused outright; punycode passes |
+| S2 forged `<sources>` / `[Answers:`, S6 serp-error cap | `b8dc61a` | |
+| S6 Android navigation gate fail-open | `2a997fc` | `onNavigationStateChange` resets to idle and skips the engine |
+| S3 quadratic extractor, S4 attribute leak, S5 control chars and entities, parse cap | `154fec4` | new `utils/web/url/htmlScan.ts`; `<form>` still stripped (P1-18 open) |
+| C8 `USD` leak token | `4fd102e` | examples name their leaks explicitly |
+| C2 deadline and stop-listener leak | `ae72865` | |
+| C7 lean confidence constant | `ebe3276` | none / one / two pages read → incorrect / ambiguous / correct; the trace's "weak" row still follows `shouldCorrect` |
+| C9 loop truncation inside think blocks | `8350853` | `mapOutsideThink` |
+| C3 refinements on a stopped draft | `2059186` | |
+| C4 digest not serialized | `6b340a5` | the next turn waits for the digest rather than interrupting it |
+| C5 download-sheet state | `0739c04` | |
+| C6 evidence context and the amount test | `04cedcd` | `'fact'` kept in `FIGURE_LEAD_KINDS`: the Warsaw population question is a `fact` and needs the nudge; the refusal-signal gate was not added because the S1.8 evasive-answer case is a wanted trigger |
+
+Still open from P0: C1 (offline model load — owner decision), H1 (17
+trailers — history rewrite, owner decision), H2 (58 comments), H3 (word
+lists — Phase 4, owner decision on precision). P1-17/P1-18 of the
+scraper are next in Phase 1.
+
 ## Verified non-issues
 
 No `g`-flag regex used through `.test()` anywhere in the diff. No import cycles among the new modules. Every themed component uses `useThemedStyles`. No unguarded `console.log`; no TODO/FIXME. Commit subjects follow `type(scope): summary` (166/170; the four outliers are merges). The blur cleanup cannot double-interrupt on the phantom→real route swap. Timers in `Messages.tsx`, `SourcesSheet`, `WebFavicon` and `useChatScreenLayout` are cleared on unmount.
