@@ -1386,6 +1386,27 @@ describe('sendChatMessage', () => {
     );
   });
 
+  it('keeps the model loaded when the user stops during the web search', async () => {
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const stoppedSearch = async () => {
+      useLLMStore.getState().interrupt();
+      throw new Error('Web search aborted');
+    };
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('cena rtx 5080', 1, stoppedSearch, settings);
+
+    expect(mockInstance.delete).not.toHaveBeenCalled();
+    expect(mockInstance.generate).not.toHaveBeenCalled();
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
+  });
+
   it('persists a stopped draft as it is, without any refinement', async () => {
     mockInstance.generate.mockImplementationOnce(async () => {
       useLLMStore.getState().interrupt();

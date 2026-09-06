@@ -781,7 +781,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
     let userMessagePersisted = isRetry;
     const markGenerationFailed = (error: unknown, showToUser = true) => {
-      unloadLLM();
+      if (showToUser) unloadLLM();
       updateChatStateForGeneration(set, 'failed');
 
       if (!userMessagePersisted && !isRetry) {
