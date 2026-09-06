@@ -23,6 +23,7 @@ import { carryReferentIntoQuery } from './web/buildSearchQuery';
 import type { WebIntentKind } from './web/intentKind';
 import { hostname } from './web/webResultsToContext';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
+import { ISO_CURRENCY_CODES } from '../constants/currencies';
 import {
   CITATION_SENTENCE_PATTERN,
   CLAUSE_SPLIT_PATTERN,
@@ -612,9 +613,9 @@ const aspectStems = (query: string): string[] => {
   const plain = query.replace(SITE_OPERATOR, ' ');
   return [
     ...new Set(
-      [...extractQueryTerms(plain, detectQuestionLanguage(plain)?.code)].map(
-        (term) => stemPrefix(foldForMatching(term))
-      )
+      [...extractQueryTerms(plain, detectQuestionLanguage(plain)?.code)]
+        .filter((term) => !ISO_CURRENCY_CODES.has(term))
+        .map((term) => stemPrefix(foldForMatching(term)))
     ),
   ];
 };
