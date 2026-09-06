@@ -134,6 +134,7 @@ const resetStreamState = () => {
 
 let suppressUtilityStreaming = false;
 let utilityGenerating = false;
+let utilityChain: Promise<void> = Promise.resolve();
 let sendAbortController: AbortController | null = null;
 let messageLocalIdSeq = 0;
 const nextMessageLocalId = () => (messageLocalIdSeq += 1);
@@ -219,7 +220,7 @@ const waitForSettingsHydration = async (): Promise<void> => {
 };
 
 const waitForModelToBecomeIdle = async (get: () => LLMStore) => {
-  while (get().isLoading || get().isGenerating) {
+  while (get().isLoading || get().isGenerating || utilityGenerating) {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
 };
@@ -490,6 +491,37 @@ const tidyVisibleAnswer = (response: string): string =>
     truncateAtRepeatedClause(normalizeModelText(segment))
   );
 
+const runUtilityGeneration = async (
+  instance: LLMModule,
+  messages: ExecutorchMessage[],
+  model: Model | null
+): Promise<string> => {
+  utilityGenerating = true;
+  suppressUtilityStreaming = true;
+  try {
+    const prepared = model?.thinking ? withNoThink(messages) : messages;
+    if (model) {
+      instance.configure({
+        generationConfig: getGenerationConfigForModel(model, true),
+      });
+    }
+    const result = await instance.generate(prepared);
+    reportPromptEstimateAccuracy(prepared, instance, 'utility');
+    return typeof result === 'string' ? result : '';
+  } catch (error) {
+    console.warn('generateUtility failed', error);
+    return '';
+  } finally {
+    if (model) {
+      instance.configure({
+        generationConfig: getGenerationConfigForModel(model),
+      });
+    }
+    suppressUtilityStreaming = false;
+    utilityGenerating = false;
+  }
+};
+
 const describeGenerationFailure = (): string =>
   'The model returned an empty response';
 
@@ -714,6 +746,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     isRetry = false
   ) => {
     await modelLoadChain;
+    await utilityChain;
     const { db, model: currentModel, activeChatMessages } = get();
     if (!db || !currentModel) {
       console.warn('LLM not ready or DB not set');
@@ -1317,33 +1350,16 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
-  generateUtility: async (messages) => {
-    if (!llmInstance || get().isLoading || utilityGenerating) return '';
-    utilityGenerating = true;
-    suppressUtilityStreaming = true;
-    const model = get().model;
-    try {
-      const prepared = model?.thinking ? withNoThink(messages) : messages;
-      if (model) {
-        llmInstance.configure({
-          generationConfig: getGenerationConfigForModel(model, true),
-        });
-      }
-      const result = await llmInstance.generate(prepared);
-      reportPromptEstimateAccuracy(prepared, llmInstance, 'utility');
-      return typeof result === 'string' ? result : '';
-    } catch (error) {
-      console.warn('generateUtility failed', error);
-      return '';
-    } finally {
-      if (model) {
-        llmInstance?.configure({
-          generationConfig: getGenerationConfigForModel(model),
-        });
-      }
-      suppressUtilityStreaming = false;
-      utilityGenerating = false;
+  generateUtility: (messages) => {
+    if (!llmInstance || get().isLoading || utilityGenerating) {
+      return Promise.resolve('');
     }
+    const run = runUtilityGeneration(llmInstance, messages, get().model);
+    utilityChain = run.then(
+      () => undefined,
+      () => undefined
+    );
+    return run;
   },
 
   interrupt: () => {

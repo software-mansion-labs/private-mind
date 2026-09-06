@@ -1313,6 +1313,40 @@ describe('sendChatMessage', () => {
     );
   });
 
+  it('lets the previous turn finish its digest before the next turn touches the model', async () => {
+    let releaseDigest: (value: string) => void = () => {};
+    mockInstance.generate
+      .mockResolvedValueOnce('First answer with enough words to digest.')
+      .mockImplementationOnce(
+        () => new Promise<string>((resolve) => (releaseDigest = resolve))
+      )
+      .mockResolvedValueOnce('Second answer.')
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('first question please', 1, noSources, settings);
+    await flushFrame();
+    expect(mockInstance.generate).toHaveBeenCalledTimes(2);
+
+    const second = useLLMStore
+      .getState()
+      .sendChatMessage('second question please', 1, noSources, settings);
+    await flushFrame();
+    expect(mockInstance.generate).toHaveBeenCalledTimes(2);
+
+    releaseDigest('a digest');
+    await second;
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Second answer.'
+    );
+  });
+
   it('persists a stopped draft as it is, without any refinement', async () => {
     mockInstance.generate.mockImplementationOnce(async () => {
       useLLMStore.getState().interrupt();
