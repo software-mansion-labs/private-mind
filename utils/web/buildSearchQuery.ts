@@ -184,15 +184,20 @@ const isLeakedQuery = (query: string, groundedText: string): boolean =>
 
 const YEAR_RE = /\b(19|20)\d{2}\b/g;
 
+const ISO_YEAR = /^(\d{4})-\d{2}-\d{2}/;
+
+const yearOf = (today: string): number =>
+  Number(today.match(ISO_YEAR)?.[1] ?? new Date(today).getFullYear());
+
 const regroundYears = (
   queryText: string,
-  userInput: string,
+  conversation: string,
   today: string
 ): string => {
-  const currentYear = new Date(today).getFullYear();
+  const currentYear = yearOf(today);
   if (!Number.isFinite(currentYear)) return queryText;
   return queryText.replace(YEAR_RE, (year) => {
-    if (userInput.includes(year)) return year;
+    if (conversation.includes(year)) return year;
     const y = Number(year);
     return y >= currentYear - 1 && y <= currentYear
       ? year
@@ -713,7 +718,7 @@ export const planWebSearch = async (
   const groundQueries = (queries: string[]): string[] =>
     queries
       .filter((q) => !isLeakedQuery(q, groundedText))
-      .map((q) => regroundYears(q, query, today))
+      .map((q) => regroundYears(q, `${query}\n${convo}`, today))
       // The planner is told to "resolve pronouns/references from the
       // conversation," but a small model doesn't reliably do that itself —
       // this is the same under-specified-follow-up gap the verbatim path

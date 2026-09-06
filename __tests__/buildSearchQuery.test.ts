@@ -691,6 +691,42 @@ describe('planWebSearch', () => {
       expect(plan.queries).toEqual(['Oscars 2019 best picture']);
     });
 
+    it('trusts a year the conversation is about, even when the follow-up omits it', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "Oscars 2019 best actor", "queries": ["Oscars 2019 best actor"]}'
+        );
+      const plan = await planWebSearch(
+        'and who won best actor that year?',
+        [
+          {
+            role: 'user',
+            content: 'who won best picture at the 2019 Oscars?',
+          },
+          { role: 'assistant', content: 'Green Book won best picture.' },
+        ],
+        generate,
+        { today: '2026-07-17' }
+      );
+      expect(plan.queries).toEqual(['Oscars 2019 best actor']);
+    });
+
+    it('reads the current year off the ISO date, not the local clock', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "Nobel", "queries": ["Nagroda Nobla literatura 2023"]}'
+        );
+      const plan = await planWebSearch(
+        'kto dostał Nobla z literatury?',
+        [],
+        generate,
+        { today: '2026-01-01' }
+      );
+      expect(plan.queries).toEqual(['Nagroda Nobla literatura 2026']);
+    });
+
     it('leaves last year alone (reigning-champion framing)', async () => {
       const generate = jest
         .fn()
