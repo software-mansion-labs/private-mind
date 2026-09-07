@@ -2,6 +2,7 @@ import {
   rankByListingRelevance,
   fairRankByListingRelevance,
   scopeYearsOf,
+  looksLikeHistoricalRoster,
 } from '../utils/web/listingRelevance';
 import type { WebSearchResult } from '../utils/web/types';
 
@@ -295,5 +296,52 @@ describe('fairRankByListingRelevance', () => {
 
   it('handles all-empty groups without throwing', () => {
     expect(fairRankByListingRelevance([[], []], 'anything', 5)).toEqual([]);
+  });
+});
+
+describe('a question about who holds a position now', () => {
+  const roster = {
+    title: 'Prezydenci USA - pełna lista od 1789 roku do dziś',
+    url: 'https://historia.example.pl/prezydenci',
+    snippet:
+      'Wszyscy prezydenci Stanów Zjednoczonych w porządku chronologicznym.',
+  };
+  const current = {
+    title: 'Prezydent USA - kto obecnie sprawuje urząd',
+    url: 'https://news.example.pl/prezydent',
+    snippet: 'Aktualny prezydent Stanów Zjednoczonych i jego kadencja.',
+  };
+
+  it('recognises a title that announces a historical roster', () => {
+    expect(looksLikeHistoricalRoster(roster.title)).toBe(true);
+    expect(
+      looksLikeHistoricalRoster(
+        'FIFA World Cup Winners Full List From 1930 to 2026'
+      )
+    ).toBe(true);
+  });
+
+  it('leaves a title about the present alone', () => {
+    expect(looksLikeHistoricalRoster(current.title)).toBe(false);
+  });
+
+  it('demotes the roster below the page about the present (Pixel: prezydent USA)', () => {
+    const ranked = rankByListingRelevance(
+      [roster, current],
+      'Kto jest aktualnie prezydentem USA?',
+      { currentState: true }
+    );
+
+    expect(ranked[0]!.title).toBe(current.title);
+  });
+
+  it('leaves the ordering alone when the question is not about the present', () => {
+    const ranked = rankByListingRelevance(
+      [roster, current],
+      'Którzy prezydenci USA rządzili w XIX wieku?',
+      {}
+    );
+
+    expect(ranked[0]!.title).toBe(roster.title);
   });
 });

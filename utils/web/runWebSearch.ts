@@ -7,6 +7,7 @@ import type {
 } from './types';
 import {
   anchorRescueQuery,
+  asksCurrentState,
   isSmallTalk,
   planWebSearch,
   dedupeQueries,
@@ -443,6 +444,7 @@ const searchWithCleanup = async (
     const capped = fairRankByListingRelevance(groups, rankingQuery, cap, {
       kind: plan.kind,
       scopeYears: scopeYearsOf([...baseQueries, query]),
+      currentState: asksCurrentState(query),
     });
     let enriched = capped;
     let target = WEB_ADAPTIVE_ENRICH

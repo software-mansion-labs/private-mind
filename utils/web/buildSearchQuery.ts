@@ -681,6 +681,9 @@ const replanInConversationLanguage = async (
   return inConversationLanguage(plan, reference) ? plan : null;
 };
 
+export const asksCurrentState = (question: string): boolean =>
+  ASKS_CURRENT_STATE.test(question);
+
 const ASKS_CURRENT_STATE =
   /aktualn\w*|obecn\w*|\bteraz\b|na dzi[sś]|w tej chwili|\bcurrent(?:ly)?\b|right now|\bas of (?:today|now)\b|\bnowadays\b/i;
 const CARRIES_YEAR = /(?<![\p{L}\p{N}])(?:19|20)\d{2}(?![\p{L}\p{N}])/u;

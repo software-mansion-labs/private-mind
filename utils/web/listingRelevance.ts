@@ -87,7 +87,15 @@ const mentionsAnyYear = (result: WebSearchResult, years: string[]): boolean => {
 export interface ListingRankOptions {
   kind?: WebIntentKind;
   scopeYears?: string[];
+  currentState?: boolean;
 }
+
+const ROSTER_PENALTY = 3;
+const ROSTER_TITLE =
+  /pelna lista|lista wszystkich|wszyscy [a-z]+|chronologiczn|od \d{4} (?:roku )?do (?:dzis|teraz)|full list|complete list|list of all|all .{0,20}since \d{4}|from \d{4} to|\d{4}\s?[-\u2013]\s?\d{4}|history of|na przestrzeni lat/i;
+
+export const looksLikeHistoricalRoster = (title: string): boolean =>
+  ROSTER_TITLE.test(foldForMatching(title));
 
 export const rankByListingRelevance = <T extends WebSearchResult>(
   rawResults: T[],
@@ -153,7 +161,10 @@ export const rankByListingRelevance = <T extends WebSearchResult>(
           : 0) +
         anchorScore(index) +
         (yearsDiscriminate && inScope[index] ? YEAR_BONUS : 0) -
-        (looksLikeCrossAssetPage(result) ? CROSS_ASSET_PENALTY : 0),
+        (looksLikeCrossAssetPage(result) ? CROSS_ASSET_PENALTY : 0) -
+        (options.currentState && ROSTER_TITLE.test(foldedTitles[index]!)
+          ? ROSTER_PENALTY
+          : 0),
     }))
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((entry) => entry.result);
