@@ -1125,3 +1125,33 @@ describe('selectRelevantContent with a list question', () => {
     expect(selected).toContain('zachowuje świeżość');
   });
 });
+
+describe('a list question in a language the marker list never carried', () => {
+  const germanLead =
+    'Zutaten fuer Karottenkuchen sind ein beliebtes Thema in vielen Blogs. ' +
+    'Wer Zutaten fuer Karottenkuchen sucht, findet hier zuerst eine Geschichte. ' +
+    'Karottenkuchen schmeckt zu Kaffee und bleibt lange frisch und saftig. ' +
+    'Diese Seite ueber Zutaten fuer Karottenkuchen wird oft gelesen.';
+  const germanList =
+    '2 Tassen Mehl\n3 Eier\n200 g Zucker\n1 TL Zimt\n150 ml Oel\n300 g Karotten';
+  const germanPage = `${germanLead}\n\n${germanList}`;
+  const question = 'Welche Zutaten braucht man fuer Karottenkuchen';
+  const budget = Math.floor(germanLead.length * 0.5);
+
+  it('hands back the marketing lead when nothing says the answer is a list', () => {
+    const selected = selectRelevantContent(germanPage, question, budget, {
+      title: 'Karottenkuchen Rezept',
+    });
+
+    expect(selected).not.toContain('200 g Zucker');
+  });
+
+  it('keeps the ingredients once the planner has called the ask a how-to', () => {
+    const selected = selectRelevantContent(germanPage, question, budget, {
+      title: 'Karottenkuchen Rezept',
+      intent: 'howto',
+    });
+
+    expect(selected).toContain('200 g Zucker');
+  });
+});

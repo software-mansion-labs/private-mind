@@ -388,7 +388,8 @@ export const selectRelevantContent = (
     verifiedAmount === null &&
     (intent === 'price' || (!!query && PRICE_QUESTION.test(query)));
   const wantsFigures = intent === 'specs';
-  const wantsEnumeration = !!query && ENUMERATION_QUESTION.test(query);
+  const wantsEnumeration =
+    intent === 'howto' || (!!query && ENUMERATION_QUESTION.test(query));
   const all = splitIntoPassages(trimmed, maxChars);
   const foldedAll = all.map(foldForMatching);
   const foldedTitle = foldForMatching(options.title ?? '');
