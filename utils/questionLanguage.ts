@@ -155,15 +155,38 @@ const fold = (text: string): string =>
     .replace(MARKS, '')
     .replace(FOLDABLE, (char) => SPECIAL_FOLDS[char] ?? char);
 
+const DIGRAPH_FOLDS: Record<string, string> = {
+  ä: 'ae',
+  ö: 'oe',
+  ü: 'ue',
+  ß: 'ss',
+  å: 'aa',
+  æ: 'ae',
+  ø: 'oe',
+};
+
+const DIGRAPHABLE = /[äöüßåæø]/g;
+
+const asciiDigraphs = (text: string): string =>
+  text
+    .toLowerCase()
+    .replace(DIGRAPHABLE, (char) => DIGRAPH_FOLDS[char] ?? char);
+
+const wordUnits = (value: string): string[] => {
+  const units = new Set<string>();
+  for (const source of [fold(value), fold(asciiDigraphs(value))]) {
+    for (const word of source.split(/\s+/)) {
+      if (word.length >= 2) units.add(word);
+    }
+  }
+  return [...units];
+};
+
 const index = (source: Record<string, string>, split: 'words' | 'chars') => {
   const map = new Map<string, Set<string>>();
   for (const [code, value] of Object.entries(source)) {
     const units =
-      split === 'words'
-        ? fold(value)
-            .split(/\s+/)
-            .filter((word) => word.length >= 2)
-        : [...value.toLowerCase()];
+      split === 'words' ? wordUnits(value) : [...value.toLowerCase()];
     for (const unit of units) {
       const langs = map.get(unit) ?? new Set<string>();
       langs.add(code);
@@ -177,6 +200,52 @@ const WORD_INDEX = index(WORDS, 'words');
 const LETTER_INDEX = index(LETTERS, 'chars');
 
 const EXCLUSIVE_WEIGHT = 3;
+const STEM_LENGTH = 4;
+
+const STEM_INDEX = (() => {
+  const map = new Map<string, [string, Set<string>][]>();
+  for (const [word, langs] of WORD_INDEX) {
+    if (word.length < STEM_LENGTH) continue;
+    const stem = word.slice(0, STEM_LENGTH);
+    map.set(stem, [...(map.get(stem) ?? []), [word, langs]]);
+  }
+  return map;
+})();
+
+const inflectedLanguages = (token: string): Set<string> | undefined => {
+  const entries = STEM_INDEX.get(token.slice(0, STEM_LENGTH));
+  if (!entries) return undefined;
+  const merged = new Set<string>();
+  for (const [word, langs] of entries) {
+    if (!token.startsWith(word)) continue;
+    for (const code of langs) merged.add(code);
+  }
+  return merged.size > 0 ? merged : undefined;
+};
+
+const wordLanguages = (token: string): Set<string> | undefined =>
+  WORD_INDEX.get(token) ??
+  (token.length > STEM_LENGTH ? inflectedLanguages(token) : undefined);
+
+const longestEvidence = (
+  codes: string[],
+  longestHit: Map<string, number>
+): string | null => {
+  let best: string | null = null;
+  let bestLength = 0;
+  let tied = false;
+  for (const code of codes) {
+    const length = longestHit.get(code) ?? 0;
+    if (length > bestLength) {
+      best = code;
+      bestLength = length;
+      tied = false;
+    } else if (length === bestLength) {
+      tied = true;
+    }
+  }
+  return tied ? null : best;
+};
 
 const pickCandidate = (
   question: string,
@@ -186,17 +255,23 @@ const pickCandidate = (
   const allowed = new Set(candidates);
   const score = new Map<string, number>();
   const exclusive = new Map<string, number>();
+  const longestHit = new Map<string, number>();
 
   const decisive = (token: string): boolean =>
     token.length >= 3 || !/^[a-z]+$/.test(token);
 
-  const credit = (langs: Set<string> | undefined, isDecisive: boolean) => {
+  const credit = (
+    langs: Set<string> | undefined,
+    isDecisive: boolean,
+    tokenLength: number
+  ) => {
     if (!langs) return;
     const hits = [...langs].filter((code) => allowed.has(code));
     if (hits.length === 0) return;
     const weight = hits.length === 1 ? EXCLUSIVE_WEIGHT : 1;
     for (const code of hits) {
       score.set(code, (score.get(code) ?? 0) + weight);
+      longestHit.set(code, Math.max(longestHit.get(code) ?? 0, tokenLength));
       if (hits.length === 1 && isDecisive) {
         exclusive.set(code, (exclusive.get(code) ?? 0) + 1);
       }
@@ -204,10 +279,12 @@ const pickCandidate = (
   };
 
   for (const token of fold(question).split(/[^\p{L}]+/u)) {
-    if (token.length >= 2) credit(WORD_INDEX.get(token), decisive(token));
+    if (token.length >= 2) {
+      credit(wordLanguages(token), decisive(token), token.length);
+    }
   }
   for (const char of new Set(question.toLowerCase())) {
-    credit(LETTER_INDEX.get(char), true);
+    credit(LETTER_INDEX.get(char), true, EXCLUSIVE_WEIGHT);
   }
 
   let best: string | null = null;
@@ -224,10 +301,15 @@ const pickCandidate = (
   }
   if (!best) return null;
   if (bestScore === runnerUp) {
-    const tiedWithDecisive = [...score.entries()]
+    const tied = [...score.entries()]
       .filter(([, value]) => value === bestScore)
-      .filter(([code]) => (exclusive.get(code) ?? 0) > 0);
-    return tiedWithDecisive.length === 1 ? tiedWithDecisive[0]![0] : null;
+      .map(([code]) => code);
+    const withDecisive = tied.filter((code) => (exclusive.get(code) ?? 0) > 0);
+    if (withDecisive.length === 1) return withDecisive[0]!;
+    return longestEvidence(
+      withDecisive.length > 1 ? withDecisive : tied,
+      longestHit
+    );
   }
   if (exclusive.get(best)) return best;
   return bestScore >= EXCLUSIVE_WEIGHT && bestScore - runnerUp >= 2
