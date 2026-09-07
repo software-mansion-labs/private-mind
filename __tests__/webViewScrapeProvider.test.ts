@@ -1,4 +1,7 @@
-import { WebViewScrapeProvider } from '../utils/web/scrape/webViewScrapeProvider';
+import {
+  WebViewScrapeProvider,
+  searchUrlFor,
+} from '../utils/web/scrape/webViewScrapeProvider';
 import {
   SCRAPE_CHALLENGE_TIMEOUT_MS,
   SCRAPE_ENGINES,
@@ -348,5 +351,26 @@ describe('WebViewScrapeProvider — resetting the WebView to idle', () => {
 
     await expect(pending).resolves.toEqual([]);
     expect(reset).toHaveBeenCalled();
+  });
+});
+
+describe('searchUrlFor', () => {
+  it('asks DuckDuckGo for the region of the question', () => {
+    expect(searchUrlFor(SCRAPE_ENGINES[0]!, 'cena iPhone 17', 'pl-pl')).toBe(
+      'https://html.duckduckgo.com/html/?q=cena%20iPhone%2017&kl=pl-pl'
+    );
+  });
+
+  it('leaves engines without a region parameter alone', () => {
+    const brave = SCRAPE_ENGINES.find((engine) => engine.id === 'brave')!;
+    expect(searchUrlFor(brave, 'cena iPhone 17', 'pl-pl')).toBe(
+      'https://search.brave.com/search?q=cena%20iPhone%2017'
+    );
+  });
+
+  it('sends no region when the language has none', () => {
+    expect(searchUrlFor(SCRAPE_ENGINES[0]!, 'iPhone 17 price')).toBe(
+      'https://html.duckduckgo.com/html/?q=iPhone%2017%20price'
+    );
   });
 });

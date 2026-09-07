@@ -65,7 +65,9 @@ import {
   WEB_RETRIEVAL_FETCH_TOP_N,
   WEB_SEARCH_MAX_RESULTS,
   WEB_PAGE_CACHE_MIN_COST,
+  SEARCH_REGION_BY_LANGUAGE,
 } from '../../constants/web';
+import { detectQuestionLanguage } from '../questionLanguage';
 
 export interface WebSearchProgressEvent {
   type:
@@ -311,8 +313,11 @@ const searchWithCleanup = async (
           found = cached;
         } else {
           providerCalls += 1;
+          const region =
+            SEARCH_REGION_BY_LANGUAGE[detectQuestionLanguage(q)?.code ?? ''];
           found = await provider.search(q, {
             ...(signal ? { signal } : {}),
+            ...(region ? { region } : {}),
             onEngine: (engine) => {
               if (!telemetry.enginesTried.includes(engine.id)) {
                 telemetry.enginesTried.push(engine.id);

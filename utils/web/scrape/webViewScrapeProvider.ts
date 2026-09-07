@@ -10,7 +10,18 @@ import {
   SCRAPE_MIN_DELAY_MS,
   SCRAPE_PAGE_LOAD_TIMEOUT_MS,
   WEB_SEARCH_MAX_RESULTS,
+  type ScrapeEngine,
 } from '../../../constants/web';
+
+export const searchUrlFor = (
+  engine: ScrapeEngine,
+  query: string,
+  region?: string
+): string => {
+  const base = `${engine.url}${encodeURIComponent(query)}`;
+  if (!region || !engine.regionParam) return base;
+  return `${base}&${engine.regionParam}=${encodeURIComponent(region)}`;
+};
 
 export interface ScraperHost {
   navigate(url: string, nonce: number): void;
@@ -124,7 +135,7 @@ export class WebViewScrapeProvider implements WebSearchProvider {
       let results: WebSearchResult[] = [];
       try {
         results = await this.navigateAndWait(
-          `${engine.url}${encodeURIComponent(query)}`,
+          searchUrlFor(engine, query, options.region),
           options.signal
         );
       } catch (error) {

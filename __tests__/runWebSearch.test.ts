@@ -993,3 +993,50 @@ describe('runWebSearch — the deadline and the stop listener are released on ev
     expect(events.some((event) => event.type === 'timeout')).toBe(false);
   });
 });
+
+describe('search region follows the question language', () => {
+  class RegionProvider implements WebSearchProvider {
+    readonly id = 'region';
+    readonly regions: (string | undefined)[] = [];
+    isReady() {
+      return true;
+    }
+    async search(
+      _query: string,
+      options?: { region?: string }
+    ): Promise<WebSearchResult[]> {
+      this.regions.push(options?.region);
+      return [weatherPage('https://pogoda.example/1')];
+    }
+  }
+
+  beforeEach(() => clearWebCaches());
+
+  it('asks for Polish results when the question is Polish', async () => {
+    const provider = new RegionProvider();
+    await runWebSearch({
+      query: 'jaka jest dzisiaj pogoda w Warszawie',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: noGen,
+      today: '2026-07-20',
+    });
+    expect(provider.regions[0]).toBe('pl-pl');
+  });
+
+  it('leaves the region open for an English question', async () => {
+    const provider = new RegionProvider();
+    await runWebSearch({
+      query: 'warsaw weather today',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: noGen,
+      today: '2026-07-20',
+    });
+    expect(provider.regions[0]).toBeUndefined();
+  });
+});

@@ -85,14 +85,45 @@ export const RAG_PRIORITY_OVER_WEB_SEARCH = true;
 export interface ScrapeEngine {
   id: string;
   url: string;
+  regionParam?: string;
 }
 
 export const SCRAPE_ENGINES: ScrapeEngine[] = [
-  { id: 'ddg-html', url: 'https://html.duckduckgo.com/html/?q=' },
-  { id: 'ddg-lite', url: 'https://lite.duckduckgo.com/lite/?q=' },
+  {
+    id: 'ddg-html',
+    url: 'https://html.duckduckgo.com/html/?q=',
+    regionParam: 'kl',
+  },
+  {
+    id: 'ddg-lite',
+    url: 'https://lite.duckduckgo.com/lite/?q=',
+    regionParam: 'kl',
+  },
   { id: 'brave', url: 'https://search.brave.com/search?q=' },
   { id: 'mojeek', url: 'https://www.mojeek.com/search?q=' },
 ];
+
+export const SEARCH_REGION_BY_LANGUAGE: Record<string, string> = {
+  pl: 'pl-pl',
+  de: 'de-de',
+  fr: 'fr-fr',
+  es: 'es-es',
+  pt: 'br-pt',
+  it: 'it-it',
+  nl: 'nl-nl',
+  ru: 'ru-ru',
+  uk: 'ua-uk',
+  tr: 'tr-tr',
+  id: 'id-id',
+  hi: 'in-en',
+  ur: 'pk-en',
+  ar: 'xa-ar',
+  zh: 'cn-zh',
+  ja: 'jp-jp',
+  ko: 'kr-kr',
+  cs: 'cz-cs',
+  sv: 'se-sv',
+};
 export const SCRAPE_MIN_DELAY_MS = 1500;
 export const SCRAPE_PAGE_LOAD_TIMEOUT_MS = 20000;
 export const SCRAPE_CHALLENGE_TIMEOUT_MS = 120000;
