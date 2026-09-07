@@ -988,7 +988,23 @@ describe('buildMessageSources retrieval query', () => {
     );
   });
 
-  it('falls back to the digest for a referentially incomplete query with no entity in history', async () => {
+  it('falls back to the digest for a referentially incomplete query when the digest is about this conversation', async () => {
+    await buildMessageSources({
+      ...baseParams,
+      userInput: 'ile ma lat prezydent?',
+      history: [
+        { role: 'user', content: 'co pisze raport o prezydencie?' },
+        { role: 'assistant', content: 'Raport opisuje prezydenta i wybory.' },
+      ],
+      digest: 'Temat: raport o prezydencie i wyborach.',
+    });
+
+    expect(mockHybridRetrieve.mock.calls[0][0].prompt).toBe(
+      'ile ma lat prezydent? Temat: raport o prezydencie i wyborach.'
+    );
+  });
+
+  it('leaves a digest from another conversation out of the retrieval query', async () => {
     await buildMessageSources({
       ...baseParams,
       userInput: 'ile ma lat prezydent?',
@@ -1000,7 +1016,7 @@ describe('buildMessageSources retrieval query', () => {
     });
 
     expect(mockHybridRetrieve.mock.calls[0][0].prompt).toBe(
-      'ile ma lat prezydent? Topic: the president discussed in the attached report.'
+      'ile ma lat prezydent?'
     );
   });
 

@@ -71,6 +71,7 @@ export interface LLMStore {
   generatingForChatId: number | null;
   activeChatMessages: Message[];
   activeChatDigest: string | null;
+  activeChatDigestChatId: number | null;
   generationError: { chatId: number; message: string } | null;
 
   setDB: (db: SQLiteDatabase) => void;
@@ -537,6 +538,9 @@ const describeGenerationFailure = (): string =>
 
 const NUDGE_TIME_BUDGET_MS = 40_000;
 
+const digestForChat = (get: () => LLMStore, chatId: number): string | null =>
+  get().activeChatDigestChatId === chatId ? get().activeChatDigest : null;
+
 const reportPromptEstimateAccuracy = (
   messages: ExecutorchMessage[],
   instance: { getPromptTokensCount?: () => number },
@@ -634,6 +638,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   },
   activeChatMessages: [],
   activeChatDigest: null,
+  activeChatDigestChatId: null,
   generationError: null,
 
   setDB: (db) => set({ db }),
@@ -673,12 +678,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             ]
           : messageHistory,
         activeChatDigest: digest,
+        activeChatDigestChatId: chatId,
       });
     } else {
       set({
         activeChatId: null,
         activeChatMessages: [],
         activeChatDigest: null,
+        activeChatDigestChatId: null,
       });
     }
   },
@@ -929,7 +936,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           webSubQueries: webSubQueries,
           webWeak: webWeak,
           webSearchFailed: webSearchFailed,
-          digest: get().activeChatDigest ?? undefined,
+          digest: digestForChat(get, chatId) ?? undefined,
         }
       );
 
@@ -992,7 +999,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             webSubQueries: webSubQueries,
             webWeak: webWeak,
             webSearchFailed: webSearchFailed,
-            digest: get().activeChatDigest ?? undefined,
+            digest: digestForChat(get, chatId) ?? undefined,
           }
         );
         generation = await generateLLMResponse(effectivePrepared, get);
@@ -1289,8 +1296,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         set({ generationError: null });
 
         if (!stoppedByUser) {
-          const previousDigest =
-            get().activeChatId === chatId ? get().activeChatDigest : null;
+          const previousDigest = digestForChat(get, chatId);
           updateConversationDigest(
             (messages) => get().generateUtility(messages),
             previousDigest,
@@ -1299,7 +1305,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           ).then((digest) => {
             void setChatDigest(db, chatId, digest);
             if (get().activeChatId === chatId) {
-              set({ activeChatDigest: digest });
+              set({
+                activeChatDigest: digest,
+                activeChatDigestChatId: chatId,
+              });
             }
           });
         }

@@ -1726,6 +1726,31 @@ describe('setActiveChatId', () => {
     await turn;
   });
 
+  it('does not lend one chat’s digest to another chat’s prompt (Pixel: coffee summary in a weather search)', async () => {
+    mockGetChatMessages.mockResolvedValue([]);
+    (chatRepository.getChatDigest as jest.Mock).mockResolvedValueOnce(
+      'Rozmowa o parzeniu kawy w kawiarce.'
+    );
+    useLLMStore.setState({ db: mockDb });
+    await useLLMStore.getState().setActiveChatId(4);
+    expect(useLLMStore.getState().activeChatDigest).toBe(
+      'Rozmowa o parzeniu kawy w kawiarce.'
+    );
+
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(7);
+    mockInstance.generate.mockResolvedValue('Jutro 28 stopni.');
+    useLLMStore.setState({ activeChatId: 9, activeChatMessages: [] });
+    await useLLMStore
+      .getState()
+      .sendChatMessage('a jutro?', 9, noSources, { systemPrompt: '' });
+
+    const promptOptions = (prepareMessagesForLLM as jest.Mock).mock.calls.at(
+      -1
+    )![4];
+    expect(promptOptions.digest).toBeUndefined();
+  });
+
   it('clears messages when called with null', async () => {
     useLLMStore.setState({
       db: mockDb,

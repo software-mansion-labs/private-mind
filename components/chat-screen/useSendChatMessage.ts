@@ -145,6 +145,13 @@ export const useSendChatMessage = ({
 
     const modelProfile = getModelProfile(useLLMStore.getState().model);
 
+    const digestOfThisChat = (): string | null => {
+      const llmState = useLLMStore.getState();
+      return llmState.activeChatDigestChatId === targetChatId
+        ? llmState.activeChatDigest
+        : null;
+    };
+
     // Deferred so retrieval runs only after the optimistic message is on screen.
     const buildSources = async (signal?: AbortSignal) => {
       const allSources = useSourceStore.getState().sources;
@@ -184,7 +191,7 @@ export const useSendChatMessage = ({
             embeddings,
             maxRelevantChunks: modelProfile.ragMaxRelevantChunks,
             history: messageHistory,
-            digest: useLLMStore.getState().activeChatDigest ?? undefined,
+            digest: digestOfThisChat() ?? undefined,
           });
         ({ context, sourceDocuments, preferredSourceDocuments } = embeddings
           ? await runWithModelOffloaded(
@@ -237,7 +244,7 @@ export const useSendChatMessage = ({
           } = await runWebSearch({
             query: trimmedInput,
             history: messageHistory,
-            digest: useLLMStore.getState().activeChatDigest ?? undefined,
+            digest: digestOfThisChat() ?? undefined,
             provider: webViewScrapeProvider,
             embeddings,
             embeddingModelReady,

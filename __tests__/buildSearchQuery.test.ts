@@ -1107,20 +1107,32 @@ describe('carryReferentIntoQuery', () => {
     expect(carryReferentIntoQuery(longQuery, withPresident)).toBe(longQuery);
   });
 
-  it('falls back to the digest when no entity is in history at all', () => {
-    const smallTalk = [
-      { role: 'user', content: 'hej, jak leci?' },
-      { role: 'assistant', content: 'Wszystko dobrze, dzięki!' },
+  it('leaves a digest about a different conversation out of the query (Pixel: coffee brewing bled into a weather search)', () => {
+    const weather = [
+      { role: 'user', content: 'Jaka jest dzisiaj pogoda w Warszawie?' },
+      { role: 'assistant', content: 'W Warszawie jest dzisiaj 21 stopni.' },
     ];
     expect(
       carryReferentIntoQuery(
-        'ile ma lat prezydent?',
-        smallTalk,
-        'Topic: the president of some fictional country.'
+        'a jutro?',
+        weather,
+        'Rozmowa o parzeniu kawy w kawiarce i stopniu zmielenia.'
       )
-    ).toBe(
-      'ile ma lat prezydent? Topic: the president of some fictional country.'
-    );
+    ).toBe('a jutro?');
+  });
+
+  it('still carries a digest that summarizes this very conversation', () => {
+    const weather = [
+      { role: 'user', content: 'Jaka jest dzisiaj pogoda w Warszawie?' },
+      { role: 'assistant', content: 'W Warszawie jest dzisiaj 21 stopni.' },
+    ];
+    expect(
+      carryReferentIntoQuery(
+        'a jutro?',
+        weather,
+        'Rozmowa o pogodzie w Warszawie: dzisiaj 21 stopni.'
+      )
+    ).toBe('a jutro? Rozmowa o pogodzie w Warszawie: dzisiaj 21 stopni.');
   });
 
   it('falls back to the digest for a real comparison with no matchable entity (iPhone 17 Pro vs iPhone Air)', () => {
@@ -1359,20 +1371,20 @@ describe('carryReferentIntoQuery', () => {
     ]);
   });
 
-  it('threads a chat-level digest through planWebSearch when no entity is in history', async () => {
-    const smallTalk = [
-      { role: 'user', content: 'hej, jak leci?' },
-      { role: 'assistant', content: 'Wszystko dobrze, dzięki!' },
+  it('anchors a follow-up on the subject the conversation named, not on the digest text', async () => {
+    const comparing = [
+      { role: 'user', content: 'Porownaj Model A i Model B.' },
+      { role: 'assistant', content: 'Model A jest lzejszy niz Model B.' },
     ];
     const generate = jest.fn();
     const plan = await planWebSearch(
-      'ile ma lat prezydent?',
-      smallTalk,
+      'ile on kosztuje, ten pierwszy?',
+      comparing,
       generate,
       { rewrite: false, digest: 'Topic: comparing Model A and Model B.' }
     );
     expect(plan.queries).toEqual([
-      'ile ma lat prezydent? Topic: comparing Model A and Model B.',
+      'ile on kosztuje, ten pierwszy? Model A Model B',
     ]);
   });
 });

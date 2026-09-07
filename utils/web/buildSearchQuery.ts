@@ -8,7 +8,7 @@ import {
 } from '../../constants/web';
 import { todayISO } from '../todayISO';
 import { namesAnotherDay } from '../calendarFacts';
-import { foldForMatching } from '../queryTerms';
+import { foldForMatching, stemPrefix } from '../queryTerms';
 import { conversationSubject, namedEntitiesIn } from './conversationSubject';
 import { parseIntentKind, type WebIntentKind } from './intentKind';
 import { sharesLanguageWith } from './queryLanguage';
@@ -551,7 +551,38 @@ export const carryReferentIntoQuery = (
   if (!looksIncomplete || hasOwnEntity(query)) return query;
   const subject = conversationSubject(history);
   if (subject) return `${query} ${subject}`;
-  return digest?.trim() ? `${query} ${digest.trim()}` : query;
+  const carried = digest?.trim();
+  return carried && digestDescribesConversation(carried, history)
+    ? `${query} ${carried}`
+    : query;
+};
+
+const DIGEST_OVERLAP_MIN_TERMS = 2;
+
+const contentStems = (text: string): Set<string> =>
+  new Set(
+    foldForMatching(text)
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((word) => word.length >= 4)
+      .map(stemPrefix)
+  );
+
+const digestDescribesConversation = (
+  digest: string,
+  history: { role: string; content: string }[]
+): boolean => {
+  const spoken = contentStems(
+    history
+      .filter((turn) => turn.role === 'user' || turn.role === 'assistant')
+      .map((turn) => turn.content)
+      .join(' ')
+  );
+  if (spoken.size === 0) return false;
+  let shared = 0;
+  for (const stem of contentStems(digest)) {
+    if (spoken.has(stem) && ++shared >= DIGEST_OVERLAP_MIN_TERMS) return true;
+  }
+  return false;
 };
 
 const CONVERSATIONAL_INTENT_MARKERS =
