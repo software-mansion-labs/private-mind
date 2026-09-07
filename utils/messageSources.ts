@@ -1,5 +1,6 @@
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { LFMEmbeddings } from './lfmEmbeddings';
+import { toAsciiDigits } from './asciiDigits';
 import {
   SourceDocument,
   sourceKind,
@@ -567,20 +568,12 @@ const CONTEXT_SPEC_FIGURE = /\d{2,}\s?\p{L}/u;
 
 const EVIDENCE_MIN_TOKENS = 5;
 const EVIDENCE_MIN_ANSWER_CHARS = 40;
-const DIGIT_BASES = [0x0660, 0x06f0, 0x0966, 0x09e6, 0xff10];
-const ANY_DIGIT_CHAR = /\p{Nd}/gu;
-const NUMBER_RUN = /\d[\d.,]*/g;
+const NUMBER_RUN = /\d[\d.,:]*/g;
 const NAME_RUN = /\p{Lu}[\p{L}\p{N}-]{2,}/gu;
+const GROUPED_FIGURE = /^\d{1,3}(?:[.,:]\d{2,3})+$/;
 
-const toAsciiDigits = (text: string): string =>
-  text.replace(ANY_DIGIT_CHAR, (char) => {
-    const code = char.codePointAt(0) ?? 0;
-    if (code >= 0x30 && code <= 0x39) return char;
-    for (const base of DIGIT_BASES) {
-      if (code >= base && code <= base + 9) return String(code - base);
-    }
-    return char;
-  });
+const separatorFreeFigure = (value: string): string | null =>
+  GROUPED_FIGURE.test(value) ? value.replace(/[.,:]/g, '') : null;
 
 const SOURCE_MARKER_LINE = /^[ \t]*--- (?:End of )?Source \d+.*?---[ \t]*$/gmu;
 const SENTENCE_OPENING = /(?:^|[.!?…:\n])[\s"'„«»()[\]—–-]*$/u;
@@ -593,8 +586,11 @@ export const distinctiveEvidence = (text: string): Set<string> => {
   if (!text) return found;
   const ascii = toAsciiDigits(text);
   for (const match of ascii.match(NUMBER_RUN) ?? []) {
-    const value = match.replace(/[.,]+$/, '');
-    if (value.length >= 2) found.add(value);
+    const value = match.replace(/[.,:]+$/, '');
+    if (value.length < 2) continue;
+    found.add(value);
+    const grouped = separatorFreeFigure(value);
+    if (grouped) found.add(grouped);
   }
   for (const match of text.matchAll(NAME_RUN)) {
     if (opensSentence(text, match.index ?? 0)) continue;
