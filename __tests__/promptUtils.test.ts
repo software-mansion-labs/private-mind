@@ -10,6 +10,7 @@ import {
   SourceDocument,
 } from '../database/chatRepository';
 import { Model } from '../database/modelRepository';
+import type { WebIntentKind } from '../utils/web/intentKind';
 import {
   estimatePromptTokens,
   getPromptCharBudget,
@@ -2759,7 +2760,10 @@ describe('answers that must carry their date, form and content', () => {
     ),
   ];
 
-  const groundedPromptFor = (question: string): string => {
+  const groundedPromptFor = (
+    question: string,
+    webIntentKind?: WebIntentKind
+  ): string => {
     const messages: Message[] = [
       { id: 1, chatId: 1, role: 'user', content: question, timestamp: 0 },
       { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 1 },
@@ -2767,9 +2771,26 @@ describe('answers that must carry their date, form and content', () => {
     return String(
       prepareMessagesForLLM(messages, context, baseSettings, baseModel, {
         sourceDocuments: [webSource],
+        ...(webIntentKind ? { webIntentKind } : {}),
       })[0].content
     );
   };
+
+  it('takes the shape of the answer from the planner when the question is in a language no marker list covers', () => {
+    const german = 'Wer ist aktuell Bundeskanzler von Deutschland?';
+    const turkish = 'Mercimek corbasi malzemeleri neler?';
+
+    expect(groundedPromptFor(german)).not.toContain(
+      'does not establish the current one'
+    );
+    expect(groundedPromptFor(german, 'person')).toContain(
+      'does not establish the current one'
+    );
+    expect(groundedPromptFor(turkish)).not.toContain('Write it out in full');
+    expect(groundedPromptFor(turkish, 'howto')).toContain(
+      'Write it out in full'
+    );
+  });
 
   it('tells the model to check a year the question takes for granted (S25: "turniej był w Brazylii w 2026")', () => {
     expect(
@@ -2832,7 +2853,10 @@ describe('questions whose answer is a set of options or a measured value', () =>
     sourceBlock(1, 'Atrakcje', 'Kuligi, quady, spa, paintball.'),
   ];
 
-  const groundedPromptFor = (question: string): string => {
+  const groundedPromptFor = (
+    question: string,
+    webIntentKind?: WebIntentKind
+  ): string => {
     const messages: Message[] = [
       { id: 1, chatId: 1, role: 'user', content: question, timestamp: 0 },
       { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 1 },
@@ -2840,9 +2864,26 @@ describe('questions whose answer is a set of options or a measured value', () =>
     return String(
       prepareMessagesForLLM(messages, context, baseSettings, baseModel, {
         sourceDocuments: [webSource],
+        ...(webIntentKind ? { webIntentKind } : {}),
       })[0].content
     );
   };
+
+  it('takes the shape of the answer from the planner when the question is in a language no marker list covers', () => {
+    const german = 'Wer ist aktuell Bundeskanzler von Deutschland?';
+    const turkish = 'Mercimek corbasi malzemeleri neler?';
+
+    expect(groundedPromptFor(german)).not.toContain(
+      'does not establish the current one'
+    );
+    expect(groundedPromptFor(german, 'person')).toContain(
+      'does not establish the current one'
+    );
+    expect(groundedPromptFor(turkish)).not.toContain('Write it out in full');
+    expect(groundedPromptFor(turkish, 'howto')).toContain(
+      'Write it out in full'
+    );
+  });
 
   it('asks for the options by name when the question asks what is worth doing (Pixel: wieczór kawalerski)', () => {
     expect(

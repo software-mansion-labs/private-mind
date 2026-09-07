@@ -13,6 +13,7 @@ import {
   getPromptTokenBudget,
 } from '../constants/context-window';
 import { calendarFacts, mentionsTime, namesAnotherDay } from './calendarFacts';
+import type { WebIntentKind } from './web/intentKind';
 import {
   detectThreadLanguage,
   type QuestionLanguage,
@@ -390,16 +391,22 @@ const getEditionDateInstruction = (question?: string): string =>
 const CURRENT_STATE_MARKERS =
   /aktualn\w*|obecn\w*|\bteraz\b|na dzi[sś]|w tej chwili|\bcurrent(?:ly)?\b|right now|\bas of (?:today|now)\b|\bnowadays\b|\btoday'?s\b/i;
 
-const getCurrentStateInstruction = (question?: string): string =>
-  question && CURRENT_STATE_MARKERS.test(question)
+const getCurrentStateInstruction = (
+  question?: string,
+  intentKind?: WebIntentKind
+): string =>
+  intentKind === 'person' || (question && CURRENT_STATE_MARKERS.test(question))
     ? '\n\nThe question asks how things stand right now. A page that lists holders, winners or values across history — a full list, an archive, a table "from 1789 to today" — does not establish the current one: it is equally consistent with any entry in it being current. Answer from a source that states the present situation and carries a recent date, and where the block only offers a historical list, say it does not confirm the current one rather than picking an entry from it.'
     : '';
 
 const PROCEDURE_MARKERS =
   /przepis\w*|sk[łl]adnik\w*|krok po kroku|instrukcj\w*|wypisz|wymie[ńn]|podaj list|list[eę] |recipe|ingredient|step[- ]by[- ]step|how (?:do i|to) (?:make|cook|bake)|list of/i;
 
-const getProcedureInstruction = (question?: string): string =>
-  question && PROCEDURE_MARKERS.test(question)
+const getProcedureInstruction = (
+  question?: string,
+  intentKind?: WebIntentKind
+): string =>
+  intentKind === 'howto' || (question && PROCEDURE_MARKERS.test(question))
     ? '\n\nThe question asks for the thing itself — a recipe, an ingredient list, a sequence of steps, a list of items. Write it out in full: the actual ingredients with their quantities, the actual steps in order, the actual items. Take it from whichever page in the block carries the most complete version and follow that one through, rather than mixing fragments from several. Saying that such a list can be found on these pages, or describing what each page offers, does not answer the question.'
     : '';
 
@@ -553,6 +560,7 @@ export interface PrepareMessagesOptions {
   sourceDocuments?: SourceDocument[];
   budgetScale?: number;
   webIntent?: string;
+  webIntentKind?: WebIntentKind;
   webSubQueries?: string[];
   webWeak?: boolean;
   webSearchFailed?: boolean;
@@ -572,6 +580,7 @@ export const prepareMessagesForLLM = (
     sourceDocuments,
     budgetScale = 1,
     webIntent,
+    webIntentKind,
     webSubQueries,
     webWeak,
     webSearchFailed,
@@ -611,8 +620,8 @@ export const prepareMessagesForLLM = (
     systemPrompt += getRecentEventCompletenessInstruction(question);
     systemPrompt += getStatedDateInstruction(question);
     systemPrompt += getEditionDateInstruction(question);
-    systemPrompt += getCurrentStateInstruction(question);
-    systemPrompt += getProcedureInstruction(question);
+    systemPrompt += getCurrentStateInstruction(question, webIntentKind);
+    systemPrompt += getProcedureInstruction(question, webIntentKind);
     systemPrompt += getCompositionInstruction(question);
     systemPrompt += getMeasurementUnitInstruction(question);
     systemPrompt += getSuggestionListInstruction(question);

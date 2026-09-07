@@ -934,6 +934,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           sourceDocuments: sourceDocuments,
           budgetScale: 1,
           webIntent: webIntent,
+          webIntentKind: webIntentKind,
           webSubQueries: webSubQueries,
           webWeak: webWeak,
           webSearchFailed: webSearchFailed,
