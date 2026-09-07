@@ -1,11 +1,17 @@
+import { toAsciiDigits } from '../asciiDigits';
+
 export const VERIFIED_PRODUCT_MARKER = '[Verified product data]';
 
 export const hasVerifiedProductData = (context: string): boolean =>
   context.includes(VERIFIED_PRODUCT_MARKER);
 
 const CURRENCY_WORD =
-  '(?:usd|eur|gbp|pln|zl|zł|chf|jpy|czk|inr|pkr|brl|rub|cny|rmb|mxn|sar|aed|irr)';
-const CURRENCY_TOKEN_SRC = `[$€£¥₹₽]\\s?\\d(?:[\\d\\s.,]*\\d)?|\\d(?:[\\d\\s.,]*\\d)?\\s?${CURRENCY_WORD}(?![\\p{L}\\p{N}])`;
+  '(?:usd|eur|euro|euros|gbp|pln|zl|zł|chf|jpy|czk|inr|pkr|brl|rub|cny|rmb|mxn|sar|aed|irr|try|tl|idr|rp|ngn|zar|thb|vnd|php|krw|sek|nok|dkk|huf|ron|uah|egp|bdt|lkr)';
+const CURRENCY_SYMBOL = '\\p{L}?\\p{Sc}';
+const AMOUNT = '\\d(?:[\\d\\s.,]*\\d)?';
+const CURRENCY_TOKEN_SRC =
+  `(?:${CURRENCY_SYMBOL}|(?<![\\p{L}\\p{N}])${CURRENCY_WORD}\\s?)\\s?${AMOUNT}` +
+  `|${AMOUNT}\\s?(?:${CURRENCY_SYMBOL}|${CURRENCY_WORD})(?![\\p{L}\\p{N}])(?!\\s?\\d)`;
 const CURRENCY_TOKEN = new RegExp(CURRENCY_TOKEN_SRC, 'giu');
 
 const VALUE_STATEMENT_WORD =
@@ -44,12 +50,12 @@ const normalizeFigure = (raw: string): number | null => {
 };
 
 export const extractCurrencyTokens = (text: string): string[] =>
-  [...text.matchAll(CURRENCY_TOKEN)].map((m) => m[0].trim());
+  [...toAsciiDigits(text).matchAll(CURRENCY_TOKEN)].map((m) => m[0].trim());
 
 export { normalizeFigure };
 
 export const extractPriceStatementTokens = (text: string): string[] =>
-  [...text.matchAll(PRICE_STATEMENT)].map((m) => m[1]!.trim());
+  [...toAsciiDigits(text).matchAll(PRICE_STATEMENT)].map((m) => m[1]!.trim());
 
 export const extractCurrencyFigures = (text: string): number[] =>
   extractCurrencyTokens(text)
@@ -106,7 +112,7 @@ const MIN_BARE_AMOUNT = 100;
 
 export const extractBareAmounts = (answer: string): number[] => {
   if (!CURRENCY_MENTION.test(answer)) return [];
-  return [...answer.matchAll(BARE_NUMBER)]
+  return [...toAsciiDigits(answer).matchAll(BARE_NUMBER)]
     .map((match) => match[0]!.trim())
     .filter((raw) => !YEAR_LIKE.test(raw.replace(/\s/g, '')))
     .map(normalizeFigure)
@@ -116,7 +122,7 @@ export const extractBareAmounts = (answer: string): number[] => {
 };
 
 const extractBareFigures = (text: string): number[] =>
-  [...text.matchAll(BARE_NUMBER)]
+  [...toAsciiDigits(text).matchAll(BARE_NUMBER)]
     .map((match) => normalizeFigure(match[0]!.trim()))
     .filter((value): value is number => value !== null);
 
