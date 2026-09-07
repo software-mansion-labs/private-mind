@@ -3,6 +3,7 @@ import {
   webResultsToContext,
   hostname,
   selectRelevantContent,
+  enumerationShare,
 } from '../utils/web/webResultsToContext';
 import type { WebSearchResult } from '../utils/web/types';
 import { SOURCE_HEADER } from '../constants/retrieval';
@@ -1054,5 +1055,73 @@ describe('the planner’s expectations steer the excerpt', () => {
   it('falls back to the question alone when nothing is expected', () => {
     const excerpt = selectRelevantContent(page, 'iPhone 17 Pro', 110, {});
     expect(excerpt).toContain('iPhone 17 Pro');
+  });
+});
+
+describe('enumerationShare', () => {
+  it('reads an ingredient list as a list', () => {
+    expect(
+      enumerationShare(
+        '2 szklanki mąki\n3 jajka\n200 g cukru\n1 łyżeczka cynamonu'
+      )
+    ).toBe(1);
+  });
+
+  it('reads numbered steps as a list', () => {
+    expect(
+      enumerationShare('1. Zetrzyj marchewkę\n2. Wymieszaj\n3. Piecz')
+    ).toBe(1);
+  });
+
+  it('reads a marketing lead as prose', () => {
+    expect(
+      enumerationShare(
+        'Ciasto marchewkowe z orzechami włoskimi jest puszyste.\n' +
+          'Świetnie smakuje do filiżanki gorącej kawy na podwieczorek.\n' +
+          'Sprawdza się też jako tort urodzinowy i długo zachowuje świeżość.'
+      )
+    ).toBe(0);
+  });
+
+  it('says nothing about a passage too short to have a shape', () => {
+    expect(enumerationShare('3 jajka\n200 g cukru')).toBe(0);
+  });
+});
+
+describe('selectRelevantContent with a list question', () => {
+  const lead =
+    'Ciasto marchewkowe z orzechami włoskimi jest puszyste i wilgotne. ' +
+    'Świetnie smakuje do filiżanki gorącej kawy na rodzinny podwieczorek. ' +
+    'Sprawdza się nawet jako tort urodzinowy i bardzo długo zachowuje świeżość. ' +
+    'To sprawdzony przepis, który zawsze wychodzi i jest tani w przygotowaniu.';
+  const list =
+    'Składniki na ciasto marchewkowe:\n' +
+    '2 szklanki mąki\n' +
+    '3 jajka\n' +
+    '200 g cukru\n' +
+    '1 łyżeczka cynamonu\n' +
+    '150 ml oleju';
+  const content = `${lead}\n\n${list}`;
+
+  it('keeps the ingredient list when the question asks for the ingredients (Pixel: "podaj liste skladnikow")', () => {
+    const selected = selectRelevantContent(
+      content,
+      'Podaj liste skladnikow do ciasta marchewkowego',
+      lead.length,
+      { title: 'Ciasto marchewkowe - przepis' }
+    );
+
+    expect(selected).toContain('200 g cukru');
+  });
+
+  it('leaves a question that is not about a list to the usual ranking', () => {
+    const selected = selectRelevantContent(
+      content,
+      'Czy ciasto marchewkowe długo zachowuje świeżość?',
+      lead.length,
+      { title: 'Ciasto marchewkowe - przepis' }
+    );
+
+    expect(selected).toContain('zachowuje świeżość');
   });
 });

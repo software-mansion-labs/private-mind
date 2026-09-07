@@ -153,6 +153,31 @@ export const MONEY_ANCHOR =
 const MONEY_BONUS = 2;
 
 const NUMBER_RUN = /\d[\d.,:]*\d|\d/g;
+const ENUMERATION_BONUS = 3;
+const NO_ENUMERATION_FACTOR = 0.7;
+const ENUMERATION_MIN_LINES = 3;
+const ENUMERATION_ITEM_MAX_CHARS = 90;
+const ENUMERATION_QUESTION =
+  /przepis\w*|sk[\u0142l]adnik\w*|krok po kroku|wypisz|wymie[\u0144n]|list[\u0119ea]\b|recipe|ingredient|step[- ]by[- ]step|list of|instructions?/i;
+const ENUMERATION_MARKER =
+  /^(?:[-\u2013\u2014\u2022*\u00b7\u25aa]|\d+[.)]|\d+(?:[.,/]\d+)?\s+\p{L})/u;
+const ENUMERATION_MEASURE =
+  /(?<![\p{L}\p{N}])\d+(?:[.,/]\d+)?\s*(?:g|kg|ml|l|dag|dkg|szt|szklan\w*|[\u0142l]y[\u017cz]\w*|cup|cups|tbsp|tsp|oz|lb|min|godz|h)(?![\p{L}])/iu;
+
+export const enumerationShare = (text: string): number => {
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length < ENUMERATION_MIN_LINES) return 0;
+  const items = lines.filter(
+    (line) =>
+      line.length <= ENUMERATION_ITEM_MAX_CHARS &&
+      (ENUMERATION_MARKER.test(line) || ENUMERATION_MEASURE.test(line))
+  ).length;
+  return items / lines.length;
+};
+
 const FIGURES_BONUS = 3;
 const FIGURES_SATURATION = 3;
 const NO_FIGURE_FACTOR = 0.5;
@@ -231,6 +256,7 @@ interface PassageScoring {
   wantsDate: boolean;
   wantsPrice: boolean;
   wantsFigures: boolean;
+  wantsEnumeration: boolean;
   verifiedAmount: number | null;
 }
 
@@ -242,7 +268,8 @@ interface PassageScore {
 const scorePassage = (
   folded: string,
   scoring: PassageScoring,
-  creditedRecord: boolean
+  creditedRecord: boolean,
+  listShare = 0
 ): PassageScore => {
   const {
     needles,
@@ -251,6 +278,7 @@ const scorePassage = (
     wantsDate,
     wantsPrice,
     wantsFigures,
+    wantsEnumeration,
   } = scoring;
   let score = 0;
   let answersQuestion = creditedRecord;
@@ -288,6 +316,14 @@ const scorePassage = (
       answersQuestion = true;
     } else {
       score *= NO_FIGURE_FACTOR;
+    }
+  }
+  if (wantsEnumeration) {
+    if (listShare > 0) {
+      score += listShare * ENUMERATION_BONUS;
+      answersQuestion = true;
+    } else {
+      score *= NO_ENUMERATION_FACTOR;
     }
   }
   const digits = (folded.match(/\d/g) ?? []).length;
@@ -352,6 +388,7 @@ export const selectRelevantContent = (
     verifiedAmount === null &&
     (intent === 'price' || (!!query && PRICE_QUESTION.test(query)));
   const wantsFigures = intent === 'specs';
+  const wantsEnumeration = !!query && ENUMERATION_QUESTION.test(query);
   const all = splitIntoPassages(trimmed, maxChars);
   const foldedAll = all.map(foldForMatching);
   const foldedTitle = foldForMatching(options.title ?? '');
@@ -364,6 +401,7 @@ export const selectRelevantContent = (
     wantsDate,
     wantsPrice,
     wantsFigures,
+    wantsEnumeration,
     verifiedAmount,
   };
   const credited =
@@ -380,7 +418,12 @@ export const selectRelevantContent = (
     .map((text, index) => ({
       text,
       index,
-      ...scorePassage(foldedAll[index]!, scoring, credited.has(index)),
+      ...scorePassage(
+        foldedAll[index]!,
+        scoring,
+        credited.has(index),
+        wantsEnumeration ? enumerationShare(text) : 0
+      ),
     }))
     .filter((passage) => {
       const key = foldedAll[passage.index]!;
