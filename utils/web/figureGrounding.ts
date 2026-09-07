@@ -8,8 +8,11 @@ const CURRENCY_WORD =
 const CURRENCY_TOKEN_SRC = `[$€£¥₹₽]\\s?\\d(?:[\\d\\s.,]*\\d)?|\\d(?:[\\d\\s.,]*\\d)?\\s?${CURRENCY_WORD}(?![\\p{L}\\p{N}])`;
 const CURRENCY_TOKEN = new RegExp(CURRENCY_TOKEN_SRC, 'giu');
 
+const VALUE_STATEMENT_WORD =
+  '(?:price|cena|cenie|worth|costs?|kosztuj\\w*|wart\\w*|sprzedaj\\w*)';
+
 const PRICE_STATEMENT = new RegExp(
-  `(?:price|cena)[^.\\n]{0,25}?(${CURRENCY_TOKEN_SRC})`,
+  `${VALUE_STATEMENT_WORD}[^.\\n]{0,25}?(${CURRENCY_TOKEN_SRC})`,
   'giu'
 );
 

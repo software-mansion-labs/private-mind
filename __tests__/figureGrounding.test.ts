@@ -242,6 +242,15 @@ describe('findUngroundedFigures', () => {
     ).toEqual([]);
   });
 
+  it('accepts a figure the page states as a value, not only after the word "price" (Pixel cross-model pass)', () => {
+    const context =
+      'In 1971, when the US abandoned the gold standard, gold was priced at ' +
+      '$35 per ounce. Today, gold is worth over $1,900 per ounce and the ' +
+      'premium over spot is calculated from there.';
+    const answer = 'The current price of gold per ounce is over $1,900 USD.';
+    expect(findUngroundedFigures(answer, context)).toEqual([]);
+  });
+
   it('flags a real figure from the page that the price statement does not govern (F8)', () => {
     const context =
       'Apple iPhone 17 Pro 256GB Srebrny. Cena: 5 147,00 zł. ' +
