@@ -94,8 +94,18 @@ const ROSTER_PENALTY = 3;
 const ROSTER_TITLE =
   /pelna lista|lista wszystkich|wszyscy [a-z]+|chronologiczn|od \d{4} (?:roku )?do (?:dzis|teraz)|full list|complete list|list of all|all .{0,20}since \d{4}|from \d{4} to|\d{4}\s?[-\u2013]\s?\d{4}|history of|na przestrzeni lat/i;
 
+const YEAR_IN_TITLE = /(?<![\p{L}\p{N}])(?:1[6-9]|20)\d{2}(?![\p{L}\p{N}])/gu;
+const ROSTER_YEAR_HORIZON = 30;
+
+const namesAGenerationOldYear = (title: string): boolean => {
+  const horizon = new Date().getFullYear() - ROSTER_YEAR_HORIZON;
+  return [...title.matchAll(YEAR_IN_TITLE)].some(
+    (match) => Number(match[0]) < horizon
+  );
+};
+
 export const looksLikeHistoricalRoster = (title: string): boolean =>
-  ROSTER_TITLE.test(foldForMatching(title));
+  ROSTER_TITLE.test(foldForMatching(title)) || namesAGenerationOldYear(title);
 
 export const rankByListingRelevance = <T extends WebSearchResult>(
   rawResults: T[],
@@ -162,7 +172,7 @@ export const rankByListingRelevance = <T extends WebSearchResult>(
         anchorScore(index) +
         (yearsDiscriminate && inScope[index] ? YEAR_BONUS : 0) -
         (looksLikeCrossAssetPage(result) ? CROSS_ASSET_PENALTY : 0) -
-        (options.currentState && ROSTER_TITLE.test(foldedTitles[index]!)
+        (options.currentState && looksLikeHistoricalRoster(result.title ?? '')
           ? ROSTER_PENALTY
           : 0),
     }))

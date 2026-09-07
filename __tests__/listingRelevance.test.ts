@@ -335,6 +335,23 @@ describe('a question about who holds a position now', () => {
     expect(ranked[0]!.title).toBe(current.title);
   });
 
+  it('reads a roster title in a language the phrase list never carried', () => {
+    expect(
+      looksLikeHistoricalRoster(
+        'Liste der Bundeskanzler Deutschlands seit 1949'
+      )
+    ).toBe(true);
+    expect(looksLikeHistoricalRoster('Presidentes do Brasil desde 1889')).toBe(
+      true
+    );
+  });
+
+  it('leaves a title that only names the present alone', () => {
+    expect(
+      looksLikeHistoricalRoster('Bundeskanzler von Deutschland 2026')
+    ).toBe(false);
+  });
+
   it('leaves the ordering alone when the question is not about the present', () => {
     const ranked = rankByListingRelevance(
       [roster, current],

@@ -444,7 +444,7 @@ const searchWithCleanup = async (
     const capped = fairRankByListingRelevance(groups, rankingQuery, cap, {
       kind: plan.kind,
       scopeYears: scopeYearsOf([...baseQueries, query]),
-      currentState: asksCurrentState(query),
+      currentState: plan.kind === 'person' || asksCurrentState(query),
     });
     let enriched = capped;
     let target = WEB_ADAPTIVE_ENRICH
