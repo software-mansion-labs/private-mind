@@ -11,8 +11,10 @@ niczego. Mierzysz, zbierasz dowody, zapisujesz. Wniosek bez dowodu z eksportu
 rozmowy, logu, zrzutu albo nagrania nie istnieje.
 
 Przydział urządzeń dostajesz w pierwszej wiadomości uruchamiającej
-(„Android: Pixel 10, potem S20 FE” albo „iOS: iPhone 17, potem iPhone SE”).
-Robisz **tylko** swoje urządzenia, w podanej kolejności.
+(„Android: S20 FE” albo „iOS: iPhone 17, potem iPhone SE”). Robisz **tylko**
+swoje urządzenia, w podanej kolejności. **Pixel 10 (`56211FDCR005KT`) jest
+wyłączony z tej serii** — testuje go właściciel ręcznie; nie wolno go
+dotykać, nawet `list-devices` go pokazuje.
 
 ## Co ta seria ma ustalić
 
@@ -41,6 +43,16 @@ sekcji 5 planu — z sytuacją, w której wystąpiło, żeby dało się je odtwo
    tapy w to samo miejsce → `describe`, nie trzeci tap. Zrzut dołączony do
    wyniku akcji bywa o klatkę za wcześnie — zanim uznasz, że tap nic nie
    zrobił, zrób osobny `screenshot`/`describe`.
+   **Wyjątek iOS (sprawdzony 2026-09-07):** na fizycznych iPhone'ach
+   `describe` zwraca dla Private Mind puste drzewo (tylko ROOT), choć dla
+   Ustawień działa. Na iOS wolno brać współrzędne ze zrzutu (`screenshot`,
+   `scale: 1`), pod warunkiem osobnego `screenshot` po każdym tapie i zapisu,
+   co się zmieniło. `await-ui-element` nie zadziała — zamiast tego
+   `screenshot` co 5 s podczas szukania i generacji; stoper z `timestampMs`
+   tapu i z czasu pliku zrzutu; `ttft`/`tps` i treść odczytujesz ze zrzutu w
+   pełnej skali. Android: `describe` działa normalnie i jest obowiązkowy.
+   Na Androidzie `paste` nie działa na fizycznym telefonie — tekst przez
+   `keyboard`.
 4. **Urządzenia i tool-server są współdzielone** z drugą sesją testową
    (druga platforma). Nigdy `stop-all-simulator-servers` bez
    `devices: [<twoje id>]`. Świeży stan = `restart-app`, nie `launch-app` na
@@ -73,6 +85,17 @@ sekcji 5 planu — z sytuacją, w której wystąpiło, żeby dało się je odtwo
     (pierwszy tekst w bańce, selector po fragmencie treści albo
     `identifier` bańki z `describe`; `timeoutMs` 120000). Zawieszenie =
     trzy kolejne `screenshot` co 5 s bez żadnej zmiany podczas „Searching…”.
+
+## Modele: co jest na telefonie, co pobrać
+
+Przed S1 wejdź na ekran Models i spisz, które modele mają ikonę usuwania
+(= pobrane) — to obserwacja S1. Modele z tabeli sekcji 3 planu, których nie
+ma, pobierasz sam (Wi-Fi FiberMansion), mierząc czas; jeśli pobieranie już
+trwa, gdy wchodzisz na ekran, **nie anuluj go** — poczekaj i zapisz. Nie
+pobieraj niczego spoza tabeli. Na iOS wejście na stronę rodziny modeli może
+samo uruchomić pobieranie wszystkich wariantów rodziny (obserwacja z
+2026-09-07): jeśli tak się stanie, zapisz to jako obserwację UX, anuluj tylko
+warianty spoza tabeli i dopiero potem kontynuuj.
 
 ## Krok 0 — środowisko
 
@@ -178,9 +201,62 @@ zakończenia i lista plików w `docs/test-evidence/smoke/`, które dodałeś.
 - Nie wyciągaj wniosków o jakości odpowiedzi ponad „liczba jest / nie ma jej
   w passage / odmowa”. To nie ta seria.
 - Nie restartuj tool-servera ani nie zabijaj cudzych urządzeń.
-- Nie kasuj danych aplikacji (`pm clear`, odinstalowanie) — Pixel ma modele
+- Nie kasuj danych aplikacji (`pm clear`, odinstalowanie) — telefony mają modele
   pobrane wcześniej, to skraca S1.
 - Nie przerywaj scenariusza S5 w połowie, żeby „sprawdzić coś innego”.
 - Jeśli coś blokuje (urządzenie zniknęło, ekran zablokowany, aplikacja nie
   startuje trzy razy z rzędu) — zapisz stan, zrób zrzut i zakończ z raportem
   „zablokowane na …”, zamiast zgadywać.
+
+## Wiadomości uruchamiające (do wklejenia jako pierwsza wiadomość sesji)
+
+Każda sesja dostaje ten plik do przeczytania w całości plus jedną z
+poniższych wiadomości. Hash i godziny instalacji uzupełnia osoba, która
+instalowała buildy.
+
+### Sesja Android — Samsung S20 FE
+
+> Przeczytaj w całości `docs/DEVICE_SMOKE_TEST_PROMPT.md` w katalogu
+> `/Users/krzysztoffaracik/Projects/private-mind-C/.claude/worktrees/cr-phase1`
+> i wykonaj go co do litery; plan scenariuszy jest w
+> `docs/DEVICE_SMOKE_TEST_PLAN.md`.
+> Przydział: **Android: Samsung S20 FE (adb `RFCT814MVHX`)**. Pixel 10
+> (`56211FDCR005KT`) jest zajęty przez właściciela — nie dotykaj go. iPhone'y
+> robi druga sesja.
+> Build: gałąź `cr/phase1-security`, hash `2b473bf`, release APK
+> `versionCode=68`, `lastUpdateTime=2026-09-07 14:17:23` (sprawdź `dumpsys package`,
+> inna godzina = cudzy APK → stop i zgłoś).
+> Modele: Qwen 3 - 0.6B, potem LFM 2.5 - 1.2B; trzeci (Qwen 2.5 - 1.5B) tylko
+> jeśli zostanie czas. Spisz, co jest pobrane, brakujące pobierz sam.
+> Wyniki: sekcja `# Android` w `docs/DEVICE_SMOKE_TEST_RESULTS.md`, dowody
+> w `docs/test-evidence/smoke/`. Żadnego git, żadnych instalacji, żadnego
+> `stop-all-simulator-servers` bez `devices: ["RFCT814MVHX"]`.
+> Na koniec odpowiedz podsumowaniem: werdykty par (model, urządzenie),
+> incydenty, pogorszenia wydajności, lista plików dowodowych.
+
+### Sesja iOS — iPhone 17, potem iPhone SE 3
+
+> Przeczytaj w całości `docs/DEVICE_SMOKE_TEST_PROMPT.md` w katalogu
+> `/Users/krzysztoffaracik/Projects/private-mind-C/.claude/worktrees/cr-phase1`
+> i wykonaj go co do litery; plan scenariuszy jest w
+> `docs/DEVICE_SMOKE_TEST_PLAN.md`.
+> Przydział: **iOS: iPhone 17 (UDID `00008150-000E62513E01401C`, CoreDevice
+> `1A9BF7C8-8C48-59E8-8947-8823CC422381`), potem iPhone SE 3 (UDID
+> `00008110-000641663E90401E`, CoreDevice
+> `4E07878B-2D64-53C6-9D28-B406F895FC87`)**. Androidy robi druga sesja i
+> właściciel — nie dotykaj ich.
+> Build: gałąź `cr/phase1-security`, hash `2b473bf`, iOS Release pod id
+> `com.swmansion.privatemind.smoke` (zespół `DAAT3F8YMV`), zainstalowany
+> 2026-09-07 14:17 (iPhone 17) i 14:18 (iPhone SE).
+> `describe` zwraca dla tej aplikacji puste drzewo — pracuj ze zrzutów wg
+> wyjątku iOS z zasady 3 i zapisz to jako pierwszy incydent narzędziowy.
+> Modele: iPhone 17 → LFM 2.5 - 1.2B, potem Gemma 4 - 2B (jeśli bramka
+> blokuje web search: toast co do znaku, GATED, weź Qwen 3 - 1.7B);
+> iPhone SE → Qwen 3 - 0.6B, potem LFM 2.5 - 1.2B (spodziewany toast bramki;
+> jeśli wpuści, przejdź scenariusze). Spisz, co jest pobrane, brakujące
+> pobierz sam, nie anuluj trwających pobrań.
+> Wyniki: sekcja `# iOS` w `docs/DEVICE_SMOKE_TEST_RESULTS.md`, dowody w
+> `docs/test-evidence/smoke/`. Żadnego git, żadnych instalacji, żadnego
+> `stop-all-simulator-servers` bez `devices: ["<UDID>"]`.
+> Na koniec odpowiedz podsumowaniem: werdykty par (model, urządzenie),
+> incydenty, pogorszenia wydajności, lista plików dowodowych.
