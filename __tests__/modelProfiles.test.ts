@@ -54,6 +54,18 @@ describe('isWebSearchReady', () => {
     expect(WEB_ANSWER_EVIDENCE['Qwen 2.5 - 0.5B']).toBeDefined();
   });
 
+  it('keeps web search off the models that fabricated their way through the cross-model pass', () => {
+    expect(isWebSearchReady({ modelName: 'LFM 2.5 VL - 450M' })).toBe(false);
+    expect(isWebSearchReady({ modelName: 'Qwen 2.5 - 1.5B' })).toBe(false);
+    expect(isWebSearchReady({ modelName: 'Qwen 2.5 - 3B' })).toBe(false);
+  });
+
+  it('leaves the models that only need more memory available', () => {
+    expect(isWebSearchReady({ modelName: 'Gemma 4 - 2B' })).toBe(true);
+    expect(isWebSearchReady({ modelName: 'LFM 2.5 - 1.2B' })).toBe(true);
+    expect(isWebSearchReady({ modelName: 'Qwen 3 - 0.6B' })).toBe(true);
+  });
+
   it('backs every not-ready verdict with recorded evidence', () => {
     for (const [name, profile] of Object.entries(PROFILE_BY_MODEL)) {
       if (profile.webSearchReady === false) {
