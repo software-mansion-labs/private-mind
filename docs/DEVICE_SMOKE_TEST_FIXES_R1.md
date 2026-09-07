@@ -1,8 +1,8 @@
 # Poprawki po rundzie 1 smoke testów — co zmieniono i jak to sprawdzić
 
-Commity na `cr/phase1-security`: `0be1c86`, `aad5ade`, `88b984a`, `dd273e5`.
-Automatyczne testy: `npx jest` (2174 zielone), nazwy testów niżej wskazują
-regresję, którą każda poprawka zamyka.
+Commity na `cr/phase1-security`: `0be1c86`, `aad5ade`, `88b984a`, `dd273e5`,
+`4dfef6c`. Automatyczne testy: `npx jest` (2180 zielonych), nazwy testów niżej
+wskazują regresję, którą każda poprawka zamyka.
 
 ## R1 — jedna tura naraz (S20 FE: zgubione i zdublowane wiadomości; Pixel: stara odpowiedź w nowym czacie)
 
@@ -25,9 +25,8 @@ says why instead of dropping it silently”.
    razu, ikona Stop widoczna, potem odpowiedź. Nigdy: puste pole bez bańki.
 2. W trakcie „Searching…” wpisz tekst i tapnij Send. Oczekiwane: tekst zostaje
    w polu, toast „Wait for the response…”. Po Stop wysyłka działa.
-3. Pixel: zadaj pytanie z Web, otwórz drawer → New chat, wpisz nowe pytanie
-   i wyślij. Oczekiwane: toast, tekst zostaje. Wróć do starego czatu:
-   odpowiedź jest kompletna od początku, nie sam ogon.
+3. Pixel: patrz R9 — wysyłka w innym czacie zatrzymuje starą turę zamiast
+   pokazywać toast.
 4. Powtórz 10 tur z Web w jednej rozmowie (S5). Oczekiwane: 10 baniek
    użytkownika, 10 odpowiedzi, zero osieroconych.
 
@@ -119,9 +118,29 @@ de‑de, in‑en, pk‑en …); angielski bez regionu.
 dominujące źródło z domeny .pl, cena w zł. Runda 2 sprawdza to samo dla de,
 hi, ur i pozostałych.
 
+## R9 — wyjście z czatu nie zabija tury (Pixel: drawer → New chat → powrót)
+
+**Zmiana.** Blur ekranu czatu nie przerywa generowania. Tura kończy się w
+swoim czacie i jest tam po powrocie. Wysłanie wiadomości w **innym** czacie
+przerywa poprzednią turę i przechodzi dalej; drugie wysłanie w tym samym
+czacie nadal jest odrzucane. Tura ucięta Stopem nie zasila digestu rozmowy.
+
+**Testy.** `useSendChatMessage.test.ts` → „stops the other chat's turn and
+sends…”, „refuses a second message for the chat that is already answering”;
+`llmStore.test.ts` → „does not let a stump left by Stop become the
+conversation topic”, „summarizes a turn that finished on its own”.
+
+**Na urządzeniu.** Zadaj pytanie, które generuje długo. W trakcie: drawer →
+New chat → wróć do poprzedniego czatu. Oczekiwane: odpowiedź trwa dalej i
+kończy się w całości, ttft/tps normalne. Potem zadaj w tym czacie pytanie
+kontekstowe („Czy jest tam jedzenie vege?”): zapytanie w trace ma dotyczyć
+miejsca z pierwszej wiadomości, nie innego miasta. Wariant drugi: w nowym
+czacie wyślij wiadomość, gdy stary jeszcze generuje. Oczekiwane: stary czat
+zatrzymuje się z tym, co zdążył, nowy odpowiada na swoje pytanie.
+
 ## Kolejność na urządzeniach
 
 S20 FE (Qwen 3 0.6B): R1 → R3 → R2, potem LFM: R1 tylko krok 4.
 iPhone 17: R6 (Gemma) → R5 (Qwen 1.7B) → R7 (LFM) → R8.
 iPhone SE: R4.
-Pixel 10: R1 krok 3 (właściciel).
+Pixel 10: R1 krok 3 i R9 (właściciel).
