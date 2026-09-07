@@ -64,7 +64,7 @@ interface Props {
     userInput: string,
     imagePath?: string,
     attachments?: Attachment[]
-  ) => void | Promise<void>;
+  ) => boolean | void | Promise<boolean | void>;
   onSelectModel: () => void;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
@@ -346,11 +346,19 @@ const ChatBar = ({
     }
     setUserInput('');
     clearAll({ cleanupSources: false });
-    Promise.resolve(
-      onSend(inputToSend, imageUriToSend, attachmentsToSend)
-    ).catch((error) => {
-      console.error('Failed to send message:', error);
-    });
+    Promise.resolve(onSend(inputToSend, imageUriToSend, attachmentsToSend))
+      .then((accepted) => {
+        if (accepted !== false) return;
+        lastSentRef.current = null;
+        setUserInput((current) => current || inputToSend);
+        Toast.show({
+          type: 'defaultToast',
+          text1: 'Wait for the response to finish or stop it first.',
+        });
+      })
+      .catch((error) => {
+        console.error('Failed to send message:', error);
+      });
   }, [
     onSend,
     userInput,

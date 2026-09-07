@@ -97,7 +97,7 @@ export interface LLMStore {
     imagePath?: string,
     documentName?: string,
     isRetry?: boolean
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   retryLastGeneration: () => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   generateUtility: (messages: ExecutorchMessage[]) => Promise<string>;
@@ -126,12 +126,14 @@ let streamBuffer = '';
 let streamTokenCount = 0;
 let streamFirstTokenTime = 0;
 let streamFlushScheduled = false;
+let streamedSoFar = '';
 
 const resetStreamState = () => {
   streamBuffer = '';
   streamTokenCount = 0;
   streamFirstTokenTime = 0;
   streamFlushScheduled = false;
+  streamedSoFar = '';
 };
 
 let suppressUtilityStreaming = false;
@@ -258,6 +260,7 @@ const loadModelInstance = async (
     if (!streamBuffer) return;
     const text = streamBuffer;
     streamBuffer = '';
+    streamedSoFar += text;
     const snapshot = get();
     const shouldAppendToActiveChat =
       snapshot.generatingForChatId === snapshot.activeChatId &&
@@ -369,6 +372,7 @@ const updateChatStateForGeneration = (
       break;
     case 'complete':
       streamBuffer = '';
+      streamedSoFar = '';
       if (
         data?.timeToFirstToken !== undefined &&
         data?.tokensPerSecond !== undefined
@@ -408,13 +412,17 @@ const updateChatStateForGeneration = (
       break;
     case 'failed':
       streamBuffer = '';
+      streamedSoFar = '';
       // Drop the empty assistant placeholder left behind when generation
       // failed, was interrupted before any tokens, or produced no response.
       set((state) => {
         const messages = state.activeChatMessages;
         const last = messages[messages.length - 1];
         const cleaned =
-          last && last.role === 'assistant' && last.id === -1 && !last.content
+          last &&
+          last.role === 'assistant' &&
+          last.id === -1 &&
+          !stripThinkBlocks(last.content).trim()
             ? messages.slice(0, -1)
             : messages;
         return {
@@ -526,6 +534,8 @@ const runUtilityGeneration = async (
 
 const describeGenerationFailure = (): string =>
   'The model returned an empty response';
+
+const NUDGE_TIME_BUDGET_MS = 40_000;
 
 const reportPromptEstimateAccuracy = (
   messages: ExecutorchMessage[],
@@ -654,7 +664,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       set({
         activeChatId: chatId,
         activeChatMessages: generatingHere
-          ? [...messageHistory, buildAssistantPlaceholder(chatId, get().model)]
+          ? [
+              ...messageHistory,
+              {
+                ...buildAssistantPlaceholder(chatId, get().model),
+                content: streamedSoFar,
+              },
+            ]
           : messageHistory,
         activeChatDigest: digest,
       });
@@ -673,7 +689,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       return;
     }
     const result = modelLoadChain.then(async () => {
-      const network = await NetInfo.fetch().catch(() => null);
+      const network = model.isDownloaded
+        ? null
+        : await NetInfo.fetch().catch(() => null);
       if (network?.isConnected === false) {
         Toast.show({
           type: 'defaultToast',
@@ -747,12 +765,15 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     documentName,
     isRetry = false
   ) => {
-    await modelLoadChain;
-    await utilityChain;
-    const { db, model: currentModel, activeChatMessages } = get();
-    if (!db || !currentModel) {
+    const { db, model: selectedModel, activeChatMessages } = get();
+    if (!db || !selectedModel) {
       console.warn('LLM not ready or DB not set');
-      return;
+      return false;
+    }
+    let currentModel = selectedModel;
+    if (get().isProcessingPrompt || get().isGenerating) {
+      console.warn('A turn is already in flight, rejecting the send');
+      return false;
     }
 
     const tempUserId = -Date.now();
@@ -780,8 +801,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     });
 
     let userMessagePersisted = isRetry;
-    const markGenerationFailed = (error: unknown, showToUser = true) => {
-      if (showToUser) unloadLLM();
+    const markGenerationFailed = (
+      error: unknown,
+      {
+        showToUser = true,
+        unload = showToUser,
+      }: { showToUser?: boolean; unload?: boolean } = {}
+    ) => {
+      if (unload) unloadLLM();
       updateChatStateForGeneration(set, 'failed');
 
       if (!userMessagePersisted && !isRetry) {
@@ -812,6 +839,27 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       }
       console.error('Chat sendMessage failed', error);
     };
+
+    await modelLoadChain;
+    await utilityChain;
+    const readyModel = get().model;
+    if (!get().isProcessingPrompt || !readyModel) {
+      markGenerationFailed(new Error('Stopped while waiting for the model'), {
+        showToUser: false,
+      });
+      return true;
+    }
+    if (readyModel.id !== currentModel.id) {
+      currentModel = readyModel;
+      assistantPlaceholder.modelName = readyModel.modelName;
+      set((state) => ({
+        activeChatMessages: state.activeChatMessages.map((msg) =>
+          msg.id === -1 && msg.role === 'assistant' && msg.chatId === chatId
+            ? { ...msg, modelName: readyModel.modelName }
+            : msg
+        ),
+      }));
+    }
 
     try {
       if (!isRetry) {
@@ -846,7 +894,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       if (!get().isProcessingPrompt) {
         updateChatStateForGeneration(set, 'failed');
-        return;
+        return true;
       }
 
       await get().loadModel(currentModel, isRetry);
@@ -862,7 +910,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       if (!get().isProcessingPrompt) {
         unloadLLM();
         updateChatStateForGeneration(set, 'failed');
-        return;
+        return true;
       }
 
       await waitForSettingsHydration();
@@ -919,6 +967,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       // Set generation state and generate response
       updateChatStateForGeneration(set, 'generating');
+      const generationStartedAt = performance.now();
       let generation: Awaited<ReturnType<typeof generateLLMResponse>>;
       let effectivePrepared = messagesWithSystemPrompt;
       try {
@@ -1000,6 +1049,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         stillBroken: (retried: string) => boolean
       ): Promise<void> => {
         nudged = true;
+        if (performance.now() - generationStartedAt > NUDGE_TIME_BUDGET_MS) {
+          console.warn(`${reason}; skipped, the turn is over its time budget`);
+          return;
+        }
         console.warn(reason);
         suppressUtilityStreaming = true;
         set({ isRefining: true });
@@ -1250,14 +1303,17 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           });
         }
       } else {
-        markGenerationFailed(new Error(describeGenerationFailure()));
+        markGenerationFailed(new Error(describeGenerationFailure()), {
+          unload: false,
+        });
       }
     } catch (e) {
       const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;
-      markGenerationFailed(e, !wasInterrupted);
+      markGenerationFailed(e, { showToUser: !wasInterrupted });
     } finally {
       sendAbortController = null;
     }
+    return true;
   },
 
   retryLastGeneration: async () => {

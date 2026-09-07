@@ -83,15 +83,18 @@ export const useSendChatMessage = ({
     userInput: string,
     imagePath?: string,
     attachments?: Attachment[]
-  ) => {
+  ): Promise<boolean> => {
     const hasDocuments = attachments?.some((a) => a.type === 'document');
+    if (!userInput.trim() && !imagePath && !hasDocuments) return false;
+    const llm = useLLMStore.getState();
     if (
-      (!userInput.trim() && !imagePath && !hasDocuments) ||
       isGenerating ||
+      llm.isGenerating ||
+      llm.isProcessingPrompt ||
       isModelLoading ||
       isSwitching
     )
-      return;
+      return false;
 
     Keyboard.dismiss();
     messagesRef.current?.onMessageSent();
@@ -105,7 +108,7 @@ export const useSendChatMessage = ({
       const newChatId = await addChat(toChatTitle(titleSource), model!.id);
       if (!newChatId) {
         messagesRef.current?.cancelMessageSent();
-        return;
+        return false;
       }
       targetChatId = newChatId;
       useWebSearchStore.getState().transfer(chatId, targetChatId);
@@ -122,7 +125,7 @@ export const useSendChatMessage = ({
           text1: 'Failed to save image attachment.',
         });
         messagesRef.current?.cancelMessageSent();
-        return;
+        return false;
       }
     }
 
@@ -337,6 +340,6 @@ export const useSendChatMessage = ({
       router.replace(`/chat/${targetChatId}`);
     }
 
-    await generation;
+    return generation;
   };
 };

@@ -982,3 +982,25 @@ describe('web search toggle and the embedding download sheet', () => {
     expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
   });
 });
+
+describe('a refused send', () => {
+  it('puts the text back and says why instead of dropping it silently', async () => {
+    const onSend = jest.fn(async () => false);
+    renderBar({ onSend });
+    const input = screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(input, 'Lost message');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('send-btn'));
+    });
+
+    expect(onSend).toHaveBeenCalledWith('Lost message', undefined, []);
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('Lost message');
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the response to finish or stop it first.',
+    });
+  });
+});
