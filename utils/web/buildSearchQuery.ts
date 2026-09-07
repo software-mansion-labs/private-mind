@@ -668,6 +668,21 @@ const replanInConversationLanguage = async (
   return inConversationLanguage(plan, reference) ? plan : null;
 };
 
+const ASKS_CURRENT_STATE =
+  /aktualn\w*|obecn\w*|\bteraz\b|na dzi[sś]|w tej chwili|\bcurrent(?:ly)?\b|right now|\bas of (?:today|now)\b|\bnowadays\b/i;
+const CARRIES_YEAR = /(?<![\p{L}\p{N}])(?:19|20)\d{2}(?![\p{L}\p{N}])/u;
+
+export const datedForCurrentState = (
+  searchQuery: string,
+  question: string,
+  today: string
+): string => {
+  if (!ASKS_CURRENT_STATE.test(question)) return searchQuery;
+  if (CARRIES_YEAR.test(searchQuery)) return searchQuery;
+  const year = today.slice(0, 4);
+  return /^\d{4}$/.test(year) ? `${searchQuery} ${year}` : searchQuery;
+};
+
 export const planWebSearch = async (
   userInput: string,
   history: { role: string; content: string }[],
@@ -684,8 +699,10 @@ export const planWebSearch = async (
   }
   const siteRestriction = extractSiteRestriction(query);
   const anchorTopic = topicAnchorer(query, history, opts?.digest);
-  const searchQuery = anchorTopic(
-    carryReferentIntoQuery(query, history, opts?.digest)
+  const searchQuery = datedForCurrentState(
+    anchorTopic(carryReferentIntoQuery(query, history, opts?.digest)),
+    query,
+    opts?.today ?? todayISO()
   );
   const verbatim = (intent = '', kind?: WebIntentKind): WebSearchPlan => ({
     needsSearch: true,

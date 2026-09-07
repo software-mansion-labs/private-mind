@@ -9,6 +9,7 @@ import {
   isDanglingListAnswer,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
+  retryDropsGroundedDetail,
   looksLikeNoAnswer,
   mergeAttachmentFirst,
   pickCitationsByAnswer,
@@ -1554,5 +1555,55 @@ describe('the evidence checks read the sources block, not the whole prompt', () 
         'price'
       )
     ).toBe(true);
+  });
+});
+
+describe('retryDropsGroundedDetail', () => {
+  const rich =
+    'Ceny wędek: modele dla początkujących kosztują od 90 zł do 250 zł, ' +
+    'segment średni to 300-700 zł, a sprzęt klasy premium zaczyna się od 1200 zł.';
+
+  it('spots a refining pass that answers in one line and loses the figures', () => {
+    expect(
+      retryDropsGroundedDetail(
+        rich,
+        'Wędki kosztują różnie, zależnie od modelu.'
+      )
+    ).toBe(true);
+  });
+
+  it('accepts a much shorter answer that boils the figures down to a range', () => {
+    expect(
+      retryDropsGroundedDetail(rich, 'Wędki kosztują od 90 zł do 1200 zł.')
+    ).toBe(false);
+  });
+
+  it('accepts a retry that is as long as the first answer', () => {
+    expect(
+      retryDropsGroundedDetail(
+        rich,
+        'Wędka dla początkującego to wydatek rzędu stu kilkudziesięciu złotych, ' +
+          'a im wyżej w segmencie, tym drożej — od kilkuset złotych wzwyż w klasie średniej ' +
+          'i znacznie więcej w premium.'
+      )
+    ).toBe(false);
+  });
+
+  it('says nothing about an answer that never had figures to lose', () => {
+    expect(
+      retryDropsGroundedDetail(
+        'Fotosynteza to proces przekształcania światła w energię chemiczną.',
+        'To proces przemiany światła w energię.'
+      )
+    ).toBe(false);
+  });
+
+  it('ignores figures hidden inside a think block', () => {
+    expect(
+      retryDropsGroundedDetail(
+        '<think>90 zł 250 zł 700 zł</think>Wędki bywają różne.',
+        'Zależy od modelu.'
+      )
+    ).toBe(false);
   });
 });

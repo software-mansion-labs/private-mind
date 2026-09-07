@@ -150,6 +150,7 @@ const getContextInstruction = (
   const namedCitation = hasWeb
     ? [
         'When a claim rests mainly on one page, name that page in your own words (e.g. "CoinMarketCap reports…", "According to Reuters…") using its title from the block header, instead of a vague "the sources say". Save "the sources" for when several pages agree or you are referring to the whole block.',
+        'Name a page only where it carries a claim you are making. Never walk through the block page by page describing what each one offers or contains — a tour of the pages is not an answer, and the reader asked for the content, not for a catalogue of where it lives.',
       ]
     : [];
 
@@ -367,6 +368,49 @@ const getRecentEventCompletenessInstruction = (question?: string): string =>
     ? '\n\nThe question asks about the most recent event, not just its headline figure. If the sources name who else was involved (an opponent, a rival) and when it happened, include those too — a score or result alone does not fully answer "the last match/game" the way it would answer a question that only asked for the number.'
     : '';
 
+const YEAR_IN_QUESTION = /(?<![\p{L}\p{N}])(?:19|20)\d{2}(?![\p{L}\p{N}])/u;
+
+const getStatedDateInstruction = (question?: string): string =>
+  question && YEAR_IN_QUESTION.test(question)
+    ? '\n\nThe question takes a specific year — and sometimes a place or a participant — for granted. Check that assumption against the sources before you build on it. If the sources place the event in a different year, a different host country or a different lineup, say so plainly and answer with what the sources give, naming that year. Never repeat the year from the question as if the sources confirmed it, and never attach a result you found to the year the question guessed.'
+    : '';
+
+const LATEST_EDITION_MARKERS =
+  /ostatni\w*|najnowsz\w*|poprzedni\w*|last|latest|most recent|previous/i;
+const EDITION_SUBJECT_MARKERS =
+  /mundial|mistrzostw\w*|turniej\w*|mecz\w*|wybor\w*|edycj\w*|sezon\w*|world cup|championship|tournament|match|game|election|season|final/i;
+
+const getEditionDateInstruction = (question?: string): string =>
+  question &&
+  LATEST_EDITION_MARKERS.test(question) &&
+  EDITION_SUBJECT_MARKERS.test(question)
+    ? '\n\nThe question asks about the most recent edition of something that happens repeatedly. Name which edition you are answering about — its year, and its host or round where the sources give one — in the same sentence as the result. A winner or score without the edition it belongs to reads as current even when it is years old, and the sources usually print several editions next to each other.'
+    : '';
+
+const CURRENT_STATE_MARKERS =
+  /aktualn\w*|obecn\w*|\bteraz\b|na dzi[sś]|w tej chwili|\bcurrent(?:ly)?\b|right now|\bas of (?:today|now)\b|\bnowadays\b|\btoday'?s\b/i;
+
+const getCurrentStateInstruction = (question?: string): string =>
+  question && CURRENT_STATE_MARKERS.test(question)
+    ? '\n\nThe question asks how things stand right now. A page that lists holders, winners or values across history — a full list, an archive, a table "from 1789 to today" — does not establish the current one: it is equally consistent with any entry in it being current. Answer from a source that states the present situation and carries a recent date, and where the block only offers a historical list, say it does not confirm the current one rather than picking an entry from it.'
+    : '';
+
+const PROCEDURE_MARKERS =
+  /przepis\w*|sk[łl]adnik\w*|krok po kroku|instrukcj\w*|wypisz|wymie[ńn]|podaj list|list[eę] |recipe|ingredient|step[- ]by[- ]step|how (?:do i|to) (?:make|cook|bake)|list of/i;
+
+const getProcedureInstruction = (question?: string): string =>
+  question && PROCEDURE_MARKERS.test(question)
+    ? '\n\nThe question asks for the thing itself — a recipe, an ingredient list, a sequence of steps, a list of items. Write it out in full: the actual ingredients with their quantities, the actual steps in order, the actual items. Take it from whichever page in the block carries the most complete version and follow that one through, rather than mixing fragments from several. Saying that such a list can be found on these pages, or describing what each page offers, does not answer the question.'
+    : '';
+
+const COMPOSITION_MARKERS =
+  /wypracowani\w*|opowiadani\w*|\besej\w*|rozprawk\w*|streszczeni\w*|w formie|artyku[łl]|zadani\w* domow\w*|essay|short story|write (?:me )?a (?:story|essay|paragraph|report)|homework|composition/i;
+
+const getCompositionInstruction = (question?: string): string =>
+  question && COMPOSITION_MARKERS.test(question)
+    ? '\n\nThe question asks for a piece of writing in a named form. Produce that form: continuous prose, with the structure and roughly the length asked for, using the facts from the block as its material. Do not answer with a list of what each page says, do not put source labels inside the text, and do not preface it with remarks about what the sources contain — hand over the finished piece.'
+    : '';
+
 const getFollowUpConversionInstruction = (question?: string): string =>
   question && FOLLOWUP_CONVERSION_MARKERS.test(question)
     ? '\n\nThis follow-up asks you to convert or recompute a specific number from your own previous answer earlier in this conversation. Use that exact figure as the base — do not substitute a different or more generic figure just because it appears in the sources below. If a conversion rate is available, apply it and state the actual converted result, not just the rate on its own.'
@@ -549,6 +593,11 @@ export const prepareMessagesForLLM = (
     systemPrompt += getOpinionInstruction(question);
     systemPrompt += getComparisonStructureInstruction(question);
     systemPrompt += getRecentEventCompletenessInstruction(question);
+    systemPrompt += getStatedDateInstruction(question);
+    systemPrompt += getEditionDateInstruction(question);
+    systemPrompt += getCurrentStateInstruction(question);
+    systemPrompt += getProcedureInstruction(question);
+    systemPrompt += getCompositionInstruction(question);
     systemPrompt += getFollowUpConversionInstruction(question);
     systemPrompt += getInvestmentComparisonInstruction(question);
     systemPrompt += getTrendGroundingInstruction(question, contextText);

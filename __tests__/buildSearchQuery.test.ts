@@ -8,6 +8,7 @@ import {
   isAboutTheConversation,
   isConversationalIntent,
   anchorRescueQuery,
+  datedForCurrentState,
 } from '../utils/web/buildSearchQuery';
 
 const history = [
@@ -1451,5 +1452,47 @@ describe('the plan says what a complete answer must contain', () => {
       generate
     );
     expect(plan.expects).toEqual(['data premiery']);
+  });
+});
+
+describe('datedForCurrentState', () => {
+  it('pins the current year on a question about how things stand now (Pixel: prezydent USA)', () => {
+    expect(
+      datedForCurrentState(
+        'Kto jest aktualnie prezydentem USA?',
+        'Kto jest aktualnie prezydentem USA?',
+        '2026-09-07'
+      )
+    ).toBe('Kto jest aktualnie prezydentem USA? 2026');
+  });
+
+  it('leaves a question that names no present moment alone', () => {
+    expect(
+      datedForCurrentState(
+        'Kim był Mieszko I?',
+        'Kim był Mieszko I?',
+        '2026-09-07'
+      )
+    ).toBe('Kim był Mieszko I?');
+  });
+
+  it('does not add a second year to a query that already carries one', () => {
+    expect(
+      datedForCurrentState(
+        'aktualna cena złota 2024',
+        'Jaka jest aktualna cena złota w 2024?',
+        '2026-09-07'
+      )
+    ).toBe('aktualna cena złota 2024');
+  });
+
+  it('works on the English wording too', () => {
+    expect(
+      datedForCurrentState(
+        'current price of gold',
+        'What is the current price of gold?',
+        '2026-09-07'
+      )
+    ).toBe('current price of gold 2026');
   });
 });

@@ -317,6 +317,25 @@ export const isCircularNonAnswer = (answer: string): boolean => {
   return mentions >= CIRCULAR_SOURCE_REFERENCE_THRESHOLD;
 };
 
+const DETAIL_FIGURE = /(?<![\p{L}\p{N}])\d(?:[\d.,:]*\d)?(?![\p{L}\p{N}])/gu;
+const RETRY_LENGTH_FLOOR = 0.6;
+
+const detailFigures = (text: string): Set<string> =>
+  new Set([...text.matchAll(DETAIL_FIGURE)].map((match) => match[0]!));
+
+export const retryDropsGroundedDetail = (
+  original: string,
+  retried: string
+): boolean => {
+  const before = stripThinkBlocks(original).trim();
+  const after = stripThinkBlocks(retried).trim();
+  if (!before || !after) return false;
+  const had = detailFigures(before);
+  if (had.size === 0) return false;
+  if ([...had].some((figure) => after.includes(figure))) return false;
+  return after.length < before.length * RETRY_LENGTH_FLOOR;
+};
+
 export const isWrongLanguageAnswer = (
   answer: string,
   question: string | undefined

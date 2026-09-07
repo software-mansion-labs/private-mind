@@ -1131,6 +1131,54 @@ describe('sendChatMessage', () => {
     );
   });
 
+  it('keeps the first answer when the refining pass comes back with none of its figures (Pixel: "po refiningu 1 linijka")', async () => {
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content:
+          'Kurs bitcoina wynosi dziś 98 000 USD. Kurs ethereum wynosi dziś 3 200 USD.\n\nporównaj kurs bitcoina i ethereum',
+      },
+    ]);
+    const detailed =
+      'Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości, ' +
+      'notując najwyższy poziom od miesięcy. Wolumen obrotu również rośnie.';
+    const thin = 'Kursy obu kryptowalut różnią się.';
+    mockInstance.generate
+      .mockResolvedValueOnce(detailed)
+      .mockResolvedValueOnce(thin)
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const withSubQueries = async () => ({
+      ...(await noSources()),
+      webSubQueries: ['kurs bitcoin', 'kurs ethereum'],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'porównaj kurs bitcoina i ethereum',
+        1,
+        withSubQueries,
+        settings
+      );
+
+    const nudge = mockInstance.generate.mock.calls[1]![0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(nudge.at(-1)!.content).toContain(
+      'does not address: "kurs ethereum"'
+    );
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      detailed
+    );
+  });
+
   it('keeps the first answer on screen while a nudge retry generates, then swaps once', async () => {
     (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
       { role: 'system', content: 'You are helpful.' },

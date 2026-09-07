@@ -2744,3 +2744,80 @@ describe('focusedRetrySystemPrompt', () => {
     );
   });
 });
+
+describe('answers that must carry their date, form and content', () => {
+  const webSource: SourceDocument = {
+    name: 'Mistrzowie świata',
+    kind: 'web',
+    url: 'https://sport.example.pl/mundial',
+  };
+  const context = [
+    sourceBlock(
+      1,
+      'Mistrzowie świata',
+      'Katar 2022 — Argentyna. Brazylia 2014 — Niemcy.'
+    ),
+  ];
+
+  const groundedPromptFor = (question: string): string => {
+    const messages: Message[] = [
+      { id: 1, chatId: 1, role: 'user', content: question, timestamp: 0 },
+      { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 1 },
+    ];
+    return String(
+      prepareMessagesForLLM(messages, context, baseSettings, baseModel, {
+        sourceDocuments: [webSource],
+      })[0].content
+    );
+  };
+
+  it('tells the model to check a year the question takes for granted (S25: "turniej był w Brazylii w 2026")', () => {
+    expect(
+      groundedPromptFor(
+        'Ostatni turniej był w Brazylii w 2026 roku kto go wygrał?'
+      )
+    ).toContain('takes a specific year');
+  });
+
+  it('leaves that check out when the question names no year', () => {
+    expect(groundedPromptFor('Kto wygrał ostatni mundial?')).not.toContain(
+      'takes a specific year'
+    );
+  });
+
+  it('asks which edition a "last tournament" answer belongs to', () => {
+    expect(groundedPromptFor('Kto wygrał ostatni mundial?')).toContain(
+      'most recent edition'
+    );
+  });
+
+  it('warns that a historical list does not establish the current holder (Pixel: prezydent USA)', () => {
+    expect(groundedPromptFor('Kto jest aktualnie prezydentem USA?')).toContain(
+      'does not establish the current one'
+    );
+  });
+
+  it('asks for the recipe itself, not a tour of the pages that have one (S25)', () => {
+    const prompt = groundedPromptFor('Podaj przepis na ciasto marchewkowe');
+    expect(prompt).toContain('the actual ingredients with their quantities');
+    expect(prompt).toContain('does not answer the question');
+  });
+
+  it('asks for the ingredient list itself when only the list was requested', () => {
+    expect(groundedPromptFor('Podaj liste skladnikow do ciasta')).toContain(
+      'the actual ingredients with their quantities'
+    );
+  });
+
+  it('asks for finished prose when the question names a written form (Pixel: wypracowanie o krzyżakach)', () => {
+    expect(
+      groundedPromptFor('Kim byli krzyżacy? Przygotuj to w formie wypracowania')
+    ).toContain('hand over the finished piece');
+  });
+
+  it('always forbids walking the block page by page', () => {
+    expect(groundedPromptFor('Kto wygrał ostatni mundial?')).toContain(
+      'a tour of the pages is not an answer'
+    );
+  });
+});

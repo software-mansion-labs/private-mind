@@ -40,6 +40,7 @@ import {
   isDanglingListAnswer,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
+  retryDropsGroundedDetail,
   stripEchoedQuestionPrefix,
   stripSourceLabels,
   pickCitationsByAnswer,
@@ -1053,7 +1054,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const nudgeOnce = async (
         reason: string,
         messages: ExecutorchMessage[],
-        stillBroken: (retried: string) => boolean
+        stillBroken: (retried: string) => boolean,
+        preserveDetail = false
       ): Promise<void> => {
         nudged = true;
         if (performance.now() - generationStartedAt > NUDGE_TIME_BUDGET_MS) {
@@ -1072,9 +1074,20 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         const retried = retryGeneration.response
           ? tidyVisibleAnswer(retryGeneration.response)
           : retryGeneration.response;
-        if (retried?.trim() && get().isGenerating && !stillBroken(retried)) {
-          finalResponse = retried;
+        if (!retried?.trim() || !get().isGenerating || stillBroken(retried)) {
+          return;
         }
+        if (
+          preserveDetail &&
+          typeof finalResponse === 'string' &&
+          retryDropsGroundedDetail(finalResponse, retried)
+        ) {
+          console.warn(
+            `${reason}; kept the first answer, the retry was thinner`
+          );
+          return;
+        }
+        finalResponse = retried;
       };
 
       if (
@@ -1129,7 +1142,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               currentQuestion,
               promptContext,
               webIntentKind
-            ) || isWrongLanguageAnswer(retried, currentQuestion)
+            ) || isWrongLanguageAnswer(retried, currentQuestion),
+          true
         );
       }
 
@@ -1160,7 +1174,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           (retried) =>
             ((ignoresEvidence(retried) || buriesFigure(retried)) &&
               !retryStatesWhatDraftLacks(retried)) ||
-            isWrongLanguageAnswer(retried, currentQuestion)
+            isWrongLanguageAnswer(retried, currentQuestion),
+          true
         );
       }
 
@@ -1193,7 +1208,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           continuedRetry(aspectCoverageRetryPrompt(missingAspects)),
           (retried) =>
             aspectsMissingFromAnswer(retried, webSubQueries, promptContext)
-              .length > 0
+              .length > 0,
+          true
         );
       }
 
