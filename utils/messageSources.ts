@@ -705,6 +705,15 @@ const EVIDENCE_LINE_MAX_CHARS = 200;
 const EVIDENCE_WINDOW_WORDS = 12;
 const EVIDENCE_WINDOW_PADDING = 3;
 const TOPIC_STEM_DISCOUNT = 0.5;
+const BARE_DIGIT_DISCOUNT = 0.25;
+const QUESTION_SENTENCE = /\?\s*$/u;
+const MEASUREMENT_FIGURE = /\p{N}{2,}|\p{N}\s?(?:[°%]|\p{Sc})/u;
+
+const figureQuality = (words: string[], at: number): number =>
+  at !== -1 &&
+  MEASUREMENT_FIGURE.test(toAsciiDigits(words.slice(at, at + 2).join(' ')))
+    ? 1
+    : BARE_DIGIT_DISCOUNT;
 const SOURCE_TITLE_LINE = /^[ \t]*--- Source \d+: (.*?) ---[ \t]*$/gmu;
 
 const stemWeights = (
@@ -798,10 +807,11 @@ const locateEvidence = (
         ? near
         : -1;
   }
+  const best = figure === -1 ? nearest(anchor) : figure;
   return {
     words,
     index,
-    score: figures.length === 0 ? 0 : score,
+    score: figures.length === 0 ? 0 : score * figureQuality(words, best),
     anchor,
     figure,
   };
@@ -839,7 +849,7 @@ export const evidenceLinesFor = (
     .replace(SOURCE_MARKER_LINE, '')
     .split(SENTENCE_BREAK)
     .map((sentence) => sentence.trim())
-    .filter(Boolean);
+    .filter((sentence) => sentence && !QUESTION_SENTENCE.test(sentence));
   const weights = stemWeights(sentences, stems);
   const candidates = sentences
     .map((sentence, index) =>

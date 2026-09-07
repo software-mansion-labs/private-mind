@@ -1394,6 +1394,29 @@ describe('evidenceLinesFor — the lines the retry should quote (release R-3, R-
     );
   });
 
+  it('leads with the forecast sentence, not a menu line with bare digits or a FAQ question (release K-6)', () => {
+    const question = 'Jaka będzie jutro pogoda w Warszawie?';
+    const context =
+      '\n --- Source 1: Pogoda Warszawa — godzinowa na dziś, jutro i pojutrze --- \n ' +
+      'Pogoda Warszawa godzina po godzinie | co 1 h · 3 doby. ' +
+      'Dziś w Warszawie 20 stopni i chmury, ale ciśnienie spada; jutro temperatura wzrośnie do 26 stopni, wciąż bez opadów. ' +
+      'Pogoda dla miasta Warszawa w aplikacji Radar opadów Warszawa na żywo. ' +
+      'Czy jest prognoza pogody dla miasta Warszawa na 7, 14 lub 16 dni? ' +
+      'Czy jutro (we wtorek) będzie padać w Warszawie? \n' +
+      ' --- End of Source 1 ---\n\n' +
+      question;
+    const lines = evidenceLinesFor(question, context);
+    expect(lines[0]).toContain('26 stopni');
+    expect(lines.some((line) => line.endsWith('?'))).toBe(false);
+    expect(
+      answerUsesNoRetrievedEvidence(
+        'Zgodnieć z informacjami zawartymi w źródłach nie pozwala na udzielenie odpowiedzi.',
+        question,
+        context
+      )
+    ).toBe(true);
+  });
+
   it('ignores the numbered source markers and the question echoed under the sources', () => {
     const question = 'Kto jest prezydentem Polski?';
     const context =
