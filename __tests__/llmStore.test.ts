@@ -2123,6 +2123,39 @@ describe('one turn at a time (S20 FE: sends lost or doubled while a turn was sti
     expect(mockInstance.delete).not.toHaveBeenCalled();
   });
 
+  it('does not let a stump left by Stop become the conversation topic', async () => {
+    const setDigest = chatRepository.setChatDigest as jest.Mock;
+    setDigest.mockClear();
+    mockInstance.generate.mockImplementationOnce(async () => {
+      useLLMStore.getState().interrupt();
+      return 'Cześć.';
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'Wybieram się na weekend do Zakopanego, zaplanuj wyjazd.',
+        1,
+        noSources,
+        settings
+      );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(setDigest).not.toHaveBeenCalled();
+  });
+
+  it('summarizes a turn that finished on its own', async () => {
+    const setDigest = chatRepository.setChatDigest as jest.Mock;
+    setDigest.mockClear();
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(setDigest).toHaveBeenCalled();
+  });
+
   it('skips the refining pass when the first answer already used up the time budget', async () => {
     let now = 0;
     jest.spyOn(performance, 'now').mockImplementation(() => now);

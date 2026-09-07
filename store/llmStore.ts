@@ -1258,6 +1258,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               priorAnswerText
             )
           : [];
+        const stoppedByUser = !get().isGenerating;
         const assistantMessageId = await persistMessage(db, {
           ...assistantPlaceholder,
           content: humanizedResponse,
@@ -1287,7 +1288,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         failedGenerationRequest = null;
         set({ generationError: null });
 
-        if (!get().isGenerating) {
+        if (!stoppedByUser) {
           const previousDigest =
             get().activeChatId === chatId ? get().activeChatDigest : null;
           updateConversationDigest(

@@ -86,15 +86,14 @@ export const useSendChatMessage = ({
   ): Promise<boolean> => {
     const hasDocuments = attachments?.some((a) => a.type === 'document');
     if (!userInput.trim() && !imagePath && !hasDocuments) return false;
+    if (isModelLoading || isSwitching) return false;
     const llm = useLLMStore.getState();
-    if (
-      isGenerating ||
-      llm.isGenerating ||
-      llm.isProcessingPrompt ||
-      isModelLoading ||
-      isSwitching
-    )
+    const busy = llm.isGenerating || llm.isProcessingPrompt;
+    if (busy && llm.generatingForChatId !== chatId) {
+      llm.interrupt();
+    } else if (busy || isGenerating) {
       return false;
+    }
 
     Keyboard.dismiss();
     messagesRef.current?.onMessageSent();
