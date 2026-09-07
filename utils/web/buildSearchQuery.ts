@@ -122,6 +122,14 @@ const PLANNER_EXAMPLES: {
     queries: ['दिल्ली मौसम आज'],
     leaks: ['दिल्ली'],
   },
+  {
+    user: 'chce kupic wedke na prezent koledze ile kosztuja takie rzeczy?',
+    needsSearch: true,
+    intent: 'cena wędki',
+    kind: 'price',
+    queries: ['wędka cena'],
+    expects: ['cena w zł'],
+  },
 ];
 
 const quoted = (items: string[]): string =>
@@ -171,6 +179,11 @@ const PLANNER_SYSTEM_PROMPT = (today: string): string =>
   'are about that period and not an all-time ranking. ' +
   'Give 1 query normally, one per item ONLY for a clear comparison of 2 or ' +
   '3 named things (max 3 queries).\n' +
+  'A casually worded message wraps the thing it is about in circumstance — ' +
+  'who it is for, why it is wanted, how it will be used, "such things", ' +
+  '"something like that". Keep the concrete thing and what is asked about ' +
+  'it; drop the circumstance. Searching the occasion instead of the object ' +
+  'returns the wrong shops and the wrong pages.\n' +
   PLANNER_EXAMPLES_TEXT +
   'Those are only format examples — plan for the actual user message below ' +
   'and never copy their words or topics.';

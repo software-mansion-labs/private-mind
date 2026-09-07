@@ -2821,3 +2821,58 @@ describe('answers that must carry their date, form and content', () => {
     );
   });
 });
+
+describe('questions whose answer is a set of options or a measured value', () => {
+  const webSource: SourceDocument = {
+    name: 'Atrakcje',
+    kind: 'web',
+    url: 'https://example.pl/atrakcje',
+  };
+  const context = [
+    sourceBlock(1, 'Atrakcje', 'Kuligi, quady, spa, paintball.'),
+  ];
+
+  const groundedPromptFor = (question: string): string => {
+    const messages: Message[] = [
+      { id: 1, chatId: 1, role: 'user', content: question, timestamp: 0 },
+      { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 1 },
+    ];
+    return String(
+      prepareMessagesForLLM(messages, context, baseSettings, baseModel, {
+        sourceDocuments: [webSource],
+      })[0].content
+    );
+  };
+
+  it('asks for the options by name when the question asks what is worth doing (Pixel: wieczór kawalerski)', () => {
+    expect(
+      groundedPromptFor('Co warto robić na wieczorze kawalerskim w Zakopanem?')
+    ).toContain('each by its own name');
+  });
+
+  it('fires for a plain "jakie atrakcje" follow-up too', () => {
+    expect(groundedPromptFor('Jakie atrakcje?')).toContain(
+      'leaves the question unanswered'
+    );
+  });
+
+  it('stays out of a question that names one thing to look up', () => {
+    expect(groundedPromptFor('Ile kosztuje kulig w Zakopanem?')).not.toContain(
+      'each by its own name'
+    );
+  });
+
+  it('refuses a bare number as a weather reading (Pixel: postal code quoted as the forecast)', () => {
+    const prompt = groundedPromptFor(
+      'Jaka będzie pogoda w weekend w Zakopanem?'
+    );
+    expect(prompt).toContain('together with its unit');
+    expect(prompt).toContain('a postal code');
+  });
+
+  it('leaves the unit rule out of a question that is not about weather', () => {
+    expect(groundedPromptFor('Ile kosztuje kulig w Zakopanem?')).not.toContain(
+      'together with its unit'
+    );
+  });
+});

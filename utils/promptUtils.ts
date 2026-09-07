@@ -411,6 +411,22 @@ const getCompositionInstruction = (question?: string): string =>
     ? '\n\nThe question asks for a piece of writing in a named form. Produce that form: continuous prose, with the structure and roughly the length asked for, using the facts from the block as its material. Do not answer with a list of what each page says, do not put source labels inside the text, and do not preface it with remarks about what the sources contain — hand over the finished piece.'
     : '';
 
+const SUGGESTION_MARKERS =
+  /co warto|co (?:mo[żz]na|si[eę]) (?:robi|zrobi)|jakie atrakcj|jakie s[ąa] (?:opcje|mo[żz]liwo[śs]ci)|pomys[łl]\w*|zaplanuj|plan na|what (?:to do|should i do)|things to do|ideas for|suggest(?:ions)?|what'?s worth/i;
+
+const getSuggestionListInstruction = (question?: string): string =>
+  question && SUGGESTION_MARKERS.test(question)
+    ? '\n\nThe question asks what is worth doing, or which options there are. Name the options the sources actually list — the specific activities, places, offers or items, each by its own name — and give as many as were asked for. Saying that a page offers such options, that a lot is on offer, or that it depends on preferences, leaves the question unanswered. Where the block names fewer than were asked for, give the ones it names and say how many that is.'
+    : '';
+
+const WEATHER_MARKERS =
+  /pogod\w*|prognoz\w*|temperatur\w*|opad\w*|wiatr\w*|[śs]nieg\w*|weather|forecast|temperature|rainfall|wind speed|snowfall/i;
+
+const getMeasurementUnitInstruction = (question?: string): string =>
+  question && WEATHER_MARKERS.test(question)
+    ? '\n\nThe question asks for a weather reading. Quote only a figure the page prints together with its unit — degrees for temperature, millimetres for rain, km/h or m/s for wind. A bare number sitting next to a place name belongs to the address or the page furniture: a postal code, a district number, a road or article id. It is not a reading, and it is never the answer. If the block holds no figure with the right unit for the day asked about, say so plainly instead of quoting the nearest number on the page.'
+    : '';
+
 const getFollowUpConversionInstruction = (question?: string): string =>
   question && FOLLOWUP_CONVERSION_MARKERS.test(question)
     ? '\n\nThis follow-up asks you to convert or recompute a specific number from your own previous answer earlier in this conversation. Use that exact figure as the base — do not substitute a different or more generic figure just because it appears in the sources below. If a conversion rate is available, apply it and state the actual converted result, not just the rate on its own.'
@@ -598,6 +614,8 @@ export const prepareMessagesForLLM = (
     systemPrompt += getCurrentStateInstruction(question);
     systemPrompt += getProcedureInstruction(question);
     systemPrompt += getCompositionInstruction(question);
+    systemPrompt += getMeasurementUnitInstruction(question);
+    systemPrompt += getSuggestionListInstruction(question);
     systemPrompt += getFollowUpConversionInstruction(question);
     systemPrompt += getInvestmentComparisonInstruction(question);
     systemPrompt += getTrendGroundingInstruction(question, contextText);
