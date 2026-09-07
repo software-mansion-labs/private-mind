@@ -70,6 +70,14 @@ sekcji 5 planu — z sytuacją, w której wystąpiło, żeby dało się je odtwo
    S2 i S8. Po tapie odczytaj `describe` (`web-search-toggle`) i zapisz stan;
    kolor piksela nie jest dowodem. Tura wysłana ze złym stanem przełącznika
    nie liczy się — powtórz.
+   **Model embeddingów** pobiera się wyłącznie z arkusza „Download search
+   model”, który wyskakuje po włączeniu Web, i tylko gdy RAM − rozmiar
+   modelu ≥ 6,5 GB (iPhone 17 + LFM 1.2B: tak; S20 FE, iPhone SE 3 i
+   iPhone 17 + Gemma: nie — gate pamięci, to zamierzone, w Settings nie ma
+   pobierania). Gdy arkusz się pojawi: Download, czekasz do końca, zapisujesz
+   czas. Gdy się nie pojawi: zapisujesz „embeddingi: pominięte przez gate
+   pamięci”. Web search bez włączonego przełącznika to nie jest test web
+   search — taką turę oznacz jako nieważną.
 7. **Metryki w bańce.** Na starcie Settings → włącz „Show performance
    metrics”. Każda odpowiedź ma wtedy `ttft: … ms, tps: … tok/s` — czytasz
    to z `describe`, nie z oka.
