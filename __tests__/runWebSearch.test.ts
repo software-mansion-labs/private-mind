@@ -812,6 +812,56 @@ describe('runWebSearch', () => {
   });
 });
 
+describe('a subject no fetched page names', () => {
+  const illusionsPage = (url: string): WebSearchResult => ({
+    title: 'Hours and ticketing - Museum of Illusions Krakow',
+    url,
+    snippet: 'Opening hours: Monday-Friday 10 AM-7 PM',
+    content:
+      'Museum of Illusions Krakow opening hours and ticketing. Adults PLN 59. '.repeat(
+        8
+      ),
+  });
+
+  const ask = async (query: string, searchQuery: string) =>
+    runWebSearch({
+      query,
+      history: [],
+      provider: new MockProvider({
+        [searchQuery]: [
+          illusionsPage('https://a.example/1'),
+          illusionsPage('https://b.example/2'),
+        ],
+      }),
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () =>
+        `{"needs_search": true, "intent": "opening hours", "queries": ["${searchQuery}"]}`,
+      today: '2026-07-20',
+    });
+
+  it('reports no results rather than answering about a different subject', async () => {
+    const out = await ask(
+      'What are the opening hours of the Museum of Imaginary Instruments in Krakow',
+      'Museum of Imaginary Instruments Krakow opening hours'
+    );
+
+    expect(out.context).toEqual([]);
+    expect(out.sourceDocuments).toEqual([]);
+    expect(out.telemetry.unnamedSubjects).toEqual(['Imaginary Instruments']);
+  });
+
+  it('leaves a question the pages do name alone', async () => {
+    const out = await ask(
+      'What are the opening hours of the Museum of Illusions in Krakow',
+      'Museum of Illusions Krakow opening hours'
+    );
+
+    expect(out.context.length).toBeGreaterThan(0);
+    expect(out.telemetry.unnamedSubjects).toBeUndefined();
+  });
+});
+
 describe('runWebSearch — reusing a previous turn', () => {
   const run = (provider: MockProvider, useCache: boolean) =>
     runWebSearch({

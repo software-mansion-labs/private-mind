@@ -36,6 +36,7 @@ import {
   type SourceAgreement,
 } from './sourceAgreement';
 import { hostname, webResultsToContext } from './webResultsToContext';
+import { unnamedSubjects } from './subjectNaming';
 import { recordWebSearchTrace } from './searchTrace';
 import type { WebIntentKind } from './intentKind';
 import { dedupeByBody, listingFingerprint } from './fingerprint';
@@ -131,6 +132,7 @@ export interface WebRoundTelemetry {
 
 export interface WebSearchTelemetry {
   needsSearch: boolean;
+  unnamedSubjects?: string[];
   skippedReason?: 'gated' | 'provider-not-ready' | 'offline';
   aborted?: 'timeout' | 'stopped';
   intent: string;
@@ -680,6 +682,32 @@ const searchWithCleanup = async (
       ...(input.contextCharBudget ? { budget: input.contextCharBudget } : {}),
       contextOffset: input.contextOffset ?? 0,
       results: [],
+      context: [],
+      telemetry,
+    });
+    return { context: [], sourceDocuments: [], telemetry };
+  }
+
+  const fetchedText = finalResults
+    .map(
+      (result) =>
+        `${result.title} ${result.snippet ?? ''} ${result.content ?? ''}`
+    )
+    .concat(Object.values(extractedByUrl()))
+    .join(' ');
+  const missingSubjects = unnamedSubjects(query, fetchedText);
+  if (missingSubjects.length > 0) {
+    telemetry.unnamedSubjects = missingSubjects;
+    recordWebSearchTrace({
+      question: query,
+      expects: plan.expects,
+      planQueries: plan.queries,
+      candidates,
+      extracted: extractedByUrl(),
+      ...(semanticQueryUsed ? { retrievalQuery: semanticQueryUsed } : {}),
+      ...(input.contextCharBudget ? { budget: input.contextCharBudget } : {}),
+      contextOffset: input.contextOffset ?? 0,
+      results: finalResults,
       context: [],
       telemetry,
     });
