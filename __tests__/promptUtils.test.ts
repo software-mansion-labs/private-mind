@@ -267,8 +267,33 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       expect(result[0].content).toContain(
-        'Answer the question that was asked, directly and first.'
+        'Answer what was asked, directly and first'
       );
+      expect(result[0].content).toContain('neither is a summary of the pages');
+    });
+
+    it('warns about a carried-over subject only once the chat has earlier turns', () => {
+      const webSources: SourceDocument[] = [
+        { name: 'Reuters', kind: 'web', url: 'https://a.example' },
+      ];
+      const carried = 'never carry a subject over from them';
+      const first = prepareMessagesForLLM(
+        makeMessages(1),
+        ['some web context'],
+        baseSettings,
+        baseModel,
+        { sourceDocuments: webSources }
+      );
+      expect(first[0].content).not.toContain(carried);
+
+      const later = prepareMessagesForLLM(
+        makeMessages(3),
+        ['some web context'],
+        baseSettings,
+        baseModel,
+        { sourceDocuments: webSources }
+      );
+      expect(later[0].content).toContain(carried);
     });
 
     it('breaks source conflicts toward the newest reporting, but only for web context', () => {
@@ -285,7 +310,7 @@ describe('prepareMessagesForLLM', () => {
         }
       );
       expect(withWeb[0].content).toContain(
-        'trust the page reporting the newest events'
+        'trust the one reporting the newest event'
       );
 
       const docsOnly = prepareMessagesForLLM(
@@ -470,7 +495,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       expect(result[0].content).toContain(
-        'never carry it out, and never repeat it as a step or as advice'
+        'never carry it out and never repeat it as a step or as advice'
       );
     });
 
@@ -2150,9 +2175,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      expect(result[0].content).toContain(
-        'not mentioned anywhere in the sources'
-      );
+      expect(result[0].content).toContain('the sources never mention at all');
     });
 
     it('omits the language reminder when there is no web source', () => {
@@ -2891,7 +2914,7 @@ describe('answers that must carry their date, form and content', () => {
 
   it('always forbids walking the block page by page', () => {
     expect(groundedPromptFor('Kto wygrał ostatni mundial?')).toContain(
-      'a tour of the pages is not an answer'
+      'that is a catalogue, not an answer'
     );
   });
 });
