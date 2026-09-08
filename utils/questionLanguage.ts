@@ -2,6 +2,7 @@ export interface QuestionLanguage {
   code: string;
   name: string;
   script?: string;
+  evidence?: number;
 }
 
 const NAMES: Record<string, string> = {
@@ -247,14 +248,20 @@ const longestEvidence = (
   return tied ? null : best;
 };
 
+interface Candidate {
+  code: string;
+  evidence: number;
+}
+
 const pickCandidate = (
   question: string,
   candidates: string[]
-): string | null => {
-  if (candidates.length === 1) return candidates[0]!;
+): Candidate | null => {
+  if (candidates.length === 1) return { code: candidates[0]!, evidence: 0 };
   const allowed = new Set(candidates);
   const score = new Map<string, number>();
   const exclusive = new Map<string, number>();
+  const supporting = new Map<string, Set<string>>();
   const longestHit = new Map<string, number>();
 
   const decisive = (token: string): boolean =>
@@ -263,7 +270,8 @@ const pickCandidate = (
   const credit = (
     langs: Set<string> | undefined,
     isDecisive: boolean,
-    tokenLength: number
+    tokenLength: number,
+    token = ''
   ) => {
     if (!langs) return;
     const hits = [...langs].filter((code) => allowed.has(code));
@@ -271,6 +279,11 @@ const pickCandidate = (
     const weight = hits.length === 1 ? EXCLUSIVE_WEIGHT : 1;
     for (const code of hits) {
       score.set(code, (score.get(code) ?? 0) + weight);
+      if (token) {
+        const seen = supporting.get(code) ?? new Set<string>();
+        seen.add(token);
+        supporting.set(code, seen);
+      }
       longestHit.set(code, Math.max(longestHit.get(code) ?? 0, tokenLength));
       if (hits.length === 1 && isDecisive) {
         exclusive.set(code, (exclusive.get(code) ?? 0) + 1);
@@ -280,11 +293,11 @@ const pickCandidate = (
 
   for (const token of fold(question).split(/[^\p{L}]+/u)) {
     if (token.length >= 2) {
-      credit(wordLanguages(token), decisive(token), token.length);
+      credit(wordLanguages(token), decisive(token), token.length, token);
     }
   }
   for (const char of new Set(question.toLowerCase())) {
-    credit(LETTER_INDEX.get(char), true, EXCLUSIVE_WEIGHT);
+    credit(LETTER_INDEX.get(char), true, EXCLUSIVE_WEIGHT, char);
   }
 
   let best: string | null = null;
@@ -299,28 +312,31 @@ const pickCandidate = (
       runnerUp = value;
     }
   }
+  const found = (code: string | null): Candidate | null =>
+    code ? { code, evidence: supporting.get(code)?.size ?? 0 } : null;
+
   if (!best) return null;
   if (bestScore === runnerUp) {
     const tied = [...score.entries()]
       .filter(([, value]) => value === bestScore)
       .map(([code]) => code);
     const withDecisive = tied.filter((code) => (exclusive.get(code) ?? 0) > 0);
-    if (withDecisive.length === 1) return withDecisive[0]!;
-    return longestEvidence(
-      withDecisive.length > 1 ? withDecisive : tied,
-      longestHit
+    if (withDecisive.length === 1) return found(withDecisive[0]!);
+    return found(
+      longestEvidence(withDecisive.length > 1 ? withDecisive : tied, longestHit)
     );
   }
-  if (exclusive.get(best)) return best;
+  if (exclusive.get(best)) return found(best);
   return bestScore >= EXCLUSIVE_WEIGHT && bestScore - runnerUp >= 2
-    ? best
+    ? found(best)
     : null;
 };
 
-const named = (code: string): QuestionLanguage => ({
-  code,
-  name: NAMES[code]!,
-  ...(SCRIPTS[code] ? { script: SCRIPTS[code] } : {}),
+const named = (candidate: Candidate): QuestionLanguage => ({
+  code: candidate.code,
+  name: NAMES[candidate.code]!,
+  ...(SCRIPTS[candidate.code] ? { script: SCRIPTS[candidate.code] } : {}),
+  evidence: candidate.evidence,
 });
 
 const dominantScript = (question: string): string[] | null => {
@@ -344,9 +360,13 @@ export const detectQuestionLanguage = (
   if (!question.trim()) return null;
   const candidates = dominantScript(question);
   if (candidates) {
-    const code = pickCandidate(question, candidates);
-    if (!code) return candidates.includes('ar') ? named('ar') : null;
-    return named(code);
+    const picked = pickCandidate(question, candidates);
+    if (!picked) {
+      return candidates.includes('ar')
+        ? named({ code: 'ar', evidence: 0 })
+        : null;
+    }
+    return named(picked);
   }
   const latin = pickCandidate(question, LATIN_CANDIDATES);
   return latin ? named(latin) : null;

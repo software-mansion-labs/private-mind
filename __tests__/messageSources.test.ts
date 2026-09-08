@@ -810,6 +810,30 @@ describe('isWrongLanguageAnswer', () => {
     expect(isWrongLanguageAnswer(answer, question)).toBe(true);
   });
 
+  it('does not call an English answer foreign over a single shared word (Pixel: "was")', () => {
+    expect(
+      isWrongLanguageAnswer(
+        'The Eiffel Tower was completed on March 31, 1889.',
+        'When was the Eiffel Tower completed'
+      )
+    ).toBe(false);
+  });
+
+  it('still flags an answer whose own language rests on more than one word', () => {
+    expect(
+      isWrongLanguageAnswer(
+        'Das Model 3 kostet in den USA etwa 42.000 Dollar.',
+        'How much does a Tesla Model 3 cost'
+      )
+    ).toBe(true);
+    expect(
+      isWrongLanguageAnswer(
+        'The iPhone 17 costs about 4,499 zloty in Poland.',
+        'Ile kosztuje iPhone 17 w Polsce'
+      )
+    ).toBe(true);
+  });
+
   it('does not flag a genuine answer in the question language', () => {
     const answer =
       'Kazimierz Wielki był ostatnim królem Polski z dynastii Piastów. ' +

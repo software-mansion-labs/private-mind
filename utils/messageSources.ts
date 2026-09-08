@@ -337,6 +337,8 @@ export const retryDropsGroundedDetail = (
   return after.length < before.length * RETRY_LENGTH_FLOOR;
 };
 
+const MIN_LANGUAGE_EVIDENCE = 2;
+
 export const isWrongLanguageAnswer = (
   answer: string,
   question: string | undefined
@@ -347,7 +349,11 @@ export const isWrongLanguageAnswer = (
   const visible = stripThinkBlocks(answer);
   if (!visible) return false;
   const actual = detectQuestionLanguage(visible);
-  return !!actual && actual.code !== expected.code;
+  if (!actual || actual.code === expected.code) return false;
+  if (actual.script && expected.script && actual.script !== expected.script) {
+    return true;
+  }
+  return (actual.evidence ?? 0) >= MIN_LANGUAGE_EVIDENCE;
 };
 
 export const pickCitationsByAnswer = (
