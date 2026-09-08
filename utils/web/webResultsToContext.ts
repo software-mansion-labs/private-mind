@@ -164,18 +164,24 @@ const ENUMERATION_MARKER =
 const ENUMERATION_MEASURE =
   /(?<![\p{L}\p{N}])\d+(?:[.,/]\d+)?\s*(?:g|kg|ml|l|dag|dkg|szt|szklan\w*|[\u0142l]y[\u017cz]\w*|cup|cups|tbsp|tsp|oz|lb|min|godz|h)(?![\p{L}])/iu;
 
-export const enumerationShare = (text: string): number => {
-  const lines = text
+const INLINE_CELL_SEPARATOR = /\s[|\u2022\u00b7]\s/;
+
+const enumerationUnits = (text: string): string[] =>
+  text
     .split('\n')
-    .map((line) => line.trim())
+    .flatMap((line) => line.split(INLINE_CELL_SEPARATOR))
+    .map((unit) => unit.trim())
     .filter(Boolean);
-  if (lines.length < ENUMERATION_MIN_LINES) return 0;
-  const items = lines.filter(
-    (line) =>
-      line.length <= ENUMERATION_ITEM_MAX_CHARS &&
-      (ENUMERATION_MARKER.test(line) || ENUMERATION_MEASURE.test(line))
+
+export const enumerationShare = (text: string): number => {
+  const units = enumerationUnits(text);
+  if (units.length < ENUMERATION_MIN_LINES) return 0;
+  const items = units.filter(
+    (unit) =>
+      unit.length <= ENUMERATION_ITEM_MAX_CHARS &&
+      (ENUMERATION_MARKER.test(unit) || ENUMERATION_MEASURE.test(unit))
   ).length;
-  return items / lines.length;
+  return items / units.length;
 };
 
 const FIGURES_BONUS = 3;

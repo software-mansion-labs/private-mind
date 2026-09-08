@@ -1086,6 +1086,47 @@ describe('enumerationShare', () => {
   it('says nothing about a passage too short to have a shape', () => {
     expect(enumerationShare('3 jajka\n200 g cukru')).toBe(0);
   });
+
+  it('reads a run of items on one line as a list', () => {
+    expect(
+      enumerationShare(
+        '2 sausages | 4 slices of back bacon | 2 large eggs | 1 cup baked beans'
+      )
+    ).toBeGreaterThan(0.9);
+  });
+
+  it('still reads a breadcrumb trail as prose', () => {
+    expect(enumerationShare('Home | Recipes | Breakfast | Full English')).toBe(
+      0
+    );
+  });
+});
+
+describe('a list the page writes on a single line (live-found: full English breakfast)', () => {
+  const lead =
+    'Few meals are as iconic as a Full English Breakfast. This traditional ' +
+    'spread is more than just food, it is a cultural staple on weekends. ' +
+    'It is all made with everyday ingredients and cooked in one or two pans.';
+  const heading = 'Ingredients Needed to Make a Full English Breakfast';
+  const inline =
+    '2 sausages | 4 slices of back bacon | 2 large eggs | ' +
+    '1 cup baked beans (canned) | 4 button mushrooms, halved | ' +
+    '1 medium tomato, halved | 2 slices of bread';
+  const faq =
+    'Yes, you can cook most ingredients in one large pan by cooking them ' +
+    'in stages, starting with the sausages and the bacon.';
+  const page = `${lead}\n${heading}\n${inline}\n${faq}`;
+
+  it('carries the run of items, which holds none of the words the question uses', () => {
+    const selected = selectRelevantContent(
+      page,
+      'ingredients of full English breakfast',
+      lead.length,
+      { title: 'Full English Breakfast Recipe', intent: 'howto' }
+    );
+
+    expect(selected).toContain('4 slices of back bacon');
+  });
 });
 
 describe('selectRelevantContent with a list question', () => {
