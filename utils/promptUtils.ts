@@ -18,6 +18,7 @@ import {
   detectThreadLanguage,
   type QuestionLanguage,
 } from './questionLanguage';
+import { unnamedSubjects } from './web/subjectNaming';
 import { detectTopicLanguage } from './web/topicLanguage';
 import {
   extractCurrencyTokens,
@@ -399,6 +400,16 @@ const getCurrentStateInstruction = (
     ? '\n\nThe question asks how things stand right now. A page that lists holders, winners or values across history — a full list, an archive, a table "from 1789 to today" — does not establish the current one: it is equally consistent with any entry in it being current. Answer from a source that states the present situation and carries a recent date, and where the block only offers a historical list, say it does not confirm the current one rather than picking an entry from it. When the question asks who holds a post, the answer is the name of that person: give it in the first sentence. An ordinal, a party, a start date or a description of the duties of the office identifies nobody, and neither does a sentence about what the office is.'
     : '';
 
+const getUnnamedSubjectInstruction = (
+  question: string | undefined,
+  contextText: string
+): string => {
+  const missing = question ? unnamedSubjects(question, contextText) : [];
+  if (missing.length === 0) return '';
+  const named = missing.map((subject) => `"${subject}"`).join(' or ');
+  return `\n\nNothing in the block names ${named}. The pages it holds are about something else, however close the wording looks. Say that the search found nothing about ${named}, and do not answer about whatever the pages are about instead.`;
+};
+
 const PROCEDURE_MARKERS =
   /przepis\w*|sk[łl]adnik\w*|krok po kroku|instrukcj\w*|wypisz|wymie[ńn]|podaj list|list[eę] |recipe|ingredient|step[- ]by[- ]step|how (?:do i|to) (?:make|cook|bake)|list of/i;
 
@@ -620,6 +631,7 @@ export const prepareMessagesForLLM = (
     systemPrompt += getRecentEventCompletenessInstruction(question);
     systemPrompt += getStatedDateInstruction(question);
     systemPrompt += getEditionDateInstruction(question);
+    systemPrompt += getUnnamedSubjectInstruction(question, contextText);
     systemPrompt += getCurrentStateInstruction(question, webIntentKind);
     systemPrompt += getProcedureInstruction(question, webIntentKind);
     systemPrompt += getCompositionInstruction(question);

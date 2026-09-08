@@ -2731,6 +2731,48 @@ describe('a question about a named day must not be answered with "now"', () => {
   });
 });
 
+describe('a question about something the sources never name', () => {
+  const buildPrompt = (question: string, context: string[]): string =>
+    prepareMessagesForLLM(
+      [{ id: 1, chatId: 1, role: 'user', content: question } as Message],
+      context,
+      baseSettings,
+      baseModel
+    )[0]!.content as string;
+
+  const sources = [
+    '--- Source 1: Hours and ticketing - Museum of Illusions Krakow ---\n' +
+      'The Museum of Illusions in Krakow is open daily from 10:00 to 19:00.',
+  ];
+
+  it('tells the model the pages are about something else', () => {
+    const built = buildPrompt(
+      'What are the opening hours of the Museum of Imaginary Instruments in Krakow',
+      sources
+    );
+
+    expect(built).toContain('Imaginary Instruments');
+    expect(built).toContain('found nothing about');
+  });
+
+  it('says nothing when the sources do name the subject', () => {
+    const built = buildPrompt(
+      'What are the opening hours of the Museum of Illusions in Krakow',
+      sources
+    );
+
+    expect(built).not.toContain('found nothing about');
+  });
+
+  it('leaves a language that capitalises its nouns alone', () => {
+    const built = buildPrompt('Wie viele Einwohner hat Muenchen', [
+      '--- Source 1: Muenchen ---\nMuenchen hat rund 1,5 Millionen Einwohner.',
+    ]);
+
+    expect(built).not.toContain('found nothing about');
+  });
+});
+
 describe('focusedRetrySystemPrompt', () => {
   it('names the quoted lines as the only material and pins the language', () => {
     const prompt = focusedRetrySystemPrompt({ code: 'pl', name: 'Polish' });
