@@ -38,6 +38,7 @@ import {
   humanizeSourceReferences,
   isCircularNonAnswer,
   isDanglingListAnswer,
+  isUnfinishedAnswer,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
   retryDropsGroundedDetail,
@@ -1109,6 +1110,19 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       };
 
       if (
+        get().isGenerating &&
+        finalResponse &&
+        isUnfinishedAnswer(finalResponse)
+      ) {
+        await nudgeOnce(
+          'Answer stopped mid-sentence, generating it once more',
+          effectivePrepared,
+          isUnfinishedAnswer
+        );
+      }
+
+      if (
+        !nudged &&
         get().isGenerating &&
         finalResponse &&
         isWrongLanguageAnswer(finalResponse, currentQuestion)

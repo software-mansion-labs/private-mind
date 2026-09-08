@@ -307,6 +307,18 @@ export const isDanglingListAnswer = (answer: string): boolean => {
   return DANGLING_LIST_MARKER_ONLY.test(lastLine);
 };
 
+const ENDS_SENTENCE = /[.!?…。！？।॥۔؟]["'”’)\]]?$/u;
+const UNFINISHED_MAX_WORDS = 6;
+
+export const isUnfinishedAnswer = (answer: string): boolean => {
+  const visible = stripThinkBlocks(answer)
+    .replace(SOURCE_REFERENCE, ' ')
+    .trim();
+  if (!visible || isDanglingListAnswer(answer)) return false;
+  if (ENDS_SENTENCE.test(visible)) return false;
+  return visible.split(/\s+/).length <= UNFINISHED_MAX_WORDS;
+};
+
 const CIRCULAR_SOURCE_REFERENCE_THRESHOLD = 3;
 const SOURCE_REFERENCE_MARKER = /źród\w*|\bsources?\b/giu;
 

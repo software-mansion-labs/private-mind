@@ -651,7 +651,7 @@ describe('sendChatMessage', () => {
     mockInstance.generate
       .mockRejectedValueOnce(new Error('out of memory'))
       .mockRejectedValueOnce(new Error('out of memory'))
-      .mockResolvedValueOnce('Recovered answer');
+      .mockResolvedValueOnce('Recovered answer.');
     useLLMStore.setState({
       model: baseModel,
       activeChatId: 1,
@@ -673,7 +673,7 @@ describe('sendChatMessage', () => {
     ).toHaveLength(1);
     expect(useLLMStore.getState().generationError).toBeNull();
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
-      'Recovered answer'
+      'Recovered answer.'
     );
   });
 
@@ -770,6 +770,52 @@ describe('sendChatMessage', () => {
     );
     expect(lastMessage.content).toContain(
       '(Answer in the same language as this message.)'
+    );
+  });
+
+  it('generates once more when the answer stops mid-sentence (Pixel: "The Mariana Trench")', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('The Mariana Trench')
+      .mockResolvedValueOnce('The Mariana Trench is about 10,935 metres deep.');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'How deep is the Mariana Trench',
+        1,
+        noSources,
+        settings
+      );
+
+    expect(mockInstance.generate.mock.calls[1]![0]).toEqual(
+      mockInstance.generate.mock.calls[0]![0]
+    );
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'The Mariana Trench is about 10,935 metres deep.'
+    );
+  });
+
+  it('keeps the fragment when a second try stops just as short', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('The length of')
+      .mockResolvedValueOnce('The length of');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('How long is the river Danube', 1, noSources, settings);
+
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'The length of'
     );
   });
 
@@ -2099,13 +2145,13 @@ describe('one turn at a time (S20 FE: sends lost or doubled while a turn was sti
     const second = await useLLMStore
       .getState()
       .sendChatMessage('second', 1, noSources, settings);
-    finish('done');
+    finish('The first turn finished on its own.');
 
     expect(second).toBe(false);
     expect(await first).toBe(true);
     expect(
       useLLMStore.getState().activeChatMessages.map((m) => m.content)
-    ).toEqual(['first', 'done']);
+    ).toEqual(['first', 'The first turn finished on its own.']);
   });
 
   it('shows the message and the stop state while a model switch is still loading', async () => {
