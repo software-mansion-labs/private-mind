@@ -194,6 +194,7 @@ const searchWithCleanup = async (
     (input.profile?.webEmbeddingRetrieval ?? true);
 
   let providerCalls = 0;
+  let semanticQueryUsed: string | undefined;
   const candidates: string[] = [];
   const attempted = new Set<string>();
   const enrichedByUrl = new Map<string, WebSearchResult>();
@@ -398,6 +399,7 @@ const searchWithCleanup = async (
         semanticQuery: plan.intent ? `${plan.intent}. ${query}` : query,
         keywordQuery: baseQueries.join(' '),
       };
+      semanticQueryUsed = retrievalQuery.semanticQuery;
       const runRetrieval = () =>
         embeddings!.runWithLoadedModel(() =>
           retrieveWebPassages(
@@ -659,12 +661,22 @@ const searchWithCleanup = async (
     ),
   });
 
+  const extractedByUrl = (): Record<string, string> => {
+    const out: Record<string, string> = {};
+    for (const [url, result] of enrichedByUrl) {
+      if (result.content) out[url] = result.content;
+    }
+    return out;
+  };
+
   if (finalResults.length === 0) {
     recordWebSearchTrace({
       question: query,
       expects: plan.expects,
       planQueries: plan.queries,
       candidates,
+      extracted: extractedByUrl(),
+      ...(semanticQueryUsed ? { retrievalQuery: semanticQueryUsed } : {}),
       ...(input.contextCharBudget ? { budget: input.contextCharBudget } : {}),
       contextOffset: input.contextOffset ?? 0,
       results: [],
@@ -693,6 +705,8 @@ const searchWithCleanup = async (
     expects: plan.expects,
     planQueries: plan.queries,
     candidates,
+    extracted: extractedByUrl(),
+    ...(semanticQueryUsed ? { retrievalQuery: semanticQueryUsed } : {}),
     ...(input.contextCharBudget ? { budget: input.contextCharBudget } : {}),
     contextOffset: input.contextOffset ?? 0,
     results: finalResults,

@@ -1,41 +1,24 @@
-import {
-  DocumentDirectoryPath,
-  ExternalDirectoryPath,
-  mkdir,
-  readDir,
-  unlink,
-  writeFile,
-} from '@dr.pogodin/react-native-fs';
-import { WEB_TRACE_KEEP_FILES, WEB_TRACE_TO_FILE } from '../../constants/web';
+import { WEB_TRACE_TO_FILE } from '../../constants/web';
+import { writeTraceFile } from '../traceFile';
 import type { WebSearchTelemetry } from './runWebSearch';
 import type { WebSearchResult } from './types';
 
 const TRACE_DIR = 'web-traces';
+const EXTRACT_MAX_CHARS = 20_000;
 
 export interface WebSearchTrace {
   question: string;
   expects?: string[];
   planQueries?: string[];
   candidates?: string[];
+  extracted?: Record<string, string>;
+  retrievalQuery?: string;
   budget?: number;
   contextOffset?: number;
   results: WebSearchResult[];
   context: string[];
   telemetry: WebSearchTelemetry;
 }
-
-const traceDirectory = (): string =>
-  `${ExternalDirectoryPath || DocumentDirectoryPath}/${TRACE_DIR}`;
-
-const traceFileName = (question: string): string => {
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const slug = question
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 40);
-  return `${stamp}${slug ? `-${slug}` : ''}.json`;
-};
 
 const traceBody = (trace: WebSearchTrace): string =>
   JSON.stringify(
@@ -45,6 +28,7 @@ const traceBody = (trace: WebSearchTrace): string =>
       expects: trace.expects ?? [],
       planQueries: trace.planQueries ?? [],
       candidates: trace.candidates ?? [],
+      retrievalQuery: trace.retrievalQuery ?? null,
       budget: trace.budget ?? null,
       contextOffset: trace.contextOffset ?? 0,
       sources: trace.results.map((result) => ({
@@ -54,6 +38,8 @@ const traceBody = (trace: WebSearchTrace): string =>
         snippet: result.snippet,
         contentChars: result.content?.length ?? 0,
         content: result.content ?? null,
+        extracted:
+          trace.extracted?.[result.url]?.slice(0, EXTRACT_MAX_CHARS) ?? null,
         product: result.product ?? null,
       })),
       context: trace.context,
@@ -63,27 +49,9 @@ const traceBody = (trace: WebSearchTrace): string =>
     2
   );
 
-const pruneOldTraces = async (directory: string): Promise<void> => {
-  const traces = (await readDir(directory))
-    .filter((entry) => entry.name.endsWith('.json'))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  for (const stale of traces.slice(0, traces.length - WEB_TRACE_KEEP_FILES)) {
-    await unlink(stale.path);
-  }
-};
-
 export const recordWebSearchTrace = async (
   trace: WebSearchTrace
 ): Promise<void> => {
   if (!WEB_TRACE_TO_FILE) return;
-  try {
-    const directory = traceDirectory();
-    await mkdir(directory);
-    const path = `${directory}/${traceFileName(trace.question)}`;
-    await writeFile(path, traceBody(trace), 'utf8');
-    await pruneOldTraces(directory);
-    console.log(`Web search trace ${path}`);
-  } catch (error) {
-    console.warn(`Web search trace failed ${String(error)}`);
-  }
+  await writeTraceFile(TRACE_DIR, trace.question, traceBody(trace));
 };

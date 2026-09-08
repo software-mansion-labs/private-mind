@@ -50,6 +50,7 @@ import {
 import { sourcesPresentInContext } from '../utils/contextUtils';
 import { normalizeModelText } from '../utils/normalizeModelText';
 import { truncateAtRepeatedClause } from '../utils/loopDetection';
+import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
 import { updateConversationDigest } from '../utils/conversationDigest';
 import type { WebIntentKind } from '../utils/web/intentKind';
 import { useSettingsStore } from './settingsStore';
@@ -1025,6 +1026,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       );
 
       let nudged = false;
+      const answerRetries: AnswerRetry[] = [];
 
       const questionLanguage = detectQuestionLanguage(currentQuestion ?? '');
       const continuedRetry = (prompt: string): ExecutorchMessage[] => [
@@ -1076,6 +1078,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           ? tidyVisibleAnswer(retryGeneration.response)
           : retryGeneration.response;
         if (!retried?.trim() || !get().isGenerating || stillBroken(retried)) {
+          answerRetries.push({
+            reason,
+            raw: retryGeneration.response ?? null,
+            accepted: false,
+          });
           return;
         }
         if (
@@ -1086,8 +1093,18 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           console.warn(
             `${reason}; kept the first answer, the retry was thinner`
           );
+          answerRetries.push({
+            reason,
+            raw: retryGeneration.response ?? null,
+            accepted: false,
+          });
           return;
         }
+        answerRetries.push({
+          reason,
+          raw: retryGeneration.response ?? null,
+          accepted: true,
+        });
         finalResponse = retried;
       };
 
@@ -1242,11 +1259,28 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               normalizeModelText(continuationGeneration.response)
             )
           : continuationGeneration.response;
+        answerRetries.push({
+          reason: 'Dangling list answer, continuation nudge',
+          raw: continuationGeneration.response ?? null,
+          accepted: !!continuationResponse?.trim(),
+        });
         if (continuationResponse?.trim()) {
           finalResponse = `${finalResponse}\n${continuationResponse.trim()}`;
           responsePerformance = continuationGeneration.performance;
         }
       }
+
+      void recordAnswerTrace({
+        question: currentQuestion ?? '',
+        raw: rawResponse ?? '',
+        tidied: rawResponse ? tidyVisibleAnswer(rawResponse) : '',
+        retries: answerRetries,
+        final: finalResponse ?? '',
+        systemPromptChars: ((first) =>
+          typeof first?.content === 'string' ? first.content.length : 0)(
+          effectivePrepared[0]
+        ),
+      });
 
       if (finalResponse && stripThinkBlocks(finalResponse).trim()) {
         const humanizedResponse = humanizeSourceReferences(
