@@ -78,6 +78,9 @@ export const WEB_SERP_CACHE_MAX_ENTRIES = 32;
 export const WEB_PAGE_CACHE_MAX_CHARS = 250_000;
 export const WEB_PAGE_CACHE_MIN_COST = 1_000;
 
+export const WEB_TRACE_TO_FILE = false;
+export const WEB_TRACE_KEEP_FILES = 60;
+
 export const WEB_SEARCH_ENABLED = true;
 
 export const RAG_PRIORITY_OVER_WEB_SEARCH = true;

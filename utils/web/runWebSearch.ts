@@ -36,6 +36,7 @@ import {
   type SourceAgreement,
 } from './sourceAgreement';
 import { hostname, webResultsToContext } from './webResultsToContext';
+import { recordWebSearchTrace } from './searchTrace';
 import type { WebIntentKind } from './intentKind';
 import { dedupeByBody, listingFingerprint } from './fingerprint';
 import { fairRankByListingRelevance, scopeYearsOf } from './listingRelevance';
@@ -193,6 +194,7 @@ const searchWithCleanup = async (
     (input.profile?.webEmbeddingRetrieval ?? true);
 
   let providerCalls = 0;
+  const candidates: string[] = [];
   const attempted = new Set<string>();
   const enrichedByUrl = new Map<string, WebSearchResult>();
 
@@ -339,6 +341,7 @@ const searchWithCleanup = async (
           const keys = [`u:${item.url}`, ...(listing ? [`l:${listing}`] : [])];
           if (keys.some((key) => seen.has(key))) continue;
           keys.forEach((key) => seen.add(key));
+          candidates.push(item.url);
           perQuery.push({ ...item, sourceQuery: q });
           emit({
             type: 'found',
@@ -657,6 +660,14 @@ const searchWithCleanup = async (
   });
 
   if (finalResults.length === 0) {
+    recordWebSearchTrace({
+      question: query,
+      expects: plan.expects,
+      candidates,
+      results: [],
+      context: [],
+      telemetry,
+    });
     return { context: [], sourceDocuments: [], telemetry };
   }
 
@@ -674,6 +685,14 @@ const searchWithCleanup = async (
       intent: plan.kind,
     }
   );
+  recordWebSearchTrace({
+    question: query,
+    expects: plan.expects,
+    candidates,
+    results: finalResults,
+    context: web.context,
+    telemetry,
+  });
   return {
     context: web.context,
     sourceDocuments: web.sourceDocuments,
