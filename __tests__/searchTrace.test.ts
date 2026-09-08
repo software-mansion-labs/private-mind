@@ -24,6 +24,9 @@ const telemetry: WebSearchTelemetry = {
 const trace = (question: string): WebSearchTrace => ({
   question,
   expects: ['name of the office holder'],
+  planQueries: ['presidente del consiglio in carica'],
+  budget: 2000,
+  contextOffset: 0,
   candidates: [
     'https://it.wikipedia.org/wiki/Presidenti',
     'https://www.governo.it/it/il-presidente',
@@ -91,6 +94,7 @@ describe('recordWebSearchTrace', () => {
     expect(parsed.candidates).toContain(
       'https://www.governo.it/it/il-presidente'
     );
+    expect(parsed.budget).toBe(2000);
     expect(parsed.context[0]).toContain('in carica');
     expect(parsed.telemetry.finalLabel).toBe('ambiguous');
   });

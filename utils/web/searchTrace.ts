@@ -15,7 +15,10 @@ const TRACE_DIR = 'web-traces';
 export interface WebSearchTrace {
   question: string;
   expects?: string[];
+  planQueries?: string[];
   candidates?: string[];
+  budget?: number;
+  contextOffset?: number;
   results: WebSearchResult[];
   context: string[];
   telemetry: WebSearchTelemetry;
@@ -40,7 +43,10 @@ const traceBody = (trace: WebSearchTrace): string =>
       at: new Date().toISOString(),
       question: trace.question,
       expects: trace.expects ?? [],
+      planQueries: trace.planQueries ?? [],
       candidates: trace.candidates ?? [],
+      budget: trace.budget ?? null,
+      contextOffset: trace.contextOffset ?? 0,
       sources: trace.results.map((result) => ({
         url: result.url,
         title: result.title,
@@ -48,6 +54,7 @@ const traceBody = (trace: WebSearchTrace): string =>
         snippet: result.snippet,
         contentChars: result.content?.length ?? 0,
         content: result.content ?? null,
+        product: result.product ?? null,
       })),
       context: trace.context,
       telemetry: trace.telemetry,

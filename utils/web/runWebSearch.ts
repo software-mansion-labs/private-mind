@@ -663,7 +663,10 @@ const searchWithCleanup = async (
     recordWebSearchTrace({
       question: query,
       expects: plan.expects,
+      planQueries: plan.queries,
       candidates,
+      ...(input.contextCharBudget ? { budget: input.contextCharBudget } : {}),
+      contextOffset: input.contextOffset ?? 0,
       results: [],
       context: [],
       telemetry,
@@ -688,7 +691,10 @@ const searchWithCleanup = async (
   recordWebSearchTrace({
     question: query,
     expects: plan.expects,
+    planQueries: plan.queries,
     candidates,
+    ...(input.contextCharBudget ? { budget: input.contextCharBudget } : {}),
+    contextOffset: input.contextOffset ?? 0,
     results: finalResults,
     context: web.context,
     telemetry,
