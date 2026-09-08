@@ -180,6 +180,80 @@ Niemiecki, turecki i indonezyjski użytkownik nie dostawał **żadnej** z tych
 instrukcji. Hiszpański, francuski, włoski i portugalski dostawały jedną, i to
 przypadkiem — słowo „ingredient" ma wspólny rdzeń łaciński.
 
+## Weryfikacja po poprawkach
+
+Ten sam telefon, ten sam model, build z kompletem dziewięciu poprawek,
+19 pytań: wszystkie dziewięć komórek `current`, wszystkie dziewięć `list`
+oraz `de/population`. Jeden przebieg na komórkę, zero usterek narzędziowych.
+
+### Czego ta weryfikacja nie ustala
+
+**Nie sprawdzam, czy nazwisko jest prawdziwe.** Nie mam niezależnego źródła
+prawdy na wrzesień 2026, więc oceniam wyłącznie *tryb awarii*: czy odpowiedź
+w ogóle podaje osobę i czy pochodzi ze strony o obecnym stanie, czy z listy
+historycznej. Jedyny przypadek, który mogę nazwać wprost błędnym, to bazowe
+„Fernando Tambroni" — premier z 1960 roku nie może być obecny.
+
+### `current` — tryb awarii zniknął w czterech komórkach
+
+Najmocniejszy dowód jest w źródłach, nie w odpowiedziach: ranking przestał
+wybierać listy historyczne.
+
+| komórka | źródło przed | źródło po | odpowiedź po |
+| --- | --- | --- | --- |
+| en | „List of UK Prime Ministers in Order (1721-2026): All 59" | „Prime Minister of the United Kingdom \| Current Leader" | Keir Starmer |
+| de | „Bundeskanzler (Deutschland) — Wikipedia" | „Das Bundeskabinett im Überblick \| Bundesregierung" | Friedrich Merz |
+| id | „8 Urutan Presiden Indonesia" | „President of Indonesia \| Current Leader" | Joko Widodo |
+| hi | „List of All Prime Ministers of India (1947-2026)" | „Prime Minister of India" | Narendra Modi, **w Hinglish** |
+
+Trzy z tych czterech nie podawały wcześniej żadnej osoby albo brały ją z listy.
+Czwarta (hi) odpowiadała po angielsku, teraz odpowiada w języku pytania.
+
+Komórki, które już działały — `es`, `fr`, `tr` — zachowały **te same źródła**
+i te same odpowiedzi. Zmiana nie zepsuła niczego przy okazji.
+
+Dwie nadal nie działają:
+
+- **`it`** — źródło się nie zmieniło („Presidenti del Consiglio dei ministri
+  della Repubblica Italiana", wikipedyczna lista). Tytuł nie zawiera roku, więc
+  reguła „rok starszy niż pokolenie" go nie łapie. Odpowiedź przestała jednak
+  podawać premiera z 1960 roku i brzmi teraz „La persona attualmente è il
+  Presidente del Consiglio dei ministri" — zdanie okrężne, które nie odpowiada.
+- **`pt`** — źródło bez zmian, odpowiedź nadal bez nazwiska („39. prezydent,
+  z PT, od 1 stycznia 2023").
+
+### `de/population` — naprawione
+
+Przed: odpowiedź po angielsku. Po: „Laut Quelle 2 zählt München aktuell über
+1,6 Millionen Einwohner", ze strony statystycznej miasta.
+
+### `list` — bez poprawy, i to trzeba powiedzieć wprost
+
+Sześć z ośmiu komórek dostało **dokładnie te same źródła** co poprzednio i
+odpowiedzi praktycznie bez zmian. Poprawka filtra menu nie ruszyła tej
+kategorii.
+
+| komórka | zmiana |
+| --- | --- |
+| de | jedyna poprawa: zamiast zdania prozą wróciła lista, ale dwupozycyjna |
+| fr | bez zmian, nadal poprawna (strona podaje ilości) |
+| en, es, hi, it | bez zmian, nadal złe albo niepełne |
+| tr | **gorzej**: „malzemeler anlatılmaktadır" („składniki są opisane") |
+| id | **gorzej**: wróciły *narzędzia* kuchenne zamiast składników |
+
+W `tr` i `id` wyszukiwarka zwróciła **inne strony** niż w przebiegu bazowym
+(turecka — wersja z filmem, indonezyjska — poradnik o sprzęcie). Tych dwóch
+pogorszeń nie da się więc przypisać zmianie; da się natomiast powiedzieć, że
+kategoria się nie poprawiła.
+
+**Wniosek roboczy:** przyczyna, którą naprawiłem — kasowanie listy przez filtr
+menu — jest realna i potwierdzona testem jednostkowym, ale nie jest przyczyną
+dominującą. Na tych stronach lista składników albo nie trafia do pobranego
+tekstu w ogóle, albo siedzi w danych strukturalnych (`schema.org/Recipe`,
+pole `recipeIngredient`), których ekstrakcja dziś nie czyta. To jest następny
+krok i ma konkretny adres: `collectJsonLdText` już istnieje jako fallback,
+ale nie sięga po `recipeIngredient`.
+
 ## Co zostaje otwarte
 
 - **Pisma niełacińskie (~27 % użytkowników) nadal nieprzetestowane.** Droga,
