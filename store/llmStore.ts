@@ -1271,6 +1271,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       }
 
       void recordAnswerTrace({
+        shape: {
+          generating: get().isGenerating,
+          dangling: !!finalResponse && isDanglingListAnswer(finalResponse),
+          circular: !!finalResponse && isCircularNonAnswer(finalResponse),
+          nudged,
+        },
         question: currentQuestion ?? '',
         raw: rawResponse ?? '',
         tidied: rawResponse ? tidyVisibleAnswer(rawResponse) : '',

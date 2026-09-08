@@ -16,6 +16,7 @@ export interface AnswerTrace {
   retries: AnswerRetry[];
   final: string;
   systemPromptChars: number;
+  shape?: Record<string, boolean>;
 }
 
 export const answerTraceEnabled = WEB_TRACE_TO_FILE;
@@ -33,6 +34,7 @@ export const recordAnswerTrace = async (trace: AnswerTrace): Promise<void> => {
         raw: trace.raw,
         tidied: trace.tidied,
         retries: trace.retries,
+        shape: trace.shape ?? {},
         final: trace.final,
       },
       null,
