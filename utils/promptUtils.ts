@@ -396,7 +396,7 @@ const getCurrentStateInstruction = (
   intentKind?: WebIntentKind
 ): string =>
   intentKind === 'person' || (question && CURRENT_STATE_MARKERS.test(question))
-    ? '\n\nThe question asks how things stand right now. A page that lists holders, winners or values across history — a full list, an archive, a table "from 1789 to today" — does not establish the current one: it is equally consistent with any entry in it being current. Answer from a source that states the present situation and carries a recent date, and where the block only offers a historical list, say it does not confirm the current one rather than picking an entry from it.'
+    ? '\n\nThe question asks how things stand right now. A page that lists holders, winners or values across history — a full list, an archive, a table "from 1789 to today" — does not establish the current one: it is equally consistent with any entry in it being current. Answer from a source that states the present situation and carries a recent date, and where the block only offers a historical list, say it does not confirm the current one rather than picking an entry from it. When the question asks who holds a post, the answer is the name of that person: give it in the first sentence. An ordinal, a party, a start date or a description of the duties of the office identifies nobody, and neither does a sentence about what the office is.'
     : '';
 
 const PROCEDURE_MARKERS =
