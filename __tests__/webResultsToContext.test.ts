@@ -810,6 +810,46 @@ describe('coalescing must not glue table rows together (live-found: Nowy Sącz w
   });
 });
 
+describe('a decimal is not a sentence stop (live-found: Burj Khalifa)', () => {
+  const infobox = [
+    'Height Architectural | 828 m (2,717 ft) Tip | 829.8 m (2,722 ft)',
+    'Roof | 739.4 m (2,426 ft) Top floor | 585.4 m (1,921 ft)',
+    'Observatory | 555.7 m (1,823 ft) Floor area | 309,473 m 2 (3,331,100 sq ft)',
+  ].join(' ');
+
+  it('keeps the tip height whole when the row is split into passages', () => {
+    const filler =
+      'The tower is a landmark of the United Arab Emirates. '.repeat(20);
+    const out = selectRelevantContent(
+      `${infobox} ${filler}`,
+      'how tall is the Burj Khalifa',
+      300
+    );
+
+    expect(out).not.toMatch(/\d\.\s\d/);
+    if (out.includes('829')) expect(out).toContain('829.8 m');
+  });
+
+  it('still ends a passage at a stop that is not inside a figure', () => {
+    const prose = [
+      'The tower opened in 2010.',
+      'It cost 1.5 billion dollars to build.',
+      'Visitors reach the observatory in under a minute.',
+    ].join(' ');
+    const filler = 'Unrelated page furniture about tickets and queues. '.repeat(
+      20
+    );
+    const out = selectRelevantContent(
+      `${prose} ${filler}`,
+      'when did the tower open and what did it cost',
+      200
+    );
+
+    expect(out).not.toMatch(/\d\.\s\d/);
+    expect(out).toContain('opened in 2010.');
+  });
+});
+
 describe('Polish prices spelled out as "zlotych"', () => {
   const LEAD = [
     'Ile kosztuje iPhone 17 Pro w Polsce? Cena iPhone 17 Pro w Polsce to temat, ktory wraca.',

@@ -43,8 +43,12 @@ export const hostname = (url: string): string => {
 
 const PASSAGE_MAX_LEN = 320;
 
-const SENTENCE_END =
-  /[^.!?\n。！？।॥۔؟]+[.!?\n。！？।॥۔؟]+|[^.!?\n。！？।॥۔؟]+$/g;
+const TERMINATORS = '!?\\n。！？।॥۔؟';
+const DECIMAL_POINT = '(?<=\\d)\\.(?=\\d)';
+const BODY = `(?:[^.${TERMINATORS}]|${DECIMAL_POINT})`;
+const TERMINATOR = `(?:[${TERMINATORS}]|\\.(?!\\d)|(?<!\\d)\\.(?=\\d))`;
+
+const SENTENCE_END = new RegExp(`${BODY}+${TERMINATOR}+|${BODY}+$`, 'gu');
 
 const PASSAGE_TARGET_LEN = 200;
 const CELL_MAX_LEN = 24;
