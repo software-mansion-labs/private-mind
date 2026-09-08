@@ -254,16 +254,28 @@ export const retrieveWebPassages = async (
     keptByPage.set(chunk.pageIndex, list);
   }
 
+  const bestByPage = new Map<number, WebChunk>();
+  for (const chunk of chunks) {
+    if (chunk.coverage <= 0) continue;
+    const best = bestByPage.get(chunk.pageIndex);
+    if (!best || chunk.similarity > best.similarity)
+      bestByPage.set(chunk.pageIndex, chunk);
+  }
+
   const rewritten = results.map((result, pageIndex) => {
     if (!result.content) return result;
     const kept = keptByPage.get(pageIndex);
-    if (!kept?.length) {
-      return { ...result, content: undefined };
-    }
-    const passages = [...kept]
-      .sort((a, b) => a.chunkIndex - b.chunkIndex)
-      .map((chunk) => chunk.text);
-    return { ...result, content: stitchPassages(passages) };
+    const fallback = bestByPage.get(pageIndex);
+    const passages = kept?.length
+      ? [...kept].sort((a, b) => a.chunkIndex - b.chunkIndex)
+      : fallback
+        ? [fallback]
+        : [];
+    if (passages.length === 0) return { ...result, content: undefined };
+    return {
+      ...result,
+      content: stitchPassages(passages.map((chunk) => chunk.text)),
+    };
   });
 
   return { results: rewritten, signals: signalsFor(qualified) };
