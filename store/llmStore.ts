@@ -540,6 +540,7 @@ const describeGenerationFailure = (): string =>
   'The model returned an empty response';
 
 const NUDGE_TIME_BUDGET_MS = 40_000;
+const UNFINISHED_NUDGE_BUDGET_MS = 150_000;
 
 const digestForChat = (get: () => LLMStore, chatId: number): string | null =>
   get().activeChatDigestChatId === chatId ? get().activeChatDigest : null;
@@ -1059,11 +1060,17 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         reason: string,
         messages: ExecutorchMessage[],
         stillBroken: (retried: string) => boolean,
-        preserveDetail = false
+        preserveDetail = false,
+        budgetMs = NUDGE_TIME_BUDGET_MS
       ): Promise<void> => {
         nudged = true;
-        if (performance.now() - generationStartedAt > NUDGE_TIME_BUDGET_MS) {
+        if (performance.now() - generationStartedAt > budgetMs) {
           console.warn(`${reason}; skipped, the turn is over its time budget`);
+          answerRetries.push({
+            reason: `${reason} (skipped, over the time budget)`,
+            raw: null,
+            accepted: false,
+          });
           return;
         }
         console.warn(reason);
@@ -1117,7 +1124,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         await nudgeOnce(
           'Answer stopped mid-sentence, generating it once more',
           effectivePrepared,
-          isUnfinishedAnswer
+          isUnfinishedAnswer,
+          false,
+          UNFINISHED_NUDGE_BUDGET_MS
         );
       }
 

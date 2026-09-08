@@ -2275,6 +2275,30 @@ describe('one turn at a time (S20 FE: sends lost or doubled while a turn was sti
     expect(setDigest).toHaveBeenCalled();
   });
 
+  it('still tries again for a fragment after the ordinary nudge budget is spent', async () => {
+    let now = 0;
+    jest.spyOn(performance, 'now').mockImplementation(() => now);
+    mockInstance.generate
+      .mockImplementationOnce(async () => {
+        now = 60_000;
+        return 'The Mariana Trench';
+      })
+      .mockResolvedValueOnce('The Mariana Trench is about 10,935 metres deep.');
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'How deep is the Mariana Trench',
+        1,
+        noSources,
+        settings
+      );
+
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'The Mariana Trench is about 10,935 metres deep.'
+    );
+  });
+
   it('skips the refining pass when the first answer already used up the time budget', async () => {
     let now = 0;
     jest.spyOn(performance, 'now').mockImplementation(() => now);
