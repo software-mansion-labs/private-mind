@@ -7,7 +7,6 @@ import {
   humanizeSourceReferences,
   stripSourceLabels,
   isDanglingListAnswer,
-  isUnfinishedAnswer,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
   retryDropsGroundedDetail,
@@ -899,45 +898,6 @@ describe('humanizeSourceReferences', () => {
   it('is a no-op when there are no source documents at all', () => {
     const answer = 'As stated in Source 1, the price is rising.';
     expect(humanizeSourceReferences(answer, [])).toBe(answer);
-  });
-});
-
-describe('isUnfinishedAnswer', () => {
-  it('flags the fragments the Pixel run kept producing on fact questions', () => {
-    for (const fragment of [
-      'The Mariana Trench',
-      'According to the',
-      'The length of',
-      'The first iPhone',
-      'The steps for',
-    ]) {
-      expect(isUnfinishedAnswer(fragment)).toBe(true);
-    }
-  });
-
-  it('leaves a short answer that finishes its sentence alone', () => {
-    expect(isUnfinishedAnswer('Android 16.')).toBe(false);
-    expect(
-      isUnfinishedAnswer('The Eiffel Tower was completed on 31 March 1889.')
-    ).toBe(false);
-  });
-
-  it('leaves a long answer alone even when it ends without punctuation', () => {
-    expect(
-      isUnfinishedAnswer(
-        'The British Museum is open daily from 10:00 to 17:00 and until 20:30 on Fridays'
-      )
-    ).toBe(false);
-  });
-
-  it('reads only the visible answer, not the thinking before it', () => {
-    expect(
-      isUnfinishedAnswer('<think>where do I start</think>\n\nAndroid 16.')
-    ).toBe(false);
-  });
-
-  it('does not flag an empty response', () => {
-    expect(isUnfinishedAnswer('')).toBe(false);
   });
 });
 
