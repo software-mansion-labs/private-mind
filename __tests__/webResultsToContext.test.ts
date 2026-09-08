@@ -713,6 +713,28 @@ describe('webResultsToContext — context budget', () => {
     expect(sourceDocuments[0]!.passage!.length).toBeGreaterThan(300);
   });
 
+  it('hands a page its room when the sources above it had only a snippet (live-found: soft boiled egg)', () => {
+    const recipe =
+      'Bring water to a gentle boil. Lower the eggs carefully into the water ' +
+      'using a spoon. Wait for the water to return to a gentle boil, then ' +
+      'start your timer. Cook for 4 to 6 minutes depending on your preferred ' +
+      'texture. Transfer the eggs straight to an ice bath for five minutes.';
+    const blurb = (n: number) => ({
+      url: `https://blurb${n}.example/x`,
+      title: `Learn how to soft boil an egg ${n}`,
+      snippet: `Learn how to soft boil an egg perfectly, guide ${n}.`,
+    });
+    const { context } = webResultsToContext(
+      [blurb(1), blurb(2), { ...blurb(3), content: recipe }],
+      'how to make a soft boiled egg',
+      0,
+      1200,
+      { intent: 'howto' }
+    );
+
+    expect(context.at(-1)).toContain('4 to 6 minutes');
+  });
+
   it('gives the best-fitting source more room than the tail', () => {
     const distinct = (n: number) => ({
       url: `https://site${n}.example/x`,

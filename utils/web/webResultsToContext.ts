@@ -581,10 +581,15 @@ export const webResultsToContext = (
       : []
   );
 
+  let slack = 0;
+
   used.forEach((result, index) => {
     const name = neutralizeDelimiters(result.title || hostname(result.url));
     const headerChars = sourceBlock(startIndex + cited.length, name, '').length;
-    const share = Math.min(budgets[index]!, remaining) - headerChars;
+    const offered = Math.min(budgets[index]! + slack, remaining) - headerChars;
+    const share = result.content
+      ? offered
+      : Math.min(offered, WEB_SNIPPET_MAX_CHARS);
     if (share < WEB_CONTENT_MIN_CHARS && cited.length > 0) return;
     const budget =
       cited.length === 0 ? Math.max(share, MIN_SOURCE_EXCERPT_CHARS) : share;
@@ -636,6 +641,7 @@ export const webResultsToContext = (
     );
     context.push(block);
     remaining -= block.length;
+    slack = Math.max(0, slack + budgets[index]! - block.length);
     cited.push(result);
 
     sourceDocuments.push({
