@@ -1435,6 +1435,28 @@ describe('evidenceLinesFor — the lines the retry should quote (release R-3, R-
     );
   });
 
+  it('does not call an answer evidence-free for want of a figure (Pixel: LIDAR)', () => {
+    const context =
+      '\n --- Source 1: What is LiDAR? | IBM --- \n What is LiDAR? LiDAR, an ' +
+      'acronym for \u201clight detection and ranging,\u201d is a remote-sensing ' +
+      'technology that uses laser beams to measure precise distances and ' +
+      'movement in an environment, in real time. LiDAR data can be used to ' +
+      'generate detailed topographic maps and the dynamic 3D models required ' +
+      'to guide an autonomous vehicle. \n --- End of Source 1 ---\n' +
+      '\n --- Source 2: Lidar - Wikipedia --- \n distances by measuring the ' +
+      'time for a signal to return using appropriate sensors and data ' +
+      'acquisition electronics.\nThis page was last edited on 6 September ' +
+      '2026, at 18:12 (UTC). \n --- End of Source 2 ---';
+
+    expect(
+      answerUsesNoRetrievedEvidence(
+        'LIDAR stands for "light detection and ranging."',
+        'What does the acronym LIDAR stand for',
+        context
+      )
+    ).toBe(false);
+  });
+
   it('leads with the forecast sentence, not a menu line with bare digits or a FAQ question (release K-6)', () => {
     const question = 'Jaka będzie jutro pogoda w Warszawie?';
     const context =

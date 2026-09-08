@@ -610,6 +610,28 @@ const SOURCES_BLOCK = /<sources>([\s\S]*?)<\/sources>/;
 export const sourcesBlockOf = (promptContent: string): string =>
   promptContent.match(SOURCES_BLOCK)?.[1] ?? promptContent;
 
+const contentStems = (text: string): Set<string> =>
+  new Set(
+    [...extractQueryTerms(text)].map((term) =>
+      stemPrefix(foldForMatching(term))
+    )
+  );
+
+const sharesWording = (
+  answer: string,
+  context: string,
+  question: string | undefined
+): boolean => {
+  const asked = contentStems(question ?? '');
+  const offered = contentStems(context.replace(SOURCE_MARKER_LINE, ''));
+  for (const stem of asked) offered.delete(stem);
+  if (offered.size === 0) return true;
+  for (const stem of contentStems(answer)) {
+    if (offered.has(stem)) return true;
+  }
+  return false;
+};
+
 export const answerUsesNoRetrievedEvidence = (
   answer: string,
   question: string | undefined,
@@ -621,7 +643,9 @@ export const answerUsesNoRetrievedEvidence = (
   const offered = distinctiveEvidence(context.replace(SOURCE_MARKER_LINE, ''));
   for (const term of asked) offered.delete(term);
   if (offered.size < EVIDENCE_MIN_TOKENS) return false;
-  for (const term of distinctiveEvidence(visible)) {
+  const carried = distinctiveEvidence(visible);
+  if (carried.size === 0) return !sharesWording(visible, context, question);
+  for (const term of carried) {
     if (offered.has(term)) return false;
   }
   return true;
