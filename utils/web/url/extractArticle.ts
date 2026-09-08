@@ -269,7 +269,18 @@ const MENU_LINE_KEEP = /[\d.!?%°:;]/;
 const FACET_COUNT = /\(\s*\d[\d\s.,]*\s*\)/g;
 const PROMO_PERCENT = /-?\d+\s*%/g;
 
-const dropMenuRuns = (text: string): string => {
+const LIST_INTRODUCTION = /[:\uFF1A]\s*$/;
+const LINK_TEXT = /<a\b[^>]*>([^<]{1,60})<\/a>/gi;
+const MENU_RUN_LINK_SHARE = 0.5;
+
+export const linkTexts = (html: string): Set<string> =>
+  new Set(
+    [...html.matchAll(LINK_TEXT)].map((match) =>
+      decodeEntities(match[1]!).replace(/\s+/g, ' ').trim().toLowerCase()
+    )
+  );
+
+const dropMenuRuns = (text: string, links: Set<string> = new Set()): string => {
   const lines = text.split('\n');
   const isMenuLine = (line: string): boolean => {
     const trimmed = line.trim();
@@ -280,6 +291,8 @@ const dropMenuRuns = (text: string): string => {
     if (!/\p{L}/u.test(body)) return false;
     return !MENU_LINE_KEEP.test(body);
   };
+  const linked = (line: string): boolean =>
+    links.has(line.trim().toLowerCase());
   const kept: string[] = [];
   for (let start = 0; start < lines.length;) {
     if (!isMenuLine(lines[start]!)) {
@@ -289,8 +302,13 @@ const dropMenuRuns = (text: string): string => {
     }
     let end = start;
     while (end < lines.length && isMenuLine(lines[end]!)) end += 1;
-    if (end - start < MENU_RUN_MIN_LINES) {
-      kept.push(...lines.slice(start, end));
+    const run = lines.slice(start, end);
+    const linkShare = run.filter(linked).length / run.length;
+    const readsAsContent =
+      LIST_INTRODUCTION.test(kept[kept.length - 1] ?? '') ||
+      (links.size > 0 && linkShare < MENU_RUN_LINK_SHARE);
+    if (readsAsContent || run.length < MENU_RUN_MIN_LINES) {
+      kept.push(...run);
     }
     start = end;
   }
@@ -482,7 +500,7 @@ const STRIPPED_NESTED_ELEMENTS: ReadonlySet<string> = new Set([
   'textarea',
 ]);
 
-const heuristicExtractText = (html: string): string => {
+export const heuristicExtractText = (html: string): string => {
   const out = isolateMainContent(
     removeElements(
       html.replace(/\sdata-mw=(["'])[\s\S]*?\1/g, ' '),
@@ -494,7 +512,10 @@ const heuristicExtractText = (html: string): string => {
     .replace(/[^\S\n]+/g, ' ')
     .replace(/ ?\n ?/g, '\n')
     .replace(/\n{2,}/g, '\n');
-  return dropMenuRuns(dropReferenceLines(joinSplitAmounts(normalized))).trim();
+  return dropMenuRuns(
+    dropReferenceLines(joinSplitAmounts(normalized)),
+    linkTexts(html)
+  ).trim();
 };
 
 const JSON_LD_TYPE = /\btype\s*=\s*["']?application\/ld\+json\b/i;

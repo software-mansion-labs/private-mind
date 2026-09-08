@@ -784,6 +784,59 @@ describe('record grouping generalises past <table>', () => {
     expect(article.text).toContain('Wlasciwa tresc artykulu tutaj.');
   });
 
+  it('keeps an ingredient list that carries no quantities (device: every language failed this)', async () => {
+    const nav = ['Startseite', 'Rezepte', 'Kontakt']
+      .map((label) => `<li><a href="/x">${label}</a></li>`)
+      .join('');
+    const ingredients = [
+      'Spaetzle',
+      'Bergkaese',
+      'Zwiebeln',
+      'Butter',
+      'Sahne',
+      'Salz',
+      'Pfeffer',
+      'Muskat',
+    ]
+      .map((item) => `<li>${item}</li>`)
+      .join('');
+    mockFetch(
+      page(
+        `<nav><ul>${nav}</ul></nav><h1>Kaesespaetzle</h1>` +
+          `<h2>Zutaten</h2><ul>${ingredients}</ul>` +
+          '<p>Die Spaetzle schichtweise mit Kaese in eine Form geben.</p>'
+      )
+    );
+    const article = await extractArticle('https://rezepte.example.de/x');
+
+    expect(article.text).toContain('Bergkaese');
+    expect(article.text).toContain('Muskat');
+  });
+
+  it('still drops a navigation run of the same shape when its items are links', async () => {
+    const nav = [
+      'Startseite',
+      'Rezepte',
+      'Backen',
+      'Kochen',
+      'Getraenke',
+      'Ueber uns',
+      'Kontakt',
+      'Impressum',
+    ]
+      .map((label) => `<li><a href="/x">${label}</a></li>`)
+      .join('');
+    mockFetch(
+      page(
+        `<ul>${nav}</ul><p>Hier finden Sie taeglich neue Ideen zum Kochen.</p>`
+      )
+    );
+    const article = await extractArticle('https://rezepte.example.de/y');
+
+    expect(article.text).not.toContain('Impressum');
+    expect(article.text).toContain('taeglich neue Ideen');
+  });
+
   it('does not let facet counts promote a filter rail into a record', async () => {
     const items = ['Buty (12)', 'Kurtki (8)', 'Spodnie (30)']
       .map((label) => `<li>${label}</li>`)
