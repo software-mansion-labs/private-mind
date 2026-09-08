@@ -207,7 +207,7 @@ const getContextInstruction = (
 
 const languageInstruction = (language?: QuestionLanguage | null): string => {
   if (!language) {
-    return 'Write the whole answer in the language of the latest user message, and do not switch language or script partway through.';
+    return 'Write the whole answer in the language of the latest user message, and do not switch language or script partway through. Take that language from the message itself, not from the sources and not from these instructions: if the message is not written in English, the answer is not in English either.';
   }
   const inScript = language.script ? `, written in ${language.script}` : '';
   const noLatin = language.script

@@ -2776,6 +2776,14 @@ describe('answers that must carry their date, form and content', () => {
     );
   };
 
+  it('tells a model that could not place the language not to fall back to English', () => {
+    const italian = 'Quanti abitanti ha Milano?';
+
+    expect(groundedPromptFor(italian)).toContain(
+      'if the message is not written in English, the answer is not in English either'
+    );
+  });
+
   it('takes the shape of the answer from the planner when the question is in a language no marker list covers', () => {
     const german = 'Wer ist aktuell Bundeskanzler von Deutschland?';
     const turkish = 'Mercimek corbasi malzemeleri neler?';
