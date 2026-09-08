@@ -538,19 +538,71 @@ const snippetRepeatsExcerpt = (snippet: string, excerpt: string): boolean => {
   return repeated >= tokens.length * SNIPPET_REPEAT_SHARE;
 };
 
+const sourceDemand = (
+  result: WebSearchResult,
+  startIndex: number,
+  rank: number
+): number =>
+  sourceBlock(startIndex + rank, result.title || hostname(result.url), '')
+    .length +
+  Math.min(WEB_SNIPPET_MAX_CHARS, (result.snippet ?? '').trim().length) +
+  Math.min(WEB_CONTENT_MAX_CHARS, result.content?.length ?? 0);
+
+const rankWeight = (index: number): number => 1 / Math.sqrt(index + 1);
+
+const fairShares = (pool: number, demand: number[]): number[] => {
+  const shares = Array<number>(demand.length).fill(0);
+  const open = new Set(demand.map((_, index) => index));
+  let left = pool;
+  while (open.size > 0) {
+    const weights = [...open].reduce(
+      (total, index) => total + rankWeight(index),
+      0
+    );
+    const shareOf = (index: number): number =>
+      (left * rankWeight(index)) / weights;
+    const satisfied = [...open].filter(
+      (index) => demand[index]! <= shareOf(index)
+    );
+    if (satisfied.length === 0) {
+      open.forEach((index) => {
+        shares[index] = shareOf(index);
+      });
+      break;
+    }
+    satisfied.forEach((index) => {
+      shares[index] = demand[index]!;
+      left -= demand[index]!;
+      open.delete(index);
+    });
+  }
+  return shares;
+};
+
 const sourceBudgets = (
   totalMaxChars: number | undefined,
-  count: number
+  results: WebSearchResult[],
+  startIndex: number
 ): number[] => {
+  const count = results.length;
   if (!totalMaxChars) return Array(count).fill(WEB_CONTENT_MAX_CHARS);
-  const weights = Array.from({ length: count }, (_, rank) => 1 / (rank + 1));
-  const sum = weights.reduce((total, weight) => total + weight, 0);
-  return weights.map((weight) =>
-    Math.max(
-      MIN_SOURCE_EXCERPT_CHARS,
-      Math.floor((totalMaxChars * weight) / sum)
-    )
+  const header = (rank: number): number =>
+    sourceBlock(startIndex + rank, results[rank]!.title || '', '').length;
+  const demand = results.map((result, rank) =>
+    sourceDemand(result, startIndex, rank)
   );
+  const roomToSpeak = (shares: number[]): boolean =>
+    shares.every(
+      (share, rank) =>
+        share >= Math.min(demand[rank]!, header(rank) + WEB_CONTENT_MIN_CHARS)
+    );
+  let cited = count;
+  let shares = fairShares(totalMaxChars, demand);
+  while (cited > 1 && !roomToSpeak(shares)) {
+    cited -= 1;
+    shares = fairShares(totalMaxChars, demand.slice(0, cited));
+  }
+  return demand.map((_, rank) => Math.floor(shares[rank] ?? 0));
 };
 
 interface WebContextOptions {
@@ -574,7 +626,7 @@ export const webResultsToContext = (
     (result) => result.content || result.snippet?.trim()
   );
   const used = withMaterial.length > 0 ? withMaterial : results;
-  const budgets = sourceBudgets(totalMaxChars, used.length);
+  const budgets = sourceBudgets(totalMaxChars, used, startIndex);
   let remaining = totalMaxChars ?? Number.POSITIVE_INFINITY;
   const cited: WebSearchResult[] = [];
 
@@ -594,7 +646,11 @@ export const webResultsToContext = (
     const share = result.content
       ? offered
       : Math.min(offered, WEB_SNIPPET_MAX_CHARS);
-    if (share < WEB_CONTENT_MIN_CHARS && cited.length > 0) return;
+    const enoughToSpeak = Math.min(
+      WEB_CONTENT_MIN_CHARS,
+      sourceDemand(result, startIndex, index) - headerChars
+    );
+    if (share < enoughToSpeak && cited.length > 0) return;
     const budget =
       cited.length === 0 ? Math.max(share, MIN_SOURCE_EXCERPT_CHARS) : share;
     const snippet = truncate(

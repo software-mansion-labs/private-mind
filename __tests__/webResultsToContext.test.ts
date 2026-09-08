@@ -777,6 +777,66 @@ describe('webResultsToContext — context budget', () => {
   });
 });
 
+describe('the budget follows the material, not only the rank', () => {
+  const longPage = (n: number) => ({
+    url: `https://site${n}.example/x`,
+    title: `Page ${n}`,
+    snippet: `Snippet ${n}`,
+    content: Array.from(
+      { length: 40 },
+      (_, step) =>
+        `Step ${step} on page ${n}: lower the eggs in and hold them for ${step} minutes.`
+    ).join('\n'),
+  });
+
+  it('does not hand a source more room than it has material for', () => {
+    const shortAnswer =
+      'Cook for 4-6 minutes, then transfer the eggs to an ice bath.';
+    const results = [
+      { ...longPage(1), content: undefined, snippet: 'A teaser only' },
+      longPage(2),
+      { ...longPage(3), content: shortAnswer },
+    ];
+    const { context } = webResultsToContext(
+      results,
+      'how do you make a soft boiled egg',
+      0,
+      1400
+    );
+
+    expect(context[0]).toContain('A teaser only');
+    expect(context[0]!.length).toBeLessThan(300);
+    expect(context[2]).toContain('ice bath');
+  });
+
+  it('leaves the room the top source cannot use to the ones below it', () => {
+    const results = [
+      { ...longPage(1), content: undefined, snippet: 'Tiny' },
+      longPage(2),
+      longPage(3),
+    ];
+    const withTinyLead = webResultsToContext(results, 'eggs', 0, 1400).context;
+    const withFullLead = webResultsToContext(
+      [longPage(1), longPage(2), longPage(3)],
+      'eggs',
+      0,
+      1400
+    ).context;
+
+    expect(withTinyLead[1]!.length).toBeGreaterThan(withFullLead[1]!.length);
+    expect(withTinyLead[2]!.length).toBeGreaterThan(withFullLead[2]!.length);
+  });
+
+  it('cites fewer sources rather than giving each one too little to say', () => {
+    const results = [1, 2, 3, 4, 5].map(longPage);
+    const tight = webResultsToContext(results, 'eggs', 0, 700).context;
+    const roomy = webResultsToContext(results, 'eggs', 0, 2400).context;
+
+    expect(tight.length).toBeLessThan(roomy.length);
+    expect(tight.join('').length).toBeLessThanOrEqual(700);
+  });
+});
+
 describe('coalescing must not glue table rows together (live-found: Nowy Sącz weather)', () => {
   const rows = [
     'Pogoda Jutro, Nowy Sącz Czwartek, 3 Września',
