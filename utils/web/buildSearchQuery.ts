@@ -533,12 +533,6 @@ const looksLikeElidedSubject = (query: string): boolean =>
   wordCount(query) <= ELIDED_SUBJECT_MAX_WORDS &&
   (ELIDED_POSSESSOR.test(query) || ELIDED_COPULA.test(query));
 
-// A bare-role or pronoun follow-up ("how many kids does the president
-// have", "ile dzieci ma prezydent") searches badly on its own — verbatim
-// mode has no LLM step to resolve who "the president" is, so without this
-// the query goes out under-specified and retrieval comes back generic.
-// Splices in the most recently named entity from the conversation so far,
-// when the query doesn't already name someone itself.
 const TEMPORAL_FOLLOW_UP_MAX_WORDS = 4;
 
 const looksLikeTemporalFollowUp = (query: string): boolean => {

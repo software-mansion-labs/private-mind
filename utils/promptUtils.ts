@@ -511,11 +511,6 @@ const getWebSearchFailedInstruction = (failed?: boolean): string =>
     ? '\n\nA web search was just attempted for this question because it needs current or verifiable facts, but it found nothing usable. Do not guess a specific fact — a name, date, score, or number — from memory as if it were confirmed; say plainly that you do not have verified current information for this.'
     : '';
 
-// carried numbered "Source 1" / "Source 2" labels the model may have cited.
-// A later follow-up this app decided did not need a fresh search has no
-// such block — but without this reminder a small model keeps citing those
-// numbers anyway, imitating its own earlier reply even though nothing here
-// backs the numbers up.
 const getNoFreshContextInstruction = (hasPriorWebAnswer: boolean): string =>
   hasPriorWebAnswer
     ? '\n\nNo new search results were retrieved for this message — there is no <sources> block this time. Answer from the conversation so far, in your own words. Never write "Source 1", "Source 2" or similar numbered citations here; those labels only existed in an earlier message\'s sources block, which is not part of this prompt.'

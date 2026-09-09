@@ -314,7 +314,6 @@ export const useSendChatMessage = ({
         }
       }
 
-      // Enable new sources for this chat (persists for future messages)
       for (const sourceId of attachmentSourceIds) {
         if (!enabledSources.includes(sourceId)) {
           await enableSource(targetChatId, sourceId);
