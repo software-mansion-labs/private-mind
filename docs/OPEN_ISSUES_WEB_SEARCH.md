@@ -70,7 +70,7 @@ artykuł o wczorajszym meczu"), i to on jest wart zrobienia.
 - **Fałszywe „A number here couldn't be confirmed against the sources"** —
   nadal wychodzi na liczbach, które odpowiedź wprost przypisuje cytowanej
   stronie (2 na 20 tur na S25, powtórzone na Pixelu przy cenach wędek), mimo
-  poprawki `fc62a39`.
+  poprawki `4a13834`.
 - **Zakres cen zamiast wyliczanki** — przy siedmiu znalezionych cenach model
   wypisał wszystkie siedem, choć `getRangeHint` każe podać sam zakres przy
   trzech lub więcej.

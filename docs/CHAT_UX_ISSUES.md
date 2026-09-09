@@ -27,7 +27,7 @@ The toggle handler in [`ChatBar`](../components/chat-screen/ChatBar.tsx)
 tested `status !== 'ready'`, so `'unknown'` counted as "missing" and the
 sheet opened during that window.
 
-Fix (`f56cbf1`): `whenEmbeddingStatusKnown()` resolves the first non-unknown
+Fix (`344e591`): `whenEmbeddingStatusKnown()` resolves the first non-unknown
 status (or whatever is there after `EMBEDDING_STATUS_WAIT_MS`), and
 `embeddingModelNeedsDownloadPrompt(status)` is the single predicate for "offer
 the download" — true for `not_downloaded | downloading | error`, false for
@@ -49,7 +49,7 @@ Mechanism: `babel.config.js` runs react-native-worklets with
 `bundleMode: true`. In that mode worklet bodies are looked up by a hash
 computed at bundle time; Fast Refresh replaces the JS module that defined
 them — here [`useKeyboardLift.ts`](../components/chat-screen/useKeyboardLift.ts),
-changed in `3accc5f` — but the UI-thread runtime still holds handlers
+changed in `1becb04` — but the UI-thread runtime still holds handlers
 registered under the old hash. The next keyboard event resolves a hash that
 no longer exists. Nothing in the app is wrong; the release bundle never
 hot-swaps modules.
@@ -247,7 +247,7 @@ and clamp so the bubble's top cannot rise above the viewport).
 
 ## 🔁 The keyboard is gone but the composer stays lifted
 
-Update 2026-09-04 (`20ad5a6`): seen again during a scripted device round
+Update 2026-09-04 (`f928f3a`): seen again during a scripted device round
 (new chat, field focused, message typed and sent through adb). The
 trigger was not caught, so the fix is the belt-and-braces path described
 below: the system's `keyboardDidHide` / `keyboardDidShow` events and the
@@ -302,7 +302,7 @@ visible. A fresh launch reproduced neither this nor the same flow after a
 forced Fast Refresh, so the trigger is not pinned; the app had taken a
 dozen Fast Refresh rounds before the blank one.
 
-Fix (`d77455c`): once a reveal has run its fade, the container switches to
+Fix (`57c6341`): once a reveal has run its fade, the container switches to
 a plain `opacity: 1` style and stops depending on the animated value;
 clearing the history for a reload switches it back so the fade-in still
 plays. Whatever loses the binding can no longer keep the list hidden. If
@@ -316,7 +316,7 @@ existing chat and in a new chat, the Gboard clipboard panel, a 1.5k-char
 answer with lists) did not reproduce it — because none of them pasted the
 text the user had **just sent**. That is the case: copy your own message,
 send it (or send anything and copy that bubble), paste it as the next
-thing. The composer's send-echo guard (`8543f15`, this branch only — main
+thing. The composer's send-echo guard (`dab7b59`, this branch only — main
 does not have it) drops the first text change after a send when it equals
 the sent text, so the Android IME's echo of the cleared field cannot
 resurrect the message. A paste of the same text is indistinguishable from
@@ -330,7 +330,7 @@ Fix (this branch): the guard is time-boxed. The echo arrives within the
 same frame as the send; a paste cannot. A change equal to the sent text is
 dropped only within 300 ms of the send (`SENT_ECHO_WINDOW_MS`). Test:
 "keeps a paste of the just-sent message once the echo window has passed".
-Confirmed on the Pixel 10 (`5efec17`): send `test echo`, copy the user
+Confirmed on the Pixel 10 (`a1d40fa`): send `test echo`, copy the user
 bubble, paste — the text stays.
 
 **To verify in the test round (Pixel 10, this branch):**
@@ -367,7 +367,7 @@ and the trace survive.
 Mechanism: the chat screen's blur cleanup calls `interrupt()` when the
 user leaves a chat that is generating or processing
 ([`app/(drawer)/chat/[id].tsx`](<../app/(drawer)/chat/[id].tsx>)). That is
-deliberate — leaving is treated like Stop. Since `a99aa6f`, Stop before the
+deliberate — leaving is treated like Stop. Since `8c3be77`, Stop before the
 first token drops the placeholder and the trace in the same tick, so the
 turn vanishes cleanly. The abort also reaches the web search, which
 reports `aborted: 'stopped'`; `useSendChatMessage` read that as "the

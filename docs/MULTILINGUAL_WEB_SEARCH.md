@@ -150,15 +150,15 @@ opierają się o klasyfikację planera, który czyta pytanie w dowolnym języku.
 
 | #   | commit    | co naprawia                                                                                    | pomiar                                       |
 | --- | --------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| 1   | `24c9da0` | detekcja języka: odmiana wyrazu, ASCII-owy zapis umlautów, remis rozstrzygany dłuższym dowodem | 40/54 → 43/54                                |
-| 2   | `9c30c91` | waluty: symbol po kwocie, cała klasa `\p{Sc}`, kody ISO rynków aplikacji, cyfry rodzime        | 4/9 → 9/9 lokalizacji                        |
-| 3   | `0c2c2ad` | liczby porównywane wartością, nie napisem                                                      | „9,188,200" = „9.188.200"; „10:00" = „10.00" |
-| 4   | `3580d60` | premia za wyliczankę uzbrajana przez `kind: howto` z planu                                     | dowolny język                                |
-| 5   | `c22871b` | instrukcje kształtu odpowiedzi uzbrajane z planu                                               | de: 0/3 → 2/3, tr: 0/3 → 2/3                 |
-| 6   | `e41c5b1` | lista historyczna rozpoznawana po roku w tytule                                                | „seit 1949", „desde 1889"                    |
-| 7   | `985ebde` | filtr menu przestaje kasować listy składników bez ilości                                       | rozróżnia po linkach                         |
-| 8   | `4d08baf` | pytanie o urząd ma być odpowiedziane nazwiskiem                                                | dotyczy wszystkich języków                   |
-| 9   | `81f13fd` | zapasowa instrukcja językowa mówi wprost: nierozpoznany ≠ angielski                            | dotyczy 11 pytań bez detekcji                |
+| 1   | `c015fb8` | detekcja języka: odmiana wyrazu, ASCII-owy zapis umlautów, remis rozstrzygany dłuższym dowodem | 40/54 → 43/54                                |
+| 2   | `2e04d9c` | waluty: symbol po kwocie, cała klasa `\p{Sc}`, kody ISO rynków aplikacji, cyfry rodzime        | 4/9 → 9/9 lokalizacji                        |
+| 3   | `0a5a778` | liczby porównywane wartością, nie napisem                                                      | „9,188,200" = „9.188.200"; „10:00" = „10.00" |
+| 4   | `e469cc8` | premia za wyliczankę uzbrajana przez `kind: howto` z planu                                     | dowolny język                                |
+| 5   | `020b85e` | instrukcje kształtu odpowiedzi uzbrajane z planu                                               | de: 0/3 → 2/3, tr: 0/3 → 2/3                 |
+| 6   | `452dba9` | lista historyczna rozpoznawana po roku w tytule                                                | „seit 1949", „desde 1889"                    |
+| 7   | `ee2c365` | filtr menu przestaje kasować listy składników bez ilości                                       | rozróżnia po linkach                         |
+| 8   | `f2afdef` | pytanie o urząd ma być odpowiedziane nazwiskiem                                                | dotyczy wszystkich języków                   |
+| 9   | `f56da33` | zapasowa instrukcja językowa mówi wprost: nierozpoznany ≠ angielski                            | dotyczy 11 pytań bez detekcji                |
 
 ### Pomiar, który uzasadnia poprawki 4, 5 i 6
 

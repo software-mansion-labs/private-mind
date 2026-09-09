@@ -84,7 +84,7 @@ Trzy wystąpienia, dwa mechanizmy:
   `standsAlone` miał to zablokować, ale `namedEntitiesIn('Jaka jest aktualna
 sytuacja na Ukrainie?')` zwraca `[]` — odmieniona polska nazwa własna nie
   jest rozpoznawana jako encja. Sprawdzone na **aktualnym** stanie brancha:
-  zapytanie nadal wychodzi z doklejonym „USA". Poprawka `9038274` dotyczy
+  zapytanie nadal wychodzi z doklejonym „USA". Poprawka `39893e9` dotyczy
   wyłącznie digestu z obcej rozmowy i tego przypadku nie łapie.
 - **chat 55**, „Czy jest tam jedzenie vege?" i „Sprawdź polecane restauracje
   tam gdzie jade" → oba zwróciły Kraków (TOP10 Restauracje Kraków), mimo że
@@ -164,7 +164,7 @@ do osoby nie ma szans trafić w źródło, które ją wprost stwierdza.
 | 2   | prompt systemowy w treści odpowiedzi         | **nienaprawione, nowe**                                   |
 | 3   | puste bańki z metrykami                      | częściowo (R4 usuwa bańkę)                                |
 | 4a  | „USA" doklejone do pytania o Ukrainę         | **nienaprawione** — `topicAnchorer`, potwierdzone na HEAD |
-| 4b  | Kraków w rozmowie o Zakopanem                | naprawione (`9038274`)                                    |
+| 4b  | Kraków w rozmowie o Zakopanem                | naprawione (`39893e9`)                                    |
 | 5   | „krzyżacy" → Knights Templar                 | **nienaprawione**                                         |
 | 6   | referowanie źródeł zamiast odpowiedzi        | **nienaprawione**                                         |
 | 7   | lista historyczna jako źródło na „aktualnie" | **nienaprawione**                                         |

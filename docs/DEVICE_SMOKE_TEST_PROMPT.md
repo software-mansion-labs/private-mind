@@ -231,7 +231,7 @@ instalowała buildy.
 > Przydział: **Android: Samsung S20 FE (adb `RFCT814MVHX`)**. Pixel 10
 > (`56211FDCR005KT`) jest zajęty przez właściciela — nie dotykaj go. iPhone'y
 > robi druga sesja.
-> Build: gałąź `cr/phase1-security`, hash `2b473bf`, release APK
+> Build: gałąź `cr/phase1-security`, hash `12d6e13`, release APK
 > `versionCode=68`, `lastUpdateTime=2026-09-07 14:17:23` (sprawdź `dumpsys package`,
 > inna godzina = cudzy APK → stop i zgłoś).
 > Modele: Qwen 3 - 0.6B, potem LFM 2.5 - 1.2B; trzeci (Qwen 2.5 - 1.5B) tylko
@@ -253,7 +253,7 @@ instalowała buildy.
 > `00008110-000641663E90401E`, CoreDevice
 > `4E07878B-2D64-53C6-9D28-B406F895FC87`)**. Androidy robi druga sesja i
 > właściciel — nie dotykaj ich.
-> Build: gałąź `cr/phase1-security`, hash `2b473bf`, iOS Release pod id
+> Build: gałąź `cr/phase1-security`, hash `12d6e13`, iOS Release pod id
 > `com.swmansion.privatemind.smoke` (zespół `DAAT3F8YMV`), zainstalowany
 > 2026-09-07 14:17 (iPhone 17) i 14:18 (iPhone SE).
 > `describe` zwraca dla tej aplikacji puste drzewo — pracuj ze zrzutów wg

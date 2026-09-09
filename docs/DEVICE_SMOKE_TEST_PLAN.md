@@ -2,8 +2,9 @@
 
 Cel: odpowiedzieć, **czy dany model LLM na urządzeniu danej klasy może
 pracować z web search w buildzie release, i czy to jest production ready**.
-Nie oceniamy tu jakości odpowiedzi tak głęboko jak w
-`WEB_SEARCH_RELEASE_TEST_PLAN.md` (sekcje 3, 9, 11) — oceniamy, czy aplikacja
+Nie oceniamy tu jakości odpowiedzi tak głęboko jak w lokalnym planie rundy
+release (sekcje 3, 9, 11), którego nie trzymamy w repozytorium — oceniamy, czy
+aplikacja
 **nie pada, nie wisi, nie zwalnia i nie psuje tego, co działało bez web
 search**, oraz notujemy każde pogorszenie wydajności z sytuacją, w której
 wystąpiło, żeby dało się je odtworzyć i zaplanować poprawkę.
