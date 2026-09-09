@@ -213,6 +213,46 @@ Progi, od których wpis jest obowiązkowy: `tps` < 0,8 × S2; czas szukania >
 60 s (A) / 120 s (B, C); RSS +25 % w obrębie S5; janky frames > 20 %;
 jakiekolwiek zabicie procesu; UI bez zmian > 15 s podczas „Searching…”.
 
+## 5a. Pomiar do rozstrzygnięcia: czy `URL_PARSE_MAX_CHARS` obcina odpowiedzi
+
+Otwarte pytanie, którego nie da się rozstrzygnąć bez rundy. Są dwa progi w
+dwóch jednostkach:
+
+```
+URL_FETCH_MAX_BYTES  = 2_000_000   ile bajtów w ogóle pobieramy
+URL_PARSE_MAX_CHARS  =   600_000   ile znaków wchodzi do parsera
+```
+
+Strona między nimi zostaje pobrana w całości i **po cichu ucięta** przy
+parsowaniu (`extractArticle.ts`, `fetched.slice(0, URL_PARSE_MAX_CHARS)`).
+Nikt dziś nie wie, jak często to się dzieje, bo obcięcie nie zostawia śladu.
+
+**Co zrobić przed rundą.** Dopisać do `WebSearchTrace` długość pobranego HTML
+i fakt obcięcia — dwa pola, tylko w buildzie diagnostycznym:
+
+```ts
+fetchedChars?: Record<string, number>;
+truncated?: string[];
+```
+
+**Co policzyć po rundzie.**
+
+| liczba                                    | jak odczytać                             | co znaczy                         |
+| ----------------------------------------- | ---------------------------------------- | --------------------------------- |
+| ile pobrań przekroczyło 600 000 znaków    | `truncated.length` na wszystkich śladach | częstość zjawiska                 |
+| ile z obciętych stron nie dało odpowiedzi | skrzyżować z markerami pytania           | czy obcięcie **kosztuje**         |
+| rozkład `fetchedChars`                    | percentyl 50, 90, max                    | jak blisko progu są realne strony |
+
+**Jak to czytać.** Zero przekroczeń na komplecie pobrań zamyka temat i próg
+zostaje. Przekroczenia bez utraty odpowiedzi też go zostawiają — obcięty
+ogon strony nie był potrzebny. Dopiero przekroczenia **skorelowane z brakiem
+odpowiedzi** uzasadniają podniesienie progu, i wtedy trzeba je zważyć z
+kosztem pamięci na telefonie z modelem 2B.
+
+Punkt odniesienia: fixtury w repozytorium mają po dekompresji 110, 371 i 419
+KB, czyli największa realna strona, jaką mamy pod ręką, jest 30 % poniżej
+progu.
+
 ## 6. Werdykt: production ready?
 
 Liczony **na parę (model, klasa urządzenia)**. Trzy poziomy:

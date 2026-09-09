@@ -2,7 +2,7 @@
 
 Dwie rzeczy z listy słabych punktów zostały świadomie niezrobione, bo obie są
 większe niż poprawka promptu i wymagają własnej decyzji projektowej. Dowody:
-`docs/WEAK_POINTS_AFTER_FIXES.md`, `docs/test-evidence/pixel-r3/`.
+`docs/rounds/2026-09-07-weak-points.md` i lokalny `docs/test-evidence/pixel-r3/`.
 
 ## 1. Strony renderowane po stronie klienta wracają puste
 
