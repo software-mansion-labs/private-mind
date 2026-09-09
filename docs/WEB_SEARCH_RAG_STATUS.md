@@ -2162,7 +2162,7 @@ is a saved one — and `expanded` picks between them via `isLiveBlock =
 isSearching || trace.length > 0`. Any change to what counts as "live" quietly
 changes which flag drives the panel, and the tear-down is a side effect two
 hops away from that decision.
-Guarded by: [__tests__/webSearchTrace.test.ts](../__tests__/webSearchTrace.test.ts)
+Guarded by: [**tests**/webSearchTrace.test.ts](../__tests__/webSearchTrace.test.ts)
 — "keeps every earlier row when the reading phase starts" holds the pure
 half, so a future failure localises straight to the component.
 
@@ -2176,7 +2176,7 @@ finished branch renders a single `WebSearchTraceList` over the full row set,
 with `animateRows` going from true to false. React cannot reconcile those
 two shapes, so the list unmounts and remounts and every row plays its
 `entering` animation again.
-Row keys are *not* the cause — measured, not assumed: the regression test
+Row keys are _not_ the cause — measured, not assumed: the regression test
 below builds the same trace with `isSearching` true and false and the key
 lists come out identical, so `seenKeys` still recognises every row and
 `enterDelay` correctly hands out zero. The replay survives that, which is
@@ -2186,7 +2186,7 @@ subtrees rather than one list told whether a search is still going. Any
 edit that changes the shape of either branch reintroduces the remount, and
 the stagger bookkeeping cannot suppress an animation on a view that has
 just been created.
-Guarded by: [__tests__/webSearchTrace.test.ts](../__tests__/webSearchTrace.test.ts)
+Guarded by: [**tests**/webSearchTrace.test.ts](../__tests__/webSearchTrace.test.ts)
 — "keeps row keys stable when the search stops running". That test rules
 out the cheap explanation; it cannot catch the remount itself.
 
@@ -2195,7 +2195,7 @@ Symptom: on the physical Pixel 10, the question and the partial answer both
 vanish and the conversation is an empty white screen. Generation is
 demonstrably still running — the stop button is there and works. When
 generation ends the screen stays blank.
-Mechanism: not established. Worth noting what it is *not*: a render throw
+Mechanism: not established. Worth noting what it is _not_: a render throw
 would surface a red box, not a blank list, and the trace panel cannot blank
 the messages above it. That points at the message list's data or its
 measured height rather than at any one message.
@@ -3851,22 +3851,22 @@ what the user asked, what was actually sent to the search engine, and what
 came back. Every finding below was measured against the persisted rows, not
 recalled from the screen.
 
-| # | User asked | Planner sent | What went wrong |
-|---|---|---|---|
-| 335 | jaki jest najlepszy tv OLED? | `najlepszy tv OLED` | ✅ |
-| 337 | Jaki jest najlepszy w stosunku do ceny? | `najlepszy telewizor OLED w stosunku do ceny` | ✅ topic carried |
-| 339 | Ile kosztuje? | `cena LG OLED65B65LA` | ✅ referent carried |
-| 341 | …wypisz jakie ma funkcje i parametry techniczne oraz powiedz czy sprawdzi się w salonie z dużymi oknami | `best TV for large living room features` + `TV technical specifications` + `TV suitability for large windows` | ⚠️ three English queries for a Polish question; no referent (LG OLED65B65LA), no OLED; US sources; the answer covered one aspect of three |
-| 343 | A co z parametrami technicznymi? | `parametry techniczne Samsung QN90D` | ⚠️ referent jumped to a model the *previous answer* had introduced; passages were marketing copy, the "specs" in the answer were not specs |
-| 345 | Podaj parametry techniczne tv samsung QE65QN90D | `parametry techniczne telewizora Samsung QE65QN90D` | ✅ |
-| 347 | Jeszcze raz wyszukaj tv do mojego salonu najlepszy tylko oled | `najlepszy oled tv dla salonu` | ✅ |
-| 349, 350 | Jaka jest jego cena? | — | ⚠️ no answer at all, twice (native crash, see [CHAT_UX_ISSUES.md](CHAT_UX_ISSUES.md)) |
-| 351 | Jaka jest jego cena? | `cena samsung QE65S99H` | ✅ third attempt |
-| 353 | Trochę za drogi znajdź tańszy spełniający moje wymagania | `tańszy telewizor podobny` | ⚠️ every constraint dropped (OLED, large room, windows, "cheaper than QE65S99H"); five "cheap TV" rankings; refusal |
-| 355 | Czego dotyczy ta konwersacja? | — | ✅ correct recap without a search |
-| 357 | Znajdź najlepszy model tv spełniający te wymagania | `najlepszy model telewizora OLED` | ✅ OLED recovered; ⚠️ badge shown, no Sources button |
-| 359 | Dlaczego ten model najlepiej spełnia moje wymagania? | `Samsung QE65S99H benefits` | ⚠️ English; UK sources |
-| 361 | W czym jest lepszy od innych modeli? | `Samsung QE65S99H vs other models` | ⚠️ English; UK sources |
+| #        | User asked                                                                                              | Planner sent                                                                                                  | What went wrong                                                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 335      | jaki jest najlepszy tv OLED?                                                                            | `najlepszy tv OLED`                                                                                           | ✅                                                                                                                                         |
+| 337      | Jaki jest najlepszy w stosunku do ceny?                                                                 | `najlepszy telewizor OLED w stosunku do ceny`                                                                 | ✅ topic carried                                                                                                                           |
+| 339      | Ile kosztuje?                                                                                           | `cena LG OLED65B65LA`                                                                                         | ✅ referent carried                                                                                                                        |
+| 341      | …wypisz jakie ma funkcje i parametry techniczne oraz powiedz czy sprawdzi się w salonie z dużymi oknami | `best TV for large living room features` + `TV technical specifications` + `TV suitability for large windows` | ⚠️ three English queries for a Polish question; no referent (LG OLED65B65LA), no OLED; US sources; the answer covered one aspect of three  |
+| 343      | A co z parametrami technicznymi?                                                                        | `parametry techniczne Samsung QN90D`                                                                          | ⚠️ referent jumped to a model the _previous answer_ had introduced; passages were marketing copy, the "specs" in the answer were not specs |
+| 345      | Podaj parametry techniczne tv samsung QE65QN90D                                                         | `parametry techniczne telewizora Samsung QE65QN90D`                                                           | ✅                                                                                                                                         |
+| 347      | Jeszcze raz wyszukaj tv do mojego salonu najlepszy tylko oled                                           | `najlepszy oled tv dla salonu`                                                                                | ✅                                                                                                                                         |
+| 349, 350 | Jaka jest jego cena?                                                                                    | —                                                                                                             | ⚠️ no answer at all, twice (native crash, see [CHAT_UX_ISSUES.md](CHAT_UX_ISSUES.md))                                                      |
+| 351      | Jaka jest jego cena?                                                                                    | `cena samsung QE65S99H`                                                                                       | ✅ third attempt                                                                                                                           |
+| 353      | Trochę za drogi znajdź tańszy spełniający moje wymagania                                                | `tańszy telewizor podobny`                                                                                    | ⚠️ every constraint dropped (OLED, large room, windows, "cheaper than QE65S99H"); five "cheap TV" rankings; refusal                        |
+| 355      | Czego dotyczy ta konwersacja?                                                                           | —                                                                                                             | ✅ correct recap without a search                                                                                                          |
+| 357      | Znajdź najlepszy model tv spełniający te wymagania                                                      | `najlepszy model telewizora OLED`                                                                             | ✅ OLED recovered; ⚠️ badge shown, no Sources button                                                                                       |
+| 359      | Dlaczego ten model najlepiej spełnia moje wymagania?                                                    | `Samsung QE65S99H benefits`                                                                                   | ⚠️ English; UK sources                                                                                                                     |
+| 361      | W czym jest lepszy od innych modeli?                                                                    | `Samsung QE65S99H vs other models`                                                                            | ⚠️ English; UK sources                                                                                                                     |
 
 Three of the fourteen answers open with a corrupted first word ("Zgodnieć z",
 "Zgodniewniałem się") — that is native generation, not the prompt, and it is
@@ -3891,11 +3891,11 @@ tego/tej/tym/tych/that/those but not "jego", so "Jaka jest jego cena?" is a
 literal search until the LLM planner happens to expand it — the user called
 it a lottery, and #349–#351 shows why. The same list-based approach is what
 produces #343: `mostRecentEntity` scans user turns first, then assistant
-turns, and picks the *first* proper-noun run it finds in the last answer,
+turns, and picks the _first_ proper-noun run it finds in the last answer,
 which was a model the assistant had mentioned in passing. The fix that does
 not grow the list: the conversation subject is the entity most repeated in
 the last answer (fallback: the last user-turn entity), an entity being a
-capitalised run *or* a letters-plus-digits model token (`QE65S99H`,
+capitalised run _or_ a letters-plus-digits model token (`QE65S99H`,
 `OLED65B65LA`). If neither the question nor the planner's queries contain
 any entity or number and a subject exists, the subject is appended to every
 query. That rule fires on "jego", on "cena", on "parametry" and on any
@@ -3941,7 +3941,7 @@ OLED 2026…" as the dominant-source badge and no Sources action on the
 message. [`useMessageSources`](../hooks/useMessageSources.ts) builds
 `displayedSources` by dropping web sources with `read === false`, then
 `documentSources` as displayed ∩ used — while `dominantWebSource` is picked
-from the *unfiltered* list. When the source the answer actually used was a
+from the _unfiltered_ list. When the source the answer actually used was a
 snippet-only hit (`read: false`, `used: true`), the badge sees it and the
 button does not: [`canShowSourcesAction`](../components/chat-screen/MessageItem.tsx)
 requires `documentSources.length > 0`. The fix is one predicate: a used
@@ -3953,7 +3953,7 @@ button agree.
 search runs, the trace shows the real steps: one "Searching “…”" per planner
 query, then the pages read. After leaving and re-entering, the saved block is
 rebuilt by [`savedSteps()`](../components/chat-screen/webSearchTrace.ts) from
-the persisted sources only: it takes the *first* source's `query` and emits a
+the persisted sources only: it takes the _first_ source's `query` and emits a
 single "Searching “<display question>”" step, then every source — read or
 not — becomes a page row. The persisted rows do carry `sourceQuery` per
 result and `searchedQuery` on the document, so the information is not lost,
@@ -3987,7 +3987,7 @@ language-agnostic by construction — no word lists, no per-language branches.
 8. **P3.8 trace rebuild** — steps from distinct `sourceQuery`, pages only for
    read sources, no replayed animations.
 
-What is *not* in this list, on purpose: the five-source cap and the
+What is _not_ in this list, on purpose: the five-source cap and the
 `similarity` rank placeholder (`1 - index / used.length`) are known
 approximations and documented as such; they are not what the conversation
 tripped over.
@@ -4006,31 +4006,31 @@ leaves once the system prompt, the history and the generation reserve are
 taken out. At 2048 the 300-char case is not an edge case; it is what every
 source gets.
 
-| Page (turn) | Before, first 300 chars | After |
-|---|---|---|
-| x-kom product page (#339 "Ile kosztuje?") | "Kod producenta / OLED65B65LA / Kod x-kom / 1510638 / Rekomendowane akcesoria / Silver Monkey UT-800 / Cena: 229,00 zł / 229 / 00 zł Seagate Expansion … 159,00 zł …" — accessory prices, the TV's price absent | product header, "Przekątna ekranu : 65" Rozdzielczość : UHD 4K 3840 x 2160 Typ telewizora : OLED Klasa energetyczna : F", description lead; price from the verified JSON-LD line |
-| jtk "Samsung QN90D: specyfikacja techniczna" (#343) | marketing lead, no spec row | lead sentence + "Częstotliwość odświeżania: 120Hz (do 144Hz) Rozdzielczość: 4K … Moc RMS: 70W … HDMI (High Frame Rate): 4K 144Hz" |
-| p2p "QE65QN90D - parametry i specyfikacje" (#345) | prose about the series | "Częstotliwość odświeżania panelu \| 144 Hz", "Liczba wejść HDMI \| 4", "Przybliżona cena \| 6 100 zł" |
-| prorankingi "Ranking Telewizorów OLED 2026" (#347) | only the first of five `<article>`s was ever extracted (1 482 of 15 598 chars) | all five items extracted; at 700 chars the excerpt opens with "Najlepszy telewizor OLED to Samsung QE65S99H…"; at 300 chars it is the "salon z dużymi oknami" paragraph about the LG G4 — on topic, but the #1 pick is gone (see below) |
-| SamMobile S95H vs S99H (#361) | "Best Samsung Watch in 2026" (the related-links rail) then the lead | the lead |
-| zestawienie ranking (#347) | comparison table rows | the same rows plus "Jaki rozmiar telewizora OLED wybrać do salonu?…" |
+| Page (turn)                                         | Before, first 300 chars                                                                                                                                                                                         | After                                                                                                                                                                                                                                   |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| x-kom product page (#339 "Ile kosztuje?")           | "Kod producenta / OLED65B65LA / Kod x-kom / 1510638 / Rekomendowane akcesoria / Silver Monkey UT-800 / Cena: 229,00 zł / 229 / 00 zł Seagate Expansion … 159,00 zł …" — accessory prices, the TV's price absent | product header, "Przekątna ekranu : 65" Rozdzielczość : UHD 4K 3840 x 2160 Typ telewizora : OLED Klasa energetyczna : F", description lead; price from the verified JSON-LD line                                                        |
+| jtk "Samsung QN90D: specyfikacja techniczna" (#343) | marketing lead, no spec row                                                                                                                                                                                     | lead sentence + "Częstotliwość odświeżania: 120Hz (do 144Hz) Rozdzielczość: 4K … Moc RMS: 70W … HDMI (High Frame Rate): 4K 144Hz"                                                                                                       |
+| p2p "QE65QN90D - parametry i specyfikacje" (#345)   | prose about the series                                                                                                                                                                                          | "Częstotliwość odświeżania panelu \| 144 Hz", "Liczba wejść HDMI \| 4", "Przybliżona cena \| 6 100 zł"                                                                                                                                  |
+| prorankingi "Ranking Telewizorów OLED 2026" (#347)  | only the first of five `<article>`s was ever extracted (1 482 of 15 598 chars)                                                                                                                                  | all five items extracted; at 700 chars the excerpt opens with "Najlepszy telewizor OLED to Samsung QE65S99H…"; at 300 chars it is the "salon z dużymi oknami" paragraph about the LG G4 — on topic, but the #1 pick is gone (see below) |
+| SamMobile S95H vs S99H (#361)                       | "Best Samsung Watch in 2026" (the related-links rail) then the lead                                                                                                                                             | the lead                                                                                                                                                                                                                                |
+| zestawienie ranking (#347)                          | comparison table rows                                                                                                                                                                                           | the same rows plus "Jaki rozmiar telewizora OLED wybrać do salonu?…"                                                                                                                                                                    |
 
 The gap between the two columns came from six defects, each of them
 reproducible offline and each now guarded by a test that is red without the
 fix (`__tests__/webResultsToContext.test.ts`, `__tests__/extractArticle.test.ts`):
 
 1. **Price hunting was entity-blind.** `PRICE_QUESTION` turned on a bonus
-   for *any* money anchor, so on a shop page the accessory rail (six prices
+   for _any_ money anchor, so on a shop page the accessory rail (six prices
    in 300 chars) out-scored the product. When JSON-LD verified the product
    price, the excerpt still hunted. Now a verified price switches hunting
-   off and any passage naming a *different* amount (0.5 % tolerance) scores
+   off and any passage naming a _different_ amount (0.5 % tolerance) scores
    zero. Guard: "stops hunting prices in the body once the product price is
    verified" / "still hunts the price in the body when nothing verified it".
 2. **Spec rows could not win.** "Rozdzielczość: 4K" contains none of the
    query's stems, and its digits were penalised as non-prose. Record-shaped
    lines (`key: value`, `key | value`) in a run of at least two, whose key
    repeats at most twice on the page, are credited with the needles the
-   *page title* carries and scored as prose — only when the title names the
+   _page title_ carries and scored as prose — only when the title names the
    subject, so a generic news page gets no credit. Guard: "brings the spec
    rows of a page titled after the subject into the excerpt" / "leaves the
    spec rows out when the page title says nothing about the subject".
@@ -4121,19 +4121,19 @@ Every item of the plan is on `web-search-compact`, each as its own commit
 with a test that fails without it. Where the build deviated from the plan,
 the deviation and its reason are here so nobody "fixes" it back.
 
-| Plan item | Commit | Test |
-|---|---|---|
-| P1.1 conversation subject | `881f27c` | `__tests__/conversationDigest.test.ts` |
-| P1.2 language-drift guard | `f2a89e6` | `__tests__/runWebSearch.test.ts` |
-| P1.3 topic anchors | `8e9c598` | `__tests__/buildSearchQuery.test.ts` |
-| P1.4 intent kind | `04f0bf2` | `__tests__/webResultsToContext.test.ts` |
-| split-price join | `6360228` | `__tests__/extractArticle.test.ts` |
-| filler floor | `9bc8108` | `__tests__/webResultsToContext.test.ts` |
-| P2.5 per-source relevance | `fb0c77d` | `__tests__/webResultsToContext.test.ts` |
-| P2.5 aspect coverage nudge | `2e0433d` | `__tests__/aspectCoverage.test.ts`, `__tests__/llmStore.test.ts` |
-| P3.7 badge ↔ Sources button | `6384d12` | `__tests__/useMessageSources.test.ts`, `__tests__/MessageItem.test.tsx` |
-| P2.6 nudge flicker | `996636d` | `__tests__/llmStore.test.ts`, `__tests__/MessageItem.test.tsx` |
-| P3.8 trace rebuild | `dffd8dc`, `a675171` | `__tests__/chatRepository.test.ts`, `__tests__/webSearchTrace.test.ts` |
+| Plan item                   | Commit               | Test                                                                    |
+| --------------------------- | -------------------- | ----------------------------------------------------------------------- |
+| P1.1 conversation subject   | `881f27c`            | `__tests__/conversationDigest.test.ts`                                  |
+| P1.2 language-drift guard   | `f2a89e6`            | `__tests__/runWebSearch.test.ts`                                        |
+| P1.3 topic anchors          | `8e9c598`            | `__tests__/buildSearchQuery.test.ts`                                    |
+| P1.4 intent kind            | `04f0bf2`            | `__tests__/webResultsToContext.test.ts`                                 |
+| split-price join            | `6360228`            | `__tests__/extractArticle.test.ts`                                      |
+| filler floor                | `9bc8108`            | `__tests__/webResultsToContext.test.ts`                                 |
+| P2.5 per-source relevance   | `fb0c77d`            | `__tests__/webResultsToContext.test.ts`                                 |
+| P2.5 aspect coverage nudge  | `2e0433d`            | `__tests__/aspectCoverage.test.ts`, `__tests__/llmStore.test.ts`        |
+| P3.7 badge ↔ Sources button | `6384d12`            | `__tests__/useMessageSources.test.ts`, `__tests__/MessageItem.test.tsx` |
+| P2.6 nudge flicker          | `996636d`            | `__tests__/llmStore.test.ts`, `__tests__/MessageItem.test.tsx`          |
+| P3.8 trace rebuild          | `dffd8dc`, `a675171` | `__tests__/chatRepository.test.ts`, `__tests__/webSearchTrace.test.ts`  |
 
 **P2.6 — the retry's metrics are thrown away.** With streaming suppressed
 the store's `firstTokenTime` still belongs to the first generation, so the
@@ -4175,7 +4175,6 @@ were read or cited; (3) a source badge always comes with a Sources button;
 (4) a shop page at the 2048 default — the excerpt carries the price line,
 not an accessory rail.
 
-
 ## Pixel round on the landing round: S8 on the reference model, and what it moved
 
 Run on 2026-09-04 by a separate test session (plan and results are untracked
@@ -4187,40 +4186,40 @@ which is what the plan says to do.
 
 ### S8 on Gemma 4 - 2B
 
-| # | Fix | Result | What was actually wrong |
-|---|---|---|---|
-| 1 | P1.1 conversation subject | pass | — |
-| 2 | P1.2 language-drift guard | fail (partial) | the *query* stayed German; the *answer* came back English — a generation drift past the guard, see below |
-| 3 | P1.3 topic anchors | pass | — |
-| 4 | P1.4 intent kind | fail | nothing was ever logged; the feature had no dev-log line, so the row could not be graded |
-| 5 | split-price join | pass | — |
-| 6 | filler floor | pass | — |
-| 7 | P2.5 per-source relevance | pass | — |
-| 8 | P2.5 aspect coverage | pass | first draft already covered both coins; no nudge, correctly |
-| 9 | P2.6 refining without flicker | pass | four nudged turns, one swap each |
-| 10 | P3.7 badge ↔ Sources | pass | — |
-| 11 | P3.8 trace rebuild | fail | the rebuild never ran: the previous search's live trace survived the chat switch and rendered every surfaced result |
+| #   | Fix                           | Result         | What was actually wrong                                                                                             |
+| --- | ----------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 1   | P1.1 conversation subject     | pass           | —                                                                                                                   |
+| 2   | P1.2 language-drift guard     | fail (partial) | the _query_ stayed German; the _answer_ came back English — a generation drift past the guard, see below            |
+| 3   | P1.3 topic anchors            | pass           | —                                                                                                                   |
+| 4   | P1.4 intent kind              | fail           | nothing was ever logged; the feature had no dev-log line, so the row could not be graded                            |
+| 5   | split-price join              | pass           | —                                                                                                                   |
+| 6   | filler floor                  | pass           | —                                                                                                                   |
+| 7   | P2.5 per-source relevance     | pass           | —                                                                                                                   |
+| 8   | P2.5 aspect coverage          | pass           | first draft already covered both coins; no nudge, correctly                                                         |
+| 9   | P2.6 refining without flicker | pass           | four nudged turns, one swap each                                                                                    |
+| 10  | P3.7 badge ↔ Sources          | pass           | —                                                                                                                   |
+| 11  | P3.8 trace rebuild            | fail           | the rebuild never ran: the previous search's live trace survived the chat switch and rendered every surfaced result |
 
 ### Shared-code findings from S1–S5, and the commits that answer them
 
-| Finding (results file §"Znaleziska") | Commit |
-|---|---|
+| Finding (results file §"Znaleziska")                                                                                                                       | Commit                                                                                                                                                   |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | needs-search gate wrong both ways: S1.4 skipped a spec question naming a model code; S2.6/S5.2 searched recap questions with the raw question as the query | `a7a3642` — a code-like token or a ≥3-digit number forces the search; recap / previous-answer intents count as conversational, with two planner examples |
-| no `intent:` log line (S8.4) | `f06f389` — one dev-only "Web search plan" line: needs_search, kind, intent, queries, expects |
-| `groundingCaveats: ["figure"]` false positive on an exact match (S1.5, S8.7) | `0c9a6b2` — a page figure without a currency token beside it still grounds the answer |
-| our own plumbing in the answer: "według Ile mieszkańców ma Warszawa…," (S4.1) and "[Answers: …] -" (S3.1) | `c50f811` — a cited web source is named by host; copied block labels are stripped |
-| ten page rows on reopen (S8.11) | `98ec275` — the live trace is cleared when another chat opens, unless a search is running |
-| evasive price answer with the amount on the page (S1.8), refusal in a language no phrase list covers | `74d8def` — the absence claim is structural: figure wanted, figure in context, none in the answer |
+| no `intent:` log line (S8.4)                                                                                                                               | `f06f389` — one dev-only "Web search plan" line: needs_search, kind, intent, queries, expects                                                            |
+| `groundingCaveats: ["figure"]` false positive on an exact match (S1.5, S8.7)                                                                               | `0c9a6b2` — a page figure without a currency token beside it still grounds the answer                                                                    |
+| our own plumbing in the answer: "według Ile mieszkańców ma Warszawa…," (S4.1) and "[Answers: …] -" (S3.1)                                                  | `c50f811` — a cited web source is named by host; copied block labels are stripped                                                                        |
+| ten page rows on reopen (S8.11)                                                                                                                            | `98ec275` — the live trace is cleared when another chat opens, unless a search is running                                                                |
+| evasive price answer with the amount on the page (S1.8), refusal in a language no phrase list covers                                                       | `74d8def` — the absence claim is structural: figure wanted, figure in context, none in the answer                                                        |
 
 ### The rest of this round, driven by the same evidence and the intent research
 
-| Change | Commit | Why |
-|---|---|---|
-| `place`, `person`, `event` intent kinds; "search when" list names model codes, position holders, versions, hours | `5bede3d` | the Li & Roth classes we lacked (LOC, HUM, ENTY:event) are where a 2B model answers from memory |
-| listing ranking by intent kind and scoped year — the nine-language quantity list, the period/superlative markers and the all-time page pattern are gone | `ddb0a4b` | the last per-language rules in the search path; the year the planner writes into its queries carries the period scope instead |
-| `expects`: the plan names 1–4 things a complete answer must contain; their stems join the passage needles | `0ea625d` | a kind names the shape of the evidence, not the thing; "data premiery" credits the launch-date sentence the question never named |
-| refined answer crossfades; `isRefining` clears at the complete/failed phase | `2a79253` | the single swap read as a glitch |
-| loop guard extracted to its own PR | [#311](https://github.com/software-mansion-labs/private-mind/pull/311), issue #255 reopened | not web-search work; #289 named it as the follow-up to the penalty revert |
+| Change                                                                                                                                                  | Commit                                                                                      | Why                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `place`, `person`, `event` intent kinds; "search when" list names model codes, position holders, versions, hours                                        | `5bede3d`                                                                                   | the Li & Roth classes we lacked (LOC, HUM, ENTY:event) are where a 2B model answers from memory                                  |
+| listing ranking by intent kind and scoped year — the nine-language quantity list, the period/superlative markers and the all-time page pattern are gone | `ddb0a4b`                                                                                   | the last per-language rules in the search path; the year the planner writes into its queries carries the period scope instead    |
+| `expects`: the plan names 1–4 things a complete answer must contain; their stems join the passage needles                                               | `0ea625d`                                                                                   | a kind names the shape of the evidence, not the thing; "data premiery" credits the launch-date sentence the question never named |
+| refined answer crossfades; `isRefining` clears at the complete/failed phase                                                                             | `2a79253`                                                                                   | the single swap read as a glitch                                                                                                 |
+| loop guard extracted to its own PR                                                                                                                      | [#311](https://github.com/software-mansion-labs/private-mind/pull/311), issue #255 reopened | not web-search work; #289 named it as the follow-up to the penalty revert                                                        |
 
 ### Still open after this round
 
@@ -4250,7 +4249,7 @@ is left to the next test round.
 ⚠️ **S3.2 — the coverage nudge made the answer shorter.** Three aspects asked,
 one answered, the retry answered one differently. The nudge names the
 missing aspects; the model's retry dropped the one it had. Whether keeping
-the first draft when the retry covers *fewer* distinctive stems is the
+the first draft when the retry covers _fewer_ distinctive stems is the
 right rule is worth a fixture from msg 396.
 
 The window stays at 2048: the note in `constants/model-profiles.ts` and the
@@ -4296,7 +4295,7 @@ The planner wrote English queries for a Polish question, the language guard
 threw them out, the retry drifted too, and the plan degraded to the verbatim
 question — a full sentence with a model code, which the engine answered with
 zero results. The verbatim rescue in round 1 does not apply (the verbatim
-query *was* the plan), fetch recovery has nothing to recover from without
+query _was_ the plan), fetch recovery has nothing to recover from without
 results, so the turn ended with an empty context and a refusal. Three
 changes:
 
@@ -4371,7 +4370,7 @@ runs.
 awaits `buildSources`, whose first step is the planner — an LLM call that
 on Gemma 4 - 2B takes 60–120 s (today's device logs: plan line 57 s after
 the send when it worked, ~2 min when it did not). When the planner is slow,
-the controller aborts *before the first query*: the provider returns `[]`
+the controller aborts _before the first query_: the provider returns `[]`
 on an aborted signal, both zero-result rescues and the verbatim rescue are
 gated on `!signal.aborted`, page reading is skipped, and the outcome log
 says `results: 0, label: incorrect` — indistinguishable from an engine that
@@ -4447,14 +4446,14 @@ treat `expects: ["recommended TV model"]` unmet as a missing aspect.
 
 ### Plan, in the order it should be built
 
-| # | Change | Where | Red-before-fix test |
-|---|---|---|---|
-| 1 | The deadline starts when the first query starts. `runWebSearch` takes `searchTimeoutMs`, arms its own controller after the gate, links the external Stop signal to it, records `telemetry.aborted: 'timeout' \| 'stopped'`; the store's timer around `buildSources` is gone. Outcome log carries `aborted`, `enginesTried`, `plannedQueries`. **Landed** `98dbcac`. | `utils/web/runWebSearch.ts`, `store/llmStore.ts`, `components/chat-screen/useSendChatMessage.ts` | a planner slower than the deadline still searches and finds; a provider slower than the deadline ends with `aborted: 'timeout'` and no rescue; an external abort ends with `'stopped'` |
-| 2 | Stop reaches the planner: `interrupt()` interrupts the LLM when `utilityGenerating` too; the `failed` phase resets the live trace; Stop before any token runs that cleanup at once. No `stopped` trace note after all — the placeholder is dropped, so there is no row to show it on. **Landed** `d90e3eb`, `a99aa6f`. On the Pixel the block now leaves the screen immediately; the abandoned planner prefill still runs for ~13 s underneath, since ExecuTorch cannot interrupt a prefill. | `store/llmStore.ts` | interrupt while the planner call is pending interrupts the instance; Stop before a token drops the placeholder and the trace in the same tick |
-| 3 | Evidence retry answers first. Prompt: the first sentence states the fact or figure; no describing or listing sources. `buriesFigureContextOffers` (a context sentence shares a question stem and holds a non-year figure, kind ∈ fact/price/specs → the answer's **first** sentence must hold a figure; two sentences let T2's digest through) joins the trigger and `stillBroken`; a retry that states a figure the draft lacked is kept. **Landed** `8c25e63`, confirmed live: T2's question now answers "Populacja Warszawy to 1,86 miliona mieszkańców…" after "Answer buries the figure…, retrying once". | `store/llmStore.ts`, `utils/messageSources.ts` | T2 fixtures: draft triggers, digest still broken, direct answer passes, `person` kind and year-only context do not apply |
-| 4 | A short planner query (fewer than two judgeable terms) passes on a code the conversation already mentions; otherwise, when its detected language and the conversation's differ, it is discarded into the fallback and the question is searched first. The rule uses the detector, not a token list, so #361 (`Samsung QE65S99H vs other models`) still passes on its code. **Landed** `1114d2a`. | `utils/web/queryLanguage.ts` | `cost of OLED TV` against the Polish OLED conversation is out; the same follow-up in an English conversation stays |
-| 5 | "Checking whether to search…" until the first `searching` event; the title derivation moved to the pure trace module. **Landed** `f306fc7`, seen live. | `components/chat-screen/webSearchTrace.ts`, `WebSearchBlock.tsx` | title on the two trace shapes |
-| 6 | `[prompt-tokens]` carries a role and fires for utility calls (`30e4d85`): the planner prompt was 1098 tokens on the device. The system prompt went from 5.2k to 4.2k characters — rules said once, three chat examples out, a recommendation example in (`d3eb4c7`). Still above the 800 target; the next cut is the examples themselves, to be judged against the gate metrics of the release round, not blind. | `store/llmStore.ts`, `utils/web/buildSearchQuery.ts` | device: plan line ≤ 60 s after the send on Gemma 4 - 2B — 79 s measured today with model load included, to be re-read on a warm model |
+| #   | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Where                                                                                            | Red-before-fix test                                                                                                                                                                    |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | The deadline starts when the first query starts. `runWebSearch` takes `searchTimeoutMs`, arms its own controller after the gate, links the external Stop signal to it, records `telemetry.aborted: 'timeout' \| 'stopped'`; the store's timer around `buildSources` is gone. Outcome log carries `aborted`, `enginesTried`, `plannedQueries`. **Landed** `98dbcac`.                                                                                                                                                                                                                                            | `utils/web/runWebSearch.ts`, `store/llmStore.ts`, `components/chat-screen/useSendChatMessage.ts` | a planner slower than the deadline still searches and finds; a provider slower than the deadline ends with `aborted: 'timeout'` and no rescue; an external abort ends with `'stopped'` |
+| 2   | Stop reaches the planner: `interrupt()` interrupts the LLM when `utilityGenerating` too; the `failed` phase resets the live trace; Stop before any token runs that cleanup at once. No `stopped` trace note after all — the placeholder is dropped, so there is no row to show it on. **Landed** `d90e3eb`, `a99aa6f`. On the Pixel the block now leaves the screen immediately; the abandoned planner prefill still runs for ~13 s underneath, since ExecuTorch cannot interrupt a prefill.                                                                                                                   | `store/llmStore.ts`                                                                              | interrupt while the planner call is pending interrupts the instance; Stop before a token drops the placeholder and the trace in the same tick                                          |
+| 3   | Evidence retry answers first. Prompt: the first sentence states the fact or figure; no describing or listing sources. `buriesFigureContextOffers` (a context sentence shares a question stem and holds a non-year figure, kind ∈ fact/price/specs → the answer's **first** sentence must hold a figure; two sentences let T2's digest through) joins the trigger and `stillBroken`; a retry that states a figure the draft lacked is kept. **Landed** `8c25e63`, confirmed live: T2's question now answers "Populacja Warszawy to 1,86 miliona mieszkańców…" after "Answer buries the figure…, retrying once". | `store/llmStore.ts`, `utils/messageSources.ts`                                                   | T2 fixtures: draft triggers, digest still broken, direct answer passes, `person` kind and year-only context do not apply                                                               |
+| 4   | A short planner query (fewer than two judgeable terms) passes on a code the conversation already mentions; otherwise, when its detected language and the conversation's differ, it is discarded into the fallback and the question is searched first. The rule uses the detector, not a token list, so #361 (`Samsung QE65S99H vs other models`) still passes on its code. **Landed** `1114d2a`.                                                                                                                                                                                                               | `utils/web/queryLanguage.ts`                                                                     | `cost of OLED TV` against the Polish OLED conversation is out; the same follow-up in an English conversation stays                                                                     |
+| 5   | "Checking whether to search…" until the first `searching` event; the title derivation moved to the pure trace module. **Landed** `f306fc7`, seen live.                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `components/chat-screen/webSearchTrace.ts`, `WebSearchBlock.tsx`                                 | title on the two trace shapes                                                                                                                                                          |
+| 6   | `[prompt-tokens]` carries a role and fires for utility calls (`30e4d85`): the planner prompt was 1098 tokens on the device. The system prompt went from 5.2k to 4.2k characters — rules said once, three chat examples out, a recommendation example in (`d3eb4c7`). Still above the 800 target; the next cut is the examples themselves, to be judged against the gate metrics of the release round, not blind.                                                                                                                                                                                               | `store/llmStore.ts`, `utils/web/buildSearchQuery.ts`                                             | device: plan line ≤ 60 s after the send on Gemma 4 - 2B — 79 s measured today with model load included, to be re-read on a warm model                                                  |
 
 Two more from the same device session, outside the plan: the composer
 stranded at the keyboard's height once more (`20ad5a6`, system
@@ -4470,7 +4469,6 @@ once a real run shows it); um.warszawa.pl unused at similarity 0.4 (the
 qualification line is a tuning question, not a defect); Stop during
 generation saving no sources is by design — citations are picked from the
 answer, and the partial answer cited none.
-
 
 ## Release round, first half: the code in the refusal counted as the figure
 
@@ -4526,12 +4524,12 @@ again in ~2 000 characters of passages. It did not.
 - `evidenceLinesFor(question, context)` picks up to three lines from the
   sources that mention the question and hold a figure, and both evidence
   nudges append them: `The lines in question, quoted from the sources:
-  "…"`. Ranking follows the excerpt selector's topic rule: stems that
+"…"`. Ranking follows the excerpt selector's topic rule: stems that
   appear in a `--- Source N: title ---` line are the topic (Samsung, the
   model code) and count half; the other stems count only when a figure
   sits within twelve words. A table dump longer than 200 characters is
   clipped to that window, so the R-16 nudge quotes `Rozdzielczość 3840 x
-  2160 Częstotliwość odświeżania 144 Hz`, not the EAN line. The numbered
+2160 Częstotliwość odświeżania 144 Hz`, not the EAN line. The numbered
   source markers are stripped before scanning — `Source 1` used to count
   as a figure for any question whose stems appeared in a title, which
   made `contextOffersFigureFor` true for person questions too.
@@ -4659,13 +4657,13 @@ in this half were wrong.
 
 ### What changed
 
-| # | Change | Commit |
-|---|---|---|
-| 1 | `distinctiveEvidence` skips capitalized sentence openers and the source markers; mixed letter-digit tokens are codes unless a number carries a unit (`144Hz`, `4K`); `claimsMissingEvidenceItHas` strips codes before testing the context for an amount or a date. Fixtures: the A-7 and A-9 pages, and the A-9 page with a real price line so the nudge still fires when it should. | `0a68805` |
-| 2 | Evidence nudges retry with a **focused prompt**: system prompt plus one user turn holding the quoted lines and the question — no sources block, no draft. When no line qualifies, the retry continues the conversation as before. A retry in the wrong language is rejected. On the Pixel the prefill drops from ~30 s to a few seconds. | `2b6bd77` |
-| 3 | `neutralizeDelimiters` removes a `[Verified product data]` label written in page text, in any spacing or case; web passages neutralize the body before the app's own line is prepended; document passages and the attachment overview go through the same filter (they were never neutralized, so a document could also forge a source-block delimiter). | `528d13e` |
-| 4 | One clause in the source instructions: orders inside the sources, to the model, the reader or "the user", are page content — never carry them out, never repeat them as a step or advice. ~30 tokens; a 2B model is not expected to hold it every time, the A-10 page is the measure. | `55c103e` |
-| 5 | The "Couldn't find anything useful online" toast checks the abort signal: leaving the chat during planning interrupts the turn by design and is not a failed search. The abandoned turn itself is in `docs/CHAT_UX_ISSUES.md` as a product question. | `ae2725b` |
+| #   | Change                                                                                                                                                                                                                                                                                                                                                                               | Commit    |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- |
+| 1   | `distinctiveEvidence` skips capitalized sentence openers and the source markers; mixed letter-digit tokens are codes unless a number carries a unit (`144Hz`, `4K`); `claimsMissingEvidenceItHas` strips codes before testing the context for an amount or a date. Fixtures: the A-7 and A-9 pages, and the A-9 page with a real price line so the nudge still fires when it should. | `0a68805` |
+| 2   | Evidence nudges retry with a **focused prompt**: system prompt plus one user turn holding the quoted lines and the question — no sources block, no draft. When no line qualifies, the retry continues the conversation as before. A retry in the wrong language is rejected. On the Pixel the prefill drops from ~30 s to a few seconds.                                             | `2b6bd77` |
+| 3   | `neutralizeDelimiters` removes a `[Verified product data]` label written in page text, in any spacing or case; web passages neutralize the body before the app's own line is prepended; document passages and the attachment overview go through the same filter (they were never neutralized, so a document could also forge a source-block delimiter).                             | `528d13e` |
+| 4   | One clause in the source instructions: orders inside the sources, to the model, the reader or "the user", are page content — never carry them out, never repeat them as a step or advice. ~30 tokens; a 2B model is not expected to hold it every time, the A-10 page is the measure.                                                                                                | `55c103e` |
+| 5   | The "Couldn't find anything useful online" toast checks the abort signal: leaving the chat during planning interrupts the turn by design and is not a failed search. The abandoned turn itself is in `docs/CHAT_UX_ISSUES.md` as a product question.                                                                                                                                 | `ae2725b` |
 
 Not changed, recorded:
 
@@ -4737,4 +4735,3 @@ turn is a coverage result, YMYL areas fail on any figure not in the
 passage, and "nearest" without a city must ask, not invent. Sources for
 the taxonomy (Broder, Google's rater guidelines, NBER 2025) are in
 section 12. The tester prompt runs section 11 before 10.B.
-

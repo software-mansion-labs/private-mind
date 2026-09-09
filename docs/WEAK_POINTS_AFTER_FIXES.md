@@ -13,8 +13,8 @@ Pytania odtwarzają dokładnie te punkty, które zgłosiłeś, plus jeden nowy o
 
 „Chce kupic wedke na prezent koledze ile kosztuja takie rzeczy?"
 
-| przed | po |
-| --- | --- |
+| przed                                                                                                             | po                                                                                        |
+| ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | źródło: „Zegarków na prezent • 18019 modeli • Fabrykazegarkow.pl", odpowiedź: „źródła dotyczą sprzedaży zegarków" | źródło: „Prezenty Wędkarskie — Sklep wędkarski Pleciona.pl", odpowiedź z cenami 99–950 zł |
 
 Reguła i przykład w promptcie planera („potoczna wiadomość owija przedmiot w
@@ -51,13 +51,13 @@ Cztery z Twoich punktów po poprawkach **nadal nie działają**, i wszystkie
 sprowadzają się do tego samego: **do modelu nie dociera treść strony, tylko jej
 akapit wstępny albo opis z wyszukiwarki.**
 
-| pytanie | trafione źródło | odpowiedź |
-| --- | --- | --- |
-| „Podaj przepis na ciasto marchewkowe" | „Ciasto marchewkowe — przepis — PrzyslijPrzepis.pl" | „Przepis.pl oferuje przepis na ciasto marchewkowe z orzechami włoskimi, które jest puszyste i idealne do przełożenia kremem…" |
-| „Podaj liste skladnikow do tego ciasta" | to samo | „Nie ma informacji w dostarczonych źródłach dotyczących listy składników" |
-| „Co warto robic na wieczorze kawalerskim w Zakopanem?" | „TOP Atrakcje w Zakopanem — Wieczór Kawalerski" | „nie jestem w stanie podać konkretnych atrakcji" |
-| „Wypisz liste 5 atrakcji" | „Strona główna — Kawalerski Zakopane" | to samo zdanie |
-| „Jaka bedzie pogoda w weekend w Zakopanem?" | (strona pogodowa) | „Nie ma informacji o pogodzie w Zakopanem na weekend" |
+| pytanie                                                | trafione źródło                                     | odpowiedź                                                                                                                     |
+| ------------------------------------------------------ | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| „Podaj przepis na ciasto marchewkowe"                  | „Ciasto marchewkowe — przepis — PrzyslijPrzepis.pl" | „Przepis.pl oferuje przepis na ciasto marchewkowe z orzechami włoskimi, które jest puszyste i idealne do przełożenia kremem…" |
+| „Podaj liste skladnikow do tego ciasta"                | to samo                                             | „Nie ma informacji w dostarczonych źródłach dotyczących listy składników"                                                     |
+| „Co warto robic na wieczorze kawalerskim w Zakopanem?" | „TOP Atrakcje w Zakopanem — Wieczór Kawalerski"     | „nie jestem w stanie podać konkretnych atrakcji"                                                                              |
+| „Wypisz liste 5 atrakcji"                              | „Strona główna — Kawalerski Zakopane"               | to samo zdanie                                                                                                                |
+| „Jaka bedzie pogoda w weekend w Zakopanem?"            | (strona pogodowa)                                   | „Nie ma informacji o pogodzie w Zakopanem na weekend"                                                                         |
 
 Retrieval trafia **bezbłędnie** — to są dokładnie te strony, na których leży
 odpowiedź. Ale tekst, który z nich wraca, to lead marketingowy („świetnie
@@ -128,14 +128,14 @@ edukacyjne. Wart rozważenia: przy prośbie o formę pisemną nie wyszukiwać, c
 
 ## Podsumowanie
 
-| Twój punkt | stan |
-| --- | --- |
-| wyszukiwanie aktualnych informacji (prezydent USA) | **nie naprawione** — ranking wyników, nie prompt |
-| przepis: 4 źródła i nic konkretnego, brak listy składników | **nie naprawione** — treść strony nie dociera |
-| pogoda, weekend/jutro | **nie naprawione** — strony renderowane po stronie klienta |
-| refining pogarsza odpowiedź | **naprawione** (kod + test), nie odtworzone w tym przebiegu |
-| listowanie atrakcji mimo danych w źródłach | **nie naprawione** — ta sama przyczyna co przepis |
-| planowanie wieczoru kawalerskiego | **nie naprawione** — jw. |
-| mind care | **działa dobrze**, bez zmian |
-| wypracowanie / zadanie szkolne | **pogorszone przez web search** — model bez sieci pisze lepiej |
-| język potoczny | **naprawione** |
+| Twój punkt                                                 | stan                                                           |
+| ---------------------------------------------------------- | -------------------------------------------------------------- |
+| wyszukiwanie aktualnych informacji (prezydent USA)         | **nie naprawione** — ranking wyników, nie prompt               |
+| przepis: 4 źródła i nic konkretnego, brak listy składników | **nie naprawione** — treść strony nie dociera                  |
+| pogoda, weekend/jutro                                      | **nie naprawione** — strony renderowane po stronie klienta     |
+| refining pogarsza odpowiedź                                | **naprawione** (kod + test), nie odtworzone w tym przebiegu    |
+| listowanie atrakcji mimo danych w źródłach                 | **nie naprawione** — ta sama przyczyna co przepis              |
+| planowanie wieczoru kawalerskiego                          | **nie naprawione** — jw.                                       |
+| mind care                                                  | **działa dobrze**, bez zmian                                   |
+| wypracowanie / zadanie szkolne                             | **pogorszone przez web search** — model bez sieci pisze lepiej |
+| język potoczny                                             | **naprawione**                                                 |

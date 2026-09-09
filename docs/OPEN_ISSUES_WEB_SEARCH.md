@@ -8,13 +8,13 @@ większe niż poprawka promptu i wymagają własnej decyzji projektowej. Dowody:
 
 **Objaw.** Pytanie trafia w dokładnie właściwą stronę i nie dostaje z niej nic.
 
-| pytanie | źródło | odpowiedź |
-| --- | --- | --- |
-| „Jaka bedzie pogoda w weekend w Zakopanem?" | strona pogodowa | „Nie ma informacji o pogodzie" |
-| „Jaka jest aktualnie pogoda w waszyngtonie?" | „Pogoda w Waszyngtonie dziś i na 14 dni" | „nie jest możliwe podanie aktualnej pogody" |
-| „Kiedy gra kolejny mecz Lech Poznań?" | „Lech Poznań terminarz — pełne kalendarium" | „nie jest możliwe określenie daty" |
-| „Jaki jest wynik ostatniego meczu?" | „Lech Poznań wyniki meczów i wyniki na żywo" | „nie jest możliwe określenie wyniku" |
-| „Jakie są mecze w tym miesiącu w ekstraklasie?" | „Tabela ekstraklasy 2026" | „nie mam wystarczających informacji" |
+| pytanie                                         | źródło                                       | odpowiedź                                   |
+| ----------------------------------------------- | -------------------------------------------- | ------------------------------------------- |
+| „Jaka bedzie pogoda w weekend w Zakopanem?"     | strona pogodowa                              | „Nie ma informacji o pogodzie"              |
+| „Jaka jest aktualnie pogoda w waszyngtonie?"    | „Pogoda w Waszyngtonie dziś i na 14 dni"     | „nie jest możliwe podanie aktualnej pogody" |
+| „Kiedy gra kolejny mecz Lech Poznań?"           | „Lech Poznań terminarz — pełne kalendarium"  | „nie jest możliwe określenie daty"          |
+| „Jaki jest wynik ostatniego meczu?"             | „Lech Poznań wyniki meczów i wyniki na żywo" | „nie jest możliwe określenie wyniku"        |
+| „Jakie są mecze w tym miesiącu w ekstraklasie?" | „Tabela ekstraklasy 2026"                    | „nie mam wystarczających informacji"        |
 
 Pogoda, terminarze i wyniki na żywo to jednocześnie **najczęstsze** pytania w
 aplikacji i **najsłabiej** obsługiwana kategoria.
@@ -39,10 +39,10 @@ Bez tego żadna zmiana promptu ani rankingu nie pomoże — treści po prostu ni
 
 **Objaw.** „Kim byli krzyzacy? Napisz krotkie wypracowanie na jezyk polski"
 
-| tryb | źródło | wynik |
-| --- | --- | --- |
-| Web włączony | „Krzyżacy — opracowanie, problematyka, bohaterowie" | odpowiedź o **powieści Sienkiewicza**, nie o zakonie |
-| Web wyłączony | — | poprawne, sensowne wypracowanie o zakonie krzyżackim |
+| tryb          | źródło                                              | wynik                                                |
+| ------------- | --------------------------------------------------- | ---------------------------------------------------- |
+| Web włączony  | „Krzyżacy — opracowanie, problematyka, bohaterowie" | odpowiedź o **powieści Sienkiewicza**, nie o zakonie |
+| Web wyłączony | —                                                   | poprawne, sensowne wypracowanie o zakonie krzyżackim |
 
 Wcześniej to samo pytanie trafiało w „Grand Encampment of Knights Templar,
 U.S.A." — czyli dwa różne pudła pod rząd.

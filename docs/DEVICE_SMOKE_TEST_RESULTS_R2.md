@@ -87,44 +87,44 @@ Każda tura L1/L3: nowa rozmowa, Web włączony i potwierdzony ikoną.
 
 ### L1 — en (Qwen 3 - 0.6B, Web on)
 
-| pytanie | język odp. | liczba? | domena źródła | uwagi |
-| --- | --- | --- | --- | --- |
-| population of London | en | tak (9.8M) | populationpie.co.uk | OK |
-| iPhone 17 cost US | en | tak ($799) | apple.com | OK |
-| weather NY today | en | tak (28°F) | today's-weather...com | logika: „warmer than usual” + 28°F sprzeczne, ale to jakość źródła/modelu |
-| UK Parliament today | en | brak realnej treści | parliament.uk | odpowiedź to nagłówki strony („Commons is sitting”), nie streszczenie |
-| British Museum hours | en | tak (10:00–17:00) | britishmuseum.org | OK |
+| pytanie              | język odp. | liczba?             | domena źródła         | uwagi                                                                     |
+| -------------------- | ---------- | ------------------- | --------------------- | ------------------------------------------------------------------------- |
+| population of London | en         | tak (9.8M)          | populationpie.co.uk   | OK                                                                        |
+| iPhone 17 cost US    | en         | tak ($799)          | apple.com             | OK                                                                        |
+| weather NY today     | en         | tak (28°F)          | today's-weather...com | logika: „warmer than usual” + 28°F sprzeczne, ale to jakość źródła/modelu |
+| UK Parliament today  | en         | brak realnej treści | parliament.uk         | odpowiedź to nagłówki strony („Commons is sitting”), nie streszczenie     |
+| British Museum hours | en         | tak (10:00–17:00)   | britishmuseum.org     | OK                                                                        |
 
 5/5 po angielsku, 4/5 sensowne z liczbą/faktem, brak incydentów.
 
 ### L1 — id (Qwen 3 - 0.6B, Web on)
 
-| pytanie | zapytanie do wyszukiwarki | język odp. | liczba? | domena | uwagi |
-| --- | --- | --- | --- | --- | --- |
-| Berapa jumlah penduduk Jakarta? | verbatim (id) | id | tak (12,545,537) | kompas.com (id) | OK, region trafiony |
-| Berapa harga iPhone 17 di Indonesia? | — | id | tak (Rp17,249 juta) | iphone-harga...id | liczba prawdopodobnie błędna o rząd wielkości (17 249 000 000 Rp to absurd) — jakość, nie stabilność |
+| pytanie                              | zapytanie do wyszukiwarki | język odp. | liczba?             | domena            | uwagi                                                                                                |
+| ------------------------------------ | ------------------------- | ---------- | ------------------- | ----------------- | ---------------------------------------------------------------------------------------------------- |
+| Berapa jumlah penduduk Jakarta?      | verbatim (id)             | id         | tak (12,545,537)    | kompas.com (id)   | OK, region trafiony                                                                                  |
+| Berapa harga iPhone 17 di Indonesia? | —                         | id         | tak (Rp17,249 juta) | iphone-harga...id | liczba prawdopodobnie błędna o rząd wielkości (17 249 000 000 Rp to absurd) — jakość, nie stabilność |
 
 ### L3 — Hinglish (Qwen 3 - 0.6B, Web on)
 
-| pytanie | zapytanie | język odp. | uwagi |
-| --- | --- | --- | --- |
-| Mumbai ki population kitni hai? | verbatim | en | poprawna liczba (21.78M), źródło en |
-| iPhone 17 ka price India me kya hai? | verbatim | en | poprawne (82,900 INR), apple.com/IN |
-| Aaj Delhi me mausam kaisa hai? | verbatim | en (po Refining) | **pierwsza próba odpowiedzi to dosłowne echo instrukcji** „Aaj Delhi me mausam kaisa hai? (Answer in English.)” — złapane przez retry językowy, „Refining…” naprawił na poprawną odpowiedź z liczbami |
+| pytanie                              | zapytanie | język odp.       | uwagi                                                                                                                                                                                                 |
+| ------------------------------------ | --------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mumbai ki population kitni hai?      | verbatim  | en               | poprawna liczba (21.78M), źródło en                                                                                                                                                                   |
+| iPhone 17 ka price India me kya hai? | verbatim  | en               | poprawne (82,900 INR), apple.com/IN                                                                                                                                                                   |
+| Aaj Delhi me mausam kaisa hai?       | verbatim  | en (po Refining) | **pierwsza próba odpowiedzi to dosłowne echo instrukcji** „Aaj Delhi me mausam kaisa hai? (Answer in English.)” — złapane przez retry językowy, „Refining…” naprawił na poprawną odpowiedź z liczbami |
 
 Wykryty język konsekwentnie „en” (zgodnie z oczekiwaniem planu), zapytania do
 wyszukiwarki nie tłumaczone (zostają w Hinglish/ascii).
 
 ### L1 — ascii (de/pt/es/fr/tr/it), po jednym pytaniu, Qwen 3 - 0.6B, Web on
 
-| język | pytanie | język odp. | liczba? | region trafiony? | uwagi |
-| --- | --- | --- | --- | --- | --- |
-| de | Wie viele Einwohner hat Berlin? | de (po Refining) | tak (3.913.644) | tak (.de) | pierwsza próba = echo instrukcji „(ASCII)”, Refining naprawił |
-| pt | Quantos habitantes tem Sao Paulo? | en (po Refining) | nie | — | pierwsza próba = echo instrukcji; Refining dał **odmowę po angielsku** zamiast portugalskiej odpowiedzi — jakość |
-| es | Cuantos habitantes tiene Madrid? | es | tak (7,169,262) | — | OK od razu, bez Refining na tej turze (Refining pojawił się dopiero pod kolejną wysyłką) |
-| fr | Combien d'habitants compte Paris? | fr | tak (2,1M / 10,89M aglomeracja) | tak (INSEE) | OK, szczegółowa odpowiedź |
-| tr | Istanbul'un nufusu kac? | tr | tak (15.753.640) | tak (İstanbul source) | OK |
-| it | Quanti abitanti ha Roma? | it | liczba obecna, ale błędna (901) | źródło z domeny „id” zamiast „it” | jakość: liczba i domena nietrafione |
+| język | pytanie                           | język odp.       | liczba?                         | region trafiony?                  | uwagi                                                                                                            |
+| ----- | --------------------------------- | ---------------- | ------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| de    | Wie viele Einwohner hat Berlin?   | de (po Refining) | tak (3.913.644)                 | tak (.de)                         | pierwsza próba = echo instrukcji „(ASCII)”, Refining naprawił                                                    |
+| pt    | Quantos habitantes tem Sao Paulo? | en (po Refining) | nie                             | —                                 | pierwsza próba = echo instrukcji; Refining dał **odmowę po angielsku** zamiast portugalskiej odpowiedzi — jakość |
+| es    | Cuantos habitantes tiene Madrid?  | es               | tak (7,169,262)                 | —                                 | OK od razu, bez Refining na tej turze (Refining pojawił się dopiero pod kolejną wysyłką)                         |
+| fr    | Combien d'habitants compte Paris? | fr               | tak (2,1M / 10,89M aglomeracja) | tak (INSEE)                       | OK, szczegółowa odpowiedź                                                                                        |
+| tr    | Istanbul'un nufusu kac?           | tr               | tak (15.753.640)                | tak (İstanbul source)             | OK                                                                                                               |
+| it    | Quanti abitanti ha Roma?          | it               | liczba obecna, ale błędna (901) | źródło z domeny „id” zamiast „it” | jakość: liczba i domena nietrafione                                                                              |
 
 **Wzorzec powtarzalny (4 wystąpienia: Hinglish/weather, de, pt, L2/de):**
 pierwsza odpowiedź modelu Qwen 3 - 0.6B to dosłowne echo wewnętrznej instrukcji
@@ -140,19 +140,19 @@ modelu na telefonie z największym udziałem (Qwen 0.6B na S20 FE).
 
 **Qwen 3 - 0.6B, jedna rozmowa, Web on:**
 
-| tura | pytanie | wynik |
-| --- | --- | --- |
-| 1 | Ile kosztuje Samsung Galaxy S25 w Polsce? | PASS — 2195.59 PLN, źródło .pl |
-| 2 | And how much is it in Germany? | PASS — temat „Samsung Galaxy S25” przeniesiony do zapytania, odpowiedź 959 EUR, źródło niemieckie |
-| 3 | Wie ist das Wetter heute in Berlin? | PASS — język przełączony na niemiecki, temat S25 poprawnie **nie** doklejony (regresja „GB Czarny” z R1 nie odtworzona); pierwsza próba = echo instrukcji, Refining naprawił |
-| 4 | What did I ask about first? | **FAIL (jakość)** — pytanie meta niepotrzebnie wywołało wyszukiwanie w sieci i wygenerowało halucynację o „400+ First Date Questions” zamiast poprawnie przywołać z historii rozmowy „Ile kosztuje Samsung Galaxy S25 w Polsce?” |
+| tura | pytanie                                   | wynik                                                                                                                                                                                                                            |
+| ---- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Ile kosztuje Samsung Galaxy S25 w Polsce? | PASS — 2195.59 PLN, źródło .pl                                                                                                                                                                                                   |
+| 2    | And how much is it in Germany?            | PASS — temat „Samsung Galaxy S25” przeniesiony do zapytania, odpowiedź 959 EUR, źródło niemieckie                                                                                                                                |
+| 3    | Wie ist das Wetter heute in Berlin?       | PASS — język przełączony na niemiecki, temat S25 poprawnie **nie** doklejony (regresja „GB Czarny” z R1 nie odtworzona); pierwsza próba = echo instrukcji, Refining naprawił                                                     |
+| 4    | What did I ask about first?               | **FAIL (jakość)** — pytanie meta niepotrzebnie wywołało wyszukiwanie w sieci i wygenerowało halucynację o „400+ First Date Questions” zamiast poprawnie przywołać z historii rozmowy „Ile kosztuje Samsung Galaxy S25 w Polsce?” |
 
 **LFM 2.5 - 1.2B, jedna rozmowa, Web on:**
 
-| tura | pytanie | wynik |
-| --- | --- | --- |
-| 1 | Ile kosztuje Samsung Galaxy S25 w Polsce? | PASS — 2195,59 PLN |
-| 2 | And how much is it in Germany? | **INCYDENT NARZĘDZIOWY — nie licz jako wynik produktu.** Między moją turą 2 a odpowiedzią modelu w rozmowie pojawiła się dodatkowa, obca bańka użytkownika „Ucałuję ścianę Benjaminie Natenyahu” — tekst, którego ta sesja nigdy nie wpisała. Odpowiedź modelu odnosi się do zlepionej/zaburzonej treści („Koszt zaleca się na około 1740 zł w Polsce i 1650 zł w Niemiach” — błędne liczby, błędna forma „Niemiach”). Zgodne z zapisaną wcześniej obserwacją „Shared device sessions” (współdzielony tool-server argent, obce tury bywają widoczne). Zweryfikowano: build aplikacji bez zmian (`versionCode=68`, `lastUpdateTime` bez zmian) — to nie jest crash ani uszkodzenie danych aplikacji, tylko zanieczyszczenie strumienia wejścia na poziomie narzędzia testowego. Dowody: `docs/test-evidence/smoke-r2/s20fe-lfm-L2-foreign-turn-incident.png`, `s20fe-lfm-L2-foreign-turn-full-context.png`. Tury 3–4 na LFM przerwane po tym incydencie (brak wiarygodnego wyniku) — nie kontynuowano, żeby nie budować dalej na zanieczyszczonej rozmowie. |
+| tura | pytanie                                   | wynik                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Ile kosztuje Samsung Galaxy S25 w Polsce? | PASS — 2195,59 PLN                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 2    | And how much is it in Germany?            | **INCYDENT NARZĘDZIOWY — nie licz jako wynik produktu.** Między moją turą 2 a odpowiedzią modelu w rozmowie pojawiła się dodatkowa, obca bańka użytkownika „Ucałuję ścianę Benjaminie Natenyahu” — tekst, którego ta sesja nigdy nie wpisała. Odpowiedź modelu odnosi się do zlepionej/zaburzonej treści („Koszt zaleca się na około 1740 zł w Polsce i 1650 zł w Niemiach” — błędne liczby, błędna forma „Niemiach”). Zgodne z zapisaną wcześniej obserwacją „Shared device sessions” (współdzielony tool-server argent, obce tury bywają widoczne). Zweryfikowano: build aplikacji bez zmian (`versionCode=68`, `lastUpdateTime` bez zmian) — to nie jest crash ani uszkodzenie danych aplikacji, tylko zanieczyszczenie strumienia wejścia na poziomie narzędzia testowego. Dowody: `docs/test-evidence/smoke-r2/s20fe-lfm-L2-foreign-turn-incident.png`, `s20fe-lfm-L2-foreign-turn-full-context.png`. Tury 3–4 na LFM przerwane po tym incydencie (brak wiarygodnego wyniku) — nie kontynuowano, żeby nie budować dalej na zanieczyszczonej rozmowie. |
 
 ## R1 krok 4 na LFM 2.5 - 1.2B (Web on)
 
@@ -176,32 +176,32 @@ realną prędkość; do zgłoszenia jako obserwacja, nie testowano dalej.
 
 ### Poprawki R1–R8 (kroki przypisane do S20 FE)
 
-| poprawka | krok(i) | model | wynik |
-| --- | --- | --- | --- |
-| R1 | krok 1 (wyślij zaraz po odpowiedzi) | Qwen 3 - 0.6B | PASS |
-| R1 | krok 2 (wpisz/wyślij podczas generacji) | Qwen 3 - 0.6B | PASS |
-| R1 | krok 4 (10 tur z Web pod rząd) | Qwen 3 - 0.6B | PASS |
-| R1 | krok 4 (10 tur z Web pod rząd) | LFM 2.5 - 1.2B | PASS |
-| R2 | powrót do generującego czatu | Qwen 3 - 0.6B | PASS |
-| R3 | ładowanie pobranego modelu offline | Qwen 3 - 0.6B | PASS |
+| poprawka | krok(i)                                 | model          | wynik |
+| -------- | --------------------------------------- | -------------- | ----- |
+| R1       | krok 1 (wyślij zaraz po odpowiedzi)     | Qwen 3 - 0.6B  | PASS  |
+| R1       | krok 2 (wpisz/wyślij podczas generacji) | Qwen 3 - 0.6B  | PASS  |
+| R1       | krok 4 (10 tur z Web pod rząd)          | Qwen 3 - 0.6B  | PASS  |
+| R1       | krok 4 (10 tur z Web pod rząd)          | LFM 2.5 - 1.2B | PASS  |
+| R2       | powrót do generującego czatu            | Qwen 3 - 0.6B  | PASS  |
+| R3       | ładowanie pobranego modelu offline      | Qwen 3 - 0.6B  | PASS  |
 
 R4–R8 nie były przypisane do S20 FE w tej rundzie (patrz
 `DEVICE_SMOKE_TEST_FIXES_R1.md`, sekcja „Kolejność na urządzeniach”).
 
 ### Języki × model (S20 FE)
 
-| język | Qwen 3 - 0.6B | LFM 2.5 - 1.2B | uwagi |
-| --- | --- | --- | --- |
-| en (L1, 5 pytań) | OK | nie testowano (poza zakresem sesji) | 5/5 po angielsku, z liczbami |
-| id (L1, 2 pytania) | OK | nie testowano | 2/2 po indonezyjsku; jedna liczba prawdopodobnie błędna (jakość) |
-| Hinglish (L3, 3 pytania) | DEGRADED | nie testowano | odpowiedzi po angielsku (zgodne z oczekiwaniem), ale 1/3 wymagała Refining po wycieku instrukcji |
-| de (L1, próbka 1) | OK (po Refining) | nie testowano | pierwsza próba = wyciek instrukcji, naprawione |
-| pt (L1, próbka 1) | BROKEN (jakościowo) | nie testowano | Refining dał angielską odmowę zamiast portugalskiej odpowiedzi |
-| es (L1, próbka 1) | OK | nie testowano | poprawna odpowiedź od razu |
-| fr (L1, próbka 1) | OK | nie testowano | poprawna, szczegółowa odpowiedź |
-| tr (L1, próbka 1) | OK | nie testowano | poprawna odpowiedź |
-| it (L1, próbka 1) | DEGRADED | nie testowano | odpowiedź po włosku, ale liczba i domena źródła nietrafione |
-| L2 (topic-carry, 4 tury) | DEGRADED (3/4 PASS, 1 halucynacja) | N/A — zanieczyszczone obcą turą | patrz sekcja L2 wyżej |
+| język                    | Qwen 3 - 0.6B                      | LFM 2.5 - 1.2B                      | uwagi                                                                                            |
+| ------------------------ | ---------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------ |
+| en (L1, 5 pytań)         | OK                                 | nie testowano (poza zakresem sesji) | 5/5 po angielsku, z liczbami                                                                     |
+| id (L1, 2 pytania)       | OK                                 | nie testowano                       | 2/2 po indonezyjsku; jedna liczba prawdopodobnie błędna (jakość)                                 |
+| Hinglish (L3, 3 pytania) | DEGRADED                           | nie testowano                       | odpowiedzi po angielsku (zgodne z oczekiwaniem), ale 1/3 wymagała Refining po wycieku instrukcji |
+| de (L1, próbka 1)        | OK (po Refining)                   | nie testowano                       | pierwsza próba = wyciek instrukcji, naprawione                                                   |
+| pt (L1, próbka 1)        | BROKEN (jakościowo)                | nie testowano                       | Refining dał angielską odmowę zamiast portugalskiej odpowiedzi                                   |
+| es (L1, próbka 1)        | OK                                 | nie testowano                       | poprawna odpowiedź od razu                                                                       |
+| fr (L1, próbka 1)        | OK                                 | nie testowano                       | poprawna, szczegółowa odpowiedź                                                                  |
+| tr (L1, próbka 1)        | OK                                 | nie testowano                       | poprawna odpowiedź                                                                               |
+| it (L1, próbka 1)        | DEGRADED                           | nie testowano                       | odpowiedź po włosku, ale liczba i domena źródła nietrafione                                      |
+| L2 (topic-carry, 4 tury) | DEGRADED (3/4 PASS, 1 halucynacja) | N/A — zanieczyszczone obcą turą     | patrz sekcja L2 wyżej                                                                            |
 
 **N/A dla pism niełacińskich** (hi devanagari, ur, ar, ru, zh, fa) — zgodnie z
 ograniczeniem `keyboard`/ADX na Androidzie (tylko ASCII); zastąpione przez
@@ -233,6 +233,7 @@ metryka, nie realny spadek prędkości generacji).
 
 2026-09-07 ok. 16:54 (czas lokalny narzędzia). Pliki dowodowe w
 `docs/test-evidence/smoke-r2/`:
+
 - `s20fe-qwen06b-R1-orphaned-message.png`
 - `s20fe-lfm-L2-foreign-turn-incident.png`
 - `s20fe-lfm-L2-foreign-turn-full-context.png`
@@ -245,8 +246,6 @@ stabilność 6 tur w piśmie niełacińskim) pominięte — nie dotyczą S20 FE 
 planu (są w zakresie iPhone 17).
 
 # iOS
-
-
 
 ## iPhone 17 — build
 

@@ -11,17 +11,17 @@ tylko Quick Share / Gmail / Drive; `run-as` odpada bo APK nie jest debuggable,
 `adb backup` na Androidzie 12+ zwraca pusty plik). Rozmowy odczytane z drzewa
 dostępności. Surowy zapis: `docs/test-evidence/pixel-r3/pixel-chats-55-56.txt`.
 
-| rozmowa | temat | tur | odpowiedzi |
-| --- | --- | --- | --- |
-| 56 | prezydent USA, G7, historia Polski | 13 | 11 |
-| 55 | wieczór kawalerski w Zakopanem | 22 | 17 |
+| rozmowa | temat                              | tur | odpowiedzi |
+| ------- | ---------------------------------- | --- | ---------- |
+| 56      | prezydent USA, G7, historia Polski | 13  | 11         |
+| 55      | wieczór kawalerski w Zakopanem     | 22  | 17         |
 
 ## Wydajność
 
-| | ttft min / mediana / max | tps min / mediana / max |
-| --- | --- | --- |
-| chat 56 | 5,5 s / 33,9 s / 38,4 s | 4,90 / 5,03 / 5,94 |
-| chat 55 | 33,3 s / 37,1 s / 42,3 s | 3,62 / 4,96 / 7,18 |
+|         | ttft min / mediana / max | tps min / mediana / max |
+| ------- | ------------------------ | ----------------------- |
+| chat 56 | 5,5 s / 33,9 s / 38,4 s  | 4,90 / 5,03 / 5,94      |
+| chat 55 | 33,3 s / 37,1 s / 42,3 s | 3,62 / 4,96 / 7,18      |
 
 Jedyna tura bez wyszukiwania (chat 56, pierwsze pytanie) miała ttft 5,5 s.
 Każda tura z wyszukiwaniem — 29–42 s. **Web search dokłada ~30 sekund do
@@ -65,10 +65,10 @@ na to predykatu — `isQuestionEchoAnswer` porównuje z pytaniem, nie z promptem
 
 ### 3. Puste bańki z zapisanymi metrykami — 2 przypadki
 
-| rozmowa | pytanie | metryki | treść |
-| --- | --- | --- | --- |
-| 56 | „Jaki jest skład G7?" | ttft 29894 ms, 5,26 tok/s | brak |
-| 55 | „Dodaj do listy paintball i sprawdź jego cene" | ttft 36847 ms, 4,93 tok/s | brak |
+| rozmowa | pytanie                                        | metryki                   | treść |
+| ------- | ---------------------------------------------- | ------------------------- | ----- |
+| 56      | „Jaki jest skład G7?"                          | ttft 29894 ms, 5,26 tok/s | brak  |
+| 55      | „Dodaj do listy paintball i sprawdź jego cene" | ttft 36847 ms, 4,93 tok/s | brak  |
 
 Poprawka R4 usuwa taką bańkę, ale pytanie i tak zostaje bez odpowiedzi — a
 tu przepadło 30 i 37 sekund wyszukiwania.
@@ -82,7 +82,7 @@ Trzy wystąpienia, dwa mechanizmy:
   ([topicAnchors.ts](utils/web/topicAnchors.ts)), nie digest: „USA" padło w
   rozmowie kilka razy, więc zostało uznane za kotwicę tematu. Strażnik
   `standsAlone` miał to zablokować, ale `namedEntitiesIn('Jaka jest aktualna
-  sytuacja na Ukrainie?')` zwraca `[]` — odmieniona polska nazwa własna nie
+sytuacja na Ukrainie?')` zwraca `[]` — odmieniona polska nazwa własna nie
   jest rozpoznawana jako encja. Sprawdzone na **aktualnym** stanie brancha:
   zapytanie nadal wychodzi z doklejonym „USA". Poprawka `9038274` dotyczy
   wyłącznie digestu z obcej rozmowy i tego przypadku nie łapie.
@@ -116,13 +116,13 @@ jednej liczby). Gemma 4 2B referuje źródła zamiast odpowiadać.
 
 ### 7. Sprzeczności w obrębie jednej rozmowy (chat 56)
 
-| tura | odpowiedź |
-| --- | --- |
-| „Kto jest aktualnie prezydentem USA?" (bez web) | Joe Biden |
-| „Kto jest aktualnie prezydentem USA?" (z web) | Joe Biden, źródło: „Prezydenci USA — pełna lista od 1789 roku do dziś" |
+| tura                                                                     | odpowiedź                                                                        |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| „Kto jest aktualnie prezydentem USA?" (bez web)                          | Joe Biden                                                                        |
+| „Kto jest aktualnie prezydentem USA?" (z web)                            | Joe Biden, źródło: „Prezydenci USA — pełna lista od 1789 roku do dziś"           |
 | „Kto jest aktualnym prezydentem w USA i kiedy kończy się jego kadencja?" | „nie ma informacji… Istnieje informacja, że prezydent Joe Biden kończy kadencję" |
-| „To nie jest prawdą sprawdź kto jest prezydentem po Joe biden" | „Na podstawie dostarczonych źródeł nie ma" (ucięte) |
-| „Ile ma dzieci prezydent USA?" | pięcioro — Donald Trump |
+| „To nie jest prawdą sprawdź kto jest prezydentem po Joe biden"           | „Na podstawie dostarczonych źródeł nie ma" (ucięte)                              |
+| „Ile ma dzieci prezydent USA?"                                           | pięcioro — Donald Trump                                                          |
 
 Retrieval na „aktualnie prezydentem USA" trafił w **listę historyczną od 1789
 roku**, która nie odpowiada na „aktualnie". Model przyjął z niej Bidena i
@@ -158,19 +158,19 @@ do osoby nie ma szans trafić w źródło, które ją wprost stwierdza.
 
 ## Podsumowanie
 
-| # | problem | status na branchu |
-| --- | --- | --- |
-| 1 | siedem pytań, dwie odpowiedzi | naprawione (R1, R2) — Pixel ma starszy build |
-| 2 | prompt systemowy w treści odpowiedzi | **nienaprawione, nowe** |
-| 3 | puste bańki z metrykami | częściowo (R4 usuwa bańkę) |
-| 4a | „USA" doklejone do pytania o Ukrainę | **nienaprawione** — `topicAnchorer`, potwierdzone na HEAD |
-| 4b | Kraków w rozmowie o Zakopanem | naprawione (`9038274`) |
-| 5 | „krzyżacy" → Knights Templar | **nienaprawione** |
-| 6 | referowanie źródeł zamiast odpowiedzi | **nienaprawione** |
-| 7 | lista historyczna jako źródło na „aktualnie" | **nienaprawione** |
-| 8 | halucynacje faktograficzne | poza zakresem branchu |
-| 9 | ucięte odpowiedzi | osobne branche `fix/255-*` |
-| 10 | zaimek bez desygnatu | naprawione — Pixel ma starszy build |
+| #   | problem                                      | status na branchu                                         |
+| --- | -------------------------------------------- | --------------------------------------------------------- |
+| 1   | siedem pytań, dwie odpowiedzi                | naprawione (R1, R2) — Pixel ma starszy build              |
+| 2   | prompt systemowy w treści odpowiedzi         | **nienaprawione, nowe**                                   |
+| 3   | puste bańki z metrykami                      | częściowo (R4 usuwa bańkę)                                |
+| 4a  | „USA" doklejone do pytania o Ukrainę         | **nienaprawione** — `topicAnchorer`, potwierdzone na HEAD |
+| 4b  | Kraków w rozmowie o Zakopanem                | naprawione (`9038274`)                                    |
+| 5   | „krzyżacy" → Knights Templar                 | **nienaprawione**                                         |
+| 6   | referowanie źródeł zamiast odpowiedzi        | **nienaprawione**                                         |
+| 7   | lista historyczna jako źródło na „aktualnie" | **nienaprawione**                                         |
+| 8   | halucynacje faktograficzne                   | poza zakresem branchu                                     |
+| 9   | ucięte odpowiedzi                            | osobne branche `fix/255-*`                                |
+| 10  | zaimek bez desygnatu                         | naprawione — Pixel ma starszy build                       |
 
 Trzy pozycje warte kodu w pierwszej kolejności, bo są mechaniczne i mają jasny
 test: 2 (wyciek promptu), 4a (podmiot rozmowy doklejany do pytania, które ma

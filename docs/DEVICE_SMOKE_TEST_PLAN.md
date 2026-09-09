@@ -17,12 +17,12 @@ metrics” (`ttft: … ms, tps: … tok/s`).
 
 ## 1. Urządzenia i klasy
 
-| Klasa | Urządzenie | Id | System | RAM (nominal / raportowany) | SoC |
-|---|---|---|---|---|---|
-| A — flagowiec Android | Pixel 10 | adb `56211FDCR005KT` | Android 16 | 12 GB / 11,3 GB | Tensor G5 |
-| A — flagowiec iOS | iPhone 17 „Szczepan Cierpliwy” | UDID `00008150-000E62513E01401C`, CoreDevice `1A9BF7C8-8C48-59E8-8947-8823CC422381` | iOS 26.6.1 | 8 GB / ~7,5 GB (do odczytu z toasta bramki) | A19 |
-| B — średnia półka Android, stary SoC | Samsung Galaxy S20 FE `SM-G781B` | adb `RFCT814MVHX` | Android 13 | 6 GB / 5,5 GB | Snapdragon 865 |
-| C — mało RAM iOS | iPhone SE (3. gen.) „Szczepan Czerwone Jabłuszko III” | UDID `00008110-000641663E90401E`, CoreDevice `4E07878B-2D64-53C6-9D28-B406F895FC87` | iOS 26.6 | 4 GB / ~3,7 GB | A15 |
+| Klasa                                | Urządzenie                                            | Id                                                                                  | System     | RAM (nominal / raportowany)                 | SoC            |
+| ------------------------------------ | ----------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------- | ------------------------------------------- | -------------- |
+| A — flagowiec Android                | Pixel 10                                              | adb `56211FDCR005KT`                                                                | Android 16 | 12 GB / 11,3 GB                             | Tensor G5      |
+| A — flagowiec iOS                    | iPhone 17 „Szczepan Cierpliwy”                        | UDID `00008150-000E62513E01401C`, CoreDevice `1A9BF7C8-8C48-59E8-8947-8823CC422381` | iOS 26.6.1 | 8 GB / ~7,5 GB (do odczytu z toasta bramki) | A19            |
+| B — średnia półka Android, stary SoC | Samsung Galaxy S20 FE `SM-G781B`                      | adb `RFCT814MVHX`                                                                   | Android 13 | 6 GB / 5,5 GB                               | Snapdragon 865 |
+| C — mało RAM iOS                     | iPhone SE (3. gen.) „Szczepan Czerwone Jabłuszko III” | UDID `00008110-000641663E90401E`, CoreDevice `4E07878B-2D64-53C6-9D28-B406F895FC87` | iOS 26.6   | 4 GB / ~3,7 GB                              | A15            |
 
 Oba iPhone'y są nadzorowane przez MDM Software Mansion; instalacja aplikacji
 przez Argent i `devicectl` działa (sprawdzone 2026-09-07, runner Argenta
@@ -48,15 +48,15 @@ Z `utils/modelCompatibility.ts` i `constants/model-profiles.ts`:
 Budżety: Pixel 10 ≈ 8,3 GB, iPhone 17 ≈ 3,8 GB, S20 FE ≈ 2,5 GB, iPhone SE ≈
 1,6 GB.
 
-| Model (`modelSize` GB) | Pixel 10 | iPhone 17 | S20 FE | iPhone SE |
-|---|---|---|---|---|
-| Qwen 3 - 0.6B (0,94) | ładuje / web ✓ | ✓ / ✓ | ✓ / ✓ | ✓ / ✓ (1,54 ≤ 1,6 — na granicy) |
-| Bielik v3.0 (0,86) | ✓ / ✓ | ✓ / ✓ | ✓ / ✓ | ✓ / ✓ |
-| LFM 2.5 - 1.2B (1,14) | ✓ / ✓ | ✓ / ✓ | ✓ / ✓ | ✓ / **✗ przewidywane** (1,74 > 1,6) |
-| LLaMA 3.2 - 1B SpinQuant (1,14) | ✓ / ✓ | ✓ / ✓ | ✓ / ✓ | ✓ / **✗ przewidywane** |
-| Qwen 2.5 - 1.5B (1,76) | ✓ / ✓ | ✓ / ✓ | ✓ / ✓ (2,36 ≤ 2,5) | ✗ |
-| Qwen 3 - 1.7B (2,16) | ✓ / ✓ | ✓ / ✓ | ✓ / **✗ przewidywane** (2,76 > 2,5) | ✗ |
-| Gemma 4 - 2B (2,5 / iOS 2,9) | ✓ / ✓ | ✓ / **? — zależy, czy iOS raportuje ≥ 8 GB** | ✗ (min 8 GB) | ✗ |
+| Model (`modelSize` GB)          | Pixel 10       | iPhone 17                                    | S20 FE                              | iPhone SE                           |
+| ------------------------------- | -------------- | -------------------------------------------- | ----------------------------------- | ----------------------------------- |
+| Qwen 3 - 0.6B (0,94)            | ładuje / web ✓ | ✓ / ✓                                        | ✓ / ✓                               | ✓ / ✓ (1,54 ≤ 1,6 — na granicy)     |
+| Bielik v3.0 (0,86)              | ✓ / ✓          | ✓ / ✓                                        | ✓ / ✓                               | ✓ / ✓                               |
+| LFM 2.5 - 1.2B (1,14)           | ✓ / ✓          | ✓ / ✓                                        | ✓ / ✓                               | ✓ / **✗ przewidywane** (1,74 > 1,6) |
+| LLaMA 3.2 - 1B SpinQuant (1,14) | ✓ / ✓          | ✓ / ✓                                        | ✓ / ✓                               | ✓ / **✗ przewidywane**              |
+| Qwen 2.5 - 1.5B (1,76)          | ✓ / ✓          | ✓ / ✓                                        | ✓ / ✓ (2,36 ≤ 2,5)                  | ✗                                   |
+| Qwen 3 - 1.7B (2,16)            | ✓ / ✓          | ✓ / ✓                                        | ✓ / **✗ przewidywane** (2,76 > 2,5) | ✗                                   |
+| Gemma 4 - 2B (2,5 / iOS 2,9)    | ✓ / ✓          | ✓ / **? — zależy, czy iOS raportuje ≥ 8 GB** | ✗ (min 8 GB)                        | ✗                                   |
 
 Każda komórka „przewidywane” jest sama w sobie przypadkiem testowym: toast
 i stan przełącznika Web muszą zgadzać się z przewidywaniem. Rozjazd = wynik
@@ -71,12 +71,12 @@ Na każdym urządzeniu **dwa modele**: najtańszy, jaki ma sens (planer
 `verbatim` lub najmniejszy `llm`), i największy, jaki bramka wpuści. Kolejność
 = kolejność w wierszu. Trzecia pozycja tylko, jeśli zostanie czas.
 
-| Urządzenie | Model 1 (tani) | Model 2 (największy dozwolony) | Opcjonalnie |
-|---|---|---|---|
-| Pixel 10 | LFM 2.5 - 1.2B | Gemma 4 - 2B (referencja z serii 1–3) | Qwen 3 - 1.7B |
-| iPhone 17 | LFM 2.5 - 1.2B | Gemma 4 - 2B — jeśli bramka blokuje, zapisz toast i weź Qwen 3 - 1.7B | Qwen 3 - 0.6B |
-| S20 FE | Qwen 3 - 0.6B | LFM 2.5 - 1.2B | Qwen 2.5 - 1.5B |
-| iPhone SE | Qwen 3 - 0.6B | LFM 2.5 - 1.2B — spodziewany toast; jeśli wpuści, przejść scenariusze | Bielik v3.0 |
+| Urządzenie | Model 1 (tani) | Model 2 (największy dozwolony)                                        | Opcjonalnie     |
+| ---------- | -------------- | --------------------------------------------------------------------- | --------------- |
+| Pixel 10   | LFM 2.5 - 1.2B | Gemma 4 - 2B (referencja z serii 1–3)                                 | Qwen 3 - 1.7B   |
+| iPhone 17  | LFM 2.5 - 1.2B | Gemma 4 - 2B — jeśli bramka blokuje, zapisz toast i weź Qwen 3 - 1.7B | Qwen 3 - 0.6B   |
+| S20 FE     | Qwen 3 - 0.6B  | LFM 2.5 - 1.2B                                                        | Qwen 2.5 - 1.5B |
+| iPhone SE  | Qwen 3 - 0.6B  | LFM 2.5 - 1.2B — spodziewany toast; jeśli wpuści, przejść scenariusze | Bielik v3.0     |
 
 Czas: ~40 min na parę (urządzenie, model) plus pobieranie modeli (0,9–2,9 GB
 z Hugging Face na Wi-Fi FiberMansion). Pixel ma już Gemmę 4 2B z serii 1–3
@@ -138,14 +138,14 @@ niej nie zależy.
 
 ### S4 — przerwania (każde raz, plus powtórka jeśli coś dziwnego)
 
-| Akcja | PASS gdy |
-|---|---|
-| Stop w trakcie „Searching…” | trace „stopped”, brak pustej bańki, pole tekstowe znów aktywne < 3 s, kolejna tura działa |
-| Stop w trakcie generacji | tekst zostaje obcięty tam, gdzie był, bez „Refining…”, kolejna tura działa |
-| wyjście z rozmowy (szuflada → inna rozmowa) w trakcie generacji, powrót po 20 s | odpowiedź jest w **tej** rozmowie, w całości albo obcięta, bez duplikatu |
-| zmiana modelu w trakcie „Searching…” | brak crashu; szukanie zatrzymane albo dokończone na starym modelu — zapisz co |
-| aplikacja w tle (Home) w trakcie „Reading the pages”, 30 s, powrót | wznowienie albo czysty „stopped”; **na iOS**: czy proces przeżył (nowy zimny start = FAIL klasy A, do zapisania na B/C) |
-| wyłączenie Wi-Fi w trakcie szukania | trace z notą o błędach pobierania, odpowiedź z tego, co było, brak zawieszenia |
+| Akcja                                                                           | PASS gdy                                                                                                                |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Stop w trakcie „Searching…”                                                     | trace „stopped”, brak pustej bańki, pole tekstowe znów aktywne < 3 s, kolejna tura działa                               |
+| Stop w trakcie generacji                                                        | tekst zostaje obcięty tam, gdzie był, bez „Refining…”, kolejna tura działa                                              |
+| wyjście z rozmowy (szuflada → inna rozmowa) w trakcie generacji, powrót po 20 s | odpowiedź jest w **tej** rozmowie, w całości albo obcięta, bez duplikatu                                                |
+| zmiana modelu w trakcie „Searching…”                                            | brak crashu; szukanie zatrzymane albo dokończone na starym modelu — zapisz co                                           |
+| aplikacja w tle (Home) w trakcie „Reading the pages”, 30 s, powrót              | wznowienie albo czysty „stopped”; **na iOS**: czy proces przeżył (nowy zimny start = FAIL klasy A, do zapisania na B/C) |
+| wyłączenie Wi-Fi w trakcie szukania                                             | trace z notą o błędach pobierania, odpowiedź z tego, co było, brak zawieszenia                                          |
 
 ### S5 — wytrzymałość pamięciowa: 10 tur web z rzędu
 
@@ -190,16 +190,16 @@ model ładuje się bez toasta, pierwsza tura działa.
 
 ## 5. Metryki wydajności — co zapisać i skąd
 
-| Metryka | Źródło | Gdzie zapisać |
-|---|---|---|
-| `ttft` (ms), `tps` (tok/s) każdej tury | bańka odpowiedzi (Settings → Show performance metrics), eksport JSON | tabela tur |
-| czas szukania (od wysłania do pierwszego tokenu) | timestampy wyników `await-ui-element` / zrzutów | tabela tur |
-| RSS/PSS | Android `dumpsys meminfo`; iOS brak — tylko Jetsam | S1, S2, S5 |
-| zabicia i crashe | Android `dumpsys activity exit-info`, `logcat -b crash`; iOS `devicectl … systemCrashLogs` (`<App>-*.ips`, `JetsamEvent-*.ips`) | sekcja „Incydenty” |
-| ANR / zawieszenie UI | Android `logcat -b events \| grep am_anr`; oba: zrzut co 5 s podczas szukania — brak zmian przez 3 zrzuty = zawieszenie | „Incydenty” |
-| klatki | Android `dumpsys gfxinfo com.swmansion.privatemind` (Janky frames %) po S3 i S5, `reset` przed | tabela per scenariusz |
-| temperatura / throttling | Android `dumpsys thermalservice` (status), bateria `dumpsys battery`; iOS — obudowa w dotyku, zapisz subiektywnie | S5 |
-| czas pobrania i ładowania modelu | stoper | S1 |
+| Metryka                                          | Źródło                                                                                                                          | Gdzie zapisać         |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| `ttft` (ms), `tps` (tok/s) każdej tury           | bańka odpowiedzi (Settings → Show performance metrics), eksport JSON                                                            | tabela tur            |
+| czas szukania (od wysłania do pierwszego tokenu) | timestampy wyników `await-ui-element` / zrzutów                                                                                 | tabela tur            |
+| RSS/PSS                                          | Android `dumpsys meminfo`; iOS brak — tylko Jetsam                                                                              | S1, S2, S5            |
+| zabicia i crashe                                 | Android `dumpsys activity exit-info`, `logcat -b crash`; iOS `devicectl … systemCrashLogs` (`<App>-*.ips`, `JetsamEvent-*.ips`) | sekcja „Incydenty”    |
+| ANR / zawieszenie UI                             | Android `logcat -b events \| grep am_anr`; oba: zrzut co 5 s podczas szukania — brak zmian przez 3 zrzuty = zawieszenie         | „Incydenty”           |
+| klatki                                           | Android `dumpsys gfxinfo com.swmansion.privatemind` (Janky frames %) po S3 i S5, `reset` przed                                  | tabela per scenariusz |
+| temperatura / throttling                         | Android `dumpsys thermalservice` (status), bateria `dumpsys battery`; iOS — obudowa w dotyku, zapisz subiektywnie               | S5                    |
+| czas pobrania i ładowania modelu                 | stoper                                                                                                                          | S1                    |
 
 **Pogorszenie wydajności** notujemy zawsze w jednym formacie, żeby dało się
 z tego zrobić zadanie:
@@ -234,7 +234,7 @@ Liczony **na parę (model, klasa urządzenia)**. Trzy poziomy:
 Tabela końcowa (jedna na cały dokument wyników):
 
 | Klasa | Urządzenie | Model | Werdykt | Mediana szukania | tps web / tps baza | Incydenty | Zastrzeżenie |
-|---|---|---|---|---|---|---|---|
+| ----- | ---------- | ----- | ------- | ---------------- | ------------------ | --------- | ------------ |
 
 ## 7. Dowody i ich zbieranie w buildzie release
 

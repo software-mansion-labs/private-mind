@@ -30,10 +30,10 @@ jazdy na rowerxe mtb" → ubezpieczenia MTB. Literówki („rowerxe", „zacxą�
 
 ### 1. Halucynacja z fałszywym źródłem pod podrzuconą nieprawdę — NAJPOWAŻNIEJSZE
 
-| tura | pytanie | odpowiedź |
-| --- | --- | --- |
-| 12 | „Kto wygrał oststni mundial?" | Argentyna, 2022, Katar — **poprawnie**, źródło: lista mistrzów od 1930 |
-| 13 | „Oststni turnej był w brazylii w2026 roku kto go wygrał?" | „**Hiszpania wygrała mistrzostwo świata 2026, pokonując Argentynę 1:0 po dogrywce**", źródło: „Kto wygrał mundial 2026? Wynik finału… \| Akademia Wygrywania" |
+| tura | pytanie                                                   | odpowiedź                                                                                                                                                     |
+| ---- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 12   | „Kto wygrał oststni mundial?"                             | Argentyna, 2022, Katar — **poprawnie**, źródło: lista mistrzów od 1930                                                                                        |
+| 13   | „Oststni turnej był w brazylii w2026 roku kto go wygrał?" | „**Hiszpania wygrała mistrzostwo świata 2026, pokonując Argentynę 1:0 po dogrywce**", źródło: „Kto wygrał mundial 2026? Wynik finału… \| Akademia Wygrywania" |
 
 Użytkownik podał nieprawdziwą przesłankę, model ją przyjął bez zastrzeżenia i
 odpowiedział zmyślonym wynikiem — **z podpiętym źródłem**, więc odpowiedź
@@ -50,10 +50,10 @@ liczby, nie zdarzenia.
 
 Dwa wystąpienia na 20 tur, oba wyglądają na fałszywy alarm:
 
-| odpowiedź | liczba | źródło |
-| --- | --- | --- |
-| „solidne wędki dla początkujących najczęściej kosztują od 90 zł do 250 zł" | 90–250 zł | „Ile kosztują wędki — Sprawdź, ile wydać na sprzęt" |
-| „mediana ceny mieszkań wynosi 709 815 zł, a średnia 20 962 zł/m²" | 709 815 / 20 962 | „Ceny mieszkań i domów — Zabłocie, Kraków \| RealAdvisor" |
+| odpowiedź                                                                  | liczba           | źródło                                                    |
+| -------------------------------------------------------------------------- | ---------------- | --------------------------------------------------------- |
+| „solidne wędki dla początkujących najczęściej kosztują od 90 zł do 250 zł" | 90–250 zł        | „Ile kosztują wędki — Sprawdź, ile wydać na sprzęt"       |
+| „mediana ceny mieszkań wynosi 709 815 zł, a średnia 20 962 zł/m²"          | 709 815 / 20 962 | „Ceny mieszkań i domów — Zabłocie, Kraków \| RealAdvisor" |
 
 W obu przypadkach liczba jest w odpowiedzi wprost przypisana do cytowanej
 strony. Poprawka `fc62a39` rozszerzyła `PRICE_STATEMENT` o czasowniki wartości,
@@ -73,12 +73,12 @@ wedki?"), żeby dostać sensowną odpowiedź.
 
 Cztery tury z rzędu trafiły we właściwą stronę i nie dostały z niej nic:
 
-| pytanie | źródło | odpowiedź |
-| --- | --- | --- |
-| pogoda w Waszyngtonie | „Pogoda w Waszyngtonie dziś i na 14 dni" | „nie jest możliwe podanie aktualnej pogody" |
-| mecze w ekstraklasie w tym miesiącu | „Tabela ekstraklasy 2026 \| Aktualne wyniki" | „nie mam wystarczających informacji" |
-| kiedy gra Lech Poznań | „Lech Poznań terminarz — pełne kalendarium meczów" | „nie jest możliwe określenie daty" |
-| wynik ostatniego meczu Lecha | „Lech Poznań wyniki meczów i wyniki na żywo" | „nie jest możliwe określenie wyniku" |
+| pytanie                             | źródło                                             | odpowiedź                                   |
+| ----------------------------------- | -------------------------------------------------- | ------------------------------------------- |
+| pogoda w Waszyngtonie               | „Pogoda w Waszyngtonie dziś i na 14 dni"           | „nie jest możliwe podanie aktualnej pogody" |
+| mecze w ekstraklasie w tym miesiącu | „Tabela ekstraklasy 2026 \| Aktualne wyniki"       | „nie mam wystarczających informacji"        |
+| kiedy gra Lech Poznań               | „Lech Poznań terminarz — pełne kalendarium meczów" | „nie jest możliwe określenie daty"          |
+| wynik ostatniego meczu Lecha        | „Lech Poznań wyniki meczów i wyniki na żywo"       | „nie jest możliwe określenie wyniku"        |
 
 Retrieval trafia bezbłędnie, a treść nie dociera — strony z wynikami na żywo,
 terminarzami i pogodą renderują dane po stronie klienta. To nie jest problem
@@ -117,15 +117,15 @@ parafrazami.
 
 ## Podsumowanie
 
-| # | problem | gdzie leży |
-| --- | --- | --- |
-| 1 | zmyślony wynik mundialu 2026 z podpiętym źródłem | brak weryfikacji przesłanki użytkownika + śmieciowe źródło |
-| 2 | fałszywe „A number couldn't be confirmed" (2/20 tur) | `figureGrounding`, mimo `fc62a39` |
-| 3 | „wędka na prezent" → sklep z zegarkami | `buildSearchQuery` — okoliczność wypiera przedmiot |
-| 4 | strony JS-owe zwracają pustkę (4 tury) | `extractArticle` |
-| 5 | referowanie stron zamiast odpowiedzi | prompt odpowiedzi / Gemma 4 2B |
-| 6 | powtórzenia parafrazowane | `loopDetection` łapie tylko dosłowne |
-| 7 | „According to" w polskiej odpowiedzi | prompt językowy |
+| #   | problem                                              | gdzie leży                                                 |
+| --- | ---------------------------------------------------- | ---------------------------------------------------------- |
+| 1   | zmyślony wynik mundialu 2026 z podpiętym źródłem     | brak weryfikacji przesłanki użytkownika + śmieciowe źródło |
+| 2   | fałszywe „A number couldn't be confirmed" (2/20 tur) | `figureGrounding`, mimo `fc62a39`                          |
+| 3   | „wędka na prezent" → sklep z zegarkami               | `buildSearchQuery` — okoliczność wypiera przedmiot         |
+| 4   | strony JS-owe zwracają pustkę (4 tury)               | `extractArticle`                                           |
+| 5   | referowanie stron zamiast odpowiedzi                 | prompt odpowiedzi / Gemma 4 2B                             |
+| 6   | powtórzenia parafrazowane                            | `loopDetection` łapie tylko dosłowne                       |
+| 7   | „According to" w polskiej odpowiedzi                 | prompt językowy                                            |
 
 Dwa najcenniejsze wnioski dla tego brancha: **poprawki R1/R2 i izolacja tematu
 działają** (20/20 tur, osiem przeskoków tematu bez przecieku), a **weryfikator

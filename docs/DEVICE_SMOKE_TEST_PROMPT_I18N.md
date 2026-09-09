@@ -18,7 +18,7 @@ Pixel 10 (`56211FDCR005KT`) jest poza rundą — nie dotykaj.
 ## Kolejność pracy
 
 1. **Identyfikacja buildu.** Android: `lastUpdateTime` musi być `2026-09-07
-   16:01:47` (versionCode 68). iOS: aplikacja `com.swmansion.privatemind.smoke`
+16:01:47` (versionCode 68). iOS: aplikacja `com.swmansion.privatemind.smoke`
    zainstalowana o godzinie z wiadomości uruchamiającej. Inny build → stop i
    zgłoś.
 2. **Regresja poprawek** z `DEVICE_SMOKE_TEST_FIXES_R1.md`, tylko kroki „Na

@@ -34,9 +34,9 @@ the download" — true for `not_downloaded | downloading | error`, false for
 `ready` and `unknown`. A toggle sequence counter drops an offer that resolves
 after the user has already toggled web search off.
 
-Guarded by [__tests__/embeddingModelStore.test.ts](../__tests__/embeddingModelStore.test.ts)
+Guarded by [**tests**/embeddingModelStore.test.ts](../__tests__/embeddingModelStore.test.ts)
 (the waiter, the predicate) and
-[__tests__/ChatBar.test.tsx](../__tests__/ChatBar.test.tsx) — "does not offer
+[**tests**/ChatBar.test.tsx](../__tests__/ChatBar.test.tsx) — "does not offer
 the download while the model turns out to be on disk" and "drops a pending
 offer when web search is toggled off meanwhile" are red without the fix.
 
@@ -56,7 +56,7 @@ hot-swaps modules.
 
 Procedure, not a code fix: after editing any file that contains `'worklet'`
 functions, do a full JS reload (`r` in Metro or `debugger-reload-metro`), not
-a Fast Refresh. If the error shows up on a device that was *not* just edited
+a Fast Refresh. If the error shows up on a device that was _not_ just edited
 against, that is a different bug and worth a report.
 
 ## ⚠️ Native crash at 16:09 — `SIGSEGV` inside `LLM::generate`
@@ -136,7 +136,7 @@ confirmed it, and the sent bubble shows the sentence with a gap where the
 word should be. The word is present in the persisted message row.
 
 Not reproduced under instrumentation yet. Two hypotheses worth ruling out in
-order: the bubble renders the composer's last *displayed* text rather than
+order: the bubble renders the composer's last _displayed_ text rather than
 its committed value (a stale state from `onChangeText` vs. the composing
 region Android keyboards use for suggestions), or the word is rendered but
 in the bubble's background colour because a `Text` style is applied to a
@@ -163,7 +163,7 @@ to produce it, so the second token is a rare subword ("ć", "wniałem") rather
 than " z"; or the first two tokens are detokenised separately at the
 streaming boundary and a multi-byte sequence is cut. The first hypothesis
 predicts the fault follows this one word regardless of position; the second
-predicts it follows the *first* token whatever the word.
+predicts it follows the _first_ token whatever the word.
 
 Seen again in the release round of 2026-09-04: "Zgodnieć z dostarczonymi
 źródłami" opened the R-17 answer (chat 91, id 494), and the tester counted
@@ -226,8 +226,8 @@ jump at the first token, in the slot right above the answer:
    (T1 of the minimal round: zero results) left the placeholder without
    sources, so at the first token "Searched the web" and "Thinking…" both
    unmounted and the answer snapped up ~50 px into their place.
-3. **With web and sources:** "Thinking…" sat *below* the trace block, the
-   model name mounted *above* it on the first token — the block moved down
+3. **With web and sources:** "Thinking…" sat _below_ the trace block, the
+   model name mounted _above_ it on the first token — the block moved down
    one line as the answer appeared.
 
 Fixed in the same round: the model name renders from the start of the turn
@@ -237,7 +237,7 @@ and the trace block stays mounted on the last message for as long as its live
 trace exists, sources or not. `AnimatedChatLoading` lost its `inline` prop —
 it is always in flow now.
 
-Still open: the *clip* itself was not reproduced. If it comes back, the
+Still open: the _clip_ itself was not reproduced. If it comes back, the
 measurement is unchanged — `screen-recording-start` on the send, read
 `contentOffset.y` from the scroll handler and the assistant row's `layout.y`
 from `handleLastAssistantLayout` at the first token and 500 ms later. A
@@ -255,7 +255,6 @@ foreground transition (`AppState` → active with no keyboard showing) flip
 the same `keyboardGone` flag the UI-thread handler owns. The UI-thread
 path stays primary for the send case. If it strands again, capture the
 trigger first — the measurement below still applies.
-
 
 Reported again 2026-09-04: the keyboard dismisses, the composer bar and the
 list keep the keyboard's height under them, and the bottom of the screen is
@@ -337,12 +336,12 @@ bubble, paste — the text stays.
 **To verify in the test round (Pixel 10, this branch):**
 
 1. New chat, type `test echo`, send. Wait for the answer.
-2. Long-press the *user* bubble → Copy (or copy the text from anywhere).
+2. Long-press the _user_ bubble → Copy (or copy the text from anywhere).
 3. Tap the composer, long-press → Paste. PASS: `test echo` is in the field
    and stays; FAIL: the field shows the placeholder again.
 4. Repeat step 3 once more (second paste). Both must pass; before the fix,
    only the second did.
-5. Also send a message and, right after, paste a *different* text — it
+5. Also send a message and, right after, paste a _different_ text — it
    must stay too (the guard compares content, so this never failed; it is
    the regression check for the window).
 
@@ -362,12 +361,12 @@ to another chat before any search step appeared. A toast said "Couldn't
 find anything useful online — answering without the web." Back in the
 chat the question sits there with no answer, no "Thinking…", no Stop, no
 error, and the database has no assistant row. In the same session,
-leaving *after* the first `Searching "…"` step (R-12) let the turn finish
+leaving _after_ the first `Searching "…"` step (R-12) let the turn finish
 and the trace survive.
 
 Mechanism: the chat screen's blur cleanup calls `interrupt()` when the
 user leaves a chat that is generating or processing
-([`app/(drawer)/chat/[id].tsx`](../app/(drawer)/chat/[id].tsx)). That is
+([`app/(drawer)/chat/[id].tsx`](<../app/(drawer)/chat/[id].tsx>)). That is
 deliberate — leaving is treated like Stop. Since `a99aa6f`, Stop before the
 first token drops the placeholder and the trace in the same tick, so the
 turn vanishes cleanly. The abort also reaches the web search, which

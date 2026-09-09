@@ -10,27 +10,27 @@ jako macierz.
 **54 pytania: 9 języków × 6 kategorii**, każde w nowej rozmowie, z włączonym
 web search, na tym samym modelu i tym samym urządzeniu.
 
-| | |
-| --- | --- |
-| urządzenie | Pixel 10 (`56211FDCR005KT`), Android 16 |
-| model | Gemma 4 - 2B |
-| build bazowy | `versionCode=68`, bez poprawek z tej rundy |
-| języki | en, hi (Hinglish), de, es, fr, pt, it, tr, id |
-| mediana czasu odpowiedzi | 112 s |
-| komórki z faktycznym wyszukiwaniem | 54 / 54 |
-| błędy narzędziowe | 0 |
+|                                    |                                               |
+| ---------------------------------- | --------------------------------------------- |
+| urządzenie                         | Pixel 10 (`56211FDCR005KT`), Android 16       |
+| model                              | Gemma 4 - 2B                                  |
+| build bazowy                       | `versionCode=68`, bez poprawek z tej rundy    |
+| języki                             | en, hi (Hinglish), de, es, fr, pt, it, tr, id |
+| mediana czasu odpowiedzi           | 112 s                                         |
+| komórki z faktycznym wyszukiwaniem | 54 / 54                                       |
+| błędy narzędziowe                  | 0                                             |
 
 Sześć kategorii jest wspólnych dla wszystkich języków, żeby dało się je
 porównywać, i każda celuje w inne ryzyko:
 
-| kategoria | pytanie testowe | co sprawdza |
-| --- | --- | --- |
+| kategoria  | pytanie testowe                  | co sprawdza                                                  |
+| ---------- | -------------------------------- | ------------------------------------------------------------ |
 | population | liczba mieszkańców dużego miasta | trafienie w źródło z właściwego regionu, wyciągnięcie liczby |
-| price | cena iPhone 17 w danym kraju | lokalna waluta i jej zapis |
-| weather | pogoda dziś w stolicy | strony renderowane JavaScriptem |
-| current | kto obecnie sprawuje urząd | odróżnienie stanu bieżącego od listy historycznej |
-| list | składniki dania narodowego | czy wyliczanka dociera do modelu |
-| hours | godziny otwarcia zabytku | konkret praktyczny, łatwy do zweryfikowania |
+| price      | cena iPhone 17 w danym kraju     | lokalna waluta i jej zapis                                   |
+| weather    | pogoda dziś w stolicy            | strony renderowane JavaScriptem                              |
+| current    | kto obecnie sprawuje urząd       | odróżnienie stanu bieżącego od listy historycznej            |
+| list       | składniki dania narodowego       | czy wyliczanka dociera do modelu                             |
+| hours      | godziny otwarcia zabytku         | konkret praktyczny, łatwy do zweryfikowania                  |
 
 ### Czego ta runda nie mierzy
 
@@ -54,28 +54,28 @@ porównywać, i każda celuje w inne ryzyko:
 prawidłowa liczba w złym języku, trzy z czterech składników, pogoda bez
 temperatury. „Zła" to odpowiedź bezużyteczna albo myląca.
 
-| język | population | price | weather | current | list | hours |
-| --- | --- | --- | --- | --- | --- | --- |
-| en | dobra | dobra | dobra | **zła** | **zła** | **zła** |
-| hi | dobra | dobra | słaba | dobra | **zła** | dobra |
-| de | słaba | dobra | **zła** | **zła** | słaba | **zła** |
-| es | dobra | słaba | słaba | dobra | **zła** | dobra |
-| fr | dobra | dobra | **zła** | dobra | dobra | słaba |
-| pt | dobra | **zła** | dobra | słaba | **zła** | dobra |
-| it | słaba | słaba | dobra | **zła** | słaba | dobra |
-| tr | słaba | **zła** | dobra | dobra | dobra | dobra |
-| id | **zła** | słaba | słaba | **zła** | słaba | dobra |
+| język | population | price   | weather | current | list    | hours   |
+| ----- | ---------- | ------- | ------- | ------- | ------- | ------- |
+| en    | dobra      | dobra   | dobra   | **zła** | **zła** | **zła** |
+| hi    | dobra      | dobra   | słaba   | dobra   | **zła** | dobra   |
+| de    | słaba      | dobra   | **zła** | **zła** | słaba   | **zła** |
+| es    | dobra      | słaba   | słaba   | dobra   | **zła** | dobra   |
+| fr    | dobra      | dobra   | **zła** | dobra   | dobra   | słaba   |
+| pt    | dobra      | **zła** | dobra   | słaba   | **zła** | dobra   |
+| it    | słaba      | słaba   | dobra   | **zła** | słaba   | dobra   |
+| tr    | słaba      | **zła** | dobra   | dobra   | dobra   | dobra   |
+| id    | **zła**    | słaba   | słaba   | **zła** | słaba   | dobra   |
 
 Czytane po kolumnach:
 
-| kategoria | dobre | słabe | złe |
-| --- | --- | --- | --- |
-| hours | 6 | 1 | 2 |
-| population | 5 | 3 | 1 |
-| price | 4 | 3 | 2 |
-| weather | 4 | 3 | 2 |
-| current | 4 | 1 | **4** |
-| list | 2 | 3 | **4** |
+| kategoria  | dobre | słabe | złe   |
+| ---------- | ----- | ----- | ----- |
+| hours      | 6     | 1     | 2     |
+| population | 5     | 3     | 1     |
+| price      | 4     | 3     | 2     |
+| weather    | 4     | 3     | 2     |
+| current    | 4     | 1     | **4** |
+| list       | 2     | 3     | **4** |
 
 ## Pięć wniosków
 
@@ -85,7 +85,7 @@ Czytane po kolumnach:
 niż reszta. Po angielsku „What are the ingredients for a full English breakfast"
 dostało **„the ingredients are not detailed in the provided sources"**, a
 „What are the opening hours of the British Museum" — „I do not have the specific
-opening hours", przy źródle o tytule *british museum hours of operation*.
+opening hours", przy źródle o tytule _british museum hours of operation_.
 
 To znaczy, że wielojęzyczność nie jest tu główną zmienną. Gdyby patrzeć tylko na
 angielski, te same dwie dziury byłyby widoczne.
@@ -108,13 +108,13 @@ zanim model ją zobaczy.
 Cztery z dziewięciu odpowiedzi są złe, a tryby awarii są różne i wszystkie
 prowadzą do tego samego:
 
-| język | co wróciło |
-| --- | --- |
-| it | **Fernando Tambroni** — premier Włoch w 1960 roku, wzięty z wikipedycznej listy wszystkich premierów |
-| en | nazwisko z listy „UK Prime Ministers in Order (1721-2026): All 59" |
-| de | opis obowiązków **wicekanclerza** w zakresie informowania opinii publicznej |
-| pt | „39. prezydent od 1 stycznia 2023, z PT" — bez imienia i nazwiska |
-| id | „nie mam informacji, kto jest prezydentem" — przy źródle *8 Urutan Presiden Indonesia* |
+| język | co wróciło                                                                                           |
+| ----- | ---------------------------------------------------------------------------------------------------- |
+| it    | **Fernando Tambroni** — premier Włoch w 1960 roku, wzięty z wikipedycznej listy wszystkich premierów |
+| en    | nazwisko z listy „UK Prime Ministers in Order (1721-2026): All 59"                                   |
+| de    | opis obowiązków **wicekanclerza** w zakresie informowania opinii publicznej                          |
+| pt    | „39. prezydent od 1 stycznia 2023, z PT" — bez imienia i nazwiska                                    |
+| id    | „nie mam informacji, kto jest prezydentem" — przy źródle _8 Urutan Presiden Indonesia_               |
 
 Cztery z pięciu tych przypadków mają w źródłach listę historyczną. Piąty (de)
 trafił w artykuł o samym urzędzie.
@@ -131,10 +131,10 @@ Hinglish (6), którego żadna lista słów nie obejmuje.
 
 ### 5. Dwie ceny wyszły z błędem rzędu wielkości i nikt tego nie sprawdził
 
-| język | odpowiedź | co jest nie tak |
-| --- | --- | --- |
-| tr | „3966 TRY" | rząd wielkości za mało; prawdopodobnie rata |
-| id | „Rp17,249 juta" | 17 249 milionów rupii, czyli 17 miliardów |
+| język | odpowiedź       | co jest nie tak                             |
+| ----- | --------------- | ------------------------------------------- |
+| tr    | „3966 TRY"      | rząd wielkości za mało; prawdopodobnie rata |
+| id    | „Rp17,249 juta" | 17 249 milionów rupii, czyli 17 miliardów   |
 
 Weryfikacja liczb w obu przypadkach milczała, bo parser walut nie rozpoznawał
 ani `₺`, ani kodu `TRY`, ani prefiksu `Rp`. Znał sześć symboli walut i tylko
@@ -148,17 +148,17 @@ Dziewięć poprawek. Żadna nie dokłada listy słów per język — wszystkie s
 notacyjne (zapis liczb, walut, godzin, ASCII-owy zapis diakrytyków), albo
 opierają się o klasyfikację planera, który czyta pytanie w dowolnym języku.
 
-| # | commit | co naprawia | pomiar |
-| --- | --- | --- | --- |
-| 1 | `24c9da0` | detekcja języka: odmiana wyrazu, ASCII-owy zapis umlautów, remis rozstrzygany dłuższym dowodem | 40/54 → 43/54 |
-| 2 | `9c30c91` | waluty: symbol po kwocie, cała klasa `\p{Sc}`, kody ISO rynków aplikacji, cyfry rodzime | 4/9 → 9/9 lokalizacji |
-| 3 | `0c2c2ad` | liczby porównywane wartością, nie napisem | „9,188,200" = „9.188.200"; „10:00" = „10.00" |
-| 4 | `3580d60` | premia za wyliczankę uzbrajana przez `kind: howto` z planu | dowolny język |
-| 5 | `c22871b` | instrukcje kształtu odpowiedzi uzbrajane z planu | de: 0/3 → 2/3, tr: 0/3 → 2/3 |
-| 6 | `e41c5b1` | lista historyczna rozpoznawana po roku w tytule | „seit 1949", „desde 1889" |
-| 7 | `985ebde` | filtr menu przestaje kasować listy składników bez ilości | rozróżnia po linkach |
-| 8 | `4d08baf` | pytanie o urząd ma być odpowiedziane nazwiskiem | dotyczy wszystkich języków |
-| 9 | `81f13fd` | zapasowa instrukcja językowa mówi wprost: nierozpoznany ≠ angielski | dotyczy 11 pytań bez detekcji |
+| #   | commit    | co naprawia                                                                                    | pomiar                                       |
+| --- | --------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| 1   | `24c9da0` | detekcja języka: odmiana wyrazu, ASCII-owy zapis umlautów, remis rozstrzygany dłuższym dowodem | 40/54 → 43/54                                |
+| 2   | `9c30c91` | waluty: symbol po kwocie, cała klasa `\p{Sc}`, kody ISO rynków aplikacji, cyfry rodzime        | 4/9 → 9/9 lokalizacji                        |
+| 3   | `0c2c2ad` | liczby porównywane wartością, nie napisem                                                      | „9,188,200" = „9.188.200"; „10:00" = „10.00" |
+| 4   | `3580d60` | premia za wyliczankę uzbrajana przez `kind: howto` z planu                                     | dowolny język                                |
+| 5   | `c22871b` | instrukcje kształtu odpowiedzi uzbrajane z planu                                               | de: 0/3 → 2/3, tr: 0/3 → 2/3                 |
+| 6   | `e41c5b1` | lista historyczna rozpoznawana po roku w tytule                                                | „seit 1949", „desde 1889"                    |
+| 7   | `985ebde` | filtr menu przestaje kasować listy składników bez ilości                                       | rozróżnia po linkach                         |
+| 8   | `4d08baf` | pytanie o urząd ma być odpowiedziane nazwiskiem                                                | dotyczy wszystkich języków                   |
+| 9   | `81f13fd` | zapasowa instrukcja językowa mówi wprost: nierozpoznany ≠ angielski                            | dotyczy 11 pytań bez detekcji                |
 
 ### Pomiar, który uzasadnia poprawki 4, 5 i 6
 
@@ -166,15 +166,15 @@ Przed zmianą instrukcje sterujące kształtem odpowiedzi były zamknięte za
 regexami polskich i angielskich słów. Zmierzone przez zbudowanie promptu dla
 pytań z baterii:
 
-| pytanie | przed | po |
-| --- | --- | --- |
-| de/current | — | current-state |
-| de/list | — | procedure |
-| tr/current | — | current-state |
-| tr/list | — | procedure |
-| id/list | — | procedure |
-| es/current | — | current-state |
-| en, pl | komplet | komplet |
+| pytanie    | przed   | po            |
+| ---------- | ------- | ------------- |
+| de/current | —       | current-state |
+| de/list    | —       | procedure     |
+| tr/current | —       | current-state |
+| tr/list    | —       | procedure     |
+| id/list    | —       | procedure     |
+| es/current | —       | current-state |
+| en, pl     | komplet | komplet       |
 
 Niemiecki, turecki i indonezyjski użytkownik nie dostawał **żadnej** z tych
 instrukcji. Hiszpański, francuski, włoski i portugalski dostawały jedną, i to
@@ -189,7 +189,7 @@ oraz `de/population`. Jeden przebieg na komórkę, zero usterek narzędziowych.
 ### Czego ta weryfikacja nie ustala
 
 **Nie sprawdzam, czy nazwisko jest prawdziwe.** Nie mam niezależnego źródła
-prawdy na wrzesień 2026, więc oceniam wyłącznie *tryb awarii*: czy odpowiedź
+prawdy na wrzesień 2026, więc oceniam wyłącznie _tryb awarii_: czy odpowiedź
 w ogóle podaje osobę i czy pochodzi ze strony o obecnym stanie, czy z listy
 historycznej. Jedyny przypadek, który mogę nazwać wprost błędnym, to bazowe
 „Fernando Tambroni" — premier z 1960 roku nie może być obecny.
@@ -199,12 +199,12 @@ historycznej. Jedyny przypadek, który mogę nazwać wprost błędnym, to bazowe
 Najmocniejszy dowód jest w źródłach, nie w odpowiedziach: ranking przestał
 wybierać listy historyczne.
 
-| komórka | źródło przed | źródło po | odpowiedź po |
-| --- | --- | --- | --- |
-| en | „List of UK Prime Ministers in Order (1721-2026): All 59" | „Prime Minister of the United Kingdom \| Current Leader" | Keir Starmer |
-| de | „Bundeskanzler (Deutschland) — Wikipedia" | „Das Bundeskabinett im Überblick \| Bundesregierung" | Friedrich Merz |
-| id | „8 Urutan Presiden Indonesia" | „President of Indonesia \| Current Leader" | Joko Widodo |
-| hi | „List of All Prime Ministers of India (1947-2026)" | „Prime Minister of India" | Narendra Modi, **w Hinglish** |
+| komórka | źródło przed                                              | źródło po                                                | odpowiedź po                  |
+| ------- | --------------------------------------------------------- | -------------------------------------------------------- | ----------------------------- |
+| en      | „List of UK Prime Ministers in Order (1721-2026): All 59" | „Prime Minister of the United Kingdom \| Current Leader" | Keir Starmer                  |
+| de      | „Bundeskanzler (Deutschland) — Wikipedia"                 | „Das Bundeskabinett im Überblick \| Bundesregierung"     | Friedrich Merz                |
+| id      | „8 Urutan Presiden Indonesia"                             | „President of Indonesia \| Current Leader"               | Joko Widodo                   |
+| hi      | „List of All Prime Ministers of India (1947-2026)"        | „Prime Minister of India"                                | Narendra Modi, **w Hinglish** |
 
 Trzy z tych czterech nie podawały wcześniej żadnej osoby albo brały ją z listy.
 Czwarta (hi) odpowiadała po angielsku, teraz odpowiada w języku pytania.
@@ -233,13 +233,13 @@ Sześć z ośmiu komórek dostało **dokładnie te same źródła** co poprzedni
 odpowiedzi praktycznie bez zmian. Poprawka filtra menu nie ruszyła tej
 kategorii.
 
-| komórka | zmiana |
-| --- | --- |
-| de | jedyna poprawa: zamiast zdania prozą wróciła lista, ale dwupozycyjna |
-| fr | bez zmian, nadal poprawna (strona podaje ilości) |
-| en, es, hi, it | bez zmian, nadal złe albo niepełne |
-| tr | **gorzej**: „malzemeler anlatılmaktadır" („składniki są opisane") |
-| id | **gorzej**: wróciły *narzędzia* kuchenne zamiast składników |
+| komórka        | zmiana                                                               |
+| -------------- | -------------------------------------------------------------------- |
+| de             | jedyna poprawa: zamiast zdania prozą wróciła lista, ale dwupozycyjna |
+| fr             | bez zmian, nadal poprawna (strona podaje ilości)                     |
+| en, es, hi, it | bez zmian, nadal złe albo niepełne                                   |
+| tr             | **gorzej**: „malzemeler anlatılmaktadır" („składniki są opisane")    |
+| id             | **gorzej**: wróciły _narzędzia_ kuchenne zamiast składników          |
 
 W `tr` i `id` wyszukiwarka zwróciła **inne strony** niż w przebiegu bazowym
 (turecka — wersja z filmem, indonezyjska — poradnik o sprzęcie). Tych dwóch
