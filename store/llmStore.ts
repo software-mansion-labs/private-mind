@@ -870,6 +870,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       }));
     }
 
+    const abortController = new AbortController();
+    sendAbortController = abortController;
+    const stillOurs = () => sendAbortController === abortController;
+
     try {
       if (!isRetry) {
         const userMessageId = await persistMessage(db, {
@@ -887,8 +891,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         }));
       }
 
-      const abortController = new AbortController();
-      sendAbortController = abortController;
       const built = await buildSources(abortController.signal);
       const {
         context,
@@ -1332,7 +1334,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           timeToFirstToken: responsePerformance.timeToFirstToken,
         });
 
-        if (get().activeChatId === chatId) {
+        if (!stillOurs()) {
+          failedGenerationRequest = null;
+        } else if (get().activeChatId === chatId) {
           updateChatStateForGeneration(set, 'complete', {
             assistantMessage: {
               ...assistantPlaceholder,
@@ -1369,16 +1373,18 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             }
           });
         }
-      } else {
+      } else if (stillOurs()) {
         markGenerationFailed(new Error(describeGenerationFailure()), {
           unload: false,
         });
       }
     } catch (e) {
-      const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;
-      markGenerationFailed(e, { showToUser: !wasInterrupted });
+      if (stillOurs()) {
+        const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;
+        markGenerationFailed(e, { showToUser: !wasInterrupted });
+      }
     } finally {
-      sendAbortController = null;
+      if (stillOurs()) sendAbortController = null;
     }
     return true;
   },

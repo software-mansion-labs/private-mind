@@ -1660,6 +1660,67 @@ describe('sendChatMessage — settings hydration barrier', () => {
   });
 });
 
+describe('a turn that was superseded before it settled', () => {
+  const settings = { systemPrompt: 'be helpful' };
+
+  const until = async (ready: () => boolean) => {
+    for (let tick = 0; tick < 50 && !ready(); tick++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    if (!ready()) throw new Error('the store never reached the expected state');
+  };
+
+  beforeEach(async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+  });
+
+  it('leaves the running turn alone when an interrupted one rejects late', async () => {
+    let rejectFirst!: (reason: Error) => void;
+    let resolveSecond!: (answer: string) => void;
+    mockInstance.generate
+      .mockReturnValueOnce(
+        new Promise<string>((_, reject) => {
+          rejectFirst = reject;
+        })
+      )
+      .mockReturnValueOnce(
+        new Promise<string>((resolve) => {
+          resolveSecond = resolve;
+        })
+      );
+
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    const first = useLLMStore
+      .getState()
+      .sendChatMessage('question in chat one', 1, noSources, settings);
+    await until(() => mockInstance.generate.mock.calls.length === 1);
+
+    useLLMStore.getState().interrupt();
+
+    const second = useLLMStore
+      .getState()
+      .sendChatMessage('question in chat two', 2, noSources, settings);
+    await until(() => mockInstance.generate.mock.calls.length === 2);
+    expect(useLLMStore.getState().generatingForChatId).toBe(2);
+
+    rejectFirst(new Error('interrupted'));
+    await first;
+
+    expect(useLLMStore.getState().generatingForChatId).toBe(2);
+    expect(useLLMStore.getState().isGenerating).toBe(true);
+    expect(useLLMStore.getState().generationError).toBeNull();
+
+    resolveSecond('The answer for chat two.');
+    await second;
+  });
+});
+
 describe('sendEventMessage', () => {
   it('appends event message to activeChatMessages', async () => {
     mockPersistMessage.mockResolvedValue(77);
