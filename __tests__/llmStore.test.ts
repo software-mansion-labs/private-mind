@@ -1598,7 +1598,6 @@ describe('sendChatMessage', () => {
       .getState()
       .sendChatMessage('hello', 1, noSources, settings);
 
-    // complete called without perf data — last message should not have timeToFirstToken
     const messages = useLLMStore.getState().activeChatMessages;
     const lastMsg = messages[messages.length - 1];
     expect(lastMsg?.timeToFirstToken).toBeUndefined();
@@ -1661,8 +1660,6 @@ describe('sendChatMessage — settings hydration barrier', () => {
   });
 });
 
-// ─── sendEventMessage ─────────────────────────────────────────────────────────
-
 describe('sendEventMessage', () => {
   it('appends event message to activeChatMessages', async () => {
     mockPersistMessage.mockResolvedValue(77);
@@ -1683,8 +1680,6 @@ describe('sendEventMessage', () => {
     expect(mockPersistMessage).not.toHaveBeenCalled();
   });
 });
-
-// ─── setActiveChatId ──────────────────────────────────────────────────────────
 
 describe('setActiveChatId', () => {
   it('drops the previous chat’s live trace when another chat is opened, so the saved trace is rebuilt from the database (S8.11)', async () => {
@@ -1852,8 +1847,6 @@ describe('setActiveChatId', () => {
   });
 });
 
-// ─── refreshActiveChatMessages ────────────────────────────────────────────────
-
 describe('refreshActiveChatMessages', () => {
   it('reloads messages for the active chat', async () => {
     const fresh = [
@@ -1873,8 +1866,6 @@ describe('refreshActiveChatMessages', () => {
     expect(mockGetChatMessages).not.toHaveBeenCalled();
   });
 });
-
-// ─── sendChatMessage imagePath ────────────────────────────────────────────────
 
 describe('sendChatMessage imagePath', () => {
   const settings = { systemPrompt: '' };

@@ -5,9 +5,6 @@ import {
 } from '../utils/web/webResultsToContext';
 import type { WebSearchResult } from '../utils/web/types';
 
-// Shaped like the Wikipedia page that made the model answer "Kraków ma 4 000
-// mieszkańców": a dense run of historical figures, and one sentence with the
-// current one.
 const HISTORY_HEAVY = [
   'It doubled between 1100 and 1300 from 5,000 to 10,000, and in 1400 counted 14,000 inhabitants.',
   'By the early 17th century the population had reached 28,000 inhabitants.',
@@ -85,10 +82,6 @@ describe('what the source row records', () => {
 });
 
 describe('a page fetched for its prices must give them up', () => {
-  // Trimmed from the real szymoszkowa.pl price list. The resort roll-call
-  // matches six of the question's words; a "150,00 PLN" cell matches none. On
-  // device that put the roll-call in the prompt and no price at all, and the
-  // model correctly answered that it had no prices.
   const PAGE = fs.readFileSync(
     `${__dirname}/fixtures/skiPassPricing.txt`,
     'utf8'

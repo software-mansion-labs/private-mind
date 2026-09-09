@@ -98,8 +98,6 @@ describe('useKeyboardLift', () => {
     expect(result.current.value).toBe(0);
   });
 
-  // Sending a message dismisses the keyboard and then holds the JS thread for
-  // seconds. The bar was left stranded because the reset rode a JS listener.
   it('resets without any JS-thread keyboard event', () => {
     const listeners = new Map<string, () => void>();
     const spy = jest.spyOn(Keyboard, 'addListener').mockImplementation(((
@@ -171,7 +169,9 @@ describe('useKeyboardLift', () => {
     visibleSpy.mockRestore();
   });
 
-  it('lifts again as soon as the keyboard starts coming back', () => {
+  it('lifts again as the keyboard returns, whichever sign reports its height', () => {
+    const AS_RAW_HEIGHT = 346;
+    const AS_TRANSLATE = -346;
     mockInsetsBottom = 34;
     const { result, rerender } = renderHook(() => useKeyboardLift());
 
@@ -179,10 +179,8 @@ describe('useKeyboardLift', () => {
     rerender({});
     expect(result.current.value).toBe(0);
 
-    // The library reports the height as a translate here and as a raw height
-    // elsewhere, so the reset must not depend on its sign.
-    keyboardHandler.onMove!({ height: 346, progress: 1 });
-    mockHeight.value = -346;
+    keyboardHandler.onMove!({ height: AS_RAW_HEIGHT, progress: 1 });
+    mockHeight.value = AS_TRANSLATE;
     mockProgress.value = 1;
     rerender({});
 

@@ -869,8 +869,6 @@ describe('paste functionality', () => {
   });
 });
 
-// ─── web search toggle vs. embedding model download prompt ────────────────────
-
 describe('web search toggle and the embedding download sheet', () => {
   const flush = () => act(async () => {});
 
