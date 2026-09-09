@@ -48,17 +48,20 @@ Pixel 10, Gemma 4 – 2B, build z commitami do `a120dfc` (bez `953c216`, który
 powstał z traceʼów tej rundy i został sprawdzony osobnym buildem, niżej). Poprzednia runda: **25/42 = 60 %**. Ta:
 **30/42 = 71 %**. Sparowane pytanie po pytaniu: **+8, −3, 31 bez zmian**.
 
-| kategoria               | poprzednio | teraz   |
-| ----------------------- | ---------- | ------- |
-| `place`, `spec`, `stat` | 4/4        | 4/4     |
-| `date`                  | 2/4        | 3/4     |
-| `hours`                 | 3/4        | 3/4     |
-| `define`                | 4/4        | 3/4     |
-| `price`                 | 3/4        | 3/4     |
-| `list`                  | **0/4**    | **3/4** |
-| `absent`                | **0/2**    | **1/2** |
-| `steps`                 | 1/4        | 1/4     |
-| `compare`               | 1/4        | 1/4     |
+| kategoria | poprzednio | teraz     |
+| --------- | ---------- | --------- |
+| `list`    | **0/4**    | **3/4**   |
+| `stat`    | 3/4        | **4/4**   |
+| `date`    | 2/4        | **3/4**   |
+| `absent`  | **0/2**    | **1/2**   |
+| `place`   | 4/4        | 4/4       |
+| `spec`    | 4/4        | 4/4       |
+| `hours`   | 3/4        | 3/4       |
+| `price`   | 3/4        | 3/4       |
+| `steps`   | 1/4        | 1/4       |
+| `compare` | 1/4        | 1/4       |
+| `define`  | 4/4        | **3/4**   |
+| suma      | **25/42**  | **30/42** |
 
 Cztery pytania `current` ocenione ręcznie, wszystkie trafne i tym razem
 jednoznaczne — poprzednio jedno odpowiadało „Starmer/Burnham", teraz samym
