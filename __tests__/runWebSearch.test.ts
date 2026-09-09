@@ -34,6 +34,7 @@ import type { WebSearchProgressEvent } from '../utils/web/runWebSearch';
 import { extractArticle } from '../utils/web/url/extractArticle';
 import { clearWebCaches } from '../utils/web/cache/webCache';
 import { WEB_SEARCH_MAX_RESULTS } from '../constants/web';
+import { sourcesPresentInContext } from '../utils/contextUtils';
 
 const axisOf = (text: string): number[] => {
   const lower = text.toLowerCase();
@@ -159,7 +160,8 @@ describe('runWebSearch', () => {
         asOf: '2026-07-20',
       }),
     });
-    expect(out.context).toEqual(['100 USD = 85.82 EUR']);
+    expect(sourcesPresentInContext(out.context[0])).toContain('Frankfurter');
+    expect(out.context[0]).toContain('100 USD = 85.82 EUR');
     expect(out.sourceDocuments[0].url).toBe('https://frankfurter.dev');
     expect(out.telemetry.finalLabel).toBe('correct');
     expect(generate).not.toHaveBeenCalled();

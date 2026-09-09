@@ -56,8 +56,7 @@ const codeMentions = (question: string): CurrencyMention[] => {
     const start = match.index ?? 0;
     const end = start + match[0].length;
     if (isLetter(question[start - 1]) || isLetter(question[end])) continue;
-    const code = match[0].toUpperCase();
-    if (CODES.has(code)) found.push({ code, start, end });
+    if (CODES.has(match[0])) found.push({ code: match[0], start, end });
   }
   return found;
 };

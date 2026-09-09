@@ -57,9 +57,25 @@ describe('reading a conversion out of a question, whatever language it is in', (
     });
   });
 
-  it('refuses a question that names a third currency, so a word like "try" cannot hijack it', () => {
+  it('ignores a lowercase word that happens to spell a currency code', () => {
+    expect(
+      readCurrencyRequest('Ron sent me 100 EUR, is that a lot?')
+    ).toBeUndefined();
+    expect(
+      readCurrencyRequest('How much should I try to save, 100 EUR?')
+    ).toBeUndefined();
     expect(
       readCurrencyRequest('Can you try to convert 100 USD to EUR?')
+    ).toEqual({ amount: 100, from: 'USD', to: 'EUR' });
+  });
+
+  it('gives up the fast path rather than guess at a code written in lowercase', () => {
+    expect(readCurrencyRequest('100 usd in eur')).toBeUndefined();
+  });
+
+  it('refuses a question that names a third currency', () => {
+    expect(
+      readCurrencyRequest('Convert 100 USD to EUR or GBP?')
     ).toBeUndefined();
   });
 

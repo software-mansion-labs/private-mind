@@ -77,6 +77,8 @@ import {
   SEARCH_REGION_BY_LANGUAGE,
 } from '../../constants/web';
 import { detectQuestionLanguage } from '../questionLanguage';
+import { sourceBlock } from '../contextUtils';
+import { neutralizeDelimiters } from './security/untrustedContent';
 
 export interface WebSearchProgressEvent {
   type:
@@ -266,7 +268,13 @@ const searchWithCleanup = async (
     emit({ type: 'reading', url: quote.sourceUrl, title: quote.sourceTitle });
     emit({ type: 'done' });
     return {
-      context: [quote.text],
+      context: [
+        sourceBlock(
+          0,
+          neutralizeDelimiters(quote.sourceTitle),
+          neutralizeDelimiters(quote.text)
+        ),
+      ],
       sourceDocuments: [
         {
           kind: 'web',
