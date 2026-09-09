@@ -783,11 +783,6 @@ export const planWebSearch = async (
     queries
       .filter((q) => !isLeakedQuery(q, groundedText))
       .map((q) => regroundYears(q, `${query}\n${convo}`, today))
-      // The planner is told to "resolve pronouns/references from the
-      // conversation," but a small model doesn't reliably do that itself —
-      // this is the same under-specified-follow-up gap the verbatim path
-      // has, just reached via a query the LLM did produce rather than one
-      // it failed to.
       .map((q) => carryReferentIntoQuery(q, history, opts?.digest))
       .map(anchorTopic)
       .map((q) => withSiteRestriction(q, siteRestriction));
