@@ -32,7 +32,7 @@ export const DEFAULT_PROFILE: ModelProfile = {
 
 export const WEB_PLANNER_MATRIX: Record<string, WebPlannerMode> = {
   'Qwen 3 - 0.6B': 'verbatim',
-  'Qwen 3 - 1.7B': 'llm',
+  'Qwen 3 - 1.7B': 'verbatim',
   'Qwen 2.5 - 0.5B': 'verbatim',
   'Qwen 2.5 - 1.5B': 'llm',
   'Qwen 2.5 - 3B': 'llm',
