@@ -814,6 +814,49 @@ describe('a step that repeats none of the question’s words (live-found: soft b
   });
 });
 
+describe('a table of hours that repeats none of the question’s words (live-found: Louvre)', () => {
+  const page = [
+    'Hours & admission Plan and book your visit Visit | Hours & admission',
+    'When to visit',
+    'Ticket prices',
+    'Memberships',
+    'Musée du Louvre',
+    'The museum is open today from 9:00 AM to 9:00 PM',
+    '9:00 AM to 6:00 PM',
+    'Monday, Thursday, Saturday and Sunday',
+    '9:00 AM to 9:00 PM',
+    'Wednesday and Friday',
+    'Closed',
+    'Tuesday',
+    'Last entry: 1 hour before closing',
+    'Clearing of rooms: 30 minutes before closing',
+    'Public holidays: the Louvre is closed on 1 January, 1 May and 25 December.',
+    'The Cour Napoléon is open from 7:30 a.m. to 10:00 p.m.',
+    'The Cour Carrée is open from 7:30 a.m. to 7:45 p.m.',
+    'Tuileries Garden',
+    '7:00 AM to 8:30 PM',
+    'From 1 to 14 September 2026',
+    'There are two public toilets located in the Tuileries Garden, both free and accessible during the opening hours of the garden itself.',
+    'Four additional public toilets are available during the summer months.',
+    'Musée national Eugène-Delacroix',
+    '12:00 PM to 5:30 PM',
+    'Monday, Wednesday, Thursday, Friday',
+  ].join('\n');
+
+  it('keeps the rows between the heading and the line about closing', () => {
+    const out = selectRelevantContent(
+      page,
+      'what time does the Louvre open',
+      420,
+      { intent: 'place' }
+    );
+
+    expect(out).toContain('Last entry: 1 hour before closing');
+    expect(out).toContain('9:00 AM to 6:00 PM');
+    expect(out).toContain('Monday, Thursday, Saturday and Sunday');
+  });
+});
+
 describe('the budget follows the material, not only the rank', () => {
   const longPage = (n: number) => ({
     url: `https://site${n}.example/x`,

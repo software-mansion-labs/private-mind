@@ -59,7 +59,7 @@ const RECORD_MAX_PASSAGES = 8;
 const RECORD_MAX_CHARS = 400;
 
 const FRAGMENT_MAX_CHARS = 120;
-const BRIDGE_MAX_CHARS = 200;
+const BRIDGE_MAX_CHARS = 320;
 
 const ENDS_SENTENCE = /[.!?。！？।॥۔؟]["'”’)\]]?$/;
 
@@ -520,22 +520,32 @@ export const selectRelevantContent = (
   const scoreOf = new Map(
     scored.map((passage) => [passage.index, passage.score])
   );
-  const neighbourStrength = (index: number): number =>
-    Math.min(scoreOf.get(index - 1) ?? 0, scoreOf.get(index + 1) ?? 0);
-  const bridgesAGap = (index: number): boolean =>
-    !takenSet.has(index) &&
-    takenSet.has(index - 1) &&
-    takenSet.has(index + 1) &&
-    all[index]!.length <= BRIDGE_MAX_CHARS;
+  const strengthBefore = (start: number): number => scoreOf.get(start - 1) ?? 0;
+  const gapsBetweenTaken = (): number[][] => {
+    const gaps: number[][] = [];
+    let run: number[] = [];
+    all.forEach((_, index) => {
+      if (!takenSet.has(index)) {
+        run.push(index);
+        return;
+      }
+      if (run.length > 0 && takenSet.has(run[0]! - 1)) gaps.push(run);
+      run = [];
+    });
+    return gaps.filter(
+      (gap) =>
+        gap.reduce((total, index) => total + costOf(index), 0) <=
+        BRIDGE_MAX_CHARS
+    );
+  };
   for (let bridged = true; bridged;) {
     bridged = false;
-    const gaps = all
-      .map((_, index) => index)
-      .filter(bridgesAGap)
-      .sort((a, b) => neighbourStrength(b) - neighbourStrength(a) || a - b);
-    for (const index of gaps) {
+    const gaps = gapsBetweenTaken().sort(
+      (a, b) => strengthBefore(b[0]!) - strengthBefore(a[0]!) || a[0]! - b[0]!
+    );
+    for (const gap of gaps) {
       const before = takenSet.size;
-      take(index);
+      gap.forEach(take);
       if (takenSet.size > before) bridged = true;
     }
   }
