@@ -59,6 +59,7 @@ const RECORD_MAX_PASSAGES = 8;
 const RECORD_MAX_CHARS = 400;
 
 const FRAGMENT_MAX_CHARS = 120;
+const BRIDGE_MAX_CHARS = 200;
 
 const ENDS_SENTENCE = /[.!?。！？।॥۔؟]["'”’)\]]?$/;
 
@@ -515,6 +516,29 @@ export const selectRelevantContent = (
         a.index - b.index
     );
   for (const passage of fillers) take(passage.index);
+
+  const scoreOf = new Map(
+    scored.map((passage) => [passage.index, passage.score])
+  );
+  const neighbourStrength = (index: number): number =>
+    Math.min(scoreOf.get(index - 1) ?? 0, scoreOf.get(index + 1) ?? 0);
+  const bridgesAGap = (index: number): boolean =>
+    !takenSet.has(index) &&
+    takenSet.has(index - 1) &&
+    takenSet.has(index + 1) &&
+    all[index]!.length <= BRIDGE_MAX_CHARS;
+  for (let bridged = true; bridged;) {
+    bridged = false;
+    const gaps = all
+      .map((_, index) => index)
+      .filter(bridgesAGap)
+      .sort((a, b) => neighbourStrength(b) - neighbourStrength(a) || a - b);
+    for (const index of gaps) {
+      const before = takenSet.size;
+      take(index);
+      if (takenSet.size > before) bridged = true;
+    }
+  }
 
   const excerpt = taken
     .sort((a, b) => a - b)

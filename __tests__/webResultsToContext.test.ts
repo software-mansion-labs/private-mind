@@ -777,6 +777,43 @@ describe('webResultsToContext — context budget', () => {
   });
 });
 
+describe('a step that repeats none of the question’s words (live-found: soft boiled egg)', () => {
+  const method = [
+    'about eggs.',
+    'Our content is educational and is not a substitute for personalized advice.',
+    'Soft Boiled Eggs (How to Make Perfect Runny Yolk Every Time) Bring water to a gentle boil (not a violent rolling boil).',
+    'Lower the eggs carefully into the water using a spoon.',
+    'Wait for the water to return to a gentle boil, then start your timer.',
+    'Cook for 4-6 minutes depending on your preferred texture.',
+    'Transfer the eggs straight to an ice bath for at least 5 minutes.',
+    'Both work. However,',
+  ].join(' ');
+
+  it('keeps the step between two steps it already kept', () => {
+    const out = selectRelevantContent(
+      method,
+      'how to make a soft boiled egg',
+      420,
+      { intent: 'howto', expects: ['steps for soft boiled egg'] }
+    );
+
+    expect(out).toContain('start your timer');
+    expect(out).toContain('ice bath');
+    expect(out).toContain('Cook for 4-6 minutes');
+  });
+
+  it('does not bridge a gap whose neighbours are the weakest passages', () => {
+    const out = selectRelevantContent(
+      method,
+      'how to make a soft boiled egg',
+      330,
+      { intent: 'howto', expects: ['steps for soft boiled egg'] }
+    );
+
+    expect(out).not.toContain('not a substitute for personalized advice');
+  });
+});
+
 describe('the budget follows the material, not only the rank', () => {
   const longPage = (n: number) => ({
     url: `https://site${n}.example/x`,
