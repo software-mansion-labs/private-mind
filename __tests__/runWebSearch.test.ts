@@ -240,7 +240,7 @@ describe('runWebSearch', () => {
     log.mockRestore();
   });
 
-  it('searches the planner’s discarded queries when the verbatim question finds nothing', async () => {
+  it('searches a plan query the language filter discarded, when the question finds nothing', async () => {
     const specPage: WebSearchResult = {
       title: 'Samsung QE65QN90D specs',
       url: 'https://specs.example/qn90d',
@@ -277,26 +277,25 @@ describe('runWebSearch', () => {
     const specPage: WebSearchResult = {
       title: 'Samsung QE65QN90D — dane techniczne',
       url: 'https://sklep.example/qn90d',
-      snippet: 'Samsung QE65QN90D częstotliwość odświeżania 144 Hz',
-      content:
-        'Samsung QE65QN90D częstotliwość odświeżania 144 Hz, 4K. '.repeat(12),
+      snippet: 'Samsung QE65QN90D refresh rate 144 Hz',
+      content: 'Samsung QE65QN90D refresh rate 144 Hz, 4K. '.repeat(12),
     };
     const provider = new MockProvider({
-      'Samsung QE65QN90D częstotliwość odświeżania': [specPage],
+      'Samsung QE65QN90D refresh rate': [specPage],
     });
     const out = await runWebSearch({
-      query: 'Jaka częstotliwość odświeżania ma Samsung QE65QN90D?',
+      query: 'What refresh rate does the Samsung QE65QN90D have?',
       history: [],
       provider,
       embeddings: fakeEmbeddings,
       embeddingModelReady: true,
       generate: async () =>
-        '{"needs_search": true, "intent": "TV refresh rate", "kind": "specs", "queries": ["Jaka częstotliwość odświeżania ma Samsung QE65QN90D?"], "expects": ["częstotliwość odświeżania"]}',
+        '{"needs_search": true, "intent": "TV refresh rate", "kind": "specs", "queries": ["What refresh rate does the Samsung QE65QN90D have?"], "expects": ["refresh rate"]}',
       today: '2026-07-20',
     });
     expect(provider.calls).toEqual([
-      'Jaka częstotliwość odświeżania ma Samsung QE65QN90D?',
-      'Samsung QE65QN90D częstotliwość odświeżania',
+      'What refresh rate does the Samsung QE65QN90D have?',
+      'Samsung QE65QN90D refresh rate',
     ]);
     expect(out.sourceDocuments.map((doc) => doc.url)).toEqual([specPage.url]);
   });
@@ -436,10 +435,10 @@ describe('runWebSearch', () => {
 
   it('drops results whose host does not match a site named in the question', async () => {
     const provider = new MockProvider({
-      'transfermarkt najwięcej bramek dla Polski site:transfermarkt.pl': [
+      'transfermarkt top scorer for Poland site:transfermarkt.com': [
         {
           title: 'Transfermarkt page',
-          url: 'https://www.transfermarkt.pl/poland/topscorer',
+          url: 'https://www.transfermarkt.com/poland/topscorer',
           snippet: 'Poland top scorer this season on Transfermarkt',
         },
         {
@@ -450,18 +449,17 @@ describe('runWebSearch', () => {
       ],
     });
     const out = await runWebSearch({
-      query:
-        'sprawdź na stronie transfermarkt.pl kto strzelił najwięcej bramek dla Polski',
+      query: 'check on transfermarkt.com who is the top scorer for Poland',
       history: [],
       provider,
       embeddings: fakeEmbeddings,
       embeddingModelReady: true,
       generate: async () =>
-        '{"needs_search": true, "intent": "poland top scorer", "queries": ["transfermarkt najwięcej bramek dla Polski"]}',
+        '{"needs_search": true, "intent": "poland top scorer", "queries": ["transfermarkt top scorer for Poland"]}',
       today: '2026-07-20',
     });
     expect(out.sourceDocuments).toHaveLength(1);
-    expect(out.sourceDocuments[0]!.url).toContain('transfermarkt.pl');
+    expect(out.sourceDocuments[0]!.url).toContain('transfermarkt.com');
   });
 
   describe('when a page cannot be read', () => {
@@ -474,7 +472,7 @@ describe('runWebSearch', () => {
 
     it('searches the subject again away from the host that blocked the reader', async () => {
       const provider = new MockProvider({
-        'Samsung Galaxy S25 cena': [bareResult('https://shop.example/s25')],
+        'Samsung Galaxy S25 price': [bareResult('https://shop.example/s25')],
         'Samsung Galaxy S25 -site:shop.example': [
           bareResult('https://samsung.com/s25'),
         ],
@@ -487,7 +485,7 @@ describe('runWebSearch', () => {
       const events: WebSearchProgressEvent[] = [];
 
       const out = await runWebSearch({
-        query: 'Samsung Galaxy S25 cena',
+        query: 'Samsung Galaxy S25 price',
         history: [],
         provider,
         embeddings: null,
@@ -510,7 +508,7 @@ describe('runWebSearch', () => {
 
     it('scores the recovered pages once, together with the first round, from their raw text', async () => {
       const provider = new MockProvider({
-        'Samsung Galaxy S25 cena': [bareResult('https://shop.example/s25')],
+        'Samsung Galaxy S25 price': [bareResult('https://shop.example/s25')],
         'Samsung Galaxy S25 -site:shop.example': [
           bareResult('https://samsung.com/s25'),
         ],
@@ -523,7 +521,7 @@ describe('runWebSearch', () => {
       (retrieveWebPassages as jest.Mock).mockClear();
 
       const out = await runWebSearch({
-        query: 'Samsung Galaxy S25 cena',
+        query: 'Samsung Galaxy S25 price',
         history: [],
         provider,
         embeddings: fakeEmbeddings,
@@ -547,13 +545,13 @@ describe('runWebSearch', () => {
 
     it('records why the page could not be read, and says so on the way past', async () => {
       const provider = new MockProvider({
-        'Samsung Galaxy S25 cena': [bareResult('https://shop.example/s25')],
+        'Samsung Galaxy S25 price': [bareResult('https://shop.example/s25')],
       });
       readableExcept(() => new Error('Fetch failed: 403 Forbidden'));
       const events: WebSearchProgressEvent[] = [];
 
       const out = await runWebSearch({
-        query: 'Samsung Galaxy S25 cena',
+        query: 'Samsung Galaxy S25 price',
         history: [],
         provider,
         embeddings: null,
@@ -578,7 +576,7 @@ describe('runWebSearch', () => {
 
     it('retries the same host on another page when only that page was missing', async () => {
       const provider = new MockProvider({
-        'Samsung Galaxy S25 cena': [bareResult('https://shop.example/gone')],
+        'Samsung Galaxy S25 price': [bareResult('https://shop.example/gone')],
         'site:shop.example Samsung Galaxy S25': [
           bareResult('https://shop.example/s25'),
         ],
@@ -588,7 +586,7 @@ describe('runWebSearch', () => {
       );
 
       const out = await runWebSearch({
-        query: 'Samsung Galaxy S25 cena',
+        query: 'Samsung Galaxy S25 price',
         history: [],
         provider,
         embeddings: null,
@@ -605,7 +603,7 @@ describe('runWebSearch', () => {
 
     it('does not spend a second fetch on a host that just blocked us', async () => {
       const provider = new MockProvider({
-        'Samsung Galaxy S25 cena': [bareResult('https://shop.example/s25')],
+        'Samsung Galaxy S25 price': [bareResult('https://shop.example/s25')],
         'Samsung Galaxy S25 -site:shop.example': [
           bareResult('https://shop.example/other'),
           bareResult('https://samsung.com/s25'),
@@ -618,7 +616,7 @@ describe('runWebSearch', () => {
       );
 
       await runWebSearch({
-        query: 'Samsung Galaxy S25 cena',
+        query: 'Samsung Galaxy S25 price',
         history: [],
         provider,
         embeddings: null,
@@ -636,12 +634,12 @@ describe('runWebSearch', () => {
 
     it('leaves a healthy search alone — no failures, no extra round', async () => {
       const provider = new MockProvider({
-        'Samsung Galaxy S25 cena': [bareResult('https://samsung.com/s25')],
+        'Samsung Galaxy S25 price': [bareResult('https://samsung.com/s25')],
       });
       readableExcept(() => null);
 
       const out = await runWebSearch({
-        query: 'Samsung Galaxy S25 cena',
+        query: 'Samsung Galaxy S25 price',
         history: [],
         provider,
         embeddings: null,
@@ -653,7 +651,7 @@ describe('runWebSearch', () => {
       expect(out.telemetry.fetchFailures).toEqual([]);
       expect(out.telemetry.recovery).toEqual([]);
       expect(out.telemetry.rounds).toHaveLength(1);
-      expect(provider.calls).toEqual(['Samsung Galaxy S25 cena']);
+      expect(provider.calls).toEqual(['Samsung Galaxy S25 price']);
     });
   });
 
@@ -679,7 +677,7 @@ describe('runWebSearch', () => {
 
   it('drops the same article listed under a second id on the same host', async () => {
     const duplicate = (url: string): WebSearchResult => ({
-      title: 'Pogoda Kraków - Prognoza pogody godzinowa',
+      title: 'Warsaw weather - hourly forecast',
       url,
       snippet: 'weather temperature',
       content: WEATHER_TEXT,
