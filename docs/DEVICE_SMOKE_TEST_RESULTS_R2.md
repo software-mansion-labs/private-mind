@@ -4,7 +4,7 @@
 
 ## S20 FE — build
 
-`versionCode=68`, `lastUpdateTime=2026-09-07 16:01:47` — zgodne z przydziałem. Branch `cr/phase1-security`, hash roboczy w repo `3378a2c` (docs), zgodnie z wiadomością testową hash `5e514ae`.
+`versionCode=68`, `lastUpdateTime=2026-09-07 16:01:47` — zgodne z przydziałem. Branch `cr/phase1-security`, hash roboczy w repo `9826cc2` (docs), zgodnie z wiadomością testową hash `e5106b5`.
 
 Modele na starcie: Gemma 4 (2 warianty, 0 downloaded), LFM 2.5 (3 warianty, 3 downloaded), LLaMA 3.2 (nie sprawdzono), Qwen 2.5 (3 warianty, 2 downloaded), Qwen 3 (2 warianty, 2 downloaded). Qwen 3 0.6B i LFM 2.5 1.2B — oba już pobrane, zgodnie z wiadomością uruchamiającą. Łącznie 13.07 GB / 10 modeli.
 
@@ -250,7 +250,7 @@ planu (są w zakresie iPhone 17).
 ## iPhone 17 — build
 
 Przydział: iPhone 17 (UDID `00008150-000E62513E01401C`), branch `cr/phase1-security`,
-hash `5e514ae` + docs, bundle `com.swmansion.privatemind.smoke`, instalacja zgłoszona
+hash `e5106b5` + docs, bundle `com.swmansion.privatemind.smoke`, instalacja zgłoszona
 o 16:04 (2026-09-07).
 
 **Zablokowane przed startem (2026-09-07).** `list-devices` pokazuje ten UDID ze stanem

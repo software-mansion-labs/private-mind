@@ -1,7 +1,7 @@
 # Poprawki po rundzie 1 smoke testów — co zmieniono i jak to sprawdzić
 
-Commity na `cr/phase1-security`: `1cc4992`, `b1f7bda`, `97feba2`, `5e514ae`,
-`7ee2940`. Automatyczne testy: `npx jest` (2180 zielonych), nazwy testów niżej
+Commity na `cr/phase1-security`: `f332918`, `e1ae6cb`, `8e5001d`, `e5106b5`,
+`17467b2`. Automatyczne testy: `npx jest` (2180 zielonych), nazwy testów niżej
 wskazują regresję, którą każda poprawka zamyka.
 
 ## R1 — jedna tura naraz (S20 FE: zgubione i zdublowane wiadomości; Pixel: stara odpowiedź w nowym czacie)

@@ -619,7 +619,7 @@ for the budget to drop turns, which the simulator session did not produce.
 
 ✅ **`isCircularNonAnswer` restored — but wired into the retry, not into a hard
 failure**
-The plan called this "a straight revert of the two deletions in `8aa46e4`". A
+The plan called this "a straight revert of the two deletions in `afaf59b`". A
 straight revert would have re-introduced exactly the outcome that was just
 fixed: an answer that only talks about its sources would end the turn on
 `Failed to generate a response.` Restored the detector and its persistence
@@ -1628,7 +1628,7 @@ generate a response." with Retry, not persisted as if it answered the
 question.
 ⚠️ **Status note (this round)**: `isCircularNonAnswer` and both its call
 sites in `store/llmStore.ts` (`describeGenerationFailure` and the
-persistence gate) were removed in the tip commit on this branch, `8aa46e4
+persistence gate) were removed in the tip commit on this branch, `afaf59b
 "feat(web): move grounding caveats out of the answer text into badges"` —
 apparently collateral damage from that refactor, since the two are
 unrelated (that commit moved _caveats_ — figure/trend/conversion warnings
@@ -4123,17 +4123,17 @@ the deviation and its reason are here so nobody "fixes" it back.
 
 | Plan item                   | Commit               | Test                                                                    |
 | --------------------------- | -------------------- | ----------------------------------------------------------------------- |
-| P1.1 conversation subject   | `3b2845c`            | `__tests__/conversationDigest.test.ts`                                  |
-| P1.2 language-drift guard   | `01b583e`            | `__tests__/runWebSearch.test.ts`                                        |
-| P1.3 topic anchors          | `ef8dfee`            | `__tests__/buildSearchQuery.test.ts`                                    |
-| P1.4 intent kind            | `9124448`            | `__tests__/webResultsToContext.test.ts`                                 |
-| split-price join            | `0a65799`            | `__tests__/extractArticle.test.ts`                                      |
-| filler floor                | `89c0731`            | `__tests__/webResultsToContext.test.ts`                                 |
-| P2.5 per-source relevance   | `51cc8f8`            | `__tests__/webResultsToContext.test.ts`                                 |
-| P2.5 aspect coverage nudge  | `b8b250a`            | `__tests__/aspectCoverage.test.ts`, `__tests__/llmStore.test.ts`        |
-| P3.7 badge ↔ Sources button | `8ae5c1d`            | `__tests__/useMessageSources.test.ts`, `__tests__/MessageItem.test.tsx` |
-| P2.6 nudge flicker          | `83db91e`            | `__tests__/llmStore.test.ts`, `__tests__/MessageItem.test.tsx`          |
-| P3.8 trace rebuild          | `92ddefa`, `454cf41` | `__tests__/chatRepository.test.ts`, `__tests__/webSearchTrace.test.ts`  |
+| P1.1 conversation subject   | `a3e49ad`            | `__tests__/conversationDigest.test.ts`                                  |
+| P1.2 language-drift guard   | `7cd84d9`            | `__tests__/runWebSearch.test.ts`                                        |
+| P1.3 topic anchors          | `d60b7a3`            | `__tests__/buildSearchQuery.test.ts`                                    |
+| P1.4 intent kind            | `447de9d`            | `__tests__/webResultsToContext.test.ts`                                 |
+| split-price join            | `4f91aa5`            | `__tests__/extractArticle.test.ts`                                      |
+| filler floor                | `03cfa7c`            | `__tests__/webResultsToContext.test.ts`                                 |
+| P2.5 per-source relevance   | `9f58ab3`            | `__tests__/webResultsToContext.test.ts`                                 |
+| P2.5 aspect coverage nudge  | `30374df`            | `__tests__/aspectCoverage.test.ts`, `__tests__/llmStore.test.ts`        |
+| P3.7 badge ↔ Sources button | `be66ef5`            | `__tests__/useMessageSources.test.ts`, `__tests__/MessageItem.test.tsx` |
+| P2.6 nudge flicker          | `067761b`            | `__tests__/llmStore.test.ts`, `__tests__/MessageItem.test.tsx`          |
+| P3.8 trace rebuild          | `a09b348`, `c0b1846` | `__tests__/chatRepository.test.ts`, `__tests__/webSearchTrace.test.ts`  |
 
 **P2.6 — the retry's metrics are thrown away.** With streaming suppressed
 the store's `firstTokenTime` still belongs to the first generation, so the
@@ -4180,7 +4180,7 @@ not an accessory rail.
 Run on 2026-09-04 by a separate test session (plan and results are untracked
 working sheets: `docs/WEAK_MODEL_TEST_PLAN.md`, `docs/WEAK_MODEL_TEST_RESULTS.md`,
 evidence in `docs/test-evidence/gemma-4-2b/`). Pixel 10, Gemma 4 - 2B, build
-versionCode 68, HEAD `ae3a12d`. S1–S5 (20 graded turns) plus the S8 gate;
+versionCode 68, HEAD `ddcdda0`. S1–S5 (20 graded turns) plus the S8 gate;
 the ten weak models were not started because S8 went red on the reference,
 which is what the plan says to do.
 
@@ -4204,21 +4204,21 @@ which is what the plan says to do.
 
 | Finding (results file §"Znaleziska")                                                                                                                       | Commit                                                                                                                                                   |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| needs-search gate wrong both ways: S1.4 skipped a spec question naming a model code; S2.6/S5.2 searched recap questions with the raw question as the query | `848084d` — a code-like token or a ≥3-digit number forces the search; recap / previous-answer intents count as conversational, with two planner examples |
-| no `intent:` log line (S8.4)                                                                                                                               | `454e003` — one dev-only "Web search plan" line: needs_search, kind, intent, queries, expects                                                            |
-| `groundingCaveats: ["figure"]` false positive on an exact match (S1.5, S8.7)                                                                               | `1a2407b` — a page figure without a currency token beside it still grounds the answer                                                                    |
-| our own plumbing in the answer: "według Ile mieszkańców ma Warszawa…," (S4.1) and "[Answers: …] -" (S3.1)                                                  | `1950562` — a cited web source is named by host; copied block labels are stripped                                                                        |
-| ten page rows on reopen (S8.11)                                                                                                                            | `c939e5d` — the live trace is cleared when another chat opens, unless a search is running                                                                |
-| evasive price answer with the amount on the page (S1.8), refusal in a language no phrase list covers                                                       | `2b4af65` — the absence claim is structural: figure wanted, figure in context, none in the answer                                                        |
+| needs-search gate wrong both ways: S1.4 skipped a spec question naming a model code; S2.6/S5.2 searched recap questions with the raw question as the query | `77f132a` — a code-like token or a ≥3-digit number forces the search; recap / previous-answer intents count as conversational, with two planner examples |
+| no `intent:` log line (S8.4)                                                                                                                               | `3589dee` — one dev-only "Web search plan" line: needs_search, kind, intent, queries, expects                                                            |
+| `groundingCaveats: ["figure"]` false positive on an exact match (S1.5, S8.7)                                                                               | `7e5bab7` — a page figure without a currency token beside it still grounds the answer                                                                    |
+| our own plumbing in the answer: "według Ile mieszkańców ma Warszawa…," (S4.1) and "[Answers: …] -" (S3.1)                                                  | `32e3a44` — a cited web source is named by host; copied block labels are stripped                                                                        |
+| ten page rows on reopen (S8.11)                                                                                                                            | `b7b48a9` — the live trace is cleared when another chat opens, unless a search is running                                                                |
+| evasive price answer with the amount on the page (S1.8), refusal in a language no phrase list covers                                                       | `e392e31` — the absence claim is structural: figure wanted, figure in context, none in the answer                                                        |
 
 ### The rest of this round, driven by the same evidence and the intent research
 
 | Change                                                                                                                                                  | Commit                                                                                      | Why                                                                                                                              |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `place`, `person`, `event` intent kinds; "search when" list names model codes, position holders, versions, hours                                        | `0cfc13a`                                                                                   | the Li & Roth classes we lacked (LOC, HUM, ENTY:event) are where a 2B model answers from memory                                  |
-| listing ranking by intent kind and scoped year — the nine-language quantity list, the period/superlative markers and the all-time page pattern are gone | `b930b92`                                                                                   | the last per-language rules in the search path; the year the planner writes into its queries carries the period scope instead    |
-| `expects`: the plan names 1–4 things a complete answer must contain; their stems join the passage needles                                               | `0b34dc5`                                                                                   | a kind names the shape of the evidence, not the thing; "data premiery" credits the launch-date sentence the question never named |
-| refined answer crossfades; `isRefining` clears at the complete/failed phase                                                                             | `ec8edef`                                                                                   | the single swap read as a glitch                                                                                                 |
+| `place`, `person`, `event` intent kinds; "search when" list names model codes, position holders, versions, hours                                        | `8e0b4bc`                                                                                   | the Li & Roth classes we lacked (LOC, HUM, ENTY:event) are where a 2B model answers from memory                                  |
+| listing ranking by intent kind and scoped year — the nine-language quantity list, the period/superlative markers and the all-time page pattern are gone | `ea04c47`                                                                                   | the last per-language rules in the search path; the year the planner writes into its queries carries the period scope instead    |
+| `expects`: the plan names 1–4 things a complete answer must contain; their stems join the passage needles                                               | `b79f0ec`                                                                                   | a kind names the shape of the evidence, not the thing; "data premiery" credits the launch-date sentence the question never named |
+| refined answer crossfades; `isRefining` clears at the complete/failed phase                                                                             | `153da54`                                                                                   | the single swap read as a glitch                                                                                                 |
 | loop guard extracted to its own PR                                                                                                                      | [#311](https://github.com/software-mansion-labs/private-mind/pull/311), issue #255 reopened | not web-search work; #289 named it as the follow-up to the penalty revert                                                        |
 
 ### Still open after this round
@@ -4379,7 +4379,7 @@ query no engine returns empty for; offline the same plan runs three
 queries), the minimal round's T1, and this session's two empty
 `QE65QN90D` runs versus the one that succeeded 57 s after the send.
 
-The rescues added today (`2d2946d`, `0a2ac3f`) are real but secondary:
+The rescues added today (`e5c415f`, `352b441`) are real but secondary:
 they run only when the engine genuinely returns nothing. The fix that
 matters is to start the deadline when the first query starts (or not count
 planner time at all — the planner has its own generation bound), write
@@ -4448,18 +4448,18 @@ treat `expects: ["recommended TV model"]` unmet as a missing aspect.
 
 | #   | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Where                                                                                            | Red-before-fix test                                                                                                                                                                    |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | The deadline starts when the first query starts. `runWebSearch` takes `searchTimeoutMs`, arms its own controller after the gate, links the external Stop signal to it, records `telemetry.aborted: 'timeout' \| 'stopped'`; the store's timer around `buildSources` is gone. Outcome log carries `aborted`, `enginesTried`, `plannedQueries`. **Landed** `ec2938c`.                                                                                                                                                                                                                                            | `utils/web/runWebSearch.ts`, `store/llmStore.ts`, `components/chat-screen/useSendChatMessage.ts` | a planner slower than the deadline still searches and finds; a provider slower than the deadline ends with `aborted: 'timeout'` and no rescue; an external abort ends with `'stopped'` |
-| 2   | Stop reaches the planner: `interrupt()` interrupts the LLM when `utilityGenerating` too; the `failed` phase resets the live trace; Stop before any token runs that cleanup at once. No `stopped` trace note after all — the placeholder is dropped, so there is no row to show it on. **Landed** `349c7cb`, `8c3be77`. On the Pixel the block now leaves the screen immediately; the abandoned planner prefill still runs for ~13 s underneath, since ExecuTorch cannot interrupt a prefill.                                                                                                                   | `store/llmStore.ts`                                                                              | interrupt while the planner call is pending interrupts the instance; Stop before a token drops the placeholder and the trace in the same tick                                          |
-| 3   | Evidence retry answers first. Prompt: the first sentence states the fact or figure; no describing or listing sources. `buriesFigureContextOffers` (a context sentence shares a question stem and holds a non-year figure, kind ∈ fact/price/specs → the answer's **first** sentence must hold a figure; two sentences let T2's digest through) joins the trigger and `stillBroken`; a retry that states a figure the draft lacked is kept. **Landed** `f2895b6`, confirmed live: T2's question now answers "Populacja Warszawy to 1,86 miliona mieszkańców…" after "Answer buries the figure…, retrying once". | `store/llmStore.ts`, `utils/messageSources.ts`                                                   | T2 fixtures: draft triggers, digest still broken, direct answer passes, `person` kind and year-only context do not apply                                                               |
-| 4   | A short planner query (fewer than two judgeable terms) passes on a code the conversation already mentions; otherwise, when its detected language and the conversation's differ, it is discarded into the fallback and the question is searched first. The rule uses the detector, not a token list, so #361 (`Samsung QE65S99H vs other models`) still passes on its code. **Landed** `4c1c1b5`.                                                                                                                                                                                                               | `utils/web/queryLanguage.ts`                                                                     | `cost of OLED TV` against the Polish OLED conversation is out; the same follow-up in an English conversation stays                                                                     |
-| 5   | "Checking whether to search…" until the first `searching` event; the title derivation moved to the pure trace module. **Landed** `0d07c38`, seen live.                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `components/chat-screen/webSearchTrace.ts`, `WebSearchBlock.tsx`                                 | title on the two trace shapes                                                                                                                                                          |
-| 6   | `[prompt-tokens]` carries a role and fires for utility calls (`d56987c`): the planner prompt was 1098 tokens on the device. The system prompt went from 5.2k to 4.2k characters — rules said once, three chat examples out, a recommendation example in (`c9724a9`). Still above the 800 target; the next cut is the examples themselves, to be judged against the gate metrics of the release round, not blind.                                                                                                                                                                                               | `store/llmStore.ts`, `utils/web/buildSearchQuery.ts`                                             | device: plan line ≤ 60 s after the send on Gemma 4 - 2B — 79 s measured today with model load included, to be re-read on a warm model                                                  |
+| 1   | The deadline starts when the first query starts. `runWebSearch` takes `searchTimeoutMs`, arms its own controller after the gate, links the external Stop signal to it, records `telemetry.aborted: 'timeout' \| 'stopped'`; the store's timer around `buildSources` is gone. Outcome log carries `aborted`, `enginesTried`, `plannedQueries`. **Landed** `31f30d1`.                                                                                                                                                                                                                                            | `utils/web/runWebSearch.ts`, `store/llmStore.ts`, `components/chat-screen/useSendChatMessage.ts` | a planner slower than the deadline still searches and finds; a provider slower than the deadline ends with `aborted: 'timeout'` and no rescue; an external abort ends with `'stopped'` |
+| 2   | Stop reaches the planner: `interrupt()` interrupts the LLM when `utilityGenerating` too; the `failed` phase resets the live trace; Stop before any token runs that cleanup at once. No `stopped` trace note after all — the placeholder is dropped, so there is no row to show it on. **Landed** `75c611c`, `3c8a6c5`. On the Pixel the block now leaves the screen immediately; the abandoned planner prefill still runs for ~13 s underneath, since ExecuTorch cannot interrupt a prefill.                                                                                                                   | `store/llmStore.ts`                                                                              | interrupt while the planner call is pending interrupts the instance; Stop before a token drops the placeholder and the trace in the same tick                                          |
+| 3   | Evidence retry answers first. Prompt: the first sentence states the fact or figure; no describing or listing sources. `buriesFigureContextOffers` (a context sentence shares a question stem and holds a non-year figure, kind ∈ fact/price/specs → the answer's **first** sentence must hold a figure; two sentences let T2's digest through) joins the trigger and `stillBroken`; a retry that states a figure the draft lacked is kept. **Landed** `6a29837`, confirmed live: T2's question now answers "Populacja Warszawy to 1,86 miliona mieszkańców…" after "Answer buries the figure…, retrying once". | `store/llmStore.ts`, `utils/messageSources.ts`                                                   | T2 fixtures: draft triggers, digest still broken, direct answer passes, `person` kind and year-only context do not apply                                                               |
+| 4   | A short planner query (fewer than two judgeable terms) passes on a code the conversation already mentions; otherwise, when its detected language and the conversation's differ, it is discarded into the fallback and the question is searched first. The rule uses the detector, not a token list, so #361 (`Samsung QE65S99H vs other models`) still passes on its code. **Landed** `186a6ac`.                                                                                                                                                                                                               | `utils/web/queryLanguage.ts`                                                                     | `cost of OLED TV` against the Polish OLED conversation is out; the same follow-up in an English conversation stays                                                                     |
+| 5   | "Checking whether to search…" until the first `searching` event; the title derivation moved to the pure trace module. **Landed** `b7c32be`, seen live.                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `components/chat-screen/webSearchTrace.ts`, `WebSearchBlock.tsx`                                 | title on the two trace shapes                                                                                                                                                          |
+| 6   | `[prompt-tokens]` carries a role and fires for utility calls (`7016884`): the planner prompt was 1098 tokens on the device. The system prompt went from 5.2k to 4.2k characters — rules said once, three chat examples out, a recommendation example in (`a07eefc`). Still above the 800 target; the next cut is the examples themselves, to be judged against the gate metrics of the release round, not blind.                                                                                                                                                                                               | `store/llmStore.ts`, `utils/web/buildSearchQuery.ts`                                             | device: plan line ≤ 60 s after the send on Gemma 4 - 2B — 79 s measured today with model load included, to be re-read on a warm model                                                  |
 
 Two more from the same device session, outside the plan: the composer
-stranded at the keyboard's height once more (`f928f3a`, system
+stranded at the keyboard's height once more (`c099013`, system
 keyboard events and the foreground transition now reset the lift as
 well), and a new chat rendering a white list for minutes with the whole
-conversation in the accessibility tree (`57c6341`, the list switches to
+conversation in the accessibility tree (`1be825a`, the list switches to
 a static visible style once its fade has run). Both are in
 `docs/CHAT_UX_ISSUES.md`.
 
@@ -4514,7 +4514,7 @@ instead of reading them. The retry prompt said "the sources do discuss
 what the question asks about" and left the model to find the sentence
 again in ~2 000 characters of passages. It did not.
 
-### What changed (`3dc9be5`)
+### What changed (`4c92be8`)
 
 - `answerStatesFigure(visible, question)` drops tokens that start with a
   letter and hold a digit (`QE65QN90D`, `M4`), runs of eight or more bare
@@ -4544,7 +4544,7 @@ release round shows the quoted lines landing, the next step is to put
 the same lines under the question in the first prompt for fact, price
 and specs intents, and skip the retry.
 
-### 10.A was blocked by the URL path, not by hosting (`d3440ce`)
+### 10.A was blocked by the URL path, not by hosting (`e8a932b`)
 
 The tester's three attempts to index a page ended in "Error reading
 link." / "Failed to process document." with `TextEmbeddingsModule not
@@ -4581,7 +4581,7 @@ the tester prompt say so now; the pages in
 
 ### What the second half of the round has to cover
 
-In this order, on the Pixel, with the build at `d3440ce` or later:
+In this order, on the Pixel, with the build at `e8a932b` or later:
 
 1. **R-25, R-26, R-27** (new rows in the plan): the R-16 question must
    produce a `claims the sources are silent` or `buries the figure` line
@@ -4600,7 +4600,7 @@ R-14, R-15, R-17.
 ## Release round, second half: 10.A ran, and the nudge is now the thing to watch
 
 Sheet: `docs/WEB_SEARCH_RELEASE_TEST_RESULTS.md`, rounds 2 and 3 of
-2026-09-04, build `387fc1c`. Verification rows R-25…R-27, all ten of
+2026-09-04, build `11d98b4`. Verification rows R-25…R-27, all ten of
 10.A, and R-5, R-9, R-11…R-14, R-16, R-18, R-20…R-24. Databases in
 `docs/test-evidence/release/`.
 
@@ -4618,9 +4618,9 @@ from a Russian-only page.
 ### What the fixes of the first half did
 
 - **R-27 PASS.** A URL pasted right after a web-search turn indexes with
-  the progress bar and no toast (`d3440ce`). 10.A became possible.
+  the progress bar and no toast (`e8a932b`). 10.A became possible.
 - **R-26 PASS.** "Answer buries the figure" fired on the Warsaw draft and
-  the retry answered "1,86 miliona mieszkańców" first (`3dc9be5`).
+  the retry answered "1,86 miliona mieszkańców" first (`4c92be8`).
 - **R-25 FAIL, half-fixed.** The refusal about the Samsung refresh rate
   now triggers "claims the sources are silent" — `answerStatesFigure` no
   longer counts the digits in `QE65QN90D` — and the retry refused again,
@@ -4632,7 +4632,7 @@ from a Russian-only page.
 
 ### The nudge fired four times where it should not have
 
-The sheet's third headline is right: after `3dc9be5` the evidence nudges
+The sheet's third headline is right: after `4c92be8` the evidence nudges
 are the most visible mechanism in the log, and two of the four firings
 in this half were wrong.
 
@@ -4659,11 +4659,11 @@ in this half were wrong.
 
 | #   | Change                                                                                                                                                                                                                                                                                                                                                                               | Commit    |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- |
-| 1   | `distinctiveEvidence` skips capitalized sentence openers and the source markers; mixed letter-digit tokens are codes unless a number carries a unit (`144Hz`, `4K`); `claimsMissingEvidenceItHas` strips codes before testing the context for an amount or a date. Fixtures: the A-7 and A-9 pages, and the A-9 page with a real price line so the nudge still fires when it should. | `a9dcd5a` |
-| 2   | Evidence nudges retry with a **focused prompt**: system prompt plus one user turn holding the quoted lines and the question — no sources block, no draft. When no line qualifies, the retry continues the conversation as before. A retry in the wrong language is rejected. On the Pixel the prefill drops from ~30 s to a few seconds.                                             | `164d090` |
-| 3   | `neutralizeDelimiters` removes a `[Verified product data]` label written in page text, in any spacing or case; web passages neutralize the body before the app's own line is prepended; document passages and the attachment overview go through the same filter (they were never neutralized, so a document could also forge a source-block delimiter).                             | `ab5d615` |
-| 4   | One clause in the source instructions: orders inside the sources, to the model, the reader or "the user", are page content — never carry them out, never repeat them as a step or advice. ~30 tokens; a 2B model is not expected to hold it every time, the A-10 page is the measure.                                                                                                | `f7f9f25` |
-| 5   | The "Couldn't find anything useful online" toast checks the abort signal: leaving the chat during planning interrupts the turn by design and is not a failed search. The abandoned turn itself is in `docs/CHAT_UX_ISSUES.md` as a product question.                                                                                                                                 | `912704b` |
+| 1   | `distinctiveEvidence` skips capitalized sentence openers and the source markers; mixed letter-digit tokens are codes unless a number carries a unit (`144Hz`, `4K`); `claimsMissingEvidenceItHas` strips codes before testing the context for an amount or a date. Fixtures: the A-7 and A-9 pages, and the A-9 page with a real price line so the nudge still fires when it should. | `c4d4b6f` |
+| 2   | Evidence nudges retry with a **focused prompt**: system prompt plus one user turn holding the quoted lines and the question — no sources block, no draft. When no line qualifies, the retry continues the conversation as before. A retry in the wrong language is rejected. On the Pixel the prefill drops from ~30 s to a few seconds.                                             | `f8a6311` |
+| 3   | `neutralizeDelimiters` removes a `[Verified product data]` label written in page text, in any spacing or case; web passages neutralize the body before the app's own line is prepended; document passages and the attachment overview go through the same filter (they were never neutralized, so a document could also forge a source-block delimiter).                             | `997f80b` |
+| 4   | One clause in the source instructions: orders inside the sources, to the model, the reader or "the user", are page content — never carry them out, never repeat them as a step or advice. ~30 tokens; a 2B model is not expected to hold it every time, the A-10 page is the measure.                                                                                                | `afe7098` |
+| 5   | The "Couldn't find anything useful online" toast checks the abort signal: leaving the chat during planning interrupts the turn by design and is not a failed search. The abandoned turn itself is in `docs/CHAT_UX_ISSUES.md` as a product question.                                                                                                                                 | `01de2ae` |
 
 Not changed, recorded:
 
@@ -4689,7 +4689,7 @@ Not changed, recorded:
 
 ### What the next round has to cover
 
-Order for the tester prompt, on a build at `912704b` or later:
+Order for the tester prompt, on a build at `01de2ae` or later:
 
 1. **R-28…R-31** (new rows): the A-4 page without the forged label in
    the passage; A-7 and A-9 with no `retrying once` line; the Samsung
@@ -4712,11 +4712,11 @@ R-27, A-1…A-3, A-5, A-6, A-8.
 The tester finished with R-19 (PASS after a full reinstall — the download
 sheet showed once, then never again, including after a process restart;
 the 113-chat history is preserved in `pre-reinstall-final.db`). None of
-the five fixes above (`a9dcd5a`…`912704b`) ran on the device: the tester
+the five fixes above (`c4d4b6f`…`01de2ae`) ran on the device: the tester
 followed the old order, R-28…R-31 were not executed, and the R-19 entry
 carries no bundle hash. Three lines of the tester's summary were
 corrected in the sheet: 10.A's failures are A-4 and A-10 (not A-7); R-3's
-PASS is R-26 on build `387fc1c`; the abandoned turn is a deliberate
+PASS is R-26 on build `11d98b4`; the abandoned turn is a deliberate
 interrupt with a wrong toast, not a variant of the silent generation
 failure. R-6, R-7 and R-8 were skipped as "not web search" — they are the
 owner's own fix-asap items on this branch and go back into the order as

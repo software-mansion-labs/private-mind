@@ -19,7 +19,7 @@ pogoda → wędki → rower → MTB → ubezpieczenie MTB → inwestycje → mun
 ekstraklasa → ciasto marchewkowe → Zabłocie → **z powrotem** ciasto → **z
 powrotem** Zabłocie → znowu ciasto. Każde pytanie dostało odpowiedź na swój
 temat, w tym powroty do tematu sprzed kilku tur. To jest dokładnie to, co
-psuło się na Pixelu (Kraków w rozmowie o Zakopanem) i co naprawia `39893e9`.
+psuło się na Pixelu (Kraków w rozmowie o Zakopanem) i co naprawia `e50fa21`.
 
 **Odniesienia w obrębie tematu działają.** „Chce mtb co musze wziac pod uwage"
 → MTB; „Jakie są to aspekty" → te same aspekty; „Jakie ubezpieczenie wybrać do
@@ -56,7 +56,7 @@ Dwa wystąpienia na 20 tur, oba wyglądają na fałszywy alarm:
 | „mediana ceny mieszkań wynosi 709 815 zł, a średnia 20 962 zł/m²"          | 709 815 / 20 962 | „Ceny mieszkań i domów — Zabłocie, Kraków \| RealAdvisor" |
 
 W obu przypadkach liczba jest w odpowiedzi wprost przypisana do cytowanej
-strony. Poprawka `4a13834` rozszerzyła `PRICE_STATEMENT` o czasowniki wartości,
+strony. Poprawka `a5e798a` rozszerzyła `PRICE_STATEMENT` o czasowniki wartości,
 ale to najwyraźniej nie wystarcza — 10 % tur dostaje ostrzeżenie, które
 podważa poprawną odpowiedź.
 
@@ -120,7 +120,7 @@ parafrazami.
 | #   | problem                                              | gdzie leży                                                 |
 | --- | ---------------------------------------------------- | ---------------------------------------------------------- |
 | 1   | zmyślony wynik mundialu 2026 z podpiętym źródłem     | brak weryfikacji przesłanki użytkownika + śmieciowe źródło |
-| 2   | fałszywe „A number couldn't be confirmed" (2/20 tur) | `figureGrounding`, mimo `4a13834`                          |
+| 2   | fałszywe „A number couldn't be confirmed" (2/20 tur) | `figureGrounding`, mimo `a5e798a`                          |
 | 3   | „wędka na prezent" → sklep z zegarkami               | `buildSearchQuery` — okoliczność wypiera przedmiot         |
 | 4   | strony JS-owe zwracają pustkę (4 tury)               | `extractArticle`                                           |
 | 5   | referowanie stron zamiast odpowiedzi                 | prompt odpowiedzi / Gemma 4 2B                             |
@@ -129,7 +129,7 @@ parafrazami.
 
 Dwa najcenniejsze wnioski dla tego brancha: **poprawki R1/R2 i izolacja tematu
 działają** (20/20 tur, osiem przeskoków tematu bez przecieku), a **weryfikator
-liczb nadal daje fałszywe alarmy** mimo `4a13834`.
+liczb nadal daje fałszywe alarmy** mimo `a5e798a`.
 
 ### Uwaga metodologiczna
 
