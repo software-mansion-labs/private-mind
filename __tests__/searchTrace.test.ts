@@ -1,5 +1,9 @@
 import type { WebSearchTelemetry } from '../utils/web/runWebSearch';
-import type { WebSearchTrace } from '../utils/web/searchTrace';
+import {
+  recordWebSearchTrace,
+  type WebSearchTrace,
+} from '../utils/web/searchTrace';
+import { writtenFiles } from '../__mocks__/react-native-fs';
 
 const telemetry: WebSearchTelemetry = {
   needsSearch: true,
@@ -44,47 +48,30 @@ const trace = (question: string): WebSearchTrace => ({
   telemetry,
 });
 
-const load = (overrides: Record<string, unknown> = {}) => {
-  jest.resetModules();
-  jest.doMock('../constants/web', () => ({
-    ...jest.requireActual('../constants/web'),
-    ...overrides,
-  }));
-  const fs =
-    require('../__mocks__/react-native-fs') as typeof import('../__mocks__/react-native-fs');
-  fs.writtenFiles.clear();
-  return {
-    ...(require('../utils/web/searchTrace') as typeof import('../utils/web/searchTrace')),
-    writtenFiles: fs.writtenFiles,
-  };
-};
+beforeEach(() => {
+  writtenFiles.clear();
+});
 
 describe('recordWebSearchTrace', () => {
   it('ships off, so a release build writes nothing', async () => {
-    const { recordWebSearchTrace, writtenFiles } = load();
-
     await recordWebSearchTrace(trace('chi e il presidente del consiglio'));
 
     expect(writtenFiles.size).toBe(0);
   });
 
   it('lands in the directory adb can read off a release build', async () => {
-    const { recordWebSearchTrace, writtenFiles } = load({
-      WEB_TRACE_TO_FILE: true,
+    await recordWebSearchTrace(trace('chi e il presidente del consiglio'), {
+      toFile: true,
     });
-
-    await recordWebSearchTrace(trace('chi e il presidente del consiglio'));
 
     const [path] = [...writtenFiles.keys()];
     expect(path).toMatch(/^\/sdcard\/Android\/data\/app\/files\/web-traces\//);
   });
 
   it('records the page text and the context the model was handed', async () => {
-    const { recordWebSearchTrace, writtenFiles } = load({
-      WEB_TRACE_TO_FILE: true,
+    await recordWebSearchTrace(trace('chi e il presidente del consiglio'), {
+      toFile: true,
     });
-
-    await recordWebSearchTrace(trace('chi e il presidente del consiglio'));
 
     const parsed = JSON.parse([...writtenFiles.values()][0]!);
     expect(parsed.sources[0].url).toBe(
@@ -100,15 +87,14 @@ describe('recordWebSearchTrace', () => {
   });
 
   it('drops the oldest traces, not the alphabetically first', async () => {
-    const { recordWebSearchTrace, writtenFiles } = load({
-      WEB_TRACE_TO_FILE: true,
-      WEB_TRACE_KEEP_FILES: 2,
-    });
     jest.useFakeTimers();
 
     for (const question of ['ccc', 'bbb', 'aaa']) {
       jest.advanceTimersByTime(60_000);
-      await recordWebSearchTrace(trace(question));
+      await recordWebSearchTrace(trace(question), {
+        toFile: true,
+        keepFiles: 2,
+      });
     }
     jest.useRealTimers();
 

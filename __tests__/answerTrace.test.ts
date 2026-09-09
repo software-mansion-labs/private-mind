@@ -1,4 +1,6 @@
+import { recordAnswerTrace } from '../utils/answerTrace';
 import type { AnswerTrace } from '../utils/answerTrace';
+import { writtenFiles } from '../__mocks__/react-native-fs';
 
 const trace: AnswerTrace = {
   question: 'What are the six noble gases',
@@ -15,36 +17,19 @@ const trace: AnswerTrace = {
   systemPromptChars: 2480,
 };
 
-const load = (overrides: Record<string, unknown> = {}) => {
-  jest.resetModules();
-  jest.doMock('../constants/web', () => ({
-    ...jest.requireActual('../constants/web'),
-    ...overrides,
-  }));
-  const fs =
-    require('../__mocks__/react-native-fs') as typeof import('../__mocks__/react-native-fs');
-  fs.writtenFiles.clear();
-  return {
-    ...(require('../utils/answerTrace') as typeof import('../utils/answerTrace')),
-    writtenFiles: fs.writtenFiles,
-  };
-};
+beforeEach(() => {
+  writtenFiles.clear();
+});
 
 describe('recordAnswerTrace', () => {
   it('ships off, so a release build writes nothing', async () => {
-    const { recordAnswerTrace, writtenFiles } = load();
-
     await recordAnswerTrace(trace);
 
     expect(writtenFiles.size).toBe(0);
   });
 
   it('keeps the answer the model produced beside the one the user saw', async () => {
-    const { recordAnswerTrace, writtenFiles } = load({
-      WEB_TRACE_TO_FILE: true,
-    });
-
-    await recordAnswerTrace(trace);
+    await recordAnswerTrace(trace, { toFile: true });
 
     const [path] = [...writtenFiles.keys()];
     expect(path).toContain('/answer-traces/');

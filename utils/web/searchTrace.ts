@@ -1,4 +1,4 @@
-import { WEB_TRACE_TO_FILE } from '../../constants/web';
+import { WEB_TRACE_KEEP_FILES, WEB_TRACE_TO_FILE } from '../../constants/web';
 import { writeTraceFile } from '../traceFile';
 import type { WebSearchTelemetry } from './runWebSearch';
 import type { WebSearchResult } from './types';
@@ -50,8 +50,12 @@ const traceBody = (trace: WebSearchTrace): string =>
   );
 
 export const recordWebSearchTrace = async (
-  trace: WebSearchTrace
+  trace: WebSearchTrace,
+  {
+    toFile = WEB_TRACE_TO_FILE,
+    keepFiles = WEB_TRACE_KEEP_FILES,
+  }: { toFile?: boolean; keepFiles?: number } = {}
 ): Promise<void> => {
-  if (!WEB_TRACE_TO_FILE) return;
-  await writeTraceFile(TRACE_DIR, trace.question, traceBody(trace));
+  if (!toFile) return;
+  await writeTraceFile(TRACE_DIR, trace.question, traceBody(trace), keepFiles);
 };

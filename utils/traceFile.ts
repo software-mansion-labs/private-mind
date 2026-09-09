@@ -21,11 +21,14 @@ export const traceFileName = (question: string): string => {
   return `${stamp}${slug ? `-${slug}` : ''}.json`;
 };
 
-const pruneOldTraces = async (directory: string): Promise<void> => {
+const pruneOldTraces = async (
+  directory: string,
+  keepFiles: number
+): Promise<void> => {
   const traces = (await readDir(directory))
     .filter((entry) => entry.name.endsWith('.json'))
     .sort((a, b) => a.name.localeCompare(b.name));
-  for (const stale of traces.slice(0, traces.length - WEB_TRACE_KEEP_FILES)) {
+  for (const stale of traces.slice(0, traces.length - keepFiles)) {
     await unlink(stale.path);
   }
 };
@@ -33,14 +36,15 @@ const pruneOldTraces = async (directory: string): Promise<void> => {
 export const writeTraceFile = async (
   directory: string,
   question: string,
-  body: string
+  body: string,
+  keepFiles: number = WEB_TRACE_KEEP_FILES
 ): Promise<void> => {
   try {
     const dir = traceDirectory(directory);
     await mkdir(dir);
     const path = `${dir}/${traceFileName(question)}`;
     await writeFile(path, body, 'utf8');
-    await pruneOldTraces(dir);
+    await pruneOldTraces(dir, keepFiles);
     console.log(`Trace ${path}`);
   } catch (error) {
     console.warn(`Trace failed ${String(error)}`);

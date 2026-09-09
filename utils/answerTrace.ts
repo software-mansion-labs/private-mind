@@ -19,10 +19,11 @@ export interface AnswerTrace {
   shape?: Record<string, boolean>;
 }
 
-export const answerTraceEnabled = WEB_TRACE_TO_FILE;
-
-export const recordAnswerTrace = async (trace: AnswerTrace): Promise<void> => {
-  if (!WEB_TRACE_TO_FILE) return;
+export const recordAnswerTrace = async (
+  trace: AnswerTrace,
+  { toFile = WEB_TRACE_TO_FILE }: { toFile?: boolean } = {}
+): Promise<void> => {
+  if (!toFile) return;
   await writeTraceFile(
     TRACE_DIR,
     trace.question,
