@@ -1,7 +1,7 @@
 import {
   buildDigestPrompt,
   DIGEST_MAX_CHARS,
-  echoesItsOwnPrompt,
+  looksLikePromptEcho,
   looksLikeAnswerEcho,
   stripMetaFrame,
   updateConversationDigest,
@@ -322,19 +322,19 @@ describe('a small model can hand back the prompt it was given', () => {
   const EXAMPLE = 'parzenie kawy w kawiarce, stopien zmielenia';
 
   it('recognises the example the prompt itself spells out', () => {
-    expect(echoesItsOwnPrompt(EXAMPLE)).toBe(true);
+    expect(looksLikePromptEcho(EXAMPLE)).toBe(true);
   });
 
   it('recognises a fragment of the instructions copied out verbatim', () => {
-    expect(echoesItsOwnPrompt('Output ONLY that phrase')).toBe(true);
+    expect(looksLikePromptEcho('Output ONLY that phrase')).toBe(true);
   });
 
   it('leaves a real topic alone', () => {
-    expect(echoesItsOwnPrompt('Warsaw weather tomorrow')).toBe(false);
+    expect(looksLikePromptEcho('Warsaw weather tomorrow')).toBe(false);
   });
 
   it('judges nothing on a single word, which could land anywhere', () => {
-    expect(echoesItsOwnPrompt('phrase')).toBe(false);
+    expect(looksLikePromptEcho('phrase')).toBe(false);
   });
 
   it('stores the question instead of the example it was shown', async () => {
