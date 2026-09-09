@@ -98,6 +98,16 @@ const clampDigest = (text: string): string =>
     ? text
     : `${text.slice(0, DIGEST_MAX_CHARS).trimEnd()}…`;
 
+const PROMPT_ECHO_MIN_WORDS = 2;
+
+export const echoesItsOwnPrompt = (digest: string): boolean => {
+  const summary = normalizeForEcho(digest);
+  if (summary.split(' ').filter(Boolean).length < PROMPT_ECHO_MIN_WORDS) {
+    return false;
+  }
+  return normalizeForEcho(DIGEST_SYSTEM_PROMPT).includes(summary);
+};
+
 export const updateConversationDigest = async (
   generate: QueryRewriteFn,
   previousDigest: string | null,
@@ -111,8 +121,9 @@ export const updateConversationDigest = async (
     );
     const trimmed = visibleDigestText(raw);
     if (!trimmed) return previousDigest ?? '';
-    if (!looksLikeAnswerEcho(trimmed, answer)) {
-      return clampDigest(stripMetaFrame(trimmed));
+    const summary = clampDigest(stripMetaFrame(trimmed));
+    if (!looksLikeAnswerEcho(trimmed, answer) && !echoesItsOwnPrompt(summary)) {
+      return summary;
     }
     const fallback = clampDigest(question.trim());
     return keepsMoreSubject(previousDigest, fallback)
