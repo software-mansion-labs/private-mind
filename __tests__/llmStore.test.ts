@@ -2227,6 +2227,22 @@ describe('one turn at a time (S20 FE: sends lost or doubled while a turn was sti
     );
   });
 
+  it('does not call a stop the user asked for a failure, even with nothing outside the think block', async () => {
+    const thinkingOnly = '<think>weighing the options';
+    mockInstance.generate.mockImplementationOnce(async () => {
+      capturedTokenCallback!(thinkingOnly);
+      await flushFrame();
+      useLLMStore.setState({ isGenerating: false, isProcessingPrompt: false });
+      return thinkingOnly;
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('write a long essay', 1, noSources, settings);
+
+    expect(useLLMStore.getState().generationError).toBeNull();
+  });
+
   it('drops the bubble when the model only looped inside an unterminated think block (iPhone SE)', async () => {
     const looped = '<think>cząstek cząstek cząstek cząstek cząstek';
     mockInstance.generate.mockImplementationOnce(async () => {

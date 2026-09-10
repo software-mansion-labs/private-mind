@@ -1375,8 +1375,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           });
         }
       } else if (stillOurs()) {
+        const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;
         markGenerationFailed(new Error(describeGenerationFailure()), {
           unload: false,
+          showToUser: !wasInterrupted,
         });
       }
     } catch (e) {
