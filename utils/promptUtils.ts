@@ -398,7 +398,7 @@ const getCurrentStateInstruction = (
   intentKind?: WebIntentKind
 ): string =>
   intentKind === 'person' || (question && CURRENT_STATE_MARKERS.test(question))
-    ? '\n\nThe question asks how things stand right now. A page that lists holders, winners or values across history — a full list, an archive, a table "from 1789 to today" — does not establish the current one: it is equally consistent with any entry in it being current. Answer from a source that states the present situation and carries a recent date, and where the block only offers a historical list, say it does not confirm the current one rather than picking an entry from it. When the question asks who holds a post, the answer is the name of that person: give it in the first sentence. An ordinal, a party, a start date or a description of the duties of the office identifies nobody, and neither does a sentence about what the office is.'
+    ? '\n\nThe question asks how things stand now. A page listing holders or values across history does not establish the current one — every entry in it fits equally. Answer from a source that states the present and carries a recent date; where the block offers only a historical list, say it does not confirm the current one instead of picking an entry. Name the holder in the first sentence: an ordinal, a party, a start date or a description of the office identifies nobody.'
     : '';
 
 const getUnnamedSubjectInstruction = (
@@ -574,6 +574,14 @@ export interface PrepareMessagesOptions {
   digest?: string;
 }
 
+const MAX_SHAPE_INSTRUCTIONS = 4;
+
+const shapeInstructions = (candidates: string[]): string =>
+  candidates
+    .filter((text) => text)
+    .slice(0, MAX_SHAPE_INSTRUCTIONS)
+    .join('');
+
 export const prepareMessagesForLLM = (
   activeChatMessages: Message[],
   context: string[],
@@ -623,25 +631,27 @@ export const prepareMessagesForLLM = (
       activeChatMessages.filter((msg) => msg.role === 'user').length > 1
     );
     systemPrompt += getPreferredSourceInstruction(preferredSourceDocuments);
-    systemPrompt += getOpinionInstruction(question);
-    systemPrompt += getComparisonStructureInstruction(question);
-    systemPrompt += getRecentEventCompletenessInstruction(question);
-    systemPrompt += getStatedDateInstruction(question);
-    systemPrompt += getEditionDateInstruction(question);
-    systemPrompt += getUnnamedSubjectInstruction(question, contextText);
-    systemPrompt += getCurrentStateInstruction(question, webIntentKind);
-    systemPrompt += getProcedureInstruction(question, webIntentKind);
-    systemPrompt += getCompositionInstruction(question);
-    systemPrompt += getMeasurementUnitInstruction(question);
-    systemPrompt += getSuggestionListInstruction(question);
-    systemPrompt += getFollowUpConversionInstruction(question);
-    systemPrompt += getInvestmentComparisonInstruction(question);
-    systemPrompt += getTrendGroundingInstruction(question, contextText);
-    systemPrompt += getVariantGroundingInstruction(question);
+    systemPrompt += shapeInstructions([
+      getUnnamedSubjectInstruction(question, contextText),
+      getTrendGroundingInstruction(question, contextText),
+      getFollowUpConversionInstruction(question),
+      getVariantGroundingInstruction(question),
+      getProcedureInstruction(question, webIntentKind),
+      getCurrentStateInstruction(question, webIntentKind),
+      getCompositionInstruction(question),
+      getComparisonStructureInstruction(question),
+      getInvestmentComparisonInstruction(question),
+      getRecentEventCompletenessInstruction(question),
+      getSuggestionListInstruction(question),
+      getMeasurementUnitInstruction(question),
+      getStatedDateInstruction(question),
+      getEditionDateInstruction(question),
+      getPeriodScopeInstruction(question),
+      getTimeScopeInstruction(question),
+      getScopeIntegrityInstruction(question),
+      getOpinionInstruction(question),
+    ]);
     systemPrompt += getVerifiedProductInstruction(contextText);
-    systemPrompt += getPeriodScopeInstruction(question);
-    systemPrompt += getTimeScopeInstruction(question);
-    systemPrompt += getScopeIntegrityInstruction(question);
     systemPrompt += getWeakRetrievalInstruction(webWeak);
   } else {
     systemPrompt += `\n\n${languageInstruction(language)}`;

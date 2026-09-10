@@ -2860,7 +2860,7 @@ describe('answers that must carry their date, form and content', () => {
       'does not establish the current one'
     );
     expect(groundedPromptFor(german, 'person')).toContain(
-      'give it in the first sentence'
+      'Name the holder in the first sentence'
     );
     expect(groundedPromptFor(turkish)).not.toContain('Write it out in full');
     expect(groundedPromptFor(turkish, 'howto')).toContain(
