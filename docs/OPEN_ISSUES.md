@@ -65,6 +65,81 @@ zgodnie z instrukcją odpowiadania wyłącznie ze źródeł, pisze o powieści.
 Kierunek 2 jest lepszy dla zadań, które **wymagają** faktów z sieci („napisz
 artykuł o wczorajszym meczu"), i to on jest wart zrobienia.
 
+## 3. Ostrzeżenie o liczbie nie daje użytkownikowi nic do zrobienia
+
+**Objaw.** Kiedy `figureGrounding` wykryje liczbę bez pokrycia w źródłach,
+pod odpowiedzią pojawia się „A number here couldn't be confirmed against the
+sources" i na tym się kończy. Użytkownik wie, że odpowiedź może być zmyślona,
+i nie ma żadnego przycisku — musi ręcznie przepisać pytanie.
+
+**Propozycja.** Zamienić odznakę w kontrolkę: obok tekstu akcja, która ponawia
+tę samą turę z promptem naprawczym, bez ponownego wyszukiwania. Materiał już
+jest — `sourceDocuments[].passage` zapisane przy wiadomości niosą treść stron,
+a `focusedRetrySystemPrompt` i `focusedEvidencePrompt` w `promptUtils.ts` to
+gotowa maszyneria „odpowiedz wyłącznie z tych zdań", której dziś używa
+automatyczny nudge.
+
+**Do rozstrzygnięcia przed implementacją:**
+
+1. Czy poprawiona odpowiedź zastępuje starą, czy dopisuje się jako kolejna
+   wiadomość. Zastąpienie jest czystsze, ale kasuje dowód, że model się mylił.
+2. Co zrobić, gdy druga próba też wypadnie bez pokrycia — druga odznaka bez
+   akcji, czy komunikat, że źródła po prostu tej liczby nie mają.
+3. Osobne prompty dla trzech rodzajów zastrzeżeń (`figure`, `trend`,
+   `conversion`) czy jeden wspólny.
+
+**Warunek wstępny.** Runda `2026-09-10-pixel-weak-models.md` pokazała, że
+mechanizm milczy tam, gdzie powinien mówić: przy tym samym źródle
+(`idealo`, `€ 794,90`) LLaMA 3.2 – 1B dostała ostrzeżenie, a Qwen 3 – 0.6B
+przy równie niezgodnej liczbie nie. Przycisk naprawy na odznace, która pojawia
+się losowo, sprzedaje użytkownikowi fałszywe poczucie kontroli — najpierw
+trzeba domknąć wykrywanie.
+
+## 4. Świeżość wyników po usunięciu listy słów
+
+`datedForCurrentState` dopisywał bieżący rok do zapytania, gdy pytanie
+zawierało „aktualnie", „obecnie", „currently" i kilka innych fraz — czyli
+działał dla dwóch języków z czternastu. Został usunięty razem z
+`ASKS_CURRENT_STATE`, a jego rolę przejęły dwa sygnały neutralne językowo:
+`namesATimePeriod` (rok albo liczba rzymska w pytaniu) decyduje, czy pytanie
+dotyczy teraźniejszości, a `freshYear` w rankingu **premiuje** stronę nazywającą
+bieżący rok, nigdy nie karząc pozostałych.
+
+Nie zmierzono tego na urządzeniu. Do najbliższej rundy: powtórzyć pytania o
+osobę pełniącą urząd w kilku językach i sprawdzić, czy strona o teraźniejszości
+nadal wygrywa z listą historyczną bez dopisywania roku do zapytania.
+
+## 5. Goła lista bez nagłówka wymaga planera
+
+`listHeadingAnswers` rozpoznaje listę po nagłówku z dwukropkiem, trzech krótkich
+wierszach pod nim i terminie z pytania, którego nie ma w tytule strony. Strona,
+która wysypuje wyliczankę bez żadnego nagłówka, po akapicie powtarzającym słowa
+pytania, nadal wymaga `intent: 'howto'` od planera — czyli nie zadziała dla
+modeli chodzących verbatim.
+
+**Zmierzona skala, na 155 unikalnych pytaniach z urządzeń.** Pytań o listę jest
+12 na 271 tur (4,4 %), ale większość z nich — „lista porad na dobry sen",
+„7 rzeczy do spakowania", „5 tips for staying focused" — w ogóle nie idzie do
+sieci, bo planer odrzuca je jako wiedzę ogólną. Do selekcji fragmentów strony
+trafiają dwa: przepis na sernik i składniki aktywne w kosmetykach. To **około
+1,3 % tur z wyszukiwaniem**.
+
+**Sprawdzone i odrzucone.** Liczebnik w pytaniu („podaj 5 rzeczy") wygląda na
+darmowy sygnał notacyjny, ale na tym samym korpusie łapie 15 pytań, z czego 10
+to fałszywe trafienia: „iPhone 17 Pro 256GB", „Legion 5 Pro", „ile to jest 10
+razy 10", „na 15 dni". Dwie trzecie błędu — nie do użycia.
+
+**Co zrobić zamiast zgadywania.** Najpierw zmierzyć brakującą liczbę: ile stron
+w rundzie ma listę bez nagłówka. Dziś tego nie wiemy, bo trace tego nie zapisuje.
+Dodać do zapisu rundy udział wierszy listowych i to, czy znaleziono nagłówek.
+
+Jeśli okaże się, że to realny odsetek, najtańszą naprawą **nie** jest klasyfikacja
+pytania, tylko rezerwacja budżetu: kiedy dokument ma wyraźny region listowy,
+zagwarantować mu kawałek kontekstu obok prozy i zostawić wybór modelowi. To
+usuwa problem klasyfikacji i nie kosztuje dodatkowej generacji — w przeciwieństwie
+do dopytania modelu „czy to pytanie o listę", które dokłada rundę na telefonie
+przy każdej turze, żeby obsłużyć jedną na sto.
+
 ## Znane, drobniejsze, nierozwiązane
 
 - **Fałszywe „A number here couldn't be confirmed against the sources"** —
