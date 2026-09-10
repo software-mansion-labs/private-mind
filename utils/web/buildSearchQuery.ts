@@ -675,23 +675,16 @@ const replanInConversationLanguage = async (
   return inConversationLanguage(plan, reference) ? plan : null;
 };
 
-export const asksCurrentState = (question: string): boolean =>
-  ASKS_CURRENT_STATE.test(question);
+const YEAR_ANCHOR = /(?<![\p{L}\p{N}])(?:1[0-9]|20)\d{2}(?!\p{N})/u;
+const ROMAN_NUMERAL_TOKEN = /(?<![\p{L}\p{N}])[IVXLCDM]{2,}(?![\p{L}\p{N}])/gu;
+const WELL_FORMED_ROMAN =
+  /^M{0,3}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})$/;
 
-const ASKS_CURRENT_STATE =
-  /aktualn\w*|obecn\w*|\bteraz\b|na dzi[sś]|w tej chwili|\bcurrent(?:ly)?\b|right now|\bas of (?:today|now)\b|\bnowadays\b/i;
-const CARRIES_YEAR = /(?<![\p{L}\p{N}])(?:19|20)\d{2}(?![\p{L}\p{N}])/u;
-
-export const datedForCurrentState = (
-  searchQuery: string,
-  question: string,
-  today: string
-): string => {
-  if (!ASKS_CURRENT_STATE.test(question)) return searchQuery;
-  if (CARRIES_YEAR.test(searchQuery)) return searchQuery;
-  const year = today.slice(0, 4);
-  return /^\d{4}$/.test(year) ? `${searchQuery} ${year}` : searchQuery;
-};
+export const namesATimePeriod = (question: string): boolean =>
+  YEAR_ANCHOR.test(question) ||
+  (question.match(ROMAN_NUMERAL_TOKEN) ?? []).some((token) =>
+    WELL_FORMED_ROMAN.test(token)
+  );
 
 export const planWebSearch = async (
   userInput: string,
@@ -709,10 +702,8 @@ export const planWebSearch = async (
   }
   const siteRestriction = extractSiteRestriction(query);
   const anchorTopic = topicAnchorer(query, history, opts?.digest);
-  const searchQuery = datedForCurrentState(
-    anchorTopic(carryReferentIntoQuery(query, history, opts?.digest)),
-    query,
-    opts?.today ?? todayISO()
+  const searchQuery = anchorTopic(
+    carryReferentIntoQuery(query, history, opts?.digest)
   );
   const verbatim = (intent = '', kind?: WebIntentKind): WebSearchPlan => ({
     needsSearch: true,

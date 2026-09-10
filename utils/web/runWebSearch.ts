@@ -7,7 +7,7 @@ import type {
 } from './types';
 import {
   anchorRescueQuery,
-  asksCurrentState,
+  namesATimePeriod,
   isSmallTalk,
   planWebSearch,
   dedupeQueries,
@@ -251,6 +251,9 @@ const searchWithCleanup = async (
 
   emit({ type: 'objectives' });
 
+  const asksAboutThePresent = !namesATimePeriod(query);
+  const presentYear = (input.today ?? '').slice(0, 4);
+
   const plan = await planWebSearch(query, history, generate, {
     ...(input.today ? { today: input.today } : {}),
     ...(input.profile ? { rewrite: input.profile.webPlanner === 'llm' } : {}),
@@ -452,7 +455,8 @@ const searchWithCleanup = async (
     const capped = fairRankByListingRelevance(groups, rankingQuery, cap, {
       kind: plan.kind,
       scopeYears: scopeYearsOf([...baseQueries, query]),
-      currentState: plan.kind === 'person' || asksCurrentState(query),
+      currentState: asksAboutThePresent,
+      ...(asksAboutThePresent && presentYear ? { freshYear: presentYear } : {}),
     });
     let enriched = capped;
     let target = WEB_ADAPTIVE_ENRICH

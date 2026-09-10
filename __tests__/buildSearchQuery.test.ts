@@ -8,7 +8,7 @@ import {
   isAboutTheConversation,
   isConversationalIntent,
   anchorRescueQuery,
-  datedForCurrentState,
+  namesATimePeriod,
 } from '../utils/web/buildSearchQuery';
 
 const history = [
@@ -1455,44 +1455,30 @@ describe('the plan says what a complete answer must contain', () => {
   });
 });
 
-describe('datedForCurrentState', () => {
-  it('pins the current year on a question about how things stand now (Pixel: prezydent USA)', () => {
-    expect(
-      datedForCurrentState(
-        'Kto jest aktualnie prezydentem USA?',
-        'Kto jest aktualnie prezydentem USA?',
-        '2026-09-07'
-      )
-    ).toBe('Kto jest aktualnie prezydentem USA? 2026');
+describe('namesATimePeriod', () => {
+  it('reads a year as the period the question is about', () => {
+    expect(namesATimePeriod('Jaka była cena złota w 2024?')).toBe(true);
+    expect(namesATimePeriod('Who won the 1998 World Cup?')).toBe(true);
   });
 
-  it('leaves a question that names no present moment alone', () => {
+  it('reads a century written in roman numerals, whatever the language', () => {
     expect(
-      datedForCurrentState(
-        'Kim był Mieszko I?',
-        'Kim był Mieszko I?',
-        '2026-09-07'
-      )
-    ).toBe('Kim był Mieszko I?');
+      namesATimePeriod('Którzy prezydenci USA rządzili w XIX wieku?')
+    ).toBe(true);
+    expect(namesATimePeriod('Papi del XX secolo')).toBe(true);
+    expect(namesATimePeriod('Reyes de España del siglo XVIII')).toBe(true);
   });
 
-  it('does not add a second year to a query that already carries one', () => {
-    expect(
-      datedForCurrentState(
-        'aktualna cena złota 2024',
-        'Jaka jest aktualna cena złota w 2024?',
-        '2026-09-07'
-      )
-    ).toBe('aktualna cena złota 2024');
+  it('treats a question that names no period as being about the present', () => {
+    expect(namesATimePeriod('Kto jest prezydentem USA?')).toBe(false);
+    expect(namesATimePeriod('Wer ist Bundeskanzler?')).toBe(false);
+    expect(namesATimePeriod('現在の日本の首相は誰ですか')).toBe(false);
+    expect(namesATimePeriod('भारत के प्रधानमंत्री कौन हैं')).toBe(false);
   });
 
-  it('works on the English wording too', () => {
-    expect(
-      datedForCurrentState(
-        'current price of gold',
-        'What is the current price of gold?',
-        '2026-09-07'
-      )
-    ).toBe('current price of gold 2026');
+  it('does not read an acronym as a roman numeral', () => {
+    expect(namesATimePeriod('Ile kosztuje DVD?')).toBe(false);
+    expect(namesATimePeriod('What does LLC mean?')).toBe(false);
+    expect(namesATimePeriod('Kim był Mieszko I?')).toBe(false);
   });
 });

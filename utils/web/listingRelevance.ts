@@ -88,24 +88,30 @@ export interface ListingRankOptions {
   kind?: WebIntentKind;
   scopeYears?: string[];
   currentState?: boolean;
+  freshYear?: string;
 }
 
+const FRESH_YEAR_BONUS = 1;
+
 const ROSTER_PENALTY = 3;
-const ROSTER_TITLE =
-  /pelna lista|lista wszystkich|wszyscy [a-z]+|chronologiczn|od \d{4} (?:roku )?do (?:dzis|teraz)|full list|complete list|list of all|all .{0,20}since \d{4}|from \d{4} to|\d{4}\s?[-\u2013]\s?\d{4}|history of|na przestrzeni lat/i;
 
-const YEAR_IN_TITLE = /(?<![\p{L}\p{N}])(?:1[6-9]|20)\d{2}(?![\p{L}\p{N}])/gu;
+const YEAR_IN_TITLE = /(?<![\p{L}\p{N}])(?:1[6-9]|20)\d{2}(?!\p{N})/gu;
 const ROSTER_YEAR_HORIZON = 30;
+const LONGEST_SINGLE_TENURE_YEARS = 10;
 
-const namesAGenerationOldYear = (title: string): boolean => {
-  const horizon = new Date().getFullYear() - ROSTER_YEAR_HORIZON;
-  return [...title.matchAll(YEAR_IN_TITLE)].some(
-    (match) => Number(match[0]) < horizon
-  );
+const yearsNamedIn = (title: string): number[] =>
+  [...title.matchAll(YEAR_IN_TITLE)].map((match) => Number(match[0]));
+
+export const looksLikeHistoricalRoster = (title: string): boolean => {
+  const years = yearsNamedIn(title);
+  if (years.length === 0) return false;
+  const earliest = Math.min(...years);
+  const predatesLivingMemory =
+    earliest < new Date().getFullYear() - ROSTER_YEAR_HORIZON;
+  const spansMoreThanOneTenure =
+    Math.max(...years) - earliest >= LONGEST_SINGLE_TENURE_YEARS;
+  return predatesLivingMemory || spansMoreThanOneTenure;
 };
-
-export const looksLikeHistoricalRoster = (title: string): boolean =>
-  ROSTER_TITLE.test(foldForMatching(title)) || namesAGenerationOldYear(title);
 
 export const rankByListingRelevance = <T extends WebSearchResult>(
   rawResults: T[],
@@ -170,7 +176,10 @@ export const rankByListingRelevance = <T extends WebSearchResult>(
           ? ANSWER_FIGURE_BONUS
           : 0) +
         anchorScore(index) +
-        (yearsDiscriminate && inScope[index] ? YEAR_BONUS : 0) -
+        (yearsDiscriminate && inScope[index] ? YEAR_BONUS : 0) +
+        (options.freshYear && mentionsAnyYear(result, [options.freshYear])
+          ? FRESH_YEAR_BONUS
+          : 0) -
         (looksLikeCrossAssetPage(result) ? CROSS_ASSET_PENALTY : 0) -
         (options.currentState && looksLikeHistoricalRoster(result.title ?? '')
           ? ROSTER_PENALTY
