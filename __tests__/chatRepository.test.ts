@@ -445,6 +445,37 @@ describe('getChatMessages source provenance', () => {
     ]);
   });
 
+  it('drops a stored url that is not an http page, so a tap cannot fire another app', async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 4,
+        chatId: 1,
+        role: 'assistant',
+        content: 'Answer.',
+        sourceDocuments: JSON.stringify([
+          { name: 'Real', url: 'https://example.com/a', kind: 'web' },
+          { name: 'Script', url: 'javascript:alert(1)', kind: 'web' },
+          {
+            name: 'Intent',
+            url: 'intent://scan/#Intent;scheme=zxing;end',
+            kind: 'web',
+          },
+          { name: 'File', url: 'file:///etc/passwd', kind: 'web' },
+        ]),
+      },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(messages[0].sourceDocuments?.map((source) => source.url)).toEqual([
+      'https://example.com/a',
+      undefined,
+      undefined,
+      undefined,
+    ]);
+  });
+
   it('keeps the query that found each web source, so the saved trace can replay the searches', async () => {
     const getAllAsync = jest.fn().mockResolvedValue([
       {

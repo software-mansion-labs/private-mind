@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, type LayoutChangeEvent } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
+import { openExternalUrl } from '../../utils/web/openExternalUrl';
 import { space } from '../../constants/design-system';
 import RowChevron from './RowChevron';
 import SourceIcon from '../../assets/icons/source.svg';
@@ -63,11 +63,7 @@ const SourceRow = ({
     return (
       <Pressable
         style={[styles.webRow, isHighlighted && styles.sourceRowHighlighted]}
-        onPress={() => {
-          WebBrowser.openBrowserAsync(source.url!).catch((error) =>
-            console.warn('Failed to open browser', error)
-          );
-        }}
+        onPress={() => openExternalUrl(source.url)}
         onLayout={onLayout}
         accessibilityRole="link"
         accessibilityLabel={source.name}
