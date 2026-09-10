@@ -4,7 +4,7 @@ import {
   scopeYearsOf,
   looksLikeHistoricalRoster,
 } from '../utils/web/listingRelevance';
-import { namesATimePeriod } from '../utils/web/buildSearchQuery';
+import { namesATimePeriod } from '../utils/web/timePeriod';
 import type { WebSearchResult } from '../utils/web/types';
 
 const result = (over: Partial<WebSearchResult>): WebSearchResult => ({

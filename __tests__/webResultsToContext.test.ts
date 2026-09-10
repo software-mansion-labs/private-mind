@@ -497,10 +497,10 @@ describe('selectRelevantContent — the kind of answer the question wants', () =
     ).toContain('€ 2.499,00');
   });
 
-  it('still needs the intent for that: the words alone do not reach the amount', () => {
-    expect(
-      selectRelevantContent(italianPage, italianQuestion, 80)
-    ).not.toContain('€ 2.499,00');
+  it('reaches the amount without the intent, because the page quotes prices', () => {
+    expect(selectRelevantContent(italianPage, italianQuestion, 80)).toContain(
+      '€ 2.499,00'
+    );
   });
 
   it('threads the intent from webResultsToContext down to the passage selection', () => {

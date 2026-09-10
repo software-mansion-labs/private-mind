@@ -16,6 +16,7 @@ import {
   containsNeedle,
   creditedRecords,
   DATE_IN_TEXT,
+  datedFieldAnswers,
   enumerationShare,
   figuresOutsideNeedles,
   idfWeights,
@@ -23,8 +24,7 @@ import {
   listHeadingAnswers,
   MONEY_ANCHOR,
   parseAmount,
-  PRICE_QUESTION,
-  WHEN_QUESTION,
+  quotesPrices,
 } from './passageSignals';
 import { detectQuestionLanguage } from '../questionLanguage';
 import { neutralizeDelimiters } from './security/untrustedContent';
@@ -157,6 +157,7 @@ interface PassageScoring {
   topicNeedles: Set<string>;
   wantsDate: boolean;
   wantsPrice: boolean;
+  demoteUnpriced: boolean;
   wantsFigures: boolean;
   wantsEnumeration: boolean;
   verifiedAmount: number | null;
@@ -179,6 +180,7 @@ const scorePassage = (
     topicNeedles,
     wantsDate,
     wantsPrice,
+    demoteUnpriced,
     wantsFigures,
     wantsEnumeration,
   } = scoring;
@@ -196,14 +198,11 @@ const scorePassage = (
     answersQuestion = true;
   }
   const mentions = folded.match(MONEY_ANCHOR) ?? [];
-  if (wantsPrice) {
-    if (mentions.length > 0) {
-      score += PRICE_BONUS;
-      answersQuestion = true;
-    } else {
-      score *= NO_PRICE_FACTOR;
-    }
+  if (wantsPrice && mentions.length > 0) {
+    score += PRICE_BONUS;
+    answersQuestion = true;
   }
+  if (demoteUnpriced && mentions.length === 0) score *= NO_PRICE_FACTOR;
   if (
     mentions.some((mention) => isOtherAmount(mention, scoring.verifiedAmount))
   ) {
@@ -283,12 +282,6 @@ export const selectRelevantContent = (
       ? parseAmount(options.verifiedPrice)
       : null;
   const { intent } = options;
-  const wantsDate =
-    (!!intent && DATED_INTENTS.has(intent)) ||
-    (!!query && WHEN_QUESTION.test(query));
-  const wantsPrice =
-    verifiedAmount === null &&
-    (intent === 'price' || (!!query && PRICE_QUESTION.test(query)));
   const wantsFigures = intent === 'specs';
   const all = splitIntoPassages(trimmed, maxChars);
   const foldedAll = all.map(foldForMatching);
@@ -296,6 +289,12 @@ export const selectRelevantContent = (
   const titleNeedles = new Set(
     needles.filter((needle) => containsNeedle(foldedTitle, needle))
   );
+  const wantsDate =
+    (!!intent && DATED_INTENTS.has(intent)) ||
+    datedFieldAnswers(trimmed, needles, titleNeedles);
+  const wantsPrice =
+    verifiedAmount === null && (intent === 'price' || quotesPrices(trimmed));
+  const demoteUnpriced = verifiedAmount === null && intent === 'price';
   const wantsEnumeration =
     intent === 'howto' || listHeadingAnswers(trimmed, needles, titleNeedles);
   const scoring: PassageScoring = {
@@ -304,6 +303,7 @@ export const selectRelevantContent = (
     topicNeedles: titleNeedles,
     wantsDate,
     wantsPrice,
+    demoteUnpriced,
     wantsFigures,
     wantsEnumeration,
     verifiedAmount,

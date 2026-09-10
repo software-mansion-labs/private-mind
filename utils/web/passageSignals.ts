@@ -14,17 +14,31 @@ export const containsNeedle = (folded: string, needle: string): boolean =>
     ? folded.includes(needle)
     : new RegExp(`(?<![\\p{L}\\p{N}])${needle}`, 'u').test(folded);
 
-export const WHEN_QUESTION =
-  /\bkiedy\b|\bwhen\b|\bwann\b|\bquand\b|\bcu[aá]ndo\b|\bquando\b|когда|कब|\bمتى\b/i;
+const NUMERIC_DATE = '\\d{1,2}[.\\-/]\\d{1,2}[.\\-/]\\d{2,4}';
+const ISO_DATE = '\\d{4}-\\d{2}-\\d{2}';
+const MONTH_NAME = '\\p{L}[\\p{L}\\p{M}]{1,11}';
+const DAY_MONTH_NAME_YEAR = `\\d{1,2}\\.?(?:\\s+${MONTH_NAME}\\.?){1,3}\\s+\\d{4}`;
+const MONTH_NAME_DAY_YEAR = `${MONTH_NAME}\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?,?\\s+\\d{4}`;
 
-export const DATE_IN_TEXT =
-  /\b\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}\b|\b\d{1,2}\s?(?:sty|lut|mar|kwi|maj|cze|lip|sie|wrz|paz|lis|gru|jan|feb|apr|jun|jul|aug|sep|oct|nov|dec)/i;
+const SPACED_DATE = [
+  ISO_DATE,
+  NUMERIC_DATE,
+  DAY_MONTH_NAME_YEAR,
+  MONTH_NAME_DAY_YEAR,
+].join('|');
 
-export const PRICE_QUESTION =
-  /\bile\s+kosztuj|\bcen[ay]\b|\bcennik|\bkoszt\b|\bhow much\b|\bprice\b|\bcost\b|\bprecio\b|\bpreis\b|\bprix\b|цена/i;
+const CJK_DATE =
+  '\\d{1,4}\\s?\u5e74\\s?\\d{1,2}\\s?\u6708(?:\\s?\\d{1,2}\\s?\u65e5)?';
+
+export const DATE_IN_TEXT = new RegExp(
+  `(?<![\\p{L}\\p{N}])(?:${SPACED_DATE})(?!\\p{N})|(?<!\\p{N})(?:${CJK_DATE})(?!\\p{N})`,
+  'iu'
+);
 
 export const MONEY_ANCHOR =
   /\d[\d\s.,]*\s?(?:zl(?:ot(?:ych|ego|emu|ymi|ym|y|e))?|pln|eur(?:o)?|usd|gbp|czk|chf|dolar(?:ow|ach|ami|em|a|y)?)(?![\p{L}\p{N}])|[$€£¥]\s?\d|\d\s?[$€£¥]/giu;
+
+const MONEY_IN_TEXT = new RegExp(MONEY_ANCHOR.source, 'iu');
 
 export const NUMBER_RUN = /\d[\d.,:]*\d|\d/g;
 
@@ -84,6 +98,34 @@ export const listHeadingAnswers = (
     const folded = foldForMatching(unit);
     return asked.some((needle) => containsNeedle(folded, needle));
   });
+};
+
+const LABELLED_VALUE = /^(\p{L}[^:\n]{0,40}):\s*(\S.*)$/u;
+
+export const datedFieldAnswers = (
+  text: string,
+  needles: string[],
+  titleNeedles: ReadonlySet<string>
+): boolean => {
+  const asked = needles.filter((needle) => !titleNeedles.has(needle));
+  if (asked.length === 0) return false;
+  return enumerationUnits(text).some((unit) => {
+    const labelled = LABELLED_VALUE.exec(unit);
+    if (!labelled || !DATE_IN_TEXT.test(labelled[2]!)) return false;
+    const folded = foldForMatching(labelled[1]!);
+    return asked.some((needle) => containsNeedle(folded, needle));
+  });
+};
+
+const QUOTED_PRICE_MIN_SHARE = 0.15;
+
+export const quotesPrices = (text: string): boolean => {
+  const units = enumerationUnits(text);
+  if (units.length === 0) return false;
+  const priced = units.filter((unit) =>
+    MONEY_IN_TEXT.test(foldForMatching(unit))
+  );
+  return priced.length / units.length >= QUOTED_PRICE_MIN_SHARE;
 };
 
 export const figuresOutsideNeedles = (

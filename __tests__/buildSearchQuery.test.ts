@@ -8,8 +8,8 @@ import {
   isAboutTheConversation,
   isConversationalIntent,
   anchorRescueQuery,
-  namesATimePeriod,
 } from '../utils/web/buildSearchQuery';
+import { namesATimePeriod } from '../utils/web/timePeriod';
 
 const history = [
   { role: 'user', content: 'I feel tired, does coffee help or make it worse?' },

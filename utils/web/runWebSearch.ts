@@ -7,7 +7,6 @@ import type {
 } from './types';
 import {
   anchorRescueQuery,
-  namesATimePeriod,
   isSmallTalk,
   planWebSearch,
   dedupeQueries,
@@ -37,6 +36,7 @@ import {
 } from './sourceAgreement';
 import { webResultsToContext } from './webResultsToContext';
 import { hostname } from './hostname';
+import { namesATimePeriod } from './timePeriod';
 import { unnamedSubjects } from './subjectNaming';
 import { recordWebSearchTrace } from './searchTrace';
 import type { WebIntentKind } from './intentKind';
