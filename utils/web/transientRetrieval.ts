@@ -262,15 +262,18 @@ export const retrieveWebPassages = async (
       bestByPage.set(chunk.pageIndex, chunk);
   }
 
+  const passagesFor = (pageIndex: number): WebChunk[] => {
+    const kept = keptByPage.get(pageIndex);
+    if (kept?.length) {
+      return [...kept].sort((a, b) => a.chunkIndex - b.chunkIndex);
+    }
+    const fallback = bestByPage.get(pageIndex);
+    return fallback ? [fallback] : [];
+  };
+
   const rewritten = results.map((result, pageIndex) => {
     if (!result.content) return result;
-    const kept = keptByPage.get(pageIndex);
-    const fallback = bestByPage.get(pageIndex);
-    const passages = kept?.length
-      ? [...kept].sort((a, b) => a.chunkIndex - b.chunkIndex)
-      : fallback
-        ? [fallback]
-        : [];
+    const passages = passagesFor(pageIndex);
     if (passages.length === 0) return { ...result, content: undefined };
     return {
       ...result,
