@@ -39,7 +39,7 @@ Fix: `WEB_PLANNER_MATRIX['Qwen 3 - 1.7B']` changed from `'llm'` to
 `Qwen 2.5 - 0.5B`, `LFM 2.5 VL - 450M`) whose matrix entry already agreed
 with their own evidence. This also skips an extra on-device generation call
 per search, so it's a latency win too.
-Verify: [__tests__/modelProfiles.test.ts](../__tests__/modelProfiles.test.ts)
+Verify: [**tests**/modelProfiles.test.ts](../__tests__/modelProfiles.test.ts)
 (F13) — a general check that fails for ANY model whose evidence says
 verbatim outperformed it while the matrix still says `'llm'`, not just this
 one. Confirmed live: the in-progress "Searching '...'" line now shows the
@@ -66,7 +66,7 @@ multi-part question, a follow-up that only makes sense against earlier
 turns — "a ten drugi model?") — needs an actual reformulation step to become
 a good query at all; verbatim just fires the user's raw wording at the search
 engine and hopes it resembles a query. The fix above is correct specifically
-for `Qwen 3 - 1.7B`, because *this model's own* planner implementation is
+for `Qwen 3 - 1.7B`, because _this model's own_ planner implementation is
 broken (89% unparseable, and the 11% that parsed made things worse) — not
 because query planning as a concept is unnecessary. Switching it to
 `'verbatim'` was choosing the reliably-mediocre path over the rarely-good/
@@ -81,6 +81,7 @@ a benchmarking effort, not a one-line config change, so it's listed as
 proposed work below rather than attempted this round.
 
 💡 **Proposed / to monitor**
+
 - The other `'llm'`-planner models (`Qwen 2.5 - 1.5B`, `Qwen 2.5 - 3B`,
   `LLaMA 3.2` family, `LFM 2.5 - 1.2B`, `LFM 2.5 VL - 1.6B`, `Bielik - v3.0`,
   `Gemma 4` family) have no `PLANNER_EVIDENCE` entry at all — meaning nobody
@@ -113,6 +114,7 @@ its own stated rule under uncertainty, and the prompt's own fallback line
 — "If the message is conversational and you are unsure, choose false" —
 was actively pushing it the wrong way whenever it hesitated.
 Fix, two layers:
+
 - Prompt: reworded the unsure-fallback to bias toward `true` ("search is
   cheap, a confident wrong or stale answer is not"), narrowing the
   false-by-default case to clearly conversational messages only.
@@ -122,7 +124,7 @@ Fix, two layers:
   — override to a real search when the planner says `false` but the query
   names a capitalized entity or a bare office/title. Flagged in review as
   too narrow: a hardcoded role/title word list only ever covers the
-  entity *types* someone thought to enumerate (president, CEO, king, …),
+  entity _types_ someone thought to enumerate (president, CEO, king, …),
   not the general shape of the problem — any specific, checkable claim
   the planner waves off, not just ones about a named person's role.
 - Deterministic backstop, v2 (current): `isConversationalIntent`
@@ -148,23 +150,23 @@ Fix, two layers:
   `hasOwnEntity`/`REFERENT_ROLE_MARKERS` remain in place for their
   original, unrelated job (carrying a referent into a follow-up query),
   just no longer doing double duty as the needs_search override.
-Caveat: `isConversationalIntent` trusts the planner's self-reported
-`intent` string rather than re-deriving it from the question text — if the
-model mislabels its own intent (e.g. calls a factual lookup "general
-knowledge"), the override won't catch it. This is a smaller, more general
-failure surface than the old per-entity-type list, but not a zero-risk one.
-Verify: [__tests__/buildSearchQuery.test.ts](../__tests__/buildSearchQuery.test.ts)
-— `isConversationalIntent` unit cases (each defined category, an empty
-string, and a factual-sounding intent that must NOT match), plus
-`planWebSearch` override tests using mock `intent` values including the
-exact captured live query (`"elon musk children"`), a bare-role follow-up
-(`"president children"`), and a plain-greeting control confirming
-`needs_search: false` still stands when the intent is genuinely
-conversational. Confirmed live on Pixel 10, same model, same lowercase-typed
-query, re-tested after the v2 switch: "ile dzieci ma elon musk" searches
-("Searching 'Elon Musk's children'…") and answers correctly in Polish
-("Elon Musk miał 14 dzieci"), with the trace showing "Deciding what to
-search for" → "Searching…" → "Reading the pages" → "Done".
+  Caveat: `isConversationalIntent` trusts the planner's self-reported
+  `intent` string rather than re-deriving it from the question text — if the
+  model mislabels its own intent (e.g. calls a factual lookup "general
+  knowledge"), the override won't catch it. This is a smaller, more general
+  failure surface than the old per-entity-type list, but not a zero-risk one.
+  Verify: [**tests**/buildSearchQuery.test.ts](../__tests__/buildSearchQuery.test.ts)
+  — `isConversationalIntent` unit cases (each defined category, an empty
+  string, and a factual-sounding intent that must NOT match), plus
+  `planWebSearch` override tests using mock `intent` values including the
+  exact captured live query (`"elon musk children"`), a bare-role follow-up
+  (`"president children"`), and a plain-greeting control confirming
+  `needs_search: false` still stands when the intent is genuinely
+  conversational. Confirmed live on Pixel 10, same model, same lowercase-typed
+  query, re-tested after the v2 switch: "ile dzieci ma elon musk" searches
+  ("Searching 'Elon Musk's children'…") and answers correctly in Polish
+  ("Elon Musk miał 14 dzieci"), with the trace showing "Deciding what to
+  search for" → "Searching…" → "Reading the pages" → "Done".
 
 ✅ **Follow-up query planning ignored conversation context far more often than
 it needed to — `carryReferentIntoQuery`'s trigger widened from "one specific
@@ -214,7 +216,7 @@ of bug already fixed once this session in `humanizeSourceReferences` and
 `questionLanguage.ts`'s tie-break, now fixed a third time here with the
 same `(?<![\p{L}\p{N}])…(?![\p{L}\p{N}])` Unicode-aware lookaround pattern
 instead of a bare `\b`.
-Verify: [__tests__/buildSearchQuery.test.ts](../__tests__/buildSearchQuery.test.ts)
+Verify: [**tests**/buildSearchQuery.test.ts](../__tests__/buildSearchQuery.test.ts)
 (F31) — the exact motivating case ("a kiedy się urodził?" → carries the
 entity), the regression guard for the naive brevity-only version (the
 bitcoin question, left untouched), and "się" appearing deep inside an
@@ -228,7 +230,7 @@ correctly reads "Urodził się 21 grudnia 1977 roku." — Macron's real
 birthdate.
 💡 **Scope note, not fixed this round**: this closes the single largest,
 most-repeatedly-observed gap (Polish zero-subject follow-ups), but
-`carryReferentIntoQuery` still only ever carries one *entity* (a
+`carryReferentIntoQuery` still only ever carries one _entity_ (a
 capitalized proper noun), not a general topic/object referent — "a ten
 drugi model?" ("and that other model?", Sports section above) or "w tym
 meczu" ("in that game") still carry nothing, since there's no proper noun
@@ -303,7 +305,7 @@ Scenario: after attaching a document and asking it a question, a
 completely unrelated follow-up in the same chat ("Jaka jest dzisiejsza
 pogoda w Warszawie?" — today's weather in Warsaw) also skipped web search,
 because `hasRagSources` is based on whether the chat has any RAG sources
-*enabled* — which, per the existing (pre-dating this change) "enable this
+_enabled_ — which, per the existing (pre-dating this change) "enable this
 source for the chat" behavior in `useSendChatMessage.ts`, persists for
 every future message once a document has been attached and used once, not
 just the turn it was attached on. The model answered the weather question
@@ -337,20 +339,20 @@ many children does Elon Musk have") got answered **in English**. The
 answer-language guard (`isWrongLanguageAnswer` in
 [utils/messageSources.ts](../utils/messageSources.ts)) exists specifically
 to catch and retry this shape of failure — but it never fired, because
-`detectQuestionLanguage` couldn't name the *question's* language at all
+`detectQuestionLanguage` couldn't name the _question's_ language at all
 (`null`), and the guard is a no-op without an expected language to compare
 against.
 Root cause, and why this is a **class** of bug, not one word: each
 language in [utils/questionLanguage.ts](../utils/questionLanguage.ts) is
 scored from a hand-curated marker-word list. A word absent from every
-*other* language's list scores as if it were exclusive to its own language
+_other_ language's list scores as if it were exclusive to its own language
 — regardless of whether it's actually distinctive. "ma" (a common Polish
 verb, "has") isn't in the Polish list, but happens to also be an exclusive
 French marker ("my", possessive) — so a Polish sentence containing "ma"
 picked up a phantom French vote. Here it tied the genuine Polish signal
 ("ile") exactly, and the old tie-break gave up (`null`) the moment any two
 languages tied on raw score, without asking whether that tie was between
-two *real* signals or one real signal and one coincidence. With close to
+two _real_ signals or one real signal and one coincidence. With close to
 25 languages each contributing a marker list, this exact shape of
 collision — some short, ordinary word that one list-author didn't think to
 add — can happen between any pair, not just Polish/French. Audited the
@@ -360,25 +362,25 @@ such words** across the current language set.
 Fix: `pickCandidate`'s tie-break
 ([utils/questionLanguage.ts](../utils/questionLanguage.ts)) no longer
 treats every raw-score tie as unresolvable. A tie is now broken in favor
-of whichever tied candidate has genuine *decisive* evidence (a marker word
+of whichever tied candidate has genuine _decisive_ evidence (a marker word
 of 3+ characters, or one carrying a language-specific diacritic) — and
 only when exactly one of the tied candidates has that; if two languages
 both have decisive evidence, or neither does, it still abstains (`null`)
 rather than guess. Nothing in the fix references "ma", French, or Polish
 specifically — it's a property of the scoring, so it applies uniformly to
 every language pair sharing the list-completeness gap.
-Verify: [__tests__/questionLanguage.test.ts](../__tests__/questionLanguage.test.ts)
+Verify: [**tests**/questionLanguage.test.ts](../__tests__/questionLanguage.test.ts)
 — the original captured case, plus a systematic audit test that
 cross-pairs all 24 identified short-exclusive words against 13 other
 languages' own decisive markers (276 synthetic sentence pairs) and asserts
-the *safety* invariant that actually matters: a short-word collision must
+the _safety_ invariant that actually matters: a short-word collision must
 never make the detector confidently name the wrong language — landing on
-the correct language or abstaining are both acceptable, being *confidently
-wrong* is not. All 276 pairs pass that bar (a handful abstain via `null`
+the correct language or abstaining are both acceptable, being _confidently
+wrong_ is not. All 276 pairs pass that bar (a handful abstain via `null`
 instead of naming the technically-correct language — safe, just not
 maximally precise, and out of scope for this fix). The existing 500+ item
 multilingual corpus regression suite
-([__tests__/fixtures/multilingualQueries.ts](../__tests__/fixtures/multilingualQueries.ts))
+([**tests**/fixtures/multilingualQueries.ts](../__tests__/fixtures/multilingualQueries.ts))
 still reports 100% per-language accuracy with zero cross-language
 misnamings — confirming the tie-break change doesn't trade the new safety
 property for the old precision. Confirmed live: reloaded, re-asked the
@@ -420,10 +422,10 @@ present in what the model actually read, and `findUngroundedFigures`
 treat such a figure as self-confirmed.
 Fix: `wrap()` now derives the figures whitelist from whatever `ctx` it is
 called with, instead of a fixed outer value — since `finalContext` is
-always a truncated *prefix* of `safeContext`, the whitelist is now
+always a truncated _prefix_ of `safeContext`, the whitelist is now
 guaranteed to be a subset of what the model actually sees, for every call
 site.
-Verify: [__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) —
+Verify: [**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) —
 "never whitelists a price figure that truncation cut out of the context
 (F9)"; confirmed live via debug log (see Shopping below) — the whitelist
 sent to the model now exactly matches the figures present in the truncated
@@ -442,6 +444,7 @@ on top**
 Scenario: asked the gold price ($1573, itself already correctly flagged
 unverified), then asked the natural follow-up "And how much is that in
 euros?". Two things went wrong:
+
 1. The fresh web search built from the follow-up alone has no way to
    resolve "that" — it retrieved three generic USD/EUR converter pages
    (calculator.net, wise.com ×2, themoneyconverter.com), nothing tied to
@@ -452,47 +455,47 @@ euros?". Two things went wrong:
    conversion the question actually asked for, despite the model's own
    previous answer (with the real number) being right there in the same
    conversation's history.
-Added `getFollowUpConversionInstruction` (marker: "how much is that/it in
-X", "convert that to X", Polish equivalents) telling the model to use the
-exact figure from its own previous answer as the conversion base. Verify:
-[__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F21).
-Confirmed wired correctly live, but the instruction alone did not change
-the answer on re-test ("The price of 1 USD in euros is 1.00." again) — the
-same class of gap as "weak retrieval, model answers anyway" under
-Beauty/cosmetics below: this asks the 1.7B model to locate a number
-several turns back and do arithmetic on it, which a prompt instruction
-alone doesn't reliably fix.
-Added a second, deterministic layer instead of relying on compliance:
-`hasGenuineConversionRate`/`isUngroundedConversionClaim`
-([utils/web/figureGrounding.ts](../utils/web/figureGrounding.ts)) — the
-same "detect after the fact, append a visible caveat" pattern already
-proven for price and trend figures
-(`withFigureGroundingCaveat`/`withTrendGroundingCaveat`), now extended with
-`withConversionGroundingCaveat`
-([utils/messageSources.ts](../utils/messageSources.ts), wired into
-[store/llmStore.ts](../store/llmStore.ts)). `findUngroundedFigures` alone
-does not catch this case: a converter page's own title/snippet almost
-always carries its normalization baseline as boilerplate ("1 USD to EUR",
-"1 Euro to US dollars") — plain text that trivially "confirms" any
-fabricated answer figure of exactly 1, which is exactly what tripped up
-the existing figure-grounding check on the live failure above. A genuine
-exchange rate is virtually never exactly 1 between two different
-currencies, so `hasGenuineConversionRate` requires a context figure other
-than a bare 1 before trusting that any conversion is actually grounded.
-Verify: [__tests__/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
-and [__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts),
-both asserting against the literal captured failure text ("The price of 1
-USD in euros is 1.00.").
-Live status (superseded — see the two follow-ups directly below): confirmed
-the caveat pipeline is wired end to end (full suite/tsc/eslint clean, no
-regressions), but several live re-tests this round did not reproduce the
-exact original wrong-figure text again — the model's output for this
-question shape is highly non-deterministic run to run (seen instead: an
-honest "no specific price found" refusal, a different fabricated figure not
-shaped like "1:1", and once a raw instruction-text leak unrelated to
-conversion at all — see the note below). So this was unit-verified against
-the exact captured failure, and wired correctly, but not live-reconfirmed
-to the same standard as the blank-screen fix below at the time.
+   Added `getFollowUpConversionInstruction` (marker: "how much is that/it in
+   X", "convert that to X", Polish equivalents) telling the model to use the
+   exact figure from its own previous answer as the conversion base. Verify:
+   [**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F21).
+   Confirmed wired correctly live, but the instruction alone did not change
+   the answer on re-test ("The price of 1 USD in euros is 1.00." again) — the
+   same class of gap as "weak retrieval, model answers anyway" under
+   Beauty/cosmetics below: this asks the 1.7B model to locate a number
+   several turns back and do arithmetic on it, which a prompt instruction
+   alone doesn't reliably fix.
+   Added a second, deterministic layer instead of relying on compliance:
+   `hasGenuineConversionRate`/`isUngroundedConversionClaim`
+   ([utils/web/figureGrounding.ts](../utils/web/figureGrounding.ts)) — the
+   same "detect after the fact, append a visible caveat" pattern already
+   proven for price and trend figures
+   (`withFigureGroundingCaveat`/`withTrendGroundingCaveat`), now extended with
+   `withConversionGroundingCaveat`
+   ([utils/messageSources.ts](../utils/messageSources.ts), wired into
+   [store/llmStore.ts](../store/llmStore.ts)). `findUngroundedFigures` alone
+   does not catch this case: a converter page's own title/snippet almost
+   always carries its normalization baseline as boilerplate ("1 USD to EUR",
+   "1 Euro to US dollars") — plain text that trivially "confirms" any
+   fabricated answer figure of exactly 1, which is exactly what tripped up
+   the existing figure-grounding check on the live failure above. A genuine
+   exchange rate is virtually never exactly 1 between two different
+   currencies, so `hasGenuineConversionRate` requires a context figure other
+   than a bare 1 before trusting that any conversion is actually grounded.
+   Verify: [**tests**/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
+   and [**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts),
+   both asserting against the literal captured failure text ("The price of 1
+   USD in euros is 1.00.").
+   Live status (superseded — see the two follow-ups directly below): confirmed
+   the caveat pipeline is wired end to end (full suite/tsc/eslint clean, no
+   regressions), but several live re-tests this round did not reproduce the
+   exact original wrong-figure text again — the model's output for this
+   question shape is highly non-deterministic run to run (seen instead: an
+   honest "no specific price found" refusal, a different fabricated figure not
+   shaped like "1:1", and once a raw instruction-text leak unrelated to
+   conversion at all — see the note below). So this was unit-verified against
+   the exact captured failure, and wired correctly, but not live-reconfirmed
+   to the same standard as the blank-screen fix below at the time.
 
 ✅ **Root cause of "not live-reconfirmed" found and fixed: `groundingCaveats`
 was persisted to the DB correctly but never reached the live, currently-open
@@ -562,7 +565,7 @@ assistant turn by dropping the in-progress placeholder
 (`activeChatMessages.slice(0, -1).findLast(...)`) rather than trusting the
 array's last element, since that's always the still-generating placeholder
 at this point in the flow.
-Verify: [__tests__/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
+Verify: [**tests**/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
 — the exact captured live text (77 493 USD anchor, 23,19 EUR answer,
 flagged), a plausible conversion against the same anchor (not flagged), and
 the case with no prior answer to anchor against (not flagged, consistent
@@ -577,11 +580,11 @@ doesn't match).
 🔧 **New, unrelated finding along the way: raw instruction text leaking
 into a visible answer**
 While repeatedly re-testing the conversion follow-up above, one run
-produced: *"$1. 366 stands far apart from the other figures found — that
+produced: _"$1. 366 stands far apart from the other figures found — that
 is more likely a filter default, shipping cost, financing installment, or
 an unrelated listing than this product's actual price. Do not use it as
 the low (or high) end of a range, or as "the" price, unless the source
-text explicitly ties it to this exact product..."* — this is the model
+text explicitly ties it to this exact product..."_ — this is the model
 echoing back the shape of `getOutlierNote`'s own instruction text
 (the price-outlier grounding instruction, `utils/promptUtils.ts`) as if it
 were the answer, rather than following it. Not reproduced a second time,
@@ -647,7 +650,7 @@ Fix: `getRecentEventCompletenessInstruction` (`utils/promptUtils.ts`),
 triggered by "last/latest match/game" markers, tells the model to include
 who else was involved and when, not just the headline figure, when the
 sources name that. Verify:
-[__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F19).
+[**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F19).
 Confirmed live, but only a partial win: re-asked the identical question, the
 answer grew from a bare "2-0" to "Ostatni mecz Realu Madryt [...] mecz w
 Międzyklubowe towarzyskie, w którym Real Madryt wygrał 4-2" — now names the
@@ -691,7 +694,7 @@ teams/date, so the search query itself stays under-specified — is
 untouched and out of scope; this fix only stops an all-time page from being
 used to answer that under-specified query, same as the existing period-
 scope guard does for "this year" questions. Verify:
-[__tests__/listingRelevance.test.ts](../__tests__/listingRelevance.test.ts)
+[**tests**/listingRelevance.test.ts](../__tests__/listingRelevance.test.ts)
 — the exact captured Basketball-Reference title dropped alone, dropped
 alongside a real boxscore page (keeping only the boxscore), and NOT dropped
 for a plain all-time question with no event/period scope. Confirmed live:
@@ -726,6 +729,7 @@ was **3,698.96–3,746.00 zł** across two separate live runs; the real price
 (independently verified, and present verbatim in the scraped page) is
 **~5,099–5,187 zł**. The source (Ceneo.pl) was the correct listing, so this
 was never a variant-selection bug.
+
 - Whitelist/truncation-order bug (see Finance/crypto above): this was
   suspected to be the root cause and is fixed and verified — the whitelist
   sent to the model is confirmed (via live debug log) to always match the
@@ -734,7 +738,7 @@ was never a variant-selection bug.
   consistent with a context that was itself already wrong.
 - **Real root cause (confirmed live, now fixed)**: the truncation itself
   was cutting the correct price out of context entirely. Ceneo's scraped
-  page layout puts a "customers also viewed" carousel of *other* iPhone
+  page layout puts a "customers also viewed" carousel of _other_ iPhone
   models/variants (iPhone Air, iPhone 17, iPhone 17 Pro Max, other colors)
   — each with its own `od X zł` price — **before** the actual target
   listing's own price in the page's linear text. The old truncation kept a
@@ -752,7 +756,7 @@ was never a variant-selection bug.
     search far more room than the model's real prompt budget had left.
     Fixed by measuring the actual current system prompt length instead of
     guessing. Verify:
-    [__tests__/contextBudget.test.ts](../__tests__/contextBudget.test.ts)
+    [**tests**/contextBudget.test.ts](../__tests__/contextBudget.test.ts)
     (F12).
   - Fix, downstream / defense-in-depth (`utils/promptUtils.ts`): when
     truncation is still unavoidable and a web source is present, the
@@ -762,10 +766,10 @@ was never a variant-selection bug.
     (`selectRelevantContent` in `webResultsToContext.ts`), but runs it at
     THIS layer's true final budget instead of an upstream estimate. It only
     touches well-formed, self-closed `--- <label>: <name> --- ... --- End
-    of <label> ---` blocks, so every kept block stays fully attributed and
+of <label> ---` blocks, so every kept block stays fully attributed and
     closed; anything else falls back to the original naive-slice path
     unchanged. Verify:
-    [__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F11).
+    [**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F11).
   - Confirmed live on-device: the same question ("Ile kosztuje iPhone 17
     Pro 256GB w Polsce?") now answers "5099,00 zł" — the real price — with
     Sources still correctly populated.
@@ -773,7 +777,7 @@ was never a variant-selection bug.
   ([utils/web/figureGrounding.ts](../utils/web/figureGrounding.ts)) prefers
   figures actually governed by the word "price"/"cena" over any currency
   figure in context — real and tested
-  ([__tests__/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)),
+  ([**tests**/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)),
   but wasn't the fix here: Polish e-commerce pages write "od X zł" ("from
   X zł"), not "cena: X zł", so the tight extraction found nothing and fell
   back to the loose match — which can't distinguish the target product's
@@ -784,8 +788,8 @@ was never a variant-selection bug.
 Scenario: asked for the price of Sony WH-1000XM5 headphones on Amazon, the
 answer stated **$278** — a number not present in any retrieved source (the
 sources say $150 "lowest price ever" and "nearly 40% off"). The
-⚠️ *"A figure in this answer could not be verified against the retrieved
-sources"* caveat correctly fired, with Sources still populated so the user
+⚠️ _"A figure in this answer could not be verified against the retrieved
+sources"_ caveat correctly fired, with Sources still populated so the user
 can check the real figure themselves.
 Verify: `withFigureGroundingCaveat` in
 [utils/messageSources.ts](../utils/messageSources.ts) — this is the same
@@ -804,21 +808,22 @@ page — but a real answer-quality gap distinct from fabrication; no existing
 instruction targeted "the source is a listing page with many valid prices
 for different variants," only single-figure grounding.
 Fix: `getFiguresInstruction` (`utils/promptUtils.ts`) now adds a range hint
-whenever 3+ distinct figures are found for one unlabeled product: *"These
+whenever 3+ distinct figures are found for one unlabeled product: _"These
 are prices for different variants or listings of the same product, not one
 figure to quote directly — do not list them out. Respond with ONLY a range
-(lowest to highest) or ONLY the single most relevant one."* Two figures
+(lowest to highest) or ONLY the single most relevant one."_ Two figures
 (e.g. current vs. previous price) don't trigger it, since stating both is
 usually the right answer there.
+
 - First attempt used softer wording ("state a range... not every one as a
   list") — live-tested, and the model added a range but ALSO kept the full
   list ("...$65, $64, $102, ... The lowest price is $64 and the highest is
   $160."). Strengthened to the imperative "do not list them out... ONLY a
   range" above, which live-tested clean: "The prices for Nike Air Max 90
   shoes on Nike.com range from $65 to $160." — no list, no caveat.
-Verify: [__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts)
-(F14 and the two-figure negative case); confirmed live on-device with the
-exact scenario above.
+  Verify: [**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts)
+  (F14 and the two-figure negative case); confirmed live on-device with the
+  exact scenario above.
 
 ✅ **Refusal answered in the wrong language — not reproduced, not a bug**
 Scenario: asked (in Polish) for the price of an RTX 4070 GPU on Allegro,
@@ -833,7 +838,7 @@ single, unreproduced instance.
 
 ✅ **Suspiciously low outlier price stated as the low end of a range — fixed**
 Scenario: re-testing the RTX 4070 question above (after the query-planner
-fix) got a *different* third outcome: a Polish, sourced-looking answer —
+fix) got a _different_ third outcome: a Polish, sourced-looking answer —
 "...najniższe ceny mogą być dostępne w zakresie od 399 zł" (from 399 zł) —
 but 399 zł is roughly 5-8x below any real price for that card. Real prices
 cluster in the 2,000-3,000 zł range; a figure that far outside the cluster is
@@ -852,9 +857,9 @@ source text explicitly ties it to this exact product. Median-relative rather
 than a fixed threshold, since normal price variance differs by product
 category (compare: Nike Air Max colorways cluster within ~2.5x of each other
 and correctly trigger no outlier flag).
-Verify: [__tests__/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
+Verify: [**tests**/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
 (F15 — `splitPriceOutliers`, both a low and a high outlier, and the Nike
-listing as a true-negative); [__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts)
+listing as a true-negative); [**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts)
 (same scenario end-to-end through `prepareMessagesForLLM`, plus a
 true-negative for a normally-clustered listing). Re-tested live twice after
 the fix (identical and reworded RTX 4070 questions): neither run produced a
@@ -866,6 +871,7 @@ runs, that's supporting evidence rather than a byte-for-byte repro of "399 zł
 the unit tests above using the exact real-world figures.
 
 💡 **Proposed**
+
 - Consider a retrieval-side filter analogous to
   `excludeCrossAssetIfAlternatives` for product variants if the prompt-side
   warning proves insufficient under further testing.
@@ -876,7 +882,7 @@ Every price-grounding bug fixed this round before this one — the variant
 mixup, the carousel-of-decoys truncation bug, the raw Nike listing dump, and
 the RTX 4070 outlier above — was a downstream symptom of the same root gap:
 once a page is fetched, the pipeline reduced it to plain prose and then had
-to *infer* which number in that prose was the actual price, with layered
+to _infer_ which number in that prose was the actual price, with layered
 regex heuristics (`extractPriceStatementTokens`, `splitPriceOutliers`,
 `getVariantGroundingInstruction`, the range hint, …) doing the inferring.
 Most e-commerce pages already state the answer unambiguously in a form
@@ -920,15 +926,15 @@ to resolve, not reintroduced in a new form — and falls back to exactly the
 existing heuristic pipeline unchanged. This is additive, not a replacement:
 a page with no structured markup at all gets no `[Verified product data]`
 block and behaves exactly as before.
-Verify: [__tests__/extractArticle.test.ts](../__tests__/extractArticle.test.ts)
+Verify: [**tests**/extractArticle.test.ts](../__tests__/extractArticle.test.ts)
 (single Product/Offer with normalized availability, array-wrapped offer,
 multiple disagreeing offers, a multi-product category page, OG-tag fallback,
 no structured data at all, a `Product` nested in `@graph`);
-[__tests__/enrichResults.test.ts](../__tests__/enrichResults.test.ts)
+[**tests**/enrichResults.test.ts](../__tests__/enrichResults.test.ts)
 (propagation onto the enriched result);
-[__tests__/webResultsToContext.test.ts](../__tests__/webResultsToContext.test.ts)
+[**tests**/webResultsToContext.test.ts](../__tests__/webResultsToContext.test.ts)
 (the marker line renders only with a price present);
-[__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F16 — the
+[**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F16 — the
 trust instruction appears only when a source actually carries structured
 data). Confirmed live: asked for the current price of an iPhone 17 Pro from
 Apple's own Polish store, the answer was a single clean figure — "5799 zł"
@@ -954,7 +960,7 @@ Root cause: `findUngroundedFigures`
 `contextFigures` (real currency figures found in context) and, when that
 list came back empty, returned `[]` — "nothing to compare against" was
 being treated as "nothing to flag." That's backwards: context existing but
-containing zero currency figures at all is the *strongest* ungrounded case,
+containing zero currency figures at all is the _strongest_ ungrounded case,
 not a reason to wave a stated figure through. Every earlier fix in this
 file targeted "wrong figure among several real ones in context"
 (installment vs. price, a filter-widget default, a different asset); this
@@ -962,12 +968,12 @@ is the first case of "context has no price data whatsoever, yet the model
 still states one."
 Fix: `contextFigures.length === 0` now returns every figure the answer
 states, instead of `[]`. Verify:
-[__tests__/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
+[**tests**/figureGrounding.test.ts](../__tests__/figureGrounding.test.ts)
 (replaces the old "returns nothing" test, which asserted the previous,
 backwards behavior, with one asserting the answer's figure is flagged; a
 second test covers the still-correct "answer states no figure either" case
 alongside it);
-[__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts)
+[**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts)
 confirms `withFigureGroundingCaveat`'s two closest existing tests are
 unaffected (an answer whose figure matches context, and an answer with no
 currency figure at all — neither passes through the new zero-context
@@ -1017,7 +1023,7 @@ here was already close to empty. Isolated the cause by elimination: turning
 web search off for the identical question got a full, coherent (if
 hallucinated, ungrounded) answer — proving the failure was specific to the
 web/RAG prompt-assembly path, not the model or question in general. The
-newly-added reminder was the only *unconditional* new instruction line this
+newly-added reminder was the only _unconditional_ new instruction line this
 round (the comparison/recent-event instructions above only add text when
 their question markers match, which they don't here) — the working theory
 is that stacking one more instruction onto an already near-empty, low-
@@ -1030,7 +1036,7 @@ skonsultować się z ogłoszeniami na OLX" — no echo, no jargon leak either.
 Net effect: the original jargon-leak instruction (with "or its translation")
 stays as the only defense — not strengthened this round, since the
 strengthening attempt cost far more than the one-off leak it targeted.
-Verify: [__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) —
+Verify: [**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) —
 the sandwiched-reminder test and its assertion were added and then reverted
 together with the code; `git diff` shows no net change to `wrap()`'s output
 shape. This is a documented dead end, not a shipped fix — kept here so a
@@ -1049,7 +1055,7 @@ that one node. This is a legitimate, independently-justified correctness
 fix — verified with its own tests — but it did **not** turn out to explain
 the echo regression above (the OLX pages here never got far enough to have
 their JSON-LD parsed at all — enrichment itself found nothing usable).
-Verify: [__tests__/extractArticle.test.ts](../__tests__/extractArticle.test.ts)
+Verify: [**tests**/extractArticle.test.ts](../__tests__/extractArticle.test.ts)
 (F20).
 
 ## Beauty / cosmetics
@@ -1104,7 +1110,7 @@ content. Routed through the same `store/llmStore.ts` gate as the
 question-echo check below — a match is treated as a failed generation
 (`markGenerationFailed` → "Failed to generate a response." with Retry)
 instead of being persisted as a real reply. Verify:
-[__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts) —
+[**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts) —
 the exact captured live text, an English-language version of the same
 shape, a genuine answer that names a real entity (not flagged), a single
 ordinary "source" mention (not flagged), two mentions — below the
@@ -1124,9 +1130,9 @@ sites in `store/llmStore.ts` (`describeGenerationFailure` and the
 persistence gate) were removed in the tip commit on this branch, `9d3476a
 "feat(web): move grounding caveats out of the answer text into badges"` —
 apparently collateral damage from that refactor, since the two are
-unrelated (that commit moved *caveats* — figure/trend/conversion warnings
+unrelated (that commit moved _caveats_ — figure/trend/conversion warnings
 appended to answer text — into separate badge components; the circular
-detector was a *reject-and-retry* gate, not a caveat). Live testing this
+detector was a _reject-and-retry_ gate, not a caveat). Live testing this
 round reproduced exactly this failure shape again on Pixel: literal
 "źródło 2" phrases in the answer, and no Sources shown underneath (see
 Citations / Sources below for why the latter half also happens on a
@@ -1173,7 +1179,7 @@ Fix: `getComparisonStructureInstruction` (`utils/promptUtils.ts`), triggered
 by "how do X and Y differ" / "czym się różni" markers, tells the model to
 address each side under its own clear heading or point rather than blending
 them into one paragraph. Verify:
-[__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F18).
+[**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) (F18).
 Confirmed live on the identical question: the answer now opens with "Grypa
 i przeziębienie różnią się objawami i przebiegiem," then presents **Grypa:**
 and **Przeziębienie:** as two clearly separated bulleted sections, closing
@@ -1197,14 +1203,14 @@ short (2–5-word) phrase repeated back-to-back with no punctuation between
 copies — this loop's repeating unit is a full ~12+-word sentence, and each
 copy sits inside its OWN numbered list item (i.e. separated by list-item
 punctuation/numbering, not glued together with no separator), which is
-exactly the shape those two detectors were built to catch the *absence* of
-punctuation for, not a *presence* of structural separators between longer
+exactly the shape those two detectors were built to catch the _absence_ of
+punctuation for, not a _presence_ of structural separators between longer
 repeated units. `truncateAtRepeatedClause` operates at the clause level and
 likewise wasn't built for a unit this long recurring across structurally
 distinct list items — a genuine fourth granularity in the loop-detection
 family, not a variant of an already-covered case.
 A candidate fix (`findRepeatedClauseCycle`, generalizing the existing
-single-clause check to a *cycle* of 2–4 distinct clauses repeating 3+
+single-clause check to a _cycle_ of 2–4 distinct clauses repeating 3+
 times) was prototyped and confirmed live to cut the loop cleanly after step
 2 instead of running to 18+ steps. Decision: this is being tracked as a
 separate task rather than shipped in this round — reverted out of
@@ -1258,12 +1264,12 @@ Verify: `findRepeatedWordRun` in
 [utils/loopDetection.ts](../utils/loopDetection.ts) — flags the same word
 repeated 4+ times in a row (2–3 repeats is normal emphasis/stutter, not a
 loop) and cuts before the first copy. Covered by
-[__tests__/loopDetection.test.ts](../__tests__/loopDetection.test.ts);
+[**tests**/loopDetection.test.ts](../__tests__/loopDetection.test.ts);
 confirmed live — the same question stopped looping after the fix.
 
 ✅ **Multi-word phrase loop with no punctuation between copies**
 Scenario: the single-word fix generalized one level up — a model can just
-as easily loop on a short *phrase* ("bardzo dobrze bardzo dobrze bardzo
+as easily loop on a short _phrase_ ("bardzo dobrze bardzo dobrze bardzo
 dobrze...") with no punctuation between repeats, which neither the
 clause-level nor the single-word check can see (each word alone isn't
 repeating — the pair is).
@@ -1272,7 +1278,7 @@ Verify: `findRepeatedPhraseRun` in
 windows and flags one repeated 3+ times back-to-back, gated by a minimum
 combined phrase length so short connector pairs ("no i", "tak jak") can't
 trip it on ordinary prose. Covered by
-[__tests__/loopDetection.test.ts](../__tests__/loopDetection.test.ts)
+[**tests**/loopDetection.test.ts](../__tests__/loopDetection.test.ts)
 (F10 and adjacent cases).
 
 🔧 **A fourth granularity found, prototyped, but deferred: long
@@ -1314,7 +1320,7 @@ own last question; `store/llmStore.ts` now routes a match through the same
 "failed generation" path as a genuinely empty response (`markGenerationFailed`
 → visible "Failed to generate a response." with a Retry button) instead of
 persisting the echo as if it were a real reply. Verify:
-[__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts) —
+[**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts) —
 the exact captured raw text, a plain echo with different trailing
 punctuation, case-insensitivity, a genuine answer (not flagged), no
 question to compare against (not flagged), and an unclosed `<think>` block
@@ -1347,7 +1353,7 @@ clause from the visible answer before comparing — if what's left matches
 the question, it's still an echo, just with a leaked reminder riding along.
 This doesn't require recognizing the reminder's text in any specific
 language, since it only cares about the parenthetical's position, not its
-content. Verify: [__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts)
+content. Verify: [**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts)
 — the captured shape (echo + leaked reminder, flagged) and a genuine answer
 that happens to end in an unrelated parenthetical clause (not flagged,
 since the part before it doesn't match the question). Caveat: the original
@@ -1389,7 +1395,7 @@ named-entity fact is "already known" is a planner-quality problem, not
 something a text-shape detector can correct) — it only stops the resulting
 dangling-list reply from being persisted as if it were a complete answer.
 Verify:
-[__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts) —
+[**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts) —
 the exact captured text, an English equivalent, a filled-in list (not
 flagged), an ordinary answer with no trailing colon (not flagged), and a
 colon left inside `<think>` only (not flagged). Live re-attempt on Pixel
@@ -1421,7 +1427,7 @@ the page in your own words... instead of a vague 'the sources say'") was
 deleted from [utils/promptUtils.ts](../utils/promptUtils.ts) and replaced
 with `DominantSourceBadge` — a deterministic UI pill shown when exactly one
 web source ends up cited. That works well for the single-source case, but
-the badge is computed *after* generation from the final answer's citation
+the badge is computed _after_ generation from the final answer's citation
 overlap, so it can't be known while the prompt is being built, and it
 never fires at all for 0 or 2+ cited sources. Removing the instruction
 outright meant those cases — which turned out to be the common ones —
@@ -1438,7 +1444,7 @@ First fix attempted (reverted): restored `namedCitation` in
 words instead of writing "Source N". Live-tested clean at the time — but
 this is exactly the shape of fix the project has already decided against
 elsewhere in this doc (the `DominantSourceBadge` switch itself was a move
-*away* from trusting prompt-instruction compliance toward a deterministic
+_away_ from trusting prompt-instruction compliance toward a deterministic
 mechanism, for the single-source case). Re-adding an LLM-compliance
 instruction for the multi-source case was flagged as solving one instance
 rather than the class, and reverted per explicit instruction to replace it
@@ -1460,7 +1466,7 @@ success gate opens: the humanized text — not the raw model output — is
 what gets used for citation-picking, grounding-caveat detection,
 persistence, and the in-memory chat state, so every downstream consumer
 sees the cleaned-up answer, not just what's rendered on screen.
-Verify: [__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts)
+Verify: [**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts)
 — the exact captured live 4-source text, a Polish "źródła 2" case, and a
 no-op case (no source documents, text left untouched). Confirmed live on
 Pixel 10 as part of the same round's language-detection re-test: the humanizer
@@ -1496,7 +1502,7 @@ zero Sources"**
   context (`presentNames`) instead of hiding all of them. This checks
   whether the heuristic has any signal at all — not any specific language.
   Verify: new cases in
-  [__tests__/messageSources.test.ts](../__tests__/messageSources.test.ts);
+  [**tests**/messageSources.test.ts](../__tests__/messageSources.test.ts);
   full suite (1343 tests) passes; confirmed live — the same vitamin D
   question now correctly shows both sources under "Sources".
 - **Supporting fix — refusal-detection gaps**
@@ -1527,7 +1533,7 @@ nothing to cite this time. This is a different mechanism from the
 one only ever applied when a fresh context block existed this turn, so it
 never covered this no-context-follow-up path either, before or after the
 switch) — the empty "Sources" here isn't a bug in isolation, it's the
-*correct* half of an inconsistent pair; the bug is the model still act like
+_correct_ half of an inconsistent pair; the bug is the model still act like
 sources exist when this turn has none.
 Fix: `getNoFreshContextInstruction`
 ([utils/promptUtils.ts](../utils/promptUtils.ts)) — when a turn has no
@@ -1538,7 +1544,7 @@ conversation in its own words instead. Scoped to threads that have actually
 searched before (not added unconditionally to every prompt), following this
 doc's documented lesson that stacking an unconditional instruction onto a
 small model risks new regressions of its own (see Real estate, above).
-Verify: [__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts) —
+Verify: [**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts) —
 the exact captured shape (a president-follow-up thread reused as the
 fixture, since it is the same no-context-after-web-turn pattern) gets the
 warning, and an ordinary thread that never searched does not. Live
@@ -1560,6 +1566,7 @@ all, not evidence this specific instruction works — its trigger condition
 just keeps not coming up. Left at 🔧 until it's actually seen to fire.
 
 💡 **Proposed / to monitor**
+
 - Watch whether "trust present sources on zero overlap" starts showing
   sources on genuine refusals in languages other than PL/EN (the refusal
   regex only covers those two) — needs more live testing.
@@ -1586,7 +1593,7 @@ result (nothing reaches `SourceRow` with `read === false` anymore) and
 were removed. `webResults` (used for the search-trace panel and the
 `DominantSourceBadge` computation) is unaffected — unread pages still show
 up in the "Searched the web" trace, just not in the Sources sheet.
-Verify: [__tests__/useMessageSources.test.ts](../__tests__/useMessageSources.test.ts)
+Verify: [**tests**/useMessageSources.test.ts](../__tests__/useMessageSources.test.ts)
 — updated the case that used to assert an unread-but-used source was kept
 to assert it's now excluded. Confirmed live on Pixel 10: a recipe question
 ("jaki jest przepis na sernik nowojorski") that searched multiple pages
@@ -1615,7 +1622,7 @@ finished by definition (the trace already moved past it) and gets `done:
 true`; the last incomplete one gets `active: true` (the pulsing state).
 Once nothing is running anymore, every step that made it into the trace at
 all is done — a finished trace has no such thing as a still-pending step.
-Verify: [__tests__/webSearchTrace.test.ts](../__tests__/webSearchTrace.test.ts)
+Verify: [**tests**/webSearchTrace.test.ts](../__tests__/webSearchTrace.test.ts)
 — a mid-search case (checkmarks on every step before the active one, no
 checkmark on the active one) and a fully-completed case (checkmarks on
 every step). Confirmed live on Pixel 10: expanded the "Searched the web"
@@ -1643,7 +1650,7 @@ information about..."). "Sources" stays allowed — it's already used
 elsewhere and matches the visible "Sources" button in the UI, so it's
 meaningful to the user.
 Verify: new case in
-[__tests__/promptUtils.test.ts](../__tests__/promptUtils.test.ts);
+[**tests**/promptUtils.test.ts](../__tests__/promptUtils.test.ts);
 confirmed live — the same Kraków weather question now says "source"
 instead of "context".
 
@@ -1712,7 +1719,7 @@ never subject to this race), giving the outgoing screen's teardown a
 macrotask to settle first. This is the single call site behind every
 "new chat" entry point (header button, drawer nav, drawer empty state), so
 one change covers all of them.
-Verify: [__tests__/startPhantomChat.test.ts](../__tests__/startPhantomChat.test.ts)
+Verify: [**tests**/startPhantomChat.test.ts](../__tests__/startPhantomChat.test.ts)
 — asserts `router.replace` is not called before the delay elapses, and
 that `'push'` is unaffected. Confirmed live: reproduced the original
 failure signature 5 times in a row post-fix (tap "New chat" → immediately
@@ -1769,6 +1776,7 @@ immediately if enough content already exists, or defers via
 `pinScrollPendingRef.current = true` for `handleContentSizeChange` to
 catch once the streaming answer grows content past
 `pinOffset + containerHeight`. Two things combined to break this:
+
 1. That growth check (`h >= pinOffset.current + containerHeight.current`)
    is an exact floating-point comparison between two independently-derived
    layout measurements — observed live failing by a razor-thin margin
@@ -1782,28 +1790,28 @@ catch once the streaming answer grows content past
    streaming, and this silent clear was the only thing that ever ran —
    the view was abandoned wherever it happened to be, permanently, since
    nothing else was left to trigger the scroll.
-Fix: the pin-release effect now performs the deferred `scrollToPin()`
-itself if it's still pending when generation ends, instead of discarding
-it — generation finishing is treated as a hard deadline to honor the
-scroll against the final, settled content, not a reason to give up.
-Also added a 1px tolerance (`PIN_READY_SLACK_PX`,
-[constants/chat-screen.ts](../constants/chat-screen.ts)) to both threshold
-checks so the fast path succeeds more often without needing the fallback.
-Verify: `npx tsc`/`eslint` clean, full suite unaffected (this exact
-component has no dedicated unit tests — it depends on native
-ScrollView/Reanimated layout events that aren't practical to mock here;
-this was tested live, consistent with how this area has always been
-verified in this repo). Confirmed live twice: scrolled several screens up
-in a long thread, sent a message — the composer jumps to top immediately
-on send (this part already worked), and where the answer previously
-vanished with the view frozen in place, it now reliably becomes visible
-once generation completes. One honest caveat: the final settled position
-sometimes sits just short of the literal last pixel (the scroll-to-bottom
-chevron can still show), which looks like a separate, pre-existing, minor
-quirk in how the pin position relates to "distance from absolute bottom"
-for a short final answer — not the same failure as the one fixed here (the
-message and its full answer are visible either way, nothing is lost or
-hidden anymore).
+   Fix: the pin-release effect now performs the deferred `scrollToPin()`
+   itself if it's still pending when generation ends, instead of discarding
+   it — generation finishing is treated as a hard deadline to honor the
+   scroll against the final, settled content, not a reason to give up.
+   Also added a 1px tolerance (`PIN_READY_SLACK_PX`,
+   [constants/chat-screen.ts](../constants/chat-screen.ts)) to both threshold
+   checks so the fast path succeeds more often without needing the fallback.
+   Verify: `npx tsc`/`eslint` clean, full suite unaffected (this exact
+   component has no dedicated unit tests — it depends on native
+   ScrollView/Reanimated layout events that aren't practical to mock here;
+   this was tested live, consistent with how this area has always been
+   verified in this repo). Confirmed live twice: scrolled several screens up
+   in a long thread, sent a message — the composer jumps to top immediately
+   on send (this part already worked), and where the answer previously
+   vanished with the view frozen in place, it now reliably becomes visible
+   once generation completes. One honest caveat: the final settled position
+   sometimes sits just short of the literal last pixel (the scroll-to-bottom
+   chevron can still show), which looks like a separate, pre-existing, minor
+   quirk in how the pin position relates to "distance from absolute bottom"
+   for a short final answer — not the same failure as the one fixed here (the
+   message and its full answer are visible either way, nothing is lost or
+   hidden anymore).
 
 ✅ **Follow-up: the pin-scroll above animated instead of jumping instantly**
 User feedback after the fix above: the pinned message should land at the
@@ -1891,7 +1899,7 @@ but not fixed with confidence, since this exact area has broken from subtle
 timing races twice before per this repo's history; flagged with that
 pointer for whoever picks it up next, rather than guessed at blind.*
 
-*A later round fixed the blank-screen bug above with confidence (the 50ms
+_A later round fixed the blank-screen bug above with confidence (the 50ms
 `startPhantomChat` delay) and, separately, root-caused and fixed the
 message-pin bug as a plain JS logic error rather than a library race — a
 floating-point epsilon on the "has enough content streamed yet" check,
@@ -1925,9 +1933,9 @@ from the actual game) as if he'd played in it; and a "which airline"
 follow-up produced a five-sentence answer that only ever restated "a
 source exists and compares prices," in different phrasing each time, never
 naming an actual airline — circular in a way none of the three loop
-detectors catch, since no exact clause, word, or phrase repeats verbatim.*
+detectors catch, since no exact clause, word, or phrase repeats verbatim._
 
-*A later round fixed both findings flagged above. The anachronistic-player
+_A later round fixed both findings flagged above. The anachronistic-player
 bug was fixed at the retrieval layer: `EVENT_SCOPE_MARKERS` (Sports,
 above) extends the existing all-time-page exclusion to anaphoric
 event-scoped follow-ups ("in that game") alongside the period-scoped ones
@@ -1947,9 +1955,9 @@ or anti-circularity systems the earlier round's flags gestured at — the
 lesson from this file's own history (the reverted "sandwiched instruction"
 attempt above) is that broad, ambitious fixes on a small model tend to cost
 more than they're worth; the narrow, testable pattern this file has used
-throughout keeps winning.*
+throughout keeps winning._
 
-*A later round, prompted by two fresh live-caught bugs on the same "ile
+_A later round, prompted by two fresh live-caught bugs on the same "ile
 dzieci ma elon musk" thread shape, fixed: (1) a dangling list-intro answer
 ("Prezydent USA ma następujące dzieci:" with nothing after the colon) on a
 `needs_search: false` follow-up — `isDanglingListAnswer`
@@ -1990,4 +1998,4 @@ on-device verification. And the blank-screen bug (fixed with confidence
 two rounds ago) recurred live under circumstances that don't obviously
 implicate the same fix (see the status note above) — recovered via
 `restart-app`, root cause of the recurrence left open for a future round
-with a non-Fast-Refresh repro environment.*
+with a non-Fast-Refresh repro environment._

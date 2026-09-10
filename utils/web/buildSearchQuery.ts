@@ -280,8 +280,7 @@ const mostRecentEntity = (
 };
 
 const SHORT_QUERY_MAX_WORDS = 6;
-const REFLEXIVE_DROPPED_SUBJECT =
-  /(?<![\p{L}\p{N}])się(?![\p{L}\p{N}])/iu;
+const REFLEXIVE_DROPPED_SUBJECT = /(?<![\p{L}\p{N}])się(?![\p{L}\p{N}])/iu;
 
 const wordCount = (text: string): number =>
   (text.trim().match(/\S+/gu) ?? []).length;
