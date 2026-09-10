@@ -26,6 +26,7 @@ interface ChatStore {
   db: SQLiteDatabase | null;
   phantomChat: Chat | null;
   phantomChatStarts: number;
+  startBlankChat: () => void;
   setDB: (db: SQLiteDatabase) => void;
   loadChats: () => Promise<void>;
   updateLastUsed: (id: number) => void;
@@ -48,6 +49,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   db: null,
   phantomChat: null,
   phantomChatStarts: 0,
+
+  startBlankChat: () =>
+    set((state) => ({ phantomChatStarts: state.phantomChatStarts + 1 })),
 
   setDB: (db) => {
     set({ db });
