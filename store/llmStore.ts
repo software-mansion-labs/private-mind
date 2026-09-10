@@ -1314,7 +1314,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           effectiveSeen,
           humanizedResponse,
           preferredSourceDocuments ?? [],
-          sourcesPresentInContext(effectiveContent)
+          sourcesPresentInContext(effectiveContent),
+          currentQuestion
         );
         const groundingCaveats = context.some((chunk) => chunk.trim())
           ? detectGroundingCaveats(
