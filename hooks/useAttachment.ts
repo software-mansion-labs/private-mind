@@ -10,7 +10,7 @@ import { useLLMStore } from '../store/llmStore';
 import { documentErrorMessage } from '../utils/documentErrorMessage';
 import { extractArticle } from '../utils/web/url/extractArticle';
 import { buildUrlSource } from '../utils/web/url/urlSource';
-import { hostname } from '../utils/web/webResultsToContext';
+import { hostname } from '../utils/web/hostname';
 
 export type DownloadResume = 'attachment' | 'none';
 

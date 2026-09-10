@@ -11,6 +11,21 @@ import {
 } from '../../constants/web';
 import { sourceBlock } from '../contextUtils';
 import { extractQueryTerms, foldForMatching, stemPrefix } from '../queryTerms';
+import { hostname } from './hostname';
+import {
+  containsNeedle,
+  creditedRecords,
+  DATE_IN_TEXT,
+  enumerationShare,
+  figuresOutsideNeedles,
+  idfWeights,
+  isOtherAmount,
+  listHeadingAnswers,
+  MONEY_ANCHOR,
+  parseAmount,
+  PRICE_QUESTION,
+  WHEN_QUESTION,
+} from './passageSignals';
 import { detectQuestionLanguage } from '../questionLanguage';
 import { neutralizeDelimiters } from './security/untrustedContent';
 import { VERIFIED_PRODUCT_MARKER } from './figureGrounding';
@@ -32,14 +47,6 @@ const truncate = (text: string, max: number): string =>
   text.length <= max
     ? text
     : `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
-
-export const hostname = (url: string): string => {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '');
-  } catch {
-    return url;
-  }
-};
 
 const PASSAGE_MAX_LEN = 320;
 
@@ -128,137 +135,21 @@ const splitIntoPassages = (text: string, budget: number): string[] => {
   return passages.filter(Boolean);
 };
 
-const idfWeights = (folded: string[], needles: string[]): number[] =>
-  needles.map((needle) => {
-    const hits = folded.reduce(
-      (count, passage) => count + (passage.includes(needle) ? 1 : 0),
-      0
-    );
-    return hits === 0 ? 0 : Math.log(folded.length / hits);
-  });
-
-const containsNeedle = (folded: string, needle: string): boolean =>
-  needle.length >= 4
-    ? folded.includes(needle)
-    : new RegExp(`(?<![\\p{L}\\p{N}])${needle}`, 'u').test(folded);
-
-const WHEN_QUESTION =
-  /\bkiedy\b|\bwhen\b|\bwann\b|\bquand\b|\bcu[aá]ndo\b|\bquando\b|когда|कब|\bمتى\b/i;
-const DATE_IN_TEXT =
-  /\b\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}\b|\b\d{1,2}\s?(?:sty|lut|mar|kwi|maj|cze|lip|sie|wrz|paz|lis|gru|jan|feb|apr|jun|jul|aug|sep|oct|nov|dec)/i;
 const DATE_BONUS = 2;
 
-const PRICE_QUESTION =
-  /\bile\s+kosztuj|\bcen[ay]\b|\bcennik|\bkoszt\b|\bhow much\b|\bprice\b|\bcost\b|\bprecio\b|\bpreis\b|\bprix\b|цена/i;
 const PRICE_BONUS = 4;
 const NO_PRICE_FACTOR = 0.35;
 
-export const MONEY_ANCHOR =
-  /\d[\d\s.,]*\s?(?:zl(?:ot(?:ych|ego|emu|ymi|ym|y|e))?|pln|eur(?:o)?|usd|gbp|czk|chf|dolar(?:ow|ach|ami|em|a|y)?)(?![\p{L}\p{N}])|[$€£¥]\s?\d|\d\s?[$€£¥]/giu;
 const MONEY_BONUS = 2;
 
-const NUMBER_RUN = /\d[\d.,:]*\d|\d/g;
 const ENUMERATION_BONUS = 3;
 const NO_ENUMERATION_FACTOR = 0.7;
-const ENUMERATION_MIN_LINES = 3;
-const ENUMERATION_ITEM_MAX_CHARS = 90;
-const ENUMERATION_QUESTION =
-  /przepis\w*|sk[\u0142l]adnik\w*|krok po kroku|wypisz|wymie[\u0144n]|list[\u0119ea]\b|recipe|ingredient|step[- ]by[- ]step|list of|instructions?/i;
-const ENUMERATION_MARKER =
-  /^(?:[-\u2013\u2014\u2022*\u00b7\u25aa]|\d+[.)]|\d+(?:[.,/]\d+)?\s+\p{L})/u;
-const ENUMERATION_MEASURE =
-  /(?<![\p{L}\p{N}])\d+(?:[.,/]\d+)?\s*(?:g|kg|ml|l|dag|dkg|szt|szklan\w*|[\u0142l]y[\u017cz]\w*|cup|cups|tbsp|tsp|oz|lb|min|godz|h)(?![\p{L}])/iu;
-
-const INLINE_CELL_SEPARATOR = /\s[|\u2022\u00b7]\s/;
-
-const enumerationUnits = (text: string): string[] =>
-  text
-    .split('\n')
-    .flatMap((line) => line.split(INLINE_CELL_SEPARATOR))
-    .map((unit) => unit.trim())
-    .filter(Boolean);
-
-export const enumerationShare = (text: string): number => {
-  const units = enumerationUnits(text);
-  if (units.length < ENUMERATION_MIN_LINES) return 0;
-  const items = units.filter(
-    (unit) =>
-      unit.length <= ENUMERATION_ITEM_MAX_CHARS &&
-      (ENUMERATION_MARKER.test(unit) || ENUMERATION_MEASURE.test(unit))
-  ).length;
-  return items / units.length;
-};
 
 const FIGURES_BONUS = 3;
 const FIGURES_SATURATION = 3;
 const NO_FIGURE_FACTOR = 0.5;
 
-const figuresOutsideNeedles = (folded: string, needles: string[]): number => {
-  const rest = needles.reduce(
-    (text, needle) => text.split(needle).join(' '),
-    folded
-  );
-  return (rest.match(NUMBER_RUN) ?? []).length;
-};
-
 const TOPIC_NEEDLE_DISCOUNT = 0.5;
-
-const RECORD_LINE =
-  /^(?=[^:|\n]{0,40}\p{L})([^:|\n]{2,40}?)\s*[:|]\s*(\S.{0,79})$/u;
-const RECORD_KEY_MAX_REPEATS = 2;
-
-const recordKeys = (passage: string): string[] =>
-  passage
-    .split('\n')
-    .map((line) => line.trim().match(RECORD_LINE)?.[1])
-    .filter((key): key is string => key !== undefined)
-    .map((key) => foldForMatching(key));
-
-const creditedRecords = (passages: string[]): Set<number> => {
-  const keysOf = passages.map(recordKeys);
-  const keyCount = new Map<string, number>();
-  keysOf
-    .flat()
-    .forEach((key) => keyCount.set(key, (keyCount.get(key) ?? 0) + 1));
-  const isRecordLine = (index: number): boolean =>
-    index >= 0 &&
-    index < passages.length &&
-    keysOf[index]!.length === 1 &&
-    !passages[index]!.includes('\n');
-  const credited = new Set<number>();
-  keysOf.forEach((keys, index) => {
-    const structured =
-      keys.length >= 2 ||
-      (isRecordLine(index) &&
-        (isRecordLine(index - 1) || isRecordLine(index + 1)));
-    const distinct = keys.some(
-      (key) => keyCount.get(key)! <= RECORD_KEY_MAX_REPEATS
-    );
-    if (structured && distinct) credited.add(index);
-  });
-  return credited;
-};
-
-const parseAmount = (text: string): number | null => {
-  const digits = text.match(/\d[\d\s.,]*/)?.[0].replace(/\s/g, '');
-  if (!digits) return null;
-  const decimal = digits.match(/[.,](\d{1,2})$/);
-  const whole = (
-    decimal ? digits.slice(0, -decimal[0].length) : digits
-  ).replace(/[.,]/g, '');
-  const value = Number(`${whole}.${decimal?.[1] ?? '0'}`);
-  return Number.isFinite(value) ? value : null;
-};
-
-const AMOUNT_TOLERANCE = 0.005;
-
-const isOtherAmount = (mention: string, verified: number | null): boolean => {
-  if (verified === null) return false;
-  const amount = parseAmount(mention);
-  return (
-    amount !== null && Math.abs(amount - verified) > verified * AMOUNT_TOLERANCE
-  );
-};
 
 interface PassageScoring {
   needles: string[];
@@ -399,17 +290,18 @@ export const selectRelevantContent = (
     verifiedAmount === null &&
     (intent === 'price' || (!!query && PRICE_QUESTION.test(query)));
   const wantsFigures = intent === 'specs';
-  const wantsEnumeration =
-    intent === 'howto' || (!!query && ENUMERATION_QUESTION.test(query));
   const all = splitIntoPassages(trimmed, maxChars);
   const foldedAll = all.map(foldForMatching);
   const foldedTitle = foldForMatching(options.title ?? '');
+  const titleNeedles = new Set(
+    needles.filter((needle) => containsNeedle(foldedTitle, needle))
+  );
+  const wantsEnumeration =
+    intent === 'howto' || listHeadingAnswers(trimmed, needles, titleNeedles);
   const scoring: PassageScoring = {
     needles,
     weights: idfWeights(foldedAll, needles),
-    topicNeedles: new Set(
-      needles.filter((needle) => containsNeedle(foldedTitle, needle))
-    ),
+    topicNeedles: titleNeedles,
     wantsDate,
     wantsPrice,
     wantsFigures,

@@ -32,7 +32,7 @@ import { useLLMStore } from '../../store/llmStore';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import LinkIcon from '../../assets/icons/link-alt.svg';
 import { detectUrls } from '../../utils/web/url/urlDetection';
-import { hostname } from '../../utils/web/webResultsToContext';
+import { hostname } from '../../utils/web/hostname';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';

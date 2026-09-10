@@ -22,7 +22,7 @@ import {
 } from './web/figureGrounding';
 import { carryReferentIntoQuery } from './web/buildSearchQuery';
 import type { WebIntentKind } from './web/intentKind';
-import { hostname } from './web/webResultsToContext';
+import { hostname } from './web/hostname';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
 import { ISO_CURRENCY_CODES } from '../constants/currencies';
 import {

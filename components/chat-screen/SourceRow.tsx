@@ -6,7 +6,7 @@ import RowChevron from './RowChevron';
 import SourceIcon from '../../assets/icons/source.svg';
 import WebFavicon from './WebFavicon';
 import { type SourceDocument } from '../../database/chatRepository';
-import { hostname } from '../../utils/web/webResultsToContext';
+import { hostname } from '../../utils/web/hostname';
 import { getDocumentType, isSpreadsheetType } from '../../utils/documentType';
 import { type CitationExcerpt } from '../../utils/citationHighlight';
 import { type SheetStyles } from './SourcesSheet';

@@ -35,7 +35,8 @@ import {
   analyzeSourceAgreement,
   type SourceAgreement,
 } from './sourceAgreement';
-import { hostname, webResultsToContext } from './webResultsToContext';
+import { webResultsToContext } from './webResultsToContext';
+import { hostname } from './hostname';
 import { unnamedSubjects } from './subjectNaming';
 import { recordWebSearchTrace } from './searchTrace';
 import type { WebIntentKind } from './intentKind';

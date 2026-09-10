@@ -1,7 +1,7 @@
 import type { WebSearchResult } from './types';
 import type { WebIntentKind } from './intentKind';
 import { foldForMatching, stemPrefix } from '../queryTerms';
-import { MONEY_ANCHOR } from './webResultsToContext';
+import { MONEY_ANCHOR } from './passageSignals';
 import { anchorTokens } from './anchorTokens';
 
 const questionTerms = (query: string): string[] => [

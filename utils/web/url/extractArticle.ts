@@ -7,7 +7,7 @@ import {
   URL_PARSE_MAX_CHARS,
   WEB_CONTENT_MIN_CHARS,
 } from '../../../constants/web';
-import { hostname } from '../webResultsToContext';
+import { hostname } from '../hostname';
 import {
   assertPublicHttpUrl,
   fetchTextWithLimit,

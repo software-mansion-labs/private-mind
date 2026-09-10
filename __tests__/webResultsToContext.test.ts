@@ -1,10 +1,9 @@
 import {
-  MONEY_ANCHOR,
   webResultsToContext,
-  hostname,
   selectRelevantContent,
-  enumerationShare,
 } from '../utils/web/webResultsToContext';
+import { MONEY_ANCHOR, enumerationShare } from '../utils/web/passageSignals';
+import { hostname } from '../utils/web/hostname';
 import type { WebSearchResult } from '../utils/web/types';
 import { SOURCE_HEADER } from '../constants/retrieval';
 import { WEB_CONTENT_MAX_CHARS, WEB_SNIPPET_MAX_CHARS } from '../constants/web';
@@ -1396,5 +1395,65 @@ describe('a list question in a language the marker list never carried', () => {
     });
 
     expect(selected).toContain('200 g Zucker');
+  });
+
+  it('keeps them without the planner once the list carries a heading', () => {
+    const headed = `${germanLead}\n\nZutaten:\n${germanList}`;
+    const selected = selectRelevantContent(headed, question, budget, {
+      title: 'Karottenkuchen Rezept',
+    });
+
+    expect(selected).toContain('200 g Zucker');
+  });
+});
+
+describe('a labelled list in a domain no word list ever carried', () => {
+  const pick = (content: string, query: string, title: string): string =>
+    selectRelevantContent(content, query, 220, { title });
+
+  it('reaches the parts under a heading on a car page', () => {
+    const content =
+      'Der Golf VII ist eines der meistverkauften Autos in Europa und wird ' +
+      'seit Jahren in vielen Werkstaetten gewartet und repariert.\n\n' +
+      'Ersatzteile:\n' +
+      'Bremsscheiben 312 mm\n' +
+      'Bremsbelaege vorne\n' +
+      'Verschleisssensor\n' +
+      'Schrauben M12\n' +
+      'Fett 5 g';
+
+    expect(
+      pick(content, 'Welche Ersatzteile braucht der Golf VII', 'Golf VII')
+    ).toContain('Bremsscheiben 312 mm');
+  });
+
+  it('reaches the components under a heading on a computer page', () => {
+    const content =
+      'Este ordenador de sobremesa es una eleccion popular entre jugadores ' +
+      'y creadores de contenido por su relacion calidad precio.\n\n' +
+      'Componentes:\n' +
+      'Procesador: Ryzen 7\n' +
+      'Memoria: 32 GB\n' +
+      'SSD: 1 TB\n' +
+      'Fuente: 750 W';
+
+    expect(
+      pick(content, 'Que componentes tiene este ordenador', 'Ordenador gamer')
+    ).toContain('Memoria: 32 GB');
+  });
+
+  it('leaves the prose alone when the question is not about the list', () => {
+    const content =
+      'Der Golf VII ist eines der meistverkauften Autos in Europa und gilt ' +
+      'als besonders zuverlaessig auf langen Strecken.\n\n' +
+      'Ersatzteile:\n' +
+      'Bremsscheiben 312 mm\n' +
+      'Bremsbelaege vorne\n' +
+      'Verschleisssensor\n' +
+      'Schrauben M12';
+
+    expect(
+      pick(content, 'Ist der Golf VII zuverlaessig', 'Golf VII')
+    ).toContain('zuverlaessig');
   });
 });
