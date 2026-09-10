@@ -981,6 +981,37 @@ describe('web search toggle and the embedding download sheet', () => {
   });
 });
 
+describe('opening another chat', () => {
+  it('leaves the composer empty, so a suggestion typed into the last chat does not follow you', () => {
+    const view = renderBar();
+    const input = screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(input, 'a draft from the previous chat');
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('a draft from the previous chat');
+
+    view.rerender(<ChatBar {...defaultProps} chatId={2} />);
+
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('');
+  });
+
+  it('keeps what is being typed while the same chat stays open', () => {
+    const view = renderBar();
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'still writing this'
+    );
+
+    view.rerender(<ChatBar {...defaultProps} hasMessages />);
+
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('still writing this');
+  });
+});
+
 describe('a refused send', () => {
   it('puts the text back and says why instead of dropping it silently', async () => {
     const onSend = jest.fn(async () => false);

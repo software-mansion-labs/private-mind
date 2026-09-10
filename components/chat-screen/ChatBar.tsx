@@ -161,6 +161,14 @@ const ChatBar = ({
     []
   );
 
+  const composerChatIdRef = useRef(chatId);
+  if (composerChatIdRef.current !== chatId) {
+    composerChatIdRef.current = chatId;
+    setUserInput('');
+    lastSentRef.current = null;
+    if (Platform.OS === 'ios') setIosInputKey((key) => key + 1);
+  }
+
   const handleBarLayoutForPadding = useBarGrowth({
     extraContentPadding,
     hasMessages,
