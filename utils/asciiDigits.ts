@@ -1,12 +1,20 @@
-const DIGIT_BASES = [0x0660, 0x06f0, 0x0966, 0x09e6, 0xff10];
 const ANY_DIGIT_CHAR = /\p{Nd}/gu;
+const IS_DIGIT_CHAR = /\p{Nd}/u;
+const DIGITS_PER_SYSTEM = 10;
+
+const isDigitAt = (code: number): boolean =>
+  code >= 0 && IS_DIGIT_CHAR.test(String.fromCodePoint(code));
+
+const digitValue = (code: number): number | null => {
+  let zero = code;
+  while (code - zero < DIGITS_PER_SYSTEM && isDigitAt(zero - 1)) zero -= 1;
+  return isDigitAt(zero - 1) ? null : code - zero;
+};
 
 export const toAsciiDigits = (text: string): string =>
   text.replace(ANY_DIGIT_CHAR, (char) => {
     const code = char.codePointAt(0) ?? 0;
     if (code >= 0x30 && code <= 0x39) return char;
-    for (const base of DIGIT_BASES) {
-      if (code >= base && code <= base + 9) return String(code - base);
-    }
-    return char;
+    const value = digitValue(code);
+    return value === null ? char : String(value);
   });
