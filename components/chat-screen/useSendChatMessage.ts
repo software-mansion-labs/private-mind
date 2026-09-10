@@ -18,6 +18,7 @@ import { runWebSearch } from '../../utils/web/runWebSearch';
 import type { WebIntentKind } from '../../utils/web/intentKind';
 import { webViewScrapeProvider } from '../../utils/web/scrape/webViewScrapeProvider';
 import { webContextCharBudget } from '../../utils/web/contextBudget';
+import { WEB_SKIP_COPY, type WebSkipReason } from '../../constants/web-copy';
 import {
   RAG_PRIORITY_OVER_WEB_SEARCH,
   WEB_BENCH_LOGS,
@@ -61,6 +62,15 @@ interface UseSendChatMessageOptions {
   isModelLoading: boolean;
   isSwitching: boolean;
 }
+
+const webSkipReason = (
+  skippedForDocPriority: boolean,
+  model: Model | null
+): WebSkipReason => {
+  if (skippedForDocPriority) return 'documents';
+  if (hasMemoryForWebSearch(model)) return 'model';
+  return 'memory';
+};
 
 export const useSendChatMessage = ({
   chatId,
@@ -203,13 +213,14 @@ export const useSendChatMessage = ({
 
       const skippedForDocPriority =
         RAG_PRIORITY_OVER_WEB_SEARCH && hasRagSources;
+      const modelForWebSearch = useLLMStore.getState().model;
 
       const shouldRunWebSearch =
         WEB_SEARCH_ENABLED &&
         chatSettings.webSearchEnabled &&
         !skippedForDocPriority &&
-        isWebSearchReady(useLLMStore.getState().model) &&
-        hasMemoryForWebSearch(useLLMStore.getState().model) &&
+        isWebSearchReady(modelForWebSearch) &&
+        hasMemoryForWebSearch(modelForWebSearch) &&
         !!userInput.trim();
 
       if (
@@ -220,11 +231,10 @@ export const useSendChatMessage = ({
       ) {
         Toast.show({
           type: 'defaultToast',
-          text1: skippedForDocPriority
-            ? 'Using your documents for this chat — web search is off while they’re active.'
-            : hasMemoryForWebSearch(useLLMStore.getState().model)
-              ? 'Web search is off for this model — answering without it.'
-              : 'Not enough memory to search alongside this model — answering without it.',
+          text1:
+            WEB_SKIP_COPY[
+              webSkipReason(skippedForDocPriority, modelForWebSearch)
+            ],
         });
       }
 

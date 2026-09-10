@@ -4,12 +4,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { type GroundingCaveatKind } from '../../database/chatRepository';
-
-const CAVEAT_COPY: Record<GroundingCaveatKind, string> = {
-  figure: "A number here couldn't be confirmed against the sources",
-  trend: 'No data on the change over time was found in the sources',
-  conversion: 'No real conversion rate was found in the sources',
-};
+import { GROUNDING_CAVEAT_COPY } from '../../constants/web-copy';
 
 const CAVEAT_PRIORITY: GroundingCaveatKind[] = [
   'conversion',
@@ -34,7 +29,7 @@ const GroundingCaveatBadges = ({ caveats }: Props) => {
   return (
     <View style={styles.container}>
       <View style={styles.badge}>
-        <Text style={styles.text}>{CAVEAT_COPY[kind]}</Text>
+        <Text style={styles.text}>{GROUNDING_CAVEAT_COPY[kind]}</Text>
       </View>
     </View>
   );
