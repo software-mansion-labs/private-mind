@@ -25,6 +25,7 @@ interface ChatStore {
   chats: Chat[];
   db: SQLiteDatabase | null;
   phantomChat: Chat | null;
+  phantomChatStarts: number;
   setDB: (db: SQLiteDatabase) => void;
   loadChats: () => Promise<void>;
   updateLastUsed: (id: number) => void;
@@ -46,6 +47,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   chats: [],
   db: null,
   phantomChat: null,
+  phantomChatStarts: 0,
 
   setDB: (db) => {
     set({ db });
@@ -75,7 +77,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     useWebSearchStore.getState().clearEnabled(phantomChatId);
 
-    set({
+    set((state) => ({
+      phantomChatStarts: state.phantomChatStarts + 1,
       phantomChat: {
         id: phantomChatId,
         title: '',
@@ -87,7 +90,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           systemPrompt,
         },
       },
-    });
+    }));
   },
 
   setPhantomChatSettings: async (newSettings) => {

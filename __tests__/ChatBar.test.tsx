@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import type { LLMStore } from '../store/llmStore';
+import { useChatStore } from '../store/chatStore';
 import type { Attachment } from '../hooks/useAttachment';
 import type { PermissionStatus } from 'react-native-audio-api';
 import type { SharedValue } from 'react-native-reanimated';
@@ -991,6 +992,24 @@ describe('opening another chat', () => {
     ).toBe('a draft from the previous chat');
 
     view.rerender(<ChatBar {...defaultProps} chatId={2} />);
+
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('');
+  });
+
+  it('empties the composer when another blank chat is started, which reuses the same unsaved id', () => {
+    renderBar();
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'a suggestion tapped by mistake'
+    );
+
+    act(() => {
+      useChatStore.setState((state) => ({
+        phantomChatStarts: state.phantomChatStarts + 1,
+      }));
+    });
 
     expect(
       screen.getByPlaceholderText('Ask about anything...').props.value

@@ -23,6 +23,7 @@ import { useAttachment, Attachment } from '../../hooks/useAttachment';
 import { Model } from '../../database/modelRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
+import { useChatStore } from '../../store/chatStore';
 import { useLLMStore } from '../../store/llmStore';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import LinkIcon from '../../assets/icons/link-alt.svg';
@@ -94,6 +95,7 @@ const ChatBar = ({
     [styles.container, theme.insets.bottom]
   );
 
+  const phantomChatStarts = useChatStore((state) => state.phantomChatStarts);
   const [userInput, setUserInput] = useState('');
   const lastSentRef = useRef<{ text: string; at: number } | null>(null);
 
@@ -161,9 +163,10 @@ const ChatBar = ({
     []
   );
 
-  const composerChatIdRef = useRef(chatId);
-  if (composerChatIdRef.current !== chatId) {
-    composerChatIdRef.current = chatId;
+  const composerKey = `${chatId}:${phantomChatStarts}`;
+  const composerKeyRef = useRef(composerKey);
+  if (composerKeyRef.current !== composerKey) {
+    composerKeyRef.current = composerKey;
     setUserInput('');
     lastSentRef.current = null;
     if (Platform.OS === 'ios') setIosInputKey((key) => key + 1);
