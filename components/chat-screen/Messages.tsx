@@ -525,6 +525,17 @@ const Messages = ({
     containerHeight: number;
     userHeight: number;
   } | null>(null);
+  const [liftHeldUntilKeyboardHides, setLiftHeldUntilKeyboardHides] =
+    useState(false);
+  const keyboardLiftBehavior =
+    pinAnchor || liftHeldUntilKeyboardHides ? 'never' : 'whenAtEnd';
+  useEffect(() => {
+    if (!liftHeldUntilKeyboardHides) return;
+    const hidden = Keyboard.addListener('keyboardDidHide', () =>
+      setLiftHeldUntilKeyboardHides(false)
+    );
+    return () => hidden.remove();
+  }, [liftHeldUntilKeyboardHides]);
   const pinFloor = pinAnchor
     ? pinFloorFor({
         containerHeight: pinAnchor.containerHeight,
@@ -596,6 +607,7 @@ const Messages = ({
     pinReleaseRef.current = false;
     clearReleaseSettle();
     setPinAnchor(null);
+    if (Keyboard.isVisible()) setLiftHeldUntilKeyboardHides(true);
   }, [clearReleaseSettle]);
 
   const settlePinRelease = useCallback(() => {
@@ -971,7 +983,7 @@ const Messages = ({
       >
         <KeyboardChatScrollView
           ref={scrollRef}
-          keyboardLiftBehavior="whenAtEnd"
+          keyboardLiftBehavior={keyboardLiftBehavior}
           offset={bottomOffset}
           extraContentPadding={extraContentPadding}
           freeze={scrollFreeze}
