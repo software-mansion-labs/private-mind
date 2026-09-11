@@ -355,10 +355,12 @@ const Messages = ({
     const prevChatLength = prevChatLengthRef.current;
     prevChatLengthRef.current = chatHistory.length;
 
+    const sendInFlight = pendingPinRef.current || pinActive.current;
     if (
       prevChatLength > 0 &&
       chatHistory.length === 0 &&
-      hasScrolledToEnd.current
+      hasScrolledToEnd.current &&
+      !sendInFlight
     ) {
       hasScrolledToEnd.current = false;
       opacity.set(0);
