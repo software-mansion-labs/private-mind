@@ -393,8 +393,6 @@ const Messages = ({
 
   useLayoutEffect(() => clearInitialScrollTimers, [clearInitialScrollTimers]);
 
-  // Heights that drive the pin. All in JS refs because updates are
-  // driven by layout events.
   const containerHeight = useRef(0);
   const lastUserHeight = useRef(0);
   const lastAssistantHeight = useRef(0);
