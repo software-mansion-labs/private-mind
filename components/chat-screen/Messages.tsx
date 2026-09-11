@@ -85,7 +85,6 @@ export type UserMessageActionMenuState = {
 interface Props {
   chatHistory: Message[];
   extraContentPadding: SharedValue<number>;
-  blankSpace: SharedValue<number>;
   /** Whether the LLM is currently streaming a response. */
   isGenerating: boolean;
   generationError?: string;
@@ -169,7 +168,6 @@ const LongPressableMessage = memo(
 const Messages = ({
   chatHistory,
   extraContentPadding,
-  blankSpace,
   isGenerating,
   generationError,
   onRetryGeneration,
@@ -349,7 +347,6 @@ const Messages = ({
       pinActive.current = false;
       pinScrollPendingRef.current = false;
       setPinAnchor(null);
-      blankSpace.set(0);
       return;
     }
 
@@ -360,13 +357,7 @@ const Messages = ({
     if (historyCameBackUnrevealed) {
       scheduleInitialScrollToEnd();
     }
-  }, [
-    chatHistory.length,
-    opacity,
-    blankSpace,
-    scheduleInitialScrollToEnd,
-    unsettleReveal,
-  ]);
+  }, [chatHistory.length, opacity, scheduleInitialScrollToEnd, unsettleReveal]);
 
   useEffect(() => {
     if (chatHistory.length === 0) return;
@@ -394,9 +385,8 @@ const Messages = ({
 
   useLayoutEffect(() => clearInitialScrollTimers, [clearInitialScrollTimers]);
 
-  // Heights that drive blankSpace. All in JS refs because updates are
-  // driven by layout events and we only need to write the derived value
-  // into the shared value once per change.
+  // Heights that drive the pin. All in JS refs because updates are
+  // driven by layout events.
   const containerHeight = useRef(0);
   const lastUserHeight = useRef(0);
   const lastAssistantHeight = useRef(0);
@@ -549,18 +539,14 @@ const Messages = ({
   }, [closeUserActionMenu, scrollToPin]);
 
   const pinReleaseRef = useRef(false);
-  const settlePinRelease = useCallback(
-    (height: number) => {
-      pinReleaseRef.current = false;
-      const layoutHeight = lastLayoutHeight.current || containerHeight.current;
-      const maxOffset = Math.max(0, height - layoutHeight);
-      if (lastScrollOffset.current > maxOffset) {
-        scrollRef.current?.scrollTo({ y: maxOffset, animated: true });
-      }
-      blankSpace.set(withTiming(0, { duration: 200 }));
-    },
-    [blankSpace]
-  );
+  const settlePinRelease = useCallback((height: number) => {
+    pinReleaseRef.current = false;
+    const layoutHeight = lastLayoutHeight.current || containerHeight.current;
+    const maxOffset = Math.max(0, height - layoutHeight);
+    if (lastScrollOffset.current > maxOffset) {
+      scrollRef.current?.scrollTo({ y: maxOffset, animated: true });
+    }
+  }, []);
 
   useEffect(() => {
     if (isGenerating || !pinActive.current) return;
@@ -605,7 +591,6 @@ const Messages = ({
         lastUserHeight.current = 0;
         pinActive.current = true;
         pinReleaseRef.current = false;
-        blankSpace.set(0);
         pendingPinRef.current = true;
       },
       cancelMessageSent: () => {
@@ -614,10 +599,9 @@ const Messages = ({
         pinReleaseRef.current = false;
         pinActive.current = false;
         setPinAnchor(null);
-        blankSpace.set(0);
       },
     }),
-    [blankSpace, closeUserActionMenu, opacity, settleReveal, snapToEnd]
+    [closeUserActionMenu, opacity, settleReveal, snapToEnd]
   );
 
   const handleContainerLayout = useCallback(
@@ -811,21 +795,17 @@ const Messages = ({
         return;
       }
 
-      // After send: now that the new chat row has rendered, seed
-      // blankSpace and scroll to end. Doing this here (instead of
-      // synchronously in onMessageSent) avoids a 1-frame flick where
-      // the old content gets lifted by the new inset before the new
-      // DOM commits.
+      // After send: now that the new chat row has rendered, pin it.
+      // Doing this here (instead of synchronously in onMessageSent)
+      // avoids a 1-frame flick where the old content gets lifted before
+      // the new DOM commits.
       applyPendingPin();
 
       // During streaming, check if content has grown past the viewport
       // so the scroll-to-bottom button can appear without the user
       // needing to scroll manually. Use the last known scroll offset
       // (0 if user never scrolled) and the container height as a proxy
-      // for the visible area. Exclude blankSpace — it's an inflated
-      // inset that keeps the new row pinned, not real content, so
-      // including it would light up the button before any tokens have
-      // actually arrived.
+      // for the visible area.
       if (containerHeight.current > 0) {
         const layoutH = lastLayoutHeight.current || containerHeight.current;
         const distFromBottom = h - (lastScrollOffset.current + layoutH);
@@ -905,7 +885,6 @@ const Messages = ({
           keyboardLiftBehavior="whenAtEnd"
           offset={bottomOffset}
           extraContentPadding={extraContentPadding}
-          blankSpace={blankSpace}
           freeze={freeze}
           applyWorkaroundForContentInsetHitTestBug
           keyboardShouldPersistTaps="handled"
