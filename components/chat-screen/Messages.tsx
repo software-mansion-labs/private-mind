@@ -67,6 +67,7 @@ import { useKeyboardLift } from './useKeyboardLift';
 import { useSendKeyboardFreeze } from './useSendKeyboardFreeze';
 import {
   floorIsOffscreen,
+  floorIsOutgrown,
   pinFloorFor,
   pinLandingFrom,
   pinReleaseTarget,
@@ -610,6 +611,13 @@ const Messages = ({
     if (Keyboard.isVisible()) setLiftHeldUntilKeyboardHides(true);
   }, [clearReleaseSettle]);
 
+  const dropOutgrownFloor = useCallback(() => {
+    if (pinActive.current) return;
+    if (floorIsOutgrown(pinFloorRef.current, lastAssistantHeight.current)) {
+      dropPinFloor();
+    }
+  }, [dropPinFloor]);
+
   const settlePinRelease = useCallback(() => {
     if (!pinReleaseRef.current || Keyboard.isVisible()) return;
     const target = releaseTarget();
@@ -628,9 +636,10 @@ const Messages = ({
         pinScrollPendingRef.current = false;
         scrollToPin();
       }
+      dropOutgrownFloor();
     }, MESSAGE_PIN_SETTLE_MS);
     return () => clearTimeout(timer);
-  }, [isGenerating, scrollToPin]);
+  }, [dropOutgrownFloor, isGenerating, scrollToPin]);
 
   useImperativeHandle(
     ref,
@@ -719,8 +728,9 @@ const Messages = ({
       if (lastAssistantMeasurementKey.current !== key) return;
       lastAssistantHeight.current = e.nativeEvent.layout.height;
       applyPendingPin();
+      dropOutgrownFloor();
     },
-    [applyPendingPin]
+    [applyPendingPin, dropOutgrownFloor]
   );
 
   const handleScroll = useCallback(

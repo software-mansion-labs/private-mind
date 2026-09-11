@@ -1,5 +1,6 @@
 import {
   floorIsOffscreen,
+  floorIsOutgrown,
   pinFloorFor,
   pinLandingFrom,
   pinReleaseTarget,
@@ -101,5 +102,20 @@ describe('floorIsOffscreen', () => {
 
   it('fails while reserved blank space is still in view', () => {
     expect(floorIsOffscreen(830, 800)).toBe(false);
+  });
+});
+
+describe('floorIsOutgrown', () => {
+  it('holds once the answer row is at least as tall as its floor', () => {
+    expect(floorIsOutgrown(700, 700)).toBe(true);
+    expect(floorIsOutgrown(700, 900)).toBe(true);
+  });
+
+  it('fails while the floor still shows blank space under the answer', () => {
+    expect(floorIsOutgrown(700, 699)).toBe(false);
+  });
+
+  it('never reports a row without a floor as outgrown', () => {
+    expect(floorIsOutgrown(0, 300)).toBe(false);
   });
 });

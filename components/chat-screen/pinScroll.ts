@@ -64,3 +64,6 @@ export const pinReleaseTarget = ({
 
 export const floorIsOffscreen = (offset: number, releaseTarget: number) =>
   offset <= releaseTarget + PIN_READY_SLACK_PX;
+
+export const floorIsOutgrown = (floor: number, rowHeight: number) =>
+  floor > 0 && rowHeight >= floor;
