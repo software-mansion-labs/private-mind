@@ -353,7 +353,44 @@ someone trying two models on the same question.
 
 ---
 
-## 8. Open decision: do the grounding caveat badges ship?
+## 8. Crash on iPhone 17 after asking a question
+
+**Reported:** the app crashed at 13:27 on an iPhone 17, after a question was
+sent.
+
+**Status:** not yet diagnosed. The crash report is on the device and the device
+was off the cable when this was written; nothing had synced to the Mac
+(`~/Library/Logs/CrashReporter/MobileDevice` does not exist).
+
+To retrieve it, with the phone cabled and unlocked:
+
+```
+xcrun devicectl device info files --device <core-device-id> \
+  --domain-type systemCrashLogs
+xcrun devicectl device copy from --device <core-device-id> \
+  --domain-type systemCrashLogs --source <Name>.ips --destination <abs path>
+```
+
+The directory holds both `PrivateMind-<date>.ips` and
+`JetsamEvent-<date>.ips`, and which of the two carries 13:27 decides the
+question:
+
+- **A `JetsamEvent`** means the system reclaimed the app for memory. On an 8 GB
+  handset that is the budget arithmetic in `modelCompatibility.ts` being
+  optimistic, not a code fault, and it bears directly on §1 — the memory floor
+  was just loosened by 10%, and a jetsam here is evidence for the floor rather
+  than against it. The `.ips` names the phase and the footprint at kill time.
+- **A `PrivateMind` crash** means a signal in the app. The build on that phone
+  carries the restored pod versions, so it is not the `#291` scroll-worklet
+  `SIGABRT`.
+
+Until the report is read, this is a report, not a diagnosis. The build on that
+handset is also the catalog-test build — it points at a test manifest — which
+changes nothing about memory but should be stated when the trace is read.
+
+---
+
+## 9. Open decision: do the grounding caveat badges ship?
 
 **Asked:** whether badges like "A number here couldn't be confirmed against the
 sources" stay in the production build.
