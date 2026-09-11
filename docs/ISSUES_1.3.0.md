@@ -25,8 +25,8 @@ deferred to 1.3.1.
 Data loss first, then behaviour, then appearance, and the port last because it
 moves the most files.
 
-1. §11 turn identity — the only defect that silently attributes one answer to
-   another question. §10's gate is already fixed.
+1. ~~§11 turn identity~~ — done: the turn carries `generatingMessageLocalId`,
+   and a turn whose message is gone writes nowhere. §10's gate is already fixed.
 2. §8 speech model — give the resident Whisper its own term in the budget.
 3. §6 document scope — decide web search per message, not per chat.
 4. §7 toggles — reconcile on model change, disabled-but-remembered.
@@ -38,9 +38,10 @@ moves the most files.
    conversion resolver and the URL-scheme check with it.
 9. The upstream issue for §8's abort.
 
-§9 and §15 are not on this list — they are deferred to
-[#323](https://github.com/software-mansion-labs/private-mind/issues/323) and
-[#328](https://github.com/software-mansion-labs/private-mind/issues/328).
+§9, §15 and §16 are not on this list — they are deferred to
+[#323](https://github.com/software-mansion-labs/private-mind/issues/323),
+[#328](https://github.com/software-mansion-labs/private-mind/issues/328) and
+[#329](https://github.com/software-mansion-labs/private-mind/issues/329).
 
 ---
 
@@ -937,6 +938,27 @@ What is missing is a device trace — which queries the planner actually wrote,
 what the SERP returned, and whether retrieval was marked weak or the sources
 were fine and the grounding instructions refused them. Those two endings look
 identical to the user and need opposite fixes.
+
+---
+
+## 16. The web-search block replays its entrance when the search finishes
+
+**Reported:** after the animation build — the block still re-renders and
+re-animates as it turns into "Searched the web".
+
+**Status:** tracked in
+[#329](https://github.com/software-mansion-labs/private-mind/issues/329).
+
+One `WebSearchBlock` serves two states. `resetTrace()` clears the trace and
+`traceExpanded` in one update, `isLiveBlock` flips, and the live step rows are
+replaced by source rows. `buildRows` returns new keys, none of them in
+`seenKeys`, so every row is treated as fresh and enters on the stagger — a full
+replay of the entrance for content already on screen. The row count changes with
+it, so the block resizes in the same frame and the message moves, exactly as the
+answer starts streaming.
+
+Not measured at frame level. A recording of the hand-over would say how much is
+the stagger replay and how much is the resize; they need different fixes.
 
 ---
 
