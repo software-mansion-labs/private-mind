@@ -78,6 +78,7 @@ export interface LLMStore {
   };
   activeChatId: number | null;
   generatingForChatId: number | null;
+  generatingMessageLocalId: number | null;
   activeChatMessages: Message[];
   activeChatDigest: string | null;
   activeChatDigestChatId: number | null;
@@ -272,9 +273,11 @@ const loadModelInstance = async (
     streamBuffer = '';
     streamedSoFar += text;
     const snapshot = get();
+    const turnLocalId = snapshot.generatingMessageLocalId;
     const shouldAppendToActiveChat =
       snapshot.generatingForChatId === snapshot.activeChatId &&
-      snapshot.activeChatMessages.at(-1)?.role === 'assistant';
+      turnLocalId !== null &&
+      snapshot.activeChatMessages.some((msg) => msg.localId === turnLocalId);
     set((state) => ({
       isProcessingPrompt: false,
       performance: {
@@ -282,8 +285,8 @@ const loadModelInstance = async (
         firstTokenTime: streamFirstTokenTime,
       },
       activeChatMessages: shouldAppendToActiveChat
-        ? state.activeChatMessages.map((msg, index) =>
-            index === state.activeChatMessages.length - 1
+        ? state.activeChatMessages.map((msg) =>
+            msg.localId === turnLocalId
               ? { ...msg, content: msg.content + text }
               : msg
           )
@@ -359,6 +362,7 @@ const updateChatStateForGeneration = (
     assistantMessage?: Message;
     timeToFirstToken?: number;
     tokensPerSecond?: number;
+    localId?: number;
   }
 ) => {
   switch (phase) {
@@ -366,6 +370,7 @@ const updateChatStateForGeneration = (
       set({
         isProcessingPrompt: true,
         generatingForChatId: data?.chatId,
+        generatingMessageLocalId: data?.localId ?? null,
         ...(data?.chatId !== undefined ? { activeChatId: data.chatId } : {}),
         activeChatMessages: data?.activeChatMessages,
       });
@@ -388,8 +393,8 @@ const updateChatStateForGeneration = (
         data?.tokensPerSecond !== undefined
       ) {
         set((state) => ({
-          activeChatMessages: state.activeChatMessages.map((msg, index) =>
-            index === state.activeChatMessages.length - 1 &&
+          activeChatMessages: state.activeChatMessages.map((msg) =>
+            msg.localId === (data.localId ?? state.generatingMessageLocalId) &&
             msg.role === 'assistant'
               ? {
                   ...msg,
@@ -409,6 +414,7 @@ const updateChatStateForGeneration = (
           isGenerating: false,
           isRefining: false,
           generatingForChatId: null,
+          generatingMessageLocalId: null,
           isProcessingPrompt: false,
         }));
       } else {
@@ -416,6 +422,7 @@ const updateChatStateForGeneration = (
           isGenerating: false,
           isRefining: false,
           generatingForChatId: null,
+          generatingMessageLocalId: null,
           isProcessingPrompt: false,
         });
       }
@@ -427,19 +434,22 @@ const updateChatStateForGeneration = (
       // failed, was interrupted before any tokens, or produced no response.
       set((state) => {
         const messages = state.activeChatMessages;
-        const last = messages[messages.length - 1];
-        const cleaned =
-          last &&
-          last.role === 'assistant' &&
-          last.id === -1 &&
-          !stripThinkBlocks(last.content).trim()
-            ? messages.slice(0, -1)
-            : messages;
+        const turnLocalId = data?.localId ?? state.generatingMessageLocalId;
+        const cleaned = messages.filter(
+          (message) =>
+            !(
+              message.localId === turnLocalId &&
+              message.role === 'assistant' &&
+              message.id === -1 &&
+              !stripThinkBlocks(message.content).trim()
+            )
+        );
         return {
           activeChatMessages: cleaned,
           isGenerating: false,
           isRefining: false,
           generatingForChatId: null,
+          generatingMessageLocalId: null,
           isProcessingPrompt: false,
         };
       });
@@ -645,6 +655,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   isBenchmarking: false,
   db: null,
   generatingForChatId: null,
+  generatingMessageLocalId: null,
   activeChatId: null,
   model: null,
   performance: {
@@ -817,6 +828,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     set({ generationError: null });
     updateChatStateForGeneration(set, 'start', {
       chatId,
+      localId: assistantPlaceholder.localId,
       activeChatMessages: isRetry
         ? [...activeChatMessages, assistantPlaceholder]
         : [...activeChatMessages, userMessage, assistantPlaceholder],
@@ -831,7 +843,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       }: { showToUser?: boolean; unload?: boolean } = {}
     ) => {
       if (unload) unloadLLM();
-      updateChatStateForGeneration(set, 'failed');
+      updateChatStateForGeneration(set, 'failed', {
+        localId: assistantPlaceholder.localId,
+      });
 
       if (!userMessagePersisted && !isRetry) {
         set((state) => ({
@@ -917,7 +931,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       } = built;
 
       if (!get().isProcessingPrompt) {
-        updateChatStateForGeneration(set, 'failed');
+        updateChatStateForGeneration(set, 'failed', {
+          localId: assistantPlaceholder.localId,
+        });
         return true;
       }
 
@@ -933,7 +949,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       if (!get().isProcessingPrompt) {
         unloadLLM();
-        updateChatStateForGeneration(set, 'failed');
+        updateChatStateForGeneration(set, 'failed', {
+          localId: assistantPlaceholder.localId,
+        });
         return true;
       }
 
@@ -1352,6 +1370,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           failedGenerationRequest = null;
         } else if (get().activeChatId === chatId) {
           updateChatStateForGeneration(set, 'complete', {
+            localId: assistantPlaceholder.localId,
             assistantMessage: {
               ...assistantPlaceholder,
               id: assistantMessageId,
@@ -1532,6 +1551,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         isGenerating: false,
         isProcessingPrompt: false,
         generatingForChatId: null,
+        generatingMessageLocalId: null,
       });
     }
   },

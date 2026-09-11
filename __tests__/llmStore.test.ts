@@ -336,17 +336,25 @@ describe('token callback', () => {
     expect(Feedback.Feedback.firstToken).not.toHaveBeenCalled();
   });
 
-  it('appends token to last active message when generating for active chat', async () => {
+  it("appends token to the turn's own message when generating for active chat", async () => {
     const onToken = await loadModel();
     useLLMStore.setState({
       isProcessingPrompt: false,
       isGenerating: true,
       activeChatId: 5,
       generatingForChatId: 5,
+      generatingMessageLocalId: 7,
       performance: { tokenCount: 1, firstTokenTime: 1 },
       activeChatMessages: [
         { id: 1, chatId: 5, role: 'user', content: 'Hi', timestamp: 0 },
-        { id: -1, chatId: 5, role: 'assistant', content: '', timestamp: 0 },
+        {
+          id: -1,
+          localId: 7,
+          chatId: 5,
+          role: 'assistant',
+          content: '',
+          timestamp: 0,
+        },
       ],
     });
 
@@ -438,9 +446,17 @@ describe('interrupt', () => {
     useLLMStore.setState({
       isGenerating: false,
       isProcessingPrompt: true,
+      generatingMessageLocalId: 3,
       activeChatMessages: [
         { id: 5, role: 'user', content: 'ping', chatId: 1, timestamp: 0 },
-        { id: -1, role: 'assistant', content: '', chatId: 1, timestamp: 0 },
+        {
+          id: -1,
+          localId: 3,
+          role: 'assistant',
+          content: '',
+          chatId: 1,
+          timestamp: 0,
+        },
       ] as Message[],
     });
 
@@ -1549,6 +1565,68 @@ describe('sendChatMessage', () => {
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toContain(
       'Volodymyr Zelensky'
     );
+  });
+
+  it('leaves an older answer alone when the turn it belongs to is gone', async () => {
+    const earlierAnswer: Message = {
+      id: 9,
+      chatId: 1,
+      role: 'assistant',
+      content: 'Warszawa.',
+      timestamp: 0,
+    };
+    mockInstance.generate.mockImplementation(async () => {
+      capturedTokenCallback?.('Krakow.');
+      await flushFrame();
+      useLLMStore.setState({
+        activeChatMessages: [
+          { id: 8, chatId: 1, role: 'user', content: 'stolica?', timestamp: 0 },
+          earlierAnswer,
+        ],
+      });
+      return 'Krakow.';
+    });
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('a dawna stolica?', 1, noSources, settings);
+
+    expect(
+      useLLMStore.getState().activeChatMessages.map((m) => m.content)
+    ).toEqual(['stolica?', 'Warszawa.']);
+  });
+
+  it('streams into the message of its own turn, not the one before it', async () => {
+    const onToken = await loadModel();
+    useLLMStore.setState({
+      isProcessingPrompt: false,
+      isGenerating: true,
+      activeChatId: 1,
+      generatingForChatId: 1,
+      generatingMessageLocalId: 42,
+      activeChatMessages: [
+        { id: 8, chatId: 1, role: 'user', content: 'stolica?', timestamp: 0 },
+        {
+          id: 9,
+          chatId: 1,
+          role: 'assistant',
+          content: 'Warszawa.',
+          timestamp: 0,
+        },
+      ] as Message[],
+    });
+
+    onToken(' Krakow.');
+    await flushFrame();
+
+    expect(
+      useLLMStore.getState().activeChatMessages.map((m) => m.content)
+    ).toEqual(['stolica?', 'Warszawa.']);
   });
 
   it('still fails the turn when the model returns nothing at all', async () => {
