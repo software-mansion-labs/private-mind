@@ -136,7 +136,10 @@ const parseSourceDocuments = (
           source.kind === 'web' && typeof source.sourceQuery === 'string'
             ? source.sourceQuery
             : undefined,
-        used: source.kind === 'web' && source.used === true ? true : undefined,
+        used:
+          source.kind === 'web' && typeof source.used === 'boolean'
+            ? source.used
+            : undefined,
         read:
           source.kind === 'web' && typeof source.read === 'boolean'
             ? source.read

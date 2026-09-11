@@ -80,23 +80,24 @@ export const useChatScreenActions = ({
     }
   };
 
-  const handleWebSearchToggle = () => {
+  const handleWebSearchToggle = (): boolean => {
     if (!chatSettings.webSearchEnabled && !isWebSearchReady(model)) {
       Toast.show({
         type: 'defaultToast',
         text1:
           'This model cannot use web results reliably — pick a larger one.',
       });
-      return;
+      return false;
     }
     if (!chatSettings.webSearchEnabled && !hasMemoryForWebSearch(model)) {
       Toast.show({
         type: 'defaultToast',
         text1: `${model?.modelName ?? 'This model'} already fills this phone's memory — searching alongside it would close the app. Pick a smaller model.`,
       });
-      return;
+      return false;
     }
     setSetting('webSearchEnabled', !chatSettings.webSearchEnabled);
+    return true;
   };
 
   const handleSelectPrompt = useCallback(

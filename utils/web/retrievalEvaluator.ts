@@ -39,8 +39,9 @@ const W_PAGES = 0.1;
 const QUALIFIED_TARGET = 3;
 const PAGES_TARGET = 2;
 
-const LEAN_WITH_CONTENT = 0.5;
-const LEAN_SNIPPETS_ONLY = 0.3;
+const LEAN_BASE = 0.3;
+const LEAN_CONTENT_WEIGHT = 0.4;
+const LEAN_CONTENT_TARGET = 2;
 
 const clamp01 = (value: number): number =>
   value < 0 ? 0 : value > 1 ? 1 : value;
@@ -62,7 +63,10 @@ const rawConfidence = (input: RetrievalEvaluationInput): number => {
   const { retrieval } = input;
 
   if (!retrieval || !retrieval.embedded) {
-    return input.contentCount > 0 ? LEAN_WITH_CONTENT : LEAN_SNIPPETS_ONLY;
+    return (
+      LEAN_BASE +
+      LEAN_CONTENT_WEIGHT * clamp01(input.contentCount / LEAN_CONTENT_TARGET)
+    );
   }
 
   if (retrieval.qualifiedCount === 0) {

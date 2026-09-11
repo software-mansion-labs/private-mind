@@ -54,6 +54,10 @@ const ChatBarActions = ({
 
   const handleAttach = () => {
     if (disabled) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Wait for the model to finish loading.',
+      });
       return;
     }
 

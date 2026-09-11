@@ -1,4 +1,4 @@
-import { SERP_PARSER_JS } from '../utils/web/scrape/serpParser';
+import { buildSerpParserJs } from '../utils/web/scrape/serpParser';
 import {
   parseSerpMessage,
   type SerpMessage,
@@ -67,7 +67,7 @@ const runParser = (nodes: El[], bodyText = ''): SerpMessage[] => {
   };
 
   // eslint-disable-next-line no-new-func
-  new Function('window', 'document', SERP_PARSER_JS)(window, document);
+  new Function('window', 'document', buildSerpParserJs(true))(window, document);
 
   return posted
     .map(parseSerpMessage)

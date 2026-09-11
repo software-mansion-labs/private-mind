@@ -83,15 +83,17 @@ export const useSendChatMessage = ({
     userInput: string,
     imagePath?: string,
     attachments?: Attachment[]
-  ) => {
+  ): Promise<boolean> => {
     const hasDocuments = attachments?.some((a) => a.type === 'document');
-    if (
-      (!userInput.trim() && !imagePath && !hasDocuments) ||
-      isGenerating ||
-      isModelLoading ||
-      isSwitching
-    )
-      return;
+    if (!userInput.trim() && !imagePath && !hasDocuments) return false;
+    if (isModelLoading || isSwitching) return false;
+    const llm = useLLMStore.getState();
+    const busy = llm.isGenerating || llm.isProcessingPrompt;
+    if (busy && llm.generatingForChatId !== chatId) {
+      llm.interrupt();
+    } else if (busy || isGenerating) {
+      return false;
+    }
 
     Keyboard.dismiss();
     messagesRef.current?.onMessageSent();
@@ -105,7 +107,7 @@ export const useSendChatMessage = ({
       const newChatId = await addChat(toChatTitle(titleSource), model!.id);
       if (!newChatId) {
         messagesRef.current?.cancelMessageSent();
-        return;
+        return false;
       }
       targetChatId = newChatId;
       useWebSearchStore.getState().transfer(chatId, targetChatId);
@@ -122,7 +124,7 @@ export const useSendChatMessage = ({
           text1: 'Failed to save image attachment.',
         });
         messagesRef.current?.cancelMessageSent();
-        return;
+        return false;
       }
     }
 
@@ -142,6 +144,13 @@ export const useSendChatMessage = ({
         .join(', ') || undefined;
 
     const modelProfile = getModelProfile(useLLMStore.getState().model);
+
+    const digestOfThisChat = (): string | null => {
+      const llmState = useLLMStore.getState();
+      return llmState.activeChatDigestChatId === targetChatId
+        ? llmState.activeChatDigest
+        : null;
+    };
 
     // Deferred so retrieval runs only after the optimistic message is on screen.
     const buildSources = async (signal?: AbortSignal) => {
@@ -182,7 +191,7 @@ export const useSendChatMessage = ({
             embeddings,
             maxRelevantChunks: modelProfile.ragMaxRelevantChunks,
             history: messageHistory,
-            digest: useLLMStore.getState().activeChatDigest ?? undefined,
+            digest: digestOfThisChat() ?? undefined,
           });
         ({ context, sourceDocuments, preferredSourceDocuments } = embeddings
           ? await runWithModelOffloaded(
@@ -235,7 +244,7 @@ export const useSendChatMessage = ({
           } = await runWebSearch({
             query: trimmedInput,
             history: messageHistory,
-            digest: useLLMStore.getState().activeChatDigest ?? undefined,
+            digest: digestOfThisChat() ?? undefined,
             provider: webViewScrapeProvider,
             embeddings,
             embeddingModelReady,
@@ -305,7 +314,6 @@ export const useSendChatMessage = ({
         }
       }
 
-      // Enable new sources for this chat (persists for future messages)
       for (const sourceId of attachmentSourceIds) {
         if (!enabledSources.includes(sourceId)) {
           await enableSource(targetChatId, sourceId);
@@ -337,6 +345,6 @@ export const useSendChatMessage = ({
       router.replace(`/chat/${targetChatId}`);
     }
 
-    await generation;
+    return generation;
   };
 };

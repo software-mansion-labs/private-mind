@@ -1,5 +1,5 @@
 import type { WebSearchResult } from './types';
-import { hostname } from './webResultsToContext';
+import { hostname } from './hostname';
 
 const FNV_OFFSET_BASIS = 0x811c9dc5;
 const FNV_PRIME = 0x01000193;

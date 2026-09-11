@@ -32,7 +32,7 @@ import { useLLMStore } from '../../store/llmStore';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import LinkIcon from '../../assets/icons/link-alt.svg';
 import { detectUrls } from '../../utils/web/url/urlDetection';
-import { hostname } from '../../utils/web/webResultsToContext';
+import { hostname } from '../../utils/web/hostname';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
@@ -64,7 +64,7 @@ interface Props {
     userInput: string,
     imagePath?: string,
     attachments?: Attachment[]
-  ) => void | Promise<void>;
+  ) => boolean | void | Promise<boolean | void>;
   onSelectModel: () => void;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
@@ -78,7 +78,7 @@ interface Props {
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
   webSearchEnabled?: boolean;
-  onWebSearchToggle?: () => void;
+  onWebSearchToggle?: () => boolean | void;
   hasMessages: boolean;
   disabled?: boolean;
   modelSwitching?: boolean;
@@ -155,8 +155,8 @@ const ChatBar = ({
     const enabling = !webSearchEnabled;
     const toggleSeq = webToggleSeqRef.current + 1;
     webToggleSeqRef.current = toggleSeq;
-    onWebSearchToggle?.();
-    if (!enabling) return;
+    const accepted = onWebSearchToggle?.();
+    if (!enabling || accepted === false) return;
     if (isMemoryConstrained(model)) return;
 
     const required = isHighMemoryDevice(model);
@@ -167,7 +167,7 @@ const ChatBar = ({
       if (!embeddingModelNeedsDownloadPrompt(status)) return;
       setEmbeddingSheetContext('web');
       embeddingSheetRequiredRef.current = required;
-      presentDownloadSheet();
+      presentDownloadSheet('none');
     });
   }, [webSearchEnabled, onWebSearchToggle, model, presentDownloadSheet]);
 
@@ -180,6 +180,8 @@ const ChatBar = ({
       } else {
         webEmbeddingPromptDismissedRef.current = true;
       }
+      setEmbeddingSheetContext('document');
+      embeddingSheetRequiredRef.current = false;
     }
     markDownloadSheetClosed();
   }, [embeddingSheetContext, markDownloadSheetClosed, onWebSearchToggle]);
@@ -344,11 +346,19 @@ const ChatBar = ({
     }
     setUserInput('');
     clearAll({ cleanupSources: false });
-    Promise.resolve(
-      onSend(inputToSend, imageUriToSend, attachmentsToSend)
-    ).catch((error) => {
-      console.error('Failed to send message:', error);
-    });
+    Promise.resolve(onSend(inputToSend, imageUriToSend, attachmentsToSend))
+      .then((accepted) => {
+        if (accepted !== false) return;
+        lastSentRef.current = null;
+        setUserInput((current) => current || inputToSend);
+        Toast.show({
+          type: 'defaultToast',
+          text1: 'Wait for the response to finish or stop it first.',
+        });
+      })
+      .catch((error) => {
+        console.error('Failed to send message:', error);
+      });
   }, [
     onSend,
     userInput,

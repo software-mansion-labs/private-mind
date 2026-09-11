@@ -9,6 +9,7 @@ import {
   isConversationalIntent,
   anchorRescueQuery,
 } from '../utils/web/buildSearchQuery';
+import { namesATimePeriod } from '../utils/web/timePeriod';
 
 const history = [
   { role: 'user', content: 'I feel tired, does coffee help or make it worse?' },
@@ -534,6 +535,38 @@ describe('planWebSearch', () => {
       expect(plan.queries).toEqual(['Tokyo weather today']);
     });
 
+    it('keeps a currency code the planner adds to a price query', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "current bitcoin price", "kind": "price", "queries": ["bitcoin price USD"]}'
+        );
+      const plan = await planWebSearch(
+        'how much is bitcoin right now',
+        [],
+        generate,
+        { today: TODAY }
+      );
+      expect(plan.queries).toEqual(['bitcoin price USD']);
+    });
+
+    it('drops the example entity written in a script without case', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "current weather", "kind": "fact", "queries": ["दिल्ली मौसम आज"]}'
+        );
+      const plan = await planWebSearch(
+        'jaka jest pogoda w Gdańsku',
+        [],
+        generate,
+        {
+          today: TODAY,
+        }
+      );
+      expect(plan.queries).not.toContain('दिल्ली मौसम आज');
+    });
+
     it('keeps an unrelated multi-query plan alongside a leaked one', async () => {
       const generate = jest
         .fn()
@@ -657,6 +690,42 @@ describe('planWebSearch', () => {
         { today: '2026-07-17' }
       );
       expect(plan.queries).toEqual(['Oscars 2019 best picture']);
+    });
+
+    it('trusts a year the conversation is about, even when the follow-up omits it', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "Oscars 2019 best actor", "queries": ["Oscars 2019 best actor"]}'
+        );
+      const plan = await planWebSearch(
+        'and who won best actor that year?',
+        [
+          {
+            role: 'user',
+            content: 'who won best picture at the 2019 Oscars?',
+          },
+          { role: 'assistant', content: 'Green Book won best picture.' },
+        ],
+        generate,
+        { today: '2026-07-17' }
+      );
+      expect(plan.queries).toEqual(['Oscars 2019 best actor']);
+    });
+
+    it('reads the current year off the ISO date, not the local clock', async () => {
+      const generate = jest
+        .fn()
+        .mockResolvedValue(
+          '{"needs_search": true, "intent": "Nobel", "queries": ["Nagroda Nobla literatura 2023"]}'
+        );
+      const plan = await planWebSearch(
+        'kto dostał Nobla z literatury?',
+        [],
+        generate,
+        { today: '2026-01-01' }
+      );
+      expect(plan.queries).toEqual(['Nagroda Nobla literatura 2026']);
     });
 
     it('leaves last year alone (reigning-champion framing)', async () => {
@@ -1039,20 +1108,32 @@ describe('carryReferentIntoQuery', () => {
     expect(carryReferentIntoQuery(longQuery, withPresident)).toBe(longQuery);
   });
 
-  it('falls back to the digest when no entity is in history at all', () => {
-    const smallTalk = [
-      { role: 'user', content: 'hej, jak leci?' },
-      { role: 'assistant', content: 'Wszystko dobrze, dzięki!' },
+  it('leaves a digest about a different conversation out of the query (Pixel: coffee brewing bled into a weather search)', () => {
+    const weather = [
+      { role: 'user', content: 'Jaka jest dzisiaj pogoda w Warszawie?' },
+      { role: 'assistant', content: 'W Warszawie jest dzisiaj 21 stopni.' },
     ];
     expect(
       carryReferentIntoQuery(
-        'ile ma lat prezydent?',
-        smallTalk,
-        'Topic: the president of some fictional country.'
+        'a jutro?',
+        weather,
+        'Rozmowa o parzeniu kawy w kawiarce i stopniu zmielenia.'
       )
-    ).toBe(
-      'ile ma lat prezydent? Topic: the president of some fictional country.'
-    );
+    ).toBe('a jutro?');
+  });
+
+  it('still carries a digest that summarizes this very conversation', () => {
+    const weather = [
+      { role: 'user', content: 'Jaka jest dzisiaj pogoda w Warszawie?' },
+      { role: 'assistant', content: 'W Warszawie jest dzisiaj 21 stopni.' },
+    ];
+    expect(
+      carryReferentIntoQuery(
+        'a jutro?',
+        weather,
+        'Rozmowa o pogodzie w Warszawie: dzisiaj 21 stopni.'
+      )
+    ).toBe('a jutro? Rozmowa o pogodzie w Warszawie: dzisiaj 21 stopni.');
   });
 
   it('falls back to the digest for a real comparison with no matchable entity (iPhone 17 Pro vs iPhone Air)', () => {
@@ -1291,20 +1372,20 @@ describe('carryReferentIntoQuery', () => {
     ]);
   });
 
-  it('threads a chat-level digest through planWebSearch when no entity is in history', async () => {
-    const smallTalk = [
-      { role: 'user', content: 'hej, jak leci?' },
-      { role: 'assistant', content: 'Wszystko dobrze, dzięki!' },
+  it('anchors a follow-up on the subject the conversation named, not on the digest text', async () => {
+    const comparing = [
+      { role: 'user', content: 'Porownaj Model A i Model B.' },
+      { role: 'assistant', content: 'Model A jest lzejszy niz Model B.' },
     ];
     const generate = jest.fn();
     const plan = await planWebSearch(
-      'ile ma lat prezydent?',
-      smallTalk,
+      'ile on kosztuje, ten pierwszy?',
+      comparing,
       generate,
       { rewrite: false, digest: 'Topic: comparing Model A and Model B.' }
     );
     expect(plan.queries).toEqual([
-      'ile ma lat prezydent? Topic: comparing Model A and Model B.',
+      'ile on kosztuje, ten pierwszy? Model A Model B',
     ]);
   });
 });
@@ -1371,5 +1452,33 @@ describe('the plan says what a complete answer must contain', () => {
       generate
     );
     expect(plan.expects).toEqual(['data premiery']);
+  });
+});
+
+describe('namesATimePeriod', () => {
+  it('reads a year as the period the question is about', () => {
+    expect(namesATimePeriod('Jaka była cena złota w 2024?')).toBe(true);
+    expect(namesATimePeriod('Who won the 1998 World Cup?')).toBe(true);
+  });
+
+  it('reads a century written in roman numerals, whatever the language', () => {
+    expect(
+      namesATimePeriod('Którzy prezydenci USA rządzili w XIX wieku?')
+    ).toBe(true);
+    expect(namesATimePeriod('Papi del XX secolo')).toBe(true);
+    expect(namesATimePeriod('Reyes de España del siglo XVIII')).toBe(true);
+  });
+
+  it('treats a question that names no period as being about the present', () => {
+    expect(namesATimePeriod('Kto jest prezydentem USA?')).toBe(false);
+    expect(namesATimePeriod('Wer ist Bundeskanzler?')).toBe(false);
+    expect(namesATimePeriod('現在の日本の首相は誰ですか')).toBe(false);
+    expect(namesATimePeriod('भारत के प्रधानमंत्री कौन हैं')).toBe(false);
+  });
+
+  it('does not read an acronym as a roman numeral', () => {
+    expect(namesATimePeriod('Ile kosztuje DVD?')).toBe(false);
+    expect(namesATimePeriod('What does LLC mean?')).toBe(false);
+    expect(namesATimePeriod('Kim był Mieszko I?')).toBe(false);
   });
 });

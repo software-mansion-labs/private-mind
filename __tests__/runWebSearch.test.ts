@@ -20,8 +20,16 @@ jest.mock('../utils/web/url/extractArticle', () => ({
   ...jest.requireActual('../utils/web/url/extractArticle'),
   extractArticle: jest.fn(),
 }));
+jest.mock('../utils/web/transientRetrieval', () => {
+  const actual = jest.requireActual('../utils/web/transientRetrieval');
+  return {
+    ...actual,
+    retrieveWebPassages: jest.fn(actual.retrieveWebPassages),
+  };
+});
 
 import { runWebSearch } from '../utils/web/runWebSearch';
+import { retrieveWebPassages } from '../utils/web/transientRetrieval';
 import type { WebSearchProgressEvent } from '../utils/web/runWebSearch';
 import { extractArticle } from '../utils/web/url/extractArticle';
 import { clearWebCaches } from '../utils/web/cache/webCache';
@@ -232,7 +240,7 @@ describe('runWebSearch', () => {
     log.mockRestore();
   });
 
-  it('searches the planner’s discarded queries when the verbatim question finds nothing', async () => {
+  it('searches a plan query the language filter discarded, when the question finds nothing', async () => {
     const specPage: WebSearchResult = {
       title: 'Samsung QE65QN90D specs',
       url: 'https://specs.example/qn90d',
@@ -269,26 +277,25 @@ describe('runWebSearch', () => {
     const specPage: WebSearchResult = {
       title: 'Samsung QE65QN90D — dane techniczne',
       url: 'https://sklep.example/qn90d',
-      snippet: 'Samsung QE65QN90D częstotliwość odświeżania 144 Hz',
-      content:
-        'Samsung QE65QN90D częstotliwość odświeżania 144 Hz, 4K. '.repeat(12),
+      snippet: 'Samsung QE65QN90D refresh rate 144 Hz',
+      content: 'Samsung QE65QN90D refresh rate 144 Hz, 4K. '.repeat(12),
     };
     const provider = new MockProvider({
-      'Samsung QE65QN90D częstotliwość odświeżania': [specPage],
+      'Samsung QE65QN90D refresh rate': [specPage],
     });
     const out = await runWebSearch({
-      query: 'Jaka częstotliwość odświeżania ma Samsung QE65QN90D?',
+      query: 'What refresh rate does the Samsung QE65QN90D have?',
       history: [],
       provider,
       embeddings: fakeEmbeddings,
       embeddingModelReady: true,
       generate: async () =>
-        '{"needs_search": true, "intent": "TV refresh rate", "kind": "specs", "queries": ["Jaka częstotliwość odświeżania ma Samsung QE65QN90D?"], "expects": ["częstotliwość odświeżania"]}',
+        '{"needs_search": true, "intent": "TV refresh rate", "kind": "specs", "queries": ["What refresh rate does the Samsung QE65QN90D have?"], "expects": ["refresh rate"]}',
       today: '2026-07-20',
     });
     expect(provider.calls).toEqual([
-      'Jaka częstotliwość odświeżania ma Samsung QE65QN90D?',
-      'Samsung QE65QN90D częstotliwość odświeżania',
+      'What refresh rate does the Samsung QE65QN90D have?',
+      'Samsung QE65QN90D refresh rate',
     ]);
     expect(out.sourceDocuments.map((doc) => doc.url)).toEqual([specPage.url]);
   });
@@ -428,10 +435,10 @@ describe('runWebSearch', () => {
 
   it('drops results whose host does not match a site named in the question', async () => {
     const provider = new MockProvider({
-      'transfermarkt najwięcej bramek dla Polski site:transfermarkt.pl': [
+      'transfermarkt top scorer for Poland site:transfermarkt.com': [
         {
           title: 'Transfermarkt page',
-          url: 'https://www.transfermarkt.pl/poland/topscorer',
+          url: 'https://www.transfermarkt.com/poland/topscorer',
           snippet: 'Poland top scorer this season on Transfermarkt',
         },
         {
@@ -442,18 +449,17 @@ describe('runWebSearch', () => {
       ],
     });
     const out = await runWebSearch({
-      query:
-        'sprawdź na stronie transfermarkt.pl kto strzelił najwięcej bramek dla Polski',
+      query: 'check on transfermarkt.com who is the top scorer for Poland',
       history: [],
       provider,
       embeddings: fakeEmbeddings,
       embeddingModelReady: true,
       generate: async () =>
-        '{"needs_search": true, "intent": "poland top scorer", "queries": ["transfermarkt najwięcej bramek dla Polski"]}',
+        '{"needs_search": true, "intent": "poland top scorer", "queries": ["transfermarkt top scorer for Poland"]}',
       today: '2026-07-20',
     });
     expect(out.sourceDocuments).toHaveLength(1);
-    expect(out.sourceDocuments[0]!.url).toContain('transfermarkt.pl');
+    expect(out.sourceDocuments[0]!.url).toContain('transfermarkt.com');
   });
 
   describe('when a page cannot be read', () => {
@@ -466,7 +472,7 @@ describe('runWebSearch', () => {
 
     it('searches the subject again away from the host that blocked the reader', async () => {
       const provider = new MockProvider({
-        'Samsung Galaxy S25 cena': [bareResult('https://shop.example/s25')],
+        'Samsung Galaxy S25 price': [bareResult('https://shop.example/s25')],
         'Samsung Galaxy S25 -site:shop.example': [
           bareResult('https://samsung.com/s25'),
         ],
@@ -479,7 +485,7 @@ describe('runWebSearch', () => {
       const events: WebSearchProgressEvent[] = [];
 
       const out = await runWebSearch({
-        query: 'Samsung Galaxy S25 cena',
+        query: 'Samsung Galaxy S25 price',
         history: [],
         provider,
         embeddings: null,
@@ -500,15 +506,52 @@ describe('runWebSearch', () => {
       ).toEqual(['https://samsung.com/s25']);
     });
 
+    it('scores the recovered pages once, together with the first round, from their raw text', async () => {
+      const provider = new MockProvider({
+        'Samsung Galaxy S25 price': [bareResult('https://shop.example/s25')],
+        'Samsung Galaxy S25 -site:shop.example': [
+          bareResult('https://samsung.com/s25'),
+        ],
+      });
+      readableExcept((url) =>
+        url.includes('shop.example')
+          ? new Error('Fetch failed: 403 Forbidden')
+          : null
+      );
+      (retrieveWebPassages as jest.Mock).mockClear();
+
+      const out = await runWebSearch({
+        query: 'Samsung Galaxy S25 price',
+        history: [],
+        provider,
+        embeddings: fakeEmbeddings,
+        embeddingModelReady: true,
+        generate: noGen,
+        today: '2026-07-20',
+      });
+
+      expect(out.telemetry.rounds).toHaveLength(2);
+      expect(retrieveWebPassages).toHaveBeenCalledTimes(2);
+      const mergedCall = (retrieveWebPassages as jest.Mock).mock.calls.at(-1)!;
+      const scored = mergedCall[0] as { url: string; content?: string }[];
+      expect(scored.map((result) => result.url)).toContain(
+        'https://samsung.com/s25'
+      );
+      expect(
+        scored.find((result) => result.url === 'https://samsung.com/s25')
+          ?.content
+      ).toBe(PHONE_TEXT.trim());
+    });
+
     it('records why the page could not be read, and says so on the way past', async () => {
       const provider = new MockProvider({
-        'Samsung Galaxy S25 cena': [bareResult('https://shop.example/s25')],
+        'Samsung Galaxy S25 price': [bareResult('https://shop.example/s25')],
       });
       readableExcept(() => new Error('Fetch failed: 403 Forbidden'));
       const events: WebSearchProgressEvent[] = [];
 
       const out = await runWebSearch({
-        query: 'Samsung Galaxy S25 cena',
+        query: 'Samsung Galaxy S25 price',
         history: [],
         provider,
         embeddings: null,
@@ -533,7 +576,7 @@ describe('runWebSearch', () => {
 
     it('retries the same host on another page when only that page was missing', async () => {
       const provider = new MockProvider({
-        'Samsung Galaxy S25 cena': [bareResult('https://shop.example/gone')],
+        'Samsung Galaxy S25 price': [bareResult('https://shop.example/gone')],
         'site:shop.example Samsung Galaxy S25': [
           bareResult('https://shop.example/s25'),
         ],
@@ -543,7 +586,7 @@ describe('runWebSearch', () => {
       );
 
       const out = await runWebSearch({
-        query: 'Samsung Galaxy S25 cena',
+        query: 'Samsung Galaxy S25 price',
         history: [],
         provider,
         embeddings: null,
@@ -560,7 +603,7 @@ describe('runWebSearch', () => {
 
     it('does not spend a second fetch on a host that just blocked us', async () => {
       const provider = new MockProvider({
-        'Samsung Galaxy S25 cena': [bareResult('https://shop.example/s25')],
+        'Samsung Galaxy S25 price': [bareResult('https://shop.example/s25')],
         'Samsung Galaxy S25 -site:shop.example': [
           bareResult('https://shop.example/other'),
           bareResult('https://samsung.com/s25'),
@@ -573,7 +616,7 @@ describe('runWebSearch', () => {
       );
 
       await runWebSearch({
-        query: 'Samsung Galaxy S25 cena',
+        query: 'Samsung Galaxy S25 price',
         history: [],
         provider,
         embeddings: null,
@@ -591,12 +634,12 @@ describe('runWebSearch', () => {
 
     it('leaves a healthy search alone — no failures, no extra round', async () => {
       const provider = new MockProvider({
-        'Samsung Galaxy S25 cena': [bareResult('https://samsung.com/s25')],
+        'Samsung Galaxy S25 price': [bareResult('https://samsung.com/s25')],
       });
       readableExcept(() => null);
 
       const out = await runWebSearch({
-        query: 'Samsung Galaxy S25 cena',
+        query: 'Samsung Galaxy S25 price',
         history: [],
         provider,
         embeddings: null,
@@ -608,7 +651,7 @@ describe('runWebSearch', () => {
       expect(out.telemetry.fetchFailures).toEqual([]);
       expect(out.telemetry.recovery).toEqual([]);
       expect(out.telemetry.rounds).toHaveLength(1);
-      expect(provider.calls).toEqual(['Samsung Galaxy S25 cena']);
+      expect(provider.calls).toEqual(['Samsung Galaxy S25 price']);
     });
   });
 
@@ -634,7 +677,7 @@ describe('runWebSearch', () => {
 
   it('drops the same article listed under a second id on the same host', async () => {
     const duplicate = (url: string): WebSearchResult => ({
-      title: 'Pogoda Kraków - Prognoza pogody godzinowa',
+      title: 'Warsaw weather - hourly forecast',
       url,
       snippet: 'weather temperature',
       content: WEATHER_TEXT,
@@ -767,6 +810,56 @@ describe('runWebSearch', () => {
   });
 });
 
+describe('a subject no fetched page names', () => {
+  const illusionsPage = (url: string): WebSearchResult => ({
+    title: 'Hours and ticketing - Museum of Illusions Krakow',
+    url,
+    snippet: 'Opening hours: Monday-Friday 10 AM-7 PM',
+    content:
+      'Museum of Illusions Krakow opening hours and ticketing. Adults PLN 59. '.repeat(
+        8
+      ),
+  });
+
+  const ask = async (query: string, searchQuery: string) =>
+    runWebSearch({
+      query,
+      history: [],
+      provider: new MockProvider({
+        [searchQuery]: [
+          illusionsPage('https://a.example/1'),
+          illusionsPage('https://b.example/2'),
+        ],
+      }),
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () =>
+        `{"needs_search": true, "intent": "opening hours", "queries": ["${searchQuery}"]}`,
+      today: '2026-07-20',
+    });
+
+  it('reports no results rather than answering about a different subject', async () => {
+    const out = await ask(
+      'What are the opening hours of the Museum of Imaginary Instruments in Krakow',
+      'Museum of Imaginary Instruments Krakow opening hours'
+    );
+
+    expect(out.context).toEqual([]);
+    expect(out.sourceDocuments).toEqual([]);
+    expect(out.telemetry.unnamedSubjects).toEqual(['Imaginary Instruments']);
+  });
+
+  it('leaves a question the pages do name alone', async () => {
+    const out = await ask(
+      'What are the opening hours of the Museum of Illusions in Krakow',
+      'Museum of Illusions Krakow opening hours'
+    );
+
+    expect(out.context.length).toBeGreaterThan(0);
+    expect(out.telemetry.unnamedSubjects).toBeUndefined();
+  });
+});
+
 describe('runWebSearch — reusing a previous turn', () => {
   const run = (provider: MockProvider, useCache: boolean) =>
     runWebSearch({
@@ -816,6 +909,24 @@ describe('runWebSearch — reusing a previous turn', () => {
 
     expect(provider.calls).toHaveLength(2);
     expect(extractArticle).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not cache a page that gave no text, so a bot wall is retried next time', async () => {
+    const provider = new MockProvider({
+      'warsaw weather': [bareResult('https://weather.example/1')],
+    });
+    (extractArticle as jest.Mock).mockResolvedValueOnce({
+      url: 'https://weather.example/1',
+      title: 'Just a moment...',
+      text: '',
+      siteName: 'weather.example',
+    });
+
+    await run(provider, true);
+    const second = await run(provider, true);
+
+    expect(extractArticle).toHaveBeenCalledTimes(2);
+    expect(second.context.join('\n')).toContain('weather');
   });
 
   it('does not cache an empty SERP, which is as likely to be a bot wall', async () => {
@@ -870,5 +981,110 @@ describe('searching the question itself is a fallback, not a habit', () => {
       today: '2026-07-20',
     });
     expect(provider.calls).toContain('Jaka jest pogoda w Warszawie?');
+  });
+});
+
+describe('runWebSearch — the deadline and the stop listener are released on every exit', () => {
+  const planned =
+    '{"needs_search": true, "intent": "weather", "kind": "fact", "queries": ["warsaw weather"]}';
+
+  it('clears the deadline when the search throws after the gate', async () => {
+    jest.useFakeTimers();
+    try {
+      const provider = new MockProvider({
+        'warsaw weather': [weatherPage('https://weather.example/1')],
+      });
+      await expect(
+        runWebSearch({
+          query: 'warsaw weather',
+          history: [],
+          provider,
+          embeddings: fakeEmbeddings,
+          embeddingModelReady: true,
+          generate: async () => planned,
+          searchTimeoutMs: 5000,
+          onProgress: (event) => {
+            if (event.type === 'searching') throw new Error('boom');
+          },
+          today: '2026-07-20',
+        })
+      ).rejects.toThrow('boom');
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('stops listening to the caller once it has returned', async () => {
+    const controller = new AbortController();
+    const provider = new MockProvider({
+      'warsaw weather': [weatherPage('https://weather.example/1')],
+    });
+    const events: WebSearchProgressEvent[] = [];
+    const out = await runWebSearch({
+      query: 'warsaw weather',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: async () => planned,
+      signal: controller.signal,
+      searchTimeoutMs: 5000,
+      onProgress: (event) => events.push(event),
+      today: '2026-07-20',
+    });
+    expect(out.telemetry.aborted).toBeUndefined();
+
+    controller.abort();
+
+    expect(out.telemetry.aborted).toBeUndefined();
+    expect(events.some((event) => event.type === 'timeout')).toBe(false);
+  });
+});
+
+describe('search region follows the question language', () => {
+  class RegionProvider implements WebSearchProvider {
+    readonly id = 'region';
+    readonly regions: (string | undefined)[] = [];
+    isReady() {
+      return true;
+    }
+    async search(
+      _query: string,
+      options?: { region?: string }
+    ): Promise<WebSearchResult[]> {
+      this.regions.push(options?.region);
+      return [weatherPage('https://pogoda.example/1')];
+    }
+  }
+
+  beforeEach(() => clearWebCaches());
+
+  it('asks for Polish results when the question is Polish', async () => {
+    const provider = new RegionProvider();
+    await runWebSearch({
+      query: 'jaka jest dzisiaj pogoda w Warszawie',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: noGen,
+      today: '2026-07-20',
+    });
+    expect(provider.regions[0]).toBe('pl-pl');
+  });
+
+  it('leaves the region open for an English question', async () => {
+    const provider = new RegionProvider();
+    await runWebSearch({
+      query: 'warsaw weather today',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate: noGen,
+      today: '2026-07-20',
+    });
+    expect(provider.regions[0]).toBeUndefined();
   });
 });

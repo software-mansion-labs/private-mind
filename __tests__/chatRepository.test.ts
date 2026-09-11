@@ -415,6 +415,36 @@ describe('getChatMessages source provenance', () => {
     });
   });
 
+  it('keeps a source the answer did not use marked as unused after a reload', async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 4,
+        chatId: 1,
+        role: 'assistant',
+        content: 'RTX 5080 kosztuje 5 199 zł.',
+        sourceDocuments: JSON.stringify([
+          { name: 'x-kom', url: 'https://x-kom.pl/a', kind: 'web', used: true },
+          {
+            name: 'Morele',
+            url: 'https://morele.net/b',
+            kind: 'web',
+            used: false,
+          },
+          { name: 'Ceneo', url: 'https://ceneo.pl/c', kind: 'web' },
+        ]),
+      },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(messages[0].sourceDocuments?.map((source) => source.used)).toEqual([
+      true,
+      false,
+      undefined,
+    ]);
+  });
+
   it('keeps the query that found each web source, so the saved trace can replay the searches', async () => {
     const getAllAsync = jest.fn().mockResolvedValue([
       {

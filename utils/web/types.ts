@@ -42,6 +42,7 @@ export interface WebContext {
 export interface WebSearchProviderOptions {
   signal?: AbortSignal;
   maxResults?: number;
+  region?: string;
   onEngine?: (engine: {
     id: string;
     index: number;
