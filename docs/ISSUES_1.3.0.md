@@ -434,7 +434,77 @@ changes nothing about memory but should be stated when the trace is read.
 
 ---
 
-## 9. Open decision: do the grounding caveat badges ship?
+## 9. An earlier subject is appended to a later, unrelated search
+
+**Reported:** a conversation asked about the US president, then later about the
+Polish one. "US" was appended to the search query, and the results got worse.
+
+**Status:** reproduced against the real code. The appended token and the
+condition that appends it are both confirmed.
+
+### What happens
+
+`utils/web/topicAnchors.ts` collects acronyms — two or more capital letters —
+mentioned at least `ANCHOR_MIN_MENTIONS` (2) times across the conversation,
+keeps the top `ANCHORS_MAX` (2), and appends them:
+
+```ts
+return `${query} ${anchors.join(' ')}`;
+```
+
+"US" clears that bar after two mentions. Running the real `topicAnchorer` over a
+four-turn US-president conversation:
+
+```
+anchors: ["US"]
+"Who is the president of Poland?"  =>  "Who is the president of Poland? US"
+"What about Poland?"               =>  unchanged
+"And the Polish one?"              =>  unchanged
+"Kto jest prezydentem Polski?"     =>  unchanged
+```
+
+The fully explicit question is the one that inherits the wrong country. The
+vague ones are left alone.
+
+### Why the guards let it through
+
+Two guards are meant to stop this, and both miss.
+
+**`standsAlone` never fires here.** It asks whether the new message names
+something of its own, via `namedEntitiesIn`, which matches `PROPER_NOUN_RUN`:
+
+```
+/(?<!\p{L})\p{Lu}[\p{L}\p{N}'-]*(?:\s+\p{Lu}[\p{L}\p{N}'-]*)+/gu
+```
+
+The trailing `+` requires **two or more consecutive capitalised words**, so a
+one-word country never qualifies. Measured:
+`namedEntitiesIn('Who is the president of Poland?')` returns `[]`.
+
+**The stem guard is backwards.** With `standsAlone` out, the only remaining test
+is `sharedStemCount(query, topicText) === 0`. Measured on the same history:
+
+| question                        | shared stems | anchored |
+| ------------------------------- | -----------: | -------- |
+| Who is the president of Poland? |            1 | **yes**  |
+| What about Poland?              |            0 | no       |
+| And the Polish one?             |            0 | no       |
+| Who leads Poland?               |            0 | no       |
+
+The test reads "does this look like the same topic?" and answers it from word
+overlap. But a question about the same role in a different country is maximum
+word overlap and maximum subject change — the one case where carrying the old
+entity forward does the most damage. The guard is most likely to fail exactly
+where it matters most.
+
+### What not to break fixing it
+
+The anchoring is not wrong in itself; it is what lets "how much is that in EUR?"
+carry its subject forward, and §5 shows the query doing that correctly. The
+defect is that "is this still the same subject?" is answered from wording
+similarity rather than from whether the new message names a different one.
+Recognising a single-word place or organisation would fix the reported case
+without touching the follow-up behaviour that works.
 
 **Asked:** whether badges like "A number here couldn't be confirmed against the
 sources" stay in the production build.
