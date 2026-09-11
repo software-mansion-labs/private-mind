@@ -1,9 +1,13 @@
 import {
   floorIsOffscreen,
   pinFloorFor,
+  pinLandingFrom,
   pinReleaseTarget,
 } from '../components/chat-screen/pinScroll';
-import { MESSAGE_PIN_OFFSET } from '../constants/chat-screen';
+import {
+  MESSAGE_PIN_LANDING_PX,
+  MESSAGE_PIN_OFFSET,
+} from '../constants/chat-screen';
 
 describe('pinFloorFor', () => {
   const geometry = {
@@ -30,6 +34,33 @@ describe('pinFloorFor', () => {
 
   it('reserves nothing once the question alone fills the viewport', () => {
     expect(pinFloorFor({ ...geometry, userHeight: 900 })).toBe(0);
+  });
+});
+
+describe('pinLandingFrom', () => {
+  it('jumps to the landing distance and animates the rest', () => {
+    expect(pinLandingFrom(0, 1000)).toEqual({
+      jumpTo: 1000 - MESSAGE_PIN_LANDING_PX,
+      animateTo: 1000,
+    });
+  });
+
+  it('only animates when the list is already within the landing distance', () => {
+    expect(pinLandingFrom(980, 1000)).toEqual({
+      jumpTo: null,
+      animateTo: 1000,
+    });
+  });
+
+  it('only animates when the pin is closer to the top than the landing distance', () => {
+    expect(pinLandingFrom(0, 40)).toEqual({ jumpTo: null, animateTo: 40 });
+  });
+
+  it('animates back down when the list sits past the pin', () => {
+    expect(pinLandingFrom(1200, 1000)).toEqual({
+      jumpTo: null,
+      animateTo: 1000,
+    });
   });
 });
 

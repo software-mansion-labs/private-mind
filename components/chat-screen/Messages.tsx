@@ -63,7 +63,12 @@ import {
 } from '../../constants/chat-screen';
 import { messageRowKey } from '../../utils/messageRowKey';
 import { useKeyboardLift } from './useKeyboardLift';
-import { floorIsOffscreen, pinFloorFor, pinReleaseTarget } from './pinScroll';
+import {
+  floorIsOffscreen,
+  pinFloorFor,
+  pinLandingFrom,
+  pinReleaseTarget,
+} from './pinScroll';
 import { visibleMessageText } from '../../utils/messageText';
 
 export interface MessagesHandle {
@@ -411,10 +416,27 @@ const Messages = ({
   const scrollToPin = useCallback(() => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        scrollRef.current?.scrollTo({ y: pinOffset.current, animated: false });
+        const scrollView = scrollRef.current;
+        if (!scrollView) return;
+        const { jumpTo, animateTo } = pinLandingFrom(
+          lastScrollOffset.current,
+          pinOffset.current
+        );
+        if (jumpTo !== null) {
+          scrollView.scrollTo({ y: jumpTo, animated: false });
+        }
+        scrollView.scrollTo({ y: animateTo, animated: true });
       });
     });
   }, []);
+
+  const landAfterKeyboard = useCallback(() => {
+    if (pinActive.current && !pendingPinRef.current) {
+      scrollToPin();
+      return;
+    }
+    scrollRef.current?.scrollToEnd({ animated: false });
+  }, [scrollToPin]);
 
   // Android-only: KeyboardChatScrollView's ClippingScrollView can
   // bounce the scroll offset on keyboard dismiss. Snap back to the
@@ -467,12 +489,12 @@ const Messages = ({
         firstFrame = requestAnimationFrame(() => {
           secondFrame = requestAnimationFrame(() => {
             closeUserActionMenu();
-            scrollRef.current?.scrollToEnd({ animated: false });
+            landAfterKeyboard();
           });
         });
         snapTimer = setTimeout(() => {
           closeUserActionMenu();
-          scrollRef.current?.scrollToEnd({ animated: false });
+          landAfterKeyboard();
           runPendingMenuOpen();
         }, 160);
         return;
@@ -485,7 +507,7 @@ const Messages = ({
       showSub.remove();
       hideSub.remove();
     };
-  }, [closeUserActionMenu]);
+  }, [closeUserActionMenu, landAfterKeyboard]);
 
   const [pinAnchor, setPinAnchor] = useState<{
     containerHeight: number;

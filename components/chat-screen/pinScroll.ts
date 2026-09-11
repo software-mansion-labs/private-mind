@@ -1,4 +1,5 @@
 import {
+  MESSAGE_PIN_LANDING_PX,
   MESSAGE_PIN_OFFSET,
   PIN_READY_SLACK_PX,
 } from '../../constants/chat-screen';
@@ -24,6 +25,23 @@ export const pinFloorFor = ({
       userHeight -
       listBottomPadding
   );
+
+export interface PinLanding {
+  jumpTo: number | null;
+  animateTo: number;
+}
+
+export const pinLandingFrom = (
+  current: number,
+  target: number,
+  landing = MESSAGE_PIN_LANDING_PX
+): PinLanding => {
+  const approach = Math.max(0, target - landing);
+  return {
+    jumpTo: current < approach ? approach : null,
+    animateTo: target,
+  };
+};
 
 export interface PinReleaseGeometry {
   contentHeight: number;
