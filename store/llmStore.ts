@@ -1,5 +1,5 @@
 import { estimatePromptTokens } from '../constants/context-window';
-import { stripThinkBlocks } from '../utils/thinking';
+import { hasAnswerText } from '../utils/thinking';
 import { create } from 'zustand';
 import { LLMModule } from 'react-native-executorch';
 import { Model } from '../database/modelRepository';
@@ -1121,7 +1121,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         }
       }
 
-      if (finalResponse && stripThinkBlocks(finalResponse).trim()) {
+      if (finalResponse && hasAnswerText(finalResponse)) {
         const humanizedResponse = humanizeSourceReferences(
           stripSourceLabels(
             stripEchoedQuestionPrefix(finalResponse, currentQuestion)
