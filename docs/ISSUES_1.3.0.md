@@ -515,8 +515,13 @@ was read back as "q-crime". It was nevertheless interpreted correctly, web
 search ran, and the answer on screen was right — but the turn ended with
 "Failed to generate a response". Called out as serious.
 
-**Status:** the failure is reproduced against the real code. The "q-crime"
-reading is unexplained and waiting on the artifact from the device.
+**Reported again**, with the consequence named: same conditions — thinking on,
+web search correct, reasoning correct, answer correct — asking "who is president
+of Ukraine". **Leaving the chat and coming back makes the answer disappear.**
+
+**Status:** fixed. The disappearance confirmed the diagnosis below: the reply
+was never written to the database. The "q-crime" reading is still unexplained
+and waiting on the artifact from the device.
 
 ### Why a correct answer is thrown away
 
@@ -568,6 +573,18 @@ turns a produced answer into a lost one.
 The gate asks "is there anything outside the reasoning?" when what it needs to
 know is "did the model produce an answer?". A missing `</think>` means the
 closing tag is absent, not the answer.
+
+### The fix
+
+`hasAnswerText` in `utils/thinking.ts` accepts either: text outside the
+reasoning, or text inside a block that never closed. The gate calls that
+instead.
+
+Nothing else moves. The persisted payload was always the raw `finalResponse`
+including the markup, so the message renders after a reload exactly as it did
+while it streamed. A closed block with nothing after it still fails the turn —
+that is the case where the model really did say nothing, and its existing test
+still passes.
 
 ### Still open
 
