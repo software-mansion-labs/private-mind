@@ -358,10 +358,56 @@ someone trying two models on the same question.
 **Reported:** the app crashed at 13:27 on an iPhone 17, after a question was
 sent. Conditions: `Qwen 3 - 1.7B`, Think on, Web on, and speech input in use.
 
-**Status:** report not yet read, but those four conditions name an accounting
-gap that is visible in the code without it. The crash report is on the device
-and the device was off the cable when this was written; nothing had synced to
-the Mac (`~/Library/Logs/CrashReporter/MobileDevice` does not exist).
+**Status:** report read. **It is not a jetsam.** `PrivateMind-2026-09-11-132656.ips`
+is a `SIGABRT` raised from inside ExecuTorch, on app 1.3.0 / iOS 26.6.2. The
+only `JetsamEvent` on the device is from 10 September, a different day.
+
+### What the report says
+
+Faulting thread 5, `asi: {"libsystem_c.dylib": ["abort() called"]}`:
+
+```
+libsystem_c.dylib   abort
+ExecutorchLib       et_pal_abort
+ExecutorchLib       executorch::runtime::pal_abort()
+ExecutorchLib       executorch::runtime::runtime_abort()
+ExecutorchLib       ThreadPool::run(FunctionRef<void (unsigned long)>, unsigned long)
+ExecutorchLib       thread_parallelize_1d
+ExecutorchLib       thread_main
+```
+
+A worker thread in the same pool shows what was being computed:
+
+```
+ExecutorchLib  torch::executor::native::custom_sdpa_out_impl(...)
+ExecutorchLib  cpu_flash_attention<float, 32ll, 512ll>(...)
+ExecutorchLib  executorch::extension::parallel_for(...)
+```
+
+So the abort came out of the attention kernel, not out of allocation. This is a
+deliberate `runtime_abort` — a failed runtime check inside ExecuTorch — which
+means the app handed the runtime something it refused, rather than the system
+reclaiming memory.
+
+The unanswered memory question from §1 therefore stays open: this crash is not
+evidence either way about the floor.
+
+### Timeline from the device database
+
+`Documents/SQLite/executorch.db`, chat 8, local time:
+
+| time         | message                                                                  |
+| ------------ | ------------------------------------------------------------------------ |
+| 13:25:17     | user: "What's the current price of Bitcoin and Ethereum?"                |
+| 13:26:04     | assistant: 1689 chars, web search                                        |
+| **13:26:51** | user: "Give me a big pint of prices in US dollars with euros."           |
+| **13:26:56** | **crash — five seconds later**                                           |
+| 13:27:58     | user: same question again — **no answer persisted, and no crash logged** |
+| 13:29:29     | user: "Who is Polish president?" — answered normally                     |
+
+The crash lands five seconds into a turn that followed a long web-search answer,
+which is consistent with it happening while the prompt was being processed
+rather than during generation.
 
 ### The budget does not know about the speech model
 
@@ -586,13 +632,41 @@ while it streamed. A closed block with nothing after it still fails the turn —
 that is the case where the model really did say nothing, and its existing test
 still passes.
 
-### Still open
+### "q-crime" was a mis-transcription, and it is stored that way
 
-"q-crime" is not explained. Nothing on `main` builds short labels like that —
-there is no sub-query labeller in this tree — so it is either a speech-input
-transcription or something in the trace, and neither can be settled from here.
-The device artifact is coming; this section should be finished against it rather
-than guessed at.
+The device database settles it. The user message is persisted verbatim as:
+
+```
+who is winning Q-crime or Russia?
+```
+
+Whisper Tiny EN heard "Ukraine" as "Q-crime", and the same chat is full of the
+same thing: "How many children has Ilon?" answered as "Lions Musk has 14
+children", and "with about the temperature and London do a cant." Nothing in
+the app mangled the question — speech input did, and what the model received is
+what was dictated.
+
+That is its own issue, and a bigger one than it looks: a mis-transcribed proper
+noun becomes the search query. `WHISPER_TINY_EN` is the smallest English model
+in the family, which buys the memory footprint in §8 at the cost of exactly this.
+
+### Four lost answers, and only one of them is the crash
+
+Every user message in the database with no assistant reply after it:
+
+| chat | time     | message                                                  | crash at that moment |
+| ---- | -------- | -------------------------------------------------------- | -------------------- |
+| 8    | 13:26:51 | "Give me a big pint of prices in US dollars with euros." | **yes**, 13:26:56    |
+| 8    | 13:27:58 | the same question again                                  | no                   |
+| 9    | 13:33:40 | "who is winning Q-crime or Russia?"                      | no                   |
+| 9    | 13:36:41 | "Who is President of Ukraine?"                           | no                   |
+
+One crash, four lost answers. Three of them have no crash behind them, which is
+the gate in this section and the turn race in §11.
+
+Supporting evidence for the gate: of 35 persisted assistant messages, 16 carry a
+think block and **none** carries an unterminated one. That is what a gate that
+drops exactly those messages looks like from the database side.
 
 ---
 
