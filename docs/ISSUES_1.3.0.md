@@ -12,11 +12,12 @@ This file is for defects. Limitations we ship knowingly belong in
 The release is **held** until this list is worked through — nothing here is
 deferred to 1.3.1.
 
-| question                   | decision                                                                                                                      |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| the memory floor in §1     | keep the scaled floor, and count the speech model separately                                                                  |
-| the ExecuTorch abort in §8 | report upstream to `react-native-executorch`, noting it is an older version with a new one landing, and keep collecting cases |
-| toggles in §7              | show as unavailable and remember the choice, rather than forcing off                                                          |
+| question                   | decision                                                                                                                                                 |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| the memory floor in §1     | keep the scaled floor, and count the speech model separately                                                                                             |
+| the ExecuTorch abort in §8 | report upstream to `react-native-executorch`, noting it is an older version with a new one landing, and keep collecting cases                            |
+| toggles in §7              | show as unavailable and remember the choice, rather than forcing off                                                                                     |
+| the topic anchor in §9     | leave as it is and track it in [#323](https://github.com/software-mansion-labs/private-mind/issues/323) — it needs subject-change detection, not a patch |
 
 ### Order of work
 
@@ -29,13 +30,14 @@ moves the most files.
 3. §6 document scope — decide web search per message, not per chat.
 4. §7 toggles — reconcile on model change, disabled-but-remembered.
 5. §3 confidence — a path that cannot reach its own threshold.
-6. §9 topic anchor — recognise a one-word place so a new subject is not
-   inherited.
-7. §2 and §4 animations — one inset owner, and an eased landing.
-8. §12 caveat badges — measure how often each fires, then decide.
-9. `cr/phase1-security` port — 121 files as a tree copy, bringing §5's
+6. §2 and §4 animations — one inset owner, and an eased landing.
+7. §12 caveat badges — measure how often each fires, then decide.
+8. `cr/phase1-security` port — 121 files as a tree copy, bringing §5's
    conversion resolver and the URL-scheme check with it.
-10. The upstream issue for §8's abort.
+9. The upstream issue for §8's abort.
+
+§9 is not on this list — it is deferred to
+[#323](https://github.com/software-mansion-labs/private-mind/issues/323).
 
 ---
 
@@ -515,8 +517,12 @@ changes nothing about memory but should be stated when the trace is read.
 **Reported:** a conversation asked about the US president, then later about the
 Polish one. "US" was appended to the search query, and the results got worse.
 
-**Status:** reproduced against the real code. The appended token and the
-condition that appends it are both confirmed.
+**Status:** reproduced against the real code, then **deferred to**
+[#323](https://github.com/software-mansion-labs/private-mind/issues/323). The
+anchoring helps more often than it hurts inside a conversation — it is what
+makes the currency follow-up in §5 find EUR pages — and what is missing is
+subject-change detection rather than another tweak to the similarity test. A
+half-fix to the stem guard would be likely to break the part that works.
 
 ### What happens
 
