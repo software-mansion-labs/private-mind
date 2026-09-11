@@ -81,15 +81,16 @@ memory branch.
 
 ---
 
-## 2. The last message jumps when the keyboard opens
+## 2. The input bar appears at the top instead of riding the keyboard up
 
 **Reported:** opening the keyboard makes the last message jump around before it
-settles. The input bar and the conversation come apart while it happens, and the
-two moving out of step is what reads as broken.
+settles; the input bar and the conversation come apart while it happens. Refined
+after a closer look: the bar does not ride up with the keyboard at all — it
+appears at the top. The ask is to restore the earlier behaviour, where it
+tracked the keyboard.
 
-**Status:** reproduced and measured on a Pixel 10. The bar and the conversation
-coming apart is the symptom the mechanism below predicts — they are driven by
-two different clocks.
+**Status:** reproduced and measured on a Pixel 10. The measurement agrees with
+the refined report: 91% of the movement lands in the first frame.
 
 ### Measurement
 
@@ -111,10 +112,16 @@ Negative is upward; rest is 0 and the settled position is −148 px.
 |   114 |      −146 px |     −10 |
 |   115 |      −148 px | settled |
 
-The content covers 135 of its 148 px in the first frame, then rings: 30 px past
-the target at frame 111, 22 px short of it at 112, damping out by 115. The
-oscillation is ±30 px over about 130 ms, and the whole move covers 292 px of
-travel for 148 px of displacement.
+**The first frame is the defect.** The content covers 135 of its 148 px in one
+33 ms frame — 91% of the travel before the keyboard has gone anywhere. It does
+not ride the keyboard up; it is already at the top when the keyboard starts
+moving, and what follows is a ±30 px ring (30 px past the target at frame 111,
+22 px short at 112) damping out by frame 115.
+
+This was first written up the other way round, with the ring as the defect and
+the snap as background. The report that the bar "appears at the top instead of
+sliding up with the keyboard" is the same measurement read correctly: a single
+frame carrying 91% of the movement is a pop, not a slide.
 
 The estimator reads exactly −148 on every static frame from 116 on, so the
 ±30 px during the animation is signal, not noise.
@@ -305,7 +312,48 @@ carries the per-message answer.
 
 ---
 
-## 7. Open decision: do the grounding caveat badges ship?
+## 7. Toggles keep their state when the model can no longer honour it
+
+**Reported:** switching models can leave Web or Think unavailable, and the
+toggles do not reset to off when that happens.
+
+**Status:** confirmed in code. Both toggles guard the moment they are pressed
+and nothing reconciles them afterwards.
+
+`ChatBarActions.tsx` renders each pill straight from chat settings:
+
+```tsx
+<ChatBarToggle label="Think" enabled={thinkingEnabled} … />
+<ChatBarToggle label="Web"   enabled={webSearchEnabled} … />
+```
+
+Neither value is ever compared against the model now loaded. The guards exist,
+but only on the press path:
+
+- `useChatScreenActions.ts:48` refuses to turn Think on for a model without
+  `thinking`, with "Thinking cannot be enabled for this model."
+- `handleWebSearchToggle` in the same file refuses Web on the capability floor
+  or the memory floor.
+
+So the sequence that breaks it is: turn a toggle on with a model that supports
+it, then switch models. The setting is stored per chat, the new model is never
+consulted, and the pill goes on showing **on**. The lie holds until the message
+is sent, where `useSendChatMessage.ts` re-runs the same checks and shows
+"answering without it".
+
+The checks needed already exist and are pure functions of the model —
+`isWebSearchReady`, `hasMemoryForWebSearch`, `model.thinking`. What is missing is
+running them when the model changes rather than only when a finger lands on the
+pill.
+
+Worth deciding as part of it: whether an unavailable toggle should be forced
+off, or shown disabled while remembering the user's choice for when they switch
+back. Forcing it off is simpler and cannot mislead; remembering is kinder to
+someone trying two models on the same question.
+
+---
+
+## 8. Open decision: do the grounding caveat badges ship?
 
 **Asked:** whether badges like "A number here couldn't be confirmed against the
 sources" stay in the production build.
