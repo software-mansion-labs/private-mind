@@ -506,6 +506,81 @@ similarity rather than from whether the new message names a different one.
 Recognising a single-word place or organisation would fix the reported case
 without touching the follow-up behaviour that works.
 
+---
+
+## 10. A correct answer is discarded as "Failed to generate a response"
+
+**Reported:** on an iPhone, the question "who is winning, Ukraine or Russia?"
+was read back as "q-crime". It was nevertheless interpreted correctly, web
+search ran, and the answer on screen was right — but the turn ended with
+"Failed to generate a response". Called out as serious.
+
+**Status:** the failure is reproduced against the real code. The "q-crime"
+reading is unexplained and waiting on the artifact from the device.
+
+### Why a correct answer is thrown away
+
+`store/llmStore.ts` decides success on one condition:
+
+```ts
+if (finalResponse && stripThinkBlocks(finalResponse).trim()) {
+  // persist, show, done
+} else {
+  markGenerationFailed(new Error(describeGenerationFailure()));
+}
+```
+
+`outsideThinkSegments` in `utils/thinking.ts` bails out when a `<think>` opens
+and never closes:
+
+```ts
+const close = source.indexOf(THINK_CLOSE, open + THINK_OPEN.length);
+if (close === -1) return segments;
+```
+
+Everything from the unterminated tag onwards is dropped. Measured on the real
+function:
+
+| response                                           | kept       | treated as failure |
+| -------------------------------------------------- | ---------- | ------------------ |
+| `<think>…</think>Neither side is clearly winning.` | the answer | no                 |
+| `<think>… Neither side is clearly winning.`        | `""`       | **yes**            |
+| `Neither side…<think>still pondering`              | the answer | no                 |
+| `<think>reasoning that hit the token limit`        | `""`       | **yes**            |
+
+Row 2 is the report: the model answered inside its own reasoning block and never
+emitted `</think>`, so the gate saw an empty string. Thinking was on and
+`Qwen 3` is a thinking model, so this is the path that combination takes.
+
+### Why it looks worse than a plain error
+
+The text was already on screen — the message renders think and normal segments
+as they stream, so the user watched a correct answer arrive and was then told it
+had failed. Worse, `markGenerationFailed` runs `unloadLLM()`, and the success
+branch is where `persistMessage` lives, so the answer is **not saved**. It is
+gone from the chat, not merely mislabelled.
+
+A neighbouring test, `__tests__/loopTruncationKeepsAnswer.test.ts`, exists
+because the same gate once ate a usable sentence after loop truncation. This is
+that surface reached by another route: anything that empties `stripThinkBlocks`
+turns a produced answer into a lost one.
+
+The gate asks "is there anything outside the reasoning?" when what it needs to
+know is "did the model produce an answer?". A missing `</think>` means the
+closing tag is absent, not the answer.
+
+### Still open
+
+"q-crime" is not explained. Nothing on `main` builds short labels like that —
+there is no sub-query labeller in this tree — so it is either a speech-input
+transcription or something in the trace, and neither can be settled from here.
+The device artifact is coming; this section should be finished against it rather
+than guessed at.
+
+---
+
+## 11. Open decision: do the grounding caveat badges ship?
+
 **Asked:** whether badges like "A number here couldn't be confirmed against the
 sources" stay in the production build.
 
