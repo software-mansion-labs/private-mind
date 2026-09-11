@@ -848,8 +848,8 @@ const Messages = ({
     pinScrollPendingRef.current = false;
     if (activeUserActionsId !== null) {
       closeUserActionMenu();
-      Keyboard.dismiss();
     }
+    if (Keyboard.isVisible()) Keyboard.dismiss();
   }, [activeUserActionsId, closeUserActionMenu]);
 
   const handleScrollBeginDrag = useCallback(() => {

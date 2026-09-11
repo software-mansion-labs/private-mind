@@ -86,7 +86,6 @@ const EmbeddingDownloadSheet = ({
 
   const isDownloading = status === 'downloading';
   const isError = status === 'error';
-  const blockDismiss = required && status === 'not_downloaded';
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -94,11 +93,11 @@ const EmbeddingDownloadSheet = ({
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        pressBehavior={blockDismiss ? 'none' : 'close'}
+        pressBehavior="close"
         style={styles.backdrop}
       />
     ),
-    [styles.backdrop, blockDismiss]
+    [styles.backdrop]
   );
 
   const handleCancel = useCallback(
@@ -111,7 +110,7 @@ const EmbeddingDownloadSheet = ({
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       enableDynamicSizing
-      enablePanDownToClose={!blockDismiss}
+      enablePanDownToClose
       onDismiss={onDismiss}
       handleStyle={styles.handleStyle}
       handleIndicatorStyle={styles.handleIndicator}
@@ -140,9 +139,7 @@ const EmbeddingDownloadSheet = ({
               text={isError ? 'Try again' : 'Download'}
               onPress={onDownload}
             />
-            {!blockDismiss ? (
-              <SecondaryButton text="Cancel" onPress={handleCancel} />
-            ) : null}
+            <SecondaryButton text="Cancel" onPress={handleCancel} />
           </View>
         )}
       </BottomSheetView>
