@@ -1,11 +1,11 @@
 export const LATEST_RELEASE = {
-  version: '1.2.1',
-  title: 'Documents, forking and speed',
+  version: '1.3.0',
+  title: 'Web search, with sources',
   highlights: [
-    'Chat with your documents, with source citations',
-    'Fork conversations, save prompt presets',
-    'Faster sending, opening and model switching',
-    'Only models your device can run are offered',
-    'Response-speed stats are now optional',
+    'Answer from the web, with a Web toggle per chat',
+    'See every source an answer used, and open it',
+    'Expand the trace to see what was searched',
+    'Pages are fetched and read on your device',
+    'New models appear without an app update',
   ],
 };
