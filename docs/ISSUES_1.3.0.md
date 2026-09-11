@@ -217,6 +217,32 @@ report asks for is the middle option: land instantly near the target and animate
 only the last stretch, so the eye sees movement without waiting for a long
 scroll.
 
+### Same rewrite, second symptom
+
+**Reported, alongside the hard landing:** the empty space under the message
+animates oddly on the way out; going back to how it behaved on `main` before
+this would be acceptable.
+
+That reading is right about the history. The pin was rewritten in #320, the web
+search merge — `git diff b3aa96f 9a15bfd -- components/chat-screen/Messages.tsx`
+shows `scrollToPinnedQuestion`, which moved a single animated `blankSpace`
+shared value, replaced by three mechanisms that run at once:
+
+| mechanism                                            | driver        | clock              |
+| ---------------------------------------------------- | ------------- | ------------------ |
+| `pinFloor` as `minHeight` on the content container   | layout        | instant, one frame |
+| `scrollTo({ animated: true })` in `settlePinRelease` | native scroll | platform curve     |
+| `blankSpace.set(withTiming(0, { duration: 200 }))`   | Reanimated    | 200 ms timing      |
+
+The release path fires the last two together and the first whenever `pinAnchor`
+changes. Three curves that never agreed on a duration are what the report is
+describing, and it is the same two-clock shape as §2.
+
+Reverting is a real option: the pre-#320 pin was one shared value with one
+curve. What it cannot do is hold the question in place while the reply streams
+in below, which is why it was replaced. Whichever way this goes, it should be
+decided against a recording of both, not from memory of how the old one felt.
+
 ---
 
 ## 5. Currency conversion questions are not answered
@@ -242,7 +268,44 @@ hoping a scraped page states one; it is not on `main`.
 
 ---
 
-## 6. Open decision: do the grounding caveat badges ship?
+## 6. One attached document turns web search off for the rest of the chat
+
+**Reported:** attaching a document stops web search from working. A document
+being present in the conversation should not change anything — web search is
+about the message being sent, not about the chat.
+
+**Status:** confirmed in code. The scope is the chat, exactly as reported.
+
+`useSendChatMessage.ts`:
+
+```ts
+const hasRagSources =
+  enabledSources.length > 0 || attachmentSourceIds.length > 0;
+
+const skippedForDocPriority = RAG_PRIORITY_OVER_WEB_SEARCH && hasRagSources;
+```
+
+`attachmentSourceIds` is per message — that part is right. `enabledSources` is
+not: it is `chat.enabledSources`, and `chatStore.ts` only ever appends to it:
+
+```ts
+enabledSources: [...(chat.enabledSources || []), sourceId];
+```
+
+So one document attached once is in that list for the life of the chat, and
+`RAG_PRIORITY_OVER_WEB_SEARCH` is a constant `true`. Every later message in that
+chat skips web search, whatever it asks about. The toast even says the quiet
+part — "web search is off **while they're active**" — where "active" turns out
+to mean "ever attached".
+
+The priority rule itself is defensible: if this message is asking about the
+document, the document should win. What is wrong is deciding that from the
+chat's history rather than from the message. `attachmentSourceIds` already
+carries the per-message answer.
+
+---
+
+## 7. Open decision: do the grounding caveat badges ship?
 
 **Asked:** whether badges like "A number here couldn't be confirmed against the
 sources" stay in the production build.
