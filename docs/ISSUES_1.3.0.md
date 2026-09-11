@@ -596,7 +596,95 @@ than guessed at.
 
 ---
 
-## 11. Open decision: do the grounding caveat badges ship?
+## 11. An answer lands under the wrong question, and the current turn fails
+
+**Reported:** the model sometimes hangs, then answers the _previous_ question
+instead of the current one, while the current one shows "Failed to generate a
+response". Asked for a thorough investigation.
+
+**Status:** investigated. Nothing in the completion path checks which turn it
+belongs to, and the identity it would need is already on every message and
+unused.
+
+### No turn owns its message
+
+`sendChatMessage` builds a placeholder with a unique `localId`:
+
+```ts
+const assistantPlaceholder = buildAssistantPlaceholder(chatId, currentModel);
+// → { role: 'assistant', content: '', id: -1, localId: nextMessageLocalId() }
+```
+
+That `localId` is then never used again. All three write paths address the
+message by **position** instead:
+
+| path          | how it finds the message                                                    |
+| ------------- | --------------------------------------------------------------------------- |
+| `flushStream` | `activeChatMessages.at(-1)?.role === 'assistant'`                           |
+| `'complete'`  | `index === state.activeChatMessages.length - 1 && msg.role === 'assistant'` |
+| `'failed'`    | drops the trailing empty placeholder                                        |
+
+So whichever assistant message is last receives the tokens and the final
+content, regardless of which generation produced them.
+
+### How two turns come to overlap
+
+The send guard looks right at first — `useSendChatMessage` refuses while
+`isGenerating`, and the button becomes Pause while `isGenerating ||
+isProcessingPrompt`. The route in is `interrupt`:
+
+```ts
+interrupt: () => {
+  sendAbortController?.abort();
+  if ((state.isGenerating || utilityGenerating) && llmInstance) {
+    llmInstance.interrupt();
+  }
+  …
+  set({ isGenerating: false, isProcessingPrompt: false, generatingForChatId: null });
+}
+```
+
+It clears the flags immediately, which unblocks the UI, but the `sendChatMessage`
+promise it interrupted is still running. Abort sets a signal; it does not make
+the native generate return. When that call eventually resolves rather than
+throws, execution walks straight into the success branch — which has **no check
+that this turn is still the current one** — and writes its answer into
+`activeChatMessages.at(-1)`, by then the new turn's placeholder.
+
+That is both halves of the report at once: the old question's answer appears
+under the new question, and the new turn is left to fail.
+
+### Three more single-slot pieces of state
+
+Each is module-level and owned by whichever turn wrote last:
+
+```ts
+let sendAbortController: AbortController | null = null;
+let failedGenerationRequest: FailedGenerationRequest | null = null;
+let streamBuffer = '';
+```
+
+`sendChatMessage` ends with `finally { sendAbortController = null }`, so a turn
+finishing **clears the controller belonging to the turn that replaced it** —
+after which the newer turn can no longer be interrupted at all. That is a
+plausible source of the "hangs" in the report, rather than a symptom of it.
+`resetStreamState()` in the `'generating'` phase likewise wipes a buffer the
+older generation is still filling.
+
+### What a fix looks like
+
+Carry the placeholder's `localId` through the turn and make every write address
+the message by it: `flushStream`, the `'complete'` branch and
+`markGenerationFailed` all become no-ops when the message they own is no longer
+in `activeChatMessages`. The field exists and is already unique per message, so
+this is threading it through rather than inventing identity.
+
+The single-slot module variables want the same treatment — keyed by turn, or
+compared against the turn that owns them before being cleared.
+
+This is the core send path, so it should land on its own, with tests for the
+overlap rather than only for the happy path, and not folded in with the
+cosmetic fixes in this file.
 
 **Asked:** whether badges like "A number here couldn't be confirmed against the
 sources" stay in the production build.
