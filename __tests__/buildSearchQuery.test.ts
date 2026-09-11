@@ -1,3 +1,4 @@
+import { WEB_INTENT_KINDS } from '../utils/web/intentKind';
 import {
   toKeywordQuery,
   parseSearchPlan,
@@ -6,7 +7,7 @@ import {
   extractSiteRestriction,
   carryReferentIntoQuery,
   isAboutTheConversation,
-  isConversationalIntent,
+  isConversationalPlan,
   anchorRescueQuery,
 } from '../utils/web/buildSearchQuery';
 import { namesATimePeriod } from '../utils/web/timePeriod';
@@ -223,15 +224,27 @@ describe('planWebSearch', () => {
     const generate = jest
       .fn()
       .mockResolvedValue(
-        '{"needs_search": false, "intent": "casual greeting", "queries": []}'
+        '{"needs_search": false, "intent": "casual greeting", "kind": "chat", "queries": []}'
       );
     const plan = await planWebSearch('hej, jak leci?', [], generate);
     expect(generate).toHaveBeenCalledTimes(1);
     expect(plan).toEqual({
       needsSearch: false,
       intent: 'casual greeting',
+      kind: 'chat',
       queries: [],
     });
+  });
+
+  it('searches anyway when the plan declines without naming a kind, so an unlabelled refusal cannot silently disable the search', async () => {
+    const generate = jest
+      .fn()
+      .mockResolvedValue(
+        '{"needs_search": false, "intent": "casual greeting", "queries": []}'
+      );
+    const plan = await planWebSearch('hej, jak leci?', [], generate);
+    expect(plan.needsSearch).toBe(true);
+    expect(plan.queries).toEqual(['hej, jak leci?']);
   });
 
   it('plans a complex question via the LLM and carries context + today', async () => {
@@ -302,7 +315,7 @@ describe('planWebSearch', () => {
     const generate = jest
       .fn()
       .mockResolvedValue(
-        '{"needs_search": false, "intent": "write a poem", "queries": []}'
+        '{"needs_search": false, "intent": "write a poem", "kind": "chat", "queries": []}'
       );
     const plan = await planWebSearch(
       'write me a long poem about the sea and the moon',
@@ -313,6 +326,7 @@ describe('planWebSearch', () => {
     expect(plan).toEqual({
       needsSearch: false,
       intent: 'write a poem',
+      kind: 'chat',
       queries: [],
     });
   });
@@ -365,7 +379,7 @@ describe('planWebSearch', () => {
     const generate = jest
       .fn()
       .mockResolvedValue(
-        '{"needs_search": false, "intent": "casual greeting", "queries": []}'
+        '{"needs_search": false, "intent": "casual greeting", "kind": "chat", "queries": []}'
       );
     const plan = await planWebSearch('hej, jak leci?', [], generate, {
       today: TODAY,
@@ -373,6 +387,7 @@ describe('planWebSearch', () => {
     expect(plan).toEqual({
       needsSearch: false,
       intent: 'casual greeting',
+      kind: 'chat',
       queries: [],
     });
   });
@@ -1390,37 +1405,22 @@ describe('carryReferentIntoQuery', () => {
   });
 });
 
-describe('isConversationalIntent', () => {
-  it('treats a recap or a question about an earlier answer as conversation, not a search (live: Pixel S2.6, S5.2)', () => {
-    expect(isConversationalIntent('recap of this conversation')).toBe(true);
-    expect(isConversationalIntent('about a previous answer')).toBe(true);
-    expect(isConversationalIntent('language of the first reply')).toBe(true);
-    expect(isConversationalIntent('current bitcoin price')).toBe(false);
+describe('isConversationalPlan', () => {
+  it('trusts a no-search plan only when the planner labelled it the chat kind', () => {
+    expect(isConversationalPlan({ kind: 'chat' })).toBe(true);
+    expect(isConversationalPlan({ kind: 'price' })).toBe(false);
+    expect(isConversationalPlan({ kind: 'fact' })).toBe(false);
   });
 
-  it('recognizes every conversational category the planner prompt itself defines as needing no search', () => {
-    expect(isConversationalIntent('casual greeting')).toBe(true);
-    expect(isConversationalIntent('creative writing')).toBe(true);
-    expect(isConversationalIntent('personal advice')).toBe(true);
-    expect(isConversationalIntent('programming language opinion')).toBe(true);
-    expect(isConversationalIntent('thanking the assistant')).toBe(true);
-    expect(isConversationalIntent('translate this sentence')).toBe(true);
-    expect(isConversationalIntent('rewrite the paragraph')).toBe(true);
-    expect(isConversationalIntent('basic math question')).toBe(true);
-    expect(isConversationalIntent('debugging code')).toBe(true);
-    expect(isConversationalIntent('general knowledge')).toBe(true);
+  it('does not trust an unlabelled plan, whatever its intent text says', () => {
+    expect(isConversationalPlan({})).toBe(false);
+    expect(isConversationalPlan({ kind: undefined })).toBe(false);
   });
 
-  it('does not recognize an intent describing a real-world fact, in any language the query itself was in — intent is always written in English', () => {
-    expect(isConversationalIntent('elon musk children')).toBe(false);
-    expect(isConversationalIntent('president children')).toBe(false);
-    expect(isConversationalIntent('current gold price')).toBe(false);
-    expect(isConversationalIntent('CEO of Tesla')).toBe(false);
-  });
-
-  it('does not trust an empty or missing intent as evidence of being conversational', () => {
-    expect(isConversationalIntent('')).toBe(false);
-    expect(isConversationalIntent('   ')).toBe(false);
+  it('reads the same label in every language the question was asked in, because the label is not the question', () => {
+    for (const kind of WEB_INTENT_KINDS) {
+      expect(isConversationalPlan({ kind })).toBe(kind === 'chat');
+    }
   });
 });
 

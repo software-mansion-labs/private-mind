@@ -15,12 +15,7 @@ import {
   Keyboard,
   Platform,
 } from 'react-native';
-import Animated, {
-  Easing,
-  LinearTransition,
-  withTiming,
-  type SharedValue,
-} from 'react-native-reanimated';
+import Animated, { type SharedValue } from 'react-native-reanimated';
 import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
 import AttachmentSheet from '../bottomSheets/AttachmentSheet';
 import EmbeddingDownloadSheet from '../bottomSheets/EmbeddingDownloadSheet';
@@ -28,6 +23,7 @@ import { useAttachment, Attachment } from '../../hooks/useAttachment';
 import { Model } from '../../database/modelRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
+import { useChatStore } from '../../store/chatStore';
 import { useLLMStore } from '../../store/llmStore';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
 import LinkIcon from '../../assets/icons/link-alt.svg';
@@ -41,20 +37,8 @@ import WhatsNewCard from '../WhatsNewCard';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
-import {
-  embeddingModelNeedsDownloadPrompt,
-  useEmbeddingModelStore,
-  whenEmbeddingStatusKnown,
-} from '../../store/embeddingModelStore';
-import {
-  isHighMemoryDevice,
-  isMemoryConstrained,
-} from '../../utils/modelCompatibility';
-
-const BAR_GROW_DURATION = 200;
-const BAR_GROW_EASING = Easing.out(Easing.ease);
-const BAR_GROW_LAYOUT =
-  LinearTransition.duration(BAR_GROW_DURATION).easing(BAR_GROW_EASING);
+import { useEmbeddingDownloadPrompt } from './useEmbeddingDownloadPrompt';
+import { BAR_GROW_LAYOUT, useBarGrowth } from './useBarGrowth';
 
 const SENT_ECHO_WINDOW_MS = 300;
 
@@ -111,6 +95,7 @@ const ChatBar = ({
     [styles.container, theme.insets.bottom]
   );
 
+  const phantomChatStarts = useChatStore((state) => state.phantomChatStarts);
   const [userInput, setUserInput] = useState('');
   const lastSentRef = useRef<{ text: string; at: number } | null>(null);
 
@@ -144,58 +129,19 @@ const ChatBar = ({
     addPastedAttachment,
   } = useAttachment();
 
-  const [embeddingSheetContext, setEmbeddingSheetContext] = useState<
-    'document' | 'web'
-  >('document');
-  const webEmbeddingPromptDismissedRef = useRef(false);
-  const embeddingSheetRequiredRef = useRef(false);
-  const webToggleSeqRef = useRef(0);
+  const {
+    embeddingSheetContext,
+    embeddingSheetRequired,
+    handleWebSearchToggle,
+    handleEmbeddingSheetDismiss,
+  } = useEmbeddingDownloadPrompt({
+    model,
+    webSearchEnabled,
+    onWebSearchToggle,
+    presentDownloadSheet,
+    markDownloadSheetClosed,
+  });
 
-  const handleWebSearchToggle = useCallback(() => {
-    const enabling = !webSearchEnabled;
-    const toggleSeq = webToggleSeqRef.current + 1;
-    webToggleSeqRef.current = toggleSeq;
-    const accepted = onWebSearchToggle?.();
-    if (!enabling || accepted === false) return;
-    if (isMemoryConstrained(model)) return;
-
-    const required = isHighMemoryDevice(model);
-    if (!required && webEmbeddingPromptDismissedRef.current) return;
-
-    whenEmbeddingStatusKnown().then((status) => {
-      if (webToggleSeqRef.current !== toggleSeq) return;
-      if (!embeddingModelNeedsDownloadPrompt(status)) return;
-      setEmbeddingSheetContext('web');
-      embeddingSheetRequiredRef.current = required;
-      presentDownloadSheet('none');
-    });
-  }, [webSearchEnabled, onWebSearchToggle, model, presentDownloadSheet]);
-
-  const handleEmbeddingSheetDismiss = useCallback(() => {
-    if (embeddingSheetContext === 'web') {
-      if (embeddingSheetRequiredRef.current) {
-        if (useEmbeddingModelStore.getState().status !== 'ready') {
-          onWebSearchToggle?.();
-        }
-      } else {
-        webEmbeddingPromptDismissedRef.current = true;
-      }
-      setEmbeddingSheetContext('document');
-      embeddingSheetRequiredRef.current = false;
-    }
-    markDownloadSheetClosed();
-  }, [embeddingSheetContext, markDownloadSheetClosed, onWebSearchToggle]);
-
-  const embeddingSheetRequired =
-    embeddingSheetContext === 'web' && embeddingSheetRequiredRef.current;
-
-  const defaultBarHeight = useRef(0);
-  const prevBarHeight = useRef(0);
-
-  // Inset the baseline was captured with. Checked in the layout handler, not
-  // an effect: onLayout fires first, so an effect-driven reset would lose the
-  // pass carrying the new height.
-  const baselineInset = useRef<number | null>(null);
   const textInputRef = useRef<RNTextInput>(null);
   // iOS-only: bump the TextInput key to force a remount when a prompt
   // suggestion is set programmatically. iOS doesn't re-fire onLayout
@@ -217,55 +163,23 @@ const ChatBar = ({
     []
   );
 
-  const handleBarLayoutForPadding = useCallback(
-    (e: { nativeEvent: { layout: { height: number } } }) => {
-      const height = e.nativeEvent.layout.height;
-      const inset = theme.insets.bottom;
-      // Only capture the default height once we're in the "with messages"
-      // layout — otherwise the empty-state extras (WhatsNewCard, prompt
-      // suggestions) would bake into the baseline and squeeze the scroll
-      // view once they disappear. Re-capture on inset changes (Android
-      // navigation mode, rotation), or the stale baseline reads the difference
-      // as "the bar grew".
-      const isResting = !userInput && attachments.length === 0;
-      if (hasMessages && isResting) {
-        if (baselineInset.current !== inset) {
-          defaultBarHeight.current = height;
-          baselineInset.current = inset;
-        } else if (
-          defaultBarHeight.current === 0 ||
-          height < defaultBarHeight.current
-        ) {
-          defaultBarHeight.current = height;
-        }
-      }
-      const baseline = defaultBarHeight.current || height;
-      const delta = height - baseline;
-      extraContentPadding.set(
-        withTiming(Math.max(0, delta), {
-          duration: BAR_GROW_DURATION,
-          easing: BAR_GROW_EASING,
-        })
-      );
-      // Baseline, not live height — consumers must not follow the bar as it
-      // grows with typed lines; that is what extraContentPadding is for.
-      onHeightChange?.(hasMessages ? baseline : 0);
-      const grew = height > prevBarHeight.current;
-      prevBarHeight.current = height;
-      if (delta > 0 && grew) {
-        onBarGrow?.();
-      }
-    },
-    [
-      attachments.length,
-      extraContentPadding,
-      onBarGrow,
-      onHeightChange,
-      hasMessages,
-      theme.insets.bottom,
-      userInput,
-    ]
-  );
+  const composerKey = `${chatId}:${phantomChatStarts}`;
+  const composerKeyRef = useRef(composerKey);
+  if (composerKeyRef.current !== composerKey) {
+    composerKeyRef.current = composerKey;
+    setUserInput('');
+    lastSentRef.current = null;
+    if (Platform.OS === 'ios') setIosInputKey((key) => key + 1);
+  }
+
+  const handleBarLayoutForPadding = useBarGrowth({
+    extraContentPadding,
+    hasMessages,
+    isResting: !userInput && attachments.length === 0,
+    insetBottom: theme.insets.bottom,
+    ...(onHeightChange ? { onHeightChange } : {}),
+    ...(onBarGrow ? { onBarGrow } : {}),
+  });
 
   const {
     isGenerating,

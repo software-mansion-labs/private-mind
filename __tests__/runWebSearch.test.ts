@@ -115,7 +115,7 @@ describe('runWebSearch', () => {
       embeddings: fakeEmbeddings,
       embeddingModelReady: true,
       generate: async () =>
-        '{"needs_search": false, "intent": "general knowledge", "queries": []}',
+        '{"needs_search": false, "intent": "general knowledge", "kind": "chat", "queries": []}',
       today: '2026-07-20',
     });
     expect(out.context).toEqual([]);

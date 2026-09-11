@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import type { LLMStore } from '../store/llmStore';
+import { useChatStore } from '../store/chatStore';
 import type { Attachment } from '../hooks/useAttachment';
 import type { PermissionStatus } from 'react-native-audio-api';
 import type { SharedValue } from 'react-native-reanimated';
@@ -978,6 +979,55 @@ describe('web search toggle and the embedding download sheet', () => {
 
     expect(onWebSearchToggle).toHaveBeenCalledTimes(2);
     expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
+  });
+});
+
+describe('opening another chat', () => {
+  it('leaves the composer empty, so a suggestion typed into the last chat does not follow you', () => {
+    const view = renderBar();
+    const input = screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(input, 'a draft from the previous chat');
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('a draft from the previous chat');
+
+    view.rerender(<ChatBar {...defaultProps} chatId={2} />);
+
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('');
+  });
+
+  it('empties the composer when another blank chat is started, which reuses the same unsaved id', () => {
+    renderBar();
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'a suggestion tapped by mistake'
+    );
+
+    act(() => {
+      useChatStore.setState((state) => ({
+        phantomChatStarts: state.phantomChatStarts + 1,
+      }));
+    });
+
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('');
+  });
+
+  it('keeps what is being typed while the same chat stays open', () => {
+    const view = renderBar();
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'still writing this'
+    );
+
+    view.rerender(<ChatBar {...defaultProps} hasMessages />);
+
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('still writing this');
   });
 });
 

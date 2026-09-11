@@ -153,6 +153,25 @@ export const looksLikeNoAnswer = (visibleReply: string): boolean =>
     pattern.test(visibleReply)
   );
 
+const carriesAFigureTheQuestionDidNot = (
+  visibleReply: string,
+  question: string
+): boolean => {
+  const asked = numericEvidence(question);
+  for (const value of numericEvidence(visibleReply)) {
+    if (!asked.has(value)) return true;
+  }
+  return false;
+};
+
+export const answeredNothing = (answer: string, question = ''): boolean => {
+  const visible = visibleAnswer(answer);
+  return (
+    looksLikeNoAnswer(visible) &&
+    !carriesAFigureTheQuestionDidNot(visible, question)
+  );
+};
+
 export const answerCitationOverlaps = (
   sourceDocuments: SourceDocument[],
   answer: string
@@ -360,7 +379,8 @@ export const pickCitationsByAnswer = (
   sourceDocuments: SourceDocument[],
   answer: string,
   preferred: SourceDocument[],
-  presentNames?: Set<string>
+  presentNames?: Set<string>,
+  question?: string
 ): SourceDocument[] => {
   const webDocuments = sourceDocuments.filter(
     (doc) => sourceKind(doc) === 'web'
@@ -371,23 +391,25 @@ export const pickCitationsByAnswer = (
   const citedLocal = pickLocalCitationsByAnswer(
     localDocuments,
     answer,
-    preferred
+    preferred,
+    question
   );
   return [
     ...citedLocal,
-    ...flagUsedWebDocuments(webDocuments, answer, presentNames),
+    ...flagUsedWebDocuments(webDocuments, answer, presentNames, question),
   ];
 };
 
 const flagUsedWebDocuments = (
   webDocuments: SourceDocument[],
   answer: string,
-  presentNames?: Set<string>
+  presentNames?: Set<string>,
+  question?: string
 ): SourceDocument[] => {
   if (webDocuments.length === 0) return webDocuments;
 
   const answerTerms = answerTermsOf(answer);
-  if (answerTerms.size === 0 || looksLikeNoAnswer(visibleAnswer(answer))) {
+  if (answerTerms.size === 0 || answeredNothing(answer, question)) {
     return webDocuments.map((doc) => ({ ...doc, used: false }));
   }
 
@@ -414,9 +436,10 @@ const flagUsedWebDocuments = (
 const pickLocalCitationsByAnswer = (
   sourceDocuments: SourceDocument[],
   answer: string,
-  preferred: SourceDocument[]
+  preferred: SourceDocument[],
+  question?: string
 ): SourceDocument[] => {
-  if (looksLikeNoAnswer(visibleAnswer(answer))) {
+  if (answeredNothing(answer, question)) {
     return [];
   }
 
@@ -587,17 +610,22 @@ const SENTENCE_OPENING = /(?:^|[.!?…:\n])[\s"'„«»()[\]—–-]*$/u;
 const opensSentence = (text: string, at: number): boolean =>
   SENTENCE_OPENING.test(text.slice(Math.max(0, at - 24), at));
 
-export const distinctiveEvidence = (text: string): Set<string> => {
+const numericEvidence = (text: string): Set<string> => {
   const found = new Set<string>();
   if (!text) return found;
-  const ascii = toAsciiDigits(text);
-  for (const match of ascii.match(NUMBER_RUN) ?? []) {
+  for (const match of toAsciiDigits(text).match(NUMBER_RUN) ?? []) {
     const value = match.replace(/[.,:]+$/, '');
     if (value.length < 2) continue;
     found.add(value);
     const grouped = separatorFreeFigure(value);
     if (grouped) found.add(grouped);
   }
+  return found;
+};
+
+export const distinctiveEvidence = (text: string): Set<string> => {
+  const found = numericEvidence(text);
+  if (!text) return found;
   for (const match of text.matchAll(NAME_RUN)) {
     if (opensSentence(text, match.index ?? 0)) continue;
     found.add(foldForMatching(match[0]));

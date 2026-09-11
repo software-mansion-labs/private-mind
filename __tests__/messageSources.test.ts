@@ -10,6 +10,7 @@ import {
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
   retryDropsGroundedDetail,
+  answeredNothing,
   looksLikeNoAnswer,
   mergeAttachmentFirst,
   pickCitationsByAnswer,
@@ -605,6 +606,48 @@ describe('looksLikeNoAnswer', () => {
     'Urlop dodatkowy nie jest płatny, co potwierdza regulamin.',
   ])('does not flag a real answer: %s', (reply) => {
     expect(looksLikeNoAnswer(reply)).toBe(false);
+  });
+});
+
+describe('answeredNothing', () => {
+  it('keeps an answer that delivered one of the two figures it was asked for (live: Pixel, bitcoin vs ethereum)', () => {
+    expect(
+      answeredNothing(
+        '(1) Cena Bitcoin aktualnie: $64,146.36 USD (2) Cena Ethereum aktualnie: Brak danych w kontekście.',
+        'Porównaj je i daj mi wyniki'
+      )
+    ).toBe(false);
+  });
+
+  it('still treats a refusal carrying no figure as answering nothing', () => {
+    expect(
+      answeredNothing(
+        'Źródła nie dostarczają informacji o cenach kremu Nivea Q10 przeciwzmarszczkowy.',
+        'Ile kosztuje krem Nivea Q10 przeciwzmarszczkowy?'
+      )
+    ).toBe(true);
+  });
+
+  it('does not count a figure the question itself supplied', () => {
+    expect(
+      answeredNothing(
+        'W źródłach nie ma informacji o cenie karty RTX 4070.',
+        'Jaka jest najtańsza cena karty RTX 4070 na Allegro?'
+      )
+    ).toBe(true);
+  });
+
+  it('reads the figure in any decimal system, so the guard is not tied to a script', () => {
+    expect(
+      answeredNothing(
+        'कीमत स्रोतों में नहीं दी गई है। मूल्य ६४१४६ है।',
+        'सोने की कीमत क्या है?'
+      )
+    ).toBe(false);
+  });
+
+  it('falls back to wording alone when no question is available', () => {
+    expect(answeredNothing('W dokumentach nie ma informacji o L4.')).toBe(true);
   });
 });
 

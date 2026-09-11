@@ -1314,7 +1314,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           effectiveSeen,
           humanizedResponse,
           preferredSourceDocuments ?? [],
-          sourcesPresentInContext(effectiveContent)
+          sourcesPresentInContext(effectiveContent),
+          currentQuestion
         );
         const groundingCaveats = context.some((chunk) => chunk.trim())
           ? detectGroundingCaveats(
@@ -1374,8 +1375,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           });
         }
       } else if (stillOurs()) {
+        const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;
         markGenerationFailed(new Error(describeGenerationFailure()), {
           unload: false,
+          showToUser: !wasInterrupted,
         });
       }
     } catch (e) {
