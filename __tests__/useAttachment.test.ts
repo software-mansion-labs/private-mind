@@ -178,6 +178,36 @@ describe('useAttachment', () => {
       getState.mockRestore();
     });
 
+    it('resumes nothing after a download the Web toggle started', async () => {
+      useEmbeddingModelStore.setState({
+        status: 'not_downloaded',
+        progress: 0,
+      });
+      useEmbeddingModelStore.setState({
+        ensureReady: jest.fn().mockResolvedValue(true),
+      });
+      const getState = jest.spyOn(useLLMStore, 'getState').mockReturnValue({
+        runWithModelOffloaded: (operation: () => Promise<unknown>) =>
+          operation(),
+      } as unknown as ReturnType<typeof useLLMStore.getState>);
+
+      const { view, downloadSheet } = mountWithSheets();
+      act(() => {
+        view.result.current.presentDownloadSheet('none');
+      });
+      await act(async () => {
+        await view.result.current.downloadModelAndContinue();
+      });
+      expect(downloadSheet.dismiss).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        view.result.current.markDownloadSheetClosed();
+      });
+
+      expect(mockGetDocumentAsync).not.toHaveBeenCalled();
+      getState.mockRestore();
+    });
+
     it('does not hijack the screen when the user closed the download sheet', async () => {
       useEmbeddingModelStore.setState({
         status: 'not_downloaded',

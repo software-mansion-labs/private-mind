@@ -72,14 +72,38 @@ describe('evaluateWebRetrieval', () => {
     expect(e.shouldCorrect).toBe(true);
   });
 
-  it('lean path: content without a retrieval signal is uncertain, not correct', () => {
-    const e = evaluateWebRetrieval({
+  it('lean path: one page of text is uncertain, two pages read as correct', () => {
+    const one = evaluateWebRetrieval({
+      resultCount: 4,
+      contentCount: 1,
+      retrieval: null,
+    });
+    expect(one.label).toBe('ambiguous');
+    expect(one.shouldCorrect).toBe(true);
+
+    const two = evaluateWebRetrieval({
       resultCount: 4,
       contentCount: 2,
       retrieval: null,
     });
-    expect(e.label).toBe('ambiguous');
-    expect(e.shouldCorrect).toBe(true);
+    expect(two.label).toBe('correct');
+    expect(two.shouldCorrect).toBe(false);
+  });
+
+  it('lean path: a single host still counts as uncertain', () => {
+    const e = evaluateWebRetrieval({
+      resultCount: 4,
+      contentCount: 3,
+      retrieval: null,
+      agreement: {
+        independentHosts: 1,
+        repeatedHostResults: 2,
+        corroborated: [],
+        singleSourced: [],
+        agreementRatio: 0,
+      },
+    });
+    expect(e.label).not.toBe('correct');
   });
 
   it('lean path: flags SERP hits that yielded no page text', () => {
@@ -95,7 +119,7 @@ describe('evaluateWebRetrieval', () => {
   it('treats an embedded:false signal like the lean path', () => {
     const e = evaluateWebRetrieval({
       resultCount: 4,
-      contentCount: 2,
+      contentCount: 1,
       retrieval: signals({ embedded: false }),
     });
     expect(e.label).toBe('ambiguous');

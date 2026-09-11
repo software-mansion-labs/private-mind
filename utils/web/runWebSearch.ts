@@ -15,6 +15,11 @@ import {
 } from './buildSearchQuery';
 import type { ModelProfile } from '../../constants/model-profiles';
 import {
+  resolveCurrencyQuote,
+  type QuoteResolverOptions,
+  type ResolvedQuote,
+} from './resolvers/currencyQuote';
+import {
   enrichWebResults,
   type ArticleFetcher,
   type EnrichPageEvent,
@@ -34,7 +39,11 @@ import {
   analyzeSourceAgreement,
   type SourceAgreement,
 } from './sourceAgreement';
-import { hostname, webResultsToContext } from './webResultsToContext';
+import { webResultsToContext } from './webResultsToContext';
+import { hostname } from './hostname';
+import { namesATimePeriod } from './timePeriod';
+import { unnamedSubjects } from './subjectNaming';
+import { recordWebSearchTrace } from './searchTrace';
 import type { WebIntentKind } from './intentKind';
 import { dedupeByBody, listingFingerprint } from './fingerprint';
 import { fairRankByListingRelevance, scopeYearsOf } from './listingRelevance';
@@ -64,7 +73,12 @@ import {
   WEB_RECOVERY_MAX_RESULTS,
   WEB_RETRIEVAL_FETCH_TOP_N,
   WEB_SEARCH_MAX_RESULTS,
+  WEB_PAGE_CACHE_MIN_COST,
+  SEARCH_REGION_BY_LANGUAGE,
 } from '../../constants/web';
+import { detectQuestionLanguage } from '../questionLanguage';
+import { sourceBlock } from '../contextUtils';
+import { neutralizeDelimiters } from './security/untrustedContent';
 
 export interface WebSearchProgressEvent {
   type:
@@ -109,6 +123,10 @@ export interface RunWebSearchInput {
   fetchArticle?: ArticleFetcher;
   useCache?: boolean;
   searchTimeoutMs?: number;
+  resolveQuote?: (
+    query: string,
+    options: QuoteResolverOptions
+  ) => Promise<ResolvedQuote | undefined>;
 }
 
 export interface WebRoundTelemetry {
@@ -126,6 +144,7 @@ export interface WebRoundTelemetry {
 
 export interface WebSearchTelemetry {
   needsSearch: boolean;
+  unnamedSubjects?: string[];
   skippedReason?: 'gated' | 'provider-not-ready' | 'offline';
   aborted?: 'timeout' | 'stopped';
   intent: string;
@@ -167,8 +186,9 @@ const NO_AGREEMENT: SourceAgreement = {
   agreementRatio: 0,
 };
 
-export const runWebSearch = async (
-  input: RunWebSearchInput
+const searchWithCleanup = async (
+  input: RunWebSearchInput,
+  cleanups: (() => void)[]
 ): Promise<RunWebSearchResult> => {
   const {
     query,
@@ -188,6 +208,8 @@ export const runWebSearch = async (
     (input.profile?.webEmbeddingRetrieval ?? true);
 
   let providerCalls = 0;
+  let semanticQueryUsed: string | undefined;
+  const candidates: string[] = [];
   const attempted = new Set<string>();
   const enrichedByUrl = new Map<string, WebSearchResult>();
 
@@ -198,7 +220,13 @@ export const runWebSearch = async (
         const hit = pageCache.get(url);
         if (hit) return hit;
         const article = await baseFetchArticle(url, timeoutMs, abort);
-        pageCache.set(url, article, article.text.length);
+        if (article.text.trim()) {
+          pageCache.set(
+            url,
+            article,
+            Math.max(article.text.length, WEB_PAGE_CACHE_MIN_COST)
+          );
+        }
         return article;
       }
     : baseFetchArticle;
@@ -232,7 +260,44 @@ export const runWebSearch = async (
     return empty('gated');
   }
 
+  const resolveQuote = input.resolveQuote ?? resolveCurrencyQuote;
+  const quote = await resolveQuote(query, {
+    ...(input.signal ? { signal: input.signal } : {}),
+  });
+  if (quote) {
+    emit({ type: 'reading', url: quote.sourceUrl, title: quote.sourceTitle });
+    emit({ type: 'done' });
+    return {
+      context: [
+        sourceBlock(
+          0,
+          neutralizeDelimiters(quote.sourceTitle),
+          neutralizeDelimiters(quote.text)
+        ),
+      ],
+      sourceDocuments: [
+        {
+          kind: 'web',
+          name: quote.sourceTitle,
+          url: quote.sourceUrl,
+          passage: quote.text,
+          used: true,
+          read: true,
+        },
+      ],
+      telemetry: {
+        ...telemetry,
+        intent: quote.id,
+        finalConfidence: 1,
+        finalLabel: 'correct',
+      },
+    };
+  }
+
   emit({ type: 'objectives' });
+
+  const asksAboutThePresent = !namesATimePeriod(query);
+  const presentYear = (input.today ?? '').slice(0, 4);
 
   const plan = await planWebSearch(query, history, generate, {
     ...(input.today ? { today: input.today } : {}),
@@ -274,17 +339,16 @@ export const runWebSearch = async (
     run.abort();
   };
   if (stopSignal?.aborted) abortRun('stopped');
-  stopSignal?.addEventListener('abort', () => abortRun('stopped'), {
-    once: true,
-  });
+  const onStop = () => abortRun('stopped');
+  stopSignal?.addEventListener('abort', onStop, { once: true });
   const deadline =
     input.searchTimeoutMs !== undefined
       ? setTimeout(() => abortRun('timeout'), input.searchTimeoutMs)
       : undefined;
-  const finish = <T>(result: T): T => {
+  cleanups.push(() => {
     clearTimeout(deadline);
-    return result;
-  };
+    stopSignal?.removeEventListener('abort', onStop);
+  });
 
   const runQueries = async (
     queries: string[],
@@ -304,8 +368,11 @@ export const runWebSearch = async (
           found = cached;
         } else {
           providerCalls += 1;
+          const region =
+            SEARCH_REGION_BY_LANGUAGE[detectQuestionLanguage(q)?.code ?? ''];
           found = await provider.search(q, {
             ...(signal ? { signal } : {}),
+            ...(region ? { region } : {}),
             onEngine: (engine) => {
               if (!telemetry.enginesTried.includes(engine.id)) {
                 telemetry.enginesTried.push(engine.id);
@@ -326,6 +393,7 @@ export const runWebSearch = async (
           const keys = [`u:${item.url}`, ...(listing ? [`l:${listing}`] : [])];
           if (keys.some((key) => seen.has(key))) continue;
           keys.forEach((key) => seen.add(key));
+          candidates.push(item.url);
           perQuery.push({ ...item, sourceQuery: q });
           emit({
             type: 'found',
@@ -366,7 +434,8 @@ export const runWebSearch = async (
 
   const score = async (
     enriched: WebSearchResult[],
-    resultCount: number
+    resultCount: number,
+    embed = useEmbeddings
   ): Promise<{
     grounded: WebSearchResult[];
     evaluation: RetrievalEvaluation;
@@ -376,11 +445,12 @@ export const runWebSearch = async (
     let grounded = enriched;
     let signals: WebRetrievalSignals | null = null;
     emit({ type: 'ranking' });
-    if (useEmbeddings) {
+    if (embed) {
       const retrievalQuery: WebRetrievalQuery = {
         semanticQuery: plan.intent ? `${plan.intent}. ${query}` : query,
         keywordQuery: baseQueries.join(' '),
       };
+      semanticQueryUsed = retrievalQuery.semanticQuery;
       const runRetrieval = () =>
         embeddings!.runWithLoadedModel(() =>
           retrieveWebPassages(
@@ -418,7 +488,7 @@ export const runWebSearch = async (
   const groundAndEvaluate = async (
     groups: WebSearchResult[][],
     cap: number,
-    singleWave = false
+    { singleWave = false, embed = useEmbeddings } = {}
   ): Promise<{
     grounded: WebSearchResult[];
     evaluation: RetrievalEvaluation;
@@ -430,6 +500,8 @@ export const runWebSearch = async (
     const capped = fairRankByListingRelevance(groups, rankingQuery, cap, {
       kind: plan.kind,
       scopeYears: scopeYearsOf([...baseQueries, query]),
+      currentState: asksAboutThePresent,
+      ...(asksAboutThePresent && presentYear ? { freshYear: presentYear } : {}),
     });
     let enriched = capped;
     let target = WEB_ADAPTIVE_ENRICH
@@ -460,7 +532,7 @@ export const runWebSearch = async (
         if (result.content?.trim()) enrichedByUrl.set(result.url, result);
       }
       waves += 1;
-      return score(enriched, capped.length);
+      return score(enriched, capped.length, embed);
     };
 
     const hasUntriedPageInReach = (): boolean =>
@@ -583,9 +655,13 @@ export const runWebSearch = async (
         const second = await groundAndEvaluate(
           recoveryGroups,
           WEB_RECOVERY_MAX_RESULTS,
-          true
+          { singleWave: true, embed: false }
         );
-        const merged = dedupeByBody([...finalResults, ...second.grounded]);
+        const merged = dedupeByBody(
+          [...finalResults, ...second.grounded].map(
+            (result) => enrichedByUrl.get(result.url) ?? result
+          )
+        );
         const rescored = await score(merged, merged.length);
         telemetry.rounds.push({
           round: 2,
@@ -637,8 +713,55 @@ export const runWebSearch = async (
     ),
   });
 
+  const extractedByUrl = (): Record<string, string> => {
+    const out: Record<string, string> = {};
+    for (const [url, result] of enrichedByUrl) {
+      if (result.content) out[url] = result.content;
+    }
+    return out;
+  };
+
   if (finalResults.length === 0) {
-    return finish({ context: [], sourceDocuments: [], telemetry });
+    recordWebSearchTrace({
+      question: query,
+      expects: plan.expects,
+      planQueries: plan.queries,
+      candidates,
+      extracted: extractedByUrl(),
+      ...(semanticQueryUsed ? { retrievalQuery: semanticQueryUsed } : {}),
+      ...(input.contextCharBudget ? { budget: input.contextCharBudget } : {}),
+      contextOffset: input.contextOffset ?? 0,
+      results: [],
+      context: [],
+      telemetry,
+    });
+    return { context: [], sourceDocuments: [], telemetry };
+  }
+
+  const fetchedText = finalResults
+    .map(
+      (result) =>
+        `${result.title} ${result.snippet ?? ''} ${result.content ?? ''}`
+    )
+    .concat(Object.values(extractedByUrl()))
+    .join(' ');
+  const missingSubjects = unnamedSubjects(query, fetchedText);
+  if (missingSubjects.length > 0) {
+    telemetry.unnamedSubjects = missingSubjects;
+    recordWebSearchTrace({
+      question: query,
+      expects: plan.expects,
+      planQueries: plan.queries,
+      candidates,
+      extracted: extractedByUrl(),
+      ...(semanticQueryUsed ? { retrievalQuery: semanticQueryUsed } : {}),
+      ...(input.contextCharBudget ? { budget: input.contextCharBudget } : {}),
+      contextOffset: input.contextOffset ?? 0,
+      results: finalResults,
+      context: [],
+      telemetry,
+    });
+    return { context: [], sourceDocuments: [], telemetry };
   }
 
   const label =
@@ -655,9 +778,33 @@ export const runWebSearch = async (
       intent: plan.kind,
     }
   );
-  return finish({
+  recordWebSearchTrace({
+    question: query,
+    expects: plan.expects,
+    planQueries: plan.queries,
+    candidates,
+    extracted: extractedByUrl(),
+    ...(semanticQueryUsed ? { retrievalQuery: semanticQueryUsed } : {}),
+    ...(input.contextCharBudget ? { budget: input.contextCharBudget } : {}),
+    contextOffset: input.contextOffset ?? 0,
+    results: finalResults,
+    context: web.context,
+    telemetry,
+  });
+  return {
     context: web.context,
     sourceDocuments: web.sourceDocuments,
     telemetry,
-  });
+  };
+};
+
+export const runWebSearch = async (
+  input: RunWebSearchInput
+): Promise<RunWebSearchResult> => {
+  const cleanups: (() => void)[] = [];
+  try {
+    return await searchWithCleanup(input, cleanups);
+  } finally {
+    for (const cleanup of cleanups) cleanup();
+  }
 };

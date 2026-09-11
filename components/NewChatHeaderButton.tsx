@@ -5,6 +5,7 @@ import ChatIcon from '../assets/icons/chat.svg';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { startPhantomChat } from '../utils/startPhantomChat';
+import { useChatStore } from '../store/chatStore';
 
 interface Props {
   noOp?: boolean;
@@ -15,7 +16,10 @@ const NewChatHeaderButton = ({ noOp = false }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
   const handlePress = () => {
-    if (noOp) return;
+    if (noOp) {
+      useChatStore.getState().startBlankChat();
+      return;
+    }
     startPhantomChat(db, 'replace');
   };
 

@@ -1,3 +1,5 @@
+import { FetchStatusError } from './security/outboundFetch';
+
 export type FetchFailureReason =
   | 'blocked'
   | 'not-found'
@@ -15,7 +17,7 @@ export interface FetchFailure {
   reason: FetchFailureReason;
 }
 
-const STATUS_PATTERN = /\b(\d{3})\b/;
+const STATUS_MESSAGE = /^Fetch failed: (\d{3})(?:\s|$)/;
 
 const BLOCKING_STATUSES = new Set([401, 402, 403, 407, 423, 429, 451]);
 const MISSING_STATUSES = new Set([404, 410]);
@@ -28,6 +30,7 @@ const statusReason = (status: number): FetchFailureReason => {
 };
 
 export const classifyFetchError = (error: unknown): FetchFailureReason => {
+  if (error instanceof FetchStatusError) return statusReason(error.status);
   const message = error instanceof Error ? error.message : String(error ?? '');
   if (/aborted/i.test(message)) return 'aborted';
   if (/timed out/i.test(message)) return 'timeout';
@@ -36,11 +39,8 @@ export const classifyFetchError = (error: unknown): FetchFailureReason => {
   }
   if (/too large/i.test(message)) return 'too-large';
   if (/refusing (?:to fetch|redirect)/i.test(message)) return 'blocked';
-  if (/fetch failed:/i.test(message)) {
-    const status = Number(message.match(STATUS_PATTERN)?.[1]);
-    return Number.isFinite(status) ? statusReason(status) : 'network';
-  }
-  return 'network';
+  const status = Number(message.match(STATUS_MESSAGE)?.[1]);
+  return Number.isFinite(status) ? statusReason(status) : 'network';
 };
 
 export const classifyUnusableContent = (

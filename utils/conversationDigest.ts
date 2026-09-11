@@ -75,6 +75,16 @@ export const looksLikeAnswerEcho = (
   );
 };
 
+const PROMPT_ECHO_MIN_WORDS = 2;
+
+export const looksLikePromptEcho = (digest: string): boolean => {
+  const summary = normalizeForEcho(digest);
+  if (summary.split(' ').filter(Boolean).length < PROMPT_ECHO_MIN_WORDS) {
+    return false;
+  }
+  return normalizeForEcho(DIGEST_SYSTEM_PROMPT).includes(summary);
+};
+
 const META_FRAME =
   /^\s*(?:the\s+)?(?:user|conversation|discussion|topic|assistant)\b[^.:]{0,60}?\b(?:is|was|are|about|asking|asks|wants|asked|discussing)\b[^.:]{0,30}?(?:about|is|:)\s*/i;
 const META_TAIL = /\s*(?:the\s+)?key entities?\b[^.]*\.?\s*$/i;
@@ -111,8 +121,12 @@ export const updateConversationDigest = async (
     );
     const trimmed = visibleDigestText(raw);
     if (!trimmed) return previousDigest ?? '';
-    if (!looksLikeAnswerEcho(trimmed, answer)) {
-      return clampDigest(stripMetaFrame(trimmed));
+    const summary = clampDigest(stripMetaFrame(trimmed));
+    if (
+      !looksLikeAnswerEcho(trimmed, answer) &&
+      !looksLikePromptEcho(summary)
+    ) {
+      return summary;
     }
     const fallback = clampDigest(question.trim());
     return keepsMoreSubject(previousDigest, fallback)

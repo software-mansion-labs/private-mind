@@ -9,6 +9,8 @@ import {
   isDanglingListAnswer,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
+  retryDropsGroundedDetail,
+  answeredNothing,
   looksLikeNoAnswer,
   mergeAttachmentFirst,
   pickCitationsByAnswer,
@@ -17,6 +19,7 @@ import {
   type SourceRow,
   buriesFigureContextOffers,
   contextOffersFigureFor,
+  sourcesBlockOf,
   answerStatesFigure,
   evidenceLinesFor,
   answerUsesNoRetrievedEvidence,
@@ -606,6 +609,48 @@ describe('looksLikeNoAnswer', () => {
   });
 });
 
+describe('answeredNothing', () => {
+  it('keeps an answer that delivered one of the two figures it was asked for (live: Pixel, bitcoin vs ethereum)', () => {
+    expect(
+      answeredNothing(
+        '(1) Cena Bitcoin aktualnie: $64,146.36 USD (2) Cena Ethereum aktualnie: Brak danych w kontekście.',
+        'Porównaj je i daj mi wyniki'
+      )
+    ).toBe(false);
+  });
+
+  it('still treats a refusal carrying no figure as answering nothing', () => {
+    expect(
+      answeredNothing(
+        'Źródła nie dostarczają informacji o cenach kremu Nivea Q10 przeciwzmarszczkowy.',
+        'Ile kosztuje krem Nivea Q10 przeciwzmarszczkowy?'
+      )
+    ).toBe(true);
+  });
+
+  it('does not count a figure the question itself supplied', () => {
+    expect(
+      answeredNothing(
+        'W źródłach nie ma informacji o cenie karty RTX 4070.',
+        'Jaka jest najtańsza cena karty RTX 4070 na Allegro?'
+      )
+    ).toBe(true);
+  });
+
+  it('reads the figure in any decimal system, so the guard is not tied to a script', () => {
+    expect(
+      answeredNothing(
+        'कीमत स्रोतों में नहीं दी गई है। मूल्य ६४१४६ है।',
+        'सोने की कीमत क्या है?'
+      )
+    ).toBe(false);
+  });
+
+  it('falls back to wording alone when no question is available', () => {
+    expect(answeredNothing('W dokumentach nie ma informacji o L4.')).toBe(true);
+  });
+});
+
 describe('detectGroundingCaveats', () => {
   describe('figure caveat', () => {
     it('flags an answer that states a figure absent from the context', () => {
@@ -808,6 +853,30 @@ describe('isWrongLanguageAnswer', () => {
     expect(isWrongLanguageAnswer(answer, question)).toBe(true);
   });
 
+  it('does not call an English answer foreign over a single shared word (Pixel: "was")', () => {
+    expect(
+      isWrongLanguageAnswer(
+        'The Eiffel Tower was completed on March 31, 1889.',
+        'When was the Eiffel Tower completed'
+      )
+    ).toBe(false);
+  });
+
+  it('still flags an answer whose own language rests on more than one word', () => {
+    expect(
+      isWrongLanguageAnswer(
+        'Das Model 3 kostet in den USA etwa 42.000 Dollar.',
+        'How much does a Tesla Model 3 cost'
+      )
+    ).toBe(true);
+    expect(
+      isWrongLanguageAnswer(
+        'The iPhone 17 costs about 4,499 zloty in Poland.',
+        'Ile kosztuje iPhone 17 w Polsce'
+      )
+    ).toBe(true);
+  });
+
   it('does not flag a genuine answer in the question language', () => {
     const answer =
       'Kazimierz Wielki był ostatnim królem Polski z dynastii Piastów. ' +
@@ -987,7 +1056,23 @@ describe('buildMessageSources retrieval query', () => {
     );
   });
 
-  it('falls back to the digest for a referentially incomplete query with no entity in history', async () => {
+  it('falls back to the digest for a referentially incomplete query when the digest is about this conversation', async () => {
+    await buildMessageSources({
+      ...baseParams,
+      userInput: 'ile ma lat prezydent?',
+      history: [
+        { role: 'user', content: 'co pisze raport o prezydencie?' },
+        { role: 'assistant', content: 'Raport opisuje prezydenta i wybory.' },
+      ],
+      digest: 'Temat: raport o prezydencie i wyborach.',
+    });
+
+    expect(mockHybridRetrieve.mock.calls[0][0].prompt).toBe(
+      'ile ma lat prezydent? Temat: raport o prezydencie i wyborach.'
+    );
+  });
+
+  it('leaves a digest from another conversation out of the retrieval query', async () => {
     await buildMessageSources({
       ...baseParams,
       userInput: 'ile ma lat prezydent?',
@@ -999,7 +1084,7 @@ describe('buildMessageSources retrieval query', () => {
     });
 
     expect(mockHybridRetrieve.mock.calls[0][0].prompt).toBe(
-      'ile ma lat prezydent? Topic: the president discussed in the attached report.'
+      'ile ma lat prezydent?'
     );
   });
 
@@ -1393,6 +1478,51 @@ describe('evidenceLinesFor — the lines the retry should quote (release R-3, R-
     );
   });
 
+  it('does not call an answer evidence-free for want of a figure (Pixel: LIDAR)', () => {
+    const context =
+      '\n --- Source 1: What is LiDAR? | IBM --- \n What is LiDAR? LiDAR, an ' +
+      'acronym for \u201clight detection and ranging,\u201d is a remote-sensing ' +
+      'technology that uses laser beams to measure precise distances and ' +
+      'movement in an environment, in real time. LiDAR data can be used to ' +
+      'generate detailed topographic maps and the dynamic 3D models required ' +
+      'to guide an autonomous vehicle. \n --- End of Source 1 ---\n' +
+      '\n --- Source 2: Lidar - Wikipedia --- \n distances by measuring the ' +
+      'time for a signal to return using appropriate sensors and data ' +
+      'acquisition electronics.\nThis page was last edited on 6 September ' +
+      '2026, at 18:12 (UTC). \n --- End of Source 2 ---';
+
+    expect(
+      answerUsesNoRetrievedEvidence(
+        'LIDAR stands for "light detection and ranging."',
+        'What does the acronym LIDAR stand for',
+        context
+      )
+    ).toBe(false);
+  });
+
+  it('leads with the forecast sentence, not a menu line with bare digits or a FAQ question (release K-6)', () => {
+    const question = 'Jaka będzie jutro pogoda w Warszawie?';
+    const context =
+      '\n --- Source 1: Pogoda Warszawa — godzinowa na dziś, jutro i pojutrze --- \n ' +
+      'Pogoda Warszawa godzina po godzinie | co 1 h · 3 doby. ' +
+      'Dziś w Warszawie 20 stopni i chmury, ale ciśnienie spada; jutro temperatura wzrośnie do 26 stopni, wciąż bez opadów. ' +
+      'Pogoda dla miasta Warszawa w aplikacji Radar opadów Warszawa na żywo. ' +
+      'Czy jest prognoza pogody dla miasta Warszawa na 7, 14 lub 16 dni? ' +
+      'Czy jutro (we wtorek) będzie padać w Warszawie? \n' +
+      ' --- End of Source 1 ---\n\n' +
+      question;
+    const lines = evidenceLinesFor(question, context);
+    expect(lines[0]).toContain('26 stopni');
+    expect(lines.some((line) => line.endsWith('?'))).toBe(false);
+    expect(
+      answerUsesNoRetrievedEvidence(
+        'Zgodnieć z informacjami zawartymi w źródłach nie pozwala na udzielenie odpowiedzi.',
+        question,
+        context
+      )
+    ).toBe(true);
+  });
+
   it('ignores the numbered source markers and the question echoed under the sources', () => {
     const question = 'Kto jest prezydentem Polski?';
     const context =
@@ -1481,5 +1611,88 @@ describe('honest refusals the evidence nudges must leave alone (release A-7, A-9
     expect(offered.has('przepraszamy')).toBe(false);
     expect(offered.has('sprawdz')).toBe(false);
     expect(offered.has('url')).toBe(true);
+  });
+});
+
+describe('the evidence checks read the sources block, not the whole prompt', () => {
+  it('returns the block content when the prompt carries one', () => {
+    expect(
+      sourcesBlockOf(
+        'Rules.\n<sources>\n --- Source 1: A --- \n text \n --- End of Source 1 ---\n</sources>\n\nFigures found in the sources: 2500 EUR\nIle to 2500 EUR?'
+      )
+    ).toBe('\n --- Source 1: A --- \n text \n --- End of Source 1 ---\n');
+  });
+
+  it('falls back to the whole prompt when there is no block', () => {
+    expect(sourcesBlockOf('passage\n\nquestion')).toBe('passage\n\nquestion');
+  });
+
+  it('does not read a bare year as the amount a price question asked for', () => {
+    expect(
+      claimsMissingEvidenceItHas(
+        'Źródła nie podają ceny biletu.',
+        'Ile kosztuje bilet do Energylandii?',
+        'Energylandia otwarta w sezonie 2026 od kwietnia do października.',
+        'price'
+      )
+    ).toBe(false);
+    expect(
+      claimsMissingEvidenceItHas(
+        'Źródła nie podają ceny biletu.',
+        'Ile kosztuje bilet do Energylandii?',
+        'Bilet jednodniowy do Energylandii kosztuje 219 zł w sezonie 2026.',
+        'price'
+      )
+    ).toBe(true);
+  });
+});
+
+describe('retryDropsGroundedDetail', () => {
+  const rich =
+    'Ceny wędek: modele dla początkujących kosztują od 90 zł do 250 zł, ' +
+    'segment średni to 300-700 zł, a sprzęt klasy premium zaczyna się od 1200 zł.';
+
+  it('spots a refining pass that answers in one line and loses the figures', () => {
+    expect(
+      retryDropsGroundedDetail(
+        rich,
+        'Wędki kosztują różnie, zależnie od modelu.'
+      )
+    ).toBe(true);
+  });
+
+  it('accepts a much shorter answer that boils the figures down to a range', () => {
+    expect(
+      retryDropsGroundedDetail(rich, 'Wędki kosztują od 90 zł do 1200 zł.')
+    ).toBe(false);
+  });
+
+  it('accepts a retry that is as long as the first answer', () => {
+    expect(
+      retryDropsGroundedDetail(
+        rich,
+        'Wędka dla początkującego to wydatek rzędu stu kilkudziesięciu złotych, ' +
+          'a im wyżej w segmencie, tym drożej — od kilkuset złotych wzwyż w klasie średniej ' +
+          'i znacznie więcej w premium.'
+      )
+    ).toBe(false);
+  });
+
+  it('says nothing about an answer that never had figures to lose', () => {
+    expect(
+      retryDropsGroundedDetail(
+        'Fotosynteza to proces przekształcania światła w energię chemiczną.',
+        'To proces przemiany światła w energię.'
+      )
+    ).toBe(false);
+  });
+
+  it('ignores figures hidden inside a think block', () => {
+    expect(
+      retryDropsGroundedDetail(
+        '<think>90 zł 250 zł 700 zł</think>Wędki bywają różne.',
+        'Zależy od modelu.'
+      )
+    ).toBe(false);
   });
 });

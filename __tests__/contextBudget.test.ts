@@ -2,6 +2,12 @@ import { webContextCharBudget } from '../utils/web/contextBudget';
 import { getPromptCharBudget } from '../constants/context-window';
 import { WEB_SNIPPET_MAX_CHARS } from '../constants/web';
 import { Model } from '../database/modelRepository';
+import { prepareMessagesForLLM } from '../utils/promptUtils';
+import type {
+  ChatSettings,
+  Message,
+  SourceDocument,
+} from '../database/chatRepository';
 
 const baseModel: Model = {
   id: 1,
@@ -58,6 +64,41 @@ describe('webContextCharBudget', () => {
       ''
     )!;
     expect(withExisting).toBeLessThan(withoutExisting);
+  });
+
+  it('reserves enough for the instruction block a web answer actually gets', () => {
+    const question = 'How tall is the Burj Khalifa?';
+    const context = [
+      '\n --- Source 1: Burj Khalifa - Wikipedia --- \n 828 m \n',
+    ];
+    const sourceDocuments: SourceDocument[] = [
+      {
+        kind: 'web',
+        name: 'Burj Khalifa - Wikipedia',
+        url: 'https://en.wikipedia.org/wiki/Burj_Khalifa',
+        read: true,
+      },
+    ];
+    const messages = [
+      { id: 1, chatId: 1, role: 'user', content: question, timestamp: 0 },
+    ] as Message[];
+    const settings = {
+      systemPrompt: '',
+      thinkingEnabled: false,
+    } as ChatSettings;
+    const prepared = prepareMessagesForLLM(
+      messages,
+      context,
+      settings,
+      baseModel,
+      { sourceDocuments }
+    );
+    const assembled = String(prepared[0].content).length;
+    const reserved =
+      getPromptCharBudget(baseModel, question) -
+      webContextCharBudget(baseModel, [], '', question)!;
+
+    expect(reserved).toBeGreaterThanOrEqual(assembled);
   });
 
   it('never drops below the minimum snippet size, even under heavy pressure', () => {

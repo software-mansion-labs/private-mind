@@ -1,5 +1,5 @@
 import type { WebSearchResult } from './types';
-import { hostname } from './webResultsToContext';
+import { hostname } from './hostname';
 import {
   WEB_AGREEMENT_MAX_CLAIMS,
   WEB_AGREEMENT_MAX_TEXT_CHARS,
