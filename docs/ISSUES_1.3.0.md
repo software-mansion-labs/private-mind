@@ -84,9 +84,12 @@ memory branch.
 ## 2. The last message jumps when the keyboard opens
 
 **Reported:** opening the keyboard makes the last message jump around before it
-settles.
+settles. The input bar and the conversation come apart while it happens, and the
+two moving out of step is what reads as broken.
 
-**Status:** reproduced and measured on a Pixel 10.
+**Status:** reproduced and measured on a Pixel 10. The bar and the conversation
+coming apart is the symptom the mechanism below predicts — they are driven by
+two different clocks.
 
 ### Measurement
 
@@ -155,14 +158,119 @@ open path, which that workaround does not cover.
 
 ---
 
-## Found during the same round, not user-reported
+## 3. "Didn't find much" shows up too often
 
-- **A currency-conversion follow-up answers in the original currency.** "How
-  much is that in EUR?" after a USD gold price returns `$4,342.10` — the USD
-  figure — with the caveat "No real conversion rate was found in the sources".
-  Correct answer is about €3,738. The trace shows retrieval found the right
-  pages (`bullionbypost.eu`, `goldrate24.com`); the synthesis is what fails. The
-  caveat means the answer is flagged rather than silently wrong.
+**Reported:** the warning appears frequently, including on answers that look
+fine.
+
+**Status:** explained; two paths in the confidence score make it near-unavoidable.
+
+The note is emitted when `evaluation.shouldCorrect` is true, and
+`retrievalEvaluator.ts` defines that as `label !== 'correct'`, i.e. confidence
+below `WEB_EVAL_CONFIDENCE_HIGH` (0.6).
+
+**The non-embedded path cannot reach the threshold at all.** When the retrieval
+embedder did not run, `rawConfidence` returns a flat lean:
+
+```ts
+if (!retrieval || !retrieval.embedded) {
+  return input.contentCount > 0 ? LEAN_WITH_CONTENT : LEAN_SNIPPETS_ONLY;
+}
+```
+
+`LEAN_WITH_CONTENT` is 0.5 and `LEAN_SNIPPETS_ONLY` is 0.3, both under 0.6. So a
+search that fetched and read pages successfully is still labelled "didn't find
+much", because its ceiling is 0.5.
+
+**A single-host answer is penalised into the same place.** `independenceFactor`
+multiplies the score by `WEB_AGREEMENT_SINGLE_HOST_FACTOR` (0.85) whenever fewer
+than `WEB_AGREEMENT_MIN_HOSTS` (2) independent hosts corroborate. With one host
+the raw score has to reach 0.706 to clear 0.6 — on the weighted sum that means
+near-perfect similarity _and_ coverage _and_ three qualified chunks. Plenty of
+correct one-source answers land below it.
+
+The threshold itself may be right; what the two paths above show is that the
+score cannot express "read one good page and got the answer", which is the
+common case.
+
+---
+
+## 4. The bubble lands hard at the top after sending
+
+**Reported:** after sending, the message lands at the top of the screen very
+abruptly. A small amount of easing — not a full animated scroll, just enough to
+read as movement — would settle it.
+
+**Status:** cause identified, not yet measured.
+
+`scrollToPin` in `components/chat-screen/Messages.tsx` jumps with no animation
+at all:
+
+```ts
+scrollRef.current?.scrollTo({ y: pinOffset.current, animated: false });
+```
+
+`animated: false` is deliberate — the pin has to be in place before the
+assistant's reply starts filling the space below it, and a full animated scroll
+over that distance would be slow and would fight the incoming content. What the
+report asks for is the middle option: land instantly near the target and animate
+only the last stretch, so the eye sees movement without waiting for a long
+scroll.
+
+---
+
+## 5. Currency conversion questions are not answered
+
+**Reported:** the model does not cope with "how much is that in another
+currency".
+
+**Status:** reproduced on a Pixel 10.
+
+"How much is that in EUR?" after a USD gold price returns `$4,342.10` — the USD
+figure, with a dollar sign, against a question about euros. The correct answer
+is about €3,738 at 0.86088.
+
+The trace shows retrieval is not what fails: the query carried the context
+forward and found EUR-denominated pages (`bullionbypost.eu` "Gold Price in EUR",
+`goldrate24.com` "per Ounce in Europe in Euro"). The synthesis step is what
+returns the original figure.
+
+The answer does carry the caveat "No real conversion rate was found in the
+sources", so it is flagged rather than silently wrong. `cr/phase1-security`
+carries a conversion resolver that reads the ECB reference rate instead of
+hoping a scraped page states one; it is not on `main`.
+
+---
+
+## 6. Open decision: do the grounding caveat badges ship?
+
+**Asked:** whether badges like "A number here couldn't be confirmed against the
+sources" stay in the production build.
+
+Three exist, in `components/chat-screen/GroundingCaveatBadges.tsx`:
+
+```
+conversion → "No real conversion rate was found in the sources"
+trend      → "No data on the change over time was found in the sources"
+figure     → "A number here couldn't be confirmed against the sources"
+```
+
+Only the highest-priority one renders per message.
+
+They are the difference between an answer that is wrong and an answer that is
+wrong _and says so_ — the currency case in §5 is exactly that. Against
+that: they appear next to answers users believe, and a badge on a correct number
+teaches people to ignore all three. The `figure` badge is the widest net of the
+three and so the most likely to cry wolf; `conversion` fires on a condition the
+code actually established.
+
+No recommendation here without knowing how often each fires in practice. That is
+measurable — the caveat kind is already persisted per message — and worth
+measuring before the decision, rather than deciding on taste.
+
+---
+
+## Found during the same round, not user-reported
 
 - **Answer accuracy varies with model size.** Same question, same minute:
   Pixel 10 / `Qwen 3 - 1.7B` returned $4,342.10 (0.05% from reference), Galaxy
