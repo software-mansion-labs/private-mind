@@ -18,6 +18,7 @@ deferred to 1.3.1.
 | the ExecuTorch abort in §8 | report upstream to `react-native-executorch`, noting it is an older version with a new one landing, and keep collecting cases                            |
 | toggles in §7              | show as unavailable and remember the choice, rather than forcing off                                                                                     |
 | the topic anchor in §9     | leave as it is and track it in [#323](https://github.com/software-mansion-labs/private-mind/issues/323) — it needs subject-change detection, not a patch |
+| web search in §15          | track it in [#328](https://github.com/software-mansion-labs/private-mind/issues/328) — a device trace comes before a fix                                 |
 
 ### Order of work
 
@@ -30,14 +31,16 @@ moves the most files.
 3. §6 document scope — decide web search per message, not per chat.
 4. §7 toggles — reconcile on model change, disabled-but-remembered.
 5. §3 confidence — a path that cannot reach its own threshold.
-6. §2 and §4 animations — one inset owner, and an eased landing.
+6. §2, §4, §13 and §14 animations — the send and the keyboard as one motion,
+   and a floor that follows the keyboard instead of ignoring it.
 7. §12 caveat badges — measure how often each fires, then decide.
 8. `cr/phase1-security` port — 121 files as a tree copy, bringing §5's
    conversion resolver and the URL-scheme check with it.
 9. The upstream issue for §8's abort.
 
-§9 is not on this list — it is deferred to
-[#323](https://github.com/software-mansion-labs/private-mind/issues/323).
+§9 and §15 are not on this list — they are deferred to
+[#323](https://github.com/software-mansion-labs/private-mind/issues/323) and
+[#328](https://github.com/software-mansion-labs/private-mind/issues/328).
 
 ---
 
@@ -796,6 +799,8 @@ This is the core send path, so it should land on its own, with tests for the
 overlap rather than only for the happy path, and not folded in with the
 cosmetic fixes in this file.
 
+## 12. Grounding caveat badges in the production build
+
 **Asked:** whether badges like "A number here couldn't be confirmed against the
 sources" stay in the production build.
 
@@ -819,6 +824,119 @@ code actually established.
 No recommendation here without knowing how often each fires in practice. That is
 measurable — the caveat kind is already persisted per message — and worth
 measuring before the decision, rather than deciding on taste.
+
+---
+
+---
+
+## 13. The blank space under the message ignores the keyboard
+
+**Reported:** the empty space added under a sent message does not react when the
+keyboard and input bar rise — it should shrink by the keyboard's height, and it
+should follow the keyboard rather than change in a step.
+
+**Status:** confirmed from the code, fix in progress.
+
+The space is `pinFloor`. `pinFloorFor` in `components/chat-screen/pinScroll.ts`
+sizes it from `containerHeight`, which is the scroll view's own layout height as
+reported by `onLayout`. The list is a `KeyboardChatScrollView` with
+`keyboardLiftBehavior="whenAtEnd"` (`Messages.tsx:951`),
+and that component **translates** its content when the keyboard opens rather
+than resizing itself. So the layout height does not change, `containerHeight`
+does not change, and the floor stays sized for a viewport one keyboard taller
+than the one the user is looking at.
+
+It is also not animated at all. The floor is a static `minHeight`:
+
+```ts
+const pinFloorStyle = useMemo(
+  () => (pinFloor > 0 ? { minHeight: pinFloor } : undefined),
+  [pinFloor]
+);
+```
+
+`Messages.tsx:524`. Every change to
+it lands in one frame, on a layout pass, with no curve of its own.
+
+The keyboard's own curve is already available as a shared value —
+`useKeyboardLift()` returns 0 when the keyboard is gone and the negative lift
+while it is up, driven by `react-native-keyboard-controller`'s animation. A
+floor derived from it follows the keyboard exactly and needs no timing.
+
+The thing to watch is cost: an animated `minHeight` re-lays-out the scroll
+content on every frame, which fires `onContentSizeChange` — a JS callback that
+drives `applyPendingPin`, the scroll-to-bottom button and the initial reveal.
+That is the part to measure before choosing between an animated height, a
+separate spacer, and a transform.
+
+---
+
+## 14. Sending is two motions where it should be one
+
+**Reported:** sending into an existing conversation first closes the keyboard
+and shows the new bubble, and only then does the bubble travel up — an
+unnecessary step that makes the screen look like it jumps.
+
+**Status:** confirmed from the code, fix in progress.
+
+The two motions are serialized by construction:
+
+| step                                                 | where                       |
+| ---------------------------------------------------- | --------------------------- |
+| `Keyboard.dismiss()` starts the ~250 ms close        | `useSendChatMessage.ts:108` |
+| `onMessageSent()` only _arms_ the pin                | `useSendChatMessage.ts:109` |
+| the optimistic bubble waits on an `await`            | `useSendChatMessage.ts:112` |
+| `applyPendingPin` waits for both rows to be measured | `Messages.tsx:529`          |
+| `scrollToPin` adds two more frames before it moves   | `Messages.tsx:414`          |
+
+Nothing here is wrong on its own. Added up, the keyboard's close has finished
+before the travel starts, and the still frame in between — bubble parked at the
+bottom of a keyboard-less screen — is the "extra step" in the report.
+
+Two ways out, and they differ in risk. Cutting the latency so the travel starts
+while the keyboard is still closing is the safe one. Letting the bubble mount
+_before_ the keyboard is dismissed is the better story — it appears directly
+above the input, continuous with the text that was just typed — but with the
+keyboard up the library's lift is active and the scroll target moves underneath
+the animation.
+
+Note what must survive either: while the model is generating, the question stays
+pinned near the top. That is the property the whole mechanism exists for, and
+it is the one a rushed fix here would take out.
+
+---
+
+## 15. A short question in the user's own language finds nothing
+
+**Reported:** `pogoda londyn weekend` on Gemma 4 VL 2B, web search on — no
+usable results.
+
+**Status:** tracked in
+[#328](https://github.com/software-mansion-labs/private-mind/issues/328), not
+blocking the release.
+
+Measured over the real functions, two of the pipeline's own guards work against
+this question:
+
+- `namesAnotherDay('pogoda londyn weekend')` is `true`, so
+  `getTimeScopeInstruction` tells the model to use only the value labelled with
+  "the day the question asks about". A weekend is two days; the instruction is
+  written in the singular, and the safe reading of it is to refuse.
+- `sharesLanguageWith('London weather weekend forecast', 'pogoda londyn weekend')`
+  is `false`. `buildSearchQuery` requires every planned query to share the
+  conversation's language, so an English rewrite costs one extra generation to
+  replan and is then filtered out, leaving the verbatim three keywords.
+
+The gate is defending in-language _answers_ by constraining in-language
+_queries_, and for weather those pull in opposite directions: the pages that
+print a structured London forecast are English, while a Polish query lands on
+Polish weather portals, which are among the most JavaScript-dependent pages on
+the web.
+
+What is missing is a device trace — which queries the planner actually wrote,
+what the SERP returned, and whether retrieval was marked weak or the sources
+were fine and the grounding instructions refused them. Those two endings look
+identical to the user and need opposite fixes.
 
 ---
 
