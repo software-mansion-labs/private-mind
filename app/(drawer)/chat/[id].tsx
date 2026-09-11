@@ -44,7 +44,7 @@ function ChatScreenInner() {
   const isPhantom = phantomChat?.id === chatId && !chat;
   const shouldPlayBranchEntryAnimation =
     entryAnimation === CHAT_ENTRY_ANIMATION.BranchCreated;
-  const resolvedModelId = modelId ?? chat?.modelId;
+  const resolvedModelId = chat?.modelId ?? modelId;
   const resolvedModel = resolvedModelId
     ? getModelById(parseInt(resolvedModelId.toString(), 10))
     : undefined;
@@ -61,7 +61,10 @@ function ChatScreenInner() {
     !isPhantom && activeChatId !== chatId
   );
 
-  const isEmpty = !isLoading && activeChatMessages.length === 0;
+  const historyForThisChat =
+    activeChatId !== null && activeChatId !== chatId ? [] : activeChatMessages;
+
+  const isEmpty = !isLoading && historyForThisChat.length === 0;
   const shouldExitOnBack = isPhantom && isEmpty;
   const openModelSheetRef = useRef<(() => void) | null>(null);
   const openModelSheet = useCallback(() => openModelSheetRef.current?.(), []);
@@ -145,7 +148,7 @@ function ChatScreenInner() {
       <ChatScreen
         chatId={chatId}
         chat={chat}
-        messageHistory={isLoading ? [] : activeChatMessages}
+        messageHistory={isLoading ? [] : historyForThisChat}
         isLoading={isLoading}
         model={model}
         onPendingModelChange={setPendingModel}

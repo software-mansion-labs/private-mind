@@ -7,6 +7,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import * as Feedback from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { useSettingsStore } from '../store/settingsStore';
+import { useWebSearchStore } from '../store/webSearchStore';
 
 jest.mock('../database/chatRepository');
 jest.mock('../utils/Feedback', () => ({
@@ -18,9 +19,16 @@ jest.mock('../utils/promptUtils', () => ({
     { role: 'user', content: 'hello' },
     { role: 'assistant', content: '' },
   ]),
+  answerLanguageAnchor: jest.fn(
+    () => ' (Answer in the same language as this message.)'
+  ),
 }));
 jest.mock('../constants/default-benchmark', () => ({
   BENCHMARK_PROMPT: 'benchmark prompt text',
+}));
+jest.mock('@react-native-community/netinfo', () => ({
+  __esModule: true,
+  default: { fetch: jest.fn().mockResolvedValue({ isConnected: true }) },
 }));
 
 const mockLLMModule = LLMModule as jest.Mocked<typeof LLMModule>;
@@ -422,6 +430,46 @@ describe('interrupt', () => {
     useLLMStore.setState({ isGenerating: false, isProcessingPrompt: false });
     expect(() => useLLMStore.getState().interrupt()).not.toThrow();
   });
+
+  it('drops the empty placeholder and the live trace at once when stopped before any token', () => {
+    useWebSearchStore.getState().setSearchingWeb(true);
+    useWebSearchStore.getState().pushWebSearchEvent({ type: 'objectives' });
+    useLLMStore.setState({
+      isGenerating: false,
+      isProcessingPrompt: true,
+      activeChatMessages: [
+        { id: 5, role: 'user', content: 'ping', chatId: 1, timestamp: 0 },
+        { id: -1, role: 'assistant', content: '', chatId: 1, timestamp: 0 },
+      ] as Message[],
+    });
+
+    useLLMStore.getState().interrupt();
+
+    expect(
+      useLLMStore.getState().activeChatMessages.map((m) => m.role)
+    ).toEqual(['user']);
+    expect(useWebSearchStore.getState().webSearchTrace).toEqual([]);
+    expect(useWebSearchStore.getState().isSearchingWeb).toBe(false);
+    expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
+  });
+
+  it('interrupts a pending utility call such as the search planner', async () => {
+    await loadModel();
+    let release: (value: string) => void = () => {};
+    mockInstance.generate.mockImplementationOnce(
+      () => new Promise<string>((resolve) => (release = resolve))
+    );
+    const planning = useLLMStore
+      .getState()
+      .generateUtility([{ role: 'user', content: 'plan' }]);
+    useLLMStore.setState({ isGenerating: false, isProcessingPrompt: true });
+
+    useLLMStore.getState().interrupt();
+
+    expect(mockInstance.interrupt).toHaveBeenCalled();
+    release('');
+    await planning;
+  });
 });
 
 // ─── sendChatMessage ──────────────────────────────────────────────────────────
@@ -487,10 +535,35 @@ describe('sendChatMessage', () => {
     expect(useLLMStore.getState().isGenerating).toBe(false);
   });
 
+  it('clears the live web trace when generation fails before any token', async () => {
+    mockInstance.generate
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockRejectedValueOnce(new Error('boom'));
+    useWebSearchStore.getState().pushWebSearchEvent({ type: 'objectives' });
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('ping', 1, noSources, settings);
+
+    expect(useWebSearchStore.getState().webSearchTrace).toEqual([]);
+    expect(
+      useLLMStore.getState().activeChatMessages.map((m) => m.role)
+    ).toEqual(['user']);
+  });
+
   it('adds user message and assistant placeholder to activeChatMessages before generating', async () => {
     let messagesBeforeGenerate: Message[] = [];
+    let captured = false;
     mockInstance.generate.mockImplementation(async () => {
-      messagesBeforeGenerate = useLLMStore.getState().activeChatMessages;
+      if (!captured) {
+        captured = true;
+        messagesBeforeGenerate = useLLMStore.getState().activeChatMessages;
+      }
       return 'response';
     });
     useLLMStore.setState({
@@ -576,6 +649,7 @@ describe('sendChatMessage', () => {
     mockPersistMessage.mockResolvedValueOnce(41).mockResolvedValueOnce(42);
     mockInstance.generate
       .mockRejectedValueOnce(new Error('out of memory'))
+      .mockRejectedValueOnce(new Error('out of memory'))
       .mockResolvedValueOnce('Recovered answer');
     useLLMStore.setState({
       model: baseModel,
@@ -599,6 +673,695 @@ describe('sendChatMessage', () => {
     expect(useLLMStore.getState().generationError).toBeNull();
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
       'Recovered answer'
+    );
+  });
+
+  it('retries once with a continuation nudge when the model produces a dangling list, then persists the combined answer', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Oto co warto zabrać:')
+      .mockResolvedValueOnce('- Paszport\n- Bilet lotniczy')
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Oto co warto zabrać:\n- Paszport\n- Bilet lotniczy'
+    );
+  });
+
+  it('shows what it has rather than a banner when the continuation retry is still a dangling list', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Oto co warto zabrać:')
+      .mockResolvedValueOnce('Oto lista:');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toContain(
+      'Oto co warto zabrać:'
+    );
+  });
+
+  it('keeps the original dangling text when the continuation nudge returns nothing', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Oto co warto zabrać:')
+      .mockResolvedValueOnce('   ');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Oto co warto zabrać:'
+    );
+  });
+
+  it('anchors the continuation nudge to the conversation language and continues from the dangling text', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Oto co warto zabrać:')
+      .mockResolvedValueOnce('- Paszport');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    const continuationMessages = mockInstance.generate.mock.calls[1][0];
+    const lastMessage = continuationMessages[continuationMessages.length - 1];
+    const echoedAssistantTurn =
+      continuationMessages[continuationMessages.length - 2];
+
+    expect(echoedAssistantTurn).toEqual({
+      role: 'assistant',
+      content: 'Oto co warto zabrać:',
+    });
+    expect(lastMessage.role).toBe('user');
+    expect(lastMessage.content).toContain(
+      'Continue now with ONLY the actual list items'
+    );
+    expect(lastMessage.content).toContain(
+      '(Answer in the same language as this message.)'
+    );
+  });
+
+  it('spends the echo nudge, not the list nudge, when the reply is both', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Co zabrać do samolotu?:')
+      .mockResolvedValueOnce('Zabierz paszport, bilet i ładowarkę.');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('Co zabrać do samolotu?', 1, noSources, settings);
+
+    const nudge = mockInstance.generate.mock.calls[1]![0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(nudge.at(-1)!.content).toContain('only repeated the question back');
+    expect(nudge.at(-1)!.content).not.toContain('ONLY the actual list items');
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Zabierz paszport, bilet i ładowarkę.'
+    );
+  });
+
+  it('nudges for the language, not the dangling list, when the answer drifted language (live-found)', async () => {
+    const question = 'Kim był Kazimierz Wielki i czego dokonał?';
+    const wrongLanguageDanglingAnswer =
+      "Kazimierz Wielki (1310–1370) Polska'nın en son piastıydı. İşte maddeler:";
+    mockInstance.generate
+      .mockResolvedValueOnce(wrongLanguageDanglingAnswer)
+      .mockResolvedValueOnce(
+        'Kazimierz Wielki był królem Polski i zreformował prawo.'
+      );
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(question, 1, noSources, settings);
+
+    const nudge = mockInstance.generate.mock.calls[1]![0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(nudge.at(-1)!.content).toContain('written in the wrong language');
+    expect(nudge.at(-1)!.content).not.toContain('ONLY the actual list items');
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Kazimierz Wielki był królem Polski i zreformował prawo.'
+    );
+  });
+
+  it('spends one nudge and then keeps the answer rather than losing the turn (live-found)', async () => {
+    const question = 'Kim był Kazimierz Wielki i czego dokonał?';
+    const turkish =
+      "Kazimierz Wielki (1310–1370) Polska'nın en son piastıydı. İşte maddeler:";
+    mockInstance.generate
+      .mockResolvedValueOnce(turkish)
+      .mockResolvedValueOnce(turkish);
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(question, 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      turkish
+    );
+  });
+
+  it('still generates a conversation digest after recovering via the continuation nudge', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Oto co warto zabrać:')
+      .mockResolvedValueOnce('- Paszport\n- Bilet lotniczy')
+      .mockResolvedValueOnce('Trip to London packing list.');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+      activeChatDigest: null,
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+    await flushFrame();
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().activeChatDigest).toBe(
+      'Trip to London packing list.'
+    );
+  });
+
+  it('retries once when the model only talks about its sources, instead of failing', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        'Dane pochodzą ze źródeł wyżej. Źródła to opisują, szczegóły są w źródłach.'
+      )
+      .mockResolvedValueOnce('Cena wynosi 3200 zł.')
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('ile kosztuje?', 1, noSources, settings);
+
+    const nudge = mockInstance.generate.mock.calls[1]![0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(nudge.at(-1)!.content).toContain('only talked about the sources');
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Cena wynosi 3200 zł.'
+    );
+  });
+
+  it('shows the reply rather than destroying the turn when the circular retry does not help (live-found)', async () => {
+    const circular =
+      'Dane pochodzą ze źródeł wyżej. Źródła to opisują, szczegóły są w źródłach.';
+    mockInstance.generate.mockResolvedValue(circular);
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('ile kosztuje?', 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      circular
+    );
+  });
+
+  it('keeps a well-cited answer that names its sources by number (live-found)', async () => {
+    const cited =
+      'Source 1 lists 162 g, Source 2 lists 146.9 x 70.5 x 7.2 mm, and Source 3 agrees.';
+    mockInstance.generate.mockResolvedValue(cited);
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'What are the dimensions and weight?',
+        1,
+        noSources,
+        settings
+      );
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(2);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      cited
+    );
+  });
+
+  it('retries once when the answer buries the figure the sources offer, and keeps a retry that states it (smoke T2)', async () => {
+    const passage =
+      'Warszawa z populacją 1,86 miliona mieszkańców jest ósmym co do wielkości miastem w Unii Europejskiej.';
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      { role: 'user', content: `${passage}\n\nJaka jest populacja Warszawy?` },
+    ]);
+    const digest =
+      'Źródła nie podają jednej, ostatecznej liczby populacji Warszawy. Mazowieckietg.pl pisze, że Warszawa z populacją 1,86 miliona mieszkańców jest ósmym miastem Unii.';
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        'Zgodnie z dostępnymi źródłami nie jest podana konkretna liczba ludności Warszawy.'
+      )
+      .mockResolvedValueOnce(digest)
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const factSources = async () => ({
+      ...(await noSources()),
+      webIntentKind: 'fact' as const,
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'Jaka jest populacja Warszawy?',
+        1,
+        factSources,
+        settings
+      );
+
+    const nudge = mockInstance.generate.mock.calls[1]![0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(nudge.at(-1)!.content).toContain('first sentence');
+    expect(nudge.at(-1)!.content).toContain('1,86 miliona');
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      digest
+    );
+  });
+
+  it('retries a refusal that names the model code and quotes the spec line holding the figure (release R-16)', async () => {
+    const question = 'Jaką częstotliwość odświeżania ma Samsung QE65QN90D?';
+    const specLine =
+      "Przekątna ekranu w calach 65'' Format HD 4K Ultra HD Rozdzielczość 3840 x 2160 Częstotliwość odświeżania 144 Hz Tuner Analogowe , DVB-C , DVB-S2 , DVB-T2 (HEVC) Technologia HDR HDR10+ , HLG Tryb gra Dla graczy Smart TV Tizen Wi-Fi Bluetooth HDMI 4 USB 2 Klasa energetyczna G Waga 25 kg";
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content: `\n --- Source 1: Telewizor Samsung QE65QN90D QLED 65'' 4K Ultra HD Tizen --- \n ${specLine} \n --- End of Source 1 ---\n\n${question}`,
+      },
+    ]);
+    const answer = 'Samsung QE65QN90D ma częstotliwość odświeżania 144 Hz.';
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        'Częstotliwość odświeżania telewizora Samsung QE65QN90D nie jest podana w dostarczonych źródłach.'
+      )
+      .mockResolvedValueOnce(answer)
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const specsSources = async () => ({
+      ...(await noSources()),
+      webIntentKind: 'specs' as const,
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(question, 1, specsSources, settings);
+
+    const nudge = mockInstance.generate.mock.calls[1]![0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(nudge.map((message) => message.role)).toEqual(['system', 'user']);
+    expect(nudge.at(-1)!.content).toContain('quoted from the sources');
+    expect(nudge.at(-1)!.content).toContain('144 Hz');
+    expect(nudge.at(-1)!.content).toContain(question);
+    expect(nudge.at(-1)!.content).not.toContain('Klasa energetyczna');
+    expect(nudge.at(-1)!.content).not.toContain('--- Source 1');
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      answer
+    );
+  });
+
+  it('retries once when the answer skips a sub-query the sources cover, naming that part', async () => {
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content:
+          'Kurs bitcoina wynosi dziś 98 000 USD. Kurs ethereum wynosi dziś 3 200 USD.\n\nporównaj kurs bitcoina i ethereum',
+      },
+    ]);
+    const complete =
+      'Bitcoin kosztuje około 98 000 USD, a ethereum około 3 200 USD.';
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        'Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.'
+      )
+      .mockResolvedValueOnce(complete)
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const withSubQueries = async () => ({
+      ...(await noSources()),
+      webSubQueries: ['kurs bitcoin', 'kurs ethereum'],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'porównaj kurs bitcoina i ethereum',
+        1,
+        withSubQueries,
+        settings
+      );
+
+    const nudge = mockInstance.generate.mock.calls[1]![0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(nudge.at(-1)!.content).toContain(
+      'does not address: "kurs ethereum"'
+    );
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      complete
+    );
+  });
+
+  it('keeps the first answer on screen while a nudge retry generates, then swaps once', async () => {
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content:
+          'Kurs bitcoina wynosi dziś 98 000 USD. Kurs ethereum wynosi dziś 3 200 USD.\n\nporównaj kurs bitcoina i ethereum',
+      },
+    ]);
+    const partial =
+      'Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.';
+    const complete =
+      'Bitcoin kosztuje około 98 000 USD, a ethereum około 3 200 USD.';
+    const seenDuringRetry: { content?: string; isRefining: boolean }[] = [];
+    mockInstance.generate
+      .mockImplementationOnce(async () => {
+        capturedTokenCallback!(partial);
+        await flushFrame();
+        return partial;
+      })
+      .mockImplementationOnce(async () => {
+        capturedTokenCallback!('Bitcoin kosztuje');
+        capturedTokenCallback!(' około 98 000 USD, a ethereum');
+        await flushFrame();
+        seenDuringRetry.push({
+          content: useLLMStore.getState().activeChatMessages.at(-1)?.content,
+          isRefining: useLLMStore.getState().isRefining,
+        });
+        return complete;
+      })
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const withSubQueries = async () => ({
+      ...(await noSources()),
+      webSubQueries: ['kurs bitcoin', 'kurs ethereum'],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'porównaj kurs bitcoina i ethereum',
+        1,
+        withSubQueries,
+        settings
+      );
+
+    expect(seenDuringRetry).toEqual([{ content: partial, isRefining: true }]);
+    expect(useLLMStore.getState().isRefining).toBe(false);
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      complete
+    );
+  });
+
+  it('stops refining even when the retry generation throws', async () => {
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content:
+          'Kurs bitcoina wynosi dziś 98 000 USD. Kurs ethereum wynosi dziś 3 200 USD.\n\nporównaj kurs bitcoina i ethereum',
+      },
+    ]);
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        'Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.'
+      )
+      .mockRejectedValueOnce(new Error('interrupted'))
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const withSubQueries = async () => ({
+      ...(await noSources()),
+      webSubQueries: ['kurs bitcoin', 'kurs ethereum'],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'porównaj kurs bitcoina i ethereum',
+        1,
+        withSubQueries,
+        settings
+      );
+
+    expect(useLLMStore.getState().isRefining).toBe(false);
+    expect(useLLMStore.getState().isGenerating).toBe(false);
+  });
+
+  it('keeps the first answer when the coverage retry still skips the aspect', async () => {
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content:
+          'Kurs bitcoina wynosi dziś 98 000 USD. Kurs ethereum wynosi dziś 3 200 USD.\n\nporównaj kurs bitcoina i ethereum',
+      },
+    ]);
+    const partial =
+      'Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.';
+    mockInstance.generate
+      .mockResolvedValueOnce(partial)
+      .mockResolvedValueOnce(
+        'Bitcoin wciąż kosztuje około 98 000 USD i dalej zyskuje na wartości.'
+      )
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const withSubQueries = async () => ({
+      ...(await noSources()),
+      webSubQueries: ['kurs bitcoin', 'kurs ethereum'],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'porównaj kurs bitcoina i ethereum',
+        1,
+        withSubQueries,
+        settings
+      );
+
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      partial
+    );
+  });
+
+  it('retries once when the model echoes the question back, instead of failing the turn', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('co zabrać do samolotu?')
+      .mockResolvedValueOnce(
+        'Zabierz paszport, bilet, ładowarkę i lekką kurtkę.'
+      )
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Zabierz paszport, bilet, ładowarkę i lekką kurtkę.'
+    );
+  });
+
+  it('says plainly there is no answer instead of echoing the question back (live-found)', async () => {
+    mockInstance.generate.mockResolvedValue('co zabrać do samolotu?');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    const shown = useLLMStore.getState().activeChatMessages.at(-1)?.content;
+    expect(shown).not.toBe('co zabrać do samolotu?');
+    expect(shown).toContain('Nie udało mi się odpowiedzieć');
+  });
+
+  it('gives the no-answer line in the language of the question', async () => {
+    mockInstance.generate.mockResolvedValue('what should I pack for a flight?');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'what should I pack for a flight?',
+        1,
+        noSources,
+        settings
+      );
+
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toContain(
+      'could not answer this question'
+    );
+  });
+
+  it('fails the turn when the model produces only a think block (live-found)', async () => {
+    mockInstance.generate.mockResolvedValue('<think>\n\n</think>');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(useLLMStore.getState().generationError).toEqual({
+      chatId: 1,
+      message: 'Failed to generate a response.',
+    });
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).not.toBe(
+      '<think>\n\n</think>'
+    );
+  });
+
+  it('still fails the turn when the model returns nothing at all', async () => {
+    mockInstance.generate.mockResolvedValue('   ');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(useLLMStore.getState().generationError).toEqual({
+      chatId: 1,
+      message: 'Failed to generate a response.',
+    });
+  });
+
+  it('recovers via the continuation nudge when a looping list gets trimmed down to just the intro', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        'Oto rzeczy do zabrania:\n' +
+          '1. Paszport do podróży zagranicznej.\n' +
+          '2. Paszport do podróży zagranicznej.\n' +
+          '3. Paszport do podróży zagranicznej.'
+      )
+      .mockResolvedValueOnce(
+        '1. Paszport do podróży zagranicznej.\n' +
+          '2. Bilet lotniczy w formie elektronicznej.\n' +
+          '3. Ładowarka do telefonu komórkowego.'
+      )
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Oto rzeczy do zabrania:\n' +
+        '1. Paszport do podróży zagranicznej.\n' +
+        '2. Bilet lotniczy w formie elektronicznej.\n' +
+        '3. Ładowarka do telefonu komórkowego.'
     );
   });
 
@@ -658,9 +1421,9 @@ describe('sendChatMessage — settings hydration barrier', () => {
     await sendPromise;
 
     expect(prepareMessagesForLLM).toHaveBeenCalledTimes(1);
-    expect((prepareMessagesForLLM as jest.Mock).mock.calls[0][4]).toBe(
-      'Always end replies with BANANA'
-    );
+    expect(
+      (prepareMessagesForLLM as jest.Mock).mock.calls[0][4].customSystemPrompt
+    ).toBe('Always end replies with BANANA');
   });
 
   it('reads customSystemPrompt immediately when settings are already hydrated', async () => {
@@ -674,9 +1437,9 @@ describe('sendChatMessage — settings hydration barrier', () => {
       .sendChatMessage('hi', 1, async () => ({ context: [] }), settings);
 
     expect(prepareMessagesForLLM).toHaveBeenCalledTimes(1);
-    expect((prepareMessagesForLLM as jest.Mock).mock.calls[0][4]).toBe(
-      'Be concise.'
-    );
+    expect(
+      (prepareMessagesForLLM as jest.Mock).mock.calls[0][4].customSystemPrompt
+    ).toBe('Be concise.');
   });
 });
 
@@ -706,6 +1469,38 @@ describe('sendEventMessage', () => {
 // ─── setActiveChatId ──────────────────────────────────────────────────────────
 
 describe('setActiveChatId', () => {
+  it('drops the previous chat’s live trace when another chat is opened, so the saved trace is rebuilt from the database (S8.11)', async () => {
+    useWebSearchStore.setState({
+      isSearchingWeb: false,
+      webSearchTrace: [
+        { id: 1, type: 'found', url: 'https://a.com/x', host: 'a.com' },
+      ],
+    });
+    mockGetChatMessages.mockResolvedValue([]);
+    useLLMStore.setState({ db: mockDb, activeChatId: 4 });
+
+    await useLLMStore.getState().setActiveChatId(5);
+
+    expect(useWebSearchStore.getState().webSearchTrace).toEqual([]);
+  });
+
+  it('keeps the trace of a search that is still running when chats are switched', async () => {
+    const running = [
+      { id: 1, type: 'searching' as const, query: 'kurs bitcoin' },
+    ];
+    useWebSearchStore.setState({
+      isSearchingWeb: true,
+      webSearchTrace: running,
+    });
+    mockGetChatMessages.mockResolvedValue([]);
+    useLLMStore.setState({ db: mockDb, activeChatId: 4 });
+
+    await useLLMStore.getState().setActiveChatId(5);
+
+    expect(useWebSearchStore.getState().webSearchTrace).toEqual(running);
+    useWebSearchStore.setState({ isSearchingWeb: false, webSearchTrace: [] });
+  });
+
   it('loads messages for the given chat id', async () => {
     const messages = [
       { id: 1, chatId: 5, role: 'user', content: 'hi', timestamp: 0 },
@@ -732,6 +1527,43 @@ describe('setActiveChatId', () => {
 
     expect(useLLMStore.getState().activeChatId).toBeNull();
     expect(useLLMStore.getState().activeChatMessages).toEqual([]);
+  });
+
+  it('keeps the optimistic messages of the chat it is generating for', async () => {
+    const optimistic = [
+      { id: -1, chatId: 5, role: 'user' as const, content: 'hi', timestamp: 0 },
+    ];
+    mockGetChatMessages.mockResolvedValue([]);
+    useLLMStore.setState({
+      db: mockDb,
+      generatingForChatId: 5,
+      activeChatMessages: optimistic,
+    });
+
+    await useLLMStore.getState().setActiveChatId(5);
+
+    expect(mockGetChatMessages).not.toHaveBeenCalled();
+    expect(useLLMStore.getState().activeChatMessages).toEqual(optimistic);
+  });
+
+  it('reloads a generating chat whose messages were cleared, and re-arms a reply row', async () => {
+    const persisted = [
+      { id: 1, chatId: 5, role: 'user' as const, content: 'hi', timestamp: 0 },
+    ];
+    mockGetChatMessages.mockResolvedValue(persisted);
+    useLLMStore.setState({
+      db: mockDb,
+      model: baseModel,
+      generatingForChatId: 5,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore.getState().setActiveChatId(5);
+
+    const messages = useLLMStore.getState().activeChatMessages;
+    expect(messages).toHaveLength(2);
+    expect(messages[0]).toEqual(persisted[0]);
+    expect(messages[1]).toMatchObject({ role: 'assistant', content: '' });
   });
 });
 
@@ -918,5 +1750,41 @@ describe('runBenchmark', () => {
 
     expect(first?.timeToFirstToken).toBeGreaterThan(0);
     expect(second?.timeToFirstToken).toBeGreaterThan(0);
+  });
+});
+
+describe('a model picked just before sending must be the one that answers', () => {
+  const settings = { systemPrompt: 'be helpful' };
+  const otherModel = { ...baseModel, id: 2, modelName: 'Second LLM' };
+
+  beforeEach(async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    mockInstance.generate.mockResolvedValue('The answer is 42.');
+    useLLMStore.setState({ activeChatId: 1, activeChatMessages: [] });
+  });
+
+  it('stamps the reply with the newly selected model, not the previous one', async () => {
+    useLLMStore.getState().loadModel(otherModel);
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
+
+    const assistantWrites = mockPersistMessage.mock.calls.filter(
+      (call) => call[1]?.role === 'assistant'
+    );
+    expect(assistantWrites.length).toBeGreaterThan(0);
+    expect(assistantWrites.at(-1)![1].modelName).toBe('Second LLM');
+  });
+
+  it('leaves the store on the newly selected model after the turn', async () => {
+    useLLMStore.getState().loadModel(otherModel);
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
+
+    expect(useLLMStore.getState().model?.modelName).toBe('Second LLM');
   });
 });

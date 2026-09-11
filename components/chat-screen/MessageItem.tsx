@@ -1,4 +1,11 @@
-import React, { memo, useCallback, useMemo, useState } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   View,
   StyleSheet,
@@ -7,12 +14,19 @@ import {
   Pressable,
   Linking,
 } from 'react-native';
-import MarkdownComponent from './MarkdownComponent';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import ThinkingBlock from './ThinkingBlock';
 import AnimatedChatLoading from './AnimatedChatLoading';
+import WebSearchBlock from './WebSearchBlock';
+import GroundingCaveatBadges from './GroundingCaveatBadges';
+import AttributedAnswer from './AttributedAnswer';
+import { attributeSourcesByBlock } from '../../utils/attributeSources';
+import DominantSourceBadge from './DominantSourceBadge';
+import { WEB_TRACE_TRANSITION_MS } from './webSearchTraceConstants';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { useLLMStore } from '../../store/llmStore';
+import { useWebSearchActivity } from '../../hooks/useWebSearchActivity';
+import { useMessageSources } from '../../hooks/useMessageSources';
 import { useSettingsStore } from '../../store/settingsStore';
 import { Theme } from '../../styles/colors';
 import ImageLightbox from './ImageLightbox';
@@ -27,7 +41,6 @@ import {
 } from '../../constants/chat-screen';
 import { Message, type SourceDocument } from '../../database/chatRepository';
 import { stripCitations } from '../../utils/citations';
-import { sourceKey } from '../../utils/contextUtils';
 import { parseThinkingContent, stripThinkMarkers } from '../../utils/thinking';
 
 interface MessageItemProps {
@@ -60,6 +73,18 @@ const splitDocumentName = (name: string) => {
   return { title: name.slice(0, dotIndex), type: extension.toUpperCase() };
 };
 
+const REFINED_SWAP_MS = 320;
+
+const useRefinedSwap = (isRefining: boolean): number => {
+  const [swap, setSwap] = useState(0);
+  const wasRefining = useRef(false);
+  useEffect(() => {
+    if (wasRefining.current && !isRefining) setSwap((count) => count + 1);
+    wasRefining.current = isRefining;
+  }, [isRefining]);
+  return swap;
+};
+
 const MessageItem = memo(
   ({
     message,
@@ -80,8 +105,6 @@ const MessageItem = memo(
     onFork,
   }: MessageItemProps) => {
     const { styles } = useThemedStyles(createStyles);
-    const isGenerating = useLLMStore((state) => state.isGenerating);
-    const isProcessingPrompt = useLLMStore((state) => state.isProcessingPrompt);
     const showPerformanceMetrics = useSettingsStore(
       (state) => state.showPerformanceMetrics
     );
@@ -89,18 +112,13 @@ const MessageItem = memo(
 
     const contentParts = parseThinkingContent(content);
     const userText = useMemo(() => stripThinkMarkers(content), [content]);
-    const hasSources = !!sourceDocuments?.length;
-    const displayedSources = useMemo(() => {
-      if (!sourceDocuments?.length) return [];
-
-      const seen = new Set<string>();
-      return sourceDocuments.filter((source) => {
-        const key = sourceKey(source.documentId, source.name);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-    }, [sourceDocuments]);
+    const {
+      displayedSources,
+      webResults,
+      documentSources,
+      dominantWebSource,
+      hasSources,
+    } = useMessageSources(sourceDocuments);
 
     const documentInfo = useMemo(
       () => (documentName ? splitDocumentName(documentName) : null),
@@ -127,10 +145,39 @@ const MessageItem = memo(
       [contentParts.normalAfterThink, hasSources]
     );
 
+    const {
+      isGenerating,
+      isBusy,
+      isRefining,
+      isSearchingThis,
+      isAwaitingFirstToken,
+      trace: webSearchTrace,
+      webActive,
+    } = useWebSearchActivity({
+      isLastMessage,
+      content,
+      hasWebResults: webResults.length > 0,
+    });
+    const refinedSwap = useRefinedSwap(isRefining);
+    const attributionShown = useMemo(() => {
+      if (isLastMessage && isGenerating) return false;
+      return [contentParts.normalContent, contentParts.normalAfterThink ?? '']
+        .filter((part) => part.trim())
+        .some((part) =>
+          attributeSourcesByBlock(part, webResults).some(
+            (block) => block.source
+          )
+        );
+    }, [
+      contentParts.normalContent,
+      contentParts.normalAfterThink,
+      isGenerating,
+      isLastMessage,
+      webResults,
+    ]);
+
     const canShowSourcesAction =
-      !!content.trim() &&
-      displayedSources.length > 0 &&
-      !(isLastMessage && (isGenerating || isProcessingPrompt));
+      !!content.trim() && documentSources.length > 0 && !isBusy;
 
     const actions =
       showActions || canShowSourcesAction ? (
@@ -238,38 +285,73 @@ const MessageItem = memo(
         ) : (
           <View style={styles.aiMessage}>
             <View style={styles.bubbleContent}>
-              {content.trim() ? (
-                <Text style={styles.modelName}>{modelName}</Text>
-              ) : isLastMessage && isProcessingPrompt ? (
-                <AnimatedChatLoading />
+              {content.trim() || isAwaitingFirstToken ? (
+                <Animated.Text
+                  style={styles.modelName}
+                  entering={FadeIn.duration(WEB_TRACE_TRANSITION_MS)}
+                >
+                  {modelName}
+                </Animated.Text>
               ) : null}
-              {contentParts.normalContent.trim() && (
-                <MarkdownComponent
-                  text={normalContent}
-                  streaming={isLastMessage && isGenerating}
-                  onLinkPress={handleLinkPress}
+              {webActive && (
+                <WebSearchBlock
+                  isSearching={isSearchingThis}
+                  trace={webSearchTrace}
+                  results={webResults}
                 />
               )}
-              {contentParts.hasThinking &&
-                contentParts.thinkingContent?.trim() && (
-                  <ThinkingBlock
-                    content={contentParts.thinkingContent || ''}
-                    isComplete={contentParts.isThinkingComplete}
-                    inProgress={
-                      isLastMessage &&
-                      isGenerating &&
-                      !contentParts.isThinkingComplete
-                    }
-                  />
-                )}
-              {contentParts.normalAfterThink &&
-                contentParts.normalAfterThink.trim() && (
-                  <MarkdownComponent
-                    text={normalAfterThink}
+              {isAwaitingFirstToken ? (
+                <AnimatedChatLoading label="Thinking…" />
+              ) : null}
+              <Animated.View
+                key={refinedSwap}
+                entering={
+                  refinedSwap > 0 ? FadeIn.duration(REFINED_SWAP_MS) : undefined
+                }
+                exiting={FadeOut.duration(REFINED_SWAP_MS / 2)}
+              >
+                {contentParts.normalContent.trim() && (
+                  <AttributedAnswer
+                    text={normalContent}
+                    sources={webResults}
                     streaming={isLastMessage && isGenerating}
                     onLinkPress={handleLinkPress}
                   />
                 )}
+                {contentParts.hasThinking &&
+                  contentParts.thinkingContent?.trim() && (
+                    <ThinkingBlock
+                      content={contentParts.thinkingContent || ''}
+                      isComplete={contentParts.isThinkingComplete}
+                      inProgress={
+                        isLastMessage &&
+                        isGenerating &&
+                        !contentParts.isThinkingComplete
+                      }
+                    />
+                  )}
+                {contentParts.normalAfterThink &&
+                  contentParts.normalAfterThink.trim() && (
+                    <AttributedAnswer
+                      text={normalAfterThink}
+                      sources={webResults}
+                      streaming={isLastMessage && isGenerating}
+                      onLinkPress={handleLinkPress}
+                    />
+                  )}
+              </Animated.View>
+              {isRefining ? (
+                <Animated.View
+                  entering={FadeIn.duration(REFINED_SWAP_MS)}
+                  exiting={FadeOut.duration(REFINED_SWAP_MS / 2)}
+                >
+                  <AnimatedChatLoading label="Refining…" />
+                </Animated.View>
+              ) : null}
+              {attributionShown ? null : (
+                <DominantSourceBadge source={dominantWebSource} />
+              )}
+              <GroundingCaveatBadges caveats={message.groundingCaveats} />
               {showPerformanceMetrics &&
                 tokensPerSecond !== undefined &&
                 tokensPerSecond !== 0 && (
@@ -417,7 +499,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       gap: 6,
       marginTop: 4,
-      height: MESSAGE_ACTION_ROW_HEIGHT,
+      minHeight: MESSAGE_ACTION_ROW_HEIGHT,
     },
     imagePressed: {
       opacity: 0.9,

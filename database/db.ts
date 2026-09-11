@@ -98,6 +98,15 @@ export const runMigrations = async (db: SQLiteDatabase) => {
     );
   }
 
+  const hasGroundingCaveats = messagesTableInfo.some(
+    (col) => col.name === 'groundingCaveats'
+  );
+  if (!hasGroundingCaveats) {
+    await db.execAsync(
+      `ALTER TABLE messages ADD COLUMN groundingCaveats TEXT DEFAULT NULL`
+    );
+  }
+
   // Check and add thinkingEnabled to chatSettings
   const chatSettingsTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(chatSettings)`
@@ -118,6 +127,14 @@ export const runMigrations = async (db: SQLiteDatabase) => {
 
   if (hasContextWindow) {
     await db.execAsync(`ALTER TABLE chatSettings DROP COLUMN contextWindow`);
+  }
+
+  const hasDigest = chatSettingsTableInfo.some((col) => col.name === 'digest');
+
+  if (!hasDigest) {
+    await db.execAsync(
+      `ALTER TABLE chatSettings ADD COLUMN digest TEXT DEFAULT NULL`
+    );
   }
 
   // Add firstChunk column to sources
@@ -252,6 +269,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       imagePath TEXT DEFAULT NULL,
       documentName TEXT DEFAULT NULL,
       sourceDocuments TEXT DEFAULT NULL,
+      groundingCaveats TEXT DEFAULT NULL,
       FOREIGN KEY (chatId) REFERENCES chats (id) ON DELETE CASCADE
     );
   `);
@@ -261,6 +279,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       chatId INTEGER PRIMARY KEY NOT NULL,
       systemPrompt TEXT DEFAULT '',
       thinkingEnabled INTEGER DEFAULT NULL,
+      digest TEXT DEFAULT NULL,
       FOREIGN KEY(chatId) REFERENCES chats(id) ON DELETE CASCADE
     );
   `);

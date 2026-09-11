@@ -25,6 +25,9 @@ jest.mock('@gorhom/bottom-sheet', () => ({
 jest.mock('react-native-toast-message', () => ({
   show: jest.fn(),
 }));
+jest.mock('../utils/web/url/extractArticle', () => ({
+  extractArticle: jest.fn(),
+}));
 
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -32,11 +35,13 @@ import { useAttachment } from '../hooks/useAttachment';
 import { useEmbeddingModelStore } from '../store/embeddingModelStore';
 import { useLLMStore } from '../store/llmStore';
 import { useVectorStore } from '../context/VectorStoreContext';
+import { extractArticle } from '../utils/web/url/extractArticle';
 
 const mockLaunchImageLibrary = launchImageLibrary as jest.Mock;
 const mockLaunchCamera = launchCamera as jest.Mock;
 const mockGetDocumentAsync = DocumentPicker.getDocumentAsync as jest.Mock;
 const mockUseVectorStore = useVectorStore as jest.Mock;
+const mockExtractArticle = extractArticle as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -238,6 +243,49 @@ describe('useAttachment', () => {
     expect(att.sourceId).toBe(42);
     expect(att.status).toBe('ready');
     expect(runWithLoadedModel).toHaveBeenCalledTimes(1);
+  });
+
+  it('addUrlSource indexes the page with the embedding model loaded, like a picked document (release 10.A)', async () => {
+    mockExtractArticle.mockResolvedValue({
+      title: 'Test page',
+      text: 'A page about refresh rates.',
+    });
+    const mockAddSource = jest
+      .fn()
+      .mockResolvedValue({ success: true, sourceId: 7 });
+    const runWithLoadedModel = jest.fn(
+      async (operation: () => Promise<unknown>) => operation()
+    );
+    const runWithModelOffloaded = jest.fn(
+      async (operation: () => Promise<unknown>) => operation()
+    );
+    const getState = jest.spyOn(useLLMStore, 'getState').mockReturnValue({
+      runWithModelOffloaded,
+    } as unknown as ReturnType<typeof useLLMStore.getState>);
+    mockUseVectorStore.mockReturnValue({
+      vectorStore: {},
+      embeddings: { runWithLoadedModel },
+    });
+    const { useSourceStore } = require('../store/sourceStore');
+    useSourceStore.getState.mockReturnValue({
+      addSource: mockAddSource,
+      cleanupOrphanedSources: mockCleanupOrphanedSources,
+    });
+
+    const { result } = renderHook(() => useAttachment());
+    await act(async () => {
+      await result.current.addUrlSource('https://example.com/tv');
+    });
+
+    expect(runWithModelOffloaded).toHaveBeenCalledTimes(1);
+    expect(runWithLoadedModel).toHaveBeenCalledTimes(1);
+    expect(mockAddSource).toHaveBeenCalledTimes(1);
+    expect(result.current.attachments[0]).toMatchObject({
+      status: 'ready',
+      sourceId: 7,
+      name: 'Test page',
+    });
+    getState.mockRestore();
   });
 
   describe('abandoned source cleanup', () => {

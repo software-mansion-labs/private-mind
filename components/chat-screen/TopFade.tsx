@@ -3,7 +3,12 @@ import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import { EdgeFade, FADE_GAP_TRIM, FADE_HEIGHT, SEAM_OVERLAP } from './EdgeFade';
+import { EdgeFade } from './EdgeFade';
+import {
+  FADE_GAP_TRIM,
+  FADE_HEIGHT,
+  SEAM_OVERLAP,
+} from '../../constants/chat-screen';
 
 export const topFadeHeight = (anchor: number) =>
   anchor - FADE_GAP_TRIM + FADE_HEIGHT;

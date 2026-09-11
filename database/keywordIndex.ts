@@ -1,20 +1,21 @@
 import { type DB, type Scalar } from '@op-engineering/op-sqlite';
-import { stemPrefix } from '../utils/queryTerms';
-import { KEYWORD_TABLE, FTS_TOKENIZER } from '../constants/keyword-index';
-
-// FTS5 keyword index paralleling the vector store's chunks (same op-sqlite DB,
-// same chunk id) for BM25 retrieval. FTS5 depends on the native build; when it's
-// absent every op below no-ops and hybrid search degrades to vector-only. ł/Ł is
-// folded by hand because the tokenizer's remove_diacritics leaves that stroke
-// letter alone, so "platnosc" would otherwise never match "płatność".
+import { segmentUnsegmentedScripts, stemPrefix } from '../utils/queryTerms';
+import {
+  KEYWORD_TABLE,
+  FTS_TOKENIZER,
+  LEGACY_KEYWORD_TABLES,
+} from '../constants/keyword-index';
 
 export const foldForKeywordIndex = (text: string): string =>
-  text.replace(/Ł/g, 'L').replace(/ł/g, 'l');
+  segmentUnsegmentedScripts(text.replace(/Ł/g, 'L').replace(/ł/g, 'l'));
 
 let ftsAvailable = false;
 
 export const ensureKeywordIndex = async (db: DB): Promise<boolean> => {
   try {
+    for (const table of LEGACY_KEYWORD_TABLES) {
+      await db.execute(`DROP TABLE IF EXISTS ${table};`);
+    }
     await db.execute(
       `CREATE VIRTUAL TABLE IF NOT EXISTS ${KEYWORD_TABLE} USING fts5(
         chunk_id UNINDEXED,
@@ -44,7 +45,8 @@ const backfillKeywordIndex = async (db: DB): Promise<void> => {
        WHERE id NOT IN (SELECT chunk_id FROM ${KEYWORD_TABLE})`
     );
     rows = result.rows;
-  } catch {
+  } catch (error) {
+    console.warn('Keyword backfill query failed', error);
     return;
   }
   if (rows.length === 0) return;
@@ -65,7 +67,11 @@ const backfillKeywordIndex = async (db: DB): Promise<void> => {
     }
     await db.execute('COMMIT');
   } catch (error) {
-    await db.execute('ROLLBACK').catch(() => {});
+    await db
+      .execute('ROLLBACK')
+      .catch((rollbackError) =>
+        console.warn('Keyword index rollback failed', rollbackError)
+      );
     console.warn(
       'Failed to backfill keyword index from existing vectors',
       error

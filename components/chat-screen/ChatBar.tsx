@@ -30,6 +30,9 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useLLMStore } from '../../store/llmStore';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
+import LinkIcon from '../../assets/icons/link-alt.svg';
+import { detectUrls } from '../../utils/web/url/urlDetection';
+import { hostname } from '../../utils/web/webResultsToContext';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
@@ -38,11 +41,22 @@ import WhatsNewCard from '../WhatsNewCard';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
+import {
+  embeddingModelNeedsDownloadPrompt,
+  useEmbeddingModelStore,
+  whenEmbeddingStatusKnown,
+} from '../../store/embeddingModelStore';
+import {
+  isHighMemoryDevice,
+  isMemoryConstrained,
+} from '../../utils/modelCompatibility';
 
 const BAR_GROW_DURATION = 200;
 const BAR_GROW_EASING = Easing.out(Easing.ease);
 const BAR_GROW_LAYOUT =
   LinearTransition.duration(BAR_GROW_DURATION).easing(BAR_GROW_EASING);
+
+const SENT_ECHO_WINDOW_MS = 300;
 
 interface Props {
   chatId: number | null;
@@ -63,6 +77,8 @@ interface Props {
   onBarGrow?: () => void;
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
+  webSearchEnabled?: boolean;
+  onWebSearchToggle?: () => void;
   hasMessages: boolean;
   disabled?: boolean;
   modelSwitching?: boolean;
@@ -82,6 +98,8 @@ const ChatBar = ({
   onBarGrow,
   thinkingEnabled,
   onThinkingToggle,
+  webSearchEnabled,
+  onWebSearchToggle,
   hasMessages,
   disabled = false,
   modelSwitching = false,
@@ -94,13 +112,29 @@ const ChatBar = ({
   );
 
   const [userInput, setUserInput] = useState('');
+  const lastSentRef = useRef<{ text: string; at: number } | null>(null);
+
+  const handleChangeText = useCallback((text: string) => {
+    const justSent = lastSentRef.current;
+    lastSentRef.current = null;
+    if (
+      justSent &&
+      text === justSent.text &&
+      Date.now() - justSent.at < SENT_ECHO_WINDOW_MS
+    ) {
+      return;
+    }
+    setUserInput(text);
+  }, []);
   const {
     attachments,
     sheetRef,
     embeddingDownloadSheetRef,
+    presentDownloadSheet,
     pickFromLibrary,
     pickFromCamera,
     pickDocument,
+    addUrlSource,
     downloadModelAndContinue,
     markDownloadSheetClosed,
     markAttachmentSheetClosed,
@@ -109,6 +143,49 @@ const ChatBar = ({
     openSheet,
     addPastedAttachment,
   } = useAttachment();
+
+  const [embeddingSheetContext, setEmbeddingSheetContext] = useState<
+    'document' | 'web'
+  >('document');
+  const webEmbeddingPromptDismissedRef = useRef(false);
+  const embeddingSheetRequiredRef = useRef(false);
+  const webToggleSeqRef = useRef(0);
+
+  const handleWebSearchToggle = useCallback(() => {
+    const enabling = !webSearchEnabled;
+    const toggleSeq = webToggleSeqRef.current + 1;
+    webToggleSeqRef.current = toggleSeq;
+    onWebSearchToggle?.();
+    if (!enabling) return;
+    if (isMemoryConstrained(model)) return;
+
+    const required = isHighMemoryDevice(model);
+    if (!required && webEmbeddingPromptDismissedRef.current) return;
+
+    whenEmbeddingStatusKnown().then((status) => {
+      if (webToggleSeqRef.current !== toggleSeq) return;
+      if (!embeddingModelNeedsDownloadPrompt(status)) return;
+      setEmbeddingSheetContext('web');
+      embeddingSheetRequiredRef.current = required;
+      presentDownloadSheet();
+    });
+  }, [webSearchEnabled, onWebSearchToggle, model, presentDownloadSheet]);
+
+  const handleEmbeddingSheetDismiss = useCallback(() => {
+    if (embeddingSheetContext === 'web') {
+      if (embeddingSheetRequiredRef.current) {
+        if (useEmbeddingModelStore.getState().status !== 'ready') {
+          onWebSearchToggle?.();
+        }
+      } else {
+        webEmbeddingPromptDismissedRef.current = true;
+      }
+    }
+    markDownloadSheetClosed();
+  }, [embeddingSheetContext, markDownloadSheetClosed, onWebSearchToggle]);
+
+  const embeddingSheetRequired =
+    embeddingSheetContext === 'web' && embeddingSheetRequiredRef.current;
 
   const defaultBarHeight = useRef(0);
   const prevBarHeight = useRef(0);
@@ -230,16 +307,37 @@ const ChatBar = ({
     showModelSwitchingToast,
   ]);
 
+  const detectedUrl = useMemo(
+    () => detectUrls(userInput)[0] ?? null,
+    [userInput]
+  );
+  const showIndexChip =
+    !!detectedUrl && !attachments.some((a) => a.type === 'document');
+  const handleIndexUrl = useCallback(() => {
+    if (!detectedUrl) return;
+    addUrlSource(detectedUrl);
+    setUserInput((prev) =>
+      prev
+        .replace(detectedUrl, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+    );
+  }, [detectedUrl, addUrlSource]);
+
   const handleSend = useCallback(() => {
     if (modelSwitching) {
       showModelSwitchingToast();
       return;
     }
     if (hasLoadingAttachment || disabled) return;
+    Keyboard.dismiss();
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
     const inputToSend = userInput;
 
+    lastSentRef.current = inputToSend
+      ? { text: inputToSend, at: Date.now() }
+      : null;
     if (Platform.OS === 'ios') {
       textInputRef.current?.blur();
       setIosInputKey((key) => key + 1);
@@ -382,6 +480,22 @@ const ChatBar = ({
             </View>
           )}
           <View style={styles.inputContainer}>
+            {showIndexChip && (
+              <TouchableOpacity
+                style={styles.indexUrlChip}
+                onPress={handleIndexUrl}
+                testID="index-url-chip"
+              >
+                <LinkIcon
+                  width={16}
+                  height={16}
+                  style={{ color: theme.text.onChatBar }}
+                />
+                <Text style={styles.indexUrlChipText} numberOfLines={1}>
+                  Index {hostname(detectedUrl!)}
+                </Text>
+              </TouchableOpacity>
+            )}
             {attachments.length > 0 && (
               <View style={[styles.previewRow, { marginBottom: 8 }]}>
                 {attachments.map((attachment) => (
@@ -408,7 +522,7 @@ const ChatBar = ({
                   placeholder="Ask about anything..."
                   placeholderTextColor={theme.text.onChatBarMuted}
                   value={userInput}
-                  onChangeText={setUserInput}
+                  onChangeText={handleChangeText}
                 />
               </TextInputWrapper>
             </View>
@@ -425,6 +539,10 @@ const ChatBar = ({
               onSpeechInput={openSpeechInput}
               thinkingEnabled={thinkingEnabled}
               onThinkingToggle={onThinkingToggle}
+              webSearchEnabled={webSearchEnabled}
+              onWebSearchToggle={
+                onWebSearchToggle ? handleWebSearchToggle : undefined
+              }
             />
           </View>
           <AttachmentSheet
@@ -439,7 +557,9 @@ const ChatBar = ({
           <EmbeddingDownloadSheet
             bottomSheetModalRef={embeddingDownloadSheetRef}
             onDownload={downloadModelAndContinue}
-            onDismiss={markDownloadSheetClosed}
+            onDismiss={handleEmbeddingSheetDismiss}
+            context={embeddingSheetContext}
+            required={embeddingSheetRequired}
           />
         </>
       )}
@@ -505,5 +625,24 @@ const createStyles = (theme: Theme) =>
     previewRow: {
       flexDirection: 'row',
       gap: 8,
+    },
+    indexUrlChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 6,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 9999,
+      borderWidth: 1,
+      borderColor: theme.text.onChatBar,
+      marginBottom: 8,
+      maxWidth: '100%',
+    },
+    indexUrlChipText: {
+      color: theme.text.onChatBar,
+      fontSize: fontSizes.sm,
+      fontFamily: fontFamily.regular,
+      flexShrink: 1,
     },
   });

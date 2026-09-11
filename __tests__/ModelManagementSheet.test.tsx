@@ -63,7 +63,7 @@ import { useModelStore } from '../store/modelStore';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
 
-const mockUseModelStore = useModelStore as jest.Mock;
+const mockUseModelStore = useModelStore as unknown as jest.Mock;
 const setSheetData = (BottomSheetModal as any).__setData;
 
 const baseModel = {

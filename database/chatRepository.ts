@@ -34,8 +34,11 @@ export type ChatSettings = {
   thinkingEnabled?: boolean;
 };
 
+export type GroundingCaveatKind = 'figure' | 'trend' | 'conversion';
+
 export type Message = {
   id: number;
+  localId?: number;
   chatId: number;
   modelName?: string;
   role: 'user' | 'assistant' | 'system' | 'event';
@@ -43,20 +46,57 @@ export type Message = {
   imagePath?: string;
   documentName?: string;
   sourceDocuments?: SourceDocument[];
+  groundingCaveats?: GroundingCaveatKind[];
   tokensPerSecond?: number;
   timeToFirstToken?: number;
   timestamp: number;
 };
+
+export type SourceKind = 'document' | 'web';
 
 export type SourceDocument = {
   documentId?: number;
   name: string;
   passage?: string;
   similarity?: number;
+  kind?: SourceKind;
+  url?: string;
+  query?: string;
+  sourceQuery?: string;
+  used?: boolean;
+  read?: boolean;
 };
 
-type RawMessage = Omit<Message, 'sourceDocuments'> & {
+export const sourceKind = (source: SourceDocument): SourceKind =>
+  source.kind ?? 'document';
+
+type RawMessage = Omit<Message, 'sourceDocuments' | 'groundingCaveats'> & {
   sourceDocuments?: string | null;
+  groundingCaveats?: string | null;
+};
+
+const GROUNDING_CAVEAT_KINDS: GroundingCaveatKind[] = [
+  'figure',
+  'trend',
+  'conversion',
+];
+
+const parseGroundingCaveats = (
+  groundingCaveats?: string | null
+): GroundingCaveatKind[] | undefined => {
+  if (!groundingCaveats) return undefined;
+
+  try {
+    const parsed = JSON.parse(groundingCaveats);
+    if (!Array.isArray(parsed)) return undefined;
+
+    const kinds = parsed.filter((kind): kind is GroundingCaveatKind =>
+      GROUNDING_CAVEAT_KINDS.includes(kind)
+    );
+    return kinds.length > 0 ? kinds : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 const parseSourceDocuments = (
@@ -83,6 +123,24 @@ const parseSourceDocuments = (
           typeof source.passage === 'string' ? source.passage : undefined,
         similarity:
           typeof source.similarity === 'number' ? source.similarity : undefined,
+        kind: source.kind === 'web' ? 'web' : undefined,
+        url:
+          source.kind === 'web' && typeof source.url === 'string'
+            ? source.url
+            : undefined,
+        query:
+          source.kind === 'web' && typeof source.query === 'string'
+            ? source.query
+            : undefined,
+        sourceQuery:
+          source.kind === 'web' && typeof source.sourceQuery === 'string'
+            ? source.sourceQuery
+            : undefined,
+        used: source.kind === 'web' && source.used === true ? true : undefined,
+        read:
+          source.kind === 'web' && typeof source.read === 'boolean'
+            ? source.read
+            : undefined,
       }));
   } catch {
     return undefined;
@@ -157,6 +215,7 @@ export const getChatMessages = async (
   return messages.map((message) => ({
     ...message,
     sourceDocuments: parseSourceDocuments(message.sourceDocuments),
+    groundingCaveats: parseGroundingCaveats(message.groundingCaveats),
   }));
 };
 
@@ -165,7 +224,7 @@ export const persistMessage = async (
   message: Omit<Message, 'id' | 'timestamp'>
 ): Promise<number> => {
   const result = await db.runAsync(
-    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
     [
       message.chatId,
       message.role,
@@ -177,6 +236,9 @@ export const persistMessage = async (
       message.documentName || null,
       message.sourceDocuments?.length
         ? JSON.stringify(message.sourceDocuments)
+        : null,
+      message.groundingCaveats?.length
+        ? JSON.stringify(message.groundingCaveats)
         : null,
     ]
   );
@@ -208,7 +270,7 @@ export const importMessages = async (
   for (let i = 0; i < messages.length; i += IMPORT_BATCH_SIZE) {
     const batch = messages.slice(i, i + IMPORT_BATCH_SIZE);
     const placeholders = batch
-      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .join(', ');
     const flattenedValues = batch.flatMap((msg) => [
       chatId,
@@ -221,9 +283,12 @@ export const importMessages = async (
       msg.imagePath ?? null,
       msg.documentName ?? null,
       msg.sourceDocuments?.length ? JSON.stringify(msg.sourceDocuments) : null,
+      msg.groundingCaveats?.length
+        ? JSON.stringify(msg.groundingCaveats)
+        : null,
     ]);
     await db.runAsync(
-      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments) VALUES ${placeholders}`,
+      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats) VALUES ${placeholders}`,
       flattenedValues
     );
   }
@@ -261,8 +326,10 @@ const copyMessagesWithIdMap = async (
           tokensPerSecond,
           timeToFirstToken,
           imagePath,
-          documentName
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          documentName,
+          sourceDocuments,
+          groundingCaveats
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         chatId,
@@ -274,6 +341,12 @@ const copyMessagesWithIdMap = async (
         msg.timeToFirstToken ?? 0,
         msg.imagePath ?? null,
         msg.documentName ?? null,
+        msg.sourceDocuments?.length
+          ? JSON.stringify(msg.sourceDocuments)
+          : null,
+        msg.groundingCaveats?.length
+          ? JSON.stringify(msg.groundingCaveats)
+          : null,
       ]
     );
     idMap.set(msg.id, result.lastInsertRowId);
@@ -432,6 +505,17 @@ export const deleteChat = async (
   await db.runAsync(`DELETE FROM chats WHERE id = ?;`, [chatId]);
 };
 
+const thinkingEnabledFromDb = (value: number | null): boolean | undefined => {
+  if (value === 1) return true;
+  if (value === 0) return false;
+  return undefined;
+};
+
+const thinkingEnabledToDb = (value: boolean | undefined): number | null => {
+  if (value === undefined) return null;
+  return value ? 1 : 0;
+};
+
 export const getChatSettings = async (
   db: SQLiteDatabase,
   chatId: number | null
@@ -454,12 +538,7 @@ export const getChatSettings = async (
   return result
     ? {
         systemPrompt: result.systemPrompt,
-        thinkingEnabled:
-          result.thinkingEnabled === 1
-            ? true
-            : result.thinkingEnabled === 0
-              ? false
-              : undefined,
+        thinkingEnabled: thinkingEnabledFromDb(result.thinkingEnabled),
       }
     : {
         systemPrompt: '',
@@ -477,12 +556,7 @@ export const setChatSettings = async (
       JSON.stringify(settings)
     );
   } else {
-    const thinkingValue =
-      settings.thinkingEnabled === undefined
-        ? null
-        : settings.thinkingEnabled
-          ? 1
-          : 0;
+    const thinkingValue = thinkingEnabledToDb(settings.thinkingEnabled);
 
     await db.runAsync(
       `
@@ -495,6 +569,33 @@ export const setChatSettings = async (
       [chatId, settings.systemPrompt, thinkingValue]
     );
   }
+};
+
+export const getChatDigest = async (
+  db: SQLiteDatabase,
+  chatId: number
+): Promise<string | null> => {
+  const result = await db.getFirstAsync<{ digest: string | null }>(
+    'SELECT digest FROM chatSettings WHERE chatId = ?',
+    [chatId]
+  );
+  return result?.digest ?? null;
+};
+
+export const setChatDigest = async (
+  db: SQLiteDatabase,
+  chatId: number,
+  digest: string
+): Promise<void> => {
+  await db.runAsync(
+    `
+    INSERT INTO chatSettings (chatId, digest)
+    VALUES (?, ?)
+    ON CONFLICT(chatId) DO UPDATE SET
+      digest = excluded.digest
+  `,
+    [chatId, digest]
+  );
 };
 
 export const renameChat = async (
