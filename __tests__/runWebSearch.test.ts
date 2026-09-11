@@ -34,6 +34,7 @@ import type { WebSearchProgressEvent } from '../utils/web/runWebSearch';
 import { extractArticle } from '../utils/web/url/extractArticle';
 import { clearWebCaches } from '../utils/web/cache/webCache';
 import { WEB_SEARCH_MAX_RESULTS } from '../constants/web';
+import { sourcesPresentInContext } from '../utils/contextUtils';
 
 const axisOf = (text: string): number[] => {
   const lower = text.toLowerCase();
@@ -138,6 +139,51 @@ describe('runWebSearch', () => {
     expect(out.telemetry.skippedReason).toBe('gated');
     expect(generate).not.toHaveBeenCalled();
     expect(provider.calls).toHaveLength(0);
+  });
+
+  it('answers a currency conversion from the rate service without asking the planner', async () => {
+    const provider = new MockProvider({});
+    const generate = jest.fn(async () => '');
+    const out = await runWebSearch({
+      query: 'How much is 100 USD in EUR?',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate,
+      today: '2026-07-20',
+      resolveQuote: async () => ({
+        id: 'currency',
+        text: '100 USD = 85.82 EUR',
+        sourceUrl: 'https://frankfurter.dev',
+        sourceTitle: 'Frankfurter',
+        asOf: '2026-07-20',
+      }),
+    });
+    expect(sourcesPresentInContext(out.context[0])).toContain('Frankfurter');
+    expect(out.context[0]).toContain('100 USD = 85.82 EUR');
+    expect(out.sourceDocuments[0].url).toBe('https://frankfurter.dev');
+    expect(out.telemetry.finalLabel).toBe('correct');
+    expect(generate).not.toHaveBeenCalled();
+    expect(provider.calls).toHaveLength(0);
+  });
+
+  it('falls through to the search path when no quote can be resolved', async () => {
+    const provider = new MockProvider({});
+    const generate = jest.fn(
+      async () => '{"needs_search": true, "intent": "weather", "queries": []}'
+    );
+    await runWebSearch({
+      query: 'warsaw weather',
+      history: [],
+      provider,
+      embeddings: fakeEmbeddings,
+      embeddingModelReady: true,
+      generate,
+      today: '2026-07-20',
+      resolveQuote: async () => undefined,
+    });
+    expect(generate).toHaveBeenCalled();
   });
 
   it('skips when the provider is not ready', async () => {

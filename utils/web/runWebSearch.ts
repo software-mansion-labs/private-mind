@@ -15,6 +15,11 @@ import {
 } from './buildSearchQuery';
 import type { ModelProfile } from '../../constants/model-profiles';
 import {
+  resolveCurrencyQuote,
+  type QuoteResolverOptions,
+  type ResolvedQuote,
+} from './resolvers/currencyQuote';
+import {
   enrichWebResults,
   type ArticleFetcher,
   type EnrichPageEvent,
@@ -72,6 +77,8 @@ import {
   SEARCH_REGION_BY_LANGUAGE,
 } from '../../constants/web';
 import { detectQuestionLanguage } from '../questionLanguage';
+import { sourceBlock } from '../contextUtils';
+import { neutralizeDelimiters } from './security/untrustedContent';
 
 export interface WebSearchProgressEvent {
   type:
@@ -116,6 +123,10 @@ export interface RunWebSearchInput {
   fetchArticle?: ArticleFetcher;
   useCache?: boolean;
   searchTimeoutMs?: number;
+  resolveQuote?: (
+    query: string,
+    options: QuoteResolverOptions
+  ) => Promise<ResolvedQuote | undefined>;
 }
 
 export interface WebRoundTelemetry {
@@ -247,6 +258,40 @@ const searchWithCleanup = async (
   if (isSmallTalk(query)) {
     emit({ type: 'skipped' });
     return empty('gated');
+  }
+
+  const resolveQuote = input.resolveQuote ?? resolveCurrencyQuote;
+  const quote = await resolveQuote(query, {
+    ...(input.signal ? { signal: input.signal } : {}),
+  });
+  if (quote) {
+    emit({ type: 'reading', url: quote.sourceUrl, title: quote.sourceTitle });
+    emit({ type: 'done' });
+    return {
+      context: [
+        sourceBlock(
+          0,
+          neutralizeDelimiters(quote.sourceTitle),
+          neutralizeDelimiters(quote.text)
+        ),
+      ],
+      sourceDocuments: [
+        {
+          kind: 'web',
+          name: quote.sourceTitle,
+          url: quote.sourceUrl,
+          passage: quote.text,
+          used: true,
+          read: true,
+        },
+      ],
+      telemetry: {
+        ...telemetry,
+        intent: quote.id,
+        finalConfidence: 1,
+        finalLabel: 'correct',
+      },
+    };
   }
 
   emit({ type: 'objectives' });
