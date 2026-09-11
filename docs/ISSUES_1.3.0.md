@@ -356,11 +356,55 @@ someone trying two models on the same question.
 ## 8. Crash on iPhone 17 after asking a question
 
 **Reported:** the app crashed at 13:27 on an iPhone 17, after a question was
-sent.
+sent. Conditions: `Qwen 3 - 1.7B`, Think on, Web on, and speech input in use.
 
-**Status:** not yet diagnosed. The crash report is on the device and the device
-was off the cable when this was written; nothing had synced to the Mac
-(`~/Library/Logs/CrashReporter/MobileDevice` does not exist).
+**Status:** report not yet read, but those four conditions name an accounting
+gap that is visible in the code without it. The crash report is on the device
+and the device was off the cable when this was written; nothing had synced to
+the Mac (`~/Library/Logs/CrashReporter/MobileDevice` does not exist).
+
+### The budget does not know about the speech model
+
+Speech input loads a second ExecuTorch model. `store/sttStore.ts`:
+
+```ts
+SpeechToTextModule.fromModelName(WHISPER_TINY_EN, …)
+```
+
+It is loaded on first use and **never released** — there is no unload, dispose
+or delete in the store or in `hooks/useSpeechInput.tsx`, and `ensureLoaded`
+returns early once `isReady`. So after one dictation it stays resident for the
+life of the process.
+
+Nothing in `modelCompatibility.ts` accounts for it. The only additive term in
+the whole budget is `WEB_SEARCH_MEMORY_GB` (0.3):
+
+```ts
+return cost + WEB_SEARCH_MEMORY_GB <= getModelBudgetGB();
+```
+
+The codebase does know how to make room — the attachment picker calls
+`runWithModelOffloaded` before opening, and the retrieval embedder runs inside
+one — but the microphone path takes part in none of that.
+
+Against the iPhone 17's 4.06 GB model budget, the reported combination is:
+
+|                                                  |           GB |
+| ------------------------------------------------ | -----------: |
+| `Qwen 3 - 1.7B` + overhead                       |         2.46 |
+| web search allowance                             |         0.30 |
+| thinking — longer generation, larger KV cache    | not modelled |
+| Whisper Tiny, resident since the first dictation | not modelled |
+| **budget**                                       |     **4.06** |
+
+Two of the four terms are absent from the arithmetic, which is enough to explain
+a jetsam without any code being wrong in itself.
+
+This bears on §1. The memory floor was loosened by 10% on this branch on the
+grounds that it was too strict for the class of device. If 13:27 turns out to be
+a jetsam, the floor was not too strict — it was carrying weight for terms the
+budget never counted, and the right change is to count them rather than to lower
+the bar.
 
 To retrieve it, with the phone cabled and unlocked:
 
