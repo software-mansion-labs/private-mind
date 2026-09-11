@@ -316,3 +316,22 @@ describe('a 4 GB Android phone is offered something to run', () => {
     expect(getAppMemoryBudgetGB()).toBeCloseTo(5.5);
   });
 });
+
+describe('declared floors read the nominal RAM, not the bytes the OS reports', () => {
+  const gemma = {
+    modelName: 'Gemma 4 - 2B',
+    family: 'Gemma 4',
+    modelSize: 2.9,
+  };
+
+  it('lets an 8 GB iPhone that reports 7.6 GB search with Gemma 4 2B', () => {
+    setPlatform('ios');
+    mockGetTotalMemorySync.mockReturnValue(gb(7.6));
+    expect(hasMemoryForWebSearch(gemma)).toBe(true);
+  });
+
+  it('still keeps Gemma 4 2B off web search on a 6 GB phone reporting 5.5 GB', () => {
+    mockGetTotalMemorySync.mockReturnValue(gb(5.5));
+    expect(hasMemoryForWebSearch(gemma)).toBe(false);
+  });
+});

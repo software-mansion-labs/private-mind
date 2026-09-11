@@ -1,5 +1,6 @@
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { LFMEmbeddings } from './lfmEmbeddings';
+import { toAsciiDigits } from './asciiDigits';
 import {
   SourceDocument,
   sourceKind,
@@ -21,8 +22,9 @@ import {
 } from './web/figureGrounding';
 import { carryReferentIntoQuery } from './web/buildSearchQuery';
 import type { WebIntentKind } from './web/intentKind';
-import { hostname } from './web/webResultsToContext';
+import { hostname } from './web/hostname';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
+import { ISO_CURRENCY_CODES } from '../constants/currencies';
 import {
   CITATION_SENTENCE_PATTERN,
   CLAUSE_SPLIT_PATTERN,
@@ -150,6 +152,25 @@ export const looksLikeNoAnswer = (visibleReply: string): boolean =>
   [...NO_ANSWER_PATTERNS_EN, ...NO_ANSWER_PATTERNS_PL].some((pattern) =>
     pattern.test(visibleReply)
   );
+
+const carriesAFigureTheQuestionDidNot = (
+  visibleReply: string,
+  question: string
+): boolean => {
+  const asked = numericEvidence(question);
+  for (const value of numericEvidence(visibleReply)) {
+    if (!asked.has(value)) return true;
+  }
+  return false;
+};
+
+export const answeredNothing = (answer: string, question = ''): boolean => {
+  const visible = visibleAnswer(answer);
+  return (
+    looksLikeNoAnswer(visible) &&
+    !carriesAFigureTheQuestionDidNot(visible, question)
+  );
+};
 
 export const answerCitationOverlaps = (
   sourceDocuments: SourceDocument[],
@@ -316,6 +337,27 @@ export const isCircularNonAnswer = (answer: string): boolean => {
   return mentions >= CIRCULAR_SOURCE_REFERENCE_THRESHOLD;
 };
 
+const DETAIL_FIGURE = /(?<![\p{L}\p{N}])\d(?:[\d.,:]*\d)?(?![\p{L}\p{N}])/gu;
+const RETRY_LENGTH_FLOOR = 0.6;
+
+const detailFigures = (text: string): Set<string> =>
+  new Set([...text.matchAll(DETAIL_FIGURE)].map((match) => match[0]!));
+
+export const retryDropsGroundedDetail = (
+  original: string,
+  retried: string
+): boolean => {
+  const before = stripThinkBlocks(original).trim();
+  const after = stripThinkBlocks(retried).trim();
+  if (!before || !after) return false;
+  const had = detailFigures(before);
+  if (had.size === 0) return false;
+  if ([...had].some((figure) => after.includes(figure))) return false;
+  return after.length < before.length * RETRY_LENGTH_FLOOR;
+};
+
+const MIN_LANGUAGE_EVIDENCE = 2;
+
 export const isWrongLanguageAnswer = (
   answer: string,
   question: string | undefined
@@ -326,14 +368,19 @@ export const isWrongLanguageAnswer = (
   const visible = stripThinkBlocks(answer);
   if (!visible) return false;
   const actual = detectQuestionLanguage(visible);
-  return !!actual && actual.code !== expected.code;
+  if (!actual || actual.code === expected.code) return false;
+  if (actual.script && expected.script && actual.script !== expected.script) {
+    return true;
+  }
+  return (actual.evidence ?? 0) >= MIN_LANGUAGE_EVIDENCE;
 };
 
 export const pickCitationsByAnswer = (
   sourceDocuments: SourceDocument[],
   answer: string,
   preferred: SourceDocument[],
-  presentNames?: Set<string>
+  presentNames?: Set<string>,
+  question?: string
 ): SourceDocument[] => {
   const webDocuments = sourceDocuments.filter(
     (doc) => sourceKind(doc) === 'web'
@@ -344,23 +391,25 @@ export const pickCitationsByAnswer = (
   const citedLocal = pickLocalCitationsByAnswer(
     localDocuments,
     answer,
-    preferred
+    preferred,
+    question
   );
   return [
     ...citedLocal,
-    ...flagUsedWebDocuments(webDocuments, answer, presentNames),
+    ...flagUsedWebDocuments(webDocuments, answer, presentNames, question),
   ];
 };
 
 const flagUsedWebDocuments = (
   webDocuments: SourceDocument[],
   answer: string,
-  presentNames?: Set<string>
+  presentNames?: Set<string>,
+  question?: string
 ): SourceDocument[] => {
   if (webDocuments.length === 0) return webDocuments;
 
   const answerTerms = answerTermsOf(answer);
-  if (answerTerms.size === 0 || looksLikeNoAnswer(visibleAnswer(answer))) {
+  if (answerTerms.size === 0 || answeredNothing(answer, question)) {
     return webDocuments.map((doc) => ({ ...doc, used: false }));
   }
 
@@ -387,9 +436,10 @@ const flagUsedWebDocuments = (
 const pickLocalCitationsByAnswer = (
   sourceDocuments: SourceDocument[],
   answer: string,
-  preferred: SourceDocument[]
+  preferred: SourceDocument[],
+  question?: string
 ): SourceDocument[] => {
-  if (looksLikeNoAnswer(visibleAnswer(answer))) {
+  if (answeredNothing(answer, question)) {
     return [];
   }
 
@@ -541,25 +591,18 @@ const QUESTION_WANTS_AMOUNT =
 
 const CONTEXT_DATE =
   /\b\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}\b|\b\d{1,2}\s?(?:sty|lut|mar|kwi|maj|cze|lip|sie|wrz|pa[źz]|lis|gru|jan|feb|apr|jun|jul|aug|sep|oct|nov|dec)/i;
-const CONTEXT_AMOUNT = /\d{1,3}(?:[.,\u00A0\u202F ]\d{3})+|\d+[.,]\d+|\d{4,}/;
+const CONTEXT_AMOUNT =
+  /\d{1,3}(?:[.,\u00A0\u202F ]\d{3})+|\d+[.,]\d+|\p{Sc}\s?\d+|\d{2,}\s?(?:\p{Sc}|\p{L}{1,3}(?!\p{L}))/u;
 const CONTEXT_SPEC_FIGURE = /\d{2,}\s?\p{L}/u;
 
 const EVIDENCE_MIN_TOKENS = 5;
 const EVIDENCE_MIN_ANSWER_CHARS = 40;
-const DIGIT_BASES = [0x0660, 0x06f0, 0x0966, 0x09e6, 0xff10];
-const ANY_DIGIT_CHAR = /\p{Nd}/gu;
-const NUMBER_RUN = /\d[\d.,]*/g;
+const NUMBER_RUN = /\d[\d.,:]*/g;
 const NAME_RUN = /\p{Lu}[\p{L}\p{N}-]{2,}/gu;
+const GROUPED_FIGURE = /^\d{1,3}(?:[.,:]\d{2,3})+$/;
 
-const toAsciiDigits = (text: string): string =>
-  text.replace(ANY_DIGIT_CHAR, (char) => {
-    const code = char.codePointAt(0) ?? 0;
-    if (code >= 0x30 && code <= 0x39) return char;
-    for (const base of DIGIT_BASES) {
-      if (code >= base && code <= base + 9) return String(code - base);
-    }
-    return char;
-  });
+const separatorFreeFigure = (value: string): string | null =>
+  GROUPED_FIGURE.test(value) ? value.replace(/[.,:]/g, '') : null;
 
 const SOURCE_MARKER_LINE = /^[ \t]*--- (?:End of )?Source \d+.*?---[ \t]*$/gmu;
 const SENTENCE_OPENING = /(?:^|[.!?…:\n])[\s"'„«»()[\]—–-]*$/u;
@@ -567,19 +610,54 @@ const SENTENCE_OPENING = /(?:^|[.!?…:\n])[\s"'„«»()[\]—–-]*$/u;
 const opensSentence = (text: string, at: number): boolean =>
   SENTENCE_OPENING.test(text.slice(Math.max(0, at - 24), at));
 
-export const distinctiveEvidence = (text: string): Set<string> => {
+const numericEvidence = (text: string): Set<string> => {
   const found = new Set<string>();
   if (!text) return found;
-  const ascii = toAsciiDigits(text);
-  for (const match of ascii.match(NUMBER_RUN) ?? []) {
-    const value = match.replace(/[.,]+$/, '');
-    if (value.length >= 2) found.add(value);
+  for (const match of toAsciiDigits(text).match(NUMBER_RUN) ?? []) {
+    const value = match.replace(/[.,:]+$/, '');
+    if (value.length < 2) continue;
+    found.add(value);
+    const grouped = separatorFreeFigure(value);
+    if (grouped) found.add(grouped);
   }
+  return found;
+};
+
+export const distinctiveEvidence = (text: string): Set<string> => {
+  const found = numericEvidence(text);
+  if (!text) return found;
   for (const match of text.matchAll(NAME_RUN)) {
     if (opensSentence(text, match.index ?? 0)) continue;
     found.add(foldForMatching(match[0]));
   }
   return found;
+};
+
+const SOURCES_BLOCK = /<sources>([\s\S]*?)<\/sources>/;
+
+export const sourcesBlockOf = (promptContent: string): string =>
+  promptContent.match(SOURCES_BLOCK)?.[1] ?? promptContent;
+
+const contentStems = (text: string): Set<string> =>
+  new Set(
+    [...extractQueryTerms(text)].map((term) =>
+      stemPrefix(foldForMatching(term))
+    )
+  );
+
+const sharesWording = (
+  answer: string,
+  context: string,
+  question: string | undefined
+): boolean => {
+  const asked = contentStems(question ?? '');
+  const offered = contentStems(context.replace(SOURCE_MARKER_LINE, ''));
+  for (const stem of asked) offered.delete(stem);
+  if (offered.size === 0) return true;
+  for (const stem of contentStems(answer)) {
+    if (offered.has(stem)) return true;
+  }
+  return false;
 };
 
 export const answerUsesNoRetrievedEvidence = (
@@ -593,7 +671,9 @@ export const answerUsesNoRetrievedEvidence = (
   const offered = distinctiveEvidence(context.replace(SOURCE_MARKER_LINE, ''));
   for (const term of asked) offered.delete(term);
   if (offered.size < EVIDENCE_MIN_TOKENS) return false;
-  for (const term of distinctiveEvidence(visible)) {
+  const carried = distinctiveEvidence(visible);
+  if (carried.size === 0) return !sharesWording(visible, context, question);
+  for (const term of carried) {
     if (offered.has(term)) return false;
   }
   return true;
@@ -606,9 +686,9 @@ const aspectStems = (query: string): string[] => {
   const plain = query.replace(SITE_OPERATOR, ' ');
   return [
     ...new Set(
-      [...extractQueryTerms(plain, detectQuestionLanguage(plain)?.code)].map(
-        (term) => stemPrefix(foldForMatching(term))
-      )
+      [...extractQueryTerms(plain, detectQuestionLanguage(plain)?.code)]
+        .filter((term) => !ISO_CURRENCY_CODES.has(term))
+        .map((term) => stemPrefix(foldForMatching(term)))
     ),
   ];
 };
@@ -698,6 +778,15 @@ const EVIDENCE_LINE_MAX_CHARS = 200;
 const EVIDENCE_WINDOW_WORDS = 12;
 const EVIDENCE_WINDOW_PADDING = 3;
 const TOPIC_STEM_DISCOUNT = 0.5;
+const BARE_DIGIT_DISCOUNT = 0.25;
+const QUESTION_SENTENCE = /\?\s*$/u;
+const MEASUREMENT_FIGURE = /\p{N}{2,}|\p{N}\s?(?:[°%]|\p{Sc})/u;
+
+const figureQuality = (words: string[], at: number): number =>
+  at !== -1 &&
+  MEASUREMENT_FIGURE.test(toAsciiDigits(words.slice(at, at + 2).join(' ')))
+    ? 1
+    : BARE_DIGIT_DISCOUNT;
 const SOURCE_TITLE_LINE = /^[ \t]*--- Source \d+: (.*?) ---[ \t]*$/gmu;
 
 const stemWeights = (
@@ -791,10 +880,11 @@ const locateEvidence = (
         ? near
         : -1;
   }
+  const best = figure === -1 ? nearest(anchor) : figure;
   return {
     words,
     index,
-    score: figures.length === 0 ? 0 : score,
+    score: figures.length === 0 ? 0 : score * figureQuality(words, best),
     anchor,
     figure,
   };
@@ -832,7 +922,7 @@ export const evidenceLinesFor = (
     .replace(SOURCE_MARKER_LINE, '')
     .split(SENTENCE_BREAK)
     .map((sentence) => sentence.trim())
-    .filter(Boolean);
+    .filter((sentence) => sentence && !QUESTION_SENTENCE.test(sentence));
   const weights = stemWeights(sentences, stems);
   const candidates = sentences
     .map((sentence, index) =>
@@ -883,7 +973,9 @@ export const claimsMissingEvidenceItHas = (
   if (!question || !context.trim()) return false;
   const visible = stripThinkBlocks(answer);
   if (!visible) return false;
-  const evidence = withoutCodes(context.replace(SOURCE_MARKER_LINE, ''));
+  const evidence = withoutCodes(
+    context.replace(SOURCE_MARKER_LINE, '')
+  ).replace(YEAR_TOKEN, ' ');
   const wantsDate =
     intent === 'date' ||
     intent === 'event' ||

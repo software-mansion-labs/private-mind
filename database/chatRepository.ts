@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SQLiteDatabase } from 'expo-sqlite';
+import { isHttpUrl } from '../utils/web/security/outboundFetch';
 
 const DEFAULT_CHAT_SETTINGS_KEY = 'default_chat_settings';
 
@@ -125,7 +126,9 @@ const parseSourceDocuments = (
           typeof source.similarity === 'number' ? source.similarity : undefined,
         kind: source.kind === 'web' ? 'web' : undefined,
         url:
-          source.kind === 'web' && typeof source.url === 'string'
+          source.kind === 'web' &&
+          typeof source.url === 'string' &&
+          isHttpUrl(source.url)
             ? source.url
             : undefined,
         query:
@@ -136,7 +139,10 @@ const parseSourceDocuments = (
           source.kind === 'web' && typeof source.sourceQuery === 'string'
             ? source.sourceQuery
             : undefined,
-        used: source.kind === 'web' && source.used === true ? true : undefined,
+        used:
+          source.kind === 'web' && typeof source.used === 'boolean'
+            ? source.used
+            : undefined,
         read:
           source.kind === 'web' && typeof source.read === 'boolean'
             ? source.read

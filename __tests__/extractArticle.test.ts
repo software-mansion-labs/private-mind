@@ -1,5 +1,6 @@
 import {
   extractArticle,
+  joinSplitAmounts,
   looksLikeBotWall,
 } from '../utils/web/url/extractArticle';
 
@@ -24,13 +25,15 @@ const html = `
 
 class FakeXhr {
   static body = '';
+  static bytes: Uint8Array | null = null;
   static ok = true;
   static chunkSize: number | null = null;
   static contentType: string | null = null;
 
   status = 0;
   statusText = '';
-  responseText = '';
+  response: ArrayBuffer | null = null;
+  responseType = '';
   readyState = 0;
   onload: (() => void) | null = null;
   onerror: (() => void) | null = null;
@@ -62,13 +65,18 @@ class FakeXhr {
     if (this.aborted) return;
     this.status = FakeXhr.ok ? 200 : 500;
     this.statusText = FakeXhr.ok ? 'OK' : 'Error';
-    this.responseText = body;
+    const bytes = FakeXhr.bytes ?? new TextEncoder().encode(body);
+    this.response = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength
+    ) as ArrayBuffer;
     this.onload?.();
   }
 }
 
 const mockFetch = (body: string, ok = true) => {
   FakeXhr.body = body;
+  FakeXhr.bytes = null;
   FakeXhr.ok = ok;
   FakeXhr.chunkSize = null;
   FakeXhr.contentType = null;
@@ -131,6 +139,77 @@ describe('extractArticle', () => {
     mockFetch('<html><body><p>no title here</p></body></html>');
     const noTitle = await extractArticle('https://www.example.com/page');
     expect(noTitle.title).toBe('example.com');
+  });
+
+  it('decodes a windows-1250 page by its meta charset when the header has none', async () => {
+    const xhr = mockFetch('');
+    xhr.contentType = 'text/html';
+    const head =
+      '<html><head><meta charset="windows-1250"><title>Cennik</title></head><body><main><p>';
+    const body = 'Bilet ulgowy kosztuje 12 z';
+    const tail = ' od kwietnia. Kasa czynna codziennie do wieczora.'.repeat(3);
+    xhr.bytes = Uint8Array.from([
+      ...new TextEncoder().encode(head),
+      ...new TextEncoder().encode(body),
+      0xb3,
+      ...new TextEncoder().encode(tail),
+      ...new TextEncoder().encode('</p></main></body></html>'),
+    ]);
+
+    const article = await extractArticle('https://example.com/cennik');
+
+    expect(article.text).toContain('12 zł');
+  });
+
+  it('trusts the header charset over the meta tag', async () => {
+    const xhr = mockFetch('');
+    xhr.contentType = 'text/html; charset=iso-8859-2';
+    xhr.bytes = Uint8Array.from([
+      ...new TextEncoder().encode(
+        '<html><head><meta charset="windows-1252"></head><body><main><p>Cena od 5 z'
+      ),
+      0xb3,
+      ...new TextEncoder().encode(
+        ' za sztukę w hurcie, dostawa w dwa dni robocze na terenie kraju.'.repeat(
+          3
+        ) + '</p></main></body></html>'
+      ),
+    ]);
+
+    const article = await extractArticle('https://example.com/hurt');
+
+    expect(article.text).toContain('5 zł');
+  });
+
+  it('keeps the price inside a buy-box form and drops its controls', async () => {
+    mockFetch(
+      `<html><body><main><h1>Buty biegowe</h1>
+      <form class="buy-box" action="/cart">
+        <div class="price">219,99 zł</div>
+        <select name="size"><option>Wybierz rozmiar</option><option>41</option><option>42</option></select>
+        <button type="submit">Dodaj do koszyka</button>
+      </form>
+      ${'<p>Lekkie buty do biegania po asfalcie, z amortyzacją na długie dystanse.</p>'.repeat(3)}
+      </main></body></html>`
+    );
+    const article = await extractArticle('https://sklep.example/buty');
+    expect(article.text).toContain('219,99 zł');
+    expect(article.text).not.toContain('Wybierz rozmiar');
+    expect(article.text).not.toContain('Dodaj do koszyka');
+  });
+
+  it('folds a title spread over several lines into one, so the source header stays a line', async () => {
+    mockFetch(
+      '<html><head><title>\n    Karta graficzna\n\t\tRTX 5080\n  </title></head><body><p>x</p></body></html>'
+    );
+    const fromTitle = await extractArticle('https://example.com/a');
+    expect(fromTitle.title).toBe('Karta graficzna RTX 5080');
+
+    mockFetch(
+      '<html><head><meta property="og:title" content="Sklep\n  online" /></head><body><p>x</p></body></html>'
+    );
+    const fromOg = await extractArticle('https://example.com/b');
+    expect(fromOg.title).toBe('Sklep online');
   });
 
   it('throws on a non-ok response', async () => {
@@ -705,6 +784,59 @@ describe('record grouping generalises past <table>', () => {
     expect(article.text).toContain('Wlasciwa tresc artykulu tutaj.');
   });
 
+  it('keeps an ingredient list that carries no quantities (device: every language failed this)', async () => {
+    const nav = ['Startseite', 'Rezepte', 'Kontakt']
+      .map((label) => `<li><a href="/x">${label}</a></li>`)
+      .join('');
+    const ingredients = [
+      'Spaetzle',
+      'Bergkaese',
+      'Zwiebeln',
+      'Butter',
+      'Sahne',
+      'Salz',
+      'Pfeffer',
+      'Muskat',
+    ]
+      .map((item) => `<li>${item}</li>`)
+      .join('');
+    mockFetch(
+      page(
+        `<nav><ul>${nav}</ul></nav><h1>Kaesespaetzle</h1>` +
+          `<h2>Zutaten</h2><ul>${ingredients}</ul>` +
+          '<p>Die Spaetzle schichtweise mit Kaese in eine Form geben.</p>'
+      )
+    );
+    const article = await extractArticle('https://rezepte.example.de/x');
+
+    expect(article.text).toContain('Bergkaese');
+    expect(article.text).toContain('Muskat');
+  });
+
+  it('still drops a navigation run of the same shape when its items are links', async () => {
+    const nav = [
+      'Startseite',
+      'Rezepte',
+      'Backen',
+      'Kochen',
+      'Getraenke',
+      'Ueber uns',
+      'Kontakt',
+      'Impressum',
+    ]
+      .map((label) => `<li><a href="/x">${label}</a></li>`)
+      .join('');
+    mockFetch(
+      page(
+        `<ul>${nav}</ul><p>Hier finden Sie taeglich neue Ideen zum Kochen.</p>`
+      )
+    );
+    const article = await extractArticle('https://rezepte.example.de/y');
+
+    expect(article.text).not.toContain('Impressum');
+    expect(article.text).toContain('taeglich neue Ideen');
+  });
+
   it('does not let facet counts promote a filter rail into a record', async () => {
     const items = ['Buty (12)', 'Kurtki (8)', 'Spodnie (30)']
       .map((label) => `<li>${label}</li>`)
@@ -832,5 +964,121 @@ describe('main-content isolation on pages without a single landmark', () => {
 
     const article = await extractArticle('https://blog.example/recenzja');
     expect(article.text).toContain('czernie głębokie');
+  });
+});
+
+describe('joinSplitAmounts — a decimal the page rendered as a sentence stop (release K-2)', () => {
+  it('rejoins a small integer and its cents split by ". " before a unit', () => {
+    expect(
+      joinSplitAmounts('Cena benzyny w Polsce: średnia krajowa to 5. 95 zł/l.')
+    ).toBe('Cena benzyny w Polsce: średnia krajowa to 5,95 zł/l.');
+    expect(joinSplitAmounts('Kurs wynosi 4. 27 PLN za euro')).toBe(
+      'Kurs wynosi 4,27 PLN za euro'
+    );
+  });
+
+  it('leaves a real sentence boundary alone', () => {
+    expect(joinSplitAmounts('Zebrano 2025. 95 osób przyszło.')).toBe(
+      'Zebrano 2025. 95 osób przyszło.'
+    );
+    expect(joinSplitAmounts('Rozdział 5. Warszawa')).toBe(
+      'Rozdział 5. Warszawa'
+    );
+  });
+});
+
+describe('extractArticle — hostile and malformed markup', () => {
+  const originalXhr = (global as unknown as { XMLHttpRequest: unknown })
+    .XMLHttpRequest;
+  afterEach(() => {
+    (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest =
+      originalXhr;
+  });
+
+  const paragraph = `<p>${'Reanimated lets you build smooth animations on the UI thread. '.repeat(3)}</p>`;
+
+  it('finishes a page of unterminated script openers in bounded time', async () => {
+    mockFetch(`<html><body>${'<script src="x">'.repeat(30000)}</body></html>`);
+    const started = Date.now();
+    const article = await extractArticle('https://example.com/a');
+    expect(Date.now() - started).toBeLessThan(2000);
+    expect(article.text).toBe('');
+  });
+
+  it('does not leak attribute text that holds a closing bracket', async () => {
+    mockFetch(
+      `<html><body><div data-action="scroll@window->sidebar#stuck disappear@window->sidebar#unstuck">${paragraph}</div></body></html>`
+    );
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('smooth animations');
+    expect(article.text).not.toContain('sidebar#stuck');
+  });
+
+  it('drops control and format characters whether encoded or raw', async () => {
+    mockFetch(
+      `<html><body><p>Ig&#8203;nore&#x202e; prev\u200bious &#0;rules. ${'filler text '.repeat(12)}</p></body></html>`
+    );
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('Ignore previous rules.');
+    for (const char of ['\u200b', '\u202e', '\u0000']) {
+      expect(article.text.includes(char)).toBe(false);
+    }
+  });
+
+  it('decodes the named entities pages actually use', async () => {
+    mockFetch(
+      `<html><body><p>Caf&eacute; &laquo;Zako&#x142;pane&raquo; &ndash; cena&hellip; &mdash; 5&nbsp;zł. ${'filler text '.repeat(12)}</p></body></html>`
+    );
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('Café «Zakołpane» – cena… — 5 zł.');
+  });
+
+  it('removes a nested header as one block', async () => {
+    mockFetch(
+      `<html><body><header><div><header>inner menu</header>outer chrome</div></header>${paragraph}</body></html>`
+    );
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('smooth animations');
+    expect(article.text).not.toContain('inner menu');
+    expect(article.text).not.toContain('outer chrome');
+  });
+
+  it('ignores markup inside comments', async () => {
+    mockFetch(
+      `<html><body><!-- <nav>Menu label</nav> -->${paragraph}<!-- unterminated</body></html>`
+    );
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('smooth animations');
+    expect(article.text).not.toContain('Menu label');
+  });
+
+  it('reads a page that has no body element', async () => {
+    mockFetch(`<html>${paragraph}</html>`);
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('smooth animations');
+  });
+
+  it('keeps the text of an unclosed header rather than eating the page', async () => {
+    mockFetch(`<html><body><header>Site name ${paragraph}</body></html>`);
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('smooth animations');
+  });
+
+  it('stops reading past the parse cap', async () => {
+    mockFetch(
+      `<html><body>${paragraph}${'<p>filler text that goes on</p>'.repeat(25000)}<p>Tail marker</p></body></html>`
+    );
+    const article = await extractArticle('https://example.com/a');
+    expect(article.text).toContain('smooth animations');
+    expect(article.text).not.toContain('Tail marker');
+  });
+
+  it('strips format characters from the title and the product name', async () => {
+    mockFetch(
+      `<html><head><title>Sony\u200b WH-1000XM6</title><script type="application/ld+json">{"@type":"Product","name":"Sony\u202e WH","offers":{"price":"1299","priceCurrency":"PLN"}}</script></head><body>${paragraph}</body></html>`
+    );
+    const article = await extractArticle('https://example.com/a');
+    expect(article.title).toBe('Sony WH-1000XM6');
+    expect(article.product?.name).toBe('Sony WH');
   });
 });

@@ -14,9 +14,6 @@ const result = (
 });
 
 describe('sub-question labelling of sources', () => {
-  // Searching the user's own words beside the plan means results now arrive
-  // under two different sourceQuery values on every turn. Tagging them made
-  // Gemma copy "[Answers: ...]" straight into its reply on device.
   it('does not tag sources when the second query is the question itself', () => {
     const out = webResultsToContext(
       [

@@ -11,9 +11,7 @@ const result = (title: string, snippet = ''): WebSearchResult => ({
 });
 
 describe('anchorTerms', () => {
-  // Anchors are stemmed the same way the other query terms are, so they match
-  // inflected forms in the results.
-  it('takes names away from the opening word, and anything with a digit', () => {
+  it('stems a name off the opening word, and keeps anything with a digit', () => {
     expect(anchorTerms('Kiedy odbył się pierwszy udany lot Starship?')).toEqual(
       ['starsh']
     );
@@ -34,10 +32,6 @@ describe('anchorTerms', () => {
 });
 
 describe('ranking anchors on the question subject', () => {
-  // The turn-7 failure on device: five results, three of them about a heart
-  // transplant and a V-2 rocket because they share the Polish frame
-  // "pierwszy udany ... odbył się". The transplant page ranked first and was
-  // used as a source; the answer invented a launch date.
   it('puts Starship above pages that only share the sentence frame', () => {
     const question = 'Kiedy odbył się pierwszy w pełni udany lot Starship?';
     const ranked = rankByListingRelevance(
@@ -70,8 +64,6 @@ describe('ranking anchors on the question subject', () => {
     expect(transplantAt).toBeGreaterThan(1);
   });
 
-  // The turn-9 failure: the answer was in a title the pipeline already held,
-  // but that result ranked third and the fetch budget is two.
   it('lifts the result whose title carries both the subject and a figure', () => {
     const ranked = rankByListingRelevance(
       [
@@ -124,10 +116,6 @@ describe('ranking anchors on the question subject', () => {
 });
 
 describe('a figure that answers a quantity question', () => {
-  // Measured on device: the two pages ranked first were a voivodship
-  // statistics bulletin and a page with no figures at all, so those were the
-  // two that got fetched. The three whose snippets carried the population
-  // ranked third to fifth and were never read.
   it('lifts the page whose title states the number over a number-dense one', () => {
     const ranked = rankByListingRelevance(
       [

@@ -2,7 +2,9 @@ import {
   rankByListingRelevance,
   fairRankByListingRelevance,
   scopeYearsOf,
+  looksLikeHistoricalRoster,
 } from '../utils/web/listingRelevance';
+import { namesATimePeriod } from '../utils/web/timePeriod';
 import type { WebSearchResult } from '../utils/web/types';
 
 const result = (over: Partial<WebSearchResult>): WebSearchResult => ({
@@ -295,5 +297,171 @@ describe('fairRankByListingRelevance', () => {
 
   it('handles all-empty groups without throwing', () => {
     expect(fairRankByListingRelevance([[], []], 'anything', 5)).toEqual([]);
+  });
+});
+
+describe('a question about who holds a position now', () => {
+  const roster = {
+    title: 'Prezydenci USA - pełna lista od 1789 roku do dziś',
+    url: 'https://historia.example.pl/prezydenci',
+    snippet:
+      'Wszyscy prezydenci Stanów Zjednoczonych w porządku chronologicznym.',
+  };
+  const current = {
+    title: 'Prezydent USA - kto obecnie sprawuje urząd',
+    url: 'https://news.example.pl/prezydent',
+    snippet: 'Aktualny prezydent Stanów Zjednoczonych i jego kadencja.',
+  };
+
+  it('recognises a title that announces a historical roster', () => {
+    expect(looksLikeHistoricalRoster(roster.title)).toBe(true);
+    expect(
+      looksLikeHistoricalRoster(
+        'FIFA World Cup Winners Full List From 1930 to 2026'
+      )
+    ).toBe(true);
+  });
+
+  it('leaves a title about the present alone', () => {
+    expect(looksLikeHistoricalRoster(current.title)).toBe(false);
+  });
+
+  it('demotes the roster below the page about the present (Pixel: prezydent USA)', () => {
+    const ranked = rankByListingRelevance(
+      [roster, current],
+      'Kto jest aktualnie prezydentem USA?',
+      { currentState: true }
+    );
+
+    expect(ranked[0]!.title).toBe(current.title);
+  });
+
+  it('is the penalty, not the wording, that puts the holder above the roster', () => {
+    const enumerating = {
+      title: 'Prezydenci Stanow Zjednoczonych 1789-2026',
+      url: 'https://wiki.example/lista',
+      snippet:
+        'Lista prezydentow Stanow Zjednoczonych, kadencje, partie, prezydent po prezydencie.',
+    };
+    const holder = {
+      title: 'Donald Trump',
+      url: 'https://wiki.example/osoba',
+      snippet: 'Prezydent Stanow Zjednoczonych.',
+    };
+    const question = 'Kto jest prezydentem USA?';
+
+    expect(
+      rankByListingRelevance([enumerating, holder], question, {})[0]!.title
+    ).toBe(enumerating.title);
+    expect(
+      rankByListingRelevance([enumerating, holder], question, {
+        currentState: true,
+      })[0]!.title
+    ).toBe(holder.title);
+  });
+
+  it('reads a roster title in any language, because it reads the years', () => {
+    expect(
+      looksLikeHistoricalRoster(
+        'Liste der Bundeskanzler Deutschlands seit 1949'
+      )
+    ).toBe(true);
+    expect(looksLikeHistoricalRoster('Presidentes do Brasil desde 1889')).toBe(
+      true
+    );
+    expect(
+      looksLikeHistoricalRoster('日本の内閣総理大臣一覧 1885年から2026年まで')
+    ).toBe(true);
+  });
+
+  it('reads a span of recent years as a roster, with no year old enough', () => {
+    expect(looksLikeHistoricalRoster('Премьер-министры 2005-2026')).toBe(true);
+  });
+
+  it('leaves a title that only names the present alone', () => {
+    expect(
+      looksLikeHistoricalRoster('Bundeskanzler von Deutschland 2026')
+    ).toBe(false);
+  });
+
+  it('leaves two nearby years alone, as one tenure can span them', () => {
+    expect(looksLikeHistoricalRoster('World Cup hosts 2022 and 2026')).toBe(
+      false
+    );
+  });
+
+  describe('the gate that decides a question is about the present', () => {
+    const list = {
+      title: 'Liste der Bundeskanzler Deutschlands 1949-2026',
+      url: 'https://wiki.example/liste',
+      snippet: 'Alle Bundeskanzler Deutschlands mit ihren Amtszeiten.',
+    };
+    const holder = {
+      title: 'Bundeskanzler',
+      url: 'https://wiki.example/person',
+      snippet: 'Politiker in Deutschland.',
+    };
+    const rankFor = (question: string) =>
+      rankByListingRelevance([list, holder], question, {
+        currentState: !namesATimePeriod(question),
+      }).map((entry) => entry.title);
+
+    it('demotes the roster for a question no phrase list ever covered', () => {
+      expect(rankFor('Wer ist Bundeskanzler von Deutschland?')[0]).toBe(
+        holder.title
+      );
+    });
+
+    it('leaves the roster on top once the question names a period', () => {
+      expect(
+        rankFor('Welche Bundeskanzler regierten im XX. Jahrhundert?')[0]
+      ).toBe(list.title);
+    });
+  });
+
+  describe('the freshness bonus', () => {
+    const dated = {
+      title: 'Bundeskanzler 2026',
+      url: 'https://news.example/2026',
+      snippet: 'Wer das Amt fuehrt.',
+    };
+    const undated = {
+      title: 'Bundeskanzler',
+      url: 'https://wiki.example/amt',
+      snippet: 'Wer das Amt fuehrt.',
+    };
+
+    it('lifts the page that names the current year', () => {
+      expect(
+        rankByListingRelevance([undated, dated], 'Wer ist Bundeskanzler?', {
+          freshYear: '2026',
+        })[0]!.title
+      ).toBe(dated.title);
+    });
+
+    it('never pushes a page down for lacking the year', () => {
+      const withoutBonus = rankByListingRelevance(
+        [undated, dated],
+        'Wer ist Bundeskanzler?',
+        {}
+      );
+      const withBonus = rankByListingRelevance(
+        [undated, dated],
+        'Wer ist Bundeskanzler?',
+        { freshYear: '2026' }
+      );
+      expect(withBonus).toContain(withoutBonus[0]);
+      expect(withBonus).toHaveLength(withoutBonus.length);
+    });
+  });
+
+  it('leaves the ordering alone when the question is not about the present', () => {
+    const ranked = rankByListingRelevance(
+      [roster, current],
+      'Którzy prezydenci USA rządzili w XIX wieku?',
+      {}
+    );
+
+    expect(ranked[0]!.title).toBe(roster.title);
   });
 });

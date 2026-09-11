@@ -1,5 +1,12 @@
-import { WebViewScrapeProvider } from '../utils/web/scrape/webViewScrapeProvider';
-import { SCRAPE_CHALLENGE_TIMEOUT_MS, SCRAPE_ENGINES } from '../constants/web';
+import {
+  WebViewScrapeProvider,
+  searchUrlFor,
+} from '../utils/web/scrape/webViewScrapeProvider';
+import {
+  SCRAPE_CHALLENGE_TIMEOUT_MS,
+  SCRAPE_ENGINES,
+  SCRAPE_PAGE_LOAD_TIMEOUT_MS,
+} from '../constants/web';
 import type { WebSearchResult } from '../utils/web/types';
 
 const hit = (url: string): WebSearchResult => ({
@@ -14,7 +21,7 @@ const attach = (
 ) => {
   const navigated: string[] = [];
   provider.attachHost({
-    navigate: (url: string) => {
+    navigate: (url: string, nonce: number) => {
       navigated.push(url);
       const engine = SCRAPE_ENGINES.find((candidate) =>
         url.startsWith(candidate.url)
@@ -23,12 +30,12 @@ const attach = (
       if (reply === 'silent') return;
       if (reply === 'error') {
         provider.handleMessage(
-          JSON.stringify({ type: 'serp-error', message: 'boom' })
+          JSON.stringify({ type: 'serp-error', message: 'boom', nonce })
         );
         return;
       }
       provider.handleMessage(
-        JSON.stringify({ type: 'serp-results', results: reply })
+        JSON.stringify({ type: 'serp-results', results: reply, nonce })
       );
     },
   });
@@ -148,9 +155,11 @@ describe('WebViewScrapeProvider engine chain', () => {
     const provider = new WebViewScrapeProvider();
     const navigated: string[] = [];
     provider.attachHost({
-      navigate: (url: string) => {
+      navigate: (url: string, nonce: number) => {
         navigated.push(url);
-        provider.handleMessage(JSON.stringify({ type: 'serp-challenge' }));
+        provider.handleMessage(
+          JSON.stringify({ type: 'serp-challenge', nonce })
+        );
         provider.cancelPending();
       },
     });
@@ -165,9 +174,11 @@ describe('WebViewScrapeProvider engine chain', () => {
     const provider = new WebViewScrapeProvider();
     const navigated: string[] = [];
     provider.attachHost({
-      navigate: (url: string) => {
+      navigate: (url: string, nonce: number) => {
         navigated.push(url);
-        provider.handleMessage(JSON.stringify({ type: 'serp-challenge' }));
+        provider.handleMessage(
+          JSON.stringify({ type: 'serp-challenge', nonce })
+        );
         provider.skipEngine();
       },
     });
@@ -225,13 +236,13 @@ describe('WebViewScrapeProvider engine chain', () => {
     const provider = new WebViewScrapeProvider();
     let calls = 0;
     provider.attachHost({
-      navigate: () => {
+      navigate: (_url: string, nonce: number) => {
         calls += 1;
         provider.handleMessage(
           JSON.stringify(
             calls === 1
-              ? { type: 'serp-challenge' }
-              : { type: 'serp-results', results: [] }
+              ? { type: 'serp-challenge', nonce }
+              : { type: 'serp-results', results: [], nonce }
           )
         );
       },
@@ -245,6 +256,72 @@ describe('WebViewScrapeProvider engine chain', () => {
     expect(provider.isChallengeActive()).toBe(false);
 
     expect(await settle(promise)).toEqual([]);
+  });
+});
+
+describe('WebViewScrapeProvider — one navigation, one answer', () => {
+  it('ignores a message stamped with the previous navigation', async () => {
+    const provider = new WebViewScrapeProvider();
+    const nonces: number[] = [];
+    provider.attachHost({
+      navigate: (_url: string, nonce: number) => {
+        nonces.push(nonce);
+      },
+    });
+
+    const promise = provider.search('warsaw weather');
+    await jest.advanceTimersByTimeAsync(SCRAPE_PAGE_LOAD_TIMEOUT_MS + 5_000);
+    expect(nonces).toHaveLength(2);
+
+    const resolved = jest.fn();
+    promise.then(resolved);
+    provider.handleMessage(
+      JSON.stringify({
+        type: 'serp-results',
+        results: [hit('https://stale.example/')],
+        nonce: nonces[0],
+      })
+    );
+    await jest.advanceTimersByTimeAsync(0);
+    expect(resolved).not.toHaveBeenCalled();
+
+    provider.handleMessage(
+      JSON.stringify({
+        type: 'serp-results',
+        results: [hit('https://fresh.example/')],
+        nonce: nonces[1],
+      })
+    );
+    expect(await promise).toEqual([hit('https://fresh.example/')]);
+  });
+
+  it('ignores an unstamped message', async () => {
+    const provider = new WebViewScrapeProvider();
+    provider.attachHost({ navigate: () => {} });
+
+    const promise = provider.search('warsaw weather');
+    await jest.advanceTimersByTimeAsync(0);
+    const resolved = jest.fn();
+    promise.then(resolved);
+    provider.handleMessage(
+      JSON.stringify({ type: 'serp-results', results: [hit('https://x/')] })
+    );
+    await jest.advanceTimersByTimeAsync(0);
+
+    expect(resolved).not.toHaveBeenCalled();
+  });
+
+  it('stops before the next engine when cancelled during the throttle delay', async () => {
+    const provider = new WebViewScrapeProvider();
+    const navigated = attach(provider, { [engineIds[0]!]: [] });
+
+    const promise = provider.search('warsaw weather');
+    await jest.advanceTimersByTimeAsync(0);
+    expect(navigated).toHaveLength(1);
+    provider.cancelPending();
+
+    expect(await settle(promise)).toEqual([]);
+    expect(navigated).toHaveLength(1);
   });
 });
 
@@ -274,5 +351,26 @@ describe('WebViewScrapeProvider — resetting the WebView to idle', () => {
 
     await expect(pending).resolves.toEqual([]);
     expect(reset).toHaveBeenCalled();
+  });
+});
+
+describe('searchUrlFor', () => {
+  it('asks DuckDuckGo for the region of the question', () => {
+    expect(searchUrlFor(SCRAPE_ENGINES[0]!, 'cena iPhone 17', 'pl-pl')).toBe(
+      'https://html.duckduckgo.com/html/?q=cena%20iPhone%2017&kl=pl-pl'
+    );
+  });
+
+  it('leaves engines without a region parameter alone', () => {
+    const brave = SCRAPE_ENGINES.find((engine) => engine.id === 'brave')!;
+    expect(searchUrlFor(brave, 'cena iPhone 17', 'pl-pl')).toBe(
+      'https://search.brave.com/search?q=cena%20iPhone%2017'
+    );
+  });
+
+  it('sends no region when the language has none', () => {
+    expect(searchUrlFor(SCRAPE_ENGINES[0]!, 'iPhone 17 price')).toBe(
+      'https://html.duckduckgo.com/html/?q=iPhone%2017%20price'
+    );
   });
 });

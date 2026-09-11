@@ -2,11 +2,30 @@ import {
   BINARY_BODY_SIGNATURES,
   URL_FETCH_MAX_BYTES,
 } from '../../../constants/web';
+import { decodeBytes, latin1, sniffCharset } from './charset';
 
 const XHR_HEADERS_RECEIVED = 2;
+const BINARY_SIGNATURE_BYTES = 8;
 
-const looksBinary = (body: string): boolean =>
-  BINARY_BODY_SIGNATURES.some((signature) => body.startsWith(signature));
+const looksBinary = (bytes: Uint8Array): boolean => {
+  const head = latin1(bytes.subarray(0, BINARY_SIGNATURE_BYTES));
+  return BINARY_BODY_SIGNATURES.some((signature) => head.startsWith(signature));
+};
+
+export class FetchStatusError extends Error {
+  constructor(
+    readonly status: number,
+    statusText: string
+  ) {
+    super(`Fetch failed: ${status} ${statusText}`);
+    this.name = 'FetchStatusError';
+  }
+}
+
+const responseBytes = (xhr: XMLHttpRequest): Uint8Array => {
+  const body: unknown = xhr.response;
+  return body instanceof ArrayBuffer ? new Uint8Array(body) : new Uint8Array(0);
+};
 
 export const isHttpUrl = (url: string): boolean => /^https?:\/\//i.test(url);
 
@@ -105,15 +124,23 @@ export const isPrivateHost = (rawHost: string): boolean => {
   return false;
 };
 
+const ASCII_HOST = /^[\x21-\x7e]*$/;
+
+const foldHost = (host: string): string =>
+  typeof host.normalize === 'function' ? host.normalize('NFKC') : host;
+
 export const assertPublicHttpUrl = (url: string): string => {
   if (!isHttpUrl(url)) {
     throw new Error(`Refusing to fetch non-http(s) url: ${url}`);
   }
   let host: string;
   try {
-    host = new URL(url).hostname;
+    host = foldHost(new URL(url).hostname);
   } catch {
     throw new Error(`Refusing to fetch malformed url: ${url}`);
+  }
+  if (!ASCII_HOST.test(host)) {
+    throw new Error(`Refusing to fetch a non-ASCII host: ${host}`);
   }
   if (isPrivateHost(host)) {
     throw new Error(`Refusing to fetch private-range host: ${host}`);
@@ -161,8 +188,21 @@ export const fetchTextWithLimit = (
     }
     signal?.addEventListener('abort', onAbort);
 
+    const refusePrivateRedirect = (): boolean => {
+      const finalUrl = xhr.responseURL;
+      if (!finalUrl || finalUrl === url) return false;
+      try {
+        assertPublicHttpUrl(finalUrl);
+        return false;
+      } catch {
+        fail(`Refusing redirect to private url: ${finalUrl}`);
+        return true;
+      }
+    };
+
     xhr.onreadystatechange = () => {
       if (xhr.readyState !== XHR_HEADERS_RECEIVED) return;
+      if (refusePrivateRedirect()) return;
       const declaredLength = Number(
         xhr.getResponseHeader?.('content-length') ?? ''
       );
@@ -185,40 +225,33 @@ export const fetchTextWithLimit = (
     xhr.onerror = () => finish(() => reject(new Error(`Fetch failed: ${url}`)));
     xhr.onload = () => {
       if (xhr.status < 200 || xhr.status >= 300) {
+        finish(() => reject(new FetchStatusError(xhr.status, xhr.statusText)));
+        return;
+      }
+      if (refusePrivateRedirect()) return;
+      const bytes = responseBytes(xhr);
+      if (bytes.byteLength > maxBytes) {
         finish(() =>
-          reject(new Error(`Fetch failed: ${xhr.status} ${xhr.statusText}`))
+          reject(new Error(`Response too large: ${bytes.byteLength} bytes`))
         );
         return;
       }
-      const finalUrl = xhr.responseURL;
-      if (finalUrl && finalUrl !== url) {
-        try {
-          assertPublicHttpUrl(finalUrl);
-        } catch {
-          finish(() =>
-            reject(new Error(`Refusing redirect to private url: ${finalUrl}`))
-          );
-          return;
-        }
-      }
-      const body = xhr.responseText ?? '';
-      if (body.length > maxBytes) {
-        finish(() =>
-          reject(new Error(`Response too large: ${body.length} bytes`))
-        );
-        return;
-      }
-      if (contentTypePattern && looksBinary(body)) {
+      if (contentTypePattern && looksBinary(bytes)) {
         finish(() =>
           reject(new Error(`Refusing to read a binary body: ${url}`))
         );
         return;
       }
-      finish(() => resolve(body));
+      const charset = sniffCharset(
+        bytes,
+        xhr.getResponseHeader?.('content-type')
+      );
+      finish(() => resolve(decodeBytes(bytes, charset)));
     };
 
     try {
       xhr.open('GET', url);
+      xhr.responseType = 'arraybuffer';
       for (const [name, value] of Object.entries(headers)) {
         xhr.setRequestHeader(name, value);
       }

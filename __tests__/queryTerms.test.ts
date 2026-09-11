@@ -92,6 +92,10 @@ describe('non-Latin scripts', () => {
     expect(extractQueryTerms('الطقس اليوم').size).toBe(2);
   });
 
+  it('extracts terms from Bengali queries, a script the detector already names', () => {
+    expect(extractQueryTerms('ঢাকায় আবহাওয়া')).toContain('আবহাওয়া');
+  });
+
   it('indexes CJK and kana as character bigrams', () => {
     const terms = extractQueryTerms('東京の天気');
     expect(terms.size).toBeGreaterThan(0);
@@ -113,6 +117,10 @@ describe('short words in scripts that write them in two characters', () => {
   it('keeps two-character Devanagari and Arabic-script words', () => {
     expect(extractQueryTerms('जल कहाँ है')).toContain('जल');
     expect(extractQueryTerms('گل کی قیمت')).toContain('گل');
+  });
+
+  it('keeps two-character Bengali words', () => {
+    expect(extractQueryTerms('জল কোথায় আছে')).toContain('জল');
   });
 
   it('still drops two-character Latin noise', () => {
