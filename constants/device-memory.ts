@@ -11,3 +11,5 @@ export const APP_RUNTIME_MEMORY_GB = 0.5;
 export const MODEL_MEMORY_OVERHEAD_GB = 0.3;
 
 export const WEB_SEARCH_MEMORY_GB = 0.3;
+
+export const REPORTED_MEMORY_SHARE_OF_NOMINAL = 0.9;

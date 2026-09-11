@@ -13,6 +13,7 @@ import {
   IOS_JETSAM_SHARE,
   MEMORY_SAFETY_FACTOR,
   MODEL_MEMORY_OVERHEAD_GB,
+  REPORTED_MEMORY_SHARE_OF_NOMINAL,
   WEB_SEARCH_MEMORY_GB,
 } from '../constants/device-memory';
 import {
@@ -22,6 +23,9 @@ import {
 
 const getTotalMemoryGB = () =>
   DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024;
+
+const reportedFloor = (nominalGB: number) =>
+  nominalGB * REPORTED_MEMORY_SHARE_OF_NOMINAL;
 
 const RUNTIME_OVERHEAD_MULTIPLIER = 1.3;
 const RUNTIME_OVERHEAD_GB = 0.5;
@@ -130,7 +134,8 @@ export const hasMemoryForWebSearch = (
 ): boolean => {
   try {
     const required = getWebSearchMinDeviceMemoryGB(model);
-    if (required !== undefined && getTotalMemoryGB() < required) return false;
+    if (required !== undefined && getTotalMemoryGB() < reportedFloor(required))
+      return false;
 
     const cost = getModelMemoryCostGB(model);
     if (cost === null) return true;

@@ -247,6 +247,16 @@ describe('hasMemoryForWebSearch', () => {
     expect(hasMemoryForWebSearch(gemma)).toBe(true);
   });
 
+  it('admits a phone sold as 8 GB, which reports about 7.4', () => {
+    mockGetTotalMemorySync.mockReturnValue(gb(7.4));
+    expect(hasMemoryForWebSearch(gemma)).toBe(true);
+  });
+
+  it('still refuses the tier below, which reports about 5.5', () => {
+    mockGetTotalMemorySync.mockReturnValue(gb(5.5));
+    expect(hasMemoryForWebSearch(gemma)).toBe(false);
+  });
+
   it('leaves models without a measured floor alone, even on a small phone', () => {
     mockGetTotalMemorySync.mockReturnValue(gb(3.7));
     expect(hasMemoryForWebSearch(qwen)).toBe(true);
