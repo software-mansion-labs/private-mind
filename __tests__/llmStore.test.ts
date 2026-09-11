@@ -1531,6 +1531,26 @@ describe('sendChatMessage', () => {
     expect(content).toContain('</think>');
   });
 
+  it('keeps an answer the model left inside a think block it never closed', async () => {
+    mockInstance.generate.mockResolvedValue(
+      '<think>Weighing the sources. The president of Ukraine is Volodymyr Zelensky.'
+    );
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('who is president of Ukraine?', 1, noSources, settings);
+
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toContain(
+      'Volodymyr Zelensky'
+    );
+  });
+
   it('still fails the turn when the model returns nothing at all', async () => {
     mockInstance.generate.mockResolvedValue('   ');
     useLLMStore.setState({

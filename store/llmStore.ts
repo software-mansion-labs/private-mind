@@ -1,5 +1,9 @@
 import { estimatePromptTokens } from '../constants/context-window';
-import { mapOutsideThink, stripThinkBlocks } from '../utils/thinking';
+import {
+  mapOutsideThink,
+  stripThinkBlocks,
+  unclosedThinkText,
+} from '../utils/thinking';
 import { create } from 'zustand';
 import { LLMModule } from 'react-native-executorch';
 import { Model } from '../database/modelRepository';
@@ -49,7 +53,10 @@ import {
 } from '../utils/messageSources';
 import { sourcesPresentInContext } from '../utils/contextUtils';
 import { normalizeModelText } from '../utils/normalizeModelText';
-import { truncateAtRepeatedClause } from '../utils/loopDetection';
+import {
+  isRepetitionFromTheStart,
+  truncateAtRepeatedClause,
+} from '../utils/loopDetection';
 import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
 import { updateConversationDigest } from '../utils/conversationDigest';
 import type { WebIntentKind } from '../utils/web/intentKind';
@@ -498,6 +505,12 @@ const WRONG_LANGUAGE_RETRY_PROMPT =
   'That reply was written in the wrong language. Write the same answer again, ' +
   'with the same facts, in the language of the question, and do not switch ' +
   'language or script partway through.';
+
+const carriesAnswer = (response: string): boolean => {
+  if (stripThinkBlocks(response).trim()) return true;
+  const unclosed = unclosedThinkText(response).trim();
+  return Boolean(unclosed) && !isRepetitionFromTheStart(unclosed);
+};
 
 const tidyVisibleAnswer = (response: string): string =>
   mapOutsideThink(response, (segment) =>
@@ -1290,7 +1303,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         ),
       });
 
-      if (finalResponse && stripThinkBlocks(finalResponse).trim()) {
+      if (finalResponse && carriesAnswer(finalResponse)) {
         const humanizedResponse = humanizeSourceReferences(
           stripSourceLabels(
             stripEchoedQuestionPrefix(finalResponse, currentQuestion)
