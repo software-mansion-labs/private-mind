@@ -90,27 +90,31 @@ settles.
 
 ### Measurement
 
-Screen recording at 30 fps, content displacement recovered by correlating the
-message area between frames. Negative is upward; the resting position is 0 and
-the settled position is −149 px.
+Screen recording at 30 fps, content displacement recovered by correlating a
+crop of the message area between frames. The crop stays above where the
+keyboard reaches, or the keyboard sliding in is read as content movement.
+Negative is upward; rest is 0 and the settled position is −148 px.
 
-| frame | displacement |     step |
-| ----: | -----------: | -------: |
-|   106 |         0 px |     rest |
-|   107 |      −134 px |     −134 |
-|   108 |      −194 px |      −60 |
-|   109 |  **+128 px** | **+322** |
-|   110 |       +45 px |      −83 |
-|   111 |        −8 px |      −53 |
-|   112 |       −33 px |      −25 |
-|   113 |      −137 px |     −104 |
-|   114 |      −147 px |      −10 |
-|   115 |      −149 px |  settled |
+| frame | displacement |    step |
+| ----: | -----------: | ------: |
+|   106 |         0 px |    rest |
+|   107 |      −135 px |    −135 |
+|   108 |      −115 px |     +20 |
+|   109 |      −142 px |     −27 |
+|   110 |      −148 px |      −6 |
+|   111 |  **−178 px** |     −30 |
+|   112 |  **−126 px** |     +52 |
+|   113 |      −136 px |     −10 |
+|   114 |      −146 px |     −10 |
+|   115 |      −148 px | settled |
 
-The content needs to travel 149 px. It travels 522 px — 3.5× the distance — and
-frame 109 moves 322 px in a single 33 ms frame, ending 128 px _below_ where it
-started. The whole excursion lasts 267 ms, which is why it reads as a jump
-rather than a slide.
+The content covers 135 of its 148 px in the first frame, then rings: 30 px past
+the target at frame 111, 22 px short of it at 112, damping out by 115. The
+oscillation is ±30 px over about 130 ms, and the whole move covers 292 px of
+travel for 148 px of displacement.
+
+The estimator reads exactly −148 on every static frame from 116 on, so the
+±30 px during the animation is signal, not noise.
 
 The end state is correct: the gap between the last message and the input bar is
 0.106 of screen height before the keyboard and 0.105 after. Only the path is
@@ -118,8 +122,14 @@ wrong.
 
 ### Where it comes from
 
+The bottom inset is accounted for twice while the keyboard moves, by two
+mechanisms running on different clocks.
+
+`useKeyboardLift` returns `height.value + progress.value * insetsBottom`, so it
+feeds the inset in smoothly as `progress` runs 0 → 1. Meanwhile the keyboard
+covers the navigation bar, `theme.insets.bottom` drops to 0, and
 `handleBarLayoutForPadding` in `components/chat-screen/ChatBar.tsx` re-captures
-the bar's baseline height whenever the bottom inset changes:
+the bar's baseline:
 
 ```ts
 if (baselineInset.current !== inset) {
@@ -128,15 +138,16 @@ if (baselineInset.current !== inset) {
 }
 ```
 
-Opening the keyboard changes `theme.insets.bottom`, so the baseline is
-re-captured mid-animation and reported through `onHeightChange`. That feeds
-`chatBarInset` → `listBottomPadding` in `Messages.tsx`, so the list's bottom
-padding changes while the keyboard lift is still running, and the content drops.
+The new baseline goes out through `onHeightChange` to `chatBarInset` →
+`listBottomPadding` in `Messages.tsx` — a layout change that lands whole on one
+frame. One source removes the inset in a step, the other adds it along a curve,
+and the difference between them is the ring. Its amplitude matches the
+navigation-bar inset.
 
-The comment on that branch explains why the re-capture exists — a stale baseline
-across an Android navigation-mode change or a rotation reads as "the bar grew".
-The fix has to keep that without letting a keyboard-driven inset change trigger
-it.
+The re-capture itself is deliberate; the comment above it explains that a stale
+baseline across an Android navigation-mode change or a rotation reads as "the
+bar grew". A fix has to settle which of the two owns the inset during a keyboard
+transition rather than remove the re-capture.
 
 An Android-only workaround for the mirror-image problem already exists further
 down `Messages.tsx`, for scroll bounce on keyboard **dismiss**. This is the
