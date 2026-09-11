@@ -141,7 +141,21 @@ export const PROFILE_BY_MODEL: Record<string, Partial<ModelProfile>> = {
   'LLaMA 3.2 - 3B - SpinQuant': { webSearchMinDeviceMemoryGB: 8 },
 };
 
-export type ProfileTarget = Pick<Model, 'modelName' | 'family'>;
+export const WEB_SEARCH_MIN_PARAMETERS_B = 0.7;
+
+export type ProfileTarget = Pick<Model, 'modelName' | 'family' | 'parameters'>;
+
+const declaresWebSearchReady = (modelName: string, family: string): boolean =>
+  PROFILE_BY_MODEL[modelName]?.webSearchReady !== undefined ||
+  PROFILE_BY_FAMILY[family]?.webSearchReady !== undefined;
+
+const isBelowWebSearchCapabilityFloor = (
+  model: ProfileTarget,
+  family: string
+): boolean =>
+  !declaresWebSearchReady(model.modelName, family) &&
+  model.parameters !== undefined &&
+  model.parameters < WEB_SEARCH_MIN_PARAMETERS_B;
 
 export const getModelProfile = (
   model: ProfileTarget | null | undefined
@@ -154,6 +168,9 @@ export const getModelProfile = (
     ...(planner ? { webPlanner: planner } : {}),
     ...(PROFILE_BY_FAMILY[family] ?? {}),
     ...(PROFILE_BY_MODEL[model.modelName] ?? {}),
+    ...(isBelowWebSearchCapabilityFloor(model, family)
+      ? { webSearchReady: false }
+      : {}),
   };
   const reserveIsExplicit =
     PROFILE_BY_MODEL[model.modelName]?.generationReserveTokens !== undefined ||

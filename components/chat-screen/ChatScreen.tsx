@@ -211,16 +211,20 @@ export default function ChatScreen({
     isSwitching,
   });
 
-  const { handleThinkingToggle, handleWebSearchToggle, handleSelectPrompt } =
-    useChatScreenActions({
-      chatId,
-      chat,
-      model,
-      chatSettings,
-      setSetting,
-      db,
-      inputRef,
-    });
+  const {
+    handleThinkingToggle,
+    handleWebSearchToggle,
+    handleSelectPrompt,
+    webSearchEnabled,
+  } = useChatScreenActions({
+    chatId,
+    chat,
+    model,
+    chatSettings,
+    setSetting,
+    db,
+    inputRef,
+  });
 
   const chatGenerationError =
     generationError?.chatId === chatId ? generationError.message : undefined;
@@ -288,7 +292,7 @@ export default function ChatScreen({
           extraContentPadding={extraContentPadding}
           thinkingEnabled={chatSettings?.thinkingEnabled || false}
           onThinkingToggle={handleThinkingToggle}
-          webSearchEnabled={chatSettings?.webSearchEnabled || false}
+          webSearchEnabled={webSearchEnabled}
           onWebSearchToggle={
             WEB_SEARCH_ENABLED ? handleWebSearchToggle : undefined
           }
