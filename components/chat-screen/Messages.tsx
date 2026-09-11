@@ -29,6 +29,7 @@ import Reanimated, {
   runOnJS,
   useSharedValue,
   useAnimatedStyle,
+  useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
@@ -63,6 +64,7 @@ import {
 } from '../../constants/chat-screen';
 import { messageRowKey } from '../../utils/messageRowKey';
 import { useKeyboardLift } from './useKeyboardLift';
+import { useSendKeyboardFreeze } from './useSendKeyboardFreeze';
 import {
   floorIsOffscreen,
   pinFloorFor,
@@ -300,6 +302,15 @@ const Messages = ({
   }, [branchMarkers]);
 
   const keyboardLift = useKeyboardLift();
+  const {
+    frozen: sendFrozen,
+    arm: freezeForSend,
+    release: releaseSendFreeze,
+  } = useSendKeyboardFreeze(keyboardLift, extraContentPadding);
+  const scrollFreeze = useDerivedValue(
+    () => freeze || sendFrozen.value,
+    [freeze]
+  );
   const scrollButtonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [
       { translateY: -extraContentPadding.value + keyboardLift.value },
@@ -410,8 +421,10 @@ const Messages = ({
   const pendingPinRef = useRef(false);
   const pinOffset = useRef(0);
   const pinScrollPendingRef = useRef(false);
+  const pinLandedSinceKeyboardShow = useRef(false);
 
   const scrollToPin = useCallback(() => {
+    pinLandedSinceKeyboardShow.current = true;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const scrollView = scrollRef.current;
@@ -430,7 +443,7 @@ const Messages = ({
 
   const landAfterKeyboard = useCallback(() => {
     if (pinActive.current && !pendingPinRef.current) {
-      scrollToPin();
+      if (!pinLandedSinceKeyboardShow.current) scrollToPin();
       return;
     }
     scrollRef.current?.scrollToEnd({ animated: false });
@@ -467,6 +480,7 @@ const Messages = ({
     const showSub = Keyboard.addListener('keyboardDidShow', () => {
       clearPendingSnap();
       keyboardOpenRef.current = true;
+      pinLandedSinceKeyboardShow.current = false;
       wasAtBottomDuringKeyboard.current = isAtBottomRef.current;
       userScrolledDuringKeyboard.current = false;
       closeUserActionMenu();
@@ -638,16 +652,25 @@ const Messages = ({
         pinActive.current = true;
         pinReleaseRef.current = false;
         pendingPinRef.current = true;
+        freezeForSend();
       },
       cancelMessageSent: () => {
         pendingPinRef.current = false;
         pinScrollPendingRef.current = false;
         pinReleaseRef.current = false;
         pinActive.current = false;
+        releaseSendFreeze();
         setPinAnchor(null);
       },
     }),
-    [closeUserActionMenu, opacity, settleReveal, snapToEnd]
+    [
+      closeUserActionMenu,
+      freezeForSend,
+      opacity,
+      releaseSendFreeze,
+      settleReveal,
+      snapToEnd,
+    ]
   );
 
   const handleContainerLayout = useCallback(
@@ -951,7 +974,7 @@ const Messages = ({
           keyboardLiftBehavior="whenAtEnd"
           offset={bottomOffset}
           extraContentPadding={extraContentPadding}
-          freeze={freeze}
+          freeze={scrollFreeze}
           applyWorkaroundForContentInsetHitTestBug
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={contentContainerStyle}

@@ -105,8 +105,8 @@ export const useSendChatMessage = ({
       return false;
     }
 
-    Keyboard.dismiss();
     messagesRef.current?.onMessageSent();
+    Keyboard.dismiss();
 
     let targetChatId = chatId!;
     const isNewChat = !(await checkIfChatExists(db, targetChatId));

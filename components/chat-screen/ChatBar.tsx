@@ -246,10 +246,11 @@ const ChatBar = ({
       return;
     }
     if (hasLoadingAttachment || disabled) return;
-    Keyboard.dismiss();
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
     const inputToSend = userInput;
+    const outcome = onSend(inputToSend, imageUriToSend, attachmentsToSend);
+    Keyboard.dismiss();
 
     lastSentRef.current = inputToSend
       ? { text: inputToSend, at: Date.now() }
@@ -260,7 +261,7 @@ const ChatBar = ({
     }
     setUserInput('');
     clearAll({ cleanupSources: false });
-    Promise.resolve(onSend(inputToSend, imageUriToSend, attachmentsToSend))
+    Promise.resolve(outcome)
       .then((accepted) => {
         if (accepted !== false) return;
         lastSentRef.current = null;

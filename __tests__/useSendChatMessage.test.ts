@@ -1,3 +1,4 @@
+import { Keyboard } from 'react-native';
 import { useSendChatMessage } from '../components/chat-screen/useSendChatMessage';
 import { useLLMStore } from '../store/llmStore';
 import type { SQLiteDatabase } from 'expo-sqlite';
@@ -142,5 +143,24 @@ describe('sending while another turn is open', () => {
   it('refuses an empty message', async () => {
     expect(await useSend(1)('   ')).toBe(false);
     expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe('the send transition', () => {
+  it('arms the pin before the keyboard is told to close', async () => {
+    const dismiss = jest
+      .spyOn(Keyboard, 'dismiss')
+      .mockImplementation(() => {});
+    const onMessageSent = messagesRef.current.onMessageSent as jest.Mock;
+    onMessageSent.mockClear();
+
+    await useSend(1)('hello');
+
+    expect(onMessageSent).toHaveBeenCalledTimes(1);
+    expect(dismiss).toHaveBeenCalledTimes(1);
+    expect(onMessageSent.mock.invocationCallOrder[0]).toBeLessThan(
+      dismiss.mock.invocationCallOrder[0]
+    );
+    dismiss.mockRestore();
   });
 });
