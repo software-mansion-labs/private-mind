@@ -37,6 +37,13 @@ defaultConfig {
 
 The build number should be set in `info` and `general` sections in Xcode, ensure the version matches `app.json`.
 
+Xcode writes two files at once, and both are required:
+
+- **[ios/PrivateMind/Info.plist](../ios/PrivateMind/Info.plist)** — `CFBundleShortVersionString` (match `app.json`) and `CFBundleVersion` (increment by 1). These are literal values, not `$(MARKETING_VERSION)` references, and they are what the built app reports.
+- **[ios/PrivateMind.xcodeproj/project.pbxproj](../ios/PrivateMind.xcodeproj/project.pbxproj)** — `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`, twice each (Debug and Release).
+
+Editing only `project.pbxproj` produces a build that still reports the previous version.
+
 ## Platform-Specific Release Instructions
 
 ### Android Release

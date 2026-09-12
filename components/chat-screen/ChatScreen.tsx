@@ -90,13 +90,11 @@ export default function ChatScreen({
 
   // Shared values for KeyboardChatScrollView
   const extraContentPadding = useSharedValue(0);
-  const blankSpace = useSharedValue(0);
   const [chatBarHeight, setChatBarHeight] = useState(0);
 
   useEffect(() => {
     extraContentPadding.set(0);
-    blankSpace.set(0);
-  }, [model?.id, extraContentPadding, blankSpace]);
+  }, [model?.id, extraContentPadding]);
 
   const isEmpty = !isLoading && messageHistory.length === 0;
   const hasMessages = isLoading || messageHistory.length > 0;
@@ -263,7 +261,6 @@ export default function ChatScreen({
           ref={messagesRef}
           chatHistory={messageHistory}
           extraContentPadding={extraContentPadding}
-          blankSpace={blankSpace}
           isGenerating={isGenerating}
           generationError={chatGenerationError}
           onRetryGeneration={handleRetryGeneration}

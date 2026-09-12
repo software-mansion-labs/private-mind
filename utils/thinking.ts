@@ -72,6 +72,16 @@ export const outsideThinkSegments = (text: string): string[] => {
 export const stripThinkBlocks = (text: string): string =>
   outsideThinkSegments(text).join('').trim();
 
+export const unclosedThinkText = (text: string): string => {
+  const source = normalizeThinkMarkup(text);
+  const open = source.lastIndexOf(THINK_OPEN);
+  if (open === -1) return '';
+  const contentStart = open + THINK_OPEN.length;
+  return source.indexOf(THINK_CLOSE, contentStart) === -1
+    ? source.slice(contentStart)
+    : '';
+};
+
 export const mapOutsideThink = (
   text: string,
   transform: (segment: string) => string
