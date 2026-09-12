@@ -844,15 +844,23 @@ const Messages = ({
     ]
   );
 
+  const touchScrolledRef = useRef(false);
+
   const handleScrollTouchStart = useCallback(() => {
     pinScrollPendingRef.current = false;
+    touchScrolledRef.current = false;
     if (activeUserActionsId !== null) {
       closeUserActionMenu();
     }
-    if (Keyboard.isVisible()) Keyboard.dismiss();
   }, [activeUserActionsId, closeUserActionMenu]);
 
+  const handleScrollTouchEnd = useCallback(() => {
+    if (touchScrolledRef.current) return;
+    if (Keyboard.isVisible()) Keyboard.dismiss();
+  }, []);
+
   const handleScrollBeginDrag = useCallback(() => {
+    touchScrolledRef.current = true;
     if (keyboardOpenRef.current) {
       userScrolledDuringKeyboard.current = true;
     }
@@ -1010,6 +1018,7 @@ const Messages = ({
           onMomentumScrollBegin={handleMomentumScrollBegin}
           onMomentumScrollEnd={handleMomentumScrollEnd}
           onTouchStart={handleScrollTouchStart}
+          onTouchEnd={handleScrollTouchEnd}
           onContentSizeChange={handleContentSizeChange}
           scrollEventThrottle={16}
           style={styles.container}
