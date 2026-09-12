@@ -27,11 +27,16 @@ jest.mock('../utils/modelCompatibility', () => ({
 import { useChatScreenActions } from '../components/chat-screen/useChatScreenActions';
 import type { Model } from '../database/modelRepository';
 
-const modelNamed = (modelName: string, parameters: number): Model =>
+const modelNamed = (
+  modelName: string,
+  parameters: number,
+  thinking = true
+): Model =>
   ({
     id: 1,
     modelName,
     parameters,
+    thinking,
     source: 'built-in',
     isDownloaded: true,
     modelPath: '',
@@ -41,7 +46,11 @@ const modelNamed = (modelName: string, parameters: number): Model =>
 
 const setSetting = jest.fn();
 
-const actionsFor = (model: Model, webSearchEnabled: boolean) =>
+const actionsFor = (
+  model: Model,
+  webSearchEnabled: boolean,
+  thinkingEnabled = false
+) =>
   renderHook(() =>
     useChatScreenActions({
       chatId: 1,
@@ -49,7 +58,7 @@ const actionsFor = (model: Model, webSearchEnabled: boolean) =>
       model,
       chatSettings: {
         systemPrompt: '',
-        thinkingEnabled: false,
+        thinkingEnabled,
         webSearchEnabled,
       },
       setSetting,
@@ -95,5 +104,45 @@ describe('web search state follows the model that has to run it', () => {
 
     expect(actions.handleWebSearchToggle()).toBe(true);
     expect(setSetting).toHaveBeenCalledWith('webSearchEnabled', false);
+  });
+});
+
+describe('thinking state follows the model that has to run it', () => {
+  beforeEach(() => {
+    setSetting.mockClear();
+    mockToast.mockClear();
+  });
+
+  it('reads as off once the chat moves to a model that cannot think', () => {
+    const actions = actionsFor(
+      modelNamed('Gemma 4 - 2B', 2.0, false),
+      false,
+      true
+    );
+
+    expect(actions.thinkingEnabled).toBe(false);
+  });
+
+  it('refuses to enable thinking on a model without it', async () => {
+    const actions = actionsFor(
+      modelNamed('Gemma 4 - 2B', 2.0, false),
+      false,
+      true
+    );
+
+    await actions.handleThinkingToggle();
+
+    expect(setSetting).not.toHaveBeenCalled();
+    expect(mockToast).toHaveBeenCalled();
+  });
+
+  it('keeps the setting, so going back to a thinking model restores it', () => {
+    const capable = actionsFor(
+      modelNamed('Qwen 3 - 1.7B', 2.03, true),
+      false,
+      true
+    );
+
+    expect(capable.thinkingEnabled).toBe(true);
   });
 });

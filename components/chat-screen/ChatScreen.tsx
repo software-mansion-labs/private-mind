@@ -211,6 +211,7 @@ export default function ChatScreen({
 
   const {
     handleThinkingToggle,
+    thinkingEnabled,
     handleWebSearchToggle,
     handleSelectPrompt,
     webSearchEnabled,
@@ -287,7 +288,7 @@ export default function ChatScreen({
           model={model}
           isVisionModel={model?.vision === true}
           extraContentPadding={extraContentPadding}
-          thinkingEnabled={chatSettings?.thinkingEnabled || false}
+          thinkingEnabled={thinkingEnabled}
           onThinkingToggle={handleThinkingToggle}
           webSearchEnabled={webSearchEnabled}
           onWebSearchToggle={
