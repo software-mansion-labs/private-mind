@@ -15,6 +15,11 @@ export const useKeyboardLift = () => {
   // Worklet: sending a message blocks the JS thread past the keyboard's hide.
   useKeyboardHandler(
     {
+      // iOS reports keyboardDidShow only once the animation has finished.
+      onStart: (event) => {
+        'worklet';
+        if (event.height !== 0) keyboardGone.value = false;
+      },
       onMove: (event) => {
         'worklet';
         if (event.height !== 0) keyboardGone.value = false;
