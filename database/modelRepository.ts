@@ -146,6 +146,7 @@ const hydrateModel = (model: RawModel): Model => {
   return {
     ...model,
     modelPath: defaults?.modelPath ?? model.modelPath,
+    modelSize: defaults?.modelSize ?? model.modelSize,
     tokenizerPath: defaults?.tokenizerPath ?? model.tokenizerPath,
     tokenizerConfigPath:
       defaults?.tokenizerConfigPath ?? model.tokenizerConfigPath,
