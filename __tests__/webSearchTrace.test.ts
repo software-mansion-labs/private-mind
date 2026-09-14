@@ -653,3 +653,89 @@ describe('regressions the trace panel keeps reintroducing', () => {
     expect(finished).toEqual(running);
   });
 });
+
+describe('the hand-over from the live trace to the saved sources', () => {
+  const results: SourceDocument[] = [
+    src({
+      name: 'BBC Weather',
+      url: 'https://bbc.co.uk/weather',
+      sourceQuery: 'london weather',
+      read: true,
+      used: true,
+    }),
+    src({
+      name: 'Met Office',
+      url: 'https://metoffice.gov.uk/london',
+      sourceQuery: 'london weather',
+      read: true,
+      used: true,
+    }),
+  ];
+
+  const handoverTrace: WebSearchTraceEntry[] = [
+    ev({ id: 1, type: 'objectives' }),
+    ev({ id: 2, type: 'searching', query: 'london weather' }),
+    ev({
+      id: 3,
+      type: 'found',
+      url: 'https://bbc.co.uk/weather',
+      host: 'bbc.co.uk',
+    }),
+    ev({
+      id: 4,
+      type: 'fetched',
+      url: 'https://bbc.co.uk/weather',
+      host: 'bbc.co.uk',
+    }),
+    ev({
+      id: 5,
+      type: 'found',
+      url: 'https://metoffice.gov.uk/london',
+      host: 'metoffice.gov.uk',
+    }),
+    ev({
+      id: 6,
+      type: 'fetched',
+      url: 'https://metoffice.gov.uk/london',
+      host: 'metoffice.gov.uk',
+    }),
+    ev({ id: 7, type: 'done' }),
+  ];
+
+  it('introduces no row the block was not already showing', () => {
+    const live = buildRows(false, handoverTrace, results, false);
+    const saved = buildRows(false, [], results, false);
+
+    const shown = new Set(live.map((row) => row.key));
+    const fresh = saved.map((row) => row.key).filter((key) => !shown.has(key));
+
+    expect(fresh).toEqual([]);
+  });
+
+  it('keeps a second query on its own key across the hand-over', () => {
+    const twoQueries = [
+      ...handoverTrace.slice(0, 2),
+      ev({ id: 8, type: 'searching', query: 'london forecast' }),
+      ...handoverTrace.slice(2),
+    ];
+    const twoResults = [
+      ...results,
+      src({
+        name: 'Met Office forecast',
+        url: 'https://metoffice.gov.uk/forecast',
+        sourceQuery: 'london forecast',
+        read: true,
+        used: true,
+      }),
+    ];
+
+    const live = buildRows(false, twoQueries, twoResults, false);
+    const saved = buildRows(false, [], twoResults, false);
+
+    const shown = new Set(live.map((row) => row.key));
+
+    expect(saved.map((row) => row.key).filter((k) => !shown.has(k))).toEqual(
+      []
+    );
+  });
+});
