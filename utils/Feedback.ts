@@ -16,6 +16,7 @@ export class Feedback {
   // Navigation — barely-there
   static sheetOpen = () => Presets.chip();
   static drawer = () => Presets.chip();
+  static onboardingStep = () => Presets.chip();
 
   // Async completions
   static firstToken = () => Presets.peck();

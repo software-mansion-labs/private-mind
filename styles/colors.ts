@@ -21,6 +21,7 @@ export const lightTheme = {
     codeInlineStrong: 'rgba(255, 255, 255, 0.2)',
     codeBlock: 'rgba(0, 0, 0, 0.05)',
     codeBlockStrong: 'rgba(255, 255, 255, 0.12)',
+    onBrandStrong: '#ffffff',
   },
   text: {
     primary: '#020f3c',
@@ -33,6 +34,7 @@ export const lightTheme = {
     onAttachButton: '#ffffff',
     error: '#DE595B',
     warning: '#B8630A',
+    onBrand: '#ffffff',
   },
   border: {
     soft: 'rgba(2, 15, 60, 0.2)',
@@ -65,6 +67,7 @@ export const darkTheme = {
     codeInlineStrong: 'rgba(255, 255, 255, 0.2)',
     codeBlock: 'rgba(255, 255, 255, 0.12)',
     codeBlockStrong: 'rgba(255, 255, 255, 0.12)',
+    onBrandStrong: '#ffffff',
   },
   text: {
     primary: '#FFFFFF',
@@ -77,6 +80,7 @@ export const darkTheme = {
     onAttachButton: '#ffffff',
     error: '#E68485',
     warning: '#F0A860',
+    onBrand: '#ffffff',
   },
   border: {
     soft: 'rgba(255, 255, 255, 0.15)',
