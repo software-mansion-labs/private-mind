@@ -55,6 +55,9 @@ PODS:
     - SDWebImageAVIFCoder (~> 0.11.0)
     - SDWebImageSVGCoder (~> 1.7.0)
     - SDWebImageWebPCoder (~> 0.14.6)
+  - ExpoImageManipulator (55.0.21):
+    - ExpoModulesCore
+    - SDWebImageWebPCoder
   - ExpoKeepAwake (55.0.8):
     - ExpoModulesCore
   - ExpoLinearGradient (55.0.15):
@@ -2634,6 +2637,7 @@ DEPENDENCIES:
   - ExpoFont (from `../node_modules/expo-font/ios`)
   - ExpoGlassEffect (from `../node_modules/expo-glass-effect/ios`)
   - ExpoImage (from `../node_modules/expo-image/ios`)
+  - ExpoImageManipulator (from `../node_modules/expo-image-manipulator/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
@@ -2785,6 +2789,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-glass-effect/ios"
   ExpoImage:
     :path: "../node_modules/expo-image/ios"
+  ExpoImageManipulator:
+    :path: "../node_modules/expo-image-manipulator/ios"
   ExpoKeepAwake:
     :path: "../node_modules/expo-keep-awake/ios"
   ExpoLinearGradient:
@@ -3016,6 +3022,7 @@ SPEC CHECKSUMS:
   ExpoFont: a7e34a75bdfb703fa07a0e87807f836236608c76
   ExpoGlassEffect: 2dedac2fe817f9b02d0dad29ce0aef7afebc5cd4
   ExpoImage: 5854bd51edd7c0a775755473598f9daeb3fde4e3
+  ExpoImageManipulator: 6ee60a0202c350d82d99fd48773d7c2e770f80ea
   ExpoKeepAwake: d0eb7a0719500d2a43fbf29b6f79e84d70c75ebf
   ExpoLinearGradient: 07d8c721fd9ea91a7aa666753538f80dfda95bf3
   ExpoLinking: 221ab136d976b632e04ff4023660cc9c24233d07
