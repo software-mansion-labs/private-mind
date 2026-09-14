@@ -44,8 +44,11 @@ export const useChatScreenActions = ({
   const { getModelById } = useModelStore();
   const { phantomChat, setPhantomChatSettings } = useChatStore();
 
+  const thinkingUsable = !model || !!model.thinking;
+  const thinkingEnabled = !!chatSettings?.thinkingEnabled && thinkingUsable;
+
   const handleThinkingToggle = async () => {
-    if (!model?.thinking) {
+    if (!thinkingEnabled && !thinkingUsable) {
       Toast.show({
         type: 'defaultToast',
         text1: 'Thinking cannot be enabled for this model.',
@@ -54,7 +57,7 @@ export const useChatScreenActions = ({
     }
 
     const previous = chatSettings?.thinkingEnabled;
-    const next = !previous;
+    const next = !thinkingEnabled;
     const newSettings: ChatSettings = {
       systemPrompt: chatSettings?.systemPrompt || '',
       thinkingEnabled: next,
@@ -125,6 +128,7 @@ export const useChatScreenActions = ({
     handleThinkingToggle,
     handleWebSearchToggle,
     handleSelectPrompt,
+    thinkingEnabled,
     webSearchEnabled,
   };
 };

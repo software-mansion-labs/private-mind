@@ -1,21 +1,22 @@
 # Release Guide
 
-This guide covers the process for releasing new versions of Private Mind to the App Store and Google Play Store.
+How to produce a release build of Private Mind for the App Store and Google
+Play. Store submission itself follows each platform's standard flow and is not
+repeated here.
 
 ## Version Bumping
 
-Before creating a release, update the version number in the following locations:
+A release touches four files. Missing one produces a build that reports the
+wrong version.
 
 ### 1. App Version (Required)
 
 **File:** [app.json](../app.json)
 
-Update the `version` field:
-
 ```json
 {
   "expo": {
-    "version": "1.1.4"
+    "version": "1.3.0"
   }
 }
 ```
@@ -24,47 +25,80 @@ Update the `version` field:
 
 **File:** [android/app/build.gradle](../android/app/build.gradle)
 
-Update both `versionCode` (increment by 1) and `versionName` (match app.json):
+`versionCode` must increase, and must exceed anything already uploaded to Play —
+check _Release → App bundle explorer_. `versionName` matches `app.json`.
 
 ```gradle
 defaultConfig {
-    versionCode 60        // Increment this
-    versionName "1.1.4"   // Match app.json version
+    versionCode 69        // Increment this
+    versionName "1.3.0"   // Match app.json version
 }
 ```
 
-### 3. iOS Build Number (Required)
+### 3. iOS Version and Build Number (Required)
 
-The build number should be set in `info` and `general` sections in Xcode, ensure the version matches `app.json`.
+Two files carry it, and both must be updated:
 
-## Platform-Specific Release Instructions
+- **[ios/PrivateMind/Info.plist](../ios/PrivateMind/Info.plist)** —
+  `CFBundleShortVersionString` (matching `app.json`) and `CFBundleVersion`
+  (increment). These are literal values, **not** `$(MARKETING_VERSION)`
+  references, and they are what the built app reports.
+- **[ios/PrivateMind.xcodeproj/project.pbxproj](../ios/PrivateMind.xcodeproj/project.pbxproj)** —
+  `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`, twice each (Debug and
+  Release). This is what Xcode's Organizer displays.
 
-### Android Release
+Editing only `project.pbxproj` produces a build that still reports the previous
+version. Editing both keeps the Organizer and the app in agreement.
 
-Android builds are automated via GitHub Actions. See [ANDROID_RELEASE.md](../ANDROID_RELEASE.md) for detailed instructions.
+`CFBundleVersion` must be unused for that version in App Store Connect.
 
-**Quick Steps:**
+## Building
 
-1. Update version numbers (see above)
-2. Commit and push changes
-3. Go to GitHub Actions "Android Release"
-4. Run workflow manually
-5. Download the generated `.aab` file from workflow artifacts
-6. Upload to Google Play Console manually
+### Android
 
-### iOS Release
+Build the App Store Bundle through the **Android Release** GitHub Actions
+workflow — see [ANDROID_RELEASE.md](ANDROID_RELEASE.md) for the signing setup it
+needs.
 
-iOS builds are created locally using Xcode.
+A local `./gradlew bundleRelease` is **not** a substitute. When
+`android/local.properties` defines no `MYAPP_UPLOAD_STORE_FILE`, the release
+build falls back to the debug keystore, and a bundle signed with the wrong key
+is rejected on upload.
 
-**Steps:**
+For a release build to install on a device over `adb`:
 
-1. Update version numbers (see above)
-2. Open `ios/PrivateMind.xcworkspace` in Xcode
-3. Select "Any iOS Device" as the build target
-4. Choose **Product** -> **Archive**
-5. Once archiving completes, the Organizer window will open
-6. Click **Distribute App**
-7. Select **App Store Connect** -> **Upload**
-8. Follow the prompts to upload to TestFlight/App Store
+```bash
+cd android
+./gradlew :app:createBundleReleaseJsAndAssets --rerun-tasks
+./gradlew assembleRelease
+```
 
-For detailed iOS publishing instructions, refer to the [React Native Publishing to App Store guide](https://reactnative.dev/docs/publishing-to-app-store).
+`--rerun-tasks` matters whenever an `EXPO_PUBLIC_*` variable changed: Gradle
+does not treat environment variables as task inputs, so the bundle task is
+otherwise skipped and the APK keeps the previous value.
+
+### iOS
+
+Archive in Xcode: open `ios/PrivateMind.xcworkspace` (the workspace, not the
+project), select **Any iOS Device**, then **Product → Archive**. Distribute from
+the Organizer window that opens.
+
+The same from the command line, writing into the Organizer's archive directory:
+
+```bash
+cd ios && pod install && cd ..
+xcodebuild -workspace ios/PrivateMind.xcworkspace -scheme PrivateMind \
+  -configuration Release -destination "generic/platform=iOS" \
+  -archivePath ~/Library/Developer/Xcode/Archives/<YYYY-MM-DD>/PrivateMind-<version>.xcarchive \
+  -allowProvisioningUpdates archive
+```
+
+`pod install` rewrites `ios/Podfile.lock`; check it before committing, and
+revert it if the only changes are paths.
+
+## Release Notes
+
+The in-app What's New card reads its copy from
+[constants/latest-release.ts](../constants/latest-release.ts) and its version
+number from the installed build. Keep the card and the store notes saying the
+same thing.

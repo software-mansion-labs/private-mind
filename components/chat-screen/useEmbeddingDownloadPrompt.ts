@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import {
   embeddingModelNeedsDownloadPrompt,
   useEmbeddingModelStore,
+  WEB_TOGGLE_STATUS_WAIT_MS,
   whenEmbeddingStatusKnown,
 } from '../../store/embeddingModelStore';
 import {
@@ -52,7 +53,7 @@ export const useEmbeddingDownloadPrompt = ({
     const required = isHighMemoryDevice(model);
     if (!required && webEmbeddingPromptDismissedRef.current) return;
 
-    whenEmbeddingStatusKnown().then((status) => {
+    whenEmbeddingStatusKnown(WEB_TOGGLE_STATUS_WAIT_MS).then((status) => {
       if (webToggleSeqRef.current !== toggleSeq) return;
       if (!embeddingModelNeedsDownloadPrompt(status)) return;
       setEmbeddingSheetContext('web');

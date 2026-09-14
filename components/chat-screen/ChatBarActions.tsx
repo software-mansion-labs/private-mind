@@ -21,6 +21,7 @@ interface Props {
   hasAttachments?: boolean;
   isLoadingAttachment?: boolean;
   disabled?: boolean;
+  togglesDisabled?: boolean;
   onSend: () => void;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -38,6 +39,7 @@ const ChatBarActions = ({
   hasAttachments = false,
   isLoadingAttachment = false,
   disabled = false,
+  togglesDisabled = false,
   onSend,
   isGenerating,
   isProcessingPrompt,
@@ -150,7 +152,7 @@ const ChatBarActions = ({
           iconOn={LightBulbIcon}
           iconOff={LightBulbCrossedIcon}
           onToggle={() => onThinkingToggle?.()}
-          disabled={disabled}
+          disabled={togglesDisabled}
         />
         {onWebSearchToggle ? (
           <ChatBarToggle
@@ -159,7 +161,7 @@ const ChatBarActions = ({
             iconOn={WebIcon}
             iconOff={WebCrossedIcon}
             onToggle={onWebSearchToggle}
-            disabled={disabled}
+            disabled={togglesDisabled}
             testID="web-search-toggle"
           />
         ) : null}

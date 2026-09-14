@@ -11,7 +11,7 @@ stale half undermined the living one.
 
 | file                                     | what it is                                                |
 | ---------------------------------------- | --------------------------------------------------------- |
-| [RELEASE.md](RELEASE.md)                 | version bumping and the App Store / Play release flow     |
+| [RELEASE.md](RELEASE.md)                 | version bumping and how release builds are produced       |
 | [ANDROID_RELEASE.md](ANDROID_RELEASE.md) | building an AAB, locally and through CI                   |
 | [KNOWN_ISSUES.md](KNOWN_ISSUES.md)       | open problems, what is known about each, how to settle it |
 
@@ -28,6 +28,12 @@ reason to travel in the history of a public repository.
 
 What survives a round is not the transcript but the conclusion: a fix with its
 test, or an entry in `KNOWN_ISSUES.md`.
+
+The store-submission walkthrough lives outside for a different reason. How this
+team uploads to Play Console and App Store Connect helps nobody reading or
+forking the repository, and a process nobody outside the team follows is one
+nobody outside the team corrects. `RELEASE.md` keeps what a fork needs — where
+the version numbers live and how a release build is produced.
 
 ## Referring to a change
 

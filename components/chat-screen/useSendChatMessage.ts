@@ -64,10 +64,12 @@ interface UseSendChatMessageOptions {
 }
 
 const webSkipReason = (
-  skippedForDocPriority: boolean,
+  skippedForDocuments: boolean,
+  skippedForImage: boolean,
   model: Model | null
 ): WebSkipReason => {
-  if (skippedForDocPriority) return 'documents';
+  if (skippedForDocuments) return 'documents';
+  if (skippedForImage) return 'image';
   if (hasMemoryForWebSearch(model)) return 'model';
   return 'memory';
 };
@@ -105,8 +107,8 @@ export const useSendChatMessage = ({
       return false;
     }
 
-    Keyboard.dismiss();
     messagesRef.current?.onMessageSent();
+    Keyboard.dismiss();
 
     let targetChatId = chatId!;
     const isNewChat = !(await checkIfChatExists(db, targetChatId));
@@ -211,14 +213,14 @@ export const useSendChatMessage = ({
           : await prepareSources());
       }
 
-      const skippedForDocPriority =
-        RAG_PRIORITY_OVER_WEB_SEARCH && hasRagSources;
+      const skippedForAttachmentPriority =
+        RAG_PRIORITY_OVER_WEB_SEARCH && (hasRagSources || !!imagePath);
       const modelForWebSearch = useLLMStore.getState().model;
 
       const shouldRunWebSearch =
         WEB_SEARCH_ENABLED &&
         chatSettings.webSearchEnabled &&
-        !skippedForDocPriority &&
+        !skippedForAttachmentPriority &&
         isWebSearchReady(modelForWebSearch) &&
         hasMemoryForWebSearch(modelForWebSearch) &&
         !!userInput.trim();
@@ -233,7 +235,11 @@ export const useSendChatMessage = ({
           type: 'defaultToast',
           text1:
             WEB_SKIP_COPY[
-              webSkipReason(skippedForDocPriority, modelForWebSearch)
+              webSkipReason(
+                RAG_PRIORITY_OVER_WEB_SEARCH && hasRagSources,
+                RAG_PRIORITY_OVER_WEB_SEARCH && !!imagePath,
+                modelForWebSearch
+              )
             ],
         });
       }

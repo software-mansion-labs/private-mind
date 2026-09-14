@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react-native';
+import { Keyboard } from 'react-native';
 import type { LLMStore } from '../store/llmStore';
 import { useChatStore } from '../store/chatStore';
 import type { Attachment } from '../hooks/useAttachment';
@@ -339,6 +340,23 @@ describe('downloaded model — text input', () => {
   it('renders the text input', () => {
     renderBar();
     expect(screen.getByPlaceholderText('Ask about anything...')).toBeTruthy();
+  });
+
+  it('hands the message over before it closes the keyboard', () => {
+    const dismiss = jest
+      .spyOn(Keyboard, 'dismiss')
+      .mockImplementation(() => {});
+    const onSend = jest.fn();
+    renderBar({ onSend });
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'Hello'
+    );
+    fireEvent.press(screen.getByTestId('send-btn'));
+    expect(onSend.mock.invocationCallOrder[0]).toBeLessThan(
+      dismiss.mock.invocationCallOrder[0]
+    );
+    dismiss.mockRestore();
   });
 
   it('calls onSend with current input when send button is pressed', () => {

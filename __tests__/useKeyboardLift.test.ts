@@ -15,6 +15,7 @@ jest.mock('../context/ThemeContext', () => ({
 }));
 
 let keyboardHandler: {
+  onStart?: (event: { height: number; progress: number }) => void;
   onMove?: (event: { height: number; progress: number }) => void;
   onEnd?: (event: { height: number; progress: number }) => void;
 } = {};
@@ -47,6 +48,22 @@ describe('useKeyboardLift', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  it('follows the keyboard from the first frame of a reopen', () => {
+    mockInsetsBottom = 34;
+    const { result, rerender } = renderHook(() => useKeyboardLift());
+
+    keyboardHandler.onEnd!({ height: 0, progress: 0 });
+    rerender({});
+    expect(result.current.value).toBe(0);
+
+    keyboardHandler.onStart!({ height: 346, progress: 1 });
+    mockHeight.value = -40;
+    mockProgress.value = 0.12;
+    rerender({});
+
+    expect(result.current.value).toBeLessThan(0);
   });
 
   it('returns 0 when the keyboard is closed', () => {

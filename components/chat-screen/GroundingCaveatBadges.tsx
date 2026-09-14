@@ -24,7 +24,7 @@ interface Props {
 const GroundingCaveatBadges = ({ caveats }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const kind = leadingCaveat(caveats);
-  if (!kind) return null;
+  if (!kind || !__DEV__) return null;
 
   return (
     <View style={styles.container}>
