@@ -1,6 +1,8 @@
 import type { ViewStyle } from 'react-native';
 import { Easing } from 'react-native-reanimated';
-import { mixColors, withAlpha, type Theme } from '../../../styles/colors';
+import { type Theme } from '../../../styles/colors';
+import { radius } from '../../../constants/design-system';
+import { MENU_ROW } from '../../menu/MenuRow';
 
 // Geometry below is measured off the reference recording (1290×2796 @3x, a
 // 430×932pt window) and divided down to points.
@@ -46,14 +48,13 @@ export const COMPOSER_STRIP_HEIGHT =
 
 export const MENU = {
   width: 280,
-  itemHeight: 66,
-  paddingVertical: 12,
-  radius: 46,
-  iconWell: 42,
-  iconSize: 22,
-  iconInset: 24,
-  labelGap: 18,
-  labelSize: 19,
+  /** The rows are the app's regular menu rows — see `MenuRow`. */
+  itemHeight: MENU_ROW.regular.height,
+  paddingVertical: 8,
+  paddingHorizontal: 16,
+  /** The composer card's corner: the menu grows out of that card and the
+   *  sheet later lands flush on its bottom edge, so all three share it. */
+  radius: radius.eighteen,
   /** The menu's centre sits this far below the + button's centre. */
   centerOffset: 7,
 } as const;
@@ -90,7 +91,7 @@ export const GRID = {
   /** Hairline of panel material showing between the cells. */
   gap: 1.5,
   cellRadius: 2,
-  panelRadius: 52,
+  panelRadius: radius.eighteen,
   badgeSize: 23,
   badgeRing: 2,
   badgeInset: 4,
@@ -194,24 +195,24 @@ export const panelPalette = (theme: Theme) => ({
    * already dark-scheme over a dark grid. Stacked on ours it buried the photos.
    */
   controlScrim: 'rgba(0, 0, 0, 0.18)',
-  iconWell: withAlpha(theme.text.primary, 0.09),
   /**
-   * The panel's surface. A flat fill rather than a blur or glass: those are a
-   * `UIVisualEffectView`, which on iOS keeps a corner of its own and would not
-   * take the panel's — see `PanelMaterial`. Dark resolves to #1f1f1f, the
-   * reference's measured #1E1E1E.
+   * The panel's surface: the app's sheet surface, as a flat fill rather than a
+   * blur or glass — those are a `UIVisualEffectView`, which on iOS keeps a
+   * corner of its own and would not take the panel's; see `PanelMaterial`.
+   * The same surface the option sheets stand on, so the rows' wells read
+   * against it in both themes.
    */
-  materialFlat: mixColors(theme.bg.softPrimary, theme.text.primary, 0.12),
+  materialFlat: theme.bg.softPrimary,
   /**
    * Laid over the chat while the panel is up. The panel's surface is the same
    * grey as the app's cards, and the What's New card sits at the same gutter
-   * with a 16pt corner where the sheet has 52 — so the card showed through the
-   * sheet's corner and read as a second, tighter border around it. Darkening
-   * what is behind is what tells the two apart.
+   * with a corner of its own — so the card showed through the sheet's corner
+   * and read as a second border around it. Darkening what is behind is what
+   * tells the two apart.
    */
   backdrop: 'rgba(0, 0, 0, 0.22)',
   /** Fill behind a photo for the frames before it decodes. */
-  photoFill: mixColors(theme.bg.softPrimary, theme.text.primary, 0.08),
+  photoFill: theme.bg.softSecondary,
 });
 
 export type PanelPalette = ReturnType<typeof panelPalette>;

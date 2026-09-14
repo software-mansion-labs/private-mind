@@ -1,13 +1,13 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
-import { fontFamily } from '../../../styles/fontStyles';
 import { SvgComponent } from '../../../utils/SvgComponent';
 import CameraIcon from '../../../assets/icons/camera.svg';
 import ImageIcon from '../../../assets/icons/image.svg';
 import AttachmentIcon from '../../../assets/icons/attachment.svg';
-import { MENU, MENU_HEIGHT, PANEL_CONTENT, panelPalette } from './constants';
+import MenuRow from '../../menu/MenuRow';
+import { MENU, MENU_HEIGHT, PANEL_CONTENT } from './constants';
 
 export type MenuAction = 'camera' | 'photos' | 'files';
 
@@ -51,72 +51,33 @@ interface Props {
  * because the panel scales it.
  */
 const AttachmentMenu = ({ onSelect, imagesEnabled = true }: Props) => {
-  const { styles, theme } = useThemedStyles(createStyles);
-  const palette = panelPalette(theme);
+  const { styles } = useThemedStyles(createStyles);
 
   return (
     <View style={styles.root}>
-      {ITEMS.map((item) => {
-        const dimmed = !imagesEnabled && item.action !== 'files';
-        const Icon = item.icon;
-        return (
-          <Pressable
-            key={item.action}
-            accessibilityRole="button"
-            accessibilityLabel={item.label}
-            testID={item.testID}
-            onPress={() => onSelect(item.action)}
-            style={[styles.row, dimmed && styles.rowDimmed]}
-          >
-            <View style={styles.well}>
-              <Icon
-                width={MENU.iconSize}
-                height={MENU.iconSize}
-                style={{ color: palette.text }}
-              />
-            </View>
-            <Text style={styles.label}>{item.label}</Text>
-          </Pressable>
-        );
-      })}
+      {ITEMS.map((item) => (
+        <MenuRow
+          key={item.action}
+          label={item.label}
+          icon={item.icon}
+          testID={item.testID}
+          dimmed={!imagesEnabled && item.action !== 'files'}
+          onPress={() => onSelect(item.action)}
+        />
+      ))}
     </View>
   );
 };
 
 export default AttachmentMenu;
 
-const createStyles = (theme: Theme) => {
-  const palette = panelPalette(theme);
-  return StyleSheet.create({
+const createStyles = (_theme: Theme) =>
+  StyleSheet.create({
     root: {
       ...PANEL_CONTENT,
       width: MENU.width,
       height: MENU_HEIGHT,
       paddingVertical: MENU.paddingVertical,
-    },
-    row: {
-      height: MENU.itemHeight,
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingLeft: MENU.iconInset,
-    },
-    rowDimmed: {
-      opacity: 0.4,
-    },
-    well: {
-      width: MENU.iconWell,
-      height: MENU.iconWell,
-      borderRadius: MENU.iconWell / 2,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: palette.iconWell,
-    },
-    label: {
-      marginLeft: MENU.labelGap,
-      color: palette.text,
-      fontSize: MENU.labelSize,
-      fontFamily: fontFamily.regular,
-      letterSpacing: -0.2,
+      paddingHorizontal: MENU.paddingHorizontal,
     },
   });
-};
