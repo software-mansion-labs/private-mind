@@ -1,6 +1,6 @@
-import { useWindowDimensions } from 'react-native';
+import { Dimensions, Platform, useWindowDimensions } from 'react-native';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
-import { useAnimatedStyle, useDerivedValue } from 'react-native-reanimated';
+import { useDerivedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CAMERA_ASPECT, COMPOSER, GUTTER, SHEET_TOP_GAP } from './constants';
 
@@ -9,10 +9,28 @@ import { CAMERA_ASPECT, COMPOSER, GUTTER, SHEET_TOP_GAP } from './constants';
  * keyboard. The composer rides it live on the UI thread; the sheet's React
  * layout takes its settled height, which only matters once it has stopped.
  */
-export function useSheetGeometry() {
+export function useSheetGeometry(panelWindowHeight?: number) {
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { width, height: appWindowHeight } = useWindowDimensions();
   const keyboard = useReanimatedKeyboardAnimation();
+
+  /**
+   * The panel is drawn in the window above the keyboard, not in the app's own,
+   * and on Android the two can differ: Samsung keeps the status bar out of the
+   * app window where a Pixel does not. Everything below is anchored to the
+   * bottom edge, so a height short by that strip puts the whole panel — menu,
+   * sheet and the photos flying out of it — that much too high, which is what
+   * it did on an S20 FE while a Pixel 10 was exact.
+   *
+   * The over-keyboard view measures itself once it is up and that is the
+   * authority. Before then the display's height is the better guess of the
+   * two, and it is the right one on any phone that is not sharing the screen.
+   */
+  const height =
+    panelWindowHeight ??
+    (Platform.OS === 'android'
+      ? Math.max(appWindowHeight, Dimensions.get('screen').height)
+      : appWindowHeight);
 
   // `keyboard.height` is negative while the keyboard is up, which is what makes
   // it drop straight into a translate.
@@ -22,9 +40,6 @@ export function useSheetGeometry() {
       COMPOSER.barPaddingBottom
   );
   const composerBottom = useDerivedValue(() => height - liftedBy.get());
-  const composerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: -liftedBy.get() }],
-  }));
 
   /**
    * One footprint for both sheets, the way the reference has it: a portrait 3:4
@@ -51,7 +66,6 @@ export function useSheetGeometry() {
     width,
     height,
     composerBottom,
-    composerStyle,
     gridWidth,
     gridHeight,
     sheetTop,

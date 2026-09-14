@@ -1,5 +1,11 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { radius } from '../../constants/design-system';
 import { Theme } from '../../styles/colors';
@@ -49,6 +55,8 @@ interface Props {
   /** Present but unavailable: dimmed, and still pressable so the caller can
    *  say why. */
   dimmed?: boolean;
+  /** Waiting on what the row started: a spinner stands in for the glyph. */
+  busy?: boolean;
   accessibilityLabel?: string;
   testID?: string;
 }
@@ -60,6 +68,7 @@ const MenuRow = ({
   variant = 'regular',
   destructive = false,
   dimmed = false,
+  busy = false,
   accessibilityLabel,
   testID,
 }: Props) => {
@@ -86,12 +95,20 @@ const MenuRow = ({
     >
       {variant === 'regular' ? (
         <View style={styles.well}>
-          <Icon width={size} height={size} style={{ color }} />
+          {busy ? (
+            <ActivityIndicator color={color} />
+          ) : (
+            <Icon width={size} height={size} style={{ color }} />
+          )}
         </View>
       ) : (
         <Icon width={size} height={size} style={{ color }} />
       )}
-      <Text style={[styles.label, { color }]}>{label}</Text>
+      {/* The row's height is fixed here so a container can lay rows out from
+          these numbers alone, so a long label is clipped rather than wrapped. */}
+      <Text numberOfLines={1} style={[styles.label, { color }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 };

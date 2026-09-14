@@ -10,7 +10,7 @@ import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
 import { Feedback } from '../../../utils/Feedback';
 import AttachmentFlight, { type Flight } from './AttachmentFlight';
-import AttachmentMenu from './AttachmentMenu';
+import AttachmentMenu, { type MenuAction } from './AttachmentMenu';
 import AttachmentPanel from './AttachmentPanel';
 import CameraBar from './CameraBar';
 import CameraSheet, { type CameraSheetHandle } from './CameraSheet';
@@ -32,6 +32,13 @@ interface Props {
   width: number;
   gridWidth: number;
   gridHeight: number;
+  /** Reports the height of the window the panel is hosted in, which is not
+   *  always the app's own — see `useSheetGeometry`. */
+  onWindowHeight?: (height: number) => void;
+  /** Bumped when an image row is tapped on a model that cannot take images. */
+  imagesUnsupportedAt?: number;
+  /** The menu row whose work has not come back yet. */
+  busyAction?: MenuAction | null;
   /** How low the menu shape may be drawn — see `useSheetGeometry`. */
   menuMaxBottom: number;
   /** Window Y of the sheet's top edge — one footprint for grid and camera. */
@@ -65,6 +72,9 @@ const AttachmentOverlay = ({
   gridWidth,
   gridHeight,
   menuMaxBottom,
+  onWindowHeight,
+  imagesUnsupportedAt,
+  busyAction,
   sheetTop,
   sheetBottom,
   composerBottom,
@@ -289,6 +299,9 @@ const AttachmentOverlay = ({
           key={resumeKey}
           pointerEvents={isFlying ? 'none' : 'box-none'}
           style={StyleSheet.absoluteFill}
+          onLayout={(event) =>
+            onWindowHeight?.(event.nativeEvent.layout.height)
+          }
         >
           <Animated.View
             pointerEvents="none"
@@ -322,6 +335,8 @@ const AttachmentOverlay = ({
               <AttachmentMenu
                 onSelect={panel.onMenuAction}
                 imagesEnabled={imagesEnabled}
+                unsupportedAt={imagesUnsupportedAt}
+                busy={busyAction}
               />
             }
             grid={

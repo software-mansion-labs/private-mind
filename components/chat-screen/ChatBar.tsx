@@ -149,6 +149,10 @@ const ChatBar = ({
     addPastedAttachment,
   } = useAttachment();
 
+  // Measured by the overlay off the window it is hosted in, which on Android
+  // is not always the app's own.
+  const [panelWindowHeight, setPanelWindowHeight] = useState<number>();
+
   const {
     width: screenWidth,
     composerBottom,
@@ -157,27 +161,31 @@ const ChatBar = ({
     sheetTop,
     sheetBottom,
     menuMaxBottom,
-  } = useSheetGeometry();
+  } = useSheetGeometry(panelWindowHeight);
 
-  const handleSelectFiles = useCallback(
-    () =>
-      pickDocument().catch((error) => {
+  // The Files row holds the menu up while the OS presents the picker, and
+  // before that while the store it needs settles. Both are silent, so the row
+  // says it is working for as long as it is.
+  const [filesBusy, setFilesBusy] = useState(false);
+  const handleSelectFiles = useCallback(() => {
+    setFilesBusy(true);
+    return pickDocument()
+      .catch((error) => {
         console.error('Failed to open the document picker:', error);
-      }),
-    [pickDocument]
-  );
+      })
+      .finally(() => setFilesBusy(false));
+  }, [pickDocument]);
 
-  const showImagesUnsupportedToast = useCallback(() => {
-    Toast.show({
-      type: 'defaultToast',
-      text1: 'This model does not support images',
-    });
+  // Answered inside the panel rather than with a toast — see `AttachmentMenu`.
+  const [imagesUnsupportedAt, setImagesUnsupportedAt] = useState(0);
+  const showImagesUnsupported = useCallback(() => {
+    setImagesUnsupportedAt(Date.now());
   }, []);
 
   const panel = useAttachmentPanel({
     onSelectFiles: handleSelectFiles,
     canAttachImages: isVisionModel,
-    onImagesUnsupported: showImagesUnsupportedToast,
+    onImagesUnsupported: showImagesUnsupported,
   });
 
   const handleAttachPhotos = useCallback(
@@ -608,6 +616,9 @@ const ChatBar = ({
           </View>
           <AttachmentOverlay
             panel={panel}
+            onWindowHeight={setPanelWindowHeight}
+            imagesUnsupportedAt={imagesUnsupportedAt}
+            busyAction={filesBusy ? 'files' : null}
             width={screenWidth}
             gridWidth={gridWidth}
             gridHeight={gridHeight}

@@ -13,10 +13,9 @@ import { Glass } from './Glass';
 interface Props {
   width: number;
   /**
-   * Window Y of the bar's top edge. Positioned off the same numbers as the
-   * panel rather than by `bottom`: the panel is placed absolutely in window
-   * coordinates while this sits in the over-keyboard view, and on Android the
-   * two disagree by the navigation bar.
+   * Y of the bar's top edge, in the window the panel is hosted in. Positioned
+   * off the same numbers as the panel rather than by `bottom`, so the two
+   * cannot drift apart — see `useSheetGeometry` for whose window that is.
    */
   top: number;
   /** Whether the controls are wearing their glass and taking touches. */
@@ -43,6 +42,11 @@ const SheetBar = ({ width, top, active, fade, onBack, children }: Props) => {
   return (
     <View
       pointerEvents={active ? 'box-none' : 'none'}
+      // A faded-out bar is still a bar to a screen reader: its ‹ and its
+      // confirm pill sit right over the menu's rows and would be read out
+      // there.
+      accessibilityElementsHidden={!active}
+      importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}
       style={[styles.bar, { width, top }]}
     >
       <Pressable

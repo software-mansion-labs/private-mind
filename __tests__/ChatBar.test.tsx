@@ -82,6 +82,8 @@ jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
     panel,
     imagesEnabled,
     maxSelection,
+    imagesUnsupportedAt,
+    busyAction,
   }: {
     panel: {
       mode: string;
@@ -89,11 +91,15 @@ jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
     };
     imagesEnabled: boolean;
     maxSelection: number;
+    imagesUnsupportedAt?: number;
+    busyAction?: string | null;
   }) => (
     <View testID="attachment-overlay">
       <Text>{`mode:${panel.mode}`}</Text>
       <Text>{`vision:${imagesEnabled}`}</Text>
       <Text>{`max:${maxSelection}`}</Text>
+      <Text>{`unsupported:${imagesUnsupportedAt ? 'yes' : 'no'}`}</Text>
+      <Text>{`busy:${busyAction ?? 'none'}`}</Text>
       <TouchableOpacity
         testID="menu-photos"
         onPress={() => panel.onMenuAction('photos')}
@@ -784,12 +790,41 @@ describe('attachment', () => {
     });
 
     // The panel stays on the menu rather than morphing into a grid the model
-    // cannot use.
+    // cannot use, and says so in the menu. Not a toast: on Android the panel
+    // is hosted in the window above the keyboard and a toast is drawn in the
+    // app's own, underneath it.
     expect(screen.getByText('mode:menu')).toBeTruthy();
-    expect(Toast.show).toHaveBeenCalledWith({
+    expect(screen.getByText('unsupported:yes')).toBeTruthy();
+    expect(Toast.show).not.toHaveBeenCalledWith({
       type: 'defaultToast',
       text1: 'This model does not support images',
     });
+  });
+
+  it('marks the Files row busy until the picker call comes back', async () => {
+    let release!: () => void;
+    mockUseAttachment.pickDocument.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          release = () => resolve();
+        })
+    );
+
+    renderBar({ isVisionModel: true });
+    await openPanel();
+    expect(screen.getByText('busy:none')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('menu-files'));
+    });
+    // The store it needs can take seconds to settle and the OS takes its own
+    // time putting the picker up. Both are silent.
+    expect(screen.getByText('busy:files')).toBeTruthy();
+
+    await act(async () => {
+      release();
+    });
+    expect(screen.getByText('busy:none')).toBeTruthy();
   });
 
   it('caps the grid selection at the single image the send path carries', () => {

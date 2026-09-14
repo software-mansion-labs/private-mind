@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
@@ -11,14 +11,14 @@ import { MENU, MENU_HEIGHT, PANEL_CONTENT } from './constants';
 
 export type MenuAction = 'camera' | 'photos' | 'files';
 
-interface MenuItem {
+interface Item {
   action: MenuAction;
   label: string;
   icon: SvgComponent;
   testID: string;
 }
 
-const ITEMS: MenuItem[] = [
+const ITEMS: Item[] = [
   {
     action: 'camera',
     label: 'Camera',
@@ -39,32 +39,68 @@ const ITEMS: MenuItem[] = [
   },
 ];
 
+/** How long the image rows say why they are dimmed. */
+const NOTICE_MS = 2400;
+const UNSUPPORTED_LABEL = 'Images not supported';
+
 interface Props {
   onSelect: (action: MenuAction) => void;
-  /** Image rows read as unavailable when the loaded model has no vision. */
   imagesEnabled?: boolean;
+  /**
+   * Bumped every time an image row is tapped on a model that cannot take
+   * images. The answer belongs here rather than in a toast: on Android the
+   * panel is hosted in the window above the keyboard and a toast is drawn in
+   * the app's own, which means underneath it.
+   */
+  unsupportedAt?: number;
+  /** The row whose work is still in flight — the OS can take seconds to put a
+   *  picker up, and a row that does nothing reads as a row that failed. */
+  busy?: MenuAction | null;
 }
 
 /**
- * The rows that live inside the panel while it is still menu-shaped. No
- * background of its own — the panel owns the material — and no size logic,
+ * Camera / Photos / Files. Laid out at its natural size and never measured,
  * because the panel scales it.
  */
-const AttachmentMenu = ({ onSelect, imagesEnabled = true }: Props) => {
+const AttachmentMenu = ({
+  onSelect,
+  imagesEnabled = true,
+  unsupportedAt = 0,
+  busy = null,
+}: Props) => {
   const { styles } = useThemedStyles(createStyles);
+  const [notice, setNotice] = useState(false);
+
+  useEffect(() => {
+    if (!unsupportedAt) return;
+    setNotice(true);
+    const timer = setTimeout(() => setNotice(false), NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [unsupportedAt]);
+
+  useEffect(() => {
+    if (imagesEnabled) setNotice(false);
+  }, [imagesEnabled]);
 
   return (
     <View style={styles.root}>
-      {ITEMS.map((item) => (
-        <MenuRow
-          key={item.action}
-          label={item.label}
-          icon={item.icon}
-          testID={item.testID}
-          dimmed={!imagesEnabled && item.action !== 'files'}
-          onPress={() => onSelect(item.action)}
-        />
-      ))}
+      {ITEMS.map((item) => {
+        const dimmed = !imagesEnabled && item.action !== 'files';
+        return (
+          <MenuRow
+            key={item.action}
+            label={dimmed && notice ? UNSUPPORTED_LABEL : item.label}
+            accessibilityLabel={
+              dimmed ? `${item.label}, ${UNSUPPORTED_LABEL}` : item.label
+            }
+            icon={item.icon}
+            testID={item.testID}
+            dimmed={dimmed}
+            busy={busy === item.action}
+            onPress={() => onSelect(item.action)}
+          />
+        );
+      })}
     </View>
   );
 };
