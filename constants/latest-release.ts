@@ -1,11 +1,11 @@
 export const LATEST_RELEASE = {
   version: '1.3.0',
-  title: 'Web search, with sources',
+  title: 'Web search, privately',
   highlights: [
-    'Answer from the web, with a Web toggle per chat',
-    'See every source an answer used, and open it',
-    'Expand the trace to see what was searched',
+    'Bring current information into any chat with the new Web toggle',
+    'See the pages an answer used, and open any of them',
     'Pages are fetched and read on your device',
-    'New models appear without an app update',
+    'Watch the search as it happens',
+    'More on-device models to choose from',
   ],
 };
