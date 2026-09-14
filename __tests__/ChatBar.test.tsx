@@ -478,6 +478,7 @@ describe('generating state', () => {
         const state = {
           isGenerating: true,
           isProcessingPrompt: false,
+          generatingForChatId: defaultProps.chatId,
           interrupt: jest.fn(),
           loadModel: jest.fn(),
           model: null,
@@ -496,6 +497,7 @@ describe('generating state', () => {
         const state = {
           isGenerating: true,
           isProcessingPrompt: false,
+          generatingForChatId: defaultProps.chatId,
           interrupt,
           loadModel: jest.fn(),
           model: null,
@@ -506,6 +508,27 @@ describe('generating state', () => {
     renderBar();
     fireEvent.press(screen.getByTestId('interrupt-btn'));
     expect(interrupt).toHaveBeenCalled();
+  });
+
+  it('stays idle while a different chat is the one generating', () => {
+    mockUseLLMStore.mockImplementation(
+      (selector?: (state: Partial<LLMStore>) => unknown) => {
+        const state = {
+          isGenerating: true,
+          isProcessingPrompt: true,
+          generatingForChatId: defaultProps.chatId + 1,
+          interrupt: jest.fn(),
+          loadModel: jest.fn(),
+          model: null,
+        };
+        return selector ? selector(state) : state;
+      }
+    );
+
+    renderBar();
+
+    expect(screen.queryByTestId('interrupt-btn')).toBeNull();
+    expect(screen.getByTestId('speech-btn')).toBeTruthy();
   });
 });
 
