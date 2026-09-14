@@ -30,8 +30,8 @@ check _Release → App bundle explorer_. `versionName` matches `app.json`.
 
 ```gradle
 defaultConfig {
-    versionCode 69
-    versionName "1.3.0"
+    versionCode 69        // Increment this
+    versionName "1.3.0"   // Match app.json version
 }
 ```
 
