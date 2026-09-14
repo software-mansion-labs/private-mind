@@ -11,7 +11,6 @@ stale half undermined the living one.
 
 | file                                     | what it is                                                |
 | ---------------------------------------- | --------------------------------------------------------- |
-| [RELEASE.md](RELEASE.md)                 | version bumping and the App Store / Play release flow     |
 | [ANDROID_RELEASE.md](ANDROID_RELEASE.md) | building an AAB, locally and through CI                   |
 | [KNOWN_ISSUES.md](KNOWN_ISSUES.md)       | open problems, what is known about each, how to settle it |
 

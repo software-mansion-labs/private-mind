@@ -8,7 +8,7 @@ This document outlines the process for building and preparing Android App Bundle
 
 ### Steps:
 
-1. Ensure version numbers are updated (see [RELEASE.md](./RELEASE.md))
+1. Ensure version numbers are updated in `app.json` and `android/app/build.gradle` (`versionName` and `versionCode`)
 2. Go to **GitHub** → **Actions** → **"Android Release"**
 3. Click **"Run workflow"**
 4. Wait for the build to complete (~10-15 minutes)
