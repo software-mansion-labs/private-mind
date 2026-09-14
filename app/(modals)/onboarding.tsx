@@ -1,202 +1,115 @@
-import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
-import {
-  Dimensions,
-  Image,
-  ImageSourcePropType,
-  StyleSheet,
-  View,
-  BackHandler,
-} from 'react-native';
-import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { Theme } from '../../styles/colors';
-import OnboardingIntroPanel from '../../components/onboarding/OnboardingIntroPanel';
+import React, { useCallback, useState } from 'react';
+import { Image, LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import Animated, {
-  FadeIn,
-  FadeInDown,
-  interpolate,
+  Easing,
+  ReduceMotion,
+  runOnJS,
   useAnimatedStyle,
-  useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import CloseButton from '../../components/onboarding/CloseButton';
-import OnboardingStepPanel, {
-  OnboardingStepPanelProps,
-} from '../../components/onboarding/OnboardingStepPanel';
 import { useRouter } from 'expo-router';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
+import { Theme } from '../../styles/colors';
+import OnboardingIntroPanel from '../../components/onboarding/OnboardingIntroPanel';
+import OnboardingCarousel from '../../components/onboarding/OnboardingCarousel';
 import { markOnboardingComplete } from '../../utils/onboardingStatus';
 import { Feedback } from '../../utils/Feedback';
+import { EMPHASIZED_DECELERATE } from '../../constants/motion';
+import {
+  CARD_INSET,
+  INTRO_ILLUSTRATION,
+  SPILL_DURATION,
+} from '../../constants/onboarding';
 
-const SCREEN_HEIGHT = Dimensions.get('screen').height;
-
-type PanelStepProps = Omit<
-  OnboardingStepPanelProps,
-  'onBackPress' | 'onNextPress' | 'buttonPrimary'
->;
-const STEPS: (PanelStepProps & {
-  image: ImageSourcePropType;
-  alignment: 'center' | 'bottom';
-})[] = [
-  {
-    label: 'Offline AI access',
-    title: 'Chat with AI models offline',
-    description:
-      'Interact with AI models securely and offline on your mobile device.',
-    buttonLabel: 'Got it, next',
-    image: require('../../assets/onboarding/step_chat.png'),
-    alignment: 'center',
-  },
-  {
-    label: 'AI RAG',
-    title: 'Add source documents',
-    description: 'Use extra files to extend models knowledge and responses.',
-    buttonLabel: 'Great, next',
-    image: require('../../assets/onboarding/step_sources.png'),
-    alignment: 'bottom',
-  },
-  {
-    label: 'Speech to text',
-    title: 'Use voice instead of chat',
-    description: 'Use voice messages that automatically transcript into text.',
-    buttonLabel: 'Awesome, next',
-    image: require('../../assets/onboarding/step_voice.png'),
-    alignment: 'bottom',
-  },
-  {
-    label: 'Custom models',
-    title: 'Upload extra models',
-    description: 'Add your own custom models compatible with ExecuTorch.',
-    buttonLabel: 'Start chatting',
-    image: require('../../assets/onboarding/step_models.png'),
-    alignment: 'center',
-  },
-];
+const SPILL_EASING = Easing.bezier(...EMPHASIZED_DECELERATE);
+const INTRO_CORNER_RADIUS = 10;
 
 function OnboardingScreen() {
   const router = useRouter();
-  const closeOnboarding = () => {
+  const { styles, theme } = useThemedStyles(createStyles);
+  const [showCarousel, setShowCarousel] = useState(false);
+  const [introHeight, setIntroHeight] = useState(0);
+  const spillProgress = useSharedValue(0);
+
+  const leaveOnboarding = useCallback(() => {
     markOnboardingComplete();
     router.replace('/(modals)/select-starting-model');
-  };
+  }, [router]);
 
-  const { styles, theme } = useThemedStyles(createStyles);
-  const bgSpillProgress = useSharedValue(0);
+  const completeOnboarding = useCallback(() => {
+    Feedback.onboardingComplete();
+    leaveOnboarding();
+  }, [leaveOnboarding]);
 
-  const [stepNumber, setStepNumber] = useState(0);
-  const step = stepNumber > 0 ? STEPS[stepNumber - 1] : null;
-
-  // Handle Android back button
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      () => {
-        if (stepNumber > 1) {
-          // Go to previous onboarding step
-          setStepNumber(stepNumber - 1);
-          return true; // Prevent default back action
-        } else if (stepNumber === 1) {
-          // Go back to intro panel
-          bgSpillProgress.set(withTiming(0, { duration: 500 }));
-          setTimeout(() => setStepNumber(0), 500);
-          return true; // Prevent default back action
+  const openCarousel = useCallback(() => {
+    spillProgress.set(
+      withTiming(
+        1,
+        {
+          duration: SPILL_DURATION,
+          easing: SPILL_EASING,
+          reduceMotion: ReduceMotion.System,
+        },
+        (finished) => {
+          if (finished) runOnJS(setShowCarousel)(true);
         }
-        // stepNumber === 0 (intro panel) - allow default back action
-        return false;
-      }
+      )
     );
+  }, [spillProgress]);
 
-    return () => backHandler.remove();
-  }, [stepNumber, bgSpillProgress]);
+  const closeCarousel = useCallback(() => {
+    setShowCarousel(false);
+    spillProgress.set(
+      withTiming(0, {
+        duration: SPILL_DURATION,
+        easing: SPILL_EASING,
+        reduceMotion: ReduceMotion.System,
+      })
+    );
+  }, [spillProgress]);
 
-  const introPanel = useMeasureHeight();
-  const stepPanel = useMeasureHeight();
+  const handleIntroLayout = useCallback((event: LayoutChangeEvent) => {
+    setIntroHeight(event.nativeEvent.layout.height);
+  }, []);
 
-  const initialBgBottom = introPanel.height + 16;
-  const bgDistance = useDerivedValue(() =>
-    interpolate(bgSpillProgress.get(), [0, 1], [0, initialBgBottom])
-  );
-
-  const divider = useDerivedValue(
-    () => SCREEN_HEIGHT - initialBgBottom + bgDistance.get()
-  );
-
-  const colorBgAnimation = useAnimatedStyle(() => {
-    const topEdge = Math.max(theme.insets.top + 16 - bgDistance.get(), 0);
-    const sideEdge = Math.max(16 - bgDistance.get(), 0);
+  const spillStyle = useAnimatedStyle(() => {
+    const restingBottom = introHeight + CARD_INSET;
+    const spilled = restingBottom * spillProgress.get();
 
     return {
-      position: 'absolute',
-      top: topEdge,
-      left: sideEdge,
-      right: sideEdge,
-      bottom: SCREEN_HEIGHT - divider.get(),
-      borderRadius: Math.max(10 - bgDistance.get(), 0),
+      top: Math.max(theme.insets.top + CARD_INSET - spilled, 0),
+      left: Math.max(CARD_INSET - spilled, 0),
+      right: Math.max(CARD_INSET - spilled, 0),
+      bottom: restingBottom - spilled,
+      borderRadius: Math.max(INTRO_CORNER_RADIUS - spilled, 0),
     };
   });
 
-  const imageAnimation = useAnimatedStyle(() => ({
-    height: divider.get(),
-  }));
-
   return (
     <View style={styles.container}>
-      <View ref={introPanel.ref} style={styles.bottomPanel}>
-        <OnboardingIntroPanel
-          onPressStart={() => {
-            bgSpillProgress.set(withTiming(1, { duration: 500 }));
-            setTimeout(() => setStepNumber(1), 500);
-          }}
-        />
+      <View style={styles.introPanel} onLayout={handleIntroLayout}>
+        <OnboardingIntroPanel onPressStart={openCarousel} />
       </View>
 
-      <Animated.View style={[styles.colorBg, colorBgAnimation]} />
-      <Animated.View style={[styles.imageWrapper, imageAnimation]}>
-        <View
-          style={[
-            styles.innerImageWrapper,
-            step?.alignment === 'bottom'
-              ? {
-                  justifyContent: 'flex-end',
-                  bottom: stepPanel.height + 8,
-                }
-              : { justifyContent: 'center' },
-          ]}
-        >
-          <Image source={step?.image ?? STEPS[0].image} />
-        </View>
-      </Animated.View>
-
-      {step && (
-        <>
-          <Animated.View entering={FadeIn} style={styles.close}>
-            <CloseButton onPress={closeOnboarding} />
-          </Animated.View>
-
-          <Animated.View
-            ref={stepPanel.ref}
-            entering={FadeInDown}
-            style={styles.bottomPanel}
-          >
-            <OnboardingStepPanel
-              label={step.label}
-              title={step.title}
-              description={step.description}
-              buttonLabel={step.buttonLabel}
-              onBackPress={
-                stepNumber > 1 ? () => setStepNumber(stepNumber - 1) : undefined
-              }
-              onNextPress={() => {
-                if (stepNumber < STEPS.length) {
-                  setStepNumber(stepNumber + 1);
-                } else {
-                  Feedback.onboardingComplete();
-                  closeOnboarding();
-                }
-              }}
-              buttonPrimary={stepNumber === STEPS.length}
+      {introHeight > 0 && (
+        <Animated.View style={[styles.brandBackdrop, spillStyle]}>
+          {!showCarousel && (
+            <Image
+              source={INTRO_ILLUSTRATION}
+              style={styles.introIllustration}
+              resizeMode="contain"
             />
-          </Animated.View>
-        </>
+          )}
+        </Animated.View>
+      )}
+
+      {showCarousel && (
+        <OnboardingCarousel
+          onSkip={leaveOnboarding}
+          onComplete={completeOnboarding}
+          onExitToIntro={closeCarousel}
+        />
       )}
     </View>
   );
@@ -210,45 +123,24 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
     },
-    colorBg: {
-      backgroundColor: theme.bg.main,
-    },
-    imageWrapper: {
+    brandBackdrop: {
       position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
+      backgroundColor: theme.bg.main,
       overflow: 'hidden',
-    },
-    innerImageWrapper: {
       alignItems: 'center',
-      height: SCREEN_HEIGHT,
+      justifyContent: 'center',
+      padding: 24,
     },
-    bottomPanel: {
-      padding: 16,
-      paddingBottom: 16 + theme.insets.bottom,
+    introIllustration: {
+      flex: 1,
+      width: '100%',
+    },
+    introPanel: {
       position: 'absolute',
       bottom: 0,
       left: 0,
       right: 0,
-    },
-
-    close: {
-      position: 'absolute',
-      top: theme.insets.top + 16,
-      right: 16,
+      padding: CARD_INSET,
+      paddingBottom: CARD_INSET + theme.insets.bottom,
     },
   });
-
-function useMeasureHeight() {
-  const ref = useRef<View>(null);
-  const [height, setHeight] = useState(0);
-
-  useLayoutEffect(() => {
-    ref.current?.measure((x, y, width, height, pageX, pageY) => {
-      setHeight(height);
-    });
-  });
-
-  return { ref, height };
-}
