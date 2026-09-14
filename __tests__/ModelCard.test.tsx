@@ -66,7 +66,7 @@ import ModelCard from '../components/model-hub/ModelCard';
 import { useModelStore, ModelState } from '../store/modelStore';
 import { isModelCompatible } from '../utils/modelCompatibility';
 
-const mockUseModelStore = useModelStore as jest.Mock;
+const mockUseModelStore = useModelStore as unknown as jest.Mock;
 const mockIsModelCompatible = isModelCompatible as jest.Mock;
 const mockNetInfoFetch = NetInfo.fetch as jest.Mock;
 

@@ -1,12 +1,20 @@
+import { estimatePromptTokens } from '../constants/context-window';
+import {
+  mapOutsideThink,
+  stripThinkBlocks,
+  unclosedThinkText,
+} from '../utils/thinking';
 import { create } from 'zustand';
 import { LLMModule } from 'react-native-executorch';
 import { Model } from '../database/modelRepository';
 import { SQLiteDatabase } from 'expo-sqlite';
 import {
   ChatSettings,
+  getChatDigest,
   getChatMessages,
   Message,
   persistMessage,
+  setChatDigest,
   SourceDocument,
 } from '../database/chatRepository';
 import DeviceInfo from 'react-native-device-info';
@@ -14,19 +22,53 @@ import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
 import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
+import Toast from 'react-native-toast-message';
 import { Feedback } from '../utils/Feedback';
-import { prepareMessagesForLLM } from '../utils/promptUtils';
 import {
+  answerLanguageAnchor,
+  focusedRetrySystemPrompt,
+  prepareMessagesForLLM,
+} from '../utils/promptUtils';
+import { detectQuestionLanguage } from '../utils/questionLanguage';
+import {
+  detectGroundingCaveats,
+  claimsMissingEvidenceItHas,
+  answerUsesNoRetrievedEvidence,
+  answerStatesFigure,
+  buriesFigureContextOffers,
+  evidenceLinesFor,
+  aspectsMissingFromAnswer,
+  humanizeSourceReferences,
+  isCircularNonAnswer,
+  isDanglingListAnswer,
+  isQuestionEchoAnswer,
+  isWrongLanguageAnswer,
+  retryDropsGroundedDetail,
+  stripEchoedQuestionPrefix,
+  stripSourceLabels,
   pickCitationsByAnswer,
   restrictCitationsToContext,
+  sourcesBlockOf,
 } from '../utils/messageSources';
+import { sourcesPresentInContext } from '../utils/contextUtils';
+import { normalizeModelText } from '../utils/normalizeModelText';
+import {
+  isRepetitionFromTheStart,
+  truncateAtRepeatedClause,
+} from '../utils/loopDetection';
+import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
+import { updateConversationDigest } from '../utils/conversationDigest';
+import type { WebIntentKind } from '../utils/web/intentKind';
 import { useSettingsStore } from './settingsStore';
+import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
 
 export interface LLMStore {
   isLoading: boolean;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
+  isRefining: boolean;
   isBenchmarking: boolean;
   db: SQLiteDatabase | null;
   model: Model | null;
@@ -36,7 +78,10 @@ export interface LLMStore {
   };
   activeChatId: number | null;
   generatingForChatId: number | null;
+  generatingMessageLocalId: number | null;
   activeChatMessages: Message[];
+  activeChatDigest: string | null;
+  activeChatDigestChatId: number | null;
   generationError: { chatId: number; message: string } | null;
 
   setDB: (db: SQLiteDatabase) => void;
@@ -49,18 +94,24 @@ export interface LLMStore {
   sendChatMessage: (
     newMessage: string,
     chatId: number,
-    buildSources: () => Promise<{
+    buildSources: (signal?: AbortSignal) => Promise<{
       context: string[];
       sourceDocuments?: SourceDocument[];
       preferredSourceDocuments?: SourceDocument[];
+      webIntent?: string;
+      webIntentKind?: WebIntentKind;
+      webSubQueries?: string[];
+      webWeak?: boolean;
+      webSearchFailed?: boolean;
     }>,
     settings: ChatSettings,
     imagePath?: string,
     documentName?: string,
     isRetry?: boolean
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   retryLastGeneration: () => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
+  generateUtility: (messages: ExecutorchMessage[]) => Promise<string>;
   interrupt: () => void;
   sendEventMessage: (chatId: number, message: string) => Promise<void>;
   refreshActiveChatMessages: () => Promise<void>;
@@ -86,12 +137,44 @@ let streamBuffer = '';
 let streamTokenCount = 0;
 let streamFirstTokenTime = 0;
 let streamFlushScheduled = false;
+let streamedSoFar = '';
 
 const resetStreamState = () => {
   streamBuffer = '';
   streamTokenCount = 0;
   streamFirstTokenTime = 0;
   streamFlushScheduled = false;
+  streamedSoFar = '';
+};
+
+let suppressUtilityStreaming = false;
+let utilityGenerating = false;
+let utilityChain: Promise<void> = Promise.resolve();
+let sendAbortController: AbortController | null = null;
+let messageLocalIdSeq = 0;
+const nextMessageLocalId = () => (messageLocalIdSeq += 1);
+
+const buildAssistantPlaceholder = (
+  chatId: number,
+  model: Model | null
+): Message => ({
+  role: 'assistant',
+  content: '',
+  modelName: model?.modelName,
+  chatId,
+  timestamp: Date.now(),
+  id: -1,
+  localId: nextMessageLocalId(),
+});
+
+const withNoThink = (messages: ExecutorchMessage[]): ExecutorchMessage[] => {
+  if (messages.length === 0) return messages;
+  const last = messages.length - 1;
+  return messages.map((message, index) =>
+    index === last
+      ? { ...message, content: `${message.content} /no_think` }
+      : message
+  );
 };
 
 const calculatePerformanceMetrics = (
@@ -152,7 +235,7 @@ const waitForSettingsHydration = async (): Promise<void> => {
 };
 
 const waitForModelToBecomeIdle = async (get: () => LLMStore) => {
-  while (get().isLoading || get().isGenerating) {
+  while (get().isLoading || get().isGenerating || utilityGenerating) {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
 };
@@ -188,9 +271,13 @@ const loadModelInstance = async (
     if (!streamBuffer) return;
     const text = streamBuffer;
     streamBuffer = '';
+    streamedSoFar += text;
     const snapshot = get();
+    const turnLocalId = snapshot.generatingMessageLocalId;
     const shouldAppendToActiveChat =
-      snapshot.generatingForChatId === snapshot.activeChatId;
+      snapshot.generatingForChatId === snapshot.activeChatId &&
+      turnLocalId !== null &&
+      snapshot.activeChatMessages.some((msg) => msg.localId === turnLocalId);
     set((state) => ({
       isProcessingPrompt: false,
       performance: {
@@ -198,8 +285,8 @@ const loadModelInstance = async (
         firstTokenTime: streamFirstTokenTime,
       },
       activeChatMessages: shouldAppendToActiveChat
-        ? state.activeChatMessages.map((msg, index) =>
-            index === state.activeChatMessages.length - 1
+        ? state.activeChatMessages.map((msg) =>
+            msg.localId === turnLocalId
               ? { ...msg, content: msg.content + text }
               : msg
           )
@@ -220,6 +307,8 @@ const loadModelInstance = async (
       },
       () => {},
       (token) => {
+        if (suppressUtilityStreaming) return;
+
         const isFirstToken = streamTokenCount === 0;
 
         if (isFirstToken && !get().isBenchmarking) {
@@ -247,7 +336,7 @@ const loadModelInstance = async (
       }
     );
 
-    const generationConfig = getGenerationConfigForModel(model.modelPath);
+    const generationConfig = getGenerationConfigForModel(model);
     if (generationConfig) {
       llmInstance.configure({ generationConfig });
     }
@@ -273,6 +362,7 @@ const updateChatStateForGeneration = (
     assistantMessage?: Message;
     timeToFirstToken?: number;
     tokensPerSecond?: number;
+    localId?: number;
   }
 ) => {
   switch (phase) {
@@ -280,6 +370,7 @@ const updateChatStateForGeneration = (
       set({
         isProcessingPrompt: true,
         generatingForChatId: data?.chatId,
+        generatingMessageLocalId: data?.localId ?? null,
         ...(data?.chatId !== undefined ? { activeChatId: data.chatId } : {}),
         activeChatMessages: data?.activeChatMessages,
       });
@@ -296,13 +387,15 @@ const updateChatStateForGeneration = (
       break;
     case 'complete':
       streamBuffer = '';
+      streamedSoFar = '';
       if (
         data?.timeToFirstToken !== undefined &&
         data?.tokensPerSecond !== undefined
       ) {
         set((state) => ({
-          activeChatMessages: state.activeChatMessages.map((msg, index) =>
-            index === state.activeChatMessages.length - 1
+          activeChatMessages: state.activeChatMessages.map((msg) =>
+            msg.localId === (data.localId ?? state.generatingMessageLocalId) &&
+            msg.role === 'assistant'
               ? {
                   ...msg,
                   id: data.assistantMessage?.id ?? msg.id,
@@ -310,43 +403,197 @@ const updateChatStateForGeneration = (
                   sourceDocuments:
                     data.assistantMessage?.sourceDocuments ??
                     msg.sourceDocuments,
+                  groundingCaveats:
+                    data.assistantMessage?.groundingCaveats ??
+                    msg.groundingCaveats,
                   timeToFirstToken: data.timeToFirstToken!,
                   tokensPerSecond: data.tokensPerSecond!,
                 }
               : msg
           ),
           isGenerating: false,
+          isRefining: false,
           generatingForChatId: null,
+          generatingMessageLocalId: null,
           isProcessingPrompt: false,
         }));
       } else {
         set({
           isGenerating: false,
+          isRefining: false,
           generatingForChatId: null,
+          generatingMessageLocalId: null,
           isProcessingPrompt: false,
         });
       }
       break;
     case 'failed':
       streamBuffer = '';
+      streamedSoFar = '';
       // Drop the empty assistant placeholder left behind when generation
       // failed, was interrupted before any tokens, or produced no response.
       set((state) => {
         const messages = state.activeChatMessages;
-        const last = messages[messages.length - 1];
-        const cleaned =
-          last && last.role === 'assistant' && last.id === -1 && !last.content
-            ? messages.slice(0, -1)
-            : messages;
+        const turnLocalId = data?.localId ?? state.generatingMessageLocalId;
+        const cleaned = messages.filter(
+          (message) =>
+            !(
+              message.localId === turnLocalId &&
+              message.role === 'assistant' &&
+              message.id === -1 &&
+              !stripThinkBlocks(message.content).trim()
+            )
+        );
         return {
           activeChatMessages: cleaned,
           isGenerating: false,
+          isRefining: false,
           generatingForChatId: null,
+          generatingMessageLocalId: null,
           isProcessingPrompt: false,
         };
       });
+      useWebSearchStore.getState().resetTrace();
       break;
   }
+};
+
+const DANGLING_LIST_CONTINUATION_PROMPT =
+  'You started a list but stopped right after the introduction, with no items. ' +
+  'Continue now with ONLY the actual list items — do not repeat or rephrase the ' +
+  'introduction, and do not add any other commentary.';
+
+const CIRCULAR_ANSWER_RETRY_PROMPT =
+  'That reply only talked about the sources instead of answering. State the ' +
+  'answer itself now, in your own words, and mention a source only where it ' +
+  'backs a specific fact.';
+
+const QUESTION_ECHO_RETRY_PROMPT =
+  'That reply only repeated the question back instead of answering it. Answer ' +
+  'the question now, directly, using the information you were given. Do not ' +
+  'restate or rephrase the question.';
+
+const NO_ANSWER_FALLBACK: Record<string, string> = {
+  pl: 'Nie udało mi się odpowiedzieć na to pytanie na podstawie znalezionych źródeł.',
+  en: 'I could not answer this question from the sources I found.',
+};
+
+const noAnswerFallback = (question: string | undefined): string => {
+  const code = detectQuestionLanguage(question ?? '')?.code ?? 'en';
+  return NO_ANSWER_FALLBACK[code] ?? NO_ANSWER_FALLBACK.en!;
+};
+
+const EVIDENCE_PRESENT_RETRY_PROMPT =
+  'The block does contain a figure of the kind the question asks for. Read it ' +
+  'again, including the page titles, find that value and answer with it. Only ' +
+  'if it truly is not there, say so.';
+
+const SOURCES_COVER_TOPIC_RETRY_PROMPT =
+  'The sources do discuss what the question asks about. Answer the ' +
+  'question directly in your first sentence with the fact or figure the ' +
+  'sources give, exactly as they give it. Do not describe, list or ' +
+  'summarize the sources. If they cover it only in part, give that part ' +
+  'instead of refusing.';
+
+const quotedEvidenceLines = (lines: string[]): string =>
+  lines.map((line) => `"${line}"`).join('\n');
+
+const focusedEvidencePrompt = (question: string, lines: string[]): string =>
+  'These lines were quoted from the sources retrieved for the question ' +
+  'below. Answer it in one or two sentences, giving the figure they state ' +
+  'in the first sentence, exactly as they give it. If the lines do not ' +
+  'hold it, say the sources do not state it.\n' +
+  `${quotedEvidenceLines(lines)}\n\nQuestion: ${question}`;
+
+const aspectCoverageRetryPrompt = (aspects: string[]): string =>
+  'The answer does not address: ' +
+  aspects.map((aspect) => `"${aspect}"`).join(', ') +
+  '. The sources do cover it. Write the complete answer again: keep what you ' +
+  'already said and add what the sources say about that part as well.';
+
+const WRONG_LANGUAGE_RETRY_PROMPT =
+  'That reply was written in the wrong language. Write the same answer again, ' +
+  'with the same facts, in the language of the question, and do not switch ' +
+  'language or script partway through.';
+
+const carriesAnswer = (response: string): boolean => {
+  if (stripThinkBlocks(response).trim()) return true;
+  const unclosed = unclosedThinkText(response).trim();
+  return Boolean(unclosed) && !isRepetitionFromTheStart(unclosed);
+};
+
+const tidyVisibleAnswer = (response: string): string =>
+  mapOutsideThink(response, (segment) =>
+    truncateAtRepeatedClause(normalizeModelText(segment))
+  );
+
+const runUtilityGeneration = async (
+  instance: LLMModule,
+  messages: ExecutorchMessage[],
+  model: Model | null
+): Promise<string> => {
+  utilityGenerating = true;
+  suppressUtilityStreaming = true;
+  try {
+    const prepared = model?.thinking ? withNoThink(messages) : messages;
+    if (model) {
+      instance.configure({
+        generationConfig: getGenerationConfigForModel(model, true),
+      });
+    }
+    const result = await instance.generate(prepared);
+    reportPromptEstimateAccuracy(prepared, instance, 'utility');
+    return typeof result === 'string' ? result : '';
+  } catch (error) {
+    console.warn('generateUtility failed', error);
+    return '';
+  } finally {
+    if (model) {
+      instance.configure({
+        generationConfig: getGenerationConfigForModel(model),
+      });
+    }
+    suppressUtilityStreaming = false;
+    utilityGenerating = false;
+  }
+};
+
+const describeGenerationFailure = (): string =>
+  'The model returned an empty response';
+
+const NUDGE_TIME_BUDGET_MS = 40_000;
+
+const digestForChat = (get: () => LLMStore, chatId: number): string | null =>
+  get().activeChatDigestChatId === chatId ? get().activeChatDigest : null;
+
+const reportPromptEstimateAccuracy = (
+  messages: ExecutorchMessage[],
+  instance: { getPromptTokensCount?: () => number },
+  role: 'chat' | 'utility' = 'chat'
+): void => {
+  if (!__DEV__ || typeof instance.getPromptTokensCount !== 'function') {
+    return;
+  }
+  const actual = instance.getPromptTokensCount();
+  if (!actual) return;
+  const assembled = messages
+    .map((message) =>
+      typeof message.content === 'string'
+        ? message.content
+        : JSON.stringify(message.content)
+    )
+    .join(' ');
+  const estimated = estimatePromptTokens(assembled);
+  console.log(
+    '[prompt-tokens]',
+    JSON.stringify({
+      role,
+      estimated,
+      actual,
+      ratio: +(estimated / actual).toFixed(3),
+      chars: assembled.length,
+    })
+  );
 };
 
 const generateLLMResponse = async (
@@ -378,6 +625,8 @@ const generateLLMResponse = async (
   const finalResponse = await llmInstance.generate(preparedMessages);
   const endTime = performance.now();
 
+  reportPromptEstimateAccuracy(messages, llmInstance);
+
   if (finalResponse) {
     const { timeToFirstToken, tokensPerSecond } = calculatePerformanceMetrics(
       startTime,
@@ -402,9 +651,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
   isGenerating: false,
   isProcessingPrompt: false,
+  isRefining: false,
   isBenchmarking: false,
   db: null,
   generatingForChatId: null,
+  generatingMessageLocalId: null,
   activeChatId: null,
   model: null,
   performance: {
@@ -412,6 +663,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     firstTokenTime: 0,
   },
   activeChatMessages: [],
+  activeChatDigest: null,
+  activeChatDigestChatId: null,
   generationError: null,
 
   setDB: (db) => set({ db }),
@@ -424,15 +677,61 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
     //Once the user selects a chat room, we load the messages for that chat and set it as the active chat.
     if (chatId !== null) {
-      const messageHistory = await getChatMessages(db, chatId);
-      set({ activeChatId: chatId, activeChatMessages: messageHistory });
+      const generatingHere = get().generatingForChatId === chatId;
+      const holdsThisChat = get().activeChatMessages.some(
+        (message) => message.chatId === chatId
+      );
+      if (generatingHere && holdsThisChat) {
+        set({ activeChatId: chatId });
+        return;
+      }
+      if (!useWebSearchStore.getState().isSearchingWeb) {
+        useWebSearchStore.getState().resetTrace();
+      }
+      const [messageHistory, digest] = await Promise.all([
+        getChatMessages(db, chatId),
+        getChatDigest(db, chatId),
+      ]);
+      set({
+        activeChatId: chatId,
+        activeChatMessages: generatingHere
+          ? [
+              ...messageHistory,
+              {
+                ...buildAssistantPlaceholder(chatId, get().model),
+                content: streamedSoFar,
+              },
+            ]
+          : messageHistory,
+        activeChatDigest: digest,
+        activeChatDigestChatId: chatId,
+      });
     } else {
-      set({ activeChatId: null, activeChatMessages: [] });
+      set({
+        activeChatId: null,
+        activeChatMessages: [],
+        activeChatDigest: null,
+        activeChatDigestChatId: null,
+      });
     }
   },
 
   loadModel: async (model, hardReload: boolean = false) => {
+    const { model: currentModel } = get();
+    if (model.id === currentModel?.id && llmInstance && !hardReload) {
+      return;
+    }
     const result = modelLoadChain.then(async () => {
+      const network = model.isDownloaded
+        ? null
+        : await NetInfo.fetch().catch(() => null);
+      if (network?.isConnected === false) {
+        Toast.show({
+          type: 'defaultToast',
+          text1: 'Model cannot be loaded without internet connection.',
+        });
+        return;
+      }
       await modelOffloadChain;
       await loadModelInstance(model, hardReload, set, get);
     });
@@ -499,15 +798,21 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     documentName,
     isRetry = false
   ) => {
-    const { db, model: currentModel, activeChatMessages } = get();
-    if (!db || !currentModel) {
+    const { db, model: selectedModel, activeChatMessages } = get();
+    if (!db || !selectedModel) {
       console.warn('LLM not ready or DB not set');
-      return;
+      return false;
+    }
+    let currentModel = selectedModel;
+    if (get().isProcessingPrompt || get().isGenerating) {
+      console.warn('A turn is already in flight, rejecting the send');
+      return false;
     }
 
     const tempUserId = -Date.now();
     const userMessage: Message = {
       id: tempUserId,
+      localId: nextMessageLocalId(),
       role: 'user',
       content: newMessage,
       chatId,
@@ -515,27 +820,32 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       imagePath,
       documentName,
     };
-    const assistantPlaceholder: Message = {
-      role: 'assistant',
-      content: '',
-      modelName: currentModel.modelName,
-      chatId: chatId,
-      timestamp: Date.now(),
-      id: -1,
-    };
+    const assistantPlaceholder = buildAssistantPlaceholder(
+      chatId,
+      currentModel
+    );
 
     set({ generationError: null });
     updateChatStateForGeneration(set, 'start', {
       chatId,
+      localId: assistantPlaceholder.localId,
       activeChatMessages: isRetry
         ? [...activeChatMessages, assistantPlaceholder]
         : [...activeChatMessages, userMessage, assistantPlaceholder],
     });
 
     let userMessagePersisted = isRetry;
-    const markGenerationFailed = (error: unknown, showToUser = true) => {
-      unloadLLM();
-      updateChatStateForGeneration(set, 'failed');
+    const markGenerationFailed = (
+      error: unknown,
+      {
+        showToUser = true,
+        unload = showToUser,
+      }: { showToUser?: boolean; unload?: boolean } = {}
+    ) => {
+      if (unload) unloadLLM();
+      updateChatStateForGeneration(set, 'failed', {
+        localId: assistantPlaceholder.localId,
+      });
 
       if (!userMessagePersisted && !isRetry) {
         set((state) => ({
@@ -566,6 +876,31 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       console.error('Chat sendMessage failed', error);
     };
 
+    await modelLoadChain;
+    await utilityChain;
+    const readyModel = get().model;
+    if (!get().isProcessingPrompt || !readyModel) {
+      markGenerationFailed(new Error('Stopped while waiting for the model'), {
+        showToUser: false,
+      });
+      return true;
+    }
+    if (readyModel.id !== currentModel.id) {
+      currentModel = readyModel;
+      assistantPlaceholder.modelName = readyModel.modelName;
+      set((state) => ({
+        activeChatMessages: state.activeChatMessages.map((msg) =>
+          msg.id === -1 && msg.role === 'assistant' && msg.chatId === chatId
+            ? { ...msg, modelName: readyModel.modelName }
+            : msg
+        ),
+      }));
+    }
+
+    const abortController = new AbortController();
+    sendAbortController = abortController;
+    const stillOurs = () => sendAbortController === abortController;
+
     try {
       if (!isRetry) {
         const userMessageId = await persistMessage(db, {
@@ -583,24 +918,41 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         }));
       }
 
-      const { context, sourceDocuments, preferredSourceDocuments } =
-        await buildSources();
+      const built = await buildSources(abortController.signal);
+      const {
+        context,
+        sourceDocuments,
+        preferredSourceDocuments,
+        webIntent,
+        webIntentKind,
+        webSubQueries,
+        webWeak,
+        webSearchFailed,
+      } = built;
 
       if (!get().isProcessingPrompt) {
-        updateChatStateForGeneration(set, 'failed');
-        return;
+        updateChatStateForGeneration(set, 'failed', {
+          localId: assistantPlaceholder.localId,
+        });
+        return true;
       }
 
       await get().loadModel(currentModel, isRetry);
       await waitForModelLoad(get);
+      if (!llmInstance && get().isProcessingPrompt) {
+        await get().loadModel(currentModel, true);
+        await waitForModelLoad(get);
+      }
       if (!llmInstance) {
         throw new Error('Failed to load the language model');
       }
 
       if (!get().isProcessingPrompt) {
         unloadLLM();
-        updateChatStateForGeneration(set, 'failed');
-        return;
+        updateChatStateForGeneration(set, 'failed', {
+          localId: assistantPlaceholder.localId,
+        });
+        return true;
       }
 
       await waitForSettingsHydration();
@@ -610,8 +962,18 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         context,
         settings,
         currentModel,
-        useSettingsStore.getState().customSystemPrompt,
-        preferredSourceDocuments
+        {
+          customSystemPrompt: useSettingsStore.getState().customSystemPrompt,
+          preferredSourceDocuments: preferredSourceDocuments,
+          sourceDocuments: sourceDocuments,
+          budgetScale: 1,
+          webIntent: webIntent,
+          webIntentKind: webIntentKind,
+          webSubQueries: webSubQueries,
+          webWeak: webWeak,
+          webSearchFailed: webSearchFailed,
+          digest: digestForChat(get, chatId) ?? undefined,
+        }
       );
 
       const lastPreparedMessage = messagesWithSystemPrompt.at(-1);
@@ -626,32 +988,395 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         preferredSourceDocuments ?? []
       );
 
+      const webSourceDocuments = seenSourceDocuments.filter(
+        (doc) => doc.kind === 'web'
+      );
+      if (webSourceDocuments.length > 0 && get().activeChatId === chatId) {
+        set((state) => ({
+          activeChatMessages: state.activeChatMessages.map((msg) =>
+            msg.id === -1 && msg.role === 'assistant' && msg.chatId === chatId
+              ? { ...msg, sourceDocuments: webSourceDocuments }
+              : msg
+          ),
+        }));
+      }
+
+      llmInstance?.configure({
+        generationConfig: getGenerationConfigForModel(
+          currentModel,
+          context.some((chunk) => chunk.trim().length > 0)
+        ),
+      });
+
       // Set generation state and generate response
       updateChatStateForGeneration(set, 'generating');
-      const { response: finalResponse, performance: responsePerformance } =
-        await generateLLMResponse(messagesWithSystemPrompt, get);
-      // Handle successful response
-      if (finalResponse) {
-        const citedSourceDocuments = pickCitationsByAnswer(
-          seenSourceDocuments,
-          finalResponse,
-          preferredSourceDocuments ?? []
+      const generationStartedAt = performance.now();
+      let generation: Awaited<ReturnType<typeof generateLLMResponse>>;
+      let effectivePrepared = messagesWithSystemPrompt;
+      try {
+        generation = await generateLLMResponse(messagesWithSystemPrompt, get);
+      } catch (error) {
+        console.warn(
+          'Chat generation failed, retrying with a reduced prompt',
+          error
         );
+        updateChatStateForGeneration(set, 'generating');
+        effectivePrepared = prepareMessagesForLLM(
+          get().activeChatMessages,
+          context,
+          settings,
+          currentModel,
+          {
+            customSystemPrompt: useSettingsStore.getState().customSystemPrompt,
+            preferredSourceDocuments: preferredSourceDocuments,
+            sourceDocuments: sourceDocuments,
+            budgetScale: 0.5,
+            webIntent: webIntent,
+            webSubQueries: webSubQueries,
+            webWeak: webWeak,
+            webSearchFailed: webSearchFailed,
+            digest: digestForChat(get, chatId) ?? undefined,
+          }
+        );
+        generation = await generateLLMResponse(effectivePrepared, get);
+      }
+      const { response: rawResponse } = generation;
+      let responsePerformance = generation.performance;
+      let finalResponse = rawResponse
+        ? tidyVisibleAnswer(rawResponse)
+        : rawResponse;
+      const currentQuestion = get().activeChatMessages.findLast(
+        (msg) => msg.role === 'user'
+      )?.content;
+      const priorAnswerText = get()
+        .activeChatMessages.slice(0, -1)
+        .findLast((msg) => msg.role === 'assistant')?.content;
+      const promptContext = sourcesBlockOf(
+        ((last) =>
+          typeof last?.content === 'string'
+            ? last.content
+            : JSON.stringify(last?.content ?? ''))(effectivePrepared.at(-1))
+      );
+
+      let nudged = false;
+      const answerRetries: AnswerRetry[] = [];
+
+      const questionLanguage = detectQuestionLanguage(currentQuestion ?? '');
+      const continuedRetry = (prompt: string): ExecutorchMessage[] => [
+        ...effectivePrepared,
+        { role: 'assistant', content: finalResponse as string },
+        {
+          role: 'user',
+          content: prompt + answerLanguageAnchor(questionLanguage),
+        },
+      ];
+      const focusedRetry = (lines: string[]): ExecutorchMessage[] => [
+        {
+          role: 'system',
+          content: focusedRetrySystemPrompt(questionLanguage),
+        },
+        {
+          role: 'user',
+          content:
+            focusedEvidencePrompt(currentQuestion ?? '', lines) +
+            answerLanguageAnchor(questionLanguage),
+        },
+      ];
+      const evidenceRetry = (prompt: string): ExecutorchMessage[] => {
+        const lines = evidenceLinesFor(currentQuestion, promptContext);
+        return lines.length > 0 ? focusedRetry(lines) : continuedRetry(prompt);
+      };
+
+      const nudgeOnce = async (
+        reason: string,
+        messages: ExecutorchMessage[],
+        stillBroken: (retried: string) => boolean,
+        preserveDetail = false
+      ): Promise<void> => {
+        nudged = true;
+        if (performance.now() - generationStartedAt > NUDGE_TIME_BUDGET_MS) {
+          console.warn(`${reason}; skipped, the turn is over its time budget`);
+          return;
+        }
+        console.warn(reason);
+        suppressUtilityStreaming = true;
+        set({ isRefining: true });
+        let retryGeneration: Awaited<ReturnType<typeof generateLLMResponse>>;
+        try {
+          retryGeneration = await generateLLMResponse(messages, get);
+        } finally {
+          suppressUtilityStreaming = false;
+        }
+        const retried = retryGeneration.response
+          ? tidyVisibleAnswer(retryGeneration.response)
+          : retryGeneration.response;
+        if (!retried?.trim() || !get().isGenerating || stillBroken(retried)) {
+          answerRetries.push({
+            reason,
+            raw: retryGeneration.response ?? null,
+            accepted: false,
+          });
+          return;
+        }
+        if (
+          preserveDetail &&
+          typeof finalResponse === 'string' &&
+          retryDropsGroundedDetail(finalResponse, retried)
+        ) {
+          console.warn(
+            `${reason}; kept the first answer, the retry was thinner`
+          );
+          answerRetries.push({
+            reason,
+            raw: retryGeneration.response ?? null,
+            accepted: false,
+          });
+          return;
+        }
+        answerRetries.push({
+          reason,
+          raw: retryGeneration.response ?? null,
+          accepted: true,
+        });
+        finalResponse = retried;
+      };
+
+      if (
+        get().isGenerating &&
+        finalResponse &&
+        isWrongLanguageAnswer(finalResponse, currentQuestion)
+      ) {
+        await nudgeOnce(
+          'Answer in the wrong language, retrying once with a nudge',
+          continuedRetry(WRONG_LANGUAGE_RETRY_PROMPT),
+          (retried) => isWrongLanguageAnswer(retried, currentQuestion)
+        );
+      }
+
+      if (
+        !nudged &&
+        get().isGenerating &&
+        finalResponse &&
+        isQuestionEchoAnswer(finalResponse, currentQuestion) &&
+        !isWrongLanguageAnswer(finalResponse, currentQuestion)
+      ) {
+        await nudgeOnce(
+          'Question echoed back, retrying once with a nudge',
+          continuedRetry(QUESTION_ECHO_RETRY_PROMPT),
+          (retried) => isQuestionEchoAnswer(retried, currentQuestion)
+        );
+        if (
+          finalResponse &&
+          isQuestionEchoAnswer(finalResponse, currentQuestion)
+        ) {
+          finalResponse = noAnswerFallback(currentQuestion);
+        }
+      }
+
+      if (
+        !nudged &&
+        get().isGenerating &&
+        finalResponse &&
+        claimsMissingEvidenceItHas(
+          finalResponse,
+          currentQuestion,
+          promptContext,
+          webIntentKind
+        )
+      ) {
+        await nudgeOnce(
+          'Answer claims the sources are silent while they hold a figure, retrying once',
+          evidenceRetry(EVIDENCE_PRESENT_RETRY_PROMPT),
+          (retried) =>
+            claimsMissingEvidenceItHas(
+              retried,
+              currentQuestion,
+              promptContext,
+              webIntentKind
+            ) || isWrongLanguageAnswer(retried, currentQuestion),
+          true
+        );
+      }
+
+      const ignoresEvidence = (text: string): boolean =>
+        answerUsesNoRetrievedEvidence(text, currentQuestion, promptContext);
+      const buriesFigure = (text: string): boolean =>
+        buriesFigureContextOffers(
+          text,
+          currentQuestion,
+          promptContext,
+          webIntentKind
+        );
+      if (
+        !nudged &&
+        get().isGenerating &&
+        finalResponse &&
+        (ignoresEvidence(finalResponse) || buriesFigure(finalResponse))
+      ) {
+        const draft = finalResponse;
+        const retryStatesWhatDraftLacks = (retried: string): boolean =>
+          answerStatesFigure(retried, currentQuestion) &&
+          !answerStatesFigure(draft, currentQuestion);
+        await nudgeOnce(
+          ignoresEvidence(finalResponse)
+            ? 'Answer uses none of the evidence the sources carry, retrying once'
+            : 'Answer buries the figure the sources offer, retrying once',
+          evidenceRetry(SOURCES_COVER_TOPIC_RETRY_PROMPT),
+          (retried) =>
+            ((ignoresEvidence(retried) || buriesFigure(retried)) &&
+              !retryStatesWhatDraftLacks(retried)) ||
+            isWrongLanguageAnswer(retried, currentQuestion),
+          true
+        );
+      }
+
+      if (
+        !nudged &&
+        get().isGenerating &&
+        finalResponse &&
+        isCircularNonAnswer(finalResponse) &&
+        !isWrongLanguageAnswer(finalResponse, currentQuestion)
+      ) {
+        await nudgeOnce(
+          'Circular non-answer, retrying once with a nudge',
+          continuedRetry(CIRCULAR_ANSWER_RETRY_PROMPT),
+          isCircularNonAnswer
+        );
+      }
+
+      const missingAspects = finalResponse
+        ? aspectsMissingFromAnswer(finalResponse, webSubQueries, promptContext)
+        : [];
+      if (
+        !nudged &&
+        get().isGenerating &&
+        finalResponse &&
+        missingAspects.length > 0 &&
+        !isDanglingListAnswer(finalResponse)
+      ) {
+        await nudgeOnce(
+          'Answer skips an aspect the sources cover, retrying once with a nudge',
+          continuedRetry(aspectCoverageRetryPrompt(missingAspects)),
+          (retried) =>
+            aspectsMissingFromAnswer(retried, webSubQueries, promptContext)
+              .length > 0,
+          true
+        );
+      }
+
+      if (
+        !nudged &&
+        get().isGenerating &&
+        finalResponse &&
+        isDanglingListAnswer(finalResponse) &&
+        !isQuestionEchoAnswer(finalResponse, currentQuestion) &&
+        !isWrongLanguageAnswer(finalResponse, currentQuestion)
+      ) {
+        console.warn(
+          'Dangling list answer, retrying once with a continuation nudge'
+        );
+        updateChatStateForGeneration(set, 'generating');
+        const continuationPrompt =
+          DANGLING_LIST_CONTINUATION_PROMPT +
+          answerLanguageAnchor(detectQuestionLanguage(currentQuestion ?? ''));
+        const continuationGeneration = await generateLLMResponse(
+          [
+            ...effectivePrepared,
+            { role: 'assistant', content: finalResponse },
+            { role: 'user', content: continuationPrompt },
+          ],
+          get
+        );
+        const continuationResponse = continuationGeneration.response
+          ? truncateAtRepeatedClause(
+              normalizeModelText(continuationGeneration.response)
+            )
+          : continuationGeneration.response;
+        answerRetries.push({
+          reason: 'Dangling list answer, continuation nudge',
+          raw: continuationGeneration.response ?? null,
+          accepted: !!continuationResponse?.trim(),
+        });
+        if (continuationResponse?.trim()) {
+          finalResponse = `${finalResponse}\n${continuationResponse.trim()}`;
+          responsePerformance = continuationGeneration.performance;
+        }
+      }
+
+      void recordAnswerTrace({
+        shape: {
+          generating: get().isGenerating,
+          dangling: !!finalResponse && isDanglingListAnswer(finalResponse),
+          circular: !!finalResponse && isCircularNonAnswer(finalResponse),
+          nudged,
+        },
+        question: currentQuestion ?? '',
+        raw: rawResponse ?? '',
+        tidied: rawResponse ? tidyVisibleAnswer(rawResponse) : '',
+        retries: answerRetries,
+        final: finalResponse ?? '',
+        systemPromptChars: ((first) =>
+          typeof first?.content === 'string' ? first.content.length : 0)(
+          effectivePrepared[0]
+        ),
+      });
+
+      if (finalResponse && carriesAnswer(finalResponse)) {
+        const humanizedResponse = humanizeSourceReferences(
+          stripSourceLabels(
+            stripEchoedQuestionPrefix(finalResponse, currentQuestion)
+          ),
+          sourceDocuments ?? []
+        );
+        const effectiveLast = effectivePrepared.at(-1);
+        const effectiveContent =
+          typeof effectiveLast?.content === 'string'
+            ? effectiveLast.content
+            : JSON.stringify(effectiveLast?.content ?? '');
+        const effectiveSeen =
+          effectivePrepared === messagesWithSystemPrompt
+            ? seenSourceDocuments
+            : restrictCitationsToContext(
+                sourceDocuments ?? [],
+                effectiveContent,
+                preferredSourceDocuments ?? []
+              );
+        const citedSourceDocuments = pickCitationsByAnswer(
+          effectiveSeen,
+          humanizedResponse,
+          preferredSourceDocuments ?? [],
+          sourcesPresentInContext(effectiveContent),
+          currentQuestion
+        );
+        const groundingCaveats = context.some((chunk) => chunk.trim())
+          ? detectGroundingCaveats(
+              humanizedResponse,
+              currentQuestion,
+              effectiveContent,
+              priorAnswerText
+            )
+          : [];
+        const stoppedByUser = !get().isGenerating;
         const assistantMessageId = await persistMessage(db, {
           ...assistantPlaceholder,
-          content: finalResponse,
+          content: humanizedResponse,
           sourceDocuments: citedSourceDocuments,
+          groundingCaveats,
           tokensPerSecond: responsePerformance.tokensPerSecond,
           timeToFirstToken: responsePerformance.timeToFirstToken,
         });
 
-        if (get().activeChatId === chatId) {
+        if (!stillOurs()) {
+          failedGenerationRequest = null;
+        } else if (get().activeChatId === chatId) {
           updateChatStateForGeneration(set, 'complete', {
+            localId: assistantPlaceholder.localId,
             assistantMessage: {
               ...assistantPlaceholder,
               id: assistantMessageId,
-              content: finalResponse,
+              content: humanizedResponse,
               sourceDocuments: citedSourceDocuments,
+              groundingCaveats,
               tokensPerSecond: responsePerformance.tokensPerSecond,
               timeToFirstToken: responsePerformance.timeToFirstToken,
             },
@@ -663,13 +1388,40 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         }
         failedGenerationRequest = null;
         set({ generationError: null });
-      } else {
-        markGenerationFailed(new Error('The model returned an empty response'));
+
+        if (!stoppedByUser) {
+          const previousDigest = digestForChat(get, chatId);
+          updateConversationDigest(
+            (messages) => get().generateUtility(messages),
+            previousDigest,
+            currentQuestion ?? '',
+            humanizedResponse
+          ).then((digest) => {
+            void setChatDigest(db, chatId, digest);
+            if (get().activeChatId === chatId) {
+              set({
+                activeChatDigest: digest,
+                activeChatDigestChatId: chatId,
+              });
+            }
+          });
+        }
+      } else if (stillOurs()) {
+        const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;
+        markGenerationFailed(new Error(describeGenerationFailure()), {
+          unload: false,
+          showToUser: !wasInterrupted,
+        });
       }
     } catch (e) {
-      const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;
-      markGenerationFailed(e, !wasInterrupted);
+      if (stillOurs()) {
+        const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;
+        markGenerationFailed(e, { showToUser: !wasInterrupted });
+      }
+    } finally {
+      if (stillOurs()) sendAbortController = null;
     }
+    return true;
   },
 
   retryLastGeneration: async () => {
@@ -769,10 +1521,29 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
+  generateUtility: (messages) => {
+    if (!llmInstance || get().isLoading || utilityGenerating) {
+      return Promise.resolve('');
+    }
+    const run = runUtilityGeneration(llmInstance, messages, get().model);
+    utilityChain = run.then(
+      () => undefined,
+      () => undefined
+    );
+    return run;
+  },
+
   interrupt: () => {
+    sendAbortController?.abort();
     const state = get();
-    if (state.isGenerating && llmInstance) {
+    if ((state.isGenerating || utilityGenerating) && llmInstance) {
       llmInstance.interrupt();
+    }
+
+    if (state.isProcessingPrompt && !state.isGenerating) {
+      useWebSearchStore.getState().setSearchingWeb(false);
+      updateChatStateForGeneration(set, 'failed');
+      return;
     }
 
     if (state.isGenerating || state.isProcessingPrompt) {
@@ -780,6 +1551,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         isGenerating: false,
         isProcessingPrompt: false,
         generatingForChatId: null,
+        generatingMessageLocalId: null,
       });
     }
   },

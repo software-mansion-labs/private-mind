@@ -24,7 +24,7 @@ import { router } from 'expo-router';
 import { Feedback } from '../../utils/Feedback';
 
 interface Props {
-  bottomSheetModalRef: RefObject<BottomSheetModal | null>;
+  bottomSheetModalRef: RefObject<BottomSheetModal<Model> | null>;
 }
 
 enum ModalStage {
@@ -229,11 +229,13 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.background}
     >
-      {(props) => (
-        <BottomSheetView style={styles.container}>
-          {renderStageContent(props.data)}
-        </BottomSheetView>
-      )}
+      {(props) =>
+        props.data ? (
+          <BottomSheetView style={styles.container}>
+            {renderStageContent(props.data)}
+          </BottomSheetView>
+        ) : null
+      }
     </BottomSheetModal>
   );
 };

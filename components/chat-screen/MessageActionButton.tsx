@@ -8,12 +8,14 @@ type MessageActionButtonProps = {
   label: string;
   icon: SvgComponent;
   onPress?: () => void;
+  testID?: string;
 };
 
 export default function MessageActionButton({
   label,
   icon: Icon,
   onPress,
+  testID,
 }: MessageActionButtonProps) {
   const { styles } = useThemedStyles(createStyles);
 
@@ -24,6 +26,7 @@ export default function MessageActionButton({
       hitSlop={8}
       accessibilityRole="button"
       accessibilityLabel={label}
+      testID={testID}
     >
       <Icon width={16} height={16} style={styles.icon} />
     </Pressable>

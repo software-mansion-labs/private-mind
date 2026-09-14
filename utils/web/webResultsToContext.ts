@@ -1,0 +1,658 @@
+import type {
+  StructuredProduct,
+  WebContext,
+  WebSearchResult,
+  WebSourceDocument,
+} from './types';
+import {
+  WEB_CONTENT_MAX_CHARS,
+  WEB_CONTENT_MIN_CHARS,
+  WEB_SNIPPET_MAX_CHARS,
+} from '../../constants/web';
+import { sourceBlock } from '../contextUtils';
+import { extractQueryTerms, foldForMatching, stemPrefix } from '../queryTerms';
+import { hostname } from './hostname';
+import {
+  containsNeedle,
+  creditedRecords,
+  DATE_IN_TEXT,
+  datedFieldAnswers,
+  enumerationShare,
+  figuresOutsideNeedles,
+  idfWeights,
+  isOtherAmount,
+  listHeadingAnswers,
+  MONEY_ANCHOR,
+  parseAmount,
+  quotesPrices,
+} from './passageSignals';
+import { detectQuestionLanguage } from '../questionLanguage';
+import { neutralizeDelimiters } from './security/untrustedContent';
+import { VERIFIED_PRODUCT_MARKER } from './figureGrounding';
+import type { WebIntentKind } from './intentKind';
+
+const formatVerifiedProduct = (
+  product: StructuredProduct | undefined
+): string => {
+  if (!product?.price) return '';
+  const parts = [
+    product.name ? `name="${product.name}"` : null,
+    `price=${product.price}${product.currency ? ` ${product.currency}` : ''}`,
+    product.availability ? `availability=${product.availability}` : null,
+  ].filter((part): part is string => part !== null);
+  return `${VERIFIED_PRODUCT_MARKER} ${neutralizeDelimiters(parts.join(', '))}\n`;
+};
+
+const truncate = (text: string, max: number): string =>
+  text.length <= max
+    ? text
+    : `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
+
+const PASSAGE_MAX_LEN = 320;
+
+const TERMINATORS = '!?\\n。！？।॥۔؟';
+const DECIMAL_POINT = '(?<=\\d)\\.(?=\\d)';
+const BODY = `(?:[^.${TERMINATORS}]|${DECIMAL_POINT})`;
+const TERMINATOR = `(?:[${TERMINATORS}]|\\.(?!\\d)|(?<!\\d)\\.(?=\\d))`;
+
+const SENTENCE_END = new RegExp(`${BODY}+${TERMINATOR}+|${BODY}+$`, 'gu');
+
+const PASSAGE_TARGET_LEN = 200;
+const CELL_MAX_LEN = 24;
+const LEAD_WINDOW = 12;
+const LEAD_BONUS = 1.5;
+
+const RECORD_MAX_PASSAGES = 8;
+const RECORD_MAX_CHARS = 400;
+
+const FRAGMENT_MAX_CHARS = 120;
+const BRIDGE_MAX_CHARS = 320;
+
+const ENDS_SENTENCE = /[.!?。！？।॥۔؟]["'”’)\]]?$/;
+
+const CUTOFF_PERCENTILE = 0.1;
+
+const MIN_SOURCE_EXCERPT_CHARS = 300;
+
+const coalesceLines = (text: string, target: number): string[] => {
+  const passages: string[] = [];
+  let buffer = '';
+  const flush = () => {
+    if (buffer) passages.push(buffer);
+    buffer = '';
+  };
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.length > CELL_MAX_LEN) {
+      flush();
+      passages.push(line);
+    } else if (!buffer) {
+      buffer = line;
+    } else if (buffer.length + 1 + line.length <= target) {
+      buffer = `${buffer}\n${line}`;
+    } else {
+      flush();
+      buffer = line;
+    }
+  }
+  flush();
+  return passages;
+};
+
+const wordBoundaryBefore = (
+  text: string,
+  start: number,
+  limit: number
+): number => {
+  if (limit >= text.length) return text.length;
+  const space = text.lastIndexOf(' ', limit);
+  return space > start + PASSAGE_MAX_LEN / 2 ? space : limit;
+};
+
+const splitIntoPassages = (text: string, budget: number): string[] => {
+  const passages: string[] = [];
+  const target = Math.max(CELL_MAX_LEN, Math.min(PASSAGE_TARGET_LEN, budget));
+  for (const block of coalesceLines(text, target)) {
+    const sentences =
+      block.length <= PASSAGE_MAX_LEN
+        ? [block]
+        : (block.match(SENTENCE_END) ?? [block]);
+    for (const sentence of sentences) {
+      const s = sentence.trim();
+      if (!s) continue;
+      if (s.length <= PASSAGE_MAX_LEN) {
+        passages.push(s);
+        continue;
+      }
+      for (let start = 0; start < s.length;) {
+        const end = wordBoundaryBefore(s, start, start + PASSAGE_MAX_LEN);
+        passages.push(s.slice(start, end).trim());
+        start = end;
+      }
+    }
+  }
+  return passages.filter(Boolean);
+};
+
+const DATE_BONUS = 2;
+
+const PRICE_BONUS = 4;
+const NO_PRICE_FACTOR = 0.35;
+
+const MONEY_BONUS = 2;
+
+const ENUMERATION_BONUS = 3;
+const NO_ENUMERATION_FACTOR = 0.7;
+
+const FIGURES_BONUS = 3;
+const FIGURES_SATURATION = 3;
+const NO_FIGURE_FACTOR = 0.5;
+
+const TOPIC_NEEDLE_DISCOUNT = 0.5;
+
+interface PassageScoring {
+  needles: string[];
+  weights: number[];
+  topicNeedles: Set<string>;
+  wantsDate: boolean;
+  wantsPrice: boolean;
+  demoteUnpriced: boolean;
+  wantsFigures: boolean;
+  wantsEnumeration: boolean;
+  verifiedAmount: number | null;
+}
+
+interface PassageScore {
+  score: number;
+  answersQuestion: boolean;
+}
+
+const scorePassage = (
+  folded: string,
+  scoring: PassageScoring,
+  creditedRecord: boolean,
+  listShare = 0
+): PassageScore => {
+  const {
+    needles,
+    weights,
+    topicNeedles,
+    wantsDate,
+    wantsPrice,
+    demoteUnpriced,
+    wantsFigures,
+    wantsEnumeration,
+  } = scoring;
+  let score = 0;
+  let answersQuestion = creditedRecord;
+  needles.forEach((needle, index) => {
+    const topic = topicNeedles.has(needle);
+    if (containsNeedle(folded, needle) || (creditedRecord && topic)) {
+      score += 2 * weights[index]! * (topic ? TOPIC_NEEDLE_DISCOUNT : 1);
+      answersQuestion = true;
+    }
+  });
+  if (wantsDate && DATE_IN_TEXT.test(folded)) {
+    score += DATE_BONUS;
+    answersQuestion = true;
+  }
+  const mentions = folded.match(MONEY_ANCHOR) ?? [];
+  if (wantsPrice && mentions.length > 0) {
+    score += PRICE_BONUS;
+    answersQuestion = true;
+  }
+  if (demoteUnpriced && mentions.length === 0) score *= NO_PRICE_FACTOR;
+  if (
+    mentions.some((mention) => isOtherAmount(mention, scoring.verifiedAmount))
+  ) {
+    return { score: 0, answersQuestion: false };
+  }
+  if (mentions.length > 0)
+    score += Math.min(1, mentions.length / 2) * MONEY_BONUS;
+  if (wantsFigures) {
+    const figures = figuresOutsideNeedles(folded, needles);
+    if (figures > 0) {
+      score += Math.min(1, figures / FIGURES_SATURATION) * FIGURES_BONUS;
+      answersQuestion = true;
+    } else {
+      score *= NO_FIGURE_FACTOR;
+    }
+  }
+  if (wantsEnumeration) {
+    if (listShare > 0) {
+      score += listShare * ENUMERATION_BONUS;
+      answersQuestion = true;
+    } else {
+      score *= NO_ENUMERATION_FACTOR;
+    }
+  }
+  const digits = (folded.match(/\d/g) ?? []).length;
+  if (digits > 0) {
+    const words = (folded.match(/\p{L}{3,}/gu) ?? []).length;
+    const proseRatio = creditedRecord
+      ? 1
+      : Math.min(1, words / Math.max(4, digits / 2));
+    score += Math.min(1, digits / 8) * proseRatio;
+  }
+  return { score, answersQuestion };
+};
+
+const isSentenceLead = (passage: string): boolean =>
+  !passage.includes('\n') && ENDS_SENTENCE.test(passage);
+
+export interface SelectionOptions {
+  title?: string;
+  verifiedPrice?: string;
+  expects?: string[];
+  intent?: WebIntentKind;
+}
+
+const DATED_INTENTS: ReadonlySet<WebIntentKind> = new Set([
+  'date',
+  'news',
+  'event',
+]);
+
+export const selectRelevantContent = (
+  content: string,
+  query: string | undefined,
+  maxChars: number,
+  options: SelectionOptions = {}
+): string => {
+  const trimmed = content.trim();
+  if (trimmed.length <= maxChars) return trimmed;
+
+  const asked = [query ?? '', ...(options.expects ?? [])]
+    .filter((text) => text.trim())
+    .join(' ');
+  const needles = asked
+    ? [
+        ...new Set(
+          [
+            ...extractQueryTerms(asked, detectQuestionLanguage(asked)?.code),
+          ].map((term) => stemPrefix(foldForMatching(term)))
+        ),
+      ]
+    : [];
+  if (needles.length === 0) return truncate(trimmed, maxChars);
+
+  const verifiedAmount =
+    options.verifiedPrice !== undefined
+      ? parseAmount(options.verifiedPrice)
+      : null;
+  const { intent } = options;
+  const wantsFigures = intent === 'specs';
+  const all = splitIntoPassages(trimmed, maxChars);
+  const foldedAll = all.map(foldForMatching);
+  const foldedTitle = foldForMatching(options.title ?? '');
+  const titleNeedles = new Set(
+    needles.filter((needle) => containsNeedle(foldedTitle, needle))
+  );
+  const wantsDate =
+    (!!intent && DATED_INTENTS.has(intent)) ||
+    datedFieldAnswers(trimmed, needles, titleNeedles);
+  const wantsPrice =
+    verifiedAmount === null && (intent === 'price' || quotesPrices(trimmed));
+  const demoteUnpriced = verifiedAmount === null && intent === 'price';
+  const wantsEnumeration =
+    intent === 'howto' || listHeadingAnswers(trimmed, needles, titleNeedles);
+  const scoring: PassageScoring = {
+    needles,
+    weights: idfWeights(foldedAll, needles),
+    topicNeedles: titleNeedles,
+    wantsDate,
+    wantsPrice,
+    demoteUnpriced,
+    wantsFigures,
+    wantsEnumeration,
+    verifiedAmount,
+  };
+  const credited =
+    scoring.topicNeedles.size > 0 ? creditedRecords(all) : new Set<number>();
+
+  const leadWindow = Math.min(LEAD_WINDOW, all.length);
+  const leadBonus = (index: number): number =>
+    index < leadWindow && isSentenceLead(all[index]!)
+      ? LEAD_BONUS * (1 - index / leadWindow)
+      : 0;
+
+  const seenText = new Set<string>();
+  const scored = all
+    .map((text, index) => ({
+      text,
+      index,
+      ...scorePassage(
+        foldedAll[index]!,
+        scoring,
+        credited.has(index),
+        wantsEnumeration ? enumerationShare(text) : 0
+      ),
+    }))
+    .filter((passage) => {
+      const key = foldedAll[passage.index]!;
+      if (seenText.has(key)) return false;
+      seenText.add(key);
+      return true;
+    });
+  if (scored.every((passage) => passage.score === 0)) {
+    return truncate(trimmed, maxChars);
+  }
+
+  const ranked = scored
+    .map((passage) => passage.score)
+    .filter((score) => score > 0)
+    .sort((a, b) => b - a);
+  const reference =
+    ranked[Math.floor(ranked.length * CUTOFF_PERCENTILE)] ?? ranked[0] ?? 0;
+  const cutoff = reference / 2;
+
+  const qualified = scored.filter((passage) => passage.score >= cutoff);
+  const isQualified = new Set(qualified.map((passage) => passage.index));
+  const costOf = (index: number): number => all[index]!.length + 1;
+
+  const units = qualified
+    .map((passage) => {
+      const members = [passage.index];
+      let cost = costOf(passage.index);
+      const reach = ENDS_SENTENCE.test(passage.text) ? 2 : RECORD_MAX_PASSAGES;
+      for (
+        let next = passage.index + 1;
+        next < all.length &&
+        members.length < reach &&
+        !isQualified.has(next) &&
+        all[next]!.length <= FRAGMENT_MAX_CHARS;
+        next++
+      ) {
+        if (cost + costOf(next) > RECORD_MAX_CHARS) break;
+        members.push(next);
+        cost += costOf(next);
+      }
+      return { members, priority: passage.score + leadBonus(passage.index) };
+    })
+    .sort((a, b) => b.priority - a.priority || a.members[0]! - b.members[0]!);
+
+  const claimed = new Set(units.flatMap((unit) => unit.members));
+
+  let used = 0;
+  const taken: number[] = [];
+  const takenSet = new Set<number>();
+  const take = (index: number): void => {
+    if (takenSet.has(index)) return;
+    const cost = costOf(index);
+    if (used + cost > maxChars) return;
+    used += cost;
+    taken.push(index);
+    takenSet.add(index);
+  };
+
+  for (const unit of units) {
+    const cost = unit.members.reduce(
+      (total, index) => (takenSet.has(index) ? total : total + costOf(index)),
+      0
+    );
+    if (used + cost <= maxChars) unit.members.forEach(take);
+    else take(unit.members[0]!);
+  }
+
+  const fillers = scored
+    .filter(
+      (passage) =>
+        passage.score > 0 &&
+        passage.answersQuestion &&
+        !claimed.has(passage.index)
+    )
+    .sort(
+      (a, b) =>
+        b.score + leadBonus(b.index) - (a.score + leadBonus(a.index)) ||
+        a.index - b.index
+    );
+  for (const passage of fillers) take(passage.index);
+
+  const scoreOf = new Map(
+    scored.map((passage) => [passage.index, passage.score])
+  );
+  const strengthBefore = (start: number): number => scoreOf.get(start - 1) ?? 0;
+  const gapsBetweenTaken = (): number[][] => {
+    const gaps: number[][] = [];
+    let run: number[] = [];
+    all.forEach((_, index) => {
+      if (!takenSet.has(index)) {
+        run.push(index);
+        return;
+      }
+      if (run.length > 0 && takenSet.has(run[0]! - 1)) gaps.push(run);
+      run = [];
+    });
+    return gaps.filter(
+      (gap) =>
+        gap.reduce((total, index) => total + costOf(index), 0) <=
+        BRIDGE_MAX_CHARS
+    );
+  };
+  for (let bridged = true; bridged;) {
+    bridged = false;
+    const gaps = gapsBetweenTaken().sort(
+      (a, b) => strengthBefore(b[0]!) - strengthBefore(a[0]!) || a[0]! - b[0]!
+    );
+    for (const gap of gaps) {
+      const before = takenSet.size;
+      gap.forEach(take);
+      if (takenSet.size > before) bridged = true;
+    }
+  }
+
+  const excerpt = taken
+    .sort((a, b) => a - b)
+    .map((index) => all[index]!)
+    .join(' ');
+  return excerpt || truncate(trimmed, maxChars);
+};
+
+const SNIPPET_REPEAT_SHARE = 0.6;
+const SNIPPET_TOKEN = /\p{L}{4,}|\d[\d.,]*\d|\d/gu;
+
+const snippetRepeatsExcerpt = (snippet: string, excerpt: string): boolean => {
+  const folded = foldForMatching(excerpt);
+  const tokens = [
+    ...new Set(foldForMatching(snippet).match(SNIPPET_TOKEN) ?? []),
+  ];
+  if (tokens.length === 0) return true;
+  const figures = tokens.filter((token) => /\d/.test(token));
+  if (figures.some((figure) => !folded.includes(figure))) return false;
+  const repeated = tokens.filter((token) => folded.includes(token)).length;
+  return repeated >= tokens.length * SNIPPET_REPEAT_SHARE;
+};
+
+const sourceDemand = (
+  result: WebSearchResult,
+  startIndex: number,
+  rank: number
+): number =>
+  sourceBlock(startIndex + rank, result.title || hostname(result.url), '')
+    .length +
+  Math.min(WEB_SNIPPET_MAX_CHARS, (result.snippet ?? '').trim().length) +
+  Math.min(WEB_CONTENT_MAX_CHARS, result.content?.length ?? 0);
+
+const rankWeight = (index: number): number => 1 / Math.sqrt(index + 1);
+
+const fairShares = (pool: number, demand: number[]): number[] => {
+  const shares = Array<number>(demand.length).fill(0);
+  const open = new Set(demand.map((_, index) => index));
+  let left = pool;
+  while (open.size > 0) {
+    const weights = [...open].reduce(
+      (total, index) => total + rankWeight(index),
+      0
+    );
+    const shareOf = (index: number): number =>
+      (left * rankWeight(index)) / weights;
+    const satisfied = [...open].filter(
+      (index) => demand[index]! <= shareOf(index)
+    );
+    if (satisfied.length === 0) {
+      open.forEach((index) => {
+        shares[index] = shareOf(index);
+      });
+      break;
+    }
+    satisfied.forEach((index) => {
+      shares[index] = demand[index]!;
+      left -= demand[index]!;
+      open.delete(index);
+    });
+  }
+  return shares;
+};
+
+const sourceBudgets = (
+  totalMaxChars: number | undefined,
+  results: WebSearchResult[],
+  startIndex: number
+): number[] => {
+  const count = results.length;
+  if (!totalMaxChars) return Array(count).fill(WEB_CONTENT_MAX_CHARS);
+  const header = (rank: number): number =>
+    sourceBlock(startIndex + rank, results[rank]!.title || '', '').length;
+  const demand = results.map((result, rank) =>
+    sourceDemand(result, startIndex, rank)
+  );
+  const roomToSpeak = (shares: number[]): boolean =>
+    shares.every(
+      (share, rank) =>
+        share >= Math.min(demand[rank]!, header(rank) + WEB_CONTENT_MIN_CHARS)
+    );
+  let cited = count;
+  let shares = fairShares(totalMaxChars, demand);
+  while (cited > 1 && !roomToSpeak(shares)) {
+    cited -= 1;
+    shares = fairShares(totalMaxChars, demand.slice(0, cited));
+  }
+  return demand.map((_, rank) => Math.floor(shares[rank] ?? 0));
+};
+
+interface WebContextOptions {
+  labelSubQueries?: boolean;
+  displayQuery?: string;
+  intent?: WebIntentKind;
+  expects?: string[];
+}
+
+export const webResultsToContext = (
+  results: WebSearchResult[],
+  query?: string,
+  startIndex = 0,
+  totalMaxChars?: number,
+  options: WebContextOptions = {}
+): WebContext => {
+  const context: string[] = [];
+  const sourceDocuments: WebSourceDocument[] = [];
+
+  const withMaterial = results.filter(
+    (result) => result.content || result.snippet?.trim()
+  );
+  const used = withMaterial.length > 0 ? withMaterial : results;
+  const budgets = sourceBudgets(totalMaxChars, used, startIndex);
+  let remaining = totalMaxChars ?? Number.POSITIVE_INFINITY;
+  const cited: WebSearchResult[] = [];
+
+  const recordedQuery = (options.displayQuery ?? query)?.trim() || undefined;
+  const distinctQueries = new Set(
+    (options.labelSubQueries ?? true)
+      ? used.map((result) => result.sourceQuery).filter((q): q is string => !!q)
+      : []
+  );
+
+  let slack = 0;
+
+  used.forEach((result, index) => {
+    const name = neutralizeDelimiters(result.title || hostname(result.url));
+    const headerChars = sourceBlock(startIndex + cited.length, name, '').length;
+    const offered = Math.min(budgets[index]! + slack, remaining) - headerChars;
+    const share = result.content
+      ? offered
+      : Math.min(offered, WEB_SNIPPET_MAX_CHARS);
+    const enoughToSpeak = Math.min(
+      WEB_CONTENT_MIN_CHARS,
+      sourceDemand(result, startIndex, index) - headerChars
+    );
+    if (share < enoughToSpeak && cited.length > 0) return;
+    const budget =
+      cited.length === 0 ? Math.max(share, MIN_SOURCE_EXCERPT_CHARS) : share;
+    const snippet = truncate(
+      (result.snippet ?? '').trim(),
+      Math.min(
+        WEB_SNIPPET_MAX_CHARS,
+        result.content ? Math.floor(budget / 2) : budget
+      )
+    );
+    const select = (maxChars: number): string =>
+      result.content
+        ? selectRelevantContent(
+            result.content,
+            result.sourceQuery ?? query,
+            maxChars,
+            {
+              title: result.title,
+              verifiedPrice: result.product?.price,
+              intent: options.intent,
+              expects: options.expects,
+            }
+          )
+        : '';
+    const besideSnippet = select(
+      snippet
+        ? Math.max(WEB_CONTENT_MIN_CHARS, budget - snippet.length - 1)
+        : budget
+    );
+    const snippetKept =
+      !!snippet &&
+      (!besideSnippet || !snippetRepeatsExcerpt(snippet, besideSnippet));
+    const relevant = !snippet || snippetKept ? besideSnippet : select(budget);
+    const bodyPassage = relevant
+      ? snippetKept
+        ? `${relevant}\n${snippet}`
+        : relevant
+      : snippet;
+    const cleanPassage = `${formatVerifiedProduct(result.product)}${neutralizeDelimiters(bodyPassage)}`;
+    const queryLabel =
+      distinctQueries.size > 1 && result.sourceQuery
+        ? `[Answers: ${result.sourceQuery}]\n`
+        : '';
+
+    const block = sourceBlock(
+      startIndex + cited.length,
+      name,
+      `${queryLabel}${cleanPassage}`
+    );
+    context.push(block);
+    remaining -= block.length;
+    slack = Math.max(0, slack + budgets[index]! - block.length);
+    cited.push(result);
+
+    sourceDocuments.push({
+      kind: 'web',
+      name,
+      url: result.url,
+      read: !!relevant,
+      passage: cleanPassage,
+      query: recordedQuery,
+      ...(result.sourceQuery ? { sourceQuery: result.sourceQuery } : {}),
+      similarity: used.length > 1 ? 1 - index / used.length : 1,
+    });
+  });
+
+  for (const result of results) {
+    if (cited.includes(result)) continue;
+    sourceDocuments.push({
+      kind: 'web',
+      name: neutralizeDelimiters(result.title || hostname(result.url)),
+      url: result.url,
+      read: false,
+      query: recordedQuery,
+      ...(result.sourceQuery ? { sourceQuery: result.sourceQuery } : {}),
+    });
+  }
+
+  return { context, sourceDocuments };
+};

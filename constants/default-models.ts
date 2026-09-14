@@ -2,6 +2,11 @@ import { Platform } from 'react-native';
 import { type Model } from '../database/modelRepository';
 import { isModelCompatibleWithRam } from '../utils/modelCompatibility';
 import {
+  DEFAULT_PROFILE,
+  getModelProfile,
+  type ProfileTarget,
+} from './model-profiles';
+import {
   QWEN3_0_6B_QUANTIZED,
   QWEN3_1_7B_QUANTIZED,
   LLAMA3_2_1B_QLORA,
@@ -93,8 +98,18 @@ const GENERATION_CONFIG_BY_MODEL_PATH: Record<string, object> =
     )
   );
 
-export const getGenerationConfigForModel = (modelPath: string) =>
-  GENERATION_CONFIG_BY_MODEL_PATH[modelPath];
+export const DEFAULT_REPETITION_PENALTY = DEFAULT_PROFILE.repetitionPenalty;
+
+export const GROUNDED_REPETITION_PENALTY = 1;
+
+export const getGenerationConfigForModel = (
+  model: ProfileTarget & Pick<Model, 'modelPath'>,
+  grounded: boolean = false
+) => ({
+  repetitionPenalty: getModelProfile(model).repetitionPenalty,
+  ...GENERATION_CONFIG_BY_MODEL_PATH[model.modelPath],
+  ...(grounded ? { repetitionPenalty: GROUNDED_REPETITION_PENALTY } : {}),
+});
 
 export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
   {

@@ -5,9 +5,21 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 type MockLLMState = {
   isGenerating: boolean;
   isProcessingPrompt: boolean;
+  isRefining?: boolean;
+  isSearchingWeb?: boolean;
+  webSearchTrace?: unknown[];
 };
 
 type MockLLMSelector<T = MockLLMState> = (state: MockLLMState) => T;
+
+type MockWebSearchState = {
+  isSearchingWeb: boolean;
+  webSearchTrace: unknown[];
+};
+
+type MockWebSearchSelector<T = MockWebSearchState> = (
+  state: MockWebSearchState
+) => T;
 
 type ThinkingBlockMockProps = {
   content: string;
@@ -40,6 +52,16 @@ jest.mock('../store/llmStore', () => ({
   }),
 }));
 
+jest.mock('../store/webSearchStore', () => ({
+  useWebSearchStore: jest.fn(<T,>(selector?: MockWebSearchSelector<T>) => {
+    const state = {
+      isSearchingWeb: false,
+      webSearchTrace: [],
+    };
+    return selector ? selector(state) : state;
+  }),
+}));
+
 jest.mock('../components/chat-screen/MarkdownComponent', () => {
   const { Text } = require('react-native');
   return ({ text }: { text: string }) => <Text testID="markdown">{text}</Text>;
@@ -57,7 +79,24 @@ jest.mock('../components/chat-screen/ThinkingBlock', () => {
   );
 });
 
-jest.mock('../components/chat-screen/AnimatedChatLoading', () => () => null);
+jest.mock('../components/chat-screen/AnimatedChatLoading', () => {
+  const { Text } = require('react-native');
+  return ({ label }: { label: string }) => (
+    <Text testID="chat-loading">{label}</Text>
+  );
+});
+
+jest.mock('../components/chat-screen/WebSearchBlock', () => {
+  const { Text } = require('react-native');
+  return ({ isSearching }: { isSearching?: boolean }) => (
+    <Text
+      testID="web-search-block"
+      accessibilityLabel={`searching:${!!isSearching}`}
+    >
+      {''}
+    </Text>
+  );
+});
 
 jest.mock('@gorhom/bottom-sheet', () => {
   const MockReact = require('react') as typeof import('react');
@@ -88,14 +127,25 @@ jest.mock('@gorhom/bottom-sheet', () => {
 
 import MessageItem from '../components/chat-screen/MessageItem';
 import { useLLMStore } from '../store/llmStore';
+import { useWebSearchStore } from '../store/webSearchStore';
 import { useSettingsStore } from '../store/settingsStore';
 
 const mockUseLLMStore = useLLMStore as unknown as jest.Mock;
+const mockUseWebSearchStore = useWebSearchStore as unknown as jest.Mock;
 
-const setLLMState = (state: MockLLMState) =>
+const setLLMState = (state: MockLLMState) => {
   mockUseLLMStore.mockImplementation((selector?: MockLLMSelector) =>
     selector ? selector(state) : state
   );
+  const webState: MockWebSearchState = {
+    isSearchingWeb: state.isSearchingWeb ?? false,
+    webSearchTrace: state.webSearchTrace ?? [],
+  };
+  mockUseWebSearchStore.mockImplementation(
+    (selector?: MockWebSearchSelector) =>
+      selector ? selector(webState) : webState
+  );
+};
 
 const baseMessage = {
   id: 1,
@@ -147,6 +197,14 @@ describe('event messages', () => {
 // ─── assistant messages ───────────────────────────────────────────────────────
 
 describe('assistant messages', () => {
+  it('shows the model name above the thinking label before the first token', () => {
+    setLLMState({ isGenerating: false, isProcessingPrompt: true });
+    renderItem({ content: '', isLastMessage: true, modelName: 'Llama-3B' });
+
+    expect(screen.getByText('Llama-3B')).toBeTruthy();
+    expect(screen.getByTestId('chat-loading').props.children).toBe('Thinking…');
+  });
+
   it('renders the model name', () => {
     renderItem({ role: 'assistant', content: 'Hi', modelName: 'Llama-3B' });
     expect(screen.getByText('Llama-3B')).toBeTruthy();
@@ -224,6 +282,33 @@ describe('assistant messages', () => {
 
     const markdown = screen.getByTestId('markdown');
     expect(markdown.props.children).toBe('The total was 100.');
+  });
+
+  it('offers the Sources button whenever a source badge is shown, even for a page known only from its listing (#357)', () => {
+    renderItem({
+      role: 'assistant',
+      content: 'Najlepszym modelem OLED w rankingu jest LG C5.',
+      userQuestion: 'najlepszy model telewizora OLED',
+      sourceDocuments: [
+        {
+          kind: 'web',
+          name: 'Ranking Telewizorów OLED 2026',
+          url: 'https://ranking.example/oled',
+          read: false,
+          used: true,
+        },
+        {
+          kind: 'web',
+          name: 'Sklep',
+          url: 'https://shop.example/tv',
+          read: true,
+          used: false,
+        },
+      ],
+    });
+
+    expect(screen.getByTestId('dominant-source-badge')).toBeTruthy();
+    expect(screen.getByTestId('source-action-button')).toBeTruthy();
   });
 
   it('does not render source actions for user messages', () => {
@@ -424,5 +509,94 @@ describe('thinking block parsing', () => {
   it('does not render ThinkingBlock when thinking content is empty whitespace', () => {
     renderItem({ content: '<think>   </think>answer' });
     expect(screen.queryByTestId('thinking-block')).toBeNull();
+  });
+});
+
+describe('nudge retry', () => {
+  it('keeps the first answer visible and marks it as refining while the retry generates', () => {
+    setLLMState({
+      isGenerating: true,
+      isProcessingPrompt: false,
+      isRefining: true,
+    });
+    renderItem({
+      content: 'Bitcoin kosztuje 98 000 USD.',
+      isLastMessage: true,
+    });
+
+    expect(screen.getByTestId('markdown').props.children).toBe(
+      'Bitcoin kosztuje 98 000 USD.'
+    );
+    expect(screen.getByTestId('chat-loading').props.children).toBe('Refining…');
+  });
+
+  it('shows no refining indicator on a message that is not being retried', () => {
+    setLLMState({
+      isGenerating: true,
+      isProcessingPrompt: false,
+      isRefining: true,
+    });
+    renderItem({
+      content: 'Bitcoin kosztuje 98 000 USD.',
+      isLastMessage: false,
+    });
+
+    expect(screen.queryByTestId('chat-loading')).toBeNull();
+  });
+});
+
+describe('live web-search trace', () => {
+  it('shows the web trace in the searching state while searching the web', () => {
+    setLLMState({
+      isGenerating: false,
+      isProcessingPrompt: true,
+      isSearchingWeb: true,
+      webSearchTrace: [],
+    });
+    renderItem({ content: '', isLastMessage: true });
+
+    const block = screen.getByTestId('web-search-block');
+    expect(block).toBeTruthy();
+    expect(block.props.accessibilityLabel).toBe('searching:true');
+  });
+
+  it('is not in the searching state once tokens have started streaming', () => {
+    setLLMState({
+      isGenerating: true,
+      isProcessingPrompt: false,
+      isSearchingWeb: true,
+      webSearchTrace: [],
+    });
+    renderItem({ content: 'Dzisiaj jest słonecznie', isLastMessage: true });
+
+    expect(screen.queryByTestId('web-search-block')).toBeNull();
+  });
+
+  it('keeps the trace on the last message while it streams after a search that found nothing', () => {
+    setLLMState({
+      isGenerating: true,
+      isProcessingPrompt: false,
+      isSearchingWeb: false,
+      webSearchTrace: [
+        { type: 'searching', query: 'Samsung QE65QN90D Hz' },
+        { type: 'done' },
+      ],
+    });
+    renderItem({ content: 'Nie znalazłem tej danej.', isLastMessage: true });
+
+    const block = screen.getByTestId('web-search-block');
+    expect(block.props.accessibilityLabel).toBe('searching:false');
+  });
+
+  it('does not show the searching trace on a non-last message', () => {
+    setLLMState({
+      isGenerating: false,
+      isProcessingPrompt: true,
+      isSearchingWeb: true,
+      webSearchTrace: [],
+    });
+    renderItem({ content: '', isLastMessage: false });
+
+    expect(screen.queryByTestId('web-search-block')).toBeNull();
   });
 });

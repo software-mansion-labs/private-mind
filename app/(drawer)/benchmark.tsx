@@ -16,14 +16,17 @@ import { Model } from '../../database/modelRepository';
 import { ModelSelector } from '../../components/benchmark/ModelSelector';
 import PrimaryButton from '../../components/PrimaryButton';
 import { BenchmarkModal } from '../../components/benchmark/BenchmarkModal';
-import BenchmarkResultSheet from '../../components/bottomSheets/BenchmarkResultSheet';
+import BenchmarkResultSheet, {
+  BenchmarkResultSheetData,
+} from '../../components/bottomSheets/BenchmarkResultSheet';
 import BenchmarkHistory from '../../components/benchmark/BenchmarkHistory';
 import useBenchmarkRunner from '../../hooks/useBenchmarkRunner';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
 
 const BenchmarkScreen = () => {
   useDefaultHeader();
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const bottomSheetModalRef =
+    useRef<BottomSheetModal<BenchmarkResultSheetData>>(null);
   const { styles } = useThemedStyles(createStyles);
   const db = useSQLiteContext();
   const { getModelById } = useModelStore();

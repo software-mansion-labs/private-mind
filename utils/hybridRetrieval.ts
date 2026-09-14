@@ -2,6 +2,7 @@ import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import { type Scalar } from '@op-engineering/op-sqlite';
 import { LFMEmbeddings } from './lfmEmbeddings';
 import { extractQueryTerms, foldForMatching, stemPrefix } from './queryTerms';
+import { detectQuestionLanguage } from './questionLanguage';
 import { keywordSearch } from '../database/keywordIndex';
 import { type ContextChunk, sourceKey } from './contextUtils';
 import {
@@ -224,6 +225,7 @@ export type HybridRetrieveParams = {
   sourceNamesById: Map<number, string>;
   embeddings?: LFMEmbeddings | null;
   attachmentSourceIds?: number[];
+  maxRelevantChunks?: number;
 };
 
 export const hybridRetrieve = async ({
@@ -233,6 +235,7 @@ export const hybridRetrieve = async ({
   sourceNamesById,
   embeddings,
   attachmentSourceIds = [],
+  maxRelevantChunks = MAX_RELEVANT_CHUNKS,
 }: HybridRetrieveParams): Promise<ContextChunk[]> => {
   const attachmentSet = new Set(attachmentSourceIds);
   const enabledSet = new Set(enabledSourceIds);
@@ -247,7 +250,7 @@ export const hybridRetrieve = async ({
     }
   }
 
-  const terms = extractQueryTerms(prompt);
+  const terms = extractQueryTerms(prompt, detectQuestionLanguage(prompt)?.code);
   const coverageTerms = new Set(
     [...terms].map((term) => stemPrefix(foldForMatching(term)))
   );
@@ -373,7 +376,7 @@ export const hybridRetrieve = async ({
   const distinctDocs = new Set(qualified.map((c) => c.documentId)).size;
   const selected = maximalMarginalRelevance(
     mmrCandidates,
-    MAX_RELEVANT_CHUNKS,
+    maxRelevantChunks,
     undefined,
     distinctDocs > 1
       ? {

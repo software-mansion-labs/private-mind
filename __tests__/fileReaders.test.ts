@@ -3,7 +3,7 @@ import { readPDF } from 'react-native-pdfium';
 import { File } from 'expo-file-system';
 
 const mockReadPDF = readPDF as jest.Mock;
-const MockFile = File as jest.Mock;
+const MockFile = File as unknown as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();

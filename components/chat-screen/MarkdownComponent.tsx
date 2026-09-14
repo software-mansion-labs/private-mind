@@ -8,6 +8,8 @@ import { Platform } from 'react-native';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 
+const MD4C_FLAGS = { latexMath: true } as const;
+
 interface Props {
   text: string;
   isUser?: boolean;
@@ -154,6 +156,8 @@ const MarkdownComponent = memo(
       <EnrichedMarkdownText
         markdown={text}
         markdownStyle={markdownStyle}
+        md4cFlags={MD4C_FLAGS}
+        flavor="github"
         selectable={true}
         onLinkPress={onLinkPress}
       />

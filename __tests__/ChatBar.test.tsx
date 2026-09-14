@@ -1,8 +1,11 @@
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react-native';
+import { Keyboard } from 'react-native';
 import type { LLMStore } from '../store/llmStore';
+import { useChatStore } from '../store/chatStore';
 import type { Attachment } from '../hooks/useAttachment';
 import type { PermissionStatus } from 'react-native-audio-api';
+import type { SharedValue } from 'react-native-reanimated';
 
 // ── mocks ─────────────────────────────────────────────────────────────────────
 
@@ -34,11 +37,15 @@ jest.mock('../store/llmStore', () => ({
   }),
 }));
 
+const mockPresentDownloadSheet = jest.fn();
+
 const mockUseAttachment = {
   attachments: [] as Attachment[],
   embeddingDownloadSheetRef: { current: null },
+  presentDownloadSheet: mockPresentDownloadSheet,
   addImages: jest.fn(async () => {}),
   pickDocument: jest.fn(async () => {}),
+  addUrlSource: jest.fn(async () => {}),
   downloadModelAndContinue: jest.fn(),
   markDownloadSheetClosed: jest.fn(),
   markPanelOpen: jest.fn(),
@@ -51,6 +58,22 @@ const mockUseAttachment = {
 jest.mock('../hooks/useAttachment', () => ({
   useAttachment: () => mockUseAttachment,
   MAX_IMAGE_ATTACHMENTS: 1,
+}));
+
+const mockSheetProps: {
+  current: { context?: string; required?: boolean; onDismiss?: () => void };
+} = { current: {} };
+
+jest.mock('../components/bottomSheets/EmbeddingDownloadSheet', () => ({
+  __esModule: true,
+  default: (props: {
+    context?: string;
+    required?: boolean;
+    onDismiss?: () => void;
+  }) => {
+    mockSheetProps.current = props;
+    return null;
+  },
 }));
 
 jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
@@ -158,6 +181,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onThinkingToggle,
     thinkingEnabled,
     onAttach,
+    onWebSearchToggle,
   }: {
     userInput: string;
     hasAttachments: boolean;
@@ -169,8 +193,17 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onThinkingToggle: () => void;
     thinkingEnabled: boolean;
     onAttach: () => void;
+    onWebSearchToggle?: () => void;
   }) => (
     <View testID="chat-bar-actions">
+      {onWebSearchToggle && (
+        <TouchableOpacity
+          testID="web-search-toggle"
+          onPress={onWebSearchToggle}
+        >
+          <Text>Web</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity testID="attach-btn" onPress={onAttach}>
         <Text>+</Text>
       </TouchableOpacity>
@@ -201,14 +234,21 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
   );
 });
 
+jest.mock('../utils/modelCompatibility', () => ({
+  ...jest.requireActual('../utils/modelCompatibility'),
+  isMemoryConstrained: () => false,
+  isHighMemoryDevice: () => true,
+}));
+
 // ── imports ───────────────────────────────────────────────────────────────────
 
 import ChatBar from '../components/chat-screen/ChatBar';
 import { useLLMStore } from '../store/llmStore';
+import { useEmbeddingModelStore } from '../store/embeddingModelStore';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
 
-const mockUseLLMStore = useLLMStore as jest.Mock;
+const mockUseLLMStore = useLLMStore as unknown as jest.Mock;
 const mockAudioManager = AudioManager as jest.Mocked<typeof AudioManager>;
 
 const downloadedModel = {
@@ -226,6 +266,8 @@ const downloadedModel = {
 
 const defaultProps = {
   chatId: 1,
+  ref: { current: null },
+  extraContentPadding: { value: 0 } as unknown as SharedValue<number>,
   onSend: jest.fn(),
   onSelectModel: jest.fn(),
   onSelectPrompt: jest.fn(),
@@ -325,6 +367,23 @@ describe('downloaded model — text input', () => {
     expect(screen.getByPlaceholderText('Ask about anything...')).toBeTruthy();
   });
 
+  it('hands the message over before it closes the keyboard', () => {
+    const dismiss = jest
+      .spyOn(Keyboard, 'dismiss')
+      .mockImplementation(() => {});
+    const onSend = jest.fn();
+    renderBar({ onSend });
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'Hello'
+    );
+    fireEvent.press(screen.getByTestId('send-btn'));
+    expect(onSend.mock.invocationCallOrder[0]).toBeLessThan(
+      dismiss.mock.invocationCallOrder[0]
+    );
+    dismiss.mockRestore();
+  });
+
   it('calls onSend with current input when send button is pressed', () => {
     const onSend = jest.fn();
     renderBar({ onSend });
@@ -334,6 +393,59 @@ describe('downloaded model — text input', () => {
     );
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(onSend).toHaveBeenCalledWith('Hello', undefined, []);
+  });
+
+  it('stays empty when the native input echoes the sent text back', () => {
+    renderBar();
+    const textInput = () =>
+      screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(textInput(), 'czesc test wysylki');
+    fireEvent.press(screen.getByTestId('send-btn'));
+    expect(textInput().props.value).toBe('');
+
+    fireEvent.changeText(textInput(), 'czesc test wysylki');
+    expect(textInput().props.value).toBe('');
+  });
+
+  it('keeps a paste of the just-sent message once the echo window has passed (live: first paste vanished)', () => {
+    const now = jest.spyOn(Date, 'now');
+    now.mockReturnValue(10_000);
+    renderBar();
+    const textInput = () =>
+      screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(textInput(), 'czesc test wysylki');
+    fireEvent.press(screen.getByTestId('send-btn'));
+    expect(textInput().props.value).toBe('');
+
+    now.mockReturnValue(12_000);
+    fireEvent.changeText(textInput(), 'czesc test wysylki');
+    expect(textInput().props.value).toBe('czesc test wysylki');
+    now.mockRestore();
+  });
+
+  it('accepts genuine typing right after a send', () => {
+    renderBar();
+    const textInput = () =>
+      screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(textInput(), 'first');
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    fireEvent.changeText(textInput(), 'n');
+    expect(textInput().props.value).toBe('n');
+    fireEvent.changeText(textInput(), 'next');
+    expect(textInput().props.value).toBe('next');
+  });
+
+  it('does not swallow a repeat of the same message typed again', () => {
+    renderBar();
+    const textInput = () =>
+      screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(textInput(), 'again');
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    fireEvent.changeText(textInput(), 'a');
+    fireEvent.changeText(textInput(), 'again');
+    expect(textInput().props.value).toBe('again');
   });
 
   it('keeps the input and shows a toast instead of sending while switching models', () => {
@@ -830,5 +942,188 @@ describe('paste functionality', () => {
     expect(mockUseAttachment.addPastedAttachment).toHaveBeenCalledWith(
       'file://test.jpg'
     );
+  });
+});
+
+describe('web search toggle and the embedding download sheet', () => {
+  const flush = () => act(async () => {});
+
+  const toggleWebOn = (props: Partial<typeof defaultProps> = {}) => {
+    const onWebSearchToggle = jest.fn();
+    renderBar({
+      ...props,
+      webSearchEnabled: false,
+      onWebSearchToggle,
+    } as Partial<typeof defaultProps>);
+    fireEvent.press(screen.getByTestId('web-search-toggle'));
+    return onWebSearchToggle;
+  };
+
+  beforeEach(() => {
+    useEmbeddingModelStore.setState({ status: 'unknown', progress: 0 });
+  });
+
+  it('does not offer the download while the model turns out to be on disk', async () => {
+    const onWebSearchToggle = toggleWebOn();
+    expect(onWebSearchToggle).toHaveBeenCalledTimes(1);
+    expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
+
+    act(() => useEmbeddingModelStore.setState({ status: 'ready' }));
+    await flush();
+
+    expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
+  });
+
+  it('offers the download once the model is known to be missing', async () => {
+    toggleWebOn();
+    act(() => useEmbeddingModelStore.setState({ status: 'not_downloaded' }));
+    await flush();
+
+    expect(mockPresentDownloadSheet).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers the download at once when the model is already known to be missing', async () => {
+    useEmbeddingModelStore.setState({ status: 'not_downloaded' });
+    toggleWebOn();
+    await flush();
+
+    expect(mockPresentDownloadSheet).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays quiet when the model is already ready', async () => {
+    useEmbeddingModelStore.setState({ status: 'ready' });
+    toggleWebOn();
+    await flush();
+
+    expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
+  });
+
+  it('tells the attachment hook to resume nothing after the download', async () => {
+    useEmbeddingModelStore.setState({ status: 'not_downloaded' });
+    toggleWebOn();
+    await flush();
+
+    expect(mockPresentDownloadSheet).toHaveBeenCalledWith('none');
+  });
+
+  it('stays quiet when the screen refused to enable web search', async () => {
+    useEmbeddingModelStore.setState({ status: 'not_downloaded' });
+    const onWebSearchToggle = jest.fn(() => false);
+    renderBar({
+      webSearchEnabled: false,
+      onWebSearchToggle,
+    } as Partial<typeof defaultProps>);
+    fireEvent.press(screen.getByTestId('web-search-toggle'));
+    await flush();
+
+    expect(onWebSearchToggle).toHaveBeenCalledTimes(1);
+    expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
+  });
+
+  it('shows the document copy again once the web prompt is dismissed', async () => {
+    useEmbeddingModelStore.setState({ status: 'not_downloaded' });
+    toggleWebOn();
+    await flush();
+    expect(mockSheetProps.current.context).toBe('web');
+
+    act(() => mockSheetProps.current.onDismiss?.());
+    await flush();
+
+    expect(mockSheetProps.current.context).toBe('document');
+    expect(mockSheetProps.current.required).toBe(false);
+  });
+
+  it('drops the pending offer when web search is switched off in the meantime', async () => {
+    const onWebSearchToggle = jest.fn();
+    const view = renderBar({
+      webSearchEnabled: false,
+      onWebSearchToggle,
+    } as Partial<typeof defaultProps>);
+    fireEvent.press(screen.getByTestId('web-search-toggle'));
+    view.rerender(
+      <ChatBar
+        {...defaultProps}
+        webSearchEnabled
+        onWebSearchToggle={onWebSearchToggle}
+      />
+    );
+    fireEvent.press(screen.getByTestId('web-search-toggle'));
+
+    act(() => useEmbeddingModelStore.setState({ status: 'not_downloaded' }));
+    await flush();
+
+    expect(onWebSearchToggle).toHaveBeenCalledTimes(2);
+    expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
+  });
+});
+
+describe('opening another chat', () => {
+  it('leaves the composer empty, so a suggestion typed into the last chat does not follow you', () => {
+    const view = renderBar();
+    const input = screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(input, 'a draft from the previous chat');
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('a draft from the previous chat');
+
+    view.rerender(<ChatBar {...defaultProps} chatId={2} />);
+
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('');
+  });
+
+  it('empties the composer when another blank chat is started, which reuses the same unsaved id', () => {
+    renderBar();
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'a suggestion tapped by mistake'
+    );
+
+    act(() => {
+      useChatStore.setState((state) => ({
+        phantomChatStarts: state.phantomChatStarts + 1,
+      }));
+    });
+
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('');
+  });
+
+  it('keeps what is being typed while the same chat stays open', () => {
+    const view = renderBar();
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'still writing this'
+    );
+
+    view.rerender(<ChatBar {...defaultProps} hasMessages />);
+
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('still writing this');
+  });
+});
+
+describe('a refused send', () => {
+  it('puts the text back and says why instead of dropping it silently', async () => {
+    const onSend = jest.fn(async () => false);
+    renderBar({ onSend });
+    const input = screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(input, 'Lost message');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('send-btn'));
+    });
+
+    expect(onSend).toHaveBeenCalledWith('Lost message', undefined, []);
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('Lost message');
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the response to finish or stop it first.',
+    });
   });
 });

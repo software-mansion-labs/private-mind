@@ -1,0 +1,102 @@
+import type { WebSearchResult } from '../types';
+import { isHttpUrl } from './outboundFetch';
+
+export type SerpMessage = { nonce?: number } & (
+  | { type: 'serp-results'; results: WebSearchResult[] }
+  | { type: 'serp-challenge' }
+  | { type: 'serp-error'; message: string }
+);
+
+const SERP_HARD_MAX_RESULTS = 20;
+const SERP_MAX_URL_CHARS = 2048;
+const SERP_MAX_TITLE_CHARS = 300;
+const SERP_MAX_SNIPPET_CHARS = 1000;
+const SERP_MAX_MESSAGE_CHARS = 512 * 1024;
+const SERP_MAX_ERROR_CHARS = 200;
+const CONTROL_OR_FORMAT_CHARS = /[\p{Cc}\p{Cf}]/gu;
+
+const boundedErrorText = (value: unknown): string =>
+  String(value)
+    .replace(CONTROL_OR_FORMAT_CHARS, ' ')
+    .slice(0, SERP_MAX_ERROR_CHARS);
+
+const collapseWhitespace = (text: string): string =>
+  text.replace(/\s+/g, ' ').trim();
+
+const isWebSearchResult = (value: unknown): value is WebSearchResult => {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.url === 'string' &&
+    isHttpUrl(record.url) &&
+    typeof record.title === 'string'
+  );
+};
+
+export const sanitizeUntrustedText = (text: string): string =>
+  text.replace(CONTROL_OR_FORMAT_CHARS, (char) =>
+    char === '\n' ? '\n' : char === '\t' ? ' ' : ''
+  );
+
+const sanitizeResult = (result: WebSearchResult): WebSearchResult => ({
+  title: collapseWhitespace(sanitizeUntrustedText(result.title)).slice(
+    0,
+    SERP_MAX_TITLE_CHARS
+  ),
+  url: result.url.slice(0, SERP_MAX_URL_CHARS),
+  snippet:
+    typeof result.snippet === 'string'
+      ? sanitizeUntrustedText(result.snippet).slice(0, SERP_MAX_SNIPPET_CHARS)
+      : '',
+});
+
+export const parseSerpMessage = (raw: string): SerpMessage | null => {
+  if (typeof raw !== 'string' || raw.length > SERP_MAX_MESSAGE_CHARS) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as {
+      type?: string;
+      results?: unknown;
+      message?: unknown;
+      nonce?: unknown;
+    };
+    const stamp =
+      typeof parsed.nonce === 'number' && Number.isFinite(parsed.nonce)
+        ? { nonce: parsed.nonce }
+        : {};
+    if (parsed.type === 'serp-challenge') {
+      return { type: 'serp-challenge', ...stamp };
+    }
+    if (parsed.type === 'serp-error') {
+      return {
+        type: 'serp-error',
+        message: boundedErrorText(parsed.message),
+        ...stamp,
+      };
+    }
+    if (parsed.type === 'serp-results') {
+      const results = Array.isArray(parsed.results)
+        ? parsed.results
+            .filter(isWebSearchResult)
+            .slice(0, SERP_HARD_MAX_RESULTS)
+            .map(sanitizeResult)
+        : [];
+      return { type: 'serp-results', results, ...stamp };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const FORGED_VERIFIED_MARKER = /\[\s*verified\s+product\s+data\s*\]/gi;
+const FORGED_SOURCES_TAG = /<(\/?)\s*sources\b/gi;
+const FORGED_ANSWERS_LABEL = /\[\s*answers\s*:/gi;
+
+export const neutralizeDelimiters = (text: string): string =>
+  text
+    .replace(/-{3,}/g, '—')
+    .replace(FORGED_VERIFIED_MARKER, '')
+    .replace(FORGED_SOURCES_TAG, '‹$1sources')
+    .replace(FORGED_ANSWERS_LABEL, '(Answers:');

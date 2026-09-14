@@ -1,5 +1,4 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
-import { DEFAULT_MODELS } from '../constants/default-models';
 import { useChatStore } from '../store/chatStore';
 import { useLLMStore } from '../store/llmStore';
 import { useModelStore } from '../store/modelStore';
@@ -9,6 +8,8 @@ import { useSourceStore } from '../store/sourceStore';
 import { initSourceLinkingBoundary } from '../utils/sourceLinkingBoundary';
 import { migrateLegacyVectorStore } from './vectorStoreMigration';
 import { restoreTruncatedChatTitles } from './chatTitleMigration';
+import { resolveModelCatalog } from '../utils/fetchModelCatalog';
+import { getActiveCatalog, setActiveCatalog } from '../utils/modelCatalogState';
 
 export const runMigrations = async (db: SQLiteDatabase) => {
   const modelsTableInfo = await db.getAllAsync<{ name: string }>(
@@ -98,6 +99,15 @@ export const runMigrations = async (db: SQLiteDatabase) => {
     );
   }
 
+  const hasGroundingCaveats = messagesTableInfo.some(
+    (col) => col.name === 'groundingCaveats'
+  );
+  if (!hasGroundingCaveats) {
+    await db.execAsync(
+      `ALTER TABLE messages ADD COLUMN groundingCaveats TEXT DEFAULT NULL`
+    );
+  }
+
   // Check and add thinkingEnabled to chatSettings
   const chatSettingsTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(chatSettings)`
@@ -118,6 +128,14 @@ export const runMigrations = async (db: SQLiteDatabase) => {
 
   if (hasContextWindow) {
     await db.execAsync(`ALTER TABLE chatSettings DROP COLUMN contextWindow`);
+  }
+
+  const hasDigest = chatSettingsTableInfo.some((col) => col.name === 'digest');
+
+  if (!hasDigest) {
+    await db.execAsync(
+      `ALTER TABLE chatSettings ADD COLUMN digest TEXT DEFAULT NULL`
+    );
   }
 
   // Add firstChunk column to sources
@@ -167,7 +185,8 @@ export const runMigrations = async (db: SQLiteDatabase) => {
      WHERE source = 'built-in' AND modelName LIKE '% - Quantized'`
   );
 
-  const defaultModelNames = DEFAULT_MODELS.map((m) => m.modelName);
+  const catalog = getActiveCatalog();
+  const defaultModelNames = catalog.map((m) => m.modelName);
   const placeholders = defaultModelNames.map(() => '?').join(',');
 
   await db.runAsync(
@@ -178,7 +197,7 @@ export const runMigrations = async (db: SQLiteDatabase) => {
     ...defaultModelNames
   );
 
-  for (const model of DEFAULT_MODELS) {
+  for (const model of catalog) {
     await db.runAsync(
       `UPDATE models SET family = ?, featured = ?, experimental = ?, thinking = ?, vision = ?, labels = ?, systemPrompt = ? WHERE modelName = ?`,
       model.family || null,
@@ -252,6 +271,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       imagePath TEXT DEFAULT NULL,
       documentName TEXT DEFAULT NULL,
       sourceDocuments TEXT DEFAULT NULL,
+      groundingCaveats TEXT DEFAULT NULL,
       FOREIGN KEY (chatId) REFERENCES chats (id) ON DELETE CASCADE
     );
   `);
@@ -261,6 +281,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       chatId INTEGER PRIMARY KEY NOT NULL,
       systemPrompt TEXT DEFAULT '',
       thinkingEnabled INTEGER DEFAULT NULL,
+      digest TEXT DEFAULT NULL,
       FOREIGN KEY(chatId) REFERENCES chats(id) ON DELETE CASCADE
     );
   `);
@@ -315,6 +336,9 @@ export const initDatabase = async (db: SQLiteDatabase) => {
     );
   `);
 
+  const { models } = await resolveModelCatalog();
+  setActiveCatalog(models);
+
   // Run migration before inserting default models
   await runMigrations(db);
 
@@ -335,7 +359,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   }
 
   await db.withTransactionAsync(async () => {
-    for (const model of DEFAULT_MODELS) {
+    for (const model of getActiveCatalog()) {
       const {
         modelName,
         modelPath,

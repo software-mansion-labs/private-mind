@@ -1,4 +1,5 @@
 import { TOKEN_PATTERN, extractQueryTerms } from './queryTerms';
+import { detectQuestionLanguage } from './questionLanguage';
 import {
   CITATION_ALPHA_TERM_PATTERN,
   CITATION_DOCUMENT_NAME_TOKEN_PATTERN,
@@ -66,7 +67,7 @@ export const findCitedSpan = (
 ): CitationSpan | null => {
   if (!passage?.trim() || !query.trim()) return null;
 
-  const terms = extractQueryTerms(query);
+  const terms = extractQueryTerms(query, detectQuestionLanguage(query)?.code);
   if (terms.size === 0) return null;
 
   const sentences = splitSentences(passage);

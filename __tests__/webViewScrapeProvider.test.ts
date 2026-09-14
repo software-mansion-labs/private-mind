@@ -1,0 +1,376 @@
+import {
+  WebViewScrapeProvider,
+  searchUrlFor,
+} from '../utils/web/scrape/webViewScrapeProvider';
+import {
+  SCRAPE_CHALLENGE_TIMEOUT_MS,
+  SCRAPE_ENGINES,
+  SCRAPE_PAGE_LOAD_TIMEOUT_MS,
+} from '../constants/web';
+import type { WebSearchResult } from '../utils/web/types';
+
+const hit = (url: string): WebSearchResult => ({
+  title: 'Result',
+  url,
+  snippet: '',
+});
+
+const attach = (
+  provider: WebViewScrapeProvider,
+  replies: Record<string, WebSearchResult[] | 'error' | 'silent'>
+) => {
+  const navigated: string[] = [];
+  provider.attachHost({
+    navigate: (url: string, nonce: number) => {
+      navigated.push(url);
+      const engine = SCRAPE_ENGINES.find((candidate) =>
+        url.startsWith(candidate.url)
+      );
+      const reply = replies[engine?.id ?? ''] ?? [];
+      if (reply === 'silent') return;
+      if (reply === 'error') {
+        provider.handleMessage(
+          JSON.stringify({ type: 'serp-error', message: 'boom', nonce })
+        );
+        return;
+      }
+      provider.handleMessage(
+        JSON.stringify({ type: 'serp-results', results: reply, nonce })
+      );
+    },
+  });
+  return navigated;
+};
+
+const settle = async <T>(promise: Promise<T>): Promise<T> => {
+  const raced = promise.catch((error) => ({ __error: error }) as never);
+  await jest.advanceTimersByTimeAsync(120_000);
+  const value = await raced;
+  if (value && typeof value === 'object' && '__error' in value) {
+    throw (value as { __error: unknown }).__error;
+  }
+  return value;
+};
+
+const engineIds = SCRAPE_ENGINES.map((engine) => engine.id);
+
+beforeEach(() => {
+  jest.useFakeTimers();
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+});
+afterEach(() => {
+  jest.useRealTimers();
+  (console.warn as jest.Mock).mockRestore();
+});
+
+describe('WebViewScrapeProvider engine chain', () => {
+  it('uses only the primary engine when it returns results', async () => {
+    const provider = new WebViewScrapeProvider();
+    const navigated = attach(provider, {
+      [engineIds[0]!]: [hit('https://a.example/')],
+    });
+    const seen: string[] = [];
+
+    const results = await settle(
+      provider.search('warsaw weather', {
+        onEngine: (engine) => seen.push(engine.id),
+      })
+    );
+
+    expect(results).toEqual([hit('https://a.example/')]);
+    expect(navigated).toHaveLength(1);
+    expect(seen).toEqual([engineIds[0]]);
+  });
+
+  it('falls through to the next engine when the primary finds nothing', async () => {
+    const provider = new WebViewScrapeProvider();
+    const navigated = attach(provider, {
+      [engineIds[0]!]: [],
+      [engineIds[1]!]: [hit('https://b.example/')],
+    });
+    const seen: { id: string; index: number; resultCount: number }[] = [];
+
+    const results = await settle(
+      provider.search('warsaw weather', { onEngine: (e) => seen.push(e) })
+    );
+
+    expect(results).toEqual([hit('https://b.example/')]);
+    expect(navigated).toHaveLength(2);
+    expect(navigated[1]).toContain(SCRAPE_ENGINES[1]!.url);
+    expect(seen).toEqual([
+      { id: engineIds[0], index: 0, resultCount: 0 },
+      { id: engineIds[1], index: 1, resultCount: 1 },
+    ]);
+  });
+
+  it('survives an engine that errors and lets a later one serve the query', async () => {
+    const provider = new WebViewScrapeProvider();
+    attach(provider, {
+      [engineIds[0]!]: 'error',
+      [engineIds[1]!]: [],
+      [engineIds[2]!]: [hit('https://c.example/')],
+    });
+
+    const results = await settle(provider.search('warsaw weather'));
+
+    expect(results).toEqual([hit('https://c.example/')]);
+  });
+
+  it('times out an engine that never answers and moves on', async () => {
+    const provider = new WebViewScrapeProvider();
+    const navigated = attach(provider, {
+      [engineIds[0]!]: 'silent',
+      [engineIds[1]!]: [hit('https://d.example/')],
+    });
+
+    const results = await settle(provider.search('warsaw weather'));
+
+    expect(results).toEqual([hit('https://d.example/')]);
+    expect(navigated).toHaveLength(2);
+  });
+
+  it('returns an honest empty set when every engine finds nothing', async () => {
+    const provider = new WebViewScrapeProvider();
+    const navigated = attach(provider, {});
+
+    const results = await settle(provider.search('warsaw weather'));
+
+    expect(results).toEqual([]);
+    expect(navigated).toHaveLength(SCRAPE_ENGINES.length);
+  });
+
+  it('rethrows when every engine errored, rather than faking an empty SERP', async () => {
+    const provider = new WebViewScrapeProvider();
+    attach(
+      provider,
+      Object.fromEntries(engineIds.map((id) => [id, 'error' as const]))
+    );
+
+    await expect(settle(provider.search('warsaw weather'))).rejects.toThrow(
+      'boom'
+    );
+  });
+
+  it('stops the chain when the user cancels a bot-wall', async () => {
+    const provider = new WebViewScrapeProvider();
+    const navigated: string[] = [];
+    provider.attachHost({
+      navigate: (url: string, nonce: number) => {
+        navigated.push(url);
+        provider.handleMessage(
+          JSON.stringify({ type: 'serp-challenge', nonce })
+        );
+        provider.cancelPending();
+      },
+    });
+
+    const results = await settle(provider.search('warsaw weather'));
+
+    expect(results).toEqual([]);
+    expect(navigated).toHaveLength(1);
+  });
+
+  it('moves to the next engine when one of them shows a challenge', async () => {
+    const provider = new WebViewScrapeProvider();
+    const navigated: string[] = [];
+    provider.attachHost({
+      navigate: (url: string, nonce: number) => {
+        navigated.push(url);
+        provider.handleMessage(
+          JSON.stringify({ type: 'serp-challenge', nonce })
+        );
+        provider.skipEngine();
+      },
+    });
+
+    const results = await settle(provider.search('warsaw weather'));
+
+    expect(results).toEqual([]);
+    expect(navigated).toHaveLength(SCRAPE_ENGINES.length);
+  });
+
+  it('honours an already-aborted signal without navigating', async () => {
+    const provider = new WebViewScrapeProvider();
+    const navigated = attach(provider, {});
+    const controller = new AbortController();
+    controller.abort();
+
+    const results = await settle(
+      provider.search('warsaw weather', { signal: controller.signal })
+    );
+
+    expect(results).toEqual([]);
+    expect(navigated).toHaveLength(0);
+  });
+
+  it('settles a hanging navigation as soon as the signal aborts', async () => {
+    const provider = new WebViewScrapeProvider();
+    const navigated = attach(provider, {
+      [engineIds[0]!]: 'silent',
+    });
+    const controller = new AbortController();
+
+    const promise = provider.search('warsaw weather', {
+      signal: controller.signal,
+    });
+    await jest.advanceTimersByTimeAsync(0);
+    expect(navigated).toHaveLength(1);
+    controller.abort();
+
+    expect(await promise).toEqual([]);
+    expect(navigated).toHaveLength(1);
+  });
+
+  it('fails fast instead of hanging when the host detaches mid-search', async () => {
+    const provider = new WebViewScrapeProvider();
+    attach(provider, { [engineIds[0]!]: 'silent' });
+
+    const promise = provider.search('warsaw weather');
+    await jest.advanceTimersByTimeAsync(0);
+    provider.detachHost();
+
+    await expect(settle(promise)).rejects.toThrow('detached');
+  });
+
+  it('clears the challenge flag when a challenge times out unanswered', async () => {
+    const provider = new WebViewScrapeProvider();
+    let calls = 0;
+    provider.attachHost({
+      navigate: (_url: string, nonce: number) => {
+        calls += 1;
+        provider.handleMessage(
+          JSON.stringify(
+            calls === 1
+              ? { type: 'serp-challenge', nonce }
+              : { type: 'serp-results', results: [], nonce }
+          )
+        );
+      },
+    });
+
+    const promise = provider.search('warsaw weather');
+    await jest.advanceTimersByTimeAsync(0);
+    expect(provider.isChallengeActive()).toBe(true);
+
+    await jest.advanceTimersByTimeAsync(SCRAPE_CHALLENGE_TIMEOUT_MS);
+    expect(provider.isChallengeActive()).toBe(false);
+
+    expect(await settle(promise)).toEqual([]);
+  });
+});
+
+describe('WebViewScrapeProvider — one navigation, one answer', () => {
+  it('ignores a message stamped with the previous navigation', async () => {
+    const provider = new WebViewScrapeProvider();
+    const nonces: number[] = [];
+    provider.attachHost({
+      navigate: (_url: string, nonce: number) => {
+        nonces.push(nonce);
+      },
+    });
+
+    const promise = provider.search('warsaw weather');
+    await jest.advanceTimersByTimeAsync(SCRAPE_PAGE_LOAD_TIMEOUT_MS + 5_000);
+    expect(nonces).toHaveLength(2);
+
+    const resolved = jest.fn();
+    promise.then(resolved);
+    provider.handleMessage(
+      JSON.stringify({
+        type: 'serp-results',
+        results: [hit('https://stale.example/')],
+        nonce: nonces[0],
+      })
+    );
+    await jest.advanceTimersByTimeAsync(0);
+    expect(resolved).not.toHaveBeenCalled();
+
+    provider.handleMessage(
+      JSON.stringify({
+        type: 'serp-results',
+        results: [hit('https://fresh.example/')],
+        nonce: nonces[1],
+      })
+    );
+    expect(await promise).toEqual([hit('https://fresh.example/')]);
+  });
+
+  it('ignores an unstamped message', async () => {
+    const provider = new WebViewScrapeProvider();
+    provider.attachHost({ navigate: () => {} });
+
+    const promise = provider.search('warsaw weather');
+    await jest.advanceTimersByTimeAsync(0);
+    const resolved = jest.fn();
+    promise.then(resolved);
+    provider.handleMessage(
+      JSON.stringify({ type: 'serp-results', results: [hit('https://x/')] })
+    );
+    await jest.advanceTimersByTimeAsync(0);
+
+    expect(resolved).not.toHaveBeenCalled();
+  });
+
+  it('stops before the next engine when cancelled during the throttle delay', async () => {
+    const provider = new WebViewScrapeProvider();
+    const navigated = attach(provider, { [engineIds[0]!]: [] });
+
+    const promise = provider.search('warsaw weather');
+    await jest.advanceTimersByTimeAsync(0);
+    expect(navigated).toHaveLength(1);
+    provider.cancelPending();
+
+    expect(await settle(promise)).toEqual([]);
+    expect(navigated).toHaveLength(1);
+  });
+});
+
+describe('WebViewScrapeProvider — resetting the WebView to idle', () => {
+  it('resets the host when the abort signal fires mid-scrape', async () => {
+    const provider = new WebViewScrapeProvider();
+    const reset = jest.fn();
+    provider.attachHost({ navigate: () => {}, reset });
+
+    const controller = new AbortController();
+    const pending = provider.search('query', { signal: controller.signal });
+    await jest.advanceTimersByTimeAsync(0);
+    controller.abort();
+
+    await expect(pending).resolves.toEqual([]);
+    expect(reset).toHaveBeenCalled();
+  });
+
+  it('resets the host on cancelPending', async () => {
+    const provider = new WebViewScrapeProvider();
+    const reset = jest.fn();
+    provider.attachHost({ navigate: () => {}, reset });
+
+    const pending = provider.search('query', {});
+    await jest.advanceTimersByTimeAsync(0);
+    provider.cancelPending();
+
+    await expect(pending).resolves.toEqual([]);
+    expect(reset).toHaveBeenCalled();
+  });
+});
+
+describe('searchUrlFor', () => {
+  it('asks DuckDuckGo for the region of the question', () => {
+    expect(searchUrlFor(SCRAPE_ENGINES[0]!, 'cena iPhone 17', 'pl-pl')).toBe(
+      'https://html.duckduckgo.com/html/?q=cena%20iPhone%2017&kl=pl-pl'
+    );
+  });
+
+  it('leaves engines without a region parameter alone', () => {
+    const brave = SCRAPE_ENGINES.find((engine) => engine.id === 'brave')!;
+    expect(searchUrlFor(brave, 'cena iPhone 17', 'pl-pl')).toBe(
+      'https://search.brave.com/search?q=cena%20iPhone%2017'
+    );
+  });
+
+  it('sends no region when the language has none', () => {
+    expect(searchUrlFor(SCRAPE_ENGINES[0]!, 'iPhone 17 price')).toBe(
+      'https://html.duckduckgo.com/html/?q=iPhone%2017%20price'
+    );
+  });
+});

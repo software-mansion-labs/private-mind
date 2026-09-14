@@ -1,9 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import {
-  useFocusEffect,
-  useLocalSearchParams,
-  useNavigation,
-} from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { BackHandler } from 'react-native';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
 import { useState } from 'react';
@@ -35,7 +31,6 @@ function ChatScreenInner() {
     entryAnimation,
   }: { modelId: string; entryAnimation?: ChatEntryAnimation } =
     useLocalSearchParams();
-  const navigation = useNavigation();
   const { activeChatMessages, activeChatId } = useLLMStore();
   const { getModelById } = useModelStore();
   const { getChatById, setChatModel, loadChats, phantomChat } = useChatStore();
@@ -44,7 +39,7 @@ function ChatScreenInner() {
   const isPhantom = phantomChat?.id === chatId && !chat;
   const shouldPlayBranchEntryAnimation =
     entryAnimation === CHAT_ENTRY_ANIMATION.BranchCreated;
-  const resolvedModelId = modelId ?? chat?.modelId;
+  const resolvedModelId = chat?.modelId ?? modelId;
   const resolvedModel = resolvedModelId
     ? getModelById(parseInt(resolvedModelId.toString(), 10))
     : undefined;
@@ -61,7 +56,10 @@ function ChatScreenInner() {
     !isPhantom && activeChatId !== chatId
   );
 
-  const isEmpty = !isLoading && activeChatMessages.length === 0;
+  const historyForThisChat =
+    activeChatId !== null && activeChatId !== chatId ? [] : activeChatMessages;
+
+  const isEmpty = !isLoading && historyForThisChat.length === 0;
   const shouldExitOnBack = isPhantom && isEmpty;
   const openModelSheetRef = useRef<(() => void) | null>(null);
   const openModelSheet = useCallback(() => openModelSheetRef.current?.(), []);
@@ -76,36 +74,13 @@ function ChatScreenInner() {
 
   useFocusEffect(
     useCallback(() => {
-      // Interrupt generation only when the user actually left this chat.
-      // Sending the first message replaces the phantom route with the real
-      // chat route of the same id, which remounts this screen — the blur
-      // cleanup of the old instance must not kill the in-flight generation.
-      const interruptIfLeftChat = () => {
-        const snapshot = useLLMStore.getState();
-        const isGeneratingThisChat =
-          snapshot.generatingForChatId === chatId &&
-          (snapshot.isGenerating || snapshot.isProcessingPrompt);
-        if (!isGeneratingThisChat) return;
-
-        const navState = navigation.getState();
-        const focusedRoute = navState?.routes?.[navState.index ?? 0];
-        const stillOnThisChat =
-          focusedRoute?.name === 'chat/[id]' &&
-          Number((focusedRoute.params as { id?: string })?.id) === chatId;
-
-        if (!stillOnThisChat) {
-          snapshot.interrupt();
-        }
-      };
-
       // Read activeChatId via store to avoid re-firing this effect when the
       // store's activeChatId changes while the screen is focused — otherwise
       // clearing activeChatId (e.g. from startPhantomChat during navigation)
       // would retrigger an unwanted re-fetch on the previously-focused chat.
       const currentActiveId = useLLMStore.getState().activeChatId;
-      if (currentActiveId === chatId) {
-        return interruptIfLeftChat;
-      }
+      if (currentActiveId === chatId) return;
+
       const initChat = async () => {
         if (!isPhantom) setIsLoading(true);
         await useLLMStore.getState().setActiveChatId(chatId);
@@ -113,9 +88,7 @@ function ChatScreenInner() {
       };
 
       initChat();
-
-      return interruptIfLeftChat;
-    }, [chatId, isPhantom, navigation])
+    }, [chatId, isPhantom])
   );
 
   useFocusEffect(
@@ -145,7 +118,7 @@ function ChatScreenInner() {
       <ChatScreen
         chatId={chatId}
         chat={chat}
-        messageHistory={isLoading ? [] : activeChatMessages}
+        messageHistory={isLoading ? [] : historyForThisChat}
         isLoading={isLoading}
         model={model}
         onPendingModelChange={setPendingModel}

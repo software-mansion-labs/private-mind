@@ -19,11 +19,14 @@ import {
   clearPhantomChat,
 } from '../database/sourcesRepository';
 import { maybePromptReview } from '../utils/reviewPrompt';
+import { useWebSearchStore } from './webSearchStore';
 
 interface ChatStore {
   chats: Chat[];
   db: SQLiteDatabase | null;
   phantomChat: Chat | null;
+  phantomChatStarts: number;
+  startBlankChat: () => void;
   setDB: (db: SQLiteDatabase) => void;
   loadChats: () => Promise<void>;
   updateLastUsed: (id: number) => void;
@@ -45,6 +48,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   chats: [],
   db: null,
   phantomChat: null,
+  phantomChatStarts: 0,
+
+  startBlankChat: () =>
+    set((state) => ({ phantomChatStarts: state.phantomChatStarts + 1 })),
 
   setDB: (db) => {
     set({ db });
@@ -72,7 +79,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // Use model-specific system prompt if available, otherwise global default
     const systemPrompt = model?.systemPrompt ?? defaultSettings.systemPrompt;
 
-    set({
+    useWebSearchStore.getState().clearEnabled(phantomChatId);
+
+    set((state) => ({
+      phantomChatStarts: state.phantomChatStarts + 1,
       phantomChat: {
         id: phantomChatId,
         title: '',
@@ -84,7 +94,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           systemPrompt,
         },
       },
-    });
+    }));
   },
 
   setPhantomChatSettings: async (newSettings) => {
@@ -190,6 +200,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     if (!db) return;
 
     await deleteChat(db, id);
+
+    useWebSearchStore.getState().clearEnabled(id);
 
     set((state) => ({
       chats: state.chats.filter((chat) => chat.id !== id),

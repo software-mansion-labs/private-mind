@@ -1,5 +1,5 @@
-// Manual mock that avoids importing the real module (which needs worklets)
 const RN = require('react-native');
+const React = require('react');
 
 const createAnimatedComponent = (Component: any) => Component;
 
@@ -50,14 +50,19 @@ module.exports = {
   default: Animated,
   ...Animated,
   createAnimatedComponent,
-  useSharedValue: <T>(init: T) => makeSharedValue(init),
+  useSharedValue: <T>(init: T) => {
+    const ref: { current: MockSharedValue<T> | null } = React.useRef(null);
+    if (ref.current === null) ref.current = makeSharedValue(init);
+    return ref.current;
+  },
   useAnimatedStyle: (fn: () => any) => fn(),
   useAnimatedRef: () => ({ current: null }),
   useDerivedValue: <T>(fn: () => T) => makeSharedValue(fn()),
+  useAnimatedReaction: <T>(
+    prepare: () => T,
+    react: (current: T, previous: T | null) => void
+  ) => react(prepare(), null),
   useAnimatedScrollHandler: (fn: any) => fn,
-  // No-op: the reaction exists to observe a real animation settling, which
-  // never happens here. Running it eagerly would fire at the initial value.
-  useAnimatedReaction: () => {},
   withTiming: (
     val: any,
     _config: any,
@@ -99,5 +104,8 @@ module.exports = {
   LinearTransition: makeAnimationBuilder(),
   FadeIn: makeAnimationBuilder(),
   FadeInDown: makeAnimationBuilder(),
+  FadeInUp: makeAnimationBuilder(),
   FadeOut: makeAnimationBuilder(),
+  FadeOutDown: makeAnimationBuilder(),
+  FadeOutUp: makeAnimationBuilder(),
 };

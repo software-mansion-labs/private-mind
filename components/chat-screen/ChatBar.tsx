@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
+  Keyboard,
   Platform,
 } from 'react-native';
 import Animated, {
@@ -40,8 +41,12 @@ import { useSheetGeometry } from './attachments/useSheetGeometry';
 import { Model } from '../../database/modelRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
+import { useChatStore } from '../../store/chatStore';
 import { useLLMStore } from '../../store/llmStore';
 import RotateLeft from '../../assets/icons/rotate_left.svg';
+import LinkIcon from '../../assets/icons/link-alt.svg';
+import { detectUrls } from '../../utils/web/url/urlDetection';
+import { hostname } from '../../utils/web/hostname';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
@@ -50,11 +55,14 @@ import WhatsNewCard from '../WhatsNewCard';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
+import { useEmbeddingDownloadPrompt } from './useEmbeddingDownloadPrompt';
+import {
+  BAR_GROW_DURATION,
+  BAR_GROW_LAYOUT,
+  useBarGrowth,
+} from './useBarGrowth';
 
-const BAR_GROW_DURATION = 200;
-const BAR_GROW_EASING = Easing.out(Easing.ease);
-const BAR_GROW_LAYOUT =
-  LinearTransition.duration(BAR_GROW_DURATION).easing(BAR_GROW_EASING);
+const SENT_ECHO_WINDOW_MS = 300;
 
 interface Props {
   chatId: number | null;
@@ -62,7 +70,7 @@ interface Props {
     userInput: string,
     imagePath?: string,
     attachments?: Attachment[]
-  ) => void | Promise<void>;
+  ) => boolean | void | Promise<boolean | void>;
   onSelectModel: () => void;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
@@ -75,6 +83,8 @@ interface Props {
   onBarGrow?: () => void;
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
+  webSearchEnabled?: boolean;
+  onWebSearchToggle?: () => boolean | void;
   hasMessages: boolean;
   disabled?: boolean;
   modelSwitching?: boolean;
@@ -94,6 +104,8 @@ const ChatBar = ({
   onBarGrow,
   thinkingEnabled,
   onThinkingToggle,
+  webSearchEnabled,
+  onWebSearchToggle,
   hasMessages,
   disabled = false,
   modelSwitching = false,
@@ -105,12 +117,29 @@ const ChatBar = ({
     [styles.container, theme.insets.bottom]
   );
 
+  const phantomChatStarts = useChatStore((state) => state.phantomChatStarts);
   const [userInput, setUserInput] = useState('');
+  const lastSentRef = useRef<{ text: string; at: number } | null>(null);
+
+  const handleChangeText = useCallback((text: string) => {
+    const justSent = lastSentRef.current;
+    lastSentRef.current = null;
+    if (
+      justSent &&
+      text === justSent.text &&
+      Date.now() - justSent.at < SENT_ECHO_WINDOW_MS
+    ) {
+      return;
+    }
+    setUserInput(text);
+  }, []);
   const {
     attachments,
     embeddingDownloadSheetRef,
     addImages,
+    presentDownloadSheet,
     pickDocument,
+    addUrlSource,
     downloadModelAndContinue,
     markDownloadSheetClosed,
     markPanelOpen,
@@ -210,10 +239,19 @@ const ChatBar = ({
   const defaultBarHeight = useRef(0);
   const prevBarHeight = useRef(0);
 
-  // Inset the baseline was captured with. Checked in the layout handler, not
-  // an effect: onLayout fires first, so an effect-driven reset would lose the
-  // pass carrying the new height.
-  const baselineInset = useRef<number | null>(null);
+  const {
+    embeddingSheetContext,
+    embeddingSheetRequired,
+    handleWebSearchToggle,
+    handleEmbeddingSheetDismiss,
+  } = useEmbeddingDownloadPrompt({
+    model,
+    webSearchEnabled,
+    onWebSearchToggle,
+    presentDownloadSheet,
+    markDownloadSheetClosed,
+  });
+
   const textInputRef = useRef<RNTextInput>(null);
   // iOS-only: bump the TextInput key to force a remount when a prompt
   // suggestion is set programmatically. iOS doesn't re-fire onLayout
@@ -235,55 +273,23 @@ const ChatBar = ({
     []
   );
 
-  const handleBarLayoutForPadding = useCallback(
-    (e: { nativeEvent: { layout: { height: number } } }) => {
-      const height = e.nativeEvent.layout.height;
-      const inset = theme.insets.bottom;
-      // Only capture the default height once we're in the "with messages"
-      // layout — otherwise the empty-state extras (WhatsNewCard, prompt
-      // suggestions) would bake into the baseline and squeeze the scroll
-      // view once they disappear. Re-capture on inset changes (Android
-      // navigation mode, rotation), or the stale baseline reads the difference
-      // as "the bar grew".
-      const isResting = !userInput && attachments.length === 0;
-      if (hasMessages && isResting) {
-        if (baselineInset.current !== inset) {
-          defaultBarHeight.current = height;
-          baselineInset.current = inset;
-        } else if (
-          defaultBarHeight.current === 0 ||
-          height < defaultBarHeight.current
-        ) {
-          defaultBarHeight.current = height;
-        }
-      }
-      const baseline = defaultBarHeight.current || height;
-      const delta = height - baseline;
-      extraContentPadding.set(
-        withTiming(Math.max(0, delta), {
-          duration: BAR_GROW_DURATION,
-          easing: BAR_GROW_EASING,
-        })
-      );
-      // Baseline, not live height — consumers must not follow the bar as it
-      // grows with typed lines; that is what extraContentPadding is for.
-      onHeightChange?.(hasMessages ? baseline : 0);
-      const grew = height > prevBarHeight.current;
-      prevBarHeight.current = height;
-      if (delta > 0 && grew) {
-        onBarGrow?.();
-      }
-    },
-    [
-      attachments.length,
-      extraContentPadding,
-      onBarGrow,
-      onHeightChange,
-      hasMessages,
-      theme.insets.bottom,
-      userInput,
-    ]
-  );
+  const composerKey = `${chatId}:${phantomChatStarts}`;
+  const composerKeyRef = useRef(composerKey);
+  if (composerKeyRef.current !== composerKey) {
+    composerKeyRef.current = composerKey;
+    setUserInput('');
+    lastSentRef.current = null;
+    if (Platform.OS === 'ios') setIosInputKey((key) => key + 1);
+  }
+
+  const handleBarLayoutForPadding = useBarGrowth({
+    extraContentPadding,
+    hasMessages,
+    isResting: !userInput && attachments.length === 0,
+    insetBottom: theme.insets.bottom,
+    ...(onHeightChange ? { onHeightChange } : {}),
+    ...(onBarGrow ? { onBarGrow } : {}),
+  });
 
   const {
     isGenerating,
@@ -324,6 +330,23 @@ const ChatBar = ({
     panel.onPlusPress();
   }, [modelSwitching, panel, showModelSwitchingToast]);
 
+  const detectedUrl = useMemo(
+    () => detectUrls(userInput)[0] ?? null,
+    [userInput]
+  );
+  const showIndexChip =
+    !!detectedUrl && !attachments.some((a) => a.type === 'document');
+  const handleIndexUrl = useCallback(() => {
+    if (!detectedUrl) return;
+    addUrlSource(detectedUrl);
+    setUserInput((prev) =>
+      prev
+        .replace(detectedUrl, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+    );
+  }, [detectedUrl, addUrlSource]);
+
   const handleSend = useCallback(() => {
     if (modelSwitching) {
       showModelSwitchingToast();
@@ -333,18 +356,31 @@ const ChatBar = ({
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
     const inputToSend = userInput;
+    const outcome = onSend(inputToSend, imageUriToSend, attachmentsToSend);
+    Keyboard.dismiss();
 
+    lastSentRef.current = inputToSend
+      ? { text: inputToSend, at: Date.now() }
+      : null;
     if (Platform.OS === 'ios') {
       textInputRef.current?.blur();
       setIosInputKey((key) => key + 1);
     }
     setUserInput('');
     clearAll({ cleanupSources: false });
-    Promise.resolve(
-      onSend(inputToSend, imageUriToSend, attachmentsToSend)
-    ).catch((error) => {
-      console.error('Failed to send message:', error);
-    });
+    Promise.resolve(outcome)
+      .then((accepted) => {
+        if (accepted !== false) return;
+        lastSentRef.current = null;
+        setUserInput((current) => current || inputToSend);
+        Toast.show({
+          type: 'defaultToast',
+          text1: 'Wait for the response to finish or stop it first.',
+        });
+      })
+      .catch((error) => {
+        console.error('Failed to send message:', error);
+      });
   }, [
     onSend,
     userInput,
@@ -514,6 +550,22 @@ const ChatBar = ({
               style={styles.belowStrip}
               onLayout={handleRowsBelowStripLayout}
             >
+              {showIndexChip && (
+                <TouchableOpacity
+                  style={styles.indexUrlChip}
+                  onPress={handleIndexUrl}
+                  testID="index-url-chip"
+                >
+                  <LinkIcon
+                    width={16}
+                    height={16}
+                    style={{ color: theme.text.onChatBar }}
+                  />
+                  <Text style={styles.indexUrlChipText} numberOfLines={1}>
+                    Index {hostname(detectedUrl!)}
+                  </Text>
+                </TouchableOpacity>
+              )}
               <View style={styles.content}>
                 <TextInputWrapper
                   onPaste={onPaste}
@@ -529,7 +581,7 @@ const ChatBar = ({
                     placeholder="Ask about anything..."
                     placeholderTextColor={theme.text.onChatBarMuted}
                     value={userInput}
-                    onChangeText={setUserInput}
+                    onChangeText={handleChangeText}
                   />
                 </TextInputWrapper>
               </View>
@@ -547,6 +599,10 @@ const ChatBar = ({
                 onSpeechInput={openSpeechInput}
                 thinkingEnabled={thinkingEnabled}
                 onThinkingToggle={onThinkingToggle}
+                webSearchEnabled={webSearchEnabled}
+                onWebSearchToggle={
+                  onWebSearchToggle ? handleWebSearchToggle : undefined
+                }
               />
             </View>
           </View>
@@ -572,7 +628,9 @@ const ChatBar = ({
           <EmbeddingDownloadSheet
             bottomSheetModalRef={embeddingDownloadSheetRef}
             onDownload={downloadModelAndContinue}
-            onDismiss={markDownloadSheetClosed}
+            onDismiss={handleEmbeddingSheetDismiss}
+            context={embeddingSheetContext}
+            required={embeddingSheetRequired}
           />
         </>
       )}
@@ -651,5 +709,24 @@ const createStyles = (theme: Theme) =>
     },
     belowStrip: {
       gap: 8,
+    },
+    indexUrlChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 6,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 9999,
+      borderWidth: 1,
+      borderColor: theme.text.onChatBar,
+      marginBottom: 8,
+      maxWidth: '100%',
+    },
+    indexUrlChipText: {
+      color: theme.text.onChatBar,
+      fontSize: fontSizes.sm,
+      fontFamily: fontFamily.regular,
+      flexShrink: 1,
     },
   });

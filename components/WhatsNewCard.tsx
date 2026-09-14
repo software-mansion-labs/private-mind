@@ -1,9 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import * as Application from 'expo-application';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
 import { LATEST_RELEASE } from '../constants/latest-release';
+
+const installedVersion =
+  Application.nativeApplicationVersion ?? LATEST_RELEASE.version;
 
 const WhatsNewCard = () => {
   const { styles } = useThemedStyles(createStyles);
@@ -12,7 +16,7 @@ const WhatsNewCard = () => {
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.badge}>What's new</Text>
-        <Text style={styles.version}>v{LATEST_RELEASE.version}</Text>
+        <Text style={styles.version}>v{installedVersion}</Text>
       </View>
       <Text style={styles.title}>{LATEST_RELEASE.title}</Text>
       <View style={styles.list}>

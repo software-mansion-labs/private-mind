@@ -1,6 +1,9 @@
 export const Paths = {
   cache: { uri: 'file:///cache/' },
+  document: { uri: 'file:///documents/' },
 };
+
+export const writtenFiles = new Map<string, string>();
 
 export const File = jest
   .fn()
@@ -13,7 +16,10 @@ export const File = jest
     return {
       uri,
       size: 0,
-      text: jest.fn(),
+      text: jest.fn(async () => writtenFiles.get(uri) ?? ''),
+      write: jest.fn(async (contents: string) => {
+        writtenFiles.set(uri, contents);
+      }),
       copy: jest.fn(),
       delete: jest.fn(),
     };

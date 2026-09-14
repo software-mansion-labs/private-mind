@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -7,7 +7,6 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import SendIcon from '../../assets/icons/send_icon.svg';
 import PauseIcon from '../../assets/icons/pause_icon.svg';
@@ -16,6 +15,9 @@ import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import LightBulbCrossedIcon from '../../assets/icons/light_bulb_crossed.svg';
 import LightBulbIcon from '../../assets/icons/light_bulb.svg';
 import PlusIcon from '../../assets/icons/plus.svg';
+import WebIcon from '../../assets/icons/web.svg';
+import WebCrossedIcon from '../../assets/icons/web_crossed.svg';
+import ChatBarToggle from './ChatBarToggle';
 import { Feedback } from '../../utils/Feedback';
 import Toast from 'react-native-toast-message';
 import { COMPOSER } from './attachments/constants';
@@ -26,6 +28,7 @@ interface Props {
   hasAttachments?: boolean;
   isLoadingAttachment?: boolean;
   disabled?: boolean;
+  togglesDisabled?: boolean;
   onSend: () => void;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -35,6 +38,8 @@ interface Props {
   onThinkingToggle?: () => void;
   /** 0 the + is in place → 1 it has cleared the space the panel opens on. */
   plusOut: SharedValue<number>;
+  webSearchEnabled?: boolean;
+  onWebSearchToggle?: () => void;
 }
 
 const ChatBarActions = ({
@@ -43,6 +48,7 @@ const ChatBarActions = ({
   hasAttachments = false,
   isLoadingAttachment = false,
   disabled = false,
+  togglesDisabled = false,
   onSend,
   isGenerating,
   isProcessingPrompt,
@@ -51,6 +57,8 @@ const ChatBarActions = ({
   thinkingEnabled = false,
   onThinkingToggle,
   plusOut,
+  webSearchEnabled = false,
+  onWebSearchToggle,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   // The whole button, not the glyph inside it: the disc is opaque, and fading
@@ -66,6 +74,10 @@ const ChatBarActions = ({
 
   const handleAttach = () => {
     if (disabled) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Wait for the model to finish loading.',
+      });
       return;
     }
 
@@ -154,33 +166,25 @@ const ChatBarActions = ({
             />
           </Animated.View>
         </View>
-        <TouchableOpacity
-          disabled={disabled}
-          onPress={() => {
-            if (thinkingEnabled) {
-              Feedback.toggleOff();
-            } else {
-              Feedback.toggleOn();
-            }
-            onThinkingToggle?.();
-          }}
-          style={[styles.toggleButton, !thinkingEnabled && { opacity: 0.4 }]}
-        >
-          {!thinkingEnabled ? (
-            <LightBulbCrossedIcon
-              style={{ color: theme.text.onChatBar }}
-              width={20}
-              height={20}
-            />
-          ) : (
-            <LightBulbIcon
-              style={{ color: theme.text.onChatBar }}
-              width={20}
-              height={20}
-            />
-          )}
-          <Text style={styles.toggleText}>Think</Text>
-        </TouchableOpacity>
+        <ChatBarToggle
+          label="Think"
+          enabled={thinkingEnabled}
+          iconOn={LightBulbIcon}
+          iconOff={LightBulbCrossedIcon}
+          onToggle={() => onThinkingToggle?.()}
+          disabled={togglesDisabled}
+        />
+        {onWebSearchToggle ? (
+          <ChatBarToggle
+            label="Web"
+            enabled={webSearchEnabled}
+            iconOn={WebIcon}
+            iconOff={WebCrossedIcon}
+            onToggle={onWebSearchToggle}
+            disabled={togglesDisabled}
+            testID="web-search-toggle"
+          />
+        ) : null}
       </View>
 
       {renderButton()}
@@ -208,21 +212,5 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       gap: 8,
       alignItems: 'center',
-    },
-    toggleButton: {
-      padding: 8,
-      borderRadius: 9999,
-      borderWidth: 1,
-      borderColor: theme.text.onChatBar,
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 4,
-      height: 36,
-    },
-    toggleText: {
-      color: theme.text.onChatBar,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
     },
   });

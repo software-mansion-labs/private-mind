@@ -38,7 +38,7 @@ const ModelHubScreen = () => {
   const wifiWarningSheetRef = useRef<BottomSheetModal<WarningSheetData> | null>(
     null
   );
-  const modelManagementSheetRef = useRef<BottomSheetModal | null>(null);
+  const modelManagementSheetRef = useRef<BottomSheetModal<Model> | null>(null);
 
   const { models, removeModelFiles } = useModelStore();
   const { confirm, ConfirmElement } = useConfirm();
@@ -74,8 +74,6 @@ const ModelHubScreen = () => {
     return { families: familyList, mineModels: [] };
   }, [models, tab, search]);
 
-  // Block a second modal push until the previous modal has finished dismissing
-  // (react-native-screens crashes when modal controllers are reshuffled).
   const isNavigatingRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
@@ -232,7 +230,6 @@ const ModelHubScreen = () => {
 export default ModelHubScreen;
 
 const scrollIndicatorInsets = Platform.select({
-  // iOS 17.5 can initially place the indicator on the left when auto-adjusting.
   ios: { right: 1 },
 });
 
