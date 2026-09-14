@@ -87,6 +87,9 @@
       "appleTeamId": "B357MU264T"
     },
     "android": {
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/icons/icon.png",
         "backgroundColor": "#ffffff"

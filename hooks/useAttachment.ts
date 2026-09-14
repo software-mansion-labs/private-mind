@@ -622,6 +622,11 @@ export const useAttachment = () => {
     embeddingDownloadSheetRef.current?.dismiss();
   }, [awaitVectorStore]);
 
+  /** Puts back what a refused send had already cleared. */
+  const restoreAttachments = useCallback((previous: Attachment[]) => {
+    setAttachments(previous);
+  }, []);
+
   const removeAttachment = useCallback(
     (id: string) => {
       if (currentDocumentAttachmentIdRef.current === id) {
@@ -684,6 +689,7 @@ export const useAttachment = () => {
     markPanelOpen,
     markPanelClosed,
     removeAttachment,
+    restoreAttachments,
     clearAll,
     addPastedAttachment,
   };

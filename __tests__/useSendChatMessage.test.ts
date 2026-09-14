@@ -113,7 +113,7 @@ describe('sending while another turn is open', () => {
     state.isGenerating = true;
     state.generatingForChatId = 1;
 
-    expect(await useSend(1)('again')).toBe(false);
+    expect(await useSend(1)('again')).toBe('busy');
     expect(state.sendChatMessage).not.toHaveBeenCalled();
     expect(state.interrupt).not.toHaveBeenCalled();
   });
@@ -141,8 +141,22 @@ describe('sending while another turn is open', () => {
   });
 
   it('refuses an empty message', async () => {
-    expect(await useSend(1)('   ')).toBe(false);
+    expect(await useSend(1)('   ')).toBe('nothing-to-send');
     expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+  });
+
+  it('says the model is not ready rather than blaming a response', async () => {
+    // Nothing loads the model until the composer is focused or an attachment
+    // is reached for. A photo sent with no text at all used to reach a store
+    // with no model, which turned the send away as if a turn were in flight.
+    const loaded = mockedState().model;
+    mockedState().model = null;
+    try {
+      expect(await useSend(1)('', 'file://photo.jpg')).toBe('model-loading');
+      expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+    } finally {
+      mockedState().model = loaded;
+    }
   });
 });
 

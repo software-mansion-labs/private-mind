@@ -7,7 +7,13 @@ import Animated, {
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
 import ArrowLeft from '../../../assets/icons/arrow-left.svg';
-import { BOTTOM_BAR, DURATION, GUTTER, panelPalette } from './constants';
+import {
+  BOTTOM_BAR,
+  DURATION,
+  GUTTER,
+  PRESS_ANYWHERE,
+  panelPalette,
+} from './constants';
 import { Glass } from './Glass';
 
 interface Props {
@@ -54,6 +60,7 @@ const SheetBar = ({ width, top, active, fade, onBack, children }: Props) => {
         accessibilityLabel="Back to menu"
         testID="attachment-sheet-back"
         onPress={onBack}
+        pressRetentionOffset={PRESS_ANYWHERE}
       >
         <Glass
           radius={BOTTOM_BAR.controlSize / 2}

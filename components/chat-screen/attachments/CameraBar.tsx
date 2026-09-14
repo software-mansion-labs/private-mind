@@ -22,6 +22,7 @@ import {
   BOTTOM_BAR,
   CAMERA,
   DURATION,
+  PRESS_ANYWHERE,
   SPRING,
   panelPalette,
 } from './constants';
@@ -97,6 +98,7 @@ const Option = ({
         accessibilityLabel={label}
         testID={testID}
         onPress={onPress}
+        pressRetentionOffset={PRESS_ANYWHERE}
       >
         <Glass
           radius={BOTTOM_BAR.controlSize / 2}
@@ -195,6 +197,7 @@ const CameraBar = ({
           accessibilityLabel="Take photo"
           testID="camera-shutter"
           onPress={onCapture}
+          pressRetentionOffset={PRESS_ANYWHERE}
         >
           <Glass
             radius={CAMERA.shutterSize / 2}
@@ -239,6 +242,7 @@ const CameraBar = ({
           accessibilityState={{ expanded: open }}
           testID="camera-options"
           onPress={toggleOptions}
+          pressRetentionOffset={PRESS_ANYWHERE}
         >
           <Glass
             radius={BOTTOM_BAR.controlSize / 2}

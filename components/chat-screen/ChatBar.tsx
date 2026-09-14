@@ -19,10 +19,8 @@ import {
 import Animated, {
   Easing,
   FadeOut,
-  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
 import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
@@ -56,6 +54,7 @@ import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
 import { useEmbeddingDownloadPrompt } from './useEmbeddingDownloadPrompt';
+import type { SendRefusal } from './useSendChatMessage';
 import {
   BAR_GROW_DURATION,
   BAR_GROW_LAYOUT,
@@ -64,13 +63,23 @@ import {
 
 const SENT_ECHO_WINDOW_MS = 300;
 
+/** What the composer says when a send does not happen. `image-not-saved` has
+ *  already said it itself. */
+const REFUSAL_COPY: Record<SendRefusal, string | null> = {
+  'nothing-to-send': 'Add a message or an attachment first.',
+  'model-loading': 'Wait for the model to finish loading.',
+  'busy': 'Wait for the response to finish or stop it first.',
+  'chat-not-created': 'Could not start this chat. Try again.',
+  'image-not-saved': null,
+};
+
 interface Props {
   chatId: number | null;
   onSend: (
     userInput: string,
     imagePath?: string,
     attachments?: Attachment[]
-  ) => boolean | void | Promise<boolean | void>;
+  ) => boolean | void | SendRefusal | Promise<boolean | void | SendRefusal>;
   onSelectModel: () => void;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
@@ -145,6 +154,7 @@ const ChatBar = ({
     markPanelOpen,
     markPanelClosed,
     removeAttachment,
+    restoreAttachments,
     clearAll,
     addPastedAttachment,
   } = useAttachment();
@@ -244,9 +254,6 @@ const ChatBar = ({
     onAttachmentSheetStateChange?.(panel.mode !== 'closed');
   }, [panel.mode, onAttachmentSheetStateChange]);
 
-  const defaultBarHeight = useRef(0);
-  const prevBarHeight = useRef(0);
-
   const {
     embeddingSheetContext,
     embeddingSheetRequired,
@@ -333,10 +340,15 @@ const ChatBar = ({
       showModelSwitchingToast();
       return;
     }
+    // Reaching for an attachment is reaching to send, so the model starts
+    // loading here as it does when the field is focused. Without it, attaching
+    // a photo and sending it with no text at all never asked for a model, and
+    // the send was turned away by a store that had none.
+    loadSelectedModel();
     // No `Keyboard.dismiss()`: the panel is anchored to the keyboard and is
     // hosted in the window above it, so the keyboard stays up throughout.
     panel.onPlusPress();
-  }, [modelSwitching, panel, showModelSwitchingToast]);
+  }, [loadSelectedModel, modelSwitching, panel, showModelSwitchingToast]);
 
   const detectedUrl = useMemo(
     () => detectUrls(userInput)[0] ?? null,
@@ -378,13 +390,15 @@ const ChatBar = ({
     clearAll({ cleanupSources: false });
     Promise.resolve(outcome)
       .then((accepted) => {
-        if (accepted !== false) return;
+        if (accepted !== false && typeof accepted !== 'string') return;
+        // The composer was emptied on the tap, before the answer came back.
+        // Everything it was carrying goes back, the photo included — it used
+        // to put the text back and drop the attachment on the floor.
         lastSentRef.current = null;
         setUserInput((current) => current || inputToSend);
-        Toast.show({
-          type: 'defaultToast',
-          text1: 'Wait for the response to finish or stop it first.',
-        });
+        if (attachmentsToSend.length) restoreAttachments(attachmentsToSend);
+        const text1 = REFUSAL_COPY[accepted === false ? 'busy' : accepted];
+        if (text1) Toast.show({ type: 'defaultToast', text1 });
       })
       .catch((error) => {
         console.error('Failed to send message:', error);
@@ -395,6 +409,7 @@ const ChatBar = ({
     imageAttachment,
     attachments,
     clearAll,
+    restoreAttachments,
     hasLoadingAttachment,
     disabled,
     modelSwitching,

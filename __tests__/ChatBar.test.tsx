@@ -51,6 +51,7 @@ const mockUseAttachment = {
   markPanelOpen: jest.fn(),
   markPanelClosed: jest.fn(),
   removeAttachment: jest.fn(),
+  restoreAttachments: jest.fn(),
   clearAll: jest.fn(),
   addPastedAttachment: jest.fn(),
 };
@@ -1160,5 +1161,41 @@ describe('a refused send', () => {
       type: 'defaultToast',
       text1: 'Wait for the response to finish or stop it first.',
     });
+  });
+
+  it('says which of the five reasons it was, not always the busy one', async () => {
+    const onSend = jest.fn(async () => 'model-loading' as const);
+    renderBar({ onSend });
+    const input = screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(input, 'Hello');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('send-btn'));
+    });
+
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the model to finish loading.',
+    });
+  });
+
+  it('hands the attachment back rather than dropping it on the floor', async () => {
+    const image: Attachment = {
+      id: 'img-1',
+      type: 'image',
+      uri: 'file://photo.jpg',
+      status: 'ready',
+    };
+    mockUseAttachment.attachments = [image];
+    const onSend = jest.fn(async () => 'busy' as const);
+    renderBar({ onSend, isVisionModel: true });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('send-btn'));
+    });
+
+    // The composer is emptied on the tap, before the answer comes back: a
+    // refusal has to undo that, or the photo is gone for good.
+    expect(mockUseAttachment.restoreAttachments).toHaveBeenCalledWith([image]);
   });
 });

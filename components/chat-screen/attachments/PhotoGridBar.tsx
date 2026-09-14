@@ -15,6 +15,7 @@ import {
   BOTTOM_BAR,
   DURATION,
   EASE_FADE,
+  PRESS_ANYWHERE,
   SPRING,
   panelPalette,
 } from './constants';
@@ -89,6 +90,7 @@ const ConfirmPill = ({ count, active, fade, onPress }: ConfirmPillProps) => {
         testID="attachment-confirm"
         disabled={!hasSelection}
         onPress={onPress}
+        pressRetentionOffset={PRESS_ANYWHERE}
         style={sizeStyle}
       >
         <Glass
