@@ -27,7 +27,6 @@ interface Props {
   userInput: string;
   hasAttachments?: boolean;
   isLoadingAttachment?: boolean;
-  disabled?: boolean;
   togglesDisabled?: boolean;
   onSend: () => void;
   isGenerating: boolean;
@@ -47,7 +46,6 @@ const ChatBarActions = ({
   userInput,
   hasAttachments = false,
   isLoadingAttachment = false,
-  disabled = false,
   togglesDisabled = false,
   onSend,
   isGenerating,
@@ -71,17 +69,6 @@ const ChatBarActions = ({
   }));
   const isResponding = isGenerating || isProcessingPrompt;
   const isAttachmentBlocked = isResponding || isLoadingAttachment;
-
-  const whileModelLoads = (action: () => void) => () => {
-    if (disabled) {
-      Toast.show({
-        type: 'defaultToast',
-        text1: 'Wait for the model to finish loading.',
-      });
-      return;
-    }
-    action();
-  };
 
   const handleAttach = () => {
     if (isAttachmentBlocked) {
@@ -120,17 +107,17 @@ const ChatBarActions = ({
           {hasAttachments && !userInput && (
             <CircleButton
               icon={SoundwaveIcon}
-              onPress={whileModelLoads(onSpeechInput)}
+              onPress={onSpeechInput}
               backgroundColor="transparent"
               color={theme.text.onChatBar}
             />
           )}
           <CircleButton
             icon={SendIcon}
-            onPress={whileModelLoads(() => {
+            onPress={() => {
               Feedback.send();
               onSend();
-            })}
+            }}
             backgroundColor={theme.bg.main}
             color={theme.text.contrastPrimary}
           />
@@ -141,7 +128,7 @@ const ChatBarActions = ({
     return (
       <CircleButton
         icon={SoundwaveIcon}
-        onPress={whileModelLoads(onSpeechInput)}
+        onPress={onSpeechInput}
         backgroundColor="transparent"
         color={theme.text.onChatBar}
       />

@@ -79,7 +79,7 @@ const messagesRef = {
   } as unknown as MessagesHandle,
 };
 
-const useSend = (chatId = 1) =>
+const useSend = (chatId = 1, loading = false) =>
   useSendChatMessage({
     chatId,
     model: { id: 1, modelName: 'Test LLM' } as Model,
@@ -95,7 +95,7 @@ const useSend = (chatId = 1) =>
     messagesRef,
     db: {} as SQLiteDatabase,
     isGenerating: false,
-    isModelLoading: false,
+    isModelLoading: loading,
     isSwitching: false,
   });
 
@@ -155,6 +155,22 @@ describe('sending while another turn is open', () => {
     } finally {
       mockedState().model = loaded;
     }
+  });
+
+  it('takes a send that arrives while the model is still coming up', async () => {
+    const loaded = mockedState().model;
+    mockedState().model = null;
+    try {
+      expect(await useSend(1, true)('', 'file://photo.jpg')).toBe(true);
+      expect(mockedState().sendChatMessage).toHaveBeenCalled();
+    } finally {
+      mockedState().model = loaded;
+    }
+  });
+
+  it('still sends while a load is in flight over a model that is already up', async () => {
+    expect(await useSend(1, true)('hello')).toBe(true);
+    expect(mockedState().sendChatMessage).toHaveBeenCalled();
   });
 });
 

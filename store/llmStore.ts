@@ -879,10 +879,18 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     await modelLoadChain;
     await utilityChain;
     const readyModel = get().model;
-    if (!get().isProcessingPrompt || !readyModel) {
+    if (!get().isProcessingPrompt) {
       markGenerationFailed(new Error('Stopped while waiting for the model'), {
         showToUser: false,
       });
+      return true;
+    }
+    // A send may be taken while the model is still coming up — the composer no
+    // longer turns itself off for that. Arriving here with nothing loaded means
+    // the load it was queued behind did not produce one, and that is worth
+    // saying rather than dropping the turn on the floor.
+    if (!readyModel) {
+      markGenerationFailed(new Error('No model was ready after the load'));
       return true;
     }
     if (readyModel.id !== currentModel.id) {

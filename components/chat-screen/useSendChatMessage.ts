@@ -112,7 +112,7 @@ export const useSendChatMessage = ({
     if (!userInput.trim() && !imagePath && !hasDocuments) {
       return 'nothing-to-send';
     }
-    if (isModelLoading || isSwitching) return 'model-loading';
+    if (isSwitching) return 'model-loading';
     const llm = useLLMStore.getState();
     const busy = llm.isGenerating || llm.isProcessingPrompt;
     if (busy && llm.generatingForChatId !== chatId) {
@@ -120,10 +120,11 @@ export const useSendChatMessage = ({
     } else if (busy || isGenerating) {
       return 'busy';
     }
-    // The store holds the loaded model, not the selected one. Nothing loads it
-    // until the composer is focused or an attachment is reached for, and it
-    // used to refuse the send from the inside with a bare `false`.
-    if (!llm.model) return 'model-loading';
+    // The store holds the loaded model, not the selected one, and nothing loads
+    // it until the composer is focused or an attachment is reached for. A load
+    // already in flight is not a refusal: `sendChatMessage` waits on the load
+    // chain before it reads the model, so the send queues behind it.
+    if (!llm.model && !isModelLoading) return 'model-loading';
 
     messagesRef.current?.onMessageSent();
     Keyboard.dismiss();

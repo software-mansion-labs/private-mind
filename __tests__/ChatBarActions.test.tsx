@@ -116,7 +116,7 @@ describe('attach button', () => {
 
   it('opens the panel while the model is still loading', () => {
     const onAttach = jest.fn();
-    renderActions({ onAttach, disabled: true });
+    renderActions({ onAttach });
 
     fireEvent.press(screen.getByTestId('attach-btn'));
 
@@ -124,30 +124,14 @@ describe('attach button', () => {
     expect(Toast.show).not.toHaveBeenCalled();
   });
 
-  it('says the model is still loading rather than ignoring a send', () => {
+  it('takes the send while the model is still loading', () => {
     const onSend = jest.fn();
-    renderActions({ onSend, userInput: 'hi', disabled: true });
+    renderActions({ onSend, userInput: 'hi' });
 
     fireEvent.press(screen.getByTestId('circle-btn'));
 
-    expect(onSend).not.toHaveBeenCalled();
-    expect(Toast.show).toHaveBeenCalledWith({
-      type: 'defaultToast',
-      text1: 'Wait for the model to finish loading.',
-    });
-  });
-
-  it('says the model is still loading rather than ignoring the microphone', () => {
-    const onSpeechInput = jest.fn();
-    renderActions({ onSpeechInput, disabled: true });
-
-    fireEvent.press(screen.getByTestId('circle-btn'));
-
-    expect(onSpeechInput).not.toHaveBeenCalled();
-    expect(Toast.show).toHaveBeenCalledWith({
-      type: 'defaultToast',
-      text1: 'Wait for the model to finish loading.',
-    });
+    expect(onSend).toHaveBeenCalled();
+    expect(Toast.show).not.toHaveBeenCalled();
   });
 
   it('keeps the attachment button at full opacity when idle', () => {

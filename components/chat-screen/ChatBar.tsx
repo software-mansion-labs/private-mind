@@ -367,7 +367,7 @@ const ChatBar = ({
       showModelSwitchingToast();
       return;
     }
-    if (hasLoadingAttachment || disabled) return;
+    if (hasLoadingAttachment) return;
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
     const inputToSend = userInput;
@@ -406,7 +406,6 @@ const ChatBar = ({
     clearAll,
     restoreAttachments,
     hasLoadingAttachment,
-    disabled,
     modelSwitching,
     showModelSwitchingToast,
   ]);
@@ -449,11 +448,10 @@ const ChatBar = ({
   const [showSpeechInput, setShowSpeechInput] = useState(false);
 
   const openSpeechInput = async () => {
-    if (modelSwitching) {
+    if (modelSwitching || disabled) {
       showModelSwitchingToast();
       return;
     }
-    if (disabled) return;
 
     const permissionStatus = await AudioManager.requestRecordingPermissions();
     if (permissionStatus !== 'Granted') {
@@ -474,8 +472,6 @@ const ChatBar = ({
         showModelSwitchingToast();
         return;
       }
-      if (disabled) return;
-
       setShowSpeechInput(false);
       if (transcript) {
         const attachmentsToSend = attachments;
@@ -608,7 +604,6 @@ const ChatBar = ({
                 onAttach={handleAttach}
                 hasAttachments={attachments.length > 0}
                 isLoadingAttachment={hasLoadingAttachment}
-                disabled={disabled}
                 userInput={userInput}
                 onSend={handleSend}
                 isGenerating={isGenerating}
