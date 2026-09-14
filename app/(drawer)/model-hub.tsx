@@ -40,7 +40,8 @@ const ModelHubScreen = () => {
   );
   const modelManagementSheetRef = useRef<BottomSheetModal<Model> | null>(null);
 
-  const { models, removeModelFiles } = useModelStore();
+  const models = useModelStore((state) => state.models);
+  const removeModelFiles = useModelStore((state) => state.removeModelFiles);
   const { confirm, ConfirmElement } = useConfirm();
   const [tab, setTab] = useState<ModelHubTab>('featured');
   const [search, setSearch] = useState('');

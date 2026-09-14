@@ -11,7 +11,12 @@ jest.mock('../context/ThemeContext', () => ({
 }));
 
 jest.mock('../store/modelStore', () => ({
-  useModelStore: jest.fn(() => ({ downloadedModels: [] })),
+  useModelStore: jest.fn(
+    (selector?: (state: { downloadedModels: unknown[] }) => unknown) => {
+      const state = { downloadedModels: [] };
+      return selector ? selector(state) : state;
+    }
+  ),
 }));
 
 jest.mock('expo-router', () => ({
@@ -87,6 +92,14 @@ import { router } from 'expo-router';
 
 const mockUseModelStore = useModelStore as unknown as jest.Mock;
 
+const withDownloadedModels = (downloadedModels: unknown[]) =>
+  mockUseModelStore.mockImplementation(
+    (selector?: (state: { downloadedModels: unknown[] }) => unknown) => {
+      const state = { downloadedModels };
+      return selector ? selector(state) : state;
+    }
+  );
+
 const makeModel = (id: number, name: string) => ({
   id,
   modelName: name,
@@ -100,7 +113,7 @@ const makeModel = (id: number, name: string) => ({
 });
 
 beforeEach(() => {
-  mockUseModelStore.mockReturnValue({ downloadedModels: [] });
+  withDownloadedModels([]);
   jest.clearAllMocks();
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -136,9 +149,7 @@ describe('empty state', () => {
 
 describe('with downloaded models', () => {
   beforeEach(() => {
-    mockUseModelStore.mockReturnValue({
-      downloadedModels: [makeModel(1, 'Llama-3B'), makeModel(2, 'Qwen-1B')],
-    });
+    withDownloadedModels([makeModel(1, 'Llama-3B'), makeModel(2, 'Qwen-1B')]);
   });
 
   it('shows "Select a Model" title', () => {
@@ -189,9 +200,7 @@ describe('with downloaded models', () => {
 
 describe('search filtering', () => {
   beforeEach(() => {
-    mockUseModelStore.mockReturnValue({
-      downloadedModels: [makeModel(1, 'Llama-3B'), makeModel(2, 'Qwen-1B')],
-    });
+    withDownloadedModels([makeModel(1, 'Llama-3B'), makeModel(2, 'Qwen-1B')]);
   });
 
   it('filters models based on search input', () => {

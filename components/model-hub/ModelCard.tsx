@@ -42,11 +42,15 @@ const ModelCard = ({
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles, selected);
 
-  const { downloadStates, downloadModel, cancelDownload, removeModelFiles } =
-    useModelStore();
+  const modelDownloadState = useModelStore(
+    (state) => state.downloadStates[model.id]
+  );
+  const downloadModel = useModelStore((state) => state.downloadModel);
+  const cancelDownload = useModelStore((state) => state.cancelDownload);
+  const removeModelFiles = useModelStore((state) => state.removeModelFiles);
   const { confirm, ConfirmElement } = useConfirm();
 
-  const downloadState = downloadStates[model.id] || {
+  const downloadState = modelDownloadState || {
     progress: model.isDownloaded ? 1 : 0,
     status: model.isDownloaded ? ModelState.Downloaded : ModelState.NotStarted,
   };

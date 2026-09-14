@@ -67,6 +67,30 @@ import { useModelStore, ModelState } from '../store/modelStore';
 import { isModelCompatible } from '../utils/modelCompatibility';
 
 const mockUseModelStore = useModelStore as unknown as jest.Mock;
+
+type ModelStoreState = {
+  downloadStates: Record<number, { status: string; progress: number }>;
+  downloadModel: jest.Mock;
+  cancelDownload: jest.Mock;
+  removeModelFiles: jest.Mock;
+};
+
+const withDownloadStates = (
+  downloadStates: ModelStoreState['downloadStates'],
+  actions: Partial<ModelStoreState> = {}
+) =>
+  mockUseModelStore.mockImplementation(
+    (selector?: (state: ModelStoreState) => unknown) => {
+      const state: ModelStoreState = {
+        downloadStates,
+        downloadModel: jest.fn(),
+        cancelDownload: jest.fn(),
+        removeModelFiles: jest.fn(),
+        ...actions,
+      } as ModelStoreState;
+      return selector ? selector(state) : state;
+    }
+  );
 const mockIsModelCompatible = isModelCompatible as jest.Mock;
 const mockNetInfoFetch = NetInfo.fetch as jest.Mock;
 
@@ -122,11 +146,7 @@ const renderCard = (
 };
 
 beforeEach(() => {
-  mockUseModelStore.mockReturnValue({
-    downloadStates: {},
-    downloadModel: jest.fn(),
-    cancelDownload: jest.fn(),
-  });
+  withDownloadStates({});
   mockIsModelCompatible.mockReturnValue(true);
   mockNetInfoFetch.mockResolvedValue({ isConnected: true, type: 'wifi' });
   jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -191,30 +211,24 @@ describe('display', () => {
 
 describe('download state rendering', () => {
   it('shows download button when NotStarted', () => {
-    mockUseModelStore.mockReturnValue({
-      downloadStates: { 1: { status: ModelState.NotStarted, progress: 0 } },
-      downloadModel: jest.fn(),
-      cancelDownload: jest.fn(),
+    withDownloadStates({
+      1: { status: ModelState.NotStarted, progress: 0 },
     });
     renderCard();
     expect(screen.getByTestId('circle-btn')).toBeTruthy();
   });
 
   it('shows progress bar when Downloading', () => {
-    mockUseModelStore.mockReturnValue({
-      downloadStates: { 1: { status: ModelState.Downloading, progress: 0.4 } },
-      downloadModel: jest.fn(),
-      cancelDownload: jest.fn(),
+    withDownloadStates({
+      1: { status: ModelState.Downloading, progress: 0.4 },
     });
     renderCard();
     expect(screen.getByText('40%')).toBeTruthy();
   });
 
   it('does not show download button when already downloaded', () => {
-    mockUseModelStore.mockReturnValue({
-      downloadStates: { 1: { status: ModelState.Downloaded, progress: 1 } },
-      downloadModel: jest.fn(),
-      cancelDownload: jest.fn(),
+    withDownloadStates({
+      1: { status: ModelState.Downloaded, progress: 1 },
     });
     renderCard({ isDownloaded: true });
     expect(screen.queryByTestId('circle-btn')).toBeNull();
@@ -226,11 +240,7 @@ describe('download state rendering', () => {
 describe('download action', () => {
   it('calls downloadModel when download button pressed on wifi', async () => {
     const downloadModel = jest.fn().mockResolvedValue(undefined);
-    mockUseModelStore.mockReturnValue({
-      downloadStates: {},
-      downloadModel,
-      cancelDownload: jest.fn(),
-    });
+    withDownloadStates({}, { downloadModel });
     renderCard();
     fireEvent.press(screen.getByTestId('circle-btn'));
     await waitFor(() =>
@@ -253,11 +263,10 @@ describe('download action', () => {
 
   it('calls cancelDownload when cancel button pressed while downloading', async () => {
     const cancelDownload = jest.fn().mockResolvedValue(undefined);
-    mockUseModelStore.mockReturnValue({
-      downloadStates: { 1: { status: ModelState.Downloading, progress: 0.5 } },
-      downloadModel: jest.fn(),
-      cancelDownload,
-    });
+    withDownloadStates(
+      { 1: { status: ModelState.Downloading, progress: 0.5 } },
+      { cancelDownload }
+    );
     renderCard();
     fireEvent.press(screen.getByTestId('circle-btn'));
     await waitFor(() =>
