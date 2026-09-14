@@ -17,7 +17,6 @@ import {
   Platform,
 } from 'react-native';
 import Animated, {
-  Easing,
   FadeOut,
   useAnimatedStyle,
   useSharedValue,
@@ -336,10 +335,6 @@ const ChatBar = ({
   }, []);
 
   const handleAttach = useCallback(() => {
-    if (modelSwitching) {
-      showModelSwitchingToast();
-      return;
-    }
     // Reaching for an attachment is reaching to send, so the model starts
     // loading here as it does when the field is focused. Without it, attaching
     // a photo and sending it with no text at all never asked for a model, and
@@ -348,7 +343,7 @@ const ChatBar = ({
     // No `Keyboard.dismiss()`: the panel is anchored to the keyboard and is
     // hosted in the window above it, so the keyboard stays up throughout.
     panel.onPlusPress();
-  }, [loadSelectedModel, modelSwitching, panel, showModelSwitchingToast]);
+  }, [loadSelectedModel, panel]);
 
   const detectedUrl = useMemo(
     () => detectUrls(userInput)[0] ?? null,

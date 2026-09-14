@@ -67,6 +67,7 @@ const mockedState = () =>
     isGenerating: boolean;
     isProcessingPrompt: boolean;
     generatingForChatId: number | null;
+    model: { id: number; modelName: string } | null;
     sendChatMessage: jest.Mock;
     interrupt: jest.Mock;
   };
@@ -146,9 +147,6 @@ describe('sending while another turn is open', () => {
   });
 
   it('says the model is not ready rather than blaming a response', async () => {
-    // Nothing loads the model until the composer is focused or an attachment
-    // is reached for. A photo sent with no text at all used to reach a store
-    // with no model, which turned the send away as if a turn were in flight.
     const loaded = mockedState().model;
     mockedState().model = null;
     try {

@@ -72,7 +72,7 @@ const ChatBarActions = ({
   const isResponding = isGenerating || isProcessingPrompt;
   const isAttachmentBlocked = isResponding || isLoadingAttachment;
 
-  const handleAttach = () => {
+  const whileModelLoads = (action: () => void) => () => {
     if (disabled) {
       Toast.show({
         type: 'defaultToast',
@@ -80,7 +80,10 @@ const ChatBarActions = ({
       });
       return;
     }
+    action();
+  };
 
+  const handleAttach = () => {
     if (isAttachmentBlocked) {
       Toast.show({
         type: 'defaultToast',
@@ -117,19 +120,17 @@ const ChatBarActions = ({
           {hasAttachments && !userInput && (
             <CircleButton
               icon={SoundwaveIcon}
-              disabled={disabled}
-              onPress={onSpeechInput}
+              onPress={whileModelLoads(onSpeechInput)}
               backgroundColor="transparent"
               color={theme.text.onChatBar}
             />
           )}
           <CircleButton
             icon={SendIcon}
-            disabled={disabled}
-            onPress={() => {
+            onPress={whileModelLoads(() => {
               Feedback.send();
               onSend();
-            }}
+            })}
             backgroundColor={theme.bg.main}
             color={theme.text.contrastPrimary}
           />
@@ -140,8 +141,7 @@ const ChatBarActions = ({
     return (
       <CircleButton
         icon={SoundwaveIcon}
-        disabled={disabled}
-        onPress={onSpeechInput}
+        onPress={whileModelLoads(onSpeechInput)}
         backgroundColor="transparent"
         color={theme.text.onChatBar}
       />
@@ -194,7 +194,7 @@ const ChatBarActions = ({
 
 export default ChatBarActions;
 
-const createStyles = (theme: Theme) =>
+const createStyles = (_theme: Theme) =>
   StyleSheet.create({
     container: {
       flexDirection: 'row',

@@ -703,18 +703,13 @@ describe('attachment', () => {
     expect(mockUseAttachment.pickDocument).toHaveBeenCalled();
   });
 
-  it('shows a toast instead of opening attachments while switching models', () => {
+  it('opens the panel while a model is still loading', async () => {
     renderBar({ modelSwitching: true });
+    await openPanel();
 
-    fireEvent.press(screen.getByTestId('attach-btn'));
-
-    expect(screen.queryByTestId('attachment-overlay')).not.toBeNull();
-    expect(screen.getByText('mode:closed')).toBeTruthy();
+    expect(screen.getByText('mode:menu')).toBeTruthy();
     expect(mockRunWithModelOffloaded).not.toHaveBeenCalled();
-    expect(Toast.show).toHaveBeenCalledWith({
-      type: 'defaultToast',
-      text1: 'Wait for the model to finish loading.',
-    });
+    expect(Toast.show).not.toHaveBeenCalled();
   });
 
   it('renders attachment thumbnails when attachments exist', () => {
