@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -18,7 +18,20 @@ interface Props {
 
 const BenchmarkHistory = ({ modalRef, benchmarkList }: Props) => {
   const { styles } = useThemedStyles(createStyles);
-  const { getModelById } = useModelStore();
+  const getModelById = useModelStore((state) => state.getModelById);
+
+  const renderItem = useCallback(
+    ({ item }: { item: BenchmarkResult }) => (
+      <BenchmarkItem
+        entry={item}
+        onPress={() => {
+          const model = item.modelId ? getModelById(item.modelId) : undefined;
+          modalRef.current?.present({ ...item, model });
+        }}
+      />
+    ),
+    [getModelById, modalRef]
+  );
 
   return (
     <>
@@ -27,17 +40,7 @@ const BenchmarkHistory = ({ modalRef, benchmarkList }: Props) => {
         data={benchmarkList}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <BenchmarkItem
-            entry={item}
-            onPress={() => {
-              const model = item.modelId
-                ? getModelById(item.modelId)
-                : undefined;
-              modalRef.current?.present({ ...item, model });
-            }}
-          />
-        )}
+        renderItem={renderItem}
         ListEmptyComponent={
           <View style={styles.noDataContainer}>
             <BenchmarkIcon width={18} height={18} style={styles.noDataIcon} />
