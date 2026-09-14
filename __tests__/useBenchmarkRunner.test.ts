@@ -1,6 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import useBenchmarkRunner from '../hooks/useBenchmarkRunner';
-import { useLLMStore } from '../store/llmStore';
+import { useLLMStore, type LLMStore } from '../store/llmStore';
 import * as benchmarkRepository from '../database/benchmarkRepository';
 
 jest.mock('../store/llmStore', () => ({ useLLMStore: jest.fn() }));
@@ -8,6 +8,12 @@ jest.mock('expo-sqlite', () => ({ useSQLiteContext: jest.fn(() => ({})) }));
 jest.mock('../database/benchmarkRepository');
 
 const mockUseLLMStore = useLLMStore as unknown as jest.Mock;
+
+const setLLMStore = (state: Partial<LLMStore>) =>
+  mockUseLLMStore.mockImplementation(
+    (selector?: (s: Partial<LLMStore>) => unknown) =>
+      selector ? selector(state) : state
+  );
 const mockInsertBenchmark = benchmarkRepository.insertBenchmark as jest.Mock;
 
 const baseModel = {
@@ -35,7 +41,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(console, 'error').mockImplementation(() => {});
 
-  mockUseLLMStore.mockReturnValue({
+  setLLMStore({
     runBenchmark: jest.fn().mockResolvedValue(perfResult),
     loadModel: jest.fn().mockResolvedValue(undefined),
     interrupt: jest.fn(),
@@ -72,7 +78,7 @@ describe('startBenchmark', () => {
 
   it('sets isRunning=true during benchmark', async () => {
     let resolveRunBenchmark!: (v: any) => void;
-    mockUseLLMStore.mockReturnValue({
+    setLLMStore({
       runBenchmark: jest.fn(
         () =>
           new Promise((r) => {
@@ -102,7 +108,7 @@ describe('startBenchmark', () => {
   it('calls loadModel with hardReload=true before running', async () => {
     const loadModel = jest.fn().mockResolvedValue(undefined);
     const runBenchmark = jest.fn().mockResolvedValue(perfResult);
-    mockUseLLMStore.mockReturnValue({
+    setLLMStore({
       loadModel,
       runBenchmark,
       interrupt: jest.fn(),
@@ -121,7 +127,7 @@ describe('startBenchmark', () => {
 
   it('runs benchmark 3 times and averages results', async () => {
     const runBenchmark = jest.fn().mockResolvedValue(perfResult);
-    mockUseLLMStore.mockReturnValue({
+    setLLMStore({
       runBenchmark,
       loadModel: jest.fn().mockResolvedValue(undefined),
       interrupt: jest.fn(),
@@ -165,7 +171,7 @@ describe('startBenchmark', () => {
   });
 
   it('resets isRunning on error', async () => {
-    mockUseLLMStore.mockReturnValue({
+    setLLMStore({
       runBenchmark: jest.fn().mockRejectedValue(new Error('crash')),
       loadModel: jest.fn().mockResolvedValue(undefined),
       interrupt: jest.fn(),
@@ -187,7 +193,7 @@ describe('startBenchmark', () => {
       resolveAll = r;
     });
 
-    mockUseLLMStore.mockReturnValue({
+    setLLMStore({
       runBenchmark: jest.fn(() => waitForIt.then(() => perfResult)),
       loadModel: jest.fn().mockResolvedValue(undefined),
       interrupt: jest.fn(),
@@ -212,7 +218,7 @@ describe('startBenchmark', () => {
 describe('cancelBenchmark', () => {
   it('calls interrupt and sets isRunning=false', () => {
     const interrupt = jest.fn();
-    mockUseLLMStore.mockReturnValue({
+    setLLMStore({
       runBenchmark: jest.fn(() => new Promise(() => {})),
       loadModel: jest.fn().mockResolvedValue(undefined),
       interrupt,
@@ -235,7 +241,7 @@ describe('cancelBenchmark', () => {
 
   it('stops further iterations after cancel', async () => {
     const runBenchmark = jest.fn().mockResolvedValue(perfResult);
-    mockUseLLMStore.mockReturnValue({
+    setLLMStore({
       runBenchmark,
       loadModel: jest.fn().mockResolvedValue(undefined),
       interrupt: jest.fn(),

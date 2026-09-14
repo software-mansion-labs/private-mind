@@ -48,7 +48,9 @@ export default function useBenchmarkRunner({
   onComplete,
 }: UseBenchmarkRunnerParams) {
   const db = useSQLiteContext();
-  const { runBenchmark, loadModel, interrupt } = useLLMStore();
+  const runBenchmark = useLLMStore((state) => state.runBenchmark);
+  const loadModel = useLLMStore((state) => state.loadModel);
+  const interrupt = useLLMStore((state) => state.interrupt);
 
   const [isRunning, setIsRunning] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
