@@ -190,12 +190,12 @@
       "tokenizerPath": "https://huggingface.co/software-mansion/react-native-executorch-gemma-4/resolve/v0.9.0/e2b/tokenizer.json",
       "modelPath": {
         "ios": "https://huggingface.co/software-mansion/react-native-executorch-gemma-4-multimodal/resolve/v0.9.0/e2b/mlx/gemma4_e2b_mlx_int4.pte",
-        "android": "https://huggingface.co/software-mansion/react-native-executorch-gemma-4-multimodal/resolve/v0.9.0/e2b/vulkan/gemma_4_e2b_vulkan_8da4w.pte"
+        "android": "https://huggingface.co/software-mansion/react-native-executorch-gemma-4-multimodal/resolve/v0.9.0/e2b/xnnpack/gemma_4_e2b_xnnpack_8da4w.pte"
       },
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/react-native-executorch-gemma-4/resolve/v0.9.0/e2b/tokenizer_config.json",
       "source": "remote",
       "parameters": 2,
-      "modelSize": { "ios": 3.0, "android": 4.0 },
+      "modelSize": { "ios": 3.0, "android": 4.7 },
       "featured": true,
       "thinking": false,
       "vision": true,
