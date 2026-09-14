@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type PressableProps,
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { radius } from '../../constants/design-system';
@@ -57,6 +58,9 @@ interface Props {
   dimmed?: boolean;
   /** Waiting on what the row started: a spinner stands in for the glyph. */
   busy?: boolean;
+  /** How far the finger may stray before the press is dropped. Rows in a
+   *  container whose position is animated need this — see `PRESS_ANYWHERE`. */
+  pressRetentionOffset?: PressableProps['pressRetentionOffset'];
   accessibilityLabel?: string;
   testID?: string;
 }
@@ -69,6 +73,7 @@ const MenuRow = ({
   destructive = false,
   dimmed = false,
   busy = false,
+  pressRetentionOffset,
   accessibilityLabel,
   testID,
 }: Props) => {
@@ -87,6 +92,7 @@ const MenuRow = ({
       accessibilityState={{ disabled: dimmed }}
       testID={testID}
       onPress={onPress}
+      pressRetentionOffset={pressRetentionOffset}
       style={({ pressed }) => [
         styles.row,
         dimmed && styles.dimmed,

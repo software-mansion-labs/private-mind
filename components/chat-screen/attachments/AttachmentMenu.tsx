@@ -7,7 +7,7 @@ import CameraIcon from '../../../assets/icons/camera.svg';
 import ImageIcon from '../../../assets/icons/image.svg';
 import AttachmentIcon from '../../../assets/icons/attachment.svg';
 import MenuRow from '../../menu/MenuRow';
-import { MENU, MENU_HEIGHT, PANEL_CONTENT } from './constants';
+import { MENU, MENU_HEIGHT, PANEL_CONTENT, PRESS_ANYWHERE } from './constants';
 
 export type MenuAction = 'camera' | 'photos' | 'files';
 
@@ -97,6 +97,7 @@ const AttachmentMenu = ({
             testID={item.testID}
             dimmed={dimmed}
             busy={busy === item.action}
+            pressRetentionOffset={PRESS_ANYWHERE}
             onPress={() => onSelect(item.action)}
           />
         );

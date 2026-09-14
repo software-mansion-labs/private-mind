@@ -142,6 +142,25 @@ export const DURATION = {
   plusLead: 30,
 } as const;
 
+/**
+ * Keeps a press alive however far the finger travels, for anything inside the
+ * panel.
+ *
+ * The panel's position is animated on the UI thread, so the layout React knows
+ * about is the one the panel had before it opened. `Pressability` measures the
+ * row against that stale rect on touch-down and compares every move to it,
+ * finds the finger outside and cancels the press — so a row lit up under a
+ * real finger and then did nothing, while a synthetic tap, which sends no move
+ * events at all, worked. Far larger than any screen, because the rect it is
+ * correcting for can be anywhere.
+ */
+export const PRESS_ANYWHERE = {
+  top: 10000,
+  bottom: 10000,
+  left: 10000,
+  right: 10000,
+} as const;
+
 /** Panel contents are laid out at natural size, anchored top-left, and scaled
  *  by the panel. */
 export const PANEL_CONTENT = {

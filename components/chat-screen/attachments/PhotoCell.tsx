@@ -10,7 +10,7 @@ import Animated, {
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
 import { fontFamily } from '../../../styles/fontStyles';
-import { GRID, SPRING, panelPalette } from './constants';
+import { GRID, PRESS_ANYWHERE, SPRING, panelPalette } from './constants';
 import type { LibraryPhoto } from './usePhotoLibrary';
 
 /** Width of one of the three columns. No gutter to remove: the sheet carries
@@ -58,6 +58,7 @@ const PhotoCell = memo(function PhotoCellComponent({
       accessibilityState={{ selected }}
       testID={`photo-cell-${photo.id}`}
       onPress={() => onPress(photo)}
+      pressRetentionOffset={PRESS_ANYWHERE}
       style={{ width: slot, height: slot, opacity: lifted ? 0 : 1 }}
     >
       <View style={styles.cell}>
