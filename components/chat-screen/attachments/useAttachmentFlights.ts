@@ -52,9 +52,13 @@ export function useAttachmentFlights({
     // here would split it in two and double-expose a photo.
     setFlights([]);
     onSettled?.();
-    attach.set(0);
     resetPanel();
-  }, [attach, onSettled, resetPanel]);
+  }, [onSettled, resetPanel]);
+
+  useEffect(() => {
+    if (flights.length) return;
+    attach.set(0);
+  }, [attach, flights]);
 
   /**
    * Hands a set of photos to the composer and sends the sheet home. Shared by

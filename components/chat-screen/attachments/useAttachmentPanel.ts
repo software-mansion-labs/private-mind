@@ -10,6 +10,7 @@ import {
 import { scheduleOnRN } from 'react-native-worklets';
 import { Feedback } from '../../../utils/Feedback';
 import { DURATION, EASE_FADE, EASE_OUT, SPRING } from './constants';
+import type { DocumentPickOutcome } from '../../../hooks/useAttachment';
 import type { MenuAction } from './AttachmentMenu';
 
 export type Mode = 'closed' | 'menu' | 'photos' | 'camera';
@@ -29,9 +30,11 @@ interface PanelOptions {
   /**
    * The Files row. May return a promise — the panel then waits for it before
    * collapsing, so the menu stays up while the OS takes its time presenting the
-   * document picker instead of leaving a blank screen behind.
+   * document picker instead of leaving a blank screen behind. Resolving
+   * `'canceled'` means the picker closed with nothing picked: the panel then
+   * stays on the menu, since the menu is not what the user dismissed.
    */
-  onSelectFiles?: () => void | Promise<unknown>;
+  onSelectFiles?: () => void | Promise<DocumentPickOutcome | void>;
   /** Guard for the image rows when the loaded model has no vision support. */
   canAttachImages?: boolean;
   /** Called when an image row is tapped on a model that cannot take images. */
@@ -224,7 +227,10 @@ export function useAttachmentPanel({
           picking &&
           typeof (picking as Promise<unknown>).then === 'function'
         ) {
-          (picking as Promise<unknown>).then(dismiss, dismiss);
+          (picking as Promise<DocumentPickOutcome | void>).then((outcome) => {
+            if (outcome === 'canceled') return;
+            dismiss();
+          }, dismiss);
         } else {
           dismiss();
         }

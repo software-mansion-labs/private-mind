@@ -9,6 +9,8 @@ import { useEmbeddingModelStore } from '../store/embeddingModelStore';
 import { useLLMStore } from '../store/llmStore';
 import { documentErrorMessage } from '../utils/documentErrorMessage';
 
+export type DocumentPickOutcome = 'picked' | 'canceled';
+
 export interface Attachment {
   id: string;
   type: 'image' | 'document';
@@ -54,6 +56,9 @@ export const MAX_IMAGE_ATTACHMENTS = 1;
  * `file://` uri already.
  */
 const RESOLVE_TIMEOUT_MS = 15000;
+
+const STORE_SETTLE_TIMEOUT_MS = 6000;
+const STORE_READY_TIMEOUT_MS = 15000;
 
 const withTimeout = async <T>(work: Promise<T>) => {
   // A resolve that never settles would leave the attachment `loading` forever,
@@ -138,7 +143,9 @@ export const useAttachment = () => {
   const documentAbortRef = useRef<AbortController | null>(null);
   const panelOpenRef = useRef(false);
   /** Resolves the moment the OS picker is gone — see `pickDocument`. */
-  const pickerClosedRef = useRef<(() => void) | null>(null);
+  const pickerClosedRef = useRef<
+    ((outcome: DocumentPickOutcome) => void) | null
+  >(null);
   const embeddingDownloadSheetRef = useRef<BottomSheetModal>(null);
   const embeddingDownloadSheetOpenRef = useRef(false);
   const pendingDownloadSheetRef = useRef(false);
@@ -146,6 +153,16 @@ export const useAttachment = () => {
   const { vectorStore, embeddings } = useVectorStore();
   const vectorStoreRef = useRef(vectorStore);
   vectorStoreRef.current = vectorStore;
+  const embeddingsRef = useRef(embeddings);
+  embeddingsRef.current = embeddings;
+
+  const awaitVectorStore = useCallback(async (timeoutMs: number) => {
+    const deadline = Date.now() + timeoutMs;
+    while (!vectorStoreRef.current && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return vectorStoreRef.current;
+  }, []);
 
   const sweepAbandonedSources = useCallback(() => {
     const store = vectorStoreRef.current;
@@ -244,7 +261,8 @@ export const useAttachment = () => {
     // The picker is off screen from here on, whichever way it went. Anything
     // waiting on it — the panel, which holds the menu up while the OS takes its
     // time presenting — is released now, not when indexing finishes.
-    pickerClosedRef.current?.();
+    const canceled = pickedFileResult.canceled || !pickedFileResult.assets[0];
+    pickerClosedRef.current?.(canceled ? 'canceled' : 'picked');
     pickerClosedRef.current = null;
 
     if (pickedFileResult.canceled || !pickedFileResult.assets[0]) return;
@@ -399,15 +417,18 @@ export const useAttachment = () => {
   }, [presentDownloadSheet]);
 
   const pickDocument = useCallback(async () => {
+    if (useEmbeddingModelStore.getState().status === 'unknown') {
+      await awaitVectorStore(STORE_SETTLE_TIMEOUT_MS);
+    }
     if (useEmbeddingModelStore.getState().status === 'ready') {
-      const closed = new Promise<void>((resolve) => {
+      const closed = new Promise<DocumentPickOutcome>((resolve) => {
         pickerClosedRef.current = resolve;
       });
       // Indexing is deliberately not awaited here: it reports itself through
       // the attachment's own loading state, and the panel must not sit open
       // for the length of it.
       runDocumentPicker().catch((error) => {
-        pickerClosedRef.current?.();
+        pickerClosedRef.current?.('canceled');
         pickerClosedRef.current = null;
         console.error('Document attachment failed', error);
       });
@@ -422,16 +443,23 @@ export const useAttachment = () => {
       return;
     }
     presentDownloadSheet();
-  }, [runDocumentPicker, presentDownloadSheet]);
+  }, [awaitVectorStore, runDocumentPicker, presentDownloadSheet]);
 
   const downloadModelAndContinue = useCallback(async () => {
-    if (!vectorStore) return;
+    const store = await awaitVectorStore(STORE_READY_TIMEOUT_MS);
+    if (!store) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Document storage is still starting up. Try again in a moment.',
+      });
+      return;
+    }
     const ready = await useLLMStore.getState().runWithModelOffloaded(
       async () => {
         const loaded = await useEmbeddingModelStore
           .getState()
-          .ensureReady(vectorStore);
-        await embeddings?.unload();
+          .ensureReady(store);
+        await embeddingsRef.current?.unload();
         return loaded;
       },
       { restore: false }
@@ -446,7 +474,7 @@ export const useAttachment = () => {
     if (!embeddingDownloadSheetOpenRef.current) return;
     pendingDocumentPickRef.current = true;
     embeddingDownloadSheetRef.current?.dismiss();
-  }, [vectorStore, embeddings]);
+  }, [awaitVectorStore]);
 
   const removeAttachment = useCallback(
     (id: string) => {

@@ -28,7 +28,10 @@ jest.mock('react-native-toast-message', () => ({
 
 import * as MediaLibrary from 'expo-media-library';
 import * as DocumentPicker from 'expo-document-picker';
-import { useAttachment } from '../hooks/useAttachment';
+import {
+  useAttachment,
+  type DocumentPickOutcome,
+} from '../hooks/useAttachment';
 import { useEmbeddingModelStore } from '../store/embeddingModelStore';
 import { useLLMStore } from '../store/llmStore';
 import { useVectorStore } from '../context/VectorStoreContext';
@@ -355,8 +358,8 @@ describe('useAttachment', () => {
     jest.spyOn(console, 'warn').mockImplementation(() => {});
 
     const { result } = renderHook(() => useAttachment());
-    let firstPick!: Promise<void>;
-    let secondPick!: Promise<void>;
+    let firstPick!: Promise<DocumentPickOutcome | undefined>;
+    let secondPick!: Promise<DocumentPickOutcome | undefined>;
 
     await act(async () => {
       firstPick = result.current.pickDocument();

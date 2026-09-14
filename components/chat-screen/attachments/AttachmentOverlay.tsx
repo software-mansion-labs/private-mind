@@ -1,6 +1,6 @@
 import type { CameraType, FlashMode } from 'expo-camera';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { AppState, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { OverKeyboardView } from 'react-native-keyboard-controller';
 import Animated, {
   useAnimatedStyle,
@@ -264,6 +264,15 @@ const AttachmentOverlay = ({
     if (panel.mode !== 'photos' && selected.length) clearSelection();
   }
 
+  const [resumeKey, setResumeKey] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== 'android' || panel.mode === 'closed') return;
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') setResumeKey((key) => key + 1);
+    });
+    return () => subscription.remove();
+  }, [panel.mode]);
+
   const dismissFromBackdrop = useCallback(() => {
     if (Date.now() - barLeftAt.current < DURATION.crossfade) return;
     panel.dismiss();
@@ -277,6 +286,7 @@ const AttachmentOverlay = ({
         // Nothing takes a touch once the photos are on their way: the sheet is
         // leaving, and a backdrop tap would start a second close on top of it.
         <View
+          key={resumeKey}
           pointerEvents={isFlying ? 'none' : 'box-none'}
           style={StyleSheet.absoluteFill}
         >
