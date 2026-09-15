@@ -94,7 +94,8 @@ export interface WebSearchProgressEvent {
     | 'offline'
     | 'skipped'
     | 'recovering'
-    | 'timeout';
+    | 'timeout'
+    | 'slow';
   query?: string;
   host?: string;
   url?: string;

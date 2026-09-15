@@ -35,6 +35,11 @@ export type Row = StepRow | PageRow | ChallengeRow | NoteRow;
 const isUnopenedAndUnused = (source: SourceDocument): boolean =>
   source.read === false && source.used !== true;
 
+export const isStalledOnPlanning = (
+  isSearching: boolean,
+  trace: WebSearchTraceEntry[]
+): boolean => isSearching && trace[trace.length - 1]?.type === 'objectives';
+
 export const deriveTitle = (
   isSearching: boolean,
   trace: WebSearchTraceEntry[]
@@ -98,6 +103,16 @@ export const buildRows = (
     ];
   }
   const timedOut = has('timeout');
+
+  const slowNote: NoteRow | null =
+    isSearching && !timedOut && has('slow')
+      ? {
+          type: 'note',
+          key: 'slow',
+          tone: 'muted',
+          label: 'A large model takes longer on this phone',
+        }
+      : null;
 
   const doneRow: StepRow = {
     type: 'step',
@@ -274,6 +289,7 @@ export const buildRows = (
     if (isSearching && challengeActive) {
       rows.push({ type: 'challenge', key: 'challenge' });
     }
+    if (slowNote) rows.push(slowNote);
     if (timedOut) {
       rows.push(timeoutNote);
     } else if (!isSearching || has('done')) {
@@ -352,6 +368,7 @@ export const buildRows = (
     ...(challengeActive
       ? [{ type: 'challenge', key: 'challenge' } as ChallengeRow]
       : []),
+    ...(slowNote ? [slowNote] : []),
     ...(timedOut ? [timeoutNote] : []),
     ...(has('done') ? withFailureNote([]) : []),
     ...(has('done') ? [closingRow] : []),

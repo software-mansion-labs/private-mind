@@ -15,6 +15,7 @@ import { LFMEmbeddings } from '../../utils/lfmEmbeddings';
 import { buildMessageSources } from '../../utils/messageSources';
 import { isDeviceOnline } from '../../utils/network';
 import { runWebSearch } from '../../utils/web/runWebSearch';
+import { isStalledOnPlanning } from './webSearchTrace';
 import type { WebIntentKind } from '../../utils/web/intentKind';
 import { webViewScrapeProvider } from '../../utils/web/scrape/webViewScrapeProvider';
 import { webContextCharBudget } from '../../utils/web/contextBudget';
@@ -25,6 +26,7 @@ import {
   WEB_OFFLOAD_LLM_FOR_EMBEDDINGS,
   WEB_SEARCH_ENABLED,
   WEB_SEARCH_OVERALL_TIMEOUT_MS,
+  WEB_SLOW_DEVICE_NOTE_MS,
 } from '../../constants/web';
 import {
   getModelProfile,
@@ -248,6 +250,12 @@ export const useSendChatMessage = ({
         const trimmedInput = userInput.trim();
         const lowMemory = isMemoryConstrained(useLLMStore.getState().model);
         useWebSearchStore.getState().setSearchingWeb(true);
+        const slowDeviceNoteTimer = setTimeout(() => {
+          const { isSearchingWeb, webSearchTrace } =
+            useWebSearchStore.getState();
+          if (!isStalledOnPlanning(isSearchingWeb, webSearchTrace)) return;
+          useWebSearchStore.getState().pushWebSearchEvent({ type: 'slow' });
+        }, WEB_SLOW_DEVICE_NOTE_MS);
         try {
           const embeddingModelReady =
             !lowMemory && useEmbeddingModelStore.getState().status === 'ready';
@@ -318,6 +326,7 @@ export const useSendChatMessage = ({
           console.warn('Web search failed', error);
           webSearchFailed = true;
         } finally {
+          clearTimeout(slowDeviceNoteTimer);
           useWebSearchStore.getState().setSearchingWeb(false);
           webViewScrapeProvider.releaseHost();
         }
