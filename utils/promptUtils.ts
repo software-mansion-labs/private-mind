@@ -32,6 +32,7 @@ import {
   hasPeriodMatchedChangeData,
 } from './web/figureGrounding';
 import { selectRelevantContent } from './web/webResultsToContext';
+import { extractQueryTerms, stemPrefix } from './queryTerms';
 
 const CONTEXT_CLOSE_TAG_RESERVE_CHARS = 64;
 
@@ -59,6 +60,62 @@ const verifiedProductLine = (passage: string): string => {
   return end === -1 ? passage : passage.slice(0, end + 1);
 };
 
+const UNMATCHED_BLOCK_WEIGHT = 0.25;
+
+const stemsOf = (text: string): Set<string> =>
+  new Set([...extractQueryTerms(text)].map(stemPrefix));
+
+const countMatchedStems = (wanted: Set<string>, text: string): number => {
+  if (wanted.size === 0) return 0;
+  const stems = stemsOf(text);
+  let matched = 0;
+  for (const stem of wanted) {
+    if (stems.has(stem)) matched += 1;
+  }
+  return matched;
+};
+
+const byPosition = (count: number): number[] =>
+  Array.from({ length: count }, (_, index) => 1 / (index + 1));
+
+const evidenceWeights = (passages: string[], wanted: Set<string>): number[] => {
+  if (wanted.size === 0) return byPosition(passages.length);
+  const hits = passages.map((passage) => countMatchedStems(wanted, passage));
+  if (hits.every((count) => count === 0)) return byPosition(passages.length);
+  return hits.map((count) => count || UNMATCHED_BLOCK_WEIGHT);
+};
+
+const worthKeeping = (selected: string, wanted: Set<string>): boolean => {
+  if (!selected.trim()) return false;
+  if (selected.length >= MIN_USEFUL_PASSAGE_CHARS) return true;
+  return countMatchedStems(wanted, selected) > 0;
+};
+
+const redistributeUnusedShare = (
+  passageLengths: number[],
+  shares: number[],
+  overheads: number[]
+): number[] => {
+  const settled = shares.slice();
+  let spare = 0;
+  const hungry: number[] = [];
+
+  settled.forEach((share, index) => {
+    const needed = passageLengths[index]! + overheads[index]!;
+    if (needed < share) {
+      spare += share - needed;
+      settled[index] = needed;
+      return;
+    }
+    hungry.push(index);
+  });
+
+  if (spare === 0 || hungry.length === 0) return settled;
+  const extra = Math.floor(spare / hungry.length);
+  for (const index of hungry) settled[index]! += extra;
+  return settled;
+};
+
 const smartTrimContextBlocks = (
   blocks: string[],
   query: string,
@@ -68,13 +125,22 @@ const smartTrimContextBlocks = (
   const matches = blocks.map((block) => block.match(CONTEXT_BLOCK));
   if (matches.some((match) => match === null)) return null;
 
-  const weights = blocks.map((_, index) => 1 / (index + 1));
+  const wanted = stemsOf(query);
+  const weights = evidenceWeights(
+    matches.map((match) => match![3]!),
+    wanted
+  );
   const weightSum = weights.reduce((sum, weight) => sum + weight, 0);
+  const shares = redistributeUnusedShare(
+    matches.map((match) => match![3]!.length),
+    weights.map((weight) => Math.floor((totalBudget * weight) / weightSum)),
+    matches.map((match) => buildContextBlock(match![1]!, match![2]!, '').length)
+  );
 
   const kept = matches
     .map((match, index) => {
       const [, label, name, passage] = match!;
-      const share = Math.floor((totalBudget * weights[index]!) / weightSum);
+      const share = shares[index]!;
       const markerOverhead = buildContextBlock(label!, name!, '').length;
       const innerBudget = share - markerOverhead;
       if (innerBudget < MIN_USEFUL_PASSAGE_CHARS) return null;
@@ -86,9 +152,9 @@ const smartTrimContextBlocks = (
         const selected = selectRelevantContent(passage!, query, innerBudget, {
           title: name,
         });
-        return selected.length < MIN_USEFUL_PASSAGE_CHARS
-          ? null
-          : buildContextBlock(label!, name!, selected);
+        return worthKeeping(selected, wanted)
+          ? buildContextBlock(label!, name!, selected)
+          : null;
       }
       const rest = passage!.slice(verifiedLine.length);
       const restBudget = innerBudget - verifiedLine.length;

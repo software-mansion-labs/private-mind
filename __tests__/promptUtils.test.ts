@@ -1904,12 +1904,49 @@ describe('prepareMessagesForLLM', () => {
       const last = String(result.at(-1)!.content);
       const headers = last.match(/--- Source \d+:/g) ?? [];
       expect(headers.length).toBeGreaterThan(0);
-      expect(headers.length).toBeLessThan(blocks.length);
       for (const header of headers) {
         const start = last.indexOf(header);
         const end = last.indexOf('--- End of', start);
-        expect(end - start).toBeGreaterThan(120);
+        expect(last.slice(start, end)).toMatch(/wynosi \d+ zl/);
       }
+    });
+
+    it('keeps a short answer and drops the chrome, when the budget forces a choice', () => {
+      const messages: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'pogoda londyn weekend',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const answer =
+        'W sobotę 19.09 w Londynie 21 stopni, 15 w nocy, przelotne opady.';
+      const filler =
+        'Reklama. Pogoda teraz. CAQI jakosc powietrza pm 2.5 pm 10 dostepnosc. '.repeat(
+          20
+        );
+      const names = ['Nawigacja serwisu', 'Pogoda widget', 'Londyn na weekend'];
+      const webSources: SourceDocument[] = names.map((name, index) => ({
+        name,
+        kind: 'web' as const,
+        url: `https://example.com/${index}`,
+      }));
+      const blocks = [
+        sourceBlock(0, names[0]!, 'Strona główna. Kontakt. Regulamin.'),
+        sourceBlock(1, names[1]!, filler),
+        sourceBlock(2, names[2]!, `${filler}${answer}`),
+      ];
+      const last = String(
+        prepareMessagesForLLM(messages, blocks, baseSettings, baseModel, {
+          sourceDocuments: webSources,
+        }).at(-1)!.content
+      );
+
+      expect(last).toContain(answer);
+      expect(last).not.toContain('Nawigacja serwisu');
     });
 
     it('keeps the verified product line whole when the block is trimmed (live-found: price=3199 PLN was cut)', () => {
