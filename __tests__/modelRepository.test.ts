@@ -173,6 +173,39 @@ describe('getModelsByNames', () => {
   });
 });
 
+describe('catalog defaults on a built-in row', () => {
+  it('takes the download size from the catalog, not the stored row', async () => {
+    const catalogEntry = DEFAULT_MODELS.find(
+      (m) => m.modelName === 'Gemma 4 VL - 2B'
+    )!;
+    const mockDb: ModelReader = {
+      getAllAsync: jest.fn().mockResolvedValue([
+        {
+          id: 5,
+          modelName: 'Gemma 4 VL - 2B',
+          source: 'built-in',
+          isDownloaded: 1,
+          modelPath: 'https://example.invalid/stale.pte',
+          tokenizerPath: '',
+          tokenizerConfigPath: '',
+          featured: 1,
+          experimental: 0,
+          thinking: 0,
+          vision: 1,
+          labels: null,
+          parameters: 2,
+          modelSize: 1.11,
+          systemPrompt: null,
+        },
+      ]),
+    };
+
+    const [model] = await getModelsByNames(mockDb, ['Gemma 4 VL - 2B']);
+
+    expect(model.modelSize).toBe(catalogEntry.modelSize);
+  });
+});
+
 describe('syncBuiltInModelPaths', () => {
   it('rewrites a built-in row with paths from DEFAULT_MODELS', async () => {
     const bielik = DEFAULT_MODELS.find((m) => m.modelName === 'Bielik - v3.0')!;

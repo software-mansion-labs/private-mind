@@ -15,7 +15,9 @@ import {
   estimatePromptTokens,
   getPromptCharBudget,
   getPromptTokenBudget,
+  VISUAL_TOKENS_PER_IMAGE,
 } from '../constants/context-window';
+import type { Message as ExecutorchMessage } from 'react-native-executorch';
 
 const baseSettings = {
   systemPrompt: 'You are a helpful assistant.',
@@ -2991,5 +2993,55 @@ describe('questions whose answer is a set of options or a measured value', () =>
     expect(groundedPromptFor('Ile kosztuje kulig w Zakopanem?')).not.toContain(
       'together with its unit'
     );
+  });
+});
+
+describe('images in a conversation', () => {
+  const withImages = (paths: (string | undefined)[]): Message[] =>
+    paths.map((imagePath, i) => ({
+      id: i + 1,
+      chatId: 1,
+      role: (i % 2 === 0 ? 'user' : 'assistant') as Message['role'],
+      content: `message ${i + 1}`,
+      timestamp: Date.now(),
+      ...(imagePath ? { imagePath } : {}),
+    }));
+
+  const mediaPathsOf = (messages: ExecutorchMessage[]) =>
+    messages.flatMap((message) =>
+      'mediaPath' in message && message.mediaPath
+        ? [message.mediaPath as string]
+        : []
+    );
+
+  it('sends only the most recent image, so older ones stop costing context', () => {
+    const result = prepareMessagesForLLM(
+      withImages(['/a.jpg', undefined, '/b.jpg', undefined, '/c.jpg']),
+      [],
+      baseSettings,
+      baseModel
+    );
+
+    expect(mediaPathsOf(result)).toEqual(['/c.jpg']);
+  });
+
+  it('keeps the text of the turns whose image it dropped', () => {
+    const result = prepareMessagesForLLM(
+      withImages(['/a.jpg', undefined, '/b.jpg']),
+      [],
+      baseSettings,
+      baseModel
+    );
+
+    expect(result.map((m) => m.content)).toEqual(
+      expect.arrayContaining([expect.stringContaining('message 1')])
+    );
+  });
+
+  it('charges the image it sends against the prompt budget', () => {
+    const withoutImage = getPromptTokenBudget(baseModel);
+    const withOneImage = getPromptTokenBudget(baseModel, 1);
+
+    expect(withoutImage - withOneImage).toBe(VISUAL_TOKENS_PER_IMAGE);
   });
 });

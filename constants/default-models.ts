@@ -24,6 +24,9 @@ import {
   GEMMA4_E2B_MM,
 } from 'react-native-executorch';
 
+const GEMMA4_E2B_MM_ANDROID_CPU_MODEL =
+  'https://huggingface.co/software-mansion/react-native-executorch-gemma-4-multimodal/resolve/v0.9.0/e2b/xnnpack/gemma_4_e2b_xnnpack_8da4w.pte';
+
 const LOW_END_STARTING_MODELS = [
   'Qwen 3 - 0.6B',
   'LFM 2.5 VL - 450M',
@@ -299,11 +302,14 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     modelName: 'Gemma 4 VL - 2B',
     family: 'Gemma 4',
     tokenizerPath: GEMMA4_E2B_MM.tokenizerSource,
-    modelPath: GEMMA4_E2B_MM.modelSource,
+    modelPath:
+      Platform.OS === 'android'
+        ? GEMMA4_E2B_MM_ANDROID_CPU_MODEL
+        : GEMMA4_E2B_MM.modelSource,
     tokenizerConfigPath: GEMMA4_E2B_MM.tokenizerConfigSource,
     source: 'remote',
     parameters: 2.0,
-    modelSize: Platform.OS === 'android' ? 4.0 : 3.0,
+    modelSize: Platform.OS === 'android' ? 4.7 : 3.0,
     featured: true,
     thinking: false,
     vision: true,
