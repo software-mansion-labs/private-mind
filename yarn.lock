@@ -82,19 +82,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/generator@npm:^7.27.1, @babel/generator@npm:^7.29.8":
-  version: 7.29.8
-  resolution: "@babel/generator@npm:7.29.8"
-  dependencies:
-    "@babel/parser": ^7.29.8
-    "@babel/types": ^7.29.8
-    "@jridgewell/gen-mapping": ^0.3.12
-    "@jridgewell/trace-mapping": ^0.3.28
-    jsesc: ^3.0.2
-  checksum: e3d80ad2ce45ca974cb14e084350d590aa62e840d5028bb7771e910b1727b6646afcc9815560e3c6e3526f115b71b18a7f7139ada76a80287d5bd25b84c17e8d
-  languageName: node
-  linkType: hard
-
 "@babel/helper-annotate-as-pure@npm:^7.29.7":
   version: 7.29.7
   resolution: "@babel/helper-annotate-as-pure@npm:7.29.7"
@@ -316,17 +303,6 @@ __metadata:
   bin:
     parser: ./bin/babel-parser.js
   checksum: 56f4c32a371004d3becd0a960a85a3bba4ec4df73d5e202aa3fe6473328b243162c6be9a510be1c12ed1825f5ce9ff1ea5cc357298631e8acf2e5b8da9f5a961
-  languageName: node
-  linkType: hard
-
-"@babel/parser@npm:^7.29.8":
-  version: 7.29.8
-  resolution: "@babel/parser@npm:7.29.8"
-  dependencies:
-    "@babel/types": ^7.29.8
-  bin:
-    parser: ./bin/babel-parser.js
-  checksum: c8bbea3c87b8593e78e8901841b068cc004ece24bf3ee44e11b4a3e04f10dab513125ca290c2cc04ba981399b662dbebb0a675016417d600e99272e86d59b375
   languageName: node
   linkType: hard
 
@@ -1186,21 +1162,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/traverse@npm:^7.27.1":
-  version: 7.29.8
-  resolution: "@babel/traverse@npm:7.29.8"
-  dependencies:
-    "@babel/code-frame": ^7.29.7
-    "@babel/generator": ^7.29.8
-    "@babel/helper-globals": ^7.29.7
-    "@babel/parser": ^7.29.8
-    "@babel/template": ^7.29.7
-    "@babel/types": ^7.29.8
-    debug: ^4.3.1
-  checksum: 7c33eb59db5c67411305ed1d29fe50dbde74b220f4500840951d776fbcc3fbddca09f57302e8961d2533871ef4719ec0f2f05969870263b180d6ff4217f7acee
-  languageName: node
-  linkType: hard
-
 "@babel/types@npm:^7.0.0, @babel/types@npm:^7.20.7, @babel/types@npm:^7.21.3, @babel/types@npm:^7.25.2, @babel/types@npm:^7.26.0, @babel/types@npm:^7.28.2, @babel/types@npm:^7.29.0, @babel/types@npm:^7.29.7, @babel/types@npm:^7.3.3":
   version: 7.29.7
   resolution: "@babel/types@npm:7.29.7"
@@ -1211,7 +1172,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/types@npm:^7.27.1, @babel/types@npm:^7.29.8":
+"@babel/types@npm:^7.27.1":
   version: 7.29.8
   resolution: "@babel/types@npm:7.29.8"
   dependencies:
@@ -10577,7 +10538,7 @@ __metadata:
     react-native-toast-message: ^2.3.0
     react-native-webview: 13.16.0
     react-native-wheel-scrollview-picker: ^2.0.6
-    react-native-worklets: 0.11.4
+    react-native-worklets: 0.10.4
     react-test-renderer: 19.2.0
     remend: ^1.3.0
     typescript: ~5.9.2
@@ -11048,11 +11009,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-worklets@npm:0.11.4":
-  version: 0.11.4
-  resolution: "react-native-worklets@npm:0.11.4"
+"react-native-worklets@npm:0.10.4":
+  version: 0.10.4
+  resolution: "react-native-worklets@npm:0.10.4"
   dependencies:
-    "@babel/generator": ^7.27.1
     "@babel/plugin-transform-arrow-functions": ^7.27.1
     "@babel/plugin-transform-class-properties": ^7.28.6
     "@babel/plugin-transform-classes": ^7.28.6
@@ -11062,7 +11022,6 @@ __metadata:
     "@babel/plugin-transform-template-literals": ^7.27.1
     "@babel/plugin-transform-unicode-regex": ^7.27.1
     "@babel/preset-typescript": ^7.28.5
-    "@babel/traverse": ^7.27.1
     "@babel/types": ^7.27.1
     convert-source-map: ^2.0.0
     semver: ^7.7.4
@@ -11071,7 +11030,7 @@ __metadata:
     "@react-native/metro-config": "*"
     react: "*"
     react-native: 0.83 - 0.86
-  checksum: 311a9030991cc97280269c63c03be474d39a047f7229fc47fd61c322d1b5ea469c385fc34d5f30ce371daeca3bbd01a9406b97c4b6f8e2be8ed787937177c3a3
+  checksum: 96267f91d7fb26e898efc01c958d057bf17e423e33f7f6a3638aa26d2044b22f132073e398e8395268ed35b137f674aac578a82e32866fbd9680cd4758aad7c8
   languageName: node
   linkType: hard
 
