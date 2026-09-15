@@ -42,6 +42,7 @@ import {
 import { Message, type SourceDocument } from '../../database/chatRepository';
 import { stripCitations } from '../../utils/citations';
 import { parseThinkingContent, stripThinkMarkers } from '../../utils/thinking';
+import { stripSpecialTokens } from '../../utils/specialTokens';
 
 interface MessageItemProps {
   message: Message;
@@ -110,8 +111,15 @@ const MessageItem = memo(
     );
     const [lightboxVisible, setLightboxVisible] = useState(false);
 
-    const contentParts = parseThinkingContent(content);
-    const userText = useMemo(() => stripThinkMarkers(content), [content]);
+    const visibleContent = useMemo(
+      () => (role === 'assistant' ? stripSpecialTokens(content) : content),
+      [content, role]
+    );
+    const contentParts = parseThinkingContent(visibleContent);
+    const userText = useMemo(
+      () => stripThinkMarkers(visibleContent),
+      [visibleContent]
+    );
     const {
       displayedSources,
       webResults,
