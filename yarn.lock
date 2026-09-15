@@ -2759,16 +2759,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native-rag/executorch@npm:^0.8.0":
-  version: 0.8.0
-  resolution: "@react-native-rag/executorch@npm:0.8.0"
-  peerDependencies:
-    react-native-executorch: ^0.8.0
-    react-native-rag: ^0.8.0
-  checksum: 66c248c0fed81c7cadb1ef122602349369cb78e2cc264936c567cd07498f7515692591407f85efe103bd2b5305b90556a5c0f1ef6da74a81e33255d83137d003
-  languageName: node
-  linkType: hard
-
 "@react-native-rag/op-sqlite@npm:^0.8.0":
   version: 0.8.0
   resolution: "@react-native-rag/op-sqlite@npm:0.8.0"
@@ -10503,7 +10493,6 @@ __metadata:
     "@op-engineering/op-sqlite": ^15.2.7
     "@react-native-async-storage/async-storage": 2.2.0
     "@react-native-community/netinfo": 11.5.2
-    "@react-native-rag/executorch": ^0.8.0
     "@react-native-rag/op-sqlite": ^0.8.0
     "@react-native/eslint-config": 0.83.6
     "@react-native/metro-config": ^0.76.3
