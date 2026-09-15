@@ -620,8 +620,9 @@ export const webResultsToContext = (
         ? `[Answers: ${result.sourceQuery}]\n`
         : '';
 
+    const sourceIndex = startIndex + cited.length;
     const block = sourceBlock(
-      startIndex + cited.length,
+      sourceIndex,
       name,
       `${queryLabel}${cleanPassage}`
     );
@@ -639,6 +640,7 @@ export const webResultsToContext = (
       query: recordedQuery,
       ...(result.sourceQuery ? { sourceQuery: result.sourceQuery } : {}),
       similarity: used.length > 1 ? 1 - index / used.length : 1,
+      ordinal: sourceIndex + 1,
     });
   });
 
