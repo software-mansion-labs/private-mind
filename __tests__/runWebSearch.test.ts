@@ -1134,3 +1134,72 @@ describe('search region follows the question language', () => {
     expect(provider.regions[0]).toBeUndefined();
   });
 });
+
+describe('the query the language gate rejected is still reachable (#328)', () => {
+  const ASKED = 'pogoda londyn weekend';
+  const PLANNED_IN_ENGLISH = 'London weather forecast weekend';
+  const planEnglish = async () =>
+    JSON.stringify({
+      needs_search: true,
+      intent: 'London weekend forecast',
+      kind: 'fact',
+      queries: [PLANNED_IN_ENGLISH],
+    });
+
+  const portalFrontPage = (url: string): WebSearchResult => ({
+    title: 'Pogoda w Twoim miescie',
+    url,
+    snippet: 'Sprawdz pogode w swoim miescie.',
+  });
+
+  it('searches it once the round the gate allowed comes back unreadable', async () => {
+    const provider = new MockProvider({
+      [ASKED]: [portalFrontPage('https://portal.example/pogoda')],
+      [PLANNED_IN_ENGLISH]: [weatherPage('https://metoffice.example/london')],
+    });
+    (extractArticle as jest.Mock).mockImplementation(async (url: string) => {
+      if (url.includes('portal.example')) throw new Error('Fetch failed: 403');
+      return { url, title: url, text: WEATHER_TEXT, siteName: url };
+    });
+
+    const out = await runWebSearch({
+      query: ASKED,
+      history: [],
+      provider,
+      embeddings: null,
+      embeddingModelReady: false,
+      generate: planEnglish,
+      today: '2026-07-20',
+    });
+
+    expect(provider.calls).toContain(PLANNED_IN_ENGLISH);
+    expect(out.sourceDocuments.map((doc) => doc.url)).toContain(
+      'https://metoffice.example/london'
+    );
+  });
+
+  it('leaves it unsearched while the allowed round is answering', async () => {
+    const provider = new MockProvider({
+      [ASKED]: [weatherPage('https://pogoda.example/londyn')],
+      [PLANNED_IN_ENGLISH]: [weatherPage('https://metoffice.example/london')],
+    });
+    (extractArticle as jest.Mock).mockImplementation(async (url: string) => ({
+      url,
+      title: url,
+      text: WEATHER_TEXT,
+      siteName: url,
+    }));
+
+    await runWebSearch({
+      query: ASKED,
+      history: [],
+      provider,
+      embeddings: null,
+      embeddingModelReady: false,
+      generate: planEnglish,
+      today: '2026-07-20',
+    });
+
+    expect(provider.calls).not.toContain(PLANNED_IN_ENGLISH);
+  });
+});
