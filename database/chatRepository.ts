@@ -66,6 +66,7 @@ export type SourceDocument = {
   sourceQuery?: string;
   used?: boolean;
   read?: boolean;
+  ordinal?: number;
 };
 
 export const sourceKind = (source: SourceDocument): SourceKind =>

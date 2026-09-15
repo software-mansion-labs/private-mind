@@ -639,6 +639,7 @@ export const webResultsToContext = (
       query: recordedQuery,
       ...(result.sourceQuery ? { sourceQuery: result.sourceQuery } : {}),
       similarity: used.length > 1 ? 1 - index / used.length : 1,
+      ordinal: startIndex + cited.length,
     });
   });
 
