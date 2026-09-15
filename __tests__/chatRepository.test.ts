@@ -5,6 +5,7 @@ import {
   persistMessage,
   setChatDigest,
 } from '../database/chatRepository';
+import type { SourceDocument } from '../database/chatRepository';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { attributeSourcesByBlock } from '../utils/attributeSources';
 
@@ -505,22 +506,46 @@ describe('getChatMessages source provenance', () => {
     });
   });
 
-  it('keeps the number each source was shown under, for web and document alike', async () => {
+  it('carries every field a source has, because the reader lists them one by one', async () => {
+    const everyField: Required<SourceDocument> = {
+      documentId: 7,
+      name: 'Bankier',
+      passage: 'Bitcoin kosztuje 98 000 USD.',
+      similarity: 0.82,
+      kind: 'web',
+      url: 'https://bankier.pl/btc',
+      query: 'kurs bitcoina',
+      sourceQuery: 'kurs bitcoin',
+      used: true,
+      read: true,
+      ordinal: 3,
+    };
     const getAllAsync = jest.fn().mockResolvedValue([
       {
         id: 5,
         chatId: 1,
         role: 'assistant',
         content: 'Answer.',
+        sourceDocuments: JSON.stringify([everyField]),
+      },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(messages[0].sourceDocuments?.[0]).toEqual(everyField);
+  });
+
+  it('numbers a document source too, not just a web one', async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 6,
+        chatId: 1,
+        role: 'assistant',
+        content: 'Answer.',
         sourceDocuments: JSON.stringify([
-          {
-            name: 'Bankier',
-            url: 'https://bankier.pl/a',
-            kind: 'web',
-            ordinal: 1,
-          },
-          { documentId: 7, name: 'report.pdf', ordinal: 2 },
-          { name: 'Ceneo', url: 'https://ceneo.pl/c', kind: 'web' },
+          { documentId: 7, name: 'report.pdf', ordinal: 1 },
+          { documentId: 8, name: 'notes.md' },
         ]),
       },
     ]);
@@ -530,7 +555,7 @@ describe('getChatMessages source provenance', () => {
 
     expect(
       messages[0].sourceDocuments?.map((source) => source.ordinal)
-    ).toEqual([1, 2, undefined]);
+    ).toEqual([1, undefined]);
   });
 
   it('still cites the source the answer named after the chat is reloaded', async () => {
