@@ -1,5 +1,5 @@
 import type { Embeddings, ResourceSource } from 'react-native-rag';
-import { TextEmbeddingsModule } from 'react-native-executorch';
+import { TextEmbeddingsModule } from 'react-native-executorch/legacy';
 import {
   EMBEDDING_DOCUMENT_PREFIX,
   EMBEDDING_QUERY_PREFIX,

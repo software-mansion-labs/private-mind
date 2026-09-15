@@ -3,7 +3,7 @@ import { AudioManager, AudioRecorder } from 'react-native-audio-api';
 import { OnAudioReadyEventType } from 'react-native-audio-api/lib/typescript/events/types';
 import { useStableCallback } from './useStableCallback';
 import { STTStore, useSTTStore } from '../store/sttStore';
-import { type TranscriptionResult } from 'react-native-executorch';
+import { type TranscriptionResult } from 'react-native-executorch/legacy';
 
 interface Options {
   onAudioData?: (data: number[]) => void;

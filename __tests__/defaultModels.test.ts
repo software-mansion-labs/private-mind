@@ -1,7 +1,7 @@
 import {
   BIELIK_V3_0_1_5B_QUANTIZED,
   QWEN3_1_7B_QUANTIZED,
-} from 'react-native-executorch';
+} from 'react-native-executorch/legacy';
 import {
   DEFAULT_MODELS,
   DEFAULT_REPETITION_PENALTY,

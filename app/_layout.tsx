@@ -22,7 +22,7 @@ import { Stack } from 'expo-router';
 import { VectorStoreProvider } from '../context/VectorStoreContext';
 import * as SplashScreen from 'expo-splash-screen';
 import SplashScreenAnimation from '../components/SplashScreenAnimation';
-import { initExecutorch } from 'react-native-executorch';
+import { initExecutorch } from 'react-native-executorch/legacy';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
 import { removeBundledModelLeftovers } from '../utils/bundledModelCleanup';
 

@@ -1922,10 +1922,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@huggingface/jinja@npm:^0.5.0":
-  version: 0.5.9
-  resolution: "@huggingface/jinja@npm:0.5.9"
-  checksum: ca6e398a38d0524b6d520396e5cd0101c7572614f168828264a68a316a4e41ff9011dedc336f238adc605df8227b159bb3c8540280b0b6f6e2f1126062b39123
+"@huggingface/jinja@npm:^0.5.9":
+  version: 0.5.10
+  resolution: "@huggingface/jinja@npm:0.5.10"
+  checksum: a5a66c0cd0814d8e255613a0d4a77ee5a71e365c6fded81e7e3aa3a86cf7c405eeac09713c211ce66bf8d23065279624db857a007645de0a2eaca4c03cd53f5f
   languageName: node
   linkType: hard
 
@@ -2319,6 +2319,15 @@ __metadata:
     "@jridgewell/resolve-uri": ^3.1.0
     "@jridgewell/sourcemap-codec": ^1.4.14
   checksum: af8fda2431348ad507fbddf8e25f5d08c79ecc94594061ce402cf41bc5aba1a7b3e59bf0fd70a619b35f33983a3f488ceeba8faf56bff784f98bb5394a8b7d47
+  languageName: node
+  linkType: hard
+
+"@kesha-antonov/react-native-background-downloader@npm:^4.4.0":
+  version: 4.6.2
+  resolution: "@kesha-antonov/react-native-background-downloader@npm:4.6.2"
+  peerDependencies:
+    react-native: ">=0.57.0"
+  checksum: 45e06a92ff129e56910b790163b48e2a32d0e693aa48a51755120028ba43a3190a26bc356aabb521d9b79d2d3d7888d26eeb645c2c2ccc559aafb4702f81ea85
   languageName: node
   linkType: hard
 
@@ -4456,6 +4465,13 @@ __metadata:
   version: 4.0.4
   resolution: "balanced-match@npm:4.0.4"
   checksum: fb07bb66a0959c2843fc055838047e2a95ccebb837c519614afb067ebfdf2fa967ca8d712c35ced07f2cd26fc6f07964230b094891315ad74f11eba3d53178a0
+  languageName: node
+  linkType: hard
+
+"base-64@npm:1.0.0":
+  version: 1.0.0
+  resolution: "base-64@npm:1.0.0"
+  checksum: d10b64a1fc9b2c5a5f39f1ce1e6c9d1c5b249222bbfa3a0604c592d90623caf74419983feadd8a170f27dc0c3389704f72faafa3e645aeb56bfc030c93ff074a
   languageName: node
   linkType: hard
 
@@ -10490,6 +10506,7 @@ __metadata:
     "@eslint/js": ^10.0.1
     "@expo-google-fonts/dm-sans": ^0.4.0
     "@gorhom/bottom-sheet": ^5.2.9
+    "@kesha-antonov/react-native-background-downloader": ^4.4.0
     "@op-engineering/op-sqlite": ^15.2.7
     "@react-native-async-storage/async-storage": 2.2.0
     "@react-native-community/netinfo": 11.5.2
@@ -10539,10 +10556,11 @@ __metadata:
     react: 19.2.0
     react-native: 0.83.4
     react-native-audio-api: 0.12.0-nightly-f7c925b-20260402
+    react-native-blob-util: ^0.24.0
     react-native-device-info: ^15.0.1
     react-native-enriched-markdown: ^0.4.1
-    react-native-executorch: ^0.9.0
-    react-native-executorch-expo-resource-fetcher: ^0.9.0
+    react-native-executorch: ^0.10.2
+    react-native-executorch-expo-resource-fetcher: ^0.10.0
     react-native-gesture-handler: ~2.30.0
     react-native-image-picker: ^8.2.1
     react-native-keyboard-controller: 1.22.3
@@ -10739,7 +10757,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-device-info@npm:^15.0.1":
+"react-native-blob-util@npm:^0.24.0":
+  version: 0.24.11
+  resolution: "react-native-blob-util@npm:0.24.11"
+  dependencies:
+    base-64: 1.0.0
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 18a9a97f0ee8ba3f3cb2f13722ebfc3a629676acd2351b5023f367c4cce79962206338dd1280d0c01f274aa39612fd09e263216bb30f18431bcb49ce2533b61d
+  languageName: node
+  linkType: hard
+
+"react-native-device-info@npm:^15.0.1, react-native-device-info@npm:^15.0.2":
   version: 15.0.2
   resolution: "react-native-device-info@npm:15.0.2"
   peerDependencies:
@@ -10777,31 +10807,38 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-executorch-expo-resource-fetcher@npm:^0.9.0":
-  version: 0.9.1
-  resolution: "react-native-executorch-expo-resource-fetcher@npm:0.9.1"
+"react-native-executorch-expo-resource-fetcher@npm:^0.10.0":
+  version: 0.10.0
+  resolution: "react-native-executorch-expo-resource-fetcher@npm:0.10.0"
   peerDependencies:
     expo: ">=54.0.0"
     expo-asset: ">=12.0.0"
     expo-file-system: ">=19.0.0"
     react-native: "*"
     react-native-executorch: "*"
-  checksum: 6c09993c252a5450e065800ce4a96849d77dbf93764ea158963d77c20dcf7c42e5af48d511262b3fef06d7e76bce8c635c3204867105e0c649da9679894a5278
+  checksum: e068372fdee6663d7a874e0960e43ca91a095e1260df437d3a065daf0f5a7b43923977cfd95151d15391a74796d0a5ee8bdec268e1bea8c630fea82c452ce06c
   languageName: node
   linkType: hard
 
-"react-native-executorch@npm:^0.9.0":
-  version: 0.9.2
-  resolution: "react-native-executorch@npm:0.9.2"
+"react-native-executorch@npm:^0.10.2":
+  version: 0.10.2
+  resolution: "react-native-executorch@npm:0.10.2"
   dependencies:
-    "@huggingface/jinja": ^0.5.0
+    "@huggingface/jinja": ^0.5.9
     jsonrepair: ^3.12.0
     jsonschema: ^1.5.0
+    react-native-device-info: ^15.0.2
     zod: ^4.3.6
   peerDependencies:
+    "@kesha-antonov/react-native-background-downloader": ">=4.4.0"
     react: "*"
     react-native: "*"
-  checksum: e5c3edbc6925d25c2d9d81497a27368960c789cb487374753ad648a5570c95bf5d0af9272d327c440e431b40c7e84058baf97f8282ce089f0a866cb57ab071b8
+    react-native-blob-util: ^0.24.0
+    react-native-worklets: ">=0.10.0 <0.13.0"
+  peerDependenciesMeta:
+    "@kesha-antonov/react-native-background-downloader":
+      optional: true
+  checksum: 387f6889d92bcf979e71698c8f65a34b538495de81480605ec42a480a225a605be9e13363fde78abae2b545793b35b8b5cd9c0eb4684b3b8b100a9257af33a9d
   languageName: node
   linkType: hard
 
