@@ -77,19 +77,30 @@ export const estimatePromptTokens = (text: string): number => {
   return Math.ceil(tokens);
 };
 
-export const getPromptTokenBudget = (model: Model): number => {
+export const VISUAL_TOKENS_PER_IMAGE = 256;
+
+export const getPromptTokenBudget = (
+  model: Model,
+  promptImageCount: number = 0
+): number => {
   const profile = getModelProfile(model);
   return Math.max(
     0,
-    profile.contextWindowTokens - profile.generationReserveTokens
+    profile.contextWindowTokens -
+      profile.generationReserveTokens -
+      promptImageCount * VISUAL_TOKENS_PER_IMAGE
   );
 };
 
 export const PROMPT_TOKEN_SAFETY = 0.85;
 
-export const getPromptCharBudget = (model: Model, sample?: string): number => {
+export const getPromptCharBudget = (
+  model: Model,
+  sample?: string,
+  promptImageCount: number = 0
+): number => {
   const tokenBudget = Math.floor(
-    getPromptTokenBudget(model) * PROMPT_TOKEN_SAFETY
+    getPromptTokenBudget(model, promptImageCount) * PROMPT_TOKEN_SAFETY
   );
   if (!sample || sample.length === 0) {
     return Math.floor(tokenBudget / DEFAULT_TOKENS_PER_CHAR);

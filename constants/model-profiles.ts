@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { type Model } from '../database/modelRepository';
 import { getModelFamily } from '../utils/modelFamily';
 import { MAX_RELEVANT_CHUNKS } from './retrieval';
@@ -130,12 +131,19 @@ export const WEB_ANSWER_EVIDENCE: Record<string, string> = {
 
 export const PROFILE_BY_FAMILY: Record<string, Partial<ModelProfile>> = {};
 
+export const GEMMA4_VL_ANDROID_EXPORT_CAPACITY_TOKENS = 1024;
+
 export const PROFILE_BY_MODEL: Record<string, Partial<ModelProfile>> = {
   'Qwen 2.5 - 0.5B': { webSearchReady: false },
   'LFM 2.5 VL - 450M': { webSearchReady: false },
   'Qwen 2.5 - 1.5B': { webSearchReady: false },
   'Gemma 4 - 2B': { webSearchMinDeviceMemoryGB: 8 },
-  'Gemma 4 VL - 2B': { webSearchMinDeviceMemoryGB: 8 },
+  'Gemma 4 VL - 2B': {
+    webSearchMinDeviceMemoryGB: 8,
+    ...(Platform.OS === 'android'
+      ? { contextWindowTokens: GEMMA4_VL_ANDROID_EXPORT_CAPACITY_TOKENS }
+      : {}),
+  },
   'Qwen 2.5 - 3B': { webSearchReady: false, webSearchMinDeviceMemoryGB: 8 },
   'LLaMA 3.2 - 3B - QLoRa': { webSearchMinDeviceMemoryGB: 8 },
   'LLaMA 3.2 - 3B - SpinQuant': { webSearchMinDeviceMemoryGB: 8 },

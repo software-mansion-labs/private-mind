@@ -676,11 +676,20 @@ export const prepareMessagesForLLM = (
       ? nonEventMessages.slice(0, -1)
       : nonEventMessages;
 
-  const filteredMessages: ExecutorchMessage[] = messagesForLLM.map((msg) => ({
-    role: msg.role,
-    content: msg.content,
-    ...(msg.imagePath ? { mediaPath: msg.imagePath } : {}),
-  }));
+  const lastImageIndex = messagesForLLM.reduce(
+    (latest, msg, index) => (msg.imagePath ? index : latest),
+    -1
+  );
+  const filteredMessages: ExecutorchMessage[] = messagesForLLM.map(
+    (msg, index) => ({
+      role: msg.role,
+      content: msg.content,
+      ...(msg.imagePath && index === lastImageIndex
+        ? { mediaPath: msg.imagePath }
+        : {}),
+    })
+  );
+  const promptImageCount = lastImageIndex === -1 ? 0 : 1;
 
   const messagesWithSystemPrompt: ExecutorchMessage[] = [
     { role: 'system', content: systemPrompt },
@@ -705,7 +714,7 @@ export const prepareMessagesForLLM = (
     ' '
   )}${lastMessage.content}`;
   const budgetChars = Math.floor(
-    getPromptCharBudget(model, budgetSample) * budgetScale
+    getPromptCharBudget(model, budgetSample, promptImageCount) * budgetScale
   );
   const systemChars = messagesWithSystemPrompt[0].content.length;
 
@@ -841,7 +850,10 @@ export const prepareMessagesForLLM = (
 
   if (hasContext && budgetScale > 0.75) {
     const assembled = finalMessages.map((msg) => msg.content).join(' ');
-    if (estimatePromptTokens(assembled) > getPromptTokenBudget(model)) {
+    if (
+      estimatePromptTokens(assembled) >
+      getPromptTokenBudget(model, promptImageCount)
+    ) {
       return prepareMessagesForLLM(
         activeChatMessages,
         context,
