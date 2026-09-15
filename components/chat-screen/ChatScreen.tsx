@@ -31,6 +31,7 @@ import { useLegacyChatNotice } from '../../hooks/useLegacyChatNotice';
 import useChatSettings from '../../hooks/useChatSettings';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import useChatBranching from '../../hooks/useChatBranching';
+import { useStableCallback } from '../../hooks/useStableCallback';
 import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
 
 interface Props {
@@ -194,7 +195,7 @@ export default function ChatScreen({
     [handleModelSwitchSheetState]
   );
 
-  const handleSendMessage = useSendChatMessage({
+  const sendChatMessage = useSendChatMessage({
     chatId,
     model,
     messageHistory,
@@ -208,6 +209,7 @@ export default function ChatScreen({
     isModelLoading,
     isSwitching,
   });
+  const handleSendMessage = useStableCallback(sendChatMessage);
 
   const {
     handleThinkingToggle,
