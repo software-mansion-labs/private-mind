@@ -6,6 +6,7 @@ import {
   setChatDigest,
 } from '../database/chatRepository';
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { attributeSourcesByBlock } from '../utils/attributeSources';
 
 type TransactionCallback = Parameters<
   SQLiteDatabase['withTransactionAsync']
@@ -502,6 +503,77 @@ describe('getChatMessages source provenance', () => {
       query: 'porównaj kurs bitcoina i ethereum',
       sourceQuery: 'kurs bitcoin',
     });
+  });
+
+  it('keeps the number each source was shown under, for web and document alike', async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 5,
+        chatId: 1,
+        role: 'assistant',
+        content: 'Answer.',
+        sourceDocuments: JSON.stringify([
+          {
+            name: 'Bankier',
+            url: 'https://bankier.pl/a',
+            kind: 'web',
+            ordinal: 1,
+          },
+          { documentId: 7, name: 'report.pdf', ordinal: 2 },
+          { name: 'Ceneo', url: 'https://ceneo.pl/c', kind: 'web' },
+        ]),
+      },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(
+      messages[0].sourceDocuments?.map((source) => source.ordinal)
+    ).toEqual([1, 2, undefined]);
+  });
+
+  it('still cites the source the answer named after the chat is reloaded', async () => {
+    const stored = [
+      {
+        name: 'Londyn — pogoda na weekend',
+        url: 'https://pogoda.interia.pl/londyn',
+        kind: 'web',
+        ordinal: 1,
+        used: true,
+        passage:
+          'Pogoda na weekend w Londynie. Sobota 19.09 temperatura 21°C, opady przelotne.',
+      },
+      {
+        name: 'Met Office — London weekend forecast',
+        url: 'https://www.metoffice.gov.uk/london',
+        kind: 'web',
+        ordinal: 2,
+        used: true,
+        passage:
+          'London weekend forecast. Saturday 19 September highs of 21C with scattered showers.',
+      },
+    ];
+    const answer =
+      'W sobotę w Londynie temperatura sięgnie 21°C, a opady będą przelotne [2].';
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 6,
+        chatId: 1,
+        role: 'assistant',
+        content: answer,
+        sourceDocuments: JSON.stringify(stored),
+      },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+    const blocks = attributeSourcesByBlock(
+      answer,
+      messages[0].sourceDocuments!
+    );
+
+    expect(blocks.map((block) => block.source?.ordinal)).toEqual([2]);
   });
 
   it('leaves document sources without a web kind/url', async () => {

@@ -148,6 +148,8 @@ const parseSourceDocuments = (
           source.kind === 'web' && typeof source.read === 'boolean'
             ? source.read
             : undefined,
+        ordinal:
+          typeof source.ordinal === 'number' ? source.ordinal : undefined,
       }));
   } catch {
     return undefined;
