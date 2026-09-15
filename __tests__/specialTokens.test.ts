@@ -35,6 +35,39 @@ describe('stripSpecialTokens', () => {
     expect(stripSpecialTokens('the answer <eos>.')).toBe('the answer.');
   });
 
+  it('strips every token Gemma 4 VL declares in its tokenizer config', () => {
+    const declared = [
+      '<pad>',
+      '<eos>',
+      '<bos>',
+      '<unk>',
+      '<mask>',
+      '<|tool>',
+      '<tool|>',
+      '<|tool_call>',
+      '<tool_call|>',
+      '<|tool_response>',
+      '<tool_response|>',
+      '<|\"|>',
+      '<|think|>',
+      '<|channel>',
+      '<channel|>',
+      '<|turn>',
+      '<turn|>',
+      '<|image>',
+      '<|audio>',
+      '<|image|>',
+      '<|audio|>',
+      '<image|>',
+      '<audio|>',
+      '<|video|>',
+    ];
+
+    for (const token of declared) {
+      expect(stripSpecialTokens(`before${token}after`)).toBe('beforeafter');
+    }
+  });
+
   it('leaves thinking markers alone, because they are parsed elsewhere', () => {
     const text = '<think>reasoning</think>answer';
     expect(stripSpecialTokens(text)).toBe(text);

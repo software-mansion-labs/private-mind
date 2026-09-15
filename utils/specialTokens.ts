@@ -1,5 +1,6 @@
 const SENTINEL_NOTATIONS = [
-  /<\|[^<>|]{0,64}\|>/,
+  /<\|[^<>|]{0,64}\|?>/,
+  /<[^<>|]{1,64}\|>/,
   /<unused\d{1,6}>/,
   /<extra_id_\d{1,6}>/,
   /<reserved_special_token_\d{1,6}>/,
