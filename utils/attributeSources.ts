@@ -6,11 +6,21 @@ import {
 } from '../constants/citations';
 import { extractQueryTerms, stemPrefix } from './queryTerms';
 import { outsideThinkSegments } from './thinking';
+import { stripCitations } from './citations';
 
 export interface AttributedBlock {
   text: string;
   source: SourceDocument | null;
 }
+
+const BRACKETED_ORDINAL = /\[(\d{1,3})\]/g;
+const SOURCE_BLOCK_LABEL =
+  /(?<![\p{L}\p{N}])Source\s+(\d{1,3})(?![\p{L}\p{N}])/giu;
+
+const citedOrdinalsIn = (block: string): number[] => [
+  ...[...block.matchAll(BRACKETED_ORDINAL)].map((match) => Number(match[1])),
+  ...[...block.matchAll(SOURCE_BLOCK_LABEL)].map((match) => Number(match[1])),
+];
 
 const LIST_ITEM = /^\s*(?:[-*•]|\d+[.)])\s+/;
 const FENCE = /^\s*```/;
@@ -117,6 +127,34 @@ export const attributeSourcesByBlock = (
   const sourceStems = usable.map((source) =>
     stemsOf(`${source.name} ${source.passage ?? ''}`)
   );
+  const indexByOrdinal = new Map<number, number>();
+  usable.forEach((source, index) => {
+    if (source.ordinal !== undefined && !indexByOrdinal.has(source.ordinal)) {
+      indexByOrdinal.set(source.ordinal, index);
+    }
+  });
+
+  const mostVoted = (votes: Map<number, number>): number | null => {
+    let winner: number | null = null;
+    let best = 0;
+    for (const [index, count] of votes) {
+      if (count > best) {
+        best = count;
+        winner = index;
+      }
+    }
+    return winner;
+  };
+
+  const namedSourceIn = (text: string): number | null => {
+    const votes = new Map<number, number>();
+    for (const ordinal of citedOrdinalsIn(text)) {
+      const index = indexByOrdinal.get(ordinal);
+      if (index === undefined) continue;
+      votes.set(index, (votes.get(index) ?? 0) + 1);
+    }
+    return mostVoted(votes);
+  };
 
   let carried: number | null = null;
   const attributed = blocks.map((text) => {
@@ -126,14 +164,7 @@ export const attributeSourcesByBlock = (
       if (index === null) continue;
       votes.set(index, (votes.get(index) ?? 0) + 1);
     }
-    let winner: number | null = null;
-    let best = 0;
-    for (const [index, count] of votes) {
-      if (count > best) {
-        best = count;
-        winner = index;
-      }
-    }
+    let winner = namedSourceIn(text) ?? mostVoted(votes);
     if (winner === null) winner = carried;
     else carried = winner;
     return { text, index: winner };
@@ -143,14 +174,15 @@ export const attributeSourcesByBlock = (
   for (const block of attributed) {
     const previous = merged.at(-1);
     const source = block.index === null ? null : usable[block.index]!;
+    const text = stripCitations(block.text);
     if (previous && previous.source === source) {
       merged[merged.length - 1] = {
-        text: `${previous.text}\n\n${block.text}`,
+        text: `${previous.text}\n\n${text}`,
         source,
       };
       continue;
     }
-    merged.push({ text: block.text, source });
+    merged.push({ text, source });
   }
   return merged;
 };
