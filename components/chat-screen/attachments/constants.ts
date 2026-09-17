@@ -203,7 +203,7 @@ export const panelPalette = (theme: Theme) => ({
    * scrim over the photo grid, where a near-black `text.primary` disappears.
    */
   onControl: '#ffffff',
-  placeholder: theme.text.defaultTertiary,
+  placeholder: theme.text.defaultSecondary,
   accent: theme.bg.main,
   /**
    * The floating controls darken what they sit on — always, in both themes.

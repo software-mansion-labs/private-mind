@@ -14,6 +14,7 @@ import { StyleSheet, View } from 'react-native';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
 import { CAMERA, GRID, PANEL_CONTENT, panelPalette } from './constants';
+import { openAppSettings } from '../../../utils/openAppSettings';
 import SheetPlaceholder from './SheetPlaceholder';
 
 export interface CameraSheetHandle {
@@ -90,6 +91,7 @@ const CameraSheet = forwardRef<CameraSheetHandle, Props>(
     );
 
     const granted = !!permission?.granted;
+    const refused = !!permission && !permission.canAskAgain && !granted;
 
     return (
       <View
@@ -100,8 +102,10 @@ const CameraSheet = forwardRef<CameraSheetHandle, Props>(
         ]}
       >
         {!granted ? (
-          <SheetPlaceholder>
-            {permission && !permission.canAskAgain
+          <SheetPlaceholder
+            onOpenSettings={refused ? openAppSettings : undefined}
+          >
+            {refused
               ? 'Camera access is off. Turn it on in Settings to take a photo here.'
               : 'Waiting for camera access…'}
           </SheetPlaceholder>
@@ -142,7 +146,7 @@ const createStyles = (theme: Theme) =>
       overflow: 'hidden',
     },
     withoutPreview: {
-      backgroundColor: panelPalette(theme).materialFlat,
+      backgroundColor: panelPalette(theme).photoFill,
     },
     lifted: {
       opacity: 0,

@@ -44,6 +44,7 @@ import RotateLeft from '../../assets/icons/rotate_left.svg';
 import LinkIcon from '../../assets/icons/link-alt.svg';
 import { detectUrls } from '../../utils/web/url/urlDetection';
 import { hostname } from '../../utils/web/hostname';
+import { showPermissionToast } from '../../utils/permissionToast';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
@@ -456,10 +457,9 @@ const ChatBar = ({
 
     const permissionStatus = await AudioManager.requestRecordingPermissions();
     if (permissionStatus !== 'Granted') {
-      Toast.show({
-        type: 'defaultToast',
-        text1: 'Microphone permission is required to record messages.',
-      });
+      showPermissionToast(
+        'Microphone permission is required to record messages.'
+      );
       return;
     }
 

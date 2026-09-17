@@ -1,6 +1,11 @@
 import React from 'react';
-import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
-import { render } from '@testing-library/react-native';
+import {
+  Linking,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import CameraSheet from '../components/chat-screen/attachments/CameraSheet';
 import { panelPalette } from '../components/chat-screen/attachments/constants';
 import { lightTheme, type Theme } from '../styles/colors';
@@ -34,13 +39,13 @@ const renderSheet = () =>
   );
 
 describe('CameraSheet', () => {
-  it('stands on the panel material while it has no preview, so the notice reads', () => {
+  it('stands on the grey a picture sits on, not on black, while it has no preview', () => {
     const tree = renderSheet().toJSON() as unknown as {
       props: { style: StyleProp<ViewStyle> };
     };
     const style = StyleSheet.flatten(tree.props.style);
 
-    expect(style.backgroundColor).toBe(panelPalette(mockTheme).materialFlat);
+    expect(style.backgroundColor).toBe(panelPalette(mockTheme).photoFill);
     expect(style.backgroundColor).not.toBe(mockTheme.bg.lightbox);
   });
 
@@ -52,5 +57,17 @@ describe('CameraSheet', () => {
         'Camera access is off. Turn it on in Settings to take a photo here.'
       )
     ).toBeTruthy();
+  });
+
+  it('carries the user to the switch it names', () => {
+    const openSettings = jest
+      .spyOn(Linking, 'openSettings')
+      .mockResolvedValue(undefined);
+    const { getByTestId } = renderSheet();
+
+    fireEvent.press(getByTestId('sheet-open-settings'));
+
+    expect(openSettings).toHaveBeenCalled();
+    openSettings.mockRestore();
   });
 });

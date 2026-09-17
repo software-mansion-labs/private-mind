@@ -1,19 +1,36 @@
 import React, { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
 import { fontFamily } from '../../../styles/fontStyles';
-import { panelPalette } from './constants';
+import { panelPalette, PRESS_ANYWHERE } from './constants';
+
+interface Props {
+  children: ReactNode;
+  /** Given only when the sheet is empty because a permission was refused —
+   *  the text alone cannot get the user to the switch it names. */
+  onOpenSettings?: () => void;
+}
 
 /**
  * What a sheet shows when it has no content: the grid while the library loads
  * or stays denied, the camera while it waits for permission.
  */
-const SheetPlaceholder = ({ children }: { children: ReactNode }) => {
+const SheetPlaceholder = ({ children, onOpenSettings }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   return (
     <View style={styles.placeholder}>
       <Text style={styles.placeholderText}>{children}</Text>
+      {onOpenSettings && (
+        <TouchableOpacity
+          onPress={onOpenSettings}
+          style={styles.action}
+          pressRetentionOffset={PRESS_ANYWHERE}
+          testID="sheet-open-settings"
+        >
+          <Text style={styles.actionLabel}>Open Settings</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -33,5 +50,17 @@ const createStyles = (theme: Theme) =>
       fontSize: 15,
       fontFamily: fontFamily.regular,
       textAlign: 'center',
+    },
+    action: {
+      marginTop: 16,
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+      borderRadius: 999,
+      backgroundColor: panelPalette(theme).accent,
+    },
+    actionLabel: {
+      color: theme.text.contrastPrimary,
+      fontSize: 15,
+      fontFamily: fontFamily.medium,
     },
   });

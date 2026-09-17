@@ -1,7 +1,16 @@
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { BOTTOM_BAR, GRID, PANEL_CONTENT, type Frame } from './constants';
+import {
+  BOTTOM_BAR,
+  GRID,
+  PANEL_CONTENT,
+  panelPalette,
+  type Frame,
+} from './constants';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
+import { Theme } from '../../../styles/colors';
+import { openAppSettings } from '../../../utils/openAppSettings';
 import SheetPlaceholder from './SheetPlaceholder';
 import PhotoCell, { slotSize } from './PhotoCell';
 import type { LibraryPhoto, LibraryStatus } from './usePhotoLibrary';
@@ -34,6 +43,7 @@ const PhotoGrid = forwardRef<PhotoGridHandle, Props>(
     { width, height, photos, status, selected, lifting, onTogglePhoto },
     handle
   ) {
+    const { styles } = useThemedStyles(createStyles);
     const listWidth = width + GRID.gap;
     const slot = slotSize(listWidth);
     const listRef = useRef<FlashListRef<LibraryPhoto>>(null);
@@ -91,7 +101,9 @@ const PhotoGrid = forwardRef<PhotoGridHandle, Props>(
             showsVerticalScrollIndicator={false}
           />
         ) : (
-          <SheetPlaceholder>
+          <SheetPlaceholder
+            onOpenSettings={status === 'denied' ? openAppSettings : undefined}
+          >
             {status === 'loading'
               ? 'Loading photos…'
               : status === 'empty'
@@ -106,14 +118,17 @@ const PhotoGrid = forwardRef<PhotoGridHandle, Props>(
 
 export default PhotoGrid;
 
-const styles = StyleSheet.create({
-  root: {
-    // Deliberately no background: the panel's material shows through the gaps.
-    ...PANEL_CONTENT,
-    overflow: 'hidden',
-  },
-  /** Lets the last row scroll clear of the floating bar. */
-  footer: {
-    height: BOTTOM_BAR.inset + BOTTOM_BAR.pillHeight + 24,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    root: {
+      ...PANEL_CONTENT,
+      // The gaps between photos show this, not the panel's material — the same
+      // grey a picture sits on once it reaches the chat.
+      backgroundColor: panelPalette(theme).photoFill,
+      overflow: 'hidden',
+    },
+    /** Lets the last row scroll clear of the floating bar. */
+    footer: {
+      height: BOTTOM_BAR.inset + BOTTOM_BAR.pillHeight + 24,
+    },
+  });
