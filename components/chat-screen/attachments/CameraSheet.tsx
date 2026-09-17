@@ -10,60 +10,11 @@ import React, {
   useImperativeHandle,
   useRef,
 } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import { StyleSheet, View } from 'react-native';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
-import { CAMERA, GRID, PANEL_CONTENT, panelPalette } from './constants';
+import { CAMERA, GRID, PANEL_CONTENT } from './constants';
 import SheetPlaceholder from './SheetPlaceholder';
-
-/**
- * The four slivers between the preview's square corners and the sheet's
- * rounded ones, painted in the panel's own material.
- *
- * Android's preview is a `SurfaceView` composited straight to the screen, so
- * the sheet's radius and its `overflow: hidden` never reach it and it paints
- * its corners square over a panel that is round everywhere else. Nothing can
- * clip it, so the corners go back on top instead — in the colour the material
- * behind the sheet already shows along every other edge.
- */
-const CornerMask = ({
-  width,
-  height,
-  radius,
-  color,
-}: {
-  width: number;
-  height: number;
-  radius: number;
-  color: string;
-}) => {
-  const r = Math.min(radius, width / 2, height / 2);
-  const outer = `M0 0 H${width} V${height} H0 Z`;
-  const inner = [
-    `M${r} 0`,
-    `H${width - r}`,
-    `A${r} ${r} 0 0 1 ${width} ${r}`,
-    `V${height - r}`,
-    `A${r} ${r} 0 0 1 ${width - r} ${height}`,
-    `H${r}`,
-    `A${r} ${r} 0 0 1 0 ${height - r}`,
-    `V${r}`,
-    `A${r} ${r} 0 0 1 ${r} 0`,
-    'Z',
-  ].join(' ');
-
-  return (
-    <Svg
-      pointerEvents="none"
-      width={width}
-      height={height}
-      style={StyleSheet.absoluteFill}
-    >
-      <Path d={`${outer} ${inner}`} fill={color} fillRule="evenodd" />
-    </Svg>
-  );
-};
 
 export interface CameraSheetHandle {
   /** Captures a still and resolves to its `file://` uri, or null if the camera
@@ -101,7 +52,7 @@ const CameraSheet = forwardRef<CameraSheetHandle, Props>(
     { width, height, facing, flash, preview, lifting },
     handle
   ) {
-    const { styles, theme } = useThemedStyles(createStyles);
+    const { styles } = useThemedStyles(createStyles);
     const cameraRef = useRef<CameraView>(null);
     const [permission, requestPermission] = useCameraPermissions();
     const ready = useRef(false);
@@ -162,14 +113,6 @@ const CameraSheet = forwardRef<CameraSheetHandle, Props>(
               ready.current = true;
             }}
             style={[StyleSheet.absoluteFill, lifting && styles.lifted]}
-          />
-        ) : null}
-        {Platform.OS === 'android' && granted && preview && !lifting ? (
-          <CornerMask
-            width={width}
-            height={height}
-            radius={GRID.panelRadius}
-            color={panelPalette(theme).materialFlat}
           />
         ) : null}
       </View>

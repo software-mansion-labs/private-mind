@@ -20,13 +20,6 @@ import { BOTTOM_BAR, DURATION, GRID, GUTTER, panelPalette } from './constants';
 import type { useAttachmentPanel } from './useAttachmentPanel';
 import { usePhotoLibrary, type LibraryPhoto } from './usePhotoLibrary';
 
-/**
- * Whether the camera preview is cut to the panel like everything else. On
- * Android it is not: it is a `SurfaceView`, composited straight to the screen
- * past every clip, corner and opacity React can put in its way.
- */
-const PREVIEW_FITS_PANEL = Platform.OS !== 'android';
-
 interface Props {
   panel: ReturnType<typeof useAttachmentPanel>;
   width: number;
@@ -35,8 +28,6 @@ interface Props {
   /** Reports the height of the window the panel is hosted in, which is not
    *  always the app's own — see `useSheetGeometry`. */
   onWindowHeight?: (height: number) => void;
-  /** Bumped when an image row is tapped on a model that cannot take images. */
-  imagesUnsupportedAt?: number;
   /** The menu row whose work has not come back yet. */
   busyAction?: MenuAction | null;
   /** How low the menu shape may be drawn — see `useSheetGeometry`. */
@@ -73,7 +64,6 @@ const AttachmentOverlay = ({
   gridHeight,
   menuMaxBottom,
   onWindowHeight,
-  imagesUnsupportedAt,
   busyAction,
   sheetTop,
   sheetBottom,
@@ -134,26 +124,6 @@ const AttachmentOverlay = ({
     if (panel.mode === 'photos' || panel.mode === 'camera')
       setEnteredSheet(true);
     else if (panel.mode === 'closed') setEnteredSheet(false);
-  }, [panel.mode]);
-
-  /**
-   * Whether the panel is standing still at the sheet's own rect.
-   *
-   * Only Android asks. Through the morph the sheet's contents are laid out at
-   * full size and scaled by the panel's width, which leaves them taller than
-   * the panel has yet become — and there the preview was drawing through the
-   * bottom of the sheet and over the navigation bar rather than being cut. So
-   * it is given the preview only between one move and the next.
-   */
-  const [settled, setSettled] = useState(false);
-  useEffect(() => {
-    if (PREVIEW_FITS_PANEL) return;
-    if (panel.mode !== 'camera') {
-      setSettled(false);
-      return;
-    }
-    const timer = setTimeout(() => setSettled(true), DURATION.panel);
-    return () => clearTimeout(timer);
   }, [panel.mode]);
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: panel.open.get() }));
@@ -335,7 +305,6 @@ const AttachmentOverlay = ({
               <AttachmentMenu
                 onSelect={panel.onMenuAction}
                 imagesEnabled={imagesEnabled}
-                unsupportedAt={imagesUnsupportedAt}
                 busy={busyAction}
               />
             }
@@ -348,11 +317,7 @@ const AttachmentOverlay = ({
                   facing={facing}
                   flash={flash}
                   preview={
-                    PREVIEW_FITS_PANEL ||
-                    (panel.mode === 'camera' &&
-                      settled &&
-                      !panel.closing &&
-                      !isFlying)
+                    panel.mode === 'camera' && !panel.closing && !isFlying
                   }
                   lifting={isFlying}
                 />
