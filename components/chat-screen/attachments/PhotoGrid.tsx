@@ -34,7 +34,8 @@ const PhotoGrid = forwardRef<PhotoGridHandle, Props>(
     { width, height, photos, status, selected, lifting, onTogglePhoto },
     handle
   ) {
-    const slot = slotSize(width);
+    const listWidth = width + GRID.gap;
+    const slot = slotSize(listWidth);
     const listRef = useRef<FlashListRef<LibraryPhoto>>(null);
 
     useImperativeHandle(
@@ -67,6 +68,7 @@ const PhotoGrid = forwardRef<PhotoGridHandle, Props>(
       <View style={[styles.root, { width, height }]}>
         {status === 'ready' ? (
           <FlashList
+            style={{ width: listWidth, height: height + GRID.gap }}
             ref={listRef}
             data={photos}
             numColumns={GRID.columns}
@@ -108,6 +110,7 @@ const styles = StyleSheet.create({
   root: {
     // Deliberately no background: the panel's material shows through the gaps.
     ...PANEL_CONTENT,
+    overflow: 'hidden',
   },
   /** Lets the last row scroll clear of the floating bar. */
   footer: {

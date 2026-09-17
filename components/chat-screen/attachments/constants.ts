@@ -88,8 +88,9 @@ export const CAMERA_ASPECT = 4 / 3;
 
 export const GRID = {
   columns: 3,
-  /** Hairline of panel material showing between the cells. */
-  gap: 1.5,
+  /** Panel material showing between the cells, never past the sheet's edge —
+   *  see `PhotoGrid`, which lays the grid out one gap wider than it shows. */
+  gap: 3,
   cellRadius: 2,
   panelRadius: radius.eighteen,
   badgeSize: 23,
