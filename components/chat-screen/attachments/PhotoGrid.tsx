@@ -1,6 +1,8 @@
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
+import { Theme } from '../../../styles/colors';
 import { BOTTOM_BAR, GRID, PANEL_CONTENT, type Frame } from './constants';
 import SheetPlaceholder from './SheetPlaceholder';
 import PhotoCell, { slotSize } from './PhotoCell';
@@ -34,6 +36,7 @@ const PhotoGrid = forwardRef<PhotoGridHandle, Props>(
     { width, height, photos, status, selected, lifting, onTogglePhoto },
     handle
   ) {
+    const { styles } = useThemedStyles(createStyles);
     const slot = slotSize(width);
     const listRef = useRef<FlashListRef<LibraryPhoto>>(null);
 
@@ -53,8 +56,6 @@ const PhotoGrid = forwardRef<PhotoGridHandle, Props>(
           return {
             x: layout.x,
             y: layout.y - scrolled,
-            // The hairline on the right and bottom is the panel showing through,
-            // not part of the photo.
             w: layout.width - GRID.gap,
             h: layout.height - GRID.gap,
           };
@@ -104,13 +105,16 @@ const PhotoGrid = forwardRef<PhotoGridHandle, Props>(
 
 export default PhotoGrid;
 
-const styles = StyleSheet.create({
-  root: {
-    // Deliberately no background: the panel's material shows through the gaps.
-    ...PANEL_CONTENT,
-  },
-  /** Lets the last row scroll clear of the floating bar. */
-  footer: {
-    height: BOTTOM_BAR.inset + BOTTOM_BAR.pillHeight + 24,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    root: {
+      ...PANEL_CONTENT,
+      // Opaque on purpose: the gaps are cut out of this, and the panel's
+      // material behind them is a white rim along the sheet's own edge.
+      backgroundColor: theme.bg.lightbox,
+    },
+    /** Lets the last row scroll clear of the floating bar. */
+    footer: {
+      height: BOTTOM_BAR.inset + BOTTOM_BAR.pillHeight + 24,
+    },
+  });
