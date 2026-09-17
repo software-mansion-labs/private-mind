@@ -13,7 +13,7 @@ import React, {
 import { StyleSheet, View } from 'react-native';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
-import { CAMERA, GRID, PANEL_CONTENT } from './constants';
+import { CAMERA, GRID, PANEL_CONTENT, panelPalette } from './constants';
 import SheetPlaceholder from './SheetPlaceholder';
 
 export interface CameraSheetHandle {
@@ -92,7 +92,13 @@ const CameraSheet = forwardRef<CameraSheetHandle, Props>(
     const granted = !!permission?.granted;
 
     return (
-      <View style={[styles.root, { width, height }]}>
+      <View
+        style={[
+          styles.root,
+          !granted && styles.withoutPreview,
+          { width, height },
+        ]}
+      >
         {!granted ? (
           <SheetPlaceholder>
             {permission && !permission.canAskAgain
@@ -134,6 +140,9 @@ const createStyles = (theme: Theme) =>
       borderRadius: GRID.panelRadius,
       borderCurve: 'continuous',
       overflow: 'hidden',
+    },
+    withoutPreview: {
+      backgroundColor: panelPalette(theme).materialFlat,
     },
     lifted: {
       opacity: 0,
