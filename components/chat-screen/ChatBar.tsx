@@ -185,10 +185,11 @@ const ChatBar = ({
       .finally(() => setFilesBusy(false));
   }, [pickDocument]);
 
-  // Answered inside the panel rather than with a toast — see `AttachmentMenu`.
-  const [imagesUnsupportedAt, setImagesUnsupportedAt] = useState(0);
   const showImagesUnsupported = useCallback(() => {
-    setImagesUnsupportedAt(Date.now());
+    Toast.show({
+      type: 'defaultToast',
+      text1: 'This model does not support images',
+    });
   }, []);
 
   const panel = useAttachmentPanel({
@@ -622,7 +623,6 @@ const ChatBar = ({
           <AttachmentOverlay
             panel={panel}
             onWindowHeight={setPanelWindowHeight}
-            imagesUnsupportedAt={imagesUnsupportedAt}
             busyAction={filesBusy ? 'files' : null}
             width={screenWidth}
             gridWidth={gridWidth}

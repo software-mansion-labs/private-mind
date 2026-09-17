@@ -37,7 +37,12 @@ interface PanelOptions {
   onSelectFiles?: () => void | Promise<DocumentPickOutcome | void>;
   /** Guard for the image rows when the loaded model has no vision support. */
   canAttachImages?: boolean;
-  /** Called when an image row is tapped on a model that cannot take images. */
+  /**
+   * Called when an image row is tapped on a model that cannot take images. The
+   * panel collapses first: the answer is a toast, and on Android a toast is
+   * drawn in the app's own window, which is underneath the one the panel is
+   * hosted in.
+   */
   onImagesUnsupported?: () => void;
 }
 
@@ -237,6 +242,7 @@ export function useAttachmentPanel({
         return;
       }
       if (!canAttachImages) {
+        dismiss();
         onImagesUnsupported?.();
         return;
       }

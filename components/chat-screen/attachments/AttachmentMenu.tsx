@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
@@ -39,20 +39,9 @@ const ITEMS: Item[] = [
   },
 ];
 
-/** How long the image rows say why they are dimmed. */
-const NOTICE_MS = 2400;
-const UNSUPPORTED_LABEL = 'Images not supported';
-
 interface Props {
   onSelect: (action: MenuAction) => void;
   imagesEnabled?: boolean;
-  /**
-   * Bumped every time an image row is tapped on a model that cannot take
-   * images. The answer belongs here rather than in a toast: on Android the
-   * panel is hosted in the window above the keyboard and a toast is drawn in
-   * the app's own, which means underneath it.
-   */
-  unsupportedAt?: number;
   /** The row whose work is still in flight — the OS can take seconds to put a
    *  picker up, and a row that does nothing reads as a row that failed. */
   busy?: MenuAction | null;
@@ -65,22 +54,9 @@ interface Props {
 const AttachmentMenu = ({
   onSelect,
   imagesEnabled = true,
-  unsupportedAt = 0,
   busy = null,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
-  const [notice, setNotice] = useState(false);
-
-  useEffect(() => {
-    if (!unsupportedAt) return;
-    setNotice(true);
-    const timer = setTimeout(() => setNotice(false), NOTICE_MS);
-    return () => clearTimeout(timer);
-  }, [unsupportedAt]);
-
-  useEffect(() => {
-    if (imagesEnabled) setNotice(false);
-  }, [imagesEnabled]);
 
   return (
     <View style={styles.root}>
@@ -89,10 +65,7 @@ const AttachmentMenu = ({
         return (
           <MenuRow
             key={item.action}
-            label={dimmed && notice ? UNSUPPORTED_LABEL : item.label}
-            accessibilityLabel={
-              dimmed ? `${item.label}, ${UNSUPPORTED_LABEL}` : item.label
-            }
+            label={item.label}
             icon={item.icon}
             testID={item.testID}
             dimmed={dimmed}
