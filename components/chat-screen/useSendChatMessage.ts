@@ -11,11 +11,6 @@ import {
 } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 
-/**
- * Why a send did not happen. The composer has to say which — it used to be
- * told only that the answer was `false`, and reported every one of these as a
- * response still running.
- */
 export type SendRefusal =
   | 'nothing-to-send'
   | 'model-loading'
@@ -120,10 +115,6 @@ export const useSendChatMessage = ({
     } else if (busy || isGenerating) {
       return 'busy';
     }
-    // The store holds the loaded model, not the selected one, and nothing loads
-    // it until the composer is focused or an attachment is reached for. A load
-    // already in flight is not a refusal: `sendChatMessage` waits on the load
-    // chain before it reads the model, so the send queues behind it.
     if (!llm.model && !isModelLoading) return 'model-loading';
 
     messagesRef.current?.onMessageSent();

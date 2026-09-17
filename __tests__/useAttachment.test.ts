@@ -53,7 +53,6 @@ beforeEach(() => {
 
 type HookResult = { current: ReturnType<typeof useAttachment> };
 
-/** Hands the hook a photo the way the grid and the camera do. */
 const attachPhoto = async (result: HookResult, uri: string, id = uri) => {
   await act(async () => {
     await result.current.addImages([{ id, uri }]);
@@ -82,7 +81,6 @@ describe('useAttachment', () => {
     expect(result.current.attachments[0].type).toBe('image');
     expect(result.current.attachments[0].uri).toBe('file://photo.jpg');
     expect(result.current.attachments[0].status).toBe('ready');
-    // Nothing to resolve: Android and the camera already hand back a file.
     expect(mockGetAssetInfoAsync).not.toHaveBeenCalled();
   });
 
@@ -93,7 +91,6 @@ describe('useAttachment', () => {
     const { result } = renderHook(() => useAttachment());
     await attachPhoto(result, 'ph://asset-1', 'asset-1');
 
-    // Never over the network: the picker must not block on an iCloud fetch.
     expect(mockGetAssetInfoAsync).toHaveBeenCalledWith('asset-1', {
       shouldDownloadFromNetwork: false,
     });
@@ -158,7 +155,6 @@ describe('useAttachment', () => {
         await view.result.current.pickDocument();
       });
 
-      // The panel is still collapsing; the download sheet waits it out.
       expect(downloadSheet.present).not.toHaveBeenCalled();
 
       act(() => {

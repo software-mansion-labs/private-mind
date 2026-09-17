@@ -4,42 +4,23 @@ import { type Theme } from '../../../styles/colors';
 import { radius } from '../../../constants/design-system';
 import { MENU_ROW } from '../../menu/MenuRow';
 
-// Geometry below is measured off the reference recording (1290×2796 @3x, a
-// 430×932pt window) and divided down to points.
-
-/**
- * The composer's own horizontal inset (ChatBar's `paddingHorizontal`). The
- * panel shares it, which is what keeps its left edge still through the morph.
- */
 export const GUTTER = 16;
 
-/**
- * Our composer, not the reference's. The + is a 36pt `CircleButton` in the
- * bottom row of a `padding: 16` card, where the reference has a 30pt hit target
- * in a 48pt row — so every anchor below is re-measured against ours.
- */
 export const COMPOSER = {
-  /** ChatBar container's padding above the bottom safe-area inset. */
   barPaddingBottom: 16,
-  /** The input card's own padding. */
   cardPadding: 16,
-  /** The + button — and so the diameter of the well the panel grows out of. */
   plusWell: 36,
   stripPaddingTop: 8,
-  /** Gap between the strip and the text row — the card's own `gap`. */
   stripGap: 8,
   thumbSize: 72,
   thumbRadius: 8,
   thumbGap: 8,
-  /** How far right the + glyph slides to clear the space the panel opens on. */
   plusSlide: 16,
 } as const;
 
-/** Window X of the + button's centre. */
 export const PLUS_CENTER_X =
   GUTTER + COMPOSER.cardPadding + COMPOSER.plusWell / 2;
 
-/** How far above the composer card's bottom edge the + button's centre sits. */
 export const PLUS_CENTER_ABOVE_BOTTOM =
   COMPOSER.cardPadding + COMPOSER.plusWell / 2;
 
@@ -48,48 +29,23 @@ export const COMPOSER_STRIP_HEIGHT =
 
 export const MENU = {
   width: 280,
-  /** The rows are the app's regular menu rows — see `MenuRow`. */
   itemHeight: MENU_ROW.regular.height,
   paddingVertical: 8,
   paddingHorizontal: 16,
-  /** The composer card's corner: the menu grows out of that card and the
-   *  sheet later lands flush on its bottom edge, so all three share it. */
   radius: radius.eighteen,
-  /** The menu's centre sits this far below the + button's centre. */
   centerOffset: 7,
 } as const;
 
-/** Camera / Photos / Files — the reference's Plugins and Think harder rows have
- *  no counterpart here. */
 export const MENU_ITEMS = 3;
 export const MENU_HEIGHT =
   MENU.itemHeight * MENU_ITEMS + MENU.paddingVertical * 2;
 
-/**
- * Gap between the safe-area top and the sheet's top edge.
- *
- * The reference hangs both shapes off one line centred on the + button, which
- * works because its menu is 354pt tall and its keyboard is always up. Ours is
- * 222pt with three rows, and with the keyboard down the + sits just above the
- * screen edge — the grid and the camera came out a quarter of the screen tall.
- * The sheet is a full-bleed surface, so it hangs from the top of the screen
- * instead and does not move with the keyboard at all.
- */
 export const SHEET_TOP_GAP = 44;
 
-/**
- * The camera's preview keeps a portrait 3:4 frame instead of filling the
- * sheet. The grid wants every pixel it can get; a preview stretched down a
- * 20:9 phone does not — it reads as a tall black slab and crops most of what
- * the lens sees. This is a deliberate second footprint: the reference has one,
- * because there its sheet was already close to this shape.
- */
 export const CAMERA_ASPECT = 4 / 3;
 
 export const GRID = {
   columns: 3,
-  /** Panel material showing between the cells, never past the sheet's edge —
-   *  see `PhotoGrid`, which lays the grid out one gap wider than it shows. */
   gap: 3,
   cellRadius: 2,
   panelRadius: radius.eighteen,
@@ -100,7 +56,6 @@ export const GRID = {
 } as const;
 
 export const BOTTOM_BAR = {
-  /** Inset from the sheet's own edge, the same on all three sides. */
   inset: 25,
   controlSize: 46,
   backIcon: 22,
@@ -110,12 +65,10 @@ export const BOTTOM_BAR = {
 } as const;
 
 export const CAMERA = {
-  /** 68pt ring around a 60pt disc — 4pt of material showing all the way round. */
   shutterSize: 68,
   shutterPadding: 4,
   optionIcon: 22,
   optionGap: 10,
-  /** Glass at zero size has nothing to refract, so options start here, not at 0. */
   optionStartScale: 0.35,
   quality: 0.85,
 } as const;
@@ -125,7 +78,6 @@ export const EASE_OUT = Easing.out(Easing.poly(4));
 
 export const SPRING = {
   panel: { duration: 400, dampingRatio: 0.8 },
-  /** Every close. dampingRatio 1: overshoot would take the rect past the +. */
   panelOut: { duration: 400, dampingRatio: 1 },
   attach: { duration: 400 },
   strip: { duration: 400 },
@@ -139,22 +91,12 @@ export const DURATION = {
   crossfade: 150,
   blur: 160,
   pill: 160,
-  /** How long the + glyph gets to itself before the panel mounts. */
   plusLead: 30,
 } as const;
 
-/**
- * Keeps a press alive however far the finger travels, for anything inside the
- * panel.
- *
- * The panel's position is animated on the UI thread, so the layout React knows
- * about is the one the panel had before it opened. `Pressability` measures the
- * row against that stale rect on touch-down and compares every move to it,
- * finds the finger outside and cancels the press — so a row lit up under a
- * real finger and then did nothing, while a synthetic tap, which sends no move
- * events at all, worked. Far larger than any screen, because the rect it is
- * correcting for can be anywhere.
- */
+// The panel's position is animated on the UI thread, so React measures a row
+// against the rect it had before the panel opened; without this every move
+// event cancels the press.
 export const PRESS_ANYWHERE = {
   top: 10000,
   bottom: 10000,
@@ -162,8 +104,6 @@ export const PRESS_ANYWHERE = {
   right: 10000,
 } as const;
 
-/** Panel contents are laid out at natural size, anchored top-left, and scaled
- *  by the panel. */
 export const PANEL_CONTENT = {
   position: 'absolute',
   left: 0,
@@ -171,7 +111,6 @@ export const PANEL_CONTENT = {
   transformOrigin: 'top left',
 } as const satisfies ViewStyle;
 
-/** Window Y of the MENU's top edge — centred on the + button. */
 export function menuTopFromComposerBottom(bottom: number) {
   'worklet';
   return (
@@ -191,47 +130,14 @@ export function mix(t: number, a: number, b: number) {
   return a + (b - a) * t;
 }
 
-/**
- * The reference is a fixed dark surface; ours follows the app theme. Every
- * colour the panel uses is derived from a theme token here so light and dark
- * both land on the material the reference measured against black.
- */
 export const panelPalette = (theme: Theme) => ({
   text: theme.text.primary,
-  /**
-   * Glyphs on the floating glass controls. Always light: they sit on a dark
-   * scrim over the photo grid, where a near-black `text.primary` disappears.
-   */
   onControl: '#ffffff',
   placeholder: theme.text.defaultSecondary,
   accent: theme.bg.main,
-  /**
-   * The floating controls darken what they sit on — always, in both themes.
-   * They hover over photos and an empty grid's pale placeholders alike, so a
-   * scrim that followed the theme would go white in the light one and take the
-   * light glyphs with it.
-   *
-   * Lighter than the reference's 0.31, which it measured against glass that was
-   * already dark-scheme over a dark grid. Stacked on ours it buried the photos.
-   */
   controlScrim: 'rgba(0, 0, 0, 0.18)',
-  /**
-   * The panel's surface: the app's sheet surface, as a flat fill rather than a
-   * blur or glass — those are a `UIVisualEffectView`, which on iOS keeps a
-   * corner of its own and would not take the panel's; see `PanelMaterial`.
-   * The same surface the option sheets stand on, so the rows' wells read
-   * against it in both themes.
-   */
   materialFlat: theme.bg.softPrimary,
-  /**
-   * Laid over the chat while the panel is up. The panel's surface is the same
-   * grey as the app's cards, and the What's New card sits at the same gutter
-   * with a corner of its own — so the card showed through the sheet's corner
-   * and read as a second border around it. Darkening what is behind is what
-   * tells the two apart.
-   */
   backdrop: 'rgba(0, 0, 0, 0.22)',
-  /** Fill behind a photo for the frames before it decodes. */
   photoFill: theme.bg.softSecondary,
 });
 

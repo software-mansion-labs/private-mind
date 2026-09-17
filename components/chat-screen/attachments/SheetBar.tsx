@@ -18,29 +18,13 @@ import { Glass } from './Glass';
 
 interface Props {
   width: number;
-  /**
-   * Y of the bar's top edge, in the window the panel is hosted in. Positioned
-   * off the same numbers as the panel rather than by `bottom`, so the two
-   * cannot drift apart — see `useSheetGeometry` for whose window that is.
-   */
   top: number;
-  /** Whether the controls are wearing their glass and taking touches. */
   active: boolean;
-  /** Fades the glyphs with the sheet. The glass itself cannot be faded, but
-   *  anything drawn inside it can. */
   fade: SharedValue<number>;
   onBack: () => void;
-  /** The sheet's own controls, filling the bar to the right of the ‹. */
   children: ReactNode;
 }
 
-/**
- * The row of controls floating over a sheet. Deliberately not part of either
- * sheet and not part of the panel: these are glass, and the sheet's subtree has
- * its opacity animated through the morph, which would leave them rendering as
- * nothing. Nothing in here clips — a glass control draws its rim and press
- * bulge outside its own bounds.
- */
 const SheetBar = ({ width, top, active, fade, onBack, children }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const backStyle = useAnimatedStyle(() => ({ opacity: fade.get() }));
@@ -48,9 +32,6 @@ const SheetBar = ({ width, top, active, fade, onBack, children }: Props) => {
   return (
     <View
       pointerEvents={active ? 'box-none' : 'none'}
-      // A faded-out bar is still a bar to a screen reader: its ‹ and its
-      // confirm pill sit right over the menu's rows and would be read out
-      // there.
       accessibilityElementsHidden={!active}
       importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}
       style={[styles.bar, { width, top }]}
@@ -91,8 +72,6 @@ const createStyles = (_theme: Theme) =>
   StyleSheet.create({
     bar: {
       position: 'absolute',
-      // The controls belong to the sheet, so they sit inside its edges rather
-      // than the screen's. `top` comes from the caller — see the prop.
       left: GUTTER,
       height: BOTTOM_BAR.controlSize,
       flexDirection: 'row',

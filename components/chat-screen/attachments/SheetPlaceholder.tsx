@@ -7,15 +7,9 @@ import { panelPalette, PRESS_ANYWHERE } from './constants';
 
 interface Props {
   children: ReactNode;
-  /** Given only when the sheet is empty because a permission was refused —
-   *  the text alone cannot get the user to the switch it names. */
   onOpenSettings?: () => void;
 }
 
-/**
- * What a sheet shows when it has no content: the grid while the library loads
- * or stays denied, the camera while it waits for permission.
- */
 const SheetPlaceholder = ({ children, onOpenSettings }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   return (

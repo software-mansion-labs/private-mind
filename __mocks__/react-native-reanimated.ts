@@ -71,7 +71,11 @@ module.exports = {
     callback?.(true);
     return val;
   },
-  withSpring: (val: any, _config: any, callback?: (finished: boolean) => void) => {
+  withSpring: (
+    val: any,
+    _config: any,
+    callback?: (finished: boolean) => void
+  ) => {
     callback?.(true);
     return val;
   },

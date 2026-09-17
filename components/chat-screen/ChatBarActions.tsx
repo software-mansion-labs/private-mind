@@ -35,7 +35,6 @@ interface Props {
   onSpeechInput: () => void;
   thinkingEnabled: boolean;
   onThinkingToggle?: () => void;
-  /** 0 the + is in place → 1 it has cleared the space the panel opens on. */
   plusOut: SharedValue<number>;
   webSearchEnabled?: boolean;
   onWebSearchToggle?: () => void;
@@ -59,10 +58,6 @@ const ChatBarActions = ({
   onWebSearchToggle,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
-  // The whole button, not the glyph inside it: the disc is opaque, and fading
-  // the glyph alone leaves a blank one wherever the panel does not cover the
-  // composer. Only the drawing moves — the backdrop is what takes the tap that
-  // dismisses the panel.
   const plusStyle = useAnimatedStyle(() => ({
     opacity: interpolate(plusOut.get(), [0, 0.75], [1, 0], Extrapolation.CLAMP),
     transform: [{ translateX: plusOut.get() * COMPOSER.plusSlide }],

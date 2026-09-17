@@ -13,20 +13,6 @@ import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { SvgComponent } from '../../utils/SvgComponent';
 
-/**
- * The one row spec for "pick an action from a short list": an icon, a label,
- * nothing else. Two sizes, not five.
- *
- * - `regular` — the option sheets and the attachment panel: a 44pt square well
- *   on `bg.softSecondary`, a 24pt glyph, the `md` label.
- * - `compact` — the small card that floats next to a message: no well, a 16pt
- *   glyph, the `sm` label.
- *
- * A row paints no background and never measures itself. Its height is fixed
- * here so a container can lay rows out from these numbers alone — the
- * attachment panel scales its rows through a morph and would fight anything
- * that sized or animated itself.
- */
 export const MENU_ROW = {
   regular: {
     height: 76,
@@ -51,15 +37,9 @@ interface Props {
   icon: SvgComponent;
   onPress?: () => void;
   variant?: MenuRowVariant;
-  /** Destructive rows take the error colour for glyph and label. */
   destructive?: boolean;
-  /** Present but unavailable: dimmed, and still pressable so the caller can
-   *  say why. */
   dimmed?: boolean;
-  /** Waiting on what the row started: a spinner stands in for the glyph. */
   busy?: boolean;
-  /** How far the finger may stray before the press is dropped. Rows in a
-   *  container whose position is animated need this — see `PRESS_ANYWHERE`. */
   pressRetentionOffset?: PressableProps['pressRetentionOffset'];
   accessibilityLabel?: string;
   testID?: string;
@@ -110,8 +90,6 @@ const MenuRow = ({
       ) : (
         <Icon width={size} height={size} style={{ color }} />
       )}
-      {/* The row's height is fixed here so a container can lay rows out from
-          these numbers alone, so a long label is clipped rather than wrapped. */}
       <Text numberOfLines={1} style={[styles.label, { color }]}>
         {label}
       </Text>

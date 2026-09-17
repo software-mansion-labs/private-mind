@@ -42,15 +42,9 @@ const ITEMS: Item[] = [
 interface Props {
   onSelect: (action: MenuAction) => void;
   imagesEnabled?: boolean;
-  /** The row whose work is still in flight — the OS can take seconds to put a
-   *  picker up, and a row that does nothing reads as a row that failed. */
   busy?: MenuAction | null;
 }
 
-/**
- * Camera / Photos / Files. Laid out at its natural size and never measured,
- * because the panel scales it.
- */
 const AttachmentMenu = ({
   onSelect,
   imagesEnabled = true,

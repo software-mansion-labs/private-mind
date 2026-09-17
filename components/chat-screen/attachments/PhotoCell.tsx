@@ -13,8 +13,6 @@ import { fontFamily } from '../../../styles/fontStyles';
 import { GRID, PRESS_ANYWHERE, SPRING, panelPalette } from './constants';
 import type { LibraryPhoto } from './usePhotoLibrary';
 
-/** Width of one of the three columns. No gutter to remove: the sheet carries
- *  the inset and the grid runs edge to edge inside it. */
 export function slotSize(width: number) {
   return width / GRID.columns;
 }
@@ -22,12 +20,7 @@ export function slotSize(width: number) {
 interface Props {
   photo: LibraryPhoto;
   slot: number;
-  /** 1-based tap order, or 0 when the photo isn't selected. */
   order: number;
-  /**
-   * True once this photo has left for the composer. Cut rather than faded: a
-   * copy is flying out of this exact rect on the same frame.
-   */
   lifted: boolean;
   onPress: (photo: LibraryPhoto) => void;
 }
@@ -41,8 +34,6 @@ const PhotoCell = memo(function PhotoCellComponent({
 }: Props) {
   const { styles } = useThemedStyles(createStyles);
   const selected = order > 0;
-  // Selection is the badge and nothing else: the thumbnail does not shrink,
-  // dim, or round its corners.
   const progress = useDerivedValue(() =>
     withSpring(selected ? 1 : 0, SPRING.badge)
   );
@@ -86,8 +77,6 @@ const createStyles = (theme: Theme) => {
       position: 'absolute',
       left: 0,
       top: 0,
-      // A hairline of the panel shows through on the right and bottom of every
-      // cell; paired with the small radius that is what separates the photos.
       right: GRID.gap,
       bottom: GRID.gap,
       borderRadius: GRID.cellRadius,

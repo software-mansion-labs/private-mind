@@ -25,16 +25,10 @@ interface Props {
   width: number;
   gridWidth: number;
   gridHeight: number;
-  /** Reports the height of the window the panel is hosted in, which is not
-   *  always the app's own — see `useSheetGeometry`. */
   onWindowHeight?: (height: number) => void;
-  /** The menu row whose work has not come back yet. */
   busyAction?: MenuAction | null;
-  /** How low the menu shape may be drawn — see `useSheetGeometry`. */
   menuMaxBottom: number;
-  /** Window Y of the sheet's top edge — one footprint for grid and camera. */
   sheetTop: number;
-  /** Window Y of its bottom edge, inside the safe area. */
   sheetBottom: number;
   composerBottom: SharedValue<number>;
   rowsBelowStrip: SharedValue<number>;
@@ -43,20 +37,11 @@ interface Props {
   flights: Flight[];
   isFlying: boolean;
   attachAndLeave: (leaving: Flight[]) => void;
-  /** Ids already in the composer — a duplicate id breaks the strip's keys. */
   attachedIds: string[];
-  /** How many photos may be picked at once. One, while the send path is
-   *  single-image. */
   maxSelection: number;
   imagesEnabled: boolean;
 }
 
-/**
- * Everything that lives over the keyboard while the panel is up: the dismiss
- * backdrop, the morphing panel, the sheet's floating controls and the photos
- * crossing to the composer. Assembled here rather than in `ChatBar` so the bar
- * keeps only what it draws itself — the + glyph and the strip.
- */
 const AttachmentOverlay = ({
   panel,
   width,
@@ -79,46 +64,24 @@ const AttachmentOverlay = ({
   imagesEnabled,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
-  /** The bar rides the sheet's bottom edge, computed the same way the panel
-   *  computes its own — see `SheetBar`. */
   const barTop = sheetBottom - BOTTOM_BAR.inset - BOTTOM_BAR.controlSize;
   const gridRef = useRef<PhotoGridHandle>(null);
   const cameraRef = useRef<CameraSheetHandle>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [facing, setFacing] = useState<CameraType>('back');
   const [flash, setFlash] = useState<FlashMode>('off');
-  /** True from the shutter tap until the capture is in hand — one at a time. */
   const capturing = useRef(false);
 
-  /**
-   * The library is read the first time the photo sheet is actually opened, and
-   * stays warm after that. This hook lives at the overlay's level, which is
-   * mounted for the whole life of the composer — gating on `sheet` alone would
-   * ask a privacy-first app's user for their photo library on launch, since
-   * `photos` is the sheet the panel defaults to.
-   */
   const [photosOpened, setPhotosOpened] = useState(false);
   useEffect(() => {
     if (panel.mode === 'photos') setPhotosOpened(true);
   }, [panel.mode]);
-  /** Reading starts a beat earlier than asking — see `usePhotoLibrary`. */
   const [panelOpened, setPanelOpened] = useState(false);
   useEffect(() => {
     if (panel.mode !== 'closed') setPanelOpened(true);
   }, [panel.mode]);
   const { photos, status } = usePhotoLibrary(panelOpened, photosOpened);
 
-  /**
-   * Whether this visit to the panel has been inside a sheet yet.
-   *
-   * The panel keeps both of its layers mounted so the morph can crossfade
-   * between them, but the sheet's *contents* have no business existing while
-   * the menu is up: profiling the + tap showed FlashList, 24 photo cells and 36
-   * images mounting under a menu nobody had left yet — about 100ms of React
-   * work landing on the frames the panel is trying to open in. It stays mounted
-   * once entered, so `‹` back to the menu still crossfades, and goes when the
-   * panel does.
-   */
   const [enteredSheet, setEnteredSheet] = useState(false);
   useEffect(() => {
     if (panel.mode === 'photos' || panel.mode === 'camera')
@@ -135,8 +98,6 @@ const AttachmentOverlay = ({
         if (prev.includes(photo.id)) {
           return prev.filter((id) => id !== photo.id);
         }
-        // At a cap of one this reads as "pick a different photo" rather than
-        // "you cannot pick that", which is what a single-image send path wants.
         return [...prev, photo.id].slice(-maxSelection);
       });
     },
@@ -147,19 +108,11 @@ const AttachmentOverlay = ({
     const picked = selected
       .map((id) => photos.find((photo) => photo.id === id))
       .filter((photo): photo is LibraryPhoto => !!photo)
-      // The grid does not know what is already in the composer, and an id is
-      // the strip's React key — two rows under one key breaks their layout
-      // animations.
       .filter((photo) => !attachedIds.includes(photo.id));
     if (!picked.length) return;
     Feedback.attach();
 
-    // Where each photo is sitting on the frame it leaves. The panel is at rest
-    // and fully morphed here, so its own frame is the offset from the window —
-    // no measure pass, and nothing that can land a frame late.
     const gridTop = sheetTop;
-    // Only used for a photo the list has not laid out. The middle of the sheet
-    // is the least wrong answer: it is where the sheet is collapsing towards.
     const cellSize = gridWidth / GRID.columns - GRID.gap;
     const fallback = {
       x: GUTTER + (gridWidth - cellSize) / 2,
@@ -190,11 +143,6 @@ const AttachmentOverlay = ({
     sheetTop,
   ]);
 
-  /**
-   * The shutter. The picture leaves as the whole sheet — the preview's rect,
-   * with the sheet's own corners — and the preview underneath is cut on the
-   * frame the copy appears.
-   */
   const capturePhoto = useCallback(async () => {
     if (capturing.current) return;
     capturing.current = true;
@@ -226,15 +174,7 @@ const AttachmentOverlay = ({
     setFlash((was) => (was === 'off' ? 'on' : 'off'));
   }, []);
 
-  // The panel drops the selection on its way out of a sheet; this is the other
-  // half of that, kept here because the selection is the overlay's own state.
   const clearSelection = useCallback(() => setSelected([]), []);
-  /**
-   * When the sheet's floating bar was last left behind. `‹` takes the panel
-   * back to the menu, which makes the bar untouchable on that very frame while
-   * it is still on screen fading — so a second `‹` a moment later fell through
-   * to the backdrop and shut the whole panel instead of doing nothing.
-   */
   const barLeftAt = useRef(0);
   const previousMode = useRef(panel.mode);
   if (previousMode.current !== panel.mode) {
@@ -259,12 +199,8 @@ const AttachmentOverlay = ({
   }, [panel]);
 
   return (
-    // The sheet overlaps the keyboard by design, so it is hosted in the window
-    // above it.
     <OverKeyboardView visible={panel.mode !== 'closed'}>
       {panel.mode !== 'closed' ? (
-        // Nothing takes a touch once the photos are on their way: the sheet is
-        // leaving, and a backdrop tap would start a second close on top of it.
         <View
           key={resumeKey}
           pointerEvents={isFlying ? 'none' : 'box-none'}
@@ -292,8 +228,6 @@ const AttachmentOverlay = ({
             interactive={
               isFlying ? 'none' : panel.mode === 'menu' ? 'menu' : 'grid'
             }
-            // The material is the panel's, not the menu's: it stays on through
-            // the morph and goes only once the sheet is on its way out.
             glass={!panel.closing}
             open={panel.open}
             morph={panel.morph}
@@ -336,8 +270,8 @@ const AttachmentOverlay = ({
             }
           />
 
-          {/* The floating controls live beside the panel, not inside it: glass
-              under the panel's animated layers comes out flat. */}
+          {/* Outside the panel on purpose: glass under the panel's animated
+              opacity renders flat. */}
           {panel.sheet === 'camera' ? (
             <CameraBar
               width={gridWidth}
@@ -362,8 +296,6 @@ const AttachmentOverlay = ({
             />
           )}
 
-          {/* Above the sheet and outside its clip: the photos have left it, and
-              the last stretch is over the composer. */}
           <AttachmentFlight
             flights={flights}
             screenWidth={width}

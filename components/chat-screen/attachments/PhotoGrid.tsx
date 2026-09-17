@@ -20,30 +20,23 @@ interface Props {
   height: number;
   photos: LibraryPhoto[];
   status: LibraryStatus;
-  /** Ids in tap order — the index inside drives the badge number. */
   selected: string[];
-  /** True once the selected photos have left for the composer. */
   lifting: boolean;
   onTogglePhoto: (photo: LibraryPhoto) => void;
 }
 
 export interface PhotoGridHandle {
-  /** Where a photo is sitting right now, in the grid's own coordinates, or
-   *  null if the list has not laid that index out yet. */
   measureCell: (id: string) => Frame | null;
 }
 
-/**
- * Everything the panel shows once it has become the grid. Laid out at its full
- * on-screen size and then left alone: the panel scales this whole subtree
- * during the morph, so nothing in here has to know a transition is happening.
- */
 const PhotoGrid = forwardRef<PhotoGridHandle, Props>(
   function PhotoGridComponent(
     { width, height, photos, status, selected, lifting, onTogglePhoto },
     handle
   ) {
     const { styles } = useThemedStyles(createStyles);
+    // A gap wider and taller than the sheet, clipped by the root: the trailing
+    // gap of the last column and row falls outside instead of showing ground.
     const listWidth = width + GRID.gap;
     const slot = slotSize(listWidth);
     const listRef = useRef<FlashListRef<LibraryPhoto>>(null);
@@ -57,15 +50,11 @@ const PhotoGrid = forwardRef<PhotoGridHandle, Props>(
           if (!list || index < 0) return null;
           const layout = list.getLayout(index);
           if (!layout) return null;
-          // `getLayout` is in content coordinates; the scroll offset carries the
-          // list's own leading inset, so the inset has to go back in.
           const scrolled =
             list.getAbsoluteLastScrollOffset() - list.getFirstItemOffset();
           return {
             x: layout.x,
             y: layout.y - scrolled,
-            // The hairline on the right and bottom is the panel showing through,
-            // not part of the photo.
             w: layout.width - GRID.gap,
             h: layout.height - GRID.gap,
           };
@@ -93,8 +82,6 @@ const PhotoGrid = forwardRef<PhotoGridHandle, Props>(
               />
             )}
             extraData={`${selected.join()}|${lifting}`}
-            // The keyboard is up the whole time this grid is on screen. Without
-            // these the first tap is swallowed as "dismiss the keyboard".
             keyboardShouldPersistTaps="always"
             keyboardDismissMode="none"
             ListFooterComponent={<View style={styles.footer} />}
@@ -122,12 +109,9 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     root: {
       ...PANEL_CONTENT,
-      // The gaps between photos show this, not the panel's material — the same
-      // grey a picture sits on once it reaches the chat.
       backgroundColor: panelPalette(theme).photoFill,
       overflow: 'hidden',
     },
-    /** Lets the last row scroll clear of the floating bar. */
     footer: {
       height: BOTTOM_BAR.inset + BOTTOM_BAR.pillHeight + 24,
     },

@@ -63,8 +63,6 @@ import {
 
 const SENT_ECHO_WINDOW_MS = 300;
 
-/** What the composer says when a send does not happen. `image-not-saved` has
- *  already said it itself. */
 const REFUSAL_COPY: Record<SendRefusal, string | null> = {
   'nothing-to-send': 'Add a message or an attachment first.',
   'model-loading': 'Wait for the model to finish loading.',
@@ -159,8 +157,6 @@ const ChatBar = ({
     addPastedAttachment,
   } = useAttachment();
 
-  // Measured by the overlay off the window it is hosted in, which on Android
-  // is not always the app's own.
   const [panelWindowHeight, setPanelWindowHeight] = useState<number>();
 
   const {
@@ -173,9 +169,6 @@ const ChatBar = ({
     menuMaxBottom,
   } = useSheetGeometry(panelWindowHeight);
 
-  // The Files row holds the menu up while the OS presents the picker, and
-  // before that while the store it needs settles. Both are silent, so the row
-  // says it is working for as long as it is.
   const [filesBusy, setFilesBusy] = useState(false);
   const handleSelectFiles = useCallback(() => {
     setFilesBusy(true);
@@ -216,11 +209,6 @@ const ChatBar = ({
       resetPanel: panel.resetAfterLeave,
     });
 
-  /**
-   * Height of everything below the strip inside the composer card. The bar's
-   * bottom edge is pinned and the strip grows it upward, so this is what the
-   * flight subtracts to find the slot it is aiming at.
-   */
   const rowsBelowStrip = useSharedValue(0);
   const handleRowsBelowStripLayout = useCallback(
     (e: { nativeEvent: { layout: { height: number } } }) => {
@@ -233,19 +221,8 @@ const ChatBar = ({
     height: strip.get() * COMPOSER_STRIP_HEIGHT,
   }));
 
-  // The reference keeps a `retained` copy of the attachments so the strip has
-  // content while it animates shut, driven by a `useAnimatedReaction` on the
-  // strip value. Deliberately not ported: under Bundle Mode a worklet from a
-  // hot-reloaded module can be missing from the worklet bundle, and Reanimated
-  // then throws "react is not a function" straight into a redbox. The strip
-  // renders the attachments themselves and each thumbnail's own `FadeOut`
-  // covers a removal.
-
-  /** Photos still in the air: their thumbnails stay blank so no photo is ever
-   *  on screen twice. */
   const pendingIds = flights.map((flight) => flight.photo.id);
 
-  // The document picker's download gate waits for the panel to be gone.
   useEffect(() => {
     if (panel.mode === 'closed') markPanelClosed();
     else markPanelOpen();
@@ -320,12 +297,6 @@ const ChatBar = ({
     }
   }, [model, loadedModel, loadModel]);
 
-  // Deliberately no model offload around the picker. The old bottom sheet
-  // handed off to the system photo picker and camera, which run in their own
-  // processes and needed the room; this panel is in-process, so unloading the
-  // model only to load it again seconds later is pure cost — and on a 6GB
-  // device that reload is what got the app killed mid-flight.
-
   const imageAttachment = attachments.find((a) => a.type === 'image');
   const hasLoadingAttachment = attachments.some((a) => a.status === 'loading');
 
@@ -337,13 +308,7 @@ const ChatBar = ({
   }, []);
 
   const handleAttach = useCallback(() => {
-    // Reaching for an attachment is reaching to send, so the model starts
-    // loading here as it does when the field is focused. Without it, attaching
-    // a photo and sending it with no text at all never asked for a model, and
-    // the send was turned away by a store that had none.
     loadSelectedModel();
-    // No `Keyboard.dismiss()`: the panel is anchored to the keyboard and is
-    // hosted in the window above it, so the keyboard stays up throughout.
     panel.onPlusPress();
   }, [loadSelectedModel, panel]);
 
@@ -388,9 +353,6 @@ const ChatBar = ({
     Promise.resolve(outcome)
       .then((accepted) => {
         if (accepted !== false && typeof accepted !== 'string') return;
-        // The composer was emptied on the tap, before the answer came back.
-        // Everything it was carrying goes back, the photo included — it used
-        // to put the text back and drop the attachment on the floor.
         lastSentRef.current = null;
         setUserInput((current) => current || inputToSend);
         if (attachmentsToSend.length) restoreAttachments(attachmentsToSend);
@@ -527,9 +489,6 @@ const ChatBar = ({
             </View>
           )}
           <View style={styles.inputContainer}>
-            {/* A clipped window on the strip: the thumbnails are pinned at
-                full size to its top, so a half-open strip shows the top of the
-                photos rather than a squashed copy. */}
             <Animated.View
               pointerEvents={attachments.length ? 'auto' : 'none'}
               style={[styles.strip, stripStyle]}
@@ -541,10 +500,6 @@ const ChatBar = ({
                     exiting={FadeOut.duration(BAR_GROW_DURATION)}
                     layout={BAR_GROW_LAYOUT}
                   >
-                    {/* The hide lives on a plain inner view: a layout animation
-                        owns its target's opacity, so cutting a pending photo on
-                        the animated wrapper leaves the thumbnail stuck at 0
-                        once the flight lands. */}
                     <View
                       style={
                         pendingIds.includes(attachment.id)
@@ -719,7 +674,6 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       gap: COMPOSER.thumbGap,
     },
-    /** A photo still in the air: its slot is held, but nothing is drawn in it. */
     stripPending: {
       opacity: 0,
     },

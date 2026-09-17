@@ -27,24 +27,15 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 interface ConfirmPillProps {
   count: number;
   active: boolean;
-  /** Fades the labels with the grid. Glass can only be faded from the inside. */
   fade: SharedValue<number>;
   onPress: () => void;
 }
 
-/**
- * "All Photos" ⇄ "Add N photos". One glass capsule, never faded — the blue is a
- * plain view laid over it and the labels crossfade on top. The width comes from
- * a hidden copy of the current label: it reports its width and the capsule
- * springs to it, pinned to the bar's trailing edge.
- */
 const ConfirmPill = ({ count, active, fade, onPress }: ConfirmPillProps) => {
   const { styles } = useThemedStyles(createStyles);
   const hasSelection = count > 0;
   const label = count === 1 ? 'Add 1 photo' : `Add ${count} photos`;
 
-  // Driven through a derived value rather than `withTiming` straight in the
-  // style: multiplying an animation descriptor by the grid's fade gives NaN.
   const swap = useDerivedValue(() =>
     withTiming(hasSelection ? 1 : 0, {
       duration: DURATION.pill,
@@ -62,7 +53,6 @@ const ConfirmPill = ({ count, active, fade, onPress }: ConfirmPillProps) => {
   const width = useSharedValue(0);
   useEffect(() => {
     if (!labelWidth) return;
-    // The first measurement has nothing to move from, so it lands outright.
     width.set(
       width.get() === 0 ? labelWidth : withSpring(labelWidth, SPRING.pill)
     );
@@ -72,10 +62,7 @@ const ConfirmPill = ({ count, active, fade, onPress }: ConfirmPillProps) => {
   }));
 
   return (
-    // Full width, contents pushed to the trailing edge: the slot holds the
-    // capsule's right edge still and gives the sizer room to measure in.
     <View pointerEvents="box-none" style={styles.pillSlot}>
-      {/* Measures the label; never painted, never sizes anything itself. */}
       <Text
         numberOfLines={1}
         onLayout={(event) => setLabelWidth(event.nativeEvent.layout.width)}
@@ -125,7 +112,6 @@ const ConfirmPill = ({ count, active, fade, onPress }: ConfirmPillProps) => {
 
 interface Props {
   width: number;
-  /** Window Y of the bar's top edge — see `SheetBar`. */
   top: number;
   selected: string[];
   active: boolean;
@@ -134,7 +120,6 @@ interface Props {
   onConfirm: () => void;
 }
 
-/** The confirm capsule that floats over the grid, on the shared `SheetBar`. */
 const PhotoGridBar = ({
   width,
   top,
@@ -164,8 +149,6 @@ const createStyles = (theme: Theme) => {
       alignItems: 'flex-end',
     },
     pill: {
-      // Fills the button rather than sizing it, so the width being sprung is
-      // the one the glass wears.
       height: BOTTOM_BAR.pillHeight,
       alignItems: 'center',
       justifyContent: 'center',
@@ -174,12 +157,9 @@ const createStyles = (theme: Theme) => {
       color: palette.onControl,
       fontSize: BOTTOM_BAR.pillLabelSize,
       fontFamily: fontFamily.bold,
-      // Tabular figures: the capsule only resizes when the count gains a digit.
       fontVariant: ['tabular-nums'],
     },
     pillTint: {
-      // Carries its own shape: the glass underneath does not clip its children,
-      // so an interactive press can bulge past the capsule's edge.
       borderRadius: BOTTOM_BAR.pillHeight / 2,
       borderCurve: 'continuous',
       backgroundColor: palette.accent,

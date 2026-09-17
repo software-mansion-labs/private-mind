@@ -30,7 +30,6 @@ interface ClearAllOptions {
   cleanupSources?: boolean;
 }
 
-/** A photo as the in-app grid and the camera hand it over. */
 export interface LibraryImage {
   id: string;
   uri: string;
@@ -47,28 +46,14 @@ const IMAGE_EXTENSIONS = [
   'heif',
 ];
 
-/**
- * The send path carries one image: ExecuTorch takes a single `mediaPath` per
- * message and `messages.imagePath` is a single column. The grid is built for a
- * set, so the cap lives here rather than in the picker.
- */
 export const MAX_IMAGE_ATTACHMENTS = 1;
 
-/**
- * A library asset id is not a file. `expo-image` draws `ph://` directly, but
- * `persistImage` copies with the file system and ExecuTorch reads a path, so
- * the asset has to be resolved before either sees it. Android hands back a
- * `file://` uri already.
- */
 const RESOLVE_TIMEOUT_MS = 15000;
 
 const STORE_SETTLE_TIMEOUT_MS = 6000;
 const STORE_READY_TIMEOUT_MS = 15000;
 
 const withTimeout = async <T>(work: Promise<T>) => {
-  // A resolve that never settles would leave the attachment `loading` forever,
-  // with send disabled and no way back. The timer is cleared either way, or it
-  // outlives the work it was guarding.
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
@@ -84,28 +69,9 @@ const withTimeout = async <T>(work: Promise<T>) => {
 
 type ResolvedPhoto =
   | { uri: string }
-  /** The photo lives in iCloud and has no copy on this device. */
   | { uri: null; inCloud: true }
   | { uri: null; inCloud: false };
 
-/**
- * A library asset id is not a file. `expo-image` draws `ph://` directly, but
- * `persistImage` copies with the file system and ExecuTorch reads a path, so
- * the asset has to be resolved before either sees it. Android hands back a
- * `file://` uri already.
- *
- * The local read comes first and is the whole answer for a photo that is on
- * the device. When it is not, `getAssetInfoAsync` says so — `isNetworkAsset`,
- * with no `localUri` at all — and the only way to a file is a download.
- *
- * That download is asked for, but its outcome is not waited on in silence.
- * Measured on the iPhone 17 simulator, where every asset comes back
- * `isNetworkAsset: true`: the download call never settles, and neither does
- * `copyAssetsFileIOS`, because there is no iCloud behind the simulator to
- * fetch from. On a real phone with Optimise Storage the same call does return
- * — eventually, over the network. Either way the person deserves to be told
- * which of the two they are waiting for.
- */
 const resolveLibraryUri = async (
   photo: LibraryImage
 ): Promise<ResolvedPhoto> => {
@@ -147,7 +113,6 @@ export const useAttachment = () => {
   const currentDocumentAttachmentIdRef = useRef<string | null>(null);
   const documentAbortRef = useRef<AbortController | null>(null);
   const panelOpenRef = useRef(false);
-  /** Resolves the moment the OS picker is gone — see `pickDocument`. */
   const pickerClosedRef = useRef<
     ((outcome: DocumentPickOutcome) => void) | null
   >(null);
@@ -196,12 +161,6 @@ export const useAttachment = () => {
     ]);
   }, []);
 
-  /**
-   * Takes the photos the grid or the camera just handed over. They land as
-   * `loading` wearing the uri the flight was drawing, so the thumbnail the copy
-   * lands on shows the photo at once; resolving the asset to a real file only
-   * decides when the message can be sent.
-   */
   const addImages = useCallback(async (photos: LibraryImage[]) => {
     const picked = photos.slice(0, MAX_IMAGE_ATTACHMENTS);
     if (!picked.length) return;
@@ -266,9 +225,6 @@ export const useAttachment = () => {
       copyToCacheDirectory: true,
     });
 
-    // The picker is off screen from here on, whichever way it went. Anything
-    // waiting on it — the panel, which holds the menu up while the OS takes its
-    // time presenting — is released now, not when indexing finishes.
     const canceled = pickedFileResult.canceled || !pickedFileResult.assets[0];
     pickerClosedRef.current?.(canceled ? 'canceled' : 'picked');
     pickerClosedRef.current = null;
@@ -559,21 +515,14 @@ export const useAttachment = () => {
       const closed = new Promise<DocumentPickOutcome>((resolve) => {
         pickerClosedRef.current = resolve;
       });
-      // Indexing is deliberately not awaited here: it reports itself through
-      // the attachment's own loading state, and the panel must not sit open
-      // for the length of it.
       runDocumentPicker().catch((error) => {
         pickerClosedRef.current?.('canceled');
         pickerClosedRef.current = null;
         console.error('Document attachment failed', error);
       });
-      // Resolves at the picker, not at the end of indexing — the caller uses
-      // this to decide when to put the menu away.
       return closed;
     }
     if (panelOpenRef.current) {
-      // The panel is already collapsing — the download sheet waits for it, so
-      // the two never overlap.
       pendingDownloadSheetRef.current = true;
       return;
     }
@@ -622,7 +571,6 @@ export const useAttachment = () => {
     embeddingDownloadSheetRef.current?.dismiss();
   }, [awaitVectorStore]);
 
-  /** Puts back what a refused send had already cleared. */
   const restoreAttachments = useCallback((previous: Attachment[]) => {
     setAttachments(previous);
   }, []);

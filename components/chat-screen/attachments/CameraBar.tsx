@@ -30,11 +30,9 @@ import { Glass } from './Glass';
 import SheetBar from './SheetBar';
 
 interface OptionProps {
-  /** 1 for the option directly above ⋯, 2 for the one above that. */
   index: number;
   label: string;
   icon: SvgComponent;
-  /** 0 folded into the ⋯ button → 1 sitting in its own place above it. */
   unfold: SharedValue<number>;
   active: boolean;
   fade: SharedValue<number>;
@@ -42,12 +40,6 @@ interface OptionProps {
   testID: string;
 }
 
-/**
- * One of the buttons that come out of the ⋯. It is laid out exactly where the ⋯
- * is and then moved: `unfold` carries it up and scales it from a fraction of
- * its size. The glass rides the transform, which is one of the things a
- * GlassView is fine under, and comes in on its own native ramp.
- */
 const Option = ({
   index,
   label,
@@ -71,8 +63,6 @@ const Option = ({
             u,
             [0, 1],
             [CAMERA.optionStartScale, 1],
-            // The spring overshoots on the way in and the button is allowed to
-            // as well. It is not allowed to invert on the way out.
             Extrapolation.EXTEND
           ),
         },
@@ -80,8 +70,6 @@ const Option = ({
     };
   });
 
-  // Clamped where the transform is not: an opacity past 1 is an error where a
-  // scale past 1 is a bounce.
   const iconStyle = useAnimatedStyle(() => ({
     opacity:
       interpolate(unfold.get(), [0.2, 0.8], [0, 1], Extrapolation.CLAMP) *
@@ -123,7 +111,6 @@ const Option = ({
 
 interface Props {
   width: number;
-  /** Window Y of the bar's top edge — see `SheetBar`. */
   top: number;
   active: boolean;
   fade: SharedValue<number>;
@@ -134,11 +121,6 @@ interface Props {
   onToggleFlash: () => void;
 }
 
-/**
- * The shutter and the ⋯ that float over the camera, on the `SheetBar` the
- * grid's controls share. The ⋯ unfolds two options straight up out of itself on
- * the panel's own springs, and reads as an ✕ while they are out.
- */
 const CameraBar = ({
   width,
   top,
@@ -164,8 +146,6 @@ const CameraBar = ({
 
   const contentStyle = useAnimatedStyle(() => ({ opacity: fade.get() }));
 
-  // ⋯ ⇄ ✕, crossfading in place with a quarter turn so the swap reads as one
-  // glyph turning rather than two trading.
   const dotsStyle = useAnimatedStyle(() => ({
     opacity:
       interpolate(unfold.get(), [0, 0.5], [1, 0], Extrapolation.CLAMP) *
@@ -188,9 +168,6 @@ const CameraBar = ({
       fade={fade}
       onBack={onBack}
     >
-      {/* The shutter: a glass ring with a disc set into it. The disc is a child
-          of the material, so it fades with the sheet while the ring switches
-          its material natively. */}
       <View pointerEvents="box-none" style={styles.shutterSlot}>
         <Pressable
           accessibilityRole="button"
@@ -212,8 +189,6 @@ const CameraBar = ({
         </Pressable>
       </View>
 
-      {/* The options render before the ⋯ so it stays on top for the frames they
-          still overlap it. */}
       <View style={styles.more}>
         <Option
           index={2}
@@ -288,8 +263,6 @@ const createStyles = (theme: Theme) => {
       position: 'absolute',
     },
     shutterSlot: {
-      // Centred on the bar's line: taller than the bar, so it is pulled up by
-      // half the difference rather than hanging off its top edge.
       position: 'absolute',
       left: 0,
       right: 0,
@@ -313,7 +286,6 @@ const createStyles = (theme: Theme) => {
       height: BOTTOM_BAR.controlSize,
     },
     option: {
-      // Over the ⋯ exactly; `unfold` is what moves it off.
       position: 'absolute',
       left: 0,
       top: 0,

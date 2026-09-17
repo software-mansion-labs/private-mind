@@ -44,15 +44,9 @@ const AttachmentThumbnail = ({ attachment, onRemove }: Props) => {
 
   const renderContent = () => {
     if (attachment.type === 'image') {
-      // Drawn even while the attachment is still resolving to a file: this is
-      // the thumbnail a flying copy lands on, and a spinner in its place would
-      // be the photo disappearing at the end of its own flight.
       return (
         <>
           <Image
-            // expo-image, not RN's: an attachment wears the library's own uri
-            // until it resolves to a file, and `ph://` is not something
-            // RCTImageLoader can load.
             source={attachment.uri}
             recyclingKey={attachment.id}
             contentFit="cover"

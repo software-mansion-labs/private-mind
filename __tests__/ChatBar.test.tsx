@@ -289,10 +289,6 @@ const defaultProps = {
 const renderBar = (props: Partial<typeof defaultProps> = {}) =>
   render(<ChatBar {...defaultProps} {...props} />);
 
-/**
- * Taps + and waits out the panel's 30ms lead — the glyph moves first and the
- * panel only mounts after it.
- */
 const openPanel = async () => {
   await act(async () => {
     fireEvent.press(screen.getByTestId('attach-btn'));
@@ -674,7 +670,6 @@ describe('attachment', () => {
     renderBar();
     await openPanel();
     expect(screen.getByText('mode:menu')).toBeTruthy();
-    // The menu costs nothing; only a sheet is worth unloading the model for.
     expect(mockRunWithModelOffloaded).not.toHaveBeenCalled();
     expect(mockUseAttachment.markPanelOpen).toHaveBeenCalled();
   });
@@ -686,8 +681,6 @@ describe('attachment', () => {
       fireEvent.press(screen.getByTestId('menu-photos'));
     });
     expect(screen.getByText('mode:photos')).toBeTruthy();
-    // The picker is in-process now. Unloading only to load again seconds later
-    // is pure cost, and on a 6GB device that reload got the app killed.
     expect(mockRunWithModelOffloaded).not.toHaveBeenCalled();
   });
 
@@ -805,8 +798,6 @@ describe('attachment', () => {
     await act(async () => {
       fireEvent.press(screen.getByTestId('menu-files'));
     });
-    // The store it needs can take seconds to settle and the OS takes its own
-    // time putting the picker up. Both are silent.
     expect(screen.getByText('busy:files')).toBeTruthy();
 
     await act(async () => {
@@ -1181,8 +1172,6 @@ describe('a refused send', () => {
       fireEvent.press(screen.getByTestId('send-btn'));
     });
 
-    // The composer is emptied on the tap, before the answer comes back: a
-    // refusal has to undo that, or the photo is gone for good.
     expect(mockUseAttachment.restoreAttachments).toHaveBeenCalledWith([image]);
   });
 });

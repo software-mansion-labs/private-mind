@@ -15,9 +15,6 @@ jest.mock('../context/ThemeContext', () => ({
 
 describe('AttachmentMenu', () => {
   it('holds a press through the finger travelling, on every row', () => {
-    // The panel's position is animated on the UI thread, so the rect React
-    // measures a row against is the one it had before the panel opened. Without
-    // this every move event cancels the press and the row does nothing.
     const view = render(<AttachmentMenu onSelect={jest.fn()} />);
 
     const rows = view.UNSAFE_getAllByType(MenuRow);
