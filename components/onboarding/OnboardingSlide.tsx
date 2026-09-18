@@ -26,10 +26,13 @@ import {
   TITLE_LEAD,
 } from '../../constants/onboarding';
 
-const CROP_FADE_LOCATIONS: [number, number, ...number[]] = [
-  0, 0.25, 0.5, 0.75, 1,
+const CROP_RAMP: [number, number][] = [
+  [0, 1],
+  [0.25, 0.844],
+  [0.5, 0.5],
+  [0.75, 0.156],
+  [1, 0],
 ];
-const CROP_FADE_ALPHAS = [1, 0.844, 0.5, 0.156, 0];
 
 interface Props {
   slide: Slide;
@@ -64,15 +67,23 @@ function OnboardingSlide({
 
   const Icon = slide.icon.art;
   const anchoredTop = slide.illustration.anchor === 'top';
-  const cropFadeColors = CROP_FADE_ALPHAS.map((alpha, stop) =>
-    withAlpha(
-      mixColors(
-        theme.bg.softPrimary,
-        theme.bg.main,
-        (CROP_FADE_LOCATIONS[stop] * CROP_FADE) / pageHeight
-      ),
-      alpha
-    )
+  const cropClearance = theme.insets.top + ILLUSTRATION_TOP_CLEARANCE;
+  const cropHeight = cropClearance + CROP_FADE;
+  const clearStop = cropClearance / cropHeight;
+  const cropFadeLocations = [
+    0,
+    ...CROP_RAMP.map(([at]) => clearStop + (1 - clearStop) * at),
+  ] as [number, number, ...number[]];
+  const cropFadeColors = [1, ...CROP_RAMP.map(([, alpha]) => alpha)].map(
+    (alpha, stop) =>
+      withAlpha(
+        mixColors(
+          theme.bg.softPrimary,
+          theme.bg.main,
+          (cropFadeLocations[stop] * cropHeight) / pageHeight
+        ),
+        alpha
+      )
   ) as [string, string, ...string[]];
 
   const start = (index - 1) * pageWidth;
@@ -178,8 +189,8 @@ function OnboardingSlide({
         {!anchoredTop && (
           <LinearGradient
             colors={cropFadeColors}
-            locations={CROP_FADE_LOCATIONS}
-            style={styles.cropFade}
+            locations={cropFadeLocations}
+            style={[styles.cropFade, { height: cropHeight }]}
             pointerEvents="none"
           />
         )}
@@ -242,7 +253,6 @@ const createStyles = (theme: Theme) =>
       top: 0,
       left: 0,
       right: 0,
-      height: CROP_FADE,
     },
     textClip: {
       position: 'absolute',

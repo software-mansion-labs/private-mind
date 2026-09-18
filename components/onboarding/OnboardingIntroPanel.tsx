@@ -15,10 +15,10 @@ import {
   CARD_INSET,
   CONTENT_PADDING,
   ILLUSTRATION_CLEARANCE,
-  ILLUSTRATION_MAX_WIDTH,
   ILLUSTRATION_SIDE_INSET,
   INTRO_ART,
   INTRO_ART_ASPECT_RATIO,
+  INTRO_ART_MAX_WIDTH,
   INTRO_FADE_MS,
   INTRO_STAGGER_MS,
   TEXT_CONTROLS_GAP,
@@ -43,7 +43,7 @@ function OnboardingIntroPanel({ onPressStart }: Props) {
   const blockTop = CARD_INSET + theme.insets.bottom + blockHeight;
   const zoneHeight = Math.max(height - blockTop - ILLUSTRATION_CLEARANCE, 0);
   const artHeight = Math.min(
-    Math.min(width - ILLUSTRATION_SIDE_INSET * 2, ILLUSTRATION_MAX_WIDTH) /
+    Math.min(width - ILLUSTRATION_SIDE_INSET * 2, INTRO_ART_MAX_WIDTH) /
       INTRO_ART_ASPECT_RATIO,
     zoneHeight
   );

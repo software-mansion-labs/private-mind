@@ -29,7 +29,7 @@ export interface OnboardingSlide {
 
 export const INTRO_ART = WelcomeArt;
 export const INTRO_ART_ASPECT_RATIO = 300 / 420;
-export const CHAT_ART_ASPECT_RATIO = 300 / 613;
+export const CHAT_ART_ASPECT_RATIO = 300 / 618;
 
 export const ONBOARDING_SLIDES: OnboardingSlide[] = [
   {
@@ -100,7 +100,8 @@ export const DOT_SIZE = 6;
 export const DOT_ACTIVE_WIDTH = 20;
 export const DOT_GAP = 6;
 
-export const ILLUSTRATION_MAX_WIDTH = 340;
+export const ILLUSTRATION_MAX_WIDTH = 300;
+export const INTRO_ART_MAX_WIDTH = 340;
 export const ILLUSTRATION_SIDE_INSET = 24;
 export const ILLUSTRATION_TOP_CLEARANCE = 48;
 export const CROP_FADE = 160;
