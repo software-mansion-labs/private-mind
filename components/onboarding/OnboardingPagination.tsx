@@ -116,6 +116,6 @@ const createStyles = (theme: Theme) =>
     dot: {
       height: DOT_SIZE,
       borderRadius: DOT_SIZE / 2,
-      backgroundColor: theme.text.primary,
+      backgroundColor: theme.bg.onBrandStrong,
     },
   });

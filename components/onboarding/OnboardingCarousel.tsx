@@ -24,13 +24,13 @@ import SecondaryButton from '../SecondaryButton';
 import OnboardingPagination from './OnboardingPagination';
 import OnboardingSlide from './OnboardingSlide';
 import {
-  CARD_GAP,
   CARD_INSET,
-  CARD_PADDING,
+  CONTENT_PADDING,
   CONTROLS_GAP,
   CONTROLS_HEIGHT,
   ILLUSTRATION_CLEARANCE,
   ONBOARDING_SLIDES,
+  TEXT_CONTROLS_GAP,
 } from '../../constants/onboarding';
 import { Feedback } from '../../utils/Feedback';
 
@@ -116,11 +116,10 @@ function OnboardingCarousel({ onSkip, onComplete, onExitToIntro }: Props) {
   }, []);
 
   const pageHeight = measuredHeight || windowHeight;
-  const cardBottom = CARD_INSET + theme.insets.bottom;
-  const cardHeight =
-    CARD_PADDING * 2 + textAreaHeight + CARD_GAP + CONTROLS_HEIGHT;
-  const textBottom = cardBottom + CARD_PADDING + CONTROLS_HEIGHT + CARD_GAP;
-  const illustrationBottom = cardBottom + cardHeight + ILLUSTRATION_CLEARANCE;
+  const controlsBottom = CARD_INSET + theme.insets.bottom;
+  const textBottom = controlsBottom + CONTROLS_HEIGHT + TEXT_CONTROLS_GAP;
+  const textTop = textBottom + textAreaHeight;
+  const illustrationBottom = textTop + ILLUSTRATION_CLEARANCE;
 
   const activeSlide = ONBOARDING_SLIDES[activeIndex];
   const isLastSlide = activeIndex === lastIndex;
@@ -139,8 +138,6 @@ function OnboardingCarousel({ onSkip, onComplete, onExitToIntro }: Props) {
       style={styles.container}
       onLayout={handleContainerLayout}
     >
-      <View style={[styles.card, { bottom: cardBottom, height: cardHeight }]} />
-
       <Animated.ScrollView
         ref={scrollRef}
         horizontal
@@ -161,12 +158,13 @@ function OnboardingCarousel({ onSkip, onComplete, onExitToIntro }: Props) {
             pageHeight={pageHeight}
             illustrationBottom={illustrationBottom}
             textBottom={textBottom}
+            textTop={textTop}
             onTextLayout={handleTextLayout}
           />
         ))}
       </Animated.ScrollView>
 
-      <View style={[styles.controls, { bottom: cardBottom + CARD_PADDING }]}>
+      <View style={[styles.controls, { bottom: controlsBottom }]}>
         <OnboardingPagination
           count={ONBOARDING_SLIDES.length}
           activeIndex={activeIndex}
@@ -180,6 +178,7 @@ function OnboardingCarousel({ onSkip, onComplete, onExitToIntro }: Props) {
           <SecondaryButton
             text={activeSlide.buttonLabel}
             onPress={handleNext}
+            style={styles.secondaryButton}
             textStyle={styles.buttonText}
           />
         )}
@@ -208,23 +207,20 @@ const createStyles = (theme: Theme) =>
     scroll: {
       ...StyleSheet.absoluteFillObject,
     },
-    card: {
-      position: 'absolute',
-      left: CARD_INSET,
-      right: CARD_INSET,
-      borderRadius: 18,
-      backgroundColor: theme.bg.softPrimary,
-    },
     controls: {
       position: 'absolute',
-      left: CARD_INSET + CARD_PADDING,
-      right: CARD_INSET + CARD_PADDING,
+      left: CARD_INSET + CONTENT_PADDING,
+      right: CARD_INSET + CONTENT_PADDING,
       gap: CONTROLS_GAP,
+    },
+    secondaryButton: {
+      borderColor: theme.bg.onBrandStrong,
     },
     buttonText: {
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
       lineHeight: lineHeights.md,
+      color: theme.text.onBrand,
     },
     skip: {
       position: 'absolute',
@@ -236,6 +232,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.sm,
       lineHeight: lineHeights.sm,
-      color: theme.text.onBrand,
+      color: theme.text.primary,
     },
   });

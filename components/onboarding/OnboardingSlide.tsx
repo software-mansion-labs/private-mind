@@ -7,20 +7,29 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
 } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { Theme } from '../../styles/colors';
+import OnboardingScrim from './OnboardingScrim';
+import { Theme, mixColors, withAlpha } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import {
+  CARD_INSET,
+  CONTENT_PADDING,
+  CROP_FADE,
   DESCRIPTION_LEAD,
-  GLOW_PARALLAX,
-  GLOW_SIZE,
   ILLUSTRATION_MAX_WIDTH,
   ILLUSTRATION_PARALLAX,
   ILLUSTRATION_SIDE_INSET,
   ILLUSTRATION_TOP_CLEARANCE,
+  LABEL_ICON_SIZE,
   OnboardingSlide as Slide,
   TITLE_LEAD,
 } from '../../constants/onboarding';
+
+const CROP_FADE_LOCATIONS: [number, number, ...number[]] = [
+  0, 0.25, 0.5, 0.75, 1,
+];
+const CROP_FADE_ALPHAS = [1, 0.844, 0.5, 0.156, 0];
 
 interface Props {
   slide: Slide;
@@ -30,6 +39,7 @@ interface Props {
   pageHeight: number;
   illustrationBottom: number;
   textBottom: number;
+  textTop: number;
   onTextLayout: (event: LayoutChangeEvent) => void;
 }
 
@@ -41,9 +51,10 @@ function OnboardingSlide({
   pageHeight,
   illustrationBottom,
   textBottom,
+  textTop,
   onTextLayout,
 }: Props) {
-  const { styles } = useThemedStyles(createStyles);
+  const { styles, theme } = useThemedStyles(createStyles);
   const reducedMotion = useReducedMotion();
 
   const illustrationWidth = Math.min(
@@ -51,31 +62,22 @@ function OnboardingSlide({
     ILLUSTRATION_MAX_WIDTH
   );
 
+  const Icon = slide.icon.art;
+  const anchoredTop = slide.illustration.anchor === 'top';
+  const cropFadeColors = CROP_FADE_ALPHAS.map((alpha, stop) =>
+    withAlpha(
+      mixColors(
+        theme.bg.softPrimary,
+        theme.bg.main,
+        (CROP_FADE_LOCATIONS[stop] * CROP_FADE) / pageHeight
+      ),
+      alpha
+    )
+  ) as [string, string, ...string[]];
+
   const start = (index - 1) * pageWidth;
   const middle = index * pageWidth;
   const end = (index + 1) * pageWidth;
-
-  const glowStyle = useAnimatedStyle(() => {
-    const travel = reducedMotion ? 0 : pageWidth * GLOW_PARALLAX;
-    return {
-      opacity: interpolate(
-        scrollX.get(),
-        [start, middle, end],
-        [0, 0.1, 0],
-        Extrapolation.CLAMP
-      ),
-      transform: [
-        {
-          translateX: interpolate(
-            scrollX.get(),
-            [start, middle, end],
-            [-travel, 0, travel],
-            Extrapolation.CLAMP
-          ),
-        },
-      ],
-    };
-  });
 
   const illustrationStyle = useAnimatedStyle(() => {
     const travel = reducedMotion ? 0 : pageWidth * ILLUSTRATION_PARALLAX;
@@ -159,13 +161,11 @@ function OnboardingSlide({
         pointerEvents="none"
         style={[
           styles.illustrationZone,
-          { bottom: illustrationBottom },
-          slide.illustration.anchor === 'bottom'
-            ? styles.anchorBottom
-            : styles.anchorTop,
+          anchoredTop
+            ? styles.zoneToScrim
+            : [styles.zoneAboveText, { bottom: illustrationBottom }],
         ]}
       >
-        <Animated.View style={[styles.glow, glowStyle]} />
         <Animated.View style={illustrationStyle}>
           <Image
             source={slide.illustration.source}
@@ -175,23 +175,40 @@ function OnboardingSlide({
             }}
           />
         </Animated.View>
+        {!anchoredTop && (
+          <LinearGradient
+            colors={cropFadeColors}
+            locations={CROP_FADE_LOCATIONS}
+            style={styles.cropFade}
+            pointerEvents="none"
+          />
+        )}
       </View>
 
-      <View
-        style={[styles.textBlock, { bottom: textBottom }]}
-        onLayout={onTextLayout}
-        accessible
-        accessibilityLabel={`${slide.label}. ${slide.title}. ${slide.description}`}
-      >
-        <Animated.View style={[styles.textGroup, titleStyle]}>
-          <View style={styles.labelBadge}>
-            <Text style={styles.labelText}>{slide.label}</Text>
-          </View>
-          <Text style={styles.title}>{slide.title}</Text>
-        </Animated.View>
-        <Animated.Text style={[styles.description, descriptionStyle]}>
-          {slide.description}
-        </Animated.Text>
+      <OnboardingScrim height={textTop} />
+
+      <View style={[styles.textClip, { bottom: textBottom }]}>
+        <View
+          style={styles.textBlock}
+          onLayout={onTextLayout}
+          accessible
+          accessibilityLabel={`${slide.label}. ${slide.title}. ${slide.description}`}
+        >
+          <Animated.View style={[styles.textGroup, titleStyle]}>
+            <View style={styles.labelBadge}>
+              <Icon
+                width={LABEL_ICON_SIZE * slide.icon.aspectRatio}
+                height={LABEL_ICON_SIZE}
+                style={styles.labelIcon}
+              />
+              <Text style={styles.labelText}>{slide.label}</Text>
+            </View>
+            <Text style={styles.title}>{slide.title}</Text>
+          </Animated.View>
+          <Animated.Text style={[styles.description, descriptionStyle]}>
+            {slide.description}
+          </Animated.Text>
+        </View>
       </View>
     </View>
   );
@@ -212,56 +229,67 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       overflow: 'hidden',
     },
-    anchorTop: {
+    zoneToScrim: {
+      bottom: 0,
       justifyContent: 'flex-start',
     },
-    anchorBottom: {
+    zoneAboveText: {
+      top: 0,
       justifyContent: 'flex-end',
     },
-    glow: {
+    cropFade: {
       position: 'absolute',
       top: 0,
-      width: GLOW_SIZE,
-      height: GLOW_SIZE,
-      borderRadius: GLOW_SIZE / 2,
-      backgroundColor: theme.bg.onBrandStrong,
+      left: 0,
+      right: 0,
+      height: CROP_FADE,
+    },
+    textClip: {
+      position: 'absolute',
+      left: CARD_INSET,
+      right: CARD_INSET,
+      overflow: 'hidden',
     },
     textBlock: {
-      position: 'absolute',
-      left: 32,
-      right: 32,
+      paddingHorizontal: CONTENT_PADDING,
       alignItems: 'center',
-      gap: 16,
+      gap: 12,
     },
     textGroup: {
       alignItems: 'center',
-      gap: 16,
+      gap: 12,
     },
     labelBadge: {
-      backgroundColor: theme.bg.softSecondary,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: theme.bg.onBrandSoft,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
       borderRadius: 999,
+    },
+    labelIcon: {
+      color: theme.text.onBrand,
     },
     labelText: {
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.xs,
       lineHeight: lineHeights.xs,
       textAlign: 'center',
-      color: theme.text.primary,
+      color: theme.text.onBrand,
     },
     title: {
       fontFamily: fontFamily.medium,
-      fontSize: fontSizes.lg,
-      lineHeight: lineHeights.lg,
+      fontSize: fontSizes.xxl,
+      lineHeight: lineHeights.xxl,
       textAlign: 'center',
-      color: theme.text.primary,
+      color: theme.text.onBrand,
     },
     description: {
       fontFamily: fontFamily.regular,
       fontSize: fontSizes.md,
       lineHeight: lineHeights.md,
       textAlign: 'center',
-      color: theme.text.defaultSecondary,
+      color: theme.text.onBrandMuted,
     },
   });

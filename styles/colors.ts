@@ -22,6 +22,8 @@ export const lightTheme = {
     codeBlock: 'rgba(0, 0, 0, 0.05)',
     codeBlockStrong: 'rgba(255, 255, 255, 0.12)',
     onBrandStrong: '#ffffff',
+    onBrandSoft: 'rgba(255, 255, 255, 0.16)',
+    onBrandShadow: '#020f3c',
   },
   text: {
     primary: '#020f3c',
@@ -35,6 +37,7 @@ export const lightTheme = {
     error: '#DE595B',
     warning: '#B8630A',
     onBrand: '#ffffff',
+    onBrandMuted: 'rgba(255, 255, 255, 0.76)',
   },
   border: {
     soft: 'rgba(2, 15, 60, 0.2)',
@@ -68,6 +71,8 @@ export const darkTheme = {
     codeBlock: 'rgba(255, 255, 255, 0.12)',
     codeBlockStrong: 'rgba(255, 255, 255, 0.12)',
     onBrandStrong: '#ffffff',
+    onBrandSoft: 'rgba(255, 255, 255, 0.16)',
+    onBrandShadow: '#020f3c',
   },
   text: {
     primary: '#FFFFFF',
@@ -81,6 +86,7 @@ export const darkTheme = {
     error: '#E68485',
     warning: '#F0A860',
     onBrand: '#ffffff',
+    onBrandMuted: 'rgba(255, 255, 255, 0.76)',
   },
   border: {
     soft: 'rgba(255, 255, 255, 0.15)',

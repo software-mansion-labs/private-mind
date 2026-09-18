@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { Image, LayoutChangeEvent, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
   ReduceMotion,
@@ -16,21 +17,15 @@ import OnboardingCarousel from '../../components/onboarding/OnboardingCarousel';
 import { markOnboardingComplete } from '../../utils/onboardingStatus';
 import { Feedback } from '../../utils/Feedback';
 import { EMPHASIZED_DECELERATE } from '../../constants/motion';
-import {
-  CARD_INSET,
-  INTRO_ILLUSTRATION,
-  SPILL_DURATION,
-} from '../../constants/onboarding';
+import { INTRO_FADE_MS, INTRO_LIFT } from '../../constants/onboarding';
 
-const SPILL_EASING = Easing.bezier(...EMPHASIZED_DECELERATE);
-const INTRO_CORNER_RADIUS = 10;
+const INTRO_EASING = Easing.bezier(...EMPHASIZED_DECELERATE);
 
 function OnboardingScreen() {
   const router = useRouter();
   const { styles, theme } = useThemedStyles(createStyles);
   const [showCarousel, setShowCarousel] = useState(false);
-  const [introHeight, setIntroHeight] = useState(0);
-  const spillProgress = useSharedValue(0);
+  const introProgress = useSharedValue(1);
 
   const leaveOnboarding = useCallback(() => {
     markOnboardingComplete();
@@ -43,12 +38,12 @@ function OnboardingScreen() {
   }, [leaveOnboarding]);
 
   const openCarousel = useCallback(() => {
-    spillProgress.set(
+    introProgress.set(
       withTiming(
-        1,
+        0,
         {
-          duration: SPILL_DURATION,
-          easing: SPILL_EASING,
+          duration: INTRO_FADE_MS,
+          easing: INTRO_EASING,
           reduceMotion: ReduceMotion.System,
         },
         (finished) => {
@@ -56,51 +51,34 @@ function OnboardingScreen() {
         }
       )
     );
-  }, [spillProgress]);
+  }, [introProgress]);
 
   const closeCarousel = useCallback(() => {
     setShowCarousel(false);
-    spillProgress.set(
-      withTiming(0, {
-        duration: SPILL_DURATION,
-        easing: SPILL_EASING,
+    introProgress.set(
+      withTiming(1, {
+        duration: INTRO_FADE_MS,
+        easing: INTRO_EASING,
         reduceMotion: ReduceMotion.System,
       })
     );
-  }, [spillProgress]);
+  }, [introProgress]);
 
-  const handleIntroLayout = useCallback((event: LayoutChangeEvent) => {
-    setIntroHeight(event.nativeEvent.layout.height);
-  }, []);
-
-  const spillStyle = useAnimatedStyle(() => {
-    const restingBottom = introHeight + CARD_INSET;
-    const spilled = restingBottom * spillProgress.get();
-
-    return {
-      top: Math.max(theme.insets.top + CARD_INSET - spilled, 0),
-      left: Math.max(CARD_INSET - spilled, 0),
-      right: Math.max(CARD_INSET - spilled, 0),
-      bottom: restingBottom - spilled,
-      borderRadius: Math.max(INTRO_CORNER_RADIUS - spilled, 0),
-    };
-  });
+  const introStyle = useAnimatedStyle(() => ({
+    opacity: introProgress.get(),
+    transform: [{ translateY: (introProgress.get() - 1) * INTRO_LIFT }],
+  }));
 
   return (
     <View style={styles.container}>
-      <View style={styles.introPanel} onLayout={handleIntroLayout}>
-        <OnboardingIntroPanel onPressStart={openCarousel} />
-      </View>
+      <LinearGradient
+        colors={[theme.bg.softPrimary, theme.bg.main]}
+        style={StyleSheet.absoluteFill}
+      />
 
-      {introHeight > 0 && (
-        <Animated.View style={[styles.brandBackdrop, spillStyle]}>
-          {!showCarousel && (
-            <Image
-              source={INTRO_ILLUSTRATION}
-              style={styles.introIllustration}
-              resizeMode="contain"
-            />
-          )}
+      {!showCarousel && (
+        <Animated.View style={[StyleSheet.absoluteFill, introStyle]}>
+          <OnboardingIntroPanel onPressStart={openCarousel} />
         </Animated.View>
       )}
 
@@ -122,25 +100,5 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
-    },
-    brandBackdrop: {
-      position: 'absolute',
-      backgroundColor: theme.bg.main,
-      overflow: 'hidden',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 24,
-    },
-    introIllustration: {
-      flex: 1,
-      width: '100%',
-    },
-    introPanel: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      padding: CARD_INSET,
-      paddingBottom: CARD_INSET + theme.insets.bottom,
     },
   });

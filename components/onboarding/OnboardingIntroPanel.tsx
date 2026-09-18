@@ -1,47 +1,91 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import {
+  LayoutChangeEvent,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { Theme } from '../../styles/colors';
+import { Theme, mixColors } from '../../styles/colors';
 import PrimaryButton from '../PrimaryButton';
-import TextLogo from '../../assets/text_logo.svg';
+import OnboardingScrim from './OnboardingScrim';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
-import { INTRO_STAGGER_MS, SPILL_DURATION } from '../../constants/onboarding';
+import {
+  CARD_INSET,
+  CONTENT_PADDING,
+  ILLUSTRATION_CLEARANCE,
+  ILLUSTRATION_MAX_WIDTH,
+  ILLUSTRATION_SIDE_INSET,
+  INTRO_ART,
+  INTRO_ART_ASPECT_RATIO,
+  INTRO_FADE_MS,
+  INTRO_STAGGER_MS,
+  TEXT_CONTROLS_GAP,
+} from '../../constants/onboarding';
 
 interface Props {
   onPressStart: () => void;
 }
 
 const enterAt = (step: number) =>
-  FadeInDown.duration(SPILL_DURATION).delay(step * INTRO_STAGGER_MS);
+  FadeInDown.duration(INTRO_FADE_MS).delay(step * INTRO_STAGGER_MS);
 
 function OnboardingIntroPanel({ onPressStart }: Props) {
   const { styles, theme } = useThemedStyles(createStyles);
+  const { width, height } = useWindowDimensions();
+  const [blockHeight, setBlockHeight] = useState(0);
+
+  const handleBlockLayout = useCallback((event: LayoutChangeEvent) => {
+    setBlockHeight(event.nativeEvent.layout.height);
+  }, []);
+
+  const blockTop = CARD_INSET + theme.insets.bottom + blockHeight;
+  const zoneHeight = Math.max(height - blockTop - ILLUSTRATION_CLEARANCE, 0);
+  const artHeight = Math.min(
+    Math.min(width - ILLUSTRATION_SIDE_INSET * 2, ILLUSTRATION_MAX_WIDTH) /
+      INTRO_ART_ASPECT_RATIO,
+    zoneHeight
+  );
 
   return (
-    <View>
-      <View style={styles.textContainer}>
-        <Animated.View entering={enterAt(0)}>
-          <TextLogo width={126} height={20} fill={theme.text.defaultTertiary} />
-        </Animated.View>
-        <Animated.Text
-          entering={enterAt(1)}
-          style={[styles.text, styles.line1]}
-        >
-          Your private AI mind.
-        </Animated.Text>
-        <Animated.Text
-          entering={enterAt(2)}
-          style={[styles.text, styles.line2]}
-        >
-          In your pocket.
-        </Animated.Text>
-      </View>
-      <Animated.View
-        entering={FadeInUp.duration(SPILL_DURATION).delay(3 * INTRO_STAGGER_MS)}
+    <View style={styles.root}>
+      <View
+        pointerEvents="none"
+        style={[styles.artZone, { bottom: blockTop + ILLUSTRATION_CLEARANCE }]}
       >
-        <PrimaryButton text="Get Started" onPress={onPressStart} />
-      </Animated.View>
+        <INTRO_ART
+          width={artHeight * INTRO_ART_ASPECT_RATIO}
+          height={artHeight}
+        />
+      </View>
+
+      <OnboardingScrim height={blockTop} />
+
+      <View style={styles.block} onLayout={handleBlockLayout}>
+        <View style={styles.headline}>
+          <Animated.Text
+            entering={enterAt(0)}
+            style={[styles.line, styles.linePrimary]}
+          >
+            Your private AI mind.
+          </Animated.Text>
+          <Animated.Text
+            entering={enterAt(1)}
+            style={[styles.line, styles.lineAccent]}
+          >
+            In your pocket.
+          </Animated.Text>
+        </View>
+        <Animated.View
+          style={styles.action}
+          entering={FadeInUp.duration(INTRO_FADE_MS).delay(
+            2 * INTRO_STAGGER_MS
+          )}
+        >
+          <PrimaryButton text="Get Started" onPress={onPressStart} />
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -50,20 +94,41 @@ export default OnboardingIntroPanel;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    textContainer: {
-      alignItems: 'center',
-      marginBottom: 48,
+    root: {
+      ...StyleSheet.absoluteFillObject,
     },
-    text: {
+    artZone: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    block: {
+      position: 'absolute',
+      left: CARD_INSET + CONTENT_PADDING,
+      right: CARD_INSET + CONTENT_PADDING,
+      bottom: CARD_INSET + theme.insets.bottom,
+      alignItems: 'center',
+      gap: TEXT_CONTROLS_GAP,
+    },
+    headline: {
+      alignItems: 'center',
+    },
+    line: {
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.xxl,
       lineHeight: lineHeights.xxl,
+      textAlign: 'center',
     },
-    line1: {
-      marginTop: 20,
-      color: theme.text.primary,
+    linePrimary: {
+      color: theme.text.onBrand,
     },
-    line2: {
-      color: theme.bg.main,
+    lineAccent: {
+      color: mixColors(theme.bg.main, theme.bg.onBrandStrong, 0.45),
+    },
+    action: {
+      alignSelf: 'stretch',
     },
   });
