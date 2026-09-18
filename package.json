@@ -14,7 +14,7 @@
     "format:check": "prettier --check '**/*.{ts,tsx,js,jsx,json,md}'",
     "test": "jest",
     "test:watch": "jest --watch",
-    "postinstall": "patch-package",
+    "postinstall": "patch-package && node node_modules/react-native-executorch/scripts/download-libs.js",
     "prepare": "husky"
   },
   "jest": {
