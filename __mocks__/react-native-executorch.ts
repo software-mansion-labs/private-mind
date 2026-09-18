@@ -65,8 +65,16 @@ export const LFM2_5_VL_450M_QUANTIZED = makeModelConstants(
 export const BIELIK_V3_0_1_5B_QUANTIZED = makeModelConstants(
   'bielik-v3.0-1.5b-quantized'
 );
-export const GEMMA4_E2B = makeModelConstants('gemma4-e2b');
-export const GEMMA4_E2B_MM = makeModelConstants('gemma4-e2b-mm');
+const gemma4E2b = makeModelConstants('gemma4-e2b');
+
+export const GEMMA4_E2B_MLX_MODEL = `${gemma4E2b.modelSource}#mlx`;
+export const GEMMA4_E2B_VULKAN_MODEL = `${gemma4E2b.modelSource}#vulkan`;
+export const GEMMA4_E2B_XNNPACK_MODEL = `${gemma4E2b.modelSource}#xnnpack`;
+export const GEMMA4_E2B_MLX_MM = `${gemma4E2b.modelSource}#mm-mlx`;
+export const GEMMA4_E2B_VULKAN_MM = `${gemma4E2b.modelSource}#mm-vulkan`;
+export const GEMMA4_E2B_XNNPACK_MM = `${gemma4E2b.modelSource}#mm-xnnpack`;
+export const GEMMA4_E2B_TOKENIZER = gemma4E2b.tokenizerSource;
+export const GEMMA4_E2B_TOKENIZER_CONFIG = gemma4E2b.tokenizerConfigSource;
 export const WHISPER_TINY_EN = 'whisper-tiny-en';
 
 export const LLMModule = {

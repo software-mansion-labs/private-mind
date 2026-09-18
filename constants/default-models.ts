@@ -20,9 +20,29 @@ import {
   LFM2_5_VL_1_6B_QUANTIZED,
   LFM2_5_VL_450M_QUANTIZED,
   BIELIK_V3_0_1_5B_QUANTIZED,
-  GEMMA4_E2B,
-  GEMMA4_E2B_MM,
-} from 'react-native-executorch';
+  GEMMA4_E2B_MLX_MODEL,
+  GEMMA4_E2B_VULKAN_MODEL,
+  GEMMA4_E2B_MLX_MM,
+  GEMMA4_E2B_VULKAN_MM,
+  GEMMA4_E2B_TOKENIZER,
+  GEMMA4_E2B_TOKENIZER_CONFIG,
+} from 'react-native-executorch/legacy';
+
+const GEMMA4_E2B = {
+  modelName: 'gemma4-e2b',
+  modelSource:
+    Platform.OS === 'android' ? GEMMA4_E2B_VULKAN_MODEL : GEMMA4_E2B_MLX_MODEL,
+  tokenizerSource: GEMMA4_E2B_TOKENIZER,
+  tokenizerConfigSource: GEMMA4_E2B_TOKENIZER_CONFIG,
+} as const;
+
+const GEMMA4_E2B_MM = {
+  modelName: 'gemma4-e2b-multimodal',
+  modelSource:
+    Platform.OS === 'android' ? GEMMA4_E2B_VULKAN_MM : GEMMA4_E2B_MLX_MM,
+  tokenizerSource: GEMMA4_E2B_TOKENIZER,
+  tokenizerConfigSource: GEMMA4_E2B_TOKENIZER_CONFIG,
+} as const;
 
 const LOW_END_STARTING_MODELS = [
   'Qwen 3 - 0.6B',

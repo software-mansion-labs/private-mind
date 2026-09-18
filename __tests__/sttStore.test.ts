@@ -1,7 +1,7 @@
 import { useSTTStore } from '../store/sttStore';
-import { SpeechToTextModule } from 'react-native-executorch';
+import { SpeechToTextModule } from 'react-native-executorch/legacy';
 
-jest.mock('react-native-executorch', () => ({
+jest.mock('react-native-executorch/legacy', () => ({
   SpeechToTextModule: {
     fromModelName: jest.fn(),
   },
