@@ -6,13 +6,13 @@ import WebIcon from '../assets/icons/web.svg';
 import SourceIcon from '../assets/icons/source.svg';
 import SoundwaveIcon from '../assets/icons/soundwave.svg';
 
-export interface OnboardingIllustration {
+interface OnboardingIllustration {
   source: ImageSourcePropType;
   aspectRatio: number;
   anchor: 'top' | 'bottom';
 }
 
-export interface OnboardingIcon {
+interface OnboardingIcon {
   art: SvgComponent;
   aspectRatio: number;
   scale?: number;
@@ -29,7 +29,7 @@ export interface OnboardingSlide {
 
 export const INTRO_ART = WelcomeArt;
 export const INTRO_ART_ASPECT_RATIO = 300 / 420;
-export const STEP_ART_ASPECT_RATIO = 900 / 1856;
+const STEP_ART_ASPECT_RATIO = 900 / 1856;
 
 export const ONBOARDING_SLIDES: OnboardingSlide[] = [
   {
@@ -104,8 +104,8 @@ export const CARD_INSET = 16;
 export const CONTENT_PADDING = 16;
 export const TEXT_CONTROLS_GAP = 24;
 export const CONTROLS_GAP = 16;
-export const PAGINATION_HEIGHT = 24;
-export const BUTTON_HEIGHT = 48;
+const PAGINATION_HEIGHT = 24;
+const BUTTON_HEIGHT = 48;
 export const ILLUSTRATION_CLEARANCE = 8;
 export const CONTROLS_HEIGHT = PAGINATION_HEIGHT + CONTROLS_GAP + BUTTON_HEIGHT;
 export const SCRIM_RISE = 200;
