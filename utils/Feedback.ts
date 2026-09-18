@@ -3,6 +3,8 @@ import { Presets, Settings } from 'react-native-pulsar';
 Settings.enableSound(false);
 
 export class Feedback {
+  static prepareOnboarding = () => Settings.preloadPresets(['Chip', 'Bloom']);
+
   // Core interactions
   static send = () => Presets.ripple();
   static interrupt = () => Presets.push();

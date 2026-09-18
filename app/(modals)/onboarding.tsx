@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -26,6 +26,10 @@ function OnboardingScreen() {
   const { styles, theme } = useThemedStyles(createStyles);
   const [showCarousel, setShowCarousel] = useState(false);
   const introProgress = useSharedValue(1);
+
+  useEffect(() => {
+    Feedback.prepareOnboarding();
+  }, []);
 
   const leaveOnboarding = useCallback(() => {
     markOnboardingComplete();

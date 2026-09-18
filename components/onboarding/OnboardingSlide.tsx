@@ -223,7 +223,7 @@ function OnboardingSlide({
   );
 }
 
-export default OnboardingSlide;
+export default React.memo(OnboardingSlide);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
