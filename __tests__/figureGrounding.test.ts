@@ -70,6 +70,31 @@ describe('extractCurrencyTokens', () => {
     ]);
     expect(extractCurrencyTokens('₽1990 today')).toEqual(['₽1990']);
   });
+
+  it('reads the symbol written after the amount, as most of Europe writes it', () => {
+    expect(extractCurrencyTokens('Das iPhone 17 kostet 949,00 € .')).toEqual([
+      '949,00 €',
+    ]);
+    expect(extractCurrencyTokens('Il costa 979 euro in Italia.')).toEqual([
+      '979 euro',
+    ]);
+  });
+
+  it('reads currencies whose sign the symbol list never carried', () => {
+    expect(extractCurrencyTokens('iPhone 17 fiyatı 74.999 ₺ oldu.')).toEqual([
+      '74.999 ₺',
+    ]);
+    expect(extractCurrencyTokens('Harga iPhone 17 Rp 17.249.000.')).toEqual([
+      'Rp 17.249.000',
+    ]);
+    expect(extractCurrencyTokens('O iPhone custa R$ 7.499,00 hoje.')).toEqual([
+      'R$ 7.499,00',
+    ]);
+  });
+
+  it('reads an amount written in the digits of the reader’s own script', () => {
+    expect(extractCurrencyFigures('कीमत ₹८२,९०० है।')).toEqual([82900]);
+  });
 });
 
 describe('extractPriceStatementTokens', () => {
@@ -240,6 +265,15 @@ describe('findUngroundedFigures', () => {
     expect(
       findUngroundedFigures('I have no price for that.', 'No prices here.')
     ).toEqual([]);
+  });
+
+  it('accepts a figure the page states as a value, not only after the word "price" (Pixel cross-model pass)', () => {
+    const context =
+      'In 1971, when the US abandoned the gold standard, gold was priced at ' +
+      '$35 per ounce. Today, gold is worth over $1,900 per ounce and the ' +
+      'premium over spot is calculated from there.';
+    const answer = 'The current price of gold per ounce is over $1,900 USD.';
+    expect(findUngroundedFigures(answer, context)).toEqual([]);
   });
 
   it('flags a real figure from the page that the price statement does not govern (F8)', () => {

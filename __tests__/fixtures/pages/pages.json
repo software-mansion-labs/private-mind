@@ -1,0 +1,25 @@
+{
+  "captured": "2026-09-08",
+  "how": "curl -sL with the app's mobile user agent, stored gzipped byte-for-byte; all three are under URL_PARSE_MAX_CHARS so nothing is truncated",
+  "why": "the search stage cannot be replayed off-device — every engine the app uses blocks a plain fetch from a workstation, and the app parses the result page with JavaScript inside a WebView. These are pages chosen to stand for the shapes that failed on the device, not a capture of what the device retrieved.",
+  "pages": [
+    {
+      "file": "full-breakfast.html.gz",
+      "url": "https://en.wikipedia.org/wiki/Full_breakfast",
+      "title": "Full breakfast - Wikipedia",
+      "stands_for": "a list question whose answer is spread through prose"
+    },
+    {
+      "file": "it-roster.html.gz",
+      "url": "https://it.wikipedia.org/wiki/Presidenti_del_Consiglio_dei_ministri_della_Repubblica_Italiana",
+      "title": "Presidenti del Consiglio dei ministri della Repubblica Italiana",
+      "stands_for": "the historical roster the device answered from when asked who holds the office now"
+    },
+    {
+      "file": "de-kanzler.html.gz",
+      "url": "https://www.bundesregierung.de/breg-de/bundesregierung/bundeskanzler",
+      "title": "Bundeskanzler - Bundesregierung",
+      "stands_for": "a page whose body arrives empty because it is rendered client-side"
+    }
+  ]
+}

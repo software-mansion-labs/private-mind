@@ -1,7 +1,7 @@
 import type { WebSearchResult } from './types';
 import type { WebIntentKind } from './intentKind';
 import { foldForMatching, stemPrefix } from '../queryTerms';
-import { MONEY_ANCHOR } from './webResultsToContext';
+import { MONEY_ANCHOR } from './passageSignals';
 import { anchorTokens } from './anchorTokens';
 
 const questionTerms = (query: string): string[] => [
@@ -87,7 +87,31 @@ const mentionsAnyYear = (result: WebSearchResult, years: string[]): boolean => {
 export interface ListingRankOptions {
   kind?: WebIntentKind;
   scopeYears?: string[];
+  currentState?: boolean;
+  freshYear?: string;
 }
+
+const FRESH_YEAR_BONUS = 1;
+
+const ROSTER_PENALTY = 3;
+
+const YEAR_IN_TITLE = /(?<![\p{L}\p{N}])(?:1[6-9]|20)\d{2}(?!\p{N})/gu;
+const ROSTER_YEAR_HORIZON = 30;
+const LONGEST_SINGLE_TENURE_YEARS = 10;
+
+const yearsNamedIn = (title: string): number[] =>
+  [...title.matchAll(YEAR_IN_TITLE)].map((match) => Number(match[0]));
+
+export const looksLikeHistoricalRoster = (title: string): boolean => {
+  const years = yearsNamedIn(title);
+  if (years.length === 0) return false;
+  const earliest = Math.min(...years);
+  const predatesLivingMemory =
+    earliest < new Date().getFullYear() - ROSTER_YEAR_HORIZON;
+  const spansMoreThanOneTenure =
+    Math.max(...years) - earliest >= LONGEST_SINGLE_TENURE_YEARS;
+  return predatesLivingMemory || spansMoreThanOneTenure;
+};
 
 export const rankByListingRelevance = <T extends WebSearchResult>(
   rawResults: T[],
@@ -152,8 +176,14 @@ export const rankByListingRelevance = <T extends WebSearchResult>(
           ? ANSWER_FIGURE_BONUS
           : 0) +
         anchorScore(index) +
-        (yearsDiscriminate && inScope[index] ? YEAR_BONUS : 0) -
-        (looksLikeCrossAssetPage(result) ? CROSS_ASSET_PENALTY : 0),
+        (yearsDiscriminate && inScope[index] ? YEAR_BONUS : 0) +
+        (options.freshYear && mentionsAnyYear(result, [options.freshYear])
+          ? FRESH_YEAR_BONUS
+          : 0) -
+        (looksLikeCrossAssetPage(result) ? CROSS_ASSET_PENALTY : 0) -
+        (options.currentState && looksLikeHistoricalRoster(result.title ?? '')
+          ? ROSTER_PENALTY
+          : 0),
     }))
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((entry) => entry.result);

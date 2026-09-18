@@ -1,6 +1,6 @@
 import { type SourceDocument } from '../../database/chatRepository';
 import { type WebSearchTraceEntry } from '../../store/webSearchStore';
-import { hostname } from '../../utils/web/webResultsToContext';
+import { hostname } from '../../utils/web/hostname';
 import {
   describeFetchFailure,
   summarizeFetchFailures,

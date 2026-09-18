@@ -2,7 +2,7 @@ import { getPromptCharBudget } from '../../constants/context-window';
 import { WEB_SNIPPET_MAX_CHARS } from '../../constants/web';
 import type { Model } from '../../database/modelRepository';
 
-const ASSEMBLED_INSTRUCTION_CHARS = 3000;
+const ASSEMBLED_INSTRUCTION_CHARS = 2500;
 
 export const webContextCharBudget = (
   model: Model | null | undefined,

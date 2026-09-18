@@ -90,13 +90,11 @@ export default function ChatScreen({
 
   // Shared values for KeyboardChatScrollView
   const extraContentPadding = useSharedValue(0);
-  const blankSpace = useSharedValue(0);
   const [chatBarHeight, setChatBarHeight] = useState(0);
 
   useEffect(() => {
     extraContentPadding.set(0);
-    blankSpace.set(0);
-  }, [model?.id, extraContentPadding, blankSpace]);
+  }, [model?.id, extraContentPadding]);
 
   const isEmpty = !isLoading && messageHistory.length === 0;
   const hasMessages = isLoading || messageHistory.length > 0;
@@ -211,16 +209,21 @@ export default function ChatScreen({
     isSwitching,
   });
 
-  const { handleThinkingToggle, handleWebSearchToggle, handleSelectPrompt } =
-    useChatScreenActions({
-      chatId,
-      chat,
-      model,
-      chatSettings,
-      setSetting,
-      db,
-      inputRef,
-    });
+  const {
+    handleThinkingToggle,
+    thinkingEnabled,
+    handleWebSearchToggle,
+    handleSelectPrompt,
+    webSearchEnabled,
+  } = useChatScreenActions({
+    chatId,
+    chat,
+    model,
+    chatSettings,
+    setSetting,
+    db,
+    inputRef,
+  });
 
   const chatGenerationError =
     generationError?.chatId === chatId ? generationError.message : undefined;
@@ -259,7 +262,6 @@ export default function ChatScreen({
           ref={messagesRef}
           chatHistory={messageHistory}
           extraContentPadding={extraContentPadding}
-          blankSpace={blankSpace}
           isGenerating={isGenerating}
           generationError={chatGenerationError}
           onRetryGeneration={handleRetryGeneration}
@@ -286,9 +288,9 @@ export default function ChatScreen({
           model={model}
           isVisionModel={model?.vision === true}
           extraContentPadding={extraContentPadding}
-          thinkingEnabled={chatSettings?.thinkingEnabled || false}
+          thinkingEnabled={thinkingEnabled}
           onThinkingToggle={handleThinkingToggle}
-          webSearchEnabled={chatSettings?.webSearchEnabled || false}
+          webSearchEnabled={webSearchEnabled}
           onWebSearchToggle={
             WEB_SEARCH_ENABLED ? handleWebSearchToggle : undefined
           }

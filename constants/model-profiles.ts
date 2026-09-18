@@ -88,6 +88,20 @@ export const WEB_ANSWER_EVIDENCE: Record<string, string> = {
     '33% correct on the 72-item multilingual corpus with retrieval at 100% — ' +
     'the context it was handed contained the answer twice as often as its ' +
     'reply did. Web search disabled for it.',
+  'LFM 2.5 VL - 450M':
+    'Cross-model pass on a Pixel 10: read "$35 per ounce" out of a sentence ' +
+    'that gave the real price two clauses later, then repeated its own ' +
+    'previous turn over a correct fresh source, then stated a EUR/USD rate ' +
+    'the grounding check had to flag. Web search disabled for it.',
+  'Qwen 2.5 - 1.5B':
+    'Cross-model pass on a Pixel 10: answered an off-topic retrieval by ' +
+    'inventing both the reasoning ("the sources above disagree") and the ' +
+    'figures, rather than saying the sources did not cover it. Web search ' +
+    'disabled for it.',
+  'Qwen 2.5 - 3B':
+    'Cross-model pass on a Pixel 10: took a price out of an explicitly ' +
+    'hypothetical worked example, and on another turn returned the scraped ' +
+    'page chrome verbatim instead of an answer. Web search disabled for it.',
   'Qwen 3 - 1.7B':
     'Single-hop factual: correct and in-language across PL/EN entity, weather ' +
     'and currency runs. Two-fact questions drop the second fact (asked for a ' +
@@ -118,14 +132,30 @@ export const PROFILE_BY_FAMILY: Record<string, Partial<ModelProfile>> = {};
 
 export const PROFILE_BY_MODEL: Record<string, Partial<ModelProfile>> = {
   'Qwen 2.5 - 0.5B': { webSearchReady: false },
+  'LFM 2.5 VL - 450M': { webSearchReady: false },
+  'Qwen 2.5 - 1.5B': { webSearchReady: false },
   'Gemma 4 - 2B': { webSearchMinDeviceMemoryGB: 8 },
   'Gemma 4 VL - 2B': { webSearchMinDeviceMemoryGB: 8 },
-  'Qwen 2.5 - 3B': { webSearchMinDeviceMemoryGB: 8 },
+  'Qwen 2.5 - 3B': { webSearchReady: false, webSearchMinDeviceMemoryGB: 8 },
   'LLaMA 3.2 - 3B - QLoRa': { webSearchMinDeviceMemoryGB: 8 },
   'LLaMA 3.2 - 3B - SpinQuant': { webSearchMinDeviceMemoryGB: 8 },
 };
 
-export type ProfileTarget = Pick<Model, 'modelName' | 'family'>;
+export const WEB_SEARCH_MIN_PARAMETERS_B = 0.7;
+
+export type ProfileTarget = Pick<Model, 'modelName' | 'family' | 'parameters'>;
+
+const declaresWebSearchReady = (modelName: string, family: string): boolean =>
+  PROFILE_BY_MODEL[modelName]?.webSearchReady !== undefined ||
+  PROFILE_BY_FAMILY[family]?.webSearchReady !== undefined;
+
+const isBelowWebSearchCapabilityFloor = (
+  model: ProfileTarget,
+  family: string
+): boolean =>
+  !declaresWebSearchReady(model.modelName, family) &&
+  model.parameters !== undefined &&
+  model.parameters < WEB_SEARCH_MIN_PARAMETERS_B;
 
 export const getModelProfile = (
   model: ProfileTarget | null | undefined
@@ -138,6 +168,9 @@ export const getModelProfile = (
     ...(planner ? { webPlanner: planner } : {}),
     ...(PROFILE_BY_FAMILY[family] ?? {}),
     ...(PROFILE_BY_MODEL[model.modelName] ?? {}),
+    ...(isBelowWebSearchCapabilityFloor(model, family)
+      ? { webSearchReady: false }
+      : {}),
   };
   const reserveIsExplicit =
     PROFILE_BY_MODEL[model.modelName]?.generationReserveTokens !== undefined ||

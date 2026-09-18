@@ -7,6 +7,7 @@ import {
   summarizeFetchFailures,
   type FetchFailure,
 } from '../utils/web/fetchFailure';
+import { FetchStatusError } from '../utils/web/security/outboundFetch';
 
 const failure = (
   host: string,
@@ -21,6 +22,27 @@ describe('classifyFetchError — reads the errors outboundFetch actually throws'
     expect(
       classifyFetchError(new Error('Fetch failed: https://a.example/x'))
     ).toBe('network');
+  });
+
+  it('does not read a number in the url path as an http status', () => {
+    expect(
+      classifyFetchError(new Error('Fetch failed: https://a.example/404/x'))
+    ).toBe('network');
+    expect(
+      classifyFetchError(
+        new Error('Fetch failed: https://a.example/artykul-503-czesci')
+      )
+    ).toBe('network');
+  });
+
+  it('classifies by the status carried on the error before reading the message', () => {
+    expect(classifyFetchError(new FetchStatusError(403, 'Forbidden'))).toBe(
+      'blocked'
+    );
+    expect(classifyFetchError(new FetchStatusError(404, ''))).toBe('not-found');
+    expect(classifyFetchError(new FetchStatusError(502, 'Bad Gateway'))).toBe(
+      'server-error'
+    );
   });
 
   it('reads an abort as its own reason, not as a site problem', () => {

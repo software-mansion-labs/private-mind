@@ -583,6 +583,7 @@ const LETTER_RANGES = [
   '\\u0590-\\u05ff', // Hebrew
   '\\u0600-\\u06ff', // Arabic
   '\\u0900-\\u097f', // Devanagari
+  '\\u0980-\\u09ff', // Bengali
   '\\u0e00-\\u0e7f', // Thai
   '\\u3040-\\u30ff', // Hiragana + Katakana
   '\\u3400-\\u4dbf\\u4e00-\\u9fff', // CJK ideographs
@@ -591,7 +592,8 @@ const LETTER_RANGES = [
 
 const MIN_TERM_LENGTH = 3;
 
-const SHORT_WORD_SCRIPT = /[\p{Script=Arabic}\p{Script=Devanagari}]/u;
+const SHORT_WORD_SCRIPT =
+  /[\p{Script=Arabic}\p{Script=Devanagari}\p{Script=Bengali}]/u;
 const isLongEnough = (token: string): boolean =>
   token.length >= MIN_TERM_LENGTH ||
   (token.length === 2 && SHORT_WORD_SCRIPT.test(token));

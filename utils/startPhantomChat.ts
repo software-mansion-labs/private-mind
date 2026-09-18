@@ -9,6 +9,39 @@ import { getLastUsedModelId, setLastUsedModelId } from './lastUsedModel';
 
 type NavMode = 'push' | 'replace';
 
+type NavTarget = {
+  readonly pathname: string;
+  readonly params: { readonly modelId: string };
+};
+
+const NAV_SETTLE_MS = 50;
+
+let pendingReplace: {
+  timer: ReturnType<typeof setTimeout>;
+  abandon: () => void;
+} | null = null;
+
+const replaceWhenNavSettles = (
+  target: NavTarget,
+  isStillWanted: () => boolean
+): Promise<void> =>
+  new Promise<void>((resolve) => {
+    pendingReplace?.abandon();
+    const timer = setTimeout(() => {
+      pendingReplace = null;
+      if (isStillWanted()) router.replace(target);
+      resolve();
+    }, NAV_SETTLE_MS);
+    pendingReplace = {
+      timer,
+      abandon: () => {
+        clearTimeout(timer);
+        pendingReplace = null;
+        resolve();
+      },
+    };
+  });
+
 export const startPhantomChat = async (
   db: SQLiteDatabase,
   mode: NavMode = 'push',
@@ -42,8 +75,10 @@ export const startPhantomChat = async (
   } as const;
 
   if (mode === 'replace') {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    router.replace(target);
+    await replaceWhenNavSettles(
+      target,
+      () => useChatStore.getState().phantomChat?.id === nextChatId
+    );
   } else {
     router.push(target);
   }

@@ -5,9 +5,6 @@ import {
 } from '../utils/web/webResultsToContext';
 import type { WebSearchResult } from '../utils/web/types';
 
-// Shaped like the Wikipedia page that made the model answer "Kraków ma 4 000
-// mieszkańców": a dense run of historical figures, and one sentence with the
-// current one.
 const HISTORY_HEAVY = [
   'It doubled between 1100 and 1300 from 5,000 to 10,000, and in 1400 counted 14,000 inhabitants.',
   'By the early 17th century the population had reached 28,000 inhabitants.',
@@ -16,17 +13,36 @@ const HISTORY_HEAVY = [
   'Kraków is a city in southern Poland with a long history of trade and learning.',
 ].join('\n');
 
+const FLIGHT_PAGE = (label: string): string =>
+  [
+    'Bu sayfa havacilik tarihine ayrilmistir ve roket denemeleri hakkinda pek cok ayrinti icerir; okuyucular burada hem eski hem de yeni gorevlerin ayrintilarini bir arada bulabilirler.',
+    'Ilk ucus hakkinda genel bilgiler, ucus programi, ucus guvenligi kurallari ve ekibin hazirlik calismalari bu bolumde toplanmistir; konuyla ilgili aciklamalar asagida surmektedir.',
+    `${label}: 27.08.2025`,
+    'Ekip sonraki gorev icin hazirliklara hemen basladi ve calismalar butun yaz boyunca kesintisiz surdu; yeni denemeler icin gereken parcalar da bu donemde tedarik edildi.',
+  ].join('\n');
+
+const FLIGHT_QUESTION = 'Ilk ucus ne zaman gerceklesti?';
+
 describe('passage selection follows the shape of the question', () => {
-  it('pulls the dated sentence in for a "when" question', () => {
+  it('takes a labelled date whose label answers the question, in a language no word list names', () => {
     const excerpt = selectRelevantContent(
-      HISTORY_HEAVY,
-      'Kiedy odbył się pierwszy w pełni udany lot?',
-      160
+      FLIGHT_PAGE('Ilk ucus tarihi'),
+      FLIGHT_QUESTION,
+      200
     );
-    expect(excerpt).toContain('27 August 2025');
+    expect(excerpt).toContain('27.08.2025');
   });
 
-  it('does the same for the English form', () => {
+  it('leaves the same date alone when its label answers nothing that was asked', () => {
+    const excerpt = selectRelevantContent(
+      FLIGHT_PAGE('Sayfa guncelleme'),
+      FLIGHT_QUESTION,
+      200
+    );
+    expect(excerpt).not.toContain('27.08.2025');
+  });
+
+  it('reaches a dated sentence in running prose through the question own words', () => {
     const excerpt = selectRelevantContent(
       HISTORY_HEAVY,
       'When did the first fully successful flight take place?',
@@ -85,10 +101,6 @@ describe('what the source row records', () => {
 });
 
 describe('a page fetched for its prices must give them up', () => {
-  // Trimmed from the real szymoszkowa.pl price list. The resort roll-call
-  // matches six of the question's words; a "150,00 PLN" cell matches none. On
-  // device that put the roll-call in the prompt and no price at all, and the
-  // model correctly answered that it had no prices.
   const PAGE = fs.readFileSync(
     `${__dirname}/fixtures/skiPassPricing.txt`,
     'utf8'

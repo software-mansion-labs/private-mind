@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
+import { openExternalUrl } from '../../utils/web/openExternalUrl';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -15,10 +15,7 @@ const DominantSourceBadge = ({ source }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
   const handlePress = useCallback(() => {
-    if (!source?.url) return;
-    WebBrowser.openBrowserAsync(source.url).catch((error) =>
-      console.warn('Failed to open browser', error)
-    );
+    openExternalUrl(source?.url);
   }, [source?.url]);
 
   if (!source) return null;

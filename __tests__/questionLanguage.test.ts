@@ -49,6 +49,20 @@ describe('detectQuestionLanguage', () => {
     expect(codeOf('what is the weather in London today')).toBe('en');
   });
 
+  it('reads an inflected form of a word it knows in the base form', () => {
+    expect(codeOf('Cuantos habitantes tiene Barcelona')).toBe('es');
+    expect(codeOf('Wie viele Einwohner hat Muenchen')).toBe('de');
+  });
+
+  it('reads umlauts typed as the ASCII digraphs a phone keyboard offers', () => {
+    expect(codeOf('Welche Zutaten braucht man fuer Kaesespaetzle')).toBe('de');
+    expect(codeOf('Wie sind die Oeffnungszeiten vom Museum')).toBe('de');
+  });
+
+  it('breaks a tie on the longer word rather than giving up', () => {
+    expect(codeOf('Jam buka Candi Borobudur pukul berapa')).toBe('id');
+  });
+
   it('names German', () => {
     expect(codeOf('Wer ist der Kanzler von Deutschland?')).toBe('de');
   });

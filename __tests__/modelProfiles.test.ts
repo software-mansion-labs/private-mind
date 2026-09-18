@@ -6,6 +6,7 @@ import {
   PROFILE_BY_MODEL,
   WEB_ANSWER_EVIDENCE,
   WEB_PLANNER_MATRIX,
+  WEB_SEARCH_MIN_PARAMETERS_B,
   getModelProfile,
   getWebSearchMinDeviceMemoryGB,
   isWebSearchReady,
@@ -52,6 +53,18 @@ describe('isWebSearchReady', () => {
   it('marks the model measured unable to use retrieved context as not ready', () => {
     expect(isWebSearchReady({ modelName: 'Qwen 2.5 - 0.5B' })).toBe(false);
     expect(WEB_ANSWER_EVIDENCE['Qwen 2.5 - 0.5B']).toBeDefined();
+  });
+
+  it('keeps web search off the models that fabricated their way through the cross-model pass', () => {
+    expect(isWebSearchReady({ modelName: 'LFM 2.5 VL - 450M' })).toBe(false);
+    expect(isWebSearchReady({ modelName: 'Qwen 2.5 - 1.5B' })).toBe(false);
+    expect(isWebSearchReady({ modelName: 'Qwen 2.5 - 3B' })).toBe(false);
+  });
+
+  it('leaves the models that only need more memory available', () => {
+    expect(isWebSearchReady({ modelName: 'Gemma 4 - 2B' })).toBe(true);
+    expect(isWebSearchReady({ modelName: 'LFM 2.5 - 1.2B' })).toBe(true);
+    expect(isWebSearchReady({ modelName: 'Qwen 3 - 0.6B' })).toBe(true);
   });
 
   it('backs every not-ready verdict with recorded evidence', () => {
@@ -147,6 +160,61 @@ describe('web search memory requirement', () => {
     for (const [name, profile] of Object.entries(PROFILE_BY_MODEL)) {
       if (profile.webSearchMinDeviceMemoryGB === undefined) continue;
       expect(catalogue.has(name)).toBe(true);
+    }
+  });
+});
+
+describe('web search capability floor', () => {
+  it('turns web search off for an uncatalogued model below the floor', () => {
+    expect(
+      isWebSearchReady({ modelName: 'Tiny Import - 300M', parameters: 0.3 })
+    ).toBe(false);
+  });
+
+  it('leaves an uncatalogued model at the floor enabled', () => {
+    expect(
+      isWebSearchReady({
+        modelName: 'Small Import - 700M',
+        parameters: WEB_SEARCH_MIN_PARAMETERS_B,
+      })
+    ).toBe(true);
+  });
+
+  it('leaves a model of unknown size enabled, having no evidence either way', () => {
+    expect(isWebSearchReady({ modelName: 'Unlabelled Import' })).toBe(true);
+  });
+
+  it('admits the smallest catalogued model the corpus scored as usable', () => {
+    const qwen3 = DEFAULT_MODELS.find(
+      (model) => model.modelName === 'Qwen 3 - 0.6B'
+    );
+    expect(qwen3?.parameters).toBeGreaterThanOrEqual(
+      WEB_SEARCH_MIN_PARAMETERS_B
+    );
+    expect(isWebSearchReady(qwen3!)).toBe(true);
+  });
+
+  it('leaves every catalogued verdict exactly where its evidence put it', () => {
+    const gated = DEFAULT_MODELS.filter((model) => !isWebSearchReady(model))
+      .map((model) => model.modelName)
+      .sort();
+    expect(gated).toEqual(
+      [
+        'LFM 2.5 VL - 450M',
+        'Qwen 2.5 - 0.5B',
+        'Qwen 2.5 - 1.5B',
+        'Qwen 2.5 - 3B',
+      ].sort()
+    );
+  });
+
+  it('never gates a catalogued model without recording why', () => {
+    for (const model of DEFAULT_MODELS) {
+      if (isWebSearchReady(model)) continue;
+      expect(
+        WEB_ANSWER_EVIDENCE[model.modelName] ??
+          PLANNER_EVIDENCE[model.modelName]
+      ).toBeDefined();
     }
   });
 });

@@ -44,8 +44,11 @@ export const useChatScreenActions = ({
   const { getModelById } = useModelStore();
   const { phantomChat, setPhantomChatSettings } = useChatStore();
 
+  const thinkingUsable = !model || !!model.thinking;
+  const thinkingEnabled = !!chatSettings?.thinkingEnabled && thinkingUsable;
+
   const handleThinkingToggle = async () => {
-    if (!model?.thinking) {
+    if (!thinkingEnabled && !thinkingUsable) {
       Toast.show({
         type: 'defaultToast',
         text1: 'Thinking cannot be enabled for this model.',
@@ -54,7 +57,7 @@ export const useChatScreenActions = ({
     }
 
     const previous = chatSettings?.thinkingEnabled;
-    const next = !previous;
+    const next = !thinkingEnabled;
     const newSettings: ChatSettings = {
       systemPrompt: chatSettings?.systemPrompt || '',
       thinkingEnabled: next,
@@ -80,23 +83,28 @@ export const useChatScreenActions = ({
     }
   };
 
-  const handleWebSearchToggle = () => {
-    if (!chatSettings.webSearchEnabled && !isWebSearchReady(model)) {
+  const webSearchUsable =
+    isWebSearchReady(model) && hasMemoryForWebSearch(model);
+  const webSearchEnabled = chatSettings.webSearchEnabled && webSearchUsable;
+
+  const handleWebSearchToggle = (): boolean => {
+    if (!webSearchEnabled && !isWebSearchReady(model)) {
       Toast.show({
         type: 'defaultToast',
         text1:
           'This model cannot use web results reliably — pick a larger one.',
       });
-      return;
+      return false;
     }
-    if (!chatSettings.webSearchEnabled && !hasMemoryForWebSearch(model)) {
+    if (!webSearchEnabled && !hasMemoryForWebSearch(model)) {
       Toast.show({
         type: 'defaultToast',
         text1: `${model?.modelName ?? 'This model'} already fills this phone's memory — searching alongside it would close the app. Pick a smaller model.`,
       });
-      return;
+      return false;
     }
     setSetting('webSearchEnabled', !chatSettings.webSearchEnabled);
+    return true;
   };
 
   const handleSelectPrompt = useCallback(
@@ -116,5 +124,11 @@ export const useChatScreenActions = ({
     [model, loadedModel, loadModel, getModelById, chat?.modelId, inputRef]
   );
 
-  return { handleThinkingToggle, handleWebSearchToggle, handleSelectPrompt };
+  return {
+    handleThinkingToggle,
+    handleWebSearchToggle,
+    handleSelectPrompt,
+    thinkingEnabled,
+    webSearchEnabled,
+  };
 };

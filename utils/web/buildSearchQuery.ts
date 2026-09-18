@@ -8,7 +8,7 @@ import {
 } from '../../constants/web';
 import { todayISO } from '../todayISO';
 import { namesAnotherDay } from '../calendarFacts';
-import { foldForMatching } from '../queryTerms';
+import { foldForMatching, stemPrefix } from '../queryTerms';
 import { conversationSubject, namedEntitiesIn } from './conversationSubject';
 import { parseIntentKind, type WebIntentKind } from './intentKind';
 import { sharesLanguageWith } from './queryLanguage';
@@ -41,6 +41,7 @@ const PLANNER_EXAMPLES: {
   kind: WebIntentKind;
   queries: string[];
   expects?: string[];
+  leaks?: string[];
 }[] = [
   {
     user: "hey, how's it going?",
@@ -70,6 +71,7 @@ const PLANNER_EXAMPLES: {
     kind: 'fact',
     queries: ['Tokyo weather today'],
     expects: ['temperature', 'rain or sun'],
+    leaks: ['Tokyo'],
   },
   {
     user: 'how much does bitcoin cost right now',
@@ -101,6 +103,7 @@ const PLANNER_EXAMPLES: {
     intent: 'most streamed song this year',
     kind: 'fact',
     queries: ['most streamed song Spotify 2025'],
+    leaks: ['Spotify'],
   },
   {
     user: 'jaka jest pogoda w Krakowie dzisiaj',
@@ -109,6 +112,7 @@ const PLANNER_EXAMPLES: {
     kind: 'fact',
     queries: ['pogoda Kraków dzisiaj'],
     expects: ['temperatura', 'opady'],
+    leaks: ['Kraków'],
   },
   {
     user: 'दिल्ली में आज का मौसम कैसा है',
@@ -116,6 +120,15 @@ const PLANNER_EXAMPLES: {
     intent: 'current Delhi weather',
     kind: 'fact',
     queries: ['दिल्ली मौसम आज'],
+    leaks: ['दिल्ली'],
+  },
+  {
+    user: 'chce kupic wedke na prezent koledze ile kosztuja takie rzeczy?',
+    needsSearch: true,
+    intent: 'cena wędki',
+    kind: 'price',
+    queries: ['wędka cena'],
+    expects: ['cena w zł'],
   },
 ];
 
@@ -129,14 +142,7 @@ const PLANNER_EXAMPLES_TEXT = PLANNER_EXAMPLES.map(
 ).join('');
 
 const EXAMPLE_LEAK_TOKENS: string[] = [
-  ...new Set(
-    PLANNER_EXAMPLES.flatMap(
-      (ex) =>
-        [...ex.queries, ...(ex.expects ?? [])]
-          .join(' ')
-          .match(/\p{Lu}[\p{L}]+/gu) ?? []
-    )
-  ),
+  ...new Set(PLANNER_EXAMPLES.flatMap((ex) => ex.leaks ?? [])),
 ];
 
 const PLANNER_SYSTEM_PROMPT = (today: string): string =>
@@ -173,6 +179,11 @@ const PLANNER_SYSTEM_PROMPT = (today: string): string =>
   'are about that period and not an all-time ranking. ' +
   'Give 1 query normally, one per item ONLY for a clear comparison of 2 or ' +
   '3 named things (max 3 queries).\n' +
+  'A casually worded message wraps the thing it is about in circumstance — ' +
+  'who it is for, why it is wanted, how it will be used, "such things", ' +
+  '"something like that". Keep the concrete thing and what is asked about ' +
+  'it; drop the circumstance. Searching the occasion instead of the object ' +
+  'returns the wrong shops and the wrong pages.\n' +
   PLANNER_EXAMPLES_TEXT +
   'Those are only format examples — plan for the actual user message below ' +
   'and never copy their words or topics.';
@@ -186,15 +197,20 @@ const isLeakedQuery = (query: string, groundedText: string): boolean =>
 
 const YEAR_RE = /\b(19|20)\d{2}\b/g;
 
+const ISO_YEAR = /^(\d{4})-\d{2}-\d{2}/;
+
+const yearOf = (today: string): number =>
+  Number(today.match(ISO_YEAR)?.[1] ?? new Date(today).getFullYear());
+
 const regroundYears = (
   queryText: string,
-  userInput: string,
+  conversation: string,
   today: string
 ): string => {
-  const currentYear = new Date(today).getFullYear();
+  const currentYear = yearOf(today);
   if (!Number.isFinite(currentYear)) return queryText;
   return queryText.replace(YEAR_RE, (year) => {
-    if (userInput.includes(year)) return year;
+    if (conversation.includes(year)) return year;
     const y = Number(year);
     return y >= currentYear - 1 && y <= currentYear
       ? year
@@ -517,12 +533,6 @@ const looksLikeElidedSubject = (query: string): boolean =>
   wordCount(query) <= ELIDED_SUBJECT_MAX_WORDS &&
   (ELIDED_POSSESSOR.test(query) || ELIDED_COPULA.test(query));
 
-// A bare-role or pronoun follow-up ("how many kids does the president
-// have", "ile dzieci ma prezydent") searches badly on its own — verbatim
-// mode has no LLM step to resolve who "the president" is, so without this
-// the query goes out under-specified and retrieval comes back generic.
-// Splices in the most recently named entity from the conversation so far,
-// when the query doesn't already name someone itself.
 const TEMPORAL_FOLLOW_UP_MAX_WORDS = 4;
 
 const looksLikeTemporalFollowUp = (query: string): boolean => {
@@ -548,11 +558,39 @@ export const carryReferentIntoQuery = (
   if (!looksIncomplete || hasOwnEntity(query)) return query;
   const subject = conversationSubject(history);
   if (subject) return `${query} ${subject}`;
-  return digest?.trim() ? `${query} ${digest.trim()}` : query;
+  const carried = digest?.trim();
+  return carried && digestDescribesConversation(carried, history)
+    ? `${query} ${carried}`
+    : query;
 };
 
-const CONVERSATIONAL_INTENT_MARKERS =
-  /\b(greet\w*|hello|hi there|thank\w*|chit.?chat|small talk|casual|opinion|advice|\bmath\b|coding|programming|\bcode\b|translat\w*|rewrit\w*|paraphras\w*|creative writing|\bpoem\w*|poetry|\bstory\b|\bjoke\w*|recipe idea|general knowledge|timeless|recap|summar\w*|conversation|chat history|(?:previous|earlier|last|first) (?:answer|reply|message|response)s?)\b/i;
+const DIGEST_OVERLAP_MIN_TERMS = 2;
+
+const contentStems = (text: string): Set<string> =>
+  new Set(
+    foldForMatching(text)
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((word) => word.length >= 4)
+      .map(stemPrefix)
+  );
+
+const digestDescribesConversation = (
+  digest: string,
+  history: { role: string; content: string }[]
+): boolean => {
+  const spoken = contentStems(
+    history
+      .filter((turn) => turn.role === 'user' || turn.role === 'assistant')
+      .map((turn) => turn.content)
+      .join(' ')
+  );
+  if (spoken.size === 0) return false;
+  let shared = 0;
+  for (const stem of contentStems(digest)) {
+    if (spoken.has(stem) && ++shared >= DIGEST_OVERLAP_MIN_TERMS) return true;
+  }
+  return false;
+};
 
 const CODE_TOKEN =
   /(?<![\p{L}\p{N}])(?=[\p{L}\p{N}-]*\p{N})(?=[\p{L}\p{N}-]*\p{L})[\p{L}\p{N}-]{3,}(?![\p{L}\p{N}])/u;
@@ -561,8 +599,8 @@ const LONG_NUMBER = /(?<![\p{L}\p{N}])\p{N}{3,}(?![\p{L}\p{N}])/u;
 export const hasHardSearchSignal = (query: string): boolean =>
   CODE_TOKEN.test(query) || LONG_NUMBER.test(query);
 
-export const isConversationalIntent = (intent: string): boolean =>
-  !!intent.trim() && CONVERSATIONAL_INTENT_MARKERS.test(intent);
+export const isConversationalPlan = (plan: { kind?: WebIntentKind }): boolean =>
+  plan.kind === 'chat';
 
 const buildConversation = (
   history: { role: string; content: string }[],
@@ -692,8 +730,13 @@ export const planWebSearch = async (
   if (!parsed) return verbatim();
   if (!parsed.needsSearch) {
     if (hasHardSearchSignal(query)) return verbatim(parsed.intent, parsed.kind);
-    return isConversationalIntent(parsed.intent)
-      ? { needsSearch: false, intent: parsed.intent, queries: [] }
+    return isConversationalPlan(parsed)
+      ? {
+          needsSearch: false,
+          intent: parsed.intent,
+          kind: parsed.kind,
+          queries: [],
+        }
       : verbatim(parsed.intent);
   }
 
@@ -715,12 +758,7 @@ export const planWebSearch = async (
   const groundQueries = (queries: string[]): string[] =>
     queries
       .filter((q) => !isLeakedQuery(q, groundedText))
-      .map((q) => regroundYears(q, query, today))
-      // The planner is told to "resolve pronouns/references from the
-      // conversation," but a small model doesn't reliably do that itself —
-      // this is the same under-specified-follow-up gap the verbatim path
-      // has, just reached via a query the LLM did produce rather than one
-      // it failed to.
+      .map((q) => regroundYears(q, `${query}\n${convo}`, today))
       .map((q) => carryReferentIntoQuery(q, history, opts?.digest))
       .map(anchorTopic)
       .map((q) => withSiteRestriction(q, siteRestriction));

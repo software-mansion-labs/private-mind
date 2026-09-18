@@ -12,11 +12,14 @@ export const useKeyboardLift = () => {
   const insetsBottom = useTheme().theme.insets.bottom;
   const keyboardGone = useSharedValue(false);
 
-  // Runs on the UI thread on purpose. Sending a message dismisses the keyboard
-  // and then occupies the JS thread for seconds, so a JS-side keyboardDidHide
-  // listener cannot land and the bar stays stranded at the keyboard's height.
+  // Worklet: sending a message blocks the JS thread past the keyboard's hide.
   useKeyboardHandler(
     {
+      // iOS reports keyboardDidShow only once the animation has finished.
+      onStart: (event) => {
+        'worklet';
+        if (event.height !== 0) keyboardGone.value = false;
+      },
       onMove: (event) => {
         'worklet';
         if (event.height !== 0) keyboardGone.value = false;
@@ -29,9 +32,7 @@ export const useKeyboardLift = () => {
     []
   );
 
-  // The controller misses a hide that has no animation (an IME swapped or
-  // closed by the system, a return from background); the system events catch
-  // those whenever the JS thread is free to deliver them.
+  // Catches an unanimated hide the keyboard controller does not report.
   useEffect(() => {
     const hidden = Keyboard.addListener('keyboardDidHide', () => {
       keyboardGone.value = true;

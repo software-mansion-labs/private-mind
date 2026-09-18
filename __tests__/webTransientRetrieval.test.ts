@@ -111,6 +111,24 @@ describe('retrieveWebPassages', () => {
     expect(out.results).toHaveLength(2);
   });
 
+  it('keeps the best passage of a page that shares the question’s words', async () => {
+    const results = [
+      result({
+        url: 'https://official.example',
+        content: 'Warsaw city hall opens 10.00 to 17.00 every day. '.repeat(20),
+      }),
+      result({
+        url: 'https://weather.example',
+        content: 'Warsaw weather today: 21C, sunny, light wind. '.repeat(20),
+      }),
+    ];
+
+    const out = await retrieveWebPassages(results, QUERY, fakeEmbeddings);
+
+    expect(out.results[0]!.content).toContain('Warsaw city hall');
+    expect(out.results[1]!.content).toContain('weather');
+  });
+
   it('falls back to unchanged results with null signals when embedding fails', async () => {
     const results = [
       result({ url: 'https://a.example', content: 'weather content here' }),

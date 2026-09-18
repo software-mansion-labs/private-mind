@@ -4,19 +4,23 @@ import {
   URL_FETCH_MAX_BYTES,
   URL_FETCH_TIMEOUT_MS,
   URL_FETCH_USER_AGENT,
+  URL_PARSE_MAX_CHARS,
   WEB_CONTENT_MIN_CHARS,
 } from '../../../constants/web';
-import { hostname } from '../webResultsToContext';
+import { hostname } from '../hostname';
 import {
   assertPublicHttpUrl,
   fetchTextWithLimit,
 } from '../security/outboundFetch';
-
-const stripTagBlock = (html: string, tag: string): string =>
-  html.replace(
-    new RegExp(`<${tag}\\b[^<]*(?:(?!<\\/${tag}>)<[^<]*)*<\\/${tag}>`, 'gi'),
-    ' '
-  );
+import { sanitizeUntrustedText } from '../security/untrustedContent';
+import {
+  elementSlices,
+  openTags,
+  rawTextContents,
+  removeElements,
+  scanTags,
+  stripTags,
+} from './htmlScan';
 
 const fromCodePoint = (code: number): string => {
   if (!Number.isFinite(code) || code < 0 || code > 0x10ffff) return '';
@@ -27,29 +31,167 @@ const fromCodePoint = (code: number): string => {
   }
 };
 
+const NAMED_ENTITIES: Record<string, string> = {
+  nbsp: ' ',
+  iexcl: '¡',
+  cent: '¢',
+  pound: '£',
+  curren: '¤',
+  yen: '¥',
+  brvbar: '¦',
+  sect: '§',
+  uml: '¨',
+  copy: '©',
+  ordf: 'ª',
+  laquo: '«',
+  not: '¬',
+  reg: '®',
+  macr: '¯',
+  deg: '°',
+  plusmn: '±',
+  sup2: '²',
+  sup3: '³',
+  acute: '´',
+  micro: 'µ',
+  para: '¶',
+  middot: '·',
+  cedil: '¸',
+  sup1: '¹',
+  ordm: 'º',
+  raquo: '»',
+  frac14: '¼',
+  frac12: '½',
+  frac34: '¾',
+  iquest: '¿',
+  Agrave: 'À',
+  Aacute: 'Á',
+  Acirc: 'Â',
+  Atilde: 'Ã',
+  Auml: 'Ä',
+  Aring: 'Å',
+  AElig: 'Æ',
+  Ccedil: 'Ç',
+  Egrave: 'È',
+  Eacute: 'É',
+  Ecirc: 'Ê',
+  Euml: 'Ë',
+  Igrave: 'Ì',
+  Iacute: 'Í',
+  Icirc: 'Î',
+  Iuml: 'Ï',
+  ETH: 'Ð',
+  Ntilde: 'Ñ',
+  Ograve: 'Ò',
+  Oacute: 'Ó',
+  Ocirc: 'Ô',
+  Otilde: 'Õ',
+  Ouml: 'Ö',
+  times: '×',
+  Oslash: 'Ø',
+  Ugrave: 'Ù',
+  Uacute: 'Ú',
+  Ucirc: 'Û',
+  Uuml: 'Ü',
+  Yacute: 'Ý',
+  THORN: 'Þ',
+  szlig: 'ß',
+  agrave: 'à',
+  aacute: 'á',
+  acirc: 'â',
+  atilde: 'ã',
+  auml: 'ä',
+  aring: 'å',
+  aelig: 'æ',
+  ccedil: 'ç',
+  egrave: 'è',
+  eacute: 'é',
+  ecirc: 'ê',
+  euml: 'ë',
+  igrave: 'ì',
+  iacute: 'í',
+  icirc: 'î',
+  iuml: 'ï',
+  eth: 'ð',
+  ntilde: 'ñ',
+  ograve: 'ò',
+  oacute: 'ó',
+  ocirc: 'ô',
+  otilde: 'õ',
+  ouml: 'ö',
+  divide: '÷',
+  oslash: 'ø',
+  ugrave: 'ù',
+  uacute: 'ú',
+  ucirc: 'û',
+  uuml: 'ü',
+  yacute: 'ý',
+  thorn: 'þ',
+  yuml: 'ÿ',
+  OElig: 'Œ',
+  oelig: 'œ',
+  Scaron: 'Š',
+  scaron: 'š',
+  Yuml: 'Ÿ',
+  fnof: 'ƒ',
+  circ: 'ˆ',
+  tilde: '˜',
+  ndash: '–',
+  mdash: '—',
+  lsquo: '‘',
+  rsquo: '’',
+  sbquo: '‚',
+  ldquo: '“',
+  rdquo: '”',
+  bdquo: '„',
+  dagger: '†',
+  Dagger: '‡',
+  bull: '•',
+  hellip: '…',
+  permil: '‰',
+  prime: '′',
+  Prime: '″',
+  lsaquo: '‹',
+  rsaquo: '›',
+  euro: '€',
+  trade: '™',
+  larr: '←',
+  uarr: '↑',
+  rarr: '→',
+  darr: '↓',
+  harr: '↔',
+  minus: '−',
+  ne: '≠',
+  le: '≤',
+  ge: '≥',
+  infin: '∞',
+  quot: '"',
+  apos: "'",
+  lt: '<',
+  gt: '>',
+};
+
+const NAMED_ENTITY = /&([a-zA-Z][a-zA-Z0-9]{1,7});/g;
+
 const decodeEntities = (text: string): string =>
   text
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&apos;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
+    .replace(NAMED_ENTITY, (match, name: string) =>
+      name === 'amp' ? match : (NAMED_ENTITIES[name] ?? match)
+    )
     .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
       fromCodePoint(parseInt(hex, 16))
     )
     .replace(/&#(\d+);/g, (_, dec) => fromCodePoint(parseInt(dec, 10)))
     .replace(/&amp;/g, '&');
 
-const META_TAG_PATTERN = /<meta\b[^>]*>/gi;
 const META_ATTR_PATTERN =
   /\b(property|name)\s*=\s*["']([^"']+)["']|\bcontent\s*=\s*["']([^"']*)["']/gi;
 
 const extractMetaTags = (html: string): Map<string, string> => {
   const tags = new Map<string, string>();
-  for (const tagMatch of html.matchAll(META_TAG_PATTERN)) {
+  for (const tag of openTags(html, 'meta')) {
     let key: string | undefined;
     let content: string | undefined;
-    for (const attr of tagMatch[0].matchAll(META_ATTR_PATTERN)) {
+    for (const attr of tag.matchAll(META_ATTR_PATTERN)) {
       if (attr[2] !== undefined) key = attr[2].toLowerCase();
       else content = attr[3];
     }
@@ -65,18 +207,17 @@ const extractTitle = (
   metaTags: Map<string, string>
 ): string | undefined => {
   const og = metaTags.get('og:title');
-  if (og) return decodeEntities(og).trim();
+  if (og) return singleLine(decodeEntities(og));
   const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  return title?.[1] ? decodeEntities(title[1]).trim() : undefined;
+  return title?.[1] ? singleLine(decodeEntities(title[1])) : undefined;
 };
+
+const singleLine = (text: string): string => text.replace(/\s+/g, ' ').trim();
 
 const HEADLINE_TAIL_MIN_SHARE = 0.2;
 
 const visibleTextLength = (html: string): number =>
-  html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim().length;
+  stripTags(html).replace(/\s+/g, ' ').trim().length;
 
 const cutFromHeadline = (body: string): string => {
   const headline = body.search(/<h1\b/i);
@@ -88,16 +229,25 @@ const cutFromHeadline = (body: string): string => {
     : body;
 };
 
+const ROLE_MAIN = /\brole=["']?main\b/i;
+
+const fromRoleMain = (html: string): string | undefined => {
+  const landmark = scanTags(html).find(
+    (tag) => !tag.closing && ROLE_MAIN.test(html.slice(tag.start, tag.end))
+  );
+  return landmark ? html.slice(landmark.start) : undefined;
+};
+
 const isolateMainContent = (html: string): string => {
-  const articles = html.match(/<article\b[\s\S]*?<\/article>/gi) ?? [];
+  const articles = elementSlices(html, 'article');
   if (articles.length === 1) return articles[0]!;
-  const main = html.match(/<main\b[\s\S]*?<\/main>/i);
-  if (main) return main[0];
-  const roleMain = html.match(/<[a-z][^>]*\brole=["']?main\b[\s\S]*/i);
-  if (roleMain) return roleMain[0];
+  const main = elementSlices(html, 'main')[0];
+  if (main) return main;
+  const roleMain = fromRoleMain(html);
+  if (roleMain) return roleMain;
   if (articles.length > 1) return articles.join('\n');
-  const body = html.match(/<body\b[\s\S]*?<\/body>/i);
-  return cutFromHeadline(body ? body[0] : html);
+  const body = elementSlices(html, 'body')[0];
+  return cutFromHeadline(body ?? html);
 };
 
 const FOOTNOTE_LINE =
@@ -119,7 +269,18 @@ const MENU_LINE_KEEP = /[\d.!?%°:;]/;
 const FACET_COUNT = /\(\s*\d[\d\s.,]*\s*\)/g;
 const PROMO_PERCENT = /-?\d+\s*%/g;
 
-const dropMenuRuns = (text: string): string => {
+const LIST_INTRODUCTION = /[:\uFF1A]\s*$/;
+const LINK_TEXT = /<a\b[^>]*>([^<]{1,60})<\/a>/gi;
+const MENU_RUN_LINK_SHARE = 0.5;
+
+export const linkTexts = (html: string): Set<string> =>
+  new Set(
+    [...html.matchAll(LINK_TEXT)].map((match) =>
+      decodeEntities(match[1]!).replace(/\s+/g, ' ').trim().toLowerCase()
+    )
+  );
+
+const dropMenuRuns = (text: string, links: Set<string> = new Set()): string => {
   const lines = text.split('\n');
   const isMenuLine = (line: string): boolean => {
     const trimmed = line.trim();
@@ -130,6 +291,8 @@ const dropMenuRuns = (text: string): string => {
     if (!/\p{L}/u.test(body)) return false;
     return !MENU_LINE_KEEP.test(body);
   };
+  const linked = (line: string): boolean =>
+    links.has(line.trim().toLowerCase());
   const kept: string[] = [];
   for (let start = 0; start < lines.length;) {
     if (!isMenuLine(lines[start]!)) {
@@ -139,16 +302,47 @@ const dropMenuRuns = (text: string): string => {
     }
     let end = start;
     while (end < lines.length && isMenuLine(lines[end]!)) end += 1;
-    if (end - start < MENU_RUN_MIN_LINES) {
-      kept.push(...lines.slice(start, end));
+    const run = lines.slice(start, end);
+    const linkShare = run.filter(linked).length / run.length;
+    const readsAsContent =
+      LIST_INTRODUCTION.test(kept[kept.length - 1] ?? '') ||
+      (links.size > 0 && linkShare < MENU_RUN_LINK_SHARE);
+    if (readsAsContent || run.length < MENU_RUN_MIN_LINES) {
+      kept.push(...run);
     }
     start = end;
   }
   return kept.join('\n');
 };
 
-const BLOCK_TAG =
-  /<(\/?)(p|div|br|li|ul|ol|tr|td|th|table|section|article|h[1-6]|dt|dd|dl|blockquote|pre|figcaption|option|caption)\b[^>]*>/gi;
+const BLOCK_TAGS: ReadonlySet<string> = new Set([
+  'p',
+  'div',
+  'br',
+  'li',
+  'ul',
+  'ol',
+  'tr',
+  'td',
+  'th',
+  'table',
+  'section',
+  'article',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'dt',
+  'dd',
+  'dl',
+  'blockquote',
+  'pre',
+  'figcaption',
+  'option',
+  'caption',
+]);
 
 const VOID_BLOCK_TAGS = new Set(['br']);
 const ROW_TAGS = new Set(['tr']);
@@ -173,17 +367,18 @@ const parseBlockFrames = (html: string): BlockFrame => {
   let cursor = 0;
   let skipped = 0;
 
-  for (const match of html.matchAll(BLOCK_TAG)) {
+  for (const blockTag of scanTags(html)) {
+    if (!BLOCK_TAGS.has(blockTag.name)) continue;
     const top = stack[stack.length - 1]!;
-    top.parts.push(html.slice(cursor, match.index));
-    cursor = match.index + match[0].length;
+    top.parts.push(html.slice(cursor, blockTag.start));
+    cursor = blockTag.end;
 
-    const tag = match[2]!.toLowerCase();
+    const tag = blockTag.name;
     if (VOID_BLOCK_TAGS.has(tag)) {
       top.parts.push('\n');
       continue;
     }
-    if (match[1]) {
+    if (blockTag.closing) {
       if (skipped > 0) skipped -= 1;
       else if (stack.length > 1) stack.pop();
       continue;
@@ -204,7 +399,7 @@ const parseBlockFrames = (html: string): BlockFrame => {
 const flattenToCell = (part: string | BlockFrame): string =>
   (isBlockFrame(part)
     ? part.parts.map(flattenToCell).join(' ')
-    : part.replace(/<[^>]+>/g, ' ')
+    : stripTags(part)
   )
     .replace(/\s+/g, ' ')
     .trim();
@@ -234,11 +429,9 @@ const asRecord = (frame: BlockFrame, children: BlockFrame[]): string | null => {
 
 const renderBlockFrame = (frame: BlockFrame): string => {
   const children = frame.parts.filter(isBlockFrame);
-  const ownText = frame.parts
-    .filter((part): part is string => !isBlockFrame(part))
-    .join(' ')
-    .replace(/<[^>]+>/g, ' ')
-    .trim();
+  const ownText = stripTags(
+    frame.parts.filter((part): part is string => !isBlockFrame(part)).join(' ')
+  ).trim();
 
   if (children.length >= RECORD_MIN_CELLS && ownText.length === 0) {
     const record = asRecord(frame, children);
@@ -264,11 +457,21 @@ const AMOUNT_AFTER_SYMBOL = new RegExp(
   'gu'
 );
 
+const AMOUNT_SPLIT_BY_STOP = new RegExp(
+  `(?<![\\p{L}\\p{N}])(\\d{1,3}(?: \\d{3})*)\\. (\\d{2}) ?(\\p{L}{1,3}|\\p{Sc})(?![\\p{L}\\p{N}])`,
+  'gu'
+);
+
 const decimalMarkFor = (integerPart: string): string =>
   integerPart.includes(',') ? '.' : ',';
 
 export const joinSplitAmounts = (text: string): string =>
   text
+    .replace(
+      AMOUNT_SPLIT_BY_STOP,
+      (_, integerPart: string, cents: string, unit: string) =>
+        `${integerPart}${decimalMarkFor(integerPart)}${cents} ${unit}`
+    )
     .replace(
       AMOUNT_BEFORE_UNIT,
       (_, integerPart: string, cents: string, unit: string) =>
@@ -280,36 +483,45 @@ export const joinSplitAmounts = (text: string): string =>
         `${integerPart}${decimalMarkFor(integerPart)}${cents}`
     );
 
-const heuristicExtractText = (html: string): string => {
-  let out = html
-    .replace(/\sdata-mw=(["'])[\s\S]*?\1/g, ' ')
-    .replace(/<!--[\s\S]*?-->/g, ' ');
-  for (const tag of [
-    'script',
-    'style',
-    'nav',
-    'header',
-    'footer',
-    'aside',
-    'form',
-    'noscript',
-    'svg',
-    'template',
-  ]) {
-    out = stripTagBlock(out, tag);
-  }
-  out = isolateMainContent(out);
-  const normalized = decodeEntities(
-    groupBlockRecords(out).replace(/<[^>]+>/g, ' ')
-  )
+const STRIPPED_RAW_TEXT_ELEMENTS: ReadonlySet<string> = new Set([
+  'script',
+  'style',
+  'noscript',
+  'svg',
+  'template',
+]);
+const STRIPPED_NESTED_ELEMENTS: ReadonlySet<string> = new Set([
+  'nav',
+  'header',
+  'footer',
+  'aside',
+  'select',
+  'button',
+  'textarea',
+]);
+
+export const heuristicExtractText = (html: string): string => {
+  const out = isolateMainContent(
+    removeElements(
+      html.replace(/\sdata-mw=(["'])[\s\S]*?\1/g, ' '),
+      STRIPPED_NESTED_ELEMENTS,
+      STRIPPED_RAW_TEXT_ELEMENTS
+    )
+  );
+  const normalized = decodeEntities(stripTags(groupBlockRecords(out)))
     .replace(/[^\S\n]+/g, ' ')
     .replace(/ ?\n ?/g, '\n')
     .replace(/\n{2,}/g, '\n');
-  return dropMenuRuns(dropReferenceLines(joinSplitAmounts(normalized))).trim();
+  return dropMenuRuns(
+    dropReferenceLines(joinSplitAmounts(normalized)),
+    linkTexts(html)
+  ).trim();
 };
 
-const JSON_LD_PATTERN =
-  /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+const JSON_LD_TYPE = /\btype\s*=\s*["']?application\/ld\+json\b/i;
+
+const jsonLdScripts = (html: string): string[] =>
+  rawTextContents(html, 'script', (openTag) => JSON_LD_TYPE.test(openTag));
 
 const JSON_LD_TEXT_KEYS = [
   'articleBody',
@@ -341,9 +553,9 @@ const collectJsonLdText = (html: string): string => {
     }
   };
 
-  for (const match of html.matchAll(JSON_LD_PATTERN)) {
+  for (const script of jsonLdScripts(html)) {
     try {
-      visit(JSON.parse(match[1]!), 0);
+      visit(JSON.parse(script), 0);
     } catch {
       continue;
     }
@@ -420,9 +632,9 @@ const collectProductNodes = (html: string): Record<string, unknown>[] => {
     if (record['@graph'] !== undefined) visit(record['@graph'], depth + 1);
   };
 
-  for (const match of html.matchAll(JSON_LD_PATTERN)) {
+  for (const script of jsonLdScripts(html)) {
     try {
-      visit(JSON.parse(match[1]!), 0);
+      visit(JSON.parse(script), 0);
     } catch {
       continue;
     }
@@ -525,15 +737,33 @@ export const fetchHtml = async (
   });
 };
 
+const sanitizeProduct = (
+  product: StructuredProduct | undefined
+): StructuredProduct | undefined =>
+  product && {
+    ...product,
+    name: product.name && sanitizeUntrustedText(product.name),
+    price: product.price && sanitizeUntrustedText(product.price),
+    currency: product.currency && sanitizeUntrustedText(product.currency),
+  };
+
 export const extractArticle = async (
   url: string,
   timeoutMs?: number,
   signal?: AbortSignal
 ): Promise<ExtractedArticle> => {
-  const html = await fetchHtml(url, timeoutMs, signal);
+  const fetched = await fetchHtml(url, timeoutMs, signal);
+  const html =
+    fetched.length > URL_PARSE_MAX_CHARS
+      ? fetched.slice(0, URL_PARSE_MAX_CHARS)
+      : fetched;
   const metaTags = extractMetaTags(html);
-  const title = extractTitle(html, metaTags) ?? hostname(url);
-  const product = extractStructuredProductFromMeta(html, metaTags);
+  const title = sanitizeUntrustedText(
+    extractTitle(html, metaTags) ?? hostname(url)
+  );
+  const product = sanitizeProduct(
+    extractStructuredProductFromMeta(html, metaTags)
+  );
 
   let text = heuristicExtractText(html);
   if (text.length < WEB_CONTENT_MIN_CHARS) {
@@ -546,6 +776,7 @@ export const extractArticle = async (
       .trim();
     if (structured.length > text.length) text = structured;
   }
+  text = sanitizeUntrustedText(text);
 
   if (hasChallengeMarkers(html) && text.length < BOT_WALL_MAX_TEXT_CHARS) {
     return { url, title, text: '', siteName: hostname(url) };

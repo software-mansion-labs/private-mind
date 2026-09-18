@@ -63,6 +63,8 @@ export const useEmbeddingModelStore = create<EmbeddingModelStore>(
 
 export const EMBEDDING_STATUS_WAIT_MS = 8000;
 
+export const WEB_TOGGLE_STATUS_WAIT_MS = 45000;
+
 export const whenEmbeddingStatusKnown = (
   timeoutMs: number = EMBEDDING_STATUS_WAIT_MS
 ): Promise<EmbeddingModelStatus> =>

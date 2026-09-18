@@ -13,7 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme } from '../../context/ThemeContext';
 import LinkIcon from '../../assets/icons/link-alt.svg';
-import { hostname } from '../../utils/web/webResultsToContext';
+import { hostname } from '../../utils/web/hostname';
 import { WEB_FAVICON_URL } from '../../constants/web';
 
 interface Props {

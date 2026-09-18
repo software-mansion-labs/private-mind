@@ -10,19 +10,30 @@ import {
   SCRAPE_MIN_DELAY_MS,
   SCRAPE_PAGE_LOAD_TIMEOUT_MS,
   WEB_SEARCH_MAX_RESULTS,
+  type ScrapeEngine,
 } from '../../../constants/web';
 
+export const searchUrlFor = (
+  engine: ScrapeEngine,
+  query: string,
+  region?: string
+): string => {
+  const base = `${engine.url}${encodeURIComponent(query)}`;
+  if (!region || !engine.regionParam) return base;
+  return `${base}&${engine.regionParam}=${encodeURIComponent(region)}`;
+};
+
 export interface ScraperHost {
-  navigate(url: string): void;
+  navigate(url: string, nonce: number): void;
   reset?(): void;
   onChallenge?(): void;
-  recheck?(): void;
 }
 
 type Pending = {
   resolve: (results: WebSearchResult[]) => void;
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout>;
+  nonce: number;
 };
 
 export class WebViewScrapeProvider implements WebSearchProvider {
@@ -32,6 +43,7 @@ export class WebViewScrapeProvider implements WebSearchProvider {
   private pending: Pending | null = null;
   private queue: Promise<unknown> = Promise.resolve();
   private lastRunAt = 0;
+  private navigations = 0;
   private challengeActive = false;
   private cancelled = false;
 
@@ -44,10 +56,6 @@ export class WebViewScrapeProvider implements WebSearchProvider {
   skipEngine(): void {
     this.settle([], null);
     this.host?.reset?.();
-  }
-
-  recheck(): void {
-    this.host?.recheck?.();
   }
 
   releaseHost(): void {
@@ -78,7 +86,9 @@ export class WebViewScrapeProvider implements WebSearchProvider {
 
   handleMessage(raw: string): void {
     const message = parseSerpMessage(raw);
-    if (!message || !this.pending) return;
+    if (!message || !this.pending || message.nonce !== this.pending.nonce) {
+      return;
+    }
 
     if (message.type === 'serp-challenge') {
       if (!this.challengeActive) {
@@ -120,12 +130,12 @@ export class WebViewScrapeProvider implements WebSearchProvider {
 
     for (let index = 0; index < SCRAPE_ENGINES.length; index++) {
       const engine = SCRAPE_ENGINES[index]!;
-      if (options.signal?.aborted) break;
+      if (options.signal?.aborted || this.cancelled) break;
 
       let results: WebSearchResult[] = [];
       try {
         results = await this.navigateAndWait(
-          `${engine.url}${encodeURIComponent(query)}`,
+          searchUrlFor(engine, query, options.region),
           options.signal
         );
       } catch (error) {
@@ -157,6 +167,7 @@ export class WebViewScrapeProvider implements WebSearchProvider {
     );
     if (wait > 0) await delay(wait);
     if (!this.host) throw new Error('WebView scraper host detached');
+    if (this.cancelled) return [];
     this.lastRunAt = nowMs();
 
     const onAbort = () => {
@@ -171,8 +182,9 @@ export class WebViewScrapeProvider implements WebSearchProvider {
           this.settle(null, new Error('SERP scrape timed out'));
         }, SCRAPE_PAGE_LOAD_TIMEOUT_MS);
 
-        this.pending = { resolve, reject, timer };
-        this.host!.navigate(url);
+        const nonce = ++this.navigations;
+        this.pending = { resolve, reject, timer, nonce };
+        this.host!.navigate(url, nonce);
       });
     } finally {
       signal?.removeEventListener('abort', onAbort);

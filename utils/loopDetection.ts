@@ -199,13 +199,21 @@ const salvageFirstUnit = (text: string): string => {
   return text.trim();
 };
 
-export const truncateAtRepeatedClause = (text: string): string => {
-  const cuts = [
+const loopCuts = (text: string): number[] =>
+  [
     findRepeatedClauseCut(text),
     findRepeatedLineCut(text),
     findRepeatedWordRun(text),
     findRepeatedPhraseRun(text),
   ].filter((cut): cut is number => cut !== null);
+
+export const isRepetitionFromTheStart = (text: string): boolean => {
+  const cuts = loopCuts(text);
+  return cuts.length > 0 && Math.min(...cuts) === 0;
+};
+
+export const truncateAtRepeatedClause = (text: string): string => {
+  const cuts = loopCuts(text);
   if (cuts.length === 0) return text;
   const kept = text.slice(0, Math.min(...cuts)).trimEnd();
   if (kept.trim()) return kept;

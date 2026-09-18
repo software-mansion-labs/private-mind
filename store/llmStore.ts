@@ -1,5 +1,9 @@
 import { estimatePromptTokens } from '../constants/context-window';
-import { stripThinkBlocks } from '../utils/thinking';
+import {
+  mapOutsideThink,
+  stripThinkBlocks,
+  unclosedThinkText,
+} from '../utils/thinking';
 import { create } from 'zustand';
 import { LLMModule } from 'react-native-executorch';
 import { Model } from '../database/modelRepository';
@@ -23,6 +27,7 @@ import Toast from 'react-native-toast-message';
 import { Feedback } from '../utils/Feedback';
 import {
   answerLanguageAnchor,
+  focusedRetrySystemPrompt,
   prepareMessagesForLLM,
 } from '../utils/promptUtils';
 import { detectQuestionLanguage } from '../utils/questionLanguage';
@@ -39,14 +44,20 @@ import {
   isDanglingListAnswer,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
+  retryDropsGroundedDetail,
   stripEchoedQuestionPrefix,
   stripSourceLabels,
   pickCitationsByAnswer,
   restrictCitationsToContext,
+  sourcesBlockOf,
 } from '../utils/messageSources';
 import { sourcesPresentInContext } from '../utils/contextUtils';
 import { normalizeModelText } from '../utils/normalizeModelText';
-import { truncateAtRepeatedClause } from '../utils/loopDetection';
+import {
+  isRepetitionFromTheStart,
+  truncateAtRepeatedClause,
+} from '../utils/loopDetection';
+import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
 import { updateConversationDigest } from '../utils/conversationDigest';
 import type { WebIntentKind } from '../utils/web/intentKind';
 import { useSettingsStore } from './settingsStore';
@@ -67,8 +78,10 @@ export interface LLMStore {
   };
   activeChatId: number | null;
   generatingForChatId: number | null;
+  generatingMessageLocalId: number | null;
   activeChatMessages: Message[];
   activeChatDigest: string | null;
+  activeChatDigestChatId: number | null;
   generationError: { chatId: number; message: string } | null;
 
   setDB: (db: SQLiteDatabase) => void;
@@ -95,7 +108,7 @@ export interface LLMStore {
     imagePath?: string,
     documentName?: string,
     isRetry?: boolean
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   retryLastGeneration: () => Promise<void>;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   generateUtility: (messages: ExecutorchMessage[]) => Promise<string>;
@@ -124,16 +137,19 @@ let streamBuffer = '';
 let streamTokenCount = 0;
 let streamFirstTokenTime = 0;
 let streamFlushScheduled = false;
+let streamedSoFar = '';
 
 const resetStreamState = () => {
   streamBuffer = '';
   streamTokenCount = 0;
   streamFirstTokenTime = 0;
   streamFlushScheduled = false;
+  streamedSoFar = '';
 };
 
 let suppressUtilityStreaming = false;
 let utilityGenerating = false;
+let utilityChain: Promise<void> = Promise.resolve();
 let sendAbortController: AbortController | null = null;
 let messageLocalIdSeq = 0;
 const nextMessageLocalId = () => (messageLocalIdSeq += 1);
@@ -219,7 +235,7 @@ const waitForSettingsHydration = async (): Promise<void> => {
 };
 
 const waitForModelToBecomeIdle = async (get: () => LLMStore) => {
-  while (get().isLoading || get().isGenerating) {
+  while (get().isLoading || get().isGenerating || utilityGenerating) {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
 };
@@ -255,10 +271,13 @@ const loadModelInstance = async (
     if (!streamBuffer) return;
     const text = streamBuffer;
     streamBuffer = '';
+    streamedSoFar += text;
     const snapshot = get();
+    const turnLocalId = snapshot.generatingMessageLocalId;
     const shouldAppendToActiveChat =
       snapshot.generatingForChatId === snapshot.activeChatId &&
-      snapshot.activeChatMessages.at(-1)?.role === 'assistant';
+      turnLocalId !== null &&
+      snapshot.activeChatMessages.some((msg) => msg.localId === turnLocalId);
     set((state) => ({
       isProcessingPrompt: false,
       performance: {
@@ -266,8 +285,8 @@ const loadModelInstance = async (
         firstTokenTime: streamFirstTokenTime,
       },
       activeChatMessages: shouldAppendToActiveChat
-        ? state.activeChatMessages.map((msg, index) =>
-            index === state.activeChatMessages.length - 1
+        ? state.activeChatMessages.map((msg) =>
+            msg.localId === turnLocalId
               ? { ...msg, content: msg.content + text }
               : msg
           )
@@ -343,6 +362,7 @@ const updateChatStateForGeneration = (
     assistantMessage?: Message;
     timeToFirstToken?: number;
     tokensPerSecond?: number;
+    localId?: number;
   }
 ) => {
   switch (phase) {
@@ -350,6 +370,7 @@ const updateChatStateForGeneration = (
       set({
         isProcessingPrompt: true,
         generatingForChatId: data?.chatId,
+        generatingMessageLocalId: data?.localId ?? null,
         ...(data?.chatId !== undefined ? { activeChatId: data.chatId } : {}),
         activeChatMessages: data?.activeChatMessages,
       });
@@ -366,13 +387,14 @@ const updateChatStateForGeneration = (
       break;
     case 'complete':
       streamBuffer = '';
+      streamedSoFar = '';
       if (
         data?.timeToFirstToken !== undefined &&
         data?.tokensPerSecond !== undefined
       ) {
         set((state) => ({
-          activeChatMessages: state.activeChatMessages.map((msg, index) =>
-            index === state.activeChatMessages.length - 1 &&
+          activeChatMessages: state.activeChatMessages.map((msg) =>
+            msg.localId === (data.localId ?? state.generatingMessageLocalId) &&
             msg.role === 'assistant'
               ? {
                   ...msg,
@@ -392,6 +414,7 @@ const updateChatStateForGeneration = (
           isGenerating: false,
           isRefining: false,
           generatingForChatId: null,
+          generatingMessageLocalId: null,
           isProcessingPrompt: false,
         }));
       } else {
@@ -399,26 +422,34 @@ const updateChatStateForGeneration = (
           isGenerating: false,
           isRefining: false,
           generatingForChatId: null,
+          generatingMessageLocalId: null,
           isProcessingPrompt: false,
         });
       }
       break;
     case 'failed':
       streamBuffer = '';
+      streamedSoFar = '';
       // Drop the empty assistant placeholder left behind when generation
       // failed, was interrupted before any tokens, or produced no response.
       set((state) => {
         const messages = state.activeChatMessages;
-        const last = messages[messages.length - 1];
-        const cleaned =
-          last && last.role === 'assistant' && last.id === -1 && !last.content
-            ? messages.slice(0, -1)
-            : messages;
+        const turnLocalId = data?.localId ?? state.generatingMessageLocalId;
+        const cleaned = messages.filter(
+          (message) =>
+            !(
+              message.localId === turnLocalId &&
+              message.role === 'assistant' &&
+              message.id === -1 &&
+              !stripThinkBlocks(message.content).trim()
+            )
+        );
         return {
           activeChatMessages: cleaned,
           isGenerating: false,
           isRefining: false,
           generatingForChatId: null,
+          generatingMessageLocalId: null,
           isProcessingPrompt: false,
         };
       });
@@ -485,8 +516,55 @@ const WRONG_LANGUAGE_RETRY_PROMPT =
   'with the same facts, in the language of the question, and do not switch ' +
   'language or script partway through.';
 
+const carriesAnswer = (response: string): boolean => {
+  if (stripThinkBlocks(response).trim()) return true;
+  const unclosed = unclosedThinkText(response).trim();
+  return Boolean(unclosed) && !isRepetitionFromTheStart(unclosed);
+};
+
+const tidyVisibleAnswer = (response: string): string =>
+  mapOutsideThink(response, (segment) =>
+    truncateAtRepeatedClause(normalizeModelText(segment))
+  );
+
+const runUtilityGeneration = async (
+  instance: LLMModule,
+  messages: ExecutorchMessage[],
+  model: Model | null
+): Promise<string> => {
+  utilityGenerating = true;
+  suppressUtilityStreaming = true;
+  try {
+    const prepared = model?.thinking ? withNoThink(messages) : messages;
+    if (model) {
+      instance.configure({
+        generationConfig: getGenerationConfigForModel(model, true),
+      });
+    }
+    const result = await instance.generate(prepared);
+    reportPromptEstimateAccuracy(prepared, instance, 'utility');
+    return typeof result === 'string' ? result : '';
+  } catch (error) {
+    console.warn('generateUtility failed', error);
+    return '';
+  } finally {
+    if (model) {
+      instance.configure({
+        generationConfig: getGenerationConfigForModel(model),
+      });
+    }
+    suppressUtilityStreaming = false;
+    utilityGenerating = false;
+  }
+};
+
 const describeGenerationFailure = (): string =>
   'The model returned an empty response';
+
+const NUDGE_TIME_BUDGET_MS = 40_000;
+
+const digestForChat = (get: () => LLMStore, chatId: number): string | null =>
+  get().activeChatDigestChatId === chatId ? get().activeChatDigest : null;
 
 const reportPromptEstimateAccuracy = (
   messages: ExecutorchMessage[],
@@ -577,6 +655,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   isBenchmarking: false,
   db: null,
   generatingForChatId: null,
+  generatingMessageLocalId: null,
   activeChatId: null,
   model: null,
   performance: {
@@ -585,6 +664,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   },
   activeChatMessages: [],
   activeChatDigest: null,
+  activeChatDigestChatId: null,
   generationError: null,
 
   setDB: (db) => set({ db }),
@@ -615,15 +695,23 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       set({
         activeChatId: chatId,
         activeChatMessages: generatingHere
-          ? [...messageHistory, buildAssistantPlaceholder(chatId, get().model)]
+          ? [
+              ...messageHistory,
+              {
+                ...buildAssistantPlaceholder(chatId, get().model),
+                content: streamedSoFar,
+              },
+            ]
           : messageHistory,
         activeChatDigest: digest,
+        activeChatDigestChatId: chatId,
       });
     } else {
       set({
         activeChatId: null,
         activeChatMessages: [],
         activeChatDigest: null,
+        activeChatDigestChatId: null,
       });
     }
   },
@@ -634,7 +722,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       return;
     }
     const result = modelLoadChain.then(async () => {
-      const network = await NetInfo.fetch().catch(() => null);
+      const network = model.isDownloaded
+        ? null
+        : await NetInfo.fetch().catch(() => null);
       if (network?.isConnected === false) {
         Toast.show({
           type: 'defaultToast',
@@ -708,11 +798,15 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     documentName,
     isRetry = false
   ) => {
-    await modelLoadChain;
-    const { db, model: currentModel, activeChatMessages } = get();
-    if (!db || !currentModel) {
+    const { db, model: selectedModel, activeChatMessages } = get();
+    if (!db || !selectedModel) {
       console.warn('LLM not ready or DB not set');
-      return;
+      return false;
+    }
+    let currentModel = selectedModel;
+    if (get().isProcessingPrompt || get().isGenerating) {
+      console.warn('A turn is already in flight, rejecting the send');
+      return false;
     }
 
     const tempUserId = -Date.now();
@@ -734,15 +828,24 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     set({ generationError: null });
     updateChatStateForGeneration(set, 'start', {
       chatId,
+      localId: assistantPlaceholder.localId,
       activeChatMessages: isRetry
         ? [...activeChatMessages, assistantPlaceholder]
         : [...activeChatMessages, userMessage, assistantPlaceholder],
     });
 
     let userMessagePersisted = isRetry;
-    const markGenerationFailed = (error: unknown, showToUser = true) => {
-      unloadLLM();
-      updateChatStateForGeneration(set, 'failed');
+    const markGenerationFailed = (
+      error: unknown,
+      {
+        showToUser = true,
+        unload = showToUser,
+      }: { showToUser?: boolean; unload?: boolean } = {}
+    ) => {
+      if (unload) unloadLLM();
+      updateChatStateForGeneration(set, 'failed', {
+        localId: assistantPlaceholder.localId,
+      });
 
       if (!userMessagePersisted && !isRetry) {
         set((state) => ({
@@ -773,6 +876,31 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       console.error('Chat sendMessage failed', error);
     };
 
+    await modelLoadChain;
+    await utilityChain;
+    const readyModel = get().model;
+    if (!get().isProcessingPrompt || !readyModel) {
+      markGenerationFailed(new Error('Stopped while waiting for the model'), {
+        showToUser: false,
+      });
+      return true;
+    }
+    if (readyModel.id !== currentModel.id) {
+      currentModel = readyModel;
+      assistantPlaceholder.modelName = readyModel.modelName;
+      set((state) => ({
+        activeChatMessages: state.activeChatMessages.map((msg) =>
+          msg.id === -1 && msg.role === 'assistant' && msg.chatId === chatId
+            ? { ...msg, modelName: readyModel.modelName }
+            : msg
+        ),
+      }));
+    }
+
+    const abortController = new AbortController();
+    sendAbortController = abortController;
+    const stillOurs = () => sendAbortController === abortController;
+
     try {
       if (!isRetry) {
         const userMessageId = await persistMessage(db, {
@@ -790,8 +918,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         }));
       }
 
-      const abortController = new AbortController();
-      sendAbortController = abortController;
       const built = await buildSources(abortController.signal);
       const {
         context,
@@ -805,8 +931,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       } = built;
 
       if (!get().isProcessingPrompt) {
-        updateChatStateForGeneration(set, 'failed');
-        return;
+        updateChatStateForGeneration(set, 'failed', {
+          localId: assistantPlaceholder.localId,
+        });
+        return true;
       }
 
       await get().loadModel(currentModel, isRetry);
@@ -821,8 +949,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       if (!get().isProcessingPrompt) {
         unloadLLM();
-        updateChatStateForGeneration(set, 'failed');
-        return;
+        updateChatStateForGeneration(set, 'failed', {
+          localId: assistantPlaceholder.localId,
+        });
+        return true;
       }
 
       await waitForSettingsHydration();
@@ -838,10 +968,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           sourceDocuments: sourceDocuments,
           budgetScale: 1,
           webIntent: webIntent,
+          webIntentKind: webIntentKind,
           webSubQueries: webSubQueries,
           webWeak: webWeak,
           webSearchFailed: webSearchFailed,
-          digest: get().activeChatDigest ?? undefined,
+          digest: digestForChat(get, chatId) ?? undefined,
         }
       );
 
@@ -879,6 +1010,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       // Set generation state and generate response
       updateChatStateForGeneration(set, 'generating');
+      const generationStartedAt = performance.now();
       let generation: Awaited<ReturnType<typeof generateLLMResponse>>;
       let effectivePrepared = messagesWithSystemPrompt;
       try {
@@ -903,7 +1035,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             webSubQueries: webSubQueries,
             webWeak: webWeak,
             webSearchFailed: webSearchFailed,
-            digest: get().activeChatDigest ?? undefined,
+            digest: digestForChat(get, chatId) ?? undefined,
           }
         );
         generation = await generateLLMResponse(effectivePrepared, get);
@@ -911,7 +1043,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const { response: rawResponse } = generation;
       let responsePerformance = generation.performance;
       let finalResponse = rawResponse
-        ? truncateAtRepeatedClause(normalizeModelText(rawResponse))
+        ? tidyVisibleAnswer(rawResponse)
         : rawResponse;
       const currentQuestion = get().activeChatMessages.findLast(
         (msg) => msg.role === 'user'
@@ -919,12 +1051,15 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const priorAnswerText = get()
         .activeChatMessages.slice(0, -1)
         .findLast((msg) => msg.role === 'assistant')?.content;
-      const promptContext = ((last) =>
-        typeof last?.content === 'string'
-          ? last.content
-          : JSON.stringify(last?.content ?? ''))(effectivePrepared.at(-1));
+      const promptContext = sourcesBlockOf(
+        ((last) =>
+          typeof last?.content === 'string'
+            ? last.content
+            : JSON.stringify(last?.content ?? ''))(effectivePrepared.at(-1))
+      );
 
       let nudged = false;
+      const answerRetries: AnswerRetry[] = [];
 
       const questionLanguage = detectQuestionLanguage(currentQuestion ?? '');
       const continuedRetry = (prompt: string): ExecutorchMessage[] => [
@@ -936,7 +1071,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         },
       ];
       const focusedRetry = (lines: string[]): ExecutorchMessage[] => [
-        ...effectivePrepared.filter((message) => message.role === 'system'),
+        {
+          role: 'system',
+          content: focusedRetrySystemPrompt(questionLanguage),
+        },
         {
           role: 'user',
           content:
@@ -952,9 +1090,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const nudgeOnce = async (
         reason: string,
         messages: ExecutorchMessage[],
-        stillBroken: (retried: string) => boolean
+        stillBroken: (retried: string) => boolean,
+        preserveDetail = false
       ): Promise<void> => {
         nudged = true;
+        if (performance.now() - generationStartedAt > NUDGE_TIME_BUDGET_MS) {
+          console.warn(`${reason}; skipped, the turn is over its time budget`);
+          return;
+        }
         console.warn(reason);
         suppressUtilityStreaming = true;
         set({ isRefining: true });
@@ -965,16 +1108,41 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           suppressUtilityStreaming = false;
         }
         const retried = retryGeneration.response
-          ? truncateAtRepeatedClause(
-              normalizeModelText(retryGeneration.response)
-            )
+          ? tidyVisibleAnswer(retryGeneration.response)
           : retryGeneration.response;
-        if (retried?.trim() && !stillBroken(retried)) {
-          finalResponse = retried;
+        if (!retried?.trim() || !get().isGenerating || stillBroken(retried)) {
+          answerRetries.push({
+            reason,
+            raw: retryGeneration.response ?? null,
+            accepted: false,
+          });
+          return;
         }
+        if (
+          preserveDetail &&
+          typeof finalResponse === 'string' &&
+          retryDropsGroundedDetail(finalResponse, retried)
+        ) {
+          console.warn(
+            `${reason}; kept the first answer, the retry was thinner`
+          );
+          answerRetries.push({
+            reason,
+            raw: retryGeneration.response ?? null,
+            accepted: false,
+          });
+          return;
+        }
+        answerRetries.push({
+          reason,
+          raw: retryGeneration.response ?? null,
+          accepted: true,
+        });
+        finalResponse = retried;
       };
 
       if (
+        get().isGenerating &&
         finalResponse &&
         isWrongLanguageAnswer(finalResponse, currentQuestion)
       ) {
@@ -987,6 +1155,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       if (
         !nudged &&
+        get().isGenerating &&
         finalResponse &&
         isQuestionEchoAnswer(finalResponse, currentQuestion) &&
         !isWrongLanguageAnswer(finalResponse, currentQuestion)
@@ -1006,6 +1175,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       if (
         !nudged &&
+        get().isGenerating &&
         finalResponse &&
         claimsMissingEvidenceItHas(
           finalResponse,
@@ -1023,7 +1193,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               currentQuestion,
               promptContext,
               webIntentKind
-            ) || isWrongLanguageAnswer(retried, currentQuestion)
+            ) || isWrongLanguageAnswer(retried, currentQuestion),
+          true
         );
       }
 
@@ -1038,6 +1209,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         );
       if (
         !nudged &&
+        get().isGenerating &&
         finalResponse &&
         (ignoresEvidence(finalResponse) || buriesFigure(finalResponse))
       ) {
@@ -1053,12 +1225,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           (retried) =>
             ((ignoresEvidence(retried) || buriesFigure(retried)) &&
               !retryStatesWhatDraftLacks(retried)) ||
-            isWrongLanguageAnswer(retried, currentQuestion)
+            isWrongLanguageAnswer(retried, currentQuestion),
+          true
         );
       }
 
       if (
         !nudged &&
+        get().isGenerating &&
         finalResponse &&
         isCircularNonAnswer(finalResponse) &&
         !isWrongLanguageAnswer(finalResponse, currentQuestion)
@@ -1075,6 +1249,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         : [];
       if (
         !nudged &&
+        get().isGenerating &&
         finalResponse &&
         missingAspects.length > 0 &&
         !isDanglingListAnswer(finalResponse)
@@ -1084,12 +1259,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           continuedRetry(aspectCoverageRetryPrompt(missingAspects)),
           (retried) =>
             aspectsMissingFromAnswer(retried, webSubQueries, promptContext)
-              .length > 0
+              .length > 0,
+          true
         );
       }
 
       if (
         !nudged &&
+        get().isGenerating &&
         finalResponse &&
         isDanglingListAnswer(finalResponse) &&
         !isQuestionEchoAnswer(finalResponse, currentQuestion) &&
@@ -1115,13 +1292,36 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               normalizeModelText(continuationGeneration.response)
             )
           : continuationGeneration.response;
+        answerRetries.push({
+          reason: 'Dangling list answer, continuation nudge',
+          raw: continuationGeneration.response ?? null,
+          accepted: !!continuationResponse?.trim(),
+        });
         if (continuationResponse?.trim()) {
           finalResponse = `${finalResponse}\n${continuationResponse.trim()}`;
           responsePerformance = continuationGeneration.performance;
         }
       }
 
-      if (finalResponse && stripThinkBlocks(finalResponse).trim()) {
+      void recordAnswerTrace({
+        shape: {
+          generating: get().isGenerating,
+          dangling: !!finalResponse && isDanglingListAnswer(finalResponse),
+          circular: !!finalResponse && isCircularNonAnswer(finalResponse),
+          nudged,
+        },
+        question: currentQuestion ?? '',
+        raw: rawResponse ?? '',
+        tidied: rawResponse ? tidyVisibleAnswer(rawResponse) : '',
+        retries: answerRetries,
+        final: finalResponse ?? '',
+        systemPromptChars: ((first) =>
+          typeof first?.content === 'string' ? first.content.length : 0)(
+          effectivePrepared[0]
+        ),
+      });
+
+      if (finalResponse && carriesAnswer(finalResponse)) {
         const humanizedResponse = humanizeSourceReferences(
           stripSourceLabels(
             stripEchoedQuestionPrefix(finalResponse, currentQuestion)
@@ -1145,7 +1345,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           effectiveSeen,
           humanizedResponse,
           preferredSourceDocuments ?? [],
-          sourcesPresentInContext(effectiveContent)
+          sourcesPresentInContext(effectiveContent),
+          currentQuestion
         );
         const groundingCaveats = context.some((chunk) => chunk.trim())
           ? detectGroundingCaveats(
@@ -1155,6 +1356,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               priorAnswerText
             )
           : [];
+        const stoppedByUser = !get().isGenerating;
         const assistantMessageId = await persistMessage(db, {
           ...assistantPlaceholder,
           content: humanizedResponse,
@@ -1164,8 +1366,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           timeToFirstToken: responsePerformance.timeToFirstToken,
         });
 
-        if (get().activeChatId === chatId) {
+        if (!stillOurs()) {
+          failedGenerationRequest = null;
+        } else if (get().activeChatId === chatId) {
           updateChatStateForGeneration(set, 'complete', {
+            localId: assistantPlaceholder.localId,
             assistantMessage: {
               ...assistantPlaceholder,
               id: assistantMessageId,
@@ -1184,9 +1389,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         failedGenerationRequest = null;
         set({ generationError: null });
 
-        if (!get().isGenerating) {
-          const previousDigest =
-            get().activeChatId === chatId ? get().activeChatDigest : null;
+        if (!stoppedByUser) {
+          const previousDigest = digestForChat(get, chatId);
           updateConversationDigest(
             (messages) => get().generateUtility(messages),
             previousDigest,
@@ -1195,19 +1399,29 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           ).then((digest) => {
             void setChatDigest(db, chatId, digest);
             if (get().activeChatId === chatId) {
-              set({ activeChatDigest: digest });
+              set({
+                activeChatDigest: digest,
+                activeChatDigestChatId: chatId,
+              });
             }
           });
         }
-      } else {
-        markGenerationFailed(new Error(describeGenerationFailure()));
+      } else if (stillOurs()) {
+        const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;
+        markGenerationFailed(new Error(describeGenerationFailure()), {
+          unload: false,
+          showToUser: !wasInterrupted,
+        });
       }
     } catch (e) {
-      const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;
-      markGenerationFailed(e, !wasInterrupted);
+      if (stillOurs()) {
+        const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;
+        markGenerationFailed(e, { showToUser: !wasInterrupted });
+      }
     } finally {
-      sendAbortController = null;
+      if (stillOurs()) sendAbortController = null;
     }
+    return true;
   },
 
   retryLastGeneration: async () => {
@@ -1307,33 +1521,16 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
-  generateUtility: async (messages) => {
-    if (!llmInstance || get().isLoading || utilityGenerating) return '';
-    utilityGenerating = true;
-    suppressUtilityStreaming = true;
-    const model = get().model;
-    try {
-      const prepared = model?.thinking ? withNoThink(messages) : messages;
-      if (model) {
-        llmInstance.configure({
-          generationConfig: getGenerationConfigForModel(model, true),
-        });
-      }
-      const result = await llmInstance.generate(prepared);
-      reportPromptEstimateAccuracy(prepared, llmInstance, 'utility');
-      return typeof result === 'string' ? result : '';
-    } catch (error) {
-      console.warn('generateUtility failed', error);
-      return '';
-    } finally {
-      if (model) {
-        llmInstance?.configure({
-          generationConfig: getGenerationConfigForModel(model),
-        });
-      }
-      suppressUtilityStreaming = false;
-      utilityGenerating = false;
+  generateUtility: (messages) => {
+    if (!llmInstance || get().isLoading || utilityGenerating) {
+      return Promise.resolve('');
     }
+    const run = runUtilityGeneration(llmInstance, messages, get().model);
+    utilityChain = run.then(
+      () => undefined,
+      () => undefined
+    );
+    return run;
   },
 
   interrupt: () => {
@@ -1354,6 +1551,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         isGenerating: false,
         isProcessingPrompt: false,
         generatingForChatId: null,
+        generatingMessageLocalId: null,
       });
     }
   },

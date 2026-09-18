@@ -1,0 +1,45 @@
+import { WEB_TRACE_TO_FILE } from '../constants/web';
+import { writeTraceFile } from './traceFile';
+
+const TRACE_DIR = 'answer-traces';
+
+export interface AnswerRetry {
+  reason: string;
+  raw: string | null;
+  accepted: boolean;
+}
+
+export interface AnswerTrace {
+  question: string;
+  raw: string;
+  tidied: string;
+  retries: AnswerRetry[];
+  final: string;
+  systemPromptChars: number;
+  shape?: Record<string, boolean>;
+}
+
+export const recordAnswerTrace = async (
+  trace: AnswerTrace,
+  { toFile = WEB_TRACE_TO_FILE }: { toFile?: boolean } = {}
+): Promise<void> => {
+  if (!toFile) return;
+  await writeTraceFile(
+    TRACE_DIR,
+    trace.question,
+    JSON.stringify(
+      {
+        at: new Date().toISOString(),
+        question: trace.question,
+        systemPromptChars: trace.systemPromptChars,
+        raw: trace.raw,
+        tidied: trace.tidied,
+        retries: trace.retries,
+        shape: trace.shape ?? {},
+        final: trace.final,
+      },
+      null,
+      2
+    )
+  );
+};

@@ -2,7 +2,7 @@ import type { WebSearchResult } from './types';
 import type { FetchFailure } from './fetchFailure';
 import { isHostLevelFailure, isRecoverableFailure } from './fetchFailure';
 import { namedEntitiesIn } from './conversationSubject';
-import { hostname } from './webResultsToContext';
+import { hostname } from './hostname';
 import { extractQueryTerms, foldForMatching } from '../queryTerms';
 import {
   WEB_RECOVERY_HOST_FAILURE_LIMIT,

@@ -46,6 +46,7 @@ describe('startPhantomChat', () => {
     (getLastUsedModelId as jest.Mock).mockResolvedValue(7);
     (useChatStore.getState as jest.Mock).mockReturnValue({
       initPhantomChat: jest.fn().mockResolvedValue(undefined),
+      phantomChat: { id: 42 },
     });
     (useLLMStore.getState as jest.Mock).mockReturnValue({
       setActiveChatId: jest.fn().mockResolvedValue(undefined),
@@ -82,6 +83,29 @@ describe('startPhantomChat', () => {
     expect(setActiveChatId.mock.invocationCallOrder[0]).toBeLessThan(
       (router.replace as jest.Mock).mock.invocationCallOrder[0]
     );
+  });
+
+  it('drops the pending navigation when another phantom chat is started first', async () => {
+    const first = startPhantomChat({} as never, 'replace');
+    await jest.advanceTimersByTimeAsync(0);
+    const second = startPhantomChat({} as never, 'replace');
+    await jest.advanceTimersByTimeAsync(50);
+    await Promise.all([first, second]);
+
+    expect(router.replace).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not navigate when the phantom chat it created is gone by the time the timer fires', async () => {
+    const promise = startPhantomChat({} as never, 'replace');
+    await jest.advanceTimersByTimeAsync(0);
+    (useChatStore.getState as jest.Mock).mockReturnValue({
+      initPhantomChat: jest.fn().mockResolvedValue(undefined),
+      phantomChat: { id: 99 },
+    });
+    await jest.advanceTimersByTimeAsync(50);
+    await promise;
+
+    expect(router.replace).not.toHaveBeenCalled();
   });
 
   it('does not delay a push navigation', async () => {

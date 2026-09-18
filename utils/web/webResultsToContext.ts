@@ -6,10 +6,26 @@ import type {
 } from './types';
 import {
   WEB_CONTENT_MAX_CHARS,
+  WEB_CONTENT_MIN_CHARS,
   WEB_SNIPPET_MAX_CHARS,
 } from '../../constants/web';
 import { sourceBlock } from '../contextUtils';
 import { extractQueryTerms, foldForMatching, stemPrefix } from '../queryTerms';
+import { hostname } from './hostname';
+import {
+  containsNeedle,
+  creditedRecords,
+  DATE_IN_TEXT,
+  datedFieldAnswers,
+  enumerationShare,
+  figuresOutsideNeedles,
+  idfWeights,
+  isOtherAmount,
+  listHeadingAnswers,
+  MONEY_ANCHOR,
+  parseAmount,
+  quotesPrices,
+} from './passageSignals';
 import { detectQuestionLanguage } from '../questionLanguage';
 import { neutralizeDelimiters } from './security/untrustedContent';
 import { VERIFIED_PRODUCT_MARKER } from './figureGrounding';
@@ -32,18 +48,14 @@ const truncate = (text: string, max: number): string =>
     ? text
     : `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
 
-export const hostname = (url: string): string => {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '');
-  } catch {
-    return url;
-  }
-};
-
 const PASSAGE_MAX_LEN = 320;
 
-const SENTENCE_END =
-  /[^.!?\n。！？।॥۔؟]+[.!?\n。！？।॥۔؟]+|[^.!?\n。！？।॥۔؟]+$/g;
+const TERMINATORS = '!?\\n。！？।॥۔؟';
+const DECIMAL_POINT = '(?<=\\d)\\.(?=\\d)';
+const BODY = `(?:[^.${TERMINATORS}]|${DECIMAL_POINT})`;
+const TERMINATOR = `(?:[${TERMINATORS}]|\\.(?!\\d)|(?<!\\d)\\.(?=\\d))`;
+
+const SENTENCE_END = new RegExp(`${BODY}+${TERMINATOR}+|${BODY}+$`, 'gu');
 
 const PASSAGE_TARGET_LEN = 200;
 const CELL_MAX_LEN = 24;
@@ -54,6 +66,7 @@ const RECORD_MAX_PASSAGES = 8;
 const RECORD_MAX_CHARS = 400;
 
 const FRAGMENT_MAX_CHARS = 120;
+const BRIDGE_MAX_CHARS = 320;
 
 const ENDS_SENTENCE = /[.!?。！？।॥۔؟]["'”’)\]]?$/;
 
@@ -122,106 +135,21 @@ const splitIntoPassages = (text: string, budget: number): string[] => {
   return passages.filter(Boolean);
 };
 
-const idfWeights = (folded: string[], needles: string[]): number[] =>
-  needles.map((needle) => {
-    const hits = folded.reduce(
-      (count, passage) => count + (passage.includes(needle) ? 1 : 0),
-      0
-    );
-    return hits === 0 ? 0 : Math.log(folded.length / hits);
-  });
-
-const containsNeedle = (folded: string, needle: string): boolean =>
-  needle.length >= 4
-    ? folded.includes(needle)
-    : new RegExp(`(?<![\\p{L}\\p{N}])${needle}`, 'u').test(folded);
-
-const WHEN_QUESTION =
-  /\bkiedy\b|\bwhen\b|\bwann\b|\bquand\b|\bcu[aá]ndo\b|\bquando\b|когда|कब|\bمتى\b/i;
-const DATE_IN_TEXT =
-  /\b\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}\b|\b\d{1,2}\s?(?:sty|lut|mar|kwi|maj|cze|lip|sie|wrz|paz|lis|gru|jan|feb|apr|jun|jul|aug|sep|oct|nov|dec)/i;
 const DATE_BONUS = 2;
 
-const PRICE_QUESTION =
-  /\bile\s+kosztuj|\bcen[ay]\b|\bcennik|\bkoszt\b|\bhow much\b|\bprice\b|\bcost\b|\bprecio\b|\bpreis\b|\bprix\b|цена/i;
 const PRICE_BONUS = 4;
 const NO_PRICE_FACTOR = 0.35;
 
-export const MONEY_ANCHOR =
-  /\d[\d\s.,]*\s?(?:zl(?:ot(?:ych|ego|emu|ymi|ym|y|e))?|pln|eur(?:o)?|usd|gbp|czk|chf|dolar(?:ow|ach|ami|em|a|y)?)(?![\p{L}\p{N}])|[$€£¥]\s?\d|\d\s?[$€£¥]/giu;
 const MONEY_BONUS = 2;
 
-const NUMBER_RUN = /\d[\d.,:]*\d|\d/g;
+const ENUMERATION_BONUS = 3;
+const NO_ENUMERATION_FACTOR = 0.7;
+
 const FIGURES_BONUS = 3;
 const FIGURES_SATURATION = 3;
 const NO_FIGURE_FACTOR = 0.5;
 
-const figuresOutsideNeedles = (folded: string, needles: string[]): number => {
-  const rest = needles.reduce(
-    (text, needle) => text.split(needle).join(' '),
-    folded
-  );
-  return (rest.match(NUMBER_RUN) ?? []).length;
-};
-
 const TOPIC_NEEDLE_DISCOUNT = 0.5;
-
-const RECORD_LINE =
-  /^(?=[^:|\n]{0,40}\p{L})([^:|\n]{2,40}?)\s*[:|]\s*(\S.{0,79})$/u;
-const RECORD_KEY_MAX_REPEATS = 2;
-
-const recordKeys = (passage: string): string[] =>
-  passage
-    .split('\n')
-    .map((line) => line.trim().match(RECORD_LINE)?.[1])
-    .filter((key): key is string => key !== undefined)
-    .map((key) => foldForMatching(key));
-
-const creditedRecords = (passages: string[]): Set<number> => {
-  const keysOf = passages.map(recordKeys);
-  const keyCount = new Map<string, number>();
-  keysOf
-    .flat()
-    .forEach((key) => keyCount.set(key, (keyCount.get(key) ?? 0) + 1));
-  const isRecordLine = (index: number): boolean =>
-    index >= 0 &&
-    index < passages.length &&
-    keysOf[index]!.length === 1 &&
-    !passages[index]!.includes('\n');
-  const credited = new Set<number>();
-  keysOf.forEach((keys, index) => {
-    const structured =
-      keys.length >= 2 ||
-      (isRecordLine(index) &&
-        (isRecordLine(index - 1) || isRecordLine(index + 1)));
-    const distinct = keys.some(
-      (key) => keyCount.get(key)! <= RECORD_KEY_MAX_REPEATS
-    );
-    if (structured && distinct) credited.add(index);
-  });
-  return credited;
-};
-
-const parseAmount = (text: string): number | null => {
-  const digits = text.match(/\d[\d\s.,]*/)?.[0].replace(/\s/g, '');
-  if (!digits) return null;
-  const decimal = digits.match(/[.,](\d{1,2})$/);
-  const whole = (
-    decimal ? digits.slice(0, -decimal[0].length) : digits
-  ).replace(/[.,]/g, '');
-  const value = Number(`${whole}.${decimal?.[1] ?? '0'}`);
-  return Number.isFinite(value) ? value : null;
-};
-
-const AMOUNT_TOLERANCE = 0.005;
-
-const isOtherAmount = (mention: string, verified: number | null): boolean => {
-  if (verified === null) return false;
-  const amount = parseAmount(mention);
-  return (
-    amount !== null && Math.abs(amount - verified) > verified * AMOUNT_TOLERANCE
-  );
-};
 
 interface PassageScoring {
   needles: string[];
@@ -229,7 +157,9 @@ interface PassageScoring {
   topicNeedles: Set<string>;
   wantsDate: boolean;
   wantsPrice: boolean;
+  demoteUnpriced: boolean;
   wantsFigures: boolean;
+  wantsEnumeration: boolean;
   verifiedAmount: number | null;
 }
 
@@ -241,7 +171,8 @@ interface PassageScore {
 const scorePassage = (
   folded: string,
   scoring: PassageScoring,
-  creditedRecord: boolean
+  creditedRecord: boolean,
+  listShare = 0
 ): PassageScore => {
   const {
     needles,
@@ -249,7 +180,9 @@ const scorePassage = (
     topicNeedles,
     wantsDate,
     wantsPrice,
+    demoteUnpriced,
     wantsFigures,
+    wantsEnumeration,
   } = scoring;
   let score = 0;
   let answersQuestion = creditedRecord;
@@ -265,14 +198,11 @@ const scorePassage = (
     answersQuestion = true;
   }
   const mentions = folded.match(MONEY_ANCHOR) ?? [];
-  if (wantsPrice) {
-    if (mentions.length > 0) {
-      score += PRICE_BONUS;
-      answersQuestion = true;
-    } else {
-      score *= NO_PRICE_FACTOR;
-    }
+  if (wantsPrice && mentions.length > 0) {
+    score += PRICE_BONUS;
+    answersQuestion = true;
   }
+  if (demoteUnpriced && mentions.length === 0) score *= NO_PRICE_FACTOR;
   if (
     mentions.some((mention) => isOtherAmount(mention, scoring.verifiedAmount))
   ) {
@@ -287,6 +217,14 @@ const scorePassage = (
       answersQuestion = true;
     } else {
       score *= NO_FIGURE_FACTOR;
+    }
+  }
+  if (wantsEnumeration) {
+    if (listShare > 0) {
+      score += listShare * ENUMERATION_BONUS;
+      answersQuestion = true;
+    } else {
+      score *= NO_ENUMERATION_FACTOR;
     }
   }
   const digits = (folded.match(/\d/g) ?? []).length;
@@ -344,25 +282,30 @@ export const selectRelevantContent = (
       ? parseAmount(options.verifiedPrice)
       : null;
   const { intent } = options;
-  const wantsDate =
-    (!!intent && DATED_INTENTS.has(intent)) ||
-    (!!query && WHEN_QUESTION.test(query));
-  const wantsPrice =
-    verifiedAmount === null &&
-    (intent === 'price' || (!!query && PRICE_QUESTION.test(query)));
   const wantsFigures = intent === 'specs';
   const all = splitIntoPassages(trimmed, maxChars);
   const foldedAll = all.map(foldForMatching);
   const foldedTitle = foldForMatching(options.title ?? '');
+  const titleNeedles = new Set(
+    needles.filter((needle) => containsNeedle(foldedTitle, needle))
+  );
+  const wantsDate =
+    (!!intent && DATED_INTENTS.has(intent)) ||
+    datedFieldAnswers(trimmed, needles, titleNeedles);
+  const wantsPrice =
+    verifiedAmount === null && (intent === 'price' || quotesPrices(trimmed));
+  const demoteUnpriced = verifiedAmount === null && intent === 'price';
+  const wantsEnumeration =
+    intent === 'howto' || listHeadingAnswers(trimmed, needles, titleNeedles);
   const scoring: PassageScoring = {
     needles,
     weights: idfWeights(foldedAll, needles),
-    topicNeedles: new Set(
-      needles.filter((needle) => containsNeedle(foldedTitle, needle))
-    ),
+    topicNeedles: titleNeedles,
     wantsDate,
     wantsPrice,
+    demoteUnpriced,
     wantsFigures,
+    wantsEnumeration,
     verifiedAmount,
   };
   const credited =
@@ -379,7 +322,12 @@ export const selectRelevantContent = (
     .map((text, index) => ({
       text,
       index,
-      ...scorePassage(foldedAll[index]!, scoring, credited.has(index)),
+      ...scorePassage(
+        foldedAll[index]!,
+        scoring,
+        credited.has(index),
+        wantsEnumeration ? enumerationShare(text) : 0
+      ),
     }))
     .filter((passage) => {
       const key = foldedAll[passage.index]!;
@@ -461,6 +409,39 @@ export const selectRelevantContent = (
     );
   for (const passage of fillers) take(passage.index);
 
+  const scoreOf = new Map(
+    scored.map((passage) => [passage.index, passage.score])
+  );
+  const strengthBefore = (start: number): number => scoreOf.get(start - 1) ?? 0;
+  const gapsBetweenTaken = (): number[][] => {
+    const gaps: number[][] = [];
+    let run: number[] = [];
+    all.forEach((_, index) => {
+      if (!takenSet.has(index)) {
+        run.push(index);
+        return;
+      }
+      if (run.length > 0 && takenSet.has(run[0]! - 1)) gaps.push(run);
+      run = [];
+    });
+    return gaps.filter(
+      (gap) =>
+        gap.reduce((total, index) => total + costOf(index), 0) <=
+        BRIDGE_MAX_CHARS
+    );
+  };
+  for (let bridged = true; bridged;) {
+    bridged = false;
+    const gaps = gapsBetweenTaken().sort(
+      (a, b) => strengthBefore(b[0]!) - strengthBefore(a[0]!) || a[0]! - b[0]!
+    );
+    for (const gap of gaps) {
+      const before = takenSet.size;
+      gap.forEach(take);
+      if (takenSet.size > before) bridged = true;
+    }
+  }
+
   const excerpt = taken
     .sort((a, b) => a - b)
     .map((index) => all[index]!)
@@ -483,19 +464,71 @@ const snippetRepeatsExcerpt = (snippet: string, excerpt: string): boolean => {
   return repeated >= tokens.length * SNIPPET_REPEAT_SHARE;
 };
 
+const sourceDemand = (
+  result: WebSearchResult,
+  startIndex: number,
+  rank: number
+): number =>
+  sourceBlock(startIndex + rank, result.title || hostname(result.url), '')
+    .length +
+  Math.min(WEB_SNIPPET_MAX_CHARS, (result.snippet ?? '').trim().length) +
+  Math.min(WEB_CONTENT_MAX_CHARS, result.content?.length ?? 0);
+
+const rankWeight = (index: number): number => 1 / Math.sqrt(index + 1);
+
+const fairShares = (pool: number, demand: number[]): number[] => {
+  const shares = Array<number>(demand.length).fill(0);
+  const open = new Set(demand.map((_, index) => index));
+  let left = pool;
+  while (open.size > 0) {
+    const weights = [...open].reduce(
+      (total, index) => total + rankWeight(index),
+      0
+    );
+    const shareOf = (index: number): number =>
+      (left * rankWeight(index)) / weights;
+    const satisfied = [...open].filter(
+      (index) => demand[index]! <= shareOf(index)
+    );
+    if (satisfied.length === 0) {
+      open.forEach((index) => {
+        shares[index] = shareOf(index);
+      });
+      break;
+    }
+    satisfied.forEach((index) => {
+      shares[index] = demand[index]!;
+      left -= demand[index]!;
+      open.delete(index);
+    });
+  }
+  return shares;
+};
+
 const sourceBudgets = (
   totalMaxChars: number | undefined,
-  count: number
+  results: WebSearchResult[],
+  startIndex: number
 ): number[] => {
+  const count = results.length;
   if (!totalMaxChars) return Array(count).fill(WEB_CONTENT_MAX_CHARS);
-  const weights = Array.from({ length: count }, (_, rank) => 1 / (rank + 1));
-  const sum = weights.reduce((total, weight) => total + weight, 0);
-  return weights.map((weight) =>
-    Math.max(
-      MIN_SOURCE_EXCERPT_CHARS,
-      Math.floor((totalMaxChars * weight) / sum)
-    )
+  const header = (rank: number): number =>
+    sourceBlock(startIndex + rank, results[rank]!.title || '', '').length;
+  const demand = results.map((result, rank) =>
+    sourceDemand(result, startIndex, rank)
   );
+  const roomToSpeak = (shares: number[]): boolean =>
+    shares.every(
+      (share, rank) =>
+        share >= Math.min(demand[rank]!, header(rank) + WEB_CONTENT_MIN_CHARS)
+    );
+  let cited = count;
+  let shares = fairShares(totalMaxChars, demand);
+  while (cited > 1 && !roomToSpeak(shares)) {
+    cited -= 1;
+    shares = fairShares(totalMaxChars, demand.slice(0, cited));
+  }
+  return demand.map((_, rank) => Math.floor(shares[rank] ?? 0));
 };
 
 interface WebContextOptions {
@@ -519,7 +552,9 @@ export const webResultsToContext = (
     (result) => result.content || result.snippet?.trim()
   );
   const used = withMaterial.length > 0 ? withMaterial : results;
-  const budgets = sourceBudgets(totalMaxChars, used.length);
+  const budgets = sourceBudgets(totalMaxChars, used, startIndex);
+  let remaining = totalMaxChars ?? Number.POSITIVE_INFINITY;
+  const cited: WebSearchResult[] = [];
 
   const recordedQuery = (options.displayQuery ?? query)?.trim() || undefined;
   const distinctQueries = new Set(
@@ -528,13 +563,29 @@ export const webResultsToContext = (
       : []
   );
 
+  let slack = 0;
+
   used.forEach((result, index) => {
     const name = neutralizeDelimiters(result.title || hostname(result.url));
+    const headerChars = sourceBlock(startIndex + cited.length, name, '').length;
+    const offered = Math.min(budgets[index]! + slack, remaining) - headerChars;
+    const share = result.content
+      ? offered
+      : Math.min(offered, WEB_SNIPPET_MAX_CHARS);
+    const enoughToSpeak = Math.min(
+      WEB_CONTENT_MIN_CHARS,
+      sourceDemand(result, startIndex, index) - headerChars
+    );
+    if (share < enoughToSpeak && cited.length > 0) return;
+    const budget =
+      cited.length === 0 ? Math.max(share, MIN_SOURCE_EXCERPT_CHARS) : share;
     const snippet = truncate(
       (result.snippet ?? '').trim(),
-      WEB_SNIPPET_MAX_CHARS
+      Math.min(
+        WEB_SNIPPET_MAX_CHARS,
+        result.content ? Math.floor(budget / 2) : budget
+      )
     );
-    const budget = budgets[index]!;
     const select = (maxChars: number): string =>
       result.content
         ? selectRelevantContent(
@@ -551,7 +602,7 @@ export const webResultsToContext = (
         : '';
     const besideSnippet = select(
       snippet
-        ? Math.max(MIN_SOURCE_EXCERPT_CHARS, budget - snippet.length - 1)
+        ? Math.max(WEB_CONTENT_MIN_CHARS, budget - snippet.length - 1)
         : budget
     );
     const snippetKept =
@@ -569,9 +620,15 @@ export const webResultsToContext = (
         ? `[Answers: ${result.sourceQuery}]\n`
         : '';
 
-    context.push(
-      sourceBlock(startIndex + index, name, `${queryLabel}${cleanPassage}`)
+    const block = sourceBlock(
+      startIndex + cited.length,
+      name,
+      `${queryLabel}${cleanPassage}`
     );
+    context.push(block);
+    remaining -= block.length;
+    slack = Math.max(0, slack + budgets[index]! - block.length);
+    cited.push(result);
 
     sourceDocuments.push({
       kind: 'web',
@@ -586,7 +643,7 @@ export const webResultsToContext = (
   });
 
   for (const result of results) {
-    if (used.includes(result)) continue;
+    if (cited.includes(result)) continue;
     sourceDocuments.push({
       kind: 'web',
       name: neutralizeDelimiters(result.title || hostname(result.url)),

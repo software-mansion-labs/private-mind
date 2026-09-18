@@ -23,6 +23,8 @@ import {
 const getTotalMemoryGB = () =>
   DeviceInfo.getTotalMemorySync() / 1024 / 1024 / 1024;
 
+const nominalDeviceMemoryGB = () => Math.ceil(getTotalMemoryGB());
+
 const RUNTIME_OVERHEAD_MULTIPLIER = 1.3;
 const RUNTIME_OVERHEAD_GB = 0.5;
 const USABLE_MEMORY_FRACTION = 0.8;
@@ -83,7 +85,7 @@ export const isModelCompatible = (model: Model): boolean => {
   const declaredMinRamGB = MODEL_MIN_RAM_GB[model.modelName];
 
   if (declaredMinRamGB !== undefined) {
-    return getTotalMemoryGB() >= declaredMinRamGB;
+    return nominalDeviceMemoryGB() >= declaredMinRamGB;
   }
 
   const cost = getModelMemoryCostGB(model);
@@ -130,7 +132,9 @@ export const hasMemoryForWebSearch = (
 ): boolean => {
   try {
     const required = getWebSearchMinDeviceMemoryGB(model);
-    if (required !== undefined && getTotalMemoryGB() < required) return false;
+    if (required !== undefined && nominalDeviceMemoryGB() < required) {
+      return false;
+    }
 
     const cost = getModelMemoryCostGB(model);
     if (cost === null) return true;

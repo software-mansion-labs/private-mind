@@ -1,9 +1,9 @@
 import {
-  MONEY_ANCHOR,
   webResultsToContext,
-  hostname,
   selectRelevantContent,
 } from '../utils/web/webResultsToContext';
+import { MONEY_ANCHOR, enumerationShare } from '../utils/web/passageSignals';
+import { hostname } from '../utils/web/hostname';
 import type { WebSearchResult } from '../utils/web/types';
 import { SOURCE_HEADER } from '../constants/retrieval';
 import { WEB_CONTENT_MAX_CHARS, WEB_SNIPPET_MAX_CHARS } from '../constants/web';
@@ -497,10 +497,10 @@ describe('selectRelevantContent — the kind of answer the question wants', () =
     ).toContain('€ 2.499,00');
   });
 
-  it('still needs the intent for that: the words alone do not reach the amount', () => {
-    expect(
-      selectRelevantContent(italianPage, italianQuestion, 80)
-    ).not.toContain('€ 2.499,00');
+  it('reaches the amount without the intent, because the page quotes prices', () => {
+    expect(selectRelevantContent(italianPage, italianQuestion, 80)).toContain(
+      '€ 2.499,00'
+    );
   });
 
   it('threads the intent from webResultsToContext down to the passage selection', () => {
@@ -555,7 +555,7 @@ describe('webResultsToContext — a page is read for the query that found it', (
       results,
       'kurs bitcoin + kurs ethereum',
       0,
-      450
+      560
     );
     const [btc, eth] = sourceDocuments.map((doc) => doc.passage ?? '');
     expect(btc).toContain('98 000');
@@ -676,8 +676,62 @@ describe('webResultsToContext — context budget', () => {
     const results = [page(1), page(2), page(3), page(4)];
     const { context } = webResultsToContext(results, 'pogoda jutro', 0, 2000);
     const total = context.join('').length;
-    expect(context).toHaveLength(4);
-    expect(total).toBeLessThan(2000 * 2);
+    expect(context.length).toBeGreaterThanOrEqual(3);
+    expect(total).toBeLessThanOrEqual(2000);
+  });
+
+  it('stays within a small budget instead of granting every source a floor', () => {
+    const results = [1, 2, 3, 4, 5].map((n) => ({
+      ...page(n),
+      snippet: `Snippet ${n} `.repeat(40),
+    }));
+    const { context, sourceDocuments } = webResultsToContext(
+      results,
+      'pogoda jutro',
+      0,
+      900
+    );
+    expect(context.join('').length).toBeLessThanOrEqual(900);
+    expect(context.length).toBeLessThan(5);
+    expect(sourceDocuments).toHaveLength(5);
+    expect(
+      sourceDocuments.filter((source) => source.read === false)
+    ).not.toHaveLength(0);
+    expect(context[0]).toContain('--- Source 1:');
+    expect(context.at(-1)).toContain(`--- Source ${context.length}:`);
+  });
+
+  it('lets a snippet-only source spend the whole of its share on the snippet', () => {
+    const snippet = 'Prognoza pogody dla Gdanska na jutro. '.repeat(20);
+    const { sourceDocuments } = webResultsToContext(
+      [{ url: 'https://a.example/x', title: 'A', snippet }],
+      'pogoda jutro',
+      0,
+      600
+    );
+    expect(sourceDocuments[0]!.passage!.length).toBeGreaterThan(300);
+  });
+
+  it('hands a page its room when the sources above it had only a snippet (live-found: soft boiled egg)', () => {
+    const recipe =
+      'Bring water to a gentle boil. Lower the eggs carefully into the water ' +
+      'using a spoon. Wait for the water to return to a gentle boil, then ' +
+      'start your timer. Cook for 4 to 6 minutes depending on your preferred ' +
+      'texture. Transfer the eggs straight to an ice bath for five minutes.';
+    const blurb = (n: number) => ({
+      url: `https://blurb${n}.example/x`,
+      title: `Learn how to soft boil an egg ${n}`,
+      snippet: `Learn how to soft boil an egg perfectly, guide ${n}.`,
+    });
+    const { context } = webResultsToContext(
+      [blurb(1), blurb(2), { ...blurb(3), content: recipe }],
+      'how to make a soft boiled egg',
+      0,
+      1200,
+      { intent: 'howto' }
+    );
+
+    expect(context.at(-1)).toContain('4 to 6 minutes');
   });
 
   it('gives the best-fitting source more room than the tail', () => {
@@ -722,6 +776,146 @@ describe('webResultsToContext — context budget', () => {
   });
 });
 
+describe('a step that repeats none of the question’s words (live-found: soft boiled egg)', () => {
+  const method = [
+    'about eggs.',
+    'Our content is educational and is not a substitute for personalized advice.',
+    'Soft Boiled Eggs (How to Make Perfect Runny Yolk Every Time) Bring water to a gentle boil (not a violent rolling boil).',
+    'Lower the eggs carefully into the water using a spoon.',
+    'Wait for the water to return to a gentle boil, then start your timer.',
+    'Cook for 4-6 minutes depending on your preferred texture.',
+    'Transfer the eggs straight to an ice bath for at least 5 minutes.',
+    'Both work. However,',
+  ].join(' ');
+
+  it('keeps the step between two steps it already kept', () => {
+    const out = selectRelevantContent(
+      method,
+      'how to make a soft boiled egg',
+      420,
+      { intent: 'howto', expects: ['steps for soft boiled egg'] }
+    );
+
+    expect(out).toContain('start your timer');
+    expect(out).toContain('ice bath');
+    expect(out).toContain('Cook for 4-6 minutes');
+  });
+
+  it('does not bridge a gap whose neighbours are the weakest passages', () => {
+    const out = selectRelevantContent(
+      method,
+      'how to make a soft boiled egg',
+      330,
+      { intent: 'howto', expects: ['steps for soft boiled egg'] }
+    );
+
+    expect(out).not.toContain('not a substitute for personalized advice');
+  });
+});
+
+describe('a table of hours that repeats none of the question’s words (live-found: Louvre)', () => {
+  const page = [
+    'Hours & admission Plan and book your visit Visit | Hours & admission',
+    'When to visit',
+    'Ticket prices',
+    'Memberships',
+    'Musée du Louvre',
+    'The museum is open today from 9:00 AM to 9:00 PM',
+    '9:00 AM to 6:00 PM',
+    'Monday, Thursday, Saturday and Sunday',
+    '9:00 AM to 9:00 PM',
+    'Wednesday and Friday',
+    'Closed',
+    'Tuesday',
+    'Last entry: 1 hour before closing',
+    'Clearing of rooms: 30 minutes before closing',
+    'Public holidays: the Louvre is closed on 1 January, 1 May and 25 December.',
+    'The Cour Napoléon is open from 7:30 a.m. to 10:00 p.m.',
+    'The Cour Carrée is open from 7:30 a.m. to 7:45 p.m.',
+    'Tuileries Garden',
+    '7:00 AM to 8:30 PM',
+    'From 1 to 14 September 2026',
+    'There are two public toilets located in the Tuileries Garden, both free and accessible during the opening hours of the garden itself.',
+    'Four additional public toilets are available during the summer months.',
+    'Musée national Eugène-Delacroix',
+    '12:00 PM to 5:30 PM',
+    'Monday, Wednesday, Thursday, Friday',
+  ].join('\n');
+
+  it('keeps the rows between the heading and the line about closing', () => {
+    const out = selectRelevantContent(
+      page,
+      'what time does the Louvre open',
+      420,
+      { intent: 'place' }
+    );
+
+    expect(out).toContain('Last entry: 1 hour before closing');
+    expect(out).toContain('9:00 AM to 6:00 PM');
+    expect(out).toContain('Monday, Thursday, Saturday and Sunday');
+  });
+});
+
+describe('the budget follows the material, not only the rank', () => {
+  const longPage = (n: number) => ({
+    url: `https://site${n}.example/x`,
+    title: `Page ${n}`,
+    snippet: `Snippet ${n}`,
+    content: Array.from(
+      { length: 40 },
+      (_, step) =>
+        `Step ${step} on page ${n}: lower the eggs in and hold them for ${step} minutes.`
+    ).join('\n'),
+  });
+
+  it('does not hand a source more room than it has material for', () => {
+    const shortAnswer =
+      'Cook for 4-6 minutes, then transfer the eggs to an ice bath.';
+    const results = [
+      { ...longPage(1), content: undefined, snippet: 'A teaser only' },
+      longPage(2),
+      { ...longPage(3), content: shortAnswer },
+    ];
+    const { context } = webResultsToContext(
+      results,
+      'how do you make a soft boiled egg',
+      0,
+      1400
+    );
+
+    expect(context[0]).toContain('A teaser only');
+    expect(context[0]!.length).toBeLessThan(300);
+    expect(context[2]).toContain('ice bath');
+  });
+
+  it('leaves the room the top source cannot use to the ones below it', () => {
+    const results = [
+      { ...longPage(1), content: undefined, snippet: 'Tiny' },
+      longPage(2),
+      longPage(3),
+    ];
+    const withTinyLead = webResultsToContext(results, 'eggs', 0, 1400).context;
+    const withFullLead = webResultsToContext(
+      [longPage(1), longPage(2), longPage(3)],
+      'eggs',
+      0,
+      1400
+    ).context;
+
+    expect(withTinyLead[1]!.length).toBeGreaterThan(withFullLead[1]!.length);
+    expect(withTinyLead[2]!.length).toBeGreaterThan(withFullLead[2]!.length);
+  });
+
+  it('cites fewer sources rather than giving each one too little to say', () => {
+    const results = [1, 2, 3, 4, 5].map(longPage);
+    const tight = webResultsToContext(results, 'eggs', 0, 700).context;
+    const roomy = webResultsToContext(results, 'eggs', 0, 2400).context;
+
+    expect(tight.length).toBeLessThan(roomy.length);
+    expect(tight.join('').length).toBeLessThanOrEqual(700);
+  });
+});
+
 describe('coalescing must not glue table rows together (live-found: Nowy Sącz weather)', () => {
   const rows = [
     'Pogoda Jutro, Nowy Sącz Czwartek, 3 Września',
@@ -752,6 +946,46 @@ describe('coalescing must not glue table rows together (live-found: Nowy Sącz w
 
     expect(out).toContain('Jutro | 22°C | 12°C');
     expect(out).toContain('Piątek | 24°C | 18°C');
+  });
+});
+
+describe('a decimal is not a sentence stop (live-found: Burj Khalifa)', () => {
+  const infobox = [
+    'Height Architectural | 828 m (2,717 ft) Tip | 829.8 m (2,722 ft)',
+    'Roof | 739.4 m (2,426 ft) Top floor | 585.4 m (1,921 ft)',
+    'Observatory | 555.7 m (1,823 ft) Floor area | 309,473 m 2 (3,331,100 sq ft)',
+  ].join(' ');
+
+  it('keeps the tip height whole when the row is split into passages', () => {
+    const filler =
+      'The tower is a landmark of the United Arab Emirates. '.repeat(20);
+    const out = selectRelevantContent(
+      `${infobox} ${filler}`,
+      'how tall is the Burj Khalifa',
+      300
+    );
+
+    expect(out).not.toMatch(/\d\.\s\d/);
+    if (out.includes('829')) expect(out).toContain('829.8 m');
+  });
+
+  it('still ends a passage at a stop that is not inside a figure', () => {
+    const prose = [
+      'The tower opened in 2010.',
+      'It cost 1.5 billion dollars to build.',
+      'Visitors reach the observatory in under a minute.',
+    ].join(' ');
+    const filler = 'Unrelated page furniture about tickets and queues. '.repeat(
+      20
+    );
+    const out = selectRelevantContent(
+      `${prose} ${filler}`,
+      'when did the tower open and what did it cost',
+      200
+    );
+
+    expect(out).not.toMatch(/\d\.\s\d/);
+    expect(out).toContain('opened in 2010.');
   });
 });
 
@@ -1022,5 +1256,204 @@ describe('the planner’s expectations steer the excerpt', () => {
   it('falls back to the question alone when nothing is expected', () => {
     const excerpt = selectRelevantContent(page, 'iPhone 17 Pro', 110, {});
     expect(excerpt).toContain('iPhone 17 Pro');
+  });
+});
+
+describe('enumerationShare', () => {
+  it('reads an ingredient list as a list', () => {
+    expect(
+      enumerationShare(
+        '2 szklanki mąki\n3 jajka\n200 g cukru\n1 łyżeczka cynamonu'
+      )
+    ).toBe(1);
+  });
+
+  it('reads numbered steps as a list', () => {
+    expect(
+      enumerationShare('1. Zetrzyj marchewkę\n2. Wymieszaj\n3. Piecz')
+    ).toBe(1);
+  });
+
+  it('reads a marketing lead as prose', () => {
+    expect(
+      enumerationShare(
+        'Ciasto marchewkowe z orzechami włoskimi jest puszyste.\n' +
+          'Świetnie smakuje do filiżanki gorącej kawy na podwieczorek.\n' +
+          'Sprawdza się też jako tort urodzinowy i długo zachowuje świeżość.'
+      )
+    ).toBe(0);
+  });
+
+  it('says nothing about a passage too short to have a shape', () => {
+    expect(enumerationShare('3 jajka\n200 g cukru')).toBe(0);
+  });
+
+  it('reads a run of items on one line as a list', () => {
+    expect(
+      enumerationShare(
+        '2 sausages | 4 slices of back bacon | 2 large eggs | 1 cup baked beans'
+      )
+    ).toBeGreaterThan(0.9);
+  });
+
+  it('still reads a breadcrumb trail as prose', () => {
+    expect(enumerationShare('Home | Recipes | Breakfast | Full English')).toBe(
+      0
+    );
+  });
+});
+
+describe('a list the page writes on a single line (live-found: full English breakfast)', () => {
+  const lead =
+    'Few meals are as iconic as a Full English Breakfast. This traditional ' +
+    'spread is more than just food, it is a cultural staple on weekends. ' +
+    'It is all made with everyday ingredients and cooked in one or two pans.';
+  const heading = 'Ingredients Needed to Make a Full English Breakfast';
+  const inline =
+    '2 sausages | 4 slices of back bacon | 2 large eggs | ' +
+    '1 cup baked beans (canned) | 4 button mushrooms, halved | ' +
+    '1 medium tomato, halved | 2 slices of bread';
+  const faq =
+    'Yes, you can cook most ingredients in one large pan by cooking them ' +
+    'in stages, starting with the sausages and the bacon.';
+  const page = `${lead}\n${heading}\n${inline}\n${faq}`;
+
+  it('carries the run of items, which holds none of the words the question uses', () => {
+    const selected = selectRelevantContent(
+      page,
+      'ingredients of full English breakfast',
+      lead.length,
+      { title: 'Full English Breakfast Recipe', intent: 'howto' }
+    );
+
+    expect(selected).toContain('4 slices of back bacon');
+  });
+});
+
+describe('selectRelevantContent with a list question', () => {
+  const lead =
+    'Ciasto marchewkowe z orzechami włoskimi jest puszyste i wilgotne. ' +
+    'Świetnie smakuje do filiżanki gorącej kawy na rodzinny podwieczorek. ' +
+    'Sprawdza się nawet jako tort urodzinowy i bardzo długo zachowuje świeżość. ' +
+    'To sprawdzony przepis, który zawsze wychodzi i jest tani w przygotowaniu.';
+  const list =
+    'Składniki na ciasto marchewkowe:\n' +
+    '2 szklanki mąki\n' +
+    '3 jajka\n' +
+    '200 g cukru\n' +
+    '1 łyżeczka cynamonu\n' +
+    '150 ml oleju';
+  const content = `${lead}\n\n${list}`;
+
+  it('keeps the ingredient list when the question asks for the ingredients (Pixel: "podaj liste skladnikow")', () => {
+    const selected = selectRelevantContent(
+      content,
+      'Podaj liste skladnikow do ciasta marchewkowego',
+      lead.length,
+      { title: 'Ciasto marchewkowe - przepis' }
+    );
+
+    expect(selected).toContain('200 g cukru');
+  });
+
+  it('leaves a question that is not about a list to the usual ranking', () => {
+    const selected = selectRelevantContent(
+      content,
+      'Czy ciasto marchewkowe długo zachowuje świeżość?',
+      lead.length,
+      { title: 'Ciasto marchewkowe - przepis' }
+    );
+
+    expect(selected).toContain('zachowuje świeżość');
+  });
+});
+
+describe('a list question in a language the marker list never carried', () => {
+  const germanLead =
+    'Zutaten fuer Karottenkuchen sind ein beliebtes Thema in vielen Blogs. ' +
+    'Wer Zutaten fuer Karottenkuchen sucht, findet hier zuerst eine Geschichte. ' +
+    'Karottenkuchen schmeckt zu Kaffee und bleibt lange frisch und saftig. ' +
+    'Diese Seite ueber Zutaten fuer Karottenkuchen wird oft gelesen.';
+  const germanList =
+    '2 Tassen Mehl\n3 Eier\n200 g Zucker\n1 TL Zimt\n150 ml Oel\n300 g Karotten';
+  const germanPage = `${germanLead}\n\n${germanList}`;
+  const question = 'Welche Zutaten braucht man fuer Karottenkuchen';
+  const budget = Math.floor(germanLead.length * 0.5);
+
+  it('hands back the marketing lead when nothing says the answer is a list', () => {
+    const selected = selectRelevantContent(germanPage, question, budget, {
+      title: 'Karottenkuchen Rezept',
+    });
+
+    expect(selected).not.toContain('200 g Zucker');
+  });
+
+  it('keeps the ingredients once the planner has called the ask a how-to', () => {
+    const selected = selectRelevantContent(germanPage, question, budget, {
+      title: 'Karottenkuchen Rezept',
+      intent: 'howto',
+    });
+
+    expect(selected).toContain('200 g Zucker');
+  });
+
+  it('keeps them without the planner once the list carries a heading', () => {
+    const headed = `${germanLead}\n\nZutaten:\n${germanList}`;
+    const selected = selectRelevantContent(headed, question, budget, {
+      title: 'Karottenkuchen Rezept',
+    });
+
+    expect(selected).toContain('200 g Zucker');
+  });
+});
+
+describe('a labelled list in a domain no word list ever carried', () => {
+  const pick = (content: string, query: string, title: string): string =>
+    selectRelevantContent(content, query, 220, { title });
+
+  it('reaches the parts under a heading on a car page', () => {
+    const content =
+      'Der Golf VII ist eines der meistverkauften Autos in Europa und wird ' +
+      'seit Jahren in vielen Werkstaetten gewartet und repariert.\n\n' +
+      'Ersatzteile:\n' +
+      'Bremsscheiben 312 mm\n' +
+      'Bremsbelaege vorne\n' +
+      'Verschleisssensor\n' +
+      'Schrauben M12\n' +
+      'Fett 5 g';
+
+    expect(
+      pick(content, 'Welche Ersatzteile braucht der Golf VII', 'Golf VII')
+    ).toContain('Bremsscheiben 312 mm');
+  });
+
+  it('reaches the components under a heading on a computer page', () => {
+    const content =
+      'Este ordenador de sobremesa es una eleccion popular entre jugadores ' +
+      'y creadores de contenido por su relacion calidad precio.\n\n' +
+      'Componentes:\n' +
+      'Procesador: Ryzen 7\n' +
+      'Memoria: 32 GB\n' +
+      'SSD: 1 TB\n' +
+      'Fuente: 750 W';
+
+    expect(
+      pick(content, 'Que componentes tiene este ordenador', 'Ordenador gamer')
+    ).toContain('Memoria: 32 GB');
+  });
+
+  it('leaves the prose alone when the question is not about the list', () => {
+    const content =
+      'Der Golf VII ist eines der meistverkauften Autos in Europa und gilt ' +
+      'als besonders zuverlaessig auf langen Strecken.\n\n' +
+      'Ersatzteile:\n' +
+      'Bremsscheiben 312 mm\n' +
+      'Bremsbelaege vorne\n' +
+      'Verschleisssensor\n' +
+      'Schrauben M12';
+
+    expect(
+      pick(content, 'Ist der Golf VII zuverlaessig', 'Golf VII')
+    ).toContain('zuverlaessig');
   });
 });

@@ -1,4 +1,4 @@
-import { hostname } from './webResultsToContext';
+import { hostname } from './hostname';
 
 export interface TopicLanguage {
   code: string;

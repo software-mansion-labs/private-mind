@@ -35,6 +35,22 @@ describe('an answer that skips an aspect the sources cover', () => {
     ).toEqual([]);
   });
 
+  it('does not read a currency code or a site operator as an aspect', () => {
+    const queries = [
+      'cena RTX 5080 PLN site:x-kom.pl',
+      'RTX 5080 price EUR site:geizhals.eu',
+    ];
+    const context =
+      'RTX 5080 kosztuje w x-kom 5 199 PLN. Bei Geizhals kostet die RTX 5080 1 199 EUR.';
+    expect(
+      aspectsMissingFromAnswer(
+        'RTX 5080 kosztuje 5 199 zł w Polsce i około 1 199 € w Niemczech.',
+        queries,
+        context
+      )
+    ).toEqual([]);
+  });
+
   it('has nothing to say about a single-query search', () => {
     expect(
       aspectsMissingFromAnswer(BITCOIN_ONLY, ['kurs bitcoin'], CONTEXT)

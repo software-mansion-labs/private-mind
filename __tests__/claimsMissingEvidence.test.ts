@@ -247,6 +247,22 @@ describe('an answer that uses none of the evidence retrieved', () => {
     ).toBe(false);
   });
 
+  it('counts a figure as the same evidence however its language groups it', () => {
+    const english = distinctiveEvidence('estimated at 9,188,200 residents');
+    const german = distinctiveEvidence('bei 9.188.200 Menschen');
+
+    expect([...english].some((term) => german.has(term))).toBe(true);
+  });
+
+  it('matches an opening time against the source that writes it with a dot', () => {
+    expect(distinctiveEvidence('Godziny otwarcia: 10:00-17:00')).toContain(
+      '1000'
+    );
+    expect(distinctiveEvidence('Buka pukul 10.00 sampai 17.00')).toContain(
+      '1000'
+    );
+  });
+
   it('stays quiet when barely anything was retrieved', () => {
     expect(
       answerUsesNoRetrievedEvidence(

@@ -26,8 +26,6 @@ class Provider implements WebSearchProvider {
   }
 }
 
-// The English pages DuckDuckGo actually returned for "current weather in
-// Moscow", the plan a translating planner produces for the Russian question.
 const LATIN_RESULTS = [
   page('Moscow, Russia Weather Forecast', 'Current conditions in Moscow.', 1),
   page('Weather Moscow - meteoblue', 'Professional weather forecast.', 2),
@@ -56,8 +54,6 @@ beforeEach(() => {
 afterEach(() => (console.warn as jest.Mock).mockRestore());
 
 describe('foreign-script results below the same-script floor', () => {
-  // Before the floor, a Cyrillic question against Latin results left the model
-  // with nothing at all: measured 0 of 10 survivors against the real engine.
   it('keeps Latin results for a Cyrillic question rather than discarding them', async () => {
     const out = await run('какая сегодня погода в Москве', LATIN_RESULTS);
     expect(out.sourceDocuments.length).toBeGreaterThan(0);

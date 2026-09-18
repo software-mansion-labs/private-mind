@@ -1,9 +1,5 @@
 import { truncateAtRepeatedClause } from '../utils/loopDetection';
 
-// Measured on device: asked what a PlayStation Plus subscription costs, the
-// model produced one correct sentence and then repeated it. Truncation returned
-// an empty string, llmStore saw no response, and the user got
-// "Failed to generate a response" — the usable sentence was thrown away.
 describe('truncation never destroys the whole answer', () => {
   const SENTENCE =
     'Nie jest możliwe podanie ostatecznej ceny abonamentu, ponieważ źródła prezentują różne opcje.';
@@ -12,7 +8,6 @@ describe('truncation never destroys the whole answer', () => {
     const out = truncateAtRepeatedClause(`${SENTENCE}\n\n${SENTENCE}`);
     expect(out.trim().length).toBeGreaterThan(0);
     expect(out).toContain('Nie jest możliwe podanie ostatecznej ceny');
-    // and only one copy of it
     expect(out.split('ostatecznej ceny').length - 1).toBe(1);
   });
 

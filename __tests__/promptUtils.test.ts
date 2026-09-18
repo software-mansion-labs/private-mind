@@ -1,4 +1,7 @@
-import { prepareMessagesForLLM } from '../utils/promptUtils';
+import {
+  focusedRetrySystemPrompt,
+  prepareMessagesForLLM,
+} from '../utils/promptUtils';
 import { looksLikeNoAnswer } from '../utils/messageSources';
 import { sourceBlock } from '../utils/contextUtils';
 import {
@@ -7,6 +10,7 @@ import {
   SourceDocument,
 } from '../database/chatRepository';
 import { Model } from '../database/modelRepository';
+import type { WebIntentKind } from '../utils/web/intentKind';
 import {
   estimatePromptTokens,
   getPromptCharBudget,
@@ -263,8 +267,33 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       expect(result[0].content).toContain(
-        'Answer the question that was asked, directly and first.'
+        'Answer what was asked, directly and first'
       );
+      expect(result[0].content).toContain('neither is a summary of the pages');
+    });
+
+    it('warns about a carried-over subject only once the chat has earlier turns', () => {
+      const webSources: SourceDocument[] = [
+        { name: 'Reuters', kind: 'web', url: 'https://a.example' },
+      ];
+      const carried = 'never carry a subject over from them';
+      const first = prepareMessagesForLLM(
+        makeMessages(1),
+        ['some web context'],
+        baseSettings,
+        baseModel,
+        { sourceDocuments: webSources }
+      );
+      expect(first[0].content).not.toContain(carried);
+
+      const later = prepareMessagesForLLM(
+        makeMessages(3),
+        ['some web context'],
+        baseSettings,
+        baseModel,
+        { sourceDocuments: webSources }
+      );
+      expect(later[0].content).toContain(carried);
     });
 
     it('breaks source conflicts toward the newest reporting, but only for web context', () => {
@@ -281,7 +310,7 @@ describe('prepareMessagesForLLM', () => {
         }
       );
       expect(withWeb[0].content).toContain(
-        'trust the page reporting the newest events'
+        'trust the one reporting the newest event'
       );
 
       const docsOnly = prepareMessagesForLLM(
@@ -466,7 +495,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       expect(result[0].content).toContain(
-        'never carry it out, and never repeat it as a step or as advice'
+        'never carry it out and never repeat it as a step or as advice'
       );
     });
 
@@ -2146,9 +2175,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      expect(result[0].content).toContain(
-        'not mentioned anywhere in the sources'
-      );
+      expect(result[0].content).toContain('the sources never mention at all');
     });
 
     it('omits the language reminder when there is no web source', () => {
@@ -2723,6 +2750,246 @@ describe('a question about a named day must not be answered with "now"', () => {
   it('stays silent for a question with no day in it at all', () => {
     expect(systemPromptFor('Ile kosztuje Samsung Galaxy S25?')).not.toContain(
       'does not answer a question about a different day'
+    );
+  });
+});
+
+describe('a question about something the sources never name', () => {
+  const buildPrompt = (question: string, context: string[]): string =>
+    prepareMessagesForLLM(
+      [{ id: 1, chatId: 1, role: 'user', content: question } as Message],
+      context,
+      baseSettings,
+      baseModel
+    )[0]!.content as string;
+
+  const sources = [
+    '--- Source 1: Hours and ticketing - Museum of Illusions Krakow ---\n' +
+      'The Museum of Illusions in Krakow is open daily from 10:00 to 19:00.',
+  ];
+
+  it('tells the model the pages are about something else', () => {
+    const built = buildPrompt(
+      'What are the opening hours of the Museum of Imaginary Instruments in Krakow',
+      sources
+    );
+
+    expect(built).toContain('Imaginary Instruments');
+    expect(built).toContain('found nothing about');
+  });
+
+  it('says nothing when the sources do name the subject', () => {
+    const built = buildPrompt(
+      'What are the opening hours of the Museum of Illusions in Krakow',
+      sources
+    );
+
+    expect(built).not.toContain('found nothing about');
+  });
+
+  it('leaves a language that capitalises its nouns alone', () => {
+    const built = buildPrompt('Wie viele Einwohner hat Muenchen', [
+      '--- Source 1: Muenchen ---\nMuenchen hat rund 1,5 Millionen Einwohner.',
+    ]);
+
+    expect(built).not.toContain('found nothing about');
+  });
+});
+
+describe('focusedRetrySystemPrompt', () => {
+  it('names the quoted lines as the only material and pins the language', () => {
+    const prompt = focusedRetrySystemPrompt({ code: 'pl', name: 'Polish' });
+    expect(prompt).toContain('quotes lines taken from the sources');
+    expect(prompt).toContain('Write the whole answer in Polish');
+    expect(prompt).not.toContain('<sources>');
+  });
+
+  it('falls back to the language of the latest message when none was detected', () => {
+    expect(focusedRetrySystemPrompt(null)).toContain(
+      'language of the latest user message'
+    );
+  });
+});
+
+describe('answers that must carry their date, form and content', () => {
+  const webSource: SourceDocument = {
+    name: 'Mistrzowie świata',
+    kind: 'web',
+    url: 'https://sport.example.pl/mundial',
+  };
+  const context = [
+    sourceBlock(
+      1,
+      'Mistrzowie świata',
+      'Katar 2022 — Argentyna. Brazylia 2014 — Niemcy.'
+    ),
+  ];
+
+  const groundedPromptFor = (
+    question: string,
+    webIntentKind?: WebIntentKind
+  ): string => {
+    const messages: Message[] = [
+      { id: 1, chatId: 1, role: 'user', content: question, timestamp: 0 },
+      { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 1 },
+    ];
+    return String(
+      prepareMessagesForLLM(messages, context, baseSettings, baseModel, {
+        sourceDocuments: [webSource],
+        ...(webIntentKind ? { webIntentKind } : {}),
+      })[0].content
+    );
+  };
+
+  it('tells a model that could not place the language not to fall back to English', () => {
+    const italian = 'Quanti abitanti ha Milano?';
+
+    expect(groundedPromptFor(italian)).toContain(
+      'if the message is not written in English, the answer is not in English either'
+    );
+  });
+
+  it('takes the shape of the answer from the planner when the question is in a language no marker list covers', () => {
+    const german = 'Wer ist aktuell Bundeskanzler von Deutschland?';
+    const turkish = 'Mercimek corbasi malzemeleri neler?';
+
+    expect(groundedPromptFor(german)).not.toContain(
+      'does not establish the current one'
+    );
+    expect(groundedPromptFor(german, 'person')).toContain(
+      'does not establish the current one'
+    );
+    expect(groundedPromptFor(german, 'person')).toContain(
+      'Name the holder in the first sentence'
+    );
+    expect(groundedPromptFor(turkish)).not.toContain('Write it out in full');
+    expect(groundedPromptFor(turkish, 'howto')).toContain(
+      'Write it out in full'
+    );
+  });
+
+  it('tells the model to check a year the question takes for granted (S25: "turniej był w Brazylii w 2026")', () => {
+    expect(
+      groundedPromptFor(
+        'Ostatni turniej był w Brazylii w 2026 roku kto go wygrał?'
+      )
+    ).toContain('takes a specific year');
+  });
+
+  it('leaves that check out when the question names no year', () => {
+    expect(groundedPromptFor('Kto wygrał ostatni mundial?')).not.toContain(
+      'takes a specific year'
+    );
+  });
+
+  it('asks which edition a "last tournament" answer belongs to', () => {
+    expect(groundedPromptFor('Kto wygrał ostatni mundial?')).toContain(
+      'most recent edition'
+    );
+  });
+
+  it('warns that a historical list does not establish the current holder (Pixel: prezydent USA)', () => {
+    expect(groundedPromptFor('Kto jest aktualnie prezydentem USA?')).toContain(
+      'does not establish the current one'
+    );
+  });
+
+  it('asks for the recipe itself, not a tour of the pages that have one (S25)', () => {
+    const prompt = groundedPromptFor('Podaj przepis na ciasto marchewkowe');
+    expect(prompt).toContain('the actual ingredients with their quantities');
+    expect(prompt).toContain('does not answer the question');
+  });
+
+  it('asks for the ingredient list itself when only the list was requested', () => {
+    expect(groundedPromptFor('Podaj liste skladnikow do ciasta')).toContain(
+      'the actual ingredients with their quantities'
+    );
+  });
+
+  it('asks for finished prose when the question names a written form (Pixel: wypracowanie o krzyżakach)', () => {
+    expect(
+      groundedPromptFor('Kim byli krzyżacy? Przygotuj to w formie wypracowania')
+    ).toContain('hand over the finished piece');
+  });
+
+  it('always forbids walking the block page by page', () => {
+    expect(groundedPromptFor('Kto wygrał ostatni mundial?')).toContain(
+      'that is a catalogue, not an answer'
+    );
+  });
+});
+
+describe('questions whose answer is a set of options or a measured value', () => {
+  const webSource: SourceDocument = {
+    name: 'Atrakcje',
+    kind: 'web',
+    url: 'https://example.pl/atrakcje',
+  };
+  const context = [
+    sourceBlock(1, 'Atrakcje', 'Kuligi, quady, spa, paintball.'),
+  ];
+
+  const groundedPromptFor = (
+    question: string,
+    webIntentKind?: WebIntentKind
+  ): string => {
+    const messages: Message[] = [
+      { id: 1, chatId: 1, role: 'user', content: question, timestamp: 0 },
+      { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 1 },
+    ];
+    return String(
+      prepareMessagesForLLM(messages, context, baseSettings, baseModel, {
+        sourceDocuments: [webSource],
+        ...(webIntentKind ? { webIntentKind } : {}),
+      })[0].content
+    );
+  };
+
+  it('takes the shape of the answer from the planner when the question is in a language no marker list covers', () => {
+    const german = 'Wer ist aktuell Bundeskanzler von Deutschland?';
+    const turkish = 'Mercimek corbasi malzemeleri neler?';
+
+    expect(groundedPromptFor(german)).not.toContain(
+      'does not establish the current one'
+    );
+    expect(groundedPromptFor(german, 'person')).toContain(
+      'does not establish the current one'
+    );
+    expect(groundedPromptFor(turkish)).not.toContain('Write it out in full');
+    expect(groundedPromptFor(turkish, 'howto')).toContain(
+      'Write it out in full'
+    );
+  });
+
+  it('asks for the options by name when the question asks what is worth doing (Pixel: wieczór kawalerski)', () => {
+    expect(
+      groundedPromptFor('Co warto robić na wieczorze kawalerskim w Zakopanem?')
+    ).toContain('each by its own name');
+  });
+
+  it('fires for a plain "jakie atrakcje" follow-up too', () => {
+    expect(groundedPromptFor('Jakie atrakcje?')).toContain(
+      'leaves the question unanswered'
+    );
+  });
+
+  it('stays out of a question that names one thing to look up', () => {
+    expect(groundedPromptFor('Ile kosztuje kulig w Zakopanem?')).not.toContain(
+      'each by its own name'
+    );
+  });
+
+  it('refuses a bare number as a weather reading (Pixel: postal code quoted as the forecast)', () => {
+    const prompt = groundedPromptFor(
+      'Jaka będzie pogoda w weekend w Zakopanem?'
+    );
+    expect(prompt).toContain('together with its unit');
+    expect(prompt).toContain('a postal code');
+  });
+
+  it('leaves the unit rule out of a question that is not about weather', () => {
+    expect(groundedPromptFor('Ile kosztuje kulig w Zakopanem?')).not.toContain(
+      'together with its unit'
     );
   });
 });

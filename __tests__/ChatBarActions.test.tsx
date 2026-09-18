@@ -101,14 +101,17 @@ describe('attach button', () => {
     });
   });
 
-  it('blocks attachments while disabled without greying out or explaining', () => {
+  it('says the model is still loading instead of ignoring the tap while disabled', () => {
     const onAttach = jest.fn();
     renderActions({ onAttach, disabled: true });
 
     fireEvent.press(screen.getByTestId('attach-btn'));
 
     expect(onAttach).not.toHaveBeenCalled();
-    expect(Toast.show).not.toHaveBeenCalled();
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the model to finish loading.',
+    });
     expect(
       StyleSheet.flatten(screen.getByTestId('attach-btn-container').props.style)
     ).toBeUndefined();

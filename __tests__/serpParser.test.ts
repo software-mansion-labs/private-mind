@@ -1,8 +1,4 @@
-import {
-  SERP_PARSER_JS,
-  SERP_PARSER_JS_ONLOAD,
-  buildSerpParserJs,
-} from '../utils/web/scrape/serpParser';
+import { buildSerpParserJs } from '../utils/web/scrape/serpParser';
 import {
   parseSerpMessage,
   type SerpMessage,
@@ -48,7 +44,7 @@ const runParser = (dom: {
   };
 
   // eslint-disable-next-line no-new-func
-  const run = new Function('window', 'document', SERP_PARSER_JS);
+  const run = new Function('window', 'document', buildSerpParserJs(true));
   run(window, document);
 
   return posted
@@ -56,7 +52,7 @@ const runParser = (dom: {
     .filter((message): message is SerpMessage => message !== null);
 };
 
-describe('SERP_PARSER_JS classification', () => {
+describe('SERP parser classification', () => {
   it('reports results for a normal SERP', () => {
     const messages = runParser({
       results: [
@@ -204,20 +200,73 @@ describe('buildSerpParserJs — empty-result reporting', () => {
   const EMPTY_POST = "post({ type: 'serp-results', results: [] });";
 
   it('the recheck variant reports an empty result set', () => {
-    expect(SERP_PARSER_JS).toContain(EMPTY_POST);
     expect(buildSerpParserJs(true)).toContain(EMPTY_POST);
   });
 
   it('the on-load variant never settles an engine with an empty result set', () => {
-    expect(SERP_PARSER_JS_ONLOAD).not.toContain(EMPTY_POST);
     expect(buildSerpParserJs(false)).not.toContain(EMPTY_POST);
   });
 
   it('checks for a challenge before the generic link fallback', () => {
-    const challengeIdx = SERP_PARSER_JS.indexOf("type: 'serp-challenge'");
-    const genericIdx = SERP_PARSER_JS.indexOf("querySelectorAll('a[href]')");
+    const challengeIdx = buildSerpParserJs(true).indexOf(
+      "type: 'serp-challenge'"
+    );
+    const genericIdx = buildSerpParserJs(true).indexOf(
+      "querySelectorAll('a[href]')"
+    );
     expect(challengeIdx).toBeGreaterThan(-1);
     expect(genericIdx).toBeGreaterThan(-1);
     expect(challengeIdx).toBeLessThan(genericIdx);
+  });
+});
+
+describe('buildSerpParserJs — navigation nonce', () => {
+  const runWithNonce = (document: object): SerpMessage[] => {
+    const posted: string[] = [];
+    const window = {
+      ReactNativeWebView: {
+        postMessage: (message: string) => posted.push(message),
+      },
+    };
+    // eslint-disable-next-line no-new-func
+    new Function('window', 'document', buildSerpParserJs(true, 7))(
+      window,
+      document
+    );
+    return posted
+      .map(parseSerpMessage)
+      .filter((message): message is SerpMessage => message !== null);
+  };
+
+  it('stamps a result message with the nonce the parser was built with', () => {
+    expect(
+      runWithNonce({
+        title: '',
+        body: { innerText: '' },
+        querySelectorAll: () => [],
+        querySelector: () => null,
+      })
+    ).toEqual([{ type: 'serp-results', results: [], nonce: 7 }]);
+  });
+
+  it('stamps an error message with the nonce as well', () => {
+    expect(
+      runWithNonce({
+        title: '',
+        body: { innerText: '' },
+        querySelectorAll: () => {
+          throw new Error('no DOM');
+        },
+        querySelector: () => null,
+      })
+    ).toEqual([{ type: 'serp-error', message: 'Error: no DOM', nonce: 7 }]);
+  });
+
+  it('leaves messages unstamped when no nonce was given', () => {
+    expect(
+      runParser({
+        results: [makeResultNode('Title', 'https://a.example/', '')],
+      })[0]
+    ).not.toHaveProperty('nonce');
   });
 });

@@ -18,6 +18,7 @@ import { runWebSearch } from '../../utils/web/runWebSearch';
 import type { WebIntentKind } from '../../utils/web/intentKind';
 import { webViewScrapeProvider } from '../../utils/web/scrape/webViewScrapeProvider';
 import { webContextCharBudget } from '../../utils/web/contextBudget';
+import { WEB_SKIP_COPY, type WebSkipReason } from '../../constants/web-copy';
 import {
   RAG_PRIORITY_OVER_WEB_SEARCH,
   WEB_BENCH_LOGS,
@@ -62,6 +63,17 @@ interface UseSendChatMessageOptions {
   isSwitching: boolean;
 }
 
+const webSkipReason = (
+  skippedForDocuments: boolean,
+  skippedForImage: boolean,
+  model: Model | null
+): WebSkipReason => {
+  if (skippedForDocuments) return 'documents';
+  if (skippedForImage) return 'image';
+  if (hasMemoryForWebSearch(model)) return 'model';
+  return 'memory';
+};
+
 export const useSendChatMessage = ({
   chatId,
   model,
@@ -83,18 +95,20 @@ export const useSendChatMessage = ({
     userInput: string,
     imagePath?: string,
     attachments?: Attachment[]
-  ) => {
+  ): Promise<boolean> => {
     const hasDocuments = attachments?.some((a) => a.type === 'document');
-    if (
-      (!userInput.trim() && !imagePath && !hasDocuments) ||
-      isGenerating ||
-      isModelLoading ||
-      isSwitching
-    )
-      return;
+    if (!userInput.trim() && !imagePath && !hasDocuments) return false;
+    if (isModelLoading || isSwitching) return false;
+    const llm = useLLMStore.getState();
+    const busy = llm.isGenerating || llm.isProcessingPrompt;
+    if (busy && llm.generatingForChatId !== chatId) {
+      llm.interrupt();
+    } else if (busy || isGenerating) {
+      return false;
+    }
 
-    Keyboard.dismiss();
     messagesRef.current?.onMessageSent();
+    Keyboard.dismiss();
 
     let targetChatId = chatId!;
     const isNewChat = !(await checkIfChatExists(db, targetChatId));
@@ -105,7 +119,7 @@ export const useSendChatMessage = ({
       const newChatId = await addChat(toChatTitle(titleSource), model!.id);
       if (!newChatId) {
         messagesRef.current?.cancelMessageSent();
-        return;
+        return false;
       }
       targetChatId = newChatId;
       useWebSearchStore.getState().transfer(chatId, targetChatId);
@@ -122,7 +136,7 @@ export const useSendChatMessage = ({
           text1: 'Failed to save image attachment.',
         });
         messagesRef.current?.cancelMessageSent();
-        return;
+        return false;
       }
     }
 
@@ -142,6 +156,13 @@ export const useSendChatMessage = ({
         .join(', ') || undefined;
 
     const modelProfile = getModelProfile(useLLMStore.getState().model);
+
+    const digestOfThisChat = (): string | null => {
+      const llmState = useLLMStore.getState();
+      return llmState.activeChatDigestChatId === targetChatId
+        ? llmState.activeChatDigest
+        : null;
+    };
 
     // Deferred so retrieval runs only after the optimistic message is on screen.
     const buildSources = async (signal?: AbortSignal) => {
@@ -182,7 +203,7 @@ export const useSendChatMessage = ({
             embeddings,
             maxRelevantChunks: modelProfile.ragMaxRelevantChunks,
             history: messageHistory,
-            digest: useLLMStore.getState().activeChatDigest ?? undefined,
+            digest: digestOfThisChat() ?? undefined,
           });
         ({ context, sourceDocuments, preferredSourceDocuments } = embeddings
           ? await runWithModelOffloaded(
@@ -192,15 +213,16 @@ export const useSendChatMessage = ({
           : await prepareSources());
       }
 
-      const skippedForDocPriority =
-        RAG_PRIORITY_OVER_WEB_SEARCH && hasRagSources;
+      const skippedForAttachmentPriority =
+        RAG_PRIORITY_OVER_WEB_SEARCH && (hasRagSources || !!imagePath);
+      const modelForWebSearch = useLLMStore.getState().model;
 
       const shouldRunWebSearch =
         WEB_SEARCH_ENABLED &&
         chatSettings.webSearchEnabled &&
-        !skippedForDocPriority &&
-        isWebSearchReady(useLLMStore.getState().model) &&
-        hasMemoryForWebSearch(useLLMStore.getState().model) &&
+        !skippedForAttachmentPriority &&
+        isWebSearchReady(modelForWebSearch) &&
+        hasMemoryForWebSearch(modelForWebSearch) &&
         !!userInput.trim();
 
       if (
@@ -211,11 +233,14 @@ export const useSendChatMessage = ({
       ) {
         Toast.show({
           type: 'defaultToast',
-          text1: skippedForDocPriority
-            ? 'Using your documents for this chat — web search is off while they’re active.'
-            : hasMemoryForWebSearch(useLLMStore.getState().model)
-              ? 'Web search is off for this model — answering without it.'
-              : 'Not enough memory to search alongside this model — answering without it.',
+          text1:
+            WEB_SKIP_COPY[
+              webSkipReason(
+                RAG_PRIORITY_OVER_WEB_SEARCH && hasRagSources,
+                RAG_PRIORITY_OVER_WEB_SEARCH && !!imagePath,
+                modelForWebSearch
+              )
+            ],
         });
       }
 
@@ -235,7 +260,7 @@ export const useSendChatMessage = ({
           } = await runWebSearch({
             query: trimmedInput,
             history: messageHistory,
-            digest: useLLMStore.getState().activeChatDigest ?? undefined,
+            digest: digestOfThisChat() ?? undefined,
             provider: webViewScrapeProvider,
             embeddings,
             embeddingModelReady,
@@ -305,7 +330,6 @@ export const useSendChatMessage = ({
         }
       }
 
-      // Enable new sources for this chat (persists for future messages)
       for (const sourceId of attachmentSourceIds) {
         if (!enabledSources.includes(sourceId)) {
           await enableSource(targetChatId, sourceId);
@@ -337,6 +361,6 @@ export const useSendChatMessage = ({
       router.replace(`/chat/${targetChatId}`);
     }
 
-    await generation;
+    return generation;
   };
 };

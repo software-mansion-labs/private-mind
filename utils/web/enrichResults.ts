@@ -1,6 +1,6 @@
 import type { WebSearchResult, ExtractedArticle } from './types';
 import { extractArticle, looksLikeBotWall } from './url/extractArticle';
-import { hostname } from './webResultsToContext';
+import { hostname } from './hostname';
 import {
   classifyFetchError,
   classifyUnusableContent,

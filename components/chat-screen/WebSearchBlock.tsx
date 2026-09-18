@@ -12,7 +12,7 @@ import Animated, {
   FadeOut,
   LinearTransition,
 } from 'react-native-reanimated';
-import * as WebBrowser from 'expo-web-browser';
+import { openExternalUrl } from '../../utils/web/openExternalUrl';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -100,9 +100,7 @@ const WebSearchBlock = memo(({ isSearching, trace, results }: Props) => {
 
   const openPage = useCallback((url?: string) => {
     if (!url) return;
-    WebBrowser.openBrowserAsync(url).catch((error) =>
-      console.warn('Failed to open browser', error)
-    );
+    openExternalUrl(url);
   }, []);
 
   if (rows.length === 0 && !isSearching) return null;
