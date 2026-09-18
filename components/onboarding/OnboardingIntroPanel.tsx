@@ -2,12 +2,10 @@ import React, { useCallback, useState } from 'react';
 import {
   LayoutChangeEvent,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import LockIcon from '../../assets/icons/lock.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme, mixColors } from '../../styles/colors';
 import PrimaryButton from '../PrimaryButton';
@@ -17,7 +15,6 @@ import {
   CARD_INSET,
   CONTENT_PADDING,
   ILLUSTRATION_CLEARANCE,
-  LABEL_ICON_SIZE,
   ILLUSTRATION_SIDE_INSET,
   INTRO_ART,
   INTRO_ART_ASPECT_RATIO,
@@ -30,9 +27,6 @@ import {
 interface Props {
   onPressStart: () => void;
 }
-
-const PROMISE_ICON_HEIGHT = LABEL_ICON_SIZE * 0.85;
-const PROMISE_ICON_ASPECT_RATIO = 16 / 20;
 
 const enterAt = (step: number) =>
   FadeInDown.duration(INTRO_FADE_MS).delay(step * INTRO_STAGGER_MS);
@@ -82,21 +76,11 @@ function OnboardingIntroPanel({ onPressStart }: Props) {
           >
             In your pocket.
           </Animated.Text>
-          <Animated.View style={styles.promise} entering={enterAt(2)}>
-            <LockIcon
-              width={PROMISE_ICON_HEIGHT * PROMISE_ICON_ASPECT_RATIO}
-              height={PROMISE_ICON_HEIGHT}
-              style={styles.promiseIcon}
-            />
-            <Text style={styles.promiseText}>
-              Nothing leaves your device unless you ask
-            </Text>
-          </Animated.View>
         </View>
         <Animated.View
           style={styles.action}
           entering={FadeInUp.duration(INTRO_FADE_MS).delay(
-            3 * INTRO_STAGGER_MS
+            2 * INTRO_STAGGER_MS
           )}
         >
           <PrimaryButton text="Get Started" onPress={onPressStart} />
@@ -143,25 +127,6 @@ const createStyles = (theme: Theme) =>
     },
     lineAccent: {
       color: mixColors(theme.bg.main, theme.bg.onBrandStrong, 0.45),
-    },
-    promise: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      marginTop: 20,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
-      backgroundColor: theme.bg.onBrandSoft,
-    },
-    promiseIcon: {
-      color: theme.text.onBrand,
-    },
-    promiseText: {
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.xs,
-      lineHeight: lineHeights.xs,
-      color: theme.text.onBrand,
     },
     action: {
       alignSelf: 'stretch',

@@ -1,7 +1,7 @@
 import { ImageSourcePropType } from 'react-native';
 import { SvgComponent } from '../utils/SvgComponent';
 import WelcomeArt from '../assets/onboarding/welcome.svg';
-import ChatIcon from '../assets/icons/chat.svg';
+import LockIcon from '../assets/icons/lock.svg';
 import WebIcon from '../assets/icons/web.svg';
 import SourceIcon from '../assets/icons/source.svg';
 import SoundwaveIcon from '../assets/icons/soundwave.svg';
@@ -37,7 +37,7 @@ export const ONBOARDING_SLIDES: OnboardingSlide[] = [
     label: 'Offline AI access',
     title: 'Models that run on your phone',
     buttonLabel: 'Got it, next',
-    icon: { art: ChatIcon, aspectRatio: 1, scale: 0.85 },
+    icon: { art: LockIcon, aspectRatio: 16 / 20, scale: 0.85 },
     illustration: {
       source: require('../assets/onboarding/step_chat.png'),
       aspectRatio: STEP_ART_ASPECT_RATIO,
