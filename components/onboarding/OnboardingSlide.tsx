@@ -13,10 +13,10 @@ import OnboardingScrim from './OnboardingScrim';
 import { Theme, mixColors, withAlpha } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import {
+  BADGE_LEAD,
   CARD_INSET,
   CONTENT_PADDING,
   CROP_FADE,
-  DESCRIPTION_LEAD,
   ILLUSTRATION_MAX_WIDTH,
   ILLUSTRATION_PARALLAX,
   ILLUSTRATION_SIDE_INSET,
@@ -66,6 +66,7 @@ function OnboardingSlide({
   );
 
   const Icon = slide.icon.art;
+  const iconHeight = LABEL_ICON_SIZE * (slide.icon.scale ?? 1);
   const anchoredTop = slide.illustration.anchor === 'top';
   const cropClearance = theme.insets.top + ILLUSTRATION_TOP_CLEARANCE;
   const cropHeight = cropClearance + CROP_FADE;
@@ -122,8 +123,8 @@ function OnboardingSlide({
     };
   });
 
-  const titleStyle = useAnimatedStyle(() => {
-    const travel = reducedMotion ? 0 : pageWidth * TITLE_LEAD;
+  const badgeStyle = useAnimatedStyle(() => {
+    const travel = reducedMotion ? 0 : pageWidth * BADGE_LEAD;
     return {
       opacity: interpolate(
         scrollX.get(),
@@ -144,8 +145,8 @@ function OnboardingSlide({
     };
   });
 
-  const descriptionStyle = useAnimatedStyle(() => {
-    const travel = reducedMotion ? 0 : pageWidth * DESCRIPTION_LEAD;
+  const titleStyle = useAnimatedStyle(() => {
+    const travel = reducedMotion ? 0 : pageWidth * TITLE_LEAD;
     return {
       opacity: interpolate(
         scrollX.get(),
@@ -203,21 +204,18 @@ function OnboardingSlide({
           style={styles.textBlock}
           onLayout={onTextLayout}
           accessible
-          accessibilityLabel={`${slide.label}. ${slide.title}. ${slide.description}`}
+          accessibilityLabel={`${slide.label}. ${slide.title}`}
         >
-          <Animated.View style={[styles.textGroup, titleStyle]}>
-            <View style={styles.labelBadge}>
-              <Icon
-                width={LABEL_ICON_SIZE * slide.icon.aspectRatio}
-                height={LABEL_ICON_SIZE}
-                style={styles.labelIcon}
-              />
-              <Text style={styles.labelText}>{slide.label}</Text>
-            </View>
-            <Text style={styles.title}>{slide.title}</Text>
+          <Animated.View style={[styles.labelBadge, badgeStyle]}>
+            <Icon
+              width={iconHeight * slide.icon.aspectRatio}
+              height={iconHeight}
+              style={styles.labelIcon}
+            />
+            <Text style={styles.labelText}>{slide.label}</Text>
           </Animated.View>
-          <Animated.Text style={[styles.description, descriptionStyle]}>
-            {slide.description}
+          <Animated.Text style={[styles.title, titleStyle]}>
+            {slide.title}
           </Animated.Text>
         </View>
       </View>
@@ -265,10 +263,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       gap: 12,
     },
-    textGroup: {
-      alignItems: 'center',
-      gap: 12,
-    },
     labelBadge: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -294,12 +288,5 @@ const createStyles = (theme: Theme) =>
       lineHeight: lineHeights.xxl,
       textAlign: 'center',
       color: theme.text.onBrand,
-    },
-    description: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
-      textAlign: 'center',
-      color: theme.text.onBrandMuted,
     },
   });

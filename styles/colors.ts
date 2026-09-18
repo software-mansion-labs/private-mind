@@ -37,7 +37,6 @@ export const lightTheme = {
     error: '#DE595B',
     warning: '#B8630A',
     onBrand: '#ffffff',
-    onBrandMuted: 'rgba(255, 255, 255, 0.76)',
   },
   border: {
     soft: 'rgba(2, 15, 60, 0.2)',
@@ -86,7 +85,6 @@ export const darkTheme = {
     error: '#E68485',
     warning: '#F0A860',
     onBrand: '#ffffff',
-    onBrandMuted: 'rgba(255, 255, 255, 0.76)',
   },
   border: {
     soft: 'rgba(255, 255, 255, 0.15)',

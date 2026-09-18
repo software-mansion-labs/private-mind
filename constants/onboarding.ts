@@ -15,13 +15,13 @@ export interface OnboardingIllustration {
 export interface OnboardingIcon {
   art: SvgComponent;
   aspectRatio: number;
+  scale?: number;
 }
 
 export interface OnboardingSlide {
   id: string;
   label: string;
   title: string;
-  description: string;
   buttonLabel: string;
   icon: OnboardingIcon;
   illustration: OnboardingIllustration;
@@ -29,60 +29,54 @@ export interface OnboardingSlide {
 
 export const INTRO_ART = WelcomeArt;
 export const INTRO_ART_ASPECT_RATIO = 300 / 420;
-export const CHAT_ART_ASPECT_RATIO = 300 / 618;
+export const STEP_ART_ASPECT_RATIO = 900 / 1856;
 
 export const ONBOARDING_SLIDES: OnboardingSlide[] = [
   {
     id: 'offline',
     label: 'Offline AI access',
-    title: 'Chat with AI models offline',
-    description:
-      'Interact with AI models securely and offline on your mobile device.',
+    title: 'Models that run on your phone',
     buttonLabel: 'Got it, next',
-    icon: { art: ChatIcon, aspectRatio: 1 },
+    icon: { art: ChatIcon, aspectRatio: 1, scale: 0.85 },
     illustration: {
       source: require('../assets/onboarding/step_chat.png'),
-      aspectRatio: CHAT_ART_ASPECT_RATIO,
+      aspectRatio: STEP_ART_ASPECT_RATIO,
       anchor: 'top',
     },
   },
   {
     id: 'web-search',
     label: 'Web search',
-    title: 'Ask about things that happened today',
-    description:
-      'The model reads live pages and cites its sources. Only the search query leaves your device.',
+    title: 'Only the search query leaves your device',
     buttonLabel: 'Nice, next',
     icon: { art: WebIcon, aspectRatio: 1 },
     illustration: {
       source: require('../assets/onboarding/step_websearch.png'),
-      aspectRatio: 300 / 618,
+      aspectRatio: STEP_ART_ASPECT_RATIO,
       anchor: 'top',
     },
   },
   {
     id: 'documents',
     label: 'Your documents',
-    title: 'Add source documents',
-    description: 'Use extra files to extend models knowledge and responses.',
+    title: 'Answers drawn from your own files',
     buttonLabel: 'Great, next',
-    icon: { art: SourceIcon, aspectRatio: 16 / 20 },
+    icon: { art: SourceIcon, aspectRatio: 16 / 20, scale: 0.85 },
     illustration: {
       source: require('../assets/onboarding/step_sources.png'),
-      aspectRatio: 300 / 618,
+      aspectRatio: STEP_ART_ASPECT_RATIO,
       anchor: 'bottom',
     },
   },
   {
     id: 'voice',
     label: 'Speech to text',
-    title: 'Use voice instead of chat',
-    description: 'Use voice messages that automatically transcript into text.',
+    title: 'Speak instead of typing',
     buttonLabel: 'Start chatting',
     icon: { art: SoundwaveIcon, aspectRatio: 1 },
     illustration: {
       source: require('../assets/onboarding/step_voice.png'),
-      aspectRatio: 300 / 613,
+      aspectRatio: STEP_ART_ASPECT_RATIO,
       anchor: 'bottom',
     },
   },
@@ -93,8 +87,8 @@ export const INTRO_LIFT = 24;
 export const INTRO_STAGGER_MS = 80;
 
 export const ILLUSTRATION_PARALLAX = 0.35;
-export const TITLE_LEAD = -0.12;
-export const DESCRIPTION_LEAD = -0.18;
+export const BADGE_LEAD = -0.12;
+export const TITLE_LEAD = -0.18;
 
 export const DOT_SIZE = 6;
 export const DOT_ACTIVE_WIDTH = 20;
