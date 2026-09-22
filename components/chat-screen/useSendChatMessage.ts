@@ -112,6 +112,14 @@ export const useSendChatMessage = ({
 
     let targetChatId = chatId!;
     const isNewChat = !(await checkIfChatExists(db, targetChatId));
+    const llmAfterChatLookup = useLLMStore.getState();
+    if (
+      llmAfterChatLookup.isGenerating ||
+      llmAfterChatLookup.isProcessingPrompt
+    ) {
+      messagesRef.current?.cancelMessageSent();
+      return false;
+    }
     if (isNewChat) {
       const docName = attachments?.find((a) => a.type === 'document')?.name;
       const titleSource =

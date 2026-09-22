@@ -56,7 +56,11 @@ jest.mock('../store/llmStore', () => {
     activeChatDigest: null,
     sendChatMessage: jest.fn(async () => true),
     runWithModelOffloaded: jest.fn(),
-    interrupt: jest.fn(),
+    interrupt: jest.fn(() => {
+      state.isGenerating = false;
+      state.isProcessingPrompt = false;
+      state.generatingForChatId = null;
+    }),
   };
   const store = Object.assign(() => state, { getState: () => state });
   return { useLLMStore: store };
@@ -162,5 +166,24 @@ describe('the send transition', () => {
       dismiss.mock.invocationCallOrder[0]
     );
     dismiss.mockRestore();
+  });
+});
+
+describe('a turn that starts while the chat is being looked up', () => {
+  it('gives the composer back instead of dropping the message in an existing chat', async () => {
+    const { checkIfChatExists } = jest.requireMock(
+      '../database/chatRepository'
+    ) as { checkIfChatExists: jest.Mock };
+    const state = mockedState();
+
+    checkIfChatExists.mockImplementationOnce(async () => {
+      state.isProcessingPrompt = true;
+      return true;
+    });
+
+    expect(await useSend(1)('hello')).toBe(false);
+
+    expect(state.sendChatMessage).not.toHaveBeenCalled();
+    expect(messagesRef.current?.cancelMessageSent).toHaveBeenCalled();
   });
 });
