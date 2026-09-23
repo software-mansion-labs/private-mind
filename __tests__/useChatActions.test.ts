@@ -48,7 +48,7 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 describe('rename', () => {
-  it('renames the chat and shows a toast', async () => {
+  it('renames the chat without announcing it', async () => {
     const { result } = renderHook(() => useChatActions());
 
     await act(async () => {
@@ -56,9 +56,7 @@ describe('rename', () => {
     });
 
     expect(mockRenameChat).toHaveBeenCalledWith(42, 'New title');
-    expect(Toast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ text1: 'Chat renamed' })
-    );
+    expect(Toast.show).not.toHaveBeenCalled();
   });
 
   it('clips titles longer than the stored maximum, without an ellipsis', async () => {
