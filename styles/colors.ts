@@ -16,7 +16,7 @@ export const lightTheme = {
     voiceModeSurface: 'rgba(2, 15, 60, 0.2)',
     errorSecondary: '#F5D0D1',
     errorPrimary: '#DE595B',
-    overlay: 'rgba(2, 15, 60, 0.2)',
+    overlay: 'rgba(0, 0, 0, 0.2)',
     shadow: '#000000',
     lightbox: '#000000',
     lightboxControl: 'rgba(0, 0, 0, 0.5)',
