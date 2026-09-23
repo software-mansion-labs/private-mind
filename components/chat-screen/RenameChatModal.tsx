@@ -80,7 +80,7 @@ const RenameChatModal = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="none"
       statusBarTranslucent
       onRequestClose={onCancel}
     >
