@@ -12,6 +12,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { MAX_CHAT_TITLE_LENGTH } from '../../utils/chatLabel';
+import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 
 interface Props {
   visible: boolean;
@@ -34,6 +35,14 @@ const RenameChatModal = ({
       setValue(initialTitle);
     }
   }, [visible, initialTitle]);
+
+  const setModalOwnsKeyboard = useKeyboardOwnerStore(
+    (state) => state.setModalOwnsKeyboard
+  );
+  useEffect(() => {
+    setModalOwnsKeyboard(visible);
+    return () => setModalOwnsKeyboard(false);
+  }, [visible, setModalOwnsKeyboard]);
 
   const trimmed = value.trim();
   const canSave = trimmed.length > 0;
