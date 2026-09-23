@@ -6151,6 +6151,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-blur@npm:~55.0.18":
+  version: 55.0.18
+  resolution: "expo-blur@npm:55.0.18"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+  checksum: 68a9743b74c241229c7097dd566c31d113d4de849812088aa7b636830c1a078cde82e7832085e2765b74c3dc93ae7aa794a81607053ccb9eccbfc8965b59671a
+  languageName: node
+  linkType: hard
+
 "expo-clipboard@npm:~55.0.12":
   version: 55.0.14
   resolution: "expo-clipboard@npm:55.0.14"
@@ -6217,7 +6228,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-glass-effect@npm:^55.0.11":
+"expo-glass-effect@npm:^55.0.11, expo-glass-effect@npm:~55.0.11":
   version: 55.0.11
   resolution: "expo-glass-effect@npm:55.0.11"
   peerDependencies:
@@ -10473,12 +10484,14 @@ __metadata:
     expo: ^55.0.0
     expo-application: ~55.0.13
     expo-asset: ~55.0.13
+    expo-blur: ~55.0.18
     expo-clipboard: ~55.0.12
     expo-constants: ~55.0.12
     expo-device: ~55.0.13
     expo-document-picker: ~55.0.12
     expo-file-system: ~55.0.15
     expo-font: ~55.0.6
+    expo-glass-effect: ~55.0.11
     expo-linear-gradient: ~55.0.13
     expo-linking: ~55.0.11
     expo-localization: ~55.0.12
