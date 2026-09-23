@@ -1,8 +1,10 @@
 import { EdgeInsets } from 'react-native-safe-area-context';
 
+const BRAND_BLUE = '#3D61D6';
+
 export const lightTheme = {
   bg: {
-    main: '#3D61D6',
+    main: BRAND_BLUE,
     softPrimary: '#ffffff',
     softSecondary: '#e6e7eb',
     switchThumb: '#ffffff',
@@ -44,7 +46,7 @@ export const lightTheme = {
 
 export const darkTheme = {
   bg: {
-    main: '#3D61D6',
+    main: BRAND_BLUE,
     softPrimary: '#000000',
     softSecondary: '#121212',
     switchThumb: '#ffffff',
@@ -109,6 +111,12 @@ export const withAlpha = (color: string, alpha: number) => {
   const { r, g, b } = toRgb(color);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
+
+export const TEXT_SELECTION = {
+  selectionColor: withAlpha(BRAND_BLUE, 0.3),
+  cursorColor: BRAND_BLUE,
+  selectionHandleColor: BRAND_BLUE,
+} as const;
 
 export const mixColors = (from: string, to: string, t: number) => {
   const ratio = Math.min(1, Math.max(0, t));

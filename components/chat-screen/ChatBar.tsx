@@ -29,7 +29,7 @@ import RotateLeft from '../../assets/icons/rotate_left.svg';
 import LinkIcon from '../../assets/icons/link-alt.svg';
 import { detectUrls } from '../../utils/web/url/urlDetection';
 import { hostname } from '../../utils/web/hostname';
-import { Theme } from '../../styles/colors';
+import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
@@ -438,6 +438,7 @@ const ChatBar = ({
                 style={styles.textInputWrapper}
               >
                 <RNTextInput
+                  {...TEXT_SELECTION}
                   key={Platform.OS === 'ios' ? iosInputKey : undefined}
                   ref={textInputRef}
                   style={styles.input}

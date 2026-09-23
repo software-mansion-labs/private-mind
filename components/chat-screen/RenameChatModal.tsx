@@ -10,7 +10,7 @@ import {
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import { Theme } from '../../styles/colors';
+import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import { MAX_CHAT_TITLE_LENGTH } from '../../utils/chatLabel';
 import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 
@@ -65,6 +65,7 @@ const RenameChatModal = ({
         <View style={styles.card}>
           <Text style={styles.title}>Rename chat</Text>
           <TextInput
+            {...TEXT_SELECTION}
             value={value}
             onChangeText={setValue}
             maxLength={MAX_CHAT_TITLE_LENGTH}
