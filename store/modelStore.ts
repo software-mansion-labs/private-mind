@@ -25,6 +25,8 @@ interface DownloadState {
   status: ModelState;
 }
 
+const activeDownloadRun = new Map<number, symbol>();
+
 interface ModelStore {
   db: SQLiteDatabase | null;
   models: Model[];
@@ -94,10 +96,15 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       return;
     }
 
+    const run = Symbol(model.modelName);
+    activeDownloadRun.set(model.id, run);
+    const isCurrentRun = () => activeDownloadRun.get(model.id) === run;
+
     const setDownloading = (
       progress: number,
       status: DownloadState['status']
     ) => {
+      if (!isCurrentRun()) return;
       set((state) => ({
         downloadStates: {
           ...state.downloadStates,
@@ -112,19 +119,15 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     // glitches due to the UI becoming out of sync with the actual progress
     let lastReportTime = Date.now();
 
-    // prevent race condition where for fast responses last progress updates happen after
-    // its finished and make the download state appear stuck on "downloading"
-    let downloadDone = false;
     setDownloading(0, ModelState.Downloading);
 
     try {
       const { modelPath, tokenizerPath, tokenizerConfigPath } = model;
 
-      const result = await ResourceFetcher.fetch(
+      await ResourceFetcher.fetch(
         (p: number) => {
           const currentPercent = Math.floor(p * 100);
           if (
-            !downloadDone &&
             currentPercent !== lastReportedPercent &&
             lastReportTime + MS_PER_FRAME < Date.now()
           ) {
@@ -138,9 +141,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         tokenizerConfigPath
       );
 
-      if (result === null) {
-        return;
-      }
+      if (!isCurrentRun()) return;
 
       const db = get().db;
       if (db) {
@@ -148,16 +149,19 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         await get().loadModels();
       }
 
-      downloadDone = true;
+      if (!isCurrentRun()) return;
       setDownloading(1, ModelState.Downloaded);
+      activeDownloadRun.delete(model.id);
       Feedback.downloadComplete();
       Toast.show({
         type: 'defaultToast',
         text1: `${model.modelName} has been successfully downloaded`,
       });
     } catch (err) {
-      console.error('Failed:', err);
+      if (!isCurrentRun()) return;
       setDownloading(0, ModelState.NotStarted);
+      activeDownloadRun.delete(model.id);
+      console.error('Failed:', err);
       Toast.show({
         type: 'defaultToast',
         text1: 'The model could not be downloaded',
@@ -166,6 +170,14 @@ export const useModelStore = create<ModelStore>((set, get) => ({
   },
 
   cancelDownload: async (model: Model) => {
+    activeDownloadRun.delete(model.id);
+    set((state) => ({
+      downloadStates: {
+        ...state.downloadStates,
+        [model.id]: { progress: 0, status: ModelState.NotStarted },
+      },
+    }));
+
     const { modelPath, tokenizerPath, tokenizerConfigPath } = model;
     try {
       await ExpoResourceFetcher.cancelFetching(
@@ -176,12 +188,6 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     } catch (e) {
       console.warn('Failed to cancel download:', e);
     }
-    set((state) => ({
-      downloadStates: {
-        ...state.downloadStates,
-        [model.id]: { progress: 0, status: ModelState.NotStarted },
-      },
-    }));
   },
 
   removeModelFiles: async (modelId: number) => {
