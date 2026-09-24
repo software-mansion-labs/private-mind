@@ -9,108 +9,117 @@ const normalizeClause = (clause: string): string =>
 const MAX_CLAUSE_CYCLE = 6;
 const CLAUSE_CYCLE_REPEATS = 2;
 const CLAUSE_REPEAT_LIMIT = 3;
-const LINE_REPEAT_LIMIT = 2;
 
-const secondOccurrences = (
-  units: { norm: string; start: number }[],
-  limit: number
-): number | null => {
+type Unit = { norm: string; start: number };
+
+type LoopSpan = { first: number; repeat: number };
+
+const earliestSpan = (spans: LoopSpan[]): LoopSpan | null =>
+  spans.reduce<LoopSpan | null>(
+    (best, span) => (best === null || span.first < best.first ? span : best),
+    null
+  );
+
+const repeatedUnit = (units: Unit[], limit: number): LoopSpan | null => {
   const starts = new Map<string, number[]>();
   for (const { norm, start } of units) {
     const seen = starts.get(norm);
     if (seen) seen.push(start);
     else starts.set(norm, [start]);
   }
-  let cut: number | null = null;
+  let found: LoopSpan | null = null;
   for (const occurrences of starts.values()) {
     if (occurrences.length < limit) continue;
-    const repeat = occurrences[1]!;
-    if (cut === null || repeat < cut) cut = repeat;
+    const span = { first: occurrences[0]!, repeat: occurrences[1]! };
+    if (found === null || span.repeat < found.repeat) found = span;
   }
-  return cut;
+  return found;
 };
 
-const findRepeatedClauseCut = (text: string): number | null => {
-  const clauses = text.split(CLAUSE_SPLIT);
-  const substantial: { norm: string; start: number }[] = [];
+const substantialClauses = (text: string): Unit[] => {
+  const units: Unit[] = [];
   let cursor = 0;
-
-  for (const clause of clauses) {
+  for (const clause of text.split(CLAUSE_SPLIT)) {
     const start = cursor;
     cursor += clause.length;
-
     const norm = normalizeClause(clause);
     if (norm.length >= MIN_CLAUSE_CHARS && ALPHANUMERIC.test(norm)) {
-      substantial.push({ norm, start });
+      units.push({ norm, start });
     }
   }
+  return units;
+};
 
-  let earliestCut: number | null = null;
+const findClauseCycle = (units: Unit[]): LoopSpan | null => {
   for (let period = 1; period <= MAX_CLAUSE_CYCLE; period++) {
     const span = period * CLAUSE_CYCLE_REPEATS;
-    for (let i = 0; i + span <= substantial.length; i++) {
-      if (earliestCut !== null && substantial[i]!.start >= earliestCut) break;
+    for (let i = 0; i + span <= units.length; i++) {
       let cycles = true;
       for (let k = 0; k < period; k++) {
-        if (substantial[i + k]!.norm !== substantial[i + period + k]!.norm) {
+        if (units[i + k]!.norm !== units[i + period + k]!.norm) {
           cycles = false;
           break;
         }
       }
       if (cycles) {
-        earliestCut = substantial[i]!.start;
-        break;
+        return { first: units[i]!.start, repeat: units[i + period]!.start };
       }
     }
   }
+  return null;
+};
 
-  const repeated = secondOccurrences(substantial, CLAUSE_REPEAT_LIMIT);
-  if (repeated !== null && (earliestCut === null || repeated < earliestCut)) {
-    earliestCut = repeated;
-  }
-
-  return earliestCut;
+const findRepeatedClauseSpans = (text: string): LoopSpan[] => {
+  const units = substantialClauses(text);
+  return [
+    findClauseCycle(units),
+    repeatedUnit(units, CLAUSE_REPEAT_LIMIT),
+  ].filter((span): span is LoopSpan => span !== null);
 };
 
 const MIN_LINE_CHARS = 12;
+const LINE_REPEAT_LIMIT = 2;
 const LIST_MARKER = /^\s*(?:\d+[.)]|[-*•])\s*/;
 
-const findRepeatedLineCut = (text: string): number | null => {
-  const lines = text.split('\n');
-  const substantial: { norm: string; start: number }[] = [];
+const findRepeatedLineSpans = (text: string): LoopSpan[] => {
+  const units: Unit[] = [];
   let cursor = 0;
   let previousNorm: string | null = null;
   let previousStart = 0;
-  let adjacentCut: number | null = null;
+  let adjacent: LoopSpan | null = null;
 
-  for (const line of lines) {
+  for (const line of text.split('\n')) {
     const start = cursor;
     cursor += line.length + 1;
 
     const norm = normalizeClause(line.replace(LIST_MARKER, ''));
     if (norm.length < MIN_LINE_CHARS || !ALPHANUMERIC.test(norm)) continue;
 
-    substantial.push({ norm, start });
-    if (adjacentCut === null && norm === previousNorm)
-      adjacentCut = previousStart;
+    units.push({ norm, start });
+    if (adjacent === null && norm === previousNorm) {
+      adjacent = { first: previousStart, repeat: start };
+    }
     previousNorm = norm;
     previousStart = start;
   }
 
-  const repeated = secondOccurrences(substantial, LINE_REPEAT_LIMIT);
-  if (adjacentCut === null) return repeated;
-  if (repeated === null) return adjacentCut;
-  return Math.min(adjacentCut, repeated);
+  return [adjacent, repeatedUnit(units, LINE_REPEAT_LIMIT)].filter(
+    (span): span is LoopSpan => span !== null
+  );
 };
+
+export const normalizeLine = (line: string): string =>
+  normalizeClause(line.replace(LIST_MARKER, ''));
 
 const MIN_WORD_CHARS = 3;
 const WORD_REPEAT_THRESHOLD = 4;
 const WORD_SPLIT = /(\s+)/;
 const ONLY_WHITESPACE = /^\s*$/;
 
-const findRepeatedWordRun = (text: string): number | null => {
+const findRepeatedWordRun = (text: string): LoopSpan | null => {
   let cursor = 0;
   let runStart = 0;
+  let runSecond = 0;
   let runWord: string | null = null;
   let runCount = 0;
 
@@ -120,7 +129,10 @@ const findRepeatedWordRun = (text: string): number | null => {
       if (norm.length >= MIN_WORD_CHARS && ALPHANUMERIC.test(norm)) {
         if (norm === runWord) {
           runCount++;
-          if (runCount >= WORD_REPEAT_THRESHOLD) return runStart;
+          if (runCount === 2) runSecond = cursor;
+          if (runCount >= WORD_REPEAT_THRESHOLD) {
+            return { first: runStart, repeat: runSecond };
+          }
         } else {
           runWord = norm;
           runCount = 1;
@@ -141,8 +153,8 @@ const MAX_PHRASE_WORDS = 5;
 const PHRASE_REPEAT_THRESHOLD = 3;
 const MIN_PHRASE_CHARS = 8;
 
-const findRepeatedPhraseRun = (text: string): number | null => {
-  const words: { norm: string; start: number }[] = [];
+const findRepeatedPhraseRun = (text: string): LoopSpan | null => {
+  const words: Unit[] = [];
   let cursor = 0;
   for (const token of text.split(WORD_SPLIT)) {
     if (!ONLY_WHITESPACE.test(token)) {
@@ -163,7 +175,7 @@ const findRepeatedPhraseRun = (text: string): number | null => {
   const phraseChars = (start: number, len: number): number =>
     words.slice(start, start + len).reduce((sum, w) => sum + w.norm.length, 0);
 
-  let earliestCut: number | null = null;
+  let earliest: LoopSpan | null = null;
   for (let phraseLen = 2; phraseLen <= MAX_PHRASE_WORDS; phraseLen++) {
     let i = 0;
     while (i + phraseLen * PHRASE_REPEAT_THRESHOLD <= words.length) {
@@ -179,8 +191,11 @@ const findRepeatedPhraseRun = (text: string): number | null => {
         repeats++;
       }
       if (repeats >= PHRASE_REPEAT_THRESHOLD) {
-        const cut = words[i]!.start;
-        if (earliestCut === null || cut < earliestCut) earliestCut = cut;
+        const span = {
+          first: words[i]!.start,
+          repeat: words[i + phraseLen]!.start,
+        };
+        if (earliest === null || span.first < earliest.first) earliest = span;
         i += repeats * phraseLen;
       } else {
         i++;
@@ -188,7 +203,7 @@ const findRepeatedPhraseRun = (text: string): number | null => {
     }
   }
 
-  return earliestCut;
+  return earliest;
 };
 
 const SALVAGE_UNIT = /[^.!?\n。！？।॥۔؟]+(?:[.!?\n。！？।॥۔؟]+|$)/;
@@ -199,23 +214,23 @@ const salvageFirstUnit = (text: string): string => {
   return text.trim();
 };
 
-const loopCuts = (text: string): number[] =>
+const loopSpans = (text: string): LoopSpan[] =>
   [
-    findRepeatedClauseCut(text),
-    findRepeatedLineCut(text),
+    ...findRepeatedClauseSpans(text),
+    ...findRepeatedLineSpans(text),
     findRepeatedWordRun(text),
     findRepeatedPhraseRun(text),
-  ].filter((cut): cut is number => cut !== null);
+  ].filter((span): span is LoopSpan => span !== null);
 
 export const isRepetitionFromTheStart = (text: string): boolean => {
-  const cuts = loopCuts(text);
-  return cuts.length > 0 && Math.min(...cuts) === 0;
+  const earliest = earliestSpan(loopSpans(text));
+  return earliest !== null && earliest.first === 0;
 };
 
 export const truncateAtRepeatedClause = (text: string): string => {
-  const cuts = loopCuts(text);
-  if (cuts.length === 0) return text;
-  const kept = text.slice(0, Math.min(...cuts)).trimEnd();
+  const spans = loopSpans(text);
+  if (spans.length === 0) return text;
+  const kept = text.slice(0, Math.min(...spans.map((s) => s.repeat))).trimEnd();
   if (kept.trim()) return kept;
   return text.trim() ? salvageFirstUnit(text) : kept;
 };
