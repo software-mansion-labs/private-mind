@@ -14,8 +14,23 @@ jest.mock('../context/ThemeContext', () => ({
 
 jest.mock('../components/CircleButton', () => {
   const { TouchableOpacity } = require('react-native');
-  return ({ onPress, testID }: { onPress?: () => void; testID?: string }) => (
-    <TouchableOpacity testID={testID || 'circle-btn'} onPress={onPress} />
+  return ({
+    onPress,
+    testID,
+    busy,
+    dimmed,
+  }: {
+    onPress?: () => void;
+    testID?: string;
+    busy?: boolean;
+    dimmed?: boolean;
+  }) => (
+    <TouchableOpacity
+      testID={testID || 'circle-btn'}
+      onPress={onPress}
+      accessibilityState={{ busy: !!busy, disabled: false }}
+      accessibilityHint={dimmed ? 'dimmed' : undefined}
+    />
   );
 });
 
@@ -132,6 +147,32 @@ describe('attach button', () => {
 
     expect(onSend).toHaveBeenCalled();
     expect(Toast.show).not.toHaveBeenCalled();
+  });
+
+  it('spins the send button while the model is busy, and still hands the tap on (#380)', () => {
+    const onSend = jest.fn();
+    renderActions({ onSend, userInput: 'hi', modelBusy: true });
+
+    const send = screen.getByTestId('send-btn');
+    expect(send.props.accessibilityState.busy).toBe(true);
+    fireEvent.press(send);
+    expect(onSend).toHaveBeenCalled();
+  });
+
+  it('keeps the send button live once the model is ready', () => {
+    renderActions({ userInput: 'hi', modelBusy: false });
+    expect(screen.getByTestId('send-btn').props.accessibilityState.busy).toBe(
+      false
+    );
+  });
+
+  it('dims the mic while the model is busy but leaves it tappable', () => {
+    const onSpeechInput = jest.fn();
+    renderActions({ onSpeechInput, modelBusy: true });
+    const mic = screen.getByTestId('speech-btn');
+    expect(mic.props.accessibilityHint).toBe('dimmed');
+    fireEvent.press(mic);
+    expect(onSpeechInput).toHaveBeenCalled();
   });
 
   it('keeps the attachment button at full opacity when idle', () => {

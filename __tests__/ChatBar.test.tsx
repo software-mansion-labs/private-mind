@@ -186,6 +186,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     thinkingEnabled,
     onAttach,
     onWebSearchToggle,
+    modelBusy,
   }: {
     userInput: string;
     hasAttachments: boolean;
@@ -198,8 +199,10 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     thinkingEnabled: boolean;
     onAttach: () => void;
     onWebSearchToggle?: () => void;
+    modelBusy?: boolean;
   }) => (
     <View testID="chat-bar-actions">
+      {modelBusy && <Text>model busy</Text>}
       {onWebSearchToggle && (
         <TouchableOpacity
           testID="web-search-toggle"
@@ -545,6 +548,21 @@ describe('speech input', () => {
       type: 'defaultToast',
       text1: 'Wait for the model to finish loading.',
     });
+  });
+
+  it('shows the send button busy while the model loads (#380)', () => {
+    renderBar({ disabled: true });
+    expect(screen.getByText('model busy')).toBeTruthy();
+  });
+
+  it('shows the send button busy while the model switches (#380)', () => {
+    renderBar({ modelSwitching: true });
+    expect(screen.getByText('model busy')).toBeTruthy();
+  });
+
+  it('shows the send button ready once the model is up', () => {
+    renderBar();
+    expect(screen.queryByText('model busy')).toBeNull();
   });
 
   it('does not open speech input while the model is loading', () => {
