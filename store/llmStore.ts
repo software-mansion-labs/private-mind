@@ -879,10 +879,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     await modelLoadChain;
     await utilityChain;
     const readyModel = get().model;
-    if (!get().isProcessingPrompt || !readyModel) {
+    if (!get().isProcessingPrompt) {
       markGenerationFailed(new Error('Stopped while waiting for the model'), {
         showToUser: false,
       });
+      return true;
+    }
+    if (!readyModel) {
+      markGenerationFailed(new Error('No model was ready after the load'));
       return true;
     }
     if (readyModel.id !== currentModel.id) {

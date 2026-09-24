@@ -71,7 +71,14 @@ module.exports = {
     callback?.(true);
     return val;
   },
-  withSpring: (val: any) => val,
+  withSpring: (
+    val: any,
+    _config: any,
+    callback?: (finished: boolean) => void
+  ) => {
+    callback?.(true);
+    return val;
+  },
   withRepeat: (val: any) => val,
   withDelay: (_d: any, val: any) => val,
   withSequence: (val: any) => val,
@@ -80,6 +87,8 @@ module.exports = {
     linear: (t: any) => t,
     ease: (t: any) => t,
     quad: (t: any) => t,
+    cubic: (t: any) => t,
+    poly: () => (t: any) => t,
     bezier: () => (t: any) => t,
     inOut: (fn: any) => fn,
     out: (fn: any) => fn,
