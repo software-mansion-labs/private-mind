@@ -31,6 +31,7 @@ import { useLegacyChatNotice } from '../../hooks/useLegacyChatNotice';
 import useChatSettings from '../../hooks/useChatSettings';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import useChatBranching from '../../hooks/useChatBranching';
+import { useStableCallback } from '../../hooks/useStableCallback';
 import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
 
 interface Props {
@@ -66,14 +67,12 @@ export default function ChatScreen({
   const db = useSQLiteContext();
 
   const { vectorStore, embeddings } = useVectorStore();
-  const {
-    isLoading: isModelLoading,
-    isGenerating,
-    loadModel,
-    generationError,
-    retryLastGeneration,
-    retryArmedForChatId,
-  } = useLLMStore();
+  const isModelLoading = useLLMStore((state) => state.isLoading);
+  const isGenerating = useLLMStore((state) => state.isGenerating);
+  const loadModel = useLLMStore((state) => state.loadModel);
+  const generationError = useLLMStore((state) => state.generationError);
+  const retryLastGeneration = useLLMStore((state) => state.retryLastGeneration);
+  const retryArmedForChatId = useLLMStore((state) => state.retryArmedForChatId);
   const { setChatModel, phantomChat } = useChatStore();
 
   const { styles, theme } = useThemedStyles(createStyles);
@@ -195,7 +194,7 @@ export default function ChatScreen({
     [handleModelSwitchSheetState]
   );
 
-  const handleSendMessage = useSendChatMessage({
+  const sendChatMessage = useSendChatMessage({
     chatId,
     model,
     messageHistory,
@@ -209,6 +208,7 @@ export default function ChatScreen({
     isModelLoading,
     isSwitching,
   });
+  const handleSendMessage = useStableCallback(sendChatMessage);
 
   const {
     handleThinkingToggle,
