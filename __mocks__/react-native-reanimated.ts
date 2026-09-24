@@ -102,6 +102,8 @@ module.exports = {
   },
   interpolateColor: (val: any, _r: any, outputRange: any) => outputRange[0],
   Extrapolation: { CLAMP: 'clamp', EXTEND: 'extend', IDENTITY: 'identity' },
+  ReduceMotion: { System: 'system', Always: 'always', Never: 'never' },
+  useReducedMotion: () => false,
   runOnJS: (fn: any) => fn,
   runOnUI: (fn: any) => fn,
   configureReanimatedLogger: () => {},
