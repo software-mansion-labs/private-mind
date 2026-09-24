@@ -10,7 +10,8 @@ import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
 import { WarningSheetData } from '../bottomSheets/WarningSheet';
-import { isModelCompatible } from '../../utils/modelCompatibility';
+import { getModelRisk } from '../../utils/modelCompatibility';
+import { getModelRiskCopy } from '../../constants/model-risk';
 import { useConfirm } from '../../hooks/useConfirm';
 import Chip from '../Chip';
 import CircleButton from '../CircleButton';
@@ -118,7 +119,9 @@ const ModelCard = ({
     });
   };
 
-  const isCompatible = isModelCompatible(model);
+  const risk = getModelRisk(model);
+  const riskCopy = getModelRiskCopy(risk, model.modelName);
+  const isCompatible = risk.tier !== 'unsafe';
   const disabled =
     modelState !== ModelState.Downloaded && model.source === 'built-in';
 
@@ -136,12 +139,20 @@ const ModelCard = ({
             {model.modelName}
           </Text>
           <View style={styles.chipContainer}>
-            {!isCompatible && (
+            {riskCopy && risk.tier === 'unsafe' && (
               <Chip
-                title="Incompatible"
+                title={riskCopy.chip}
                 borderColor={theme.text.error}
                 backgroundColor={theme.bg.errorSecondary}
                 textColor={theme.text.error}
+              />
+            )}
+            {riskCopy && risk.tier === 'tight' && (
+              <Chip
+                title={riskCopy.chip}
+                borderColor={theme.text.warning}
+                backgroundColor={theme.bg.warningSecondary}
+                textColor={theme.text.warning}
               />
             )}
             {model.parameters && (

@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import {
   getModelMemoryRequirement,
+  getModelRisk,
   isModelCompatible,
   getDeviceMemoryGB,
   getAppMemoryBudgetGB,
@@ -353,5 +354,103 @@ describe('declared floors read the nominal RAM, not the bytes the OS reports', (
   it('still keeps Gemma 4 2B off web search on a 6 GB phone reporting 5.5 GB', () => {
     mockGetTotalMemorySync.mockReturnValue(gb(5.5));
     expect(hasMemoryForWebSearch(gemma)).toBe(false);
+  });
+});
+
+describe('getModelRisk — the three tiers come from the same budget', () => {
+  const riskOf = (
+    model: Partial<Model> & { modelName: string },
+    totalGB: number,
+    os: string
+  ) => {
+    setPlatform(os);
+    mockGetTotalMemorySync.mockReturnValue(gb(totalGB));
+    return getModelRisk(model as Model);
+  };
+
+  it('is comfortable, tight, then unsafe as the file grows on an S20 FE', () => {
+    expect(
+      riskOf({ modelName: 'LFM 2.5 - 1.2B', modelSize: 1.14 }, 5.49, 'android')
+    ).toEqual({ tier: 'ok', reason: 'fits' });
+    expect(
+      riskOf({ modelName: 'Qwen 3 - 1.7B', modelSize: 2.16 }, 5.49, 'android')
+    ).toEqual({ tier: 'tight', reason: 'little-headroom' });
+    expect(
+      riskOf(
+        { modelName: 'LFM 2.5 VL - 1.6B', modelSize: 2.43 },
+        5.49,
+        'android'
+      )
+    ).toEqual({ tier: 'unsafe', reason: 'over-budget' });
+  });
+
+  it('calls Gemma 4 - 2B a tight fit on an 8 GB iPhone, where web search got it jetsam-killed', () => {
+    expect(
+      riskOf({ modelName: 'Gemma 4 - 2B', modelSize: 2.9 }, 7.4, 'ios')
+    ).toEqual({ tier: 'tight', reason: 'little-headroom' });
+    expect(
+      riskOf({ modelName: 'Qwen 3 - 1.7B', modelSize: 2.16 }, 7.4, 'ios')
+    ).toEqual({ tier: 'ok', reason: 'fits' });
+  });
+
+  it('is comfortable with everything on a 12 GB Android', () => {
+    expect(
+      riskOf({ modelName: 'Qwen 2.5 - 3B', modelSize: 2.89 }, 11.1, 'android')
+        .tier
+    ).toBe('ok');
+    expect(
+      riskOf({ modelName: 'Gemma 4 VL - 2B', modelSize: 4.0 }, 11.1, 'android')
+        .tier
+    ).toBe('ok');
+  });
+
+  it('treats a declared floor as unsafe below it and tight just above it', () => {
+    const gemma4VL = { modelName: 'Gemma 4 VL - 2B', modelSize: 1.0 };
+    expect(riskOf(gemma4VL, 5.5, 'android')).toEqual({
+      tier: 'unsafe',
+      reason: 'below-declared-floor',
+    });
+    expect(riskOf(gemma4VL, 7.4, 'android')).toEqual({
+      tier: 'tight',
+      reason: 'little-headroom',
+    });
+    expect(riskOf(gemma4VL, 11.1, 'android').tier).toBe('ok');
+  });
+
+  it('cannot vouch for a model whose size it does not know', () => {
+    expect(
+      riskOf({ modelName: 'Imported', modelSize: undefined }, 7.4, 'android')
+    ).toEqual({ tier: 'tight', reason: 'unknown-size' });
+    expect(isModelCompatible({ modelName: 'Imported' } as Model)).toBe(true);
+  });
+
+  it('stays quiet when the memory figure is unreadable', () => {
+    mockGetTotalMemorySync.mockImplementation(() => {
+      throw new Error('no such thing');
+    });
+    expect(getModelRisk({ modelName: 'Any', modelSize: 4 } as Model).tier).toBe(
+      'ok'
+    );
+  });
+
+  it('is the single source of truth for isModelCompatible', () => {
+    const catalogue = [
+      { modelName: 'Qwen 3 - 0.6B', modelSize: 0.94 },
+      { modelName: 'Qwen 3 - 1.7B', modelSize: 2.16 },
+      { modelName: 'LFM 2.5 VL - 1.6B', modelSize: 2.43 },
+      { modelName: 'Gemma 4 VL - 2B', modelSize: 4.0 },
+    ];
+    for (const [totalGB, os] of [
+      [3.8, 'ios'],
+      [5.49, 'android'],
+      [7.4, 'ios'],
+      [11.1, 'android'],
+    ] as const) {
+      for (const model of catalogue) {
+        expect(isModelCompatible(model as Model)).toBe(
+          riskOf(model, totalGB, os).tier !== 'unsafe'
+        );
+      }
+    }
   });
 });
