@@ -93,6 +93,9 @@ export const darkTheme = {
 export type ThemeColors = typeof lightTheme;
 export type Theme = ThemeColors & { insets: EdgeInsets };
 
+export const isDarkTheme = (theme: ThemeColors) =>
+  theme.bg.softPrimary === darkTheme.bg.softPrimary;
+
 const toRgb = (color: string) => {
   const hex = color.replace('#', '');
   const full =
