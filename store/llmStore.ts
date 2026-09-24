@@ -43,6 +43,8 @@ import {
   humanizeSourceReferences,
   isCircularNonAnswer,
   isDanglingListAnswer,
+  endsInsideList,
+  joinContinuation,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
   retryDropsGroundedDetail,
@@ -988,7 +990,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       abortController.signal
     ).catch(() => undefined);
     const readyModel = get().model;
-    if (!get().isProcessingPrompt || !readyModel) {
+    if (!get().isProcessingPrompt) {
       if (!isRetry && !userMessagePersisted) {
         await persistUserMessage().catch((error) =>
           console.error('Failed to keep the interrupted message', error)
@@ -998,6 +1000,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         showToUser: false,
       });
       await markTurnStoppedByUser();
+      return true;
+    }
+    if (!readyModel) {
+      markGenerationFailed(new Error('No model was ready after the load'));
       return true;
     }
     if (readyModel.id !== currentModel.id) {
@@ -1149,6 +1155,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       let finalResponse = rawResponse
         ? tidyVisibleAnswer(rawResponse)
         : rawResponse;
+      let loopGuardTrimmed = !!rawResponse && finalResponse !== rawResponse;
       const currentQuestion = get().activeChatMessages.findLast(
         (msg) => msg.role === 'user'
       )?.content;
@@ -1243,6 +1250,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           accepted: true,
         });
         finalResponse = retried;
+        loopGuardTrimmed = retried !== retryGeneration.response;
       };
 
       if (
@@ -1274,6 +1282,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           isQuestionEchoAnswer(finalResponse, currentQuestion)
         ) {
           finalResponse = noAnswerFallback(currentQuestion);
+          loopGuardTrimmed = false;
         }
       }
 
@@ -1372,7 +1381,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         !nudged &&
         get().isGenerating &&
         finalResponse &&
-        isDanglingListAnswer(finalResponse) &&
+        (isDanglingListAnswer(finalResponse) ||
+          (loopGuardTrimmed && endsInsideList(finalResponse))) &&
         !isQuestionEchoAnswer(finalResponse, currentQuestion) &&
         !isWrongLanguageAnswer(finalResponse, currentQuestion)
       ) {
@@ -1402,7 +1412,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           accepted: !!continuationResponse?.trim(),
         });
         if (continuationResponse?.trim()) {
-          finalResponse = `${finalResponse}\n${continuationResponse.trim()}`;
+          finalResponse = joinContinuation(
+            finalResponse,
+            continuationResponse.trim()
+          );
           responsePerformance = continuationGeneration.performance;
         }
       }

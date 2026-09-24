@@ -1883,7 +1883,7 @@ describe('sendChatMessage', () => {
     });
   });
 
-  it('recovers via the continuation nudge when a looping list gets trimmed down to just the intro', async () => {
+  it('recovers via the continuation nudge when the loop guard trims a list short', async () => {
     mockInstance.generate
       .mockResolvedValueOnce(
         'Oto rzeczy do zabrania:\n' +
