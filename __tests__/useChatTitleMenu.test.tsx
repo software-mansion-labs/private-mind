@@ -289,7 +289,7 @@ describe('rename flow via MenuElements', () => {
     });
   });
 
-  it('shows Toast after successful rename', async () => {
+  it('renames without putting a toast over the chat', async () => {
     let capturedCallback: ((index: number) => void) | null = null;
     jest
       .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
@@ -313,9 +313,8 @@ describe('rename flow via MenuElements', () => {
     fireEvent.press(screen.getByText('Save'));
 
     await waitFor(() => {
-      expect(Toast.show).toHaveBeenCalledWith(
-        expect.objectContaining({ text1: 'Chat renamed' })
-      );
+      expect(mockRenameChat).toHaveBeenCalled();
     });
+    expect(Toast.show).not.toHaveBeenCalled();
   });
 });

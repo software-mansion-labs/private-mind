@@ -1,16 +1,19 @@
 import { Directory, File, Paths } from 'expo-file-system';
+import { toModelReadableImage } from './modelReadableImage';
 
 const CHAT_IMAGES_DIR = 'chat-images';
 
 export async function persistImage(sourceUri: string): Promise<string> {
+  const readableUri = await toModelReadableImage(sourceUri);
+
   const dir = new Directory(Paths.document, CHAT_IMAGES_DIR);
   dir.create({ idempotent: true, intermediates: true });
 
-  const ext = extractExtension(sourceUri);
+  const ext = extractExtension(readableUri);
   const filename = `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
   const destination = new File(Paths.document, CHAT_IMAGES_DIR, filename);
 
-  const source = new File(sourceUri);
+  const source = new File(readableUri);
   source.copy(destination);
 
   return destination.uri;

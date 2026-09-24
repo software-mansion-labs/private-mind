@@ -19,6 +19,7 @@ export const WEB_OFFLOAD_LLM_FOR_EMBEDDINGS = false;
 export const WEB_BENCH_LOGS = false;
 
 export const LOW_MEMORY_DEVICE_GB = 6.5;
+export const LOW_MEMORY_DEVICE_IOS_GB = 4;
 export const STRONG_DEVICE_MEMORY_GB = 8;
 
 export const WEB_RETRIEVAL_FETCH_TOP_N = 5;

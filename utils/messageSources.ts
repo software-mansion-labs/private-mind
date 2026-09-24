@@ -14,6 +14,7 @@ import {
   sourcesPresentInContext,
 } from './contextUtils';
 import { hybridRetrieve } from './hybridRetrieval';
+import { normalizeLine } from './loopDetection';
 import { extractQueryTerms, foldForMatching, stemPrefix } from './queryTerms';
 import {
   findUngroundedFigures,
@@ -324,6 +325,33 @@ export const isDanglingListAnswer = (answer: string): boolean => {
   if (DANGLING_LIST_INTRO.test(visible)) return true;
   const lastLine = visible.split('\n').at(-1) ?? '';
   return DANGLING_LIST_MARKER_ONLY.test(lastLine);
+};
+
+const LIST_ITEM_LINE = /^\s*(?:\d+[.)]|[-*•])\s*\S/;
+
+export const endsInsideList = (answer: string): boolean => {
+  const visible = stripThinkBlocks(answer).trimEnd();
+  if (!visible) return false;
+  const lastLine = visible.split('\n').at(-1) ?? '';
+  return LIST_ITEM_LINE.test(lastLine);
+};
+
+export const joinContinuation = (
+  base: string,
+  continuation: string
+): string => {
+  const alreadySaid = new Set(
+    base.split('\n').map(normalizeLine).filter(Boolean)
+  );
+  const lines = continuation.split('\n');
+  let start = 0;
+  while (start < lines.length) {
+    const norm = normalizeLine(lines[start]!);
+    if (!norm || alreadySaid.has(norm)) start++;
+    else break;
+  }
+  const rest = lines.slice(start).join('\n').trim();
+  return rest ? `${base}\n${rest}` : base;
 };
 
 const CIRCULAR_SOURCE_REFERENCE_THRESHOLD = 3;
