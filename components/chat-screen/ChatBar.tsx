@@ -558,6 +558,7 @@ const ChatBar = ({
               </View>
               <ChatBarActions
                 plusOut={panel.plusOut}
+                modelBusy={disabled || modelSwitching}
                 onAttach={handleAttach}
                 hasAttachments={attachments.length > 0}
                 isLoadingAttachment={hasLoadingAttachment}
