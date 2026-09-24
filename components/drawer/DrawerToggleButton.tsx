@@ -5,18 +5,32 @@ import { Theme } from '../../styles/colors';
 import Menu from '../../assets/icons/menu.svg';
 import { useNavigation } from 'expo-router';
 import { DrawerContentComponentProps } from '@react-navigation/drawer';
+import { useTurnInFlight } from '../../hooks/useTurnInFlight';
+import { showTurnInFlightNotice } from '../../utils/turnInFlightNotice';
 
 const DrawerToggleButton = () => {
   const navigation: DrawerContentComponentProps['navigation'] = useNavigation();
   const { styles } = useThemedStyles(createStyles);
+  const turnInFlight = useTurnInFlight();
 
   return (
     <TouchableOpacity
-      onPress={() => navigation.openDrawer()}
+      onPress={() => {
+        if (turnInFlight) {
+          showTurnInFlightNotice();
+          return;
+        }
+        navigation.openDrawer();
+      }}
       style={styles.button}
       hitSlop={15}
+      testID="drawer-toggle"
     >
-      <Menu width={16} height={14} style={styles.icon} />
+      <Menu
+        width={16}
+        height={14}
+        style={[styles.icon, turnInFlight && styles.iconDimmed]}
+      />
     </TouchableOpacity>
   );
 };
@@ -32,5 +46,8 @@ const createStyles = (theme: Theme) =>
     },
     icon: {
       color: theme.text.primary,
+    },
+    iconDimmed: {
+      opacity: 0.4,
     },
   });

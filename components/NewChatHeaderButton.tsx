@@ -6,6 +6,8 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { startPhantomChat } from '../utils/startPhantomChat';
 import { useChatStore } from '../store/chatStore';
+import { useTurnInFlight } from '../hooks/useTurnInFlight';
+import { showTurnInFlightNotice } from '../utils/turnInFlightNotice';
 
 interface Props {
   noOp?: boolean;
@@ -15,7 +17,13 @@ const NewChatHeaderButton = ({ noOp = false }: Props) => {
   const db = useSQLiteContext();
   const { styles } = useThemedStyles(createStyles);
 
+  const turnInFlight = useTurnInFlight();
+
   const handlePress = () => {
+    if (turnInFlight) {
+      showTurnInFlightNotice();
+      return;
+    }
     if (noOp) {
       useChatStore.getState().startBlankChat();
       return;
@@ -24,8 +32,17 @@ const NewChatHeaderButton = ({ noOp = false }: Props) => {
   };
 
   return (
-    <TouchableOpacity onPress={handlePress} style={styles.button} hitSlop={15}>
-      <ChatIcon width={20} height={20} style={styles.icon} />
+    <TouchableOpacity
+      onPress={handlePress}
+      style={styles.button}
+      hitSlop={15}
+      testID="new-chat-header-button"
+    >
+      <ChatIcon
+        width={20}
+        height={20}
+        style={[styles.icon, turnInFlight && styles.iconDimmed]}
+      />
     </TouchableOpacity>
   );
 };
@@ -41,5 +58,8 @@ const createStyles = (theme: Theme) =>
     },
     icon: {
       color: theme.text.primary,
+    },
+    iconDimmed: {
+      opacity: 0.4,
     },
   });
