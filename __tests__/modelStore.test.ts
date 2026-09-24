@@ -1,4 +1,9 @@
-import { useModelStore, ModelState } from '../store/modelStore';
+import {
+  useModelStore,
+  ModelState,
+  resetDownloadAttempts,
+} from '../store/modelStore';
+import { flushMicrotasks } from './support/resourceFetcherFake';
 import * as modelRepository from '../database/modelRepository';
 import {
   ResourceFetcher,
@@ -35,6 +40,7 @@ beforeEach(() => {
     downloadedModels: [],
     downloadStates: {},
   });
+  resetDownloadAttempts();
   jest.clearAllMocks();
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -222,6 +228,7 @@ describe('cancelDownload', () => {
     const now = jest.spyOn(Date, 'now').mockReturnValue(startedAt);
 
     useModelStore.getState().downloadModel(baseModel);
+    await flushMicrotasks();
     await useModelStore.getState().cancelDownload(baseModel);
 
     now.mockReturnValue(startedAt + 1000);
@@ -240,14 +247,14 @@ describe('cancelDownload', () => {
     mockFetch.mockImplementationOnce(() => new Promise(() => {}));
 
     useModelStore.getState().downloadModel(baseModel);
+    await flushMicrotasks();
     await useModelStore.getState().cancelDownload(baseModel);
     useModelStore.getState().downloadModel(baseModel);
 
     rejectFirst(
       new RnExecutorchError(RnExecutorchErrorCode.DownloadInterrupted)
     );
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushMicrotasks();
 
     const state = useModelStore.getState().downloadStates[baseModel.id];
     expect(state.status).toBe(ModelState.Downloading);
@@ -374,6 +381,7 @@ describe('a second download for the same model must not start while one is in fl
     useModelStore.getState().downloadModel(baseModel);
     useModelStore.getState().downloadModel(baseModel);
     useModelStore.getState().downloadModel(baseModel);
+    await flushMicrotasks();
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     expect(useModelStore.getState().downloadStates[baseModel.id]!.status).toBe(
@@ -382,11 +390,21 @@ describe('a second download for the same model must not start while one is in fl
   });
 
   it('lets the model be downloaded again after a cancel', async () => {
-    mockFetch.mockReturnValue(new Promise(() => {}));
-    useModelStore.getState().downloadModel(baseModel);
-    await useModelStore.getState().cancelDownload(baseModel);
+    let rejectFirst: (error: unknown) => void = () => {};
+    mockFetch.mockImplementationOnce(
+      () => new Promise((_, reject) => (rejectFirst = reject))
+    );
+    mockFetch.mockImplementationOnce(() => new Promise(() => {}));
 
     useModelStore.getState().downloadModel(baseModel);
+    await flushMicrotasks();
+    await useModelStore.getState().cancelDownload(baseModel);
+    rejectFirst(
+      new RnExecutorchError(RnExecutorchErrorCode.DownloadInterrupted)
+    );
+
+    useModelStore.getState().downloadModel(baseModel);
+    await flushMicrotasks();
 
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
@@ -397,6 +415,7 @@ describe('a second download for the same model must not start while one is in fl
 
     useModelStore.getState().downloadModel(baseModel);
     useModelStore.getState().downloadModel(other);
+    await flushMicrotasks();
 
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });

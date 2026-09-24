@@ -88,6 +88,8 @@ export const ResourceFetcher = {
 
 export enum RnExecutorchErrorCode {
   DownloadInterrupted = 118,
+  ResourceFetcherDownloadInProgress = 181,
+  ResourceFetcherNotActive = 184,
 }
 
 export class RnExecutorchError extends Error {
