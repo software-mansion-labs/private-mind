@@ -151,6 +151,21 @@ export const runMigrations = async (db: SQLiteDatabase) => {
     );
   }
 
+  // Clearing is deliberate: rows hold resident_size, which phys_footprint ones
+  // cannot be compared against.
+  const benchmarksTableInfo = await db.getAllAsync<{ name: string }>(
+    `PRAGMA table_info(benchmarks)`
+  );
+  const hasPeakMemoryMetric = benchmarksTableInfo.some(
+    (col) => col.name === 'peakMemoryMetric'
+  );
+  if (!hasPeakMemoryMetric) {
+    await db.execAsync(
+      `ALTER TABLE benchmarks ADD COLUMN peakMemoryMetric TEXT DEFAULT NULL`
+    );
+    await db.execAsync(`UPDATE benchmarks SET peakMemory = 0`);
+  }
+
   await migrateLegacyVectorStore(db);
 
   await restoreTruncatedChatTitles(db);
@@ -297,6 +312,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       tokensGenerated INTEGER DEFAULT 0,
       tokensPerSecond INTEGER DEFAULT 0,
       peakMemory INTEGER DEFAULT 0,
+      peakMemoryMetric TEXT DEFAULT NULL,
       FOREIGN KEY (modelId) REFERENCES models (id) ON DELETE SET NULL
     );
   `);
