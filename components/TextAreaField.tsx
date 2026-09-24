@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
-import { Theme } from '../styles/colors';
+import { TEXT_SELECTION, Theme } from '../styles/colors';
 import TextInputBorder from './TextInputBorder';
 
 type TextAreaFieldProps = TextInputProps & {
@@ -36,6 +36,7 @@ const TextAreaField: React.FC<TextAreaFieldProps> = ({
       <View style={styles.inputWrapper}>
         <TextInputBorder active={active} error={error} />
         <TextInput
+          {...TEXT_SELECTION}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}

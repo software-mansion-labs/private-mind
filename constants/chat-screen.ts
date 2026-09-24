@@ -33,3 +33,17 @@ export const MESSAGE_PIN_LANDING_PX = 64;
 export const PIN_RELEASE_SETTLE_DELAY_MS = 50;
 
 export const PIN_FREEZE_FALLBACK_MS = 1000;
+
+export const HEADER_BUTTON_SLOT_PX = 36;
+
+export const HEADER_TITLE_GUTTER_PX = 24;
+
+export const headerTitleMaxWidth = (
+  width: number,
+  insets: { left: number; right: number }
+) =>
+  width -
+  2 *
+    (HEADER_BUTTON_SLOT_PX +
+      HEADER_TITLE_GUTTER_PX +
+      Math.max(insets.left, insets.right));

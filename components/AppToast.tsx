@@ -14,15 +14,30 @@ import { Theme } from '../styles/colors';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import CloseIcon from '../assets/icons/close.svg';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
+import { openAppSettings } from '../utils/openAppSettings';
 
 const AppToast: React.FC = () => {
   const { styles } = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
 
   const toastConfig: ToastConfig = {
-    defaultToast: ({ text1 }) => (
+    defaultToast: ({ text1, props }) => (
       <View style={styles.toastContainer}>
-        <Text style={styles.toastText}>{text1}</Text>
+        <View style={styles.toastBody}>
+          <Text style={styles.toastText}>{text1}</Text>
+          {props?.settings && (
+            <TouchableOpacity
+              onPress={() => {
+                Toast.hide();
+                openAppSettings();
+              }}
+              style={styles.toastAction}
+              testID="toast-open-settings"
+            >
+              <Text style={styles.toastActionLabel}>Open Settings</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <TouchableOpacity
           onPress={() => Toast.hide()}
           style={styles.toastCloseButton}
@@ -55,11 +70,26 @@ const createStyles = (theme: Theme) =>
       padding: 16,
       flexDirection: 'row',
     },
+    toastBody: {
+      width: '80%',
+    },
     toastText: {
       color: theme.text.primary,
       fontFamily: fontFamily.bold,
       fontSize: fontSizes.sm,
-      width: '80%',
+    },
+    toastAction: {
+      marginTop: 12,
+      alignSelf: 'flex-start',
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 999,
+      backgroundColor: theme.bg.main,
+    },
+    toastActionLabel: {
+      color: theme.text.contrastPrimary,
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.sm,
     },
     toastCloseButton: {
       width: '20%',

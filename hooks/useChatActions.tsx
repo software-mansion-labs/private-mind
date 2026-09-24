@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { Alert } from 'react-native';
-import Toast from 'react-native-toast-message';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useChatStore } from '../store/chatStore';
 import { useVectorStore } from '../context/VectorStoreContext';
@@ -22,10 +21,6 @@ export const useChatActions = ({ onDeleted }: Options = {}) => {
     async (chatId: number, newTitle: string) => {
       try {
         await renameChat(chatId, toChatTitle(newTitle));
-        Toast.show({
-          type: 'defaultToast',
-          text1: 'Chat renamed',
-        });
       } catch (error) {
         console.error('Error renaming chat:', error);
         Alert.alert('Error', 'Failed to rename chat. Please try again.');
