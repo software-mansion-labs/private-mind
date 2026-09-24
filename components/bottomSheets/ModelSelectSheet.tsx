@@ -4,6 +4,7 @@ import {
   BottomSheetFlatList,
   BottomSheetView,
   BottomSheetBackdrop,
+  type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 import { router } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
@@ -41,7 +42,7 @@ const ModelSelectSheet = ({
   }, [downloadedModels, search]);
 
   const renderBackdrop = useCallback(
-    (props: any) => (
+    (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}

@@ -17,7 +17,6 @@ import CircleButton from '../CircleButton';
 import ProcessorIcon from '../../assets/icons/processor.svg';
 import DownloadCloudIcon from '../../assets/icons/download_cloud.svg';
 import DownloadIcon from '../../assets/icons/download.svg';
-import StarIcon from '../../assets/icons/star.svg';
 import CloseIcon from '../../assets/icons/close.svg';
 import EyeIcon from '../../assets/icons/eye.svg';
 import TrashIcon from '../../assets/icons/trash.svg';

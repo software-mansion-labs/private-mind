@@ -48,12 +48,22 @@ jest.mock('@react-native-community/netinfo', () => ({
 
 jest.mock('../components/Chip', () => {
   const { Text } = require('react-native');
-  return ({ title }: any) => <Text testID={`chip-${title}`}>{title}</Text>;
+  return ({ title }: { title: string }) => (
+    <Text testID={`chip-${title}`}>{title}</Text>
+  );
 });
 
 jest.mock('../components/CircleButton', () => {
   const { TouchableOpacity } = require('react-native');
-  return ({ onPress, disabled, testID }: any) => (
+  return ({
+    onPress,
+    disabled,
+    testID,
+  }: {
+    onPress?: () => void;
+    disabled?: boolean;
+    testID?: string;
+  }) => (
     <TouchableOpacity
       testID={testID || 'circle-btn'}
       onPress={onPress}
@@ -63,31 +73,35 @@ jest.mock('../components/CircleButton', () => {
 });
 
 import ModelCard from '../components/model-hub/ModelCard';
-import { useModelStore, ModelState } from '../store/modelStore';
+import {
+  useModelStore,
+  ModelState,
+  type DownloadState,
+} from '../store/modelStore';
 import { isModelCompatible } from '../utils/modelCompatibility';
 
 const mockUseModelStore = useModelStore as unknown as jest.Mock;
 
-type ModelStoreState = {
-  downloadStates: Record<number, { status: string; progress: number }>;
+type ModelStoreMockState = {
+  downloadStates: Record<string, DownloadState>;
   downloadModel: jest.Mock;
   cancelDownload: jest.Mock;
   removeModelFiles: jest.Mock;
 };
 
 const withDownloadStates = (
-  downloadStates: ModelStoreState['downloadStates'],
-  actions: Partial<ModelStoreState> = {}
+  downloadStates: ModelStoreMockState['downloadStates'],
+  actions: Partial<ModelStoreMockState> = {}
 ) =>
   mockUseModelStore.mockImplementation(
-    (selector?: (state: ModelStoreState) => unknown) => {
-      const state: ModelStoreState = {
+    (selector?: (state: ModelStoreMockState) => unknown) => {
+      const state: ModelStoreMockState = {
         downloadStates,
         downloadModel: jest.fn(),
         cancelDownload: jest.fn(),
         removeModelFiles: jest.fn(),
         ...actions,
-      } as ModelStoreState;
+      };
       return selector ? selector(state) : state;
     }
   );
@@ -123,13 +137,15 @@ const baseModel: {
   labels: [],
 };
 
+type ModelCardProps = React.ComponentProps<typeof ModelCard>;
+
 const renderCard = (
   props: Partial<
     typeof baseModel & {
       compactView?: boolean;
       selected?: boolean;
-      onPress?: any;
-      wifiWarningSheetRef?: any;
+      onPress?: ModelCardProps['onPress'];
+      wifiWarningSheetRef?: ModelCardProps['wifiWarningSheetRef'];
     }
   > = {}
 ) => {
@@ -279,7 +295,9 @@ describe('download action', () => {
   it('shows wifi warning sheet when on mobile data', async () => {
     mockNetInfoFetch.mockResolvedValue({ isConnected: true, type: 'cellular' });
     const present = jest.fn();
-    const wifiWarningSheetRef = { current: { present } };
+    const wifiWarningSheetRef = {
+      current: { present },
+    } as unknown as ModelCardProps['wifiWarningSheetRef'];
     renderCard({ wifiWarningSheetRef });
     fireEvent.press(screen.getByTestId('circle-btn'));
     await waitFor(() => expect(present).toHaveBeenCalled());

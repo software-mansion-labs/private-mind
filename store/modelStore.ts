@@ -20,7 +20,7 @@ export enum ModelState {
   NotStarted = 'not_started',
 }
 
-interface DownloadState {
+export interface DownloadState {
   progress: number;
   status: ModelState;
 }
