@@ -128,7 +128,7 @@ describe('attach button', () => {
     const onSend = jest.fn();
     renderActions({ onSend, userInput: 'hi' });
 
-    fireEvent.press(screen.getByTestId('circle-btn'));
+    fireEvent.press(screen.getByTestId('send-btn'));
 
     expect(onSend).toHaveBeenCalled();
     expect(Toast.show).not.toHaveBeenCalled();
@@ -162,19 +162,26 @@ describe('thinking toggle', () => {
 describe('action button', () => {
   it('calls onSpeechInput when idle with no input', () => {
     renderActions();
-    fireEvent.press(screen.getByTestId('circle-btn'));
+    fireEvent.press(screen.getByTestId('speech-btn'));
     expect(defaultProps.onSpeechInput).toHaveBeenCalled();
+  });
+
+  it('keeps the send button in place while an attachment is still being prepared', () => {
+    renderActions({ userInput: 'hi', isLoadingAttachment: true });
+
+    expect(screen.getByTestId('send-btn')).toBeTruthy();
+    expect(screen.queryByTestId('speech-btn')).toBeNull();
   });
 
   it('calls onSend when there is user input', () => {
     renderActions({ userInput: 'Hello' });
-    fireEvent.press(screen.getByTestId('circle-btn'));
+    fireEvent.press(screen.getByTestId('send-btn'));
     expect(defaultProps.onSend).toHaveBeenCalled();
   });
 
   it('calls onInterrupt when isGenerating', () => {
     renderActions({ isGenerating: true });
-    fireEvent.press(screen.getByTestId('circle-btn'));
+    fireEvent.press(screen.getByTestId('stop-btn'));
     expect(defaultProps.onInterrupt).toHaveBeenCalled();
   });
 });

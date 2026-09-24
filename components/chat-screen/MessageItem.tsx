@@ -169,8 +169,10 @@ const MessageItem = memo(
     const canShowSourcesAction =
       !!content.trim() && documentSources.length > 0 && !isBusy;
 
+    const answerIsIncomplete = !!message.stoppedByUser;
+
     const actions =
-      showActions || canShowSourcesAction ? (
+      !answerIsIncomplete && (showActions || canShowSourcesAction) ? (
         <View style={styles.actionRow} testID="message-actions">
           {showActions && (
             <MessageActionButton

@@ -72,6 +72,7 @@ export default function ChatScreen({
     loadModel,
     generationError,
     retryLastGeneration,
+    retryArmedForChatId,
   } = useLLMStore();
   const { setChatModel, phantomChat } = useChatStore();
 
@@ -265,6 +266,7 @@ export default function ChatScreen({
           isGenerating={isGenerating}
           generationError={chatGenerationError}
           onRetryGeneration={handleRetryGeneration}
+          canRetryGeneration={retryArmedForChatId === chatId}
           bottomOffset={scrollBottomOffset}
           freeze={overlayOpen}
           revealFromTop={revealFromTop}
