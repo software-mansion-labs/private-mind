@@ -31,7 +31,7 @@ jest.mock('../store/modelStore', () => ({
 }));
 
 jest.mock('../utils/modelCompatibility', () => ({
-  isModelCompatible: jest.fn(() => true),
+  getModelRisk: jest.fn(() => ({ tier: 'ok', reason: 'fits' })),
 }));
 
 jest.mock('../utils/Feedback', () => ({
@@ -64,10 +64,10 @@ jest.mock('../components/CircleButton', () => {
 
 import ModelCard from '../components/model-hub/ModelCard';
 import { useModelStore, ModelState } from '../store/modelStore';
-import { isModelCompatible } from '../utils/modelCompatibility';
+import { getModelRisk } from '../utils/modelCompatibility';
 
 const mockUseModelStore = useModelStore as unknown as jest.Mock;
-const mockIsModelCompatible = isModelCompatible as jest.Mock;
+const mockGetModelRisk = getModelRisk as jest.Mock;
 const mockNetInfoFetch = NetInfo.fetch as jest.Mock;
 
 const baseModel: {
@@ -127,7 +127,7 @@ beforeEach(() => {
     downloadModel: jest.fn(),
     cancelDownload: jest.fn(),
   });
-  mockIsModelCompatible.mockReturnValue(true);
+  mockGetModelRisk.mockReturnValue({ tier: 'ok', reason: 'fits' });
   mockNetInfoFetch.mockResolvedValue({ isConnected: true, type: 'wifi' });
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -152,10 +152,30 @@ describe('display', () => {
     expect(screen.getByTestId('chip-2.50 GB')).toBeTruthy();
   });
 
-  it('shows Incompatible chip when model is not compatible', () => {
-    mockIsModelCompatible.mockReturnValue(false);
-    renderCard();
-    expect(screen.getByTestId('chip-Incompatible')).toBeTruthy();
+  it('shows a May crash chip when the model is over the device budget', () => {
+    mockGetModelRisk.mockReturnValue({ tier: 'unsafe', reason: 'over-budget' });
+    render(<ModelCard model={baseModel} onPress={jest.fn()} />);
+    expect(screen.getByTestId('chip-May crash')).toBeTruthy();
+    expect(screen.queryByTestId('chip-Tight fit')).toBeNull();
+  });
+
+  it('shows a Tight fit chip when the model barely fits, and keeps it usable', () => {
+    mockGetModelRisk.mockReturnValue({
+      tier: 'tight',
+      reason: 'little-headroom',
+    });
+    render(<ModelCard model={baseModel} onPress={jest.fn()} />);
+    expect(screen.getByTestId('chip-Tight fit')).toBeTruthy();
+    expect(screen.queryByTestId('chip-May crash')).toBeNull();
+    expect(
+      screen.getByTestId('circle-btn').props.accessibilityState?.disabled
+    ).toBeFalsy();
+  });
+
+  it('shows a Size unknown chip when the app cannot cost the model', () => {
+    mockGetModelRisk.mockReturnValue({ tier: 'tight', reason: 'unknown-size' });
+    render(<ModelCard model={baseModel} onPress={jest.fn()} />);
+    expect(screen.getByTestId('chip-Size unknown')).toBeTruthy();
   });
 
   it('shows Vision chip when model supports vision', () => {

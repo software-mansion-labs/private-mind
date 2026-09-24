@@ -57,11 +57,19 @@ describe('getStartingModels', () => {
     ]);
   });
 
-  it('replaces an incompatible high-end candidate with a weaker fallback', () => {
-    expect(getStartingModels(6.01)).toEqual([
-      'Gemma 4 - 2B',
+  it('offers only what the model hub would also let a 6 GB iPhone run', () => {
+    expect(getStartingModels(6)).toEqual([
       'Qwen 3 - 1.7B',
       'LFM 2.5 - 1.2B',
+      'LFM 2.5 VL - 1.6B',
+    ]);
+  });
+
+  it('keeps the high-end set on an 8 GB phone, Gemma 4 VL at its declared floor', () => {
+    expect(getStartingModels(7.4)).toEqual([
+      'Gemma 4 - 2B',
+      'Gemma 4 VL - 2B',
+      'Qwen 3 - 1.7B',
     ]);
   });
 

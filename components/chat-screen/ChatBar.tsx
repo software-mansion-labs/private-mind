@@ -49,6 +49,7 @@ import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
+import ModelRiskNotice from './ModelRiskNotice';
 import WhatsNewCard from '../WhatsNewCard';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
@@ -488,6 +489,7 @@ const ChatBar = ({
               <PromptSuggestions onSelectPrompt={onSelectPrompt} />
             </View>
           )}
+          <ModelRiskNotice model={model} />
           <View style={styles.inputContainer}>
             <Animated.View
               pointerEvents={attachments.length ? 'auto' : 'none'}
