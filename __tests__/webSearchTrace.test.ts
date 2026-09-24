@@ -1,6 +1,7 @@
 import {
   buildRows,
   deriveTitle,
+  isStalledOnPlanning,
 } from '../components/chat-screen/webSearchTrace';
 import { type WebSearchTraceEntry } from '../store/webSearchStore';
 import { type SourceDocument } from '../database/chatRepository';
@@ -651,5 +652,95 @@ describe('regressions the trace panel keeps reintroducing', () => {
     const finished = buildRows(false, trace, [], false).map((row) => row.key);
 
     expect(finished).toEqual(running);
+  });
+});
+
+describe('the slow-device note', () => {
+  const SLOW_LABEL = 'A large model takes longer on this phone';
+  const notesOf = (rows: Rows) =>
+    rows.flatMap((row) => (row.type === 'note' ? [row.label] : []));
+  const planning = ev({ id: 1, type: 'objectives' });
+  const slow = ev({ id: 2, type: 'slow' });
+
+  it('shows under the current step while the planner is still running', () => {
+    expect(notesOf(buildRows(true, [planning, slow], [], false))).toContain(
+      SLOW_LABEL
+    );
+  });
+
+  it('shows on a run that has already fanned out into several searches', () => {
+    const rows = buildRows(
+      true,
+      [
+        planning,
+        ev({ id: 2, type: 'searching', query: 'a' }),
+        ev({ id: 3, type: 'searching', query: 'b' }),
+        ev({ id: 4, type: 'slow' }),
+      ],
+      [],
+      false
+    );
+
+    expect(notesOf(rows)).toContain(SLOW_LABEL);
+  });
+
+  it('is gone from the finished trace whatever the outcome', () => {
+    const ran = [planning, slow, ev({ id: 3, type: 'searching', query: 'a' })];
+    const fannedOut = [...ran, ev({ id: 4, type: 'searching', query: 'b' })];
+    const withResults = buildRows(
+      false,
+      [...ran, ev({ id: 5, type: 'done' })],
+      [src({ name: 'Result', url: 'https://a.com/x' })],
+      false
+    );
+    const withNothing = buildRows(false, ran, [], false);
+    const afterSeveralSearches = buildRows(
+      false,
+      [...fannedOut, ev({ id: 5, type: 'done' })],
+      [],
+      false
+    );
+
+    expect(notesOf(withResults)).not.toContain(SLOW_LABEL);
+    expect(notesOf(withNothing)).not.toContain(SLOW_LABEL);
+    expect(notesOf(afterSeveralSearches)).not.toContain(SLOW_LABEL);
+  });
+
+  it('yields to the notes that explain a failure', () => {
+    const timedOut = buildRows(
+      true,
+      [planning, slow, ev({ id: 3, type: 'timeout' })],
+      [],
+      false
+    );
+    const offline = buildRows(
+      true,
+      [planning, slow, ev({ id: 3, type: 'offline' })],
+      [],
+      false
+    );
+
+    expect(notesOf(timedOut)).toEqual(['Search took too long — stopped early']);
+    expect(notesOf(offline)).toEqual([
+      'No internet — answered without the web',
+    ]);
+  });
+});
+
+describe('isStalledOnPlanning', () => {
+  it('holds only while planning is the newest thing that happened', () => {
+    expect(isStalledOnPlanning(true, [ev({ id: 1, type: 'objectives' })])).toBe(
+      true
+    );
+    expect(
+      isStalledOnPlanning(true, [
+        ev({ id: 1, type: 'objectives' }),
+        ev({ id: 2, type: 'searching', query: 'a' }),
+      ])
+    ).toBe(false);
+    expect(
+      isStalledOnPlanning(false, [ev({ id: 1, type: 'objectives' })])
+    ).toBe(false);
+    expect(isStalledOnPlanning(true, [])).toBe(false);
   });
 });
