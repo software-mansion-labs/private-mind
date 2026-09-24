@@ -231,6 +231,29 @@ describe('useAttachment', () => {
       getState.mockRestore();
     });
 
+    it('drops the keyboard before the download sheet comes up, whoever asked for it (#381)', () => {
+      const { Keyboard } = require('react-native');
+      const dismiss = jest
+        .spyOn(Keyboard, 'dismiss')
+        .mockImplementation(() => {});
+      const { view, downloadSheet } = mountWithSheets();
+
+      act(() => {
+        view.result.current.presentDownloadSheet('none');
+      });
+      expect(dismiss).toHaveBeenCalledTimes(1);
+      expect(downloadSheet.present).toHaveBeenCalledTimes(1);
+      expect(dismiss.mock.invocationCallOrder[0]).toBeLessThan(
+        downloadSheet.present.mock.invocationCallOrder[0]
+      );
+
+      act(() => {
+        view.result.current.presentDownloadSheet();
+      });
+      expect(dismiss).toHaveBeenCalledTimes(2);
+      dismiss.mockRestore();
+    });
+
     it('does not hijack the screen when the user closed the download sheet', async () => {
       useEmbeddingModelStore.setState({
         status: 'not_downloaded',
