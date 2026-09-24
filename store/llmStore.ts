@@ -18,6 +18,7 @@ import {
   SourceDocument,
 } from '../database/chatRepository';
 import {
+  BENCHMARK_GENERATION_CONFIG,
   BENCHMARK_PROMPT,
   BENCHMARK_TOKEN_TARGET,
 } from '../constants/default-benchmark';
@@ -352,7 +353,7 @@ const loadModelInstance = async (
         streamTokenCount += 1;
         if (
           benchmarkTokenBudget !== null &&
-          streamTokenCount >= benchmarkTokenBudget
+          (llmInstance?.getGeneratedTokenCount() ?? 0) >= benchmarkTokenBudget
         ) {
           llmInstance?.interrupt();
         }
@@ -1507,6 +1508,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   },
 
   runBenchmark: async () => {
+    let benchmarkedModel: Model | null = null;
     let runPeakMemory = 0;
     const memoryTracker = createMemoryTracker((usedMemory) => {
       if (usedMemory > runPeakMemory) runPeakMemory = usedMemory;
@@ -1525,6 +1527,15 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       memoryTracker.start();
       benchmarkTokenBudget = BENCHMARK_TOKEN_TARGET;
+      benchmarkedModel = get().model;
+      if (benchmarkedModel) {
+        llmInstance.configure({
+          generationConfig: {
+            ...getGenerationConfigForModel(benchmarkedModel),
+            ...BENCHMARK_GENERATION_CONFIG,
+          },
+        });
+      }
 
       const startTime = performance.now();
       await llmInstance.generate([
@@ -1557,6 +1568,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       memoryTracker.stop();
     } finally {
       benchmarkTokenBudget = null;
+      if (llmInstance && benchmarkedModel) {
+        llmInstance.configure({
+          generationConfig: getGenerationConfigForModel(benchmarkedModel),
+        });
+      }
       set({ isGenerating: false, isBenchmarking: false });
     }
   },

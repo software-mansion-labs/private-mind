@@ -36,6 +36,7 @@ jest.mock('../constants/default-benchmark', () => ({
   BENCHMARK_TOKEN_TARGET: 128,
   BENCHMARK_WARMUP_RUNS: 1,
   BENCHMARK_ITERATIONS: 3,
+  BENCHMARK_GENERATION_CONFIG: { temperature: 0.01, topP: 1, minP: 0 },
 }));
 jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
@@ -2220,10 +2221,11 @@ describe('runBenchmark', () => {
     mockInstance.interrupt.mockImplementation(() => {
       if (interruptedAt === 0) interruptedAt = emitted;
     });
+    mockInstance.getGeneratedTokenCount.mockImplementation(() => emitted);
     mockInstance.generate.mockImplementation(async () => {
-      for (let i = 0; i < 148; i++) {
-        emitted += 1;
-        capturedTokenCallback!('tok');
+      for (let i = 0; i < 40; i++) {
+        emitted += 4;
+        capturedTokenCallback!('four tokens worth');
       }
       return 'out';
     });
@@ -2233,6 +2235,20 @@ describe('runBenchmark', () => {
     expect(interruptedAt).toBe(128);
   });
 
+  it('pins sampling for the run and hands the model back its own config', async () => {
+    await loadModel();
+    useLLMStore.setState({ model: baseModel });
+    mockInstance.generate.mockResolvedValue('out');
+    mockInstance.configure.mockClear();
+
+    await useLLMStore.getState().runBenchmark();
+
+    const [pinned] = mockInstance.configure.mock.calls[0]!;
+    expect(pinned.generationConfig).toMatchObject({ temperature: 0.01 });
+    const [restored] = mockInstance.configure.mock.calls.at(-1)!;
+    expect(restored.generationConfig).not.toMatchObject({ temperature: 0.01 });
+  });
+
   it('does not carry the token budget into an ordinary chat turn', async () => {
     await loadModel();
     useLLMStore.setState({ model: baseModel });
@@ -2240,6 +2256,7 @@ describe('runBenchmark', () => {
     await useLLMStore.getState().runBenchmark();
 
     mockInstance.interrupt.mockClear();
+    mockInstance.getGeneratedTokenCount.mockReturnValue(9999);
     useLLMStore.setState({ isGenerating: true, isProcessingPrompt: false });
     for (let i = 0; i < 148; i++) capturedTokenCallback!('tok');
 

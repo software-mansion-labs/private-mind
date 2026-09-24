@@ -6,3 +6,11 @@ export const BENCHMARK_WARMUP_RUNS = 1;
 export const BENCHMARK_ITERATIONS = 3;
 
 export const BENCHMARK_TOKEN_TARGET = 128;
+
+// The runtime scales logits by the inverse of temperature, so 0 divides by
+// zero; 0.01 is the closest we can get to greedy decoding.
+export const BENCHMARK_GENERATION_CONFIG = {
+  temperature: 0.01,
+  topP: 1,
+  minP: 0,
+};
