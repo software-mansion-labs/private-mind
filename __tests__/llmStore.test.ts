@@ -33,6 +33,9 @@ jest.mock('../utils/promptUtils', () => ({
 }));
 jest.mock('../constants/default-benchmark', () => ({
   BENCHMARK_PROMPT: 'benchmark prompt text',
+  BENCHMARK_TOKEN_TARGET: 128,
+  BENCHMARK_WARMUP_RUNS: 1,
+  BENCHMARK_ITERATIONS: 3,
 }));
 jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
@@ -2206,6 +2209,41 @@ describe('runBenchmark', () => {
     const result = await useLLMStore.getState().runBenchmark();
 
     expect(result?.peakMemory).toBe(0);
+  });
+
+  it('stops every run at the same token budget so runs can be compared', async () => {
+    await loadModel();
+    useLLMStore.setState({ model: baseModel });
+
+    let emitted = 0;
+    let interruptedAt = 0;
+    mockInstance.interrupt.mockImplementation(() => {
+      if (interruptedAt === 0) interruptedAt = emitted;
+    });
+    mockInstance.generate.mockImplementation(async () => {
+      for (let i = 0; i < 148; i++) {
+        emitted += 1;
+        capturedTokenCallback!('tok');
+      }
+      return 'out';
+    });
+
+    await useLLMStore.getState().runBenchmark();
+
+    expect(interruptedAt).toBe(128);
+  });
+
+  it('does not carry the token budget into an ordinary chat turn', async () => {
+    await loadModel();
+    useLLMStore.setState({ model: baseModel });
+    mockInstance.generate.mockResolvedValue('out');
+    await useLLMStore.getState().runBenchmark();
+
+    mockInstance.interrupt.mockClear();
+    useLLMStore.setState({ isGenerating: true, isProcessingPrompt: false });
+    for (let i = 0; i < 148; i++) capturedTokenCallback!('tok');
+
+    expect(mockInstance.interrupt).not.toHaveBeenCalled();
   });
 
   it('tracks a fresh first token on every run without stale carry-over', async () => {

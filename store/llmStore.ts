@@ -17,7 +17,10 @@ import {
   setChatDigest,
   SourceDocument,
 } from '../database/chatRepository';
-import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
+import {
+  BENCHMARK_PROMPT,
+  BENCHMARK_TOKEN_TARGET,
+} from '../constants/default-benchmark';
 import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import {} from 'react-native';
@@ -152,6 +155,7 @@ const resetStreamState = () => {
   streamedSoFar = '';
 };
 
+let benchmarkTokenBudget: number | null = null;
 let suppressUtilityStreaming = false;
 let utilityGenerating = false;
 let utilityChain: Promise<void> = Promise.resolve();
@@ -282,6 +286,10 @@ const loadModelInstance = async (
 
   const flushStream = () => {
     streamFlushScheduled = false;
+    if (benchmarkTokenBudget !== null) {
+      streamBuffer = '';
+      return;
+    }
     if (!streamBuffer) return;
     const text = streamBuffer;
     streamBuffer = '';
@@ -342,6 +350,12 @@ const loadModelInstance = async (
         }
 
         streamTokenCount += 1;
+        if (
+          benchmarkTokenBudget !== null &&
+          streamTokenCount >= benchmarkTokenBudget
+        ) {
+          llmInstance?.interrupt();
+        }
         streamBuffer += token;
         if (!streamFlushScheduled) {
           streamFlushScheduled = true;
@@ -1510,6 +1524,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       }
 
       memoryTracker.start();
+      benchmarkTokenBudget = BENCHMARK_TOKEN_TARGET;
 
       const startTime = performance.now();
       await llmInstance.generate([
@@ -1523,12 +1538,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const endTime = performance.now();
       memoryTracker.stop();
 
-      const { firstTokenTime } = get().performance;
       const { totalTime, timeToFirstToken, tokensPerSecond } =
         calculatePerformanceMetrics(
           startTime,
           endTime,
-          firstTokenTime,
+          streamFirstTokenTime,
           llmInstance.getGeneratedTokenCount()
         );
 
@@ -1542,6 +1556,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     } catch {
       memoryTracker.stop();
     } finally {
+      benchmarkTokenBudget = null;
       set({ isGenerating: false, isBenchmarking: false });
     }
   },

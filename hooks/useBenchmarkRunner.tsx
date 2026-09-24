@@ -11,8 +11,10 @@ import {
   isPhysFootprintAvailable,
   PHYS_FOOTPRINT_METRIC,
 } from '../modules/memory-probe';
-
-const BENCHMARK_ITERATIONS = 3;
+import {
+  BENCHMARK_ITERATIONS,
+  BENCHMARK_WARMUP_RUNS,
+} from '../constants/default-benchmark';
 
 const calculateAverageBenchmark = (
   results: BenchmarkResultPerformanceNumbers[]
@@ -22,22 +24,22 @@ const calculateAverageBenchmark = (
     (acc, curr) => {
       acc.totalTime += curr.totalTime;
       acc.timeToFirstToken += curr.timeToFirstToken;
-      acc.tokensPerSecond += curr.tokensPerSecond;
       acc.tokensGenerated += curr.tokensGenerated;
+      acc.generationTime += Math.max(1, curr.totalTime - curr.timeToFirstToken);
       return acc;
     },
     {
       totalTime: 0,
       timeToFirstToken: 0,
-      tokensPerSecond: 0,
       tokensGenerated: 0,
+      generationTime: 0,
     }
   );
 
   return {
     totalTime: sum.totalTime / n,
     timeToFirstToken: sum.timeToFirstToken / n,
-    tokensPerSecond: sum.tokensPerSecond / n,
+    tokensPerSecond: sum.tokensGenerated / (sum.generationTime / 1000),
     tokensGenerated: sum.tokensGenerated / n,
     peakMemory:
       Math.max(...results.map((r) => r.peakMemory)) / 1024 / 1024 / 1024,
@@ -77,6 +79,11 @@ export default function useBenchmarkRunner({
 
       try {
         await loadModel(selectedModel, true);
+
+        for (let i = 0; i < BENCHMARK_WARMUP_RUNS; i++) {
+          if (isCancelled.current) break;
+          await runBenchmark();
+        }
 
         const results: BenchmarkResultPerformanceNumbers[] = [];
 

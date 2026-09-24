@@ -125,7 +125,7 @@ describe('startBenchmark', () => {
     expect(loadModel).toHaveBeenCalledWith(baseModel, true);
   });
 
-  it('runs benchmark 3 times and averages results', async () => {
+  it('warms the model up once, then measures three times', async () => {
     const runBenchmark = jest.fn().mockResolvedValue(perfResult);
     setLLMStore({
       runBenchmark,
@@ -141,7 +141,89 @@ describe('startBenchmark', () => {
       jest.runAllTimers();
     });
 
-    expect(runBenchmark).toHaveBeenCalledTimes(3);
+    expect(runBenchmark).toHaveBeenCalledTimes(4);
+  });
+
+  it('keeps the cold warm-up run out of the reported numbers', async () => {
+    const cold = {
+      totalTime: 10000,
+      timeToFirstToken: 5000,
+      tokensPerSecond: 1,
+      tokensGenerated: 5,
+      peakMemory: 0,
+    };
+    const warm = {
+      totalTime: 2000,
+      timeToFirstToken: 1000,
+      tokensPerSecond: 100,
+      tokensGenerated: 100,
+      peakMemory: 0,
+    };
+    const runBenchmark = jest
+      .fn()
+      .mockResolvedValueOnce(cold)
+      .mockResolvedValue(warm);
+    setLLMStore({
+      runBenchmark,
+      loadModel: jest.fn().mockResolvedValue(undefined),
+      interrupt: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
+    await act(async () => {
+      await result.current.startBenchmark(baseModel);
+      jest.runAllTimers();
+    });
+
+    expect(mockInsertBenchmark).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        totalTime: warm.totalTime,
+        timeToFirstToken: warm.timeToFirstToken,
+        tokensGenerated: warm.tokensGenerated,
+      })
+    );
+  });
+
+  it('reports throughput over the whole measured run, not a mean of per-run rates', async () => {
+    const fast = {
+      totalTime: 6000,
+      timeToFirstToken: 1000,
+      tokensPerSecond: 10,
+      tokensGenerated: 50,
+      peakMemory: 0,
+    };
+    const slow = {
+      totalTime: 11000,
+      timeToFirstToken: 1000,
+      tokensPerSecond: 5,
+      tokensGenerated: 50,
+      peakMemory: 0,
+    };
+    const runBenchmark = jest
+      .fn()
+      .mockResolvedValueOnce(fast)
+      .mockResolvedValueOnce(fast)
+      .mockResolvedValueOnce(slow)
+      .mockResolvedValueOnce(slow);
+    setLLMStore({
+      runBenchmark,
+      loadModel: jest.fn().mockResolvedValue(undefined),
+      interrupt: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
+    await act(async () => {
+      await result.current.startBenchmark(baseModel);
+      jest.runAllTimers();
+    });
+
+    const written = mockInsertBenchmark.mock.calls.at(-1)![1];
+    expect(written.tokensPerSecond).toBeCloseTo(150 / 25, 5);
   });
 
   it('calls insertBenchmark and onComplete on success', async () => {
