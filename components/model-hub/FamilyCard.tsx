@@ -11,9 +11,10 @@ import { FAMILY_DESCRIPTIONS } from '../../constants/family-descriptions';
 interface Props {
   family: ModelFamily;
   onPress: (family: ModelFamily) => void;
+  runnable?: boolean;
 }
 
-const FamilyCard = ({ family, onPress }: Props) => {
+const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
 
   const downloadedCount = family.models.filter((m) => m.isDownloaded).length;
@@ -21,11 +22,23 @@ const FamilyCard = ({ family, onPress }: Props) => {
   const description = FAMILY_DESCRIPTIONS[family.name];
 
   return (
-    <TouchableOpacity style={styles.card} onPress={() => onPress(family)}>
+    <TouchableOpacity
+      style={[styles.card, !runnable && styles.unrunnableCard]}
+      onPress={() => onPress(family)}
+      testID={`family-card-${family.name}`}
+    >
       <View style={styles.info}>
         <Text style={styles.name}>{family.name}</Text>
         {description && <Text style={styles.description}>{description}</Text>}
         <View style={styles.chipContainer}>
+          {!runnable && (
+            <Chip
+              title="Incompatible"
+              borderColor={theme.text.error}
+              backgroundColor={theme.bg.errorSecondary}
+              textColor={theme.text.error}
+            />
+          )}
           <Chip
             title={`${variantCount} ${variantCount === 1 ? 'variant' : 'variants'}`}
             borderColor={theme.border.soft}
@@ -75,6 +88,9 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 4,
+    },
+    unrunnableCard: {
+      opacity: 0.5,
     },
     chevron: {
       fontSize: 28,
