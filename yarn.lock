@@ -646,7 +646,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/plugin-transform-class-properties@npm:^7.25.4, @babel/plugin-transform-class-properties@npm:^7.27.1":
+"@babel/plugin-transform-class-properties@npm:^7.25.4, @babel/plugin-transform-class-properties@npm:^7.28.6":
   version: 7.29.7
   resolution: "@babel/plugin-transform-class-properties@npm:7.29.7"
   dependencies:
@@ -670,7 +670,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/plugin-transform-classes@npm:^7.25.4, @babel/plugin-transform-classes@npm:^7.28.4":
+"@babel/plugin-transform-classes@npm:^7.25.4, @babel/plugin-transform-classes@npm:^7.28.6":
   version: 7.29.7
   resolution: "@babel/plugin-transform-classes@npm:7.29.7"
   dependencies:
@@ -804,7 +804,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/plugin-transform-nullish-coalescing-operator@npm:^7.24.7, @babel/plugin-transform-nullish-coalescing-operator@npm:^7.27.1":
+"@babel/plugin-transform-nullish-coalescing-operator@npm:^7.24.7, @babel/plugin-transform-nullish-coalescing-operator@npm:^7.28.6":
   version: 7.29.7
   resolution: "@babel/plugin-transform-nullish-coalescing-operator@npm:7.29.7"
   dependencies:
@@ -852,7 +852,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/plugin-transform-optional-chaining@npm:^7.24.8, @babel/plugin-transform-optional-chaining@npm:^7.27.1":
+"@babel/plugin-transform-optional-chaining@npm:^7.24.8, @babel/plugin-transform-optional-chaining@npm:^7.28.6":
   version: 7.29.7
   resolution: "@babel/plugin-transform-optional-chaining@npm:7.29.7"
   dependencies:
@@ -1099,7 +1099,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/preset-typescript@npm:^7.13.0, @babel/preset-typescript@npm:^7.23.0, @babel/preset-typescript@npm:^7.27.1":
+"@babel/preset-typescript@npm:^7.13.0, @babel/preset-typescript@npm:^7.23.0, @babel/preset-typescript@npm:^7.28.5":
   version: 7.29.7
   resolution: "@babel/preset-typescript@npm:7.29.7"
   dependencies:
@@ -1169,6 +1169,16 @@ __metadata:
     "@babel/helper-string-parser": ^7.29.7
     "@babel/helper-validator-identifier": ^7.29.7
   checksum: 71c46837d22c5c63a5ed571f3b68b4261ecabfc3d4be7251b336ccbd26bc52752ae68ae6d16d24ea512311b78b6f54efdfb00dde87a81a4dc3d19e4a45f05b20
+  languageName: node
+  linkType: hard
+
+"@babel/types@npm:^7.27.1":
+  version: 7.29.8
+  resolution: "@babel/types@npm:7.29.8"
+  dependencies:
+    "@babel/helper-string-parser": ^7.29.7
+    "@babel/helper-validator-identifier": ^7.29.7
+  checksum: 9ac45d1fc702bce8e51f74566c85211f4a5d06b6f921c297e07f05742ac0eb9660d4380f96ac18d882415e4e1172e92a3fc7a20b29afd2277b713efc5b3c7cf6
   languageName: node
   linkType: hard
 
@@ -1873,10 +1883,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@huggingface/jinja@npm:^0.5.0":
-  version: 0.5.9
-  resolution: "@huggingface/jinja@npm:0.5.9"
-  checksum: ca6e398a38d0524b6d520396e5cd0101c7572614f168828264a68a316a4e41ff9011dedc336f238adc605df8227b159bb3c8540280b0b6f6e2f1126062b39123
+"@huggingface/jinja@npm:^0.5.9":
+  version: 0.5.10
+  resolution: "@huggingface/jinja@npm:0.5.10"
+  checksum: a5a66c0cd0814d8e255613a0d4a77ee5a71e365c6fded81e7e3aa3a86cf7c405eeac09713c211ce66bf8d23065279624db857a007645de0a2eaca4c03cd53f5f
   languageName: node
   linkType: hard
 
@@ -2270,6 +2280,15 @@ __metadata:
     "@jridgewell/resolve-uri": ^3.1.0
     "@jridgewell/sourcemap-codec": ^1.4.14
   checksum: af8fda2431348ad507fbddf8e25f5d08c79ecc94594061ce402cf41bc5aba1a7b3e59bf0fd70a619b35f33983a3f488ceeba8faf56bff784f98bb5394a8b7d47
+  languageName: node
+  linkType: hard
+
+"@kesha-antonov/react-native-background-downloader@npm:^4.4.0":
+  version: 4.6.2
+  resolution: "@kesha-antonov/react-native-background-downloader@npm:4.6.2"
+  peerDependencies:
+    react-native: ">=0.57.0"
+  checksum: 45e06a92ff129e56910b790163b48e2a32d0e693aa48a51755120028ba43a3190a26bc356aabb521d9b79d2d3d7888d26eeb645c2c2ccc559aafb4702f81ea85
   languageName: node
   linkType: hard
 
@@ -2710,23 +2729,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native-rag/executorch@npm:^0.8.0":
-  version: 0.8.0
-  resolution: "@react-native-rag/executorch@npm:0.8.0"
-  peerDependencies:
-    react-native-executorch: ^0.8.0
-    react-native-rag: ^0.8.0
-  checksum: 66c248c0fed81c7cadb1ef122602349369cb78e2cc264936c567cd07498f7515692591407f85efe103bd2b5305b90556a5c0f1ef6da74a81e33255d83137d003
-  languageName: node
-  linkType: hard
-
-"@react-native-rag/op-sqlite@npm:^0.8.0":
-  version: 0.8.0
-  resolution: "@react-native-rag/op-sqlite@npm:0.8.0"
+"@react-native-rag/op-sqlite@npm:^0.9.0":
+  version: 0.9.0
+  resolution: "@react-native-rag/op-sqlite@npm:0.9.0"
   peerDependencies:
     "@op-engineering/op-sqlite": ^15.2.7
-    react-native-rag: ^0.8.0
-  checksum: 9b8b352f433613799f4c58f7dce1ed1e1add25ad27771c09c634a3881eac071313021063310ef36dad2e9d361c8e043ee81576824505c44d17f9fcdf17889613
+    react-native-rag: ^0.9.0
+  checksum: 3b4e148d497e3527ce14213464678cbb898caaadfe6cf1e6c4d721b792519dd437b137837d3cebe4c94e01571eb775581c168a91fe4a8d2c9b6eac412741790f
   languageName: node
   linkType: hard
 
@@ -4446,6 +4455,13 @@ __metadata:
   dependencies:
     zxing-wasm: 3.1.3
   checksum: e5586fcd09eed0c7ddf6e295a556e62425b0065c777f1f5238886cd0b7c3966cdf3d351569a37611ecfa4bc428a442c8a5bf0f3c78ddb4d5bbe4f4cd0a5cbae5
+  languageName: node
+  linkType: hard
+
+"base-64@npm:1.0.0":
+  version: 1.0.0
+  resolution: "base-64@npm:1.0.0"
+  checksum: d10b64a1fc9b2c5a5f39f1ce1e6c9d1c5b249222bbfa3a0604c592d90623caf74419983feadd8a170f27dc0c3389704f72faafa3e645aeb56bfc030c93ff074a
   languageName: node
   linkType: hard
 
@@ -10538,11 +10554,11 @@ __metadata:
     "@eslint/js": ^10.0.1
     "@expo-google-fonts/dm-sans": ^0.4.0
     "@gorhom/bottom-sheet": ^5.2.9
+    "@kesha-antonov/react-native-background-downloader": ^4.4.0
     "@op-engineering/op-sqlite": ^15.2.7
     "@react-native-async-storage/async-storage": 2.2.0
     "@react-native-community/netinfo": 11.5.2
-    "@react-native-rag/executorch": ^0.8.0
-    "@react-native-rag/op-sqlite": ^0.8.0
+    "@react-native-rag/op-sqlite": ^0.9.0
     "@react-native/eslint-config": 0.83.6
     "@react-native/metro-config": ^0.76.3
     "@react-navigation/drawer": ^7.9.8
@@ -10595,17 +10611,18 @@ __metadata:
     react: 19.2.0
     react-native: 0.83.4
     react-native-audio-api: 0.12.0-nightly-f7c925b-20260402
+    react-native-blob-util: ^0.24.0
     react-native-device-info: ^15.0.1
     react-native-enriched-markdown: ^0.4.1
-    react-native-executorch: ^0.9.0
-    react-native-executorch-expo-resource-fetcher: ^0.9.0
+    react-native-executorch: ^0.10.2
+    react-native-executorch-expo-resource-fetcher: ^0.10.0
     react-native-gesture-handler: ~2.30.0
     react-native-keyboard-controller: 1.22.3
     react-native-loading-spinner-overlay: ^3.0.1
     react-native-pdfium: "file:./react-native-pdfium-0.1.3.tgz"
     react-native-pulsar: ^1.4.0
-    react-native-rag: ^0.8.0
-    react-native-reanimated: 4.3.1
+    react-native-rag: ^0.9.0
+    react-native-reanimated: 4.5.5
     react-native-safe-area-context: ~5.6.0
     react-native-screens: ~4.23.0
     react-native-streamdown: 0.1.1
@@ -10614,7 +10631,7 @@ __metadata:
     react-native-toast-message: ^2.3.0
     react-native-webview: 13.16.0
     react-native-wheel-scrollview-picker: ^2.0.6
-    react-native-worklets: 0.8.3
+    react-native-worklets: 0.10.4
     react-test-renderer: 19.2.0
     remend: ^1.3.0
     typescript: ~5.9.2
@@ -10794,7 +10811,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-device-info@npm:^15.0.1":
+"react-native-blob-util@npm:^0.24.0":
+  version: 0.24.11
+  resolution: "react-native-blob-util@npm:0.24.11"
+  dependencies:
+    base-64: 1.0.0
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 18a9a97f0ee8ba3f3cb2f13722ebfc3a629676acd2351b5023f367c4cce79962206338dd1280d0c01f274aa39612fd09e263216bb30f18431bcb49ce2533b61d
+  languageName: node
+  linkType: hard
+
+"react-native-device-info@npm:^15.0.1, react-native-device-info@npm:^15.0.2":
   version: 15.0.2
   resolution: "react-native-device-info@npm:15.0.2"
   peerDependencies:
@@ -10832,31 +10861,38 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-executorch-expo-resource-fetcher@npm:^0.9.0":
-  version: 0.9.1
-  resolution: "react-native-executorch-expo-resource-fetcher@npm:0.9.1"
+"react-native-executorch-expo-resource-fetcher@npm:^0.10.0":
+  version: 0.10.0
+  resolution: "react-native-executorch-expo-resource-fetcher@npm:0.10.0"
   peerDependencies:
     expo: ">=54.0.0"
     expo-asset: ">=12.0.0"
     expo-file-system: ">=19.0.0"
     react-native: "*"
     react-native-executorch: "*"
-  checksum: 6c09993c252a5450e065800ce4a96849d77dbf93764ea158963d77c20dcf7c42e5af48d511262b3fef06d7e76bce8c635c3204867105e0c649da9679894a5278
+  checksum: e068372fdee6663d7a874e0960e43ca91a095e1260df437d3a065daf0f5a7b43923977cfd95151d15391a74796d0a5ee8bdec268e1bea8c630fea82c452ce06c
   languageName: node
   linkType: hard
 
-"react-native-executorch@npm:^0.9.0":
-  version: 0.9.2
-  resolution: "react-native-executorch@npm:0.9.2"
+"react-native-executorch@npm:^0.10.2":
+  version: 0.10.2
+  resolution: "react-native-executorch@npm:0.10.2"
   dependencies:
-    "@huggingface/jinja": ^0.5.0
+    "@huggingface/jinja": ^0.5.9
     jsonrepair: ^3.12.0
     jsonschema: ^1.5.0
+    react-native-device-info: ^15.0.2
     zod: ^4.3.6
   peerDependencies:
+    "@kesha-antonov/react-native-background-downloader": ">=4.4.0"
     react: "*"
     react-native: "*"
-  checksum: e5c3edbc6925d25c2d9d81497a27368960c789cb487374753ad648a5570c95bf5d0af9272d327c440e431b40c7e84058baf97f8282ce089f0a866cb57ab071b8
+    react-native-blob-util: ^0.24.0
+    react-native-worklets: ">=0.10.0 <0.13.0"
+  peerDependenciesMeta:
+    "@kesha-antonov/react-native-background-downloader":
+      optional: true
+  checksum: 387f6889d92bcf979e71698c8f65a34b538495de81480605ec42a480a225a605be9e13363fde78abae2b545793b35b8b5cd9c0eb4684b3b8b100a9257af33a9d
   languageName: node
   linkType: hard
 
@@ -10928,30 +10964,30 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-rag@npm:^0.8.0":
-  version: 0.8.0
-  resolution: "react-native-rag@npm:0.8.0"
+"react-native-rag@npm:^0.9.0":
+  version: 0.9.0
+  resolution: "react-native-rag@npm:0.9.0"
   dependencies:
     "@langchain/core": ^0.3.57
     "@langchain/textsplitters": ^0.1.0
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 439a87157daabfb26b01737f8df2aaeb169b9170bb81b7044a778af6e08bff2cbd3058551523e6c3b45794b03331cc278faaba2ca9b4037a3c04b2c447998a92
+  checksum: 867294cdb5aad04b893a514397d3dfe2634cb11fd1c9bb7c36cf90adc82112d830c7918605225d5ba13029873ebd3f8a917d7874a1665aa220836638b423f695
   languageName: node
   linkType: hard
 
-"react-native-reanimated@npm:4.3.1":
-  version: 4.3.1
-  resolution: "react-native-reanimated@npm:4.3.1"
+"react-native-reanimated@npm:4.5.5":
+  version: 4.5.5
+  resolution: "react-native-reanimated@npm:4.5.5"
   dependencies:
     react-native-is-edge-to-edge: ^1.3.1
     semver: ^7.7.3
   peerDependencies:
     react: "*"
-    react-native: 0.81 - 0.85
-    react-native-worklets: 0.8.x
-  checksum: 2649672f72dbd52aa612e5c9bcf8ab2dc256d614ed3cd21cd44ba97b26eefd30e0be629f5aec6ba209ccc07aad46831866b69f6bf51fb9708d49431bd608507a
+    react-native: 0.83 - 0.86
+    react-native-worklets: 0.10.x - 0.11.x
+  checksum: 9935b1cf34d016bd441fbe264ba125f420c737a61faf0c98b038a7da4b32e0eadb6e1dae1d8d245c404ff7d9b15de0a08e2fb9c906dd698d545773014304b0c9
   languageName: node
   linkType: hard
 
@@ -11056,27 +11092,28 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-worklets@npm:0.8.3":
-  version: 0.8.3
-  resolution: "react-native-worklets@npm:0.8.3"
+"react-native-worklets@npm:0.10.4":
+  version: 0.10.4
+  resolution: "react-native-worklets@npm:0.10.4"
   dependencies:
     "@babel/plugin-transform-arrow-functions": ^7.27.1
-    "@babel/plugin-transform-class-properties": ^7.27.1
-    "@babel/plugin-transform-classes": ^7.28.4
-    "@babel/plugin-transform-nullish-coalescing-operator": ^7.27.1
-    "@babel/plugin-transform-optional-chaining": ^7.27.1
+    "@babel/plugin-transform-class-properties": ^7.28.6
+    "@babel/plugin-transform-classes": ^7.28.6
+    "@babel/plugin-transform-nullish-coalescing-operator": ^7.28.6
+    "@babel/plugin-transform-optional-chaining": ^7.28.6
     "@babel/plugin-transform-shorthand-properties": ^7.27.1
     "@babel/plugin-transform-template-literals": ^7.27.1
     "@babel/plugin-transform-unicode-regex": ^7.27.1
-    "@babel/preset-typescript": ^7.27.1
+    "@babel/preset-typescript": ^7.28.5
+    "@babel/types": ^7.27.1
     convert-source-map: ^2.0.0
-    semver: ^7.7.3
+    semver: ^7.7.4
   peerDependencies:
     "@babel/core": "*"
     "@react-native/metro-config": "*"
     react: "*"
-    react-native: 0.81 - 0.85
-  checksum: a44e50fc0ec765612df3f6b6104444d28e94634f3642b689df2638c5c9187ddadd7069953bb9d9a68ca253422e6630db36ffcfee80eea5f71f73cc99539307fd
+    react-native: 0.83 - 0.86
+  checksum: 96267f91d7fb26e898efc01c958d057bf17e423e33f7f6a3638aa26d2044b22f132073e398e8395268ed35b137f674aac578a82e32866fbd9680cd4758aad7c8
   languageName: node
   linkType: hard
 
@@ -11592,7 +11629,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:^7.1.3, semver@npm:^7.3.5, semver@npm:^7.5.3, semver@npm:^7.5.4, semver@npm:^7.6.0, semver@npm:^7.6.3, semver@npm:^7.7.3":
+"semver@npm:^7.1.3, semver@npm:^7.3.5, semver@npm:^7.5.3, semver@npm:^7.5.4, semver@npm:^7.6.0, semver@npm:^7.6.3, semver@npm:^7.7.3, semver@npm:^7.7.4":
   version: 7.8.5
   resolution: "semver@npm:7.8.5"
   bin:
@@ -12540,11 +12577,11 @@ __metadata:
   linkType: hard
 
 "type-fest@npm:^5.8.0":
-  version: 5.9.0
-  resolution: "type-fest@npm:5.9.0"
+  version: 5.10.0
+  resolution: "type-fest@npm:5.10.0"
   dependencies:
     tagged-tag: ^1.0.0
-  checksum: baf464cd769369ca9185396e2aeacdf6f78410b524f16377109d5d6c2c2a6be522f3e8ab3a6b0d8fc8ccfef50aa72c19c38f0bc1cbde5bd483d280315759fa1a
+  checksum: 5297267d89df5066dd219820ebc0a01e648db99fb33c0d4b19400464e8238fe3e7b556feea8cf6494e14c3f0388487bac29bbbf263ffde8372e365718bca3c4a
   languageName: node
   linkType: hard
 

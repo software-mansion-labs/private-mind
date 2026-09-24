@@ -140,6 +140,9 @@ PODS:
   - libwebp/sharpyuv (1.5.0)
   - libwebp/webp (1.5.0):
     - libwebp/sharpyuv
+  - MMKV (2.4.2):
+    - MMKVCore (~> 2.4.2)
+  - MMKVCore (2.4.2)
   - op-sqlite (15.2.14):
     - hermes-engine
     - RCTRequired
@@ -1602,7 +1605,53 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-  - react-native-executorch (0.9.2):
+  - react-native-background-downloader (4.6.2):
+    - hermes-engine
+    - "MMKV (!= 2.4.1, >= 1.2.0)"
+    - "MMKVCore (!= 2.4.1)"
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - react-native-blob-util (0.24.11):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - react-native-executorch (0.10.2):
     - hermes-engine
     - opencv-rne (~> 4.11.0)
     - RCTRequired
@@ -2372,7 +2421,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNReanimated (4.3.1):
+  - RNReanimated (4.5.5):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2394,11 +2443,12 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNReanimated/apple (= 4.3.1)
-    - RNReanimated/common (= 4.3.1)
+    - RNReanimated/apple (= 4.5.5)
+    - RNReanimated/common (= 4.5.5)
+    - RNReanimated/view (= 4.5.5)
     - RNWorklets
     - Yoga
-  - RNReanimated/apple (4.3.1):
+  - RNReanimated/apple (4.5.5):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2422,7 +2472,31 @@ PODS:
     - ReactNativeDependencies
     - RNWorklets
     - Yoga
-  - RNReanimated/common (4.3.1):
+  - RNReanimated/common (4.5.5):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - RNWorklets
+    - Yoga
+  - RNReanimated/view (4.5.5):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2538,7 +2612,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNWorklets (0.8.3):
+  - RNWorklets (0.10.4):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2560,33 +2634,10 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNWorklets/apple (= 0.8.3)
-    - RNWorklets/common (= 0.8.3)
+    - RNWorklets/apple (= 0.10.4)
+    - RNWorklets/common (= 0.10.4)
     - Yoga
-  - RNWorklets/apple (0.8.3):
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-hermes
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - Yoga
-  - RNWorklets/common (0.8.3):
+  - RNWorklets/apple (0.10.4):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2609,9 +2660,32 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - SDWebImage (5.21.6):
-    - SDWebImage/Core (= 5.21.6)
-  - SDWebImage/Core (5.21.6)
+  - RNWorklets/common (0.10.4):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - SDWebImage (5.21.7):
+    - SDWebImage/Core (= 5.21.7)
+  - SDWebImage/Core (5.21.7)
   - SDWebImageAVIFCoder (0.11.1):
     - libavif/core (>= 0.11.0)
     - SDWebImage (~> 5.10)
@@ -2696,6 +2770,8 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
+  - "react-native-background-downloader (from `../node_modules/@kesha-antonov/react-native-background-downloader`)"
+  - react-native-blob-util (from `../node_modules/react-native-blob-util`)
   - react-native-executorch (from `../node_modules/react-native-executorch`)
   - react-native-keyboard-controller (from `../node_modules/react-native-keyboard-controller`)
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
@@ -2753,6 +2829,8 @@ SPEC REPOS:
     - libavif
     - libdav1d
     - libwebp
+    - MMKV
+    - MMKVCore
     - opencv-rne
     - Pulsar-haptics
     - SDWebImage
@@ -2906,6 +2984,10 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
+  react-native-background-downloader:
+    :path: "../node_modules/@kesha-antonov/react-native-background-downloader"
+  react-native-blob-util:
+    :path: "../node_modules/react-native-blob-util"
   react-native-executorch:
     :path: "../node_modules/react-native-executorch"
   react-native-keyboard-controller:
@@ -3045,6 +3127,8 @@ SPEC CHECKSUMS:
   libavif: 5f8e715bea24debec477006f21ef9e95432e254d
   libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
+  MMKV: d37bccee64404d7c3e1457fabd9368e78d69a80f
+  MMKVCore: a58d2ce5b580948122e85be3ddf378c9b1ef739e
   op-sqlite: 10397885c9f2d478a9d099d20e2a7915c5fda944
   opencv-rne: 2305807573b6e29c8c87e3416ab096d09047a7a0
   Pdfium: 4647abf0f19fd35adb7898911b72f59f31a74b69
@@ -3086,7 +3170,9 @@ SPEC CHECKSUMS:
   React-logger: d0632d799fbd3507cdd5406f72489a83ed5f9163
   React-Mapbuffer: 274cb203819492f7fb594bbb3a1f3f5061fa794d
   React-microtasksnativemodule: 563b4dcc8b8570814d6de4fc1196f48d2944acd4
-  react-native-executorch: 27327ea825548e6ca831e57121d625f4bcb95a5c
+  react-native-background-downloader: be5d8b714cda2ea6ab00584a60f3cf10f67b761b
+  react-native-blob-util: 0224ef06c4adac1d64b4461d7546288bb5e9aca4
+  react-native-executorch: 859637dba4486e446f9e0ccfe6b6afd3bbe19238
   react-native-keyboard-controller: 915bcea56ada061f1c7d4b50162be64cb1cad9dc
   react-native-netinfo: f852c868bf5175e46165c7e4db48a204a95c3800
   react-native-safe-area-context: 37e680fc4cace3c0030ee46e8987d24f5d3bdab2
@@ -3131,11 +3217,11 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: 3a4f5e2777dae1688b781a487923a08569e27fe4
   RNDeviceInfo: 4c852998208b60dc192ae3529e5867817719ad1e
   RNGestureHandler: 0ea8153746a92b3744d4eaadade647debedf646e
-  RNReanimated: b18b6df8643fd7a36791c908ba4900dad5ae2600
+  RNReanimated: 8cc888a01ebce99d28b6c38962b0a2702b29ef11
   RNScreens: 02e62f995ceb94ea465864b3bf4d4767b87f0362
   RNSVG: 0bd149b873018bc6e0e3321e2f6435bdba294460
-  RNWorklets: 8aae0363b180f9478a6269a1ea3522bdff6fac26
-  SDWebImage: 1bb6a1b84b6fe87b972a102bdc77dd589df33477
+  RNWorklets: f4410a8c33646c7af3b8d998450fd77d1b19be9b
+  SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
   SDWebImageAVIFCoder: afe194a084e851f70228e4be35ef651df0fc5c57
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380

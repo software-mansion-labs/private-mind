@@ -5,7 +5,7 @@ import {
   unclosedThinkText,
 } from '../utils/thinking';
 import { create } from 'zustand';
-import { LLMModule } from 'react-native-executorch';
+import { LLMModule } from 'react-native-executorch/legacy';
 import { Model } from '../database/modelRepository';
 import { SQLiteDatabase } from 'expo-sqlite';
 import {
@@ -20,7 +20,7 @@ import {
 import DeviceInfo from 'react-native-device-info';
 import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
 import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
-import { type Message as ExecutorchMessage } from 'react-native-executorch';
+import { type Message as ExecutorchMessage } from 'react-native-executorch/legacy';
 import { Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
