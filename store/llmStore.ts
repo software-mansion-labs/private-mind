@@ -17,11 +17,10 @@ import {
   setChatDigest,
   SourceDocument,
 } from '../database/chatRepository';
-import DeviceInfo from 'react-native-device-info';
 import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
 import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
-import { Platform } from 'react-native';
+import {} from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import { Feedback } from '../utils/Feedback';
@@ -63,6 +62,10 @@ import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
 import { updateConversationDigest } from '../utils/conversationDigest';
 import type { WebIntentKind } from '../utils/web/intentKind';
 import { useSettingsStore } from './settingsStore';
+import {
+  getPhysFootprintBytes,
+  isPhysFootprintAvailable,
+} from '../modules/memory-probe';
 import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
 
@@ -199,22 +202,31 @@ const calculatePerformanceMetrics = (
   };
 };
 
-const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
-  if (Platform.OS !== 'ios') {
+const MEMORY_SAMPLE_MS = 250;
+
+const createMemoryTracker = (onUpdate: (footprintBytes: number) => void) => {
+  if (!isPhysFootprintAvailable()) {
     return { start: () => {}, stop: () => {} };
   }
-  let trackerId: ReturnType<typeof setInterval>;
+
+  let trackerId: ReturnType<typeof setInterval> | undefined;
+
+  const sample = () => {
+    const footprint = getPhysFootprintBytes();
+    if (footprint !== null) onUpdate(footprint);
+  };
+
   return {
     start: () => {
-      trackerId = setInterval(async () => {
-        try {
-          onUpdate(await DeviceInfo.getUsedMemory());
-        } catch (e) {
-          console.warn('Unable to read memory:', e);
-        }
-      }, 3000);
+      sample();
+      trackerId = setInterval(sample, MEMORY_SAMPLE_MS);
     },
-    stop: () => clearInterval(trackerId),
+    stop: () => {
+      if (trackerId === undefined) return;
+      clearInterval(trackerId);
+      trackerId = undefined;
+      sample();
+    },
   };
 };
 

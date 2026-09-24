@@ -9,6 +9,13 @@ import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWebSearchStore } from '../store/webSearchStore';
 
+const memoryProbe = { samples: [] as number[], available: false };
+jest.mock('../modules/memory-probe', () => ({
+  PHYS_FOOTPRINT_METRIC: 'phys_footprint',
+  isPhysFootprintAvailable: () => memoryProbe.available,
+  getPhysFootprintBytes: () => memoryProbe.samples.shift() ?? null,
+}));
+
 jest.mock('../database/chatRepository');
 jest.mock('../utils/Feedback', () => ({
   Feedback: { firstToken: jest.fn() },
@@ -69,6 +76,8 @@ const makeMockInstance = () => ({
 let mockInstance = makeMockInstance();
 
 beforeEach(() => {
+  memoryProbe.available = false;
+  memoryProbe.samples = [];
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -2161,6 +2170,42 @@ describe('runBenchmark', () => {
 
     expect(useLLMStore.getState().isGenerating).toBe(false);
     expect(useLLMStore.getState().isBenchmarking).toBe(false);
+  });
+
+  it('reports the highest footprint the run reached', async () => {
+    await loadModel();
+    mockInstance.generate.mockResolvedValue('output text');
+    useLLMStore.setState({ model: baseModel });
+    memoryProbe.available = true;
+    memoryProbe.samples = [1_000_000_000, 5_000_000_000];
+
+    const result = await useLLMStore.getState().runBenchmark();
+
+    expect(result?.peakMemory).toBe(5_000_000_000);
+  });
+
+  it('takes its first sample without waiting for the sampling interval', async () => {
+    await loadModel();
+    mockInstance.generate.mockResolvedValue('output text');
+    useLLMStore.setState({ model: baseModel });
+    memoryProbe.available = true;
+    memoryProbe.samples = [1_234_000_000];
+
+    const result = await useLLMStore.getState().runBenchmark();
+
+    expect(result?.peakMemory).toBe(1_234_000_000);
+  });
+
+  it('reports nothing when the device has no footprint probe', async () => {
+    await loadModel();
+    mockInstance.generate.mockResolvedValue('output text');
+    useLLMStore.setState({ model: baseModel });
+    memoryProbe.available = false;
+    memoryProbe.samples = [9_000_000_000];
+
+    const result = await useLLMStore.getState().runBenchmark();
+
+    expect(result?.peakMemory).toBe(0);
   });
 
   it('tracks a fresh first token on every run without stale carry-over', async () => {
