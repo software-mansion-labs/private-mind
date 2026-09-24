@@ -5,7 +5,9 @@ import {
   persistMessage,
   setChatDigest,
 } from '../database/chatRepository';
+import type { SourceDocument } from '../database/chatRepository';
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { attributeSourcesByBlock } from '../utils/attributeSources';
 
 type TransactionCallback = Parameters<
   SQLiteDatabase['withTransactionAsync']
@@ -502,6 +504,101 @@ describe('getChatMessages source provenance', () => {
       query: 'porównaj kurs bitcoina i ethereum',
       sourceQuery: 'kurs bitcoin',
     });
+  });
+
+  it('carries every field a source has, because the reader lists them one by one', async () => {
+    const everyField: Required<SourceDocument> = {
+      documentId: 7,
+      name: 'Bankier',
+      passage: 'Bitcoin kosztuje 98 000 USD.',
+      similarity: 0.82,
+      kind: 'web',
+      url: 'https://bankier.pl/btc',
+      query: 'kurs bitcoina',
+      sourceQuery: 'kurs bitcoin',
+      used: true,
+      read: true,
+      ordinal: 3,
+    };
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 5,
+        chatId: 1,
+        role: 'assistant',
+        content: 'Answer.',
+        sourceDocuments: JSON.stringify([everyField]),
+      },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(messages[0].sourceDocuments?.[0]).toEqual(everyField);
+  });
+
+  it('numbers a document source too, not just a web one', async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 6,
+        chatId: 1,
+        role: 'assistant',
+        content: 'Answer.',
+        sourceDocuments: JSON.stringify([
+          { documentId: 7, name: 'report.pdf', ordinal: 1 },
+          { documentId: 8, name: 'notes.md' },
+        ]),
+      },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(
+      messages[0].sourceDocuments?.map((source) => source.ordinal)
+    ).toEqual([1, undefined]);
+  });
+
+  it('still cites the source the answer named after the chat is reloaded', async () => {
+    const stored = [
+      {
+        name: 'Londyn — pogoda na weekend',
+        url: 'https://pogoda.interia.pl/londyn',
+        kind: 'web',
+        ordinal: 1,
+        used: true,
+        passage:
+          'Pogoda na weekend w Londynie. Sobota 19.09 temperatura 21°C, opady przelotne.',
+      },
+      {
+        name: 'Met Office — London weekend forecast',
+        url: 'https://www.metoffice.gov.uk/london',
+        kind: 'web',
+        ordinal: 2,
+        used: true,
+        passage:
+          'London weekend forecast. Saturday 19 September highs of 21C with scattered showers.',
+      },
+    ];
+    const answer =
+      'W sobotę w Londynie temperatura sięgnie 21°C, a opady będą przelotne [2].';
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 6,
+        chatId: 1,
+        role: 'assistant',
+        content: answer,
+        sourceDocuments: JSON.stringify(stored),
+      },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+    const blocks = attributeSourcesByBlock(
+      answer,
+      messages[0].sourceDocuments!
+    );
+
+    expect(blocks.map((block) => block.source?.ordinal)).toEqual([2]);
   });
 
   it('leaves document sources without a web kind/url', async () => {
