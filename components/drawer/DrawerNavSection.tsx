@@ -45,7 +45,7 @@ export const DrawerNavSection = ({
   const router = useRouter();
   const pathname = usePathname();
   const db = useSQLiteContext();
-  const { interrupt } = useLLMStore();
+  const interrupt = useLLMStore((state) => state.interrupt);
 
   const isOnPhantomChat = useIsOnPhantomChat();
 
