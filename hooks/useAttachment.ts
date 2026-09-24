@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { Keyboard } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -483,6 +484,7 @@ export const useAttachment = () => {
     (resume: DownloadResume = 'attachment') => {
       downloadResumeRef.current = resume;
       embeddingDownloadSheetOpenRef.current = true;
+      Keyboard.dismiss();
       embeddingDownloadSheetRef.current?.present();
     },
     []
