@@ -137,7 +137,6 @@ const ChatBarActions = ({
             backgroundColor={theme.bg.main}
             color={theme.text.contrastPrimary}
             busy={modelBusy}
-            testID="send-btn"
           />
         </View>
       );
@@ -151,7 +150,6 @@ const ChatBarActions = ({
         backgroundColor="transparent"
         color={theme.text.onChatBar}
         dimmed={modelBusy}
-        testID="speech-btn"
       />
     );
   };

@@ -286,13 +286,15 @@ const ChatBar = ({
     ...(onBarGrow ? { onBarGrow } : {}),
   });
 
-  const {
-    isGenerating,
-    isProcessingPrompt,
-    interrupt,
-    loadModel,
-    model: loadedModel,
-  } = useLLMStore();
+  const isGeneratingHere = useLLMStore(
+    (state) => state.isGenerating && state.generatingForChatId === chatId
+  );
+  const isProcessingPromptHere = useLLMStore(
+    (state) => state.isProcessingPrompt && state.generatingForChatId === chatId
+  );
+  const interrupt = useLLMStore((state) => state.interrupt);
+  const loadModel = useLLMStore((state) => state.loadModel);
+  const loadedModel = useLLMStore((state) => state.model);
   const loadSelectedModel = useCallback(async () => {
     if (model?.isDownloaded && loadedModel?.id !== model.id) {
       return loadModel(model);
@@ -567,8 +569,8 @@ const ChatBar = ({
                 isLoadingAttachment={hasLoadingAttachment}
                 userInput={userInput}
                 onSend={handleSend}
-                isGenerating={isGenerating}
-                isProcessingPrompt={isProcessingPrompt}
+                isGenerating={isGeneratingHere}
+                isProcessingPrompt={isProcessingPromptHere}
                 onInterrupt={interrupt}
                 onSpeechInput={openSpeechInput}
                 thinkingEnabled={thinkingEnabled}
