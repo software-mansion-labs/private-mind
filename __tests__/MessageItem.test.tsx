@@ -284,6 +284,16 @@ describe('assistant messages', () => {
     expect(markdown.props.children).toBe('The total was 100.');
   });
 
+  it('strips a leaked tokenizer placeholder from the rendered answer (#342)', () => {
+    renderItem({
+      role: 'assistant',
+      content: 'Office Environment:<unused6226><unused6226>感 (focus).',
+    });
+
+    const markdown = screen.getByTestId('markdown');
+    expect(markdown.props.children).toBe('Office Environment:感 (focus).');
+  });
+
   it('offers the Sources button whenever a source badge is shown, even for a page known only from its listing (#357)', () => {
     renderItem({
       role: 'assistant',
@@ -349,6 +359,11 @@ describe('user messages', () => {
   it('renders user content via MarkdownComponent', () => {
     renderItem({ role: 'user', content: 'My question' });
     expect(screen.getByText('My question')).toBeTruthy();
+  });
+
+  it('leaves a token the reader typed themselves, even one a model would emit', () => {
+    renderItem({ role: 'user', content: 'What does <eos> mean?' });
+    expect(screen.getByText('What does <eos> mean?')).toBeTruthy();
   });
 
   it('keeps the text of a pasted <think> block, dropping only the markers', () => {
