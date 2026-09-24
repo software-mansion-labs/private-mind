@@ -754,8 +754,10 @@ const Messages = ({
         bottomInset -
         (contentOffset.y + layoutMeasurement.height);
       const atBottom = distanceFromBottom < 100;
-      isAtBottomRef.current = atBottom;
-      setShowScrollButton(!atBottom);
+      if (atBottom !== isAtBottomRef.current) {
+        isAtBottomRef.current = atBottom;
+        setShowScrollButton(!atBottom);
+      }
       if (
         pinReleaseRef.current &&
         floorIsOffscreen(contentOffset.y, releaseTarget())
