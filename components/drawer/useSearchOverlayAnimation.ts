@@ -8,8 +8,6 @@ import {
 } from 'react-native-reanimated';
 import {
   BACKDROP_FADE_IN_DURATION,
-  EMPHASIZED_ACCELERATE,
-  EMPHASIZED_DECELERATE,
   FIELD_FADE_IN_DELAY,
   FIELD_FADE_IN_DURATION,
   FIELD_FADE_OUT_DURATION,
@@ -17,6 +15,10 @@ import {
   SEARCH_EXPAND_DURATION,
   SEARCH_UNMOUNT_GRACE,
 } from '../../constants/drawer-layout';
+import {
+  EMPHASIZED_ACCELERATE,
+  EMPHASIZED_DECELERATE,
+} from '../../constants/motion';
 
 const EXPAND_EASING = Easing.bezier(...EMPHASIZED_DECELERATE);
 const COLLAPSE_EASING = Easing.bezier(...EMPHASIZED_ACCELERATE);

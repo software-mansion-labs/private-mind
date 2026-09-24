@@ -15,7 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import { Theme } from '../../styles/colors';
+import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import {
   DRAWER_HORIZONTAL_PADDING,
   getDrawerWidth,
@@ -96,6 +96,7 @@ export const DrawerTopBar = ({
           <ArrowLeftIcon width={20} height={20} style={styles.icon} />
         </Pressable>
         <TextInput
+          {...TEXT_SELECTION}
           ref={inputRef}
           value={search}
           onChangeText={onChangeSearch}

@@ -30,6 +30,10 @@ PODS:
     - Yoga
   - ExpoAsset (55.0.17):
     - ExpoModulesCore
+  - ExpoBlur (55.0.18):
+    - ExpoModulesCore
+  - ExpoCamera (55.0.23):
+    - ExpoModulesCore
   - ExpoClipboard (55.0.14):
     - ExpoModulesCore
   - ExpoDevice (55.0.18):
@@ -51,6 +55,9 @@ PODS:
     - SDWebImageAVIFCoder (~> 0.11.0)
     - SDWebImageSVGCoder (~> 1.7.0)
     - SDWebImageWebPCoder (~> 0.14.6)
+  - ExpoImageManipulator (55.0.21):
+    - ExpoModulesCore
+    - SDWebImageWebPCoder
   - ExpoKeepAwake (55.0.8):
     - ExpoModulesCore
   - ExpoLinearGradient (55.0.15):
@@ -60,6 +67,9 @@ PODS:
   - ExpoLocalization (55.0.16):
     - ExpoModulesCore
   - ExpoLogBox (55.0.12):
+    - React-Core
+  - ExpoMediaLibrary (55.0.21):
+    - ExpoModulesCore
     - React-Core
   - ExpoModulesCore (55.0.25):
     - ExpoModulesJSI
@@ -1664,28 +1674,6 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-image-picker (8.2.1):
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - Yoga
   - react-native-keyboard-controller (1.22.3):
     - hermes-engine
     - RCTRequired
@@ -2713,6 +2701,8 @@ DEPENDENCIES:
   - EXConstants (from `../node_modules/expo-constants/ios`)
   - Expo (from `../node_modules/expo`)
   - ExpoAsset (from `../node_modules/expo-asset/ios`)
+  - ExpoBlur (from `../node_modules/expo-blur/ios`)
+  - ExpoCamera (from `../node_modules/expo-camera/ios`)
   - ExpoClipboard (from `../node_modules/expo-clipboard/ios`)
   - ExpoDevice (from `../node_modules/expo-device/ios`)
   - ExpoDocumentPicker (from `../node_modules/expo-document-picker/ios`)
@@ -2721,11 +2711,13 @@ DEPENDENCIES:
   - ExpoFont (from `../node_modules/expo-font/ios`)
   - ExpoGlassEffect (from `../node_modules/expo-glass-effect/ios`)
   - ExpoImage (from `../node_modules/expo-image/ios`)
+  - ExpoImageManipulator (from `../node_modules/expo-image-manipulator/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
   - ExpoLocalization (from `../node_modules/expo-localization/ios`)
   - "ExpoLogBox (from `../node_modules/@expo/log-box`)"
+  - ExpoMediaLibrary (from `../node_modules/expo-media-library/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoModulesJSI (from `../node_modules/expo-modules-core`)
   - ExpoPasteInput (from `../node_modules/expo-paste-input/ios`)
@@ -2781,7 +2773,6 @@ DEPENDENCIES:
   - "react-native-background-downloader (from `../node_modules/@kesha-antonov/react-native-background-downloader`)"
   - react-native-blob-util (from `../node_modules/react-native-blob-util`)
   - react-native-executorch (from `../node_modules/react-native-executorch`)
-  - react-native-image-picker (from `../node_modules/react-native-image-picker`)
   - react-native-keyboard-controller (from `../node_modules/react-native-keyboard-controller`)
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
@@ -2856,6 +2847,10 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo"
   ExpoAsset:
     :path: "../node_modules/expo-asset/ios"
+  ExpoBlur:
+    :path: "../node_modules/expo-blur/ios"
+  ExpoCamera:
+    :path: "../node_modules/expo-camera/ios"
   ExpoClipboard:
     :path: "../node_modules/expo-clipboard/ios"
   ExpoDevice:
@@ -2872,6 +2867,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-glass-effect/ios"
   ExpoImage:
     :path: "../node_modules/expo-image/ios"
+  ExpoImageManipulator:
+    :path: "../node_modules/expo-image-manipulator/ios"
   ExpoKeepAwake:
     :path: "../node_modules/expo-keep-awake/ios"
   ExpoLinearGradient:
@@ -2882,6 +2879,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-localization/ios"
   ExpoLogBox:
     :path: "../node_modules/@expo/log-box"
+  ExpoMediaLibrary:
+    :path: "../node_modules/expo-media-library/ios"
   ExpoModulesCore:
     :path: "../node_modules/expo-modules-core"
   ExpoModulesJSI:
@@ -2991,8 +2990,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-blob-util"
   react-native-executorch:
     :path: "../node_modules/react-native-executorch"
-  react-native-image-picker:
-    :path: "../node_modules/react-native-image-picker"
   react-native-keyboard-controller:
     :path: "../node_modules/react-native-keyboard-controller"
   react-native-netinfo:
@@ -3097,6 +3094,8 @@ SPEC CHECKSUMS:
   EXConstants: dadbeba983acc30f855a919658a2b34fbd86615d
   Expo: b0f96de93d2e9ab7c6eabcf88597b13f6fe3f67e
   ExpoAsset: 7721c5c4ae2a7c3c8147a046727ac6c020b05648
+  ExpoBlur: 03f1181f123d3e1a8b87f9bad22ebb7bbeba4fcf
+  ExpoCamera: 8c699b7e65d479a25e4bb693c11f6a4c407a5e9a
   ExpoClipboard: db4d0d7371d22999ed506dad5f0115d89fd25998
   ExpoDevice: 2d3050f79f8e0b6d6da7933d4fc5f54908731b34
   ExpoDocumentPicker: f7bb7d99ad78f5d3c526930275b5cd34446276bc
@@ -3105,11 +3104,13 @@ SPEC CHECKSUMS:
   ExpoFont: a7e34a75bdfb703fa07a0e87807f836236608c76
   ExpoGlassEffect: 2dedac2fe817f9b02d0dad29ce0aef7afebc5cd4
   ExpoImage: 5854bd51edd7c0a775755473598f9daeb3fde4e3
+  ExpoImageManipulator: 6ee60a0202c350d82d99fd48773d7c2e770f80ea
   ExpoKeepAwake: d0eb7a0719500d2a43fbf29b6f79e84d70c75ebf
   ExpoLinearGradient: 07d8c721fd9ea91a7aa666753538f80dfda95bf3
   ExpoLinking: 221ab136d976b632e04ff4023660cc9c24233d07
   ExpoLocalization: 880f2337e7dd372f76ef66336a875f24d0330f80
   ExpoLogBox: a678d36477ab9544fe63e0b5328a0716539b6774
+  ExpoMediaLibrary: 658ee8b61eefe232ec65fc45e9b31b3e4e95f4d9
   ExpoModulesCore: 5e1ad569ce7cf8d35c0737585f34cc299fc3f0ca
   ExpoModulesJSI: 964334271fc77832736f66ee1785761cdc778dbe
   ExpoPasteInput: e8eba5274ad513ba3e02ceb71ad6524bf2e46ce1
@@ -3172,7 +3173,6 @@ SPEC CHECKSUMS:
   react-native-background-downloader: be5d8b714cda2ea6ab00584a60f3cf10f67b761b
   react-native-blob-util: 0224ef06c4adac1d64b4461d7546288bb5e9aca4
   react-native-executorch: 859637dba4486e446f9e0ccfe6b6afd3bbe19238
-  react-native-image-picker: 48d850454b4a389753053e1d7378b624d3b47d77
   react-native-keyboard-controller: 915bcea56ada061f1c7d4b50162be64cb1cad9dc
   react-native-netinfo: f852c868bf5175e46165c7e4db48a204a95c3800
   react-native-safe-area-context: 37e680fc4cace3c0030ee46e8987d24f5d3bdab2
