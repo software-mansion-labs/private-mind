@@ -1,9 +1,10 @@
-import React, { RefObject, useCallback, useState } from 'react';
+import React, { RefObject, useCallback, useMemo, useState } from 'react';
 import {
   BottomSheetModal,
   BottomSheetFlatList,
   BottomSheetView,
   BottomSheetBackdrop,
+  type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 import { router } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
@@ -29,16 +30,19 @@ const ModelSelectSheet = ({
   onSheetStateChange,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
-  const { downloadedModels } = useModelStore();
+  const downloadedModels = useModelStore((state) => state.downloadedModels);
   const [search, setSearch] = useState('');
   const [snapIndex, setSnapIndex] = useState(0);
 
-  const filteredModels = downloadedModels.filter((model) =>
-    model.modelName.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredModels = useMemo(() => {
+    const needle = search.toLowerCase();
+    return downloadedModels.filter((model) =>
+      model.modelName.toLowerCase().includes(needle)
+    );
+  }, [downloadedModels, search]);
 
   const renderBackdrop = useCallback(
-    (props: any) => (
+    (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
