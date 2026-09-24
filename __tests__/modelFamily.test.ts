@@ -1,4 +1,8 @@
-import { getModelFamily, groupModelsByFamily } from '../utils/modelFamily';
+import {
+  getModelFamily,
+  groupModelsByFamily,
+  orderFamiliesForDevice,
+} from '../utils/modelFamily';
 import { Model } from '../database/modelRepository';
 
 const makeModel = (overrides: Partial<Model>): Model => ({
@@ -68,5 +72,52 @@ describe('groupModelsByFamily', () => {
     ];
     const families = groupModelsByFamily(models);
     expect(families).toEqual([{ name: 'Foo', models: [models[0], models[1]] }]);
+  });
+});
+
+describe('orderFamiliesForDevice', () => {
+  const fits = (model: Model) => (model.modelSize ?? 0) <= 2;
+
+  it('marks a family runnable when any variant fits, and only then', () => {
+    const [partial, deadEnd] = orderFamiliesForDevice(
+      [
+        {
+          name: 'Qwen 2.5',
+          models: [
+            makeModel({ modelName: 'Qwen 2.5 - 0.5B', modelSize: 0.8 }),
+            makeModel({ modelName: 'Qwen 2.5 - 3B', modelSize: 2.9 }),
+          ],
+        },
+        {
+          name: 'Gemma 4',
+          models: [
+            makeModel({ modelName: 'Gemma 4 - 2B', modelSize: 2.9 }),
+            makeModel({ modelName: 'Gemma 4 VL - 2B', modelSize: 4 }),
+          ],
+        },
+      ],
+      fits
+    );
+    expect(partial).toMatchObject({ name: 'Qwen 2.5', runnable: true });
+    expect(deadEnd).toMatchObject({ name: 'Gemma 4', runnable: false });
+  });
+
+  it('lists the families the device can run first, each group by name', () => {
+    const names = orderFamiliesForDevice(
+      [
+        { name: 'Gemma 4', models: [makeModel({ modelSize: 4 })] },
+        { name: 'Qwen 3', models: [makeModel({ modelSize: 1 })] },
+        { name: 'Bielik', models: [makeModel({ modelSize: 3 })] },
+        { name: 'LFM 2.5', models: [makeModel({ modelSize: 1 })] },
+      ],
+      fits
+    ).map((family) => family.name);
+    expect(names).toEqual(['LFM 2.5', 'Qwen 3', 'Bielik', 'Gemma 4']);
+  });
+
+  it('treats an empty family as a dead end rather than crashing', () => {
+    expect(
+      orderFamiliesForDevice([{ name: 'Empty', models: [] }], fits)[0]
+    ).toMatchObject({ runnable: false });
   });
 });

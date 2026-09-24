@@ -30,3 +30,21 @@ export const groupModelsByFamily = (models: Model[]): ModelFamily[] => {
     models: familyModels,
   }));
 };
+
+export interface DeviceModelFamily extends ModelFamily {
+  runnable: boolean;
+}
+
+export const orderFamiliesForDevice = (
+  families: ModelFamily[],
+  isCompatible: (model: Model) => boolean
+): DeviceModelFamily[] =>
+  families
+    .map((family) => ({
+      ...family,
+      runnable: family.models.some(isCompatible),
+    }))
+    .sort(
+      (a, b) =>
+        Number(b.runnable) - Number(a.runnable) || a.name.localeCompare(b.name)
+    );

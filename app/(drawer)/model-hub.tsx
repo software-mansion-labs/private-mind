@@ -25,7 +25,13 @@ import ModelHubTabs, {
 } from '../../components/model-hub/ModelHubTabs';
 import FamilyCard from '../../components/model-hub/FamilyCard';
 import ModelCard from '../../components/model-hub/ModelCard';
-import { groupModelsByFamily, ModelFamily } from '../../utils/modelFamily';
+import {
+  groupModelsByFamily,
+  orderFamiliesForDevice,
+  DeviceModelFamily,
+  ModelFamily,
+} from '../../utils/modelFamily';
+import { isModelCompatible } from '../../utils/modelCompatibility';
 import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
 import { useConfirm } from '../../hooks/useConfirm';
 
@@ -54,7 +60,7 @@ const ModelHubScreen = () => {
       const mine = models
         .filter((m) => m.source !== 'built-in')
         .filter(matchesSearch);
-      return { families: [] as ModelFamily[], mineModels: mine };
+      return { families: [] as DeviceModelFamily[], mineModels: mine };
     }
 
     const builtIns = models.filter((m) => m.source === 'built-in');
@@ -63,13 +69,15 @@ const ModelHubScreen = () => {
         ? builtIns.filter((m) => m.experimental)
         : builtIns.filter((m) => !m.experimental);
 
-    const familyList = groupModelsByFamily(filtered)
-      .map((fam) => ({
-        ...fam,
-        models: fam.models.filter(matchesSearch),
-      }))
-      .filter((fam) => (q ? fam.models.length > 0 : true))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const familyList = orderFamiliesForDevice(
+      groupModelsByFamily(filtered)
+        .map((fam) => ({
+          ...fam,
+          models: fam.models.filter(matchesSearch),
+        }))
+        .filter((fam) => (q ? fam.models.length > 0 : true)),
+      isModelCompatible
+    );
 
     return { families: familyList, mineModels: [] };
   }, [models, tab, search]);
@@ -187,6 +195,7 @@ const ModelHubScreen = () => {
                 ))
               : families.map((family) => (
                   <FamilyCard
+                    runnable={family.runnable}
                     key={family.name}
                     family={family}
                     onPress={openFamily}
