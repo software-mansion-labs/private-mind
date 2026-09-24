@@ -13,6 +13,7 @@ export interface BenchmarkResult extends BenchmarkResultPerformanceNumbers {
   timestamp: string;
   modelId?: number;
   modelName: string;
+  peakMemoryMetric: string | null;
 }
 
 export const insertBenchmark = async (
@@ -27,8 +28,9 @@ export const insertBenchmark = async (
       timeToFirstToken,
       tokensGenerated,
       tokensPerSecond,
-      peakMemory
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      peakMemory,
+      peakMemoryMetric
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       benchmark.modelId!,
       benchmark.modelName,
@@ -37,6 +39,7 @@ export const insertBenchmark = async (
       benchmark.tokensGenerated,
       benchmark.tokensPerSecond,
       benchmark.peakMemory,
+      benchmark.peakMemoryMetric,
     ]
   );
 
