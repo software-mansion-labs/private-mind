@@ -1,0 +1,12 @@
+diff --git a/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt b/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
+index 1ff8116..a17c2ec 100644
+--- a/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
++++ b/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
+@@ -133,6 +133,7 @@ class ExpoCameraView(
+ 
+   private var previewView = PreviewView(context).apply {
+     elevation = 0f
++    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+   }
+   private val scope = CoroutineScope(Dispatchers.Main)
+   private var shouldCreateCamera = false

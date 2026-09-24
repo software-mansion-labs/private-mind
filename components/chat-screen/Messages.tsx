@@ -64,6 +64,7 @@ import {
 } from '../../constants/chat-screen';
 import { messageRowKey } from '../../utils/messageRowKey';
 import { useKeyboardLift } from './useKeyboardLift';
+import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 import { useSendKeyboardFreeze } from './useSendKeyboardFreeze';
 import {
   floorIsOffscreen,
@@ -303,6 +304,9 @@ const Messages = ({
   }, [branchMarkers]);
 
   const keyboardLift = useKeyboardLift();
+  const modalOwnsKeyboard = useKeyboardOwnerStore(
+    (state) => state.modalOwnsKeyboard
+  );
   const {
     frozen: sendFrozen,
     arm: freezeForSend,
@@ -531,7 +535,9 @@ const Messages = ({
   const [liftHeldUntilKeyboardHides, setLiftHeldUntilKeyboardHides] =
     useState(false);
   const keyboardLiftBehavior =
-    pinAnchor || liftHeldUntilKeyboardHides ? 'never' : 'whenAtEnd';
+    pinAnchor || liftHeldUntilKeyboardHides || modalOwnsKeyboard
+      ? 'never'
+      : 'whenAtEnd';
   useEffect(() => {
     if (!liftHeldUntilKeyboardHides) return;
     const hidden = Keyboard.addListener('keyboardDidHide', () =>

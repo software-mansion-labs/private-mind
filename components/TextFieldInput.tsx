@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { TextInput, StyleSheet, View, TextInputProps } from 'react-native';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
-import { Theme } from '../styles/colors';
+import { TEXT_SELECTION, Theme } from '../styles/colors';
 import TextInputBorder from './TextInputBorder';
 
 type TextFieldInputProps = TextInputProps & {
@@ -32,6 +32,7 @@ const TextFieldInput: React.FC<TextFieldInputProps> = ({
       <TextInputBorder active={active} />
       {icon}
       <TextInput
+        {...TEXT_SELECTION}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
