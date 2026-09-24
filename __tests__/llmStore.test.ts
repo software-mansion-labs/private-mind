@@ -1,5 +1,5 @@
 import { useLLMStore } from '../store/llmStore';
-import { LLMModule } from 'react-native-executorch';
+import { LLMModule } from 'react-native-executorch/legacy';
 import * as chatRepository from '../database/chatRepository';
 import type { Message } from '../database/chatRepository';
 import type { Model } from '../database/modelRepository';
