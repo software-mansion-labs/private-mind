@@ -1,5 +1,6 @@
 import React, {
   Ref,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useState,
@@ -15,11 +16,25 @@ import {
   Keyboard,
   Platform,
 } from 'react-native';
-import Animated, { type SharedValue } from 'react-native-reanimated';
+import Animated, {
+  FadeOut,
+  useAnimatedStyle,
+  useSharedValue,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
-import AttachmentSheet from '../bottomSheets/AttachmentSheet';
 import EmbeddingDownloadSheet from '../bottomSheets/EmbeddingDownloadSheet';
-import { useAttachment, Attachment } from '../../hooks/useAttachment';
+import {
+  useAttachment,
+  Attachment,
+  MAX_IMAGE_ATTACHMENTS,
+  type LibraryImage,
+} from '../../hooks/useAttachment';
+import AttachmentOverlay from './attachments/AttachmentOverlay';
+import { COMPOSER, COMPOSER_STRIP_HEIGHT } from './attachments/constants';
+import { useAttachmentFlights } from './attachments/useAttachmentFlights';
+import { useAttachmentPanel } from './attachments/useAttachmentPanel';
+import { useSheetGeometry } from './attachments/useSheetGeometry';
 import { Model } from '../../database/modelRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -29,6 +44,7 @@ import RotateLeft from '../../assets/icons/rotate_left.svg';
 import LinkIcon from '../../assets/icons/link-alt.svg';
 import { detectUrls } from '../../utils/web/url/urlDetection';
 import { hostname } from '../../utils/web/hostname';
+import { showPermissionToast } from '../../utils/permissionToast';
 import { Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
@@ -38,9 +54,22 @@ import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
 import { useEmbeddingDownloadPrompt } from './useEmbeddingDownloadPrompt';
-import { BAR_GROW_LAYOUT, useBarGrowth } from './useBarGrowth';
+import type { SendRefusal } from './useSendChatMessage';
+import {
+  BAR_GROW_DURATION,
+  BAR_GROW_LAYOUT,
+  useBarGrowth,
+} from './useBarGrowth';
 
 const SENT_ECHO_WINDOW_MS = 300;
+
+const REFUSAL_COPY: Record<SendRefusal, string | null> = {
+  'nothing-to-send': 'Add a message or an attachment first.',
+  'model-loading': 'Wait for the model to finish loading.',
+  'busy': 'Wait for the response to finish or stop it first.',
+  'chat-not-created': 'Could not start this chat. Try again.',
+  'image-not-saved': null,
+};
 
 interface Props {
   chatId: number | null;
@@ -48,7 +77,7 @@ interface Props {
     userInput: string,
     imagePath?: string,
     attachments?: Attachment[]
-  ) => boolean | void | Promise<boolean | void>;
+  ) => boolean | void | SendRefusal | Promise<boolean | void | SendRefusal>;
   onSelectModel: () => void;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
@@ -113,21 +142,95 @@ const ChatBar = ({
   }, []);
   const {
     attachments,
-    sheetRef,
     embeddingDownloadSheetRef,
+    addImages,
     presentDownloadSheet,
-    pickFromLibrary,
-    pickFromCamera,
     pickDocument,
     addUrlSource,
     downloadModelAndContinue,
     markDownloadSheetClosed,
-    markAttachmentSheetClosed,
+    markPanelOpen,
+    markPanelClosed,
     removeAttachment,
+    restoreAttachments,
     clearAll,
-    openSheet,
     addPastedAttachment,
   } = useAttachment();
+
+  const [panelWindowHeight, setPanelWindowHeight] = useState<number>();
+
+  const {
+    width: screenWidth,
+    composerBottom,
+    gridWidth,
+    gridHeight,
+    sheetTop,
+    sheetBottom,
+    menuMaxBottom,
+  } = useSheetGeometry(panelWindowHeight);
+
+  const [filesBusy, setFilesBusy] = useState(false);
+  const handleSelectFiles = useCallback(() => {
+    setFilesBusy(true);
+    return pickDocument()
+      .catch((error) => {
+        console.error('Failed to open the document picker:', error);
+      })
+      .finally(() => setFilesBusy(false));
+  }, [pickDocument]);
+
+  const showImagesUnsupported = useCallback(() => {
+    Toast.show({
+      type: 'defaultToast',
+      text1: 'This model does not support images',
+    });
+  }, []);
+
+  const panel = useAttachmentPanel({
+    onSelectFiles: handleSelectFiles,
+    canAttachImages: isVisionModel,
+    onImagesUnsupported: showImagesUnsupported,
+  });
+
+  const handleAttachPhotos = useCallback(
+    (photos: LibraryImage[]) => {
+      addImages(photos).catch((error) => {
+        console.error('Failed to attach the picked photos:', error);
+      });
+    },
+    [addImages]
+  );
+
+  const { flights, isFlying, attach, strip, attachAndLeave } =
+    useAttachmentFlights({
+      hasAttachments: attachments.length > 0,
+      onAttachPhotos: handleAttachPhotos,
+      collapsePanel: panel.collapseForLeave,
+      resetPanel: panel.resetAfterLeave,
+    });
+
+  const rowsBelowStrip = useSharedValue(0);
+  const handleRowsBelowStripLayout = useCallback(
+    (e: { nativeEvent: { layout: { height: number } } }) => {
+      rowsBelowStrip.set(e.nativeEvent.layout.height + COMPOSER.cardPadding);
+    },
+    [rowsBelowStrip]
+  );
+
+  const stripStyle = useAnimatedStyle(() => ({
+    height: strip.get() * COMPOSER_STRIP_HEIGHT,
+  }));
+
+  const pendingIds = flights.map((flight) => flight.photo.id);
+
+  useEffect(() => {
+    if (panel.mode === 'closed') markPanelClosed();
+    else markPanelOpen();
+  }, [panel.mode, markPanelClosed, markPanelOpen]);
+
+  useEffect(() => {
+    onAttachmentSheetStateChange?.(panel.mode !== 'closed');
+  }, [panel.mode, onAttachmentSheetStateChange]);
 
   const {
     embeddingSheetContext,
@@ -187,7 +290,6 @@ const ChatBar = ({
     interrupt,
     loadModel,
     model: loadedModel,
-    runWithModelOffloaded,
   } = useLLMStore();
   const loadSelectedModel = useCallback(async () => {
     if (model?.isDownloaded && loadedModel?.id !== model.id) {
@@ -206,22 +308,9 @@ const ChatBar = ({
   }, []);
 
   const handleAttach = useCallback(() => {
-    if (modelSwitching) {
-      showModelSwitchingToast();
-      return;
-    }
-
-    Keyboard.dismiss();
-    openSheet();
-    runWithModelOffloaded(async () => {}, { restore: false }).catch((error) => {
-      console.error('Failed to offload model before attachment picker:', error);
-    });
-  }, [
-    modelSwitching,
-    openSheet,
-    runWithModelOffloaded,
-    showModelSwitchingToast,
-  ]);
+    loadSelectedModel();
+    panel.onPlusPress();
+  }, [loadSelectedModel, panel]);
 
   const detectedUrl = useMemo(
     () => detectUrls(userInput)[0] ?? null,
@@ -245,7 +334,7 @@ const ChatBar = ({
       showModelSwitchingToast();
       return;
     }
-    if (hasLoadingAttachment || disabled) return;
+    if (hasLoadingAttachment) return;
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
     const inputToSend = userInput;
@@ -263,13 +352,12 @@ const ChatBar = ({
     clearAll({ cleanupSources: false });
     Promise.resolve(outcome)
       .then((accepted) => {
-        if (accepted !== false) return;
+        if (accepted !== false && typeof accepted !== 'string') return;
         lastSentRef.current = null;
         setUserInput((current) => current || inputToSend);
-        Toast.show({
-          type: 'defaultToast',
-          text1: 'Wait for the response to finish or stop it first.',
-        });
+        if (attachmentsToSend.length) restoreAttachments(attachmentsToSend);
+        const text1 = REFUSAL_COPY[accepted === false ? 'busy' : accepted];
+        if (text1) Toast.show({ type: 'defaultToast', text1 });
       })
       .catch((error) => {
         console.error('Failed to send message:', error);
@@ -280,8 +368,8 @@ const ChatBar = ({
     imageAttachment,
     attachments,
     clearAll,
+    restoreAttachments,
     hasLoadingAttachment,
-    disabled,
     modelSwitching,
     showModelSwitchingToast,
   ]);
@@ -324,18 +412,16 @@ const ChatBar = ({
   const [showSpeechInput, setShowSpeechInput] = useState(false);
 
   const openSpeechInput = async () => {
-    if (modelSwitching) {
+    if (modelSwitching || disabled) {
       showModelSwitchingToast();
       return;
     }
-    if (disabled) return;
 
     const permissionStatus = await AudioManager.requestRecordingPermissions();
     if (permissionStatus !== 'Granted') {
-      Toast.show({
-        type: 'defaultToast',
-        text1: 'Microphone permission is required to record messages.',
-      });
+      showPermissionToast(
+        'Microphone permission is required to record messages.'
+      );
       return;
     }
 
@@ -349,8 +435,6 @@ const ChatBar = ({
         showModelSwitchingToast();
         return;
       }
-      if (disabled) return;
-
       setShowSpeechInput(false);
       if (transcript) {
         const attachmentsToSend = attachments;
@@ -405,79 +489,112 @@ const ChatBar = ({
             </View>
           )}
           <View style={styles.inputContainer}>
-            {showIndexChip && (
-              <TouchableOpacity
-                style={styles.indexUrlChip}
-                onPress={handleIndexUrl}
-                testID="index-url-chip"
-              >
-                <LinkIcon
-                  width={16}
-                  height={16}
-                  style={{ color: theme.text.onChatBar }}
-                />
-                <Text style={styles.indexUrlChipText} numberOfLines={1}>
-                  Index {hostname(detectedUrl!)}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {attachments.length > 0 && (
-              <View style={[styles.previewRow, { marginBottom: 8 }]}>
+            <Animated.View
+              pointerEvents={attachments.length ? 'auto' : 'none'}
+              style={[styles.strip, stripStyle]}
+            >
+              <View style={styles.stripRow}>
                 {attachments.map((attachment) => (
-                  <AttachmentThumbnail
+                  <Animated.View
                     key={attachment.id}
-                    attachment={attachment}
-                    onRemove={() => removeAttachment(attachment.id)}
-                  />
+                    exiting={FadeOut.duration(BAR_GROW_DURATION)}
+                    layout={BAR_GROW_LAYOUT}
+                  >
+                    <View
+                      style={
+                        pendingIds.includes(attachment.id)
+                          ? styles.stripPending
+                          : undefined
+                      }
+                    >
+                      <AttachmentThumbnail
+                        attachment={attachment}
+                        onRemove={() => removeAttachment(attachment.id)}
+                      />
+                    </View>
+                  </Animated.View>
                 ))}
               </View>
-            )}
-            <View style={styles.content}>
-              <TextInputWrapper
-                onPaste={onPaste}
-                style={styles.textInputWrapper}
-              >
-                <RNTextInput
-                  key={Platform.OS === 'ios' ? iosInputKey : undefined}
-                  ref={textInputRef}
-                  style={styles.input}
-                  multiline
-                  numberOfLines={3}
-                  onFocus={() => loadSelectedModel()}
-                  placeholder="Ask about anything..."
-                  placeholderTextColor={theme.text.onChatBarMuted}
-                  value={userInput}
-                  onChangeText={handleChangeText}
-                />
-              </TextInputWrapper>
+            </Animated.View>
+            <View
+              style={styles.belowStrip}
+              onLayout={handleRowsBelowStripLayout}
+            >
+              {showIndexChip && (
+                <TouchableOpacity
+                  style={styles.indexUrlChip}
+                  onPress={handleIndexUrl}
+                  testID="index-url-chip"
+                >
+                  <LinkIcon
+                    width={16}
+                    height={16}
+                    style={{ color: theme.text.onChatBar }}
+                  />
+                  <Text style={styles.indexUrlChipText} numberOfLines={1}>
+                    Index {hostname(detectedUrl!)}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <View style={styles.content}>
+                <TextInputWrapper
+                  onPaste={onPaste}
+                  style={styles.textInputWrapper}
+                >
+                  <RNTextInput
+                    key={Platform.OS === 'ios' ? iosInputKey : undefined}
+                    ref={textInputRef}
+                    style={styles.input}
+                    multiline
+                    numberOfLines={3}
+                    onFocus={() => loadSelectedModel()}
+                    placeholder="Ask about anything..."
+                    placeholderTextColor={theme.text.onChatBarMuted}
+                    value={userInput}
+                    onChangeText={handleChangeText}
+                  />
+                </TextInputWrapper>
+              </View>
+              <ChatBarActions
+                plusOut={panel.plusOut}
+                onAttach={handleAttach}
+                hasAttachments={attachments.length > 0}
+                isLoadingAttachment={hasLoadingAttachment}
+                userInput={userInput}
+                onSend={handleSend}
+                isGenerating={isGenerating}
+                isProcessingPrompt={isProcessingPrompt}
+                onInterrupt={interrupt}
+                onSpeechInput={openSpeechInput}
+                thinkingEnabled={thinkingEnabled}
+                onThinkingToggle={onThinkingToggle}
+                webSearchEnabled={webSearchEnabled}
+                onWebSearchToggle={
+                  onWebSearchToggle ? handleWebSearchToggle : undefined
+                }
+              />
             </View>
-            <ChatBarActions
-              onAttach={handleAttach}
-              hasAttachments={attachments.length > 0}
-              isLoadingAttachment={hasLoadingAttachment}
-              disabled={disabled}
-              userInput={userInput}
-              onSend={handleSend}
-              isGenerating={isGenerating}
-              isProcessingPrompt={isProcessingPrompt}
-              onInterrupt={interrupt}
-              onSpeechInput={openSpeechInput}
-              thinkingEnabled={thinkingEnabled}
-              onThinkingToggle={onThinkingToggle}
-              webSearchEnabled={webSearchEnabled}
-              onWebSearchToggle={
-                onWebSearchToggle ? handleWebSearchToggle : undefined
-              }
-            />
           </View>
-          <AttachmentSheet
-            bottomSheetModalRef={sheetRef}
-            isVisionModel={isVisionModel}
-            onPickFromLibrary={pickFromLibrary}
-            onPickFromCamera={pickFromCamera}
-            onPickDocument={pickDocument}
-            onSheetStateChange={onAttachmentSheetStateChange}
-            onDismissed={markAttachmentSheetClosed}
+          <AttachmentOverlay
+            panel={panel}
+            onWindowHeight={setPanelWindowHeight}
+            busyAction={filesBusy ? 'files' : null}
+            width={screenWidth}
+            gridWidth={gridWidth}
+            gridHeight={gridHeight}
+            menuMaxBottom={menuMaxBottom}
+            sheetTop={sheetTop}
+            sheetBottom={sheetBottom}
+            composerBottom={composerBottom}
+            rowsBelowStrip={rowsBelowStrip}
+            strip={strip}
+            attach={attach}
+            flights={flights}
+            isFlying={isFlying}
+            attachAndLeave={attachAndLeave}
+            attachedIds={attachments.map((attachment) => attachment.id)}
+            maxSelection={MAX_IMAGE_ATTACHMENTS}
+            imagesEnabled={isVisionModel}
           />
           <EmbeddingDownloadSheet
             bottomSheetModalRef={embeddingDownloadSheetRef}
@@ -529,8 +646,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'column',
       backgroundColor: theme.bg.chatBar,
       borderRadius: 18,
-      padding: 16,
-      gap: 8,
+      padding: COMPOSER.cardPadding,
       justifyContent: 'center',
     },
     textInputWrapper: {
@@ -547,8 +663,21 @@ const createStyles = (theme: Theme) =>
       textAlignVertical: 'center',
       color: theme.text.onChatBar,
     },
-    previewRow: {
+    strip: {
+      overflow: 'hidden',
+    },
+    stripRow: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: COMPOSER.stripPaddingTop,
       flexDirection: 'row',
+      gap: COMPOSER.thumbGap,
+    },
+    stripPending: {
+      opacity: 0,
+    },
+    belowStrip: {
       gap: 8,
     },
     indexUrlChip: {

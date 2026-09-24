@@ -41,22 +41,24 @@ const mockPresentDownloadSheet = jest.fn();
 
 const mockUseAttachment = {
   attachments: [] as Attachment[],
-  sheetRef: { current: null },
   embeddingDownloadSheetRef: { current: null },
   presentDownloadSheet: mockPresentDownloadSheet,
-  markDownloadSheetClosed: jest.fn(),
+  addImages: jest.fn(async () => {}),
+  pickDocument: jest.fn(async () => {}),
+  addUrlSource: jest.fn(async () => {}),
   downloadModelAndContinue: jest.fn(),
-  pickFromLibrary: jest.fn(),
-  pickFromCamera: jest.fn(),
-  pickDocument: jest.fn(),
+  markDownloadSheetClosed: jest.fn(),
+  markPanelOpen: jest.fn(),
+  markPanelClosed: jest.fn(),
   removeAttachment: jest.fn(),
+  restoreAttachments: jest.fn(),
   clearAll: jest.fn(),
-  openSheet: jest.fn(),
   addPastedAttachment: jest.fn(),
 };
 
 jest.mock('../hooks/useAttachment', () => ({
   useAttachment: () => mockUseAttachment,
+  MAX_IMAGE_ATTACHMENTS: 1,
 }));
 
 const mockSheetProps: {
@@ -75,29 +77,44 @@ jest.mock('../components/bottomSheets/EmbeddingDownloadSheet', () => ({
   },
 }));
 
-jest.mock('../components/bottomSheets/AttachmentSheet', () => {
+jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
   const { View, TouchableOpacity, Text } = require('react-native');
   return ({
-    onPickFromLibrary,
-    onPickFromCamera,
-    onPickDocument,
-    isVisionModel,
+    panel,
+    imagesEnabled,
+    maxSelection,
+    busyAction,
   }: {
-    onPickFromLibrary: () => void;
-    onPickFromCamera: () => void;
-    onPickDocument: () => void;
-    isVisionModel: boolean;
+    panel: {
+      mode: string;
+      onMenuAction: (action: 'camera' | 'photos' | 'files') => void;
+    };
+    imagesEnabled: boolean;
+    maxSelection: number;
+    busyAction?: string | null;
   }) => (
-    <View testID="attachment-sheet">
-      <Text>{`vision:${isVisionModel}`}</Text>
-      <TouchableOpacity testID="pick-library-btn" onPress={onPickFromLibrary}>
-        <Text>Library</Text>
+    <View testID="attachment-overlay">
+      <Text>{`mode:${panel.mode}`}</Text>
+      <Text>{`vision:${imagesEnabled}`}</Text>
+      <Text>{`max:${maxSelection}`}</Text>
+      <Text>{`busy:${busyAction ?? 'none'}`}</Text>
+      <TouchableOpacity
+        testID="menu-photos"
+        onPress={() => panel.onMenuAction('photos')}
+      >
+        <Text>Photos</Text>
       </TouchableOpacity>
-      <TouchableOpacity testID="pick-camera-btn" onPress={onPickFromCamera}>
+      <TouchableOpacity
+        testID="menu-camera"
+        onPress={() => panel.onMenuAction('camera')}
+      >
         <Text>Camera</Text>
       </TouchableOpacity>
-      <TouchableOpacity testID="pick-document-btn" onPress={onPickDocument}>
-        <Text>Document</Text>
+      <TouchableOpacity
+        testID="menu-files"
+        onPress={() => panel.onMenuAction('files')}
+      >
+        <Text>Files</Text>
       </TouchableOpacity>
     </View>
   );
@@ -272,6 +289,13 @@ const defaultProps = {
 const renderBar = (props: Partial<typeof defaultProps> = {}) =>
   render(<ChatBar {...defaultProps} {...props} />);
 
+const openPanel = async () => {
+  await act(async () => {
+    fireEvent.press(screen.getByTestId('attach-btn'));
+    await new Promise((resolve) => setTimeout(resolve, 60));
+  });
+};
+
 beforeEach(() => {
   mockUseLLMStore.mockImplementation(
     (selector?: (state: Partial<LLMStore>) => unknown) => {
@@ -288,7 +312,8 @@ beforeEach(() => {
     }
   );
   mockUseAttachment.attachments = [];
-  mockUseAttachment.openSheet.mockClear();
+  mockUseAttachment.addImages.mockClear();
+  mockUseAttachment.pickDocument.mockClear();
   mockUseAttachment.clearAll.mockClear();
   mockUseAttachment.removeAttachment.mockClear();
   mockRunWithModelOffloaded.mockClear();
@@ -641,29 +666,40 @@ describe('attachment', () => {
     expect(screen.getByTestId('attach-btn')).toBeTruthy();
   });
 
-  it('offloads the LLM before opening the attachment sheet', async () => {
+  it('opens the panel without offloading the model or dropping the keyboard', async () => {
     renderBar();
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('attach-btn'));
-    });
-    expect(mockRunWithModelOffloaded).toHaveBeenCalledWith(
-      expect.any(Function),
-      { restore: false }
-    );
-    expect(mockUseAttachment.openSheet).toHaveBeenCalled();
+    await openPanel();
+    expect(screen.getByText('mode:menu')).toBeTruthy();
+    expect(mockRunWithModelOffloaded).not.toHaveBeenCalled();
+    expect(mockUseAttachment.markPanelOpen).toHaveBeenCalled();
   });
 
-  it('shows a toast instead of opening attachments while switching models', () => {
-    renderBar({ modelSwitching: true });
-
-    fireEvent.press(screen.getByTestId('attach-btn'));
-
-    expect(mockUseAttachment.openSheet).not.toHaveBeenCalled();
-    expect(mockRunWithModelOffloaded).not.toHaveBeenCalled();
-    expect(Toast.show).toHaveBeenCalledWith({
-      type: 'defaultToast',
-      text1: 'Wait for the model to finish loading.',
+  it('keeps the model loaded when the photo sheet opens', async () => {
+    renderBar({ isVisionModel: true });
+    await openPanel();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('menu-photos'));
     });
+    expect(screen.getByText('mode:photos')).toBeTruthy();
+    expect(mockRunWithModelOffloaded).not.toHaveBeenCalled();
+  });
+
+  it('sends the Files row to the document picker', async () => {
+    renderBar();
+    await openPanel();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('menu-files'));
+    });
+    expect(mockUseAttachment.pickDocument).toHaveBeenCalled();
+  });
+
+  it('opens the panel while a model is still loading', async () => {
+    renderBar({ modelSwitching: true });
+    await openPanel();
+
+    expect(screen.getByText('mode:menu')).toBeTruthy();
+    expect(mockRunWithModelOffloaded).not.toHaveBeenCalled();
+    expect(Toast.show).not.toHaveBeenCalled();
   });
 
   it('renders attachment thumbnails when attachments exist', () => {
@@ -725,19 +761,54 @@ describe('attachment', () => {
     ]);
   });
 
-  it('forwards isVisionModel=true and renders image options in AttachmentSheet', () => {
+  it('forwards isVisionModel=true to the panel', () => {
     renderBar({ isVisionModel: true });
     expect(screen.getByText('vision:true')).toBeTruthy();
-    expect(screen.getByTestId('pick-library-btn')).toBeTruthy();
-    expect(screen.getByTestId('pick-camera-btn')).toBeTruthy();
   });
 
-  it('keeps image options visible and forwards isVisionModel=false for non-vision models', () => {
+  it('forwards isVisionModel=false and blocks the image rows', async () => {
     renderBar({ isVisionModel: false });
     expect(screen.getByText('vision:false')).toBeTruthy();
-    expect(screen.getByTestId('pick-library-btn')).toBeTruthy();
-    expect(screen.getByTestId('pick-camera-btn')).toBeTruthy();
-    expect(screen.getByTestId('pick-document-btn')).toBeTruthy();
+
+    await openPanel();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('menu-photos'));
+    });
+
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'This model does not support images',
+    });
+    expect(screen.getByText('mode:closed')).toBeTruthy();
+  });
+
+  it('marks the Files row busy until the picker call comes back', async () => {
+    let release!: () => void;
+    mockUseAttachment.pickDocument.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          release = () => resolve();
+        })
+    );
+
+    renderBar({ isVisionModel: true });
+    await openPanel();
+    expect(screen.getByText('busy:none')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('menu-files'));
+    });
+    expect(screen.getByText('busy:files')).toBeTruthy();
+
+    await act(async () => {
+      release();
+    });
+    expect(screen.getByText('busy:none')).toBeTruthy();
+  });
+
+  it('caps the grid selection at the single image the send path carries', () => {
+    renderBar({ isVisionModel: true });
+    expect(screen.getByText('max:1')).toBeTruthy();
   });
 });
 
@@ -1068,5 +1139,39 @@ describe('a refused send', () => {
       type: 'defaultToast',
       text1: 'Wait for the response to finish or stop it first.',
     });
+  });
+
+  it('says which of the five reasons it was, not always the busy one', async () => {
+    const onSend = jest.fn(async () => 'model-loading' as const);
+    renderBar({ onSend });
+    const input = screen.getByPlaceholderText('Ask about anything...');
+    fireEvent.changeText(input, 'Hello');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('send-btn'));
+    });
+
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the model to finish loading.',
+    });
+  });
+
+  it('hands the attachment back rather than dropping it on the floor', async () => {
+    const image: Attachment = {
+      id: 'img-1',
+      type: 'image',
+      uri: 'file://photo.jpg',
+      status: 'ready',
+    };
+    mockUseAttachment.attachments = [image];
+    const onSend = jest.fn(async () => 'busy' as const);
+    renderBar({ onSend, isVisionModel: true });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('send-btn'));
+    });
+
+    expect(mockUseAttachment.restoreAttachments).toHaveBeenCalledWith([image]);
   });
 });

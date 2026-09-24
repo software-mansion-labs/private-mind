@@ -4,14 +4,14 @@ import {
   BottomSheetView,
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import EditIcon from '../../assets/icons/edit.svg';
 import UploadIcon from '../../assets/icons/upload.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
-import { SvgComponent } from '../../utils/SvgComponent';
+import MenuRow from '../menu/MenuRow';
 import { Feedback } from '../../utils/Feedback';
 
 interface Props {
@@ -22,35 +22,6 @@ interface Props {
   onDelete: () => void;
   onDismiss?: () => void;
 }
-
-interface OptionProps {
-  icon: SvgComponent;
-  iconColor: string;
-  label: string;
-  labelColor?: string;
-  onPress: () => void;
-  styles: ReturnType<typeof createStyles>;
-}
-
-const MenuOption = ({
-  icon: Icon,
-  iconColor,
-  label,
-  labelColor,
-  onPress,
-  styles,
-}: OptionProps) => (
-  <TouchableOpacity style={styles.option} onPress={onPress}>
-    <View style={styles.iconWrapper}>
-      <Icon width={24} height={24} style={{ color: iconColor }} />
-    </View>
-    <Text
-      style={[styles.optionText, labelColor ? { color: labelColor } : null]}
-    >
-      {label}
-    </Text>
-  </TouchableOpacity>
-);
 
 const ChatTitleMenuSheet = ({
   bottomSheetModalRef,
@@ -89,30 +60,24 @@ const ChatTitleMenuSheet = ({
         <Text numberOfLines={1} style={styles.title} testID="chat-menu-title">
           {title}
         </Text>
-        <MenuOption
+        <MenuRow
           icon={EditIcon}
-          iconColor={theme.text.primary}
           label="Rename"
           onPress={() => handleOption(onRename)}
-          styles={styles}
         />
-        <MenuOption
+        <MenuRow
           icon={UploadIcon}
-          iconColor={theme.text.primary}
           label="Export Chat"
           onPress={() => handleOption(onExport)}
-          styles={styles}
         />
-        <MenuOption
+        <MenuRow
           icon={TrashIcon}
-          iconColor={theme.text.error}
           label="Delete Chat"
-          labelColor={theme.text.error}
+          destructive
           onPress={() => {
             Feedback.destructive();
             handleOption(onDelete);
           }}
-          styles={styles}
         />
       </BottomSheetView>
     </BottomSheetModal>
@@ -135,27 +100,5 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.sm,
       color: theme.text.defaultTertiary,
-    },
-    option: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 16,
-      paddingHorizontal: 8,
-      gap: 16,
-      borderRadius: 12,
-    },
-    iconWrapper: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
-      backgroundColor: theme.bg.softSecondary,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    optionText: {
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
-      fontFamily: fontFamily.medium,
-      color: theme.text.primary,
     },
   });
