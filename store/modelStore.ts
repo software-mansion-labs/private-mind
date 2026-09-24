@@ -281,9 +281,17 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       finished: false,
       settled: Promise.resolve(),
     };
-    attempt.settled = (previous?.settled ?? Promise.resolve()).then(() =>
-      runDownload(model, attempt)
-    );
+    attempt.settled = (previous?.settled ?? Promise.resolve())
+      .then(() => runDownload(model, attempt))
+      .catch((err) => {
+        recordDownloadEvent(
+          model.id,
+          model.modelName,
+          'failed',
+          describeDownloadError(err)
+        );
+        console.error('Download attempt crashed:', err);
+      });
     attempts.set(model.id, attempt);
     set((state) => ({
       downloadStates: {
