@@ -2,11 +2,12 @@ import {
   floorIsOffscreen,
   floorIsOutgrown,
   pinFloorFor,
-  pinLandingFrom,
+  pinLandedShort,
+  pinTargetReachable,
+  atListEnd,
   pinReleaseTarget,
 } from '../components/chat-screen/pinScroll';
 import {
-  MESSAGE_PIN_LANDING_PX,
   MESSAGE_PIN_OFFSET,
 } from '../constants/chat-screen';
 
@@ -35,33 +36,6 @@ describe('pinFloorFor', () => {
 
   it('reserves nothing once the question alone fills the viewport', () => {
     expect(pinFloorFor({ ...geometry, userHeight: 900 })).toBe(0);
-  });
-});
-
-describe('pinLandingFrom', () => {
-  it('jumps to the landing distance and animates the rest', () => {
-    expect(pinLandingFrom(0, 1000)).toEqual({
-      jumpTo: 1000 - MESSAGE_PIN_LANDING_PX,
-      animateTo: 1000,
-    });
-  });
-
-  it('only animates when the list is already within the landing distance', () => {
-    expect(pinLandingFrom(980, 1000)).toEqual({
-      jumpTo: null,
-      animateTo: 1000,
-    });
-  });
-
-  it('only animates when the pin is closer to the top than the landing distance', () => {
-    expect(pinLandingFrom(0, 40)).toEqual({ jumpTo: null, animateTo: 40 });
-  });
-
-  it('animates back down when the list sits past the pin', () => {
-    expect(pinLandingFrom(1200, 1000)).toEqual({
-      jumpTo: null,
-      animateTo: 1000,
-    });
   });
 });
 
@@ -117,5 +91,80 @@ describe('floorIsOutgrown', () => {
 
   it('never reports a row without a floor as outgrown', () => {
     expect(floorIsOutgrown(0, 300)).toBe(false);
+  });
+});
+
+describe('pinLandedShort', () => {
+  it('accepts a landing that stopped a pixel or two under the mark', () => {
+    expect(pinLandedShort(798, 800)).toBe(false);
+  });
+
+  it('reports a question left halfway up the screen', () => {
+    expect(pinLandedShort(400, 800)).toBe(true);
+  });
+
+  it('accepts a landing that went past the mark', () => {
+    expect(pinLandedShort(840, 800)).toBe(false);
+  });
+});
+
+describe('pinTargetReachable', () => {
+  it('holds once the list can scroll as far as the mark', () => {
+    expect(
+      pinTargetReachable({
+        contentHeight: 1800,
+        layoutHeight: 800,
+        target: 900,
+      })
+    ).toBe(true);
+  });
+
+  it('fails while the reserved space below the question has not rendered', () => {
+    expect(
+      pinTargetReachable({
+        contentHeight: 1200,
+        layoutHeight: 800,
+        target: 900,
+      })
+    ).toBe(false);
+  });
+
+  it('does not stall on the last pixel of slack', () => {
+    expect(
+      pinTargetReachable({
+        contentHeight: 1699,
+        layoutHeight: 800,
+        target: 900,
+      })
+    ).toBe(true);
+  });
+});
+
+describe('atListEnd', () => {
+  const base = {
+    offset: 0,
+    contentHeight: 2000,
+    layoutHeight: 800,
+    floorTarget: null,
+  };
+
+  it('is false when the list really does continue below the fold', () => {
+    expect(atListEnd(base)).toBe(false);
+  });
+
+  it('is true once the remaining travel is within a screenful of slack', () => {
+    expect(atListEnd({ ...base, offset: 1150 })).toBe(true);
+  });
+
+  it('counts the space reserved under a sent question as the end', () => {
+    expect(atListEnd({ ...base, offset: 900, floorTarget: 900 })).toBe(true);
+  });
+
+  it('still reports more to come above that reserved space', () => {
+    expect(atListEnd({ ...base, offset: 400, floorTarget: 900 })).toBe(false);
+  });
+
+  it('never offers to scroll down while the send is still landing', () => {
+    expect(atListEnd({ ...base, pinInFlight: true })).toBe(true);
   });
 });
