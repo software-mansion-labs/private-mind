@@ -16,6 +16,12 @@ import CloseIcon from '../assets/icons/close.svg';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { openAppSettings } from '../utils/openAppSettings';
 
+const NAV_HEADER_HEIGHT = Platform.OS === 'ios' ? 44 : 56;
+const TOAST_HEADER_GAP = 8;
+
+export const toastTopOffset = (safeAreaTop: number) =>
+  safeAreaTop + NAV_HEADER_HEIGHT + TOAST_HEADER_GAP;
+
 const AppToast: React.FC = () => {
   const { styles } = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -49,7 +55,9 @@ const AppToast: React.FC = () => {
   };
 
   const renderToast = () => {
-    return <Toast config={toastConfig} topOffset={insets.top + 16} />;
+    return (
+      <Toast config={toastConfig} topOffset={toastTopOffset(insets.top)} />
+    );
   };
 
   if (Platform.OS === 'ios') {
