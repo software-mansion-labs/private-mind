@@ -449,7 +449,6 @@ const Messages = ({
     if (!scrollView) return;
     pinLandedSinceKeyboardShow.current = true;
     scrollView.scrollTo({ y: pinOffset.current, animated: false });
-    lastScrollOffset.current = pinOffset.current;
   }, []);
 
   // The end of the content is inside the space reserved under the
@@ -464,7 +463,7 @@ const Messages = ({
   // so a scroll placed during that window can be left pointing at padding
   // rather than at the question.
   const repinAfterFreeze = useCallback(() => {
-    if (pinActive.current || pendingPinRef.current) return;
+    if (pendingPinRef.current || pinPlacementPendingRef.current) return;
     if (!pinStillHolds()) return;
     placePin();
   }, [pinStillHolds, placePin]);
@@ -629,7 +628,6 @@ const Messages = ({
     ) {
       return;
     }
-    pinPlacementPendingRef.current = false;
     placePin();
   }, [placePin]);
 
@@ -637,8 +635,7 @@ const Messages = ({
     if (!pinAnchor || !pinPlacementPendingRef.current) return;
     pinHoldRef.current = true;
     placePin();
-    tryPlacePin();
-  }, [pinAnchor, placePin, tryPlacePin]);
+  }, [pinAnchor, placePin]);
 
   const pinReleaseRef = useRef(false);
   useEffect(() => clearPinLanding, [clearPinLanding]);
@@ -784,7 +781,11 @@ const Messages = ({
       lastScrollOffset.current = contentOffset.y;
       lastLayoutHeight.current = layoutMeasurement.height;
       contentHeight.current = contentSize.height;
-      tryPlacePin();
+      if (pinLandedShort(contentOffset.y, pinOffset.current)) {
+        tryPlacePin();
+      } else {
+        pinPlacementPendingRef.current = false;
+      }
       const bottomInset = contentInset?.bottom ?? 0;
       const atBottom = atListEnd({
         offset: contentOffset.y,
@@ -810,13 +811,14 @@ const Messages = ({
 
   const scrollToBottom = useCallback(() => {
     closeUserActionMenu();
+    clearPinLanding();
     if (!pinActive.current && pinAnchor && !Keyboard.isVisible()) {
       pinReleaseRef.current = true;
       scrollRef.current?.scrollTo({ y: releaseTarget(), animated: true });
       return;
     }
     scrollRef.current?.scrollToEnd({ animated: true });
-  }, [closeUserActionMenu, pinAnchor, releaseTarget]);
+  }, [clearPinLanding, closeUserActionMenu, pinAnchor, releaseTarget]);
 
   const handleCopyMessage = useCallback(
     async (message: Message) => {
