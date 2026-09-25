@@ -6,6 +6,11 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { startPhantomChat } from '../utils/startPhantomChat';
 import { useChatStore } from '../store/chatStore';
+import { useTurnInFlight } from '../hooks/useTurnInFlight';
+import { useSteadyFlag } from '../hooks/useSteadyFlag';
+import { showTurnInFlightNotice } from '../utils/turnInFlightNotice';
+import { TURN_IN_FLIGHT_HOLD_MS } from '../constants/header-actions';
+import HeaderActionIcon from './HeaderActionIcon';
 
 interface Props {
   noOp?: boolean;
@@ -13,9 +18,16 @@ interface Props {
 
 const NewChatHeaderButton = ({ noOp = false }: Props) => {
   const db = useSQLiteContext();
-  const { styles } = useThemedStyles(createStyles);
+  const { styles, theme } = useThemedStyles(createStyles);
+
+  const turnInFlight = useTurnInFlight();
+  const looksBusy = useSteadyFlag(turnInFlight, TURN_IN_FLIGHT_HOLD_MS);
 
   const handlePress = () => {
+    if (turnInFlight) {
+      showTurnInFlightNotice();
+      return;
+    }
     if (noOp) {
       useChatStore.getState().startBlankChat();
       return;
@@ -24,22 +36,30 @@ const NewChatHeaderButton = ({ noOp = false }: Props) => {
   };
 
   return (
-    <TouchableOpacity onPress={handlePress} style={styles.button} hitSlop={15}>
-      <ChatIcon width={20} height={20} style={styles.icon} />
+    <TouchableOpacity
+      onPress={handlePress}
+      style={styles.button}
+      hitSlop={15}
+      testID="new-chat-header-button"
+    >
+      <HeaderActionIcon
+        icon={ChatIcon}
+        width={20}
+        height={20}
+        color={theme.text.primary}
+        dimmed={looksBusy}
+      />
     </TouchableOpacity>
   );
 };
 
 export default NewChatHeaderButton;
 
-const createStyles = (theme: Theme) =>
+const createStyles = (_theme: Theme) =>
   StyleSheet.create({
     button: {
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: 16,
-    },
-    icon: {
-      color: theme.text.primary,
     },
   });

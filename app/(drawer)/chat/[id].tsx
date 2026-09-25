@@ -1,6 +1,5 @@
 import React, { useCallback, useRef } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { BackHandler } from 'react-native';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
 import { useState } from 'react';
 import { useLLMStore } from '../../../store/llmStore';
@@ -8,6 +7,7 @@ import { useModelStore } from '../../../store/modelStore';
 import { Model } from '../../../database/modelRepository';
 import { useChatStore } from '../../../store/chatStore';
 import useChatHeader from '../../../hooks/useChatHeader';
+import { useChatBackGuard } from '../../../hooks/useChatBackGuard';
 import {
   CHAT_ENTRY_ANIMATION,
   ChatEntryAnimation,
@@ -91,21 +91,7 @@ function ChatScreenInner() {
     }, [chatId, isPhantom])
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!shouldExitOnBack) return;
-
-      const backHandler = BackHandler.addEventListener(
-        'hardwareBackPress',
-        () => {
-          BackHandler.exitApp();
-          return true;
-        }
-      );
-
-      return () => backHandler.remove();
-    }, [shouldExitOnBack])
-  );
+  useChatBackGuard(shouldExitOnBack);
 
   const handleSetModel = async (newModel: Model) => {
     setChatModel(chatId, newModel.id);

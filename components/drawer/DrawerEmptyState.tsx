@@ -9,6 +9,8 @@ import { Theme } from '../../styles/colors';
 import ChatIcon from '../../assets/icons/chat.svg';
 import { DrawerItem } from './DrawerItem';
 import { useIsOnPhantomChat } from './useIsOnPhantomChat';
+import { useTurnInFlight } from '../../hooks/useTurnInFlight';
+import { showTurnInFlightNotice } from '../../utils/turnInFlightNotice';
 
 interface Props {
   onNavigate?: () => void;
@@ -21,8 +23,13 @@ export const DrawerEmptyState = ({ onNavigate }: Props) => {
   const { interrupt } = useLLMStore();
 
   const isOnPhantomChat = useIsOnPhantomChat();
+  const turnInFlight = useTurnInFlight();
 
   const startNewChat = () => {
+    if (turnInFlight) {
+      showTurnInFlightNotice();
+      return;
+    }
     if (isOnPhantomChat) {
       onNavigate?.();
       return;
@@ -41,6 +48,7 @@ export const DrawerEmptyState = ({ onNavigate }: Props) => {
           label="Start new chat"
           testID="drawer-empty-new-chat"
           active={false}
+          dimmed={turnInFlight}
           hugContent
           onPress={startNewChat}
         />
