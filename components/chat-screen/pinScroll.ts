@@ -63,6 +63,19 @@ export const pinReleaseTarget = ({
   return Math.max(0, contentHeight - floorExcess - layoutHeight + extraPadding);
 };
 
+export interface PinReach {
+  contentHeight: number;
+  layoutHeight: number;
+  target: number;
+}
+
+export const pinTargetReachable = ({
+  contentHeight,
+  layoutHeight,
+  target,
+}: PinReach): boolean =>
+  contentHeight - layoutHeight >= target - PIN_READY_SLACK_PX;
+
 export const pinLandedShort = (offset: number, target: number) =>
   target - offset > MESSAGE_PIN_LANDING_SLACK_PX;
 
