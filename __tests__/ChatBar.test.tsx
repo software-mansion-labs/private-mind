@@ -460,17 +460,19 @@ describe('downloaded model — text input', () => {
     expect(textInput().props.value).toBe('again');
   });
 
-  it('keeps the input and shows a toast instead of sending while switching models', () => {
-    const onSend = jest.fn();
+  it('takes a send made while the model is still switching, instead of refusing it', () => {
+    const onSend = jest.fn(() => new Promise<boolean>(() => {}));
     renderBar({ onSend, modelSwitching: true });
     const input = screen.getByPlaceholderText('Ask about anything...');
     fireEvent.changeText(input, 'Keep this message');
 
     fireEvent.press(screen.getByTestId('send-btn'));
 
-    expect(onSend).not.toHaveBeenCalled();
-    expect(input.props.value).toBe('Keep this message');
-    expect(Toast.show).toHaveBeenCalledWith({
+    expect(onSend).toHaveBeenCalledWith('Keep this message', undefined, []);
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('');
+    expect(Toast.show).not.toHaveBeenCalledWith({
       type: 'defaultToast',
       text1: 'Wait for the model to finish loading.',
     });
