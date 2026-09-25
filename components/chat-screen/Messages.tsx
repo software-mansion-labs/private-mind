@@ -144,6 +144,7 @@ interface Props {
 }
 
 interface MessageActionsState {
+  forkDisabled: boolean;
   showActions: boolean;
   showForkAction: boolean;
 }
@@ -419,6 +420,7 @@ const Messages = ({
   const containerHeight = useRef(0);
   const lastUserHeight = useRef(0);
   const lastAssistantHeight = useRef(0);
+  const lastUserTop = useRef(0);
   const lastUserMeasurementKey = useRef<string | null>(null);
   const lastAssistantMeasurementKey = useRef<string | null>(null);
 
@@ -606,14 +608,11 @@ const Messages = ({
 
     pendingPinRef.current = false;
     closeUserActionMenu();
-    const questionTop =
-      contentHeight.current -
-      listPaddingRef.current.bottom -
-      lastAssistantHeight.current -
-      lastUserHeight.current;
+    // The question's own frame is the only reading that does not move
+    // while the answer row below it grows.
     pinOffset.current = Math.max(
       0,
-      questionTop - listPaddingRef.current.top + MESSAGE_PIN_OFFSET
+      lastUserTop.current - listPaddingRef.current.top + MESSAGE_PIN_OFFSET
     );
     pinPlacementPendingRef.current = true;
     setPinAnchor({
@@ -765,6 +764,7 @@ const Messages = ({
     (key: string, e: LayoutChangeEvent) => {
       if (lastUserMeasurementKey.current !== key) return;
       lastUserHeight.current = e.nativeEvent.layout.height;
+      lastUserTop.current = e.nativeEvent.layout.y;
       applyPendingPin();
     },
     [applyPendingPin]
@@ -842,13 +842,15 @@ const Messages = ({
       if (message.role === 'assistant') {
         return {
           showActions: isPersisted && message.content.trim().length > 0,
-          showForkAction: isPersisted && !!onForkMessage && !isGenerating,
+          showForkAction: isPersisted && !!onForkMessage,
+          forkDisabled: isGenerating,
         };
       }
 
       return {
         showActions: false,
         showForkAction: false,
+        forkDisabled: false,
       };
     },
     [isGenerating, onForkMessage]
@@ -1067,7 +1069,7 @@ const Messages = ({
               onLayout = (event) => handleLastAssistantLayout(key, event);
             }
             const branchMarker = latestBranchMarkerByMessageId.get(message.id);
-            const { showActions, showForkAction } =
+            const { showActions, showForkAction, forkDisabled } =
               getMessageActionsState(message);
 
             const item = (
@@ -1091,6 +1093,7 @@ const Messages = ({
                   onShowSources={handleShowSources}
                   showActions={showActions}
                   showForkAction={showForkAction}
+                  forkDisabled={forkDisabled}
                   onCopy={handleCopyMessage}
                   onFork={handleForkMessage}
                 />
