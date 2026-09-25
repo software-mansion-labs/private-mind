@@ -82,14 +82,19 @@ const ChatTitle = ({
       {title !== '' ? (
         <>
           {maxWidth ? (
-            <Text
-              style={[styles.title, styles.measure, { width: maxWidth }]}
-              onTextLayout={handleTitleWrap}
+            <View
+              style={styles.measure}
+              pointerEvents="none"
               accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants"
             >
-              {title}
-            </Text>
+              <Text
+                style={[styles.title, { width: maxWidth }]}
+                onTextLayout={handleTitleWrap}
+              >
+                {title}
+              </Text>
+            </View>
           ) : null}
           <Text numberOfLines={1} style={styles.title}>
             {shownTitle}
