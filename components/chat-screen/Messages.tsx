@@ -49,6 +49,7 @@ import { Feedback } from '../../utils/Feedback';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import BranchMarker from './BranchMarker';
 import StoppedMarker from './StoppedMarker';
+import Toast from 'react-native-toast-message';
 import {
   BOTTOM_FADE_HEIGHT,
   GENERATION_ERROR_MEASUREMENT_KEY,
@@ -843,6 +844,10 @@ const Messages = ({
       if (message.role === 'user') {
         closeUserActionMenu();
       }
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Message copied',
+      });
     },
     [closeUserActionMenu]
   );
