@@ -27,6 +27,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { KeyboardChatScrollView } from 'react-native-keyboard-controller';
 import Reanimated, {
   runOnJS,
+  useAnimatedReaction,
   useSharedValue,
   useAnimatedStyle,
   useDerivedValue,
@@ -457,6 +458,24 @@ const Messages = ({
     []
   );
 
+  // The keyboard's padding is reconciled only once the send freeze lifts,
+  // so a scroll placed during that window can be left pointing at padding
+  // rather than at the question.
+  const repinAfterFreeze = useCallback(() => {
+    if (pinActive.current || pendingPinRef.current) return;
+    if (!pinStillHolds()) return;
+    placePin();
+  }, [pinStillHolds, placePin]);
+
+  useAnimatedReaction(
+    () => sendFrozen.value,
+    (isFrozen, wasFrozen) => {
+      if (!isFrozen && wasFrozen === true) {
+        runOnJS(repinAfterFreeze)();
+      }
+    }
+  );
+
   const landAfterKeyboard = useCallback(() => {
     if (pinActive.current || pendingPinRef.current) {
       if (!pendingPinRef.current && !pinLandedSinceKeyboardShow.current) {
@@ -612,14 +631,15 @@ const Messages = ({
       return;
     }
     pinPlacementPendingRef.current = false;
-    pinHoldRef.current = true;
     placePin();
   }, [placePin]);
 
   useLayoutEffect(() => {
-    if (!pinAnchor) return;
+    if (!pinAnchor || !pinPlacementPendingRef.current) return;
+    pinHoldRef.current = true;
+    placePin();
     tryPlacePin();
-  }, [pinAnchor, tryPlacePin]);
+  }, [pinAnchor, placePin, tryPlacePin]);
 
   const pinReleaseRef = useRef(false);
   useEffect(() => clearPinLanding, [clearPinLanding]);
@@ -764,6 +784,7 @@ const Messages = ({
       lastScrollOffset.current = contentOffset.y;
       lastLayoutHeight.current = layoutMeasurement.height;
       contentHeight.current = contentSize.height;
+      tryPlacePin();
       const bottomInset = contentInset?.bottom ?? 0;
       const atBottom = atListEnd({
         offset: contentOffset.y,
@@ -784,7 +805,7 @@ const Messages = ({
         dropPinFloor();
       }
     },
-    [dropPinFloor, releaseTarget]
+    [dropPinFloor, releaseTarget, tryPlacePin]
   );
 
   const scrollToBottom = useCallback(() => {
@@ -1094,53 +1115,32 @@ const Messages = ({
               message.role === 'user' &&
               message.id > 0;
 
-            if (onLayout) {
-              const rowStyle =
-                index === lastAssistantIndex ? pinFloorStyle : undefined;
-              const measureRow = index === lastUserIndex ? onLayout : undefined;
+            // A row that changes wrapper type is remounted, and every
+            // entering animation inside it plays again. The last turn's
+            // rows gain and lose their measurement props on every send,
+            // so the wrapper stays the same element for all of them.
+            const rowStyle =
+              index === lastAssistantIndex ? pinFloorStyle : undefined;
+            const measureRow = index === lastUserIndex ? onLayout : undefined;
 
-              if (!shouldHandleUserLongPress) {
-                return (
-                  <View
-                    key={key}
-                    style={rowStyle}
-                    onLayout={measureRow}
-                    collapsable={false}
-                  >
-                    {item}
-                  </View>
-                );
-              }
-
-              return (
-                <View
-                  key={key}
-                  style={rowStyle}
-                  onLayout={measureRow}
-                  collapsable={false}
-                >
+            return (
+              <View
+                key={key}
+                style={rowStyle}
+                onLayout={measureRow}
+                collapsable={false}
+              >
+                {shouldHandleUserLongPress ? (
                   <LongPressableMessage
                     messageId={message.id}
                     onLongPress={handleUserLongPress}
                   >
                     {item}
                   </LongPressableMessage>
-                </View>
-              );
-            }
-
-            if (!shouldHandleUserLongPress) {
-              return <React.Fragment key={key}>{item}</React.Fragment>;
-            }
-
-            return (
-              <LongPressableMessage
-                key={key}
-                messageId={message.id}
-                onLongPress={handleUserLongPress}
-              >
-                {item}
-              </LongPressableMessage>
+                ) : (
+                  item
+                )}
+              </View>
             );
           })}
           {generationError && (

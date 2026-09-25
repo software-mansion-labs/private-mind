@@ -159,6 +159,15 @@ const MessageItem = memo(
       hasWebResults: webResults.length > 0,
     });
     const refinedSwap = useRefinedSwap(isRefining);
+    const modelNameEverShown = useRef(false);
+    if (
+      !modelNameEverShown.current &&
+      (content.trim() || isAwaitingFirstToken)
+    ) {
+      modelNameEverShown.current = true;
+    }
+    const modelNameRevealed = modelNameEverShown.current;
+
     const attributionShown = useMemo(() => {
       if (isLastMessage && isGenerating) return false;
       return [contentParts.normalContent, contentParts.normalAfterThink ?? '']
@@ -285,7 +294,7 @@ const MessageItem = memo(
         ) : (
           <View style={styles.aiMessage}>
             <View style={styles.bubbleContent}>
-              {content.trim() || isAwaitingFirstToken ? (
+              {modelNameRevealed ? (
                 <Animated.Text
                   style={styles.modelName}
                   entering={FadeIn.duration(WEB_TRACE_TRANSITION_MS)}
