@@ -56,7 +56,6 @@ import {
   MESSAGE_PIN_OFFSET,
   MESSAGE_PIN_SETTLE_MS,
   navBarInset,
-  PIN_RELEASE_SETTLE_DELAY_MS,
   REVEAL_FALLBACK_MS,
   SCROLL_INDICATOR_GUTTER,
   SEAM_OVERLAP,
@@ -592,20 +591,28 @@ const Messages = ({
     });
   }, [closeUserActionMenu]);
 
-  useLayoutEffect(() => {
-    if (!pinAnchor || !pinPlacementPendingRef.current) return;
+  const tryPlacePin = useCallback(() => {
+    if (!pinPlacementPendingRef.current) return;
+    if (
+      !pinTargetReachable({
+        contentHeight: contentHeight.current,
+        layoutHeight: lastLayoutHeight.current || containerHeight.current,
+        target: pinOffset.current,
+      })
+    ) {
+      return;
+    }
     pinPlacementPendingRef.current = false;
     pinHoldRef.current = true;
     placePin();
-  }, [pinAnchor, placePin]);
+  }, [placePin]);
+
+  useLayoutEffect(() => {
+    if (!pinAnchor) return;
+    tryPlacePin();
+  }, [pinAnchor, tryPlacePin]);
 
   const pinReleaseRef = useRef(false);
-  const releaseSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clearReleaseSettle = useCallback(() => {
-    if (releaseSettleTimer.current) clearTimeout(releaseSettleTimer.current);
-    releaseSettleTimer.current = null;
-  }, []);
-  useEffect(() => clearReleaseSettle, [clearReleaseSettle]);
   useEffect(() => clearPinLanding, [clearPinLanding]);
 
   const releaseTarget = useCallback(
@@ -622,24 +629,10 @@ const Messages = ({
 
   const dropPinFloor = useCallback(() => {
     pinReleaseRef.current = false;
-    clearReleaseSettle();
     clearPinLanding();
     setPinAnchor(null);
     if (Keyboard.isVisible()) setLiftHeldUntilKeyboardHides(true);
-  }, [clearPinLanding, clearReleaseSettle]);
-
-  // The reserved space exists so the question can sit at the top while
-  // its answer streams in. Reaching for the keyboard ends that turn's
-  // claim on it, so the list settles instead of holding a screen of
-  // blank until the next scroll.
-  useEffect(() => {
-    if (!pinAnchor) return;
-    const shown = Keyboard.addListener('keyboardDidShow', () => {
-      if (pinActive.current || pendingPinRef.current) return;
-      dropPinFloor();
-    });
-    return () => shown.remove();
-  }, [pinAnchor, dropPinFloor]);
+  }, [clearPinLanding]);
 
   const dropOutgrownFloor = useCallback(() => {
     if (pinActive.current) return;
@@ -647,16 +640,6 @@ const Messages = ({
       dropPinFloor();
     }
   }, [dropPinFloor]);
-
-  const settlePinRelease = useCallback(() => {
-    if (!pinReleaseRef.current || Keyboard.isVisible()) return;
-    const target = releaseTarget();
-    if (floorIsOffscreen(lastScrollOffset.current, target)) {
-      dropPinFloor();
-      return;
-    }
-    scrollRef.current?.scrollTo({ y: target, animated: true });
-  }, [dropPinFloor, releaseTarget]);
 
   useEffect(() => {
     if (isGenerating || !pinActive.current) return;
@@ -894,28 +877,10 @@ const Messages = ({
     if (keyboardOpenRef.current) {
       userScrolledDuringKeyboard.current = true;
     }
-    clearReleaseSettle();
     if (!pinActive.current && pinAnchor) {
       pinReleaseRef.current = true;
     }
-  }, [clearPinLanding, clearReleaseSettle, pinAnchor]);
-
-  const handleScrollEndDrag = useCallback(() => {
-    if (!pinReleaseRef.current) return;
-    clearReleaseSettle();
-    releaseSettleTimer.current = setTimeout(
-      settlePinRelease,
-      PIN_RELEASE_SETTLE_DELAY_MS
-    );
-  }, [clearReleaseSettle, settlePinRelease]);
-
-  const handleMomentumScrollBegin = useCallback(() => {
-    clearReleaseSettle();
-  }, [clearReleaseSettle]);
-
-  const handleMomentumScrollEnd = useCallback(() => {
-    settlePinRelease();
-  }, [settlePinRelease]);
+  }, [clearPinLanding, pinAnchor]);
 
   const handleForkMessage = useCallback(
     (message: Message) => {
@@ -927,6 +892,7 @@ const Messages = ({
   const handleContentSizeChange = useCallback(
     (_w: number, h: number) => {
       contentHeight.current = h;
+      tryPlacePin();
       if (
         pinHoldRef.current &&
         pinLandedShort(lastScrollOffset.current, pinOffset.current) &&
@@ -983,6 +949,7 @@ const Messages = ({
       placePin,
       releaseTarget,
       scheduleInitialScrollToEnd,
+      tryPlacePin,
     ]
   );
 
@@ -1044,9 +1011,6 @@ const Messages = ({
           onLayout={handleContainerLayout}
           onScroll={handleScroll}
           onScrollBeginDrag={handleScrollBeginDrag}
-          onScrollEndDrag={handleScrollEndDrag}
-          onMomentumScrollBegin={handleMomentumScrollBegin}
-          onMomentumScrollEnd={handleMomentumScrollEnd}
           onTouchStart={handleScrollTouchStart}
           onTouchEnd={handleScrollTouchEnd}
           onContentSizeChange={handleContentSizeChange}
