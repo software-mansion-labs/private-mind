@@ -18,3 +18,16 @@ export const toChatTitle = (source: string) => {
     lastBreak >= WORD_BREAK_FLOOR ? clipped.slice(0, lastBreak) : clipped
   ).trimEnd();
 };
+
+const RENDERED_ELLIPSIS = /(\u2026|\.\.\.)$/;
+
+export const wordSafeLine = (rendered: string): string | null => {
+  const withoutEllipsis = rendered.replace(RENDERED_ELLIPSIS, '');
+  if (withoutEllipsis === rendered) return null;
+
+  const trimmed = withoutEllipsis.trimEnd();
+  const lastBreak = trimmed.lastIndexOf(' ');
+  if (lastBreak <= 0) return null;
+
+  return trimmed.slice(0, lastBreak);
+};

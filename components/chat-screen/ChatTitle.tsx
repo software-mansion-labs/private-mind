@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Text,
   StyleSheet,
@@ -6,11 +6,14 @@ import {
   Pressable,
   ActivityIndicator,
   useWindowDimensions,
+  type NativeSyntheticEvent,
+  type TextLayoutEventData,
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
+import { wordSafeLine } from '../../utils/chatLabel';
 
 interface Props {
   title: string;
@@ -42,6 +45,21 @@ const ChatTitle = ({
     });
   }, [onBottomMeasured]);
 
+  const [shownTitle, setShownTitle] = useState(title);
+  useEffect(() => setShownTitle(title), [title]);
+  const titleAsHandedToRenderer =
+    shownTitle === title ? title : `${shownTitle}\u2026`;
+  const handleTitleLayout = useCallback(
+    (event: NativeSyntheticEvent<TextLayoutEventData>) => {
+      const line = event.nativeEvent.lines[0];
+      if (!line || line.text === titleAsHandedToRenderer) return;
+      const wholeWords = wordSafeLine(line.text);
+      if (wholeWords === null || wholeWords === shownTitle) return;
+      setShownTitle(wholeWords);
+    },
+    [titleAsHandedToRenderer, shownTitle]
+  );
+
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   useEffect(() => {
     if (!onBottomMeasured) return;
@@ -63,8 +81,12 @@ const ChatTitle = ({
     >
       {title !== '' ? (
         <>
-          <Text numberOfLines={1} style={styles.title}>
-            {title}
+          <Text
+            numberOfLines={1}
+            style={styles.title}
+            onTextLayout={handleTitleLayout}
+          >
+            {titleAsHandedToRenderer}
           </Text>
           <View style={styles.modelRow}>
             <Text style={styles.modelName}>{modelName}</Text>
