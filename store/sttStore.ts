@@ -6,7 +6,11 @@ export interface STTStore {
   isReady: boolean;
   isLoading: boolean;
   loadProgress: number;
+  streamOpen: boolean;
   ensureLoaded: () => Promise<void>;
+  markStreamOpen: () => void;
+  markStreamClosed: () => void;
+  discardModule: () => void;
 }
 
 export const useSTTStore = create<STTStore>((set, get) => {
@@ -17,6 +21,18 @@ export const useSTTStore = create<STTStore>((set, get) => {
     isReady: false,
     isLoading: false,
     loadProgress: 0,
+    streamOpen: false,
+
+    markStreamOpen: () => set({ streamOpen: true }),
+    markStreamClosed: () => set({ streamOpen: false }),
+    discardModule: () =>
+      set({
+        module: null,
+        isReady: false,
+        isLoading: false,
+        loadProgress: 0,
+        streamOpen: false,
+      }),
 
     ensureLoaded: async () => {
       if (get().isReady) return;
