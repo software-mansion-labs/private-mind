@@ -32,8 +32,6 @@ export const MESSAGE_PIN_LANDING_SLACK_PX = 4;
 
 export const SCROLL_BUTTON_END_SLACK_PX = 100;
 
-export const PIN_RELEASE_SETTLE_DELAY_MS = 50;
-
 export const PIN_FREEZE_FALLBACK_MS = 1000;
 
 export const HEADER_BUTTON_SLOT_PX = 36;
