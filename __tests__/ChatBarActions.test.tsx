@@ -266,6 +266,16 @@ describe('action button', () => {
     expect(defaultProps.onSend).toHaveBeenCalled();
   });
 
+  it('leaves the stop button live when a send was still pending (#380)', () => {
+    renderActions({ isGenerating: true, sendPending: true });
+
+    const stop = screen.getByTestId('stop-btn');
+    expect(stop.props.accessibilityState.busy).toBe(false);
+    expect(stop.props.accessibilityState.disabled).toBe(false);
+    fireEvent.press(stop);
+    expect(defaultProps.onInterrupt).toHaveBeenCalled();
+  });
+
   it('calls onInterrupt when isGenerating', () => {
     renderActions({ isGenerating: true });
     fireEvent.press(screen.getByTestId('stop-btn'));

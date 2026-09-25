@@ -143,8 +143,8 @@ const ChatBarActions = ({
         <ComposerActionButton
           action={action}
           onPress={handlePress}
-          busy={sendPending}
-          disabled={sendPending || (action === 'send' && isLoadingAttachment)}
+          busy={action === 'send' && sendPending}
+          disabled={action === 'send' && (sendPending || isLoadingAttachment)}
           dimmed={action === 'speech' && modelBusy}
           testID={testID}
         />
