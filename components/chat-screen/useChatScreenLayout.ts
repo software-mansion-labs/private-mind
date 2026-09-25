@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import {
+  Easing,
+  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -12,7 +14,8 @@ import {
 } from '../../constants/chat-screen';
 import type { UserMessageActionMenuState } from './Messages';
 import {
-  GRADIENT_FADE_MS,
+  GRADIENT_ENTER_MS,
+  GRADIENT_EXIT_MS,
   carriedGradientProgress,
   startGradientRun,
 } from './gradientHandoff';
@@ -25,6 +28,8 @@ interface UseChatScreenLayoutOptions {
 }
 
 const GRADIENT_UNMOUNT_SLACK_MS = 100;
+const GRADIENT_DRIFT_PX = 28;
+const GRADIENT_ENTER_SCALE = 1.05;
 
 export const useChatScreenLayout = ({
   isEmpty,
@@ -36,7 +41,7 @@ export const useChatScreenLayout = ({
   const [rootFrame, setRootFrame] = useState({ x: 0, y: 0, height: 0 });
   const [userActionMenu, setUserActionMenu] =
     useState<UserMessageActionMenuState>({ isOpen: false });
-  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
 
   const handleRootLayout = useCallback(() => {
     rootRef.current?.measureInWindow((x, y, _width, height) => {
@@ -56,22 +61,43 @@ export const useChatScreenLayout = ({
     isEmpty || initialGradientProgress > 0
   );
   useEffect(() => {
-    const target = isEmpty ? 1 : 0;
-    startGradientRun(target);
-    gradientProgress.set(withTiming(target, { duration: GRADIENT_FADE_MS }));
+    startGradientRun(isEmpty ? 1 : 0);
+    gradientProgress.set(
+      isEmpty
+        ? withTiming(1, {
+            duration: GRADIENT_ENTER_MS,
+            easing: Easing.out(Easing.cubic),
+          })
+        : withTiming(0, {
+            duration: GRADIENT_EXIT_MS,
+            easing: Easing.in(Easing.cubic),
+          })
+    );
     if (isEmpty) {
       setShowGradient(true);
       return;
     }
     const timer = setTimeout(
       () => setShowGradient(false),
-      GRADIENT_FADE_MS + GRADIENT_UNMOUNT_SLACK_MS
+      GRADIENT_EXIT_MS + GRADIENT_UNMOUNT_SLACK_MS
     );
     return () => clearTimeout(timer);
   }, [isEmpty, gradientProgress]);
   const gradientStyle = useAnimatedStyle(() => ({
     opacity: gradientProgress.get(),
-    transform: [{ translateY: (1 - gradientProgress.get()) * windowHeight }],
+    transform: [
+      { translateY: (1 - gradientProgress.get()) * GRADIENT_DRIFT_PX },
+      {
+        scale: interpolate(
+          gradientProgress.get(),
+          [0, 1],
+          [GRADIENT_ENTER_SCALE, 1]
+        ),
+      },
+    ],
+  }));
+  const topFadeStyle = useAnimatedStyle(() => ({
+    opacity: gradientProgress.get(),
   }));
 
   const userActionMenuPosition = useMemo(() => {
@@ -116,6 +142,7 @@ export const useChatScreenLayout = ({
     setUserActionMenu,
     userActionMenuPosition,
     gradientStyle,
+    topFadeStyle,
     showGradient,
     fadeBottom,
     topFadeAnchor,

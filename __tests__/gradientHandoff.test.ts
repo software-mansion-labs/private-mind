@@ -1,5 +1,6 @@
 import {
-  GRADIENT_FADE_MS,
+  GRADIENT_ENTER_MS,
+  GRADIENT_EXIT_MS,
   carriedGradientProgress,
   forgetGradientRuns,
   startGradientRun,
@@ -17,39 +18,51 @@ describe('gradient hand-off across chat screen remounts', () => {
 
   it('hands a finished run over as its end value', () => {
     startGradientRun(1, T0);
-    expect(carriedGradientProgress(0, T0 + GRADIENT_FADE_MS)).toBe(1);
+    expect(carriedGradientProgress(0, T0 + GRADIENT_ENTER_MS)).toBe(1);
     expect(carriedGradientProgress(0, T0 + 60_000)).toBe(1);
   });
 
   it('lets a remount mid-fade pick up where the previous screen was', () => {
     startGradientRun(1, T0);
-    startGradientRun(0, T0 + GRADIENT_FADE_MS);
-    const midway = carriedGradientProgress(1, T0 + GRADIENT_FADE_MS * 1.5);
-    expect(midway).toBeCloseTo(0.5, 5);
+    startGradientRun(0, T0 + GRADIENT_ENTER_MS);
+    const midway = carriedGradientProgress(
+      1,
+      T0 + GRADIENT_ENTER_MS + GRADIENT_EXIT_MS / 2
+    );
+
+    expect(midway).toBeGreaterThan(0);
+    expect(midway).toBeLessThan(1);
   });
 
-  it('eases in and out the way withTiming does by default', () => {
+  it('arrives on the eased-out curve the screen animates with', () => {
     startGradientRun(0, T0 - 60_000);
     startGradientRun(1, T0);
-    expect(carriedGradientProgress(0, T0 + GRADIENT_FADE_MS / 4)).toBeCloseTo(
-      0.125,
+
+    expect(carriedGradientProgress(0, T0 + GRADIENT_ENTER_MS / 4)).toBeCloseTo(
+      1 - 0.75 ** 3,
       5
     );
     expect(
-      carriedGradientProgress(0, T0 + (GRADIENT_FADE_MS * 3) / 4)
-    ).toBeCloseTo(0.875, 5);
+      carriedGradientProgress(0, T0 + (GRADIENT_ENTER_MS * 3) / 4)
+    ).toBeCloseTo(1 - 0.25 ** 3, 5);
+  });
+
+  it('leaves faster than it arrives', () => {
+    expect(GRADIENT_EXIT_MS).toBeLessThan(GRADIENT_ENTER_MS);
   });
 
   it('reverses from the current value rather than from the far end', () => {
     startGradientRun(0, T0 - 60_000);
     startGradientRun(1, T0);
-    startGradientRun(0, T0 + GRADIENT_FADE_MS / 2);
-    expect(carriedGradientProgress(1, T0 + GRADIENT_FADE_MS / 2)).toBeCloseTo(
-      0.5,
+    const atReversal = carriedGradientProgress(1, T0 + GRADIENT_ENTER_MS / 2);
+    startGradientRun(0, T0 + GRADIENT_ENTER_MS / 2);
+
+    expect(carriedGradientProgress(1, T0 + GRADIENT_ENTER_MS / 2)).toBeCloseTo(
+      atReversal,
       5
     );
     expect(
-      carriedGradientProgress(1, T0 + GRADIENT_FADE_MS / 2 + GRADIENT_FADE_MS)
+      carriedGradientProgress(1, T0 + GRADIENT_ENTER_MS / 2 + GRADIENT_EXIT_MS)
     ).toBe(0);
   });
 

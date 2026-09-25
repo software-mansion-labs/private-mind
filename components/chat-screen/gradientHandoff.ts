@@ -1,4 +1,5 @@
-export const GRADIENT_FADE_MS = 900;
+export const GRADIENT_ENTER_MS = 520;
+export const GRADIENT_EXIT_MS = 320;
 
 type GradientRun = {
   readonly from: number;
@@ -8,15 +9,22 @@ type GradientRun = {
 
 let lastRun: GradientRun | null = null;
 
-const easeInOutQuad = (t: number): number =>
-  t < 0.5 ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t);
+const isArriving = (run: { from: number; to: number }) => run.to > run.from;
+
+const easeOutCubic = (t: number): number => 1 - (1 - t) ** 3;
+
+const easeInCubic = (t: number): number => t ** 3;
+
+export const gradientDurationMs = (run: { from: number; to: number }) =>
+  isArriving(run) ? GRADIENT_ENTER_MS : GRADIENT_EXIT_MS;
 
 const progressOf = (run: GradientRun, now: number): number => {
   const elapsed = Math.min(
     1,
-    Math.max(0, (now - run.startedAt) / GRADIENT_FADE_MS)
+    Math.max(0, (now - run.startedAt) / gradientDurationMs(run))
   );
-  return run.from + (run.to - run.from) * easeInOutQuad(elapsed);
+  const eased = isArriving(run) ? easeOutCubic(elapsed) : easeInCubic(elapsed);
+  return run.from + (run.to - run.from) * eased;
 };
 
 export const carriedGradientProgress = (
