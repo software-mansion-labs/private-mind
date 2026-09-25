@@ -19,6 +19,8 @@ import ModelsIcon from '../../assets/icons/models.svg';
 import SettingsIcon from '../../assets/icons/settings.svg';
 import { DrawerItem } from './DrawerItem';
 import { useIsOnPhantomChat } from './useIsOnPhantomChat';
+import { useTurnInFlight } from '../../hooks/useTurnInFlight';
+import { showTurnInFlightNotice } from '../../utils/turnInFlightNotice';
 import {
   NAV_COLLAPSE_DURATION,
   SECTION_GAP,
@@ -48,6 +50,7 @@ export const DrawerNavSection = ({
   const interrupt = useLLMStore((state) => state.interrupt);
 
   const isOnPhantomChat = useIsOnPhantomChat();
+  const turnInFlight = useTurnInFlight();
 
   const [rendered, setRendered] = useState(!collapsed);
   const progress = useSharedValue(collapsed ? 0 : 1);
@@ -114,7 +117,12 @@ export const DrawerNavSection = ({
           label="New chat"
           testID="drawer-new-chat"
           active={pathname === '/' || isOnPhantomChat}
+          dimmed={turnInFlight}
           onPress={() => {
+            if (turnInFlight) {
+              showTurnInFlightNotice();
+              return;
+            }
             if (isOnPhantomChat) {
               onNavigate?.();
               return;

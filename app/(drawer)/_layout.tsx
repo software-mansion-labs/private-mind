@@ -7,10 +7,12 @@ import { getDrawerWidth } from '../../constants/drawer-layout';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import WebScrapeSheet from '../../components/bottomSheets/WebScrapeSheet';
 import { WEB_SEARCH_ENABLED } from '../../constants/web';
+import { useTurnInFlight } from '../../hooks/useTurnInFlight';
 
 const DrawerLayout = () => {
   const { width } = useWindowDimensions();
   const { theme } = useTheme();
+  const turnInFlight = useTurnInFlight();
 
   return (
     <>
@@ -18,6 +20,7 @@ const DrawerLayout = () => {
         drawerContent={(props) => <CustomDrawer {...props} />}
         screenOptions={{
           overlayColor: theme.bg.overlay,
+          swipeEnabled: !turnInFlight,
           swipeEdgeWidth: width,
           drawerStyle: { width: getDrawerWidth(width) },
           drawerType: 'slide',
