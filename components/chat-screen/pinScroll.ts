@@ -1,5 +1,5 @@
 import {
-  MESSAGE_PIN_LANDING_PX,
+  SCROLL_BUTTON_END_SLACK_PX,
   MESSAGE_PIN_LANDING_SLACK_PX,
   MESSAGE_PIN_OFFSET,
   PIN_READY_SLACK_PX,
@@ -26,23 +26,6 @@ export const pinFloorFor = ({
       userHeight -
       listBottomPadding
   );
-
-export interface PinLanding {
-  jumpTo: number | null;
-  animateTo: number;
-}
-
-export const pinLandingFrom = (
-  current: number,
-  target: number,
-  landing = MESSAGE_PIN_LANDING_PX
-): PinLanding => {
-  const approach = Math.max(0, target - landing);
-  return {
-    jumpTo: current < approach ? approach : null,
-    animateTo: target,
-  };
-};
 
 export interface PinReleaseGeometry {
   contentHeight: number;
@@ -84,3 +67,30 @@ export const floorIsOffscreen = (offset: number, releaseTarget: number) =>
 
 export const floorIsOutgrown = (floor: number, rowHeight: number) =>
   floor > 0 && rowHeight >= floor;
+
+export interface ListEnd {
+  offset: number;
+  contentHeight: number;
+  layoutHeight: number;
+  bottomInset?: number;
+  floorTarget: number | null;
+  pinInFlight?: boolean;
+}
+
+export const atListEnd = ({
+  offset,
+  contentHeight,
+  layoutHeight,
+  bottomInset = 0,
+  floorTarget,
+  pinInFlight = false,
+}: ListEnd): boolean => {
+  if (pinInFlight) return true;
+  if (floorTarget !== null && offset >= floorTarget - PIN_READY_SLACK_PX) {
+    return true;
+  }
+  return (
+    contentHeight + bottomInset - (offset + layoutHeight) <
+    SCROLL_BUTTON_END_SLACK_PX
+  );
+};
