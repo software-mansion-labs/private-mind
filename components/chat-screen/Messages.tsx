@@ -56,7 +56,6 @@ import {
   MESSAGE_PIN_OFFSET,
   MESSAGE_PIN_SETTLE_MS,
   navBarInset,
-  PIN_READY_SLACK_PX,
   PIN_RELEASE_SETTLE_DELAY_MS,
   REVEAL_FALLBACK_MS,
   SCROLL_INDICATOR_GUTTER,
@@ -72,6 +71,7 @@ import {
   floorIsOutgrown,
   pinFloorFor,
   pinLandedShort,
+  pinTargetReachable,
   pinLandingFrom,
   pinReleaseTarget,
 } from './pinScroll';
@@ -616,8 +616,11 @@ const Messages = ({
       userHeight: lastUserHeight.current,
     });
     if (
-      contentHeight.current >=
-      pinOffset.current + containerHeight.current - PIN_READY_SLACK_PX
+      pinTargetReachable({
+        contentHeight: contentHeight.current,
+        layoutHeight: lastLayoutHeight.current || containerHeight.current,
+        target: pinOffset.current,
+      })
     ) {
       scrollToPin();
       return;
@@ -945,7 +948,11 @@ const Messages = ({
       contentHeight.current = h;
       if (
         pinScrollPendingRef.current &&
-        h >= pinOffset.current + containerHeight.current - PIN_READY_SLACK_PX
+        pinTargetReachable({
+          contentHeight: h,
+          layoutHeight: lastLayoutHeight.current || containerHeight.current,
+          target: pinOffset.current,
+        })
       ) {
         pinScrollPendingRef.current = false;
         scrollToPin();

@@ -3,6 +3,7 @@ import {
   floorIsOutgrown,
   pinFloorFor,
   pinLandedShort,
+  pinTargetReachable,
   pinLandingFrom,
   pinReleaseTarget,
 } from '../components/chat-screen/pinScroll';
@@ -132,5 +133,37 @@ describe('pinLandedShort', () => {
 
   it('accepts a landing that went past the mark', () => {
     expect(pinLandedShort(840, 800)).toBe(false);
+  });
+});
+
+describe('pinTargetReachable', () => {
+  it('holds once the list can scroll as far as the mark', () => {
+    expect(
+      pinTargetReachable({
+        contentHeight: 1800,
+        layoutHeight: 800,
+        target: 900,
+      })
+    ).toBe(true);
+  });
+
+  it('fails while the reserved space below the question has not rendered', () => {
+    expect(
+      pinTargetReachable({
+        contentHeight: 1200,
+        layoutHeight: 800,
+        target: 900,
+      })
+    ).toBe(false);
+  });
+
+  it('does not stall on the last pixel of slack', () => {
+    expect(
+      pinTargetReachable({
+        contentHeight: 1699,
+        layoutHeight: 800,
+        target: 900,
+      })
+    ).toBe(true);
   });
 });
