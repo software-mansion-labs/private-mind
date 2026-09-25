@@ -2,7 +2,7 @@ import {
   chatLabel,
   toChatTitle,
   MAX_CHAT_TITLE_LENGTH,
-  wordSafeLine,
+  firstLineOf,
 } from '../utils/chatLabel';
 
 describe('toChatTitle', () => {
@@ -61,24 +61,23 @@ describe('chatLabel', () => {
   });
 });
 
-describe('wordSafeLine', () => {
-  it('leaves a line the renderer did not cut', () => {
-    expect(wordSafeLine('Can you explain how')).toBeNull();
-  });
-
-  it('gives back the last whole word of a cut line', () => {
-    expect(wordSafeLine('Can you explain how machine learni…')).toBe(
-      'Can you explain how machine'
+describe('firstLineOf', () => {
+  it('keeps the whole title when it fits on one line', () => {
+    expect(firstLineOf([{ text: 'Short title' }], 'Short title')).toBe(
+      'Short title'
     );
   });
 
-  it('reads three dots as a cut too', () => {
-    expect(wordSafeLine('Explain how machine learni...')).toBe(
-      'Explain how machine'
-    );
+  it('takes the words that fit, so the cut lands between them', () => {
+    expect(
+      firstLineOf(
+        [{ text: 'Can you explain how machine ' }, { text: 'learning works' }],
+        'Can you explain how machine learning works'
+      )
+    ).toBe('Can you explain how machine');
   });
 
-  it('leaves a single word that is too long on its own', () => {
-    expect(wordSafeLine('Pneumonoultramicrosc…')).toBeNull();
+  it('falls back to the title when the first line measured empty', () => {
+    expect(firstLineOf([{ text: '' }, { text: 'x' }], 'Rivers')).toBe('Rivers');
   });
 });

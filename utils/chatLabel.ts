@@ -19,15 +19,15 @@ export const toChatTitle = (source: string) => {
   ).trimEnd();
 };
 
-const RENDERED_ELLIPSIS = /(\u2026|\.\.\.)$/;
+export interface MeasuredLine {
+  text: string;
+}
 
-export const wordSafeLine = (rendered: string): string | null => {
-  const withoutEllipsis = rendered.replace(RENDERED_ELLIPSIS, '');
-  if (withoutEllipsis === rendered) return null;
-
-  const trimmed = withoutEllipsis.trimEnd();
-  const lastBreak = trimmed.lastIndexOf(' ');
-  if (lastBreak <= 0) return null;
-
-  return trimmed.slice(0, lastBreak);
+export const firstLineOf = (
+  lines: readonly MeasuredLine[],
+  full: string
+): string => {
+  if (lines.length <= 1) return full;
+  const first = lines[0].text.trimEnd();
+  return first || full;
 };
