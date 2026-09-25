@@ -65,6 +65,7 @@ import {
   SUPPORTS_USER_ACTION_MENU,
 } from '../../constants/chat-screen';
 import { messageRowKey } from '../../utils/messageRowKey';
+import { scrollIndicatorProps } from '../../constants/scroll-indicator';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 import { useSendKeyboardFreeze } from './useSendKeyboardFreeze';
@@ -346,10 +347,6 @@ const Messages = ({
     [styles.contentContainer, listBottomPadding, listTopPadding]
   );
   const fadeAnchor = fadeBottom ?? topInset;
-  const scrollIndicatorInsets = useMemo(
-    () => ({ top: topFadeHeight(fadeAnchor) }),
-    [fadeAnchor]
-  );
   const scrollButtonStyle = useMemo(
     () => [styles.scrollToBottomButtonContainer, { bottom: chatBarInset + 16 }],
     [styles.scrollToBottomButtonContainer, chatBarInset]
@@ -1074,8 +1071,7 @@ const Messages = ({
           applyWorkaroundForContentInsetHitTestBug
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={contentContainerStyle}
-          automaticallyAdjustsScrollIndicatorInsets={false}
-          scrollIndicatorInsets={scrollIndicatorInsets}
+          {...scrollIndicatorProps(topFadeHeight(fadeAnchor))}
           onLayout={handleContainerLayout}
           onScroll={handleScroll}
           onScrollBeginDrag={handleScrollBeginDrag}
