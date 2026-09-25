@@ -34,6 +34,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import MessageItem from './MessageItem';
+import ScrollToLatestButton from './ScrollToLatestButton';
 import SourcesSheet, { type SourcesSheetHandle } from './SourcesSheet';
 import { EdgeFade } from './EdgeFade';
 import { TopFade, topFadeHeight } from './TopFade';
@@ -45,7 +46,6 @@ import {
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { Feedback } from '../../utils/Feedback';
-import ChevronDown from '../../assets/icons/chevron-down.svg';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import BranchMarker from './BranchMarker';
 import Toast from 'react-native-toast-message';
@@ -194,7 +194,7 @@ const Messages = ({
   onUserActionMenuChange,
   ref,
 }: Props) => {
-  const { styles, theme } = useThemedStyles(createStyles);
+  const { styles } = useThemedStyles(createStyles);
   const scrollRef = useRef<Reanimated.ScrollView>(null);
   const isAtBottomRef = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -1180,25 +1180,15 @@ const Messages = ({
           <View style={styles.bottomFadeSolid} />
         </Reanimated.View>
       )}
-      {showScrollButton && (
-        <Reanimated.View style={[scrollButtonStyle, scrollButtonAnimatedStyle]}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.scrollToBottomButton,
-              pressed && styles.scrollToBottomButtonPressed,
-            ]}
-            onPress={scrollToBottom}
-            accessibilityRole="button"
-            accessibilityLabel="Scroll to latest message"
-          >
-            <ChevronDown
-              width={20}
-              height={20}
-              style={{ color: theme.text.primary }}
-            />
-          </Pressable>
-        </Reanimated.View>
-      )}
+      <Reanimated.View
+        style={[scrollButtonStyle, scrollButtonAnimatedStyle]}
+        pointerEvents="box-none"
+      >
+        <ScrollToLatestButton
+          visible={showScrollButton}
+          onPress={scrollToBottom}
+        />
+      </Reanimated.View>
 
       <SourcesSheet ref={sourcesSheetRef} />
     </View>
@@ -1283,22 +1273,6 @@ const createStyles = (theme: Theme) => {
     scrollToBottomButtonContainer: {
       position: 'absolute',
       right: 16,
-    },
-    scrollToBottomButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: theme.bg.softSecondary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: theme.bg.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 4,
-      elevation: 4,
-    },
-    scrollToBottomButtonPressed: {
-      opacity: 0.8,
     },
   });
 };
