@@ -52,6 +52,7 @@ import Toast from 'react-native-toast-message';
 import {
   BOTTOM_FADE_HEIGHT,
   GENERATION_ERROR_MEASUREMENT_KEY,
+  MESSAGE_PIN_LANDING_CHECK_MS,
   MESSAGE_PIN_OFFSET,
   MESSAGE_PIN_SETTLE_MS,
   navBarInset,
@@ -70,6 +71,7 @@ import {
   floorIsOffscreen,
   floorIsOutgrown,
   pinFloorFor,
+  pinLandedShort,
   pinLandingFrom,
   pinReleaseTarget,
 } from './pinScroll';
@@ -430,12 +432,36 @@ const Messages = ({
   const pinScrollPendingRef = useRef(false);
   const pinLandedSinceKeyboardShow = useRef(false);
 
+  const pinLandingRef = useRef(false);
+  const pinCorrectedRef = useRef(false);
+  const pinLandingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearPinLanding = useCallback(() => {
+    if (pinLandingTimer.current) clearTimeout(pinLandingTimer.current);
+    pinLandingTimer.current = null;
+    pinLandingRef.current = false;
+  }, []);
+
+  const checkPinLanding = useCallback(() => {
+    pinLandingTimer.current = null;
+    pinLandingRef.current = false;
+    if (pinCorrectedRef.current) return;
+    if (!pinLandedShort(lastScrollOffset.current, pinOffset.current)) return;
+    pinCorrectedRef.current = true;
+    scrollRef.current?.scrollTo({ y: pinOffset.current, animated: true });
+  }, []);
+
   const scrollToPin = useCallback(() => {
+    if (pinLandingRef.current) return;
+    pinLandingRef.current = true;
     pinLandedSinceKeyboardShow.current = true;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const scrollView = scrollRef.current;
-        if (!scrollView) return;
+        if (!scrollView) {
+          pinLandingRef.current = false;
+          return;
+        }
         const { jumpTo, animateTo } = pinLandingFrom(
           lastScrollOffset.current,
           pinOffset.current
@@ -444,13 +470,20 @@ const Messages = ({
           scrollView.scrollTo({ y: jumpTo, animated: false });
         }
         scrollView.scrollTo({ y: animateTo, animated: true });
+        if (pinLandingTimer.current) clearTimeout(pinLandingTimer.current);
+        pinLandingTimer.current = setTimeout(
+          checkPinLanding,
+          MESSAGE_PIN_LANDING_CHECK_MS
+        );
       });
     });
-  }, []);
+  }, [checkPinLanding]);
 
   const landAfterKeyboard = useCallback(() => {
-    if (pinActive.current && !pendingPinRef.current) {
-      if (!pinLandedSinceKeyboardShow.current) scrollToPin();
+    if (pinActive.current || pendingPinRef.current) {
+      if (!pendingPinRef.current && !pinLandedSinceKeyboardShow.current) {
+        scrollToPin();
+      }
       return;
     }
     scrollRef.current?.scrollToEnd({ animated: false });
@@ -599,6 +632,7 @@ const Messages = ({
     releaseSettleTimer.current = null;
   }, []);
   useEffect(() => clearReleaseSettle, [clearReleaseSettle]);
+  useEffect(() => clearPinLanding, [clearPinLanding]);
 
   const releaseTarget = useCallback(
     () =>
@@ -615,9 +649,10 @@ const Messages = ({
   const dropPinFloor = useCallback(() => {
     pinReleaseRef.current = false;
     clearReleaseSettle();
+    clearPinLanding();
     setPinAnchor(null);
     if (Keyboard.isVisible()) setLiftHeldUntilKeyboardHides(true);
-  }, [clearReleaseSettle]);
+  }, [clearPinLanding, clearReleaseSettle]);
 
   const dropOutgrownFloor = useCallback(() => {
     if (pinActive.current) return;
@@ -681,6 +716,8 @@ const Messages = ({
         pinActive.current = true;
         pinReleaseRef.current = false;
         pendingPinRef.current = true;
+        pinCorrectedRef.current = false;
+        clearPinLanding();
         freezeForSend();
       },
       cancelMessageSent: () => {
@@ -688,11 +725,13 @@ const Messages = ({
         pinScrollPendingRef.current = false;
         pinReleaseRef.current = false;
         pinActive.current = false;
+        clearPinLanding();
         releaseSendFreeze();
         setPinAnchor(null);
       },
     }),
     [
+      clearPinLanding,
       closeUserActionMenu,
       freezeForSend,
       opacity,
@@ -867,6 +906,7 @@ const Messages = ({
 
   const handleScrollBeginDrag = useCallback(() => {
     touchScrolledRef.current = true;
+    clearPinLanding();
     if (keyboardOpenRef.current) {
       userScrolledDuringKeyboard.current = true;
     }
@@ -874,7 +914,7 @@ const Messages = ({
     if (!pinActive.current && pinAnchor) {
       pinReleaseRef.current = true;
     }
-  }, [clearReleaseSettle, pinAnchor]);
+  }, [clearPinLanding, clearReleaseSettle, pinAnchor]);
 
   const handleScrollEndDrag = useCallback(() => {
     if (!pinReleaseRef.current) return;

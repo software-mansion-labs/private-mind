@@ -2,6 +2,7 @@ import {
   floorIsOffscreen,
   floorIsOutgrown,
   pinFloorFor,
+  pinLandedShort,
   pinLandingFrom,
   pinReleaseTarget,
 } from '../components/chat-screen/pinScroll';
@@ -117,5 +118,19 @@ describe('floorIsOutgrown', () => {
 
   it('never reports a row without a floor as outgrown', () => {
     expect(floorIsOutgrown(0, 300)).toBe(false);
+  });
+});
+
+describe('pinLandedShort', () => {
+  it('accepts a landing that stopped a pixel or two under the mark', () => {
+    expect(pinLandedShort(798, 800)).toBe(false);
+  });
+
+  it('reports a question left halfway up the screen', () => {
+    expect(pinLandedShort(400, 800)).toBe(true);
+  });
+
+  it('accepts a landing that went past the mark', () => {
+    expect(pinLandedShort(840, 800)).toBe(false);
   });
 });

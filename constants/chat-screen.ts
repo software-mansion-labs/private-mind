@@ -30,6 +30,10 @@ export const navBarInset = (theme: Theme) =>
 
 export const MESSAGE_PIN_LANDING_PX = 64;
 
+export const MESSAGE_PIN_LANDING_SLACK_PX = 4;
+
+export const MESSAGE_PIN_LANDING_CHECK_MS = 420;
+
 export const PIN_RELEASE_SETTLE_DELAY_MS = 50;
 
 export const PIN_FREEZE_FALLBACK_MS = 1000;

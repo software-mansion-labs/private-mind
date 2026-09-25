@@ -1,5 +1,6 @@
 import {
   MESSAGE_PIN_LANDING_PX,
+  MESSAGE_PIN_LANDING_SLACK_PX,
   MESSAGE_PIN_OFFSET,
   PIN_READY_SLACK_PX,
 } from '../../constants/chat-screen';
@@ -61,6 +62,9 @@ export const pinReleaseTarget = ({
   const floorExcess = Math.max(0, floor - rowHeight);
   return Math.max(0, contentHeight - floorExcess - layoutHeight + extraPadding);
 };
+
+export const pinLandedShort = (offset: number, target: number) =>
+  target - offset > MESSAGE_PIN_LANDING_SLACK_PX;
 
 export const floorIsOffscreen = (offset: number, releaseTarget: number) =>
   offset <= releaseTarget + PIN_READY_SLACK_PX;
