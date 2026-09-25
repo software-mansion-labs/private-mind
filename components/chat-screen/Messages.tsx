@@ -710,6 +710,15 @@ const Messages = ({
         pinActive.current = true;
         pinReleaseRef.current = false;
         pendingPinRef.current = true;
+        // The room under the answer has to exist before the scroll, or the
+        // first scrollTo is clamped by a content size that predates it and
+        // the question has to be moved a second time.
+        if (containerHeight.current > 0) {
+          setPinAnchor({
+            containerHeight: containerHeight.current,
+            userHeight: 0,
+          });
+        }
         clearPinLanding();
         freezeForSend();
       },
