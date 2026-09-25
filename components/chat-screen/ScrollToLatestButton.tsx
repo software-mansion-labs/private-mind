@@ -62,6 +62,8 @@ const ScrollToLatestButton = ({ visible, onPress }: Props) => {
     <Reanimated.View
       style={[styles.button, animatedStyle]}
       pointerEvents={visible ? 'auto' : 'none'}
+      accessibilityElementsHidden={!visible}
+      importantForAccessibility={visible ? 'yes' : 'no-hide-descendants'}
       testID="scroll-to-latest-shell"
     >
       <Pressable

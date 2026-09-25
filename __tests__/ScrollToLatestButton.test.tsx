@@ -6,19 +6,30 @@ jest.mock('../utils/Feedback', () => ({
   Feedback: { scrollToLatest: jest.fn() },
 }));
 
+const hiddenShell = () =>
+  screen.getByTestId('scroll-to-latest-shell', { includeHiddenElements: true });
+
 describe('ScrollToLatestButton', () => {
   it('stays mounted while hidden so it can animate out', () => {
     render(<ScrollToLatestButton visible={false} onPress={jest.fn()} />);
 
-    expect(screen.getByTestId('scroll-to-latest')).toBeTruthy();
+    expect(
+      screen.getByTestId('scroll-to-latest', { includeHiddenElements: true })
+    ).toBeTruthy();
   });
 
   it('takes no touches while hidden', () => {
     render(<ScrollToLatestButton visible={false} onPress={jest.fn()} />);
 
-    expect(
-      screen.getByTestId('scroll-to-latest-shell').props.pointerEvents
-    ).toBe('none');
+    expect(hiddenShell().props.pointerEvents).toBe('none');
+  });
+
+  it('is not announced while it is hidden', () => {
+    render(<ScrollToLatestButton visible={false} onPress={jest.fn()} />);
+
+    const shell = hiddenShell();
+    expect(shell.props.accessibilityElementsHidden).toBe(true);
+    expect(shell.props.importantForAccessibility).toBe('no-hide-descendants');
   });
 
   it('takes touches once visible', () => {
