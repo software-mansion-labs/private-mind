@@ -22,6 +22,7 @@ import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
 import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
 import { Platform } from 'react-native';
+import { calculatePerformanceMetrics } from '../utils/performanceMetrics';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import { Feedback } from '../utils/Feedback';
@@ -177,26 +178,6 @@ const withNoThink = (messages: ExecutorchMessage[]): ExecutorchMessage[] => {
       ? { ...message, content: `${message.content} /no_think` }
       : message
   );
-};
-
-const calculatePerformanceMetrics = (
-  startTime: number,
-  endTime: number,
-  firstTokenTime: number,
-  tokenCount: number
-) => {
-  const totalTime = endTime - startTime;
-  const timeToFirstToken = firstTokenTime
-    ? firstTokenTime - startTime
-    : totalTime;
-  const timeAfterFirst = Math.max(1, totalTime - timeToFirstToken);
-  const tokensPerSecond = tokenCount / (timeAfterFirst / 1000);
-
-  return {
-    totalTime,
-    timeToFirstToken,
-    tokensPerSecond,
-  };
 };
 
 const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
