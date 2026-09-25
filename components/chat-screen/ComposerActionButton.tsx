@@ -89,7 +89,7 @@ const ComposerActionButton = ({
       onPress={disabled ? undefined : onPress}
       style={[styles.circle, (disabled || dimmed) && styles.dimmed]}
       disabled={disabled}
-      accessibilityState={busy ? { disabled, busy: true } : { disabled }}
+      accessibilityState={{ disabled, busy }}
       testID={testID}
     >
       <Reanimated.View
