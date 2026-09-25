@@ -74,6 +74,7 @@ const ChatTitle = ({
       onPress={onPress}
       disabled={!onPress}
       hitSlop={8}
+      accessibilityLabel={title ? `${shownTitle}, ${modelName}` : modelName}
       style={({ pressed }) => [
         styles.titleContainer,
         pressed && onPress ? styles.pressed : null,
