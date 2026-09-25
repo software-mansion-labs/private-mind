@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import NetInfo from '@react-native-community/netinfo';
@@ -54,19 +54,8 @@ const ModelCard = ({
     status: model.isDownloaded ? ModelState.Downloaded : ModelState.NotStarted,
   };
 
-  const isDownloading = downloadState.status === ModelState.Downloading;
-
-  const [modelState, setModelState] = useState<ModelState>(
-    isDownloading
-      ? ModelState.Downloading
-      : !model.isDownloaded
-        ? ModelState.NotStarted
-        : ModelState.Downloaded
-  );
-
-  useEffect(() => {
-    setModelState(downloadState.status);
-  }, [downloadState.status]);
+  const modelState = downloadState.status;
+  const isDownloading = modelState === ModelState.Downloading;
 
   const handlePress = async () => {
     if (isDownloading) {
