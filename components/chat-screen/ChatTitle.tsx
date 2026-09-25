@@ -13,7 +13,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
-import { wordSafeLine } from '../../utils/chatLabel';
+import { firstLineOf } from '../../utils/chatLabel';
 
 interface Props {
   title: string;
@@ -22,6 +22,7 @@ interface Props {
   onPress?: () => void;
   showChevron?: boolean;
   onBottomMeasured?: (bottomY: number) => void;
+  maxWidth?: number;
 }
 
 const ChatTitle = ({
@@ -31,6 +32,7 @@ const ChatTitle = ({
   onPress,
   showChevron = false,
   onBottomMeasured,
+  maxWidth,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const containerRef = useRef<View>(null);
@@ -45,20 +47,18 @@ const ChatTitle = ({
     });
   }, [onBottomMeasured]);
 
-  const [shownTitle, setShownTitle] = useState(title);
-  useEffect(() => setShownTitle(title), [title]);
-  const titleAsHandedToRenderer =
-    shownTitle === title ? title : `${shownTitle}\u2026`;
-  const handleTitleLayout = useCallback(
+  const [fittedTitle, setFittedTitle] = useState<string | null>(null);
+  useEffect(() => setFittedTitle(null), [title, maxWidth]);
+  const handleTitleWrap = useCallback(
     (event: NativeSyntheticEvent<TextLayoutEventData>) => {
-      const line = event.nativeEvent.lines[0];
-      if (!line || line.text === titleAsHandedToRenderer) return;
-      const wholeWords = wordSafeLine(line.text);
-      if (wholeWords === null || wholeWords === shownTitle) return;
-      setShownTitle(wholeWords);
+      setFittedTitle(firstLineOf(event.nativeEvent.lines, title));
     },
-    [titleAsHandedToRenderer, shownTitle]
+    [title]
   );
+  const shownTitle =
+    fittedTitle === null || fittedTitle === title
+      ? title
+      : `${fittedTitle}\u2026`;
 
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   useEffect(() => {
@@ -81,12 +81,18 @@ const ChatTitle = ({
     >
       {title !== '' ? (
         <>
-          <Text
-            numberOfLines={1}
-            style={styles.title}
-            onTextLayout={handleTitleLayout}
-          >
-            {titleAsHandedToRenderer}
+          {maxWidth ? (
+            <Text
+              style={[styles.title, styles.measure, { width: maxWidth }]}
+              onTextLayout={handleTitleWrap}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              {title}
+            </Text>
+          ) : null}
+          <Text numberOfLines={1} style={styles.title}>
+            {shownTitle}
           </Text>
           <View style={styles.modelRow}>
             <Text style={styles.modelName}>{modelName}</Text>
@@ -137,6 +143,11 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.md,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
+    },
+    measure: {
+      position: 'absolute',
+      opacity: 0,
+      top: 0,
     },
     modelName: {
       fontSize: fontSizes.xs,
