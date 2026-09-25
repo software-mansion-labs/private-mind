@@ -35,6 +35,7 @@ const oldSchema = (): Schema => ({
 class FakeDb {
   tables: Schema;
   alterLog: string[] = [];
+  execLog: string[] = [];
   failOn: ((sql: string) => boolean) | null = null;
 
   constructor(schema: Schema) {
@@ -49,6 +50,7 @@ class FakeDb {
 
   execAsync = async (sql: string) => {
     if (this.failOn?.(sql)) throw new Error('simulated migration failure');
+    this.execLog.push(sql);
 
     const add = /ALTER TABLE (\w+) ADD COLUMN (\w+)/.exec(sql);
     if (add) {
@@ -162,10 +164,33 @@ describe('runMigrations from a real old (pre-RAG) schema', () => {
       ],
       chatSettings: ['id', 'chatId', 'thinkingEnabled', 'digest'],
       sources: ['id', 'name', 'firstChunk'],
+      benchmarks: ['id', 'peakMemory', 'peakMemoryMetric'],
     });
 
     await runMigrations(db.asDb());
     expect(db.alterLog).toEqual([]);
+  });
+
+  it('clears peak memory recorded under the old metric', async () => {
+    const db = new FakeDb(oldSchema());
+
+    await runMigrations(db.asDb());
+
+    expect(db.alterLog).toContain(
+      'ALTER TABLE benchmarks ADD COLUMN peakMemoryMetric TEXT DEFAULT NULL'
+    );
+    expect(db.execLog).toContain('UPDATE benchmarks SET peakMemory = 0');
+  });
+
+  it('leaves recorded peak memory alone once the metric is tagged', async () => {
+    const db = new FakeDb({
+      ...oldSchema(),
+      benchmarks: ['id', 'peakMemory', 'peakMemoryMetric'],
+    });
+
+    await runMigrations(db.asDb());
+
+    expect(db.execLog).not.toContain('UPDATE benchmarks SET peakMemory = 0');
   });
 
   it('is not atomic but recovers: a mid-migration failure is completed by a re-run', async () => {

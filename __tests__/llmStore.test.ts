@@ -9,6 +9,13 @@ import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWebSearchStore } from '../store/webSearchStore';
 
+const memoryProbe = { samples: [] as number[], available: false };
+jest.mock('../modules/memory-probe', () => ({
+  PHYS_FOOTPRINT_METRIC: 'phys_footprint',
+  isPhysFootprintAvailable: () => memoryProbe.available,
+  getPhysFootprintBytes: () => memoryProbe.samples.shift() ?? null,
+}));
+
 jest.mock('../database/chatRepository');
 jest.mock('../utils/Feedback', () => ({
   Feedback: { firstToken: jest.fn() },
@@ -26,6 +33,10 @@ jest.mock('../utils/promptUtils', () => ({
 }));
 jest.mock('../constants/default-benchmark', () => ({
   BENCHMARK_PROMPT: 'benchmark prompt text',
+  BENCHMARK_TOKEN_TARGET: 128,
+  BENCHMARK_WARMUP_RUNS: 1,
+  BENCHMARK_ITERATIONS: 3,
+  BENCHMARK_GENERATION_CONFIG: { temperature: 0.01, topP: 1, minP: 0 },
 }));
 jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
@@ -69,6 +80,8 @@ const makeMockInstance = () => ({
 let mockInstance = makeMockInstance();
 
 beforeEach(() => {
+  memoryProbe.available = false;
+  memoryProbe.samples = [];
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -2161,6 +2174,93 @@ describe('runBenchmark', () => {
 
     expect(useLLMStore.getState().isGenerating).toBe(false);
     expect(useLLMStore.getState().isBenchmarking).toBe(false);
+  });
+
+  it('reports the highest footprint the run reached', async () => {
+    await loadModel();
+    mockInstance.generate.mockResolvedValue('output text');
+    useLLMStore.setState({ model: baseModel });
+    memoryProbe.available = true;
+    memoryProbe.samples = [1_000_000_000, 5_000_000_000];
+
+    const result = await useLLMStore.getState().runBenchmark();
+
+    expect(result?.peakMemory).toBe(5_000_000_000);
+  });
+
+  it('takes its first sample without waiting for the sampling interval', async () => {
+    await loadModel();
+    mockInstance.generate.mockResolvedValue('output text');
+    useLLMStore.setState({ model: baseModel });
+    memoryProbe.available = true;
+    memoryProbe.samples = [1_234_000_000];
+
+    const result = await useLLMStore.getState().runBenchmark();
+
+    expect(result?.peakMemory).toBe(1_234_000_000);
+  });
+
+  it('reports nothing when the device has no footprint probe', async () => {
+    await loadModel();
+    mockInstance.generate.mockResolvedValue('output text');
+    useLLMStore.setState({ model: baseModel });
+    memoryProbe.available = false;
+    memoryProbe.samples = [9_000_000_000];
+
+    const result = await useLLMStore.getState().runBenchmark();
+
+    expect(result?.peakMemory).toBe(0);
+  });
+
+  it('stops every run at the same token budget so runs can be compared', async () => {
+    await loadModel();
+    useLLMStore.setState({ model: baseModel });
+
+    let emitted = 0;
+    let interruptedAt = 0;
+    mockInstance.interrupt.mockImplementation(() => {
+      if (interruptedAt === 0) interruptedAt = emitted;
+    });
+    mockInstance.getGeneratedTokenCount.mockImplementation(() => emitted);
+    mockInstance.generate.mockImplementation(async () => {
+      for (let i = 0; i < 40; i++) {
+        emitted += 4;
+        capturedTokenCallback!('four tokens worth');
+      }
+      return 'out';
+    });
+
+    await useLLMStore.getState().runBenchmark();
+
+    expect(interruptedAt).toBe(128);
+  });
+
+  it('pins sampling for the run and hands the model back its own config', async () => {
+    await loadModel();
+    useLLMStore.setState({ model: baseModel });
+    mockInstance.generate.mockResolvedValue('out');
+    mockInstance.configure.mockClear();
+
+    await useLLMStore.getState().runBenchmark();
+
+    const [pinned] = mockInstance.configure.mock.calls[0]!;
+    expect(pinned.generationConfig).toMatchObject({ temperature: 0.01 });
+    const [restored] = mockInstance.configure.mock.calls.at(-1)!;
+    expect(restored.generationConfig).not.toMatchObject({ temperature: 0.01 });
+  });
+
+  it('does not carry the token budget into an ordinary chat turn', async () => {
+    await loadModel();
+    useLLMStore.setState({ model: baseModel });
+    mockInstance.generate.mockResolvedValue('out');
+    await useLLMStore.getState().runBenchmark();
+
+    mockInstance.interrupt.mockClear();
+    mockInstance.getGeneratedTokenCount.mockReturnValue(9999);
+    useLLMStore.setState({ isGenerating: true, isProcessingPrompt: false });
+    for (let i = 0; i < 148; i++) capturedTokenCallback!('tok');
+
+    expect(mockInstance.interrupt).not.toHaveBeenCalled();
   });
 
   it('tracks a fresh first token on every run without stale carry-over', async () => {
