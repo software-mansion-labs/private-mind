@@ -1,10 +1,17 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Divider } from '../Divider';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { BenchmarkResultPerformanceNumbers } from '../../database/benchmarkRepository';
+
+export const UNMEASURED_PEAK_MEMORY_LABEL = 'N/A';
+
+export const formatPeakMemory = (peakMemoryGb: number) =>
+  peakMemoryGb > 0
+    ? `${peakMemoryGb.toFixed(2)} GB`
+    : UNMEASURED_PEAK_MEMORY_LABEL;
 
 const BenchmarkStatsCard = ({
   data,
@@ -46,9 +53,7 @@ const BenchmarkStatsCard = ({
         </View>
         <View style={styles.data}>
           <Text style={styles.label}>Peak Memory</Text>
-          <Text style={styles.result}>
-            {Platform.OS === 'ios' ? `${data.peakMemory.toFixed(2)} GB` : 'N/A'}
-          </Text>
+          <Text style={styles.result}>{formatPeakMemory(data.peakMemory)}</Text>
         </View>
       </View>
     </View>

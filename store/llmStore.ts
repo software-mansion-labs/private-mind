@@ -21,7 +21,6 @@ import DeviceInfo from 'react-native-device-info';
 import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
 import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
 import { type Message as ExecutorchMessage } from 'react-native-executorch';
-import { Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import { Feedback } from '../utils/Feedback';
@@ -199,20 +198,21 @@ const calculatePerformanceMetrics = (
   };
 };
 
+const MEMORY_SAMPLE_INTERVAL_MS = 1000;
+
 const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
-  if (Platform.OS !== 'ios') {
-    return { start: () => {}, stop: () => {} };
-  }
   let trackerId: ReturnType<typeof setInterval>;
+  const sample = async () => {
+    try {
+      onUpdate(await DeviceInfo.getUsedMemory());
+    } catch (e) {
+      console.warn('Unable to read memory:', e);
+    }
+  };
   return {
     start: () => {
-      trackerId = setInterval(async () => {
-        try {
-          onUpdate(await DeviceInfo.getUsedMemory());
-        } catch (e) {
-          console.warn('Unable to read memory:', e);
-        }
-      }, 3000);
+      sample();
+      trackerId = setInterval(sample, MEMORY_SAMPLE_INTERVAL_MS);
     },
     stop: () => clearInterval(trackerId),
   };
