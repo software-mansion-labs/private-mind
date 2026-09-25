@@ -48,4 +48,11 @@ describe('the suggested message cards', () => {
 
     expect(content.alignItems).toBe('stretch');
   });
+  it('holds every card title to one line, so no card outgrows the row', () => {
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    const titles = screen.getAllByTestId('suggestion-title');
+    expect(titles.length).toBeGreaterThan(0);
+    titles.forEach((title) => expect(title.props.numberOfLines).toBe(1));
+  });
 });
