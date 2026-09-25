@@ -449,6 +449,14 @@ const Messages = ({
     lastScrollOffset.current = pinOffset.current;
   }, []);
 
+  // The end of the content is inside the space reserved under the
+  // answer, so scrolling there would bury the question the pin is
+  // still holding at the top.
+  const pinStillHolds = useCallback(
+    () => pinFloorRef.current > 0 && !pinReleaseRef.current,
+    []
+  );
+
   const landAfterKeyboard = useCallback(() => {
     if (pinActive.current || pendingPinRef.current) {
       if (!pendingPinRef.current && !pinLandedSinceKeyboardShow.current) {
@@ -456,8 +464,12 @@ const Messages = ({
       }
       return;
     }
+    if (pinStillHolds()) {
+      placePin();
+      return;
+    }
     scrollRef.current?.scrollToEnd({ animated: false });
-  }, [placePin]);
+  }, [pinStillHolds, placePin]);
 
   // Android-only: KeyboardChatScrollView's ClippingScrollView can
   // bounce the scroll offset on keyboard dismiss. Snap back to the
@@ -656,9 +668,12 @@ const Messages = ({
         scrollRef.current?.scrollToEnd({ animated: true });
       },
       scrollToEndIfAtBottom: () => {
-        if (isAtBottomRef.current) {
-          scrollRef.current?.scrollToEnd({ animated: true });
+        if (!isAtBottomRef.current) return;
+        if (pinStillHolds()) {
+          placePin();
+          return;
         }
+        scrollRef.current?.scrollToEnd({ animated: true });
       },
       onMessageSent: () => {
         closeUserActionMenu();
@@ -696,6 +711,8 @@ const Messages = ({
       closeUserActionMenu,
       freezeForSend,
       opacity,
+      pinStillHolds,
+      placePin,
       releaseSendFreeze,
       settleReveal,
     ]
