@@ -7,6 +7,7 @@ import { Theme } from '../../styles/colors';
 import {
   DEFAULT_PROMPT_SUGGESTIONS,
   PROMPT_SUGGESTIONS_TEXT,
+  SUGGESTION_CARD_WIDTH,
 } from '../../constants/default-prompts';
 
 interface Props {
@@ -35,7 +36,13 @@ const PromptSuggestions = ({ onSelectPrompt }: Props) => {
             onPress={() => handlePromptPress(suggestion.prompt)}
             activeOpacity={0.7}
           >
-            <Text style={styles.suggestionTitle}>{suggestion.title}</Text>
+            <Text
+              style={styles.suggestionTitle}
+              numberOfLines={1}
+              testID="suggestion-title"
+            >
+              {suggestion.title}
+            </Text>
             <Text style={styles.suggestionPrompt} numberOfLines={3}>
               {suggestion.prompt}
             </Text>
@@ -64,7 +71,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'stretch',
     },
     suggestionCard: {
-      width: 160,
+      width: SUGGESTION_CARD_WIDTH,
       backgroundColor: theme.bg.cardSurface,
       borderRadius: 10,
       padding: 12,
