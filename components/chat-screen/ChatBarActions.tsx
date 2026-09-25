@@ -8,9 +8,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import SendIcon from '../../assets/icons/send_icon.svg';
-import PauseIcon from '../../assets/icons/pause_icon.svg';
 import CircleButton from '../CircleButton';
+import ComposerActionButton, {
+  type ComposerAction,
+} from './ComposerActionButton';
 import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import LightBulbCrossedIcon from '../../assets/icons/light_bulb_crossed.svg';
 import LightBulbIcon from '../../assets/icons/light_bulb.svg';
@@ -28,6 +29,8 @@ interface Props {
   hasAttachments?: boolean;
   isLoadingAttachment?: boolean;
   togglesDisabled?: boolean;
+  modelBusy?: boolean;
+  sendPending?: boolean;
   onSend: () => void;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -46,6 +49,8 @@ const ChatBarActions = ({
   hasAttachments = false,
   isLoadingAttachment = false,
   togglesDisabled = false,
+  modelBusy = false,
+  sendPending = false,
   onSend,
   isGenerating,
   isProcessingPrompt,
@@ -81,52 +86,53 @@ const ChatBarActions = ({
   };
 
   const renderButton = () => {
-    if (isGenerating || isProcessingPrompt) {
-      return (
-        <CircleButton
-          icon={PauseIcon}
-          size={13.33}
-          onPress={() => {
-            Feedback.interrupt();
-            onInterrupt();
-          }}
-          backgroundColor={theme.bg.main}
-          color={theme.text.contrastPrimary}
-        />
-      );
-    }
+    const isSendable = (userInput || hasAttachments) && !isLoadingAttachment;
+    const action: ComposerAction = isResponding
+      ? 'stop'
+      : sendPending || isSendable
+        ? 'send'
+        : 'speech';
 
-    if ((userInput || hasAttachments) && !isLoadingAttachment) {
-      return (
-        <View style={styles.rightActions}>
-          {hasAttachments && !userInput && (
-            <CircleButton
-              icon={SoundwaveIcon}
-              onPress={onSpeechInput}
-              backgroundColor="transparent"
-              color={theme.text.onChatBar}
-            />
-          )}
-          <CircleButton
-            icon={SendIcon}
-            onPress={() => {
-              Feedback.send();
-              onSend();
-            }}
-            backgroundColor={theme.bg.main}
-            color={theme.text.contrastPrimary}
-          />
-        </View>
-      );
-    }
+    const handlePress = () => {
+      if (action === 'stop') {
+        Feedback.interrupt();
+        onInterrupt();
+        return;
+      }
+      if (action === 'send') {
+        Feedback.send();
+        onSend();
+        return;
+      }
+      onSpeechInput();
+    };
+
+    const testID =
+      action === 'send'
+        ? 'send-btn'
+        : action === 'stop'
+          ? 'stop-btn'
+          : 'speech-btn';
 
     return (
-      <CircleButton
-        icon={SoundwaveIcon}
-        onPress={onSpeechInput}
-        backgroundColor="transparent"
-        color={theme.text.onChatBar}
-      />
+      <View style={styles.rightActions}>
+        {action === 'send' && hasAttachments && !userInput && !sendPending && (
+          <CircleButton
+            icon={SoundwaveIcon}
+            onPress={onSpeechInput}
+            backgroundColor="transparent"
+            color={theme.text.onChatBar}
+          />
+        )}
+        <ComposerActionButton
+          action={action}
+          onPress={handlePress}
+          busy={action === 'send' && sendPending}
+          disabled={action === 'send' && sendPending}
+          dimmed={action === 'speech' && modelBusy}
+          testID={testID}
+        />
+      </View>
     );
   };
 
