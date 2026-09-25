@@ -67,8 +67,9 @@ import { updateConversationDigest } from '../utils/conversationDigest';
 import type { WebIntentKind } from '../utils/web/intentKind';
 import { useSettingsStore } from './settingsStore';
 import {
-  getPhysFootprintBytes,
-  isPhysFootprintAvailable,
+  getMemoryFootprintBytes,
+  isMemoryMetricAvailable,
+  memorySampleIntervalMs,
 } from '../modules/memory-probe';
 import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
@@ -207,24 +208,22 @@ const calculatePerformanceMetrics = (
   };
 };
 
-const MEMORY_SAMPLE_MS = 250;
-
 const createMemoryTracker = (onUpdate: (footprintBytes: number) => void) => {
-  if (!isPhysFootprintAvailable()) {
+  if (!isMemoryMetricAvailable()) {
     return { start: () => {}, stop: () => {} };
   }
 
   let trackerId: ReturnType<typeof setInterval> | undefined;
 
   const sample = () => {
-    const footprint = getPhysFootprintBytes();
+    const footprint = getMemoryFootprintBytes();
     if (footprint !== null) onUpdate(footprint);
   };
 
   return {
     start: () => {
       sample();
-      trackerId = setInterval(sample, MEMORY_SAMPLE_MS);
+      trackerId = setInterval(sample, memorySampleIntervalMs());
     },
     stop: () => {
       if (trackerId === undefined) return;
