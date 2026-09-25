@@ -1,6 +1,7 @@
 import {
   floorIsOffscreen,
   floorIsOutgrown,
+  lastTurnRows,
   pinFloorFor,
   pinLandingFrom,
   pinReleaseTarget,
@@ -117,5 +118,28 @@ describe('floorIsOutgrown', () => {
 
   it('never reports a row without a floor as outgrown', () => {
     expect(floorIsOutgrown(0, 300)).toBe(false);
+  });
+});
+
+describe('lastTurnRows', () => {
+  it('pairs the question with the answer that follows it', () => {
+    expect(lastTurnRows(['user', 'assistant', 'user', 'assistant'])).toEqual({
+      userIndex: 2,
+      answerIndex: 3,
+    });
+  });
+
+  it('leaves no answer row when the turn was stopped before one appeared', () => {
+    expect(lastTurnRows(['user', 'assistant', 'user'])).toEqual({
+      userIndex: 2,
+      answerIndex: -1,
+    });
+  });
+
+  it('leaves no answer row while the error banner is the one being measured', () => {
+    expect(lastTurnRows(['user', 'assistant'], true)).toEqual({
+      userIndex: 0,
+      answerIndex: -1,
+    });
   });
 });
