@@ -453,6 +453,62 @@ describe('interrupt', () => {
     expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
   });
 
+  it('marks the answer stopped in the same turn as the press, not after the save', async () => {
+    await loadModel();
+    useLLMStore.setState({
+      isGenerating: true,
+      generatingMessageLocalId: 42,
+      activeChatMessages: [
+        {
+          id: -1,
+          localId: 42,
+          role: 'assistant',
+          content: 'half an answ',
+          chatId: 1,
+          timestamp: 0,
+        },
+      ],
+    });
+
+    useLLMStore.getState().interrupt();
+
+    expect(useLLMStore.getState().activeChatMessages[0].stoppedByUser).toBe(
+      true
+    );
+  });
+
+  it('leaves other messages alone when it marks the stopped one', async () => {
+    await loadModel();
+    useLLMStore.setState({
+      isGenerating: true,
+      generatingMessageLocalId: 42,
+      activeChatMessages: [
+        {
+          id: 7,
+          localId: 41,
+          role: 'assistant',
+          content: 'an earlier answer',
+          chatId: 1,
+          timestamp: 0,
+        },
+        {
+          id: -1,
+          localId: 42,
+          role: 'assistant',
+          content: 'half an answ',
+          chatId: 1,
+          timestamp: 0,
+        },
+      ],
+    });
+
+    useLLMStore.getState().interrupt();
+
+    const [earlier, stopped] = useLLMStore.getState().activeChatMessages;
+    expect(earlier.stoppedByUser).toBeUndefined();
+    expect(stopped.stoppedByUser).toBe(true);
+  });
+
   it('does nothing when neither generating nor processing', () => {
     useLLMStore.setState({ isGenerating: false, isProcessingPrompt: false });
     expect(() => useLLMStore.getState().interrupt()).not.toThrow();
