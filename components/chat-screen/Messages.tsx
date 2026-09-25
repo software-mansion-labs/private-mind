@@ -53,6 +53,7 @@ import {
   BOTTOM_FADE_HEIGHT,
   GENERATION_ERROR_MEASUREMENT_KEY,
   MESSAGE_PIN_LANDING_CHECK_MS,
+  MESSAGE_PIN_REACH_WAIT_MS,
   MESSAGE_PIN_OFFSET,
   MESSAGE_PIN_SETTLE_MS,
   navBarInset,
@@ -436,9 +437,13 @@ const Messages = ({
   const pinCorrectedRef = useRef(false);
   const pinLandingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const pinReachTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const clearPinLanding = useCallback(() => {
     if (pinLandingTimer.current) clearTimeout(pinLandingTimer.current);
     pinLandingTimer.current = null;
+    if (pinReachTimer.current) clearTimeout(pinReachTimer.current);
+    pinReachTimer.current = null;
     pinLandingRef.current = false;
   }, []);
 
@@ -626,6 +631,13 @@ const Messages = ({
       return;
     }
     pinScrollPendingRef.current = true;
+    if (pinReachTimer.current) clearTimeout(pinReachTimer.current);
+    pinReachTimer.current = setTimeout(() => {
+      pinReachTimer.current = null;
+      if (!pinScrollPendingRef.current) return;
+      pinScrollPendingRef.current = false;
+      scrollToPin();
+    }, MESSAGE_PIN_REACH_WAIT_MS);
   }, [closeUserActionMenu, scrollToPin]);
 
   const pinReleaseRef = useRef(false);
