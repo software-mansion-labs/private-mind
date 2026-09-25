@@ -329,17 +329,16 @@ const ChatBar = ({
     );
   }, [detectedUrl, addUrlSource]);
 
+  const [sendPending, setSendPending] = useState(false);
+
   const handleSend = useCallback(() => {
-    if (modelSwitching) {
-      showModelSwitchingToast();
-      return;
-    }
     if (hasLoadingAttachment) return;
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
     const inputToSend = userInput;
     const outcome = onSend(inputToSend, imageUriToSend, attachmentsToSend);
     Keyboard.dismiss();
+    if (disabled || modelSwitching) setSendPending(true);
 
     lastSentRef.current = inputToSend
       ? { text: inputToSend, at: Date.now() }
@@ -361,9 +360,11 @@ const ChatBar = ({
       })
       .catch((error) => {
         console.error('Failed to send message:', error);
-      });
+      })
+      .finally(() => setSendPending(false));
   }, [
     onSend,
+    disabled,
     userInput,
     imageAttachment,
     attachments,
@@ -371,7 +372,6 @@ const ChatBar = ({
     restoreAttachments,
     hasLoadingAttachment,
     modelSwitching,
-    showModelSwitchingToast,
   ]);
 
   const onPaste = useCallback(
@@ -431,10 +431,6 @@ const ChatBar = ({
 
   if (showSpeechInput) {
     const handleSubmit = (transcript: string) => {
-      if (modelSwitching) {
-        showModelSwitchingToast();
-        return;
-      }
       setShowSpeechInput(false);
       if (transcript) {
         const attachmentsToSend = attachments;
@@ -558,6 +554,8 @@ const ChatBar = ({
               </View>
               <ChatBarActions
                 plusOut={panel.plusOut}
+                modelBusy={disabled || modelSwitching}
+                sendPending={sendPending}
                 onAttach={handleAttach}
                 hasAttachments={attachments.length > 0}
                 isLoadingAttachment={hasLoadingAttachment}

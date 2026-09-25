@@ -28,6 +28,8 @@ interface Props {
   hasAttachments?: boolean;
   isLoadingAttachment?: boolean;
   togglesDisabled?: boolean;
+  modelBusy?: boolean;
+  sendPending?: boolean;
   onSend: () => void;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -46,6 +48,8 @@ const ChatBarActions = ({
   hasAttachments = false,
   isLoadingAttachment = false,
   togglesDisabled = false,
+  modelBusy = false,
+  sendPending = false,
   onSend,
   isGenerating,
   isProcessingPrompt,
@@ -96,6 +100,19 @@ const ChatBarActions = ({
       );
     }
 
+    if (sendPending) {
+      return (
+        <CircleButton
+          icon={SendIcon}
+          backgroundColor={theme.bg.main}
+          color={theme.text.contrastPrimary}
+          busy
+          disabled
+          testID="send-btn"
+        />
+      );
+    }
+
     if ((userInput || hasAttachments) && !isLoadingAttachment) {
       return (
         <View style={styles.rightActions}>
@@ -115,6 +132,7 @@ const ChatBarActions = ({
             }}
             backgroundColor={theme.bg.main}
             color={theme.text.contrastPrimary}
+            testID="send-btn"
           />
         </View>
       );
@@ -126,6 +144,8 @@ const ChatBarActions = ({
         onPress={onSpeechInput}
         backgroundColor="transparent"
         color={theme.text.onChatBar}
+        dimmed={modelBusy}
+        testID="speech-btn"
       />
     );
   };

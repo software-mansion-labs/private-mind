@@ -14,8 +14,25 @@ jest.mock('../context/ThemeContext', () => ({
 
 jest.mock('../components/CircleButton', () => {
   const { TouchableOpacity } = require('react-native');
-  return ({ onPress, testID }: { onPress?: () => void; testID?: string }) => (
-    <TouchableOpacity testID={testID || 'circle-btn'} onPress={onPress} />
+  return ({
+    onPress,
+    testID,
+    busy,
+    dimmed,
+    disabled,
+  }: {
+    onPress?: () => void;
+    testID?: string;
+    busy?: boolean;
+    dimmed?: boolean;
+    disabled?: boolean;
+  }) => (
+    <TouchableOpacity
+      testID={testID || 'circle-btn'}
+      onPress={onPress}
+      accessibilityState={{ busy: !!busy, disabled: !!disabled }}
+      accessibilityHint={dimmed ? 'dimmed' : undefined}
+    />
   );
 });
 
@@ -128,10 +145,50 @@ describe('attach button', () => {
     const onSend = jest.fn();
     renderActions({ onSend, userInput: 'hi' });
 
-    fireEvent.press(screen.getByTestId('circle-btn'));
+    fireEvent.press(screen.getByTestId('send-btn'));
 
     expect(onSend).toHaveBeenCalled();
     expect(Toast.show).not.toHaveBeenCalled();
+  });
+
+  it('leaves the send button plain while the model loads and nothing was sent (#380)', () => {
+    const onSend = jest.fn();
+    renderActions({ onSend, userInput: 'hi', modelBusy: true });
+
+    const send = screen.getByTestId('send-btn');
+    expect(send.props.accessibilityState.busy).toBe(false);
+    fireEvent.press(send);
+    expect(onSend).toHaveBeenCalled();
+  });
+
+  it('spins the send button once a send is waiting on the model (#380)', () => {
+    renderActions({ userInput: '', sendPending: true });
+
+    const send = screen.getByTestId('send-btn');
+    expect(send.props.accessibilityState.busy).toBe(true);
+    expect(send.props.accessibilityState.disabled).toBe(true);
+  });
+
+  it('keeps the waiting spinner in place of the mic once the input is cleared', () => {
+    renderActions({ userInput: '', sendPending: true });
+
+    expect(screen.queryByTestId('speech-btn')).toBeNull();
+  });
+
+  it('keeps the send button live once the model is ready', () => {
+    renderActions({ userInput: 'hi', modelBusy: false });
+    expect(screen.getByTestId('send-btn').props.accessibilityState.busy).toBe(
+      false
+    );
+  });
+
+  it('dims the mic while the model is busy but leaves it tappable', () => {
+    const onSpeechInput = jest.fn();
+    renderActions({ onSpeechInput, modelBusy: true });
+    const mic = screen.getByTestId('speech-btn');
+    expect(mic.props.accessibilityHint).toBe('dimmed');
+    fireEvent.press(mic);
+    expect(onSpeechInput).toHaveBeenCalled();
   });
 
   it('keeps the attachment button at full opacity when idle', () => {
@@ -162,13 +219,13 @@ describe('thinking toggle', () => {
 describe('action button', () => {
   it('calls onSpeechInput when idle with no input', () => {
     renderActions();
-    fireEvent.press(screen.getByTestId('circle-btn'));
+    fireEvent.press(screen.getByTestId('speech-btn'));
     expect(defaultProps.onSpeechInput).toHaveBeenCalled();
   });
 
   it('calls onSend when there is user input', () => {
     renderActions({ userInput: 'Hello' });
-    fireEvent.press(screen.getByTestId('circle-btn'));
+    fireEvent.press(screen.getByTestId('send-btn'));
     expect(defaultProps.onSend).toHaveBeenCalled();
   });
 
