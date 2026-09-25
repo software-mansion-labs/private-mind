@@ -3,7 +3,10 @@ import { AudioManager, AudioRecorder } from 'react-native-audio-api';
 import { OnAudioReadyEventType } from 'react-native-audio-api/lib/typescript/events/types';
 import { useStableCallback } from './useStableCallback';
 import { STTStore, useSTTStore } from '../store/sttStore';
-import { type TranscriptionResult } from 'react-native-executorch';
+import {
+  type SpeechToTextModule,
+  type TranscriptionResult,
+} from 'react-native-executorch';
 
 interface Options {
   onAudioData?: (data: number[]) => void;
@@ -20,6 +23,7 @@ type Status = 'loading' | 'idle' | 'listening' | 'processing';
 interface Result extends Pick<STTStore, 'loadProgress'> {
   start: () => StartReturnType;
   stop: () => void;
+  abandon: () => void;
   status: Status;
 }
 
@@ -77,8 +81,20 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       }
 
       changeStatus('listening');
-      const module = useSTTStore.getState().module;
-      const streamGenerator = module!.stream();
+      const store = useSTTStore.getState();
+      const module = store.module;
+      if (store.streamOpen) {
+        closeAbandonedStream(module);
+      }
+
+      let streamGenerator;
+      try {
+        streamGenerator = module!.stream();
+      } catch (error) {
+        useSTTStore.getState().discardModule();
+        throw error;
+      }
+      useSTTStore.getState().markStreamOpen();
       recorder.current!.onAudioReady(
         {
           sampleRate: SAMPLE_RATE,
@@ -89,7 +105,10 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       );
       recorder.current!.start();
 
-      return onGeneratorEnd(streamGenerator, () => changeStatus('idle'));
+      return onGeneratorEnd(streamGenerator, () => {
+        useSTTStore.getState().markStreamClosed();
+        changeStatus('idle');
+      });
     } catch (error) {
       changeStatus('idle');
       throw error;
@@ -116,12 +135,35 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
     }
   }, [stt]);
 
+  const abandon = useCallback(() => {
+    if (statusRef.current === 'idle') return;
+    isStartCanceled.current = true;
+    try {
+      recorder.current?.stop();
+    } catch (error) {
+      console.error('Error stopping the recorder:', error);
+    }
+    closeAbandonedStream(useSTTStore.getState().module);
+    AudioManager.setAudioSessionActivity(false);
+    changeStatus('idle');
+  }, [changeStatus]);
+
   return {
     loadProgress: stt.loadProgress,
     start,
     stop,
+    abandon,
     status,
   };
+}
+
+function closeAbandonedStream(module: SpeechToTextModule | null) {
+  try {
+    module?.streamStop();
+  } catch (error) {
+    console.error('Error closing an abandoned transcript stream:', error);
+  }
+  useSTTStore.getState().markStreamClosed();
 }
 
 async function* onGeneratorEnd<T>(
