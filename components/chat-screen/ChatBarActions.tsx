@@ -8,9 +8,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import SendIcon from '../../assets/icons/send_icon.svg';
-import PauseIcon from '../../assets/icons/pause_icon.svg';
 import CircleButton from '../CircleButton';
+import ComposerActionButton, {
+  type ComposerAction,
+} from './ComposerActionButton';
 import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import LightBulbCrossedIcon from '../../assets/icons/light_bulb_crossed.svg';
 import LightBulbIcon from '../../assets/icons/light_bulb.svg';
@@ -32,6 +33,8 @@ interface Props {
   hasAttachments?: boolean;
   isLoadingAttachment?: boolean;
   togglesDisabled?: boolean;
+  modelBusy?: boolean;
+  sendPending?: boolean;
   onSend: () => void;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -50,6 +53,8 @@ const ChatBarActions = ({
   hasAttachments = false,
   isLoadingAttachment = false,
   togglesDisabled = false,
+  modelBusy = false,
+  sendPending = false,
   onSend,
   isGenerating,
   isProcessingPrompt,
@@ -92,61 +97,58 @@ const ChatBarActions = ({
   };
 
   const renderButton = () => {
-    if (primaryAction === 'stop') {
-      return (
-        <CircleButton
-          icon={PauseIcon}
-          testID="stop-btn"
-          size={13.33}
-          onPress={() =>
-            guardPrimaryPress(() => {
-              Feedback.interrupt();
-              onInterrupt();
-            })
-          }
-          backgroundColor={theme.bg.main}
-          color={theme.text.contrastPrimary}
-        />
-      );
-    }
+    const action: ComposerAction =
+      primaryAction === 'stop'
+        ? 'stop'
+        : sendPending || primaryAction === 'send'
+          ? 'send'
+          : 'speech';
 
-    if (primaryAction === 'send') {
-      return (
-        <View style={styles.rightActions}>
-          {hasAttachments && !userInput && (
-            <CircleButton
-              icon={SoundwaveIcon}
-              testID="speech-btn"
-              onPress={onSpeechInput}
-              backgroundColor="transparent"
-              color={theme.text.onChatBar}
-            />
-          )}
-          <CircleButton
-            icon={SendIcon}
-            testID="send-btn"
-            disabled={isLoadingAttachment}
-            onPress={() =>
-              guardPrimaryPress(() => {
-                Feedback.send();
-                onSend();
-              })
-            }
-            backgroundColor={theme.bg.main}
-            color={theme.text.contrastPrimary}
-          />
-        </View>
-      );
-    }
+    const handlePress = () => {
+      if (action === 'stop') {
+        guardPrimaryPress(() => {
+          Feedback.interrupt();
+          onInterrupt();
+        });
+        return;
+      }
+      if (action === 'send') {
+        guardPrimaryPress(() => {
+          Feedback.send();
+          onSend();
+        });
+        return;
+      }
+      guardPrimaryPress(onSpeechInput);
+    };
+
+    const testID =
+      action === 'send'
+        ? 'send-btn'
+        : action === 'stop'
+          ? 'stop-btn'
+          : 'speech-btn';
 
     return (
-      <CircleButton
-        icon={SoundwaveIcon}
-        testID="speech-btn"
-        onPress={() => guardPrimaryPress(onSpeechInput)}
-        backgroundColor="transparent"
-        color={theme.text.onChatBar}
-      />
+      <View style={styles.rightActions}>
+        {action === 'send' && hasAttachments && !userInput && !sendPending && (
+          <CircleButton
+            icon={SoundwaveIcon}
+            testID="speech-btn"
+            onPress={onSpeechInput}
+            backgroundColor="transparent"
+            color={theme.text.onChatBar}
+          />
+        )}
+        <ComposerActionButton
+          action={action}
+          onPress={handlePress}
+          busy={sendPending}
+          disabled={sendPending || (action === 'send' && isLoadingAttachment)}
+          dimmed={action === 'speech' && modelBusy}
+          testID={testID}
+        />
+      </View>
     );
   };
 
