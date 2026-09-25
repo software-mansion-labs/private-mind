@@ -61,6 +61,7 @@ const createStyles = (theme: Theme) =>
     },
     scrollContent: {
       gap: 8,
+      alignItems: 'stretch',
     },
     suggestionCard: {
       width: 160,
@@ -81,6 +82,5 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.regular,
       color: theme.text.defaultSecondary,
       lineHeight: lineHeights.xs,
-      height: lineHeights.xs * 3,
     },
   });
