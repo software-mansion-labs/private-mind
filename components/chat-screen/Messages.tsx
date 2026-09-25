@@ -1015,6 +1015,7 @@ const Messages = ({
           applyWorkaroundForContentInsetHitTestBug
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={contentContainerStyle}
+          automaticallyAdjustsScrollIndicatorInsets={false}
           scrollIndicatorInsets={scrollIndicatorInsets}
           onLayout={handleContainerLayout}
           onScroll={handleScroll}
