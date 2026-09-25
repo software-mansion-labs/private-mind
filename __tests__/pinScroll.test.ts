@@ -3,6 +3,7 @@ import {
   floorIsOutgrown,
   lastTurnRows,
   pinFloorFor,
+  pinLandedShort,
   pinLandingFrom,
   pinReleaseTarget,
 } from '../components/chat-screen/pinScroll';
@@ -141,5 +142,19 @@ describe('lastTurnRows', () => {
       userIndex: 0,
       answerIndex: -1,
     });
+  });
+});
+
+describe('pinLandedShort', () => {
+  it('accepts a landing that stopped a pixel or two under the mark', () => {
+    expect(pinLandedShort(798, 800)).toBe(false);
+  });
+
+  it('reports a question left halfway up the screen', () => {
+    expect(pinLandedShort(400, 800)).toBe(true);
+  });
+
+  it('accepts a landing that went past the mark', () => {
+    expect(pinLandedShort(840, 800)).toBe(false);
   });
 });
