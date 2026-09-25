@@ -434,6 +434,7 @@ const Messages = ({
   const pinPlacementPendingRef = useRef(false);
   const pinHoldRef = useRef(false);
   const pinLandedSinceKeyboardShow = useRef(false);
+  const predictedPinRef = useRef<number | null>(null);
 
   const clearPinLanding = useCallback(() => {
     pinPlacementPendingRef.current = false;
@@ -637,6 +638,15 @@ const Messages = ({
     placePin();
   }, [pinAnchor, placePin]);
 
+  useLayoutEffect(() => {
+    if (!pendingPinRef.current || predictedPinRef.current === null) return;
+    pinOffset.current = predictedPinRef.current;
+    predictedPinRef.current = null;
+    pinPlacementPendingRef.current = true;
+    pinHoldRef.current = true;
+    placePin();
+  }, [chatHistory.length, placePin]);
+
   const pinReleaseRef = useRef(false);
   useEffect(() => clearPinLanding, [clearPinLanding]);
 
@@ -705,6 +715,17 @@ const Messages = ({
           isAtBottomRef.current = true;
           setShowScrollButton(false);
         }
+        // The question will start where the content currently ends, so the
+        // offset is known before the row exists and the scroll does not have
+        // to wait for a measurement that costs a painted frame.
+        predictedPinRef.current = Math.max(
+          0,
+          contentHeight.current -
+            listPaddingRef.current.bottom -
+            Math.max(0, pinFloorRef.current - lastAssistantHeight.current) -
+            listPaddingRef.current.top +
+            MESSAGE_PIN_OFFSET
+        );
         lastAssistantHeight.current = 0;
         lastUserHeight.current = 0;
         pinActive.current = true;
@@ -723,6 +744,7 @@ const Messages = ({
         freezeForSend();
       },
       cancelMessageSent: () => {
+        predictedPinRef.current = null;
         pendingPinRef.current = false;
         pinReleaseRef.current = false;
         pinActive.current = false;
