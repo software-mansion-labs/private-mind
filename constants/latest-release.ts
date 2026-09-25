@@ -1,5 +1,5 @@
 export const LATEST_RELEASE = {
-  version: '1.3.0',
+  version: '1.3.2',
   title: 'Web search, privately',
   highlights: [
     'Bring current information into any chat with the new Web toggle',
