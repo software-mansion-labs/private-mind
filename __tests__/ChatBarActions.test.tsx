@@ -36,6 +36,36 @@ jest.mock('../components/CircleButton', () => {
   );
 });
 
+jest.mock('../components/chat-screen/ComposerActionButton', () => {
+  const { TouchableOpacity } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({
+      onPress,
+      testID,
+      busy,
+      dimmed,
+      disabled,
+      action,
+    }: {
+      onPress?: () => void;
+      testID?: string;
+      busy?: boolean;
+      dimmed?: boolean;
+      disabled?: boolean;
+      action?: string;
+    }) => (
+      <TouchableOpacity
+        testID={testID || 'circle-btn'}
+        onPress={onPress}
+        accessibilityState={{ busy: !!busy, disabled: !!disabled }}
+        accessibilityHint={dimmed ? 'dimmed' : undefined}
+        accessibilityValue={{ text: action }}
+      />
+    ),
+  };
+});
+
 import ChatBarActions from '../components/chat-screen/ChatBarActions';
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -231,7 +261,7 @@ describe('action button', () => {
 
   it('calls onInterrupt when isGenerating', () => {
     renderActions({ isGenerating: true });
-    fireEvent.press(screen.getByTestId('circle-btn'));
+    fireEvent.press(screen.getByTestId('stop-btn'));
     expect(defaultProps.onInterrupt).toHaveBeenCalled();
   });
 });
