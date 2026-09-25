@@ -284,13 +284,15 @@ const ChatBar = ({
     ...(onBarGrow ? { onBarGrow } : {}),
   });
 
-  const {
-    isGenerating,
-    isProcessingPrompt,
-    interrupt,
-    loadModel,
-    model: loadedModel,
-  } = useLLMStore();
+  const isGenerating = useLLMStore(
+    (state) => state.isGenerating && state.generatingForChatId === chatId
+  );
+  const isProcessingPrompt = useLLMStore(
+    (state) => state.isProcessingPrompt && state.generatingForChatId === chatId
+  );
+  const interrupt = useLLMStore((state) => state.interrupt);
+  const loadModel = useLLMStore((state) => state.loadModel);
+  const loadedModel = useLLMStore((state) => state.model);
   const loadSelectedModel = useCallback(async () => {
     if (model?.isDownloaded && loadedModel?.id !== model.id) {
       return loadModel(model);
