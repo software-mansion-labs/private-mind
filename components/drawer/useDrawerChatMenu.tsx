@@ -14,7 +14,7 @@ import {
   CHAT_MENU_EXPORT_INDEX,
   CHAT_MENU_OPTIONS,
   CHAT_MENU_RENAME_INDEX,
-  getChatMenuTitle,
+  getActionSheetTitle,
 } from '../../constants/chat-menu';
 
 type Options = {
@@ -64,7 +64,7 @@ export const useDrawerChatMenu = ({ onMenuActiveChange }: Options = {}) => {
         Feedback.sheetOpen();
         ActionSheetIOS.showActionSheetWithOptions(
           {
-            title: getChatMenuTitle(chatLabel(chat)),
+            title: getActionSheetTitle(chatLabel(chat)),
             options: CHAT_MENU_OPTIONS,
             destructiveButtonIndex: CHAT_MENU_DELETE_INDEX,
             cancelButtonIndex: CHAT_MENU_CANCEL_INDEX,
@@ -108,7 +108,7 @@ export const useDrawerChatMenu = ({ onMenuActiveChange }: Options = {}) => {
       {Platform.OS === 'android' && (
         <ChatTitleMenuSheet
           bottomSheetModalRef={androidSheetRef}
-          title={targetChat ? getChatMenuTitle(chatLabel(targetChat)) : ''}
+          title={targetChat ? chatLabel(targetChat) : ''}
           onRename={() => setRenameVisible(true)}
           onExport={() => {
             if (targetChat)

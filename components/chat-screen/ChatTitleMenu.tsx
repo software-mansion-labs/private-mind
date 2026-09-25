@@ -12,7 +12,7 @@ import {
   CHAT_MENU_EXPORT_INDEX,
   CHAT_MENU_OPTIONS,
   CHAT_MENU_RENAME_INDEX,
-  getChatMenuTitle,
+  getActionSheetTitle,
 } from '../../constants/chat-menu';
 
 interface Options {
@@ -24,9 +24,7 @@ export const useChatTitleMenu = ({ chatId, chatTitle }: Options) => {
   const [renameVisible, setRenameVisible] = useState(false);
   const androidSheetRef = useRef<BottomSheetModal>(null);
 
-  const menuTitle = getChatMenuTitle(
-    chatLabel({ id: chatId, title: chatTitle })
-  );
+  const menuTitle = chatLabel({ id: chatId, title: chatTitle });
 
   const { rename, exportChat, confirmDelete, ConfirmElement } = useChatActions({
     onDeleted: () => router.replace('/'),
@@ -54,7 +52,7 @@ export const useChatTitleMenu = ({ chatId, chatTitle }: Options) => {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          title: menuTitle,
+          title: getActionSheetTitle(menuTitle),
           options: CHAT_MENU_OPTIONS,
           destructiveButtonIndex: CHAT_MENU_DELETE_INDEX,
           cancelButtonIndex: CHAT_MENU_CANCEL_INDEX,
