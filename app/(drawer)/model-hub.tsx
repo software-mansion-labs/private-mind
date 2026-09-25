@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, Text, Platform } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -14,6 +14,7 @@ import WarningSheet, {
 import ModelManagementSheet from '../../components/bottomSheets/ModelManagementSheet';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import { scrollIndicatorProps } from '../../constants/scroll-indicator';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Model } from '../../database/modelRepository';
 import TextFieldInput from '../../components/TextFieldInput';
@@ -170,8 +171,7 @@ const ModelHubScreen = () => {
           <ScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
-            automaticallyAdjustsScrollIndicatorInsets={false}
-            scrollIndicatorInsets={scrollIndicatorInsets}
+            {...scrollIndicatorProps()}
           >
             {tab === 'mine'
               ? mineModels.map((model) => (
@@ -228,10 +228,6 @@ const ModelHubScreen = () => {
 };
 
 export default ModelHubScreen;
-
-const scrollIndicatorInsets = Platform.select({
-  ios: { right: 1 },
-});
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
