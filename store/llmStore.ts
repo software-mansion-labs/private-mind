@@ -12,6 +12,7 @@ import {
   ChatSettings,
   getChatDigest,
   getChatMessages,
+  markMessageStopped,
   Message,
   persistMessage,
   setChatDigest,
@@ -85,6 +86,7 @@ export interface LLMStore {
   activeChatDigest: string | null;
   activeChatDigestChatId: number | null;
   generationError: { chatId: number; message: string } | null;
+  retryArmedForChatId: number | null;
 
   setDB: (db: SQLiteDatabase) => void;
   loadModel: (model: Model, hardReload?: boolean) => Promise<void>;
@@ -134,6 +136,14 @@ type FailedGenerationRequest = {
 };
 
 let failedGenerationRequest: FailedGenerationRequest | null = null;
+
+const armRetry = (
+  set: (partial: Partial<LLMStore>) => void,
+  request: FailedGenerationRequest | null
+) => {
+  failedGenerationRequest = request;
+  set({ retryArmedForChatId: request?.chatId ?? null });
+};
 
 let streamBuffer = '';
 let streamTokenCount = 0;
@@ -351,6 +361,21 @@ const loadModelInstance = async (
   }
 };
 
+const STOPPED_BY_USER = 'Stopped by the user';
+
+const endsWhenStopped = <T>(work: Promise<T>, stop: AbortSignal): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const giveUp = () => reject(new Error(STOPPED_BY_USER));
+    work
+      .then(resolve, reject)
+      .finally(() => stop.removeEventListener('abort', giveUp));
+    if (stop.aborted) {
+      giveUp();
+      return;
+    }
+    stop.addEventListener('abort', giveUp, { once: true });
+  });
+
 const updateChatStateForGeneration = (
   set: (
     partial: Partial<LLMStore> | ((state: LLMStore) => Partial<LLMStore>)
@@ -408,6 +433,8 @@ const updateChatStateForGeneration = (
                   groundingCaveats:
                     data.assistantMessage?.groundingCaveats ??
                     msg.groundingCaveats,
+                  stoppedByUser:
+                    data.assistantMessage?.stoppedByUser ?? msg.stoppedByUser,
                   timeToFirstToken: data.timeToFirstToken!,
                   tokensPerSecond: data.tokensPerSecond!,
                 }
@@ -668,6 +695,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   activeChatDigest: null,
   activeChatDigestChatId: null,
   generationError: null,
+  retryArmedForChatId: null,
 
   setDB: (db) => set({ db }),
 
@@ -811,6 +839,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       return false;
     }
 
+    const abortController = new AbortController();
+    sendAbortController = abortController;
+    const stillOurs = () => sendAbortController === abortController;
+
     const tempUserId = -Date.now();
     const userMessage: Message = {
       id: tempUserId,
@@ -858,7 +890,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       }
 
       if (!showToUser) return;
-      failedGenerationRequest = {
+      armRetry(set, {
         newMessage,
         chatId,
         buildSources,
@@ -866,7 +898,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         imagePath,
         documentName,
         reusePersistedUser: userMessagePersisted,
-      };
+      });
       if (get().activeChatId === chatId) {
         set({
           generationError: {
@@ -878,13 +910,96 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       console.error('Chat sendMessage failed', error);
     };
 
-    await modelLoadChain;
-    await utilityChain;
+    let persistedUserMessageId: number | null = null;
+
+    const persistUserMessage = async () => {
+      const userMessageId = await persistMessage(db, {
+        role: 'user',
+        content: newMessage,
+        chatId,
+        imagePath,
+        documentName,
+      });
+      userMessagePersisted = true;
+      persistedUserMessageId = userMessageId;
+      set((state) => ({
+        activeChatMessages: state.activeChatMessages.map((msg) =>
+          msg.id === tempUserId ? { ...msg, id: userMessageId } : msg
+        ),
+      }));
+    };
+
+    const lastUserMessageId = () => {
+      if (persistedUserMessageId !== null) return persistedUserMessageId;
+      const ownMessages = get().activeChatMessages.filter(
+        (message) => message.chatId === chatId && message.role === 'user'
+      );
+      const last = ownMessages[ownMessages.length - 1];
+      return last && last.id > 0 ? last.id : null;
+    };
+
+    const clearTurnStopMark = async () => {
+      const messageId = lastUserMessageId();
+      if (messageId === null) return;
+      try {
+        await markMessageStopped(db, messageId, false);
+      } catch (error) {
+        console.error('Failed to clear the stopped turn', error);
+        return;
+      }
+      set((state) => ({
+        activeChatMessages: state.activeChatMessages.map((message) =>
+          message.id === messageId
+            ? { ...message, stoppedByUser: false }
+            : message
+        ),
+      }));
+    };
+
+    const markTurnStoppedByUser = async () => {
+      armRetry(set, {
+        newMessage,
+        chatId,
+        buildSources,
+        settings,
+        imagePath,
+        documentName,
+        reusePersistedUser: true,
+      });
+      const messageId = lastUserMessageId();
+      if (messageId === null) return;
+      try {
+        await markMessageStopped(db, messageId);
+      } catch (error) {
+        console.error('Failed to record the stopped turn', error);
+        return;
+      }
+      set((state) => ({
+        activeChatMessages: state.activeChatMessages.map((message) =>
+          message.id === messageId
+            ? { ...message, stoppedByUser: true }
+            : message
+        ),
+      }));
+    };
+
+    if (isRetry) await clearTurnStopMark();
+
+    await endsWhenStopped(
+      Promise.all([modelLoadChain, utilityChain]),
+      abortController.signal
+    ).catch(() => undefined);
     const readyModel = get().model;
     if (!get().isProcessingPrompt) {
+      if (!isRetry && !userMessagePersisted) {
+        await persistUserMessage().catch((error) =>
+          console.error('Failed to keep the interrupted message', error)
+        );
+      }
       markGenerationFailed(new Error('Stopped while waiting for the model'), {
         showToUser: false,
       });
+      await markTurnStoppedByUser();
       return true;
     }
     if (!readyModel) {
@@ -903,28 +1018,15 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       }));
     }
 
-    const abortController = new AbortController();
-    sendAbortController = abortController;
-    const stillOurs = () => sendAbortController === abortController;
-
     try {
-      if (!isRetry) {
-        const userMessageId = await persistMessage(db, {
-          role: 'user',
-          content: newMessage,
-          chatId,
-          imagePath,
-          documentName,
-        });
-        userMessagePersisted = true;
-        set((state) => ({
-          activeChatMessages: state.activeChatMessages.map((msg) =>
-            msg.id === tempUserId ? { ...msg, id: userMessageId } : msg
-          ),
-        }));
+      if (!isRetry && !userMessagePersisted) {
+        await persistUserMessage();
       }
 
-      const built = await buildSources(abortController.signal);
+      const built = await endsWhenStopped(
+        buildSources(abortController.signal),
+        abortController.signal
+      );
       const {
         context,
         sourceDocuments,
@@ -940,6 +1042,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         updateChatStateForGeneration(set, 'failed', {
           localId: assistantPlaceholder.localId,
         });
+        if (abortController.signal.aborted) await markTurnStoppedByUser();
         return true;
       }
 
@@ -958,6 +1061,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         updateChatStateForGeneration(set, 'failed', {
           localId: assistantPlaceholder.localId,
         });
+        if (abortController.signal.aborted) await markTurnStoppedByUser();
         return true;
       }
 
@@ -1377,10 +1481,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           groundingCaveats,
           tokensPerSecond: responsePerformance.tokensPerSecond,
           timeToFirstToken: responsePerformance.timeToFirstToken,
+          stoppedByUser,
         });
 
         if (!stillOurs()) {
-          failedGenerationRequest = null;
+          armRetry(set, null);
         } else if (get().activeChatId === chatId) {
           updateChatStateForGeneration(set, 'complete', {
             localId: assistantPlaceholder.localId,
@@ -1392,6 +1497,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               groundingCaveats,
               tokensPerSecond: responsePerformance.tokensPerSecond,
               timeToFirstToken: responsePerformance.timeToFirstToken,
+              stoppedByUser,
             },
             timeToFirstToken: responsePerformance.timeToFirstToken,
             tokensPerSecond: responsePerformance.tokensPerSecond,
@@ -1399,8 +1505,20 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         } else {
           updateChatStateForGeneration(set, 'complete');
         }
-        failedGenerationRequest = null;
+        armRetry(set, null);
         set({ generationError: null });
+
+        if (stoppedByUser) {
+          armRetry(set, {
+            newMessage,
+            chatId,
+            buildSources,
+            settings,
+            imagePath,
+            documentName,
+            reusePersistedUser: true,
+          });
+        }
 
         if (!stoppedByUser) {
           const previousDigest = digestForChat(get, chatId);
@@ -1425,11 +1543,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           unload: false,
           showToUser: !wasInterrupted,
         });
+        if (wasInterrupted) await markTurnStoppedByUser();
       }
     } catch (e) {
       if (stillOurs()) {
         const wasInterrupted = !get().isGenerating && !get().isProcessingPrompt;
         markGenerationFailed(e, { showToUser: !wasInterrupted });
+        if (wasInterrupted) await markTurnStoppedByUser();
       }
     } finally {
       if (stillOurs()) sendAbortController = null;
@@ -1560,12 +1680,21 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
 
     if (state.isGenerating || state.isProcessingPrompt) {
-      set({
+      const stoppedLocalId = state.generatingMessageLocalId;
+      set((current) => ({
         isGenerating: false,
         isProcessingPrompt: false,
         generatingForChatId: null,
         generatingMessageLocalId: null,
-      });
+        activeChatMessages:
+          stoppedLocalId === null
+            ? current.activeChatMessages
+            : current.activeChatMessages.map((message) =>
+                message.localId === stoppedLocalId
+                  ? { ...message, stoppedByUser: true }
+                  : message
+              ),
+      }));
     }
   },
 

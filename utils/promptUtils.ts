@@ -582,6 +582,9 @@ const shapeInstructions = (candidates: string[]): string =>
     .slice(0, MAX_SHAPE_INSTRUCTIONS)
     .join('');
 
+const isAbandonedQuestion = (message: Message): boolean =>
+  message.role === 'user' && !!message.stoppedByUser;
+
 export const prepareMessagesForLLM = (
   activeChatMessages: Message[],
   context: string[],
@@ -667,7 +670,7 @@ export const prepareMessagesForLLM = (
 
   const nonEventMessages = activeChatMessages.filter(
     (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
-      msg.role !== 'event'
+      msg.role !== 'event' && !isAbandonedQuestion(msg)
   );
   const lastNonEventMessage = nonEventMessages.at(-1);
   const messagesForLLM =
