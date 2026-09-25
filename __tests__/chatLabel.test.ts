@@ -2,6 +2,7 @@ import {
   chatLabel,
   toChatTitle,
   MAX_CHAT_TITLE_LENGTH,
+  wordSafeLine,
 } from '../utils/chatLabel';
 
 describe('toChatTitle', () => {
@@ -57,5 +58,27 @@ describe('chatLabel', () => {
 
   it('falls back to "Chat <id>" for an empty title', () => {
     expect(chatLabel({ id: 9, title: '' })).toBe('Chat 9');
+  });
+});
+
+describe('wordSafeLine', () => {
+  it('leaves a line the renderer did not cut', () => {
+    expect(wordSafeLine('Can you explain how')).toBeNull();
+  });
+
+  it('gives back the last whole word of a cut line', () => {
+    expect(wordSafeLine('Can you explain how machine learni…')).toBe(
+      'Can you explain how machine'
+    );
+  });
+
+  it('reads three dots as a cut too', () => {
+    expect(wordSafeLine('Explain how machine learni...')).toBe(
+      'Explain how machine'
+    );
+  });
+
+  it('leaves a single word that is too long on its own', () => {
+    expect(wordSafeLine('Pneumonoultramicrosc…')).toBeNull();
   });
 });
