@@ -58,6 +58,7 @@ interface MessageItemProps {
   onShowSources?: (sources: SourceDocument[], userQuestion?: string) => void;
   showActions?: boolean;
   showForkAction?: boolean;
+  forkDisabled?: boolean;
   onCopy?: (message: Message) => void;
   onFork?: (message: Message) => void;
 }
@@ -101,6 +102,7 @@ const MessageItem = memo(
     onShowSources,
     showActions = false,
     showForkAction = false,
+    forkDisabled = false,
     onCopy,
     onFork,
   }: MessageItemProps) => {
@@ -202,6 +204,7 @@ const MessageItem = memo(
             <MessageActionButton
               label="Fork"
               icon={ForkIcon}
+              disabled={forkDisabled}
               onPress={() => onFork?.(message)}
             />
           )}
