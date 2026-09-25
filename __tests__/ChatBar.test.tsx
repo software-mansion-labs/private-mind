@@ -1,5 +1,11 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react-native';
+import {
+  render,
+  screen,
+  fireEvent,
+  act,
+  waitFor,
+} from '@testing-library/react-native';
 import { Keyboard } from 'react-native';
 import type { LLMStore } from '../store/llmStore';
 import { useChatStore } from '../store/chatStore';
@@ -187,6 +193,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onAttach,
     onWebSearchToggle,
     modelBusy,
+    sendPending,
   }: {
     userInput: string;
     hasAttachments: boolean;
@@ -200,9 +207,11 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onAttach: () => void;
     onWebSearchToggle?: () => void;
     modelBusy?: boolean;
+    sendPending?: boolean;
   }) => (
     <View testID="chat-bar-actions">
       {modelBusy && <Text>model busy</Text>}
+      {sendPending && <Text>send pending</Text>}
       {onWebSearchToggle && (
         <TouchableOpacity
           testID="web-search-toggle"
@@ -550,19 +559,49 @@ describe('speech input', () => {
     });
   });
 
-  it('shows the send button busy while the model loads (#380)', () => {
+  it('says nothing on the send button while the model merely loads (#380)', () => {
     renderBar({ disabled: true });
-    expect(screen.getByText('model busy')).toBeTruthy();
+    expect(screen.queryByText('send pending')).toBeNull();
   });
 
-  it('shows the send button busy while the model switches (#380)', () => {
-    renderBar({ modelSwitching: true });
-    expect(screen.getByText('model busy')).toBeTruthy();
+  it('spins the send button after a send lands on a loading model (#380)', async () => {
+    const onSend = jest.fn(() => new Promise<boolean>(() => {}));
+    renderBar({ disabled: true, onSend });
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'hi'
+    );
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    await waitFor(() => expect(screen.getByText('send pending')).toBeTruthy());
   });
 
-  it('shows the send button ready once the model is up', () => {
-    renderBar();
-    expect(screen.queryByText('model busy')).toBeNull();
+  it('drops the spinner once the queued send settles (#380)', async () => {
+    const onSend = jest.fn(async () => true);
+    renderBar({ disabled: true, onSend });
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'hi'
+    );
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    await waitFor(() => expect(screen.queryByText('send pending')).toBeNull());
+  });
+
+  it('leaves the send button alone when the model is already up', async () => {
+    const onSend = jest.fn(() => new Promise<boolean>(() => {}));
+    renderBar({ onSend });
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'hi'
+    );
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    await waitFor(() => expect(onSend).toHaveBeenCalled());
+    expect(screen.queryByText('send pending')).toBeNull();
   });
 
   it('does not open speech input while the model is loading', () => {
