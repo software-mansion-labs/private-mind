@@ -1680,12 +1680,21 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
 
     if (state.isGenerating || state.isProcessingPrompt) {
-      set({
+      const stoppedLocalId = state.generatingMessageLocalId;
+      set((current) => ({
         isGenerating: false,
         isProcessingPrompt: false,
         generatingForChatId: null,
         generatingMessageLocalId: null,
-      });
+        activeChatMessages:
+          stoppedLocalId === null
+            ? current.activeChatMessages
+            : current.activeChatMessages.map((message) =>
+                message.localId === stoppedLocalId
+                  ? { ...message, stoppedByUser: true }
+                  : message
+              ),
+      }));
     }
   },
 
