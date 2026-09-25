@@ -26,6 +26,7 @@ import type { WebIntentKind } from './web/intentKind';
 import { hostname } from './web/hostname';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
 import { ISO_CURRENCY_CODES } from '../constants/currencies';
+import { CONVERSATIONAL_OPENERS } from '../constants/conversational-openers';
 import {
   CITATION_SENTENCE_PATTERN,
   CLAUSE_SPLIT_PATTERN,
@@ -233,6 +234,34 @@ const normalizeForEchoCompare = (text: string): string =>
 const stripTrailingParenthetical = (text: string): string =>
   text.replace(/\s*\([^)]{0,80}\)\s*$/, '');
 
+const OPENER_SEGMENT_BREAK = /[,.!?;:…]+/;
+
+const normalizeOpenerSegment = (segment: string): string =>
+  normalizeForEchoCompare(segment)
+    .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const KNOWN_OPENERS: ReadonlySet<string> = new Set(
+  CONVERSATIONAL_OPENERS.map(normalizeOpenerSegment)
+);
+
+export const isConversationalOpener = (turn: string): boolean => {
+  const segments = turn
+    .split(OPENER_SEGMENT_BREAK)
+    .map(normalizeOpenerSegment)
+    .filter(Boolean);
+  return (
+    segments.length > 0 &&
+    segments.every((segment) => KNOWN_OPENERS.has(segment))
+  );
+};
+
+const ECHO_GUARD_MIN_WORDS = 2;
+
+const isTooShortToEcho = (normalizedQuestion: string): boolean =>
+  normalizedQuestion.split(' ').length < ECHO_GUARD_MIN_WORDS;
+
 export const isQuestionEchoAnswer = (
   answer: string,
   question: string | undefined
@@ -241,6 +270,8 @@ export const isQuestionEchoAnswer = (
   const visible = stripThinkBlocks(answer);
   if (!visible) return false;
   const normalizedQuestion = normalizeForEchoCompare(question);
+  if (isTooShortToEcho(normalizedQuestion)) return false;
+  if (isConversationalOpener(question)) return false;
   if (normalizeForEchoCompare(visible) === normalizedQuestion) return true;
   const answerWithoutAnchor = normalizeForEchoCompare(
     stripTrailingParenthetical(visible)

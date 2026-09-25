@@ -9,6 +9,7 @@ import {
   isDanglingListAnswer,
   endsInsideList,
   joinContinuation,
+  isConversationalOpener,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
   retryDropsGroundedDetail,
@@ -840,6 +841,94 @@ describe('isQuestionEchoAnswer', () => {
     const question = 'Kiedy urodził się Macron?';
     const answer = 'Macron urodził się 21 grudnia 1977 roku (we Francji).';
     expect(isQuestionEchoAnswer(answer, question)).toBe(false);
+  });
+});
+
+describe('isQuestionEchoAnswer — greetings and acknowledgements (#386)', () => {
+  it.each([
+    ['hi', 'Hi!'],
+    ['Hello', 'Hello!'],
+    ['thanks', 'Thanks!'],
+    ['ok', 'OK.'],
+    ['cześć', 'Cześć!'],
+    ['Hej, jak leci?', 'Hej, jak leci?'],
+    ['dzień dobry', 'Dzień dobry!'],
+    ['नमस्ते', 'नमस्ते!'],
+    ['धन्यवाद', 'धन्यवाद'],
+    ['السلام علیکم', 'السلام علیکم!'],
+    ['hallo', 'Hallo!'],
+    ['Guten Morgen', 'Guten Morgen!'],
+    ['Hi there, how are you?', 'Hi there, how are you?'],
+  ])(
+    'keeps the reply to %j even when it repeats the words',
+    (question, answer) => {
+      expect(isQuestionEchoAnswer(answer, question)).toBe(false);
+    }
+  );
+
+  it('treats a single-word turn as too short to be the failure the guard is for', () => {
+    expect(isQuestionEchoAnswer('Yo', 'yo')).toBe(false);
+    expect(isQuestionEchoAnswer('Cena?', 'Cena?')).toBe(false);
+  });
+
+  it('still flags a real question that opens with a greeting', () => {
+    expect(
+      isQuestionEchoAnswer(
+        'Hi, what is the capital of France?',
+        'Hi, what is the capital of France?'
+      )
+    ).toBe(true);
+  });
+
+  it('still flags the shortest real echo the device corpus holds', () => {
+    expect(
+      isQuestionEchoAnswer(
+        'Ile kosztuje aktualnie pallad?',
+        'Ile kosztuje aktualnie pallad?'
+      )
+    ).toBe(true);
+  });
+});
+
+describe('isConversationalOpener', () => {
+  it.each([
+    'hi',
+    'Hello!',
+    'Hey there',
+    'good morning',
+    'Thank you very much.',
+    'ok',
+    'Hi, thanks!',
+    'Hello! How are you?',
+    'cześć',
+    'Czesc!',
+    'Hej, jak leci?',
+    'Dzięki',
+    'नमस्ते',
+    'kaise ho',
+    'السلام علیکم',
+    'shukriya',
+    'Hallo',
+    'Danke schön!',
+    "Wie geht's?",
+    'Olá',
+    'Hola, buenos días',
+    'Bonjour',
+    'Привет',
+    'مرحبا',
+  ])('recognises %j', (turn) => {
+    expect(isConversationalOpener(turn)).toBe(true);
+  });
+
+  it.each([
+    'Hi, what is the capital of France?',
+    'Thanks, and how much does it weigh?',
+    'Ile kosztuje aktualnie pallad?',
+    'Hello world program in Python',
+    '',
+    '?!',
+  ])('does not mistake %j for one', (turn) => {
+    expect(isConversationalOpener(turn)).toBe(false);
   });
 });
 
