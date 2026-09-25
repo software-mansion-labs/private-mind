@@ -18,11 +18,14 @@ jest.mock('../context/ThemeContext', () => ({
 }));
 
 jest.mock('../store/modelStore', () => ({
-  useModelStore: jest.fn(() => ({
-    downloadStates: {},
-    downloadModel: jest.fn(),
-    cancelDownload: jest.fn(),
-  })),
+  useModelStore: jest.fn((selector) =>
+    selector({
+      downloadStates: {},
+      downloadModel: jest.fn(),
+      cancelDownload: jest.fn(),
+      removeModelFiles: jest.fn(),
+    })
+  ),
   ModelState: {
     NotStarted: 'NotStarted',
     Downloading: 'Downloading',
@@ -67,6 +70,11 @@ import { useModelStore, ModelState } from '../store/modelStore';
 import { isModelCompatible } from '../utils/modelCompatibility';
 
 const mockUseModelStore = useModelStore as unknown as jest.Mock;
+
+const giveStore = (state: Record<string, unknown>) =>
+  mockUseModelStore.mockImplementation((selector: (s: unknown) => unknown) =>
+    selector(state)
+  );
 const mockIsModelCompatible = isModelCompatible as jest.Mock;
 const mockNetInfoFetch = NetInfo.fetch as jest.Mock;
 
@@ -122,7 +130,7 @@ const renderCard = (
 };
 
 beforeEach(() => {
-  mockUseModelStore.mockReturnValue({
+  giveStore({
     downloadStates: {},
     downloadModel: jest.fn(),
     cancelDownload: jest.fn(),
@@ -191,7 +199,7 @@ describe('display', () => {
 
 describe('download state rendering', () => {
   it('shows download button when NotStarted', () => {
-    mockUseModelStore.mockReturnValue({
+    giveStore({
       downloadStates: { 1: { status: ModelState.NotStarted, progress: 0 } },
       downloadModel: jest.fn(),
       cancelDownload: jest.fn(),
@@ -201,7 +209,7 @@ describe('download state rendering', () => {
   });
 
   it('shows progress bar when Downloading', () => {
-    mockUseModelStore.mockReturnValue({
+    giveStore({
       downloadStates: { 1: { status: ModelState.Downloading, progress: 0.4 } },
       downloadModel: jest.fn(),
       cancelDownload: jest.fn(),
@@ -211,7 +219,7 @@ describe('download state rendering', () => {
   });
 
   it('does not show download button when already downloaded', () => {
-    mockUseModelStore.mockReturnValue({
+    giveStore({
       downloadStates: { 1: { status: ModelState.Downloaded, progress: 1 } },
       downloadModel: jest.fn(),
       cancelDownload: jest.fn(),
@@ -226,7 +234,7 @@ describe('download state rendering', () => {
 describe('download action', () => {
   it('calls downloadModel when download button pressed on wifi', async () => {
     const downloadModel = jest.fn().mockResolvedValue(undefined);
-    mockUseModelStore.mockReturnValue({
+    giveStore({
       downloadStates: {},
       downloadModel,
       cancelDownload: jest.fn(),
@@ -253,7 +261,7 @@ describe('download action', () => {
 
   it('calls cancelDownload when cancel button pressed while downloading', async () => {
     const cancelDownload = jest.fn().mockResolvedValue(undefined);
-    mockUseModelStore.mockReturnValue({
+    giveStore({
       downloadStates: { 1: { status: ModelState.Downloading, progress: 0.5 } },
       downloadModel: jest.fn(),
       cancelDownload,

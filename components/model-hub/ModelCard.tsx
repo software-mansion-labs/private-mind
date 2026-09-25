@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import NetInfo from '@react-native-community/netinfo';
@@ -42,28 +42,21 @@ const ModelCard = ({
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles, selected);
 
-  const { downloadStates, downloadModel, cancelDownload, removeModelFiles } =
-    useModelStore();
+  const downloadModel = useModelStore((state) => state.downloadModel);
+  const cancelDownload = useModelStore((state) => state.cancelDownload);
+  const removeModelFiles = useModelStore((state) => state.removeModelFiles);
+  const storedDownloadState = useModelStore(
+    (state) => state.downloadStates[model.id]
+  );
   const { confirm, ConfirmElement } = useConfirm();
 
-  const downloadState = downloadStates[model.id] || {
+  const downloadState = storedDownloadState ?? {
     progress: model.isDownloaded ? 1 : 0,
     status: model.isDownloaded ? ModelState.Downloaded : ModelState.NotStarted,
   };
 
-  const isDownloading = downloadState.status === ModelState.Downloading;
-
-  const [modelState, setModelState] = useState<ModelState>(
-    isDownloading
-      ? ModelState.Downloading
-      : !model.isDownloaded
-        ? ModelState.NotStarted
-        : ModelState.Downloaded
-  );
-
-  useEffect(() => {
-    setModelState(downloadState.status);
-  }, [downloadState.status]);
+  const modelState = downloadState.status;
+  const isDownloading = modelState === ModelState.Downloading;
 
   const handlePress = async () => {
     if (isDownloading) {
