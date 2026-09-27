@@ -6,6 +6,7 @@ import React, {
   useLayoutEffect,
   useRef,
   useMemo,
+  useReducer,
   useState,
   useCallback,
   useImperativeHandle,
@@ -471,15 +472,19 @@ const Messages = ({
   const heldRowsRef = useRef<Message[] | null>(null);
   heldRowsRef.current = heldRows;
   const contentAtSend = useRef(0);
-  const sentFromRef = useRef(0);
-  const [placingFrom, setPlacingFrom] = useState<number | null>(null);
+  // Read while rendering, so the rows a send adds are transparent in the very
+  // commit that mounts them: a state flip would only reach the commit after.
+  const placingFromRef = useRef<number | null>(null);
+  const [, notePlaced] = useReducer((n: number) => n + 1, 0);
   const placingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settlePlacing = useCallback(() => {
     if (placingTimer.current) {
       clearTimeout(placingTimer.current);
       placingTimer.current = null;
     }
-    setPlacingFrom((from) => (from === null ? from : null));
+    if (placingFromRef.current === null) return;
+    placingFromRef.current = null;
+    notePlaced();
   }, []);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showHeldRows = useCallback(() => {
@@ -712,9 +717,9 @@ const Messages = ({
     pinHoldRef.current = true;
     // The scroll and the mount are separate batches for the UI thread, so the
     // rows can be painted a frame before the offset reaches them.
-    if (pinLandedShort(lastScrollOffset.current, pinOffset.current)) {
-      setPlacingFrom(sentFromRef.current);
-      if (placingTimer.current) clearTimeout(placingTimer.current);
+    if (!pinLandedShort(lastScrollOffset.current, pinOffset.current)) {
+      settlePlacing();
+    } else if (!placingTimer.current) {
       placingTimer.current = setTimeout(settlePlacing, SEND_PLACING_MAX_MS);
     }
     placePin();
@@ -811,7 +816,7 @@ const Messages = ({
         // than the screen already exceeds the floor and grows by nothing.
         if (containerHeight.current > 0) {
           contentAtSend.current = contentHeight.current;
-          sentFromRef.current = chatHistoryRef.current.length;
+          placingFromRef.current = chatHistoryRef.current.length;
           setHeldRows(chatHistoryRef.current);
           if (holdTimer.current) clearTimeout(holdTimer.current);
           holdTimer.current = setTimeout(showHeldRows, SEND_ROWS_HOLD_MS);
@@ -1264,7 +1269,9 @@ const Messages = ({
             // entering animation inside it plays again. The last turn's
             // rows gain and lose their measurement props on every send,
             // so the wrapper stays the same element for all of them.
-            const unplaced = placingFrom !== null && index >= placingFrom;
+            const unplaced =
+              placingFromRef.current !== null &&
+              index >= placingFromRef.current;
             const rowStyle =
               index === lastAssistantIndex ? pinFloorStyle : undefined;
             const measureRow = index === lastUserIndex ? onLayout : undefined;
