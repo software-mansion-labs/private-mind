@@ -435,6 +435,16 @@ const Messages = ({
   const pinHoldRef = useRef(false);
   const pinLandedSinceKeyboardShow = useRef(false);
   const predictedPinRef = useRef<number | null>(null);
+  const [sendReserve, setSendReserve] = useState(0);
+  const sendReserveRef = useRef(0);
+  sendReserveRef.current = sendReserve;
+  const sendReserveStyle = useMemo(
+    () => (sendReserve > 0 ? { height: sendReserve } : undefined),
+    [sendReserve]
+  );
+  const releaseSendReserve = useCallback(() => {
+    if (sendReserveRef.current > 0) setSendReserve(0);
+  }, []);
 
   const clearPinLanding = useCallback(() => {
     pinPlacementPendingRef.current = false;
@@ -681,10 +691,11 @@ const Messages = ({
     const timer = setTimeout(() => {
       pinActive.current = false;
       pinHoldRef.current = false;
+      releaseSendReserve();
       dropOutgrownFloor();
     }, MESSAGE_PIN_SETTLE_MS);
     return () => clearTimeout(timer);
-  }, [dropOutgrownFloor, isGenerating]);
+  }, [dropOutgrownFloor, isGenerating, releaseSendReserve]);
 
   useImperativeHandle(
     ref,
@@ -731,10 +742,12 @@ const Messages = ({
         pinActive.current = true;
         pinReleaseRef.current = false;
         pendingPinRef.current = true;
-        // The room under the answer has to exist before the scroll, or the
-        // first scrollTo is clamped by a content size that predates it and
-        // the question has to be moved a second time.
+        // The room has to be in the content before the rows are, or the
+        // scroll issued with them is clamped by a size that predates it.
+        // A minHeight on the last answer cannot supply it: an answer taller
+        // than the screen already exceeds the floor and grows by nothing.
         if (containerHeight.current > 0) {
+          setSendReserve(containerHeight.current);
           setPinAnchor({
             containerHeight: containerHeight.current,
             userHeight: 0,
@@ -744,6 +757,7 @@ const Messages = ({
         freezeForSend();
       },
       cancelMessageSent: () => {
+        releaseSendReserve();
         predictedPinRef.current = null;
         pendingPinRef.current = false;
         pinReleaseRef.current = false;
@@ -761,6 +775,7 @@ const Messages = ({
       pinStillHolds,
       placePin,
       releaseSendFreeze,
+      releaseSendReserve,
       settleReveal,
     ]
   );
@@ -816,6 +831,7 @@ const Messages = ({
         tryPlacePin();
       } else {
         pinPlacementPendingRef.current = false;
+        if (!pendingPinRef.current) releaseSendReserve();
       }
       const bottomInset = contentInset?.bottom ?? 0;
       const atBottom = atListEnd({
@@ -837,7 +853,7 @@ const Messages = ({
         dropPinFloor();
       }
     },
-    [dropPinFloor, releaseTarget, tryPlacePin]
+    [dropPinFloor, releaseSendReserve, releaseTarget, tryPlacePin]
   );
 
   const scrollToBottom = useCallback(() => {
@@ -1179,6 +1195,7 @@ const Messages = ({
               </View>
             );
           })}
+          {sendReserveStyle ? <View style={sendReserveStyle} /> : null}
           {generationError && (
             <View style={pinFloorStyle} collapsable={false}>
               <View
