@@ -20,6 +20,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
   type View as ViewType,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -447,6 +448,11 @@ const Messages = ({
   const releaseSendReserve = useCallback(() => {
     if (sendReserveRef.current > 0) setSendReserve(0);
   }, []);
+  // Sent with the keyboard up, the list is about to grow by its height, so
+  // room measured against the list as it stands now comes up a keyboard short.
+  const { height: windowHeight } = useWindowDimensions();
+  const windowHeightRef = useRef(windowHeight);
+  windowHeightRef.current = windowHeight;
 
   const chatHistoryRef = useRef(chatHistory);
   chatHistoryRef.current = chatHistory;
@@ -777,7 +783,7 @@ const Messages = ({
           setHeldRows(chatHistoryRef.current);
           if (holdTimer.current) clearTimeout(holdTimer.current);
           holdTimer.current = setTimeout(showHeldRows, SEND_ROWS_HOLD_MS);
-          setSendReserve(containerHeight.current);
+          setSendReserve(windowHeightRef.current);
           setPinAnchor({
             containerHeight: containerHeight.current,
             userHeight: 0,
