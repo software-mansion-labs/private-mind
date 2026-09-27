@@ -8,9 +8,7 @@ import {
   atListEnd,
   pinReleaseTarget,
 } from '../components/chat-screen/pinScroll';
-import {
-  MESSAGE_PIN_OFFSET,
-} from '../constants/chat-screen';
+import { MESSAGE_PIN_OFFSET } from '../constants/chat-screen';
 
 describe('pinFloorFor', () => {
   const geometry = {
