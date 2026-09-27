@@ -56,6 +56,8 @@ import {
   GENERATION_ERROR_MEASUREMENT_KEY,
   MESSAGE_PIN_OFFSET,
   MESSAGE_PIN_SETTLE_MS,
+  SEND_RESERVE_READY_RATIO,
+  SEND_ROWS_HOLD_MS,
   navBarInset,
   REVEAL_FALLBACK_MS,
   SCROLL_INDICATOR_GUTTER,
@@ -449,6 +451,30 @@ const Messages = ({
     if (sendReserveRef.current > 0) setSendReserve(0);
   }, []);
 
+  const chatHistoryRef = useRef(chatHistory);
+  chatHistoryRef.current = chatHistory;
+  const [heldRows, setHeldRows] = useState<Message[] | null>(null);
+  const heldRowsRef = useRef<Message[] | null>(null);
+  heldRowsRef.current = heldRows;
+  const contentAtSend = useRef(0);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showHeldRows = useCallback(() => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+    if (heldRowsRef.current) setHeldRows(null);
+  }, []);
+  useEffect(
+    () => () => {
+      if (holdTimer.current) clearTimeout(holdTimer.current);
+    },
+    []
+  );
+  // The rows carry the scroll that places them, so they may not be painted
+  // before the room that scroll needs is in the native content.
+  const rows = heldRows ?? chatHistory;
+
   const clearPinLanding = useCallback(() => {
     pinPlacementPendingRef.current = false;
     pinHoldRef.current = false;
@@ -658,7 +684,7 @@ const Messages = ({
     pinPlacementPendingRef.current = true;
     pinHoldRef.current = true;
     placePin();
-  }, [chatHistory.length, placePin]);
+  }, [rows.length, placePin]);
 
   const pinReleaseRef = useRef(false);
   useEffect(() => clearPinLanding, [clearPinLanding]);
@@ -750,6 +776,10 @@ const Messages = ({
         // A minHeight on the last answer cannot supply it: an answer taller
         // than the screen already exceeds the floor and grows by nothing.
         if (containerHeight.current > 0) {
+          contentAtSend.current = contentHeight.current;
+          setHeldRows(chatHistoryRef.current);
+          if (holdTimer.current) clearTimeout(holdTimer.current);
+          holdTimer.current = setTimeout(showHeldRows, SEND_ROWS_HOLD_MS);
           setSendReserve(containerHeight.current);
           setPinAnchor({
             containerHeight: containerHeight.current,
@@ -760,6 +790,7 @@ const Messages = ({
         freezeForSend();
       },
       cancelMessageSent: () => {
+        showHeldRows();
         releaseSendReserve();
         predictedPinRef.current = null;
         pendingPinRef.current = false;
@@ -780,6 +811,7 @@ const Messages = ({
       releaseSendFreeze,
       releaseSendReserve,
       settleReveal,
+      showHeldRows,
     ]
   );
 
@@ -981,6 +1013,14 @@ const Messages = ({
   const handleContentSizeChange = useCallback(
     (_w: number, h: number) => {
       contentHeight.current = h;
+      if (
+        heldRowsRef.current &&
+        h >=
+          contentAtSend.current +
+            sendReserveRef.current * SEND_RESERVE_READY_RATIO
+      ) {
+        showHeldRows();
+      }
       tryPlacePin();
       if (
         pinHoldRef.current &&
@@ -1038,32 +1078,33 @@ const Messages = ({
       placePin,
       releaseTarget,
       scheduleInitialScrollToEnd,
+      showHeldRows,
       tryPlacePin,
     ]
   );
 
   // Citations are highlighted against the preceding user question.
   const questionForAssistantAt = useMemo(() => {
-    const questions: (string | undefined)[] = new Array(chatHistory.length);
+    const questions: (string | undefined)[] = new Array(rows.length);
     let lastUserContent: string | undefined;
-    for (let i = 0; i < chatHistory.length; i += 1) {
-      const message = chatHistory[i];
+    for (let i = 0; i < rows.length; i += 1) {
+      const message = rows[i];
       if (message.role === 'user') lastUserContent = message.content;
       questions[i] = message.role === 'assistant' ? lastUserContent : undefined;
     }
     return questions;
-  }, [chatHistory]);
+  }, [rows]);
 
-  const hasMessages = chatHistory.length > 0;
+  const hasMessages = rows.length > 0;
 
   const { userIndex: lastUserIndex, answerIndex: lastAssistantIndex } =
     lastTurnRows(
-      chatHistory.map((message) => message.role),
+      rows.map((message) => message.role),
       !!generationError
     );
 
   const measurementKeyAt = (index: number): string | null => {
-    const message = chatHistory[index];
+    const message = rows[index];
     if (!message) return null;
     return messageRowKey(message, index);
   };
@@ -1106,8 +1147,8 @@ const Messages = ({
           scrollEventThrottle={16}
           style={styles.container}
         >
-          {chatHistory.map((message, index) => {
-            const isLastMessage = index === chatHistory.length - 1;
+          {rows.map((message, index) => {
+            const isLastMessage = index === rows.length - 1;
             const userQuestion = questionForAssistantAt[index];
             const key = messageRowKey(message, index);
 

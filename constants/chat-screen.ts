@@ -23,6 +23,10 @@ export const PIN_READY_SLACK_PX = 1;
 
 export const MESSAGE_PIN_SETTLE_MS = 500;
 
+export const SEND_ROWS_HOLD_MS = 150;
+
+export const SEND_RESERVE_READY_RATIO = 0.8;
+
 export const REVEAL_FALLBACK_MS = 900;
 
 export const navBarInset = (theme: Theme) =>
