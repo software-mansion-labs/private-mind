@@ -199,7 +199,6 @@ const withNoThink = (messages: ExecutorchMessage[]): ExecutorchMessage[] => {
   );
 };
 
-
 const createMemoryTracker = (onUpdate: (footprintBytes: number) => void) => {
   if (!isMemoryMetricAvailable()) {
     return { start: () => {}, stop: () => {} };
