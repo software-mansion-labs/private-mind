@@ -56,6 +56,7 @@ import {
   GENERATION_ERROR_MEASUREMENT_KEY,
   MESSAGE_PIN_OFFSET,
   MESSAGE_PIN_SETTLE_MS,
+  SEND_PLACING_MAX_MS,
   SEND_RESERVE_READY_RATIO,
   SEND_ROWS_HOLD_MS,
   navBarInset,
@@ -450,9 +451,16 @@ const Messages = ({
   }, []);
   // Sent with the keyboard up, the list is about to grow by its height, so
   // room measured against the list as it stands now comes up a keyboard short.
+  // The window is not an upper bound for it either: on Android it is reported
+  // shorter than the list it contains.
   const { height: windowHeight } = useWindowDimensions();
   const windowHeightRef = useRef(windowHeight);
   windowHeightRef.current = windowHeight;
+  const widestListRef = useRef(0);
+  const roomForSend = useCallback(
+    () => Math.max(widestListRef.current, windowHeightRef.current),
+    []
+  );
 
   const chatHistoryRef = useRef(chatHistory);
   chatHistoryRef.current = chatHistory;
@@ -460,17 +468,30 @@ const Messages = ({
   const heldRowsRef = useRef<Message[] | null>(null);
   heldRowsRef.current = heldRows;
   const contentAtSend = useRef(0);
+  const sentFromRef = useRef(0);
+  const [placingFrom, setPlacingFrom] = useState<number | null>(null);
+  const placingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const settlePlacing = useCallback(() => {
+    if (placingTimer.current) {
+      clearTimeout(placingTimer.current);
+      placingTimer.current = null;
+    }
+    setPlacingFrom((from) => (from === null ? from : null));
+  }, []);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showHeldRows = useCallback(() => {
     if (holdTimer.current) {
       clearTimeout(holdTimer.current);
       holdTimer.current = null;
     }
-    if (heldRowsRef.current) setHeldRows(null);
+    if (heldRowsRef.current) {
+      setHeldRows(null);
+    }
   }, []);
   useEffect(
     () => () => {
       if (holdTimer.current) clearTimeout(holdTimer.current);
+      if (placingTimer.current) clearTimeout(placingTimer.current);
     },
     []
   );
@@ -686,8 +707,15 @@ const Messages = ({
     predictedPinRef.current = null;
     pinPlacementPendingRef.current = true;
     pinHoldRef.current = true;
+    // The scroll and the mount are separate batches for the UI thread, so the
+    // rows can be painted a frame before the offset reaches them.
+    if (pinLandedShort(lastScrollOffset.current, pinOffset.current)) {
+      setPlacingFrom(sentFromRef.current);
+      if (placingTimer.current) clearTimeout(placingTimer.current);
+      placingTimer.current = setTimeout(settlePlacing, SEND_PLACING_MAX_MS);
+    }
     placePin();
-  }, [rows.length, placePin]);
+  }, [rows.length, placePin, settlePlacing]);
 
   const pinReleaseRef = useRef(false);
   useEffect(() => clearPinLanding, [clearPinLanding]);
@@ -780,10 +808,11 @@ const Messages = ({
         // than the screen already exceeds the floor and grows by nothing.
         if (containerHeight.current > 0) {
           contentAtSend.current = contentHeight.current;
+          sentFromRef.current = chatHistoryRef.current.length;
           setHeldRows(chatHistoryRef.current);
           if (holdTimer.current) clearTimeout(holdTimer.current);
           holdTimer.current = setTimeout(showHeldRows, SEND_ROWS_HOLD_MS);
-          setSendReserve(windowHeightRef.current);
+          setSendReserve(roomForSend());
           setPinAnchor({
             containerHeight: containerHeight.current,
             userHeight: 0,
@@ -793,6 +822,7 @@ const Messages = ({
         freezeForSend();
       },
       cancelMessageSent: () => {
+        settlePlacing();
         showHeldRows();
         releaseSendReserve();
         predictedPinRef.current = null;
@@ -813,6 +843,8 @@ const Messages = ({
       placePin,
       releaseSendFreeze,
       releaseSendReserve,
+      roomForSend,
+      settlePlacing,
       settleReveal,
       showHeldRows,
     ]
@@ -823,6 +855,7 @@ const Messages = ({
       const height = e.nativeEvent.layout.height;
       containerHeight.current = height;
       lastLayoutHeight.current = height;
+      widestListRef.current = Math.max(widestListRef.current, height);
       setPinAnchor((anchor) =>
         anchor && anchor.containerHeight !== height
           ? { ...anchor, containerHeight: height }
@@ -869,6 +902,7 @@ const Messages = ({
         tryPlacePin();
       } else {
         pinPlacementPendingRef.current = false;
+        settlePlacing();
         if (!pendingPinRef.current) releaseSendReserve();
       }
       const bottomInset = contentInset?.bottom ?? 0;
@@ -891,7 +925,13 @@ const Messages = ({
         dropPinFloor();
       }
     },
-    [dropPinFloor, releaseSendReserve, releaseTarget, tryPlacePin]
+    [
+      dropPinFloor,
+      releaseSendReserve,
+      releaseTarget,
+      settlePlacing,
+      tryPlacePin,
+    ]
   );
 
   const scrollToBottom = useCallback(() => {
@@ -1218,6 +1258,7 @@ const Messages = ({
             // entering animation inside it plays again. The last turn's
             // rows gain and lose their measurement props on every send,
             // so the wrapper stays the same element for all of them.
+            const unplaced = placingFrom !== null && index >= placingFrom;
             const rowStyle =
               index === lastAssistantIndex ? pinFloorStyle : undefined;
             const measureRow = index === lastUserIndex ? onLayout : undefined;
@@ -1225,7 +1266,7 @@ const Messages = ({
             return (
               <View
                 key={key}
-                style={rowStyle}
+                style={unplaced ? [rowStyle, styles.unplacedRow] : rowStyle}
                 onLayout={measureRow}
                 collapsable={false}
               >
@@ -1324,6 +1365,9 @@ const createStyles = (theme: Theme) => {
     container: {
       flex: 1,
       width: '100%',
+    },
+    unplacedRow: {
+      opacity: 0,
     },
     revealed: {
       opacity: 1,
