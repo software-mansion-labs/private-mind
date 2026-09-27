@@ -27,6 +27,8 @@ export const SEND_ROWS_HOLD_MS = 150;
 
 export const SEND_PLACING_MAX_MS = 120;
 
+export const SEND_PLACING_GUARD_MS = 3000;
+
 export const SEND_RESERVE_READY_RATIO = 0.8;
 
 export const REVEAL_FALLBACK_MS = 900;

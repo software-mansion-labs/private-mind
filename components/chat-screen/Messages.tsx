@@ -57,6 +57,7 @@ import {
   GENERATION_ERROR_MEASUREMENT_KEY,
   MESSAGE_PIN_OFFSET,
   MESSAGE_PIN_SETTLE_MS,
+  SEND_PLACING_GUARD_MS,
   SEND_PLACING_MAX_MS,
   SEND_RESERVE_READY_RATIO,
   SEND_ROWS_HOLD_MS,
@@ -716,7 +717,8 @@ const Messages = ({
     // rows can be painted a frame before the offset reaches them.
     if (!pinLandedShort(lastScrollOffset.current, pinOffset.current)) {
       settlePlacing();
-    } else if (!placingTimer.current) {
+    } else {
+      if (placingTimer.current) clearTimeout(placingTimer.current);
       placingTimer.current = setTimeout(settlePlacing, SEND_PLACING_MAX_MS);
     }
     placePin();
@@ -814,6 +816,12 @@ const Messages = ({
         if (containerHeight.current > 0) {
           contentAtSend.current = contentHeight.current;
           placingFromRef.current = chatHistoryRef.current.length;
+          // A send whose rows never arrive must not leave the mark behind.
+          if (placingTimer.current) clearTimeout(placingTimer.current);
+          placingTimer.current = setTimeout(
+            settlePlacing,
+            SEND_PLACING_GUARD_MS
+          );
           setHeldRows(chatHistoryRef.current);
           if (holdTimer.current) clearTimeout(holdTimer.current);
           holdTimer.current = setTimeout(showHeldRows, SEND_ROWS_HOLD_MS);
