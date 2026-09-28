@@ -905,7 +905,7 @@ const Messages = ({
         layoutHeight: layoutMeasurement.height,
         bottomInset,
         floorTarget: pinFloorRef.current > 0 ? releaseTarget() : null,
-        pinInFlight: pinActive.current || pendingPinRef.current,
+        sendIsLanding: pendingPinRef.current || pinPlacementPendingRef.current,
       });
       if (atBottom !== isAtBottomRef.current) {
         isAtBottomRef.current = atBottom;
@@ -1099,7 +1099,8 @@ const Messages = ({
           contentHeight: h,
           layoutHeight: lastLayoutHeight.current || containerHeight.current,
           floorTarget: pinFloorRef.current > 0 ? releaseTarget() : null,
-          pinInFlight: pinActive.current || pendingPinRef.current,
+          sendIsLanding:
+            pendingPinRef.current || pinPlacementPendingRef.current,
         });
         if (atBottom !== isAtBottomRef.current) {
           isAtBottomRef.current = atBottom;
