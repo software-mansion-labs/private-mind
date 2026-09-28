@@ -1091,7 +1091,10 @@ const Messages = ({
       // needing to scroll manually. Use the last known scroll offset
       // (0 if user never scrolled) and the container height as a proxy
       // for the visible area.
-      if (containerHeight.current > 0) {
+      if (
+        containerHeight.current > 0 &&
+        Date.now() >= initialScrollSettlingUntil.current
+      ) {
         const atBottom = atListEnd({
           offset: lastScrollOffset.current,
           contentHeight: h,
