@@ -1046,11 +1046,17 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         return true;
       }
 
-      await get().loadModel(currentModel, isRetry);
-      await waitForModelLoad(get);
+      const loadModelForTurn = (force: boolean) =>
+        endsWhenStopped(
+          get()
+            .loadModel(currentModel, force)
+            .then(() => waitForModelLoad(get)),
+          abortController.signal
+        );
+
+      await loadModelForTurn(isRetry);
       if (!llmInstance && get().isProcessingPrompt) {
-        await get().loadModel(currentModel, true);
-        await waitForModelLoad(get);
+        await loadModelForTurn(true);
       }
       if (!llmInstance) {
         throw new Error('Failed to load the language model');
