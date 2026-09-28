@@ -41,7 +41,7 @@ export const useChatScreenLayout = ({
   const [rootFrame, setRootFrame] = useState({ x: 0, y: 0, height: 0 });
   const [userActionMenu, setUserActionMenu] =
     useState<UserMessageActionMenuState>({ isOpen: false });
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   const handleRootLayout = useCallback(() => {
     rootRef.current?.measureInWindow((x, y, _width, height) => {
