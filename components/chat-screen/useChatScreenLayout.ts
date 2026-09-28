@@ -124,15 +124,16 @@ export const useChatScreenLayout = ({
       ? headerTitleBottom - rootFrame.y
       : undefined;
   const topFadeAnchor = fadeBottom ?? headerHeight;
+  const gradientSpan = rootFrame.height > 0 ? rootFrame.height : windowHeight;
   const emptyFadeColors = useMemo(() => {
     const sample = (y: number) =>
       mixColors(
         theme.bg.softPrimary,
         theme.bg.main,
-        rootFrame.height > 0 ? y / rootFrame.height : 0
+        gradientSpan > 0 ? y / gradientSpan : 0
       );
     return [sample(0), sample(topFadeAnchor)] as const;
-  }, [rootFrame.height, theme.bg.main, theme.bg.softPrimary, topFadeAnchor]);
+  }, [gradientSpan, theme.bg.main, theme.bg.softPrimary, topFadeAnchor]);
 
   return {
     rootRef,
