@@ -74,7 +74,7 @@ export interface ListEnd {
   layoutHeight: number;
   bottomInset?: number;
   floorTarget: number | null;
-  pinInFlight?: boolean;
+  sendIsLanding?: boolean;
 }
 
 export const atListEnd = ({
@@ -83,9 +83,9 @@ export const atListEnd = ({
   layoutHeight,
   bottomInset = 0,
   floorTarget,
-  pinInFlight = false,
+  sendIsLanding = false,
 }: ListEnd): boolean => {
-  if (pinInFlight) return true;
+  if (sendIsLanding) return true;
   if (floorTarget !== null && offset >= floorTarget - PIN_READY_SLACK_PX) {
     return true;
   }

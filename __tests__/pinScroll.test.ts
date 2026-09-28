@@ -187,6 +187,18 @@ describe('atListEnd', () => {
   });
 
   it('never offers to scroll down while the send is still landing', () => {
-    expect(atListEnd({ ...base, pinInFlight: true })).toBe(true);
+    expect(atListEnd({ ...base, sendIsLanding: true })).toBe(true);
+  });
+
+  it('offers to scroll down again once the send has landed and the answer runs on', () => {
+    expect(
+      atListEnd({
+        ...base,
+        offset: 400,
+        contentHeight: 4000,
+        floorTarget: 900,
+        sendIsLanding: false,
+      })
+    ).toBe(false);
   });
 });
