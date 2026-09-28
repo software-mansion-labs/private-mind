@@ -470,8 +470,7 @@ const Messages = ({
   const heldRowsRef = useRef<Message[] | null>(null);
   heldRowsRef.current = heldRows;
   const contentAtSend = useRef(0);
-  // Read while rendering, so the rows a send adds are transparent in the very
-  // commit that mounts them: a state flip would only reach the commit after.
+  // A state flip lands one commit late, so the rows a send adds read this while rendering.
   const placingFromRef = useRef<number | null>(null);
   const [, notePlaced] = useReducer((n: number) => n + 1, 0);
   const placingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -501,8 +500,7 @@ const Messages = ({
     },
     []
   );
-  // The rows carry the scroll that places them, so they may not be painted
-  // before the room that scroll needs is in the native content.
+  // Painting these before the reserve reaches the native content clamps the scroll they carry.
   const rows = heldRows ?? chatHistory;
 
   const clearPinLanding = useCallback(() => {
@@ -510,10 +508,7 @@ const Messages = ({
     pinHoldRef.current = false;
   }, []);
 
-  // The floor under the last answer is what makes the pin offset
-  // reachable, so the offset may only be written once that floor is in
-  // the tree. Writing it in the same commit is what keeps the question
-  // from appearing twice.
+  // Reachable only once the answer's floor is in the tree, and only in that same commit.
   const placePin = useCallback(() => {
     const scrollView = scrollRef.current;
     if (!scrollView) return;
@@ -521,17 +516,13 @@ const Messages = ({
     scrollView.scrollTo({ y: pinOffset.current, animated: false });
   }, []);
 
-  // The end of the content is inside the space reserved under the
-  // answer, so scrolling there would bury the question the pin is
-  // still holding at the top.
+  // The content ends inside the reserved space, so scrolling there buries the pinned question.
   const pinStillHolds = useCallback(
     () => pinFloorRef.current > 0 && !pinReleaseRef.current,
     []
   );
 
-  // The keyboard's padding is reconciled only once the send freeze lifts,
-  // so a scroll placed during that window can be left pointing at padding
-  // rather than at the question.
+  // Until the send freeze lifts, the keyboard's padding is unreconciled and a scroll lands on it.
   const repinAfterFreeze = useCallback(() => {
     if (pendingPinRef.current || pinPlacementPendingRef.current) return;
     if (!pinStillHolds()) return;
@@ -674,8 +665,7 @@ const Messages = ({
 
     pendingPinRef.current = false;
     closeUserActionMenu();
-    // The question's own frame is the only reading that does not move
-    // while the answer row below it grows.
+    // The question's own frame is the only reading that stays still as the answer below grows.
     pinOffset.current = Math.max(
       0,
       lastUserTop.current - listPaddingRef.current.top + MESSAGE_PIN_OFFSET
@@ -713,8 +703,7 @@ const Messages = ({
     predictedPinRef.current = null;
     pinPlacementPendingRef.current = true;
     pinHoldRef.current = true;
-    // The scroll and the mount are separate batches for the UI thread, so the
-    // rows can be painted a frame before the offset reaches them.
+    // Scroll and mount are separate UI-thread batches: the rows can paint before the offset lands.
     if (!pinLandedShort(lastScrollOffset.current, pinOffset.current)) {
       settlePlacing();
     } else {
@@ -793,9 +782,7 @@ const Messages = ({
           isAtBottomRef.current = true;
           setShowScrollButton(false);
         }
-        // The question will start where the content currently ends, so the
-        // offset is known before the row exists and the scroll does not have
-        // to wait for a measurement that costs a painted frame.
+        // Measuring instead costs a painted frame; the question starts where the content ends.
         predictedPinRef.current = Math.max(
           0,
           contentHeight.current -
@@ -809,14 +796,10 @@ const Messages = ({
         pinActive.current = true;
         pinReleaseRef.current = false;
         pendingPinRef.current = true;
-        // The room has to be in the content before the rows are, or the
-        // scroll issued with them is clamped by a size that predates it.
-        // A minHeight on the last answer cannot supply it: an answer taller
-        // than the screen already exceeds the floor and grows by nothing.
+        // A minHeight on the last answer cannot supply this: a tall answer already exceeds the floor.
         if (containerHeight.current > 0) {
           contentAtSend.current = contentHeight.current;
           placingFromRef.current = chatHistoryRef.current.length;
-          // A send whose rows never arrive must not leave the mark behind.
           if (placingTimer.current) clearTimeout(placingTimer.current);
           placingTimer.current = setTimeout(
             settlePlacing,
@@ -1270,10 +1253,7 @@ const Messages = ({
               message.role === 'user' &&
               message.id > 0;
 
-            // A row that changes wrapper type is remounted, and every
-            // entering animation inside it plays again. The last turn's
-            // rows gain and lose their measurement props on every send,
-            // so the wrapper stays the same element for all of them.
+            // A row that changes wrapper type remounts and replays its entering animation.
             const unplaced =
               placingFromRef.current !== null &&
               index >= placingFromRef.current;
