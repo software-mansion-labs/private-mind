@@ -74,8 +74,8 @@ const DrawerMenu = ({
   const router = useRouter();
   const pathname = usePathname();
 
-  const { chats } = useChatStore();
-  const { interrupt } = useLLMStore();
+  const chats = useChatStore((state) => state.chats);
+  const interrupt = useLLMStore((state) => state.interrupt);
 
   const { openMenuFor, MenuElements } = useDrawerChatMenu({
     onMenuActiveChange,

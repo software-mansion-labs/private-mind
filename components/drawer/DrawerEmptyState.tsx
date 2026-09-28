@@ -18,7 +18,7 @@ export const DrawerEmptyState = ({ onNavigate }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
   const db = useSQLiteContext();
-  const { interrupt } = useLLMStore();
+  const interrupt = useLLMStore((state) => state.interrupt);
 
   const isOnPhantomChat = useIsOnPhantomChat();
 
