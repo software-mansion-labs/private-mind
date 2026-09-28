@@ -451,10 +451,7 @@ const Messages = ({
   const releaseSendReserve = useCallback(() => {
     if (sendReserveRef.current > 0) setSendReserve(0);
   }, []);
-  // Sent with the keyboard up, the list is about to grow by its height, so
-  // room measured against the list as it stands now comes up a keyboard short.
-  // The window is not an upper bound for it either: on Android it is reported
-  // shorter than the list it contains.
+  // Android reports the window shorter than the list it contains, so it is no upper bound.
   const { height: windowHeight } = useWindowDimensions();
   const windowHeightRef = useRef(windowHeight);
   windowHeightRef.current = windowHeight;
