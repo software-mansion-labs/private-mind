@@ -508,7 +508,6 @@ const Messages = ({
     pinHoldRef.current = false;
   }, []);
 
-  // Reachable only once the answer's floor is in the tree, and only in that same commit.
   const placePin = useCallback(() => {
     const scrollView = scrollRef.current;
     if (!scrollView) return;
@@ -522,7 +521,6 @@ const Messages = ({
     []
   );
 
-  // Until the send freeze lifts, the keyboard's padding is unreconciled and a scroll lands on it.
   const repinAfterFreeze = useCallback(() => {
     if (pendingPinRef.current || pinPlacementPendingRef.current) return;
     if (!pinStillHolds()) return;
@@ -1085,10 +1083,7 @@ const Messages = ({
         return;
       }
 
-      // After send: now that the new chat row has rendered, pin it.
-      // Doing this here (instead of synchronously in onMessageSent)
-      // avoids a 1-frame flick where the old content gets lifted before
-      // the new DOM commits.
+      // Fallback for a send whose offset could not be predicted: place it from measurements.
       applyPendingPin();
 
       // During streaming, check if content has grown past the viewport
