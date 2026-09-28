@@ -207,16 +207,29 @@ const getContextInstruction = (
   return `\n\n${instruction}`;
 };
 
-const languageInstruction = (language?: QuestionLanguage | null): string => {
-  if (!language) {
-    return 'Write the whole answer in the language of the latest user message, and do not switch language or script partway through. Take that language from the message itself, not from the sources and not from these instructions: if the message is not written in English, the answer is not in English either.';
-  }
+const MIRROR_UNKNOWN_LANGUAGE =
+  'Write the whole answer in the same language the latest user message is written in, and do not switch language or script partway through.';
+
+const MIRROR_UNKNOWN_LANGUAGE_OVER_SOURCES =
+  'Write the whole answer in the language of the latest user message, and do not switch language or script partway through. Take that language from the message itself, not from the sources and not from these instructions: if the message is not written in English, the answer is not in English either.';
+
+const namedLanguageInstruction = (language: QuestionLanguage): string => {
   const inScript = language.script ? `, written in ${language.script}` : '';
   const noLatin = language.script
     ? ' Never transliterate the answer into the Latin alphabet.'
     : '';
   return `Write the whole answer in ${language.name}${inScript} — the language of the question — and do not switch language or script partway through.${noLatin}`;
 };
+
+const languageInstruction = (language?: QuestionLanguage | null): string =>
+  language
+    ? namedLanguageInstruction(language)
+    : MIRROR_UNKNOWN_LANGUAGE_OVER_SOURCES;
+
+const unsourcedLanguageInstruction = (
+  language?: QuestionLanguage | null
+): string =>
+  language ? namedLanguageInstruction(language) : MIRROR_UNKNOWN_LANGUAGE;
 
 export const focusedRetrySystemPrompt = (
   language: QuestionLanguage | null
@@ -654,7 +667,7 @@ export const prepareMessagesForLLM = (
     systemPrompt += getVerifiedProductInstruction(contextText);
     systemPrompt += getWeakRetrievalInstruction(webWeak);
   } else {
-    systemPrompt += `\n\n${languageInstruction(language)}`;
+    systemPrompt += `\n\n${unsourcedLanguageInstruction(language)}`;
     systemPrompt += getWebSearchFailedInstruction(webSearchFailed);
     const hasPriorWebAnswer = activeChatMessages.some(
       (msg) =>
