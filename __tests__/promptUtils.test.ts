@@ -64,6 +64,22 @@ describe('prepareMessagesForLLM', () => {
       expect(result[0].content).toContain(baseSettings.systemPrompt);
     });
 
+    it('still guards against source language when sources are present', () => {
+      const greeting: Message[] = [
+        { id: 1, chatId: 1, role: 'user', content: 'hi', timestamp: 0 },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const systemPrompt = prepareMessagesForLLM(
+        greeting,
+        ['some retrieved passage'],
+        baseSettings,
+        baseModel
+      )[0].content;
+
+      expect(systemPrompt).toContain('not in English either');
+    });
+
     it('states the date only where it can matter', () => {
       const temporal: Message[] = [
         {
@@ -127,27 +143,25 @@ describe('prepareMessagesForLLM', () => {
       expect(bare[0].content).toContain('Write the whole answer in Polish');
     });
 
-    it('falls back to the generic language rule when the question is opaque', () => {
-      const messages: Message[] = [
-        {
-          id: 1,
-          chatId: 1,
-          role: 'user',
-          content: 'Gdansk 2026',
-          timestamp: 0,
-        },
-        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
-      ];
-      const result = prepareMessagesForLLM(
-        messages,
-        [],
-        baseSettings,
-        baseModel
-      );
-      expect(result[0].content).toContain(
-        'the language of the latest user message'
-      );
-    });
+    it.each(['Gdansk 2026', 'hi', 'hello there'])(
+      'mirrors the message language without warning against English for %p',
+      (content) => {
+        const messages: Message[] = [
+          { id: 1, chatId: 1, role: 'user', content, timestamp: 0 },
+          { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+        ];
+        const result = prepareMessagesForLLM(
+          messages,
+          [],
+          baseSettings,
+          baseModel
+        );
+        expect(result[0].content).toContain(
+          'the same language the latest user message is written in'
+        );
+        expect(result[0].content).not.toContain('not in English either');
+      }
+    );
 
     it('restates the detected language next to the question itself', () => {
       const messages: Message[] = [
