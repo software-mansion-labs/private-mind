@@ -20,10 +20,10 @@ import SettingsIcon from '../../assets/icons/settings.svg';
 import { DrawerItem } from './DrawerItem';
 import { useIsOnPhantomChat } from './useIsOnPhantomChat';
 import {
-  EMPHASIZED_STANDARD,
   NAV_COLLAPSE_DURATION,
   SECTION_GAP,
 } from '../../constants/drawer-layout';
+import { EMPHASIZED_STANDARD } from '../../constants/motion';
 
 const NAV_EASING = Easing.bezier(...EMPHASIZED_STANDARD);
 
@@ -45,7 +45,7 @@ export const DrawerNavSection = ({
   const router = useRouter();
   const pathname = usePathname();
   const db = useSQLiteContext();
-  const { interrupt } = useLLMStore();
+  const interrupt = useLLMStore((state) => state.interrupt);
 
   const isOnPhantomChat = useIsOnPhantomChat();
 

@@ -10,6 +10,13 @@ import {
   type SourceDocument,
 } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
+
+export type SendRefusal =
+  | 'nothing-to-send'
+  | 'model-loading'
+  | 'busy'
+  | 'chat-not-created'
+  | 'image-not-saved';
 import { Attachment } from '../../hooks/useAttachment';
 import { LFMEmbeddings } from '../../utils/lfmEmbeddings';
 import { buildMessageSources } from '../../utils/messageSources';
@@ -95,17 +102,20 @@ export const useSendChatMessage = ({
     userInput: string,
     imagePath?: string,
     attachments?: Attachment[]
-  ): Promise<boolean> => {
+  ): Promise<boolean | SendRefusal> => {
     const hasDocuments = attachments?.some((a) => a.type === 'document');
-    if (!userInput.trim() && !imagePath && !hasDocuments) return false;
-    if (isModelLoading || isSwitching) return false;
+    if (!userInput.trim() && !imagePath && !hasDocuments) {
+      return 'nothing-to-send';
+    }
+    if (isSwitching) return 'model-loading';
     const llm = useLLMStore.getState();
     const busy = llm.isGenerating || llm.isProcessingPrompt;
     if (busy && llm.generatingForChatId !== chatId) {
       llm.interrupt();
     } else if (busy || isGenerating) {
-      return false;
+      return 'busy';
     }
+    if (!llm.model && !isModelLoading) return 'model-loading';
 
     messagesRef.current?.onMessageSent();
     Keyboard.dismiss();
@@ -119,7 +129,7 @@ export const useSendChatMessage = ({
       const newChatId = await addChat(toChatTitle(titleSource), model!.id);
       if (!newChatId) {
         messagesRef.current?.cancelMessageSent();
-        return false;
+        return 'chat-not-created';
       }
       targetChatId = newChatId;
       useWebSearchStore.getState().transfer(chatId, targetChatId);
@@ -136,7 +146,7 @@ export const useSendChatMessage = ({
           text1: 'Failed to save image attachment.',
         });
         messagesRef.current?.cancelMessageSent();
-        return false;
+        return 'image-not-saved';
       }
     }
 

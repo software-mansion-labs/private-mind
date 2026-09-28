@@ -220,16 +220,36 @@ describe('getDeviceMemoryGB', () => {
 
 describe('isMemoryConstrained', () => {
   it('counts the RAM left next to the loaded model, not the device total', () => {
+    setPlatform('android');
     mockGetTotalMemorySync.mockReturnValue(gb(7.4));
     expect(isMemoryConstrained({ modelSize: 2.5 })).toBe(true);
     expect(isMemoryConstrained({ modelSize: 0.65 })).toBe(false);
   });
 
   it('falls back to the device threshold when no model is loaded', () => {
+    setPlatform('android');
     mockGetTotalMemorySync.mockReturnValue(gb(7.4));
     expect(isMemoryConstrained(null)).toBe(false);
     mockGetTotalMemorySync.mockReturnValue(gb(5.8));
     expect(isMemoryConstrained(undefined)).toBe(true);
+  });
+
+  it('reads an 8GB iPhone carrying a vision model as capable, not constrained', () => {
+    setPlatform('ios');
+    mockGetTotalMemorySync.mockReturnValue(gb(8));
+    expect(isMemoryConstrained({ modelSize: 3 })).toBe(false);
+  });
+
+  it('still rules out the smallest iPhone', () => {
+    setPlatform('ios');
+    mockGetTotalMemorySync.mockReturnValue(gb(4));
+    expect(isMemoryConstrained({ modelSize: 1 })).toBe(true);
+  });
+
+  it('keeps the same headroom constrained on Android, where the system takes its share up front', () => {
+    setPlatform('android');
+    mockGetTotalMemorySync.mockReturnValue(gb(8));
+    expect(isMemoryConstrained({ modelSize: 3 })).toBe(true);
   });
 });
 

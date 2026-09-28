@@ -1,32 +1,10 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import CopyIcon from '../../assets/icons/copy.svg';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
-import { SvgComponent } from '../../utils/SvgComponent';
+import MenuRow from '../menu/MenuRow';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
+import { radius } from '../../constants/design-system';
 import { Theme } from '../../styles/colors';
-
-type MenuItemProps = {
-  label: string;
-  icon: SvgComponent;
-  onPress?: () => void;
-};
-
-const MenuItem = ({ label, icon: Icon, onPress }: MenuItemProps) => {
-  const { styles } = useThemedStyles(createStyles);
-
-  return (
-    <Pressable
-      style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-    >
-      <Icon width={16} height={16} style={styles.icon} />
-      <Text style={styles.label}>{label}</Text>
-    </Pressable>
-  );
-};
 
 type UserMessageActionMenuProps = {
   onCopy?: () => void;
@@ -44,7 +22,12 @@ export default function UserMessageActionMenu({
         pointerEvents="auto"
         onTouchStart={(event) => event.stopPropagation()}
       >
-        <MenuItem label="Copy" icon={CopyIcon} onPress={onCopy} />
+        <MenuRow
+          variant="compact"
+          label="Copy"
+          icon={CopyIcon}
+          onPress={onCopy}
+        />
       </View>
     </View>
   );
@@ -57,7 +40,7 @@ const createStyles = (theme: Theme) =>
     },
     menu: {
       minWidth: 112,
-      borderRadius: 10,
+      borderRadius: radius.twelve,
       overflow: 'hidden',
       backgroundColor: theme.bg.chatBar,
       borderWidth: StyleSheet.hairlineWidth,
@@ -67,26 +50,5 @@ const createStyles = (theme: Theme) =>
       shadowOpacity: 0.1,
       shadowRadius: 8,
       elevation: 4,
-    },
-    item: {
-      minHeight: 42,
-      paddingHorizontal: 12,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      backgroundColor: theme.bg.chatBar,
-      opacity: 1,
-    },
-    itemPressed: {
-      opacity: 0.6,
-    },
-    icon: {
-      color: theme.text.onChatBar,
-    },
-    label: {
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
-      color: theme.text.onChatBar,
     },
   });
