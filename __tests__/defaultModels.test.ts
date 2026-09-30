@@ -43,8 +43,6 @@ describe('getStartingModels', () => {
   });
 
   it('replaces incompatible mid-range candidates with low-end fallbacks', () => {
-    // Qwen 3 - 1.7B and LFM 2.5 VL - 1.6B need more than 0.8 * 4GB once
-    // runtime overhead is applied, so they are replaced with weaker models.
     expect(getStartingModels(4)).toEqual([
       'LFM 2.5 - 1.2B',
       'Qwen 3 - 0.6B',
@@ -57,11 +55,19 @@ describe('getStartingModels', () => {
     ]);
   });
 
-  it('replaces an incompatible high-end candidate with a weaker fallback', () => {
-    expect(getStartingModels(6.01)).toEqual([
+  it('offers the large models only where the device budget covers them', () => {
+    expect(getStartingModels(7.6)).toEqual([
       'Gemma 4 - 2B',
+      'Gemma 4 VL - 2B',
+      'Qwen 3 - 1.7B',
+    ]);
+  });
+
+  it('drops a 6 GB phone down to what it can actually hold', () => {
+    expect(getStartingModels(5.4959)).toEqual([
       'Qwen 3 - 1.7B',
       'LFM 2.5 - 1.2B',
+      'Qwen 3 - 0.6B',
     ]);
   });
 
