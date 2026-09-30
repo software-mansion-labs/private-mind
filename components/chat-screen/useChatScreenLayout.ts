@@ -11,6 +11,11 @@ import {
   USER_MESSAGE_BOTTOM_SPACING,
 } from '../../constants/chat-screen';
 import type { UserMessageActionMenuState } from './Messages';
+import {
+  GRADIENT_FADE_MS,
+  carriedGradientProgress,
+  startGradientRun,
+} from './gradientHandoff';
 
 interface UseChatScreenLayoutOptions {
   isEmpty: boolean;
@@ -19,7 +24,6 @@ interface UseChatScreenLayoutOptions {
   theme: Theme;
 }
 
-const GRADIENT_FADE_MS = 900;
 const GRADIENT_UNMOUNT_SLACK_MS = 100;
 
 export const useChatScreenLayout = ({
@@ -44,12 +48,17 @@ export const useChatScreenLayout = ({
     });
   }, []);
 
-  const gradientProgress = useSharedValue(isEmpty ? 1 : 0);
-  const [showGradient, setShowGradient] = useState(isEmpty);
+  const [initialGradientProgress] = useState(() =>
+    carriedGradientProgress(isEmpty ? 1 : 0)
+  );
+  const gradientProgress = useSharedValue(initialGradientProgress);
+  const [showGradient, setShowGradient] = useState(
+    isEmpty || initialGradientProgress > 0
+  );
   useEffect(() => {
-    gradientProgress.set(
-      withTiming(isEmpty ? 1 : 0, { duration: GRADIENT_FADE_MS })
-    );
+    const target = isEmpty ? 1 : 0;
+    startGradientRun(target);
+    gradientProgress.set(withTiming(target, { duration: GRADIENT_FADE_MS }));
     if (isEmpty) {
       setShowGradient(true);
       return;
