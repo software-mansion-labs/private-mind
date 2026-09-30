@@ -21,6 +21,10 @@ import ChatBarToggle from './ChatBarToggle';
 import { Feedback } from '../../utils/Feedback';
 import Toast from 'react-native-toast-message';
 import { COMPOSER } from './attachments/constants';
+import {
+  usePrimaryActionGuard,
+  type PrimaryAction,
+} from './usePrimaryActionGuard';
 
 interface Props {
   onAttach: () => void;
@@ -28,6 +32,8 @@ interface Props {
   hasAttachments?: boolean;
   isLoadingAttachment?: boolean;
   togglesDisabled?: boolean;
+  modelBusy?: boolean;
+  sendPending?: boolean;
   onSend: () => void;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -46,6 +52,8 @@ const ChatBarActions = ({
   hasAttachments = false,
   isLoadingAttachment = false,
   togglesDisabled = false,
+  modelBusy = false,
+  sendPending = false,
   onSend,
   isGenerating,
   isProcessingPrompt,
@@ -64,6 +72,13 @@ const ChatBarActions = ({
   }));
   const isResponding = isGenerating || isProcessingPrompt;
   const isAttachmentBlocked = isResponding || isLoadingAttachment;
+  const hasComposedInput = !!userInput || hasAttachments;
+  const primaryAction: PrimaryAction = isResponding
+    ? 'stop'
+    : hasComposedInput
+      ? 'send'
+      : 'voice';
+  const guardPrimaryPress = usePrimaryActionGuard(primaryAction);
 
   const handleAttach = () => {
     if (isAttachmentBlocked) {
@@ -81,27 +96,44 @@ const ChatBarActions = ({
   };
 
   const renderButton = () => {
-    if (isGenerating || isProcessingPrompt) {
+    if (primaryAction === 'stop') {
       return (
         <CircleButton
           icon={PauseIcon}
+          testID="stop-btn"
           size={13.33}
-          onPress={() => {
-            Feedback.interrupt();
-            onInterrupt();
-          }}
+          onPress={() =>
+            guardPrimaryPress(() => {
+              Feedback.interrupt();
+              onInterrupt();
+            })
+          }
           backgroundColor={theme.bg.main}
           color={theme.text.contrastPrimary}
         />
       );
     }
 
-    if ((userInput || hasAttachments) && !isLoadingAttachment) {
+    if (sendPending) {
+      return (
+        <CircleButton
+          icon={SendIcon}
+          backgroundColor={theme.bg.main}
+          color={theme.text.contrastPrimary}
+          busy
+          disabled
+          testID="send-btn"
+        />
+      );
+    }
+
+    if (primaryAction === 'send') {
       return (
         <View style={styles.rightActions}>
           {hasAttachments && !userInput && (
             <CircleButton
               icon={SoundwaveIcon}
+              testID="speech-btn"
               onPress={onSpeechInput}
               backgroundColor="transparent"
               color={theme.text.onChatBar}
@@ -109,10 +141,14 @@ const ChatBarActions = ({
           )}
           <CircleButton
             icon={SendIcon}
-            onPress={() => {
-              Feedback.send();
-              onSend();
-            }}
+            testID="send-btn"
+            disabled={isLoadingAttachment}
+            onPress={() =>
+              guardPrimaryPress(() => {
+                Feedback.send();
+                onSend();
+              })
+            }
             backgroundColor={theme.bg.main}
             color={theme.text.contrastPrimary}
           />
@@ -123,9 +159,11 @@ const ChatBarActions = ({
     return (
       <CircleButton
         icon={SoundwaveIcon}
-        onPress={onSpeechInput}
+        testID="speech-btn"
+        onPress={() => guardPrimaryPress(onSpeechInput)}
         backgroundColor="transparent"
         color={theme.text.onChatBar}
+        dimmed={modelBusy}
       />
     );
   };
