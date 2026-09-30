@@ -1,7 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { Theme } from '../../styles/colors';
 import Menu from '../../assets/icons/menu.svg';
 import { useNavigation } from 'expo-router';
 import { DrawerContentComponentProps } from '@react-navigation/drawer';
@@ -17,15 +16,17 @@ const DrawerToggleButton = () => {
   const turnInFlight = useTurnInFlight();
   const looksBusy = useSteadyFlag(turnInFlight, TURN_IN_FLIGHT_HOLD_MS);
 
+  const handlePress = () => {
+    if (turnInFlight) {
+      showTurnInFlightNotice();
+      return;
+    }
+    navigation.openDrawer();
+  };
+
   return (
     <TouchableOpacity
-      onPress={() => {
-        if (turnInFlight) {
-          showTurnInFlightNotice();
-          return;
-        }
-        navigation.openDrawer();
-      }}
+      onPress={handlePress}
       style={styles.button}
       hitSlop={15}
       testID="drawer-toggle"
@@ -43,7 +44,7 @@ const DrawerToggleButton = () => {
 
 export default React.memo(DrawerToggleButton);
 
-const createStyles = (_theme: Theme) =>
+const createStyles = () =>
   StyleSheet.create({
     button: {
       justifyContent: 'center',
