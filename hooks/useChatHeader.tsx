@@ -1,4 +1,6 @@
 import React, { useLayoutEffect, useState } from 'react';
+import { useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useChatStore } from '../store/chatStore';
 import NewChatHeaderButton from '../components/NewChatHeaderButton';
 import { Model } from '../database/modelRepository';
@@ -6,6 +8,7 @@ import ChatTitle from '../components/chat-screen/ChatTitle';
 import DrawerToggleButton from '../components/drawer/DrawerToggleButton';
 import { useNavigation } from 'expo-router';
 import { useChatTitleMenu } from '../components/chat-screen/ChatTitleMenu';
+import { headerTitleMaxWidth } from '../constants/chat-screen';
 
 interface Props {
   chatId: number;
@@ -27,6 +30,9 @@ export default function useChatHeader({
   const chat = getChatById(chatId);
   const chatTitle = chat ? chat.title : ``;
   const [titleBottom, setTitleBottom] = useState<number>();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const titleMaxWidth = headerTitleMaxWidth(width, insets);
 
   const { openMenu, MenuElements } = useChatTitleMenu({
     chatId,
@@ -35,6 +41,7 @@ export default function useChatHeader({
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      headerTitleContainerStyle: { maxWidth: titleMaxWidth },
       headerLeft: () => <DrawerToggleButton />,
       headerRight: () => <NewChatHeaderButton noOp={isEmpty} />,
       headerTitle: () => (
@@ -58,6 +65,7 @@ export default function useChatHeader({
     chat,
     isEmpty,
     onSelectModelFromTitle,
+    titleMaxWidth,
   ]);
 
   return { MenuElements, titleBottom };

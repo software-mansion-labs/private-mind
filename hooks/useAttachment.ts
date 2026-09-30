@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as MediaLibrary from 'expo-media-library';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
 import { useSourceStore } from '../store/sourceStore';
@@ -13,6 +13,8 @@ import { buildUrlSource } from '../utils/web/url/urlSource';
 import { hostname } from '../utils/web/hostname';
 
 export type DownloadResume = 'attachment' | 'none';
+
+export type DocumentPickOutcome = 'picked' | 'canceled';
 
 export interface Attachment {
   id: string;
@@ -28,6 +30,11 @@ interface ClearAllOptions {
   cleanupSources?: boolean;
 }
 
+export interface LibraryImage {
+  id: string;
+  uri: string;
+}
+
 const IMAGE_EXTENSIONS = [
   'jpg',
   'jpeg',
@@ -38,6 +45,58 @@ const IMAGE_EXTENSIONS = [
   'heic',
   'heif',
 ];
+
+export const MAX_IMAGE_ATTACHMENTS = 1;
+
+const RESOLVE_TIMEOUT_MS = 15000;
+
+const STORE_SETTLE_TIMEOUT_MS = 6000;
+const STORE_READY_TIMEOUT_MS = 15000;
+
+const withTimeout = async <T>(work: Promise<T>) => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      work,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), RESOLVE_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
+type ResolvedPhoto =
+  | { uri: string }
+  | { uri: null; inCloud: true }
+  | { uri: null; inCloud: false };
+
+const resolveLibraryUri = async (
+  photo: LibraryImage
+): Promise<ResolvedPhoto> => {
+  if (!photo.uri.startsWith('ph://')) return { uri: photo.uri };
+  try {
+    const local = await withTimeout(
+      MediaLibrary.getAssetInfoAsync(photo.id, {
+        shouldDownloadFromNetwork: false,
+      })
+    );
+    if (local?.localUri) return { uri: local.localUri };
+    const inCloud = !!local?.isNetworkAsset;
+
+    const fetched = await withTimeout(
+      MediaLibrary.getAssetInfoAsync(photo.id, {
+        shouldDownloadFromNetwork: true,
+      })
+    );
+    if (fetched?.localUri) return { uri: fetched.localUri };
+    return { uri: null, inCloud };
+  } catch (error) {
+    console.error('Failed to resolve a library asset to a local file', error);
+    return { uri: null, inCloud: false };
+  }
+};
 
 const isImageUri = (uri: string): boolean => {
   const pathPart = uri.split('?')[0].split('#')[0];
@@ -53,9 +112,11 @@ export const useAttachment = () => {
   const attachmentRequestRef = useRef(0);
   const currentDocumentAttachmentIdRef = useRef<string | null>(null);
   const documentAbortRef = useRef<AbortController | null>(null);
+  const panelOpenRef = useRef(false);
+  const pickerClosedRef = useRef<
+    ((outcome: DocumentPickOutcome) => void) | null
+  >(null);
   const pendingUrlRef = useRef<string | null>(null);
-  const sheetRef = useRef<BottomSheetModal>(null);
-  const attachmentSheetOpenRef = useRef(false);
   const embeddingDownloadSheetRef = useRef<BottomSheetModal>(null);
   const embeddingDownloadSheetOpenRef = useRef(false);
   const downloadResumeRef = useRef<DownloadResume>('attachment');
@@ -64,6 +125,16 @@ export const useAttachment = () => {
   const { vectorStore, embeddings } = useVectorStore();
   const vectorStoreRef = useRef(vectorStore);
   vectorStoreRef.current = vectorStore;
+  const embeddingsRef = useRef(embeddings);
+  embeddingsRef.current = embeddings;
+
+  const awaitVectorStore = useCallback(async (timeoutMs: number) => {
+    const deadline = Date.now() + timeoutMs;
+    while (!vectorStoreRef.current && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return vectorStoreRef.current;
+  }, []);
 
   const sweepAbandonedSources = useCallback(() => {
     const store = vectorStoreRef.current;
@@ -72,7 +143,7 @@ export const useAttachment = () => {
 
   useEffect(() => {
     return () => {
-      attachmentSheetOpenRef.current = false;
+      panelOpenRef.current = false;
       embeddingDownloadSheetOpenRef.current = false;
       pendingDownloadSheetRef.current = false;
       pendingDocumentPickRef.current = false;
@@ -90,25 +161,54 @@ export const useAttachment = () => {
     ]);
   }, []);
 
-  const pickFromLibrary = useCallback(async () => {
-    const result = await launchImageLibrary({ mediaType: 'photo', quality: 1 });
-    if (!result.didCancel && result.assets && result.assets.length > 0) {
-      const uri = result.assets[0].uri;
-      if (uri) {
-        replaceWithImage(uri);
-      }
-    }
-  }, [replaceWithImage]);
+  const addImages = useCallback(async (photos: LibraryImage[]) => {
+    const picked = photos.slice(0, MAX_IMAGE_ATTACHMENTS);
+    if (!picked.length) return;
 
-  const pickFromCamera = useCallback(async () => {
-    const result = await launchCamera({ mediaType: 'photo', quality: 1 });
-    if (!result.didCancel && result.assets && result.assets.length > 0) {
-      const uri = result.assets[0].uri;
-      if (uri) {
-        replaceWithImage(uri);
-      }
+    currentDocumentAttachmentIdRef.current = null;
+    documentAbortRef.current?.abort();
+    const requestId = attachmentRequestRef.current + 1;
+    attachmentRequestRef.current = requestId;
+
+    setAttachments(
+      picked.map((photo) => ({
+        id: photo.id,
+        type: 'image' as const,
+        uri: photo.uri,
+        status: 'loading' as const,
+      }))
+    );
+
+    const resolved = await Promise.all(
+      picked.map(async (photo) => ({
+        id: photo.id,
+        ...(await resolveLibraryUri(photo)),
+      }))
+    );
+    if (attachmentRequestRef.current !== requestId) return;
+
+    const failed = resolved.filter((photo) => !photo.uri);
+    if (failed.length) {
+      console.warn('Could not resolve picked photos to local files', {
+        ids: failed.map((photo) => photo.id),
+      });
+      Toast.show({
+        type: 'defaultToast',
+        text1: failed.some((photo) => 'inCloud' in photo && photo.inCloud)
+          ? 'That photo is only in iCloud. Open it in Photos first.'
+          : 'Could not open that photo.',
+      });
     }
-  }, [replaceWithImage]);
+
+    setAttachments((prev) =>
+      prev.flatMap((attachment) => {
+        const match = resolved.find((photo) => photo.id === attachment.id);
+        if (!match) return attachment;
+        if (!match.uri) return [];
+        return { ...attachment, uri: match.uri, status: 'ready' as const };
+      })
+    );
+  }, []);
 
   const runDocumentPicker = useCallback(async () => {
     const pickedFileResult = await DocumentPicker.getDocumentAsync({
@@ -124,6 +224,10 @@ export const useAttachment = () => {
       ],
       copyToCacheDirectory: true,
     });
+
+    const canceled = pickedFileResult.canceled || !pickedFileResult.assets[0];
+    pickerClosedRef.current?.(canceled ? 'canceled' : 'picked');
+    pickerClosedRef.current = null;
 
     if (pickedFileResult.canceled || !pickedFileResult.assets[0]) return;
 
@@ -396,24 +500,34 @@ export const useAttachment = () => {
     });
   }, [runDocumentPicker, runUrlSource]);
 
-  const markAttachmentSheetClosed = useCallback(() => {
-    attachmentSheetOpenRef.current = false;
+  const markPanelClosed = useCallback(() => {
+    panelOpenRef.current = false;
     if (!pendingDownloadSheetRef.current) return;
     pendingDownloadSheetRef.current = false;
     presentDownloadSheet();
   }, [presentDownloadSheet]);
 
   const pickDocument = useCallback(async () => {
-    if (useEmbeddingModelStore.getState().status === 'ready') {
-      return runDocumentPicker();
+    if (useEmbeddingModelStore.getState().status === 'unknown') {
+      await awaitVectorStore(STORE_SETTLE_TIMEOUT_MS);
     }
-    if (attachmentSheetOpenRef.current) {
+    if (useEmbeddingModelStore.getState().status === 'ready') {
+      const closed = new Promise<DocumentPickOutcome>((resolve) => {
+        pickerClosedRef.current = resolve;
+      });
+      runDocumentPicker().catch((error) => {
+        pickerClosedRef.current?.('canceled');
+        pickerClosedRef.current = null;
+        console.error('Document attachment failed', error);
+      });
+      return closed;
+    }
+    if (panelOpenRef.current) {
       pendingDownloadSheetRef.current = true;
-      sheetRef.current?.dismiss();
       return;
     }
     presentDownloadSheet();
-  }, [runDocumentPicker, presentDownloadSheet]);
+  }, [awaitVectorStore, runDocumentPicker, presentDownloadSheet]);
 
   const addUrlSource = useCallback(
     async (url: string) => {
@@ -427,13 +541,20 @@ export const useAttachment = () => {
   );
 
   const downloadModelAndContinue = useCallback(async () => {
-    if (!vectorStore) return;
+    const store = await awaitVectorStore(STORE_READY_TIMEOUT_MS);
+    if (!store) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Document storage is still starting up. Try again in a moment.',
+      });
+      return;
+    }
     const ready = await useLLMStore.getState().runWithModelOffloaded(
       async () => {
         const loaded = await useEmbeddingModelStore
           .getState()
-          .ensureReady(vectorStore);
-        await embeddings?.unload();
+          .ensureReady(store);
+        await embeddingsRef.current?.unload();
         return loaded;
       },
       { restore: false }
@@ -448,7 +569,11 @@ export const useAttachment = () => {
     if (!embeddingDownloadSheetOpenRef.current) return;
     pendingDocumentPickRef.current = downloadResumeRef.current === 'attachment';
     embeddingDownloadSheetRef.current?.dismiss();
-  }, [vectorStore, embeddings]);
+  }, [awaitVectorStore]);
+
+  const restoreAttachments = useCallback((previous: Attachment[]) => {
+    setAttachments(previous);
+  }, []);
 
   const removeAttachment = useCallback(
     (id: string) => {
@@ -477,9 +602,8 @@ export const useAttachment = () => {
     [sweepAbandonedSources]
   );
 
-  const openSheet = useCallback(() => {
-    attachmentSheetOpenRef.current = true;
-    sheetRef.current?.present();
+  const markPanelOpen = useCallback(() => {
+    panelOpenRef.current = true;
   }, []);
 
   const addPastedAttachment = useCallback(
@@ -503,19 +627,18 @@ export const useAttachment = () => {
 
   return {
     attachments,
-    sheetRef,
     embeddingDownloadSheetRef,
+    addImages,
     presentDownloadSheet,
-    pickFromLibrary,
-    pickFromCamera,
     pickDocument,
     addUrlSource,
     downloadModelAndContinue,
     markDownloadSheetClosed,
-    markAttachmentSheetClosed,
+    markPanelOpen,
+    markPanelClosed,
     removeAttachment,
+    restoreAttachments,
     clearAll,
-    openSheet,
     addPastedAttachment,
   };
 };

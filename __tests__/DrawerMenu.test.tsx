@@ -76,13 +76,18 @@ const mockRenameChat = jest.fn();
 const mockDeleteChat = jest.fn();
 let mockPhantomChat: { id: number } | null = null;
 jest.mock('../store/chatStore', () => ({
-  useChatStore: jest.fn(() => ({
-    chats: mockChats,
-    phantomChat: mockPhantomChat,
-    getChatById: (id: number) => mockChats.find((chat) => chat.id === id),
-    renameChat: mockRenameChat,
-    deleteChat: mockDeleteChat,
-  })),
+  useChatStore: jest.fn(
+    (selector?: (state: Record<string, unknown>) => unknown) => {
+      const state = {
+        chats: mockChats,
+        phantomChat: mockPhantomChat,
+        getChatById: (id: number) => mockChats.find((chat) => chat.id === id),
+        renameChat: mockRenameChat,
+        deleteChat: mockDeleteChat,
+      };
+      return selector ? selector(state) : state;
+    }
+  ),
 }));
 
 jest.mock('../context/VectorStoreContext', () => ({

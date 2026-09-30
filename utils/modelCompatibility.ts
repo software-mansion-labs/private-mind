@@ -3,6 +3,7 @@ import DeviceInfo from 'react-native-device-info';
 import { Model } from '../database/modelRepository';
 import {
   LOW_MEMORY_DEVICE_GB,
+  LOW_MEMORY_DEVICE_IOS_GB,
   STRONG_DEVICE_MEMORY_GB,
 } from '../constants/web';
 import { MODEL_MIN_RAM_GB } from '../constants/model-memory';
@@ -105,12 +106,15 @@ export const getDeviceMemoryGB = (): number => {
   return getTotalMemoryGB();
 };
 
+const lowMemoryHeadroomGB = (): number =>
+  Platform.OS === 'ios' ? LOW_MEMORY_DEVICE_IOS_GB : LOW_MEMORY_DEVICE_GB;
+
 export const isMemoryConstrained = (
   model?: { modelSize?: number } | null
 ): boolean => {
   try {
     const headroom = getTotalMemoryGB() - (model?.modelSize ?? 0);
-    return headroom < LOW_MEMORY_DEVICE_GB;
+    return headroom < lowMemoryHeadroomGB();
   } catch {
     return false;
   }

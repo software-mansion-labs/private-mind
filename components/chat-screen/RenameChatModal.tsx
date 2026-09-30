@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { PropsWithChildren, useEffect, useState } from 'react';
 import {
   Modal,
   View,
@@ -6,12 +6,37 @@ import {
   TextInput,
   StyleSheet,
   Pressable,
+  Platform,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import { Theme } from '../../styles/colors';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import { MAX_CHAT_TITLE_LENGTH } from '../../utils/chatLabel';
+import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
+import SecondaryButton from '../SecondaryButton';
+
+type CardProps = PropsWithChildren<{ style: StyleProp<ViewStyle> }>;
+
+const Card = ({ style, children }: CardProps) => {
+  if (Platform.OS !== 'ios') return <View style={style}>{children}</View>;
+  if (isLiquidGlassAvailable()) {
+    return (
+      <GlassView style={style} glassEffectStyle="regular">
+        {children}
+      </GlassView>
+    );
+  }
+  return (
+    <BlurView tint="systemThickMaterial" intensity={100} style={style}>
+      {children}
+    </BlurView>
+  );
+};
 
 interface Props {
   visible: boolean;
@@ -35,6 +60,14 @@ const RenameChatModal = ({
     }
   }, [visible, initialTitle]);
 
+  const setModalOwnsKeyboard = useKeyboardOwnerStore(
+    (state) => state.setModalOwnsKeyboard
+  );
+  useEffect(() => {
+    setModalOwnsKeyboard(visible);
+    return () => setModalOwnsKeyboard(false);
+  }, [visible, setModalOwnsKeyboard]);
+
   const trimmed = value.trim();
   const canSave = trimmed.length > 0;
 
@@ -47,15 +80,16 @@ const RenameChatModal = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="none"
       statusBarTranslucent
       onRequestClose={onCancel}
     >
       <KeyboardAvoidingView behavior="padding" style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onCancel} />
-        <View style={styles.card}>
+        <Card style={styles.card}>
           <Text style={styles.title}>Rename chat</Text>
           <TextInput
+            {...TEXT_SELECTION}
             value={value}
             onChangeText={setValue}
             maxLength={MAX_CHAT_TITLE_LENGTH}
@@ -68,27 +102,21 @@ const RenameChatModal = ({
             onSubmitEditing={handleSubmit}
           />
           <View style={styles.buttonRow}>
-            <Pressable onPress={onCancel} style={styles.button} hitSlop={8}>
-              <Text style={styles.buttonText}>Cancel</Text>
-            </Pressable>
-            <Pressable
+            <SecondaryButton
+              text="Cancel"
+              onPress={onCancel}
+              style={styles.actionButton}
+              textStyle={styles.actionText}
+            />
+            <SecondaryButton
+              text="Save"
               onPress={handleSubmit}
-              style={styles.button}
               disabled={!canSave}
-              hitSlop={8}
-            >
-              <Text
-                style={[
-                  styles.buttonText,
-                  styles.buttonTextPrimary,
-                  !canSave && styles.buttonTextDisabled,
-                ]}
-              >
-                Save
-              </Text>
-            </Pressable>
+              style={styles.actionButton}
+              textStyle={styles.actionText}
+            />
           </View>
-        </View>
+        </Card>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -111,8 +139,10 @@ const createStyles = (theme: Theme) =>
     card: {
       width: '100%',
       maxWidth: 360,
-      backgroundColor: theme.bg.softPrimary,
+      backgroundColor:
+        Platform.OS === 'ios' ? 'transparent' : theme.bg.softPrimary,
       borderRadius: 16,
+      overflow: 'hidden',
       padding: 20,
       gap: 16,
     },
@@ -120,10 +150,12 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.md,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
+      textAlign: 'center',
     },
     input: {
       borderWidth: 1,
-      borderColor: theme.bg.softSecondary,
+      borderColor: theme.border.soft,
+      backgroundColor: theme.bg.softPrimary,
       borderRadius: 8,
       paddingHorizontal: 12,
       paddingVertical: 10,
@@ -133,22 +165,17 @@ const createStyles = (theme: Theme) =>
     },
     buttonRow: {
       flexDirection: 'row',
-      justifyContent: 'flex-end',
-      gap: 16,
+      gap: 12,
     },
-    button: {
-      paddingVertical: 8,
-      paddingHorizontal: 12,
+    actionButton: {
+      flex: 1,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: theme.bg.dialogAction,
+      borderColor: 'transparent',
     },
-    buttonText: {
+    actionText: {
       fontSize: fontSizes.md,
-      fontFamily: fontFamily.medium,
-      color: theme.text.defaultSecondary,
-    },
-    buttonTextPrimary: {
-      color: theme.text.primary,
-    },
-    buttonTextDisabled: {
-      color: theme.text.defaultTertiary,
+      lineHeight: lineHeights.md,
     },
   });

@@ -3,7 +3,7 @@ import { View, StyleSheet, Platform } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import { Theme } from '../../styles/colors';
+import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import SearchIcon from '../../assets/icons/search.svg';
 import TextInputBorder from '../TextInputBorder';
 
@@ -33,6 +33,7 @@ const BottomSheetSearchInput = ({
         <TextInputBorder active={active} />
         <SearchIcon width={20} height={20} style={styles.searchIcon} />
         <BottomSheetTextInput
+          {...TEXT_SELECTION}
           style={styles.input}
           value={value}
           onChangeText={onChangeText}
