@@ -37,8 +37,10 @@ describe('android text selection tint', () => {
   });
 
   it('tints the selection handles with the brand colour, not the AppCompat accent', () => {
-    expect(themeItem('colorAccent')).toBe('@color/brandBlue');
-    expect(themeItem('colorControlActivated')).toBe('@color/brandBlue');
+    ['colorAccent', 'colorControlActivated'].forEach((attr) => {
+      expect(themeItem(attr)).toBe('@color/brandBlue');
+      expect(themeItem(`android:${attr}`)).toBe('@color/brandBlue');
+    });
     expect(colorValue('brandBlue').toLowerCase()).toBe(
       TEXT_SELECTION.cursorColor.toLowerCase()
     );
