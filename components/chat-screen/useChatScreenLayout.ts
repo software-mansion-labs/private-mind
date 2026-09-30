@@ -13,6 +13,12 @@ import {
   USER_MESSAGE_BOTTOM_SPACING,
 } from '../../constants/chat-screen';
 import type { UserMessageActionMenuState } from './Messages';
+import {
+  GRADIENT_EXIT_MS,
+  gradientRunMs,
+  carriedGradientProgress,
+  startGradientRun,
+} from './gradientHandoff';
 
 interface UseChatScreenLayoutOptions {
   isEmpty: boolean;
@@ -21,8 +27,6 @@ interface UseChatScreenLayoutOptions {
   theme: Theme;
 }
 
-const GRADIENT_ENTER_MS = 520;
-const GRADIENT_EXIT_MS = 320;
 const GRADIENT_UNMOUNT_SLACK_MS = 100;
 const GRADIENT_DRIFT_PX = 28;
 const GRADIENT_ENTER_SCALE = 1.05;
@@ -49,19 +53,22 @@ export const useChatScreenLayout = ({
     });
   }, []);
 
-  const gradientProgress = useSharedValue(isEmpty ? 1 : 0);
-  const [showGradient, setShowGradient] = useState(isEmpty);
+  const [initialGradientProgress] = useState(() =>
+    carriedGradientProgress(isEmpty ? 1 : 0)
+  );
+  const gradientProgress = useSharedValue(initialGradientProgress);
+  const [showGradient, setShowGradient] = useState(
+    isEmpty || initialGradientProgress > 0
+  );
   useEffect(() => {
+    const target = isEmpty ? 1 : 0;
+    startGradientRun(target);
     gradientProgress.set(
-      isEmpty
-        ? withTiming(1, {
-            duration: GRADIENT_ENTER_MS,
-            easing: Easing.out(Easing.cubic),
-          })
-        : withTiming(0, {
-            duration: GRADIENT_EXIT_MS,
-            easing: Easing.in(Easing.cubic),
-          })
+      withTiming(target, {
+        duration: gradientRunMs(target),
+        easing:
+          target === 1 ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      })
     );
     if (isEmpty) {
       setShowGradient(true);

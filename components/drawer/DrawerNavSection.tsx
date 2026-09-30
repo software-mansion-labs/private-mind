@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import Animated, {
   Easing,
@@ -19,6 +19,8 @@ import ModelsIcon from '../../assets/icons/models.svg';
 import SettingsIcon from '../../assets/icons/settings.svg';
 import { DrawerItem } from './DrawerItem';
 import { useIsOnPhantomChat } from './useIsOnPhantomChat';
+import { useTurnInFlight } from '../../hooks/useTurnInFlight';
+import { showTurnInFlightNotice } from '../../utils/turnInFlightNotice';
 import {
   NAV_COLLAPSE_DURATION,
   SECTION_GAP,
@@ -45,9 +47,10 @@ export const DrawerNavSection = ({
   const router = useRouter();
   const pathname = usePathname();
   const db = useSQLiteContext();
-  const { interrupt } = useLLMStore();
+  const interrupt = useLLMStore((state) => state.interrupt);
 
   const isOnPhantomChat = useIsOnPhantomChat();
+  const turnInFlight = useTurnInFlight();
 
   const [rendered, setRendered] = useState(!collapsed);
   const progress = useSharedValue(collapsed ? 0 : 1);
@@ -91,6 +94,37 @@ export const DrawerNavSection = ({
     };
   }, [height]);
 
+  const handleSectionLayout = (event: LayoutChangeEvent) => {
+    const measured = event.nativeEvent.layout.height;
+    if (measured > 0) onMeasured(measured);
+  };
+
+  const startNewChat = () => {
+    if (turnInFlight) {
+      showTurnInFlightNotice();
+      return;
+    }
+    if (isOnPhantomChat) {
+      onNavigate?.();
+      return;
+    }
+    interrupt();
+    startPhantomChat(db, 'replace');
+    onNavigate?.();
+  };
+
+  const goToModelHub = () => {
+    interrupt();
+    router.replace('/model-hub');
+    onNavigate?.();
+  };
+
+  const goToSettings = () => {
+    interrupt();
+    router.replace('/settings');
+    onNavigate?.();
+  };
+
   if (!rendered) return null;
 
   return (
@@ -100,49 +134,27 @@ export const DrawerNavSection = ({
     >
       <View
         style={styles.section}
-        onLayout={
-          height
-            ? undefined
-            : (event) => {
-                const measured = event.nativeEvent.layout.height;
-                if (measured > 0) onMeasured(measured);
-              }
-        }
+        onLayout={height ? undefined : handleSectionLayout}
       >
         <DrawerItem
           icon={<ChatIcon width={18} height={18} style={styles.icon} />}
           label="New chat"
           testID="drawer-new-chat"
           active={pathname === '/' || isOnPhantomChat}
-          onPress={() => {
-            if (isOnPhantomChat) {
-              onNavigate?.();
-              return;
-            }
-            interrupt();
-            startPhantomChat(db, 'replace');
-            onNavigate?.();
-          }}
+          dimmed={turnInFlight}
+          onPress={startNewChat}
         />
         <DrawerItem
           icon={<ModelsIcon width={18} height={18} style={styles.icon} />}
           label="Models"
           active={pathname === '/model-hub'}
-          onPress={() => {
-            interrupt();
-            router.replace('/model-hub');
-            onNavigate?.();
-          }}
+          onPress={goToModelHub}
         />
         <DrawerItem
           icon={<SettingsIcon width={18} height={18} style={styles.icon} />}
           label="Settings"
           active={pathname === '/settings'}
-          onPress={() => {
-            interrupt();
-            router.replace('/settings');
-            onNavigate?.();
-          }}
+          onPress={goToSettings}
         />
       </View>
     </Animated.View>

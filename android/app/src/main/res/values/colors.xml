@@ -3,4 +3,6 @@
   <color name="iconBackground">#ffffff</color>
   <color name="colorPrimary">#023c69</color>
   <color name="colorPrimaryDark">#3D61D6</color>
+  <color name="brandBlue">#3D61D6</color>
+  <color name="textSelectionHighlight">#4D3D61D6</color>
 </resources>
