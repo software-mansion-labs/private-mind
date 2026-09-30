@@ -138,7 +138,7 @@ const ChatBarActions = ({
           action={action}
           onPress={handlePress}
           busy={action === 'send' && sendPending}
-          disabled={action === 'send' && sendPending}
+          disabled={action === 'send' && (sendPending || isLoadingAttachment)}
           dimmed={action === 'speech' && modelBusy}
           testID={testID}
         />
