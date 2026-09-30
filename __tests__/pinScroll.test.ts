@@ -5,6 +5,7 @@ import {
   pinFloorFor,
   pinLandingFrom,
   pinReleaseTarget,
+  scrollButtonShows,
   stoppedTurnLandsShort,
 } from '../components/chat-screen/pinScroll';
 import {
@@ -119,6 +120,21 @@ describe('floorIsOutgrown', () => {
 
   it('never reports a row without a floor as outgrown', () => {
     expect(floorIsOutgrown(0, 300)).toBe(false);
+  });
+});
+
+describe('scrollButtonShows', () => {
+  it('offers the jump once the reader is genuinely behind the end', () => {
+    expect(scrollButtonShows(false, false)).toBe(true);
+  });
+
+  it('stays away while the sent question is still flying to its pin', () => {
+    expect(scrollButtonShows(false, true)).toBe(false);
+  });
+
+  it('is gone at the end of the list, pin or no pin', () => {
+    expect(scrollButtonShows(true, false)).toBe(false);
+    expect(scrollButtonShows(true, true)).toBe(false);
   });
 });
 
