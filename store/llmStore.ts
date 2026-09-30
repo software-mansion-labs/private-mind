@@ -1773,6 +1773,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             instance.getGeneratedTokenCount()
           );
 
+        if (tokensPerSecond <= 0) return undefined;
+
         return {
           totalTime,
           timeToFirstToken,
