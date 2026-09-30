@@ -24,10 +24,11 @@ module.exports = function (api) {
       ],
     ],
     env: {
-      // Strip every console.* call (error included — there is no crash
-      // reporting to feed) from release bundles; dev and test keep them.
+      // Strip console.* from release bundles, but keep console.error: with no
+      // crash reporting, the platform log is the only way a failure on a real
+      // device is diagnosable at all.
       production: {
-        plugins: ['transform-remove-console'],
+        plugins: [['transform-remove-console', { exclude: ['error'] }]],
       },
     },
   };
