@@ -36,6 +36,36 @@ jest.mock('../components/CircleButton', () => {
   );
 });
 
+jest.mock('../components/chat-screen/ComposerActionButton', () => {
+  const { TouchableOpacity } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({
+      onPress,
+      testID,
+      busy,
+      dimmed,
+      disabled,
+      action,
+    }: {
+      onPress?: () => void;
+      testID?: string;
+      busy?: boolean;
+      dimmed?: boolean;
+      disabled?: boolean;
+      action?: string;
+    }) => (
+      <TouchableOpacity
+        testID={testID || 'circle-btn'}
+        onPress={onPress}
+        accessibilityState={{ busy: !!busy, disabled: !!disabled }}
+        accessibilityHint={dimmed ? 'dimmed' : undefined}
+        accessibilityValue={{ text: action }}
+      />
+    ),
+  };
+});
+
 import ChatBarActions from '../components/chat-screen/ChatBarActions';
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -236,9 +266,44 @@ describe('action button', () => {
     expect(defaultProps.onSend).toHaveBeenCalled();
   });
 
+  it('leaves the stop button live when a send was still pending (#380)', () => {
+    renderActions({ isGenerating: true, sendPending: true });
+
+    const stop = screen.getByTestId('stop-btn');
+    expect(stop.props.accessibilityState.busy).toBe(false);
+    expect(stop.props.accessibilityState.disabled).toBe(false);
+    fireEvent.press(stop);
+    expect(defaultProps.onInterrupt).toHaveBeenCalled();
+  });
+
   it('calls onInterrupt when isGenerating', () => {
     renderActions({ isGenerating: true });
     fireEvent.press(screen.getByTestId('stop-btn'));
     expect(defaultProps.onInterrupt).toHaveBeenCalled();
+  });
+
+  it('never falls back to the microphone between the send and the turn', () => {
+    const { rerender } = renderActions({ userInput: 'hi' });
+    expect(screen.getByTestId('send-btn')).toBeTruthy();
+
+    rerender(
+      <ChatBarActions {...defaultProps} userInput="" sendInFlight={true} />
+    );
+
+    expect(screen.queryByTestId('speech-btn')).toBeNull();
+    expect(screen.getByTestId('send-btn').props.accessibilityState.busy).toBe(
+      false
+    );
+
+    rerender(
+      <ChatBarActions
+        {...defaultProps}
+        userInput=""
+        sendInFlight={true}
+        isProcessingPrompt={true}
+      />
+    );
+
+    expect(screen.getByTestId('stop-btn')).toBeTruthy();
   });
 });

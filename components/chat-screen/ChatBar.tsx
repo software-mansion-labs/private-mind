@@ -333,12 +333,18 @@ const ChatBar = ({
   }, [detectedUrl, addUrlSource]);
 
   const [sendPending, setSendPending] = useState(false);
+  const [sendInFlight, setSendInFlight] = useState(false);
+
+  useEffect(() => {
+    if (isGeneratingHere || isProcessingPromptHere) setSendInFlight(false);
+  }, [isGeneratingHere, isProcessingPromptHere]);
 
   const handleSend = useCallback(() => {
     if (hasLoadingAttachment) return;
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
     const inputToSend = userInput;
+    setSendInFlight(true);
     const outcome = onSend(inputToSend, imageUriToSend, attachmentsToSend);
     Keyboard.dismiss();
     if (disabled || modelSwitching) setSendPending(true);
@@ -364,7 +370,10 @@ const ChatBar = ({
       .catch((error) => {
         console.error('Failed to send message:', error);
       })
-      .finally(() => setSendPending(false));
+      .finally(() => {
+        setSendPending(false);
+        setSendInFlight(false);
+      });
   }, [
     onSend,
     disabled,
@@ -559,6 +568,7 @@ const ChatBar = ({
                 plusOut={panel.plusOut}
                 modelBusy={disabled || modelSwitching}
                 sendPending={sendPending}
+                sendInFlight={sendInFlight}
                 onAttach={handleAttach}
                 hasAttachments={attachments.length > 0}
                 isLoadingAttachment={hasLoadingAttachment}
