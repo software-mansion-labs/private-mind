@@ -337,12 +337,12 @@ const ChatBar = ({
     if (hasLoadingAttachment) return;
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
-    const inputToSend = userInput;
+    const inputToSend = userInput.trim();
     const outcome = onSend(inputToSend, imageUriToSend, attachmentsToSend);
     Keyboard.dismiss();
 
-    lastSentRef.current = inputToSend
-      ? { text: inputToSend, at: Date.now() }
+    lastSentRef.current = userInput
+      ? { text: userInput, at: Date.now() }
       : null;
     if (Platform.OS === 'ios') {
       textInputRef.current?.blur();

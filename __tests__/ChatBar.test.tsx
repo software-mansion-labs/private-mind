@@ -384,6 +384,21 @@ describe('downloaded model — text input', () => {
     dismiss.mockRestore();
   });
 
+  it('sends a prompt without the whitespace that would draw a blank line in the bubble (#399)', () => {
+    const onSend = jest.fn();
+    renderBar({ onSend });
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'Help me write a Python function.\n'
+    );
+    fireEvent.press(screen.getByTestId('send-btn'));
+    expect(onSend).toHaveBeenCalledWith(
+      'Help me write a Python function.',
+      undefined,
+      []
+    );
+  });
+
   it('calls onSend with current input when send button is pressed', () => {
     const onSend = jest.fn();
     renderBar({ onSend });
