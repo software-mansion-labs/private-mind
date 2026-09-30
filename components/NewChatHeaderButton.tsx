@@ -3,7 +3,6 @@ import { TouchableOpacity, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import ChatIcon from '../assets/icons/chat.svg';
 import { useThemedStyles } from '../hooks/useThemedStyles';
-import { Theme } from '../styles/colors';
 import { startPhantomChat } from '../utils/startPhantomChat';
 import { useChatStore } from '../store/chatStore';
 import { useTurnInFlight } from '../hooks/useTurnInFlight';
@@ -55,7 +54,7 @@ const NewChatHeaderButton = ({ noOp = false }: Props) => {
 
 export default NewChatHeaderButton;
 
-const createStyles = (_theme: Theme) =>
+const createStyles = () =>
   StyleSheet.create({
     button: {
       justifyContent: 'center',

@@ -7,7 +7,7 @@ afterEach(() => jest.useRealTimers());
 describe('useSteadyFlag', () => {
   it('rises the moment the value does', () => {
     const { result, rerender } = renderHook(
-      ({ value }) => useSteadyFlag(value, 180),
+      ({ value }: { value: boolean }) => useSteadyFlag(value, 180),
       { initialProps: { value: false } }
     );
 
@@ -17,7 +17,7 @@ describe('useSteadyFlag', () => {
 
   it('ignores a gap shorter than the hold', () => {
     const { result, rerender } = renderHook(
-      ({ value }) => useSteadyFlag(value, 180),
+      ({ value }: { value: boolean }) => useSteadyFlag(value, 180),
       { initialProps: { value: true } }
     );
 
@@ -35,7 +35,7 @@ describe('useSteadyFlag', () => {
 
   it('falls once the value has stayed false for the whole hold', () => {
     const { result, rerender } = renderHook(
-      ({ value }) => useSteadyFlag(value, 180),
+      ({ value }: { value: boolean }) => useSteadyFlag(value, 180),
       { initialProps: { value: true } }
     );
 
