@@ -18,7 +18,7 @@ type StartReturnType = Promise<AsyncGenerator<
   unknown
 > | null>;
 
-type Status = 'loading' | 'idle' | 'listening' | 'processing';
+export type Status = 'loading' | 'idle' | 'listening' | 'processing';
 
 interface Result extends Pick<STTStore, 'loadProgress'> {
   start: () => StartReturnType;

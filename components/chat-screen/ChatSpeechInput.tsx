@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Theme } from '../../styles/colors';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, lineHeights } from '../../styles/fontStyles';
-import { useSpeechInput } from '../../hooks/useSpeechInput';
+import { useSpeechInput, type Status } from '../../hooks/useSpeechInput';
 import CircleButton from '../CircleButton';
 import TrashIcon from '../../assets/icons/trash.svg';
 import SendIcon from '../../assets/icons/send_icon.svg';
@@ -24,6 +24,13 @@ interface Props {
 }
 
 const CANCEL_ANIMATION_DURATION = 500;
+
+const ACTION_NOTES: Record<Status, string> = {
+  loading: 'Loading speech recognition...',
+  idle: 'Loading speech recognition...',
+  processing: 'Finishing the transcript...',
+  listening: 'Click again to send',
+};
 
 const ChatSpeechInput: React.FC<Props> = ({
   onSubmit: onSubmitProp,
@@ -170,11 +177,7 @@ const ChatSpeechInput: React.FC<Props> = ({
     stop();
   };
 
-  const actionNote = isPreparing
-    ? 'Loading speech recognition...'
-    : isFinishing
-      ? 'Finishing the transcript...'
-      : 'Click again to send';
+  const actionNote = ACTION_NOTES[status];
 
   const renderTopNote = () => {
     const fullTranscription = (
