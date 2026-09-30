@@ -7,7 +7,6 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { Theme } from '../../styles/colors';
 import CircleButton from '../CircleButton';
 import ComposerActionButton, {
   type ComposerAction,
@@ -22,6 +21,21 @@ import ChatBarToggle from './ChatBarToggle';
 import { Feedback } from '../../utils/Feedback';
 import Toast from 'react-native-toast-message';
 import { COMPOSER } from './attachments/constants';
+
+const composerAction = (
+  isResponding: boolean,
+  canSend: boolean
+): ComposerAction => {
+  if (isResponding) return 'stop';
+  if (canSend) return 'send';
+  return 'speech';
+};
+
+const ACTION_TEST_IDS: Record<ComposerAction, string> = {
+  send: 'send-btn',
+  stop: 'stop-btn',
+  speech: 'speech-btn',
+};
 
 interface Props {
   onAttach: () => void;
@@ -85,13 +99,14 @@ const ChatBarActions = ({
     onAttach();
   };
 
+  const handleThinkingToggle = () => onThinkingToggle?.();
+
   const renderButton = () => {
     const isSendable = (userInput || hasAttachments) && !isLoadingAttachment;
-    const action: ComposerAction = isResponding
-      ? 'stop'
-      : sendPending || isSendable
-        ? 'send'
-        : 'speech';
+    const action = composerAction(
+      isResponding,
+      Boolean(sendPending || isSendable)
+    );
 
     const handlePress = () => {
       if (action === 'stop') {
@@ -107,12 +122,7 @@ const ChatBarActions = ({
       onSpeechInput();
     };
 
-    const testID =
-      action === 'send'
-        ? 'send-btn'
-        : action === 'stop'
-          ? 'stop-btn'
-          : 'speech-btn';
+    const testID = ACTION_TEST_IDS[action];
 
     return (
       <View style={styles.rightActions}>
@@ -159,7 +169,7 @@ const ChatBarActions = ({
           enabled={thinkingEnabled}
           iconOn={LightBulbIcon}
           iconOff={LightBulbCrossedIcon}
-          onToggle={() => onThinkingToggle?.()}
+          onToggle={handleThinkingToggle}
           disabled={togglesDisabled}
         />
         {onWebSearchToggle ? (
@@ -182,7 +192,7 @@ const ChatBarActions = ({
 
 export default ChatBarActions;
 
-const createStyles = (_theme: Theme) =>
+const createStyles = () =>
   StyleSheet.create({
     container: {
       flexDirection: 'row',

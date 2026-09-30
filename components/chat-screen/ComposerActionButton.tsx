@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import Reanimated, {
   Easing,
   useAnimatedStyle,
@@ -85,9 +84,12 @@ const ComposerActionButton = ({
   }));
 
   return (
-    <TouchableOpacity
-      onPress={disabled ? undefined : onPress}
-      style={[styles.circle, (disabled || dimmed) && styles.dimmed]}
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.circle,
+        (disabled || dimmed || pressed) && styles.dimmed,
+      ]}
       disabled={disabled}
       accessibilityState={{ disabled, busy }}
       testID={testID}
@@ -123,7 +125,7 @@ const ComposerActionButton = ({
           </Reanimated.View>
         </View>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
