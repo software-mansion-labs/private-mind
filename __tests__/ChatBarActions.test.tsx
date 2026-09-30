@@ -13,9 +13,9 @@ jest.mock('../context/ThemeContext', () => ({
 }));
 
 jest.mock('../components/CircleButton', () => {
-  const { TouchableOpacity } = require('react-native');
+  const { Pressable } = require('react-native');
   return ({ onPress, testID }: { onPress?: () => void; testID?: string }) => (
-    <TouchableOpacity testID={testID || 'circle-btn'} onPress={onPress} />
+    <Pressable testID={testID || 'circle-btn'} onPress={onPress} />
   );
 });
 
