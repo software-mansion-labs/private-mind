@@ -15,6 +15,6 @@ describe('toastTopOffset', () => {
   it('leaves a gap between the header and the toast', () => {
     const headerBottom = Platform.OS === 'ios' ? 20 + 44 : 20 + 56;
 
-    expect(toastTopOffset(20)).toBe(headerBottom + 4);
+    expect(toastTopOffset(20)).toBe(headerBottom + 2);
   });
 });

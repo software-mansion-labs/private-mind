@@ -17,7 +17,7 @@ import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { openAppSettings } from '../utils/openAppSettings';
 
 const NAV_HEADER_HEIGHT = Platform.OS === 'ios' ? 44 : 56;
-const TOAST_HEADER_GAP = 4;
+const TOAST_HEADER_GAP = 2;
 
 export const toastTopOffset = (safeAreaTop: number) =>
   safeAreaTop + NAV_HEADER_HEIGHT + TOAST_HEADER_GAP;
