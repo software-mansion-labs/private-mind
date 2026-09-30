@@ -2931,3 +2931,62 @@ describe('sendChatMessage when the model never goes idle', () => {
     expect(useLLMStore.getState().generationError).not.toBeNull();
   }, 15000);
 });
+
+// ─── interrupted turns ────────────────────────────────────────────────────────
+
+describe('a turn abandoned before its first token', () => {
+  const settings = { systemPrompt: 'be helpful' };
+
+  beforeEach(async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    mockGetChatMessages.mockResolvedValue([]);
+    useLLMStore.setState({ model: baseModel, activeChatId: 1 });
+  });
+
+  const runAbandonedTurn = async (tokensAfterAbandon: number) => {
+    mockInstance.interrupt.mockClear();
+    mockInstance.generate.mockImplementation(async () => {
+      await flushFrame();
+      useLLMStore.getState().interrupt();
+      await flushFrame();
+      for (let i = 0; i < tokensAfterAbandon; i++) {
+        capturedTokenCallback!('tok');
+        await flushFrame();
+      }
+      return 'Sure, here we go';
+    });
+    mockInstance.getGeneratedTokenCount.mockReturnValue(2);
+
+    await useLLMStore.getState().sendChatMessage('hi', 1, noSources, settings);
+
+    return mockInstance.interrupt.mock.calls.length;
+  };
+
+  it('does not ask the runtime to stop again for every token it keeps delivering', async () => {
+    const withFewTokens = await runAbandonedTurn(6);
+    const withManyTokens = await runAbandonedTurn(40);
+
+    expect(withManyTokens).toBe(withFewTokens);
+  });
+
+  it('keeps streaming when the abandon happens after the first token landed', async () => {
+    mockInstance.generate.mockImplementation(async () => {
+      await flushFrame();
+      capturedTokenCallback!('Sure');
+      await flushFrame();
+      useLLMStore.getState().interrupt();
+      await flushFrame();
+      for (let i = 0; i < 10; i++) {
+        capturedTokenCallback!('tok');
+        await flushFrame();
+      }
+      return 'Sure, here we go';
+    });
+    mockInstance.getGeneratedTokenCount.mockReturnValue(11);
+
+    await useLLMStore.getState().sendChatMessage('hi', 1, noSources, settings);
+
+    expect(useLLMStore.getState().performance.tokenCount).toBe(11);
+  });
+});
