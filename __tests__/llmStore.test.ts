@@ -12,8 +12,12 @@ import { useWebSearchStore } from '../store/webSearchStore';
 const memoryProbe = { samples: [] as number[], available: false };
 jest.mock('../modules/memory-probe', () => ({
   PHYS_FOOTPRINT_METRIC: 'phys_footprint',
+  TOTAL_PSS_METRIC: 'total_pss',
   isPhysFootprintAvailable: () => memoryProbe.available,
+  isMemoryMetricAvailable: () => memoryProbe.available,
+  memorySampleIntervalMs: () => 250,
   getPhysFootprintBytes: () => memoryProbe.samples.shift() ?? null,
+  getMemoryFootprintBytes: () => memoryProbe.samples.shift() ?? null,
 }));
 
 jest.mock('../database/chatRepository');

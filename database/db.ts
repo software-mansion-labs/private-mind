@@ -11,6 +11,12 @@ import { restoreTruncatedChatTitles } from './chatTitleMigration';
 import { resolveModelCatalog } from '../utils/fetchModelCatalog';
 import { getActiveCatalog, setActiveCatalog } from '../utils/modelCatalogState';
 
+const discardPeakMemoryMeasuredWithTheOldMetric = async (
+  db: SQLiteDatabase
+): Promise<void> => {
+  await db.execAsync(`UPDATE benchmarks SET peakMemory = 0`);
+};
+
 export const runMigrations = async (db: SQLiteDatabase) => {
   const modelsTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(models)`
@@ -160,8 +166,6 @@ export const runMigrations = async (db: SQLiteDatabase) => {
     );
   }
 
-  // Clearing is deliberate: rows hold resident_size, which phys_footprint ones
-  // cannot be compared against.
   const benchmarksTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(benchmarks)`
   );
@@ -172,7 +176,7 @@ export const runMigrations = async (db: SQLiteDatabase) => {
     await db.execAsync(
       `ALTER TABLE benchmarks ADD COLUMN peakMemoryMetric TEXT DEFAULT NULL`
     );
-    await db.execAsync(`UPDATE benchmarks SET peakMemory = 0`);
+    await discardPeakMemoryMeasuredWithTheOldMetric(db);
   }
 
   await migrateLegacyVectorStore(db);

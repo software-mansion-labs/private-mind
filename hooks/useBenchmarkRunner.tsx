@@ -7,10 +7,7 @@ import {
   BenchmarkResultPerformanceNumbers,
 } from '../database/benchmarkRepository';
 import { Feedback } from '../utils/Feedback';
-import {
-  isPhysFootprintAvailable,
-  PHYS_FOOTPRINT_METRIC,
-} from '../modules/memory-probe';
+import { memoryMetric } from '../modules/memory-probe';
 import {
   BENCHMARK_ITERATIONS,
   BENCHMARK_WARMUP_RUNS,
@@ -100,9 +97,7 @@ export default function useBenchmarkRunner({
           ...averageResult,
           modelId: selectedModel.id,
           modelName: selectedModel.modelName,
-          peakMemoryMetric: isPhysFootprintAvailable()
-            ? PHYS_FOOTPRINT_METRIC
-            : null,
+          peakMemoryMetric: memoryMetric(),
         });
 
         setIsSuccess(true);
