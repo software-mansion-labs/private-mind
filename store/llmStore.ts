@@ -18,11 +18,13 @@ import {
   setChatDigest,
   SourceDocument,
 } from '../database/chatRepository';
-import DeviceInfo from 'react-native-device-info';
-import { BENCHMARK_PROMPT } from '../constants/default-benchmark';
+import {
+  BENCHMARK_GENERATION_CONFIG,
+  BENCHMARK_PROMPT,
+  BENCHMARK_TOKEN_TARGET,
+} from '../constants/default-benchmark';
 import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
 import { type Message as ExecutorchMessage } from 'react-native-executorch/legacy';
-import { Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import { Feedback } from '../utils/Feedback';
@@ -64,6 +66,10 @@ import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
 import { updateConversationDigest } from '../utils/conversationDigest';
 import type { WebIntentKind } from '../utils/web/intentKind';
 import { useSettingsStore } from './settingsStore';
+import {
+  getPhysFootprintBytes,
+  isPhysFootprintAvailable,
+} from '../modules/memory-probe';
 import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
 
@@ -193,6 +199,7 @@ const resetStreamState = () => {
   streamedSoFar = '';
 };
 
+let benchmarkTokenBudget: number | null = null;
 let suppressUtilityStreaming = false;
 let utilityGenerating = false;
 let utilityChain: Promise<void> = Promise.resolve();
@@ -243,22 +250,31 @@ const calculatePerformanceMetrics = (
   };
 };
 
-const createMemoryTracker = (onUpdate: (usedMemory: number) => void) => {
-  if (Platform.OS !== 'ios') {
+const MEMORY_SAMPLE_MS = 250;
+
+const createMemoryTracker = (onUpdate: (footprintBytes: number) => void) => {
+  if (!isPhysFootprintAvailable()) {
     return { start: () => {}, stop: () => {} };
   }
-  let trackerId: ReturnType<typeof setInterval>;
+
+  let trackerId: ReturnType<typeof setInterval> | undefined;
+
+  const sample = () => {
+    const footprint = getPhysFootprintBytes();
+    if (footprint !== null) onUpdate(footprint);
+  };
+
   return {
     start: () => {
-      trackerId = setInterval(async () => {
-        try {
-          onUpdate(await DeviceInfo.getUsedMemory());
-        } catch (e) {
-          console.warn('Unable to read memory:', e);
-        }
-      }, 3000);
+      sample();
+      trackerId = setInterval(sample, MEMORY_SAMPLE_MS);
     },
-    stop: () => clearInterval(trackerId),
+    stop: () => {
+      if (trackerId === undefined) return;
+      clearInterval(trackerId);
+      trackerId = undefined;
+      sample();
+    },
   };
 };
 
@@ -332,6 +348,10 @@ const loadModelInstance = async (
 
   const flushStream = () => {
     streamFlushScheduled = false;
+    if (benchmarkTokenBudget !== null) {
+      streamBuffer = '';
+      return;
+    }
     if (!streamBuffer) return;
     const text = streamBuffer;
     streamBuffer = '';
@@ -392,6 +412,12 @@ const loadModelInstance = async (
         }
 
         streamTokenCount += 1;
+        if (
+          benchmarkTokenBudget !== null &&
+          (llmInstance?.getGeneratedTokenCount() ?? 0) >= benchmarkTokenBudget
+        ) {
+          llmInstance?.interrupt();
+        }
         streamBuffer += token;
         if (!streamFlushScheduled) {
           streamFlushScheduled = true;
@@ -1685,6 +1711,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     ) {
       return;
     }
+    let benchmarkedModel: Model | null = null;
     let runPeakMemory = 0;
     const memoryTracker = createMemoryTracker((usedMemory) => {
       if (usedMemory > runPeakMemory) runPeakMemory = usedMemory;
@@ -1703,6 +1730,16 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       }
 
       memoryTracker.start();
+      benchmarkTokenBudget = BENCHMARK_TOKEN_TARGET;
+      benchmarkedModel = get().model;
+      if (benchmarkedModel) {
+        instance.configure({
+          generationConfig: {
+            ...getGenerationConfigForModel(benchmarkedModel),
+            ...BENCHMARK_GENERATION_CONFIG,
+          },
+        });
+      }
 
       return await withExclusiveRunner(async (isCancelled) => {
         if (llmInstance !== instance || isCancelled()) return;
@@ -1718,12 +1755,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         const endTime = performance.now();
         memoryTracker.stop();
 
-        const { firstTokenTime } = get().performance;
         const { totalTime, timeToFirstToken, tokensPerSecond } =
           calculatePerformanceMetrics(
             startTime,
             endTime,
-            firstTokenTime,
+            streamFirstTokenTime,
             instance.getGeneratedTokenCount()
           );
 
@@ -1738,6 +1774,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     } catch {
       return undefined;
     } finally {
+      benchmarkTokenBudget = null;
+      if (llmInstance && benchmarkedModel) {
+        llmInstance.configure({
+          generationConfig: getGenerationConfigForModel(benchmarkedModel),
+        });
+      }
       memoryTracker.stop();
       set({ isGenerating: false, isBenchmarking: false });
     }
