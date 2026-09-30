@@ -48,10 +48,11 @@ describe('composer action morph', () => {
 
 describe('ComposerActionButton', () => {
   it('shows a spinner in place of the icons while a send waits', () => {
+    const onPress = jest.fn();
     render(
       <ComposerActionButton
         action="send"
-        onPress={jest.fn()}
+        onPress={onPress}
         busy
         disabled
         testID="send-btn"
@@ -59,7 +60,12 @@ describe('ComposerActionButton', () => {
     );
 
     expect(screen.UNSAFE_getAllByType(ActivityIndicator)).toHaveLength(1);
-    expect(screen.getByTestId('send-btn').props.enabled).toBe(false);
+    expect(
+      screen.getByTestId('send-btn').props.accessibilityState
+    ).toMatchObject({ disabled: true, busy: true });
+
+    fireEvent.press(screen.getByTestId('send-btn'));
+    expect(onPress).not.toHaveBeenCalled();
   });
 
   it('shows the icons and no spinner once nothing is waiting', () => {
