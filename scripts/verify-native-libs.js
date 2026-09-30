@@ -22,9 +22,13 @@ const readNativeLibsVersion = () => {
   return manifest.nativeLibsVersion || null;
 };
 
+const isMetadataSidecar = (name) =>
+  name.startsWith('._') || name === '.DS_Store';
+
 const walk = (dir) => {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   return entries.flatMap((entry) => {
+    if (isMetadataSidecar(entry.name)) return [];
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) return walk(full);
     if (entry.isFile()) return [full];
@@ -125,11 +129,15 @@ const main = () => {
     ]);
   }
 
-  for (const key of missing) {
-    console.warn(`[native-libs] not downloaded on this host: ${key}`);
+  if (missing.length > 0) {
+    console.warn(
+      `[native-libs] ${missing.length} artifact(s) not downloaded on this host, e.g. ${missing[0]}`
+    );
   }
-  for (const key of added) {
-    console.warn(`[native-libs] present but absent from the lock: ${key}`);
+  if (added.length > 0) {
+    console.warn(
+      `[native-libs] ${added.length} artifact(s) present but absent from the lock, e.g. ${added[0]}`
+    );
   }
 
   console.log(
