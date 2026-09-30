@@ -111,7 +111,7 @@
     "react-native-blob-util": "^0.24.0",
     "react-native-device-info": "^15.0.1",
     "react-native-enriched-markdown": "^0.4.1",
-    "react-native-executorch": "^0.10.2",
+    "react-native-executorch": "0.10.4",
     "react-native-executorch-expo-resource-fetcher": "^0.10.0",
     "react-native-gesture-handler": "~2.30.0",
     "react-native-keyboard-controller": "1.22.3",

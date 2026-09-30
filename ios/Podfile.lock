@@ -1651,7 +1651,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-executorch (0.10.2):
+  - react-native-executorch (0.10.4):
     - hermes-engine
     - opencv-rne (~> 4.11.0)
     - RCTRequired
@@ -3172,7 +3172,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: 563b4dcc8b8570814d6de4fc1196f48d2944acd4
   react-native-background-downloader: be5d8b714cda2ea6ab00584a60f3cf10f67b761b
   react-native-blob-util: 0224ef06c4adac1d64b4461d7546288bb5e9aca4
-  react-native-executorch: 859637dba4486e446f9e0ccfe6b6afd3bbe19238
+  react-native-executorch: 17f770a2acf9d88635d9c4f2f6acd79dd950a6a7
   react-native-keyboard-controller: 915bcea56ada061f1c7d4b50162be64cb1cad9dc
   react-native-netinfo: f852c868bf5175e46165c7e4db48a204a95c3800
   react-native-safe-area-context: 37e680fc4cace3c0030ee46e8987d24f5d3bdab2

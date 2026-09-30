@@ -28,6 +28,8 @@ import {
   GEMMA4_E2B_TOKENIZER_CONFIG,
 } from 'react-native-executorch/legacy';
 
+// Must stay on /legacy: the non-legacy entry point moves Gemma to v0.10.0 and
+// re-downloads every copy already on a device.
 const GEMMA4_E2B = {
   modelName: 'gemma4-e2b',
   modelSource:

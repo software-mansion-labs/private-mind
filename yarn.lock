@@ -10614,7 +10614,7 @@ __metadata:
     react-native-blob-util: ^0.24.0
     react-native-device-info: ^15.0.1
     react-native-enriched-markdown: ^0.4.1
-    react-native-executorch: ^0.10.2
+    react-native-executorch: 0.10.4
     react-native-executorch-expo-resource-fetcher: ^0.10.0
     react-native-gesture-handler: ~2.30.0
     react-native-keyboard-controller: 1.22.3
@@ -10874,9 +10874,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-executorch@npm:^0.10.2":
-  version: 0.10.2
-  resolution: "react-native-executorch@npm:0.10.2"
+"react-native-executorch@npm:0.10.4":
+  version: 0.10.4
+  resolution: "react-native-executorch@npm:0.10.4"
   dependencies:
     "@huggingface/jinja": ^0.5.9
     jsonrepair: ^3.12.0
@@ -10892,7 +10892,7 @@ __metadata:
   peerDependenciesMeta:
     "@kesha-antonov/react-native-background-downloader":
       optional: true
-  checksum: 387f6889d92bcf979e71698c8f65a34b538495de81480605ec42a480a225a605be9e13363fde78abae2b545793b35b8b5cd9c0eb4684b3b8b100a9257af33a9d
+  checksum: 51cbcec00e79f2264427a208016e040b17a9fa79587b54ef45ac0ad731bd7f74a5c92f88d2be1d700249ac46fb0a8721579dbc564dc476c011cc16fffa13c19b
   languageName: node
   linkType: hard
 
