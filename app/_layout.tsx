@@ -22,8 +22,8 @@ import { Stack } from 'expo-router';
 import { VectorStoreProvider } from '../context/VectorStoreContext';
 import * as SplashScreen from 'expo-splash-screen';
 import SplashScreenAnimation from '../components/SplashScreenAnimation';
-import { initExecutorch } from 'react-native-executorch';
-import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
+import { initExecutorch } from 'react-native-executorch/legacy';
+import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import { removeBundledModelLeftovers } from '../utils/bundledModelCleanup';
 
 initExecutorch({ resourceFetcher: ExpoResourceFetcher });

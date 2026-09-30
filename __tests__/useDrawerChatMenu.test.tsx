@@ -44,6 +44,7 @@ jest.mock('expo-router', () => ({
 }));
 
 import { useDrawerChatMenu } from '../components/drawer/useDrawerChatMenu';
+import { ACTION_SHEET_TITLE_MAX_LENGTH } from '../constants/chat-menu';
 
 const chat = { id: 7, modelId: 1, title: 'Trip to Rome', lastUsed: Date.now() };
 const untitledChat = { id: 9, modelId: 1, title: '', lastUsed: Date.now() };
@@ -134,7 +135,9 @@ describe('opening the menu', () => {
     act(() => result.current.openMenuFor(longChat));
 
     expect(spy).toHaveBeenCalledWith(
-      expect.objectContaining({ title: `${'a'.repeat(32)}…` }),
+      expect.objectContaining({
+        title: `${'a'.repeat(ACTION_SHEET_TITLE_MAX_LENGTH)}…`,
+      }),
       expect.any(Function)
     );
   });
