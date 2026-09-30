@@ -32,6 +32,7 @@ import useChatSettings from '../../hooks/useChatSettings';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import useChatBranching from '../../hooks/useChatBranching';
 import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
+import { retryWithPinnedModel } from './loadModelPinnedToChat';
 
 interface Props {
   chatId: number;
@@ -230,10 +231,10 @@ export default function ChatScreen({
 
   const handleRetryGeneration = useCallback(() => {
     messagesRef.current?.onMessageSent();
-    retryLastGeneration().catch((error) => {
+    retryWithPinnedModel(model, retryLastGeneration).catch((error) => {
       console.error('Failed to retry generation:', error);
     });
-  }, [retryLastGeneration]);
+  }, [model, retryLastGeneration]);
 
   const scrollBottomOffset = theme.insets.bottom;
 

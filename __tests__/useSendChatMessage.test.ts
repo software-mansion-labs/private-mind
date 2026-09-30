@@ -57,6 +57,7 @@ jest.mock('../store/llmStore', () => {
     sendChatMessage: jest.fn(async () => true),
     runWithModelOffloaded: jest.fn(),
     interrupt: jest.fn(),
+    loadModel: jest.fn(async () => {}),
   };
   const store = Object.assign(() => state, { getState: () => state });
   return { useLLMStore: store };
@@ -70,6 +71,7 @@ const mockedState = () =>
     model: { id: number; modelName: string } | null;
     sendChatMessage: jest.Mock;
     interrupt: jest.Mock;
+    loadModel: jest.Mock;
   };
 
 const messagesRef = {
@@ -106,6 +108,8 @@ beforeEach(() => {
   state.generatingForChatId = null;
   state.sendChatMessage.mockClear();
   state.interrupt.mockClear();
+  state.loadModel.mockClear();
+  state.model = { id: 1, modelName: 'Test LLM' };
 });
 
 describe('sending while another turn is open', () => {
@@ -190,5 +194,59 @@ describe('the send transition', () => {
       dismiss.mock.invocationCallOrder[0]
     );
     dismiss.mockRestore();
+  });
+});
+
+
+describe('the model in the header is the one that answers', () => {
+  const pinnedTo = (model: Model) =>
+    useSendChatMessage({
+      chatId: 1,
+      model,
+      messageHistory: [],
+      chatSettings: {
+        systemPrompt: '',
+        thinkingEnabled: false,
+        webSearchEnabled: false,
+      },
+      enabledSources: [],
+      vectorStore: null,
+      embeddings: null,
+      messagesRef,
+      db: {} as SQLiteDatabase,
+      isGenerating: false,
+      isModelLoading: false,
+      isSwitching: false,
+    });
+
+  it('loads the chat’s model before sending, so a new chat does not answer with the last one', async () => {
+    const gemma = { id: 2, modelName: 'Gemma 4 - 2B' } as Model;
+
+    expect(await pinnedTo(gemma)('hello')).toBe(true);
+
+    const state = mockedState();
+    expect(state.loadModel).toHaveBeenCalledWith(gemma);
+    expect(state.loadModel.mock.invocationCallOrder[0]).toBeLessThan(
+      state.sendChatMessage.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('asks for no load when the chat’s model is already the resident one', async () => {
+    const resident = { id: 1, modelName: 'Test LLM' } as Model;
+
+    expect(await pinnedTo(resident)('hello')).toBe(true);
+
+    expect(mockedState().loadModel).not.toHaveBeenCalled();
+  });
+
+  it('loads nothing for a send it refuses', async () => {
+    const state = mockedState();
+    state.isGenerating = true;
+    state.generatingForChatId = 1;
+
+    expect(await pinnedTo({ id: 2, modelName: 'Gemma 4 - 2B' } as Model)('hi')).toBe(
+      'busy'
+    );
+    expect(state.loadModel).not.toHaveBeenCalled();
   });
 });

@@ -19,6 +19,7 @@ export type SendRefusal =
   | 'image-not-saved';
 import { Attachment } from '../../hooks/useAttachment';
 import { LFMEmbeddings } from '../../utils/lfmEmbeddings';
+import { loadModelPinnedToChat } from './loadModelPinnedToChat';
 import { buildMessageSources } from '../../utils/messageSources';
 import { isDeviceOnline } from '../../utils/network';
 import { runWebSearch } from '../../utils/web/runWebSearch';
@@ -116,6 +117,7 @@ export const useSendChatMessage = ({
       return 'busy';
     }
     if (!llm.model && !isModelLoading) return 'model-loading';
+    loadModelPinnedToChat(model);
 
     messagesRef.current?.onMessageSent();
     Keyboard.dismiss();
