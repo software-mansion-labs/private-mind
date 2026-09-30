@@ -586,15 +586,18 @@ const searchWithCleanup = async (
     telemetry.plannedQueries = baseQueries;
   }
   const anchorRescue = anchorRescueQuery(query, plan.expects);
-  const zeroResultRescues = dedupeQueries([
+  const notYetSearched = (rescues: string[]): string[] =>
+    rescues.filter(
+      (rescue) =>
+        !baseQueries.some(
+          (tried) => foldForMatching(tried) === foldForMatching(rescue)
+        )
+    );
+  const rescueQueries = dedupeQueries([
     ...(plan.fallbackQueries ?? []),
     ...(anchorRescue ? [anchorRescue] : []),
-  ]).filter(
-    (candidate) =>
-      !baseQueries.some(
-        (tried) => foldForMatching(tried) === foldForMatching(candidate)
-      )
-  );
+  ]);
+  const zeroResultRescues = notYetSearched(rescueQueries);
   if (
     foundGroups.flat().length === 0 &&
     zeroResultRescues.length > 0 &&
@@ -636,9 +639,10 @@ const searchWithCleanup = async (
     });
     telemetry.recovery = recovery.strategies;
     if (recovery.strategies.length > 0) {
-      const recoveryQueries = recovery.strategies.map(
-        (strategy) => strategy.query
-      );
+      const recoveryQueries = dedupeQueries([
+        ...notYetSearched(rescueQueries),
+        ...recovery.strategies.map((strategy) => strategy.query),
+      ]);
       emit({ type: 'recovering', round: 2 });
       const deadHosts = new Set(recovery.deadHosts);
       const recoveryGroups = (await runQueries(recoveryQueries, 2, seen)).map(
