@@ -274,4 +274,29 @@ describe('action button', () => {
     fireEvent.press(screen.getByTestId('stop-btn'));
     expect(defaultProps.onInterrupt).toHaveBeenCalled();
   });
+
+  it('never falls back to the microphone between the send and the turn', () => {
+    const { rerender } = renderActions({ userInput: 'hi' });
+    expect(screen.getByTestId('send-btn')).toBeTruthy();
+
+    rerender(
+      <ChatBarActions {...defaultProps} userInput="" sendInFlight={true} />
+    );
+
+    expect(screen.queryByTestId('speech-btn')).toBeNull();
+    expect(screen.getByTestId('send-btn').props.accessibilityState.busy).toBe(
+      false
+    );
+
+    rerender(
+      <ChatBarActions
+        {...defaultProps}
+        userInput=""
+        sendInFlight={true}
+        isProcessingPrompt={true}
+      />
+    );
+
+    expect(screen.getByTestId('stop-btn')).toBeTruthy();
+  });
 });

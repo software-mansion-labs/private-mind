@@ -45,6 +45,7 @@ interface Props {
   togglesDisabled?: boolean;
   modelBusy?: boolean;
   sendPending?: boolean;
+  sendInFlight?: boolean;
   onSend: () => void;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -65,6 +66,7 @@ const ChatBarActions = ({
   togglesDisabled = false,
   modelBusy = false,
   sendPending = false,
+  sendInFlight = false,
   onSend,
   isGenerating,
   isProcessingPrompt,
@@ -105,7 +107,7 @@ const ChatBarActions = ({
     const isSendable = (userInput || hasAttachments) && !isLoadingAttachment;
     const action = composerAction(
       isResponding,
-      Boolean(sendPending || isSendable)
+      Boolean(sendPending || sendInFlight || isSendable)
     );
 
     const handlePress = () => {

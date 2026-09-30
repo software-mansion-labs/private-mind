@@ -194,6 +194,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onWebSearchToggle,
     modelBusy,
     sendPending,
+    sendInFlight,
   }: {
     userInput: string;
     hasAttachments: boolean;
@@ -208,6 +209,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onWebSearchToggle?: () => void;
     modelBusy?: boolean;
     sendPending?: boolean;
+    sendInFlight?: boolean;
   }) => (
     <View testID="chat-bar-actions">
       {modelBusy && <Text>model busy</Text>}
@@ -227,7 +229,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
         <TouchableOpacity testID="interrupt-btn" onPress={onInterrupt}>
           <Text>Stop</Text>
         </TouchableOpacity>
-      ) : userInput || hasAttachments ? (
+      ) : userInput || hasAttachments || sendInFlight ? (
         <>
           {hasAttachments && !userInput && (
             <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}>
@@ -394,6 +396,31 @@ describe('downloaded model — text input', () => {
       dismiss.mock.invocationCallOrder[0]
     );
     dismiss.mockRestore();
+  });
+
+  it('keeps the send button up while the turn is still being created (#408)', async () => {
+    let release: (accepted: boolean) => void = () => {};
+    const onSend = jest.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          release = resolve;
+        })
+    );
+    renderBar({ onSend });
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'Hello'
+    );
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    expect(screen.queryByTestId('speech-btn')).toBeNull();
+    expect(screen.getByTestId('send-btn')).toBeTruthy();
+
+    await act(async () => {
+      release(true);
+    });
+
+    expect(screen.getByTestId('speech-btn')).toBeTruthy();
   });
 
   it('calls onSend with current input when send button is pressed', () => {
