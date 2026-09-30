@@ -21,6 +21,10 @@ import ChatBarToggle from './ChatBarToggle';
 import { Feedback } from '../../utils/Feedback';
 import Toast from 'react-native-toast-message';
 import { COMPOSER } from './attachments/constants';
+import {
+  usePrimaryActionGuard,
+  type PrimaryAction,
+} from './usePrimaryActionGuard';
 
 const composerAction = (
   isResponding: boolean,
@@ -85,6 +89,14 @@ const ChatBarActions = ({
   }));
   const isResponding = isGenerating || isProcessingPrompt;
   const isAttachmentBlocked = isResponding || isLoadingAttachment;
+  const hasComposedInput = !!userInput || hasAttachments;
+  const isSendable = hasComposedInput;
+  const action = composerAction(
+    isResponding,
+    Boolean(sendPending || sendInFlight || isSendable)
+  );
+  const guardedAction: PrimaryAction = action === 'speech' ? 'voice' : action;
+  const guardPrimaryPress = usePrimaryActionGuard(guardedAction);
 
   const handleAttach = () => {
     if (isAttachmentBlocked) {
@@ -104,27 +116,20 @@ const ChatBarActions = ({
   const handleThinkingToggle = () => onThinkingToggle?.();
 
   const renderButton = () => {
-    const isSendable = (userInput || hasAttachments) && !isLoadingAttachment;
-    const action = composerAction(
-      isResponding,
-      Boolean(sendPending || sendInFlight || isSendable)
-    );
-
-    const handlePress = () => {
-      if (action === 'stop') {
-        Feedback.interrupt();
-        onInterrupt();
-        return;
-      }
-      if (action === 'send') {
-        Feedback.send();
-        onSend();
-        return;
-      }
-      onSpeechInput();
-    };
-
-    const testID = ACTION_TEST_IDS[action];
+    const handlePress = () =>
+      guardPrimaryPress(() => {
+        if (action === 'stop') {
+          Feedback.interrupt();
+          onInterrupt();
+          return;
+        }
+        if (action === 'send') {
+          Feedback.send();
+          onSend();
+          return;
+        }
+        onSpeechInput();
+      });
 
     return (
       <View style={styles.rightActions}>
@@ -142,7 +147,7 @@ const ChatBarActions = ({
           busy={action === 'send' && sendPending}
           disabled={action === 'send' && (sendPending || isLoadingAttachment)}
           dimmed={action === 'speech' && modelBusy}
-          testID={testID}
+          testID={ACTION_TEST_IDS[action]}
         />
       </View>
     );

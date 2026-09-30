@@ -253,6 +253,13 @@ describe('action button', () => {
     expect(defaultProps.onSpeechInput).toHaveBeenCalled();
   });
 
+  it('keeps the send button in place while an attachment is still being prepared', () => {
+    renderActions({ userInput: 'hi', isLoadingAttachment: true });
+
+    expect(screen.getByTestId('send-btn')).toBeTruthy();
+    expect(screen.queryByTestId('speech-btn')).toBeNull();
+  });
+
   it('calls onSend when there is user input', () => {
     renderActions({ userInput: 'Hello' });
     fireEvent.press(screen.getByTestId('send-btn'));
