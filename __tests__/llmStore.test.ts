@@ -2136,8 +2136,15 @@ describe('runBenchmark', () => {
   });
 
   it('returns performance metrics on success', async () => {
-    await loadModel();
-    mockInstance.generate.mockResolvedValue('output text');
+    const tokenCallback = await loadModel();
+    let now = 0;
+    jest.spyOn(performance, 'now').mockImplementation(() => (now += 10));
+    mockInstance.generate.mockImplementation(async () => {
+      await flushFrame();
+      tokenCallback('tok');
+      await flushFrame();
+      return 'output text';
+    });
     mockInstance.getGeneratedTokenCount.mockReturnValue(50);
     useLLMStore.setState({ model: baseModel });
 
@@ -2515,5 +2522,26 @@ describe('a turn abandoned before its first token', () => {
     await useLLMStore.getState().sendChatMessage('hi', 1, noSources, settings);
 
     expect(useLLMStore.getState().performance.tokenCount).toBe(11);
+  });
+});
+
+describe('runBenchmark when a turn is cut short', () => {
+  it('reports no result rather than a zero that would drag an average down', async () => {
+    const tokenCallback = await loadModel();
+    useLLMStore.setState({ model: baseModel });
+
+    mockInstance.generate.mockImplementation(async () => {
+      await flushFrame();
+      useLLMStore.getState().interrupt();
+      await flushFrame();
+      tokenCallback('tok');
+      await flushFrame();
+      return 'cut short';
+    });
+    mockInstance.getGeneratedTokenCount.mockReturnValue(2);
+
+    const result = await useLLMStore.getState().runBenchmark();
+
+    expect(result).toBeUndefined();
   });
 });

@@ -1533,6 +1533,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           llmInstance.getGeneratedTokenCount()
         );
 
+      const decodeWasMeasured = tokensPerSecond > 0;
+      if (!decodeWasMeasured) {
+        return;
+      }
+
       return {
         totalTime,
         timeToFirstToken,
