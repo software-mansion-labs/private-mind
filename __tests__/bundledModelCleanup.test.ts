@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { File } from 'expo-file-system';
-import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
+import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import { removeBundledModelLeftovers } from '../utils/bundledModelCleanup';
 
 const RNE_DIR = 'file:///data/Documents/react-native-executorch/';
