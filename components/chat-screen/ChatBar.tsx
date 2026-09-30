@@ -1,4 +1,5 @@
 import React, {
+  memo,
   Ref,
   useEffect,
   useImperativeHandle,
@@ -610,7 +611,7 @@ const ChatBar = ({
   );
 };
 
-export default ChatBar;
+export default memo(ChatBar);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
