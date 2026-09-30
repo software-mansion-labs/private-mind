@@ -21,8 +21,9 @@
     "format:check": "prettier --check '**/*.{ts,tsx,js,jsx,json,md}'",
     "test": "jest",
     "test:watch": "jest --watch",
-    "postinstall": "patch-package && node node_modules/react-native-executorch/scripts/download-libs.js",
-    "prepare": "husky"
+    "postinstall": "patch-package && node node_modules/react-native-executorch/scripts/download-libs.js && node scripts/verify-native-libs.js",
+    "prepare": "husky",
+    "libs:lock": "node scripts/verify-native-libs.js --update"
   },
   "jest": {
     "preset": "jest-expo",
