@@ -217,10 +217,27 @@ const waitForSettingsHydration = async (): Promise<void> => {
   });
 };
 
+const MODEL_IDLE_WAIT_LIMIT_MS = 60_000;
+
+const modelIsBusy = (get: () => LLMStore) =>
+  get().isLoading || get().isGenerating || utilityGenerating;
+
 const waitForModelToBecomeIdle = async (get: () => LLMStore) => {
-  while (get().isLoading || get().isGenerating || utilityGenerating) {
+  while (modelIsBusy(get)) {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
+};
+
+const waitForModelToBecomeIdleWithin = async (
+  get: () => LLMStore,
+  limitMs: number
+): Promise<boolean> => {
+  const deadline = Date.now() + limitMs;
+  while (modelIsBusy(get)) {
+    if (Date.now() >= deadline) return false;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return true;
 };
 
 type StoreSet = (
@@ -861,6 +878,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
     await modelLoadChain;
     await utilityChain;
+    const modelBecameIdle = await waitForModelToBecomeIdleWithin(
+      get,
+      MODEL_IDLE_WAIT_LIMIT_MS
+    );
+    if (!modelBecameIdle) {
+      markGenerationFailed(new Error('The model stayed busy for too long'));
+      return true;
+    }
     const readyModel = get().model;
     if (!get().isProcessingPrompt) {
       markGenerationFailed(new Error('Stopped while waiting for the model'), {
@@ -1462,6 +1487,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   },
 
   runBenchmark: async () => {
+    if (get().isGenerating || get().isProcessingPrompt || utilityGenerating) {
+      return;
+    }
     let runPeakMemory = 0;
     const memoryTracker = createMemoryTracker((usedMemory) => {
       if (usedMemory > runPeakMemory) runPeakMemory = usedMemory;

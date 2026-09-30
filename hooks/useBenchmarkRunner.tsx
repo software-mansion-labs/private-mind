@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useLLMStore } from '../store/llmStore';
 import { Model } from '../database/modelRepository';
@@ -54,12 +54,24 @@ export default function useBenchmarkRunner({
   const [isSuccess, setIsSuccess] = useState(false);
   const [timer, setTimer] = useState(0);
   const isCancelled = useRef(false);
+  const isRunningRef = useRef(false);
+
+  useEffect(
+    () => () => {
+      if (!isRunningRef.current) return;
+      isCancelled.current = true;
+      isRunningRef.current = false;
+      interrupt();
+    },
+    [interrupt]
+  );
 
   const startBenchmark = useCallback(
     async (selectedModel: Model | undefined) => {
       if (!selectedModel || isRunning) return;
 
       setIsRunning(true);
+      isRunningRef.current = true;
       setIsSuccess(false);
       setTimer(0);
       isCancelled.current = false;
@@ -93,9 +105,11 @@ export default function useBenchmarkRunner({
         Feedback.benchmarkComplete();
         onComplete(benchmarkId);
 
+        isRunningRef.current = false;
         setTimeout(() => setIsRunning(false), 1500);
       } catch (error) {
         console.error('Benchmark run failed:', error);
+        isRunningRef.current = false;
         setIsRunning(false);
       } finally {
         clearInterval(timerInterval);
@@ -107,6 +121,7 @@ export default function useBenchmarkRunner({
   const cancelBenchmark = useCallback(() => {
     interrupt();
     isCancelled.current = true;
+    isRunningRef.current = false;
     setIsRunning(false);
   }, [interrupt]);
 
