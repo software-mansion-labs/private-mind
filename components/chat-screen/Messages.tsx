@@ -57,6 +57,7 @@ import {
   BOTTOM_FADE_HEIGHT,
   GENERATION_ERROR_MEASUREMENT_KEY,
   MESSAGE_PIN_OFFSET,
+  PIN_LANDING_GRACE_MS,
   MESSAGE_PIN_SETTLE_MS,
   SEND_PLACING_GUARD_MS,
   SEND_PLACING_MAX_MS,
@@ -213,6 +214,7 @@ const Messages = ({
   const scrollRef = useRef<Reanimated.ScrollView>(null);
   const isAtBottomRef = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const pinLandingUntil = useRef(0);
   const [activeUserActionsId, setActiveUserActionsId] = useState<number | null>(
     null
   );
@@ -776,6 +778,7 @@ const Messages = ({
           opacity.set(1);
           settleReveal(0);
         }
+        pinLandingUntil.current = Date.now() + PIN_LANDING_GRACE_MS;
         if (!isAtBottomRef.current) {
           isAtBottomRef.current = true;
           setShowScrollButton(false);
@@ -906,7 +909,10 @@ const Messages = ({
         layoutHeight: layoutMeasurement.height,
         bottomInset,
         floorTarget: pinFloorRef.current > 0 ? releaseTarget() : null,
-        sendIsLanding: pendingPinRef.current || pinPlacementPendingRef.current,
+        sendIsLanding:
+          pendingPinRef.current ||
+          pinPlacementPendingRef.current ||
+          Date.now() < pinLandingUntil.current,
       });
       if (atBottom !== isAtBottomRef.current) {
         isAtBottomRef.current = atBottom;
@@ -1101,7 +1107,9 @@ const Messages = ({
           layoutHeight: lastLayoutHeight.current || containerHeight.current,
           floorTarget: pinFloorRef.current > 0 ? releaseTarget() : null,
           sendIsLanding:
-            pendingPinRef.current || pinPlacementPendingRef.current,
+            pendingPinRef.current ||
+            pinPlacementPendingRef.current ||
+            Date.now() < pinLandingUntil.current,
         });
         if (atBottom !== isAtBottomRef.current) {
           isAtBottomRef.current = atBottom;

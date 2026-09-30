@@ -23,6 +23,8 @@ export const PIN_READY_SLACK_PX = 1;
 
 export const MESSAGE_PIN_SETTLE_MS = 500;
 
+export const PIN_LANDING_GRACE_MS = 600;
+
 export const SEND_ROWS_HOLD_MS = 150;
 
 export const SEND_PLACING_MAX_MS = 120;
