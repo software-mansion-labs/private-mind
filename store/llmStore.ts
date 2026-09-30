@@ -73,6 +73,7 @@ import {
 } from '../modules/memory-probe';
 import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
+import { calculatePerformanceMetrics } from '../utils/generationMetrics';
 
 export interface LLMStore {
   isLoading: boolean;
@@ -229,26 +230,6 @@ const withNoThink = (messages: ExecutorchMessage[]): ExecutorchMessage[] => {
       ? { ...message, content: `${message.content} /no_think` }
       : message
   );
-};
-
-const calculatePerformanceMetrics = (
-  startTime: number,
-  endTime: number,
-  firstTokenTime: number,
-  tokenCount: number
-) => {
-  const totalTime = endTime - startTime;
-  const timeToFirstToken = firstTokenTime
-    ? firstTokenTime - startTime
-    : totalTime;
-  const timeAfterFirst = Math.max(1, totalTime - timeToFirstToken);
-  const tokensPerSecond = tokenCount / (timeAfterFirst / 1000);
-
-  return {
-    totalTime,
-    timeToFirstToken,
-    tokensPerSecond,
-  };
 };
 
 const createMemoryTracker = (onUpdate: (footprintBytes: number) => void) => {
