@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -19,6 +19,7 @@ import WarningSheet, {
 } from '../../../components/bottomSheets/WarningSheet';
 import ModalHeader from '../../../components/ModalHeader';
 import { FAMILY_DESCRIPTIONS } from '../../../constants/family-descriptions';
+import { scrollIndicatorProps } from '../../../constants/scroll-indicator';
 
 const FamilyScreen = () => {
   const router = useRouter();
@@ -60,8 +61,7 @@ const FamilyScreen = () => {
             <ScrollView
               style={styles.scrollView}
               contentContainerStyle={styles.scrollContent}
-              automaticallyAdjustsScrollIndicatorInsets={false}
-              scrollIndicatorInsets={scrollIndicatorInsets}
+              {...scrollIndicatorProps()}
             >
               {description && (
                 <Text style={styles.description}>{description}</Text>
@@ -89,10 +89,6 @@ const FamilyScreen = () => {
 };
 
 export default FamilyScreen;
-
-const scrollIndicatorInsets = Platform.select({
-  ios: { right: 1 },
-});
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
