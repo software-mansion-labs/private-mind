@@ -4,6 +4,7 @@ import { useLLMStore } from '../store/llmStore';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { Model } from '../database/modelRepository';
 import type { MessagesHandle } from '../components/chat-screen/Messages';
+import Toast from 'react-native-toast-message';
 
 jest.mock('expo-router', () => ({ router: { replace: jest.fn() } }));
 jest.mock('../database/chatRepository', () => ({
@@ -34,15 +35,21 @@ jest.mock('../store/chatStore', () => ({
 jest.mock('../store/sourceStore', () => ({
   useSourceStore: { getState: () => ({ sources: [] }) },
 }));
+const webEnabledByChat: Record<number, boolean> = {};
 jest.mock('../store/webSearchStore', () => ({
   useWebSearchStore: {
     getState: () => ({
+      isEnabled: (chatId: number) => !!webEnabledByChat[chatId],
       resetTrace: jest.fn(),
       transfer: jest.fn(),
       setSearchingWeb: jest.fn(),
       pushWebSearchEvent: jest.fn(),
     }),
   },
+}));
+jest.mock('react-native-toast-message', () => ({
+  __esModule: true,
+  default: { show: jest.fn(), hide: jest.fn() },
 }));
 jest.mock('../store/embeddingModelStore', () => ({
   useEmbeddingModelStore: { getState: () => ({ status: 'idle' }) },
@@ -56,7 +63,11 @@ jest.mock('../store/llmStore', () => {
     activeChatDigest: null,
     sendChatMessage: jest.fn(async () => true),
     runWithModelOffloaded: jest.fn(),
-    interrupt: jest.fn(),
+    interrupt: jest.fn(() => {
+      state.isGenerating = false;
+      state.isProcessingPrompt = false;
+      state.generatingForChatId = null;
+    }),
   };
   const store = Object.assign(() => state, { getState: () => state });
   return { useLLMStore: store };
@@ -91,7 +102,6 @@ const useSend = (
     chatSettings: {
       systemPrompt: '',
       thinkingEnabled: false,
-      webSearchEnabled: false,
     },
     enabledSources: [],
     vectorStore: null,
@@ -111,6 +121,10 @@ beforeEach(() => {
   state.generatingForChatId = null;
   state.sendChatMessage.mockClear();
   state.interrupt.mockClear();
+  (Toast.show as jest.Mock).mockClear();
+  Object.keys(webEnabledByChat).forEach(
+    (key) => delete webEnabledByChat[Number(key)]
+  );
 });
 
 describe('sending while another turn is open', () => {
@@ -202,7 +216,6 @@ describe('a send that lands while the model is being switched', () => {
       chatSettings: {
         systemPrompt: '',
         thinkingEnabled: false,
-        webSearchEnabled: false,
       },
       enabledSources: [],
       vectorStore: null,
@@ -235,5 +248,42 @@ describe('the send transition', () => {
       dismiss.mock.invocationCallOrder[0]
     );
     dismiss.mockRestore();
+  });
+});
+
+describe('a turn that starts while the chat is being looked up', () => {
+  it('gives the composer back instead of dropping the message in an existing chat', async () => {
+    const { checkIfChatExists } = jest.requireMock(
+      '../database/chatRepository'
+    ) as { checkIfChatExists: jest.Mock };
+    const state = mockedState();
+
+    checkIfChatExists.mockImplementationOnce(async () => {
+      state.isProcessingPrompt = true;
+      return true;
+    });
+
+    expect(await useSend(1)('hello')).toBe(false);
+
+    expect(state.sendChatMessage).not.toHaveBeenCalled();
+    expect(messagesRef.current?.cancelMessageSent).toHaveBeenCalled();
+  });
+});
+
+describe('the web toggle the composer is showing', () => {
+  it('decides the turn when the sources are built, not when the message was sent', async () => {
+    webEnabledByChat[1] = true;
+    const state = mockedState();
+
+    await useSend()('what is the weather in Kraków');
+    const buildSources = state.sendChatMessage.mock.calls[0][2];
+
+    webEnabledByChat[1] = false;
+    await buildSources();
+    expect(Toast.show).not.toHaveBeenCalled();
+
+    webEnabledByChat[1] = true;
+    await buildSources();
+    expect(Toast.show).toHaveBeenCalled();
   });
 });

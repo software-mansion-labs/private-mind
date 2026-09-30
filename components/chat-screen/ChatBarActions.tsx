@@ -21,6 +21,10 @@ import ChatBarToggle from './ChatBarToggle';
 import { Feedback } from '../../utils/Feedback';
 import Toast from 'react-native-toast-message';
 import { COMPOSER } from './attachments/constants';
+import {
+  usePrimaryActionGuard,
+  type PrimaryAction,
+} from './usePrimaryActionGuard';
 
 interface Props {
   onAttach: () => void;
@@ -68,6 +72,13 @@ const ChatBarActions = ({
   }));
   const isResponding = isGenerating || isProcessingPrompt;
   const isAttachmentBlocked = isResponding || isLoadingAttachment;
+  const hasComposedInput = !!userInput || hasAttachments;
+  const primaryAction: PrimaryAction = isResponding
+    ? 'stop'
+    : hasComposedInput
+      ? 'send'
+      : 'voice';
+  const guardPrimaryPress = usePrimaryActionGuard(primaryAction);
 
   const handleAttach = () => {
     if (isAttachmentBlocked) {
@@ -85,15 +96,18 @@ const ChatBarActions = ({
   };
 
   const renderButton = () => {
-    if (isGenerating || isProcessingPrompt) {
+    if (primaryAction === 'stop') {
       return (
         <CircleButton
           icon={PauseIcon}
+          testID="stop-btn"
           size={13.33}
-          onPress={() => {
-            Feedback.interrupt();
-            onInterrupt();
-          }}
+          onPress={() =>
+            guardPrimaryPress(() => {
+              Feedback.interrupt();
+              onInterrupt();
+            })
+          }
           backgroundColor={theme.bg.main}
           color={theme.text.contrastPrimary}
         />
@@ -113,12 +127,13 @@ const ChatBarActions = ({
       );
     }
 
-    if ((userInput || hasAttachments) && !isLoadingAttachment) {
+    if (primaryAction === 'send') {
       return (
         <View style={styles.rightActions}>
           {hasAttachments && !userInput && (
             <CircleButton
               icon={SoundwaveIcon}
+              testID="speech-btn"
               onPress={onSpeechInput}
               backgroundColor="transparent"
               color={theme.text.onChatBar}
@@ -126,13 +141,16 @@ const ChatBarActions = ({
           )}
           <CircleButton
             icon={SendIcon}
-            onPress={() => {
-              Feedback.send();
-              onSend();
-            }}
+            testID="send-btn"
+            disabled={isLoadingAttachment}
+            onPress={() =>
+              guardPrimaryPress(() => {
+                Feedback.send();
+                onSend();
+              })
+            }
             backgroundColor={theme.bg.main}
             color={theme.text.contrastPrimary}
-            testID="send-btn"
           />
         </View>
       );
@@ -141,11 +159,11 @@ const ChatBarActions = ({
     return (
       <CircleButton
         icon={SoundwaveIcon}
-        onPress={onSpeechInput}
+        testID="speech-btn"
+        onPress={() => guardPrimaryPress(onSpeechInput)}
         backgroundColor="transparent"
         color={theme.text.onChatBar}
         dimmed={modelBusy}
-        testID="speech-btn"
       />
     );
   };

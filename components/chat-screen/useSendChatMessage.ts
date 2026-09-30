@@ -58,7 +58,6 @@ interface UseSendChatMessageOptions {
   chatSettings: {
     systemPrompt: string;
     thinkingEnabled: boolean;
-    webSearchEnabled: boolean;
   };
   enabledSources: number[];
   vectorStore: OPSQLiteVectorStore | null;
@@ -127,6 +126,14 @@ export const useSendChatMessage = ({
 
     let targetChatId = chatId!;
     const isNewChat = !(await checkIfChatExists(db, targetChatId));
+    const llmAfterChatLookup = useLLMStore.getState();
+    if (
+      llmAfterChatLookup.isGenerating ||
+      llmAfterChatLookup.isProcessingPrompt
+    ) {
+      messagesRef.current?.cancelMessageSent();
+      return false;
+    }
     if (isNewChat) {
       const docName = attachments?.find((a) => a.type === 'document')?.name;
       const titleSource =
@@ -181,6 +188,9 @@ export const useSendChatMessage = ({
 
     // Deferred so retrieval runs only after the optimistic message is on screen.
     const buildSources = async (signal?: AbortSignal) => {
+      const webSearchEnabled = useWebSearchStore
+        .getState()
+        .isEnabled(targetChatId);
       const allSources = useSourceStore.getState().sources;
       const existingSourceIds = new Set(allSources.map((source) => source.id));
       const attachmentSourceIds = (attachments || [])
@@ -234,7 +244,7 @@ export const useSendChatMessage = ({
 
       const shouldRunWebSearch =
         WEB_SEARCH_ENABLED &&
-        chatSettings.webSearchEnabled &&
+        webSearchEnabled &&
         !skippedForAttachmentPriority &&
         isWebSearchReady(modelForWebSearch) &&
         hasMemoryForWebSearch(modelForWebSearch) &&
@@ -242,7 +252,7 @@ export const useSendChatMessage = ({
 
       if (
         WEB_SEARCH_ENABLED &&
-        chatSettings.webSearchEnabled &&
+        webSearchEnabled &&
         !shouldRunWebSearch &&
         !!userInput.trim()
       ) {

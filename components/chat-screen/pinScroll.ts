@@ -67,3 +67,47 @@ export const floorIsOffscreen = (offset: number, releaseTarget: number) =>
 
 export const floorIsOutgrown = (floor: number, rowHeight: number) =>
   floor > 0 && rowHeight >= floor;
+
+export interface LastTurnRows {
+  userIndex: number;
+  answerIndex: number;
+}
+
+export const lastTurnRows = (
+  roles: readonly string[],
+  answerIsMeasuredElsewhere = false
+): LastTurnRows => {
+  let userIndex = -1;
+  let answerIndex = -1;
+
+  for (let i = roles.length - 1; i >= 0; i--) {
+    if (roles[i] === 'user') {
+      userIndex = i;
+      break;
+    }
+    if (
+      !answerIsMeasuredElsewhere &&
+      answerIndex === -1 &&
+      roles[i] === 'assistant'
+    ) {
+      answerIndex = i;
+    }
+  }
+
+  return { userIndex, answerIndex };
+};
+
+export interface StoppedTurnSettling {
+  turnWasStopped: boolean;
+  isGenerating: boolean;
+  floorStillReserved: boolean;
+  atBottom: boolean;
+}
+
+export const stoppedTurnLandsShort = ({
+  turnWasStopped,
+  isGenerating,
+  floorStillReserved,
+  atBottom,
+}: StoppedTurnSettling): boolean =>
+  turnWasStopped && !isGenerating && !floorStillReserved && atBottom;

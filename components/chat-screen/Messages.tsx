@@ -48,6 +48,7 @@ import { Feedback } from '../../utils/Feedback';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import BranchMarker from './BranchMarker';
+import StoppedMarker from './StoppedMarker';
 import Toast from 'react-native-toast-message';
 import {
   BOTTOM_FADE_HEIGHT,
@@ -70,9 +71,11 @@ import { useSendKeyboardFreeze } from './useSendKeyboardFreeze';
 import {
   floorIsOffscreen,
   floorIsOutgrown,
+  lastTurnRows,
   pinFloorFor,
   pinLandingFrom,
   pinReleaseTarget,
+  stoppedTurnLandsShort,
 } from './pinScroll';
 import { visibleMessageText } from '../../utils/messageText';
 
@@ -101,6 +104,7 @@ interface Props {
   isGenerating: boolean;
   generationError?: string;
   onRetryGeneration?: () => void;
+  canRetryGeneration?: boolean;
   /**
    * Bottom inset forwarded to KeyboardChatScrollView's `offset`. Only the
    * safe-area inset stays fixed below the scroll view while the keyboard
@@ -144,6 +148,8 @@ interface MessageActionsState {
   showForkAction: boolean;
 }
 
+const stoppedWithNothingToShow = (message: Message) => message.role === 'user';
+
 interface LongPressableMessageProps {
   children: ReactNode;
   messageId: number;
@@ -183,6 +189,7 @@ const Messages = ({
   isGenerating,
   generationError,
   onRetryGeneration,
+  canRetryGeneration = false,
   bottomOffset,
   freeze = false,
   chatBarInset,
@@ -646,6 +653,26 @@ const Messages = ({
     return () => clearTimeout(timer);
   }, [dropOutgrownFloor, isGenerating, scrollToPin]);
 
+  const lastMessage = chatHistory[chatHistory.length - 1];
+  const stoppedTurnKey =
+    lastMessage && lastMessage.stoppedByUser
+      ? messageRowKey(lastMessage, chatHistory.length - 1)
+      : null;
+
+  useEffect(() => {
+    if (
+      !stoppedTurnLandsShort({
+        turnWasStopped: !!stoppedTurnKey,
+        isGenerating,
+        floorStillReserved: !!pinAnchor,
+        atBottom: isAtBottomRef.current,
+      })
+    ) {
+      return;
+    }
+    scrollRef.current?.scrollToEnd({ animated: true });
+  }, [stoppedTurnKey, isGenerating, pinAnchor, scrollRef]);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -966,23 +993,11 @@ const Messages = ({
 
   const hasMessages = chatHistory.length > 0;
 
-  // Identify the last user and last assistant indices so we can wrap
-  // those specific rows in onLayout measurement Views.
-  let lastUserIndex = -1;
-  let lastAssistantIndex = -1;
-  for (let i = chatHistory.length - 1; i >= 0; i--) {
-    if (
-      !generationError &&
-      lastAssistantIndex === -1 &&
-      chatHistory[i].role === 'assistant'
-    ) {
-      lastAssistantIndex = i;
-    }
-    if (lastUserIndex === -1 && chatHistory[i].role === 'user') {
-      lastUserIndex = i;
-    }
-    if (lastUserIndex !== -1 && lastAssistantIndex !== -1) break;
-  }
+  const { userIndex: lastUserIndex, answerIndex: lastAssistantIndex } =
+    lastTurnRows(
+      chatHistory.map((message) => message.role),
+      !!generationError
+    );
 
   const measurementKeyAt = (index: number): string | null => {
     const message = chatHistory[index];
@@ -997,6 +1012,9 @@ const Messages = ({
 
   lastUserMeasurementKey.current = measurementKeyAt(lastUserIndex);
   lastAssistantMeasurementKey.current = assistantMeasurementKey();
+  if (lastAssistantMeasurementKey.current === null) {
+    lastAssistantHeight.current = 0;
+  }
 
   return (
     <View style={styles.container}>
@@ -1067,6 +1085,18 @@ const Messages = ({
                   onCopy={handleCopyMessage}
                   onFork={handleForkMessage}
                 />
+                {message.stoppedByUser && (
+                  <StoppedMarker
+                    onRetry={
+                      canRetryGeneration &&
+                      stoppedWithNothingToShow(message) &&
+                      isLastMessage &&
+                      !isGenerating
+                        ? onRetryGeneration
+                        : undefined
+                    }
+                  />
+                )}
                 {branchMarker && (
                   <BranchMarker
                     key={`branch-${branchMarker.id}`}

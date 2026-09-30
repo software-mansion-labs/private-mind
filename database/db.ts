@@ -108,6 +108,15 @@ export const runMigrations = async (db: SQLiteDatabase) => {
     );
   }
 
+  const hasStoppedByUser = messagesTableInfo.some(
+    (col) => col.name === 'stoppedByUser'
+  );
+  if (!hasStoppedByUser) {
+    await db.execAsync(
+      `ALTER TABLE messages ADD COLUMN stoppedByUser INTEGER DEFAULT 0`
+    );
+  }
+
   // Check and add thinkingEnabled to chatSettings
   const chatSettingsTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(chatSettings)`
@@ -272,6 +281,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       documentName TEXT DEFAULT NULL,
       sourceDocuments TEXT DEFAULT NULL,
       groundingCaveats TEXT DEFAULT NULL,
+      stoppedByUser INTEGER DEFAULT 0,
       FOREIGN KEY (chatId) REFERENCES chats (id) ON DELETE CASCADE
     );
   `);
