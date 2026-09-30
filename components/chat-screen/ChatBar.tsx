@@ -285,10 +285,10 @@ const ChatBar = ({
     ...(onBarGrow ? { onBarGrow } : {}),
   });
 
-  const isGenerating = useLLMStore(
+  const isGeneratingHere = useLLMStore(
     (state) => state.isGenerating && state.generatingForChatId === chatId
   );
-  const isProcessingPrompt = useLLMStore(
+  const isProcessingPromptHere = useLLMStore(
     (state) => state.isProcessingPrompt && state.generatingForChatId === chatId
   );
   const interrupt = useLLMStore((state) => state.interrupt);
@@ -564,8 +564,8 @@ const ChatBar = ({
                 isLoadingAttachment={hasLoadingAttachment}
                 userInput={userInput}
                 onSend={handleSend}
-                isGenerating={isGenerating}
-                isProcessingPrompt={isProcessingPrompt}
+                isGenerating={isGeneratingHere}
+                isProcessingPrompt={isProcessingPromptHere}
                 onInterrupt={interrupt}
                 onSpeechInput={openSpeechInput}
                 thinkingEnabled={thinkingEnabled}
