@@ -44,20 +44,34 @@ describe('usePrimaryActionGuard', () => {
     expect(press).toHaveBeenCalledTimes(1);
   });
 
-  it('absorbs a sustained burst, however long it runs', () => {
+  it('absorbs the taps that land while the button is still swapping', () => {
     const press = jest.fn();
     const { result, rerender } = renderGuard('send');
 
     result.current(press);
     now += 60;
     rerender({ current: 'stop' });
-    for (let tap = 0; tap < 12; tap += 1) {
-      now += 170;
-      result.current(press);
-      if (tap === 3) rerender({ current: 'voice' });
-    }
+    now += 80;
+    result.current(press);
+    now += 80;
+    result.current(press);
 
     expect(press).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not let an impatient burst keep the button shut', () => {
+    const press = jest.fn();
+    const { result, rerender } = renderGuard('send');
+
+    result.current(press);
+    now += 60;
+    rerender({ current: 'stop' });
+    for (let tap = 0; tap < 6; tap += 1) {
+      now += 100;
+      result.current(press);
+    }
+
+    expect(press).toHaveBeenCalledTimes(2);
   });
 
   it('runs a press once the button has stopped swapping', () => {

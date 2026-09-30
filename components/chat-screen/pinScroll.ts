@@ -96,3 +96,18 @@ export const lastTurnRows = (
 
   return { userIndex, answerIndex };
 };
+
+export interface StoppedTurnSettling {
+  turnWasStopped: boolean;
+  isGenerating: boolean;
+  floorStillReserved: boolean;
+  atBottom: boolean;
+}
+
+export const stoppedTurnLandsShort = ({
+  turnWasStopped,
+  isGenerating,
+  floorStillReserved,
+  atBottom,
+}: StoppedTurnSettling): boolean =>
+  turnWasStopped && !isGenerating && !floorStillReserved && atBottom;
