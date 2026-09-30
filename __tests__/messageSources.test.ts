@@ -866,9 +866,17 @@ describe('isQuestionEchoAnswer — greetings and acknowledgements (#386)', () =>
     }
   );
 
-  it('treats a single-word turn as too short to be the failure the guard is for', () => {
+  it('treats a turn of one or two words as too short to be the failure the guard is for', () => {
     expect(isQuestionEchoAnswer('Yo', 'yo')).toBe(false);
     expect(isQuestionEchoAnswer('Cena?', 'Cena?')).toBe(false);
+    expect(isQuestionEchoAnswer('Ile kosztuje?', 'Ile kosztuje?')).toBe(false);
+    expect(isQuestionEchoAnswer('Which one?', 'Which one?')).toBe(false);
+  });
+
+  it('starts guarding at three words, which is where the corpus echoes begin', () => {
+    expect(
+      isQuestionEchoAnswer('Ile kosztuje pallad?', 'Ile kosztuje pallad?')
+    ).toBe(true);
   });
 
   it('still flags a real question that opens with a greeting', () => {

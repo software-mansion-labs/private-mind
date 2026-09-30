@@ -257,7 +257,7 @@ export const isConversationalOpener = (turn: string): boolean => {
   );
 };
 
-const ECHO_GUARD_MIN_WORDS = 2;
+const ECHO_GUARD_MIN_WORDS = 3;
 
 const isTooShortToEcho = (normalizedQuestion: string): boolean =>
   normalizedQuestion.split(' ').length < ECHO_GUARD_MIN_WORDS;
