@@ -2214,7 +2214,9 @@ describe('what retrieval cost is kept with the answer it paid for', () => {
       },
     });
 
-    await useLLMStore.getState().sendChatMessage('hello', 1, withStats, settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, withStats, settings);
 
     expect(assistantWrite().retrievalStats).toEqual({
       rag: { ms: 412, chunks: 6 },
@@ -2223,7 +2225,9 @@ describe('what retrieval cost is kept with the answer it paid for', () => {
   });
 
   it('leaves the stats off a turn that retrieved nothing', async () => {
-    await useLLMStore.getState().sendChatMessage('hello', 1, noSources, settings);
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
 
     expect(assistantWrite().retrievalStats).toBeUndefined();
   });

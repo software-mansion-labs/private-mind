@@ -614,9 +614,11 @@ describe('retrievalStats survive a reload', () => {
   });
 
   it('leaves a message written before the column existed without stats', async () => {
-    const getAllAsync = jest.fn().mockResolvedValue([
-      { id: 1, chatId: 1, role: 'assistant', content: 'Answered.' },
-    ]);
+    const getAllAsync = jest
+      .fn()
+      .mockResolvedValue([
+        { id: 1, chatId: 1, role: 'assistant', content: 'Answered.' },
+      ]);
     const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
 
     const messages = await getChatMessages(mockDb, 1);

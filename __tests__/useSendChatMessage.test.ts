@@ -204,14 +204,13 @@ describe('the send transition', () => {
   });
 });
 
-
 describe('what a turn paid for its sources', () => {
   const capturedBuildSources = () =>
     mockedState().sendChatMessage.mock.calls[0][2] as (
       signal?: AbortSignal
     ) => Promise<{ retrievalStats?: RetrievalStats }>;
 
-  const sendWith = (
+  const useSendWith = (
     overrides: Partial<Parameters<typeof useSendChatMessage>[0]>
   ) =>
     useSendChatMessage({
@@ -241,7 +240,7 @@ describe('what a turn paid for its sources', () => {
       preferredSourceDocuments: [],
     });
 
-    await sendWith({
+    await useSendWith({
       enabledSources: [1],
       vectorStore: {} as never,
     })('what does the report say?');
@@ -271,7 +270,7 @@ describe('what a turn paid for its sources', () => {
       },
     });
 
-    await sendWith({
+    await useSendWith({
       chatSettings: {
         systemPrompt: '',
         thinkingEnabled: false,
@@ -291,7 +290,7 @@ describe('what a turn paid for its sources', () => {
   });
 
   it('reports nothing for a turn with no documents and no search', async () => {
-    await sendWith({})('hello');
+    await useSendWith({})('hello');
 
     const built = await capturedBuildSources()();
 
