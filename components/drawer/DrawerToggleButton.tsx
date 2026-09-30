@@ -1,23 +1,24 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import Menu from '../../assets/icons/menu.svg';
 import { useNavigation } from 'expo-router';
 import { DrawerContentComponentProps } from '@react-navigation/drawer';
+import { pressedOpacity } from '../../styles/pressable';
 
 const DrawerToggleButton = () => {
   const navigation: DrawerContentComponentProps['navigation'] = useNavigation();
   const { styles } = useThemedStyles(createStyles);
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={() => navigation.openDrawer()}
-      style={styles.button}
+      style={({ pressed }) => [styles.button, pressed && pressedOpacity]}
       hitSlop={15}
     >
       <Menu width={16} height={14} style={styles.icon} />
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 

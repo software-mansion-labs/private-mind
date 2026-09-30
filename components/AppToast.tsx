@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Platform, StyleSheet, Text, Pressable, View } from 'react-native';
 import { FullWindowOverlay } from 'react-native-screens';
 import Toast, { ToastConfig } from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +9,7 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import CloseIcon from '../assets/icons/close.svg';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { openAppSettings } from '../utils/openAppSettings';
+import { pressedOpacity } from '../styles/pressable';
 
 const AppToast: React.FC = () => {
   const { styles } = useThemedStyles(createStyles);
@@ -26,24 +21,30 @@ const AppToast: React.FC = () => {
         <View style={styles.toastBody}>
           <Text style={styles.toastText}>{text1}</Text>
           {props?.settings && (
-            <TouchableOpacity
+            <Pressable
               onPress={() => {
                 Toast.hide();
                 openAppSettings();
               }}
-              style={styles.toastAction}
+              style={({ pressed }) => [
+                styles.toastAction,
+                pressed && pressedOpacity,
+              ]}
               testID="toast-open-settings"
             >
               <Text style={styles.toastActionLabel}>Open Settings</Text>
-            </TouchableOpacity>
+            </Pressable>
           )}
         </View>
-        <TouchableOpacity
+        <Pressable
           onPress={() => Toast.hide()}
-          style={styles.toastCloseButton}
+          style={({ pressed }) => [
+            styles.toastCloseButton,
+            pressed && pressedOpacity,
+          ]}
         >
           <CloseIcon width={13.33} height={13.33} style={styles.toastIcon} />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     ),
   };

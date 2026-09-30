@@ -10,7 +10,7 @@ import React, {
 import {
   View,
   TextInput as RNTextInput,
-  TouchableOpacity,
+  Pressable,
   Text,
   StyleSheet,
   Keyboard,
@@ -60,6 +60,7 @@ import {
   BAR_GROW_LAYOUT,
   useBarGrowth,
 } from './useBarGrowth';
+import { pressedOpacity } from '../../styles/pressable';
 
 const SENT_ECHO_WINDOW_MS = 300;
 
@@ -463,14 +464,20 @@ const ChatBar = ({
   if (chatId && !model) {
     return (
       <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
-        <TouchableOpacity style={styles.modelSelection} onPress={onSelectModel}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.modelSelection,
+            pressed && pressedOpacity,
+          ]}
+          onPress={onSelectModel}
+        >
           <Text style={styles.selectedModel}>Select Model</Text>
           <RotateLeft
             width={20}
             height={20}
             style={{ color: theme.text.primary }}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }
@@ -523,8 +530,11 @@ const ChatBar = ({
               onLayout={handleRowsBelowStripLayout}
             >
               {showIndexChip && (
-                <TouchableOpacity
-                  style={styles.indexUrlChip}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.indexUrlChip,
+                    pressed && pressedOpacity,
+                  ]}
                   onPress={handleIndexUrl}
                   testID="index-url-chip"
                 >
@@ -536,7 +546,7 @@ const ChatBar = ({
                   <Text style={styles.indexUrlChipText} numberOfLines={1}>
                     Index {hostname(detectedUrl!)}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               )}
               <View style={styles.content}>
                 <TextInputWrapper

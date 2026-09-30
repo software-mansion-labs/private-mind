@@ -1,15 +1,10 @@
 import React from 'react';
-import {
-  Modal,
-  StatusBar,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-} from 'react-native';
+import { Modal, StatusBar, Pressable, Image, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CloseIcon from '../../assets/icons/close.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
   uri: string;
@@ -30,20 +25,20 @@ const ImageLightbox = ({ uri, visible, onClose }: Props) => {
       statusBarTranslucent
     >
       <StatusBar hidden />
-      <TouchableOpacity
-        style={styles.backdrop}
-        activeOpacity={1}
-        onPress={onClose}
-      >
+      <Pressable style={styles.backdrop} onPress={onClose}>
         <Image source={{ uri }} style={styles.image} resizeMode="contain" />
-        <TouchableOpacity
-          style={[styles.closeButton, { top: insets.top + 16 }]}
+        <Pressable
+          style={({ pressed }) => [
+            styles.closeButton,
+            { top: insets.top + 16 },
+            pressed && pressedOpacity,
+          ]}
           onPress={onClose}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <CloseIcon width={24} height={24} style={styles.closeIcon} />
-        </TouchableOpacity>
-      </TouchableOpacity>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 };

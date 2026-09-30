@@ -1,11 +1,12 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import ChatIcon from '../assets/icons/chat.svg';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { startPhantomChat } from '../utils/startPhantomChat';
 import { useChatStore } from '../store/chatStore';
+import { pressedOpacity } from '../styles/pressable';
 
 interface Props {
   noOp?: boolean;
@@ -24,9 +25,14 @@ const NewChatHeaderButton = ({ noOp = false }: Props) => {
   };
 
   return (
-    <TouchableOpacity onPress={handlePress} style={styles.button} hitSlop={15}>
+    <Pressable
+      onPress={handlePress}
+      style={({ pressed }) => [styles.button, pressed && pressedOpacity]}
+      hitSlop={15}
+      testID="new-chat-header-button"
+    >
       <ChatIcon width={20} height={20} style={styles.icon} />
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 

@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import { Pressable } from 'react-native-gesture-handler';
 import { SvgComponent } from '../utils/SvgComponent';
+import { pressedOpacity } from '../styles/pressable';
 
 interface Props {
   icon: SvgComponent;
@@ -28,14 +29,14 @@ const CircleButton = ({
   );
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={disabled ? undefined : onPress}
-      style={styles.circle}
+      style={({ pressed }) => [styles.circle, pressed && pressedOpacity]}
       disabled={disabled}
       testID={testID}
     >
       <Icon width={size} height={size} color={color} />
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
