@@ -17,7 +17,7 @@ import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { openAppSettings } from '../utils/openAppSettings';
 
 const NAV_HEADER_HEIGHT = Platform.OS === 'ios' ? 44 : 56;
-const TOAST_HEADER_GAP = 8;
+const TOAST_HEADER_GAP = 4;
 
 export const toastTopOffset = (safeAreaTop: number) =>
   safeAreaTop + NAV_HEADER_HEIGHT + TOAST_HEADER_GAP;
@@ -77,6 +77,13 @@ const createStyles = (theme: Theme) =>
       borderRadius: 12,
       padding: 16,
       flexDirection: 'row',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border.soft,
+      shadowColor: theme.bg.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
     },
     toastBody: {
       width: '80%',
