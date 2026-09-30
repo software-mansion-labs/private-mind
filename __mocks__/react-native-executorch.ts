@@ -65,7 +65,6 @@ export const LFM2_5_VL_450M_QUANTIZED = makeModelConstants(
 export const BIELIK_V3_0_1_5B_QUANTIZED = makeModelConstants(
   'bielik-v3.0-1.5b-quantized'
 );
-// Each backend needs its own modelSource: GENERATION_CONFIG_BY_MODEL_PATH keys on it.
 const gemma4E2b = makeModelConstants('gemma4-e2b');
 
 export const GEMMA4_E2B_MLX_MODEL = `${gemma4E2b.modelSource}#mlx`;
