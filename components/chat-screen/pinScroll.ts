@@ -67,3 +67,6 @@ export const floorIsOffscreen = (offset: number, releaseTarget: number) =>
 
 export const floorIsOutgrown = (floor: number, rowHeight: number) =>
   floor > 0 && rowHeight >= floor;
+
+export const scrollButtonShows = (atBottom: boolean, pinLanding: boolean) =>
+  !atBottom && !pinLanding;

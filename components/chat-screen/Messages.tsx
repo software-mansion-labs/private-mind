@@ -54,6 +54,7 @@ import {
   GENERATION_ERROR_MEASUREMENT_KEY,
   MESSAGE_PIN_OFFSET,
   MESSAGE_PIN_SETTLE_MS,
+  PIN_LANDING_GRACE_MS,
   navBarInset,
   PIN_READY_SLACK_PX,
   PIN_RELEASE_SETTLE_DELAY_MS,
@@ -72,6 +73,7 @@ import {
   pinFloorFor,
   pinLandingFrom,
   pinReleaseTarget,
+  scrollButtonShows,
 } from './pinScroll';
 import { visibleMessageText } from '../../utils/messageText';
 
@@ -198,6 +200,12 @@ const Messages = ({
   const scrollRef = useRef<Reanimated.ScrollView>(null);
   const isAtBottomRef = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const pinLandingUntil = useRef(0);
+  const updateScrollButton = useCallback((atBottom: boolean) => {
+    const pinLanding =
+      pendingPinRef.current || Date.now() < pinLandingUntil.current;
+    setShowScrollButton(scrollButtonShows(atBottom, pinLanding));
+  }, []);
   const [activeUserActionsId, setActiveUserActionsId] = useState<number | null>(
     null
   );
@@ -432,6 +440,7 @@ const Messages = ({
 
   const scrollToPin = useCallback(() => {
     pinLandedSinceKeyboardShow.current = true;
+    pinLandingUntil.current = Date.now() + PIN_LANDING_GRACE_MS;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const scrollView = scrollRef.current;
@@ -755,7 +764,7 @@ const Messages = ({
         (contentOffset.y + layoutMeasurement.height);
       const atBottom = distanceFromBottom < 100;
       isAtBottomRef.current = atBottom;
-      setShowScrollButton(!atBottom);
+      updateScrollButton(atBottom);
       if (
         pinReleaseRef.current &&
         floorIsOffscreen(contentOffset.y, releaseTarget())
@@ -763,7 +772,7 @@ const Messages = ({
         dropPinFloor();
       }
     },
-    [dropPinFloor, releaseTarget]
+    [dropPinFloor, releaseTarget, updateScrollButton]
   );
 
   const scrollToBottom = useCallback(() => {
@@ -940,7 +949,7 @@ const Messages = ({
         const atBottom = distFromBottom < 100;
         if (atBottom !== isAtBottomRef.current) {
           isAtBottomRef.current = atBottom;
-          setShowScrollButton(!atBottom);
+          updateScrollButton(atBottom);
         }
       }
     },
@@ -950,6 +959,7 @@ const Messages = ({
       listTopPadding,
       scheduleInitialScrollToEnd,
       scrollToPin,
+      updateScrollButton,
     ]
   );
 
