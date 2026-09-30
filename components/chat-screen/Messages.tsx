@@ -83,6 +83,7 @@ import {
   pinLandedShort,
   pinTargetReachable,
   pinReleaseTarget,
+  stoppedTurnLandsShort,
 } from './pinScroll';
 import { visibleMessageText } from '../../utils/messageText';
 
@@ -752,6 +753,26 @@ const Messages = ({
     }, MESSAGE_PIN_SETTLE_MS);
     return () => clearTimeout(timer);
   }, [dropOutgrownFloor, isGenerating, releaseSendReserve]);
+
+  const lastMessage = chatHistory[chatHistory.length - 1];
+  const stoppedTurnKey =
+    lastMessage && lastMessage.stoppedByUser
+      ? messageRowKey(lastMessage, chatHistory.length - 1)
+      : null;
+
+  useEffect(() => {
+    if (
+      !stoppedTurnLandsShort({
+        turnWasStopped: !!stoppedTurnKey,
+        isGenerating,
+        floorStillReserved: !!pinAnchor,
+        atBottom: isAtBottomRef.current,
+      })
+    ) {
+      return;
+    }
+    scrollRef.current?.scrollToEnd({ animated: true });
+  }, [stoppedTurnKey, isGenerating, pinAnchor, scrollRef]);
 
   useImperativeHandle(
     ref,

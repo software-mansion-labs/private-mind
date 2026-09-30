@@ -7,6 +7,7 @@ import {
   pinTargetReachable,
   atListEnd,
   pinReleaseTarget,
+  stoppedTurnLandsShort,
 } from '../components/chat-screen/pinScroll';
 import { MESSAGE_PIN_OFFSET } from '../constants/chat-screen';
 
@@ -200,5 +201,40 @@ describe('atListEnd', () => {
         sendIsLanding: false,
       })
     ).toBe(false);
+  });
+});
+
+describe('stoppedTurnLandsShort', () => {
+  const settled = {
+    turnWasStopped: true,
+    isGenerating: false,
+    floorStillReserved: false,
+    atBottom: true,
+  };
+
+  it('settles a stop taken while following the answer, where the marker lands below the fold', () => {
+    expect(stoppedTurnLandsShort(settled)).toBe(true);
+  });
+
+  it('leaves a turn that finished on its own alone', () => {
+    expect(stoppedTurnLandsShort({ ...settled, turnWasStopped: false })).toBe(
+      false
+    );
+  });
+
+  it('waits until the turn has actually come to a halt', () => {
+    expect(stoppedTurnLandsShort({ ...settled, isGenerating: true })).toBe(
+      false
+    );
+  });
+
+  it('leaves the reserved floor alone, because the marker is already inside it', () => {
+    expect(
+      stoppedTurnLandsShort({ ...settled, floorStillReserved: true })
+    ).toBe(false);
+  });
+
+  it('does not yank the list back down under someone who scrolled away', () => {
+    expect(stoppedTurnLandsShort({ ...settled, atBottom: false })).toBe(false);
   });
 });
