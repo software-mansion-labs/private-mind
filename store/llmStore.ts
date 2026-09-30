@@ -276,10 +276,27 @@ const waitForSettingsHydration = async (): Promise<void> => {
   });
 };
 
+const MODEL_IDLE_WAIT_LIMIT_MS = 60_000;
+
+const modelIsBusy = (get: () => LLMStore) =>
+  get().isLoading || get().isGenerating || utilityGenerating;
+
 const waitForModelToBecomeIdle = async (get: () => LLMStore) => {
-  while (get().isLoading || get().isGenerating || utilityGenerating) {
+  while (modelIsBusy(get)) {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
+};
+
+const waitForModelToBecomeIdleWithin = async (
+  get: () => LLMStore,
+  limitMs: number
+): Promise<boolean> => {
+  const deadline = Date.now() + limitMs;
+  while (modelIsBusy(get)) {
+    if (Date.now() >= deadline) return false;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return true;
 };
 
 type StoreSet = (
@@ -1059,6 +1076,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       Promise.all([modelLoadChain, utilityChain]),
       abortController.signal
     ).catch(() => undefined);
+    const modelBecameIdle = await endsWhenStopped(
+      waitForModelToBecomeIdleWithin(get, MODEL_IDLE_WAIT_LIMIT_MS),
+      abortController.signal
+    ).catch(() => true);
+    if (!modelBecameIdle) {
+      markGenerationFailed(new Error('The model stayed busy for too long'));
+      return true;
+    }
     const readyModel = get().model;
     if (!get().isProcessingPrompt) {
       if (!isRetry && !userMessagePersisted) {
@@ -1687,7 +1712,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     if (
       get().isGenerating ||
       get().isProcessingPrompt ||
-      get().isBenchmarking
+      get().isBenchmarking ||
+      utilityGenerating
     ) {
       return;
     }

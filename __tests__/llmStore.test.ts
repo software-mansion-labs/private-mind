@@ -2903,3 +2903,31 @@ describe('one generation at a time on the shared native runner', () => {
     expect(mockInstance.delete).toHaveBeenCalled();
   });
 });
+
+// ─── the busy-model wait has a limit ──────────────────────────────────────────
+
+describe('sendChatMessage when the model never goes idle', () => {
+  const settings = { systemPrompt: 'be helpful' };
+
+  it('gives up instead of waiting forever', async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    mockGetChatMessages.mockResolvedValue([]);
+    useLLMStore.setState({ model: baseModel, activeChatId: 1 });
+    mockInstance.generate.mockResolvedValue('should never be reached');
+
+    const startedAt = Date.now();
+    let elapsed = 0;
+    jest.spyOn(Date, 'now').mockImplementation(() => {
+      elapsed += 5000;
+      return startedAt + elapsed;
+    });
+
+    useLLMStore.setState({ isLoading: true });
+
+    await useLLMStore.getState().sendChatMessage('hi', 1, noSources, settings);
+
+    expect(mockInstance.generate).not.toHaveBeenCalled();
+    expect(useLLMStore.getState().generationError).not.toBeNull();
+  }, 15000);
+});
