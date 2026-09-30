@@ -1,5 +1,5 @@
 import { useLLMStore } from '../store/llmStore';
-import { LLMModule } from 'react-native-executorch';
+import { LLMModule } from 'react-native-executorch/legacy';
 import * as chatRepository from '../database/chatRepository';
 import type { Message } from '../database/chatRepository';
 import type { Model } from '../database/modelRepository';
@@ -2096,10 +2096,10 @@ describe('a turn that was superseded before it settled', () => {
     const second = useLLMStore
       .getState()
       .sendChatMessage('question in chat two', 2, noSources, settings);
+    rejectFirst(new Error('interrupted'));
     await until(() => mockInstance.generate.mock.calls.length === 2);
     expect(useLLMStore.getState().generatingForChatId).toBe(2);
 
-    rejectFirst(new Error('interrupted'));
     await first;
 
     expect(useLLMStore.getState().generatingForChatId).toBe(2);
@@ -2720,5 +2720,82 @@ describe('one turn at a time (S20 FE: sends lost or doubled while a turn was sti
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('over its time budget')
     );
+  });
+});
+
+describe('one generation at a time on the shared native runner', () => {
+  const settings = { systemPrompt: 'be helpful' };
+
+  const within50Ticks = async (ready: () => boolean) => {
+    for (let tick = 0; tick < 50 && !ready(); tick++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    return ready();
+  };
+
+  beforeEach(async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    useLLMStore.setState({ activeChatId: 1, activeChatMessages: [] });
+  });
+
+  it('holds a chat turn back until a utility call has released the model', async () => {
+    let releasePlanner!: (answer: string) => void;
+    mockInstance.generate.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        releasePlanner = resolve;
+      })
+    );
+
+    const planning = useLLMStore
+      .getState()
+      .generateUtility([{ role: 'user', content: 'plan' }]);
+    expect(
+      await within50Ticks(() => mockInstance.generate.mock.calls.length === 1)
+    ).toBe(true);
+
+    mockInstance.generate.mockResolvedValue('The answer.');
+    const turn = useLLMStore
+      .getState()
+      .sendChatMessage('question', 1, noSources, settings);
+
+    expect(
+      await within50Ticks(() => mockInstance.generate.mock.calls.length > 1)
+    ).toBe(false);
+
+    releasePlanner('');
+    await planning;
+    await turn;
+    expect(mockInstance.generate.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('does not delete a model that is still generating', async () => {
+    let finish!: (answer: string) => void;
+    mockInstance.generate.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        finish = resolve;
+      })
+    );
+
+    const turn = useLLMStore
+      .getState()
+      .sendChatMessage('question', 1, noSources, settings);
+    expect(
+      await within50Ticks(() => mockInstance.generate.mock.calls.length === 1)
+    ).toBe(true);
+
+    const switching = useLLMStore
+      .getState()
+      .loadModel({ ...baseModel, id: 2, modelName: 'Other LLM' });
+
+    expect(
+      await within50Ticks(() => mockInstance.delete.mock.calls.length > 0)
+    ).toBe(false);
+    expect(mockInstance.interrupt).toHaveBeenCalled();
+
+    finish('The answer.');
+    await turn;
+    await switching;
+    expect(mockInstance.delete).toHaveBeenCalled();
   });
 });

@@ -1,0 +1,23 @@
+<svg width="300" height="420" viewBox="0 0 300 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="88" y="98" width="124" height="124" rx="36" fill="#3D61D6"/>
+  <g transform="translate(118.4 124.4) scale(0.1188)">
+    <path d="M270.5 0C419.893 0 541 118.742 541 265.217V530.435H419.275V610H338.125V450.87H459.85V265.217C459.85 162.685 375.075 79.5652 270.5 79.5652C165.925 79.5652 81.15 162.685 81.15 265.217C81.15 349.318 138.185 420.356 216.4 443.18V610H135.25V494.946C54.3991 449.089 0 363.384 0 265.217C0 118.742 121.107 0 270.5 0Z" fill="#ffffff"/>
+  </g>
+
+  <rect x="26" y="286" width="164" height="52" rx="26" fill="#ffffff" fill-opacity="0.94"/>
+  <g fill="#3D61D6" fill-opacity="0.4">
+    <rect x="46" y="303" width="98" height="8" rx="4"/>
+    <rect x="46" y="318" width="64" height="8" rx="4"/>
+  </g>
+
+  <rect x="118" y="352" width="156" height="52" rx="26" fill="#ffffff" fill-opacity="0.32"/>
+  <g fill="#ffffff" fill-opacity="0.7">
+    <rect x="138" y="369" width="88" height="8" rx="4"/>
+    <rect x="138" y="384" width="58" height="8" rx="4"/>
+  </g>
+
+  <g fill="#3D61D6">
+    <path d="M250 62 C250 80 254 84 272 84 C254 84 250 88 250 106 C250 88 246 84 228 84 C246 84 250 80 250 62 Z" fill-opacity="0.45"/>
+    <path d="M58 134 C58 145 60 147 71 147 C60 147 58 149 58 160 C58 149 56 147 45 147 C56 147 58 145 58 134 Z" fill-opacity="0.3"/>
+  </g>
+</svg>

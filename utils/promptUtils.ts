@@ -6,7 +6,7 @@ import {
 } from '../database/chatRepository';
 import { Model } from '../database/modelRepository';
 import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
-import { type Message as ExecutorchMessage } from 'react-native-executorch';
+import { type Message as ExecutorchMessage } from 'react-native-executorch/legacy';
 import {
   estimatePromptTokens,
   getPromptCharBudget,

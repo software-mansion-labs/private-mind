@@ -67,6 +67,7 @@ interface UseSendChatMessageOptions {
   isGenerating: boolean;
   isModelLoading: boolean;
   isSwitching: boolean;
+  waitForModelSwitch?: () => Promise<void>;
 }
 
 const webSkipReason = (
@@ -93,6 +94,7 @@ export const useSendChatMessage = ({
   isGenerating,
   isModelLoading,
   isSwitching,
+  waitForModelSwitch,
 }: UseSendChatMessageOptions) => {
   const { sendChatMessage, runWithModelOffloaded } = useLLMStore();
   const { addChat, updateLastUsed, enableSource } = useChatStore();
@@ -106,7 +108,10 @@ export const useSendChatMessage = ({
     if (!userInput.trim() && !imagePath && !hasDocuments) {
       return 'nothing-to-send';
     }
-    if (isSwitching) return 'model-loading';
+    if (isSwitching) {
+      if (!waitForModelSwitch) return 'model-loading';
+      await waitForModelSwitch();
+    }
     const llm = useLLMStore.getState();
     const busy = llm.isGenerating || llm.isProcessingPrompt;
     if (busy && llm.generatingForChatId !== chatId) {

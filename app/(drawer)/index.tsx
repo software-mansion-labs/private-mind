@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { startPhantomChat } from '../../utils/startPhantomChat';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { configureReanimatedLogger } from 'react-native-reanimated';
@@ -36,6 +42,7 @@ export default function App() {
   const { downloadedModels } = useModelStore();
   const { loadSources } = useSourceStore();
   const hasAutoRedirectedRef = useRef(false);
+  const [redirectFailed, setRedirectFailed] = useState(false);
   const db = useSQLiteContext();
   useDefaultHeader();
 
@@ -82,6 +89,12 @@ export default function App() {
       (async () => {
         try {
           await startPhantomChat(db, 'replace');
+        } catch (error) {
+          console.error(
+            'Failed to open a chat for the downloaded model',
+            error
+          );
+          setRedirectFailed(true);
         } finally {
           // Reset so this screen can redirect again on a future focus cycle
           // (e.g. user navigates back to / from a chat).
@@ -91,7 +104,7 @@ export default function App() {
     }, [db, downloadedModels])
   );
 
-  const willRedirect = downloadedModels.length > 0;
+  const willRedirect = downloadedModels.length > 0 && !redirectFailed;
 
   return (
     <>

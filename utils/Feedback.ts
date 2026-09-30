@@ -3,6 +3,8 @@ import { Presets, Settings } from 'react-native-pulsar';
 Settings.enableSound(false);
 
 export class Feedback {
+  static prepareOnboarding = () => Settings.preloadPresets(['Chip', 'Bloom']);
+
   // Core interactions
   static send = () => Presets.ripple();
   static interrupt = () => Presets.push();
@@ -16,6 +18,7 @@ export class Feedback {
   // Navigation — barely-there
   static sheetOpen = () => Presets.chip();
   static drawer = () => Presets.chip();
+  static onboardingStep = () => Presets.chip();
 
   // Async completions
   static firstToken = () => Presets.peck();

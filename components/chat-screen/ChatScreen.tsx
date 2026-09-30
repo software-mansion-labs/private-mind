@@ -20,7 +20,7 @@ import { Chat, type Message } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
 import ChatBar from './ChatBar';
-import { TopFade } from './TopFade';
+import { TopFade, topFadeHeight } from './TopFade';
 import UserMessageActionMenu from './UserMessageActionMenu';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
@@ -31,6 +31,7 @@ import { useLegacyChatNotice } from '../../hooks/useLegacyChatNotice';
 import useChatSettings from '../../hooks/useChatSettings';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import useChatBranching from '../../hooks/useChatBranching';
+import { useStableCallback } from '../../hooks/useStableCallback';
 import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
 
 interface Props {
@@ -66,14 +67,12 @@ export default function ChatScreen({
   const db = useSQLiteContext();
 
   const { vectorStore, embeddings } = useVectorStore();
-  const {
-    isLoading: isModelLoading,
-    isGenerating,
-    loadModel,
-    generationError,
-    retryLastGeneration,
-    retryArmedForChatId,
-  } = useLLMStore();
+  const isModelLoading = useLLMStore((state) => state.isLoading);
+  const isGenerating = useLLMStore((state) => state.isGenerating);
+  const loadModel = useLLMStore((state) => state.loadModel);
+  const generationError = useLLMStore((state) => state.generationError);
+  const retryLastGeneration = useLLMStore((state) => state.retryLastGeneration);
+  const retryArmedForChatId = useLLMStore((state) => state.retryArmedForChatId);
   const { setChatModel, phantomChat } = useChatStore();
 
   const { styles, theme } = useThemedStyles(createStyles);
@@ -107,6 +106,7 @@ export default function ChatScreen({
     setUserActionMenu,
     userActionMenuPosition,
     gradientStyle,
+    topFadeStyle,
     showGradient,
     fadeBottom,
     topFadeAnchor,
@@ -181,6 +181,7 @@ export default function ChatScreen({
     isSwitching,
     pickModel,
     handleSheetStateChange: handleModelSwitchSheetState,
+    whenSettled: whenModelSwitchSettles,
   } = useModelSwitch(handleSelectModel);
 
   useEffect(() => {
@@ -195,7 +196,7 @@ export default function ChatScreen({
     [handleModelSwitchSheetState]
   );
 
-  const handleSendMessage = useSendChatMessage({
+  const sendChatMessage = useSendChatMessage({
     chatId,
     model,
     messageHistory,
@@ -208,7 +209,9 @@ export default function ChatScreen({
     isGenerating,
     isModelLoading,
     isSwitching,
+    waitForModelSwitch: whenModelSwitchSettles,
   });
+  const handleSendMessage = useStableCallback(sendChatMessage);
 
   const {
     handleThinkingToggle,
@@ -305,12 +308,17 @@ export default function ChatScreen({
         />
       </Animated.View>
 
-      {isEmpty && (
-        <TopFade
-          anchor={topFadeAnchor}
-          colors={emptyFadeColors}
-          style={styles.topFadeOverlay}
-        />
+      {showGradient && (
+        <Animated.View
+          style={[
+            styles.topFadeOverlay,
+            { height: topFadeHeight(topFadeAnchor) },
+            topFadeStyle,
+          ]}
+          pointerEvents="none"
+        >
+          <TopFade anchor={topFadeAnchor} colors={emptyFadeColors} />
+        </Animated.View>
       )}
 
       {userActionMenuPosition && (
@@ -349,6 +357,10 @@ const createStyles = (theme: Theme) =>
       elevation: 1000,
     },
     topFadeOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
       zIndex: 3,
       elevation: 3,
     },

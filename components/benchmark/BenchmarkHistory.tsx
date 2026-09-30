@@ -3,6 +3,7 @@ import { View, StyleSheet, Text } from 'react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useModelStore } from '../../store/modelStore';
+import { scrollIndicatorProps } from '../../constants/scroll-indicator';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
 import { BenchmarkResultSheetData } from '../bottomSheets/BenchmarkResultSheet';
 import BenchmarkItem from './BenchmarkItem';
@@ -27,6 +28,7 @@ const BenchmarkHistory = ({ modalRef, benchmarkList }: Props) => {
         data={benchmarkList}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
+        {...scrollIndicatorProps()}
         renderItem={({ item }) => (
           <BenchmarkItem
             entry={item}

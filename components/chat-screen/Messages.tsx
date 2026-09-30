@@ -64,7 +64,9 @@ import {
   SUPPORTS_USER_ACTION_MENU,
 } from '../../constants/chat-screen';
 import { messageRowKey } from '../../utils/messageRowKey';
+import { scrollIndicatorProps } from '../../constants/scroll-indicator';
 import { useKeyboardLift } from './useKeyboardLift';
+import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 import { useSendKeyboardFreeze } from './useSendKeyboardFreeze';
 import {
   floorIsOffscreen,
@@ -310,6 +312,9 @@ const Messages = ({
   }, [branchMarkers]);
 
   const keyboardLift = useKeyboardLift();
+  const modalOwnsKeyboard = useKeyboardOwnerStore(
+    (state) => state.modalOwnsKeyboard
+  );
   const {
     frozen: sendFrozen,
     arm: freezeForSend,
@@ -340,10 +345,6 @@ const Messages = ({
     [styles.contentContainer, listBottomPadding, listTopPadding]
   );
   const fadeAnchor = fadeBottom ?? topInset;
-  const scrollIndicatorInsets = useMemo(
-    () => ({ top: topFadeHeight(fadeAnchor) }),
-    [fadeAnchor]
-  );
   const scrollButtonStyle = useMemo(
     () => [styles.scrollToBottomButtonContainer, { bottom: chatBarInset + 16 }],
     [styles.scrollToBottomButtonContainer, chatBarInset]
@@ -538,7 +539,9 @@ const Messages = ({
   const [liftHeldUntilKeyboardHides, setLiftHeldUntilKeyboardHides] =
     useState(false);
   const keyboardLiftBehavior =
-    pinAnchor || liftHeldUntilKeyboardHides ? 'never' : 'whenAtEnd';
+    pinAnchor || liftHeldUntilKeyboardHides || modalOwnsKeyboard
+      ? 'never'
+      : 'whenAtEnd';
   useEffect(() => {
     if (!liftHeldUntilKeyboardHides) return;
     const hidden = Keyboard.addListener('keyboardDidHide', () =>
@@ -775,8 +778,10 @@ const Messages = ({
         bottomInset -
         (contentOffset.y + layoutMeasurement.height);
       const atBottom = distanceFromBottom < 100;
-      isAtBottomRef.current = atBottom;
-      setShowScrollButton(!atBottom);
+      if (atBottom !== isAtBottomRef.current) {
+        isAtBottomRef.current = atBottom;
+        setShowScrollButton(!atBottom);
+      }
       if (
         pinReleaseRef.current &&
         floorIsOffscreen(contentOffset.y, releaseTarget())
@@ -1028,7 +1033,7 @@ const Messages = ({
           applyWorkaroundForContentInsetHitTestBug
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={contentContainerStyle}
-          scrollIndicatorInsets={scrollIndicatorInsets}
+          {...scrollIndicatorProps(topFadeHeight(fadeAnchor))}
           onLayout={handleContainerLayout}
           onScroll={handleScroll}
           onScrollBeginDrag={handleScrollBeginDrag}
