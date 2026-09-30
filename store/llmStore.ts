@@ -139,6 +139,7 @@ let failedGenerationRequest: FailedGenerationRequest | null = null;
 let streamBuffer = '';
 let streamTokenCount = 0;
 let streamFirstTokenTime = 0;
+let streamStopRequested = false;
 let streamFlushScheduled = false;
 let streamedSoFar = '';
 
@@ -146,6 +147,7 @@ const resetStreamState = () => {
   streamBuffer = '';
   streamTokenCount = 0;
   streamFirstTokenTime = 0;
+  streamStopRequested = false;
   streamFlushScheduled = false;
   streamedSoFar = '';
 };
@@ -308,6 +310,7 @@ const loadModelInstance = async (
       () => {},
       (token) => {
         if (suppressUtilityStreaming) return;
+        if (streamStopRequested) return;
 
         const isFirstToken = streamTokenCount === 0;
 
@@ -321,6 +324,7 @@ const loadModelInstance = async (
         if (isFirstToken) {
           const snapshot = get();
           if (!snapshot.isProcessingPrompt && !snapshot.isGenerating) {
+            streamStopRequested = true;
             llmInstance?.interrupt();
             return;
           }
