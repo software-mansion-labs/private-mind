@@ -1,10 +1,13 @@
 import { EdgeInsets } from 'react-native-safe-area-context';
 
+const BRAND_BLUE = '#3D61D6';
+
 export const lightTheme = {
   bg: {
-    main: '#3D61D6',
+    main: BRAND_BLUE,
     softPrimary: '#ffffff',
     softSecondary: '#e6e7eb',
+    dialogAction: 'rgba(2, 15, 60, 0.07)',
     switchThumb: '#ffffff',
     strongPrimary: '#020f3c',
     chatBar: '#E4E4E7',
@@ -13,7 +16,7 @@ export const lightTheme = {
     voiceModeSurface: 'rgba(2, 15, 60, 0.2)',
     errorSecondary: '#F5D0D1',
     errorPrimary: '#DE595B',
-    overlay: 'rgba(2, 15, 60, 0.2)',
+    overlay: 'rgba(0, 0, 0, 0.2)',
     shadow: '#000000',
     lightbox: '#000000',
     lightboxControl: 'rgba(0, 0, 0, 0.5)',
@@ -21,6 +24,9 @@ export const lightTheme = {
     codeInlineStrong: 'rgba(255, 255, 255, 0.2)',
     codeBlock: 'rgba(0, 0, 0, 0.05)',
     codeBlockStrong: 'rgba(255, 255, 255, 0.12)',
+    onBrandStrong: '#ffffff',
+    onBrandSoft: 'rgba(255, 255, 255, 0.16)',
+    onBrandShadow: '#020f3c',
   },
   text: {
     primary: '#020f3c',
@@ -33,6 +39,7 @@ export const lightTheme = {
     onAttachButton: '#ffffff',
     error: '#DE595B',
     warning: '#B8630A',
+    onBrand: '#ffffff',
   },
   border: {
     soft: 'rgba(2, 15, 60, 0.2)',
@@ -44,9 +51,10 @@ export const lightTheme = {
 
 export const darkTheme = {
   bg: {
-    main: '#3D61D6',
+    main: BRAND_BLUE,
     softPrimary: '#000000',
     softSecondary: '#121212',
+    dialogAction: 'rgba(255, 255, 255, 0.16)',
     switchThumb: '#ffffff',
     strongPrimary: '#FFFFFF',
     chatBar: '#FFFFFF',
@@ -65,6 +73,9 @@ export const darkTheme = {
     codeInlineStrong: 'rgba(255, 255, 255, 0.2)',
     codeBlock: 'rgba(255, 255, 255, 0.12)',
     codeBlockStrong: 'rgba(255, 255, 255, 0.12)',
+    onBrandStrong: '#ffffff',
+    onBrandSoft: 'rgba(255, 255, 255, 0.16)',
+    onBrandShadow: '#020f3c',
   },
   text: {
     primary: '#FFFFFF',
@@ -77,6 +88,7 @@ export const darkTheme = {
     onAttachButton: '#ffffff',
     error: '#E68485',
     warning: '#F0A860',
+    onBrand: '#ffffff',
   },
   border: {
     soft: 'rgba(255, 255, 255, 0.15)',
@@ -88,6 +100,9 @@ export const darkTheme = {
 
 export type ThemeColors = typeof lightTheme;
 export type Theme = ThemeColors & { insets: EdgeInsets };
+
+export const isDarkTheme = (theme: ThemeColors) =>
+  theme.bg.softPrimary === darkTheme.bg.softPrimary;
 
 const toRgb = (color: string) => {
   const hex = color.replace('#', '');
@@ -109,6 +124,12 @@ export const withAlpha = (color: string, alpha: number) => {
   const { r, g, b } = toRgb(color);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
+
+export const TEXT_SELECTION = {
+  selectionColor: withAlpha(BRAND_BLUE, 0.3),
+  cursorColor: BRAND_BLUE,
+  selectionHandleColor: BRAND_BLUE,
+} as const;
 
 export const mixColors = (from: string, to: string, t: number) => {
   const ratio = Math.min(1, Math.max(0, t));

@@ -110,7 +110,10 @@ const MessageItem = memo(
     );
     const [lightboxVisible, setLightboxVisible] = useState(false);
 
-    const contentParts = parseThinkingContent(content);
+    const contentParts = useMemo(
+      () => parseThinkingContent(content),
+      [content]
+    );
     const userText = useMemo(() => stripThinkMarkers(content), [content]);
     const {
       displayedSources,

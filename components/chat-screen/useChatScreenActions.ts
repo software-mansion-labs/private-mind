@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useStableCallback } from '../../hooks/useStableCallback';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import Toast from 'react-native-toast-message';
@@ -84,8 +84,10 @@ export const useChatScreenActions = ({
     }
   });
 
-  const webSearchUsable =
-    isWebSearchReady(model) && hasMemoryForWebSearch(model);
+  const webSearchUsable = useMemo(
+    () => isWebSearchReady(model) && hasMemoryForWebSearch(model),
+    [model]
+  );
   const webSearchEnabled = chatSettings.webSearchEnabled && webSearchUsable;
 
   const handleWebSearchToggle = useStableCallback((): boolean => {

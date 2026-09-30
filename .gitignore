@@ -60,3 +60,5 @@ android/local.properties
 
 
 coverage/
+# Argent device-automation scratch (recordings, flows)
+.argent/

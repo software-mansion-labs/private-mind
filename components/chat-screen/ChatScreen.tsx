@@ -20,7 +20,7 @@ import { Chat, type Message } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
 import ChatBar from './ChatBar';
-import { TopFade } from './TopFade';
+import { TopFade, topFadeHeight } from './TopFade';
 import UserMessageActionMenu from './UserMessageActionMenu';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
@@ -105,6 +105,7 @@ export default function ChatScreen({
     setUserActionMenu,
     userActionMenuPosition,
     gradientStyle,
+    topFadeStyle,
     showGradient,
     fadeBottom,
     topFadeAnchor,
@@ -179,6 +180,7 @@ export default function ChatScreen({
     isSwitching,
     pickModel,
     handleSheetStateChange: handleModelSwitchSheetState,
+    whenSettled: whenModelSwitchSettles,
   } = useModelSwitch(handleSelectModel);
 
   useEffect(() => {
@@ -206,6 +208,7 @@ export default function ChatScreen({
     isGenerating,
     isModelLoading,
     isSwitching,
+    waitForModelSwitch: whenModelSwitchSettles,
   });
   const handleSendMessage = useStableCallback(sendChatMessage);
 
@@ -303,12 +306,17 @@ export default function ChatScreen({
         />
       </Animated.View>
 
-      {isEmpty && (
-        <TopFade
-          anchor={topFadeAnchor}
-          colors={emptyFadeColors}
-          style={styles.topFadeOverlay}
-        />
+      {showGradient && (
+        <Animated.View
+          style={[
+            styles.topFadeOverlay,
+            { height: topFadeHeight(topFadeAnchor) },
+            topFadeStyle,
+          ]}
+          pointerEvents="none"
+        >
+          <TopFade anchor={topFadeAnchor} colors={emptyFadeColors} />
+        </Animated.View>
       )}
 
       {userActionMenuPosition && (
@@ -347,6 +355,10 @@ const createStyles = (theme: Theme) =>
       elevation: 1000,
     },
     topFadeOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
       zIndex: 3,
       elevation: 3,
     },

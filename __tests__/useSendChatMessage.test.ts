@@ -67,6 +67,7 @@ const mockedState = () =>
     isGenerating: boolean;
     isProcessingPrompt: boolean;
     generatingForChatId: number | null;
+    model: { id: number; modelName: string } | null;
     sendChatMessage: jest.Mock;
     interrupt: jest.Mock;
   };
@@ -78,7 +79,11 @@ const messagesRef = {
   } as unknown as MessagesHandle,
 };
 
-const useSend = (chatId = 1) =>
+const useSend = (
+  chatId = 1,
+  loading = false,
+  waitForModelSwitch?: () => Promise<void>
+) =>
   useSendChatMessage({
     chatId,
     model: { id: 1, modelName: 'Test LLM' } as Model,
@@ -94,8 +99,9 @@ const useSend = (chatId = 1) =>
     messagesRef,
     db: {} as SQLiteDatabase,
     isGenerating: false,
-    isModelLoading: false,
-    isSwitching: false,
+    isModelLoading: loading,
+    isSwitching: !!waitForModelSwitch,
+    waitForModelSwitch,
   });
 
 beforeEach(() => {
@@ -113,7 +119,7 @@ describe('sending while another turn is open', () => {
     state.isGenerating = true;
     state.generatingForChatId = 1;
 
-    expect(await useSend(1)('again')).toBe(false);
+    expect(await useSend(1)('again')).toBe('busy');
     expect(state.sendChatMessage).not.toHaveBeenCalled();
     expect(state.interrupt).not.toHaveBeenCalled();
   });
@@ -141,7 +147,74 @@ describe('sending while another turn is open', () => {
   });
 
   it('refuses an empty message', async () => {
-    expect(await useSend(1)('   ')).toBe(false);
+    expect(await useSend(1)('   ')).toBe('nothing-to-send');
+    expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+  });
+
+  it('says the model is not ready rather than blaming a response', async () => {
+    const loaded = mockedState().model;
+    mockedState().model = null;
+    try {
+      expect(await useSend(1)('', 'file://photo.jpg')).toBe('model-loading');
+      expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+    } finally {
+      mockedState().model = loaded;
+    }
+  });
+
+  it('takes a send that arrives while the model is still coming up', async () => {
+    const loaded = mockedState().model;
+    mockedState().model = null;
+    try {
+      expect(await useSend(1, true)('', 'file://photo.jpg')).toBe(true);
+      expect(mockedState().sendChatMessage).toHaveBeenCalled();
+    } finally {
+      mockedState().model = loaded;
+    }
+  });
+
+  it('still sends while a load is in flight over a model that is already up', async () => {
+    expect(await useSend(1, true)('hello')).toBe(true);
+    expect(mockedState().sendChatMessage).toHaveBeenCalled();
+  });
+});
+
+describe('a send that lands while the model is being switched', () => {
+  it('waits for the switch instead of refusing the message', async () => {
+    let settle = () => {};
+    const switched = new Promise<void>((resolve) => {
+      settle = resolve;
+    });
+
+    const sent = useSend(1, false, () => switched)('hello');
+    expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+
+    settle();
+    expect(await sent).toBe(true);
+    expect(mockedState().sendChatMessage).toHaveBeenCalled();
+  });
+
+  it('refuses only when nothing can tell it the switch is over', async () => {
+    const send = useSendChatMessage({
+      chatId: 1,
+      model: { id: 1, modelName: 'Test LLM' } as Model,
+      messageHistory: [],
+      chatSettings: {
+        systemPrompt: '',
+        thinkingEnabled: false,
+        webSearchEnabled: false,
+      },
+      enabledSources: [],
+      vectorStore: null,
+      embeddings: null,
+      messagesRef,
+      db: {} as SQLiteDatabase,
+      isGenerating: false,
+      isModelLoading: false,
+      isSwitching: true,
+    });
+
+    expect(await send('hello')).toBe('model-loading');
     expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
   });
 });

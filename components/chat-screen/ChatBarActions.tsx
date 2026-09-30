@@ -1,5 +1,11 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import SendIcon from '../../assets/icons/send_icon.svg';
@@ -14,14 +20,16 @@ import WebCrossedIcon from '../../assets/icons/web_crossed.svg';
 import ChatBarToggle from './ChatBarToggle';
 import { Feedback } from '../../utils/Feedback';
 import Toast from 'react-native-toast-message';
+import { COMPOSER } from './attachments/constants';
 
 interface Props {
   onAttach: () => void;
   userInput: string;
   hasAttachments?: boolean;
   isLoadingAttachment?: boolean;
-  disabled?: boolean;
   togglesDisabled?: boolean;
+  modelBusy?: boolean;
+  sendPending?: boolean;
   onSend: () => void;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -29,6 +37,7 @@ interface Props {
   onSpeechInput: () => void;
   thinkingEnabled: boolean;
   onThinkingToggle?: () => void;
+  plusOut: SharedValue<number>;
   webSearchEnabled?: boolean;
   onWebSearchToggle?: () => void;
 }
@@ -38,8 +47,9 @@ const ChatBarActions = ({
   userInput,
   hasAttachments = false,
   isLoadingAttachment = false,
-  disabled = false,
   togglesDisabled = false,
+  modelBusy = false,
+  sendPending = false,
   onSend,
   isGenerating,
   isProcessingPrompt,
@@ -47,22 +57,19 @@ const ChatBarActions = ({
   onSpeechInput,
   thinkingEnabled = false,
   onThinkingToggle,
+  plusOut,
   webSearchEnabled = false,
   onWebSearchToggle,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
+  const plusStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(plusOut.get(), [0, 0.75], [1, 0], Extrapolation.CLAMP),
+    transform: [{ translateX: plusOut.get() * COMPOSER.plusSlide }],
+  }));
   const isResponding = isGenerating || isProcessingPrompt;
   const isAttachmentBlocked = isResponding || isLoadingAttachment;
 
   const handleAttach = () => {
-    if (disabled) {
-      Toast.show({
-        type: 'defaultToast',
-        text1: 'Wait for the model to finish loading.',
-      });
-      return;
-    }
-
     if (isAttachmentBlocked) {
       Toast.show({
         type: 'defaultToast',
@@ -93,13 +100,25 @@ const ChatBarActions = ({
       );
     }
 
+    if (sendPending) {
+      return (
+        <CircleButton
+          icon={SendIcon}
+          backgroundColor={theme.bg.main}
+          color={theme.text.contrastPrimary}
+          busy
+          disabled
+          testID="send-btn"
+        />
+      );
+    }
+
     if ((userInput || hasAttachments) && !isLoadingAttachment) {
       return (
         <View style={styles.rightActions}>
           {hasAttachments && !userInput && (
             <CircleButton
               icon={SoundwaveIcon}
-              disabled={disabled}
               onPress={onSpeechInput}
               backgroundColor="transparent"
               color={theme.text.onChatBar}
@@ -107,13 +126,13 @@ const ChatBarActions = ({
           )}
           <CircleButton
             icon={SendIcon}
-            disabled={disabled}
             onPress={() => {
               Feedback.send();
               onSend();
             }}
             backgroundColor={theme.bg.main}
             color={theme.text.contrastPrimary}
+            testID="send-btn"
           />
         </View>
       );
@@ -122,10 +141,11 @@ const ChatBarActions = ({
     return (
       <CircleButton
         icon={SoundwaveIcon}
-        disabled={disabled}
         onPress={onSpeechInput}
         backgroundColor="transparent"
         color={theme.text.onChatBar}
+        dimmed={modelBusy}
+        testID="speech-btn"
       />
     );
   };
@@ -137,14 +157,16 @@ const ChatBarActions = ({
           testID="attach-btn-container"
           style={isAttachmentBlocked ? styles.blockedAttachment : undefined}
         >
-          <CircleButton
-            icon={PlusIcon}
-            size={14}
-            onPress={handleAttach}
-            backgroundColor={theme.bg.attachButton}
-            color={theme.text.onAttachButton}
-            testID="attach-btn"
-          />
+          <Animated.View style={plusStyle}>
+            <CircleButton
+              icon={PlusIcon}
+              size={14}
+              onPress={handleAttach}
+              backgroundColor={theme.bg.attachButton}
+              color={theme.text.onAttachButton}
+              testID="attach-btn"
+            />
+          </Animated.View>
         </View>
         <ChatBarToggle
           label="Think"
@@ -174,7 +196,7 @@ const ChatBarActions = ({
 
 export default ChatBarActions;
 
-const createStyles = (theme: Theme) =>
+const createStyles = (_theme: Theme) =>
   StyleSheet.create({
     container: {
       flexDirection: 'row',

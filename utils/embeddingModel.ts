@@ -1,4 +1,4 @@
-import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
+import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import {
   LFM_2_5_EMBEDDING_DOWNLOAD_SIZE_BYTES,
   LFM_2_5_EMBEDDING_MODEL_FILE,
