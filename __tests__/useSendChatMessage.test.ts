@@ -79,7 +79,11 @@ const messagesRef = {
   } as unknown as MessagesHandle,
 };
 
-const useSend = (chatId = 1, loading = false) =>
+const useSend = (
+  chatId = 1,
+  loading = false,
+  waitForModelSwitch?: () => Promise<void>
+) =>
   useSendChatMessage({
     chatId,
     model: { id: 1, modelName: 'Test LLM' } as Model,
@@ -96,7 +100,8 @@ const useSend = (chatId = 1, loading = false) =>
     db: {} as SQLiteDatabase,
     isGenerating: false,
     isModelLoading: loading,
-    isSwitching: false,
+    isSwitching: !!waitForModelSwitch,
+    waitForModelSwitch,
   });
 
 beforeEach(() => {
@@ -171,6 +176,46 @@ describe('sending while another turn is open', () => {
   it('still sends while a load is in flight over a model that is already up', async () => {
     expect(await useSend(1, true)('hello')).toBe(true);
     expect(mockedState().sendChatMessage).toHaveBeenCalled();
+  });
+});
+
+describe('a send that lands while the model is being switched', () => {
+  it('waits for the switch instead of refusing the message', async () => {
+    let settle = () => {};
+    const switched = new Promise<void>((resolve) => {
+      settle = resolve;
+    });
+
+    const sent = useSend(1, false, () => switched)('hello');
+    expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+
+    settle();
+    expect(await sent).toBe(true);
+    expect(mockedState().sendChatMessage).toHaveBeenCalled();
+  });
+
+  it('refuses only when nothing can tell it the switch is over', async () => {
+    const send = useSendChatMessage({
+      chatId: 1,
+      model: { id: 1, modelName: 'Test LLM' } as Model,
+      messageHistory: [],
+      chatSettings: {
+        systemPrompt: '',
+        thinkingEnabled: false,
+        webSearchEnabled: false,
+      },
+      enabledSources: [],
+      vectorStore: null,
+      embeddings: null,
+      messagesRef,
+      db: {} as SQLiteDatabase,
+      isGenerating: false,
+      isModelLoading: false,
+      isSwitching: true,
+    });
+
+    expect(await send('hello')).toBe('model-loading');
+    expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
   });
 });
 

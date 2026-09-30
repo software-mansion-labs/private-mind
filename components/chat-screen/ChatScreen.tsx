@@ -180,6 +180,7 @@ export default function ChatScreen({
     isSwitching,
     pickModel,
     handleSheetStateChange: handleModelSwitchSheetState,
+    whenSettled: whenModelSwitchSettles,
   } = useModelSwitch(handleSelectModel);
 
   useEffect(() => {
@@ -207,6 +208,7 @@ export default function ChatScreen({
     isGenerating,
     isModelLoading,
     isSwitching,
+    waitForModelSwitch: whenModelSwitchSettles,
   });
 
   const {
