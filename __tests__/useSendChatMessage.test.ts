@@ -197,9 +197,8 @@ describe('the send transition', () => {
   });
 });
 
-
 describe('the model in the header is the one that answers', () => {
-  const pinnedTo = (model: Model) =>
+  const usePinnedTo = (model: Model) =>
     useSendChatMessage({
       chatId: 1,
       model,
@@ -222,7 +221,7 @@ describe('the model in the header is the one that answers', () => {
   it('loads the chat’s model before sending, so a new chat does not answer with the last one', async () => {
     const gemma = { id: 2, modelName: 'Gemma 4 - 2B' } as Model;
 
-    expect(await pinnedTo(gemma)('hello')).toBe(true);
+    expect(await usePinnedTo(gemma)('hello')).toBe(true);
 
     const state = mockedState();
     expect(state.loadModel).toHaveBeenCalledWith(gemma);
@@ -234,7 +233,7 @@ describe('the model in the header is the one that answers', () => {
   it('asks for no load when the chat’s model is already the resident one', async () => {
     const resident = { id: 1, modelName: 'Test LLM' } as Model;
 
-    expect(await pinnedTo(resident)('hello')).toBe(true);
+    expect(await usePinnedTo(resident)('hello')).toBe(true);
 
     expect(mockedState().loadModel).not.toHaveBeenCalled();
   });
@@ -244,9 +243,9 @@ describe('the model in the header is the one that answers', () => {
     state.isGenerating = true;
     state.generatingForChatId = 1;
 
-    expect(await pinnedTo({ id: 2, modelName: 'Gemma 4 - 2B' } as Model)('hi')).toBe(
-      'busy'
-    );
+    expect(
+      await usePinnedTo({ id: 2, modelName: 'Gemma 4 - 2B' } as Model)('hi')
+    ).toBe('busy');
     expect(state.loadModel).not.toHaveBeenCalled();
   });
 });
