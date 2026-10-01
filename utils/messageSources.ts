@@ -434,6 +434,41 @@ export const isWrongLanguageAnswer = (
   return (actual.evidence ?? 0) >= MIN_LANGUAGE_EVIDENCE;
 };
 
+const WELCOME_SCRIPTS = [
+  /\p{Script=Latin}/u,
+  /\p{Script=Cyrillic}/u,
+  /\p{Script=Devanagari}/u,
+  /\p{Script=Arabic}/u,
+];
+const LETTER = /\p{L}/u;
+const MIN_SHARE_IN_WELCOME_SCRIPT = 0.7;
+const WELCOME_LENGTH_ALLOWANCE = 2.5;
+const WELCOME_LENGTH_FLOOR = 0.4;
+
+const shareOfLetters = (text: string, script: RegExp): number => {
+  const letters = [...text].filter((char) => LETTER.test(char));
+  if (letters.length === 0) return 0;
+  return letters.filter((char) => script.test(char)).length / letters.length;
+};
+
+const scriptOf = (text: string): RegExp | undefined =>
+  WELCOME_SCRIPTS.find((script) => shareOfLetters(text, script) > 0.5);
+
+export const strayedFromWelcome = (
+  answer: string,
+  welcome: string
+): boolean => {
+  const visible = stripThinkBlocks(answer).trim();
+  if (!visible) return true;
+  if (visible.length > welcome.length * WELCOME_LENGTH_ALLOWANCE) return true;
+  if (visible.length < welcome.length * WELCOME_LENGTH_FLOOR) return true;
+  const script = scriptOf(welcome);
+  if (script && shareOfLetters(visible, script) < MIN_SHARE_IN_WELCOME_SCRIPT) {
+    return true;
+  }
+  return isWrongLanguageAnswer(visible, welcome);
+};
+
 export const pickCitationsByAnswer = (
   sourceDocuments: SourceDocument[],
   answer: string,

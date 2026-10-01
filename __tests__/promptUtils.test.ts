@@ -82,6 +82,27 @@ describe('prepareMessagesForLLM', () => {
       expect(systemPrompt).toContain('only a greeting');
     });
 
+    it('hands the model the prepared welcome as its example when a greeting opens the chat', () => {
+      const opening: Message[] = [
+        { id: 1, chatId: 1, role: 'user', content: 'cześć', timestamp: 0 },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const systemPrompt = prepareMessagesForLLM(
+        opening,
+        [],
+        baseSettings,
+        baseModel,
+        { openingWelcome: 'Cześć! Jestem Twoim prywatnym asystentem.' }
+      )[0].content as string;
+
+      expect(systemPrompt).toContain('Example of such a welcome:');
+      expect(systemPrompt).toContain(
+        'Cześć! Jestem Twoim prywatnym asystentem.'
+      );
+      expect(systemPrompt).not.toContain('one or two short');
+    });
+
     it('says nothing about greetings when the message carries a task', () => {
       const task: Message[] = [
         {
