@@ -1660,7 +1660,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           });
         }
 
-        if (!stoppedByUser) {
+        if (!stoppedByUser && !openingWelcome) {
           const previousDigest = digestForChat(get, chatId);
           updateConversationDigest(
             (messages) => get().generateUtility(messages),

@@ -627,6 +627,18 @@ describe('sendChatMessage', () => {
       );
     });
 
+    it('does not spend a second generation on summarising a hello', async () => {
+      openChat();
+      mockInstance.generate.mockResolvedValueOnce(modelWelcome);
+
+      await useLLMStore
+        .getState()
+        .sendChatMessage('Hi!', 1, noSources, settings);
+      await flushFrame();
+
+      expect(mockInstance.generate).toHaveBeenCalledTimes(1);
+    });
+
     it('gathers no sources for a greeting', async () => {
       openChat();
       mockInstance.generate.mockResolvedValueOnce(modelWelcome);
