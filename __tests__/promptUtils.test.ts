@@ -2752,6 +2752,25 @@ describe('a question about a named day must not be answered with "now"', () => {
       'does not answer a question about a different day'
     );
   });
+
+  it('asks for every day when the question covers a span, not one of them', () => {
+    const prompt = systemPromptFor('pogoda londyn weekend');
+
+    expect(prompt).toContain('named day or span of days');
+    expect(prompt).toContain('give the value for each day it covers');
+  });
+
+  it('still warns off a day outside the span', () => {
+    expect(systemPromptFor('pogoda londyn weekend')).toContain(
+      'neither does a day outside the span asked about'
+    );
+  });
+
+  it('covers a span asked about in English too', () => {
+    expect(systemPromptFor('london weather this weekend')).toContain(
+      'give the value for each day it covers'
+    );
+  });
 });
 
 describe('a question about something the sources never name', () => {

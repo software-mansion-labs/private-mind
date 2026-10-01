@@ -487,7 +487,7 @@ const SUPERLATIVE_MARKERS =
 
 const getTimeScopeInstruction = (question?: string): string =>
   question && namesAnotherDay(question)
-    ? '\n\nThe question asks about a named day, not about right now. A page reporting a value that changes over time usually prints the current reading and the forecast for several days close together, often with the current one first and most prominent. Use only the value the page labels with the day the question asks about; a figure the page labels "now", "today", "current" or "at the moment" does not answer a question about a different day, and neither does the next day\'s. If the page carries no value for the day asked about, say so rather than quoting the nearest one.'
+    ? '\n\nThe question asks about a named day or span of days, not about right now. A page reporting a value that changes over time usually prints the current reading and the forecast for several days close together, often with the current one first and most prominent. Use only values the page labels with the day or days the question asks about; a figure the page labels "now", "today", "current" or "at the moment" does not answer a question about a different day, and neither does a day outside the span asked about. If the question covers more than one day, give the value for each day it covers rather than picking one. If the page carries no value for the day or days asked about, say so rather than quoting the nearest one.'
     : '';
 
 const getPeriodScopeInstruction = (question?: string): string =>
