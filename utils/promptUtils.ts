@@ -6,7 +6,7 @@ import {
 } from '../database/chatRepository';
 import { Model } from '../database/modelRepository';
 import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
-import { type Message as ExecutorchMessage } from 'react-native-executorch';
+import { type Message as ExecutorchMessage } from 'react-native-executorch/legacy';
 import {
   estimatePromptTokens,
   getPromptCharBudget,
@@ -595,6 +595,9 @@ const shapeInstructions = (candidates: string[]): string =>
     .slice(0, MAX_SHAPE_INSTRUCTIONS)
     .join('');
 
+const isAbandonedQuestion = (message: Message): boolean =>
+  message.role === 'user' && !!message.stoppedByUser;
+
 export const prepareMessagesForLLM = (
   activeChatMessages: Message[],
   context: string[],
@@ -680,7 +683,7 @@ export const prepareMessagesForLLM = (
 
   const nonEventMessages = activeChatMessages.filter(
     (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
-      msg.role !== 'event'
+      msg.role !== 'event' && !isAbandonedQuestion(msg)
   );
   const lastNonEventMessage = nonEventMessages.at(-1);
   const messagesForLLM =
