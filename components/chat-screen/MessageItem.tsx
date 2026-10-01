@@ -115,7 +115,10 @@ const MessageItem = memo(
       () => (role === 'assistant' ? stripSpecialTokens(content) : content),
       [content, role]
     );
-    const contentParts = parseThinkingContent(visibleContent);
+    const contentParts = useMemo(
+      () => parseThinkingContent(visibleContent),
+      [visibleContent]
+    );
     const userText = useMemo(
       () => stripThinkMarkers(visibleContent),
       [visibleContent]
@@ -187,8 +190,10 @@ const MessageItem = memo(
     const canShowSourcesAction =
       !!content.trim() && documentSources.length > 0 && !isBusy;
 
+    const answerIsIncomplete = !!message.stoppedByUser;
+
     const actions =
-      showActions || canShowSourcesAction ? (
+      !answerIsIncomplete && (showActions || canShowSourcesAction) ? (
         <View style={styles.actionRow} testID="message-actions">
           {showActions && (
             <MessageActionButton

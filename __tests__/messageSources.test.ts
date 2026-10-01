@@ -7,6 +7,8 @@ import {
   humanizeSourceReferences,
   stripSourceLabels,
   isDanglingListAnswer,
+  endsInsideList,
+  joinContinuation,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
   retryDropsGroundedDetail,
@@ -1694,5 +1696,55 @@ describe('retryDropsGroundedDetail', () => {
         'Zależy od modelu.'
       )
     ).toBe(false);
+  });
+});
+
+describe('endsInsideList', () => {
+  it('sees an answer that stops on a real list item', () => {
+    expect(endsInsideList('Lista:\n1. Paszport do podróży.')).toBe(true);
+  });
+
+  it('does not see one that ends on prose', () => {
+    expect(endsInsideList('Lista:\n1. Paszport.\nTo wszystko.')).toBe(false);
+  });
+
+  it('ignores a think block', () => {
+    expect(endsInsideList('<think>1. coś</think>Zwykłe zdanie.')).toBe(false);
+  });
+});
+
+describe('joinContinuation', () => {
+  it('drops the lead-in the continuation restates', () => {
+    const joined = joinContinuation(
+      'Oto rzeczy do zabrania:\n1. Paszport do podróży zagranicznej.',
+      '1. Paszport do podróży zagranicznej.\n2. Bilet lotniczy.\n3. Ładowarka.'
+    );
+    expect(joined).toBe(
+      'Oto rzeczy do zabrania:\n' +
+        '1. Paszport do podróży zagranicznej.\n' +
+        '2. Bilet lotniczy.\n' +
+        '3. Ładowarka.'
+    );
+  });
+
+  it('keeps a continuation that adds only new lines', () => {
+    expect(joinContinuation('Lista:\n1. Pierwsza.', '2. Druga.')).toBe(
+      'Lista:\n1. Pierwsza.\n2. Druga.'
+    );
+  });
+
+  it('renumbering does not hide a restated line', () => {
+    expect(
+      joinContinuation(
+        'Lista:\n1. Pierwsza pozycja.',
+        '2. Pierwsza pozycja.\n3. Nowa.'
+      )
+    ).toBe('Lista:\n1. Pierwsza pozycja.\n3. Nowa.');
+  });
+
+  it('returns the base when the continuation adds nothing', () => {
+    expect(joinContinuation('Lista:\n1. Pierwsza.', '1. Pierwsza.')).toBe(
+      'Lista:\n1. Pierwsza.'
+    );
   });
 });

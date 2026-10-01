@@ -1,4 +1,7 @@
-import { truncateAtRepeatedClause } from '../utils/loopDetection';
+import {
+  isRepetitionFromTheStart,
+  truncateAtRepeatedClause,
+} from '../utils/loopDetection';
 
 describe('truncateAtRepeatedClause', () => {
   it('cuts the answer where a clause starts repeating back-to-back', () => {
@@ -8,7 +11,7 @@ describe('truncateAtRepeatedClause', () => {
       'wypadek w Szwecji, wypadek w Szwecji, a także wypadek w Szwecji.';
     const result = truncateAtRepeatedClause(text);
     expect(result).not.toContain('wypadek w Szwecji, wypadek w Szwecji');
-    expect(result.endsWith('opadów deszczów w Wyspach,')).toBe(true);
+    expect(result.endsWith('wypadek w Szwecji,')).toBe(true);
   });
 
   it('leaves normal prose with no repeated clause untouched', () => {
@@ -42,7 +45,7 @@ describe('truncateAtRepeatedClause', () => {
       'Wzrost cen paliw w regionie,\n' +
       'Nowe informacje wkrótce.';
     const result = truncateAtRepeatedClause(text);
-    expect(result).toBe('Podsumowanie:');
+    expect(result).toBe('Podsumowanie:\nWzrost cen paliw w regionie,');
   });
 
   it('cuts a padded list where whole items come back later, keeping the distinct ones (live-found)', () => {
@@ -127,7 +130,10 @@ describe('truncateAtRepeatedClause', () => {
     const result = truncateAtRepeatedClause(text);
     expect(result).not.toContain('2. **Reforma administracyjna**');
     expect(result).not.toContain('3. **Reforma administracyjna**');
-    expect(result).toBe('Dokonał wielu reform, w tym:');
+    expect(result).toBe(
+      'Dokonał wielu reform, w tym:\n' +
+        '1. **Reforma administracyjna** – zainicjował nowy podział kraju na województwa.'
+    );
   });
 
   it('catches a loop across numbered list items containing an internal comma (F23)', () => {
@@ -140,7 +146,7 @@ describe('truncateAtRepeatedClause', () => {
     const result = truncateAtRepeatedClause(text);
     expect(result).not.toContain('2. **Dokonał reform');
     expect(result).not.toContain('3. **Dokonał reform');
-    expect(result.endsWith('W tym zakresie:')).toBe(true);
+    expect(result.endsWith('bardziej centralny i efektywny.')).toBe(true);
   });
 
   it('catches a cycling rotation of several different short clauses, not just an exact repeat (F24)', () => {
@@ -155,7 +161,7 @@ describe('truncateAtRepeatedClause', () => {
       'kaza hizmetleri, sosyal güvenlik, sağlık hizmetleri, itibarlı kurumlar, kaza'
     );
     expect(secondCycleStart).toBe(-1);
-    expect(result.endsWith('devlet merkezleri,')).toBe(true);
+    expect(result.endsWith('sağlık hizmetleri, itibarlı kurumlar,')).toBe(true);
   });
 
   it('returns the original text unchanged when nothing repeats', () => {
@@ -169,7 +175,7 @@ describe('truncateAtRepeatedClause', () => {
       'dostosowanego dostosowanego dostosowanego dostosowanego dostosowanego.';
     const result = truncateAtRepeatedClause(text);
     expect(result).not.toContain('dostosowanego dostosowanego');
-    expect(result.endsWith('w formie')).toBe(true);
+    expect(result.endsWith('w formie dostosowanego')).toBe(true);
   });
 
   it('does not flag a word repeated only twice or three times', () => {
@@ -188,7 +194,7 @@ describe('truncateAtRepeatedClause', () => {
       'Odpowiedź brzmi: bardzo dobrze bardzo dobrze bardzo dobrze bardzo dobrze.';
     const result = truncateAtRepeatedClause(text);
     expect(result).not.toContain('bardzo dobrze bardzo dobrze');
-    expect(result.endsWith('Odpowiedź brzmi:')).toBe(true);
+    expect(result.endsWith('Odpowiedź brzmi: bardzo dobrze')).toBe(true);
   });
 
   it('cuts a three-word phrase looping with no punctuation between copies', () => {
@@ -196,7 +202,7 @@ describe('truncateAtRepeatedClause', () => {
       'Wynik to: na pewno tak na pewno tak na pewno tak na pewno tak.';
     const result = truncateAtRepeatedClause(text);
     expect(result).not.toContain('na pewno tak na pewno tak');
-    expect(result.endsWith('Wynik to:')).toBe(true);
+    expect(result.endsWith('Wynik to: na pewno tak')).toBe(true);
   });
 
   it('does not flag a short two-word phrase repeated only twice', () => {
@@ -209,5 +215,54 @@ describe('truncateAtRepeatedClause', () => {
       'Tak jak wspomniano wcześniej, tak jak w poprzednim akapicie, dawka ' +
       'zależy od wieku pacjenta i tak jak zawsze warto skonsultować się z lekarzem.';
     expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+});
+
+describe('the cut keeps the first copy', () => {
+  it('keeps the item that later items repeat, instead of eating it too', () => {
+    const text =
+      '6 najwyższych szczytów:\n' +
+      '1. Góra Kamienna – 1530 m\n' +
+      '2. Góra Szydłowska – 1480 m\n' +
+      '3. Góra Złota – 1460 m\n' +
+      '4. Góra Złota – 1460 m\n' +
+      '5. Góra Złota – 1460 m';
+    const result = truncateAtRepeatedClause(text);
+    expect(result).toContain('3. Góra Złota – 1460 m');
+    expect(result).not.toContain('4. Góra Złota');
+    expect(result.split('Góra Złota').length - 1).toBe(1);
+  });
+
+  it('never ends on a bare list marker', () => {
+    const text =
+      'Lista:\n' +
+      '1. Pierwsza pozycja tej listy.\n' +
+      '2. Druga pozycja tej listy.\n' +
+      '2. Druga pozycja tej listy.';
+    const result = truncateAtRepeatedClause(text);
+    expect(result.trimEnd()).not.toMatch(/(?:\d+[.)]|[-*•])\s*$/);
+  });
+});
+
+describe('isRepetitionFromTheStart', () => {
+  it('still flags a reply that is a loop from its first character', () => {
+    expect(isRepetitionFromTheStart('cząstek cząstek cząstek cząstek')).toBe(
+      true
+    );
+  });
+
+  it('does not flag a reply that only loops after real content', () => {
+    expect(
+      isRepetitionFromTheStart(
+        'Odpowiedź to 42. cząstek cząstek cząstek cząstek'
+      )
+    ).toBe(false);
+  });
+
+  it('is not moved by the cut now landing on the second copy', () => {
+    const looping =
+      'Powtarzam to zdanie. Powtarzam to zdanie. Powtarzam to zdanie.';
+    expect(isRepetitionFromTheStart(looping)).toBe(true);
+    expect(truncateAtRepeatedClause(looping)).toBe('Powtarzam to zdanie.');
   });
 });

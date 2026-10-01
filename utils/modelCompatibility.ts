@@ -3,6 +3,7 @@ import DeviceInfo from 'react-native-device-info';
 import { Model } from '../database/modelRepository';
 import {
   LOW_MEMORY_DEVICE_GB,
+  LOW_MEMORY_DEVICE_IOS_GB,
   STRONG_DEVICE_MEMORY_GB,
 } from '../constants/web';
 import { MODEL_MIN_RAM_GB } from '../constants/model-memory';
@@ -27,7 +28,6 @@ const nominalDeviceMemoryGB = () => Math.ceil(getTotalMemoryGB());
 
 const RUNTIME_OVERHEAD_MULTIPLIER = 1.3;
 const RUNTIME_OVERHEAD_GB = 0.5;
-const USABLE_MEMORY_FRACTION = 0.8;
 
 type CompatibilityCheckedModel = Pick<Model, 'modelName' | 'modelSize'>;
 
@@ -41,37 +41,21 @@ export const getModelMemoryRequirement = (
   return model.modelSize * RUNTIME_OVERHEAD_MULTIPLIER + RUNTIME_OVERHEAD_GB;
 };
 
-export const isModelCompatibleWithRam = (
-  model: CompatibilityCheckedModel,
-  deviceRamGB: number
-): boolean => {
-  const declaredMinRamGB = MODEL_MIN_RAM_GB[model.modelName];
-
-  if (declaredMinRamGB !== undefined) {
-    return deviceRamGB >= declaredMinRamGB;
-  }
-
-  const memoryRequirement = getModelMemoryRequirement(model);
-
-  if (memoryRequirement === null) {
-    return true;
-  }
-
-  return memoryRequirement <= deviceRamGB * USABLE_MEMORY_FRACTION;
-};
-
 const androidSystemReserveGB = (totalGB: number): number =>
   Math.min(ANDROID_SYSTEM_RESERVE_GB, totalGB * ANDROID_SYSTEM_RESERVE_SHARE);
 
-export const getAppMemoryBudgetGB = (): number => {
-  const total = getTotalMemoryGB();
-  return Platform.OS === 'ios'
-    ? total * IOS_JETSAM_SHARE * MEMORY_SAFETY_FACTOR
-    : Math.max(0, total - androidSystemReserveGB(total));
-};
+export const appMemoryBudgetForGB = (totalGB: number): number =>
+  Platform.OS === 'ios'
+    ? totalGB * IOS_JETSAM_SHARE * MEMORY_SAFETY_FACTOR
+    : Math.max(0, totalGB - androidSystemReserveGB(totalGB));
 
-const getModelBudgetGB = (): number =>
-  getAppMemoryBudgetGB() - APP_RUNTIME_MEMORY_GB;
+export const getAppMemoryBudgetGB = (): number =>
+  appMemoryBudgetForGB(getTotalMemoryGB());
+
+export const modelBudgetForGB = (totalGB: number): number =>
+  appMemoryBudgetForGB(totalGB) - APP_RUNTIME_MEMORY_GB;
+
+const getModelBudgetGB = (): number => modelBudgetForGB(getTotalMemoryGB());
 
 const getModelMemoryCostGB = (
   model: (Partial<Model> & { modelSize?: number }) | null | undefined
@@ -81,11 +65,14 @@ const getModelMemoryCostGB = (
   return getModelMemoryRequirement(model as CompatibilityCheckedModel);
 };
 
-export const isModelCompatible = (model: Model): boolean => {
+export const isModelCompatibleWithRam = (
+  model: CompatibilityCheckedModel,
+  deviceRamGB: number
+): boolean => {
   const declaredMinRamGB = MODEL_MIN_RAM_GB[model.modelName];
 
   if (declaredMinRamGB !== undefined) {
-    return nominalDeviceMemoryGB() >= declaredMinRamGB;
+    return Math.ceil(deviceRamGB) >= declaredMinRamGB;
   }
 
   const cost = getModelMemoryCostGB(model);
@@ -94,8 +81,12 @@ export const isModelCompatible = (model: Model): boolean => {
     return true;
   }
 
+  return cost <= modelBudgetForGB(deviceRamGB);
+};
+
+export const isModelCompatible = (model: Model): boolean => {
   try {
-    return cost <= getModelBudgetGB();
+    return isModelCompatibleWithRam(model, getTotalMemoryGB());
   } catch {
     return true;
   }
@@ -105,12 +96,15 @@ export const getDeviceMemoryGB = (): number => {
   return getTotalMemoryGB();
 };
 
+const lowMemoryHeadroomGB = (): number =>
+  Platform.OS === 'ios' ? LOW_MEMORY_DEVICE_IOS_GB : LOW_MEMORY_DEVICE_GB;
+
 export const isMemoryConstrained = (
   model?: { modelSize?: number } | null
 ): boolean => {
   try {
     const headroom = getTotalMemoryGB() - (model?.modelSize ?? 0);
-    return headroom < LOW_MEMORY_DEVICE_GB;
+    return headroom < lowMemoryHeadroomGB();
   } catch {
     return false;
   }
