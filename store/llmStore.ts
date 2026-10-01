@@ -66,6 +66,7 @@ import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
 import { updateConversationDigest } from '../utils/conversationDigest';
 import type { WebIntentKind } from '../utils/web/intentKind';
 import { useSettingsStore } from './settingsStore';
+import { openingWelcomeFor } from '../utils/openingGreeting';
 import {
   getMemoryFootprintBytes,
   isMemoryMetricAvailable,
@@ -1107,9 +1108,51 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       }));
     }
 
+    const openingWelcomeOfThisTurn = async (): Promise<string | null> => {
+      if (isRetry) return null;
+      await waitForSettingsHydration();
+      return openingWelcomeFor({
+        message: newMessage,
+        earlierRoles: activeChatMessages.map((message) => message.role),
+        hasAttachment: !!imagePath || !!documentName,
+        customInstructions: useSettingsStore.getState().customSystemPrompt,
+      });
+    };
+
+    const completeTurnWithWelcome = async (welcome: string) => {
+      const assistantMessageId = await persistMessage(db, {
+        ...assistantPlaceholder,
+        content: welcome,
+        tokensPerSecond: 0,
+        timeToFirstToken: 0,
+      });
+      if (stillOurs() && get().activeChatId === chatId) {
+        updateChatStateForGeneration(set, 'complete', {
+          localId: assistantPlaceholder.localId,
+          assistantMessage: {
+            ...assistantPlaceholder,
+            id: assistantMessageId,
+            content: welcome,
+          },
+          timeToFirstToken: 0,
+          tokensPerSecond: 0,
+        });
+      } else if (stillOurs()) {
+        updateChatStateForGeneration(set, 'complete');
+      }
+      failedGenerationRequest = null;
+      set({ generationError: null });
+    };
+
     try {
       if (!isRetry && !userMessagePersisted) {
         await persistUserMessage();
+      }
+
+      const openingWelcome = await openingWelcomeOfThisTurn();
+      if (openingWelcome && get().isProcessingPrompt) {
+        await completeTurnWithWelcome(openingWelcome);
+        return true;
       }
 
       const built = await endsWhenStopped(

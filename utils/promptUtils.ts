@@ -4,6 +4,7 @@ import {
   SourceDocument,
   sourceKind,
 } from '../database/chatRepository';
+import { isGreetingOnly } from './openingGreeting';
 import { Model } from '../database/modelRepository';
 import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
 import { type Message as ExecutorchMessage } from 'react-native-executorch/legacy';
@@ -230,6 +231,14 @@ const unsourcedLanguageInstruction = (
   language?: QuestionLanguage | null
 ): string =>
   language ? namedLanguageInstruction(language) : MIRROR_UNKNOWN_LANGUAGE;
+
+const GREETING_ONLY_INSTRUCTION =
+  'The latest user message is only a greeting. Greet the user back in one or two short, friendly sentences in the same language and ask what they would like help with. Do not answer a question that was not asked.';
+
+const getGreetingOnlyInstruction = (question?: string): string =>
+  question && isGreetingOnly(question)
+    ? `\n\n${GREETING_ONLY_INSTRUCTION}`
+    : '';
 
 export const focusedRetrySystemPrompt = (
   language: QuestionLanguage | null
@@ -671,6 +680,7 @@ export const prepareMessagesForLLM = (
     systemPrompt += getWeakRetrievalInstruction(webWeak);
   } else {
     systemPrompt += `\n\n${unsourcedLanguageInstruction(language)}`;
+    systemPrompt += getGreetingOnlyInstruction(question);
     systemPrompt += getWebSearchFailedInstruction(webSearchFailed);
     const hasPriorWebAnswer = activeChatMessages.some(
       (msg) =>
