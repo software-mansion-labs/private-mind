@@ -25,9 +25,10 @@ jest.mock('../utils/web/scrape/webViewScrapeProvider', () => ({
   webViewScrapeProvider: { releaseHost: jest.fn() },
 }));
 jest.mock('../utils/network', () => ({ isDeviceOnline: async () => true }));
+const mockAddChat = jest.fn(async (_title: string, _modelId: number) => 9);
 jest.mock('../store/chatStore', () => ({
   useChatStore: () => ({
-    addChat: jest.fn(async () => 9),
+    addChat: mockAddChat,
     updateLastUsed: jest.fn(),
     enableSource: jest.fn(),
   }),
@@ -95,7 +96,7 @@ const messagesRef = {
 const useSend = (
   chatId = 1,
   loading = false,
-  waitForModelSwitch?: () => Promise<void>
+  waitForModelSwitch?: () => Promise<Model | undefined>
 ) =>
   useSendChatMessage({
     chatId,
@@ -200,8 +201,8 @@ describe('sending while another turn is open', () => {
 describe('a send that lands while the model is being switched', () => {
   it('waits for the switch instead of refusing the message', async () => {
     let settle = () => {};
-    const switched = new Promise<void>((resolve) => {
-      settle = resolve;
+    const switched = new Promise<undefined>((resolve) => {
+      settle = () => resolve(undefined);
     });
 
     const sent = useSend(1, false, () => switched)('hello');
@@ -233,6 +234,59 @@ describe('a send that lands while the model is being switched', () => {
 
     expect(await send('hello')).toBe('model-loading');
     expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe('a send that lands inside the switch window', () => {
+  const qwen = { id: 1, modelName: 'Qwen 3 - 0.6B' } as Model;
+  const gemma = { id: 2, modelName: 'Gemma 4 - 2B' } as Model;
+  const { checkIfChatExists } = jest.requireMock(
+    '../database/chatRepository'
+  ) as { checkIfChatExists: jest.Mock };
+
+  const useSendDuringSwitchTo = (landedOn: Model | undefined) => {
+    if (landedOn) mockedState().model = landedOn;
+    return useSendChatMessage({
+      chatId: 1,
+      model: qwen,
+      messageHistory: [],
+      chatSettings: { systemPrompt: '', thinkingEnabled: false },
+      enabledSources: [],
+      vectorStore: null,
+      embeddings: null,
+      messagesRef,
+      db: {} as SQLiteDatabase,
+      isGenerating: false,
+      isModelLoading: false,
+      isSwitching: true,
+      waitForModelSwitch: async () => landedOn,
+    })('hello');
+  };
+
+  beforeEach(() => mockAddChat.mockClear());
+
+  it('does not load the previous model back once the switch has landed', async () => {
+    expect(await useSendDuringSwitchTo(gemma)).toBe(true);
+
+    expect(mockedState().loadModel).not.toHaveBeenCalled();
+    expect(mockedState().sendChatMessage).toHaveBeenCalled();
+  });
+
+  it('pins the new chat to the model the switch landed on', async () => {
+    checkIfChatExists.mockResolvedValueOnce(false);
+
+    await useSendDuringSwitchTo(gemma);
+
+    expect(mockAddChat).toHaveBeenCalledWith(expect.any(String), gemma.id);
+  });
+
+  it('keeps the model the screen held when the switch did not land', async () => {
+    checkIfChatExists.mockResolvedValueOnce(false);
+
+    await useSendDuringSwitchTo(undefined);
+
+    expect(mockedState().loadModel).not.toHaveBeenCalled();
+    expect(mockAddChat).toHaveBeenCalledWith(expect.any(String), qwen.id);
   });
 });
 

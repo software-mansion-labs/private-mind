@@ -598,6 +598,35 @@ describe('generating state', () => {
   });
 });
 
+describe('the model the field loads on focus', () => {
+  const focusWith = (modelSwitching: boolean) => {
+    const loadModel = jest.fn();
+    mockUseLLMStore.mockImplementation(
+      (selector?: (state: Partial<LLMStore>) => unknown) => {
+        const state = {
+          isGenerating: false,
+          isProcessingPrompt: false,
+          interrupt: jest.fn(),
+          loadModel,
+          model: { id: downloadedModel.id + 1 } as LLMStore['model'],
+        };
+        return selector ? selector(state) : state;
+      }
+    );
+    renderBar({ modelSwitching });
+    fireEvent(screen.getByPlaceholderText('Ask about anything...'), 'focus');
+    return loadModel;
+  };
+
+  it('brings back the chat’s model when another one is resident', () => {
+    expect(focusWith(false)).toHaveBeenCalledWith(downloadedModel);
+  });
+
+  it('queues nothing mid-switch, when the chat’s model is the one being replaced', () => {
+    expect(focusWith(true)).not.toHaveBeenCalled();
+  });
+});
+
 // ─── speech input ─────────────────────────────────────────────────────────────
 
 describe('speech input', () => {

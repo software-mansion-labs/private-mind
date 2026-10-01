@@ -172,8 +172,10 @@ export default function ChatScreen({
 
       await setLastUsedModelId(selectedModel.id);
       await selectModel?.(selectedModel);
+      return true;
     } catch (error) {
       console.error('Error loading model:', error);
+      return false;
     }
   };
 
