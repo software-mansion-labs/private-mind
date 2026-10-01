@@ -58,6 +58,7 @@ import {
 } from '../utils/messageSources';
 import { sourcesPresentInContext } from '../utils/contextUtils';
 import { normalizeModelText } from '../utils/normalizeModelText';
+import { stripSpecialTokens } from '../utils/specialTokens';
 import {
   isRepetitionFromTheStart,
   truncateAtRepeatedClause,
@@ -626,7 +627,7 @@ const carriesAnswer = (response: string): boolean => {
 };
 
 const tidyVisibleAnswer = (response: string): string =>
-  mapOutsideThink(response, (segment) =>
+  mapOutsideThink(stripSpecialTokens(response), (segment) =>
     truncateAtRepeatedClause(normalizeModelText(segment))
   );
 
