@@ -64,6 +64,46 @@ describe('prepareMessagesForLLM', () => {
       expect(result[0].content).toContain(baseSettings.systemPrompt);
     });
 
+    it('tells the model to greet back when the latest message is only a greeting', () => {
+      const underWay: Message[] = [
+        { id: 1, chatId: 1, role: 'user', content: 'ping', timestamp: 0 },
+        { id: 2, chatId: 1, role: 'assistant', content: 'pong', timestamp: 0 },
+        { id: 3, chatId: 1, role: 'user', content: 'hello', timestamp: 0 },
+        { id: 4, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const systemPrompt = prepareMessagesForLLM(
+        underWay,
+        [],
+        baseSettings,
+        baseModel
+      )[0].content as string;
+
+      expect(systemPrompt).toContain('only a greeting');
+    });
+
+    it('says nothing about greetings when the message carries a task', () => {
+      const task: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'hi, what is the capital of France?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const systemPrompt = prepareMessagesForLLM(
+        task,
+        [],
+        baseSettings,
+        baseModel
+      )[0].content as string;
+
+      expect(systemPrompt).not.toContain('only a greeting');
+    });
+
     it('still guards against source language when sources are present', () => {
       const greeting: Message[] = [
         { id: 1, chatId: 1, role: 'user', content: 'hi', timestamp: 0 },
