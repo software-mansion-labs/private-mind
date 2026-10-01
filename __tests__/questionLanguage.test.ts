@@ -49,6 +49,15 @@ describe('detectQuestionLanguage', () => {
     expect(codeOf('what is the weather in London today')).toBe('en');
   });
 
+  it('names English for an instruction whose only known word is Romanian once folded', () => {
+    expect(
+      detectQuestionLanguage('Write a 120-word story about a cat')?.code
+    ).toBe('en');
+    expect(detectQuestionLanguage('Tell me a story about a cat')?.code).toBe(
+      'en'
+    );
+  });
+
   it('reads an inflected form of a word it knows in the base form', () => {
     expect(codeOf('Cuantos habitantes tiene Barcelona')).toBe('es');
     expect(codeOf('Wie viele Einwohner hat Muenchen')).toBe('de');
