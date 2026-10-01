@@ -13,6 +13,7 @@ jest.mock('../store/sourceStore', () => ({
     getState: jest.fn(() => ({
       addSource: jest.fn(),
       cleanupOrphanedSources: mockCleanupOrphanedSources,
+      registerComposer: () => () => {},
     })),
   },
 }));
@@ -306,6 +307,7 @@ describe('useAttachment', () => {
     useSourceStore.getState.mockReturnValue({
       addSource: mockAddSource,
       cleanupOrphanedSources: mockCleanupOrphanedSources,
+      registerComposer: () => () => {},
     });
 
     const { result } = renderHook(() => useAttachment());
@@ -346,6 +348,7 @@ describe('useAttachment', () => {
     useSourceStore.getState.mockReturnValue({
       addSource: mockAddSource,
       cleanupOrphanedSources: mockCleanupOrphanedSources,
+      registerComposer: () => () => {},
     });
 
     const { result } = renderHook(() => useAttachment());
@@ -374,6 +377,7 @@ describe('useAttachment', () => {
       useSourceStore.getState.mockReturnValue({
         addSource: jest.fn().mockResolvedValue({ success: true, sourceId: 42 }),
         cleanupOrphanedSources: mockCleanupOrphanedSources,
+        registerComposer: () => () => {},
       });
 
       const view = renderHook(() => useAttachment());
@@ -442,6 +446,7 @@ describe('useAttachment', () => {
     useSourceStore.getState.mockReturnValue({
       addSource: mockAddSource,
       cleanupOrphanedSources: mockCleanupOrphanedSources,
+      registerComposer: () => () => {},
     });
     mockGetDocumentAsync
       .mockResolvedValueOnce({
@@ -528,6 +533,7 @@ describe('useAttachment', () => {
       useSourceStore.getState.mockReturnValue({
         addSource: mockAddSource,
         cleanupOrphanedSources: mockCleanupOrphanedSources,
+        registerComposer: () => () => {},
       });
 
       const { result } = renderHook(() => useAttachment());
@@ -553,6 +559,7 @@ describe('useAttachment', () => {
       useSourceStore.getState.mockImplementation(() => ({
         addSource: mockAddSource,
         cleanupOrphanedSources: mockCleanup,
+        registerComposer: () => () => {},
       }));
 
       const { result } = renderHook(() => useAttachment());

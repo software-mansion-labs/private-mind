@@ -143,7 +143,13 @@ export const useAttachment = () => {
   }, []);
 
   useEffect(() => {
+    const unregisterComposer = useSourceStore
+      .getState()
+      .registerComposer(() =>
+        attachmentsRef.current.flatMap((a) => (a.sourceId ? [a.sourceId] : []))
+      );
     return () => {
+      unregisterComposer();
       panelOpenRef.current = false;
       embeddingDownloadSheetOpenRef.current = false;
       pendingDownloadSheetRef.current = false;

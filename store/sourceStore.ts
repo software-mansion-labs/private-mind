@@ -55,7 +55,32 @@ interface SourceStore {
   deleteSource: (source: Source) => Promise<void>;
   renameSource: (id: number, newName: string) => Promise<void>;
   cleanupOrphanedSources: (vectorStore: OPSQLiteVectorStore) => Promise<void>;
+  holdSources: (sourceIds: number[]) => () => void;
+  registerComposer: (heldByComposer: () => number[]) => () => void;
 }
+
+const sourceHolds = new Map<number, number>();
+const composers = new Set<() => number[]>();
+
+const holdSourceIds = (sourceIds: number[]) => {
+  sourceIds.forEach((id) =>
+    sourceHolds.set(id, (sourceHolds.get(id) ?? 0) + 1)
+  );
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    sourceIds.forEach((id) => {
+      const holds = (sourceHolds.get(id) ?? 1) - 1;
+      if (holds > 0) sourceHolds.set(id, holds);
+      else sourceHolds.delete(id);
+    });
+  };
+};
+
+const isHeld = (sourceId: number) =>
+  sourceHolds.has(sourceId) ||
+  [...composers].some((heldByComposer) => heldByComposer().includes(sourceId));
 
 export const useSourceStore = create<SourceStore>((set, get) => ({
   sources: [],
@@ -92,6 +117,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     const tempId = -Date.now();
     set({ isReading: true });
     let rollbackPartialSource: (() => Promise<void>) | null = null;
+    let releaseHold = () => {};
 
     try {
       const sourceTextContent =
@@ -135,6 +161,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         firstChunk: chunks[0] || undefined,
       });
       if (matchingSource) {
+        releaseHold = holdSourceIds([matchingSource.id]);
         onProgress?.(1);
         set((state) => {
           const withoutTemporary = state.sources.filter(
@@ -165,6 +192,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         }));
         return { success: false };
       }
+      releaseHold = holdSourceIds([sourceId]);
 
       rollbackPartialSource = async () => {
         if (vectorStore) {
@@ -231,6 +259,7 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
       }));
       return { success: false };
     } finally {
+      releaseHold();
       set({ isReading: false });
     }
   },
@@ -272,7 +301,9 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     const db = get().db;
     if (!db) return;
     try {
-      const orphaned = await getOrphanedSources(db);
+      const orphaned = (await getOrphanedSources(db)).filter(
+        (source) => !isHeld(source.id)
+      );
       for (const source of orphaned) {
         await vectorStore.delete({
           predicate: (value) => value.metadata?.documentId === source.id,
@@ -286,5 +317,14 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
     } catch (e) {
       console.error(e);
     }
+  },
+
+  holdSources: holdSourceIds,
+
+  registerComposer: (heldByComposer) => {
+    composers.add(heldByComposer);
+    return () => {
+      composers.delete(heldByComposer);
+    };
   },
 }));

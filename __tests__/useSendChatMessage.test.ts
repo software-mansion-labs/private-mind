@@ -33,7 +33,9 @@ jest.mock('../store/chatStore', () => ({
   }),
 }));
 jest.mock('../store/sourceStore', () => ({
-  useSourceStore: { getState: () => ({ sources: [] }) },
+  useSourceStore: {
+    getState: () => ({ sources: [], holdSources: () => () => {} }),
+  },
 }));
 const webEnabledByChat: Record<number, boolean> = {};
 jest.mock('../store/webSearchStore', () => ({
