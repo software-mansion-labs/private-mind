@@ -712,6 +712,26 @@ describe('speech input', () => {
     expect(screen.queryByTestId('speech-btn')).toBeNull();
   });
 
+  it('gives a refused dictated message back to the field and says why', async () => {
+    const onSend = jest.fn(async () => 'model-loading' as const);
+    renderBar({ onSend });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-submit'));
+    });
+
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('voice transcript');
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the model to finish loading.',
+    });
+  });
+
   it('lets go of the spinner once the answer to a dictated message starts', async () => {
     const onSend = jest.fn(() => new Promise<boolean>(() => {}));
     const { rerender } = renderBar({ onSend });

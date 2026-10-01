@@ -341,6 +341,32 @@ const ChatBar = ({
     setSendPending(false);
   }, [isGeneratingHere, isProcessingPromptHere]);
 
+  const settleSend = useCallback(
+    (
+      outcome: ReturnType<Props['onSend']>,
+      inputToSend: string,
+      attachmentsToSend: Attachment[]
+    ) => {
+      Promise.resolve(outcome)
+        .then((accepted) => {
+          if (accepted !== false && typeof accepted !== 'string') return;
+          lastSentRef.current = null;
+          setUserInput((current) => current || inputToSend);
+          if (attachmentsToSend.length) restoreAttachments(attachmentsToSend);
+          const text1 = REFUSAL_COPY[accepted === false ? 'busy' : accepted];
+          if (text1) Toast.show({ type: 'defaultToast', text1 });
+        })
+        .catch((error) => {
+          console.error('Failed to send message:', error);
+        })
+        .finally(() => {
+          setSendPending(false);
+          setSendInFlight(false);
+        });
+    },
+    [restoreAttachments]
+  );
+
   const handleSend = useCallback(() => {
     if (hasLoadingAttachment) return;
     const attachmentsToSend = attachments;
@@ -360,22 +386,7 @@ const ChatBar = ({
     }
     setUserInput('');
     clearAll({ cleanupSources: false });
-    Promise.resolve(outcome)
-      .then((accepted) => {
-        if (accepted !== false && typeof accepted !== 'string') return;
-        lastSentRef.current = null;
-        setUserInput((current) => current || inputToSend);
-        if (attachmentsToSend.length) restoreAttachments(attachmentsToSend);
-        const text1 = REFUSAL_COPY[accepted === false ? 'busy' : accepted];
-        if (text1) Toast.show({ type: 'defaultToast', text1 });
-      })
-      .catch((error) => {
-        console.error('Failed to send message:', error);
-      })
-      .finally(() => {
-        setSendPending(false);
-        setSendInFlight(false);
-      });
+    settleSend(outcome, inputToSend, attachmentsToSend);
   }, [
     onSend,
     disabled,
@@ -383,9 +394,9 @@ const ChatBar = ({
     imageAttachment,
     attachments,
     clearAll,
-    restoreAttachments,
     hasLoadingAttachment,
     modelSwitching,
+    settleSend,
   ]);
 
   const onPaste = useCallback(
@@ -452,14 +463,11 @@ const ChatBar = ({
         clearAll({ cleanupSources: false });
         setSendInFlight(true);
         setSendPending(true);
-        Promise.resolve(onSend(transcript, imageUriToSend, attachmentsToSend))
-          .catch((error) => {
-            console.error('Failed to send transcript:', error);
-          })
-          .finally(() => {
-            setSendPending(false);
-            setSendInFlight(false);
-          });
+        settleSend(
+          onSend(transcript, imageUriToSend, attachmentsToSend),
+          transcript,
+          attachmentsToSend
+        );
       }
     };
 
