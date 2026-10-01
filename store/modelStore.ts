@@ -13,8 +13,8 @@ import Toast from 'react-native-toast-message';
 import {
   ResourceFetcher,
   RnExecutorchErrorCode,
-} from 'react-native-executorch';
-import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
+} from 'react-native-executorch/legacy';
+import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import { Feedback } from '../utils/Feedback';
 import {
   describeDownloadError,
@@ -27,7 +27,7 @@ export enum ModelState {
   NotStarted = 'not_started',
 }
 
-interface DownloadState {
+export interface DownloadState {
   progress: number;
   status: ModelState;
 }

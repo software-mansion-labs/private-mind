@@ -9,8 +9,8 @@ import {
   ResourceFetcher,
   RnExecutorchError,
   RnExecutorchErrorCode,
-} from 'react-native-executorch';
-import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
+} from 'react-native-executorch/legacy';
+import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import Toast from 'react-native-toast-message';
 
 jest.mock('../database/modelRepository');

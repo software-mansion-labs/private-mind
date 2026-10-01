@@ -17,10 +17,25 @@ export const useModelSwitch = (loadModel: (model: Model) => Promise<void>) => {
   const framesRef = useRef<number[]>([]);
   const stableLoadModel = useStableCallback(loadModel);
 
+  const settleWaiters = useRef<(() => void)[]>([]);
+
   const commit = useCallback((next: ModelSwitchState) => {
     stateRef.current = next;
     setState(next);
+    if (next.status === 'idle') {
+      settleWaiters.current.splice(0).forEach((resolve) => resolve());
+    }
   }, []);
+
+  const whenSettled = useCallback(
+    () =>
+      stateRef.current.status === 'idle'
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => {
+            settleWaiters.current.push(resolve);
+          }),
+    []
+  );
 
   const cancelFrames = useCallback(() => {
     framesRef.current.forEach(cancelAnimationFrame);
@@ -28,6 +43,11 @@ export const useModelSwitch = (loadModel: (model: Model) => Promise<void>) => {
   }, []);
 
   useEffect(() => cancelFrames, [cancelFrames]);
+
+  useEffect(
+    () => () => settleWaiters.current.splice(0).forEach((resolve) => resolve()),
+    []
+  );
 
   useEffect(() => {
     if (state.status !== 'awaitingDismissal') return;
@@ -86,5 +106,6 @@ export const useModelSwitch = (loadModel: (model: Model) => Promise<void>) => {
     isSwitching: state.status !== 'idle',
     pickModel,
     handleSheetStateChange,
+    whenSettled,
   };
 };

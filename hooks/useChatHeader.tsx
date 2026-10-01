@@ -52,6 +52,7 @@ export default function useChatHeader({
           onPress={onSelectModelFromTitle ?? (chat ? openMenu : undefined)}
           showChevron={!!onSelectModelFromTitle}
           onBottomMeasured={setTitleBottom}
+          maxWidth={titleMaxWidth}
         />
       ),
     });

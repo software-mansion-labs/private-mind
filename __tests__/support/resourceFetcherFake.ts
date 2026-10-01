@@ -2,7 +2,7 @@ import {
   ResourceFetcher,
   RnExecutorchError,
   RnExecutorchErrorCode,
-} from 'react-native-executorch';
+} from 'react-native-executorch/legacy';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
 
 type ProgressListener = (progress: number) => void;

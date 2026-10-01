@@ -1,9 +1,12 @@
 import {
   floorIsOffscreen,
   floorIsOutgrown,
+  lastTurnRows,
   pinFloorFor,
   pinLandingFrom,
   pinReleaseTarget,
+  scrollButtonShows,
+  stoppedTurnLandsShort,
 } from '../components/chat-screen/pinScroll';
 import {
   MESSAGE_PIN_LANDING_PX,
@@ -117,5 +120,78 @@ describe('floorIsOutgrown', () => {
 
   it('never reports a row without a floor as outgrown', () => {
     expect(floorIsOutgrown(0, 300)).toBe(false);
+  });
+});
+
+describe('scrollButtonShows', () => {
+  it('offers the jump once the reader is genuinely behind the end', () => {
+    expect(scrollButtonShows(false, false)).toBe(true);
+  });
+
+  it('stays away while the sent question is still flying to its pin', () => {
+    expect(scrollButtonShows(false, true)).toBe(false);
+  });
+
+  it('is gone at the end of the list, pin or no pin', () => {
+    expect(scrollButtonShows(true, false)).toBe(false);
+    expect(scrollButtonShows(true, true)).toBe(false);
+  });
+});
+
+describe('lastTurnRows', () => {
+  it('pairs the question with the answer that follows it', () => {
+    expect(lastTurnRows(['user', 'assistant', 'user', 'assistant'])).toEqual({
+      userIndex: 2,
+      answerIndex: 3,
+    });
+  });
+
+  it('leaves no answer row when the turn was stopped before one appeared', () => {
+    expect(lastTurnRows(['user', 'assistant', 'user'])).toEqual({
+      userIndex: 2,
+      answerIndex: -1,
+    });
+  });
+
+  it('leaves no answer row while the error banner is the one being measured', () => {
+    expect(lastTurnRows(['user', 'assistant'], true)).toEqual({
+      userIndex: 0,
+      answerIndex: -1,
+    });
+  });
+});
+
+describe('stoppedTurnLandsShort', () => {
+  const settled = {
+    turnWasStopped: true,
+    isGenerating: false,
+    floorStillReserved: false,
+    atBottom: true,
+  };
+
+  it('settles a stop taken while following the answer, where the marker lands below the fold', () => {
+    expect(stoppedTurnLandsShort(settled)).toBe(true);
+  });
+
+  it('leaves a turn that finished on its own alone', () => {
+    expect(stoppedTurnLandsShort({ ...settled, turnWasStopped: false })).toBe(
+      false
+    );
+  });
+
+  it('waits until the turn has actually come to a halt', () => {
+    expect(stoppedTurnLandsShort({ ...settled, isGenerating: true })).toBe(
+      false
+    );
+  });
+
+  it('leaves the reserved floor alone, because the marker is already inside it', () => {
+    expect(
+      stoppedTurnLandsShort({ ...settled, floorStillReserved: true })
+    ).toBe(false);
+  });
+
+  it('does not yank the list back down under someone who scrolled away', () => {
+    expect(stoppedTurnLandsShort({ ...settled, atBottom: false })).toBe(false);
   });
 });

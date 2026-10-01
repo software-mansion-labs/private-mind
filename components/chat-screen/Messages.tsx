@@ -34,6 +34,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import MessageItem from './MessageItem';
+import ScrollToLatestButton from './ScrollToLatestButton';
 import SourcesSheet, { type SourcesSheetHandle } from './SourcesSheet';
 import { EdgeFade } from './EdgeFade';
 import { TopFade, topFadeHeight } from './TopFade';
@@ -45,15 +46,16 @@ import {
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { Feedback } from '../../utils/Feedback';
-import ChevronDown from '../../assets/icons/chevron-down.svg';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import BranchMarker from './BranchMarker';
+import StoppedMarker from './StoppedMarker';
 import Toast from 'react-native-toast-message';
 import {
   BOTTOM_FADE_HEIGHT,
   GENERATION_ERROR_MEASUREMENT_KEY,
   MESSAGE_PIN_OFFSET,
   MESSAGE_PIN_SETTLE_MS,
+  PIN_LANDING_GRACE_MS,
   navBarInset,
   PIN_READY_SLACK_PX,
   PIN_RELEASE_SETTLE_DELAY_MS,
@@ -63,15 +65,19 @@ import {
   SUPPORTS_USER_ACTION_MENU,
 } from '../../constants/chat-screen';
 import { messageRowKey } from '../../utils/messageRowKey';
+import { scrollIndicatorProps } from '../../constants/scroll-indicator';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 import { useSendKeyboardFreeze } from './useSendKeyboardFreeze';
 import {
   floorIsOffscreen,
   floorIsOutgrown,
+  lastTurnRows,
   pinFloorFor,
   pinLandingFrom,
   pinReleaseTarget,
+  scrollButtonShows,
+  stoppedTurnLandsShort,
 } from './pinScroll';
 import { visibleMessageText } from '../../utils/messageText';
 
@@ -100,6 +106,7 @@ interface Props {
   isGenerating: boolean;
   generationError?: string;
   onRetryGeneration?: () => void;
+  canRetryGeneration?: boolean;
   /**
    * Bottom inset forwarded to KeyboardChatScrollView's `offset`. Only the
    * safe-area inset stays fixed below the scroll view while the keyboard
@@ -143,6 +150,8 @@ interface MessageActionsState {
   showForkAction: boolean;
 }
 
+const stoppedWithNothingToShow = (message: Message) => message.role === 'user';
+
 interface LongPressableMessageProps {
   children: ReactNode;
   messageId: number;
@@ -182,6 +191,7 @@ const Messages = ({
   isGenerating,
   generationError,
   onRetryGeneration,
+  canRetryGeneration = false,
   bottomOffset,
   freeze = false,
   chatBarInset,
@@ -194,10 +204,16 @@ const Messages = ({
   onUserActionMenuChange,
   ref,
 }: Props) => {
-  const { styles, theme } = useThemedStyles(createStyles);
+  const { styles } = useThemedStyles(createStyles);
   const scrollRef = useRef<Reanimated.ScrollView>(null);
   const isAtBottomRef = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const pinLandingUntil = useRef(0);
+  const updateScrollButton = useCallback((atBottom: boolean) => {
+    const pinLanding =
+      pendingPinRef.current || Date.now() < pinLandingUntil.current;
+    setShowScrollButton(scrollButtonShows(atBottom, pinLanding));
+  }, []);
   const [activeUserActionsId, setActiveUserActionsId] = useState<number | null>(
     null
   );
@@ -337,10 +353,6 @@ const Messages = ({
     [styles.contentContainer, listBottomPadding, listTopPadding]
   );
   const fadeAnchor = fadeBottom ?? topInset;
-  const scrollIndicatorInsets = useMemo(
-    () => ({ top: topFadeHeight(fadeAnchor) }),
-    [fadeAnchor]
-  );
   const scrollButtonStyle = useMemo(
     () => [styles.scrollToBottomButtonContainer, { bottom: chatBarInset + 16 }],
     [styles.scrollToBottomButtonContainer, chatBarInset]
@@ -432,6 +444,7 @@ const Messages = ({
 
   const scrollToPin = useCallback(() => {
     pinLandedSinceKeyboardShow.current = true;
+    pinLandingUntil.current = Date.now() + PIN_LANDING_GRACE_MS;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const scrollView = scrollRef.current;
@@ -649,6 +662,26 @@ const Messages = ({
     return () => clearTimeout(timer);
   }, [dropOutgrownFloor, isGenerating, scrollToPin]);
 
+  const lastMessage = chatHistory[chatHistory.length - 1];
+  const stoppedTurnKey =
+    lastMessage && lastMessage.stoppedByUser
+      ? messageRowKey(lastMessage, chatHistory.length - 1)
+      : null;
+
+  useEffect(() => {
+    if (
+      !stoppedTurnLandsShort({
+        turnWasStopped: !!stoppedTurnKey,
+        isGenerating,
+        floorStillReserved: !!pinAnchor,
+        atBottom: isAtBottomRef.current,
+      })
+    ) {
+      return;
+    }
+    scrollRef.current?.scrollToEnd({ animated: true });
+  }, [stoppedTurnKey, isGenerating, pinAnchor, scrollRef]);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -755,7 +788,7 @@ const Messages = ({
         (contentOffset.y + layoutMeasurement.height);
       const atBottom = distanceFromBottom < 100;
       isAtBottomRef.current = atBottom;
-      setShowScrollButton(!atBottom);
+      updateScrollButton(atBottom);
       if (
         pinReleaseRef.current &&
         floorIsOffscreen(contentOffset.y, releaseTarget())
@@ -763,7 +796,7 @@ const Messages = ({
         dropPinFloor();
       }
     },
-    [dropPinFloor, releaseTarget]
+    [dropPinFloor, releaseTarget, updateScrollButton]
   );
 
   const scrollToBottom = useCallback(() => {
@@ -940,7 +973,7 @@ const Messages = ({
         const atBottom = distFromBottom < 100;
         if (atBottom !== isAtBottomRef.current) {
           isAtBottomRef.current = atBottom;
-          setShowScrollButton(!atBottom);
+          updateScrollButton(atBottom);
         }
       }
     },
@@ -950,6 +983,7 @@ const Messages = ({
       listTopPadding,
       scheduleInitialScrollToEnd,
       scrollToPin,
+      updateScrollButton,
     ]
   );
 
@@ -967,23 +1001,11 @@ const Messages = ({
 
   const hasMessages = chatHistory.length > 0;
 
-  // Identify the last user and last assistant indices so we can wrap
-  // those specific rows in onLayout measurement Views.
-  let lastUserIndex = -1;
-  let lastAssistantIndex = -1;
-  for (let i = chatHistory.length - 1; i >= 0; i--) {
-    if (
-      !generationError &&
-      lastAssistantIndex === -1 &&
-      chatHistory[i].role === 'assistant'
-    ) {
-      lastAssistantIndex = i;
-    }
-    if (lastUserIndex === -1 && chatHistory[i].role === 'user') {
-      lastUserIndex = i;
-    }
-    if (lastUserIndex !== -1 && lastAssistantIndex !== -1) break;
-  }
+  const { userIndex: lastUserIndex, answerIndex: lastAssistantIndex } =
+    lastTurnRows(
+      chatHistory.map((message) => message.role),
+      !!generationError
+    );
 
   const measurementKeyAt = (index: number): string | null => {
     const message = chatHistory[index];
@@ -998,6 +1020,9 @@ const Messages = ({
 
   lastUserMeasurementKey.current = measurementKeyAt(lastUserIndex);
   lastAssistantMeasurementKey.current = assistantMeasurementKey();
+  if (lastAssistantMeasurementKey.current === null) {
+    lastAssistantHeight.current = 0;
+  }
 
   return (
     <View style={styles.container}>
@@ -1016,7 +1041,7 @@ const Messages = ({
           applyWorkaroundForContentInsetHitTestBug
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={contentContainerStyle}
-          scrollIndicatorInsets={scrollIndicatorInsets}
+          {...scrollIndicatorProps(topFadeHeight(fadeAnchor))}
           onLayout={handleContainerLayout}
           onScroll={handleScroll}
           onScrollBeginDrag={handleScrollBeginDrag}
@@ -1068,6 +1093,18 @@ const Messages = ({
                   onCopy={handleCopyMessage}
                   onFork={handleForkMessage}
                 />
+                {message.stoppedByUser && (
+                  <StoppedMarker
+                    onRetry={
+                      canRetryGeneration &&
+                      stoppedWithNothingToShow(message) &&
+                      isLastMessage &&
+                      !isGenerating
+                        ? onRetryGeneration
+                        : undefined
+                    }
+                  />
+                )}
                 {branchMarker && (
                   <BranchMarker
                     key={`branch-${branchMarker.id}`}
@@ -1180,25 +1217,15 @@ const Messages = ({
           <View style={styles.bottomFadeSolid} />
         </Reanimated.View>
       )}
-      {showScrollButton && (
-        <Reanimated.View style={[scrollButtonStyle, scrollButtonAnimatedStyle]}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.scrollToBottomButton,
-              pressed && styles.scrollToBottomButtonPressed,
-            ]}
-            onPress={scrollToBottom}
-            accessibilityRole="button"
-            accessibilityLabel="Scroll to latest message"
-          >
-            <ChevronDown
-              width={20}
-              height={20}
-              style={{ color: theme.text.primary }}
-            />
-          </Pressable>
-        </Reanimated.View>
-      )}
+      <Reanimated.View
+        style={[scrollButtonStyle, scrollButtonAnimatedStyle]}
+        pointerEvents="box-none"
+      >
+        <ScrollToLatestButton
+          visible={showScrollButton}
+          onPress={scrollToBottom}
+        />
+      </Reanimated.View>
 
       <SourcesSheet ref={sourcesSheetRef} />
     </View>
@@ -1283,22 +1310,6 @@ const createStyles = (theme: Theme) => {
     scrollToBottomButtonContainer: {
       position: 'absolute',
       right: 16,
-    },
-    scrollToBottomButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: theme.bg.softSecondary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: theme.bg.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 4,
-      elevation: 4,
-    },
-    scrollToBottomButtonPressed: {
-      opacity: 0.8,
     },
   });
 };

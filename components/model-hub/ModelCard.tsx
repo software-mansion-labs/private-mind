@@ -17,7 +17,6 @@ import CircleButton from '../CircleButton';
 import ProcessorIcon from '../../assets/icons/processor.svg';
 import DownloadCloudIcon from '../../assets/icons/download_cloud.svg';
 import DownloadIcon from '../../assets/icons/download.svg';
-import StarIcon from '../../assets/icons/star.svg';
 import CloseIcon from '../../assets/icons/close.svg';
 import EyeIcon from '../../assets/icons/eye.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
@@ -42,15 +41,15 @@ const ModelCard = ({
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles, selected);
 
+  const trackedDownload = useModelStore(
+    (state) => state.downloadStates[model.id]
+  );
   const downloadModel = useModelStore((state) => state.downloadModel);
   const cancelDownload = useModelStore((state) => state.cancelDownload);
   const removeModelFiles = useModelStore((state) => state.removeModelFiles);
-  const storedDownloadState = useModelStore(
-    (state) => state.downloadStates[model.id]
-  );
   const { confirm, ConfirmElement } = useConfirm();
 
-  const downloadState = storedDownloadState ?? {
+  const downloadState = trackedDownload ?? {
     progress: model.isDownloaded ? 1 : 0,
     status: model.isDownloaded ? ModelState.Downloaded : ModelState.NotStarted,
   };
