@@ -445,7 +445,7 @@ const searchWithCleanup = async (
     let grounded = enriched;
     let signals: WebRetrievalSignals | null = null;
     emit({ type: 'ranking' });
-    if (embed) {
+    if (embed && !signal?.aborted) {
       const retrievalQuery: WebRetrievalQuery = {
         semanticQuery: plan.intent ? `${plan.intent}. ${query}` : query,
         keywordQuery: baseQueries.join(' '),

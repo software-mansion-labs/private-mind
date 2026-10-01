@@ -5,6 +5,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import type { Model } from '../database/modelRepository';
 import type { MessagesHandle } from '../components/chat-screen/Messages';
 import Toast from 'react-native-toast-message';
+import { runWebSearch } from '../utils/web/runWebSearch';
 
 jest.mock('expo-router', () => ({ router: { replace: jest.fn() } }));
 jest.mock('../database/chatRepository', () => ({
@@ -36,14 +37,16 @@ jest.mock('../store/sourceStore', () => ({
   useSourceStore: { getState: () => ({ sources: [] }) },
 }));
 const webEnabledByChat: Record<number, boolean> = {};
+const mockSetSearchingWeb = jest.fn();
+const mockPushWebSearchEvent = jest.fn();
 jest.mock('../store/webSearchStore', () => ({
   useWebSearchStore: {
     getState: () => ({
       isEnabled: (chatId: number) => !!webEnabledByChat[chatId],
       resetTrace: jest.fn(),
       transfer: jest.fn(),
-      setSearchingWeb: jest.fn(),
-      pushWebSearchEvent: jest.fn(),
+      setSearchingWeb: mockSetSearchingWeb,
+      pushWebSearchEvent: mockPushWebSearchEvent,
     }),
   },
 }));
@@ -285,5 +288,62 @@ describe('the web toggle the composer is showing', () => {
     webEnabledByChat[1] = true;
     await buildSources();
     expect(Toast.show).toHaveBeenCalled();
+  });
+});
+
+describe('a web search that cannot or does not finish', () => {
+  const searchEndsWith = (telemetry: object) =>
+    (runWebSearch as jest.Mock).mockResolvedValueOnce({
+      context: [],
+      sourceDocuments: [],
+      telemetry: { needsSearch: true, ...telemetry },
+    });
+
+  it('tells the model and the user that the phone is offline instead of answering from memory as if it had checked', async () => {
+    webEnabledByChat[1] = true;
+    const state = mockedState();
+    searchEndsWith({ skippedReason: 'offline' });
+
+    await useSend()('who won yesterday');
+    const built = await state.sendChatMessage.mock.calls[0][2]();
+
+    expect(built.webSearchFailed).toBe(true);
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'You’re offline — answering without the web.',
+    });
+  });
+
+  it('says nothing when the question never needed a search', async () => {
+    webEnabledByChat[1] = true;
+    const state = mockedState();
+    searchEndsWith({ skippedReason: 'gated' });
+
+    await useSend()('tell me a joke');
+    const built = await state.sendChatMessage.mock.calls[0][2]();
+
+    expect(built.webSearchFailed).toBe(false);
+    expect(Toast.show).not.toHaveBeenCalled();
+  });
+
+  it('leaves the searching state and trace to the next turn once this one is stopped', async () => {
+    webEnabledByChat[1] = true;
+    const state = mockedState();
+    const stop = new AbortController();
+    mockSetSearchingWeb.mockClear();
+    mockPushWebSearchEvent.mockClear();
+    (runWebSearch as jest.Mock).mockImplementationOnce(
+      async ({ onProgress }: { onProgress: (event: object) => void }) => {
+        stop.abort();
+        onProgress({ type: 'ranking' });
+        return { context: [], sourceDocuments: [], telemetry: {} };
+      }
+    );
+
+    await useSend()('latest news');
+    await state.sendChatMessage.mock.calls[0][2](stop.signal);
+
+    expect(mockPushWebSearchEvent).not.toHaveBeenCalled();
+    expect(mockSetSearchingWeb).not.toHaveBeenCalledWith(false);
   });
 });
