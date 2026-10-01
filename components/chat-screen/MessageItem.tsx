@@ -58,6 +58,7 @@ interface MessageItemProps {
   onShowSources?: (sources: SourceDocument[], userQuestion?: string) => void;
   showActions?: boolean;
   showForkAction?: boolean;
+  forkDisabled?: boolean;
   onCopy?: (message: Message) => void;
   onFork?: (message: Message) => void;
 }
@@ -101,6 +102,7 @@ const MessageItem = memo(
     onShowSources,
     showActions = false,
     showForkAction = false,
+    forkDisabled = false,
     onCopy,
     onFork,
   }: MessageItemProps) => {
@@ -162,6 +164,15 @@ const MessageItem = memo(
       hasWebResults: webResults.length > 0,
     });
     const refinedSwap = useRefinedSwap(isRefining);
+    const modelNameEverShown = useRef(false);
+    if (
+      !modelNameEverShown.current &&
+      (content.trim() || isAwaitingFirstToken)
+    ) {
+      modelNameEverShown.current = true;
+    }
+    const modelNameRevealed = modelNameEverShown.current;
+
     const attributionShown = useMemo(() => {
       if (isLastMessage && isGenerating) return false;
       return [contentParts.normalContent, contentParts.normalAfterThink ?? '']
@@ -198,6 +209,7 @@ const MessageItem = memo(
             <MessageActionButton
               label="Fork"
               icon={ForkIcon}
+              disabled={forkDisabled}
               onPress={() => onFork?.(message)}
             />
           )}
@@ -290,7 +302,7 @@ const MessageItem = memo(
         ) : (
           <View style={styles.aiMessage}>
             <View style={styles.bubbleContent}>
-              {content.trim() || isAwaitingFirstToken ? (
+              {modelNameRevealed ? (
                 <Animated.Text
                   style={styles.modelName}
                   entering={FadeIn.duration(WEB_TRACE_TRANSITION_MS)}

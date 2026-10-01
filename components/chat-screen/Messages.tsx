@@ -6,6 +6,7 @@ import React, {
   useLayoutEffect,
   useRef,
   useMemo,
+  useReducer,
   useState,
   useCallback,
   useImperativeHandle,
@@ -20,6 +21,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
   type View as ViewType,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -27,6 +29,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { KeyboardChatScrollView } from 'react-native-keyboard-controller';
 import Reanimated, {
   runOnJS,
+  useAnimatedReaction,
   useSharedValue,
   useAnimatedStyle,
   useDerivedValue,
@@ -55,10 +58,12 @@ import {
   GENERATION_ERROR_MEASUREMENT_KEY,
   MESSAGE_PIN_OFFSET,
   MESSAGE_PIN_SETTLE_MS,
+  SEND_PLACING_GUARD_MS,
+  SEND_PLACING_MAX_MS,
+  SEND_RESERVE_READY_RATIO,
+  SEND_ROWS_HOLD_MS,
   PIN_LANDING_GRACE_MS,
   navBarInset,
-  PIN_READY_SLACK_PX,
-  PIN_RELEASE_SETTLE_DELAY_MS,
   REVEAL_FALLBACK_MS,
   SCROLL_INDICATOR_GUTTER,
   SEAM_OVERLAP,
@@ -70,11 +75,13 @@ import { useKeyboardLift } from './useKeyboardLift';
 import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 import { useSendKeyboardFreeze } from './useSendKeyboardFreeze';
 import {
+  atListEnd,
   floorIsOffscreen,
   floorIsOutgrown,
   lastTurnRows,
   pinFloorFor,
-  pinLandingFrom,
+  pinLandedShort,
+  pinTargetReachable,
   pinReleaseTarget,
   scrollButtonShows,
   stoppedTurnLandsShort,
@@ -146,6 +153,7 @@ interface Props {
 }
 
 interface MessageActionsState {
+  forkDisabled: boolean;
   showActions: boolean;
   showForkAction: boolean;
 }
@@ -382,7 +390,8 @@ const Messages = ({
       opacity.set(0);
       unsettleReveal();
       pinActive.current = false;
-      pinScrollPendingRef.current = false;
+      pinPlacementPendingRef.current = false;
+      pinHoldRef.current = false;
       pinReleaseRef.current = false;
       setPinAnchor(null);
       return;
@@ -426,6 +435,7 @@ const Messages = ({
   const containerHeight = useRef(0);
   const lastUserHeight = useRef(0);
   const lastAssistantHeight = useRef(0);
+  const lastUserTop = useRef(0);
   const lastUserMeasurementKey = useRef<string | null>(null);
   const lastAssistantMeasurementKey = useRef<string | null>(null);
 
@@ -439,35 +449,116 @@ const Messages = ({
   const pinActive = useRef(false);
   const pendingPinRef = useRef(false);
   const pinOffset = useRef(0);
-  const pinScrollPendingRef = useRef(false);
+  const pinPlacementPendingRef = useRef(false);
+  const pinHoldRef = useRef(false);
   const pinLandedSinceKeyboardShow = useRef(false);
+  const predictedPinRef = useRef<number | null>(null);
+  const [sendReserve, setSendReserve] = useState(0);
+  const sendReserveRef = useRef(0);
+  sendReserveRef.current = sendReserve;
+  const sendReserveStyle = useMemo(
+    () => (sendReserve > 0 ? { height: sendReserve } : undefined),
+    [sendReserve]
+  );
+  const releaseSendReserve = useCallback(() => {
+    if (sendReserveRef.current > 0) setSendReserve(0);
+  }, []);
+  // Android reports the window shorter than the list it contains, so it is no upper bound.
+  const { height: windowHeight } = useWindowDimensions();
+  const windowHeightRef = useRef(windowHeight);
+  windowHeightRef.current = windowHeight;
+  const widestListRef = useRef(0);
+  const roomForSend = useCallback(
+    () => Math.max(widestListRef.current, windowHeightRef.current),
+    []
+  );
 
-  const scrollToPin = useCallback(() => {
-    pinLandedSinceKeyboardShow.current = true;
-    pinLandingUntil.current = Date.now() + PIN_LANDING_GRACE_MS;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const scrollView = scrollRef.current;
-        if (!scrollView) return;
-        const { jumpTo, animateTo } = pinLandingFrom(
-          lastScrollOffset.current,
-          pinOffset.current
-        );
-        if (jumpTo !== null) {
-          scrollView.scrollTo({ y: jumpTo, animated: false });
-        }
-        scrollView.scrollTo({ y: animateTo, animated: true });
-      });
-    });
+  const chatHistoryRef = useRef(chatHistory);
+  chatHistoryRef.current = chatHistory;
+  const [heldRows, setHeldRows] = useState<Message[] | null>(null);
+  const heldRowsRef = useRef<Message[] | null>(null);
+  heldRowsRef.current = heldRows;
+  const contentAtSend = useRef(0);
+  // A state flip lands one commit late, so the rows a send adds read this while rendering.
+  const placingFromRef = useRef<number | null>(null);
+  const [, notePlaced] = useReducer((n: number) => n + 1, 0);
+  const placingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const settlePlacing = useCallback(() => {
+    if (placingTimer.current) {
+      clearTimeout(placingTimer.current);
+      placingTimer.current = null;
+    }
+    if (placingFromRef.current === null) return;
+    placingFromRef.current = null;
+    notePlaced();
+  }, []);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showHeldRows = useCallback(() => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+    if (heldRowsRef.current) {
+      setHeldRows(null);
+    }
+  }, []);
+  useEffect(
+    () => () => {
+      if (holdTimer.current) clearTimeout(holdTimer.current);
+      if (placingTimer.current) clearTimeout(placingTimer.current);
+    },
+    []
+  );
+  // Painting these before the reserve reaches the native content clamps the scroll they carry.
+  const rows = heldRows ?? chatHistory;
+
+  const clearPinLanding = useCallback(() => {
+    pinPlacementPendingRef.current = false;
+    pinHoldRef.current = false;
   }, []);
 
+  const placePin = useCallback(() => {
+    const scrollView = scrollRef.current;
+    if (!scrollView) return;
+    pinLandedSinceKeyboardShow.current = true;
+    pinLandingUntil.current = Date.now() + PIN_LANDING_GRACE_MS;
+    scrollView.scrollTo({ y: pinOffset.current, animated: false });
+  }, []);
+
+  // The content ends inside the reserved space, so scrolling there buries the pinned question.
+  const pinStillHolds = useCallback(
+    () => pinFloorRef.current > 0 && !pinReleaseRef.current,
+    []
+  );
+
+  const repinAfterFreeze = useCallback(() => {
+    if (pendingPinRef.current || pinPlacementPendingRef.current) return;
+    if (!pinStillHolds()) return;
+    placePin();
+  }, [pinStillHolds, placePin]);
+
+  useAnimatedReaction(
+    () => sendFrozen.value,
+    (isFrozen, wasFrozen) => {
+      if (!isFrozen && wasFrozen === true) {
+        runOnJS(repinAfterFreeze)();
+      }
+    }
+  );
+
   const landAfterKeyboard = useCallback(() => {
-    if (pinActive.current && !pendingPinRef.current) {
-      if (!pinLandedSinceKeyboardShow.current) scrollToPin();
+    if (pinActive.current || pendingPinRef.current) {
+      if (!pendingPinRef.current && !pinLandedSinceKeyboardShow.current) {
+        placePin();
+      }
+      return;
+    }
+    if (pinStillHolds()) {
+      placePin();
       return;
     }
     scrollRef.current?.scrollToEnd({ animated: false });
-  }, [scrollToPin]);
+  }, [pinStillHolds, placePin]);
 
   // Android-only: KeyboardChatScrollView's ClippingScrollView can
   // bounce the scroll offset on keyboard dismiss. Snap back to the
@@ -582,36 +673,56 @@ const Messages = ({
 
     pendingPinRef.current = false;
     closeUserActionMenu();
-    const questionTop =
-      contentHeight.current -
-      listPaddingRef.current.bottom -
-      lastAssistantHeight.current -
-      lastUserHeight.current;
+    // The question's own frame is the only reading that stays still as the answer below grows.
     pinOffset.current = Math.max(
       0,
-      questionTop - listPaddingRef.current.top + MESSAGE_PIN_OFFSET
+      lastUserTop.current - listPaddingRef.current.top + MESSAGE_PIN_OFFSET
     );
+    pinPlacementPendingRef.current = true;
     setPinAnchor({
       containerHeight: containerHeight.current,
       userHeight: lastUserHeight.current,
     });
+  }, [closeUserActionMenu]);
+
+  const tryPlacePin = useCallback(() => {
+    if (!pinPlacementPendingRef.current) return;
     if (
-      contentHeight.current >=
-      pinOffset.current + containerHeight.current - PIN_READY_SLACK_PX
+      !pinTargetReachable({
+        contentHeight: contentHeight.current,
+        layoutHeight: lastLayoutHeight.current || containerHeight.current,
+        target: pinOffset.current,
+      })
     ) {
-      scrollToPin();
       return;
     }
-    pinScrollPendingRef.current = true;
-  }, [closeUserActionMenu, scrollToPin]);
+    placePin();
+  }, [placePin]);
+
+  useLayoutEffect(() => {
+    if (!pinAnchor || !pinPlacementPendingRef.current) return;
+    pinHoldRef.current = true;
+    placePin();
+  }, [pinAnchor, placePin]);
+
+  useLayoutEffect(() => {
+    if (!pendingPinRef.current || predictedPinRef.current === null) return;
+    pinOffset.current = predictedPinRef.current;
+    predictedPinRef.current = null;
+    pinPlacementPendingRef.current = true;
+    pinHoldRef.current = true;
+    // Scroll and mount are separate UI-thread batches: the rows can paint before the offset lands.
+    if (!pinLandedShort(lastScrollOffset.current, pinOffset.current)) {
+      settlePlacing();
+    } else {
+      if (placingTimer.current) clearTimeout(placingTimer.current);
+      placingTimer.current = setTimeout(settlePlacing, SEND_PLACING_MAX_MS);
+    }
+    placePin();
+  }, [rows.length, placePin, settlePlacing]);
 
   const pinReleaseRef = useRef(false);
-  const releaseSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clearReleaseSettle = useCallback(() => {
-    if (releaseSettleTimer.current) clearTimeout(releaseSettleTimer.current);
-    releaseSettleTimer.current = null;
-  }, []);
-  useEffect(() => clearReleaseSettle, [clearReleaseSettle]);
+  useEffect(() => clearPinLanding, [clearPinLanding]);
 
   const releaseTarget = useCallback(
     () =>
@@ -627,10 +738,10 @@ const Messages = ({
 
   const dropPinFloor = useCallback(() => {
     pinReleaseRef.current = false;
-    clearReleaseSettle();
+    clearPinLanding();
     setPinAnchor(null);
     if (Keyboard.isVisible()) setLiftHeldUntilKeyboardHides(true);
-  }, [clearReleaseSettle]);
+  }, [clearPinLanding]);
 
   const dropOutgrownFloor = useCallback(() => {
     if (pinActive.current) return;
@@ -639,28 +750,16 @@ const Messages = ({
     }
   }, [dropPinFloor]);
 
-  const settlePinRelease = useCallback(() => {
-    if (!pinReleaseRef.current || Keyboard.isVisible()) return;
-    const target = releaseTarget();
-    if (floorIsOffscreen(lastScrollOffset.current, target)) {
-      dropPinFloor();
-      return;
-    }
-    scrollRef.current?.scrollTo({ y: target, animated: true });
-  }, [dropPinFloor, releaseTarget]);
-
   useEffect(() => {
     if (isGenerating || !pinActive.current) return;
     const timer = setTimeout(() => {
       pinActive.current = false;
-      if (pinScrollPendingRef.current) {
-        pinScrollPendingRef.current = false;
-        scrollToPin();
-      }
+      pinHoldRef.current = false;
+      releaseSendReserve();
       dropOutgrownFloor();
     }, MESSAGE_PIN_SETTLE_MS);
     return () => clearTimeout(timer);
-  }, [dropOutgrownFloor, isGenerating, scrollToPin]);
+  }, [dropOutgrownFloor, isGenerating, releaseSendReserve]);
 
   const lastMessage = chatHistory[chatHistory.length - 1];
   const stoppedTurnKey =
@@ -690,9 +789,12 @@ const Messages = ({
         scrollRef.current?.scrollToEnd({ animated: true });
       },
       scrollToEndIfAtBottom: () => {
-        if (isAtBottomRef.current) {
-          scrollRef.current?.scrollToEnd({ animated: true });
+        if (!isAtBottomRef.current) return;
+        if (pinStillHolds()) {
+          placePin();
+          return;
         }
+        scrollRef.current?.scrollToEnd({ animated: true });
       },
       onMessageSent: () => {
         closeUserActionMenu();
@@ -707,31 +809,68 @@ const Messages = ({
         if (!isAtBottomRef.current) {
           isAtBottomRef.current = true;
           setShowScrollButton(false);
-          snapToEnd();
         }
+        // Measuring instead costs a painted frame; the question starts where the content ends.
+        predictedPinRef.current = Math.max(
+          0,
+          contentHeight.current -
+            listPaddingRef.current.bottom -
+            Math.max(0, pinFloorRef.current - lastAssistantHeight.current) -
+            listPaddingRef.current.top +
+            MESSAGE_PIN_OFFSET
+        );
         lastAssistantHeight.current = 0;
         lastUserHeight.current = 0;
         pinActive.current = true;
         pinReleaseRef.current = false;
         pendingPinRef.current = true;
+        // A minHeight on the last answer cannot supply this: a tall answer already exceeds the floor.
+        if (containerHeight.current > 0) {
+          contentAtSend.current = contentHeight.current;
+          placingFromRef.current = chatHistoryRef.current.length;
+          if (placingTimer.current) clearTimeout(placingTimer.current);
+          placingTimer.current = setTimeout(
+            settlePlacing,
+            SEND_PLACING_GUARD_MS
+          );
+          setHeldRows(chatHistoryRef.current);
+          if (holdTimer.current) clearTimeout(holdTimer.current);
+          holdTimer.current = setTimeout(showHeldRows, SEND_ROWS_HOLD_MS);
+          setSendReserve(roomForSend());
+          setPinAnchor({
+            containerHeight: containerHeight.current,
+            userHeight: 0,
+          });
+        }
+        clearPinLanding();
         freezeForSend();
       },
       cancelMessageSent: () => {
+        settlePlacing();
+        showHeldRows();
+        releaseSendReserve();
+        predictedPinRef.current = null;
         pendingPinRef.current = false;
-        pinScrollPendingRef.current = false;
         pinReleaseRef.current = false;
         pinActive.current = false;
+        clearPinLanding();
         releaseSendFreeze();
         setPinAnchor(null);
       },
     }),
     [
+      clearPinLanding,
       closeUserActionMenu,
       freezeForSend,
       opacity,
+      pinStillHolds,
+      placePin,
       releaseSendFreeze,
+      releaseSendReserve,
+      roomForSend,
+      settlePlacing,
       settleReveal,
-      snapToEnd,
+      showHeldRows,
     ]
   );
 
@@ -740,6 +879,7 @@ const Messages = ({
       const height = e.nativeEvent.layout.height;
       containerHeight.current = height;
       lastLayoutHeight.current = height;
+      widestListRef.current = Math.max(widestListRef.current, height);
       setPinAnchor((anchor) =>
         anchor && anchor.containerHeight !== height
           ? { ...anchor, containerHeight: height }
@@ -759,6 +899,7 @@ const Messages = ({
     (key: string, e: LayoutChangeEvent) => {
       if (lastUserMeasurementKey.current !== key) return;
       lastUserHeight.current = e.nativeEvent.layout.height;
+      lastUserTop.current = e.nativeEvent.layout.y;
       applyPendingPin();
     },
     [applyPendingPin]
@@ -781,14 +922,26 @@ const Messages = ({
       lastScrollOffset.current = contentOffset.y;
       lastLayoutHeight.current = layoutMeasurement.height;
       contentHeight.current = contentSize.height;
+      if (pinLandedShort(contentOffset.y, pinOffset.current)) {
+        tryPlacePin();
+      } else {
+        pinPlacementPendingRef.current = false;
+        settlePlacing();
+        if (!pendingPinRef.current) releaseSendReserve();
+      }
       const bottomInset = contentInset?.bottom ?? 0;
-      const distanceFromBottom =
-        contentSize.height +
-        bottomInset -
-        (contentOffset.y + layoutMeasurement.height);
-      const atBottom = distanceFromBottom < 100;
-      isAtBottomRef.current = atBottom;
-      updateScrollButton(atBottom);
+      const atBottom = atListEnd({
+        offset: contentOffset.y,
+        contentHeight: contentSize.height,
+        layoutHeight: layoutMeasurement.height,
+        bottomInset,
+        floorTarget: pinFloorRef.current > 0 ? releaseTarget() : null,
+        sendIsLanding: pendingPinRef.current || pinPlacementPendingRef.current,
+      });
+      if (atBottom !== isAtBottomRef.current) {
+        isAtBottomRef.current = atBottom;
+        updateScrollButton(atBottom);
+      }
       if (
         pinReleaseRef.current &&
         floorIsOffscreen(contentOffset.y, releaseTarget())
@@ -796,18 +949,26 @@ const Messages = ({
         dropPinFloor();
       }
     },
-    [dropPinFloor, releaseTarget, updateScrollButton]
+    [
+      dropPinFloor,
+      releaseSendReserve,
+      releaseTarget,
+      settlePlacing,
+      tryPlacePin,
+      updateScrollButton,
+    ]
   );
 
   const scrollToBottom = useCallback(() => {
     closeUserActionMenu();
+    clearPinLanding();
     if (!pinActive.current && pinAnchor && !Keyboard.isVisible()) {
       pinReleaseRef.current = true;
       scrollRef.current?.scrollTo({ y: releaseTarget(), animated: true });
       return;
     }
     scrollRef.current?.scrollToEnd({ animated: true });
-  }, [closeUserActionMenu, pinAnchor, releaseTarget]);
+  }, [clearPinLanding, closeUserActionMenu, pinAnchor, releaseTarget]);
 
   const handleCopyMessage = useCallback(
     async (message: Message) => {
@@ -830,13 +991,15 @@ const Messages = ({
       if (message.role === 'assistant') {
         return {
           showActions: isPersisted && message.content.trim().length > 0,
-          showForkAction: isPersisted && !!onForkMessage && !isGenerating,
+          showForkAction: isPersisted && !!onForkMessage,
+          forkDisabled: isGenerating,
         };
       }
 
       return {
         showActions: false,
         showForkAction: false,
+        forkDisabled: false,
       };
     },
     [isGenerating, onForkMessage]
@@ -886,7 +1049,6 @@ const Messages = ({
   const touchScrolledRef = useRef(false);
 
   const handleScrollTouchStart = useCallback(() => {
-    pinScrollPendingRef.current = false;
     touchScrolledRef.current = false;
     if (activeUserActionsId !== null) {
       closeUserActionMenu();
@@ -900,31 +1062,14 @@ const Messages = ({
 
   const handleScrollBeginDrag = useCallback(() => {
     touchScrolledRef.current = true;
+    clearPinLanding();
     if (keyboardOpenRef.current) {
       userScrolledDuringKeyboard.current = true;
     }
-    clearReleaseSettle();
     if (!pinActive.current && pinAnchor) {
       pinReleaseRef.current = true;
     }
-  }, [clearReleaseSettle, pinAnchor]);
-
-  const handleScrollEndDrag = useCallback(() => {
-    if (!pinReleaseRef.current) return;
-    clearReleaseSettle();
-    releaseSettleTimer.current = setTimeout(
-      settlePinRelease,
-      PIN_RELEASE_SETTLE_DELAY_MS
-    );
-  }, [clearReleaseSettle, settlePinRelease]);
-
-  const handleMomentumScrollBegin = useCallback(() => {
-    clearReleaseSettle();
-  }, [clearReleaseSettle]);
-
-  const handleMomentumScrollEnd = useCallback(() => {
-    settlePinRelease();
-  }, [settlePinRelease]);
+  }, [clearPinLanding, pinAnchor]);
 
   const handleForkMessage = useCallback(
     (message: Message) => {
@@ -937,11 +1082,24 @@ const Messages = ({
     (_w: number, h: number) => {
       contentHeight.current = h;
       if (
-        pinScrollPendingRef.current &&
-        h >= pinOffset.current + containerHeight.current - PIN_READY_SLACK_PX
+        heldRowsRef.current &&
+        h >=
+          contentAtSend.current +
+            sendReserveRef.current * SEND_RESERVE_READY_RATIO
       ) {
-        pinScrollPendingRef.current = false;
-        scrollToPin();
+        showHeldRows();
+      }
+      tryPlacePin();
+      if (
+        pinHoldRef.current &&
+        pinLandedShort(lastScrollOffset.current, pinOffset.current) &&
+        pinTargetReachable({
+          contentHeight: h,
+          layoutHeight: lastLayoutHeight.current || containerHeight.current,
+          target: pinOffset.current,
+        })
+      ) {
+        placePin();
       }
       // Initial reveal: content has been laid out for the first time.
       // Snap to bottom then fade in. This is the most reliable place to
@@ -956,10 +1114,7 @@ const Messages = ({
         return;
       }
 
-      // After send: now that the new chat row has rendered, pin it.
-      // Doing this here (instead of synchronously in onMessageSent)
-      // avoids a 1-frame flick where the old content gets lifted before
-      // the new DOM commits.
+      // Fallback for a send whose offset could not be predicted: place it from measurements.
       applyPendingPin();
 
       // During streaming, check if content has grown past the viewport
@@ -967,10 +1122,18 @@ const Messages = ({
       // needing to scroll manually. Use the last known scroll offset
       // (0 if user never scrolled) and the container height as a proxy
       // for the visible area.
-      if (containerHeight.current > 0) {
-        const layoutH = lastLayoutHeight.current || containerHeight.current;
-        const distFromBottom = h - (lastScrollOffset.current + layoutH);
-        const atBottom = distFromBottom < 100;
+      if (
+        containerHeight.current > 0 &&
+        Date.now() >= initialScrollSettlingUntil.current
+      ) {
+        const atBottom = atListEnd({
+          offset: lastScrollOffset.current,
+          contentHeight: h,
+          layoutHeight: lastLayoutHeight.current || containerHeight.current,
+          floorTarget: pinFloorRef.current > 0 ? releaseTarget() : null,
+          sendIsLanding:
+            pendingPinRef.current || pinPlacementPendingRef.current,
+        });
         if (atBottom !== isAtBottomRef.current) {
           isAtBottomRef.current = atBottom;
           updateScrollButton(atBottom);
@@ -981,34 +1144,37 @@ const Messages = ({
       applyPendingPin,
       listBottomPadding,
       listTopPadding,
+      placePin,
+      releaseTarget,
       scheduleInitialScrollToEnd,
-      scrollToPin,
+      showHeldRows,
+      tryPlacePin,
       updateScrollButton,
     ]
   );
 
   // Citations are highlighted against the preceding user question.
   const questionForAssistantAt = useMemo(() => {
-    const questions: (string | undefined)[] = new Array(chatHistory.length);
+    const questions: (string | undefined)[] = new Array(rows.length);
     let lastUserContent: string | undefined;
-    for (let i = 0; i < chatHistory.length; i += 1) {
-      const message = chatHistory[i];
+    for (let i = 0; i < rows.length; i += 1) {
+      const message = rows[i];
       if (message.role === 'user') lastUserContent = message.content;
       questions[i] = message.role === 'assistant' ? lastUserContent : undefined;
     }
     return questions;
-  }, [chatHistory]);
+  }, [rows]);
 
-  const hasMessages = chatHistory.length > 0;
+  const hasMessages = rows.length > 0;
 
   const { userIndex: lastUserIndex, answerIndex: lastAssistantIndex } =
     lastTurnRows(
-      chatHistory.map((message) => message.role),
+      rows.map((message) => message.role),
       !!generationError
     );
 
   const measurementKeyAt = (index: number): string | null => {
-    const message = chatHistory[index];
+    const message = rows[index];
     if (!message) return null;
     return messageRowKey(message, index);
   };
@@ -1045,17 +1211,14 @@ const Messages = ({
           onLayout={handleContainerLayout}
           onScroll={handleScroll}
           onScrollBeginDrag={handleScrollBeginDrag}
-          onScrollEndDrag={handleScrollEndDrag}
-          onMomentumScrollBegin={handleMomentumScrollBegin}
-          onMomentumScrollEnd={handleMomentumScrollEnd}
           onTouchStart={handleScrollTouchStart}
           onTouchEnd={handleScrollTouchEnd}
           onContentSizeChange={handleContentSizeChange}
           scrollEventThrottle={16}
           style={styles.container}
         >
-          {chatHistory.map((message, index) => {
-            const isLastMessage = index === chatHistory.length - 1;
+          {rows.map((message, index) => {
+            const isLastMessage = index === rows.length - 1;
             const userQuestion = questionForAssistantAt[index];
             const key = messageRowKey(message, index);
 
@@ -1066,7 +1229,7 @@ const Messages = ({
               onLayout = (event) => handleLastAssistantLayout(key, event);
             }
             const branchMarker = latestBranchMarkerByMessageId.get(message.id);
-            const { showActions, showForkAction } =
+            const { showActions, showForkAction, forkDisabled } =
               getMessageActionsState(message);
 
             const item = (
@@ -1090,6 +1253,7 @@ const Messages = ({
                   onShowSources={handleShowSources}
                   showActions={showActions}
                   showForkAction={showForkAction}
+                  forkDisabled={forkDisabled}
                   onCopy={handleCopyMessage}
                   onFork={handleForkMessage}
                 />
@@ -1120,55 +1284,35 @@ const Messages = ({
               message.role === 'user' &&
               message.id > 0;
 
-            if (onLayout) {
-              const rowStyle =
-                index === lastAssistantIndex ? pinFloorStyle : undefined;
-              const measureRow = index === lastUserIndex ? onLayout : undefined;
+            // A row that changes wrapper type remounts and replays its entering animation.
+            const unplaced =
+              placingFromRef.current !== null &&
+              index >= placingFromRef.current;
+            const rowStyle =
+              index === lastAssistantIndex ? pinFloorStyle : undefined;
+            const measureRow = index === lastUserIndex ? onLayout : undefined;
 
-              if (!shouldHandleUserLongPress) {
-                return (
-                  <View
-                    key={key}
-                    style={rowStyle}
-                    onLayout={measureRow}
-                    collapsable={false}
-                  >
-                    {item}
-                  </View>
-                );
-              }
-
-              return (
-                <View
-                  key={key}
-                  style={rowStyle}
-                  onLayout={measureRow}
-                  collapsable={false}
-                >
+            return (
+              <View
+                key={key}
+                style={unplaced ? [rowStyle, styles.unplacedRow] : rowStyle}
+                onLayout={measureRow}
+                collapsable={false}
+              >
+                {shouldHandleUserLongPress ? (
                   <LongPressableMessage
                     messageId={message.id}
                     onLongPress={handleUserLongPress}
                   >
                     {item}
                   </LongPressableMessage>
-                </View>
-              );
-            }
-
-            if (!shouldHandleUserLongPress) {
-              return <React.Fragment key={key}>{item}</React.Fragment>;
-            }
-
-            return (
-              <LongPressableMessage
-                key={key}
-                messageId={message.id}
-                onLongPress={handleUserLongPress}
-              >
-                {item}
-              </LongPressableMessage>
+                ) : (
+                  item
+                )}
+              </View>
             );
           })}
+          {sendReserveStyle ? <View style={sendReserveStyle} /> : null}
           {generationError && (
             <View style={pinFloorStyle} collapsable={false}>
               <View
@@ -1240,6 +1384,9 @@ const createStyles = (theme: Theme) => {
     container: {
       flex: 1,
       width: '100%',
+    },
+    unplacedRow: {
+      opacity: 0,
     },
     revealed: {
       opacity: 1,

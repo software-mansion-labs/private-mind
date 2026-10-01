@@ -23,6 +23,13 @@ export const PIN_READY_SLACK_PX = 1;
 
 export const MESSAGE_PIN_SETTLE_MS = 500;
 
+export const SEND_ROWS_HOLD_MS = 150;
+
+export const SEND_PLACING_MAX_MS = 120;
+
+export const SEND_PLACING_GUARD_MS = 3000;
+
+export const SEND_RESERVE_READY_RATIO = 0.8;
 export const PIN_LANDING_GRACE_MS = 600;
 
 export const REVEAL_FALLBACK_MS = 900;
@@ -30,9 +37,9 @@ export const REVEAL_FALLBACK_MS = 900;
 export const navBarInset = (theme: Theme) =>
   Platform.OS === 'android' ? theme.insets.bottom : 0;
 
-export const MESSAGE_PIN_LANDING_PX = 64;
+export const MESSAGE_PIN_LANDING_SLACK_PX = 4;
 
-export const PIN_RELEASE_SETTLE_DELAY_MS = 50;
+export const SCROLL_BUTTON_END_SLACK_PX = 100;
 
 export const PIN_FREEZE_FALLBACK_MS = 1000;
 
