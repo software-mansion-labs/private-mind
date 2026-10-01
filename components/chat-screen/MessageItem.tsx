@@ -112,7 +112,10 @@ const MessageItem = memo(
     );
     const [lightboxVisible, setLightboxVisible] = useState(false);
 
-    const contentParts = parseThinkingContent(content);
+    const contentParts = useMemo(
+      () => parseThinkingContent(content),
+      [content]
+    );
     const userText = useMemo(() => stripThinkMarkers(content), [content]);
     const {
       displayedSources,
@@ -190,8 +193,10 @@ const MessageItem = memo(
     const canShowSourcesAction =
       !!content.trim() && documentSources.length > 0 && !isBusy;
 
+    const answerIsIncomplete = !!message.stoppedByUser;
+
     const actions =
-      showActions || canShowSourcesAction ? (
+      !answerIsIncomplete && (showActions || canShowSourcesAction) ? (
         <View style={styles.actionRow} testID="message-actions">
           {showActions && (
             <MessageActionButton
