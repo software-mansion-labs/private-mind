@@ -11,6 +11,12 @@ import { restoreTruncatedChatTitles } from './chatTitleMigration';
 import { resolveModelCatalog } from '../utils/fetchModelCatalog';
 import { getActiveCatalog, setActiveCatalog } from '../utils/modelCatalogState';
 
+const discardPeakMemoryMeasuredWithTheOldMetric = async (
+  db: SQLiteDatabase
+): Promise<void> => {
+  await db.execAsync(`UPDATE benchmarks SET peakMemory = 0`);
+};
+
 export const runMigrations = async (db: SQLiteDatabase) => {
   const modelsTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(models)`
@@ -108,6 +114,15 @@ export const runMigrations = async (db: SQLiteDatabase) => {
     );
   }
 
+  const hasStoppedByUser = messagesTableInfo.some(
+    (col) => col.name === 'stoppedByUser'
+  );
+  if (!hasStoppedByUser) {
+    await db.execAsync(
+      `ALTER TABLE messages ADD COLUMN stoppedByUser INTEGER DEFAULT 0`
+    );
+  }
+
   // Check and add thinkingEnabled to chatSettings
   const chatSettingsTableInfo = await db.getAllAsync<{ name: string }>(
     `PRAGMA table_info(chatSettings)`
@@ -149,6 +164,19 @@ export const runMigrations = async (db: SQLiteDatabase) => {
     await db.execAsync(
       `ALTER TABLE sources ADD COLUMN firstChunk TEXT DEFAULT NULL`
     );
+  }
+
+  const benchmarksTableInfo = await db.getAllAsync<{ name: string }>(
+    `PRAGMA table_info(benchmarks)`
+  );
+  const hasPeakMemoryMetric = benchmarksTableInfo.some(
+    (col) => col.name === 'peakMemoryMetric'
+  );
+  if (!hasPeakMemoryMetric) {
+    await db.execAsync(
+      `ALTER TABLE benchmarks ADD COLUMN peakMemoryMetric TEXT DEFAULT NULL`
+    );
+    await discardPeakMemoryMeasuredWithTheOldMetric(db);
   }
 
   await migrateLegacyVectorStore(db);
@@ -272,6 +300,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       documentName TEXT DEFAULT NULL,
       sourceDocuments TEXT DEFAULT NULL,
       groundingCaveats TEXT DEFAULT NULL,
+      stoppedByUser INTEGER DEFAULT 0,
       FOREIGN KEY (chatId) REFERENCES chats (id) ON DELETE CASCADE
     );
   `);
@@ -297,6 +326,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       tokensGenerated INTEGER DEFAULT 0,
       tokensPerSecond INTEGER DEFAULT 0,
       peakMemory INTEGER DEFAULT 0,
+      peakMemoryMetric TEXT DEFAULT NULL,
       FOREIGN KEY (modelId) REFERENCES models (id) ON DELETE SET NULL
     );
   `);

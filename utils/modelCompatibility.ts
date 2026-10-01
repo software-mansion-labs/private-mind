@@ -46,19 +46,18 @@ export const getModelMemoryRequirement = (
 const androidSystemReserveGB = (totalGB: number): number =>
   Math.min(ANDROID_SYSTEM_RESERVE_GB, totalGB * ANDROID_SYSTEM_RESERVE_SHARE);
 
-export const appMemoryBudgetFromTotalGB = (totalGB: number): number =>
+export const appMemoryBudgetForGB = (totalGB: number): number =>
   Platform.OS === 'ios'
     ? totalGB * IOS_JETSAM_SHARE * MEMORY_SAFETY_FACTOR
     : Math.max(0, totalGB - androidSystemReserveGB(totalGB));
 
 export const getAppMemoryBudgetGB = (): number =>
-  appMemoryBudgetFromTotalGB(getTotalMemoryGB());
+  appMemoryBudgetForGB(getTotalMemoryGB());
 
-const modelBudgetFromTotalGB = (totalGB: number): number =>
-  appMemoryBudgetFromTotalGB(totalGB) - APP_RUNTIME_MEMORY_GB;
+export const modelBudgetForGB = (totalGB: number): number =>
+  appMemoryBudgetForGB(totalGB) - APP_RUNTIME_MEMORY_GB;
 
-const getModelBudgetGB = (): number =>
-  modelBudgetFromTotalGB(getTotalMemoryGB());
+const getModelBudgetGB = (): number => modelBudgetForGB(getTotalMemoryGB());
 
 const getModelMemoryCostGB = (
   model: (Partial<Model> & { modelSize?: number }) | null | undefined
@@ -120,7 +119,7 @@ const riskOnDeviceWithTotalGB = (
   }
   return riskAgainstBudget(
     getModelMemoryCostGB(model),
-    modelBudgetFromTotalGB(totalGB)
+    modelBudgetForGB(totalGB)
   );
 };
 

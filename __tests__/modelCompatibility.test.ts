@@ -454,3 +454,40 @@ describe('getModelRisk — the three tiers come from the same budget', () => {
     }
   });
 });
+
+describe('the starting models offered on a first run', () => {
+  const { getStartingModels, DEFAULT_MODELS } = jest.requireActual(
+    '../constants/default-models'
+  );
+  const byName = (name: string) =>
+    DEFAULT_MODELS.find((m: Model) => m.modelName === name);
+
+  it('offers nothing the model list would mark as unable to run (S20 FE)', () => {
+    setPlatform('android');
+    const ram = 5763304 / 1024 / 1024;
+    mockGetTotalMemorySync.mockReturnValue(gb(ram));
+
+    const offered = getStartingModels(ram);
+
+    expect(offered.length).toBeGreaterThan(0);
+    offered.forEach((name: string) =>
+      expect(isModelCompatible(byName(name))).toBe(true)
+    );
+  });
+
+  it('takes the next model down the list rather than leaving the slot to one that cannot run', () => {
+    setPlatform('android');
+    const ram = 5763304 / 1024 / 1024;
+    mockGetTotalMemorySync.mockReturnValue(gb(ram));
+
+    expect(getStartingModels(ram)).not.toContain('LFM 2.5 VL - 1.6B');
+    expect(getStartingModels(ram)).toContain('Qwen 3 - 0.6B');
+  });
+
+  it('still fills three slots on a device with room for them', () => {
+    setPlatform('android');
+    mockGetTotalMemorySync.mockReturnValue(gb(12));
+
+    expect(getStartingModels(12)).toHaveLength(3);
+  });
+});

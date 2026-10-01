@@ -27,10 +27,7 @@ import {
 } from '../../constants/drawer-layout';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
-
-const scrollIndicatorInsets = Platform.select({
-  ios: { right: 1 },
-});
+import { scrollIndicatorProps } from '../../constants/scroll-indicator';
 
 interface Props {
   searching: boolean;
@@ -74,8 +71,8 @@ const DrawerMenu = ({
   const router = useRouter();
   const pathname = usePathname();
 
-  const { chats } = useChatStore();
-  const { interrupt } = useLLMStore();
+  const chats = useChatStore((state) => state.chats);
+  const interrupt = useLLMStore((state) => state.interrupt);
 
   const { openMenuFor, MenuElements } = useDrawerChatMenu({
     onMenuActiveChange,
@@ -166,8 +163,7 @@ const DrawerMenu = ({
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
         keyboardShouldPersistTaps={hasNoResults ? 'always' : 'handled'}
-        automaticallyAdjustsScrollIndicatorInsets={false}
-        scrollIndicatorInsets={scrollIndicatorInsets}
+        {...scrollIndicatorProps()}
       >
         <DrawerNavSection
           collapsed={isFiltering}
