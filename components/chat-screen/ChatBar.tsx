@@ -344,14 +344,14 @@ const ChatBar = ({
     if (hasLoadingAttachment) return;
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
-    const inputToSend = userInput;
+    const inputToSend = userInput.trim();
     setSendInFlight(true);
     const outcome = onSend(inputToSend, imageUriToSend, attachmentsToSend);
     Keyboard.dismiss();
     if (disabled || modelSwitching) setSendPending(true);
 
-    lastSentRef.current = inputToSend
-      ? { text: inputToSend, at: Date.now() }
+    lastSentRef.current = userInput
+      ? { text: userInput, at: Date.now() }
       : null;
     if (Platform.OS === 'ios') {
       textInputRef.current?.blur();

@@ -289,7 +289,7 @@ const MessageItem = memo(
                     style={styles.userText}
                     selectable={!SUPPORTS_USER_ACTION_MENU}
                   >
-                    {userText}
+                    {userText.trim()}
                   </Text>
                 </View>
               </View>

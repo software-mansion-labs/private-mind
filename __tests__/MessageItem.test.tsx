@@ -407,6 +407,17 @@ describe('user messages', () => {
 
     expect(screen.getByText('Look at this: cut off')).toBeTruthy();
   });
+
+  it('draws no blank line under a message stored with a trailing newline (#399)', () => {
+    renderItem({
+      role: 'user',
+      content: 'Help me write a Python function.\n',
+    });
+
+    expect(
+      screen.getByText('Help me write a Python function.').props.children
+    ).toBe('Help me write a Python function.');
+  });
 });
 
 // ─── user messages with image ─────────────────────────────────────────────────
