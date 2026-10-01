@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react-native';
-import { SpeechToTextModule } from 'react-native-executorch';
+import { SpeechToTextModule } from 'react-native-executorch/legacy';
 import { useSTTStore } from '../store/sttStore';
 import { useSpeechInput } from '../hooks/useSpeechInput';
 

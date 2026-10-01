@@ -57,6 +57,18 @@ export const buildRows = (
   results: SourceDocument[],
   challengeActive: boolean
 ): Row[] => {
+  const takenStepKeys = new Set<string>();
+  const stepKey = (base: string) => {
+    let key = base;
+    let dup = 1;
+    while (takenStepKeys.has(key)) {
+      key = `${base}-${dup}`;
+      dup += 1;
+    }
+    takenStepKeys.add(key);
+    return key;
+  };
+
   const takenKeys = new Set<string>();
   const pageKey = (base: string) => {
     let key = `p-${base}`;
@@ -242,9 +254,14 @@ export const buildRows = (
     if (entry.query) return `Searching “${entry.query}”`;
     return 'Searching the web';
   };
+  const stepBase = (entry: WebSearchTraceEntry): string => {
+    if (entry.type === 'objectives') return 'objectives';
+    if (entry.type === 'recovering') return 'recovering';
+    return 'query';
+  };
   const stepFor = (entry: WebSearchTraceEntry): StepRow => ({
     type: 'step',
-    key: `t-${entry.id}`,
+    key: stepKey(stepBase(entry)),
     label: stepLabel(entry),
   });
 
@@ -312,10 +329,14 @@ export const buildRows = (
     const recorded = results.find((result) => result.query)?.query;
     const queries = searched.length > 0 ? searched : recorded ? [recorded] : [];
     return [
-      { type: 'step', key: 'objectives', label: 'Deciding what to search for' },
-      ...queries.map((query, index) => ({
+      {
+        type: 'step',
+        key: stepKey('objectives'),
+        label: 'Deciding what to search for',
+      },
+      ...queries.map((query) => ({
         type: 'step' as const,
-        key: index === 0 ? 'query' : `query-${index}`,
+        key: stepKey('query'),
         label: `Searching “${query}”`,
       })),
     ];

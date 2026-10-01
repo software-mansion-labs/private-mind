@@ -6,7 +6,7 @@ import { STTStore, useSTTStore } from '../store/sttStore';
 import {
   type SpeechToTextModule,
   type TranscriptionResult,
-} from 'react-native-executorch';
+} from 'react-native-executorch/legacy';
 
 interface Options {
   onAudioData?: (data: number[]) => void;
