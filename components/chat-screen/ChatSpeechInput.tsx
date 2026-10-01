@@ -32,6 +32,9 @@ const ACTION_NOTES: Record<Status, string> = {
   listening: 'Click again to send',
 };
 
+const shownTranscript = (committed: string, nonCommitted: string) =>
+  (committed.trim() + ' ' + nonCommitted.trim()).trim();
+
 const ChatSpeechInput: React.FC<Props> = ({
   onSubmit: onSubmitProp,
   onCancel: onCancelProp,
@@ -85,20 +88,23 @@ const ChatSpeechInput: React.FC<Props> = ({
 
         recordingStartTimeRef.current = Date.now();
         let text = '';
+        let pendingText = '';
         for await (const { committed, nonCommitted } of streamGenerator) {
           if (unmountedRef.current) break;
           text = text + committed.text;
+          pendingText = nonCommitted.text;
           setTranscription({
             committed: text,
-            nonCommitted: nonCommitted.text,
+            nonCommitted: pendingText,
           });
         }
 
         if (unmountedRef.current) return;
 
         if (exitStateRef.current === 'pending_submit') {
-          if (text) {
-            onSubmit(text);
+          const shown = shownTranscript(text, pendingText);
+          if (shown) {
+            onSubmit(shown);
           } else {
             onCancel();
           }
@@ -182,11 +188,10 @@ const ChatSpeechInput: React.FC<Props> = ({
   const actionNote = ACTION_NOTES[status];
 
   const renderTopNote = () => {
-    const fullTranscription = (
-      transcription.committed.trim() +
-      ' ' +
-      transcription.nonCommitted.trim()
-    ).trim();
+    const fullTranscription = shownTranscript(
+      transcription.committed,
+      transcription.nonCommitted
+    );
 
     if (fullTranscription) {
       return <ScrollableTranscript text={fullTranscription} />;

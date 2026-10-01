@@ -1,5 +1,10 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react-native';
 import { ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 
@@ -113,5 +118,42 @@ describe('ChatSpeechInput while the transcript finishes', () => {
     fireEvent.press(screen.getByTestId('speech-send'));
 
     expect(mockSpeech.stop).not.toHaveBeenCalled();
+  });
+});
+
+describe('ChatSpeechInput sending what it shows', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSpeech.status = 'listening';
+  });
+
+  it('sends the words still being transcribed along with the finished ones', async () => {
+    let endStream = () => {};
+    mockSpeech.start.mockImplementationOnce(
+      async () =>
+        (async function* () {
+          yield {
+            committed: { text: 'in foreign' },
+            nonCommitted: { text: '' },
+          };
+          yield {
+            committed: { text: '' },
+            nonCommitted: { text: 'and the rest of it' },
+          };
+          await new Promise<void>((resolve) => {
+            endStream = resolve;
+          });
+        })() as never
+    );
+    const onSubmit = jest.fn();
+    render(<ChatSpeechInput onSubmit={onSubmit} onCancel={jest.fn()} />);
+    await screen.findByText('in foreign and the rest of it');
+
+    fireEvent.press(screen.getByTestId('speech-send'));
+    endStream();
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith('in foreign and the rest of it')
+    );
   });
 });
