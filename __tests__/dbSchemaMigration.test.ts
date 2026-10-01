@@ -12,7 +12,11 @@ jest.mock('../store/modelStore', () => ({
 jest.mock('../store/sourceStore', () => ({
   useSourceStore: { getState: () => ({}) },
 }));
-jest.mock('../database/modelRepository', () => ({ addModel: jest.fn() }));
+jest.mock('../database/modelRepository', () => ({
+  addModel: jest.fn(),
+  removeDelistedBuiltInModels: jest.requireActual('../database/modelRepository')
+    .removeDelistedBuiltInModels,
+}));
 jest.mock('../utils/sourceLinkingBoundary', () => ({
   initSourceLinkingBoundary: jest.fn(),
 }));
