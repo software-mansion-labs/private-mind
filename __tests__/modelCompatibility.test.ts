@@ -220,16 +220,36 @@ describe('getDeviceMemoryGB', () => {
 
 describe('isMemoryConstrained', () => {
   it('counts the RAM left next to the loaded model, not the device total', () => {
+    setPlatform('android');
     mockGetTotalMemorySync.mockReturnValue(gb(7.4));
     expect(isMemoryConstrained({ modelSize: 2.5 })).toBe(true);
     expect(isMemoryConstrained({ modelSize: 0.65 })).toBe(false);
   });
 
   it('falls back to the device threshold when no model is loaded', () => {
+    setPlatform('android');
     mockGetTotalMemorySync.mockReturnValue(gb(7.4));
     expect(isMemoryConstrained(null)).toBe(false);
     mockGetTotalMemorySync.mockReturnValue(gb(5.8));
     expect(isMemoryConstrained(undefined)).toBe(true);
+  });
+
+  it('reads an 8GB iPhone carrying a vision model as capable, not constrained', () => {
+    setPlatform('ios');
+    mockGetTotalMemorySync.mockReturnValue(gb(8));
+    expect(isMemoryConstrained({ modelSize: 3 })).toBe(false);
+  });
+
+  it('still rules out the smallest iPhone', () => {
+    setPlatform('ios');
+    mockGetTotalMemorySync.mockReturnValue(gb(4));
+    expect(isMemoryConstrained({ modelSize: 1 })).toBe(true);
+  });
+
+  it('keeps the same headroom constrained on Android, where the system takes its share up front', () => {
+    setPlatform('android');
+    mockGetTotalMemorySync.mockReturnValue(gb(8));
+    expect(isMemoryConstrained({ modelSize: 3 })).toBe(true);
   });
 });
 
@@ -333,5 +353,42 @@ describe('declared floors read the nominal RAM, not the bytes the OS reports', (
   it('still keeps Gemma 4 2B off web search on a 6 GB phone reporting 5.5 GB', () => {
     mockGetTotalMemorySync.mockReturnValue(gb(5.5));
     expect(hasMemoryForWebSearch(gemma)).toBe(false);
+  });
+});
+
+describe('the starting models offered on a first run', () => {
+  const { getStartingModels, DEFAULT_MODELS } = jest.requireActual(
+    '../constants/default-models'
+  );
+  const byName = (name: string) =>
+    DEFAULT_MODELS.find((m: Model) => m.modelName === name);
+
+  it('offers nothing the model list would mark as unable to run (S20 FE)', () => {
+    setPlatform('android');
+    const ram = 5763304 / 1024 / 1024;
+    mockGetTotalMemorySync.mockReturnValue(gb(ram));
+
+    const offered = getStartingModels(ram);
+
+    expect(offered.length).toBeGreaterThan(0);
+    offered.forEach((name: string) =>
+      expect(isModelCompatible(byName(name))).toBe(true)
+    );
+  });
+
+  it('takes the next model down the list rather than leaving the slot to one that cannot run', () => {
+    setPlatform('android');
+    const ram = 5763304 / 1024 / 1024;
+    mockGetTotalMemorySync.mockReturnValue(gb(ram));
+
+    expect(getStartingModels(ram)).not.toContain('LFM 2.5 VL - 1.6B');
+    expect(getStartingModels(ram)).toContain('Qwen 3 - 0.6B');
+  });
+
+  it('still fills three slots on a device with room for them', () => {
+    setPlatform('android');
+    mockGetTotalMemorySync.mockReturnValue(gb(12));
+
+    expect(getStartingModels(12)).toHaveLength(3);
   });
 });

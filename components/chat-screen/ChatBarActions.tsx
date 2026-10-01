@@ -1,10 +1,16 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { Theme } from '../../styles/colors';
-import SendIcon from '../../assets/icons/send_icon.svg';
-import PauseIcon from '../../assets/icons/pause_icon.svg';
 import CircleButton from '../CircleButton';
+import ComposerActionButton, {
+  type ComposerAction,
+} from './ComposerActionButton';
 import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import LightBulbCrossedIcon from '../../assets/icons/light_bulb_crossed.svg';
 import LightBulbIcon from '../../assets/icons/light_bulb.svg';
@@ -14,14 +20,36 @@ import WebCrossedIcon from '../../assets/icons/web_crossed.svg';
 import ChatBarToggle from './ChatBarToggle';
 import { Feedback } from '../../utils/Feedback';
 import Toast from 'react-native-toast-message';
+import { COMPOSER } from './attachments/constants';
+import {
+  usePrimaryActionGuard,
+  type PrimaryAction,
+} from './usePrimaryActionGuard';
+
+const composerAction = (
+  isResponding: boolean,
+  canSend: boolean
+): ComposerAction => {
+  if (isResponding) return 'stop';
+  if (canSend) return 'send';
+  return 'speech';
+};
+
+const ACTION_TEST_IDS: Record<ComposerAction, string> = {
+  send: 'send-btn',
+  stop: 'stop-btn',
+  speech: 'speech-btn',
+};
 
 interface Props {
   onAttach: () => void;
   userInput: string;
   hasAttachments?: boolean;
   isLoadingAttachment?: boolean;
-  disabled?: boolean;
   togglesDisabled?: boolean;
+  modelBusy?: boolean;
+  sendPending?: boolean;
+  sendInFlight?: boolean;
   onSend: () => void;
   isGenerating: boolean;
   isProcessingPrompt: boolean;
@@ -29,6 +57,7 @@ interface Props {
   onSpeechInput: () => void;
   thinkingEnabled: boolean;
   onThinkingToggle?: () => void;
+  plusOut: SharedValue<number>;
   webSearchEnabled?: boolean;
   onWebSearchToggle?: () => void;
 }
@@ -38,8 +67,10 @@ const ChatBarActions = ({
   userInput,
   hasAttachments = false,
   isLoadingAttachment = false,
-  disabled = false,
   togglesDisabled = false,
+  modelBusy = false,
+  sendPending = false,
+  sendInFlight = false,
   onSend,
   isGenerating,
   isProcessingPrompt,
@@ -47,22 +78,27 @@ const ChatBarActions = ({
   onSpeechInput,
   thinkingEnabled = false,
   onThinkingToggle,
+  plusOut,
   webSearchEnabled = false,
   onWebSearchToggle,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
+  const plusStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(plusOut.get(), [0, 0.75], [1, 0], Extrapolation.CLAMP),
+    transform: [{ translateX: plusOut.get() * COMPOSER.plusSlide }],
+  }));
   const isResponding = isGenerating || isProcessingPrompt;
   const isAttachmentBlocked = isResponding || isLoadingAttachment;
+  const hasComposedInput = !!userInput || hasAttachments;
+  const isSendable = hasComposedInput;
+  const action = composerAction(
+    isResponding,
+    Boolean(sendPending || sendInFlight || isSendable)
+  );
+  const guardedAction: PrimaryAction = action === 'speech' ? 'voice' : action;
+  const guardPrimaryPress = usePrimaryActionGuard(guardedAction);
 
   const handleAttach = () => {
-    if (disabled) {
-      Toast.show({
-        type: 'defaultToast',
-        text1: 'Wait for the model to finish loading.',
-      });
-      return;
-    }
-
     if (isAttachmentBlocked) {
       Toast.show({
         type: 'defaultToast',
@@ -77,56 +113,43 @@ const ChatBarActions = ({
     onAttach();
   };
 
-  const renderButton = () => {
-    if (isGenerating || isProcessingPrompt) {
-      return (
-        <CircleButton
-          icon={PauseIcon}
-          size={13.33}
-          onPress={() => {
-            Feedback.interrupt();
-            onInterrupt();
-          }}
-          backgroundColor={theme.bg.main}
-          color={theme.text.contrastPrimary}
-        />
-      );
-    }
+  const handleThinkingToggle = () => onThinkingToggle?.();
 
-    if ((userInput || hasAttachments) && !isLoadingAttachment) {
-      return (
-        <View style={styles.rightActions}>
-          {hasAttachments && !userInput && (
-            <CircleButton
-              icon={SoundwaveIcon}
-              disabled={disabled}
-              onPress={onSpeechInput}
-              backgroundColor="transparent"
-              color={theme.text.onChatBar}
-            />
-          )}
-          <CircleButton
-            icon={SendIcon}
-            disabled={disabled}
-            onPress={() => {
-              Feedback.send();
-              onSend();
-            }}
-            backgroundColor={theme.bg.main}
-            color={theme.text.contrastPrimary}
-          />
-        </View>
-      );
-    }
+  const renderButton = () => {
+    const handlePress = () =>
+      guardPrimaryPress(() => {
+        if (action === 'stop') {
+          Feedback.interrupt();
+          onInterrupt();
+          return;
+        }
+        if (action === 'send') {
+          Feedback.send();
+          onSend();
+          return;
+        }
+        onSpeechInput();
+      });
 
     return (
-      <CircleButton
-        icon={SoundwaveIcon}
-        disabled={disabled}
-        onPress={onSpeechInput}
-        backgroundColor="transparent"
-        color={theme.text.onChatBar}
-      />
+      <View style={styles.rightActions}>
+        {action === 'send' && hasAttachments && !userInput && !sendPending && (
+          <CircleButton
+            icon={SoundwaveIcon}
+            onPress={onSpeechInput}
+            backgroundColor="transparent"
+            color={theme.text.onChatBar}
+          />
+        )}
+        <ComposerActionButton
+          action={action}
+          onPress={handlePress}
+          busy={action === 'send' && sendPending}
+          disabled={action === 'send' && (sendPending || isLoadingAttachment)}
+          dimmed={action === 'speech' && modelBusy}
+          testID={ACTION_TEST_IDS[action]}
+        />
+      </View>
     );
   };
 
@@ -137,21 +160,23 @@ const ChatBarActions = ({
           testID="attach-btn-container"
           style={isAttachmentBlocked ? styles.blockedAttachment : undefined}
         >
-          <CircleButton
-            icon={PlusIcon}
-            size={14}
-            onPress={handleAttach}
-            backgroundColor={theme.bg.attachButton}
-            color={theme.text.onAttachButton}
-            testID="attach-btn"
-          />
+          <Animated.View style={plusStyle}>
+            <CircleButton
+              icon={PlusIcon}
+              size={14}
+              onPress={handleAttach}
+              backgroundColor={theme.bg.attachButton}
+              color={theme.text.onAttachButton}
+              testID="attach-btn"
+            />
+          </Animated.View>
         </View>
         <ChatBarToggle
           label="Think"
           enabled={thinkingEnabled}
           iconOn={LightBulbIcon}
           iconOff={LightBulbCrossedIcon}
-          onToggle={() => onThinkingToggle?.()}
+          onToggle={handleThinkingToggle}
           disabled={togglesDisabled}
         />
         {onWebSearchToggle ? (
@@ -174,7 +199,7 @@ const ChatBarActions = ({
 
 export default ChatBarActions;
 
-const createStyles = (theme: Theme) =>
+const createStyles = () =>
   StyleSheet.create({
     container: {
       flexDirection: 'row',

@@ -6,6 +6,7 @@ import {
   useReanimatedKeyboardAnimation,
 } from 'react-native-keyboard-controller';
 import { useTheme } from '../../context/ThemeContext';
+import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 
 export const useKeyboardLift = () => {
   const { height, progress } = useReanimatedKeyboardAnimation();
@@ -50,9 +51,15 @@ export const useKeyboardLift = () => {
     };
   }, [keyboardGone]);
 
+  const modalOwnsKeyboard = useKeyboardOwnerStore(
+    (state) => state.modalOwnsKeyboard
+  );
+
   return useDerivedValue(
     () =>
-      keyboardGone.value ? 0 : height.value + progress.value * insetsBottom,
-    [insetsBottom]
+      modalOwnsKeyboard || keyboardGone.value
+        ? 0
+        : height.value + progress.value * insetsBottom,
+    [insetsBottom, modalOwnsKeyboard]
   );
 };
