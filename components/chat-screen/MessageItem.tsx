@@ -41,6 +41,7 @@ import {
 } from '../../constants/chat-screen';
 import { Message, type SourceDocument } from '../../database/chatRepository';
 import { stripCitations } from '../../utils/citations';
+import { retrievalStatsLines } from '../../utils/retrievalStatsLine';
 import { parseThinkingContent, stripThinkMarkers } from '../../utils/thinking';
 
 interface MessageItemProps {
@@ -357,6 +358,12 @@ const MessageItem = memo(
                 <DominantSourceBadge source={dominantWebSource} />
               )}
               <GroundingCaveatBadges caveats={message.groundingCaveats} />
+              {showPerformanceMetrics &&
+                retrievalStatsLines(message.retrievalStats).map((line) => (
+                  <Text key={line} style={styles.metadata}>
+                    {line}
+                  </Text>
+                ))}
               {showPerformanceMetrics &&
                 tokensPerSecond !== undefined &&
                 tokensPerSecond !== 0 && (

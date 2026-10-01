@@ -7,6 +7,7 @@ import {
   checkIfChatExists,
   type ChatSettings,
   type Message,
+  type RetrievalStats,
   type SourceDocument,
 } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
@@ -215,6 +216,7 @@ export const useSendChatMessage = ({
       let webSubQueries: string[] | undefined;
       let webWeak: boolean | undefined;
       let webSearchFailed: boolean | undefined;
+      const retrievalStats: RetrievalStats = {};
       const hasRagSources =
         enabledSources.length > 0 || attachmentSourceIds.length > 0;
       if (vectorStore && hasRagSources) {
@@ -230,12 +232,17 @@ export const useSendChatMessage = ({
             history: messageHistory,
             digest: digestOfThisChat() ?? undefined,
           });
+        const ragStartedAt = Date.now();
         ({ context, sourceDocuments, preferredSourceDocuments } = embeddings
           ? await runWithModelOffloaded(
               () => embeddings.runWithLoadedModel(prepareSources),
               { restore: false }
             )
           : await prepareSources());
+        retrievalStats.rag = {
+          ms: Date.now() - ragStartedAt,
+          chunks: context.length,
+        };
       }
 
       const skippedForAttachmentPriority =
@@ -321,6 +328,12 @@ export const useSendChatMessage = ({
           });
           context = [...context, ...webContext];
           sourceDocuments = [...sourceDocuments, ...webSources];
+          retrievalStats.web = {
+            ms: Date.now() - searchStartedAt,
+            sources: webSources.length,
+            read: webSources.filter((source) => source.read).length,
+            queries: webTelemetry.plannedQueries.length,
+          };
           if (webSources.length > 0) {
             webIntent = webTelemetry.intent || undefined;
             webIntentKind = webTelemetry.intentKind;
@@ -370,6 +383,7 @@ export const useSendChatMessage = ({
         webSubQueries,
         webWeak,
         webSearchFailed,
+        retrievalStats,
       };
     };
 

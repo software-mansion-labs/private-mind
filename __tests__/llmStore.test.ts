@@ -2584,6 +2584,51 @@ describe('runBenchmark', () => {
   });
 });
 
+describe('what retrieval cost is kept with the answer it paid for', () => {
+  const settings = { systemPrompt: 'be helpful' };
+
+  beforeEach(async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    mockInstance.generate.mockResolvedValue('The answer is 42.');
+    useLLMStore.setState({ activeChatId: 1, activeChatMessages: [] });
+  });
+
+  const assistantWrite = () =>
+    mockPersistMessage.mock.calls
+      .filter((call) => call[1]?.role === 'assistant')
+      .at(-1)![1];
+
+  it('stores the stats the source build reported', async () => {
+    const withStats = async () => ({
+      context: ['a chunk'],
+      sourceDocuments: [],
+      preferredSourceDocuments: [],
+      retrievalStats: {
+        rag: { ms: 412, chunks: 6 },
+        web: { ms: 8420, sources: 5, read: 3, queries: 2 },
+      },
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, withStats, settings);
+
+    expect(assistantWrite().retrievalStats).toEqual({
+      rag: { ms: 412, chunks: 6 },
+      web: { ms: 8420, sources: 5, read: 3, queries: 2 },
+    });
+  });
+
+  it('leaves the stats off a turn that retrieved nothing', async () => {
+    await useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
+
+    expect(assistantWrite().retrievalStats).toBeUndefined();
+  });
+});
+
 describe('a model picked just before sending must be the one that answers', () => {
   const settings = { systemPrompt: 'be helpful' };
   const otherModel = { ...baseModel, id: 2, modelName: 'Second LLM' };
