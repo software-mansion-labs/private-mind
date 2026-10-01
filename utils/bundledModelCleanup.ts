@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { File } from 'expo-file-system';
-import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
+import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 
 const CLEANUP_DONE_KEY = 'bundled_model_leftovers_removed';
 

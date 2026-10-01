@@ -10,8 +10,8 @@ import {
   syncBuiltInModelPaths,
 } from '../database/modelRepository';
 import Toast from 'react-native-toast-message';
-import { ResourceFetcher } from 'react-native-executorch';
-import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
+import { ResourceFetcher } from 'react-native-executorch/legacy';
+import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import { Feedback } from '../utils/Feedback';
 
 export enum ModelState {

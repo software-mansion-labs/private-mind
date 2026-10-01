@@ -4,6 +4,7 @@ import { useLLMStore } from '../store/llmStore';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { Model } from '../database/modelRepository';
 import type { MessagesHandle } from '../components/chat-screen/Messages';
+import Toast from 'react-native-toast-message';
 
 jest.mock('expo-router', () => ({ router: { replace: jest.fn() } }));
 jest.mock('../database/chatRepository', () => ({
@@ -34,15 +35,21 @@ jest.mock('../store/chatStore', () => ({
 jest.mock('../store/sourceStore', () => ({
   useSourceStore: { getState: () => ({ sources: [] }) },
 }));
+const webEnabledByChat: Record<number, boolean> = {};
 jest.mock('../store/webSearchStore', () => ({
   useWebSearchStore: {
     getState: () => ({
+      isEnabled: (chatId: number) => !!webEnabledByChat[chatId],
       resetTrace: jest.fn(),
       transfer: jest.fn(),
       setSearchingWeb: jest.fn(),
       pushWebSearchEvent: jest.fn(),
     }),
   },
+}));
+jest.mock('react-native-toast-message', () => ({
+  __esModule: true,
+  default: { show: jest.fn(), hide: jest.fn() },
 }));
 jest.mock('../store/embeddingModelStore', () => ({
   useEmbeddingModelStore: { getState: () => ({ status: 'idle' }) },
@@ -56,7 +63,11 @@ jest.mock('../store/llmStore', () => {
     activeChatDigest: null,
     sendChatMessage: jest.fn(async () => true),
     runWithModelOffloaded: jest.fn(),
-    interrupt: jest.fn(),
+    interrupt: jest.fn(() => {
+      state.isGenerating = false;
+      state.isProcessingPrompt = false;
+      state.generatingForChatId = null;
+    }),
     loadModel: jest.fn(async () => {}),
   };
   const store = Object.assign(() => state, { getState: () => state });
@@ -81,7 +92,11 @@ const messagesRef = {
   } as unknown as MessagesHandle,
 };
 
-const useSend = (chatId = 1, loading = false) =>
+const useSend = (
+  chatId = 1,
+  loading = false,
+  waitForModelSwitch?: () => Promise<void>
+) =>
   useSendChatMessage({
     chatId,
     model: { id: 1, modelName: 'Test LLM' } as Model,
@@ -89,7 +104,6 @@ const useSend = (chatId = 1, loading = false) =>
     chatSettings: {
       systemPrompt: '',
       thinkingEnabled: false,
-      webSearchEnabled: false,
     },
     enabledSources: [],
     vectorStore: null,
@@ -98,7 +112,8 @@ const useSend = (chatId = 1, loading = false) =>
     db: {} as SQLiteDatabase,
     isGenerating: false,
     isModelLoading: loading,
-    isSwitching: false,
+    isSwitching: !!waitForModelSwitch,
+    waitForModelSwitch,
   });
 
 beforeEach(() => {
@@ -110,6 +125,10 @@ beforeEach(() => {
   state.interrupt.mockClear();
   state.loadModel.mockClear();
   state.model = { id: 1, modelName: 'Test LLM' };
+  (Toast.show as jest.Mock).mockClear();
+  Object.keys(webEnabledByChat).forEach(
+    (key) => delete webEnabledByChat[Number(key)]
+  );
 });
 
 describe('sending while another turn is open', () => {
@@ -178,6 +197,45 @@ describe('sending while another turn is open', () => {
   });
 });
 
+describe('a send that lands while the model is being switched', () => {
+  it('waits for the switch instead of refusing the message', async () => {
+    let settle = () => {};
+    const switched = new Promise<void>((resolve) => {
+      settle = resolve;
+    });
+
+    const sent = useSend(1, false, () => switched)('hello');
+    expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+
+    settle();
+    expect(await sent).toBe(true);
+    expect(mockedState().sendChatMessage).toHaveBeenCalled();
+  });
+
+  it('refuses only when nothing can tell it the switch is over', async () => {
+    const send = useSendChatMessage({
+      chatId: 1,
+      model: { id: 1, modelName: 'Test LLM' } as Model,
+      messageHistory: [],
+      chatSettings: {
+        systemPrompt: '',
+        thinkingEnabled: false,
+      },
+      enabledSources: [],
+      vectorStore: null,
+      embeddings: null,
+      messagesRef,
+      db: {} as SQLiteDatabase,
+      isGenerating: false,
+      isModelLoading: false,
+      isSwitching: true,
+    });
+
+    expect(await send('hello')).toBe('model-loading');
+    expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+  });
+});
+
 describe('the send transition', () => {
   it('arms the pin before the keyboard is told to close', async () => {
     const dismiss = jest
@@ -206,7 +264,6 @@ describe('the model in the header is the one that answers', () => {
       chatSettings: {
         systemPrompt: '',
         thinkingEnabled: false,
-        webSearchEnabled: false,
       },
       enabledSources: [],
       vectorStore: null,
@@ -247,5 +304,42 @@ describe('the model in the header is the one that answers', () => {
       await usePinnedTo({ id: 2, modelName: 'Gemma 4 - 2B' } as Model)('hi')
     ).toBe('busy');
     expect(state.loadModel).not.toHaveBeenCalled();
+  });
+});
+
+describe('a turn that starts while the chat is being looked up', () => {
+  it('gives the composer back instead of dropping the message in an existing chat', async () => {
+    const { checkIfChatExists } = jest.requireMock(
+      '../database/chatRepository'
+    ) as { checkIfChatExists: jest.Mock };
+    const state = mockedState();
+
+    checkIfChatExists.mockImplementationOnce(async () => {
+      state.isProcessingPrompt = true;
+      return true;
+    });
+
+    expect(await useSend(1)('hello')).toBe(false);
+
+    expect(state.sendChatMessage).not.toHaveBeenCalled();
+    expect(messagesRef.current?.cancelMessageSent).toHaveBeenCalled();
+  });
+});
+
+describe('the web toggle the composer is showing', () => {
+  it('decides the turn when the sources are built, not when the message was sent', async () => {
+    webEnabledByChat[1] = true;
+    const state = mockedState();
+
+    await useSend()('what is the weather in Kraków');
+    const buildSources = state.sendChatMessage.mock.calls[0][2];
+
+    webEnabledByChat[1] = false;
+    await buildSources();
+    expect(Toast.show).not.toHaveBeenCalled();
+
+    webEnabledByChat[1] = true;
+    await buildSources();
+    expect(Toast.show).toHaveBeenCalled();
   });
 });

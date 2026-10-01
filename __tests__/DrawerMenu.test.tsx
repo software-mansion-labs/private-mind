@@ -30,15 +30,38 @@ jest.mock('../utils/startPhantomChat', () => ({
   startPhantomChat: (...args: unknown[]) => mockStartPhantomChat(...args),
 }));
 
+const mockToast = jest.fn();
+jest.mock('react-native-toast-message', () => ({
+  __esModule: true,
+  default: { show: (...args: unknown[]) => mockToast(...args) },
+}));
+
 const mockInterrupt = jest.fn();
+const mockLlmState = {
+  interrupt: mockInterrupt,
+  isGenerating: false,
+  isProcessingPrompt: false,
+  generatingForChatId: null as number | null,
+  activeChatId: null as number | null,
+};
 jest.mock('../store/llmStore', () => ({
-  useLLMStore: jest.fn(
-    (selector?: (state: { interrupt: jest.Mock }) => unknown) => {
-      const state = { interrupt: mockInterrupt };
-      return selector ? selector(state) : state;
-    }
+  useLLMStore: jest.fn((selector?: (state: unknown) => unknown) =>
+    selector ? selector(mockLlmState) : mockLlmState
   ),
 }));
+
+const startTurnInChat = (chatId: number) => {
+  mockLlmState.isGenerating = true;
+  mockLlmState.generatingForChatId = chatId;
+  mockLlmState.activeChatId = chatId;
+};
+
+const noTurnRunning = () => {
+  mockLlmState.isGenerating = false;
+  mockLlmState.isProcessingPrompt = false;
+  mockLlmState.generatingForChatId = null;
+  mockLlmState.activeChatId = null;
+};
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -103,6 +126,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockPathname = '/';
   mockPhantomChat = null;
+  noTurnRunning();
   setPlatform('ios');
 });
 
@@ -188,6 +212,24 @@ describe('DrawerMenu — collapsed', () => {
 
     expect(mockStartPhantomChat).toHaveBeenCalledWith({}, 'replace');
     expect(onNavigate).toHaveBeenCalled();
+  });
+
+  it('refuses New chat while a turn is in flight, instead of interrupting it', () => {
+    mockPathname = '/chat/3';
+    startTurnInChat(3);
+    const onNavigate = jest.fn();
+    renderMenu({ onNavigate });
+
+    fireEvent.press(screen.getByTestId('drawer-new-chat'));
+
+    expect(mockStartPhantomChat).not.toHaveBeenCalled();
+    expect(mockInterrupt).not.toHaveBeenCalled();
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: 'Wait for the response to finish or stop it first.',
+      })
+    );
   });
 
   it('only closes the drawer when already on the new chat screen', () => {
