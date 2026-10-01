@@ -1,7 +1,7 @@
 import { useModelStore, ModelState } from '../store/modelStore';
 import * as modelRepository from '../database/modelRepository';
-import { ResourceFetcher } from 'react-native-executorch';
-import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
+import { ResourceFetcher } from 'react-native-executorch/legacy';
+import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import Toast from 'react-native-toast-message';
 
 jest.mock('../database/modelRepository');

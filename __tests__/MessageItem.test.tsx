@@ -194,6 +194,32 @@ describe('event messages', () => {
   });
 });
 
+describe('a response the user stopped', () => {
+  it('offers no copy, fork or sources on an answer that never finished', () => {
+    renderItem({
+      message: { ...baseMessage, stoppedByUser: true },
+      showActions: true,
+      showForkAction: true,
+      onCopy: jest.fn(),
+      onFork: jest.fn(),
+    });
+
+    expect(screen.queryByTestId('message-actions')).toBeNull();
+  });
+
+  it('keeps them on an answer that finished', () => {
+    renderItem({
+      message: baseMessage,
+      showActions: true,
+      showForkAction: true,
+      onCopy: jest.fn(),
+      onFork: jest.fn(),
+    });
+
+    expect(screen.getByTestId('message-actions')).toBeTruthy();
+  });
+});
+
 // ─── assistant messages ───────────────────────────────────────────────────────
 
 describe('assistant messages', () => {

@@ -3,6 +3,11 @@
     <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
     <item name="colorPrimary">@color/colorPrimary</item>
     <item name="android:statusBarColor">#3D61D6</item>
+    <item name="colorAccent">@color/brandBlue</item>
+    <item name="colorControlActivated">@color/brandBlue</item>
+    <item name="android:colorAccent">@color/brandBlue</item>
+    <item name="android:colorControlActivated">@color/brandBlue</item>
+    <item name="android:textColorHighlight">@color/textSelectionHighlight</item>
   </style>
   <style name="Theme.App.SplashScreen" parent="Theme.SplashScreen">
     <item name="windowSplashScreenBackground">@color/splashscreen_background</item>
