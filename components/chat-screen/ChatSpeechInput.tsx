@@ -160,6 +160,7 @@ const ChatSpeechInput: React.FC<Props> = ({
     setTimeout(onCancel, CANCEL_ANIMATION_DURATION);
   };
 
+  const [sending, setSending] = useState(false);
   const isPreparing = status === 'loading' || status === 'idle';
   const isFinishing = status === 'processing';
 
@@ -171,9 +172,10 @@ const ChatSpeechInput: React.FC<Props> = ({
       });
       return;
     }
-    if (isFinishing) return;
+    if (isFinishing || sending) return;
 
     exitStateRef.current = 'pending_submit';
+    setSending(true);
     stop();
   };
 
@@ -244,10 +246,16 @@ const ChatSpeechInput: React.FC<Props> = ({
         <Text style={[styles.secondaryNote, styles.actionNote]}>
           {actionNote}
         </Text>
-        <View style={status === 'listening' ? undefined : styles.sendNotReady}>
+        <View
+          style={
+            status === 'listening' || sending ? undefined : styles.sendNotReady
+          }
+        >
           <CircleButton
             icon={SendIcon}
             onPress={handleSend}
+            busy={sending}
+            disabled={sending}
             color={theme.text.primary}
             backgroundColor={theme.bg.softPrimary}
             testID="speech-send"

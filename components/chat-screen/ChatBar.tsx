@@ -336,7 +336,9 @@ const ChatBar = ({
   const [sendInFlight, setSendInFlight] = useState(false);
 
   useEffect(() => {
-    if (isGeneratingHere || isProcessingPromptHere) setSendInFlight(false);
+    if (!isGeneratingHere && !isProcessingPromptHere) return;
+    setSendInFlight(false);
+    setSendPending(false);
   }, [isGeneratingHere, isProcessingPromptHere]);
 
   const handleSend = useCallback(() => {
@@ -448,11 +450,16 @@ const ChatBar = ({
         const attachmentsToSend = attachments;
         const imageUriToSend = imageAttachment?.uri;
         clearAll({ cleanupSources: false });
-        Promise.resolve(
-          onSend(transcript, imageUriToSend, attachmentsToSend)
-        ).catch((error) => {
-          console.error('Failed to send transcript:', error);
-        });
+        setSendInFlight(true);
+        setSendPending(true);
+        Promise.resolve(onSend(transcript, imageUriToSend, attachmentsToSend))
+          .catch((error) => {
+            console.error('Failed to send transcript:', error);
+          })
+          .finally(() => {
+            setSendPending(false);
+            setSendInFlight(false);
+          });
       }
     };
 

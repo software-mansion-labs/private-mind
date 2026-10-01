@@ -698,6 +698,47 @@ describe('speech input', () => {
     expect(screen.queryByTestId('speech-input')).toBeNull();
   });
 
+  it('spins the send button where the mic would be while a dictated message goes out', async () => {
+    const onSend = jest.fn(() => new Promise<boolean>(() => {}));
+    renderBar({ onSend });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+
+    fireEvent.press(screen.getByTestId('speech-submit'));
+
+    expect(screen.getByText('send pending')).toBeTruthy();
+    expect(screen.getByTestId('send-btn')).toBeTruthy();
+    expect(screen.queryByTestId('speech-btn')).toBeNull();
+  });
+
+  it('lets go of the spinner once the answer to a dictated message starts', async () => {
+    const onSend = jest.fn(() => new Promise<boolean>(() => {}));
+    const { rerender } = renderBar({ onSend });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+    fireEvent.press(screen.getByTestId('speech-submit'));
+
+    mockUseLLMStore.mockImplementation(
+      (selector?: (state: Partial<LLMStore>) => unknown) => {
+        const state = {
+          isGenerating: true,
+          isProcessingPrompt: false,
+          generatingForChatId: defaultProps.chatId,
+          interrupt: jest.fn(),
+          loadModel: jest.fn(),
+          model: null,
+        };
+        return selector ? selector(state) : state;
+      }
+    );
+    rerender(<ChatBar {...defaultProps} onSend={jest.fn()} />);
+
+    expect(screen.getByTestId('interrupt-btn')).toBeTruthy();
+    expect(screen.queryByText('send pending')).toBeNull();
+  });
+
   it('forwards attached imagePath when submitting speech transcript', async () => {
     mockUseAttachment.attachments = [
       {

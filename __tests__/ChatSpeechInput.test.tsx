@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
+import { ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 jest.mock('../context/ThemeContext', () => ({
@@ -81,6 +82,16 @@ describe('ChatSpeechInput once it is listening', () => {
 
     expect(mockSpeech.stop).toHaveBeenCalledTimes(1);
     expect(Toast.show).not.toHaveBeenCalled();
+  });
+
+  it('spins the send it took and takes no second one while the transcript finishes', () => {
+    renderSheet();
+
+    fireEvent.press(screen.getByTestId('speech-send'));
+    fireEvent.press(screen.getByTestId('speech-send'));
+
+    expect(mockSpeech.stop).toHaveBeenCalledTimes(1);
+    expect(screen.UNSAFE_getAllByType(ActivityIndicator)).toHaveLength(1);
   });
 });
 
