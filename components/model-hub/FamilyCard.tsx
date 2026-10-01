@@ -12,9 +12,10 @@ import { pressedOpacity } from '../../styles/pressable';
 interface Props {
   family: ModelFamily;
   onPress: (family: ModelFamily) => void;
+  runnable?: boolean;
 }
 
-const FamilyCard = ({ family, onPress }: Props) => {
+const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
 
   const downloadedCount = family.models.filter((m) => m.isDownloaded).length;
@@ -23,13 +24,26 @@ const FamilyCard = ({ family, onPress }: Props) => {
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && pressedOpacity]}
+      style={({ pressed }) => [
+        styles.card,
+        !runnable && styles.unrunnableCard,
+        pressed && pressedOpacity,
+      ]}
       onPress={() => onPress(family)}
+      testID={`family-card-${family.name}`}
     >
       <View style={styles.info}>
         <Text style={styles.name}>{family.name}</Text>
         {description && <Text style={styles.description}>{description}</Text>}
         <View style={styles.chipContainer}>
+          {!runnable && (
+            <Chip
+              title="Incompatible"
+              borderColor={theme.text.error}
+              backgroundColor={theme.bg.errorSecondary}
+              textColor={theme.text.error}
+            />
+          )}
           <Chip
             title={`${variantCount} ${variantCount === 1 ? 'variant' : 'variants'}`}
             borderColor={theme.border.soft}
@@ -79,6 +93,9 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 4,
+    },
+    unrunnableCard: {
+      opacity: 0.5,
     },
     chevron: {
       fontSize: 28,

@@ -11,6 +11,12 @@ import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { openAppSettings } from '../utils/openAppSettings';
 import { pressedOpacity } from '../styles/pressable';
 
+const NAV_HEADER_HEIGHT = Platform.OS === 'ios' ? 44 : 56;
+const TOAST_HEADER_GAP = 2;
+
+export const toastTopOffset = (safeAreaTop: number) =>
+  safeAreaTop + NAV_HEADER_HEIGHT + TOAST_HEADER_GAP;
+
 const AppToast: React.FC = () => {
   const { styles } = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -50,7 +56,9 @@ const AppToast: React.FC = () => {
   };
 
   const renderToast = () => {
-    return <Toast config={toastConfig} topOffset={insets.top + 16} />;
+    return (
+      <Toast config={toastConfig} topOffset={toastTopOffset(insets.top)} />
+    );
   };
 
   if (Platform.OS === 'ios') {
@@ -70,6 +78,13 @@ const createStyles = (theme: Theme) =>
       borderRadius: 12,
       padding: 16,
       flexDirection: 'row',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border.soft,
+      shadowColor: theme.bg.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
     },
     toastBody: {
       width: '80%',

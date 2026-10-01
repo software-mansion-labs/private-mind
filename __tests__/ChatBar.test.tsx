@@ -1,5 +1,11 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react-native';
+import {
+  render,
+  screen,
+  fireEvent,
+  act,
+  waitFor,
+} from '@testing-library/react-native';
 import { Keyboard } from 'react-native';
 import type { LLMStore } from '../store/llmStore';
 import { useChatStore } from '../store/chatStore';
@@ -186,6 +192,9 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     thinkingEnabled,
     onAttach,
     onWebSearchToggle,
+    modelBusy,
+    sendPending,
+    sendInFlight,
   }: {
     userInput: string;
     hasAttachments: boolean;
@@ -198,8 +207,13 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     thinkingEnabled: boolean;
     onAttach: () => void;
     onWebSearchToggle?: () => void;
+    modelBusy?: boolean;
+    sendPending?: boolean;
+    sendInFlight?: boolean;
   }) => (
     <View testID="chat-bar-actions">
+      {modelBusy && <Text>model busy</Text>}
+      {sendPending && <Text>send pending</Text>}
       {onWebSearchToggle && (
         <Pressable testID="web-search-toggle" onPress={onWebSearchToggle}>
           <Text>Web</Text>
@@ -212,7 +226,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
         <Pressable testID="interrupt-btn" onPress={onInterrupt}>
           <Text>Stop</Text>
         </Pressable>
-      ) : userInput || hasAttachments ? (
+      ) : userInput || hasAttachments || sendInFlight ? (
         <>
           {hasAttachments && !userInput && (
             <Pressable testID="speech-btn" onPress={onSpeechInput}>
@@ -381,6 +395,31 @@ describe('downloaded model — text input', () => {
     dismiss.mockRestore();
   });
 
+  it('keeps the send button up while the turn is still being created (#408)', async () => {
+    let release: (accepted: boolean) => void = () => {};
+    const onSend = jest.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          release = resolve;
+        })
+    );
+    renderBar({ onSend });
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'Hello'
+    );
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    expect(screen.queryByTestId('speech-btn')).toBeNull();
+    expect(screen.getByTestId('send-btn')).toBeTruthy();
+
+    await act(async () => {
+      release(true);
+    });
+
+    expect(screen.getByTestId('speech-btn')).toBeTruthy();
+  });
+
   it('calls onSend with current input when send button is pressed', () => {
     const onSend = jest.fn();
     renderBar({ onSend });
@@ -445,17 +484,19 @@ describe('downloaded model — text input', () => {
     expect(textInput().props.value).toBe('again');
   });
 
-  it('keeps the input and shows a toast instead of sending while switching models', () => {
-    const onSend = jest.fn();
+  it('takes a send made while the model is still switching, instead of refusing it', () => {
+    const onSend = jest.fn(() => new Promise<boolean>(() => {}));
     renderBar({ onSend, modelSwitching: true });
     const input = screen.getByPlaceholderText('Ask about anything...');
     fireEvent.changeText(input, 'Keep this message');
 
     fireEvent.press(screen.getByTestId('send-btn'));
 
-    expect(onSend).not.toHaveBeenCalled();
-    expect(input.props.value).toBe('Keep this message');
-    expect(Toast.show).toHaveBeenCalledWith({
+    expect(onSend).toHaveBeenCalledWith('Keep this message', undefined, []);
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('');
+    expect(Toast.show).not.toHaveBeenCalledWith({
       type: 'defaultToast',
       text1: 'Wait for the model to finish loading.',
     });
@@ -565,6 +606,51 @@ describe('speech input', () => {
       type: 'defaultToast',
       text1: 'Wait for the model to finish loading.',
     });
+  });
+
+  it('says nothing on the send button while the model merely loads (#380)', () => {
+    renderBar({ disabled: true });
+    expect(screen.queryByText('send pending')).toBeNull();
+  });
+
+  it('spins the send button after a send lands on a loading model (#380)', async () => {
+    const onSend = jest.fn(() => new Promise<boolean>(() => {}));
+    renderBar({ disabled: true, onSend });
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'hi'
+    );
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    await waitFor(() => expect(screen.getByText('send pending')).toBeTruthy());
+  });
+
+  it('drops the spinner once the queued send settles (#380)', async () => {
+    const onSend = jest.fn(async () => true);
+    renderBar({ disabled: true, onSend });
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'hi'
+    );
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    await waitFor(() => expect(screen.queryByText('send pending')).toBeNull());
+  });
+
+  it('leaves the send button alone when the model is already up', async () => {
+    const onSend = jest.fn(() => new Promise<boolean>(() => {}));
+    renderBar({ onSend });
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'hi'
+    );
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    await waitFor(() => expect(onSend).toHaveBeenCalled());
+    expect(screen.queryByText('send pending')).toBeNull();
   });
 
   it('does not open speech input while the model is loading', () => {

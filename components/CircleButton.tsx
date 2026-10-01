@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import { SvgComponent } from '../utils/SvgComponent';
 import { pressedOpacity } from '../styles/pressable';
@@ -11,6 +11,8 @@ interface Props {
   color: string;
   onPress?: () => void;
   disabled?: boolean;
+  dimmed?: boolean;
+  busy?: boolean;
   testID?: string;
 }
 
@@ -21,6 +23,8 @@ const CircleButton = ({
   color,
   onPress,
   disabled = false,
+  dimmed = false,
+  busy = false,
   testID,
 }: Props) => {
   const styles = useMemo(
@@ -31,11 +35,20 @@ const CircleButton = ({
   return (
     <Pressable
       onPress={disabled ? undefined : onPress}
-      style={({ pressed }) => [styles.circle, pressed && pressedOpacity]}
+      style={({ pressed }) => [
+        styles.circle,
+        (disabled || dimmed) && styles.dimmed,
+        pressed && pressedOpacity,
+      ]}
       disabled={disabled}
+      accessibilityState={{ disabled, busy }}
       testID={testID}
     >
-      <Icon width={size} height={size} color={color} />
+      {busy ? (
+        <ActivityIndicator size="small" color={color} />
+      ) : (
+        <Icon width={size} height={size} color={color} />
+      )}
     </Pressable>
   );
 };
@@ -53,7 +66,7 @@ const createStyles = (backgroundColor: string) =>
       alignItems: 'center',
       backgroundColor,
     },
-    pressed: {
+    dimmed: {
       opacity: 0.6,
     },
   });
