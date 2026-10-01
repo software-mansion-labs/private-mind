@@ -1,4 +1,5 @@
 import React from 'react';
+import { PixelRatio, StyleSheet } from 'react-native';
 import type { ViewProps } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
@@ -402,6 +403,28 @@ describe('user messages', () => {
     expect(
       screen.getByText('Help me write a Python function.').props.children
     ).toBe('Help me write a Python function.');
+  });
+
+  it('keeps the bubble width on the pixel grid, so iOS measures the text at the width it draws it (#399)', () => {
+    jest.spyOn(PixelRatio, 'get').mockReturnValue(3);
+    renderItem({
+      role: 'user',
+      content:
+        'Help me write a Python function to sort a list of dictionaries by a specific key.',
+    });
+    const bubble = screen.getByTestId('text-bubble');
+
+    fireEvent(bubble.parent!, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 370, height: 120 } },
+    });
+
+    const maxWidth = StyleSheet.flatten(
+      screen.getByTestId('text-bubble').props.style
+    ).maxWidth as number;
+    expect(typeof maxWidth).toBe('number');
+    expect(maxWidth * 3).toBe(Math.round(maxWidth * 3));
+    expect(maxWidth).toBeLessThanOrEqual(370 * 0.65);
+    expect(maxWidth).toBeCloseTo(370 * 0.65, 0);
   });
 });
 
