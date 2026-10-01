@@ -230,6 +230,7 @@ export default function ChatScreen({
     setSetting,
     db,
     inputRef,
+    modelSwitching: isSwitching,
   });
 
   const chatGenerationError =
@@ -237,10 +238,13 @@ export default function ChatScreen({
 
   const handleRetryGeneration = useCallback(() => {
     messagesRef.current?.onMessageSent();
-    retryWithPinnedModel(model, retryLastGeneration).catch((error) => {
+    retryWithPinnedModel(
+      isSwitching ? undefined : model,
+      retryLastGeneration
+    ).catch((error) => {
       console.error('Failed to retry generation:', error);
     });
-  }, [model, retryLastGeneration]);
+  }, [model, retryLastGeneration, isSwitching]);
 
   const scrollBottomOffset = theme.insets.bottom;
 
