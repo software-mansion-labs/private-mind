@@ -602,41 +602,80 @@ describe('sendChatMessage', () => {
 
     afterEach(() => useSettingsStore.setState({ customSystemPrompt: '' }));
 
-    it('is welcomed without running the model or gathering sources', async () => {
+    const promptOptions = () =>
+      (prepareMessagesForLLM as jest.Mock).mock.calls.at(-1)?.[4];
+
+    const modelWelcome =
+      'Hello! I am a private assistant running on your phone.\n\n' +
+      '- Explain an idea\n- Draft a message\n- Summarize a file\n\n' +
+      'Where shall we begin?';
+
+    it('lets the model write the welcome, from the prepared one as its example', async () => {
       openChat();
+      mockInstance.generate.mockResolvedValueOnce(modelWelcome);
+
+      await useLLMStore
+        .getState()
+        .sendChatMessage('Hi!', 1, noSources, settings);
+
+      expect(mockInstance.generate).toHaveBeenCalled();
+      expect(promptOptions()).toEqual(
+        expect.objectContaining({ openingWelcome: OPENING_WELCOMES.en })
+      );
+      expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+        modelWelcome
+      );
+    });
+
+    it('gathers no sources for a greeting', async () => {
+      openChat();
+      mockInstance.generate.mockResolvedValueOnce(modelWelcome);
       const buildSources = jest.fn(noSources);
 
       await useLLMStore
         .getState()
         .sendChatMessage('Hi!', 1, buildSources, settings);
 
-      expect(mockInstance.generate).not.toHaveBeenCalled();
       expect(buildSources).not.toHaveBeenCalled();
-      expect(mockPersistMessage).toHaveBeenCalledWith(
-        mockDb,
-        expect.objectContaining({ role: 'user', content: 'Hi!' })
-      );
-      expect(mockPersistMessage).toHaveBeenCalledWith(
-        mockDb,
-        expect.objectContaining({
-          role: 'assistant',
-          content: OPENING_WELCOMES.en,
-        })
-      );
     });
 
-    it('leaves the turn finished, with the welcome on screen', async () => {
+    it.each([
+      [
+        'in another script',
+        '안녕하세요! 무엇을 도와드릴까요? 저는 개인 비서입니다.',
+      ],
+      ['in another language', OPENING_WELCOMES.pl],
+      ['with a bare greeting', 'Hi!'],
+      ['with an essay', 'A greeting is a social ritual. '.repeat(40)],
+    ])(
+      'shows the prepared welcome when the model answers %s',
+      async (_, strayed) => {
+        openChat();
+        mockInstance.generate.mockResolvedValueOnce(strayed);
+
+        await useLLMStore
+          .getState()
+          .sendChatMessage('Hi!', 1, noSources, settings);
+
+        expect(mockPersistMessage).toHaveBeenCalledWith(
+          mockDb,
+          expect.objectContaining({
+            role: 'assistant',
+            content: OPENING_WELCOMES.en,
+          })
+        );
+      }
+    );
+
+    it('answers a greeting in the language it came in', async () => {
       openChat();
+      mockInstance.generate.mockResolvedValueOnce(OPENING_WELCOMES.en);
 
       await useLLMStore
         .getState()
         .sendChatMessage('cześć', 1, noSources, settings);
 
-      const state = useLLMStore.getState();
-      expect(state.isProcessingPrompt).toBe(false);
-      expect(state.isGenerating).toBe(false);
-      expect(state.generatingForChatId).toBeNull();
-      expect(state.activeChatMessages.at(-1)).toEqual(
+      expect(useLLMStore.getState().activeChatMessages.at(-1)).toEqual(
         expect.objectContaining({
           role: 'assistant',
           content: OPENING_WELCOMES.pl,
@@ -644,37 +683,54 @@ describe('sendChatMessage', () => {
       );
     });
 
-    it('goes to the model once the first message carries a task', async () => {
+    it('leaves a welcome the user stopped as they left it', async () => {
+      openChat();
+      mockInstance.generate.mockImplementationOnce(async () => {
+        useLLMStore.getState().interrupt();
+        return 'Hel';
+      });
+
+      await useLLMStore
+        .getState()
+        .sendChatMessage('Hi!', 1, noSources, settings);
+
+      expect(mockPersistMessage).not.toHaveBeenCalledWith(
+        mockDb,
+        expect.objectContaining({ content: OPENING_WELCOMES.en })
+      );
+    });
+
+    it('gives no example once the first message carries a task', async () => {
       openChat();
 
       await useLLMStore
         .getState()
         .sendChatMessage('hi, what is 6 times 7?', 1, noSources, settings);
 
-      expect(mockInstance.generate).toHaveBeenCalled();
+      expect(promptOptions().openingWelcome).toBeUndefined();
     });
 
-    it('goes to the model when the conversation is already under way', async () => {
+    it('gives no example when the conversation is already under way', async () => {
       openChat(earlierTurn);
 
       await useLLMStore
         .getState()
         .sendChatMessage('hi', 1, noSources, settings);
 
-      expect(mockInstance.generate).toHaveBeenCalled();
+      expect(promptOptions().openingWelcome).toBeUndefined();
     });
 
-    it('goes to the model when it comes with an image', async () => {
+    it('gives no example when the greeting comes with an image', async () => {
       openChat();
 
       await useLLMStore
         .getState()
         .sendChatMessage('hi', 1, noSources, settings, 'file://photo.jpg');
 
-      expect(mockInstance.generate).toHaveBeenCalled();
+      expect(promptOptions().openingWelcome).toBeUndefined();
     });
 
-    it('goes to the model when the user has written their own instructions', async () => {
+    it('gives no example when the user has written their own instructions', async () => {
       openChat();
       useSettingsStore.setState({ customSystemPrompt: 'You are a pirate.' });
 
@@ -682,7 +738,7 @@ describe('sendChatMessage', () => {
         .getState()
         .sendChatMessage('hi', 1, noSources, settings);
 
-      expect(mockInstance.generate).toHaveBeenCalled();
+      expect(promptOptions().openingWelcome).toBeUndefined();
     });
   });
 

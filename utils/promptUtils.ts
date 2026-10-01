@@ -235,6 +235,12 @@ const unsourcedLanguageInstruction = (
 const GREETING_ONLY_INSTRUCTION =
   'The latest user message is only a greeting. Greet the user back in one or two short, friendly sentences in the same language and ask what they would like help with. Do not answer a question that was not asked.';
 
+const OPENING_WELCOME_INSTRUCTION =
+  'The user has only greeted you, and this is the start of the chat. Reply with a short welcome of your own, written in the language of the example below: greet them back, say in one sentence that you are a private assistant running on their phone, offer three short examples of what you can help with as a list, and ask what they would like to start with. Keep to the length of the example. Do not answer a question that was not asked.';
+
+const getOpeningWelcomeInstruction = (welcome: string): string =>
+  `\n\n${OPENING_WELCOME_INSTRUCTION}\n\nExample of such a welcome:\n${welcome}`;
+
 const getGreetingOnlyInstruction = (question?: string): string =>
   question && isGreetingOnly(question)
     ? `\n\n${GREETING_ONLY_INSTRUCTION}`
@@ -594,6 +600,7 @@ export interface PrepareMessagesOptions {
   webWeak?: boolean;
   webSearchFailed?: boolean;
   digest?: string;
+  openingWelcome?: string;
 }
 
 const MAX_SHAPE_INSTRUCTIONS = 4;
@@ -625,6 +632,7 @@ export const prepareMessagesForLLM = (
     webWeak,
     webSearchFailed,
     digest,
+    openingWelcome,
   } = options;
   const hasContext = context.some((chunk) => chunk.trim().length > 0);
   const question = activeChatMessages.findLast(
@@ -680,7 +688,9 @@ export const prepareMessagesForLLM = (
     systemPrompt += getWeakRetrievalInstruction(webWeak);
   } else {
     systemPrompt += `\n\n${unsourcedLanguageInstruction(language)}`;
-    systemPrompt += getGreetingOnlyInstruction(question);
+    systemPrompt += openingWelcome
+      ? getOpeningWelcomeInstruction(openingWelcome)
+      : getGreetingOnlyInstruction(question);
     systemPrompt += getWebSearchFailedInstruction(webSearchFailed);
     const hasPriorWebAnswer = activeChatMessages.some(
       (msg) =>

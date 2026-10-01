@@ -49,6 +49,7 @@ import {
   joinContinuation,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
+  strayedFromWelcome,
   retryDropsGroundedDetail,
   stripEchoedQuestionPrefix,
   stripSourceLabels,
@@ -710,6 +711,10 @@ type LLMGenerationResult = {
   performance: { timeToFirstToken: number; tokensPerSecond: number };
 };
 
+const NOTHING_GATHERED: Awaited<
+  ReturnType<Parameters<LLMStore['sendChatMessage']>[2]>
+> = { context: [] };
+
 const NO_LLM_RESPONSE: LLMGenerationResult = {
   response: null,
   performance: { timeToFirstToken: 0, tokensPerSecond: 0 },
@@ -1109,39 +1114,19 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
 
     const openingWelcomeOfThisTurn = async (): Promise<string | null> => {
-      if (isRetry) return null;
       await waitForSettingsHydration();
+      const beforeThisQuestion = isRetry
+        ? activeChatMessages.slice(
+            0,
+            activeChatMessages.findLastIndex((msg) => msg.role === 'user')
+          )
+        : activeChatMessages;
       return openingWelcomeFor({
         message: newMessage,
-        earlierRoles: activeChatMessages.map((message) => message.role),
+        earlierRoles: beforeThisQuestion.map((message) => message.role),
         hasAttachment: !!imagePath || !!documentName,
         customInstructions: useSettingsStore.getState().customSystemPrompt,
       });
-    };
-
-    const completeTurnWithWelcome = async (welcome: string) => {
-      const assistantMessageId = await persistMessage(db, {
-        ...assistantPlaceholder,
-        content: welcome,
-        tokensPerSecond: 0,
-        timeToFirstToken: 0,
-      });
-      if (stillOurs() && get().activeChatId === chatId) {
-        updateChatStateForGeneration(set, 'complete', {
-          localId: assistantPlaceholder.localId,
-          assistantMessage: {
-            ...assistantPlaceholder,
-            id: assistantMessageId,
-            content: welcome,
-          },
-          timeToFirstToken: 0,
-          tokensPerSecond: 0,
-        });
-      } else if (stillOurs()) {
-        updateChatStateForGeneration(set, 'complete');
-      }
-      failedGenerationRequest = null;
-      set({ generationError: null });
     };
 
     try {
@@ -1150,15 +1135,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       }
 
       const openingWelcome = await openingWelcomeOfThisTurn();
-      if (openingWelcome && get().isProcessingPrompt) {
-        await completeTurnWithWelcome(openingWelcome);
-        return true;
-      }
 
-      const built = await endsWhenStopped(
-        buildSources(abortController.signal),
-        abortController.signal
-      );
+      const built = openingWelcome
+        ? NOTHING_GATHERED
+        : await endsWhenStopped(
+            buildSources(abortController.signal),
+            abortController.signal
+          );
       const {
         context,
         sourceDocuments,
@@ -1221,6 +1204,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           webWeak: webWeak,
           webSearchFailed: webSearchFailed,
           digest: digestForChat(get, chatId) ?? undefined,
+          openingWelcome: openingWelcome ?? undefined,
         }
       );
 
@@ -1287,6 +1271,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             webWeak: webWeak,
             webSearchFailed: webSearchFailed,
             digest: digestForChat(get, chatId) ?? undefined,
+            openingWelcome: openingWelcome ?? undefined,
           }
         );
         generation = await generateLLMResponse(
@@ -1301,6 +1286,15 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         ? tidyVisibleAnswer(rawResponse)
         : rawResponse;
       let loopGuardTrimmed = !!rawResponse && finalResponse !== rawResponse;
+      if (
+        openingWelcome &&
+        get().isGenerating &&
+        strayedFromWelcome(finalResponse ?? '', openingWelcome)
+      ) {
+        console.warn('Welcome strayed from the example, using the example');
+        finalResponse = openingWelcome;
+        loopGuardTrimmed = false;
+      }
       const currentQuestion = get().activeChatMessages.findLast(
         (msg) => msg.role === 'user'
       )?.content;
@@ -1314,7 +1308,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             : JSON.stringify(last?.content ?? ''))(effectivePrepared.at(-1))
       );
 
-      let nudged = false;
+      const welcomeTakesNoNudge = openingWelcome !== null;
+      let nudged = welcomeTakesNoNudge;
       const answerRetries: AnswerRetry[] = [];
 
       const questionLanguage = detectQuestionLanguage(currentQuestion ?? '');

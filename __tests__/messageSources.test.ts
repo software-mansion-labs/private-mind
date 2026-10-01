@@ -1,3 +1,4 @@
+import { OPENING_WELCOMES } from '../constants/opening-greetings';
 import {
   isCircularNonAnswer,
   stripEchoedQuestionPrefix,
@@ -11,6 +12,7 @@ import {
   joinContinuation,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
+  strayedFromWelcome,
   retryDropsGroundedDetail,
   answeredNothing,
   looksLikeNoAnswer,
@@ -840,6 +842,52 @@ describe('isQuestionEchoAnswer', () => {
     const question = 'Kiedy urodził się Macron?';
     const answer = 'Macron urodził się 21 grudnia 1977 roku (we Francji).';
     expect(isQuestionEchoAnswer(answer, question)).toBe(false);
+  });
+});
+
+describe('strayedFromWelcome', () => {
+  const welcome = OPENING_WELCOMES.en;
+  const ownWords =
+    'Hello! I am a private assistant running on your phone.\n\n' +
+    '- Explain an idea\n- Draft a message\n- Summarize a file\n\n' +
+    'Where shall we begin?';
+
+  it('accepts a welcome the model wrote in its own words', () => {
+    expect(strayedFromWelcome(ownWords, welcome)).toBe(false);
+  });
+
+  it('accepts the example itself, in every language it exists in', () => {
+    for (const prepared of Object.values(OPENING_WELCOMES)) {
+      expect(strayedFromWelcome(prepared, prepared)).toBe(false);
+    }
+  });
+
+  it('looks past a think block', () => {
+    expect(
+      strayedFromWelcome(`<think>greet them</think>${ownWords}`, welcome)
+    ).toBe(false);
+  });
+
+  it.each([
+    ['nothing', ''],
+    ['only a think block', '<think>hmm</think>'],
+    ['a bare greeting', 'Hello!'],
+    ['an essay', 'A greeting is a social ritual. '.repeat(40)],
+    [
+      'another script',
+      '안녕하세요! 무엇을 도와드릴까요? 저는 여러분의 개인 비서입니다. 무엇이든 물어보세요.'.repeat(
+        2
+      ),
+    ],
+    ['another language in the same script', OPENING_WELCOMES.pl],
+  ])('rejects %s', (_, answer) => {
+    expect(strayedFromWelcome(answer, welcome)).toBe(true);
+  });
+
+  it('rejects English where the greeting came in Hindi', () => {
+    expect(strayedFromWelcome(OPENING_WELCOMES.en, OPENING_WELCOMES.hi)).toBe(
+      true
+    );
   });
 });
 
