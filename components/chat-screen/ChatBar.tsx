@@ -295,10 +295,11 @@ const ChatBar = ({
   const loadModel = useLLMStore((state) => state.loadModel);
   const loadedModel = useLLMStore((state) => state.model);
   const loadSelectedModel = useCallback(async () => {
+    if (modelSwitching) return;
     if (model?.isDownloaded && loadedModel?.id !== model.id) {
       return loadModel(model);
     }
-  }, [model, loadedModel, loadModel]);
+  }, [model, loadedModel, loadModel, modelSwitching]);
 
   const imageAttachment = attachments.find((a) => a.type === 'image');
   const hasLoadingAttachment = attachments.some((a) => a.status === 'loading');

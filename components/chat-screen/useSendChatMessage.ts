@@ -68,7 +68,7 @@ interface UseSendChatMessageOptions {
   isGenerating: boolean;
   isModelLoading: boolean;
   isSwitching: boolean;
-  waitForModelSwitch?: () => Promise<void>;
+  waitForModelSwitch?: () => Promise<Model | undefined>;
 }
 
 const webSkipReason = (
@@ -109,9 +109,10 @@ export const useSendChatMessage = ({
     if (!userInput.trim() && !imagePath && !hasDocuments) {
       return 'nothing-to-send';
     }
+    let pinnedModel = model;
     if (isSwitching) {
       if (!waitForModelSwitch) return 'model-loading';
-      await waitForModelSwitch();
+      pinnedModel = (await waitForModelSwitch()) ?? model;
     }
     const llm = useLLMStore.getState();
     const busy = llm.isGenerating || llm.isProcessingPrompt;
@@ -121,7 +122,7 @@ export const useSendChatMessage = ({
       return 'busy';
     }
     if (!llm.model && !isModelLoading) return 'model-loading';
-    loadModelPinnedToChat(model);
+    loadModelPinnedToChat(pinnedModel);
 
     messagesRef.current?.onMessageSent();
     Keyboard.dismiss();
@@ -140,7 +141,10 @@ export const useSendChatMessage = ({
       const docName = attachments?.find((a) => a.type === 'document')?.name;
       const titleSource =
         stripThinkMarkers(userInput).trim() || docName || 'New chat';
-      const newChatId = await addChat(toChatTitle(titleSource), model!.id);
+      const newChatId = await addChat(
+        toChatTitle(titleSource),
+        pinnedModel!.id
+      );
       if (!newChatId) {
         messagesRef.current?.cancelMessageSent();
         return 'chat-not-created';
