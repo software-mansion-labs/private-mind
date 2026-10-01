@@ -21,6 +21,17 @@ describe('foldForMatching', () => {
 });
 
 describe('extractQueryTerms', () => {
+  it('keeps Hindi and Urdu sentence marks out of the terms', () => {
+    const terms = [
+      ...extractQueryTerms('पाकिस्तान की राजधानी क्या है।', 'hi'),
+      ...extractQueryTerms('پاکستان کا دارالحکومت کیا ہے؟', 'ur'),
+      ...extractQueryTerms('کراچی، لاہور؛ اسلام آباد۔', 'ur'),
+    ];
+
+    expect(terms.some((term) => /[।॥۔؟،؛]/.test(term))).toBe(false);
+    expect(terms).toEqual(expect.arrayContaining(['पाकिस्तान', 'پاکستان']));
+  });
+
   it('drops short bare numbers and codes that caused false highlights', () => {
     const terms = extractQueryTerms('L4 100% for the first 5 of 30 days');
     expect(terms.has('l4')).toBe(false);

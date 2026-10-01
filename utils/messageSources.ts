@@ -786,7 +786,7 @@ export const answerStatesFigure = (
 };
 
 const LEAD_SENTENCES = 1;
-const SENTENCE_BREAK = /(?<=[.!?…])\s+|\n+/u;
+const SENTENCE_BREAK = /(?<=[.!?…।॥۔؟])\s+|\n+/u;
 const FIGURE_LEAD_KINDS: ReadonlySet<string> = new Set([
   'fact',
   'price',

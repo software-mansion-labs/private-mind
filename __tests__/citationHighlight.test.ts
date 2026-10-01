@@ -27,6 +27,28 @@ describe('queryNamesDocument', () => {
 });
 
 describe('findCitedSpan', () => {
+  it('highlights one Hindi sentence ended by a danda, not the whole passage', () => {
+    const passage =
+      'भारत की राजधानी नई दिल्ली है। मुंबई सबसे बड़ा शहर है। कोलकाता पूर्व में है।';
+
+    const span = findCitedSpan(passage, 'भारत की राजधानी क्या है?');
+
+    expect(span && passage.slice(span.start, span.end)).toBe(
+      'भारत की राजधानी नई दिल्ली है।'
+    );
+  });
+
+  it('highlights one Urdu sentence ended by a full stop of its own', () => {
+    const passage =
+      'پاکستان کا دارالحکومت اسلام آباد ہے۔ کراچی سب سے بڑا شہر ہے۔';
+
+    const span = findCitedSpan(passage, 'پاکستان کا دارالحکومت کیا ہے؟');
+
+    expect(span && passage.slice(span.start, span.end)).toBe(
+      'پاکستان کا دارالحکومت اسلام آباد ہے۔'
+    );
+  });
+
   it('returns the span of the sentence most relevant to the query', () => {
     const passage =
       'The company was founded in 1998. Total revenue reached 2455 PLN last year. Employees enjoy free coffee.';
