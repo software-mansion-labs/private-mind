@@ -13,7 +13,7 @@ jest.mock('../context/ThemeContext', () => ({
 }));
 
 jest.mock('../components/CircleButton', () => {
-  const { TouchableOpacity } = require('react-native');
+  const { Pressable } = require('react-native');
   return ({
     onPress,
     testID,
@@ -27,7 +27,7 @@ jest.mock('../components/CircleButton', () => {
     dimmed?: boolean;
     disabled?: boolean;
   }) => (
-    <TouchableOpacity
+    <Pressable
       testID={testID || 'circle-btn'}
       onPress={onPress}
       accessibilityState={{ busy: !!busy, disabled: !!disabled }}
@@ -37,7 +37,7 @@ jest.mock('../components/CircleButton', () => {
 });
 
 jest.mock('../components/chat-screen/ComposerActionButton', () => {
-  const { TouchableOpacity } = require('react-native');
+  const { Pressable } = require('react-native');
   return {
     __esModule: true,
     default: ({
@@ -55,7 +55,7 @@ jest.mock('../components/chat-screen/ComposerActionButton', () => {
       disabled?: boolean;
       action?: string;
     }) => (
-      <TouchableOpacity
+      <Pressable
         testID={testID || 'circle-btn'}
         onPress={onPress}
         accessibilityState={{ busy: !!busy, disabled: !!disabled }}

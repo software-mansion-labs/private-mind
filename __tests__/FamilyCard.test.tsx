@@ -12,8 +12,8 @@ jest.mock('../context/ThemeContext', () => ({
 }));
 
 jest.mock('react-native-gesture-handler', () => {
-  const { TouchableOpacity } = require('react-native');
-  return { TouchableOpacity };
+  const { Pressable } = require('react-native');
+  return { Pressable };
 });
 
 jest.mock('../components/Chip', () => {

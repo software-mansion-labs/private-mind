@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-} from 'react-native';
+import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import Folder from '../assets/icons/folder.svg';
 import TrashIcon from '../assets/icons/trash.svg';
@@ -13,6 +7,7 @@ import AttachmentIcon from '../assets/icons/attachment.svg';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
+import { pressedOpacity } from '../styles/pressable';
 
 interface Props {
   fileInfo: { name: string; size: number | null; uri: string } | null;
@@ -60,14 +55,17 @@ const UploadInput = ({ fileInfo, onChange, disabled = false }: Props) => {
     <View>
       {!fileInfo ? (
         <View style={styles.emptyBox}>
-          <TouchableOpacity
-            style={styles.selectButton}
+          <Pressable
+            style={({ pressed }) => [
+              styles.selectButton,
+              pressed && pressedOpacity,
+            ]}
             onPress={handlePickFile}
             disabled={disabled}
           >
             <Folder width={16.67} height={14.17} style={styles.iconContrast} />
             <Text style={styles.selectButtonText}>Select a file</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       ) : (
         <View style={styles.fileBox}>
@@ -85,9 +83,12 @@ const UploadInput = ({ fileInfo, onChange, disabled = false }: Props) => {
             ) : null}
           </View>
           {!disabled && (
-            <TouchableOpacity onPress={() => onChange(null)}>
+            <Pressable
+              onPress={() => onChange(null)}
+              style={({ pressed }) => pressed && pressedOpacity}
+            >
               <TrashIcon width={20} height={20} style={styles.iconPrimary} />
-            </TouchableOpacity>
+            </Pressable>
           )}
         </View>
       )}

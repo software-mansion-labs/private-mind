@@ -1,9 +1,10 @@
 import React, { ReactNode } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, Pressable, View } from 'react-native';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
 import { fontFamily } from '../../../styles/fontStyles';
 import { panelPalette, PRESS_ANYWHERE } from './constants';
+import { pressedOpacity } from '../../../styles/pressable';
 
 interface Props {
   children: ReactNode;
@@ -16,14 +17,14 @@ const SheetPlaceholder = ({ children, onOpenSettings }: Props) => {
     <View style={styles.placeholder}>
       <Text style={styles.placeholderText}>{children}</Text>
       {onOpenSettings && (
-        <TouchableOpacity
+        <Pressable
           onPress={onOpenSettings}
-          style={styles.action}
+          style={({ pressed }) => [styles.action, pressed && pressedOpacity]}
           pressRetentionOffset={PRESS_ANYWHERE}
           testID="sheet-open-settings"
         >
           <Text style={styles.actionLabel}>Open Settings</Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
     </View>
   );

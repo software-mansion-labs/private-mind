@@ -40,7 +40,7 @@ jest.mock('expo-router', () => ({
 }));
 
 jest.mock('../components/model-hub/ModelCard', () => {
-  const { TouchableOpacity, Text } = require('react-native');
+  const { Pressable, Text } = require('react-native');
   return ({
     model,
     onPress,
@@ -48,12 +48,9 @@ jest.mock('../components/model-hub/ModelCard', () => {
     model: Model;
     onPress: (model: Model) => void;
   }) => (
-    <TouchableOpacity
-      testID={`model-card-${model.id}`}
-      onPress={() => onPress(model)}
-    >
+    <Pressable testID={`model-card-${model.id}`} onPress={() => onPress(model)}>
       <Text>{model.modelName}</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 });
 

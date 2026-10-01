@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import { Pressable } from 'react-native-gesture-handler';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -21,6 +21,7 @@ import CloseIcon from '../../assets/icons/close.svg';
 import EyeIcon from '../../assets/icons/eye.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 import { Feedback } from '../../utils/Feedback';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
   model: Model;
@@ -126,8 +127,12 @@ const ModelCard = ({
     modelState !== ModelState.Downloaded && model.source === 'built-in';
 
   return (
-    <TouchableOpacity
-      style={[styles.card, !isCompatible && styles.incompatibleCard]}
+    <Pressable
+      style={({ pressed }) => [
+        styles.card,
+        !isCompatible && styles.incompatibleCard,
+        pressed && pressedOpacity,
+      ]}
       onPress={() => onPress(model)}
       disabled={disabled}
     >
@@ -261,7 +266,7 @@ const ModelCard = ({
       )}
 
       {showDeleteButton && ConfirmElement}
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 

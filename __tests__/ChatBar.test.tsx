@@ -84,7 +84,7 @@ jest.mock('../components/bottomSheets/EmbeddingDownloadSheet', () => ({
 }));
 
 jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
-  const { View, TouchableOpacity, Text } = require('react-native');
+  const { View, Pressable, Text } = require('react-native');
   return ({
     panel,
     imagesEnabled,
@@ -104,30 +104,30 @@ jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
       <Text>{`vision:${imagesEnabled}`}</Text>
       <Text>{`max:${maxSelection}`}</Text>
       <Text>{`busy:${busyAction ?? 'none'}`}</Text>
-      <TouchableOpacity
+      <Pressable
         testID="menu-photos"
         onPress={() => panel.onMenuAction('photos')}
       >
         <Text>Photos</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
+      </Pressable>
+      <Pressable
         testID="menu-camera"
         onPress={() => panel.onMenuAction('camera')}
       >
         <Text>Camera</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
+      </Pressable>
+      <Pressable
         testID="menu-files"
         onPress={() => panel.onMenuAction('files')}
       >
         <Text>Files</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 });
 
 jest.mock('../components/chat-screen/AttachmentThumbnail', () => {
-  const { View, TouchableOpacity, Text } = require('react-native');
+  const { View, Pressable, Text } = require('react-native');
   return ({
     attachment,
     onRemove,
@@ -137,18 +137,18 @@ jest.mock('../components/chat-screen/AttachmentThumbnail', () => {
   }) => (
     <View testID={`attachment-thumb-${attachment.id}`}>
       <Text>{attachment.name || attachment.uri}</Text>
-      <TouchableOpacity
+      <Pressable
         testID={`attachment-dismiss-${attachment.id}`}
         onPress={onRemove}
       >
         <Text>X</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 });
 
 jest.mock('../components/chat-screen/ChatSpeechInput', () => {
-  const { View, TouchableOpacity } = require('react-native');
+  const { View, Pressable } = require('react-native');
   return ({
     onSubmit,
     onCancel,
@@ -157,29 +157,29 @@ jest.mock('../components/chat-screen/ChatSpeechInput', () => {
     onCancel: () => void;
   }) => (
     <View testID="speech-input">
-      <TouchableOpacity
+      <Pressable
         testID="speech-submit"
         onPress={() => onSubmit('voice transcript')}
       />
-      <TouchableOpacity testID="speech-cancel" onPress={onCancel} />
+      <Pressable testID="speech-cancel" onPress={onCancel} />
     </View>
   );
 });
 
 jest.mock('../components/chat-screen/PromptSuggestions', () => {
-  const { TouchableOpacity, Text } = require('react-native');
+  const { Pressable, Text } = require('react-native');
   return ({ onSelectPrompt }: { onSelectPrompt: (prompt: string) => void }) => (
-    <TouchableOpacity
+    <Pressable
       testID="prompt-suggestion"
       onPress={() => onSelectPrompt('Suggested prompt')}
     >
       <Text>Suggest something</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 });
 
 jest.mock('../components/chat-screen/ChatBarActions', () => {
-  const { View, TouchableOpacity, Text } = require('react-native');
+  const { View, Pressable, Text } = require('react-native');
   return ({
     userInput,
     hasAttachments,
@@ -215,39 +215,36 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
       {modelBusy && <Text>model busy</Text>}
       {sendPending && <Text>send pending</Text>}
       {onWebSearchToggle && (
-        <TouchableOpacity
-          testID="web-search-toggle"
-          onPress={onWebSearchToggle}
-        >
+        <Pressable testID="web-search-toggle" onPress={onWebSearchToggle}>
           <Text>Web</Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
-      <TouchableOpacity testID="attach-btn" onPress={onAttach}>
+      <Pressable testID="attach-btn" onPress={onAttach}>
         <Text>+</Text>
-      </TouchableOpacity>
+      </Pressable>
       {isGenerating || isProcessingPrompt ? (
-        <TouchableOpacity testID="interrupt-btn" onPress={onInterrupt}>
+        <Pressable testID="interrupt-btn" onPress={onInterrupt}>
           <Text>Stop</Text>
-        </TouchableOpacity>
+        </Pressable>
       ) : userInput || hasAttachments || sendInFlight ? (
         <>
           {hasAttachments && !userInput && (
-            <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}>
+            <Pressable testID="speech-btn" onPress={onSpeechInput}>
               <Text>Mic</Text>
-            </TouchableOpacity>
+            </Pressable>
           )}
-          <TouchableOpacity testID="send-btn" onPress={onSend}>
+          <Pressable testID="send-btn" onPress={onSend}>
             <Text>Send</Text>
-          </TouchableOpacity>
+          </Pressable>
         </>
       ) : (
-        <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}>
+        <Pressable testID="speech-btn" onPress={onSpeechInput}>
           <Text>Mic</Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
-      <TouchableOpacity testID="thinking-btn" onPress={onThinkingToggle}>
+      <Pressable testID="thinking-btn" onPress={onThinkingToggle}>
         <Text>{thinkingEnabled ? 'Think ON' : 'Think OFF'}</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 });
@@ -745,13 +742,10 @@ describe('speech input', () => {
     const onSend = jest.fn();
     // Override speech mock to submit empty string
     jest.mock('../components/chat-screen/ChatSpeechInput', () => {
-      const { View, TouchableOpacity } = require('react-native');
+      const { View, Pressable } = require('react-native');
       return ({ onSubmit }: { onSubmit: (transcript: string) => void }) => (
         <View testID="speech-input">
-          <TouchableOpacity
-            testID="speech-submit"
-            onPress={() => onSubmit('')}
-          />
+          <Pressable testID="speech-submit" onPress={() => onSubmit('')} />
         </View>
       );
     });
