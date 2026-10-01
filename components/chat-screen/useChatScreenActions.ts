@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import { useStableCallback } from '../../hooks/useStableCallback';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import Toast from 'react-native-toast-message';
 import {
@@ -47,7 +48,7 @@ export const useChatScreenActions = ({
   const thinkingUsable = !model || !!model.thinking;
   const thinkingEnabled = !!chatSettings?.thinkingEnabled && thinkingUsable;
 
-  const handleThinkingToggle = async () => {
+  const handleThinkingToggle = useStableCallback(async () => {
     if (!thinkingEnabled && !thinkingUsable) {
       Toast.show({
         type: 'defaultToast',
@@ -81,7 +82,7 @@ export const useChatScreenActions = ({
       setSetting('thinkingEnabled', previous ?? false);
       console.error('Failed to update thinking setting:', error);
     }
-  };
+  });
 
   const webSearchUsable = useMemo(
     () => isWebSearchReady(model) && hasMemoryForWebSearch(model),
@@ -89,7 +90,7 @@ export const useChatScreenActions = ({
   );
   const webSearchEnabled = chatSettings.webSearchEnabled && webSearchUsable;
 
-  const handleWebSearchToggle = (): boolean => {
+  const handleWebSearchToggle = useStableCallback((): boolean => {
     if (!webSearchEnabled && !isWebSearchReady(model)) {
       Toast.show({
         type: 'defaultToast',
@@ -107,7 +108,7 @@ export const useChatScreenActions = ({
     }
     setSetting('webSearchEnabled', !chatSettings.webSearchEnabled);
     return true;
-  };
+  });
 
   const handleSelectPrompt = useCallback(
     async (prompt: string) => {

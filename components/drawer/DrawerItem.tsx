@@ -13,6 +13,7 @@ interface Props {
   icon?: React.ReactNode;
   testID?: string;
   hugContent?: boolean;
+  dimmed?: boolean;
 }
 
 export const DrawerItem = memo(
@@ -24,6 +25,7 @@ export const DrawerItem = memo(
     icon,
     testID,
     hugContent,
+    dimmed,
   }: Props) => {
     const { styles } = useThemedStyles(createStyles);
 
@@ -37,7 +39,7 @@ export const DrawerItem = memo(
           (active || pressed) && styles.activeBackground,
         ]}
       >
-        <View style={styles.content}>
+        <View style={[styles.content, dimmed && styles.contentDimmed]}>
           {icon}
           <Text
             numberOfLines={1}
@@ -56,6 +58,9 @@ const createStyles = (theme: Theme) =>
     item: {
       padding: 12,
       borderRadius: 12,
+    },
+    contentDimmed: {
+      opacity: 0.4,
     },
     activeBackground: {
       backgroundColor: theme.bg.softSecondary,

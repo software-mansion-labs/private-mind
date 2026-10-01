@@ -51,6 +51,7 @@ export type Message = {
   tokensPerSecond?: number;
   timeToFirstToken?: number;
   retrievalStats?: RetrievalStats;
+  stoppedByUser?: boolean;
   timestamp: number;
 };
 
@@ -85,11 +86,12 @@ export const sourceKind = (source: SourceDocument): SourceKind =>
 
 type RawMessage = Omit<
   Message,
-  'sourceDocuments' | 'groundingCaveats' | 'retrievalStats'
+  'sourceDocuments' | 'groundingCaveats' | 'retrievalStats' | 'stoppedByUser'
 > & {
   sourceDocuments?: string | null;
   groundingCaveats?: string | null;
   retrievalStats?: string | null;
+  stoppedByUser?: number | null;
 };
 
 const GROUNDING_CAVEAT_KINDS: GroundingCaveatKind[] = [
@@ -291,7 +293,19 @@ export const getChatMessages = async (
     sourceDocuments: parseSourceDocuments(message.sourceDocuments),
     groundingCaveats: parseGroundingCaveats(message.groundingCaveats),
     retrievalStats: parseRetrievalStats(message.retrievalStats),
+    stoppedByUser: message.stoppedByUser === 1,
   }));
+};
+
+export const markMessageStopped = async (
+  db: SQLiteDatabase,
+  messageId: number,
+  stopped: boolean = true
+): Promise<void> => {
+  await db.runAsync(`UPDATE messages SET stoppedByUser = ? WHERE id = ?`, [
+    stopped ? 1 : 0,
+    messageId,
+  ]);
 };
 
 export const persistMessage = async (
@@ -299,7 +313,7 @@ export const persistMessage = async (
   message: Omit<Message, 'id' | 'timestamp'>
 ): Promise<number> => {
   const result = await db.runAsync(
-    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, retrievalStats) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, retrievalStats, stoppedByUser) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
     [
       message.chatId,
       message.role,
@@ -316,6 +330,7 @@ export const persistMessage = async (
         ? JSON.stringify(message.groundingCaveats)
         : null,
       serializeRetrievalStats(message.retrievalStats),
+      message.stoppedByUser ? 1 : 0,
     ]
   );
 
@@ -346,7 +361,7 @@ export const importMessages = async (
   for (let i = 0; i < messages.length; i += IMPORT_BATCH_SIZE) {
     const batch = messages.slice(i, i + IMPORT_BATCH_SIZE);
     const placeholders = batch
-      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .join(', ');
     const flattenedValues = batch.flatMap((msg) => [
       chatId,
@@ -363,9 +378,10 @@ export const importMessages = async (
         ? JSON.stringify(msg.groundingCaveats)
         : null,
       serializeRetrievalStats(msg.retrievalStats),
+      msg.stoppedByUser ? 1 : 0,
     ]);
     await db.runAsync(
-      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, retrievalStats) VALUES ${placeholders}`,
+      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, retrievalStats, stoppedByUser) VALUES ${placeholders}`,
       flattenedValues
     );
   }
@@ -406,8 +422,9 @@ const copyMessagesWithIdMap = async (
           documentName,
           sourceDocuments,
           groundingCaveats,
-          retrievalStats
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          retrievalStats,
+          stoppedByUser
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         chatId,
@@ -426,6 +443,7 @@ const copyMessagesWithIdMap = async (
           ? JSON.stringify(msg.groundingCaveats)
           : null,
         serializeRetrievalStats(msg.retrievalStats),
+        msg.stoppedByUser ? 1 : 0,
       ]
     );
     idMap.set(msg.id, result.lastInsertRowId);

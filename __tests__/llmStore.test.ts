@@ -1,5 +1,5 @@
 import { useLLMStore } from '../store/llmStore';
-import { LLMModule } from 'react-native-executorch';
+import { LLMModule } from 'react-native-executorch/legacy';
 import * as chatRepository from '../database/chatRepository';
 import type { Message } from '../database/chatRepository';
 import type { Model } from '../database/modelRepository';
@@ -8,6 +8,17 @@ import * as Feedback from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWebSearchStore } from '../store/webSearchStore';
+
+const memoryProbe = { samples: [] as number[], available: false };
+jest.mock('../modules/memory-probe', () => ({
+  PHYS_FOOTPRINT_METRIC: 'phys_footprint',
+  TOTAL_PSS_METRIC: 'total_pss',
+  isPhysFootprintAvailable: () => memoryProbe.available,
+  isMemoryMetricAvailable: () => memoryProbe.available,
+  memorySampleIntervalMs: () => 250,
+  getPhysFootprintBytes: () => memoryProbe.samples.shift() ?? null,
+  getMemoryFootprintBytes: () => memoryProbe.samples.shift() ?? null,
+}));
 
 jest.mock('../database/chatRepository');
 jest.mock('../utils/Feedback', () => ({
@@ -26,6 +37,10 @@ jest.mock('../utils/promptUtils', () => ({
 }));
 jest.mock('../constants/default-benchmark', () => ({
   BENCHMARK_PROMPT: 'benchmark prompt text',
+  BENCHMARK_TOKEN_TARGET: 128,
+  BENCHMARK_WARMUP_RUNS: 1,
+  BENCHMARK_ITERATIONS: 3,
+  BENCHMARK_GENERATION_CONFIG: { temperature: 0.01, topP: 1, minP: 0 },
 }));
 jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
@@ -34,6 +49,7 @@ jest.mock('@react-native-community/netinfo', () => ({
 
 const mockLLMModule = LLMModule as jest.Mocked<typeof LLMModule>;
 const mockPersistMessage = chatRepository.persistMessage as jest.Mock;
+const mockMarkMessageStopped = chatRepository.markMessageStopped as jest.Mock;
 const mockGetChatMessages = chatRepository.getChatMessages as jest.Mock;
 
 const noSources = async () => ({
@@ -69,6 +85,8 @@ const makeMockInstance = () => ({
 let mockInstance = makeMockInstance();
 
 beforeEach(() => {
+  memoryProbe.available = false;
+  memoryProbe.samples = [];
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -435,6 +453,62 @@ describe('interrupt', () => {
     expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
   });
 
+  it('marks the answer stopped in the same turn as the press, not after the save', async () => {
+    await loadModel();
+    useLLMStore.setState({
+      isGenerating: true,
+      generatingMessageLocalId: 42,
+      activeChatMessages: [
+        {
+          id: -1,
+          localId: 42,
+          role: 'assistant',
+          content: 'half an answ',
+          chatId: 1,
+          timestamp: 0,
+        },
+      ],
+    });
+
+    useLLMStore.getState().interrupt();
+
+    expect(useLLMStore.getState().activeChatMessages[0].stoppedByUser).toBe(
+      true
+    );
+  });
+
+  it('leaves other messages alone when it marks the stopped one', async () => {
+    await loadModel();
+    useLLMStore.setState({
+      isGenerating: true,
+      generatingMessageLocalId: 42,
+      activeChatMessages: [
+        {
+          id: 7,
+          localId: 41,
+          role: 'assistant',
+          content: 'an earlier answer',
+          chatId: 1,
+          timestamp: 0,
+        },
+        {
+          id: -1,
+          localId: 42,
+          role: 'assistant',
+          content: 'half an answ',
+          chatId: 1,
+          timestamp: 0,
+        },
+      ],
+    });
+
+    useLLMStore.getState().interrupt();
+
+    const [earlier, stopped] = useLLMStore.getState().activeChatMessages;
+    expect(earlier.stoppedByUser).toBeUndefined();
+    expect(stopped.stoppedByUser).toBe(true);
+  });
+
   it('does nothing when neither generating nor processing', () => {
     useLLMStore.setState({ isGenerating: false, isProcessingPrompt: false });
     expect(() => useLLMStore.getState().interrupt()).not.toThrow();
@@ -535,6 +609,241 @@ describe('sendChatMessage', () => {
         content: 'The answer is 42.',
       })
     );
+  });
+
+  it('keeps the user message when the turn is stopped while a model load is in flight', async () => {
+    let finishLoad!: () => void;
+    const loadGate = new Promise<void>((resolve) => {
+      finishLoad = resolve;
+    });
+    mockLLMModule.fromModelName.mockImplementationOnce(async (...args) => {
+      capturedTokenCallback = args[2];
+      await loadGate;
+      return mockInstance as unknown as LLMModule;
+    });
+
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    const switching = useLLMStore
+      .getState()
+      .loadModel({ ...baseModel, id: 2, modelName: 'Other LLM' });
+    const send = useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
+    await flushFrame();
+
+    useLLMStore.getState().interrupt();
+    finishLoad();
+    await switching;
+    await send;
+
+    expect(mockPersistMessage).toHaveBeenCalledWith(
+      mockDb,
+      expect.objectContaining({ role: 'user', content: 'hello' })
+    );
+    expect(
+      useLLMStore
+        .getState()
+        .activeChatMessages.some(
+          (message) => message.role === 'user' && message.content === 'hello'
+        )
+    ).toBe(true);
+  });
+
+  it('does not wait for the model load to finish before saying the turn was stopped', async () => {
+    let finishLoad!: () => void;
+    const loadGate = new Promise<void>((resolve) => {
+      finishLoad = resolve;
+    });
+    mockLLMModule.fromModelName.mockImplementationOnce(async (...args) => {
+      capturedTokenCallback = args[2];
+      await loadGate;
+      return mockInstance as unknown as LLMModule;
+    });
+
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    const switching = useLLMStore
+      .getState()
+      .loadModel({ ...baseModel, id: 2, modelName: 'Other LLM' });
+    const send = useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
+    await flushFrame();
+
+    useLLMStore.getState().interrupt();
+    await send;
+
+    expect(mockMarkMessageStopped).toHaveBeenCalledWith(mockDb, 42);
+
+    finishLoad();
+    await switching;
+  });
+
+  it('marks the stopped turn so the chat can say it was stopped', async () => {
+    let finishLoad!: () => void;
+    const loadGate = new Promise<void>((resolve) => {
+      finishLoad = resolve;
+    });
+    mockLLMModule.fromModelName.mockImplementationOnce(async (...args) => {
+      capturedTokenCallback = args[2];
+      await loadGate;
+      return mockInstance as unknown as LLMModule;
+    });
+
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    const switching = useLLMStore
+      .getState()
+      .loadModel({ ...baseModel, id: 2, modelName: 'Other LLM' });
+    const send = useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
+    await flushFrame();
+
+    useLLMStore.getState().interrupt();
+    finishLoad();
+    await switching;
+    await send;
+
+    expect(mockMarkMessageStopped).toHaveBeenCalledWith(mockDb, 42);
+    expect(
+      useLLMStore
+        .getState()
+        .activeChatMessages.find((message) => message.role === 'user')
+        ?.stoppedByUser
+    ).toBe(true);
+  });
+
+  it('ends the turn at once when the stop lands while sources are still being gathered', async () => {
+    let releaseSources!: () => void;
+    const sourcesInFlight = async () => {
+      await new Promise<void>((resolve) => {
+        releaseSources = resolve;
+      });
+      return {
+        context: [] as string[],
+        sourceDocuments: [],
+        preferredSourceDocuments: [],
+      };
+    };
+
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    const send = useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, sourcesInFlight, settings);
+    await flushFrame();
+
+    useLLMStore.getState().interrupt();
+    await send;
+
+    expect(mockMarkMessageStopped).toHaveBeenCalledWith(mockDb, 42);
+    expect(
+      useLLMStore
+        .getState()
+        .activeChatMessages.find((message) => message.role === 'user')
+        ?.stoppedByUser
+    ).toBe(true);
+    expect(useLLMStore.getState().retryArmedForChatId).toBe(1);
+
+    releaseSources();
+  });
+
+  it('drops the stopped mark when the retry starts, not when it finishes', async () => {
+    let releaseSources!: () => void;
+    const sourcesInFlight = async () => {
+      await new Promise<void>((resolve) => {
+        releaseSources = resolve;
+      });
+      return {
+        context: [] as string[],
+        sourceDocuments: [],
+        preferredSourceDocuments: [],
+      };
+    };
+
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    const send = useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, sourcesInFlight, settings);
+    await flushFrame();
+    useLLMStore.getState().interrupt();
+    await send;
+    releaseSources();
+
+    const stoppedQuestion = () =>
+      useLLMStore
+        .getState()
+        .activeChatMessages.find((message) => message.role === 'user')
+        ?.stoppedByUser;
+    expect(stoppedQuestion()).toBe(true);
+
+    const retry = useLLMStore.getState().retryLastGeneration();
+    await flushFrame();
+
+    expect(mockMarkMessageStopped).toHaveBeenLastCalledWith(mockDb, 42, false);
+    expect(stoppedQuestion()).toBe(false);
+
+    releaseSources();
+    await retry;
+  });
+
+  it('marks the answer the user stopped mid-stream', async () => {
+    let finishGeneration!: (response: string) => void;
+    mockInstance.generate.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          finishGeneration = resolve;
+        })
+    );
+
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    const send = useLLMStore
+      .getState()
+      .sendChatMessage('hello', 1, noSources, settings);
+    await flushFrame();
+
+    useLLMStore.getState().interrupt();
+    finishGeneration('The Roman Empire was');
+    await send;
+
+    expect(mockPersistMessage).toHaveBeenCalledWith(
+      mockDb,
+      expect.objectContaining({ role: 'assistant', stoppedByUser: true })
+    );
+    expect(
+      useLLMStore
+        .getState()
+        .activeChatMessages.find((message) => message.role === 'assistant')
+        ?.stoppedByUser
+    ).toBe(true);
   });
 
   it('sets isProcessingPrompt at start and clears it on complete', async () => {
@@ -1804,10 +2113,10 @@ describe('a turn that was superseded before it settled', () => {
     const second = useLLMStore
       .getState()
       .sendChatMessage('question in chat two', 2, noSources, settings);
+    rejectFirst(new Error('interrupted'));
     await until(() => mockInstance.generate.mock.calls.length === 2);
     expect(useLLMStore.getState().generatingForChatId).toBe(2);
 
-    rejectFirst(new Error('interrupted'));
     await first;
 
     expect(useLLMStore.getState().generatingForChatId).toBe(2);
@@ -2163,6 +2472,93 @@ describe('runBenchmark', () => {
     expect(useLLMStore.getState().isBenchmarking).toBe(false);
   });
 
+  it('reports the highest footprint the run reached', async () => {
+    await loadModel();
+    mockInstance.generate.mockResolvedValue('output text');
+    useLLMStore.setState({ model: baseModel });
+    memoryProbe.available = true;
+    memoryProbe.samples = [1_000_000_000, 5_000_000_000];
+
+    const result = await useLLMStore.getState().runBenchmark();
+
+    expect(result?.peakMemory).toBe(5_000_000_000);
+  });
+
+  it('takes its first sample without waiting for the sampling interval', async () => {
+    await loadModel();
+    mockInstance.generate.mockResolvedValue('output text');
+    useLLMStore.setState({ model: baseModel });
+    memoryProbe.available = true;
+    memoryProbe.samples = [1_234_000_000];
+
+    const result = await useLLMStore.getState().runBenchmark();
+
+    expect(result?.peakMemory).toBe(1_234_000_000);
+  });
+
+  it('reports nothing when the device has no footprint probe', async () => {
+    await loadModel();
+    mockInstance.generate.mockResolvedValue('output text');
+    useLLMStore.setState({ model: baseModel });
+    memoryProbe.available = false;
+    memoryProbe.samples = [9_000_000_000];
+
+    const result = await useLLMStore.getState().runBenchmark();
+
+    expect(result?.peakMemory).toBe(0);
+  });
+
+  it('stops every run at the same token budget so runs can be compared', async () => {
+    await loadModel();
+    useLLMStore.setState({ model: baseModel });
+
+    let emitted = 0;
+    let interruptedAt = 0;
+    mockInstance.interrupt.mockImplementation(() => {
+      if (interruptedAt === 0) interruptedAt = emitted;
+    });
+    mockInstance.getGeneratedTokenCount.mockImplementation(() => emitted);
+    mockInstance.generate.mockImplementation(async () => {
+      for (let i = 0; i < 40; i++) {
+        emitted += 4;
+        capturedTokenCallback!('four tokens worth');
+      }
+      return 'out';
+    });
+
+    await useLLMStore.getState().runBenchmark();
+
+    expect(interruptedAt).toBe(128);
+  });
+
+  it('pins sampling for the run and hands the model back its own config', async () => {
+    await loadModel();
+    useLLMStore.setState({ model: baseModel });
+    mockInstance.generate.mockResolvedValue('out');
+    mockInstance.configure.mockClear();
+
+    await useLLMStore.getState().runBenchmark();
+
+    const [pinned] = mockInstance.configure.mock.calls[0]!;
+    expect(pinned.generationConfig).toMatchObject({ temperature: 0.01 });
+    const [restored] = mockInstance.configure.mock.calls.at(-1)!;
+    expect(restored.generationConfig).not.toMatchObject({ temperature: 0.01 });
+  });
+
+  it('does not carry the token budget into an ordinary chat turn', async () => {
+    await loadModel();
+    useLLMStore.setState({ model: baseModel });
+    mockInstance.generate.mockResolvedValue('out');
+    await useLLMStore.getState().runBenchmark();
+
+    mockInstance.interrupt.mockClear();
+    mockInstance.getGeneratedTokenCount.mockReturnValue(9999);
+    useLLMStore.setState({ isGenerating: true, isProcessingPrompt: false });
+    for (let i = 0; i < 148; i++) capturedTokenCallback!('tok');
+
+    expect(mockInstance.interrupt).not.toHaveBeenCalled();
+  });
+
   it('tracks a fresh first token on every run without stale carry-over', async () => {
     await loadModel();
     useLLMStore.setState({ model: baseModel });
@@ -2473,5 +2869,82 @@ describe('one turn at a time (S20 FE: sends lost or doubled while a turn was sti
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('over its time budget')
     );
+  });
+});
+
+describe('one generation at a time on the shared native runner', () => {
+  const settings = { systemPrompt: 'be helpful' };
+
+  const within50Ticks = async (ready: () => boolean) => {
+    for (let tick = 0; tick < 50 && !ready(); tick++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    return ready();
+  };
+
+  beforeEach(async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    useLLMStore.setState({ activeChatId: 1, activeChatMessages: [] });
+  });
+
+  it('holds a chat turn back until a utility call has released the model', async () => {
+    let releasePlanner!: (answer: string) => void;
+    mockInstance.generate.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        releasePlanner = resolve;
+      })
+    );
+
+    const planning = useLLMStore
+      .getState()
+      .generateUtility([{ role: 'user', content: 'plan' }]);
+    expect(
+      await within50Ticks(() => mockInstance.generate.mock.calls.length === 1)
+    ).toBe(true);
+
+    mockInstance.generate.mockResolvedValue('The answer.');
+    const turn = useLLMStore
+      .getState()
+      .sendChatMessage('question', 1, noSources, settings);
+
+    expect(
+      await within50Ticks(() => mockInstance.generate.mock.calls.length > 1)
+    ).toBe(false);
+
+    releasePlanner('');
+    await planning;
+    await turn;
+    expect(mockInstance.generate.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('does not delete a model that is still generating', async () => {
+    let finish!: (answer: string) => void;
+    mockInstance.generate.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        finish = resolve;
+      })
+    );
+
+    const turn = useLLMStore
+      .getState()
+      .sendChatMessage('question', 1, noSources, settings);
+    expect(
+      await within50Ticks(() => mockInstance.generate.mock.calls.length === 1)
+    ).toBe(true);
+
+    const switching = useLLMStore
+      .getState()
+      .loadModel({ ...baseModel, id: 2, modelName: 'Other LLM' });
+
+    expect(
+      await within50Ticks(() => mockInstance.delete.mock.calls.length > 0)
+    ).toBe(false);
+    expect(mockInstance.interrupt).toHaveBeenCalled();
+
+    finish('The answer.');
+    await turn;
+    await switching;
+    expect(mockInstance.delete).toHaveBeenCalled();
   });
 });

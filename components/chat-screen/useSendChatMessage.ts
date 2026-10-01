@@ -59,7 +59,6 @@ interface UseSendChatMessageOptions {
   chatSettings: {
     systemPrompt: string;
     thinkingEnabled: boolean;
-    webSearchEnabled: boolean;
   };
   enabledSources: number[];
   vectorStore: OPSQLiteVectorStore | null;
@@ -69,6 +68,7 @@ interface UseSendChatMessageOptions {
   isGenerating: boolean;
   isModelLoading: boolean;
   isSwitching: boolean;
+  waitForModelSwitch?: () => Promise<void>;
 }
 
 const webSkipReason = (
@@ -95,6 +95,7 @@ export const useSendChatMessage = ({
   isGenerating,
   isModelLoading,
   isSwitching,
+  waitForModelSwitch,
 }: UseSendChatMessageOptions) => {
   const { sendChatMessage, runWithModelOffloaded } = useLLMStore();
   const { addChat, updateLastUsed, enableSource } = useChatStore();
@@ -108,7 +109,10 @@ export const useSendChatMessage = ({
     if (!userInput.trim() && !imagePath && !hasDocuments) {
       return 'nothing-to-send';
     }
-    if (isSwitching) return 'model-loading';
+    if (isSwitching) {
+      if (!waitForModelSwitch) return 'model-loading';
+      await waitForModelSwitch();
+    }
     const llm = useLLMStore.getState();
     const busy = llm.isGenerating || llm.isProcessingPrompt;
     if (busy && llm.generatingForChatId !== chatId) {
@@ -123,6 +127,14 @@ export const useSendChatMessage = ({
 
     let targetChatId = chatId!;
     const isNewChat = !(await checkIfChatExists(db, targetChatId));
+    const llmAfterChatLookup = useLLMStore.getState();
+    if (
+      llmAfterChatLookup.isGenerating ||
+      llmAfterChatLookup.isProcessingPrompt
+    ) {
+      messagesRef.current?.cancelMessageSent();
+      return false;
+    }
     if (isNewChat) {
       const docName = attachments?.find((a) => a.type === 'document')?.name;
       const titleSource =
@@ -177,6 +189,9 @@ export const useSendChatMessage = ({
 
     // Deferred so retrieval runs only after the optimistic message is on screen.
     const buildSources = async (signal?: AbortSignal) => {
+      const webSearchEnabled = useWebSearchStore
+        .getState()
+        .isEnabled(targetChatId);
       const allSources = useSourceStore.getState().sources;
       const existingSourceIds = new Set(allSources.map((source) => source.id));
       const attachmentSourceIds = (attachments || [])
@@ -236,7 +251,7 @@ export const useSendChatMessage = ({
 
       const shouldRunWebSearch =
         WEB_SEARCH_ENABLED &&
-        chatSettings.webSearchEnabled &&
+        webSearchEnabled &&
         !skippedForAttachmentPriority &&
         isWebSearchReady(modelForWebSearch) &&
         hasMemoryForWebSearch(modelForWebSearch) &&
@@ -244,7 +259,7 @@ export const useSendChatMessage = ({
 
       if (
         WEB_SEARCH_ENABLED &&
-        chatSettings.webSearchEnabled &&
+        webSearchEnabled &&
         !shouldRunWebSearch &&
         !!userInput.trim()
       ) {

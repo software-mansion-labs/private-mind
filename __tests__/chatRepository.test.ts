@@ -167,11 +167,25 @@ describe('forkChat', () => {
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO messages'),
-      [10, 'user', 'one', 100, '', 0, 0, null, null, null, null, null]
+      [10, 'user', 'one', 100, '', 0, 0, null, null, null, null, null, 0]
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO messages'),
-      [10, 'assistant', 'two', 200, 'model', 0, 0, null, null, null, null, null]
+      [
+        10,
+        'assistant',
+        'two',
+        200,
+        'model',
+        0,
+        0,
+        null,
+        null,
+        null,
+        null,
+        null,
+        0,
+      ]
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO chatBranches'),
@@ -184,6 +198,63 @@ describe('forkChat', () => {
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO chatSources'),
       [10, 1]
+    );
+  });
+
+  it('carries the stopped mark of a truncated answer into the fork', async () => {
+    const runAsync = jest
+      .fn()
+      .mockResolvedValueOnce({ lastInsertRowId: 10 })
+      .mockResolvedValueOnce({ lastInsertRowId: 101 })
+      .mockResolvedValueOnce({ lastInsertRowId: 102 })
+      .mockResolvedValue({ lastInsertRowId: 0 });
+    const getFirstAsync = jest.fn().mockResolvedValue({
+      id: 1,
+      title: 'Original',
+      modelId: 7,
+      lastUsed: 1,
+    });
+    const getAllAsync = jest
+      .fn()
+      .mockResolvedValueOnce([
+        { id: 1, chatId: 1, role: 'user', content: 'one', timestamp: 100 },
+        {
+          id: 2,
+          chatId: 1,
+          role: 'assistant',
+          content: 'two',
+          timestamp: 200,
+          modelName: 'model',
+          stoppedByUser: 1,
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    const mockDb = {
+      runAsync,
+      getFirstAsync,
+      getAllAsync,
+      withTransactionAsync: async (callback: TransactionCallback) => callback(),
+    } as unknown as SQLiteDatabase;
+
+    await forkChat(mockDb, 1, 2);
+
+    expect(runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('stoppedByUser'),
+      [
+        10,
+        'assistant',
+        'two',
+        200,
+        'model',
+        0,
+        0,
+        null,
+        null,
+        null,
+        null,
+        null,
+        1,
+      ]
     );
   });
 
@@ -565,7 +636,7 @@ describe('retrievalStats survive a reload', () => {
     });
 
     const [, values] = runAsync.mock.calls[0];
-    expect(values[values.length - 1]).toBeNull();
+    expect(values[values.length - 2]).toBeNull();
   });
 
   it('reads both legs back with their counts', async () => {

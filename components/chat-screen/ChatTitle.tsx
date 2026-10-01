@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Text,
   StyleSheet,
@@ -6,11 +6,14 @@ import {
   Pressable,
   ActivityIndicator,
   useWindowDimensions,
+  type NativeSyntheticEvent,
+  type TextLayoutEventData,
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
+import { firstLineOf } from '../../utils/chatLabel';
 
 interface Props {
   title: string;
@@ -19,6 +22,7 @@ interface Props {
   onPress?: () => void;
   showChevron?: boolean;
   onBottomMeasured?: (bottomY: number) => void;
+  maxWidth?: number;
 }
 
 const ChatTitle = ({
@@ -28,6 +32,7 @@ const ChatTitle = ({
   onPress,
   showChevron = false,
   onBottomMeasured,
+  maxWidth,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const containerRef = useRef<View>(null);
@@ -41,6 +46,19 @@ const ChatTitle = ({
       }
     });
   }, [onBottomMeasured]);
+
+  const [fittedTitle, setFittedTitle] = useState<string | null>(null);
+  useEffect(() => setFittedTitle(null), [title, maxWidth]);
+  const handleTitleWrap = useCallback(
+    (event: NativeSyntheticEvent<TextLayoutEventData>) => {
+      setFittedTitle(firstLineOf(event.nativeEvent.lines, title));
+    },
+    [title]
+  );
+  const shownTitle =
+    fittedTitle === null || fittedTitle === title
+      ? title
+      : `${fittedTitle}\u2026`;
 
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   useEffect(() => {
@@ -56,6 +74,7 @@ const ChatTitle = ({
       onPress={onPress}
       disabled={!onPress}
       hitSlop={8}
+      accessibilityLabel={title ? `${shownTitle}, ${modelName}` : modelName}
       style={({ pressed }) => [
         styles.titleContainer,
         pressed && onPress ? styles.pressed : null,
@@ -63,8 +82,23 @@ const ChatTitle = ({
     >
       {title !== '' ? (
         <>
+          {maxWidth ? (
+            <View
+              style={styles.measure}
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <Text
+                style={[styles.title, { width: maxWidth }]}
+                onTextLayout={handleTitleWrap}
+              >
+                {title}
+              </Text>
+            </View>
+          ) : null}
           <Text numberOfLines={1} style={styles.title}>
-            {title}
+            {shownTitle}
           </Text>
           <View style={styles.modelRow}>
             <Text style={styles.modelName}>{modelName}</Text>
@@ -115,6 +149,11 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.md,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
+    },
+    measure: {
+      position: 'absolute',
+      opacity: 0,
+      top: 0,
     },
     modelName: {
       fontSize: fontSizes.xs,
