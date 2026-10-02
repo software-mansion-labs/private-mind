@@ -65,6 +65,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
   const start = useCallback(async (): StartReturnType => {
     if (statusRef.current !== 'idle') return null;
 
+    let streamOpened = false;
     try {
       isStartCanceled.current = false;
       changeStatus('loading');
@@ -77,6 +78,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       await stt.ensureLoaded();
 
       if (isStartCanceled.current) {
+        AudioManager.setAudioSessionActivity(false);
         return null;
       }
 
@@ -95,21 +97,28 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
         throw error;
       }
       useSTTStore.getState().markStreamOpen();
-      recorder.current!.onAudioReady(
-        {
-          sampleRate: SAMPLE_RATE,
-          bufferLength: BUFFER_LENGTH,
-          channelCount: 1,
-        },
-        handleAudioData
+      streamOpened = true;
+      throwIfRecorderFailed(
+        recorder.current!.onAudioReady(
+          {
+            sampleRate: SAMPLE_RATE,
+            bufferLength: BUFFER_LENGTH,
+            channelCount: 1,
+          },
+          handleAudioData
+        )
       );
-      recorder.current!.start();
+      throwIfRecorderFailed(recorder.current!.start());
 
       return onGeneratorEnd(streamGenerator, () => {
         useSTTStore.getState().markStreamClosed();
         changeStatus('idle');
       });
     } catch (error) {
+      if (streamOpened) {
+        closeAbandonedStream(useSTTStore.getState().module);
+      }
+      AudioManager.setAudioSessionActivity(false);
       changeStatus('idle');
       throw error;
     }
@@ -155,6 +164,14 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
     abandon,
     status,
   };
+}
+
+function throwIfRecorderFailed(
+  result: { status: 'success' } | { status: 'error'; message: string } | void
+) {
+  if (result && result.status === 'error') {
+    throw new Error(`Recorder failed: ${result.message}`);
+  }
 }
 
 function closeAbandonedStream(module: SpeechToTextModule | null) {

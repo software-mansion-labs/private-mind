@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  act,
   render,
   screen,
   fireEvent,
@@ -154,6 +155,30 @@ describe('ChatSpeechInput sending what it shows', () => {
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith('in foreign and the rest of it')
+    );
+  });
+
+  it('says no speech was heard instead of closing silently', async () => {
+    let endStream = () => {};
+    mockSpeech.start.mockImplementationOnce(
+      async () =>
+        (async function* () {
+          await new Promise<void>((resolve) => {
+            endStream = resolve;
+          });
+          yield* [];
+        })() as never
+    );
+    const onCancel = jest.fn();
+    render(<ChatSpeechInput onSubmit={jest.fn()} onCancel={onCancel} />);
+    await act(async () => {});
+
+    fireEvent.press(screen.getByTestId('speech-send'));
+    endStream();
+
+    await waitFor(() => expect(onCancel).toHaveBeenCalled());
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ text1: 'No speech was heard.' })
     );
   });
 });

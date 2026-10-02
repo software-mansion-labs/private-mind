@@ -441,6 +441,13 @@ const ChatBar = ({
       showModelSwitchingToast();
       return;
     }
+    if (hasLoadingAttachment) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Wait for the attachment to finish loading.',
+      });
+      return;
+    }
 
     const permissionStatus = await AudioManager.requestRecordingPermissions();
     if (permissionStatus !== 'Granted') {

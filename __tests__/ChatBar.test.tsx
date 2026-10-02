@@ -663,6 +663,29 @@ describe('speech input', () => {
     expect(screen.queryByTestId('speech-input')).toBeNull();
   });
 
+  it('does not open dictation while an attached document is still loading', async () => {
+    mockUseAttachment.attachments = [
+      {
+        id: 'doc-1',
+        type: 'document',
+        uri: 'file:///doc.pdf',
+        name: 'doc.pdf',
+        status: 'loading',
+      },
+    ];
+    renderBar();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+
+    expect(screen.queryByTestId('speech-input')).toBeNull();
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: 'Wait for the attachment to finish loading.',
+      })
+    );
+  });
+
   it('switches to speech input view after mic button press when permission granted', async () => {
     renderBar();
     await act(async () => {

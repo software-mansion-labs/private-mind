@@ -106,6 +106,7 @@ const ChatSpeechInput: React.FC<Props> = ({
           if (shown) {
             onSubmit(shown);
           } else {
+            Toast.show({ type: 'defaultToast', text1: 'No speech was heard.' });
             onCancel();
           }
         }
