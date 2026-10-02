@@ -1610,7 +1610,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         }
         armRetry(set, null);
         set({ generationError: null });
-        if (!stoppedByUser) void promptReviewIfDue();
+        if (!stoppedByUser) promptReviewIfDue();
 
         if (stoppedByUser) {
           armRetry(set, {
