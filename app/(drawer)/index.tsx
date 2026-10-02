@@ -57,6 +57,7 @@ export default function App() {
   const handleSetModel = async (model: Model, replace = false) => {
     await setLastUsedModelId(model.id);
     await startPhantomChat(db, replace ? 'replace' : 'push', model);
+    return true;
   };
 
   const { pickModel, handleSheetStateChange } = useModelSwitch(handleSetModel);

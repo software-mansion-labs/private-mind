@@ -38,9 +38,10 @@ jest.mock('../utils/modelCompatibility', () => ({
   hasMemoryForWebSearch: () => true,
   isMemoryConstrained: () => false,
 }));
+const mockAddChat = jest.fn(async (_title: string, _modelId: number) => 9);
 jest.mock('../store/chatStore', () => ({
   useChatStore: () => ({
-    addChat: jest.fn(async () => 9),
+    addChat: mockAddChat,
     updateLastUsed: jest.fn(),
     enableSource: jest.fn(),
   }),
@@ -81,6 +82,7 @@ jest.mock('../store/llmStore', () => {
       state.isProcessingPrompt = false;
       state.generatingForChatId = null;
     }),
+    loadModel: jest.fn(async () => {}),
   };
   const store = Object.assign(() => state, { getState: () => state });
   return { useLLMStore: store };
@@ -94,6 +96,7 @@ const mockedState = () =>
     model: { id: number; modelName: string } | null;
     sendChatMessage: jest.Mock;
     interrupt: jest.Mock;
+    loadModel: jest.Mock;
   };
 
 const messagesRef = {
@@ -106,7 +109,7 @@ const messagesRef = {
 const useSend = (
   chatId = 1,
   loading = false,
-  waitForModelSwitch?: () => Promise<void>
+  waitForModelSwitch?: () => Promise<Model | undefined>
 ) =>
   useSendChatMessage({
     chatId,
@@ -134,6 +137,8 @@ beforeEach(() => {
   state.generatingForChatId = null;
   state.sendChatMessage.mockClear();
   state.interrupt.mockClear();
+  state.loadModel.mockClear();
+  state.model = { id: 1, modelName: 'Test LLM' };
   (Toast.show as jest.Mock).mockClear();
   Object.keys(webEnabledByChat).forEach(
     (key) => delete webEnabledByChat[Number(key)]
@@ -209,8 +214,8 @@ describe('sending while another turn is open', () => {
 describe('a send that lands while the model is being switched', () => {
   it('waits for the switch instead of refusing the message', async () => {
     let settle = () => {};
-    const switched = new Promise<void>((resolve) => {
-      settle = resolve;
+    const switched = new Promise<undefined>((resolve) => {
+      settle = () => resolve(undefined);
     });
 
     const sent = useSend(1, false, () => switched)('hello');
@@ -245,6 +250,59 @@ describe('a send that lands while the model is being switched', () => {
   });
 });
 
+describe('a send that lands inside the switch window', () => {
+  const qwen = { id: 1, modelName: 'Qwen 3 - 0.6B' } as Model;
+  const gemma = { id: 2, modelName: 'Gemma 4 - 2B' } as Model;
+  const { checkIfChatExists } = jest.requireMock(
+    '../database/chatRepository'
+  ) as { checkIfChatExists: jest.Mock };
+
+  const useSendDuringSwitchTo = (landedOn: Model | undefined) => {
+    if (landedOn) mockedState().model = landedOn;
+    return useSendChatMessage({
+      chatId: 1,
+      model: qwen,
+      messageHistory: [],
+      chatSettings: { systemPrompt: '', thinkingEnabled: false },
+      enabledSources: [],
+      vectorStore: null,
+      embeddings: null,
+      messagesRef,
+      db: {} as SQLiteDatabase,
+      isGenerating: false,
+      isModelLoading: false,
+      isSwitching: true,
+      waitForModelSwitch: async () => landedOn,
+    })('hello');
+  };
+
+  beforeEach(() => mockAddChat.mockClear());
+
+  it('does not load the previous model back once the switch has landed', async () => {
+    expect(await useSendDuringSwitchTo(gemma)).toBe(true);
+
+    expect(mockedState().loadModel).not.toHaveBeenCalled();
+    expect(mockedState().sendChatMessage).toHaveBeenCalled();
+  });
+
+  it('pins the new chat to the model the switch landed on', async () => {
+    checkIfChatExists.mockResolvedValueOnce(false);
+
+    await useSendDuringSwitchTo(gemma);
+
+    expect(mockAddChat).toHaveBeenCalledWith(expect.any(String), gemma.id);
+  });
+
+  it('keeps the model the screen held when the switch did not land', async () => {
+    checkIfChatExists.mockResolvedValueOnce(false);
+
+    await useSendDuringSwitchTo(undefined);
+
+    expect(mockedState().loadModel).not.toHaveBeenCalled();
+    expect(mockAddChat).toHaveBeenCalledWith(expect.any(String), qwen.id);
+  });
+});
+
 describe('the send transition', () => {
   it('arms the pin before the keyboard is told to close', async () => {
     const dismiss = jest
@@ -261,6 +319,58 @@ describe('the send transition', () => {
       dismiss.mock.invocationCallOrder[0]
     );
     dismiss.mockRestore();
+  });
+});
+
+describe('the model in the header is the one that answers', () => {
+  const usePinnedTo = (model: Model) =>
+    useSendChatMessage({
+      chatId: 1,
+      model,
+      messageHistory: [],
+      chatSettings: {
+        systemPrompt: '',
+        thinkingEnabled: false,
+      },
+      enabledSources: [],
+      vectorStore: null,
+      embeddings: null,
+      messagesRef,
+      db: {} as SQLiteDatabase,
+      isGenerating: false,
+      isModelLoading: false,
+      isSwitching: false,
+    });
+
+  it('loads the chat’s model before sending, so a new chat does not answer with the last one', async () => {
+    const gemma = { id: 2, modelName: 'Gemma 4 - 2B' } as Model;
+
+    expect(await usePinnedTo(gemma)('hello')).toBe(true);
+
+    const state = mockedState();
+    expect(state.loadModel).toHaveBeenCalledWith(gemma);
+    expect(state.loadModel.mock.invocationCallOrder[0]).toBeLessThan(
+      state.sendChatMessage.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('asks for no load when the chat’s model is already the resident one', async () => {
+    const resident = { id: 1, modelName: 'Test LLM' } as Model;
+
+    expect(await usePinnedTo(resident)('hello')).toBe(true);
+
+    expect(mockedState().loadModel).not.toHaveBeenCalled();
+  });
+
+  it('loads nothing for a send it refuses', async () => {
+    const state = mockedState();
+    state.isGenerating = true;
+    state.generatingForChatId = 1;
+
+    expect(
+      await usePinnedTo({ id: 2, modelName: 'Gemma 4 - 2B' } as Model)('hi')
+    ).toBe('busy');
+    expect(state.loadModel).not.toHaveBeenCalled();
   });
 });
 
