@@ -97,7 +97,7 @@ const useSend = (
 ) =>
   useSendChatMessage({
     chatId,
-    model: { id: 1, modelName: 'Test LLM' } as Model,
+    model: { id: 1, modelName: 'Test LLM', vision: true } as Model,
     messageHistory: [],
     chatSettings: {
       systemPrompt: '',
@@ -174,6 +174,13 @@ describe('sending while another turn is open', () => {
     expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
   });
 
+  it('refuses a photo for a model that cannot see it, instead of answering without it', async () => {
+    expect(await useSend(1)('What is in this photo?', 'file://photo.jpg')).toBe(
+      'image-unsupported'
+    );
+    expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+  });
+
   it('sends a long message that still fits the model', async () => {
     const longQuestion =
       'The quick brown fox jumps over the lazy dog while the sun sets slowly behind the distant hills. '.repeat(
@@ -229,7 +236,7 @@ describe('a send that lands while the model is being switched', () => {
   it('refuses only when nothing can tell it the switch is over', async () => {
     const send = useSendChatMessage({
       chatId: 1,
-      model: { id: 1, modelName: 'Test LLM' } as Model,
+      model: { id: 1, modelName: 'Test LLM', vision: true } as Model,
       messageHistory: [],
       chatSettings: {
         systemPrompt: '',

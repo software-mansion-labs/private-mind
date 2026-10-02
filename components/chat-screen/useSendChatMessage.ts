@@ -18,7 +18,8 @@ export type SendRefusal =
   | 'busy'
   | 'chat-not-created'
   | 'image-not-saved'
-  | 'too-long';
+  | 'too-long'
+  | 'image-unsupported';
 import { Attachment } from '../../hooks/useAttachment';
 import { LFMEmbeddings } from '../../utils/lfmEmbeddings';
 import { buildMessageSources } from '../../utils/messageSources';
@@ -124,6 +125,7 @@ export const useSendChatMessage = ({
     if (!llm.model && !isModelLoading) return 'model-loading';
     const turnModel = llm.model ?? model;
     if (turnModel && !fitsInOneTurn(userInput, turnModel)) return 'too-long';
+    if (imagePath && turnModel && !turnModel.vision) return 'image-unsupported';
 
     messagesRef.current?.onMessageSent();
     Keyboard.dismiss();
