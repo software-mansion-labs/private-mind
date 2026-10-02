@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
+import Toast from 'react-native-toast-message';
 import { useLLMStore } from '../store/llmStore';
 import { Model } from '../database/modelRepository';
 import {
@@ -43,6 +44,12 @@ const calculateAverageBenchmark = (
   };
 };
 
+const showBenchmarkDidNotRun = (reason: string) =>
+  Toast.show({
+    type: 'defaultToast',
+    text1: `The benchmark didn't run: ${reason}`,
+  });
+
 interface UseBenchmarkRunnerParams {
   onComplete: (newBenchmarkId: number) => void;
 }
@@ -58,7 +65,15 @@ export default function useBenchmarkRunner({
   const [isRunning, setIsRunning] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [timer, setTimer] = useState(0);
-  const isCancelled = useRef(false);
+  const currentRun = useRef(0);
+
+  useEffect(
+    () => () => {
+      currentRun.current += 1;
+      if (useLLMStore.getState().isBenchmarking) interrupt();
+    },
+    [interrupt]
+  );
 
   const startBenchmark = useCallback(
     async (selectedModel: Model | undefined) => {
@@ -67,7 +82,8 @@ export default function useBenchmarkRunner({
       setIsRunning(true);
       setIsSuccess(false);
       setTimer(0);
-      isCancelled.current = false;
+      const run = ++currentRun.current;
+      const isAbandoned = () => currentRun.current !== run;
 
       const timerInterval = setInterval(
         () => setTimer((prev) => prev + 1),
@@ -76,21 +92,36 @@ export default function useBenchmarkRunner({
 
       try {
         await loadModel(selectedModel, true);
+        if (isAbandoned()) return;
+        if (useLLMStore.getState().model?.id !== selectedModel.id) {
+          setIsRunning(false);
+          showBenchmarkDidNotRun(
+            `${selectedModel.modelName} couldn't be loaded.`
+          );
+          return;
+        }
 
         for (let i = 0; i < BENCHMARK_WARMUP_RUNS; i++) {
-          if (isCancelled.current) break;
+          if (isAbandoned()) break;
           await runBenchmark();
         }
 
         const results: BenchmarkResultPerformanceNumbers[] = [];
 
         for (let i = 0; i < BENCHMARK_ITERATIONS; i++) {
-          if (isCancelled.current) break;
+          if (isAbandoned()) break;
           const result = await runBenchmark();
           if (result) results.push(result);
         }
 
-        if (isCancelled.current || results.length === 0) return;
+        if (isAbandoned()) return;
+        if (results.length === 0) {
+          setIsRunning(false);
+          showBenchmarkDidNotRun(
+            'the model returned no measurement. Try again.'
+          );
+          return;
+        }
 
         const averageResult = calculateAverageBenchmark(results);
         const benchmarkId = await insertBenchmark(db, {
@@ -107,6 +138,7 @@ export default function useBenchmarkRunner({
         setTimeout(() => setIsRunning(false), 1500);
       } catch (error) {
         console.error('Benchmark run failed:', error);
+        if (isAbandoned()) return;
         setIsRunning(false);
       } finally {
         clearInterval(timerInterval);
@@ -116,8 +148,8 @@ export default function useBenchmarkRunner({
   );
 
   const cancelBenchmark = useCallback(() => {
+    currentRun.current += 1;
     interrupt();
-    isCancelled.current = true;
     setIsRunning(false);
   }, [interrupt]);
 
