@@ -103,9 +103,46 @@ const findRepeatedLineSpans = (text: string): LoopSpan[] => {
     previousStart = start;
   }
 
-  return [adjacent, repeatedUnit(units, LINE_REPEAT_LIMIT)].filter(
-    (span): span is LoopSpan => span !== null
-  );
+  return [
+    adjacent,
+    repeatedUnit(units, LINE_REPEAT_LIMIT + 1),
+    repeatedLineBlock(units),
+    severalDuplicatedLines(units),
+  ].filter((span): span is LoopSpan => span !== null);
+};
+
+const repeatedLineBlock = (units: Unit[]): LoopSpan | null => {
+  let found: LoopSpan | null = null;
+  for (let j = 1; j + 1 < units.length; j++) {
+    for (let i = 0; i + 1 < j; i++) {
+      const continuesTogether =
+        units[i]!.norm === units[j]!.norm &&
+        units[i + 1]!.norm === units[j + 1]!.norm;
+      if (continuesTogether) {
+        if (found === null || units[j]!.start < found.repeat) {
+          found = { first: units[i]!.start, repeat: units[j]!.start };
+        }
+        break;
+      }
+    }
+  }
+  return found;
+};
+
+const DUPLICATED_LINES_FOR_A_LOOP = 2;
+
+const severalDuplicatedLines = (units: Unit[]): LoopSpan | null => {
+  const firstSeen = new Map<string, number>();
+  const repeats: LoopSpan[] = [];
+  for (const { norm, start } of units) {
+    const first = firstSeen.get(norm);
+    if (first === undefined) firstSeen.set(norm, start);
+    else if (!repeats.some((span) => span.first === first)) {
+      repeats.push({ first, repeat: start });
+    }
+  }
+  if (repeats.length < DUPLICATED_LINES_FOR_A_LOOP) return null;
+  return repeats[0]!;
 };
 
 export const normalizeLine = (line: string): string =>

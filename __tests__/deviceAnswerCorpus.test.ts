@@ -64,7 +64,7 @@ describe('real device answers — how often each guard fires', () => {
       answersWithQuestions,
       ({ answer }) => truncateAtRepeatedClause(answer).length < answer.length
     );
-    expect(cut.map(({ answer }) => label(answer))).toHaveLength(12);
+    expect(cut.map(({ answer }) => label(answer))).toHaveLength(11);
     for (const { answer } of cut) {
       expect(truncateAtRepeatedClause(answer).length).toBeGreaterThan(100);
     }
@@ -74,7 +74,7 @@ describe('real device answers — how often each guard fires', () => {
     const untouched = answersWithQuestions.filter(
       ({ answer }) => truncateAtRepeatedClause(answer) === answer
     );
-    expect(untouched).toHaveLength(247);
+    expect(untouched).toHaveLength(248);
   });
 
   it('flags a question echo about as often as one really happens', () => {

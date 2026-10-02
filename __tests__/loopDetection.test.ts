@@ -66,6 +66,36 @@ describe('truncateAtRepeatedClause', () => {
     expect(result).not.toContain('6. Ochłonienie');
   });
 
+  it('keeps a list whose items share one identical line, instead of erasing the items already on screen (I-71)', () => {
+    const text =
+      'भारत के प्रमुख त्योहार:\n' +
+      '1. **दिवाली**\n' +
+      '- **महत्व:** यह बुराई पर अच्छाई की जीत का प्रतीक है।\n' +
+      '- **अवधि:** यह कार्तिक अमावस्या को मनाया जाता है।\n' +
+      '2. **होली**\n' +
+      '- **महत्व:** यह वसंत के आगमन का उत्सव है।\n' +
+      '- **अवधि:** यह फाल्गुन पूर्णिमा को मनाया जाता है।\n' +
+      '3. **दशहरा**\n' +
+      '- **महत्व:** यह बुराई पर अच्छाई की जीत का प्रतीक है।\n' +
+      '- **अवधि:** यह आश्विन शुक्ल दशमी को मनाया जाता है।\n' +
+      '4. **दुर्गा पूजा**\n' +
+      '- **महत्व:** यह देवी दुर्गा की शक्ति की आराधना है।';
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
+  it('still cuts a block of lines that comes back in the same order', () => {
+    const text =
+      'Lyrics:\n' +
+      'Hey, how is it going today?\n' +
+      'Are you drinking to pass the time?\n' +
+      'Translation:\n' +
+      'Hey, how is it going today?\n' +
+      'Are you drinking to pass the time?';
+    const result = truncateAtRepeatedClause(text);
+    expect(result).toContain('Are you drinking to pass the time?');
+    expect(result.match(/Hey, how is it going today\?/g)).toHaveLength(1);
+  });
+
   it('does not cut an answer that merely names the same thing twice (live-found regression)', () => {
     const text =
       'To bake a chocolate cake, you need flour, sugar, cocoa powder, eggs, milk, and baking powder.\n' +
