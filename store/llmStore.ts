@@ -72,6 +72,7 @@ import {
   memorySampleIntervalMs,
 } from '../modules/memory-probe';
 import { useWebSearchStore } from './webSearchStore';
+import { useModelStore } from './modelStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
 
 export interface LLMStore {
@@ -834,6 +835,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   loadModel: async (model, hardReload: boolean = false) => {
     const { model: currentModel } = get();
     if (model.id === currentModel?.id && llmInstance && !hardReload) {
+      return;
+    }
+    const stored = useModelStore.getState().getModelById(model.id);
+    if (stored && !stored.isDownloaded) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: `${model.modelName} is not downloaded. Download it in Models to use it.`,
+      });
       return;
     }
     const result = modelLoadChain.then(async () => {

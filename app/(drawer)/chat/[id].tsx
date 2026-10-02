@@ -43,7 +43,13 @@ function ChatScreenInner() {
   const resolvedModel = resolvedModelId
     ? getModelById(parseInt(resolvedModelId.toString(), 10))
     : undefined;
-  const [model, setModel] = useState<Model | undefined>(resolvedModel);
+  const [pickedModel, setModel] = useState<Model | undefined>(resolvedModel);
+  const storedModel = useModelStore((state) =>
+    pickedModel
+      ? state.models.find((candidate) => candidate.id === pickedModel.id)
+      : undefined
+  );
+  const model = storedModel ?? pickedModel;
   const [pendingModel, setPendingModel] = useState<Model | undefined>();
   // Only show the loading/empty state on the very first mount for this
   // chat. useFocusEffect refires on every refocus (including returning
