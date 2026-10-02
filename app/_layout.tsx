@@ -16,6 +16,7 @@ import { ThemeProvider } from '../context/ThemeContext';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import AppToast from '../components/AppToast';
+import { useTurnResumesOnForeground } from '../hooks/useTurnResumesOnForeground';
 import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Stack } from 'expo-router';
@@ -32,6 +33,7 @@ SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ fade: false, duration: 0 });
 
 function RootNavigator() {
+  useTurnResumesOnForeground();
   useEffect(() => {
     SplashScreen.hideAsync();
     removeBundledModelLeftovers().catch((error) =>

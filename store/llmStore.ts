@@ -124,6 +124,9 @@ export interface LLMStore {
     isRetry?: boolean
   ) => Promise<boolean>;
   retryLastGeneration: () => Promise<void>;
+  appLeftForeground: () => void;
+  appWentToBackground: () => void;
+  appReturnedToForeground: () => void;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   generateUtility: (messages: ExecutorchMessage[]) => Promise<string>;
   interrupt: () => void;
@@ -180,6 +183,25 @@ type FailedGenerationRequest = {
 };
 
 let failedGenerationRequest: FailedGenerationRequest | null = null;
+
+let appIsAway = false;
+let appIsInBackground = false;
+let backgroundReleaseTimer: ReturnType<typeof setTimeout> | null = null;
+let appWasAwayDuringTurn = false;
+let turnHeldUntilForeground: FailedGenerationRequest | null = null;
+
+const withoutAbandonedAnswer = (
+  messages: Message[],
+  chatId: number
+): Message[] =>
+  messages.filter(
+    (message) =>
+      !(
+        message.id === -1 &&
+        message.role === 'assistant' &&
+        message.chatId === chatId
+      )
+  );
 
 const armRetry = (
   set: (partial: Partial<LLMStore>) => void,
@@ -331,6 +353,34 @@ const unloadLLMWhenIdle = (): Promise<void> => {
   return withExclusiveRunner(async () => {
     if (llmInstance === target) unloadLLM();
   });
+};
+
+export const BACKGROUND_RELEASE_DELAY_MS = 5_000;
+
+const cancelBackgroundRelease = () => {
+  if (backgroundReleaseTimer === null) return;
+  clearTimeout(backgroundReleaseTimer);
+  backgroundReleaseTimer = null;
+};
+
+const modelIsInUse = (get: () => LLMStore) =>
+  get().isLoading ||
+  get().isGenerating ||
+  get().isProcessingPrompt ||
+  get().isBenchmarking ||
+  utilityGenerating;
+
+const releaseModelOnceIdleInBackground = (get: () => LLMStore) => {
+  cancelBackgroundRelease();
+  backgroundReleaseTimer = setTimeout(() => {
+    backgroundReleaseTimer = null;
+    if (!appIsInBackground) return;
+    if (modelIsInUse(get)) {
+      releaseModelOnceIdleInBackground(get);
+      return;
+    }
+    void unloadLLMWhenIdle();
+  }, BACKGROUND_RELEASE_DELAY_MS);
 };
 
 const loadModelInstance = async (
@@ -669,6 +719,8 @@ const runUtilityGeneration = (
   });
 };
 
+const GENERATION_FAILED = 'Failed to generate a response.';
+
 const describeGenerationFailure = (): string =>
   'The model returned an empty response';
 
@@ -926,7 +978,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     documentName,
     isRetry = false
   ) => {
-    const { db, model: selectedModel, activeChatMessages } = get();
+    const { db, model: selectedModel } = get();
     if (!db || !selectedModel) {
       console.warn('LLM not ready or DB not set');
       return false;
@@ -940,6 +992,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       console.warn('A turn is already in flight, rejecting the send');
       return false;
     }
+    const activeChatMessages = isRetry
+      ? withoutAbandonedAnswer(get().activeChatMessages, chatId)
+      : get().activeChatMessages;
+    appWasAwayDuringTurn = appIsAway;
+    turnHeldUntilForeground = null;
 
     const abortController = new AbortController();
     sendAbortController = abortController;
@@ -992,7 +1049,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       }
 
       if (!showToUser) return;
-      armRetry(set, {
+      const request: FailedGenerationRequest = {
         newMessage,
         chatId,
         buildSources,
@@ -1000,16 +1057,17 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         imagePath,
         documentName,
         reusePersistedUser: userMessagePersisted,
-      });
-      if (get().activeChatId === chatId) {
-        set({
-          generationError: {
-            chatId,
-            message: 'Failed to generate a response.',
-          },
-        });
-      }
+      };
+      armRetry(set, request);
       console.error('Chat sendMessage failed', error);
+      if (appWasAwayDuringTurn) {
+        turnHeldUntilForeground = request;
+        if (!appIsAway) setTimeout(() => get().appReturnedToForeground(), 0);
+        return;
+      }
+      if (get().activeChatId === chatId) {
+        set({ generationError: { chatId, message: GENERATION_FAILED } });
+      }
     };
 
     let persistedUserMessageId: number | null = null;
@@ -1265,6 +1323,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             );
       } catch (error) {
         if (abortController.signal.aborted || !stillOurs()) throw error;
+        if (appWasAwayDuringTurn) throw error;
         console.warn(
           'Chat generation failed, retrying with a reduced prompt',
           error
@@ -1733,6 +1792,40 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       request.documentName,
       request.reusePersistedUser
     );
+  },
+
+  appLeftForeground: () => {
+    appIsAway = true;
+    if (get().isGenerating || get().isProcessingPrompt) {
+      appWasAwayDuringTurn = true;
+    }
+  },
+
+  appWentToBackground: () => {
+    get().appLeftForeground();
+    appIsInBackground = true;
+    releaseModelOnceIdleInBackground(get);
+  },
+
+  appReturnedToForeground: () => {
+    appIsAway = false;
+    appIsInBackground = false;
+    cancelBackgroundRelease();
+    const held = turnHeldUntilForeground;
+    turnHeldUntilForeground = null;
+    if (!held || failedGenerationRequest !== held) return;
+
+    const { activeChatId, isGenerating, isProcessingPrompt } = get();
+    if (activeChatId !== held.chatId) return;
+    if (isGenerating || isProcessingPrompt) return;
+    get()
+      .retryLastGeneration()
+      .catch((error) => {
+        console.error('Failed to resume the turn the background cut', error);
+        set({
+          generationError: { chatId: held.chatId, message: GENERATION_FAILED },
+        });
+      });
   },
 
   sendEventMessage: async (chatId: number, content: string) => {
