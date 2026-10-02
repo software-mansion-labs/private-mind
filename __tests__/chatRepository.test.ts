@@ -1,4 +1,5 @@
 import {
+  createChat,
   forkChat,
   getChatDigest,
   getChatMessages,
@@ -17,6 +18,22 @@ jest.mock('expo-sqlite', () => ({
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn().mockResolvedValue(null),
 }));
+
+describe('createChat', () => {
+  it('creates a chat that has no model yet, as an imported one, with a numeric last-used time', async () => {
+    const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 3 });
+    const mockDb = { runAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const id = await createChat(mockDb, 'Imported chat', null);
+
+    expect(id).toBe(3);
+    const [sql, params] = runAsync.mock.calls[0];
+    expect(sql).toContain('lastUsed');
+    expect(params[0]).toBe('Imported chat');
+    expect(params[1]).toBeNull();
+    expect(typeof params[2]).toBe('number');
+  });
+});
 
 describe('persistMessage with imagePath', () => {
   it('includes imagePath in INSERT when provided', async () => {

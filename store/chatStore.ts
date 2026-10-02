@@ -32,6 +32,7 @@ interface ChatStore {
   updateLastUsed: (id: number) => void;
   getChatById: (id: number) => Chat | undefined;
   addChat: (title: string, modelId: number) => Promise<number | undefined>;
+  addImportedChat: (title: string) => Promise<number | undefined>;
   renameChat: (id: number, newTitle: string) => Promise<void>;
   setChatModel: (id: number, modelId: number) => Promise<void>;
   forkChat: (
@@ -125,6 +126,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const chats = get().chats;
 
     return chats.find((chat) => chat.id === id);
+  },
+
+  addImportedChat: async (title: string) => {
+    const db = get().db;
+    if (!db) return;
+    const newChatId = await createChat(db, title, null);
+    if (newChatId === undefined) return;
+    await get().loadChats();
+    return newChatId;
   },
 
   addChat: async (title: string, modelId: number) => {
