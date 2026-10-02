@@ -83,6 +83,35 @@ describe('truncateAtRepeatedClause', () => {
     expect(truncateAtRepeatedClause(text)).toBe(text);
   });
 
+  it('keeps a structured list whose items repeat the same section labels (I-80)', () => {
+    const festival = (n: number, name: string, when: string) =>
+      `${n}. **${name}**\n**महत्व:**\nयह ${name} का महत्वपूर्ण पर्व है।\n**समय:**\n${when}\n**परंपराएं:**\nलोग ${name} पर विशेष पूजा करते हैं।\n`;
+    const text =
+      'भारत के प्रमुख त्योहार:\n' +
+      festival(1, 'दिवाली', 'यह अक्टूबर या नवंबर में आता है।') +
+      festival(2, 'होली', 'यह मार्च के अंत में आता है।') +
+      festival(3, 'दशहरा', 'यह सितंबर या अक्टूबर में आता है।') +
+      festival(4, 'ईद', 'यह चंद्र कैलेंडर के अनुसार आती है।');
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
+  it('keeps an English answer that gives every item the same headings', () => {
+    const festival = (name: string) =>
+      `### ${name}\n**Significance:**\n${name} marks a major moment in the year.\n**Traditions:**\nPeople celebrate ${name} with food and music.\n`;
+    const text = festival('Diwali') + festival('Holi') + festival('Eid');
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
+  it('still cuts items that repeat their content under the same labels', () => {
+    const block =
+      '**Traditions:**\nPeople celebrate with food, music and prayers at home.\n';
+    const text = 'Festivals:\n' + block + block + block;
+    const result = truncateAtRepeatedClause(text);
+    expect(
+      result.match(/People celebrate with food, music and prayers at home\./g)
+    ).toHaveLength(1);
+  });
+
   it('still cuts a block of lines that comes back in the same order', () => {
     const text =
       'Lyrics:\n' +
