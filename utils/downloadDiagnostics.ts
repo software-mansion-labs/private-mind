@@ -8,7 +8,11 @@ export type DownloadPhase =
   | 'cancel-requested'
   | 'cancel-waiting'
   | 'cancel-landed'
-  | 'cancel-failed';
+  | 'cancel-failed'
+  | 'paused-in-background'
+  | 'pause-failed'
+  | 'resumed-in-foreground'
+  | 'resume-failed';
 
 interface DownloadEvent {
   at: number;

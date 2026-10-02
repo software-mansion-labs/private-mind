@@ -1,4 +1,10 @@
-import { useModelStore, ModelState } from '../store/modelStore';
+import {
+  useModelStore,
+  ModelState,
+  pauseDownloadsForBackground,
+  resumeDownloadsAfterBackground,
+} from '../store/modelStore';
+import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
 import * as modelRepository from '../database/modelRepository';
 import Toast from 'react-native-toast-message';
 import {
@@ -138,5 +144,68 @@ describe('a burst of download and cancel taps', () => {
 
     expect(status()).toBe(ModelState.NotStarted);
     expect(fetcher.activeSources()).toEqual([]);
+  });
+});
+
+describe('a download while the app is in the background (UW-22)', () => {
+  const sources = [
+    model.modelPath,
+    model.tokenizerPath,
+    model.tokenizerConfigPath,
+  ];
+
+  const downloadUnderway = async () => {
+    const started = download();
+    await flushMicrotasks();
+    await fetcher.releaseSizeLookups();
+    return { started };
+  };
+
+  it('is paused when the app leaves, so Android cannot cut it, and resumed on return', async () => {
+    const { started } = await downloadUnderway();
+
+    await pauseDownloadsForBackground();
+    expect(ExpoResourceFetcher.pauseFetching).toHaveBeenCalledWith(...sources);
+    expect(status()).toBe(ModelState.Downloading);
+
+    await resumeDownloadsAfterBackground();
+    expect(ExpoResourceFetcher.resumeFetching).toHaveBeenCalledWith(...sources);
+
+    await fetcher.finish(model.modelPath);
+    await started;
+    expect(status()).toBe(ModelState.Downloaded);
+  });
+
+  it('stays stopped when the user cancelled it while it was paused', async () => {
+    const { started } = await downloadUnderway();
+    await pauseDownloadsForBackground();
+
+    await cancel();
+    await resumeDownloadsAfterBackground();
+
+    expect(ExpoResourceFetcher.resumeFetching).not.toHaveBeenCalled();
+    await started;
+  });
+
+  it('still resumes when the app comes back before the pause has landed', async () => {
+    const { started } = await downloadUnderway();
+    let pauseLands = () => {};
+    (ExpoResourceFetcher.pauseFetching as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          pauseLands = resolve;
+        })
+    );
+
+    const pausing = pauseDownloadsForBackground();
+    const resuming = resumeDownloadsAfterBackground();
+    await flushMicrotasks();
+    pauseLands();
+    await pausing;
+    await resuming;
+
+    expect(ExpoResourceFetcher.resumeFetching).toHaveBeenCalledTimes(1);
+    await fetcher.finish(model.modelPath);
+    await started;
   });
 });

@@ -33,6 +33,7 @@ export interface DownloadState {
 }
 
 interface DownloadAttempt {
+  model: Model;
   cancelled: boolean;
   fetching: boolean;
   finished: boolean;
@@ -40,6 +41,56 @@ interface DownloadAttempt {
 }
 
 const attempts = new Map<number, DownloadAttempt>();
+const pausedForBackground = new Set<DownloadAttempt>();
+
+const sourcesOf = (model: Model) =>
+  [model.modelPath, model.tokenizerPath, model.tokenizerConfigPath] as const;
+
+let pauseInFlight: Promise<void> = Promise.resolve();
+
+const pauseActiveDownloads = async () => {
+  for (const attempt of attempts.values()) {
+    if (!attempt.fetching || attempt.finished || attempt.cancelled) continue;
+    const { model } = attempt;
+    try {
+      await ExpoResourceFetcher.pauseFetching(...sourcesOf(model));
+      pausedForBackground.add(attempt);
+      recordDownloadEvent(model.id, model.modelName, 'paused-in-background');
+    } catch (err) {
+      recordDownloadEvent(
+        model.id,
+        model.modelName,
+        'pause-failed',
+        describeDownloadError(err)
+      );
+    }
+  }
+};
+
+export const pauseDownloadsForBackground = () => {
+  pauseInFlight = pauseInFlight.then(pauseActiveDownloads);
+  return pauseInFlight;
+};
+
+const resumePausedDownloads = () => {
+  for (const attempt of [...pausedForBackground]) {
+    pausedForBackground.delete(attempt);
+    if (attempt.finished || attempt.cancelled) continue;
+    const { model } = attempt;
+    recordDownloadEvent(model.id, model.modelName, 'resumed-in-foreground');
+    ExpoResourceFetcher.resumeFetching(...sourcesOf(model)).catch((err) =>
+      recordDownloadEvent(
+        model.id,
+        model.modelName,
+        'resume-failed',
+        describeDownloadError(err)
+      )
+    );
+  }
+};
+
+export const resumeDownloadsAfterBackground = () =>
+  pauseInFlight.then(resumePausedDownloads);
 
 export const resetDownloadAttempts = () => attempts.clear();
 
@@ -276,6 +327,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     recordDownloadEvent(model.id, model.modelName, 'requested');
 
     const attempt: DownloadAttempt = {
+      model,
       cancelled: false,
       fetching: false,
       finished: false,
