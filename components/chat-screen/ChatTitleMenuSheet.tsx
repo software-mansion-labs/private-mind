@@ -1,4 +1,4 @@
-import React, { RefObject } from 'react';
+import React, { RefObject, useRef } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -33,16 +33,33 @@ const ChatTitleMenuSheet = ({
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
 
+  const chosenAction = useRef<(() => void) | null>(null);
+
   const handleOption = (action: () => void) => {
-    bottomSheetModalRef.current?.dismiss();
-    action();
+    const sheet = bottomSheetModalRef.current;
+    if (!sheet) {
+      action();
+      return;
+    }
+    chosenAction.current = action;
+    sheet.dismiss();
+  };
+
+  const handleDismiss = () => {
+    const action = chosenAction.current;
+    chosenAction.current = null;
+    if (action) {
+      action();
+      return;
+    }
+    onDismiss?.();
   };
 
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
       enableDynamicSizing
-      onDismiss={onDismiss}
+      onDismiss={handleDismiss}
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
       }}
