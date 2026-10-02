@@ -17,7 +17,7 @@ import { useLLMStore } from './llmStore';
 import { LFMEmbeddings } from '../utils/lfmEmbeddings';
 import {
   addChunkToKeywordIndex,
-  countStoredChunks,
+  storedChunkTexts,
   removeDocumentFromKeywordIndex,
 } from '../database/keywordIndex';
 import {
@@ -135,11 +135,16 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         size: source.size,
         firstChunk: chunks[0] || undefined,
       });
-      const matchIsComplete = async (id: number) => {
-        const stored = await countStoredChunks(vectorStore?.db, id);
-        return stored === null || stored === chunks.length;
-      };
-      if (matchingSource && (await matchIsComplete(matchingSource.id))) {
+      const storedChunks = matchingSource
+        ? await storedChunkTexts(vectorStore?.db, matchingSource.id)
+        : null;
+      const matchHoldsThisText =
+        storedChunks === null ||
+        storedChunks.every((text, index) => text === chunks[index]);
+      const matchIsComplete =
+        storedChunks === null ||
+        (matchHoldsThisText && storedChunks.length === chunks.length);
+      if (matchingSource && matchIsComplete) {
         onProgress?.(1);
         set((state) => {
           const withoutTemporary = state.sources.filter(
@@ -168,7 +173,8 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         await removeDocumentFromKeywordIndex(vectorStore.db, id);
       };
 
-      const repairedSourceId = matchingSource?.id ?? null;
+      const repairedSourceId =
+        matchingSource && matchHoldsThisText ? matchingSource.id : null;
       if (repairedSourceId !== null) {
         await removeStoredChunks(repairedSourceId);
       }
