@@ -104,6 +104,7 @@ interface Props {
   extraContentPadding: SharedValue<number>;
   /** Whether the LLM is currently streaming a response. */
   isGenerating: boolean;
+  thinkingTurn?: boolean;
   generationError?: string;
   onRetryGeneration?: () => void;
   canRetryGeneration?: boolean;
@@ -189,6 +190,7 @@ const Messages = ({
   chatHistory,
   extraContentPadding,
   isGenerating,
+  thinkingTurn = false,
   generationError,
   onRetryGeneration,
   canRetryGeneration = false,
@@ -1083,6 +1085,7 @@ const Messages = ({
                   tokensPerSecond={message.tokensPerSecond}
                   timeToFirstToken={message.timeToFirstToken}
                   isLastMessage={isLastMessage}
+                  thinkingTurn={isLastMessage && thinkingTurn}
                   imagePath={message.imagePath}
                   documentName={message.documentName}
                   sourceDocuments={message.sourceDocuments}
