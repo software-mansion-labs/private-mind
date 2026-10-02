@@ -86,3 +86,24 @@ it('leaves the menu lifecycle to the chosen option instead of also reporting a p
 
   expect(onDismiss).not.toHaveBeenCalled();
 });
+
+it('ignores a second option tapped while the menu is still closing, so delete does not also open rename', () => {
+  const onDelete = jest.fn();
+  const onRename = jest.fn();
+  render(
+    <ChatTitleMenuSheet
+      bottomSheetModalRef={React.createRef()}
+      title="Trip plans"
+      onRename={onRename}
+      onExport={jest.fn()}
+      onDelete={onDelete}
+    />
+  );
+
+  fireEvent.press(screen.getByText('Delete Chat'));
+  fireEvent.press(screen.getByText('Rename'));
+  mockFinishDismiss?.();
+
+  expect(onDelete).toHaveBeenCalledTimes(1);
+  expect(onRename).not.toHaveBeenCalled();
+});

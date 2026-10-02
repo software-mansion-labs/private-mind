@@ -36,6 +36,7 @@ const ChatTitleMenuSheet = ({
   const chosenAction = useRef<(() => void) | null>(null);
 
   const handleOption = (action: () => void) => {
+    if (chosenAction.current) return;
     const sheet = bottomSheetModalRef.current;
     if (!sheet) {
       action();
