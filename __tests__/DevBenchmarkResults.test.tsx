@@ -1,4 +1,5 @@
 import React from 'react';
+import { ScrollView } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { IssueList } from '../components/devBenchmark/IssueList';
 import { ResultsTable } from '../components/devBenchmark/ResultsTable';
@@ -73,8 +74,11 @@ const run: BenchmarkRun = {
 };
 
 describe('dev benchmark results', () => {
-  it('shows each model with its load, speed and scenario score', () => {
+  it('shows each model with its load, speed and a row per scenario under it', () => {
     render(<ResultsTable run={run} scenarioTitles={['Base chat']} />);
+
+    expect(screen.getAllByText('Base chat')).toHaveLength(2);
+    expect(screen.UNSAFE_queryByType(ScrollView)).toBeNull();
 
     expect(screen.getByText('Qwen 3 0.6B')).toBeTruthy();
     expect(screen.getByText('2.1 s')).toBeTruthy();
