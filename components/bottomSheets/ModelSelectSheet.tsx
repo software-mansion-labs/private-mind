@@ -17,6 +17,7 @@ import ModelCard from '../model-hub/ModelCard';
 import PrimaryButton from '../PrimaryButton';
 import BottomSheetSearchInput from './BottomSheetSearchInput';
 import { Feedback } from '../../utils/Feedback';
+import BackClosableBottomSheetModal from './BackClosableBottomSheetModal';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -54,7 +55,7 @@ const ModelSelectSheet = ({
   );
 
   return (
-    <BottomSheetModal
+    <BackClosableBottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       index={snapIndex}
@@ -126,7 +127,7 @@ const ModelSelectSheet = ({
           />
         </BottomSheetView>
       )}
-    </BottomSheetModal>
+    </BackClosableBottomSheetModal>
   );
 };
 

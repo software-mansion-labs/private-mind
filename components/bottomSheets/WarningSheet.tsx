@@ -10,6 +10,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
+import BackClosableBottomSheetModal from './BackClosableBottomSheetModal';
 
 export interface WarningSheetData {
   title: string;
@@ -39,7 +40,7 @@ const WarningSheet = ({ bottomSheetModalRef, onDismiss }: Props) => {
   );
 
   return (
-    <BottomSheetModal
+    <BackClosableBottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       enableDynamicSizing
@@ -72,7 +73,7 @@ const WarningSheet = ({ bottomSheetModalRef, onDismiss }: Props) => {
           </View>
         </BottomSheetView>
       )}
-    </BottomSheetModal>
+    </BackClosableBottomSheetModal>
   );
 };
 

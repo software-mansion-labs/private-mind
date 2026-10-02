@@ -61,6 +61,7 @@ import {
   BAR_GROW_LAYOUT,
   useBarGrowth,
 } from './useBarGrowth';
+import { useBackToClose } from '../../hooks/useBackToClose';
 
 const SENT_ECHO_WINDOW_MS = 300;
 
@@ -422,6 +423,7 @@ const ChatBar = ({
   );
 
   const [showSpeechInput, setShowSpeechInput] = useState(false);
+  useBackToClose(showSpeechInput, () => setShowSpeechInput(false));
 
   const openSpeechInput = async () => {
     if (modelSwitching || disabled) {

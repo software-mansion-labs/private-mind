@@ -22,6 +22,7 @@ import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
 import { router } from 'expo-router';
 import { Feedback } from '../../utils/Feedback';
+import BackClosableBottomSheetModal from './BackClosableBottomSheetModal';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal<Model> | null>;
@@ -216,7 +217,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
   };
 
   return (
-    <BottomSheetModal
+    <BackClosableBottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       enableDynamicSizing
@@ -236,7 +237,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
           </BottomSheetView>
         ) : null
       }
-    </BottomSheetModal>
+    </BackClosableBottomSheetModal>
   );
 };
 

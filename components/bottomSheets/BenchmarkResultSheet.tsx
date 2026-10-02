@@ -17,6 +17,7 @@ import BenchmarkDateCard from '../benchmark/BenchmarkDateCard';
 import { Feedback } from '../../utils/Feedback';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
 import { Model } from '../../database/modelRepository';
+import BackClosableBottomSheetModal from './BackClosableBottomSheetModal';
 
 export interface BenchmarkResultSheetData extends BenchmarkResult {
   model?: Model;
@@ -64,7 +65,7 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
   }, []);
 
   return (
-    <BottomSheetModal
+    <BackClosableBottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       snapPoints={['50%', '90%']}
@@ -101,7 +102,7 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
           </BottomSheetScrollView>
         );
       }}
-    </BottomSheetModal>
+    </BackClosableBottomSheetModal>
   );
 };
 

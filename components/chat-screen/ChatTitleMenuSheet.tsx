@@ -13,6 +13,7 @@ import UploadIcon from '../../assets/icons/upload.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 import MenuRow from '../menu/MenuRow';
 import { Feedback } from '../../utils/Feedback';
+import BackClosableBottomSheetModal from '../bottomSheets/BackClosableBottomSheetModal';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -39,7 +40,7 @@ const ChatTitleMenuSheet = ({
   };
 
   return (
-    <BottomSheetModal
+    <BackClosableBottomSheetModal
       ref={bottomSheetModalRef}
       enableDynamicSizing
       onDismiss={onDismiss}
@@ -80,7 +81,7 @@ const ChatTitleMenuSheet = ({
           }}
         />
       </BottomSheetView>
-    </BottomSheetModal>
+    </BackClosableBottomSheetModal>
   );
 };
 
