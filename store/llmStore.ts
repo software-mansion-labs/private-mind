@@ -1581,7 +1581,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       if (finalResponse && carriesAnswer(finalResponse)) {
         const humanizedResponse = humanizeSourceReferences(
           stripSourceLabels(
-            stripEchoedQuestionPrefix(finalResponse, currentQuestion)
+            openingWelcome
+              ? finalResponse
+              : stripEchoedQuestionPrefix(finalResponse, currentQuestion)
           ),
           sourceDocuments ?? []
         );

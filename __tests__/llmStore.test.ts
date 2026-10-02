@@ -695,6 +695,27 @@ describe('sendChatMessage', () => {
       );
     });
 
+    it('keeps the greeting a welcome opens with, though the user wrote the same word', async () => {
+      openChat();
+      const polishWelcome =
+        'Cześć! Jestem prywatnym asystentem działającym na Twoim telefonie.\n\n' +
+        '- Wyjaśnię temat\n- Napiszę wiadomość\n- Streszczę dokument\n\n' +
+        'Od czego zaczynamy?';
+      mockInstance.generate.mockResolvedValueOnce(polishWelcome);
+
+      await useLLMStore
+        .getState()
+        .sendChatMessage('cześć', 1, noSources, settings);
+
+      expect(mockPersistMessage).toHaveBeenCalledWith(
+        mockDb,
+        expect.objectContaining({ role: 'assistant', content: polishWelcome })
+      );
+      expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+        polishWelcome
+      );
+    });
+
     it('leaves a welcome the user stopped as they left it', async () => {
       openChat();
       mockInstance.generate.mockImplementationOnce(async () => {
