@@ -60,5 +60,14 @@ export function usePhotoLibrary(read: boolean, ask: boolean): PhotoLibrary {
     }
   }, [read, permission, load]);
 
+  const canRead = read && isReadable(permission);
+  useEffect(() => {
+    if (!canRead) return;
+    const subscription = MediaLibrary.addListener(() => {
+      load();
+    });
+    return () => subscription.remove();
+  }, [canRead, load]);
+
   return { photos, status };
 }
