@@ -11,6 +11,7 @@ import { useLLMStore } from '../store/llmStore';
 import { documentErrorMessage } from '../utils/documentErrorMessage';
 import { extractArticle } from '../utils/web/url/extractArticle';
 import { buildUrlSource } from '../utils/web/url/urlSource';
+import { isTooLargeToRead } from '../utils/documentSizeLimit';
 import { hostname } from '../utils/web/hostname';
 
 export type DownloadResume = 'attachment' | 'none';
@@ -241,6 +242,13 @@ export const useAttachment = () => {
       asset.uri.split('.').pop() ||
       ''
     ).toLowerCase();
+    if (isTooLargeToRead(fileType, asset.size)) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'This file is too large to read. Split it into smaller files.',
+      });
+      return;
+    }
     const fileName =
       asset.name?.split('.')[0] ||
       asset.uri.split('/').pop()?.split('.')[0] ||
