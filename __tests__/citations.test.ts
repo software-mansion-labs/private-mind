@@ -15,6 +15,22 @@ describe('stripCitations', () => {
     expect(stripCitations('See [2] the report.')).toBe('See the report.');
   });
 
+  it('keeps the indentation of a nested list in an answer with sources', () => {
+    const answer =
+      '1. Main point [1]\n   - detail one\n   - detail two [2]\n2. Next point';
+    expect(stripCitations(answer)).toBe(
+      '1. Main point\n   - detail one\n   - detail two\n2. Next point'
+    );
+  });
+
+  it('keeps code indentation and spacing that has nothing to do with a citation', () => {
+    const answer =
+      'Use this [1]:\n```python\ndef total(xs):\n    return sum(xs)  # adds up\n```';
+    expect(stripCitations(answer)).toBe(
+      'Use this:\n```python\ndef total(xs):\n    return sum(xs)  # adds up\n```'
+    );
+  });
+
   it('leaves text without citations untouched', () => {
     expect(stripCitations('No markers here.')).toBe('No markers here.');
   });
