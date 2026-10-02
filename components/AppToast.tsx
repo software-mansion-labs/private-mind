@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { FullWindowOverlay } from 'react-native-screens';
 import Toast, { ToastConfig } from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +12,7 @@ import { openAppSettings } from '../utils/openAppSettings';
 
 const NAV_HEADER_HEIGHT = Platform.OS === 'ios' ? 44 : 56;
 const TOAST_HEADER_GAP = 2;
+const CLOSE_HIT_SLOP = 12;
 
 export const toastTopOffset = (safeAreaTop: number) =>
   safeAreaTop + NAV_HEADER_HEIGHT + TOAST_HEADER_GAP;
@@ -32,24 +27,37 @@ const AppToast: React.FC = () => {
         <View style={styles.toastBody}>
           <Text style={styles.toastText}>{text1}</Text>
           {props?.settings && (
-            <TouchableOpacity
+            <Pressable
               onPress={() => {
                 Toast.hide();
                 openAppSettings();
               }}
-              style={styles.toastAction}
+              cancelable={false}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.toastAction,
+                pressed && styles.pressed,
+              ]}
               testID="toast-open-settings"
             >
               <Text style={styles.toastActionLabel}>Open Settings</Text>
-            </TouchableOpacity>
+            </Pressable>
           )}
         </View>
-        <TouchableOpacity
+        <Pressable
           onPress={() => Toast.hide()}
-          style={styles.toastCloseButton}
+          cancelable={false}
+          hitSlop={CLOSE_HIT_SLOP}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss"
+          style={({ pressed }) => [
+            styles.toastCloseButton,
+            pressed && styles.pressed,
+          ]}
+          testID="toast-close"
         >
           <CloseIcon width={13.33} height={13.33} style={styles.toastIcon} />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     ),
   };
@@ -113,5 +121,8 @@ const createStyles = (theme: Theme) =>
     },
     toastIcon: {
       color: theme.text.primary,
+    },
+    pressed: {
+      opacity: 0.2,
     },
   });

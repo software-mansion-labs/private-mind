@@ -26,6 +26,7 @@ import SplashScreenAnimation from '../components/SplashScreenAnimation';
 import { initExecutorch } from 'react-native-executorch/legacy';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import { removeBundledModelLeftovers } from '../utils/bundledModelCleanup';
+import { useDownloadsSurviveBackground } from '../hooks/useDownloadsSurviveBackground';
 
 initExecutorch({ resourceFetcher: ExpoResourceFetcher });
 
@@ -34,6 +35,7 @@ SplashScreen.setOptions({ fade: false, duration: 0 });
 
 function RootNavigator() {
   useTurnResumesOnForeground();
+  useDownloadsSurviveBackground();
   useEffect(() => {
     SplashScreen.hideAsync();
     removeBundledModelLeftovers().catch((error) =>

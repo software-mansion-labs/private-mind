@@ -238,8 +238,9 @@ export const useSendChatMessage = ({
           : await prepareSources());
       }
 
+      const documentAttachedHere = attachmentSourceIds.length > 0;
       const skippedForAttachmentPriority =
-        RAG_PRIORITY_OVER_WEB_SEARCH && (hasRagSources || !!imagePath);
+        RAG_PRIORITY_OVER_WEB_SEARCH && (documentAttachedHere || !!imagePath);
       const modelForWebSearch = useLLMStore.getState().model;
 
       const shouldRunWebSearch =
@@ -261,7 +262,7 @@ export const useSendChatMessage = ({
           text1:
             WEB_SKIP_COPY[
               webSkipReason(
-                RAG_PRIORITY_OVER_WEB_SEARCH && hasRagSources,
+                RAG_PRIORITY_OVER_WEB_SEARCH && documentAttachedHere,
                 RAG_PRIORITY_OVER_WEB_SEARCH && !!imagePath,
                 modelForWebSearch
               )

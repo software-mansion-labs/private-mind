@@ -13,6 +13,9 @@ import {
   Image,
   Pressable,
   Linking,
+  PixelRatio,
+  LayoutChangeEvent,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import ThinkingBlock from './ThinkingBlock';
@@ -38,6 +41,7 @@ import MessageActionButton from './MessageActionButton';
 import {
   MESSAGE_ACTION_ROW_HEIGHT,
   SUPPORTS_USER_ACTION_MENU,
+  MESSAGE_LIST_SIDE_PADDING,
 } from '../../constants/chat-screen';
 import { Message, type SourceDocument } from '../../database/chatRepository';
 import { stripCitations } from '../../utils/citations';
@@ -86,6 +90,16 @@ const useRefinedSwap = (isRefining: boolean): number => {
   return swap;
 };
 
+const USER_BUBBLE_WIDTH_SHARE = 0.65;
+
+const bubbleWidthOnPixelGrid = (rowWidth: number) => {
+  const pixelsPerPoint = PixelRatio.get();
+  return (
+    Math.floor(rowWidth * USER_BUBBLE_WIDTH_SHARE * pixelsPerPoint) /
+    pixelsPerPoint
+  );
+};
+
 const MessageItem = memo(
   ({
     message,
@@ -110,6 +124,21 @@ const MessageItem = memo(
       (state) => state.showPerformanceMetrics
     );
     const [lightboxVisible, setLightboxVisible] = useState(false);
+    const [userRowWidth, setUserRowWidth] = useState<number | null>(null);
+    const handleUserRowLayout = useCallback(
+      (event: LayoutChangeEvent) =>
+        setUserRowWidth(event.nativeEvent.layout.width),
+      []
+    );
+    const { width: windowWidth } = useWindowDimensions();
+    const userBubbleWidth = useMemo(
+      () => ({
+        maxWidth: bubbleWidthOnPixelGrid(
+          userRowWidth ?? windowWidth - 2 * MESSAGE_LIST_SIDE_PADDING
+        ),
+      }),
+      [userRowWidth, windowWidth]
+    );
 
     const visibleContent = useMemo(
       () => (role === 'assistant' ? stripSpecialTokens(content) : content),
@@ -244,9 +273,12 @@ const MessageItem = memo(
             </Text>
           </View>
         ) : role === 'user' ? (
-          <View style={styles.userMessageGroup}>
+          <View style={styles.userMessageGroup} onLayout={handleUserRowLayout}>
             {imagePath && (
-              <View style={styles.userBubble} testID="image-bubble">
+              <View
+                style={[styles.userBubble, userBubbleWidth]}
+                testID="image-bubble"
+              >
                 <Pressable
                   onPress={() => setLightboxVisible(true)}
                   style={({ pressed }) => pressed && styles.imagePressed}
@@ -283,13 +315,16 @@ const MessageItem = memo(
               </View>
             )}
             {userText.trim() && (
-              <View style={styles.userBubble} testID="text-bubble">
+              <View
+                style={[styles.userBubble, userBubbleWidth]}
+                testID="text-bubble"
+              >
                 <View style={styles.userMessageContent}>
                   <Text
                     style={styles.userText}
                     selectable={!SUPPORTS_USER_ACTION_MENU}
                   >
-                    {userText}
+                    {userText.trim()}
                   </Text>
                 </View>
               </View>
@@ -402,7 +437,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'column',
       alignItems: 'flex-start',
       justifyContent: 'center',
-      maxWidth: '65%',
+      maxWidth: `${USER_BUBBLE_WIDTH_SHARE * 100}%`,
       borderRadius: 12,
       backgroundColor: theme.bg.softSecondary,
       overflow: 'hidden',
