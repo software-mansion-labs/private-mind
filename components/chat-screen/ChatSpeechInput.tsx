@@ -135,7 +135,6 @@ const ChatSpeechInput: React.FC<Props> = ({
       unmountedRef.current = true;
       abandonRef.current();
     };
-    // onCancel/onSubmit are stable via useStableCallback; abandon is captured via ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
