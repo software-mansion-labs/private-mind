@@ -885,6 +885,29 @@ describe('strayedFromWelcome', () => {
     expect(strayedFromWelcome(answer, welcome)).toBe(true);
   });
 
+  it('rejects a welcome that repeats the instruction it was given', () => {
+    const echoed =
+      'Hello! Greet them back, say in one sentence that you are a private assistant running on their phone.\n\n' +
+      '- Explain an idea\n- Draft a message\n- Summarize a file\n\nWhere shall we begin?';
+    expect(strayedFromWelcome(echoed, welcome)).toBe(true);
+  });
+
+  it.each([
+    '(Answer in Hindi.)',
+    '(Response in Polish.)',
+    '(In the same language as this message.)',
+  ])('rejects a welcome that ends with the echoed anchor %s', (anchor) => {
+    expect(strayedFromWelcome(`${ownWords} ${anchor}`, welcome)).toBe(true);
+  });
+
+  it('accepts a welcome that mentions answering in a parenthetical elsewhere', () => {
+    const answerInTheMiddle = ownWords.replace(
+      'Where shall we begin?',
+      '(I answer in your language.) Where shall we begin?'
+    );
+    expect(strayedFromWelcome(answerInTheMiddle, welcome)).toBe(false);
+  });
+
   it('rejects English where the greeting came in Hindi', () => {
     expect(strayedFromWelcome(OPENING_WELCOMES.en, OPENING_WELCOMES.hi)).toBe(
       true

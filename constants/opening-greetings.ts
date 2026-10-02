@@ -112,3 +112,6 @@ export const OPENING_WELCOMES: Record<WelcomeLanguage, string> = {
     'بماذا تودّ أن نبدأ؟',
   ].join('\n\n'),
 };
+
+export const OPENING_WELCOME_INSTRUCTION =
+  'The user has only greeted you, and this is the start of the chat. Reply with a short welcome of your own, written in the language of the example below: greet them back, say in one sentence that you are a private assistant running on their phone, offer three short examples of what you can help with as a list, and ask what they would like to start with. Keep to the length of the example. Do not answer a question that was not asked.';
