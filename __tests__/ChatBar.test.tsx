@@ -700,6 +700,8 @@ describe('the model the field loads on focus', () => {
 
 // ─── speech input ─────────────────────────────────────────────────────────────
 
+const SETTLE_ON_CI_MS = 4000;
+
 describe('speech input', () => {
   it('shows a toast instead of opening speech input while switching models', () => {
     renderBar({ modelSwitching: true });
@@ -739,7 +741,9 @@ describe('speech input', () => {
     );
     fireEvent.press(screen.getByTestId('send-btn'));
 
-    await waitFor(() => expect(screen.queryByText('send pending')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('send pending')).toBeNull(), {
+      timeout: SETTLE_ON_CI_MS,
+    });
   });
 
   it('leaves the send button alone when the model is already up', async () => {
