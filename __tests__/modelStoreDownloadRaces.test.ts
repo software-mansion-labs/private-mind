@@ -209,3 +209,33 @@ describe('a download while the app is in the background (UW-22)', () => {
     await started;
   });
 });
+
+describe('removing a model while it downloads', () => {
+  const successToast = {
+    type: 'defaultToast',
+    text1: `${model.modelName} has been successfully downloaded`,
+  };
+
+  it('stops the download instead of letting it finish into a deleted row', async () => {
+    useModelStore.setState({ models: [model] });
+    (modelRepository.removeModelFiles as jest.Mock).mockResolvedValue(
+      undefined
+    );
+    const started = download();
+    await flushMicrotasks();
+    await fetcher.releaseSizeLookups();
+    await flushMicrotasks();
+    expect(fetcher.activeSources()).toHaveLength(1);
+
+    await settleWhileReleasing(useModelStore.getState().removeModel(model.id));
+    await settleWhileReleasing(started);
+
+    expect(fetcher.activeSources()).toEqual([]);
+    expect(modelRepository.updateModelDownloaded).not.toHaveBeenCalledWith(
+      expect.anything(),
+      model.id,
+      1
+    );
+    expect(Toast.show).not.toHaveBeenCalledWith(successToast);
+  });
+});

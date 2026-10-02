@@ -426,6 +426,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     if (!model) return;
 
     try {
+      if (attempts.has(modelId)) await get().cancelDownload(model);
       // Reuse removeModelFiles so file cleanup + state reset stay in one place.
       await get().removeModelFiles(modelId);
       await removeModelFiles(db, modelId);
