@@ -90,11 +90,72 @@ describe('checkTurnTime', () => {
   });
 });
 
+const EMPTY_THINK = '<think>\n\n</think>\n\n';
+
+const polishLoop = (() => {
+  const opening =
+    `${EMPTY_THINK}A dlaczego?  \n` +
+    'A dlaczego? (Odpowiedź w polskim: **A dlaczego?**)\n\nPonieważ:  \n';
+  return {
+    prompt: 'a dlaczego?',
+    raw: `${opening}${'A dlaczego?  \nPonieważ:  \n'.repeat(40)}A dlaczego?`,
+    tidied: `${opening}A dlaczego?`,
+  };
+})();
+
+const hindiListLoop = (() => {
+  const breathe = 'रात के बाद अच्छा सांस लेना';
+  const distance = 'रात के बाद बिना दूरी लेना';
+  const items = [breathe, distance, distance, breathe, distance, distance];
+  const list = [...items, distance].map((item, i) => `${i + 1}. ${item}`);
+  return {
+    prompt:
+      'अच्छी नींद के लिए 7 सुझावों की सूची बनाइए। हर बिंदु के लिए एक शीर्षक लिखिए।',
+    raw: `${EMPTY_THINK}${list.join('  \n')}`,
+    tidied: `${EMPTY_THINK}${list.slice(0, 2).join('  \n')}`,
+  };
+})();
+
+const urduPhraseLoop = (() => {
+  const opening =
+    `${EMPTY_THINK}زمین سورج کے گرد کیوں گھومتی ہے؟\n` +
+    'زمین ہر چہار گھنٹے چل کر گھوم رہی ہے۔ ';
+  return {
+    prompt: 'زمین سورج کے گرد کیوں گھومتی ہے؟',
+    raw: `${opening}${'ہر چہار گھنٹے کے بعد '.repeat(30)}ہر چہار گھنٹے ک`,
+    tidied: `${opening}ہر چہار گھنٹے کے بعد`,
+  };
+})();
+
+const guardCut = ({
+  prompt,
+  raw,
+  tidied,
+}: {
+  prompt: string;
+  raw: string;
+  tidied: string;
+}) =>
+  observation({
+    turn: { prompt, language: 'xx' },
+    raw,
+    tidied,
+    final: tidied,
+  });
+
 describe('checkLoopGuardCut', () => {
   it('fails when the loop guard shortened an answer that had no loop', () => {
     expect(
       checkLoopGuardCut(observation({ tidied: 'Leaves change colour.' }))
     ).toMatchObject({ check: 'loop-guard-cut', severity: 'fail' });
+  });
+
+  it.each([
+    ['the Polish question repeated', polishLoop],
+    ['the Hindi list items repeated', hindiListLoop],
+    ['the Urdu phrase repeated in one line', urduPhraseLoop],
+  ])('stays quiet when the cut raw answer is a loop: %s', (_, sample) => {
+    expect(checkLoopGuardCut(guardCut(sample))).toBeNull();
   });
 
   it('does not count text normalisation as a cut', () => {
@@ -138,6 +199,52 @@ describe('checkLoop', () => {
   it('ignores short repeated labels such as list subheadings', () => {
     const list = ['1. **Tip:** sleep', '2. **Tip:** read', '3. **Tip:** walk'];
     expect(checkLoop(answering(list.join('\n')))).toBeNull();
+  });
+
+  it.each([
+    ['the Polish question repeated', polishLoop, /^"a dlaczego ponieważ" ×4\d/],
+    [
+      'the Hindi list items repeated',
+      hindiListLoop,
+      /^"रात के बाद बिना दूरी लेना" ×5/,
+    ],
+    [
+      'the Urdu phrase repeated in one line',
+      urduPhraseLoop,
+      /^"ہر چہار گھنٹے کے بعد" ×\d+/,
+    ],
+  ])(
+    'reports a raw loop the guard cut as the model looping: %s',
+    (_, sample, unit) => {
+      const result = checkLoop(guardCut(sample));
+      expect(result).toMatchObject({ check: 'loop', severity: 'fail' });
+      expect(result?.actual).toMatch(unit);
+      expect(result?.actual).toMatch(
+        /in the raw answer, cut by the loop guard$/
+      );
+    }
+  );
+
+  it('leaves a loop-free answer the guard cut to checkLoopGuardCut', () => {
+    const cutClean = observation({ tidied: 'Leaves change colour.' });
+    expect(checkLoop(cutClean)).toBeNull();
+    expect(runTurnChecks(cutClean).map((item) => item.check)).toContain(
+      'loop-guard-cut'
+    );
+  });
+
+  it('flags a raw loop once, as a loop, across every check', () => {
+    const checks = runTurnChecks(guardCut(polishLoop)).map(
+      (item) => item.check
+    );
+    expect(checks).toContain('loop');
+    expect(checks).not.toContain('loop-guard-cut');
+  });
+
+  it('fails the same short line said three times in a row', () => {
+    expect(
+      checkLoop(answering('A dlaczego?  \nA dlaczego?  \nA dlaczego?'))
+    ).toMatchObject({ check: 'loop', actual: '"a dlaczego" ×3' });
   });
 
   it('counts list items that differ only by their marker as one line', () => {

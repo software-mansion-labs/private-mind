@@ -66,16 +66,6 @@ export const checkTurnTime: TurnCheck = ({ timings, turnTimeoutMs }) =>
 export const loopGuardCutAnswer = (raw: string, tidied: string): boolean =>
   !!raw && tidied !== mapOutsideThink(raw, normalizeModelText);
 
-export const checkLoopGuardCut: TurnCheck = ({ raw, tidied }) =>
-  loopGuardCutAnswer(raw, tidied)
-    ? finding(
-        'loop-guard-cut',
-        'fail',
-        'the loop guard leaves a loop-free answer whole',
-        `cut from ${raw.length} to ${tidied.length} characters`
-      )
-    : null;
-
 const REPEAT_LIMIT = 3;
 const MIN_REPEATED_UNIT_CHARS = 20;
 const SENTENCE_BOUNDARY = /(?<=[.!?。！？।॥۔؟])\s+/u;
@@ -105,16 +95,95 @@ export const mostRepeatedUnit = (
   return top;
 };
 
-export const checkLoop: TurnCheck = ({ final }) => {
-  const top = mostRepeatedUnit(visibleText(final));
-  if (!top || top.count < REPEAT_LIMIT) return null;
-  return finding(
-    'loop',
-    'fail',
-    `no line or sentence repeated ${REPEAT_LIMIT} times`,
-    `"${excerpt(top.unit, 80)}" ×${top.count}`
+const MAX_CYCLE_WORDS = 12;
+const MIN_CYCLE_CHARS = 8;
+const WORD_EDGE_PUNCTUATION = /^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu;
+
+const wordsOf = (text: string): string[] =>
+  text
+    .split(/\s+/)
+    .map((word) => word.replace(WORD_EDGE_PUNCTUATION, '').toLowerCase())
+    .filter((word) => HAS_WORD_CHARACTER.test(word));
+
+const cycleRepeatsAt = (
+  words: string[],
+  start: number,
+  period: number
+): number => {
+  let length = period;
+  while (
+    start + length < words.length &&
+    words[start + length] === words[start + (length % period)]
+  ) {
+    length += 1;
+  }
+  return Math.floor(length / period);
+};
+
+export const mostRepeatedWordCycle = (
+  text: string
+): { unit: string; count: number } | null => {
+  const words = wordsOf(text);
+  let top: { unit: string; count: number } | null = null;
+  for (let period = 1; period <= MAX_CYCLE_WORDS; period++) {
+    let start = 0;
+    while (start + 2 * period <= words.length) {
+      const cycle = words.slice(start, start + period);
+      if (cycle.join('').length < MIN_CYCLE_CHARS) {
+        start += 1;
+        continue;
+      }
+      const count = cycleRepeatsAt(words, start, period);
+      if (!top || count > top.count) top = { unit: cycle.join(' '), count };
+      start += count > 1 ? count * period : 1;
+    }
+  }
+  return top;
+};
+
+export const loopIn = (
+  text: string
+): { unit: string; count: number } | null => {
+  const visible = visibleText(text);
+  const candidates = [
+    mostRepeatedUnit(visible),
+    mostRepeatedWordCycle(visible),
+  ];
+  return (
+    candidates.find(
+      (candidate) => candidate !== null && candidate.count >= REPEAT_LIMIT
+    ) ?? null
   );
 };
+
+const LOOP_EXPECTED = `no line, sentence or phrase repeated ${REPEAT_LIMIT} times`;
+
+const describeLoop = (loop: { unit: string; count: number }): string =>
+  `"${excerpt(loop.unit, 80)}" ×${loop.count}`;
+
+export const checkLoop: TurnCheck = ({ raw, tidied, final }) => {
+  const shown = loopIn(final);
+  if (shown) return finding('loop', 'fail', LOOP_EXPECTED, describeLoop(shown));
+  const cut = loopGuardCutAnswer(raw, tidied) ? loopIn(raw) : null;
+  return cut
+    ? finding(
+        'loop',
+        'fail',
+        LOOP_EXPECTED,
+        `${describeLoop(cut)} in the raw answer, cut by the loop guard`
+      )
+    : null;
+};
+
+export const checkLoopGuardCut: TurnCheck = ({ raw, tidied }) =>
+  loopGuardCutAnswer(raw, tidied) && !loopIn(raw)
+    ? finding(
+        'loop-guard-cut',
+        'fail',
+        'the loop guard cuts only an answer that loops',
+        `cut a loop-free answer from ${raw.length} to ${tidied.length} characters`
+      )
+    : null;
 
 export const checkLanguage: TurnCheck = ({ final, turn }) => {
   const asked = detectQuestionLanguage(turn.prompt);
