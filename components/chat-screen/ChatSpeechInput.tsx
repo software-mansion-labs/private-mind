@@ -1,9 +1,9 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { AppState, StyleSheet, Text, View } from 'react-native';
 import { Theme } from '../../styles/colors';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, lineHeights } from '../../styles/fontStyles';
-import { useSpeechInput } from '../../hooks/useSpeechInput';
+import { useSpeechInput, type Status } from '../../hooks/useSpeechInput';
 import CircleButton from '../CircleButton';
 import TrashIcon from '../../assets/icons/trash.svg';
 import SendIcon from '../../assets/icons/send_icon.svg';
@@ -21,13 +21,28 @@ import { useStableCallback } from '../../hooks/useStableCallback';
 interface Props {
   onSubmit: (text: string) => void;
   onCancel: () => void;
+  onInterrupted?: (heard: string) => void;
 }
 
 const CANCEL_ANIMATION_DURATION = 500;
 
+type Phase = Status | 'ended';
+
+const ACTION_NOTES: Record<Phase, string> = {
+  loading: 'Loading speech recognition...',
+  idle: 'Loading speech recognition...',
+  processing: 'Finishing the transcript...',
+  listening: 'Click again to send',
+  ended: 'Dictation stopped',
+};
+
+const shownTranscript = (committed: string, nonCommitted: string) =>
+  (committed.trim() + ' ' + nonCommitted.trim()).trim();
+
 const ChatSpeechInput: React.FC<Props> = ({
   onSubmit: onSubmitProp,
   onCancel: onCancelProp,
+  onInterrupted: onInterruptedProp,
 }) => {
   const { styles, theme } = useThemedStyles(createStyles);
 
@@ -40,9 +55,13 @@ const ChatSpeechInput: React.FC<Props> = ({
     nonCommitted: string;
   }>({ committed: '', nonCommitted: '' });
 
+  const heardSoFarRef = useRef({ committed: '', nonCommitted: '' });
+
   const animationRef =
     useRef<React.ComponentRef<typeof RecordingAnimation>>(null);
-  const exitStateRef = useRef<null | 'pending_submit' | 'exited'>(null);
+  const exitStateRef = useRef<
+    null | 'pending_submit' | 'pending_cancel' | 'exited'
+  >(null);
 
   const onSubmit = useStableCallback((result: string) => {
     if (exitStateRef.current === 'exited') return;
@@ -55,7 +74,7 @@ const ChatSpeechInput: React.FC<Props> = ({
     onCancelProp();
   });
 
-  const { loadProgress, status, start, stop } = useSpeechInput({
+  const { loadProgress, status, start, stop, abandon } = useSpeechInput({
     onAudioData: (data) => {
       setRecordingDuration(
         Math.floor((Date.now() - recordingStartTimeRef.current) / 1000)
@@ -64,9 +83,10 @@ const ChatSpeechInput: React.FC<Props> = ({
     },
   });
 
+  const [hasStarted, setHasStarted] = useState(false);
   const unmountedRef = useRef(false);
-  const stopRef = useRef(stop);
-  stopRef.current = stop;
+  const abandonRef = useRef(abandon);
+  abandonRef.current = abandon;
   useEffect(() => {
     const startListening = async () => {
       try {
@@ -78,23 +98,30 @@ const ChatSpeechInput: React.FC<Props> = ({
 
         recordingStartTimeRef.current = Date.now();
         let text = '';
+        let pendingText = '';
         for await (const { committed, nonCommitted } of streamGenerator) {
           if (unmountedRef.current) break;
           text = text + committed.text;
-          setTranscription({
+          pendingText = nonCommitted.text;
+          heardSoFarRef.current = {
             committed: text,
-            nonCommitted: nonCommitted.text,
-          });
+            nonCommitted: pendingText,
+          };
+          setTranscription(heardSoFarRef.current);
         }
 
         if (unmountedRef.current) return;
 
         if (exitStateRef.current === 'pending_submit') {
-          if (text) {
-            onSubmit(text);
+          const shown = shownTranscript(text, pendingText);
+          if (shown) {
+            onSubmit(shown);
           } else {
+            Toast.show({ type: 'defaultToast', text1: 'No speech was heard.' });
             onCancel();
           }
+        } else if (exitStateRef.current === null) {
+          onEndedEarly(shownTranscript(text, pendingText));
         }
       } catch {
         if (unmountedRef.current) return;
@@ -109,16 +136,39 @@ const ChatSpeechInput: React.FC<Props> = ({
 
     if (!recordingAttemptedRef.current) {
       recordingAttemptedRef.current = true;
+      setHasStarted(true);
       startListening();
     }
 
     return () => {
       unmountedRef.current = true;
-      stopRef.current();
+      abandonRef.current();
     };
-    // onCancel/onSubmit are stable via useStableCallback; stop is captured via ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const onInterrupted = useStableCallback((heard: string) => {
+    if (onInterruptedProp) onInterruptedProp(heard);
+    else onCancelProp();
+  });
+  const onEndedEarly = useStableCallback((heard: string) => {
+    if (heard) {
+      exitStateRef.current = 'exited';
+      onInterrupted(heard);
+      return;
+    }
+    onCancel();
+  });
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'background' || exitStateRef.current !== null) return;
+      exitStateRef.current = 'exited';
+      const { committed, nonCommitted } = heardSoFarRef.current;
+      abandonRef.current();
+      onInterrupted(shownTranscript(committed, nonCommitted));
+    });
+    return () => subscription.remove();
+  }, [onInterrupted]);
 
   const animationWrapperRef = useRef<View | null>(null);
   const [animationWidth, setAnimationWidth] = useState(0);
@@ -143,6 +193,7 @@ const ChatSpeechInput: React.FC<Props> = ({
   });
 
   const handleCancel = () => {
+    if (exitStateRef.current === null) exitStateRef.current = 'pending_cancel';
     stop();
     cancelAnimationProgress.set(
       withTiming(1, {
@@ -153,17 +204,34 @@ const ChatSpeechInput: React.FC<Props> = ({
     setTimeout(onCancel, CANCEL_ANIMATION_DURATION);
   };
 
-  const handleSend = () => {
+  const [sending, setSending] = useState(false);
+  const phase: Phase = hasStarted && status === 'idle' ? 'ended' : status;
+  const isPreparing = phase === 'loading' || phase === 'idle';
+
+  const handleSend = async () => {
+    if (isPreparing) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Still loading speech recognition, one moment.',
+      });
+      return;
+    }
+    if (phase !== 'listening' || sending) return;
+
     exitStateRef.current = 'pending_submit';
-    stop();
+    setSending(true);
+    if (await stop()) return;
+    exitStateRef.current = null;
+    setSending(false);
   };
 
+  const actionNote = ACTION_NOTES[phase];
+
   const renderTopNote = () => {
-    const fullTranscription = (
-      transcription.committed.trim() +
-      ' ' +
-      transcription.nonCommitted.trim()
-    ).trim();
+    const fullTranscription = shownTranscript(
+      transcription.committed,
+      transcription.nonCommitted
+    );
 
     if (fullTranscription) {
       return <ScrollableTranscript text={fullTranscription} />;
@@ -180,6 +248,8 @@ const ChatSpeechInput: React.FC<Props> = ({
     if (status === 'processing') {
       return <Text style={styles.secondaryNote}>Processing...</Text>;
     }
+
+    if (phase === 'ended') return null;
 
     const progressPercentage = Math.round(loadProgress * 100);
     return (
@@ -219,16 +289,26 @@ const ChatSpeechInput: React.FC<Props> = ({
           size={20}
           color={theme.text.contrastPrimary}
           backgroundColor={theme.bg.voiceModeSurface}
+          testID="speech-trash"
         />
         <Text style={[styles.secondaryNote, styles.actionNote]}>
-          Click again to send
+          {actionNote}
         </Text>
-        <CircleButton
-          icon={SendIcon}
-          onPress={handleSend}
-          color={theme.text.primary}
-          backgroundColor={theme.bg.softPrimary}
-        />
+        <View
+          style={
+            status === 'listening' || sending ? undefined : styles.sendNotReady
+          }
+        >
+          <CircleButton
+            icon={SendIcon}
+            onPress={handleSend}
+            busy={sending}
+            disabled={sending}
+            color={theme.text.primary}
+            backgroundColor={theme.bg.softPrimary}
+            testID="speech-send"
+          />
+        </View>
       </View>
     </Animated.View>
   );
@@ -324,6 +404,9 @@ const createStyles = (theme: Theme) =>
     actionNote: {
       flex: 1,
       textAlign: 'center',
+    },
+    sendNotReady: {
+      opacity: 0.5,
     },
 
     transcriptWrapper: {

@@ -9,7 +9,12 @@ export interface STTStore {
   isReady: boolean;
   isLoading: boolean;
   loadProgress: number;
+  streamEnd: Promise<void> | null;
+  audioSessionOwner: number;
   ensureLoaded: () => Promise<void>;
+  trackStream: (end: Promise<void>) => void;
+  discardModule: () => void;
+  claimAudioSession: () => number;
 }
 
 export const useSTTStore = create<STTStore>((set, get) => {
@@ -20,6 +25,30 @@ export const useSTTStore = create<STTStore>((set, get) => {
     isReady: false,
     isLoading: false,
     loadProgress: 0,
+    streamEnd: null,
+    audioSessionOwner: 0,
+
+    trackStream: (end) => {
+      set({ streamEnd: end });
+      end.then(() => {
+        if (get().streamEnd === end) set({ streamEnd: null });
+      });
+    },
+    discardModule: () => {
+      const { module, streamEnd } = get();
+      set({
+        module: null,
+        isReady: false,
+        isLoading: false,
+        loadProgress: 0,
+      });
+      Promise.resolve(streamEnd).then(() => module?.delete());
+    },
+    claimAudioSession: () => {
+      const claim = get().audioSessionOwner + 1;
+      set({ audioSessionOwner: claim });
+      return claim;
+    },
 
     ensureLoaded: async () => {
       if (get().isReady) return;
