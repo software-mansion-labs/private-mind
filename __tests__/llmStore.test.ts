@@ -716,6 +716,77 @@ describe('sendChatMessage', () => {
       );
     });
 
+    describe('by model size', () => {
+      const openChatWith = (parameters: number | undefined) =>
+        useLLMStore.setState({
+          model: { ...baseModel, parameters },
+          activeChatId: 1,
+          activeChatMessages: [],
+        });
+
+      it('hands a model under 0.6 billion parameters the prepared welcome without generating', async () => {
+        openChatWith(0.49);
+        mockInstance.generate.mockClear();
+
+        await useLLMStore
+          .getState()
+          .sendChatMessage('cześć', 1, noSources, settings);
+
+        expect(mockInstance.generate).not.toHaveBeenCalled();
+        expect(useLLMStore.getState().activeChatMessages.at(-1)).toEqual(
+          expect.objectContaining({
+            role: 'assistant',
+            content: OPENING_WELCOMES.pl,
+          })
+        );
+        expect(mockPersistMessage).toHaveBeenCalledWith(
+          mockDb,
+          expect.objectContaining({ content: OPENING_WELCOMES.pl })
+        );
+      });
+
+      it('finishes the turn cleanly, with no performance figures to show', async () => {
+        openChatWith(0.49);
+
+        await useLLMStore
+          .getState()
+          .sendChatMessage('Hi!', 1, noSources, settings);
+
+        const state = useLLMStore.getState();
+        expect(state.isGenerating).toBe(false);
+        expect(state.isProcessingPrompt).toBe(false);
+        expect(state.activeChatMessages.at(-1)?.tokensPerSecond).toBe(0);
+      });
+
+      it.each([0.75, 2.03])(
+        'lets a %s billion parameter model write the welcome',
+        async (parameters) => {
+          openChatWith(parameters);
+          mockInstance.generate.mockResolvedValueOnce(modelWelcome);
+
+          await useLLMStore
+            .getState()
+            .sendChatMessage('Hi!', 1, noSources, settings);
+
+          expect(mockInstance.generate).toHaveBeenCalled();
+          expect(
+            useLLMStore.getState().activeChatMessages.at(-1)?.content
+          ).toBe(modelWelcome);
+        }
+      );
+
+      it('lets a model of unknown size write the welcome', async () => {
+        openChatWith(undefined);
+        mockInstance.generate.mockResolvedValueOnce(modelWelcome);
+
+        await useLLMStore
+          .getState()
+          .sendChatMessage('Hi!', 1, noSources, settings);
+
+        expect(mockInstance.generate).toHaveBeenCalled();
+      });
+    });
+
     it('leaves a welcome the user stopped as they left it', async () => {
       openChat();
       mockInstance.generate.mockImplementationOnce(async () => {

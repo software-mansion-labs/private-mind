@@ -715,6 +715,12 @@ const NOTHING_GATHERED: Awaited<
   ReturnType<Parameters<LLMStore['sendChatMessage']>[2]>
 > = { context: [] };
 
+const WELCOME_WRITING_MIN_BILLIONS = 0.6;
+
+const cannotWriteWelcome = (model: Model): boolean =>
+  typeof model.parameters === 'number' &&
+  model.parameters < WELCOME_WRITING_MIN_BILLIONS;
+
 const NO_LLM_RESPONSE: LLMGenerationResult = {
   response: null,
   performance: { timeToFirstToken: 0, tokensPerSecond: 0 },
@@ -1169,16 +1175,21 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           abortController.signal
         );
 
-      await loadModelForTurn(isRetry);
-      if (!llmInstance && get().isProcessingPrompt) {
-        await loadModelForTurn(true);
-      }
-      if (!llmInstance) {
-        throw new Error('Failed to load the language model');
+      const preparedWelcomeOnly =
+        openingWelcome !== null && cannotWriteWelcome(currentModel);
+
+      if (!preparedWelcomeOnly) {
+        await loadModelForTurn(isRetry);
+        if (!llmInstance && get().isProcessingPrompt) {
+          await loadModelForTurn(true);
+        }
+        if (!llmInstance) {
+          throw new Error('Failed to load the language model');
+        }
       }
 
       if (!get().isProcessingPrompt) {
-        unloadLLM();
+        if (!preparedWelcomeOnly) unloadLLM();
         updateChatStateForGeneration(set, 'failed', {
           localId: assistantPlaceholder.localId,
         });
@@ -1244,11 +1255,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       let generation: Awaited<ReturnType<typeof generateLLMResponse>>;
       let effectivePrepared = messagesWithSystemPrompt;
       try {
-        generation = await generateLLMResponse(
-          messagesWithSystemPrompt,
-          get,
-          turnGenerationConfig
-        );
+        generation = preparedWelcomeOnly
+          ? { ...NO_LLM_RESPONSE, response: openingWelcome }
+          : await generateLLMResponse(
+              messagesWithSystemPrompt,
+              get,
+              turnGenerationConfig
+            );
       } catch (error) {
         if (abortController.signal.aborted || !stillOurs()) throw error;
         console.warn(
