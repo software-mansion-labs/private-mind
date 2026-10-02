@@ -64,6 +64,83 @@ describe('prepareMessagesForLLM', () => {
       expect(result[0].content).toContain(baseSettings.systemPrompt);
     });
 
+    it('tells the model to greet back when the latest message is only a greeting', () => {
+      const underWay: Message[] = [
+        { id: 1, chatId: 1, role: 'user', content: 'ping', timestamp: 0 },
+        { id: 2, chatId: 1, role: 'assistant', content: 'pong', timestamp: 0 },
+        { id: 3, chatId: 1, role: 'user', content: 'hello', timestamp: 0 },
+        { id: 4, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const systemPrompt = prepareMessagesForLLM(
+        underWay,
+        [],
+        baseSettings,
+        baseModel
+      )[0].content as string;
+
+      expect(systemPrompt).toContain('only a greeting');
+    });
+
+    it('hands the model the prepared welcome as its example when a greeting opens the chat', () => {
+      const opening: Message[] = [
+        { id: 1, chatId: 1, role: 'user', content: 'cześć', timestamp: 0 },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const systemPrompt = prepareMessagesForLLM(
+        opening,
+        [],
+        baseSettings,
+        baseModel,
+        { openingWelcome: 'Cześć! Jestem Twoim prywatnym asystentem.' }
+      )[0].content as string;
+
+      expect(systemPrompt).toContain('Example of such a welcome:');
+      expect(systemPrompt).toContain(
+        'Cześć! Jestem Twoim prywatnym asystentem.'
+      );
+      expect(systemPrompt).not.toContain('one or two short');
+    });
+
+    it('says nothing about greetings when the message carries a task', () => {
+      const task: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'hi, what is the capital of France?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const systemPrompt = prepareMessagesForLLM(
+        task,
+        [],
+        baseSettings,
+        baseModel
+      )[0].content as string;
+
+      expect(systemPrompt).not.toContain('only a greeting');
+    });
+
+    it('still guards against source language when sources are present', () => {
+      const greeting: Message[] = [
+        { id: 1, chatId: 1, role: 'user', content: 'hi', timestamp: 0 },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const systemPrompt = prepareMessagesForLLM(
+        greeting,
+        ['some retrieved passage'],
+        baseSettings,
+        baseModel
+      )[0].content;
+
+      expect(systemPrompt).toContain('not in English either');
+    });
+
     it('states the date only where it can matter', () => {
       const temporal: Message[] = [
         {
@@ -127,27 +204,25 @@ describe('prepareMessagesForLLM', () => {
       expect(bare[0].content).toContain('Write the whole answer in Polish');
     });
 
-    it('falls back to the generic language rule when the question is opaque', () => {
-      const messages: Message[] = [
-        {
-          id: 1,
-          chatId: 1,
-          role: 'user',
-          content: 'Gdansk 2026',
-          timestamp: 0,
-        },
-        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
-      ];
-      const result = prepareMessagesForLLM(
-        messages,
-        [],
-        baseSettings,
-        baseModel
-      );
-      expect(result[0].content).toContain(
-        'the language of the latest user message'
-      );
-    });
+    it.each(['Gdansk 2026', 'hi', 'hello there'])(
+      'mirrors the message language without warning against English for %p',
+      (content) => {
+        const messages: Message[] = [
+          { id: 1, chatId: 1, role: 'user', content, timestamp: 0 },
+          { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+        ];
+        const result = prepareMessagesForLLM(
+          messages,
+          [],
+          baseSettings,
+          baseModel
+        );
+        expect(result[0].content).toContain(
+          'the same language the latest user message is written in'
+        );
+        expect(result[0].content).not.toContain('not in English either');
+      }
+    );
 
     it('restates the detected language next to the question itself', () => {
       const messages: Message[] = [

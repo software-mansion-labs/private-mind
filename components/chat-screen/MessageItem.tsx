@@ -46,6 +46,7 @@ import {
 import { Message, type SourceDocument } from '../../database/chatRepository';
 import { stripCitations } from '../../utils/citations';
 import { parseThinkingContent, stripThinkMarkers } from '../../utils/thinking';
+import { stripSpecialTokens } from '../../utils/specialTokens';
 
 interface MessageItemProps {
   message: Message;
@@ -139,11 +140,18 @@ const MessageItem = memo(
       [userRowWidth, windowWidth]
     );
 
-    const contentParts = useMemo(
-      () => parseThinkingContent(content),
-      [content]
+    const visibleContent = useMemo(
+      () => (role === 'assistant' ? stripSpecialTokens(content) : content),
+      [content, role]
     );
-    const userText = useMemo(() => stripThinkMarkers(content), [content]);
+    const contentParts = useMemo(
+      () => parseThinkingContent(visibleContent),
+      [visibleContent]
+    );
+    const userText = useMemo(
+      () => stripThinkMarkers(visibleContent),
+      [visibleContent]
+    );
     const {
       displayedSources,
       webResults,

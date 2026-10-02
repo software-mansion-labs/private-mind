@@ -26,6 +26,8 @@ import type { WebIntentKind } from './web/intentKind';
 import { hostname } from './web/hostname';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
 import { ISO_CURRENCY_CODES } from '../constants/currencies';
+import { OPENING_WELCOME_INSTRUCTION } from '../constants/opening-greetings';
+import { KNOWN_PHRASES, normalizePhrase } from './conversationalPhrases';
 import {
   CITATION_SENTENCE_PATTERN,
   CLAUSE_SPLIT_PATTERN,
@@ -233,6 +235,24 @@ const normalizeForEchoCompare = (text: string): string =>
 const stripTrailingParenthetical = (text: string): string =>
   text.replace(/\s*\([^)]{0,80}\)\s*$/, '');
 
+const OPENER_SEGMENT_BREAK = /[,.!?;:…]+/;
+
+export const isConversationalOpener = (turn: string): boolean => {
+  const segments = turn
+    .split(OPENER_SEGMENT_BREAK)
+    .map(normalizePhrase)
+    .filter(Boolean);
+  return (
+    segments.length > 0 &&
+    segments.every((segment) => KNOWN_PHRASES.has(segment))
+  );
+};
+
+const ECHO_GUARD_MIN_WORDS = 3;
+
+const isTooShortToEcho = (normalizedQuestion: string): boolean =>
+  normalizedQuestion.split(' ').length < ECHO_GUARD_MIN_WORDS;
+
 export const isQuestionEchoAnswer = (
   answer: string,
   question: string | undefined
@@ -241,6 +261,8 @@ export const isQuestionEchoAnswer = (
   const visible = stripThinkBlocks(answer);
   if (!visible) return false;
   const normalizedQuestion = normalizeForEchoCompare(question);
+  if (isTooShortToEcho(normalizedQuestion)) return false;
+  if (isConversationalOpener(question)) return false;
   if (normalizeForEchoCompare(visible) === normalizedQuestion) return true;
   const answerWithoutAnchor = normalizeForEchoCompare(
     stripTrailingParenthetical(visible)
@@ -401,6 +423,71 @@ export const isWrongLanguageAnswer = (
     return true;
   }
   return (actual.evidence ?? 0) >= MIN_LANGUAGE_EVIDENCE;
+};
+
+const WELCOME_SCRIPTS = [
+  /\p{Script=Latin}/u,
+  /\p{Script=Cyrillic}/u,
+  /\p{Script=Devanagari}/u,
+  /\p{Script=Arabic}/u,
+];
+const LETTER = /\p{L}/u;
+const MIN_SHARE_IN_WELCOME_SCRIPT = 0.7;
+const WELCOME_LENGTH_ALLOWANCE = 2.5;
+const WELCOME_LENGTH_FLOOR = 0.4;
+
+const shareOfLetters = (text: string, script: RegExp): number => {
+  const letters = [...text].filter((char) => LETTER.test(char));
+  if (letters.length === 0) return 0;
+  return letters.filter((char) => script.test(char)).length / letters.length;
+};
+
+const scriptOf = (text: string): RegExp | undefined =>
+  WELCOME_SCRIPTS.find((script) => shareOfLetters(text, script) > 0.5);
+
+const INSTRUCTION_ECHO_RUN_WORDS = 6;
+
+const wordsOf = (text: string): string[] =>
+  text
+    .toLowerCase()
+    .split(/[^\p{L}\p{M}\p{N}]+/u)
+    .filter(Boolean);
+
+const runsOf = (words: readonly string[], length: number): string[] =>
+  Array.from({ length: Math.max(0, words.length - length + 1) }, (_, at) =>
+    words.slice(at, at + length).join(' ')
+  );
+
+const WELCOME_INSTRUCTION_RUNS: ReadonlySet<string> = new Set(
+  runsOf(wordsOf(OPENING_WELCOME_INSTRUCTION), INSTRUCTION_ECHO_RUN_WORDS)
+);
+
+const echoesWelcomeInstruction = (text: string): boolean =>
+  runsOf(wordsOf(text), INSTRUCTION_ECHO_RUN_WORDS).some((run) =>
+    WELCOME_INSTRUCTION_RUNS.has(run)
+  );
+
+const TRAILING_LANGUAGE_ANCHOR =
+  /\(\s*(?:(?:answer|response|reply)\s+in\b|in the same language)[^)]{0,80}\)\s*$/i;
+
+const endsWithEchoedLanguageAnchor = (text: string): boolean =>
+  TRAILING_LANGUAGE_ANCHOR.test(text);
+
+export const strayedFromWelcome = (
+  answer: string,
+  welcome: string
+): boolean => {
+  const visible = stripThinkBlocks(answer).trim();
+  if (!visible) return true;
+  if (echoesWelcomeInstruction(visible)) return true;
+  if (endsWithEchoedLanguageAnchor(visible)) return true;
+  if (visible.length > welcome.length * WELCOME_LENGTH_ALLOWANCE) return true;
+  if (visible.length < welcome.length * WELCOME_LENGTH_FLOOR) return true;
+  const script = scriptOf(welcome);
+  if (script && shareOfLetters(visible, script) < MIN_SHARE_IN_WELCOME_SCRIPT) {
+    return true;
+  }
+  return isWrongLanguageAnswer(visible, welcome);
 };
 
 export const pickCitationsByAnswer = (

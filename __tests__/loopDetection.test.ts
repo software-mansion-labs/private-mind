@@ -4,6 +4,16 @@ import {
 } from '../utils/loopDetection';
 
 describe('truncateAtRepeatedClause', () => {
+  it.each([
+    'Hi!',
+    'Hi! Hi!',
+    'Cześć! Cześć!',
+    'नमस्ते! नमस्ते!',
+    'Thanks! Thanks!',
+  ])('leaves a short greeting like %j alone', (greeting) => {
+    expect(truncateAtRepeatedClause(greeting)).toBe(greeting);
+  });
+
   it('cuts the answer where a clause starts repeating back-to-back', () => {
     const text =
       'Najważniejsze wydarzenia na świecie w tym tygodniu obejmują: ' +
