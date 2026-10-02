@@ -92,7 +92,11 @@ export const findCitedSpan = (
     if (score === 0) continue;
 
     const density = score / sentence.text.length;
-    if (score > bestScore || (score === bestScore && density > bestDensity)) {
+    const beatsBest =
+      score > bestScore ||
+      (score === bestScore &&
+        (exact > bestExact || (exact === bestExact && density > bestDensity)));
+    if (beatsBest) {
       best = { start: sentence.start, end: sentence.end };
       bestScore = score;
       bestExact = exact;

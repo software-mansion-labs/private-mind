@@ -27,6 +27,15 @@ describe('queryNamesDocument', () => {
 });
 
 describe('findCitedSpan', () => {
+  it('can highlight a list line that has no full stop', () => {
+    const passage =
+      'PRICES\n- Day pass: 12 USD\n- Monthly pass: 49 USD\nAll prices include tax.';
+    const span = findCitedSpan(passage, 'How much is the monthly pass?');
+    expect(passage.slice(span!.start, span!.end)).toBe(
+      '- Monthly pass: 49 USD'
+    );
+  });
+
   it('returns the span of the sentence most relevant to the query', () => {
     const passage =
       'The company was founded in 1998. Total revenue reached 2455 PLN last year. Employees enjoy free coffee.';

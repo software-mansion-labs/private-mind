@@ -1,3 +1,4 @@
+import { findCitedSpan } from '../utils/citationHighlight';
 import {
   isCircularNonAnswer,
   stripEchoedQuestionPrefix,
@@ -72,6 +73,45 @@ describe('mergeAttachmentFirst', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].documentId).toBe(2);
+  });
+
+  it('keeps the overview the model was shown in the passage of a retrieved attachment (A-71)', () => {
+    const overview =
+      'IRON OAK GYM\n2. MEMBERSHIP PRICES\n- Day pass: 12 USD\n- Monthly pass: 49 USD (auto-renews)';
+    const lockers =
+      '3. LOCKER ROOM RULES\n- Rental lockers cost 8 USD per month.\n- Cut padlocks are removed after 48 hours.';
+    const [merged] = mergeAttachmentFirst(
+      [{ documentId: 2, name: 'iron_oak_rules.txt', passage: lockers }],
+      [{ documentId: 2, name: 'iron_oak_rules.txt', passage: overview }],
+      [2]
+    );
+
+    expect(merged.passage).toContain('Monthly pass: 49 USD');
+    expect(merged.passage).toContain('Rental lockers cost 8 USD per month.');
+    const span = findCitedSpan(
+      merged.passage,
+      'How much does a monthly pass cost?'
+    );
+    expect(merged.passage!.slice(span!.start, span!.end)).toContain(
+      'Monthly pass: 49 USD'
+    );
+  });
+
+  it('does not repeat an overview the retrieved passage already contains', () => {
+    const overview = 'IRON OAK GYM\n- Monthly pass: 49 USD';
+    const [merged] = mergeAttachmentFirst(
+      [
+        {
+          documentId: 2,
+          name: 'iron_oak_rules.txt',
+          passage: `${overview}\n- Annual pass: 480 USD`,
+        },
+      ],
+      [{ documentId: 2, name: 'iron_oak_rules.txt', passage: overview }],
+      [2]
+    );
+
+    expect(merged.passage).toBe(`${overview}\n- Annual pass: 480 USD`);
   });
 
   it('does not collide two undefined-id sources onto one slot', () => {

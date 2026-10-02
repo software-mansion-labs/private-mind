@@ -12,6 +12,7 @@ import {
   getSourceDocumentsFromChunks,
   sourceKey,
   sourcesPresentInContext,
+  stitchPassages,
 } from './contextUtils';
 import { hybridRetrieve } from './hybridRetrieval';
 import { normalizeLine } from './loopDetection';
@@ -64,7 +65,20 @@ export const mergeAttachmentFirst = (
   const isAttachment = (doc: SourceDocument) =>
     doc.documentId !== undefined && attachmentIds.has(doc.documentId);
 
-  const attachmentDocs = retrieved.filter(isAttachment);
+  const overviewByKey = new Map(
+    preferred.map((doc) => [sourceKey(doc.documentId, doc.name), doc.passage])
+  );
+  const withOverview = (doc: SourceDocument): SourceDocument => {
+    const overview = overviewByKey
+      .get(sourceKey(doc.documentId, doc.name))
+      ?.trim();
+    if (!overview || !doc.passage || doc.passage.includes(overview)) {
+      return doc;
+    }
+    return { ...doc, passage: stitchPassages(overview, doc.passage) };
+  };
+
+  const attachmentDocs = retrieved.filter(isAttachment).map(withOverview);
   const otherDocs = retrieved.filter((doc) => !isAttachment(doc));
 
   const citedKeys = new Set(

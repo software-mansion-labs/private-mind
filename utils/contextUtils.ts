@@ -72,6 +72,11 @@ const stripLeadingOverlap = (prev: string, next: string): string => {
   return next;
 };
 
+export const stitchPassages = (first: string, next: string): string => {
+  const deduped = stripLeadingOverlap(first, next).trimStart();
+  return deduped ? `${first}\n\n${deduped}` : first;
+};
+
 const joinGroupPassages = (group: DocumentGroup): string => {
   const passages = group.chunks
     .map((chunk) => chunk.document?.trim() ?? '')
