@@ -34,6 +34,16 @@ export const DrawerItem = memo(
         onPress={onPress}
         onLongPress={onLongPress}
         testID={testID}
+        accessibilityRole="button"
+        accessibilityState={{ selected: active }}
+        accessibilityActions={
+          onLongPress
+            ? [{ name: 'longpress', label: 'More options' }]
+            : undefined
+        }
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === 'longpress') onLongPress?.();
+        }}
         style={({ pressed }) => [
           styles.item,
           (active || pressed) && styles.activeBackground,

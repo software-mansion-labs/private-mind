@@ -17,8 +17,11 @@ const FloatingActionButton = ({ onPress, disabled = false }: Props) => {
       style={styles.button}
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel="Add model"
+      accessibilityState={{ disabled }}
     >
-      <PlusIcon width={18} height={18} style={styles.icon} />
+      <PlusIcon width={18} height={18} style={styles.icon} accessible={false} />
     </TouchableOpacity>
   );
 };

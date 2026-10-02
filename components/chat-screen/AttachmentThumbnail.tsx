@@ -83,7 +83,17 @@ const AttachmentThumbnail = ({ attachment, onRemove }: Props) => {
           <Text style={styles.percentText}>
             {Math.round(attachment.progress * 100)}%
           </Text>
-          <View style={styles.progressTrack}>
+          <View
+            style={styles.progressTrack}
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel="Loading attachment"
+            accessibilityValue={{
+              min: 0,
+              max: 100,
+              now: Math.round(attachment.progress * 100),
+            }}
+          >
             <Animated.View style={[styles.progressFill, fillStyle]} />
           </View>
         </View>
