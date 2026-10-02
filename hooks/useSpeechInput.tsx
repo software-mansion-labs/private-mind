@@ -62,9 +62,12 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
   );
 
   const isStartCanceled = useRef(false);
+  const sessionClaim = useRef(0);
   const start = useCallback(async (): StartReturnType => {
     if (statusRef.current !== 'idle') return null;
 
+    const claim = useSTTStore.getState().claimAudioSession();
+    sessionClaim.current = claim;
     try {
       isStartCanceled.current = false;
       changeStatus('loading');
@@ -78,7 +81,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       await closeOpenStream();
 
       if (isStartCanceled.current) {
-        AudioManager.setAudioSessionActivity(false);
+        releaseAudioSession(claim);
         return null;
       }
 
@@ -98,7 +101,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
 
       return followToTheEnd(streamGenerator, () => changeStatus('idle'));
     } catch (error) {
-      AudioManager.setAudioSessionActivity(false);
+      releaseAudioSession(claim);
       changeStatus('idle');
       throw error;
     }
@@ -117,7 +120,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       changeStatus('processing');
       recorder.current!.stop();
       stt.module?.streamStop();
-      AudioManager.setAudioSessionActivity(false);
+      releaseAudioSession(sessionClaim.current);
     } catch (error) {
       console.error('Error finishing audio recording:', error);
       closeAbandonedStream(stt.module);
@@ -134,7 +137,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       console.error('Error stopping the recorder:', error);
     }
     closeAbandonedStream(useSTTStore.getState().module);
-    AudioManager.setAudioSessionActivity(false);
+    releaseAudioSession(sessionClaim.current);
     changeStatus('idle');
   }, [changeStatus]);
 
@@ -153,6 +156,11 @@ function throwIfRecorderFailed(
   if (result && result.status === 'error') {
     throw new Error(`Recorder failed: ${result.message}`);
   }
+}
+
+function releaseAudioSession(claim: number) {
+  if (useSTTStore.getState().audioSessionOwner !== claim) return;
+  AudioManager.setAudioSessionActivity(false);
 }
 
 function closeAbandonedStream(module: SpeechToTextModule | null) {

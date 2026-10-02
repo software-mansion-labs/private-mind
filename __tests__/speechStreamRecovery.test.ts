@@ -171,6 +171,36 @@ describe('the audio session dictation turns on', () => {
     expect(sessionTurnedOff()).toBe(true);
   });
 
+  it('stays on for a dictation reopened while a cancelled one waited for the model', async () => {
+    let finishLoading!: (module: typeof sttModule) => void;
+    (SpeechToTextModule.fromModelName as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishLoading = resolve;
+        })
+    );
+    const cancelled = renderHook(() => useSpeechInput());
+    const reopened = renderHook(() => useSpeechInput());
+
+    let cancelledStart!: Promise<unknown>;
+    let reopenedStart!: Promise<unknown>;
+    await act(async () => {
+      cancelledStart = cancelled.result.current.start();
+      await Promise.resolve();
+      cancelled.result.current.stop();
+      reopenedStart = reopened.result.current.start();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      finishLoading(sttModule);
+      await expect(cancelledStart).resolves.toBeNull();
+      await reopenedStart;
+    });
+
+    expect(reopened.result.current.status).toBe('listening');
+    expect(sessionTurnedOff()).toBe(false);
+  });
+
   it('is turned off and the stream closed when the recorder cannot start', async () => {
     jest.spyOn(audioApi, 'AudioRecorder').mockImplementation(
       () =>
