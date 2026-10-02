@@ -95,6 +95,36 @@ describe('enrichWebResults', () => {
     expect(mockExtract).not.toHaveBeenCalled();
   });
 
+  it('drops a page whose encoding could not be read instead of passing replacement characters on as content', async () => {
+    mockExtract.mockResolvedValue({
+      url: 'https://news.example.ru/1',
+      title: '\ufffd\ufffd\ufffd',
+      text: `${'\ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd '.repeat(20)}2026`,
+      siteName: 'news.example.ru',
+    });
+    const seen: { ok: boolean; reason?: string }[] = [];
+
+    const enriched = await enrichWebResults([result()], 1, (e) => seen.push(e));
+
+    expect(enriched[0].content).toBeUndefined();
+    expect(seen).toEqual([
+      expect.objectContaining({ ok: false, reason: 'unsupported' }),
+    ]);
+  });
+
+  it('keeps a readable page that carries a stray replacement character', async () => {
+    mockExtract.mockResolvedValue({
+      url: 'https://a.com/1',
+      title: 'x',
+      text: `${longText('Ticket prices')} \ufffd`,
+      siteName: 'a.com',
+    });
+
+    const enriched = await enrichWebResults([result()], 1);
+
+    expect(enriched[0].content).toContain('Ticket prices');
+  });
+
   it('drops a bot-wall page and keeps the honest snippet', async () => {
     mockExtract.mockResolvedValue({
       url: 'https://tickets.example/1',

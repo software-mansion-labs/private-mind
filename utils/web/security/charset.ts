@@ -166,3 +166,13 @@ export const decodeBytes = (bytes: Uint8Array, charset: Charset): string => {
   }
   return decodeSingleByte(bytes, UPPER_HALF[charset]);
 };
+
+const REPLACEMENT_CHAR = /\uFFFD/g;
+const UNDECODABLE_SHARE = 0.1;
+
+export const isMostlyUndecodable = (text: string): boolean => {
+  const visible = text.replace(/\s+/g, '').length;
+  if (visible === 0) return false;
+  const replaced = text.match(REPLACEMENT_CHAR)?.length ?? 0;
+  return replaced / visible > UNDECODABLE_SHARE;
+};
