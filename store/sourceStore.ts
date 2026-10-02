@@ -305,10 +305,12 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         (source) => !isHeld(source.id)
       );
       for (const source of orphaned) {
+        if (isHeld(source.id)) continue;
         await vectorStore.delete({
           predicate: (value) => value.metadata?.documentId === source.id,
         });
         await removeDocumentFromKeywordIndex(vectorStore.db, source.id);
+        if (isHeld(source.id)) continue;
         await deleteSource(db, source.id);
       }
       if (orphaned.length > 0) {

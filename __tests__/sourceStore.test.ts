@@ -546,6 +546,27 @@ describe('cleanupOrphanedSources', () => {
     expect(mockDeleteSource).toHaveBeenCalledWith(mockDb, 5);
   });
 
+  it('keeps a document that is attached again while the sweep is already running', async () => {
+    mockGetOrphanedSources.mockResolvedValue(
+      [5, 6].map((id) => ({ id, name: `doc${id}.txt`, type: 'txt' }))
+    );
+    let releases: (() => void)[] = [];
+    const deleteVectors = jest.fn(async () => {
+      if (releases.length === 0) {
+        releases = [useSourceStore.getState().holdSources([5, 6])];
+      }
+    });
+
+    await useSourceStore.getState().cleanupOrphanedSources({
+      add: vectorStoreAdd,
+      delete: deleteVectors,
+    } as Partial<OPSQLiteVectorStore> as OPSQLiteVectorStore);
+
+    expect(mockDeleteSource).not.toHaveBeenCalled();
+    expect(deleteVectors).toHaveBeenCalledTimes(1);
+    releases.forEach((release) => release());
+  });
+
   it('keeps the documents of a send until it lets them go', async () => {
     const release = useSourceStore.getState().holdSources([8]);
 
