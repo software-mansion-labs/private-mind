@@ -83,15 +83,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       }
 
       changeStatus('listening');
-      const module = useSTTStore.getState().module;
-
-      let streamGenerator;
-      try {
-        streamGenerator = module!.stream();
-      } catch (error) {
-        useSTTStore.getState().discardModule();
-        throw error;
-      }
+      const streamGenerator = useSTTStore.getState().module!.stream();
       throwIfRecorderFailed(
         recorder.current!.onAudioReady(
           {
@@ -191,7 +183,7 @@ async function* followToTheEnd<T>(
 
   let leftByConsumer = false;
   try {
-    let next = await source.next();
+    let next = await readFirstOrDiscardModule(source);
     while (!next.done) {
       leftByConsumer = true;
       yield next.value;
@@ -204,6 +196,17 @@ async function* followToTheEnd<T>(
   }
 
   onEnd();
+}
+
+async function readFirstOrDiscardModule<T>(
+  source: AsyncGenerator<T, void, unknown>
+) {
+  try {
+    return await source.next();
+  } catch (error) {
+    useSTTStore.getState().discardModule();
+    throw error;
+  }
 }
 
 async function readToTheEnd(source: AsyncGenerator<unknown, void, unknown>) {

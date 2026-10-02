@@ -31,13 +31,16 @@ export const useSTTStore = create<STTStore>((set, get) => {
         if (get().streamEnd === end) set({ streamEnd: null });
       });
     },
-    discardModule: () =>
+    discardModule: () => {
+      const { module, streamEnd } = get();
       set({
         module: null,
         isReady: false,
         isLoading: false,
         loadProgress: 0,
-      }),
+      });
+      Promise.resolve(streamEnd).then(() => module?.delete());
+    },
 
     ensureLoaded: async () => {
       if (get().isReady) return;

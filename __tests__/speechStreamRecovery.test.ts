@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-native';
+import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { SpeechToTextModule } from 'react-native-executorch/legacy';
 import { useSTTStore } from '../store/sttStore';
 import { useSpeechInput } from '../hooks/useSpeechInput';
@@ -19,6 +19,7 @@ const makeModule = () => {
       await module.finishing;
     }),
     streamStop: jest.fn(() => requestStop()),
+    delete: jest.fn(),
   };
   return module;
 };
@@ -62,18 +63,38 @@ describe('speech input after a transcript is abandoned', () => {
 
   it('gives up a module whose stream refuses to open, so the next try reloads', async () => {
     const { result } = renderHook(() => useSpeechInput());
-    sttModule.stream.mockImplementation(() => {
-      throw new Error('stream already running');
+    sttModule.stream.mockImplementation(async function* () {
+      yield* [];
+      throw new Error('Streaming is already in progress!');
     });
 
     await act(async () => {
-      await expect(result.current.start()).rejects.toThrow(
-        'stream already running'
+      const transcript = (await result.current.start())!;
+      await expect(transcript.next()).rejects.toThrow(
+        'Streaming is already in progress!'
       );
     });
 
     expect(useSTTStore.getState().module).toBeNull();
     expect(useSTTStore.getState().isReady).toBe(false);
+    expect(sttModule.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it('releases a given-up module only after its stream has ended', async () => {
+    let endStream!: () => void;
+    useSTTStore.setState({ module: sttModule as never });
+    useSTTStore.getState().trackStream(
+      new Promise<void>((resolve) => {
+        endStream = resolve;
+      })
+    );
+
+    useSTTStore.getState().discardModule();
+    await Promise.resolve();
+    expect(sttModule.delete).not.toHaveBeenCalled();
+
+    endStream();
+    await waitFor(() => expect(sttModule.delete).toHaveBeenCalledTimes(1));
   });
 
   it('leaves no stream marked open once the recorder is abandoned', async () => {
