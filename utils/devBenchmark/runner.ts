@@ -16,7 +16,7 @@ import {
   useDevBenchmarkStore,
   type QueuedModelState,
 } from '../../store/devBenchmarkStore';
-import { useLLMStore } from '../../store/llmStore';
+import { isModelBusy, useLLMStore } from '../../store/llmStore';
 import { useModelStore } from '../../store/modelStore';
 import { listenToAnswerTraces, type AnswerTrace } from '../answerTrace';
 import { getDeviceMemoryGB } from '../modelCompatibility';
@@ -55,6 +55,7 @@ const KEEP_AWAKE_TAG = 'dev-benchmark';
 const CHAT_TITLE_PREFIX = 'Dev benchmark';
 const DIGEST_SETTLE_TIMEOUT_MS = 15_000;
 const DIGEST_POLL_MS = 250;
+const MODEL_IDLE_POLL_MS = 100;
 
 let stopRequested = false;
 let wakeModelQueue: (() => void) | null = null;
@@ -198,6 +199,21 @@ const waitForDigestUpdate = async (
   }
 };
 
+const waitForIdleModel = async (timeoutMs: number): Promise<boolean> => {
+  const startedAt = performance.now();
+  while (isModelBusy()) {
+    if (performance.now() - startedAt >= timeoutMs) return false;
+    await sleep(MODEL_IDLE_POLL_MS);
+  }
+  return true;
+};
+
+const settleModel = async (timeoutMs: number): Promise<void> => {
+  if (await waitForIdleModel(timeoutMs)) return;
+  useLLMStore.getState().interrupt();
+  await waitForIdleModel(timeoutMs);
+};
+
 const observeTurn = async (
   db: SQLiteDatabase,
   chatId: number,
@@ -205,6 +221,7 @@ const observeTurn = async (
   turn: ScenarioTurn,
   turnTimeoutMs: number
 ): Promise<TurnAttempt> => {
+  await settleModel(turnTimeoutMs);
   const llm = useLLMStore.getState();
   await llm.setActiveChatId(chatId);
   const lastKeptId = (await getChatMessages(db, chatId)).at(-1)?.id ?? 0;

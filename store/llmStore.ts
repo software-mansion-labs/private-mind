@@ -1969,3 +1969,5 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     set({ activeChatMessages: messageHistory });
   },
 }));
+
+export const isModelBusy = (): boolean => modelIsInUse(useLLMStore.getState);

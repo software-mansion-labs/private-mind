@@ -5,6 +5,7 @@ import {
   runDevBenchmark,
   stopDevBenchmark,
 } from '../utils/devBenchmark/runner';
+import { BASE_CHAT_SCENARIO } from '../utils/devBenchmark/scenarios';
 import { useDevBenchmarkStore } from '../store/devBenchmarkStore';
 import { writtenFiles } from '../__mocks__/react-native-fs';
 
@@ -103,10 +104,33 @@ const goodAnswer = (prompt: string): string => {
 
 let mockAnswerFor: (prompt: string, attempt: number) => string = goodAnswer;
 const mockAttempts = new Map<string, number>();
+let mockBusyUntil = 0;
+let mockInterrupted = false;
+const mockBusyAtSend: boolean[] = [];
+let mockHangOn: { prompt: string; attempt: number } | null = null;
+let mockAfterAnswer: ((prompt: string) => void) | null = null;
+
+const mockModelBusy = () =>
+  mockLlm.isGenerating || performance.now() < mockBusyUntil;
+
+const mockTick = () => new Promise((resolve) => setTimeout(resolve, 5));
+
+const mockModelFreedOrInterrupted = async (): Promise<boolean> => {
+  while (mockModelBusy()) {
+    if (mockInterrupted) return false;
+    await mockTick();
+  }
+  return true;
+};
+
+const mockUntilInterrupted = async (): Promise<void> => {
+  while (!mockInterrupted) await mockTick();
+};
 
 const mockLlm = {
   model: null as Model | null,
   isLoading: false,
+  isGenerating: false,
   generationError: null as null | { chatId: number; message: string },
   activeChatId: null as number | null,
   loadModel: jest.fn(async (model: Model) => {
@@ -122,12 +146,25 @@ const mockLlm = {
   setActiveChatId: jest.fn(async (chatId: number | null) => {
     mockLlm.activeChatId = chatId;
   }),
-  interrupt: jest.fn(),
+  interrupt: jest.fn(() => {
+    mockInterrupted = true;
+    mockLlm.isGenerating = false;
+    mockBusyUntil = 0;
+  }),
   sendChatMessage: jest.fn(async (prompt: string, chatId: number) => {
     mockLlm.generationError = null;
+    mockBusyAtSend.push(mockModelBusy());
+    mockInterrupted = false;
     const key = `${mockLlm.model?.modelName}:${prompt}`;
     const attempt = (mockAttempts.get(key) ?? 0) + 1;
     mockAttempts.set(key, attempt);
+    if (!(await mockModelFreedOrInterrupted())) return true;
+    if (mockHangOn?.prompt === prompt && mockHangOn.attempt === attempt) {
+      mockLlm.isGenerating = true;
+      await mockUntilInterrupted();
+      mockBusyUntil = performance.now() + 20;
+      return true;
+    }
     const answer = mockAnswerFor(prompt, attempt);
     const messages = mockMessages.get(chatId)!;
     const history = messages.length;
@@ -163,12 +200,14 @@ const mockLlm = {
       { toFile: false }
     );
     mockDigests.set(chatId, `digest after ${mockMessageId}`);
+    mockAfterAnswer?.(prompt);
     return true;
   }),
 };
 
 jest.mock('../store/llmStore', () => ({
   useLLMStore: { getState: () => mockLlm },
+  isModelBusy: () => mockModelBusy(),
 }));
 
 const baseModel = (overrides: Partial<Model>): Model => ({
@@ -208,6 +247,12 @@ beforeEach(() => {
   mockAttempts.clear();
   writtenFiles.clear();
   mockAnswerFor = goodAnswer;
+  mockBusyUntil = 0;
+  mockInterrupted = false;
+  mockBusyAtSend.length = 0;
+  mockHangOn = null;
+  mockAfterAnswer = null;
+  mockLlm.isGenerating = false;
   mockLlm.model = userModel;
   mockLlm.activeChatId = 7;
   useDevBenchmarkStore.setState({ status: 'idle', run: null, queue: [] });
@@ -422,6 +467,58 @@ describe('runDevBenchmark', () => {
     );
     expect(greeting.attempts[1]!.generationError).toBeNull();
     expect(greeting.verdict).toBe('warn');
+  });
+
+  describe('with a turn limit of 50 ms', () => {
+    let restoreTurnTimeout = () => {};
+
+    beforeEach(() => {
+      const replaced = jest.replaceProperty(
+        BASE_CHAT_SCENARIO,
+        'turnTimeoutMs',
+        50
+      );
+      restoreTurnTimeout = () => replaced.restore();
+    });
+
+    afterEach(() => restoreTurnTimeout());
+
+    it('lets a timed-out turn wind down before it sends the next one', async () => {
+      mockModelState.models = [baseModel({ id: 1, modelName: 'Small' })];
+      mockHangOn = { prompt: 'a dlaczego?', attempt: 1 };
+
+      await runDevBenchmark({ db, mode: 'full' });
+
+      const turns =
+        useDevBenchmarkStore.getState().run!.models[0]!.scenarios[0]!.turns;
+      const timedOut = turns[2]!;
+      expect(timedOut.attempts[0]!.findings.map((item) => item.check)).toEqual(
+        expect.arrayContaining(['no-answer', 'turn-timeout'])
+      );
+      expect(timedOut.attempts[1]!.final).toBe(GOOD_ANSWERS['a dlaczego?']);
+      expect(turns[3]!.attempts).toHaveLength(1);
+      expect(turns[3]!.verdict).toBe('pass');
+      expect(mockBusyAtSend).not.toContain(true);
+    });
+
+    it('waits out the digest the previous turn left running before the next turn', async () => {
+      mockModelState.models = [baseModel({ id: 1, modelName: 'Small' })];
+      mockAfterAnswer = (prompt) => {
+        if (prompt.startsWith('अच्छी')) mockBusyUntil = performance.now() + 500;
+      };
+
+      await runDevBenchmark({ db, mode: 'full' });
+
+      const tableTurn =
+        useDevBenchmarkStore.getState().run!.models[0]!.scenarios[0]!.turns[4]!;
+      expect(tableTurn.verdict).toBe('pass');
+      expect(tableTurn.attempts).toHaveLength(1);
+      expect(tableTurn.attempts[0]).toMatchObject({
+        systemChars: 900,
+        promptMessages: 10,
+      });
+      expect(mockBusyAtSend).not.toContain(true);
+    });
   });
 
   it('ignores a second start while a run is going', async () => {
