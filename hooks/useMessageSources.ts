@@ -1,22 +1,38 @@
 import { useMemo } from 'react';
 import { type SourceDocument } from '../database/chatRepository';
 import { sourceKey } from '../utils/contextUtils';
+import { answerOverlapScorer } from '../utils/messageSources';
 
-export const useMessageSources = (sourceDocuments?: SourceDocument[]) => {
+const keyOf = (source: SourceDocument) =>
+  source.kind === 'web' && source.url
+    ? `web:${source.url}`
+    : sourceKey(source.documentId, source.name);
+
+export const useMessageSources = (
+  sourceDocuments?: SourceDocument[],
+  answer?: string
+) => {
   const deduped = useMemo(() => {
     if (!sourceDocuments?.length) return [];
 
-    const seen = new Set<string>();
-    return sourceDocuments.filter((source) => {
-      const key =
-        source.kind === 'web' && source.url
-          ? `web:${source.url}`
-          : sourceKey(source.documentId, source.name);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [sourceDocuments]);
+    const score = answer ? answerOverlapScorer(answer) : () => 0;
+    const kept: SourceDocument[] = [];
+    const positionByKey = new Map<string, number>();
+    for (const source of sourceDocuments) {
+      const key = keyOf(source);
+      const position = positionByKey.get(key);
+      if (position === undefined) {
+        positionByKey.set(key, kept.length);
+        kept.push(source);
+        continue;
+      }
+      const answersBetter =
+        source.kind !== 'web' &&
+        score(source.passage ?? '') > score(kept[position]!.passage ?? '');
+      if (answersBetter) kept[position] = source;
+    }
+    return kept;
+  }, [sourceDocuments, answer]);
 
   const displayedSources = useMemo(
     () =>

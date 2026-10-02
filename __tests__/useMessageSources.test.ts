@@ -29,6 +29,30 @@ describe('useMessageSources', () => {
     expect(r.hasSources).toBe(true);
   });
 
+  it('shows the passage of a document that answered, not the first one retrieved (A-71)', () => {
+    const lockers = doc({
+      documentId: 7,
+      name: 'iron_oak_rules.txt',
+      passage:
+        'LOCKER ROOM RULES\n- Rental lockers cost 8 USD per month.\n- Cut padlocks are removed after 48 hours.',
+    });
+    const prices = doc({
+      documentId: 7,
+      name: 'iron_oak_rules.txt',
+      passage:
+        'MEMBERSHIP PRICES\n- Day pass: 12 USD\n- Monthly pass: 49 USD (auto-renews)\n- Annual pass: 480 USD',
+    });
+
+    const { result } = renderHook(() =>
+      useMessageSources(
+        [lockers, prices],
+        'The amount for a monthly pass is 49 USD.'
+      )
+    );
+
+    expect(result.current.documentSources).toEqual([prices]);
+  });
+
   it('splits web results from document sources', () => {
     const r = render([
       doc({ documentId: 1, name: 'Web', kind: 'web' }),

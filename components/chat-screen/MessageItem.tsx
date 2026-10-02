@@ -121,7 +121,10 @@ const MessageItem = memo(
       documentSources,
       dominantWebSource,
       hasSources,
-    } = useMessageSources(sourceDocuments);
+    } = useMessageSources(
+      sourceDocuments,
+      role === 'assistant' ? content : undefined
+    );
 
     const documentInfo = useMemo(
       () => (documentName ? splitDocumentName(documentName) : null),

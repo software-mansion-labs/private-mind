@@ -149,6 +149,13 @@ const answerTermsOf = (answer: string): Set<string> =>
     )
   );
 
+export const answerOverlapScorer = (
+  answer: string
+): ((passage: string) => number) => {
+  const terms = answerTermsOf(answer);
+  return (passage) => (terms.size ? overlapWithAnswer(passage, terms) : 0);
+};
+
 export const looksLikeNoAnswer = (visibleReply: string): boolean =>
   [...NO_ANSWER_PATTERNS_EN, ...NO_ANSWER_PATTERNS_PL].some((pattern) =>
     pattern.test(visibleReply)
