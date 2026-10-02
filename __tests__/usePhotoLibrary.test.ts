@@ -73,3 +73,53 @@ it('stops watching the library when the chat screen goes away', async () => {
 
   expect(mockRemove).toHaveBeenCalled();
 });
+
+it('reaches photos older than the first page when the grid scrolls to its end', async () => {
+  mockGetAssets
+    .mockResolvedValueOnce({
+      ...page('newest'),
+      hasNextPage: true,
+      endCursor: 'after-newest',
+    })
+    .mockResolvedValueOnce({ ...page('older'), hasNextPage: false });
+
+  const { result } = renderHook(() => usePhotoLibrary(true, true));
+  await waitFor(() => expect(result.current.status).toBe('ready'));
+
+  await act(async () => {
+    await result.current.loadMore();
+  });
+
+  expect(mockGetAssets).toHaveBeenLastCalledWith(
+    expect.objectContaining({ after: 'after-newest' })
+  );
+  expect(result.current.photos.map((photo) => photo.id)).toEqual([
+    'newest',
+    'older',
+  ]);
+});
+
+it('keeps the newest reading of the library when an older one answers late', async () => {
+  let answerFirstRead!: (value: unknown) => void;
+  mockGetAssets
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          answerFirstRead = resolve;
+        })
+    )
+    .mockResolvedValue(page('after-change'));
+
+  const { result } = renderHook(() => usePhotoLibrary(true, true));
+  await waitFor(() => expect(mockLibraryChanged).toBeDefined());
+  await act(async () => {
+    mockLibraryChanged?.();
+  });
+  await act(async () => {
+    answerFirstRead(page('before-change'));
+  });
+
+  expect(result.current.photos.map((photo) => photo.id)).toEqual([
+    'after-change',
+  ]);
+});
