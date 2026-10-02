@@ -9,8 +9,8 @@ export const useDownloadsSurviveBackground = () => {
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     const subscription = AppState.addEventListener('change', (next) => {
-      if (next === 'background') void pauseDownloadsForBackground();
-      else if (next === 'active') void resumeDownloadsAfterBackground();
+      if (next === 'background') pauseDownloadsForBackground();
+      else if (next === 'active') resumeDownloadsAfterBackground();
     });
     return () => subscription.remove();
   }, []);
