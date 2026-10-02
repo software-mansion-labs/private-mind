@@ -73,6 +73,7 @@ import {
 } from '../modules/memory-probe';
 import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
+import { promptReviewIfDue } from '../utils/reviewPrompt';
 
 export interface LLMStore {
   isLoading: boolean;
@@ -1609,6 +1610,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         }
         armRetry(set, null);
         set({ generationError: null });
+        if (!stoppedByUser) void promptReviewIfDue();
 
         if (stoppedByUser) {
           armRetry(set, {

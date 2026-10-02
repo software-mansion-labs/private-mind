@@ -1,4 +1,15 @@
-import { incrementChatCount, shouldPromptReview } from '../utils/reviewPrompt';
+import * as StoreReview from 'expo-store-review';
+import {
+  incrementChatCount,
+  noteChatCreated,
+  promptReviewIfDue,
+  shouldPromptReview,
+} from '../utils/reviewPrompt';
+
+jest.mock('expo-store-review', () => ({
+  isAvailableAsync: jest.fn(async () => true),
+  requestReview: jest.fn(async () => undefined),
+}));
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 beforeEach(() => {
@@ -51,5 +62,37 @@ describe('shouldPromptReview', () => {
 
   it('returns false at count 24 when last prompted at 5', () => {
     expect(shouldPromptReview(24, 5)).toBe(false);
+  });
+});
+
+describe('when the review prompt shows', () => {
+  it('waits for the answer instead of interrupting the chat that made it due', async () => {
+    (AsyncStorage.getItem as jest.Mock)
+      .mockResolvedValueOnce('4')
+      .mockResolvedValueOnce(null);
+
+    await noteChatCreated();
+    expect(StoreReview.requestReview).not.toHaveBeenCalled();
+
+    await promptReviewIfDue();
+    expect(StoreReview.requestReview).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks once per time it becomes due', async () => {
+    (AsyncStorage.getItem as jest.Mock)
+      .mockResolvedValueOnce('4')
+      .mockResolvedValueOnce(null);
+    await noteChatCreated();
+
+    await promptReviewIfDue();
+    await promptReviewIfDue();
+
+    expect(StoreReview.requestReview).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays quiet after an answer when no review is due', async () => {
+    await promptReviewIfDue();
+
+    expect(StoreReview.requestReview).not.toHaveBeenCalled();
   });
 });
