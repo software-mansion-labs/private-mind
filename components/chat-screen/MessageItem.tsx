@@ -15,6 +15,7 @@ import {
   Linking,
   PixelRatio,
   LayoutChangeEvent,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import ThinkingBlock from './ThinkingBlock';
@@ -40,6 +41,7 @@ import MessageActionButton from './MessageActionButton';
 import {
   MESSAGE_ACTION_ROW_HEIGHT,
   SUPPORTS_USER_ACTION_MENU,
+  MESSAGE_LIST_SIDE_PADDING,
 } from '../../constants/chat-screen';
 import { Message, type SourceDocument } from '../../database/chatRepository';
 import { stripCitations } from '../../utils/citations';
@@ -127,12 +129,14 @@ const MessageItem = memo(
         setUserRowWidth(event.nativeEvent.layout.width),
       []
     );
+    const { width: windowWidth } = useWindowDimensions();
     const userBubbleWidth = useMemo(
-      () =>
-        userRowWidth === null
-          ? undefined
-          : { maxWidth: bubbleWidthOnPixelGrid(userRowWidth) },
-      [userRowWidth]
+      () => ({
+        maxWidth: bubbleWidthOnPixelGrid(
+          userRowWidth ?? windowWidth - 2 * MESSAGE_LIST_SIDE_PADDING
+        ),
+      }),
+      [userRowWidth, windowWidth]
     );
 
     const contentParts = useMemo(

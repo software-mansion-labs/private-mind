@@ -426,6 +426,24 @@ describe('user messages', () => {
     expect(maxWidth).toBeLessThanOrEqual(370 * 0.65);
     expect(maxWidth).toBeCloseTo(370 * 0.65, 0);
   });
+
+  it('sizes the bubble on the pixel grid from its first frame, so the text is never measured at a second width (I-140)', () => {
+    jest.spyOn(PixelRatio, 'get').mockReturnValue(3);
+    jest
+      .spyOn(require('react-native'), 'useWindowDimensions')
+      .mockReturnValue({ width: 402, height: 874, scale: 3, fontScale: 1 });
+    renderItem({
+      role: 'user',
+      content: 'Now write a very long story about a dragon',
+    });
+
+    const maxWidth = StyleSheet.flatten(
+      screen.getByTestId('text-bubble').props.style
+    ).maxWidth as number;
+    expect(typeof maxWidth).toBe('number');
+    expect(maxWidth * 3).toBe(Math.round(maxWidth * 3));
+    expect(maxWidth).toBeCloseTo((402 - 32) * 0.65, 0);
+  });
 });
 
 // ─── user messages with image ─────────────────────────────────────────────────
