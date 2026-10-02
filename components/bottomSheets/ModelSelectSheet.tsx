@@ -7,7 +7,7 @@ import {
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 import { router } from 'expo-router';
-import { View, StyleSheet, Text, Platform } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -58,12 +58,12 @@ const ModelSelectSheet = ({
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       index={snapIndex}
-      snapPoints={['30%', '50%']}
+      snapPoints={['30%', '50%', '90%']}
       enableDynamicSizing={false}
       handleStyle={styles.handle}
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.background}
-      keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
+      keyboardBehavior="extend"
       keyboardBlurBehavior="restore"
       onChange={(index) => {
         if (index < 0) return;
