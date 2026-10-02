@@ -1,6 +1,7 @@
 // __tests__/modelRepository.test.ts
 import { type SQLiteDatabase } from 'expo-sqlite';
 import {
+  addModel,
   getAllModels,
   getModelsByNames,
   syncBuiltInModelPaths,
@@ -200,5 +201,34 @@ describe('syncBuiltInModelPaths', () => {
     await syncBuiltInModelPaths(mockDb, 3, 'My Local Model');
 
     expect(runAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe('addModel', () => {
+  const model = {
+    modelName: 'model',
+    isDownloaded: false,
+    source: 'remote' as const,
+    modelPath: 'https://example.com/model.pte',
+    tokenizerPath: 'https://example.com/tokenizer.json',
+    tokenizerConfigPath: 'https://example.com/tokenizer_config.json',
+  };
+
+  it('returns no id when the insert was ignored, not the id of an earlier row', async () => {
+    const runAsync = jest
+      .fn()
+      .mockResolvedValue({ changes: 0, lastInsertRowId: 5 });
+    const db = { runAsync } as unknown as SQLiteDatabase;
+
+    expect(await addModel(db, model)).toBe(0);
+  });
+
+  it('returns the new id when the row was stored', async () => {
+    const runAsync = jest
+      .fn()
+      .mockResolvedValue({ changes: 1, lastInsertRowId: 6 });
+    const db = { runAsync } as unknown as SQLiteDatabase;
+
+    expect(await addModel(db, model)).toBe(6);
   });
 });

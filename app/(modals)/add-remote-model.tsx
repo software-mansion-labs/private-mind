@@ -56,7 +56,7 @@ export default function AddRemoteModelScreen() {
     const modelName =
       remoteModelPath.split('/').pop()?.split('.')[0] || `model-${Date.now()}`;
 
-    await addModelToDB({
+    const addedName = await addModelToDB({
       modelName,
       isDownloaded: false,
       source: 'remote',
@@ -65,9 +65,16 @@ export default function AddRemoteModelScreen() {
       tokenizerConfigPath: remoteTokenizerConfigPath,
     });
 
+    if (!addedName) {
+      Alert.alert(
+        'Model not added',
+        'The model could not be saved. Try again.'
+      );
+      return;
+    }
     Toast.show({
       type: 'defaultToast',
-      text1: `${modelName} has been successfully added`,
+      text1: `${addedName} has been successfully added`,
     });
 
     router.back();
