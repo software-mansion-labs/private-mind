@@ -55,7 +55,11 @@ interface MessageItemProps {
   documentName?: string;
   sourceDocuments?: SourceDocument[];
   userQuestion?: string;
-  onShowSources?: (sources: SourceDocument[], userQuestion?: string) => void;
+  onShowSources?: (
+    sources: SourceDocument[],
+    userQuestion?: string,
+    answer?: string
+  ) => void;
   showActions?: boolean;
   showForkAction?: boolean;
   onCopy?: (message: Message) => void;
@@ -210,7 +214,13 @@ const MessageItem = memo(
                 styles.sourcesButton,
                 pressed && styles.sourcesButtonPressed,
               ]}
-              onPress={() => onShowSources?.(displayedSources, userQuestion)}
+              onPress={() =>
+                onShowSources?.(
+                  displayedSources,
+                  userQuestion,
+                  `${normalContent}\n${normalAfterThink}`
+                )
+              }
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Sources"

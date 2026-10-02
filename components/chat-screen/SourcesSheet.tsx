@@ -57,13 +57,15 @@ export interface SourcesSheetHandle {
   present: (
     sources: SourceDocument[],
     userQuestion?: string,
-    highlightIndex?: number | null
+    highlightIndex?: number | null,
+    answer?: string
   ) => void;
 }
 
 interface SourcesSheetPayload {
   sources: SourceDocument[];
   userQuestion?: string;
+  answer?: string;
 }
 
 const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
@@ -82,7 +84,7 @@ const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
   const [payload, setPayload] = useState<SourcesSheetPayload>({
     sources: [],
   });
-  const { sources, userQuestion } = payload;
+  const { sources, userQuestion, answer } = payload;
 
   const clearScrollTimer = useCallback(() => {
     if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
@@ -112,11 +114,16 @@ const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
       present: (
         nextSources: SourceDocument[],
         nextUserQuestion?: string,
-        highlightIndex: number | null = null
+        highlightIndex: number | null = null,
+        nextAnswer?: string
       ) => {
         if (isOpenRef.current) return;
         isOpenRef.current = true;
-        setPayload({ sources: nextSources, userQuestion: nextUserQuestion });
+        setPayload({
+          sources: nextSources,
+          userQuestion: nextUserQuestion,
+          answer: nextAnswer,
+        });
         setHighlightedIndex(highlightIndex);
         setExpandedIndex(highlightIndex);
 
@@ -183,9 +190,9 @@ const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
       !queryNamesDocument(userQuestion ?? '', source?.name ?? '');
     const span = suppressHighlight
       ? null
-      : findCitedSpan(passage, userQuestion ?? '');
+      : findCitedSpan(passage, userQuestion ?? '', answer);
     return buildCitationExcerpt(passage, span);
-  }, [expandedIndex, sources, userQuestion, anyNamedSource]);
+  }, [expandedIndex, sources, userQuestion, answer, anyNamedSource]);
 
   const onContentSizeChange = useCallback((width: number, height: number) => {
     const next = Math.round(height);

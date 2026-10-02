@@ -61,20 +61,38 @@ const matchTermInSentence = (
   return words.some((word) => word.startsWith(prefix)) ? 'stem' : 'none';
 };
 
+const FIGURE = /\d+(?:[.,:]\d+)*/g;
+
+const figuresOf = (text: string): RegExp[] =>
+  [...new Set(text.match(FIGURE) ?? [])].map(
+    (figure) =>
+      new RegExp(`(?<![\\d.,:])${figure.replace(/[.]/g, '\\.')}(?![\\d])`)
+  );
+
+const termsOf = (text: string): Set<string> =>
+  text.trim()
+    ? extractQueryTerms(text, detectQuestionLanguage(text)?.code)
+    : new Set();
+
 export const findCitedSpan = (
   passage: string | undefined,
-  query: string
+  query: string,
+  answer = ''
 ): CitationSpan | null => {
-  if (!passage?.trim() || !query.trim()) return null;
+  if (!passage?.trim()) return null;
 
-  const terms = extractQueryTerms(query, detectQuestionLanguage(query)?.code);
-  if (terms.size === 0) return null;
+  const terms = new Set([...termsOf(query), ...termsOf(answer)]);
+  const figures = figuresOf(answer);
+  if (terms.size === 0 && figures.length === 0) return null;
 
   const sentences = splitSentences(passage);
   if (sentences.length === 0) return null;
 
   const evidence = sentences.filter((sentence) => !isHeading(sentence.text));
-  return bestSentence(evidence, terms) ?? bestSentence(sentences, terms);
+  return (
+    bestSentence(evidence, terms, figures) ??
+    bestSentence(sentences, terms, figures)
+  );
 };
 
 const HEADING_MAX_CHARS = 40;
@@ -88,7 +106,8 @@ const isHeading = (text: string): boolean => {
 
 const bestSentence = (
   sentences: Sentence[],
-  terms: Set<string>
+  terms: Set<string>,
+  figures: RegExp[]
 ): CitationSpan | null => {
   let best: CitationSpan | null = null;
   let bestScore = 0;
@@ -105,6 +124,11 @@ const bestSentence = (
       if (match === 'none') continue;
       score += 1;
       if (match === 'exact') exact += 1;
+    }
+    for (const figure of figures) {
+      if (!figure.test(sentence.text)) continue;
+      score += 1;
+      exact += 1;
     }
     if (score === 0) continue;
 

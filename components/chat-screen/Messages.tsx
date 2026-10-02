@@ -222,8 +222,8 @@ const Messages = ({
   const sourcesSheetRef = useRef<SourcesSheetHandle>(null);
 
   const handleShowSources = useCallback(
-    (sources: SourceDocument[], question?: string) =>
-      sourcesSheetRef.current?.present(sources, question),
+    (sources: SourceDocument[], question?: string, answer?: string) =>
+      sourcesSheetRef.current?.present(sources, question, null, answer),
     []
   );
 
