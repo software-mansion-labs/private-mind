@@ -6,6 +6,10 @@ import { useVectorStore } from '../context/VectorStoreContext';
 import { exportChatRoom } from '../database/exportImportRepository';
 import { useConfirm } from './useConfirm';
 import { toChatTitle } from '../utils/chatLabel';
+import {
+  isTurnInFlightFor,
+  showTurnInFlightNotice,
+} from '../utils/turnInFlightNotice';
 
 interface Options {
   onDeleted?: (chatId: number) => void;
@@ -43,6 +47,10 @@ export const useChatActions = ({ onDeleted }: Options = {}) => {
 
   const confirmDelete = useCallback(
     async (chatId: number) => {
+      if (isTurnInFlightFor(chatId)) {
+        showTurnInFlightNotice();
+        return;
+      }
       const confirmed = await confirm({
         title: 'Delete Chat',
         message: 'Are you sure you want to delete this chat?',

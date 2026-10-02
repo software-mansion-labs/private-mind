@@ -17,8 +17,14 @@ jest.mock('../store/chatStore', () => ({
   useChatStore: jest.fn(),
 }));
 
+const mockTurn = {
+  isGenerating: false,
+  isProcessingPrompt: false,
+  generatingForChatId: null as number | null,
+};
+
 jest.mock('../store/llmStore', () => ({
-  useLLMStore: jest.fn(),
+  useLLMStore: Object.assign(jest.fn(), { getState: () => mockTurn }),
 }));
 
 jest.mock('expo-router', () => ({
@@ -161,4 +167,27 @@ it('opens the source chat when a branch marker is pressed', async () => {
 
   expect(mockSetActiveChatId).toHaveBeenCalledWith(4);
   expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/chat/4' });
+});
+
+it('stays in a chat whose answer is still being written when its branch marker is pressed', async () => {
+  mockTurn.isGenerating = true;
+  mockTurn.generatingForChatId = 1;
+  mockGetChatById.mockReturnValue({ id: 5, title: 'Source' });
+  const { result } = renderHook(() =>
+    useChatBranching({ chatId: 1, messageHistoryLength: 2 })
+  );
+
+  try {
+    await act(async () => {
+      await result.current.handleBranchMarkerPress({
+        sourceChatId: 5,
+      } as never);
+    });
+
+    expect(mockSetActiveChatId).not.toHaveBeenCalled();
+    expect(mockRouter.push).not.toHaveBeenCalled();
+  } finally {
+    mockTurn.isGenerating = false;
+    mockTurn.generatingForChatId = null;
+  }
 });
