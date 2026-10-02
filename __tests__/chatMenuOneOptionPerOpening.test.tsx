@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 let mockFinishDismiss: (() => void) | undefined;
 const mockDismiss = jest.fn();
@@ -63,26 +63,51 @@ beforeEach(() => {
   mockSheetProps.length = 0;
 });
 
-it('opens the delete confirmation at once, leaving no gap for a tap to reach the drawer below (A-101)', () => {
+it('asks to confirm the delete inside the menu itself, so no second sheet opens over a closing one (A-110)', () => {
   const onDelete = jest.fn();
   renderMenu({ onDelete });
 
   fireEvent.press(screen.getByText('Delete Chat'));
 
-  expect(mockDismiss).toHaveBeenCalled();
+  expect(screen.getByTestId('chat-menu-delete-confirmation')).toBeTruthy();
+  expect(mockDismiss).not.toHaveBeenCalled();
+  expect(onDelete).not.toHaveBeenCalled();
+
+  fireEvent.press(screen.getByText('Delete'));
+
+  expect(mockDismiss).toHaveBeenCalledTimes(1);
   expect(onDelete).toHaveBeenCalledTimes(1);
 });
 
-it('ignores a second option tapped while the menu is still closing, so delete does not also open rename (W1)', () => {
+it('deletes once when Delete is tapped twice', () => {
   const onDelete = jest.fn();
-  const onRename = jest.fn();
-  renderMenu({ onDelete, onRename });
+  renderMenu({ onDelete });
 
   fireEvent.press(screen.getByText('Delete Chat'));
-  fireEvent.press(screen.getByText('Rename'));
+  fireEvent.press(screen.getByText('Delete'));
+  fireEvent.press(screen.getByText('Delete'));
 
   expect(onDelete).toHaveBeenCalledTimes(1);
-  expect(onRename).not.toHaveBeenCalled();
+});
+
+it('goes back to the options on Cancel, without deleting', () => {
+  const onDelete = jest.fn();
+  renderMenu({ onDelete });
+
+  fireEvent.press(screen.getByText('Delete Chat'));
+  fireEvent.press(screen.getByText('Cancel'));
+
+  expect(onDelete).not.toHaveBeenCalled();
+  expect(screen.getByText('Rename')).toBeTruthy();
+});
+
+it('opens on the options again after the menu closed mid-confirmation', () => {
+  renderMenu();
+
+  fireEvent.press(screen.getByText('Delete Chat'));
+  act(() => mockFinishDismiss?.());
+
+  expect(screen.getByText('Rename')).toBeTruthy();
 });
 
 it('takes an option again once the menu has closed and opened anew', () => {

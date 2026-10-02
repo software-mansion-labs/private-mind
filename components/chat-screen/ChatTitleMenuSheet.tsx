@@ -1,10 +1,10 @@
-import React, { RefObject, useRef } from 'react';
+import React, { RefObject, useRef, useState } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
-import { Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -13,6 +13,8 @@ import UploadIcon from '../../assets/icons/upload.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 import MenuRow from '../menu/MenuRow';
 import { Feedback } from '../../utils/Feedback';
+import PrimaryButton from '../PrimaryButton';
+import SecondaryButton from '../SecondaryButton';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -34,6 +36,7 @@ const ChatTitleMenuSheet = ({
   const { styles, theme } = useThemedStyles(createStyles);
 
   const optionChosen = useRef(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const handleOption = (action: () => void) => {
     if (optionChosen.current) return;
@@ -44,6 +47,7 @@ const ChatTitleMenuSheet = ({
 
   const handleDismiss = () => {
     optionChosen.current = false;
+    setConfirmingDelete(false);
     onDismiss?.();
   };
 
@@ -66,28 +70,57 @@ const ChatTitleMenuSheet = ({
       handleIndicatorStyle={{ backgroundColor: theme.border.soft }}
     >
       <BottomSheetView style={styles.container}>
-        <Text numberOfLines={1} style={styles.title} testID="chat-menu-title">
-          {title}
-        </Text>
-        <MenuRow
-          icon={EditIcon}
-          label="Rename"
-          onPress={() => handleOption(onRename)}
-        />
-        <MenuRow
-          icon={UploadIcon}
-          label="Export Chat"
-          onPress={() => handleOption(onExport)}
-        />
-        <MenuRow
-          icon={TrashIcon}
-          label="Delete Chat"
-          destructive
-          onPress={() => {
-            Feedback.destructive();
-            handleOption(onDelete);
-          }}
-        />
+        {confirmingDelete ? (
+          <View
+            style={styles.confirmation}
+            testID="chat-menu-delete-confirmation"
+          >
+            <Text style={styles.confirmationTitle}>Delete Chat</Text>
+            <Text style={styles.confirmationText}>
+              Are you sure you want to delete this chat?
+            </Text>
+            <View style={styles.confirmationButtons}>
+              <PrimaryButton
+                style={styles.deleteButton}
+                text="Delete"
+                onPress={() => handleOption(onDelete)}
+              />
+              <SecondaryButton
+                text="Cancel"
+                onPress={() => setConfirmingDelete(false)}
+              />
+            </View>
+          </View>
+        ) : (
+          <>
+            <Text
+              numberOfLines={1}
+              style={styles.title}
+              testID="chat-menu-title"
+            >
+              {title}
+            </Text>
+            <MenuRow
+              icon={EditIcon}
+              label="Rename"
+              onPress={() => handleOption(onRename)}
+            />
+            <MenuRow
+              icon={UploadIcon}
+              label="Export Chat"
+              onPress={() => handleOption(onExport)}
+            />
+            <MenuRow
+              icon={TrashIcon}
+              label="Delete Chat"
+              destructive
+              onPress={() => {
+                Feedback.destructive();
+                setConfirmingDelete(true);
+              }}
+            />
+          </>
+        )}
       </BottomSheetView>
     </BottomSheetModal>
   );
@@ -109,5 +142,25 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.sm,
       color: theme.text.defaultTertiary,
+    },
+    confirmation: {
+      paddingTop: 8,
+      gap: 24,
+    },
+    confirmationTitle: {
+      fontSize: fontSizes.lg,
+      fontFamily: fontFamily.medium,
+      color: theme.text.primary,
+    },
+    confirmationText: {
+      fontSize: fontSizes.md,
+      fontFamily: fontFamily.regular,
+      color: theme.text.defaultSecondary,
+    },
+    confirmationButtons: {
+      gap: 8,
+    },
+    deleteButton: {
+      backgroundColor: theme.bg.errorPrimary,
     },
   });

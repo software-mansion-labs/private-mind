@@ -29,13 +29,14 @@ export const useDrawerChatMenu = ({ onMenuActiveChange }: Options = {}) => {
   const androidSheetRef = useRef<BottomSheetModal>(null);
   const actionPendingRef = useRef(false);
 
-  const { rename, exportChat, confirmDelete, ConfirmElement } = useChatActions({
-    onDeleted: (chatId) => {
-      if (pathname === `/chat/${chatId}`) {
-        router.replace('/');
-      }
-    },
-  });
+  const { rename, exportChat, confirmDelete, deleteConfirmed, ConfirmElement } =
+    useChatActions({
+      onDeleted: (chatId) => {
+        if (pathname === `/chat/${chatId}`) {
+          router.replace('/');
+        }
+      },
+    });
 
   const setMenuActive = useCallback(
     (active: boolean) => onMenuActiveChange?.(active),
@@ -115,7 +116,7 @@ export const useDrawerChatMenu = ({ onMenuActiveChange }: Options = {}) => {
               runAction(() => exportChat(targetChat.id, chatLabel(targetChat)));
           }}
           onDelete={() => {
-            if (targetChat) runAction(() => confirmDelete(targetChat.id));
+            if (targetChat) runAction(() => deleteConfirmed(targetChat.id));
           }}
           onDismiss={() => {
             if (!renameVisible && !actionPendingRef.current) {
