@@ -42,6 +42,13 @@ jobs:
           EXPO_PUBLIC_DETOUR_APP_ID=${{ secrets.EXPO_PUBLIC_DETOUR_APP_ID }}
           EOF
 
+      - name: Refuse to build with dev tools enabled
+        run: |
+          if [ -n "${EXPO_PUBLIC_DEV_TOOLS:-}" ] || grep -qs '^[[:space:]]*EXPO_PUBLIC_DEV_TOOLS=' .env .env.*; then
+            echo "EXPO_PUBLIC_DEV_TOOLS is set; a store build must not ship the dev benchmark."
+            exit 1
+          fi
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
