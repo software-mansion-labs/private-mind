@@ -329,6 +329,7 @@ beforeEach(() => {
   mockUseAttachment.addImages.mockClear();
   mockUseAttachment.pickDocument.mockClear();
   mockUseAttachment.clearAll.mockClear();
+  mockUseAttachment.restoreAttachments.mockClear();
   mockUseAttachment.removeAttachment.mockClear();
   mockRunWithModelOffloaded.mockClear();
   jest.clearAllMocks();
@@ -396,6 +397,21 @@ describe('downloaded model — text input', () => {
       dismiss.mock.invocationCallOrder[0]
     );
     dismiss.mockRestore();
+  });
+
+  it('sends a prompt without the whitespace that would draw a blank line in the bubble (#399)', () => {
+    const onSend = jest.fn();
+    renderBar({ onSend });
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask about anything...'),
+      'Help me write a Python function.\n'
+    );
+    fireEvent.press(screen.getByTestId('send-btn'));
+    expect(onSend).toHaveBeenCalledWith(
+      'Help me write a Python function.',
+      undefined,
+      []
+    );
   });
 
   it('keeps the send button up while the turn is still being created (#408)', async () => {
@@ -496,12 +512,82 @@ describe('downloaded model — text input', () => {
     fireEvent.press(screen.getByTestId('send-btn'));
 
     expect(onSend).toHaveBeenCalledWith('Keep this message', undefined, []);
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('');
     expect(Toast.show).not.toHaveBeenCalledWith({
       type: 'defaultToast',
       text1: 'Wait for the model to finish loading.',
+    });
+  });
+
+  describe('a send that waits for the model switch to land', () => {
+    const input = () => screen.getByPlaceholderText('Ask about anything...');
+
+    const storeWith = (isProcessingPrompt: boolean) =>
+      mockUseLLMStore.mockImplementation(
+        (selector?: (state: Partial<LLMStore>) => unknown) => {
+          const state = {
+            isGenerating: false,
+            isProcessingPrompt,
+            generatingForChatId: isProcessingPrompt ? 1 : null,
+            interrupt: jest.fn(),
+            loadModel: jest.fn(),
+            model: null,
+          };
+          return selector ? selector(state) : state;
+        }
+      );
+
+    const sendWhileSwitching = (onSend: jest.Mock) => {
+      const view = renderBar({ onSend, modelSwitching: true });
+      fireEvent.changeText(input(), 'Keep this message');
+      fireEvent.press(screen.getByTestId('send-btn'));
+      return view;
+    };
+
+    it('keeps the message in the composer, locked, until it is on its way', () => {
+      sendWhileSwitching(jest.fn(() => new Promise<boolean>(() => {})));
+
+      expect(input().props.value).toBe('Keep this message');
+      expect(input().props.editable).toBe(false);
+      expect(mockUseAttachment.clearAll).not.toHaveBeenCalled();
+    });
+
+    it('empties the composer once the turn starts', () => {
+      const view = sendWhileSwitching(
+        jest.fn(() => new Promise<boolean>(() => {}))
+      );
+
+      storeWith(true);
+      view.rerender(
+        <ChatBar {...defaultProps} modelSwitching={false} onSend={jest.fn()} />
+      );
+
+      expect(input().props.value).toBe('');
+      expect(input().props.editable).toBe(true);
+      expect(mockUseAttachment.clearAll).toHaveBeenCalledTimes(1);
+    });
+
+    it('hands the message back, editable and not duplicated, when the send is refused', async () => {
+      sendWhileSwitching(jest.fn(() => Promise.resolve('busy' as const)));
+
+      await act(async () => {});
+
+      expect(input().props.value).toBe('Keep this message');
+      expect(input().props.editable).toBe(true);
+      expect(mockUseAttachment.restoreAttachments).not.toHaveBeenCalled();
+      expect(mockUseAttachment.clearAll).not.toHaveBeenCalled();
+      expect(Toast.show).toHaveBeenCalledWith({
+        type: 'defaultToast',
+        text1: 'Wait for the response to finish or stop it first.',
+      });
+    });
+
+    it('takes no second send while one is held', () => {
+      const onSend = jest.fn(() => new Promise<boolean>(() => {}));
+      sendWhileSwitching(onSend);
+
+      fireEvent.press(screen.getByTestId('send-btn'));
+
+      expect(onSend).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -598,7 +684,38 @@ describe('generating state', () => {
   });
 });
 
+describe('the model the field loads on focus', () => {
+  const focusWith = (modelSwitching: boolean) => {
+    const loadModel = jest.fn();
+    mockUseLLMStore.mockImplementation(
+      (selector?: (state: Partial<LLMStore>) => unknown) => {
+        const state = {
+          isGenerating: false,
+          isProcessingPrompt: false,
+          interrupt: jest.fn(),
+          loadModel,
+          model: { id: downloadedModel.id + 1 } as LLMStore['model'],
+        };
+        return selector ? selector(state) : state;
+      }
+    );
+    renderBar({ modelSwitching });
+    fireEvent(screen.getByPlaceholderText('Ask about anything...'), 'focus');
+    return loadModel;
+  };
+
+  it('brings back the chat’s model when another one is resident', () => {
+    expect(focusWith(false)).toHaveBeenCalledWith(downloadedModel);
+  });
+
+  it('queues nothing mid-switch, when the chat’s model is the one being replaced', () => {
+    expect(focusWith(true)).not.toHaveBeenCalled();
+  });
+});
+
 // ─── speech input ─────────────────────────────────────────────────────────────
+
+const SETTLE_ON_CI_MS = 4000;
 
 describe('speech input', () => {
   it('shows a toast instead of opening speech input while switching models', () => {
@@ -639,7 +756,9 @@ describe('speech input', () => {
     );
     fireEvent.press(screen.getByTestId('send-btn'));
 
-    await waitFor(() => expect(screen.queryByText('send pending')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('send pending')).toBeNull(), {
+      timeout: SETTLE_ON_CI_MS,
+    });
   });
 
   it('leaves the send button alone when the model is already up', async () => {

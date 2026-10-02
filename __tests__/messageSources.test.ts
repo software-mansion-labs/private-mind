@@ -1,3 +1,4 @@
+import { OPENING_WELCOMES } from '../constants/opening-greetings';
 import {
   isCircularNonAnswer,
   stripEchoedQuestionPrefix,
@@ -9,8 +10,10 @@ import {
   isDanglingListAnswer,
   endsInsideList,
   joinContinuation,
+  isConversationalOpener,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
+  strayedFromWelcome,
   retryDropsGroundedDetail,
   answeredNothing,
   looksLikeNoAnswer,
@@ -840,6 +843,171 @@ describe('isQuestionEchoAnswer', () => {
     const question = 'Kiedy urodził się Macron?';
     const answer = 'Macron urodził się 21 grudnia 1977 roku (we Francji).';
     expect(isQuestionEchoAnswer(answer, question)).toBe(false);
+  });
+});
+
+describe('strayedFromWelcome', () => {
+  const welcome = OPENING_WELCOMES.en;
+  const ownWords =
+    'Hello! I am a private assistant running on your phone.\n\n' +
+    '- Explain an idea\n- Draft a message\n- Summarize a file\n\n' +
+    'Where shall we begin?';
+
+  it('accepts a welcome the model wrote in its own words', () => {
+    expect(strayedFromWelcome(ownWords, welcome)).toBe(false);
+  });
+
+  it('accepts the example itself, in every language it exists in', () => {
+    for (const prepared of Object.values(OPENING_WELCOMES)) {
+      expect(strayedFromWelcome(prepared, prepared)).toBe(false);
+    }
+  });
+
+  it('looks past a think block', () => {
+    expect(
+      strayedFromWelcome(`<think>greet them</think>${ownWords}`, welcome)
+    ).toBe(false);
+  });
+
+  it.each([
+    ['nothing', ''],
+    ['only a think block', '<think>hmm</think>'],
+    ['a bare greeting', 'Hello!'],
+    ['an essay', 'A greeting is a social ritual. '.repeat(40)],
+    [
+      'another script',
+      '안녕하세요! 무엇을 도와드릴까요? 저는 여러분의 개인 비서입니다. 무엇이든 물어보세요.'.repeat(
+        2
+      ),
+    ],
+    ['another language in the same script', OPENING_WELCOMES.pl],
+  ])('rejects %s', (_, answer) => {
+    expect(strayedFromWelcome(answer, welcome)).toBe(true);
+  });
+
+  it('rejects a welcome that repeats the instruction it was given', () => {
+    const echoed =
+      'Hello! Greet them back, say in one sentence that you are a private assistant running on their phone.\n\n' +
+      '- Explain an idea\n- Draft a message\n- Summarize a file\n\nWhere shall we begin?';
+    expect(strayedFromWelcome(echoed, welcome)).toBe(true);
+  });
+
+  it.each([
+    '(Answer in Hindi.)',
+    '(Response in Polish.)',
+    '(In the same language as this message.)',
+  ])('rejects a welcome that ends with the echoed anchor %s', (anchor) => {
+    expect(strayedFromWelcome(`${ownWords} ${anchor}`, welcome)).toBe(true);
+  });
+
+  it('accepts a welcome that mentions answering in a parenthetical elsewhere', () => {
+    const answerInTheMiddle = ownWords.replace(
+      'Where shall we begin?',
+      '(I answer in your language.) Where shall we begin?'
+    );
+    expect(strayedFromWelcome(answerInTheMiddle, welcome)).toBe(false);
+  });
+
+  it('rejects English where the greeting came in Hindi', () => {
+    expect(strayedFromWelcome(OPENING_WELCOMES.en, OPENING_WELCOMES.hi)).toBe(
+      true
+    );
+  });
+});
+
+describe('isQuestionEchoAnswer — greetings and acknowledgements (#386)', () => {
+  it.each([
+    ['hi', 'Hi!'],
+    ['Hello', 'Hello!'],
+    ['thanks', 'Thanks!'],
+    ['ok', 'OK.'],
+    ['cześć', 'Cześć!'],
+    ['Hej, jak leci?', 'Hej, jak leci?'],
+    ['dzień dobry', 'Dzień dobry!'],
+    ['नमस्ते', 'नमस्ते!'],
+    ['धन्यवाद', 'धन्यवाद'],
+    ['السلام علیکم', 'السلام علیکم!'],
+    ['hallo', 'Hallo!'],
+    ['Guten Morgen', 'Guten Morgen!'],
+    ['Hi there, how are you?', 'Hi there, how are you?'],
+  ])(
+    'keeps the reply to %j even when it repeats the words',
+    (question, answer) => {
+      expect(isQuestionEchoAnswer(answer, question)).toBe(false);
+    }
+  );
+
+  it('treats a turn of one or two words as too short to be the failure the guard is for', () => {
+    expect(isQuestionEchoAnswer('Yo', 'yo')).toBe(false);
+    expect(isQuestionEchoAnswer('Cena?', 'Cena?')).toBe(false);
+    expect(isQuestionEchoAnswer('Ile kosztuje?', 'Ile kosztuje?')).toBe(false);
+    expect(isQuestionEchoAnswer('Which one?', 'Which one?')).toBe(false);
+  });
+
+  it('starts guarding at three words, which is where the corpus echoes begin', () => {
+    expect(
+      isQuestionEchoAnswer('Ile kosztuje pallad?', 'Ile kosztuje pallad?')
+    ).toBe(true);
+  });
+
+  it('still flags a real question that opens with a greeting', () => {
+    expect(
+      isQuestionEchoAnswer(
+        'Hi, what is the capital of France?',
+        'Hi, what is the capital of France?'
+      )
+    ).toBe(true);
+  });
+
+  it('still flags the shortest real echo the device corpus holds', () => {
+    expect(
+      isQuestionEchoAnswer(
+        'Ile kosztuje aktualnie pallad?',
+        'Ile kosztuje aktualnie pallad?'
+      )
+    ).toBe(true);
+  });
+});
+
+describe('isConversationalOpener', () => {
+  it.each([
+    'hi',
+    'Hello!',
+    'Hey there',
+    'good morning',
+    'Thank you very much.',
+    'ok',
+    'Hi, thanks!',
+    'Hello! How are you?',
+    'cześć',
+    'Czesc!',
+    'Hej, jak leci?',
+    'Dzięki',
+    'नमस्ते',
+    'kaise ho',
+    'السلام علیکم',
+    'shukriya',
+    'Hallo',
+    'Danke schön!',
+    "Wie geht's?",
+    'Olá',
+    'Hola, buenos días',
+    'Bonjour',
+    'Привет',
+    'مرحبا',
+  ])('recognises %j', (turn) => {
+    expect(isConversationalOpener(turn)).toBe(true);
+  });
+
+  it.each([
+    'Hi, what is the capital of France?',
+    'Thanks, and how much does it weigh?',
+    'Ile kosztuje aktualnie pallad?',
+    'Hello world program in Python',
+    '',
+    '?!',
+  ])('does not mistake %j for one', (turn) => {
+    expect(isConversationalOpener(turn)).toBe(false);
   });
 });
 

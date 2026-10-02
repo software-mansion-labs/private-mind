@@ -14,6 +14,7 @@ export const SEAM_OVERLAP = 1;
 export const BOTTOM_FADE_HEIGHT = Platform.OS === 'ios' ? 64 : FADE_HEIGHT;
 
 export const SCROLL_INDICATOR_GUTTER = 12;
+export const MESSAGE_LIST_SIDE_PADDING = 16;
 
 export const GENERATION_ERROR_MEASUREMENT_KEY = 'generation-error';
 

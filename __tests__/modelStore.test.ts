@@ -1,6 +1,15 @@
-import { useModelStore, ModelState } from '../store/modelStore';
+import {
+  useModelStore,
+  ModelState,
+  resetDownloadAttempts,
+} from '../store/modelStore';
+import { flushMicrotasks } from './support/resourceFetcherFake';
 import * as modelRepository from '../database/modelRepository';
-import { ResourceFetcher } from 'react-native-executorch/legacy';
+import {
+  ResourceFetcher,
+  RnExecutorchError,
+  RnExecutorchErrorCode,
+} from 'react-native-executorch/legacy';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import Toast from 'react-native-toast-message';
 
@@ -31,6 +40,7 @@ beforeEach(() => {
     downloadedModels: [],
     downloadStates: {},
   });
+  resetDownloadAttempts();
   jest.clearAllMocks();
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -102,6 +112,42 @@ describe('downloadModel', () => {
     );
   });
 
+  it('stays quiet when the user cancelled the download', async () => {
+    let rejectFetch: (error: unknown) => void = () => {};
+    mockFetch.mockImplementation(
+      () => new Promise((_, reject) => (rejectFetch = reject))
+    );
+
+    const download = useModelStore.getState().downloadModel(baseModel);
+    await useModelStore.getState().cancelDownload(baseModel);
+    rejectFetch(
+      new RnExecutorchError(RnExecutorchErrorCode.DownloadInterrupted)
+    );
+    await download;
+
+    const state = useModelStore.getState().downloadStates[baseModel.id];
+    expect(state.status).toBe(ModelState.NotStarted);
+    expect(state.progress).toBe(0);
+    expect(Toast.show).not.toHaveBeenCalled();
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
+  it('speaks up when the download was interrupted without the user asking', async () => {
+    mockFetch.mockRejectedValue(
+      new RnExecutorchError(RnExecutorchErrorCode.DownloadInterrupted)
+    );
+
+    await useModelStore.getState().downloadModel(baseModel);
+
+    const state = useModelStore.getState().downloadStates[baseModel.id];
+    expect(state.status).toBe(ModelState.NotStarted);
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: expect.stringContaining('could not be downloaded'),
+      })
+    );
+  });
+
   it('ignores progress updates that arrive after download completes (race condition guard)', async () => {
     let capturedProgressCb: (p: number) => void = () => {};
     mockFetch.mockImplementation((cb: (p: number) => void) => {
@@ -154,16 +200,6 @@ describe('downloadModel', () => {
     expect(progressCalls.length).toBeLessThanOrEqual(1);
     setStateSpy.mockRestore();
   });
-
-  it('returns early without updating state when fetch returns null', async () => {
-    mockFetch.mockResolvedValue(null);
-
-    await useModelStore.getState().downloadModel(baseModel);
-
-    // No DB update, no toast, state stays Downloading (was set at start)
-    expect(mockUpdateModelDownloaded).not.toHaveBeenCalled();
-    expect(Toast.show).not.toHaveBeenCalled();
-  });
 });
 
 describe('cancelDownload', () => {
@@ -179,6 +215,49 @@ describe('cancelDownload', () => {
     const state = useModelStore.getState().downloadStates[baseModel.id];
     expect(state.status).toBe(ModelState.NotStarted);
     expect(state.progress).toBe(0);
+  });
+
+  it('a late progress tick from the cancelled run does not restart the card', async () => {
+    let progressCb: (p: number) => void = () => {};
+    mockFetch.mockImplementation((cb: (p: number) => void) => {
+      progressCb = cb;
+      return new Promise(() => {});
+    });
+
+    const startedAt = Date.now();
+    const now = jest.spyOn(Date, 'now').mockReturnValue(startedAt);
+
+    useModelStore.getState().downloadModel(baseModel);
+    await flushMicrotasks();
+    await useModelStore.getState().cancelDownload(baseModel);
+
+    now.mockReturnValue(startedAt + 1000);
+    progressCb(0.5);
+
+    const state = useModelStore.getState().downloadStates[baseModel.id];
+    expect(state.status).toBe(ModelState.NotStarted);
+    expect(state.progress).toBe(0);
+  });
+
+  it('the cancelled run does not reset the download started after it', async () => {
+    let rejectFirst: (error: unknown) => void = () => {};
+    mockFetch.mockImplementationOnce(
+      () => new Promise((_, reject) => (rejectFirst = reject))
+    );
+    mockFetch.mockImplementationOnce(() => new Promise(() => {}));
+
+    useModelStore.getState().downloadModel(baseModel);
+    await flushMicrotasks();
+    await useModelStore.getState().cancelDownload(baseModel);
+    useModelStore.getState().downloadModel(baseModel);
+
+    rejectFirst(
+      new RnExecutorchError(RnExecutorchErrorCode.DownloadInterrupted)
+    );
+    await flushMicrotasks();
+
+    const state = useModelStore.getState().downloadStates[baseModel.id];
+    expect(state.status).toBe(ModelState.Downloading);
   });
 });
 
@@ -302,6 +381,7 @@ describe('a second download for the same model must not start while one is in fl
     useModelStore.getState().downloadModel(baseModel);
     useModelStore.getState().downloadModel(baseModel);
     useModelStore.getState().downloadModel(baseModel);
+    await flushMicrotasks();
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     expect(useModelStore.getState().downloadStates[baseModel.id]!.status).toBe(
@@ -310,11 +390,21 @@ describe('a second download for the same model must not start while one is in fl
   });
 
   it('lets the model be downloaded again after a cancel', async () => {
-    mockFetch.mockReturnValue(new Promise(() => {}));
-    useModelStore.getState().downloadModel(baseModel);
-    await useModelStore.getState().cancelDownload(baseModel);
+    let rejectFirst: (error: unknown) => void = () => {};
+    mockFetch.mockImplementationOnce(
+      () => new Promise((_, reject) => (rejectFirst = reject))
+    );
+    mockFetch.mockImplementationOnce(() => new Promise(() => {}));
 
     useModelStore.getState().downloadModel(baseModel);
+    await flushMicrotasks();
+    await useModelStore.getState().cancelDownload(baseModel);
+    rejectFirst(
+      new RnExecutorchError(RnExecutorchErrorCode.DownloadInterrupted)
+    );
+
+    useModelStore.getState().downloadModel(baseModel);
+    await flushMicrotasks();
 
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
@@ -325,6 +415,7 @@ describe('a second download for the same model must not start while one is in fl
 
     useModelStore.getState().downloadModel(baseModel);
     useModelStore.getState().downloadModel(other);
+    await flushMicrotasks();
 
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });

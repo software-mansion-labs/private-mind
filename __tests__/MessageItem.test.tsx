@@ -1,4 +1,5 @@
 import React from 'react';
+import { PixelRatio, StyleSheet } from 'react-native';
 import type { ViewProps } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
@@ -310,6 +311,16 @@ describe('assistant messages', () => {
     expect(markdown.props.children).toBe('The total was 100.');
   });
 
+  it('strips a leaked tokenizer placeholder from the rendered answer (#342)', () => {
+    renderItem({
+      role: 'assistant',
+      content: 'Office Environment:<unused6226><unused6226>感 (focus).',
+    });
+
+    const markdown = screen.getByTestId('markdown');
+    expect(markdown.props.children).toBe('Office Environment:感 (focus).');
+  });
+
   it('offers the Sources button whenever a source badge is shown, even for a page known only from its listing (#357)', () => {
     renderItem({
       role: 'assistant',
@@ -377,6 +388,11 @@ describe('user messages', () => {
     expect(screen.getByText('My question')).toBeTruthy();
   });
 
+  it('leaves a token the reader typed themselves, even one a model would emit', () => {
+    renderItem({ role: 'user', content: 'What does <eos> mean?' });
+    expect(screen.getByText('What does <eos> mean?')).toBeTruthy();
+  });
+
   it('keeps the text of a pasted <think> block, dropping only the markers', () => {
     renderItem({
       role: 'user',
@@ -391,6 +407,57 @@ describe('user messages', () => {
     renderItem({ role: 'user', content: 'Look at this: <think>cut off' });
 
     expect(screen.getByText('Look at this: cut off')).toBeTruthy();
+  });
+
+  it('draws no blank line under a message stored with a trailing newline (#399)', () => {
+    renderItem({
+      role: 'user',
+      content: 'Help me write a Python function.\n',
+    });
+
+    expect(
+      screen.getByText('Help me write a Python function.').props.children
+    ).toBe('Help me write a Python function.');
+  });
+
+  it('keeps the bubble width on the pixel grid, so iOS measures the text at the width it draws it (#399)', () => {
+    jest.spyOn(PixelRatio, 'get').mockReturnValue(3);
+    renderItem({
+      role: 'user',
+      content:
+        'Help me write a Python function to sort a list of dictionaries by a specific key.',
+    });
+    const bubble = screen.getByTestId('text-bubble');
+
+    fireEvent(bubble.parent!, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 370, height: 120 } },
+    });
+
+    const maxWidth = StyleSheet.flatten(
+      screen.getByTestId('text-bubble').props.style
+    ).maxWidth as number;
+    expect(typeof maxWidth).toBe('number');
+    expect(maxWidth * 3).toBe(Math.round(maxWidth * 3));
+    expect(maxWidth).toBeLessThanOrEqual(370 * 0.65);
+    expect(maxWidth).toBeCloseTo(370 * 0.65, 0);
+  });
+
+  it('sizes the bubble on the pixel grid from its first frame, so the text is never measured at a second width (I-140)', () => {
+    jest.spyOn(PixelRatio, 'get').mockReturnValue(3);
+    jest
+      .spyOn(require('react-native'), 'useWindowDimensions')
+      .mockReturnValue({ width: 402, height: 874, scale: 3, fontScale: 1 });
+    renderItem({
+      role: 'user',
+      content: 'Now write a very long story about a dragon',
+    });
+
+    const maxWidth = StyleSheet.flatten(
+      screen.getByTestId('text-bubble').props.style
+    ).maxWidth as number;
+    expect(typeof maxWidth).toBe('number');
+    expect(maxWidth * 3).toBe(Math.round(maxWidth * 3));
+    expect(maxWidth).toBeCloseTo((402 - 32) * 0.65, 0);
   });
 });
 
