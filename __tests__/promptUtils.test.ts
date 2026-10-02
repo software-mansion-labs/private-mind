@@ -51,6 +51,57 @@ const makeMessages = (count: number): Message[] => [
 ];
 
 describe('prepareMessagesForLLM', () => {
+  describe('earlier thinking', () => {
+    const turn = (
+      id: number,
+      role: 'user' | 'assistant',
+      content: string,
+      extra: Partial<Message> = {}
+    ): Message => ({ id, chatId: 1, role, content, timestamp: 0, ...extra });
+
+    it('sends an earlier answer without the reasoning that preceded it', () => {
+      const result = prepareMessagesForLLM(
+        [
+          turn(1, 'user', 'What is the capital of France?'),
+          turn(
+            2,
+            'assistant',
+            '<think>The user asks about France. Its capital is Paris.</think>Paris.'
+          ),
+          turn(3, 'user', 'And of Spain?'),
+          turn(4, 'assistant', ''),
+        ],
+        [],
+        baseSettings,
+        baseModel
+      );
+
+      expect(result.find((m) => m.role === 'assistant')?.content).toBe(
+        'Paris.'
+      );
+    });
+
+    it('leaves out a thought that was stopped before it closed', () => {
+      const result = prepareMessagesForLLM(
+        [
+          turn(1, 'user', 'Plan a trip to Rome.'),
+          turn(2, 'assistant', '<think>First, consider the season', {
+            stoppedByUser: true,
+          }),
+          turn(3, 'user', 'Just list three sights.'),
+          turn(4, 'assistant', ''),
+        ],
+        [],
+        baseSettings,
+        baseModel
+      );
+
+      const sent = result.map((m) => m.content).join('\n');
+      expect(sent).not.toContain('<think>');
+      expect(sent).not.toContain('consider the season');
+    });
+  });
+
   describe('system prompt', () => {
     it('always prepends the system prompt', () => {
       const messages = makeMessages(2);
