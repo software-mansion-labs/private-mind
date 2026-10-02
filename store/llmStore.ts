@@ -49,6 +49,7 @@ import {
   joinContinuation,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
+  strayedFromWelcome,
   retryDropsGroundedDetail,
   stripEchoedQuestionPrefix,
   stripSourceLabels,
@@ -67,6 +68,7 @@ import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
 import { updateConversationDigest } from '../utils/conversationDigest';
 import type { WebIntentKind } from '../utils/web/intentKind';
 import { useSettingsStore } from './settingsStore';
+import { openingWelcomeFor } from '../utils/openingGreeting';
 import {
   getMemoryFootprintBytes,
   isMemoryMetricAvailable,
@@ -710,6 +712,16 @@ type LLMGenerationResult = {
   performance: { timeToFirstToken: number; tokensPerSecond: number };
 };
 
+const NOTHING_GATHERED: Awaited<
+  ReturnType<Parameters<LLMStore['sendChatMessage']>[2]>
+> = { context: [] };
+
+const WELCOME_WRITING_MIN_BILLIONS = 0.6;
+
+const cannotWriteWelcome = (model: Model): boolean =>
+  typeof model.parameters === 'number' &&
+  model.parameters < WELCOME_WRITING_MIN_BILLIONS;
+
 const NO_LLM_RESPONSE: LLMGenerationResult = {
   response: null,
   performance: { timeToFirstToken: 0, tokensPerSecond: 0 },
@@ -1108,15 +1120,35 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       }));
     }
 
+    const openingWelcomeOfThisTurn = async (): Promise<string | null> => {
+      await waitForSettingsHydration();
+      const beforeThisQuestion = isRetry
+        ? activeChatMessages.slice(
+            0,
+            activeChatMessages.findLastIndex((msg) => msg.role === 'user')
+          )
+        : activeChatMessages;
+      return openingWelcomeFor({
+        message: newMessage,
+        earlierRoles: beforeThisQuestion.map((message) => message.role),
+        hasAttachment: !!imagePath || !!documentName,
+        customInstructions: useSettingsStore.getState().customSystemPrompt,
+      });
+    };
+
     try {
       if (!isRetry && !userMessagePersisted) {
         await persistUserMessage();
       }
 
-      const built = await endsWhenStopped(
-        buildSources(abortController.signal),
-        abortController.signal
-      );
+      const openingWelcome = await openingWelcomeOfThisTurn();
+
+      const built = openingWelcome
+        ? NOTHING_GATHERED
+        : await endsWhenStopped(
+            buildSources(abortController.signal),
+            abortController.signal
+          );
       const {
         context,
         sourceDocuments,
@@ -1144,16 +1176,21 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           abortController.signal
         );
 
-      await loadModelForTurn(isRetry);
-      if (!llmInstance && get().isProcessingPrompt) {
-        await loadModelForTurn(true);
-      }
-      if (!llmInstance) {
-        throw new Error('Failed to load the language model');
+      const preparedWelcomeOnly =
+        openingWelcome !== null && cannotWriteWelcome(currentModel);
+
+      if (!preparedWelcomeOnly) {
+        await loadModelForTurn(isRetry);
+        if (!llmInstance && get().isProcessingPrompt) {
+          await loadModelForTurn(true);
+        }
+        if (!llmInstance) {
+          throw new Error('Failed to load the language model');
+        }
       }
 
       if (!get().isProcessingPrompt) {
-        unloadLLM();
+        if (!preparedWelcomeOnly) unloadLLM();
         updateChatStateForGeneration(set, 'failed', {
           localId: assistantPlaceholder.localId,
         });
@@ -1179,6 +1216,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           webWeak: webWeak,
           webSearchFailed: webSearchFailed,
           digest: digestForChat(get, chatId) ?? undefined,
+          openingWelcome: openingWelcome ?? undefined,
         }
       );
 
@@ -1218,11 +1256,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       let generation: Awaited<ReturnType<typeof generateLLMResponse>>;
       let effectivePrepared = messagesWithSystemPrompt;
       try {
-        generation = await generateLLMResponse(
-          messagesWithSystemPrompt,
-          get,
-          turnGenerationConfig
-        );
+        generation = preparedWelcomeOnly
+          ? { ...NO_LLM_RESPONSE, response: openingWelcome }
+          : await generateLLMResponse(
+              messagesWithSystemPrompt,
+              get,
+              turnGenerationConfig
+            );
       } catch (error) {
         if (abortController.signal.aborted || !stillOurs()) throw error;
         console.warn(
@@ -1245,6 +1285,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             webWeak: webWeak,
             webSearchFailed: webSearchFailed,
             digest: digestForChat(get, chatId) ?? undefined,
+            openingWelcome: openingWelcome ?? undefined,
           }
         );
         generation = await generateLLMResponse(
@@ -1259,6 +1300,15 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         ? tidyVisibleAnswer(rawResponse)
         : rawResponse;
       let loopGuardTrimmed = !!rawResponse && finalResponse !== rawResponse;
+      if (
+        openingWelcome &&
+        get().isGenerating &&
+        strayedFromWelcome(finalResponse ?? '', openingWelcome)
+      ) {
+        console.warn('Welcome strayed from the example, using the example');
+        finalResponse = openingWelcome;
+        loopGuardTrimmed = false;
+      }
       const currentQuestion = get().activeChatMessages.findLast(
         (msg) => msg.role === 'user'
       )?.content;
@@ -1272,7 +1322,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             : JSON.stringify(last?.content ?? ''))(effectivePrepared.at(-1))
       );
 
-      let nudged = false;
+      const welcomeTakesNoNudge = openingWelcome !== null;
+      let nudged = welcomeTakesNoNudge;
       const answerRetries: AnswerRetry[] = [];
 
       const questionLanguage = detectQuestionLanguage(currentQuestion ?? '');
@@ -1544,7 +1595,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       if (finalResponse && carriesAnswer(finalResponse)) {
         const humanizedResponse = humanizeSourceReferences(
           stripSourceLabels(
-            stripEchoedQuestionPrefix(finalResponse, currentQuestion)
+            openingWelcome
+              ? finalResponse
+              : stripEchoedQuestionPrefix(finalResponse, currentQuestion)
           ),
           sourceDocuments ?? []
         );
@@ -1623,7 +1676,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           });
         }
 
-        if (!stoppedByUser) {
+        if (!stoppedByUser && !openingWelcome) {
           const previousDigest = digestForChat(get, chatId);
           updateConversationDigest(
             (messages) => get().generateUtility(messages),
