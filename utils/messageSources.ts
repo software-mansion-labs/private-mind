@@ -26,7 +26,7 @@ import type { WebIntentKind } from './web/intentKind';
 import { hostname } from './web/hostname';
 import { ANSWER_CITATION_OVERLAP_RATIO } from '../constants/retrieval';
 import { ISO_CURRENCY_CODES } from '../constants/currencies';
-import { CONVERSATIONAL_OPENERS } from '../constants/conversational-openers';
+import { KNOWN_PHRASES, normalizePhrase } from './conversationalPhrases';
 import {
   CITATION_SENTENCE_PATTERN,
   CLAUSE_SPLIT_PATTERN,
@@ -236,24 +236,14 @@ const stripTrailingParenthetical = (text: string): string =>
 
 const OPENER_SEGMENT_BREAK = /[,.!?;:…]+/;
 
-const normalizeOpenerSegment = (segment: string): string =>
-  normalizeForEchoCompare(segment)
-    .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-const KNOWN_OPENERS: ReadonlySet<string> = new Set(
-  CONVERSATIONAL_OPENERS.map(normalizeOpenerSegment)
-);
-
 export const isConversationalOpener = (turn: string): boolean => {
   const segments = turn
     .split(OPENER_SEGMENT_BREAK)
-    .map(normalizeOpenerSegment)
+    .map(normalizePhrase)
     .filter(Boolean);
   return (
     segments.length > 0 &&
-    segments.every((segment) => KNOWN_OPENERS.has(segment))
+    segments.every((segment) => KNOWN_PHRASES.has(segment))
   );
 };
 

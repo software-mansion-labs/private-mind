@@ -1,40 +1,17 @@
 import {
   GREETING_ADDRESSEES,
-  OPENING_GREETINGS,
   OPENING_WELCOMES,
   type WelcomeLanguage,
 } from '../constants/opening-greetings';
+import { greetingLanguages, normalizePhrase } from './conversationalPhrases';
 
 const MAX_GREETING_CHARS = 48;
 
-const ARABIC_VOWEL_MARKS = /[ً-ْـ]/g;
-const APOSTROPHES = /['’]/g;
-const NOT_A_LETTER_OR_SPACE = /[^\p{L}\p{M}\p{N}\s]/gu;
-const STRETCHED_LETTER = /(\p{L})\1{2,}/gu;
-
-const normalizeGreeting = (text: string): string =>
-  text
-    .normalize('NFC')
-    .toLowerCase()
-    .replace(ARABIC_VOWEL_MARKS, '')
-    .replace(APOSTROPHES, '')
-    .replace(NOT_A_LETTER_OR_SPACE, ' ')
-    .replace(STRETCHED_LETTER, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
-
 const wordCount = (phrase: string): number => phrase.split(' ').length;
 
-const GREETING_LANGUAGE = new Map<string, WelcomeLanguage>(
-  OPENING_GREETINGS.flatMap(({ answeredIn, phrases }) =>
-    phrases.map((phrase): [string, WelcomeLanguage] => [
-      normalizeGreeting(phrase),
-      answeredIn,
-    ])
-  )
-);
+const GREETING_LANGUAGE = greetingLanguages();
 
-const ADDRESSEES = new Set(GREETING_ADDRESSEES.map(normalizeGreeting));
+const ADDRESSEES = new Set(GREETING_ADDRESSEES.map(normalizePhrase));
 
 const LONGEST_PHRASE_WORDS = Math.max(
   ...[...GREETING_LANGUAGE.keys(), ...ADDRESSEES].map(wordCount)
@@ -54,7 +31,7 @@ const longestPhraseAt = <T>(
 };
 
 export const greetingLanguageOf = (message: string): WelcomeLanguage | null => {
-  const normalized = normalizeGreeting(message);
+  const normalized = normalizePhrase(message);
   if (!normalized || normalized.length > MAX_GREETING_CHARS) return null;
 
   const words = normalized.split(' ');

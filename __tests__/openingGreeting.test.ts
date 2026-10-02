@@ -1,12 +1,11 @@
-import {
-  OPENING_GREETINGS,
-  OPENING_WELCOMES,
-} from '../constants/opening-greetings';
+import { CONVERSATIONAL_PHRASES } from '../constants/conversational-phrases';
+import { OPENING_WELCOMES } from '../constants/opening-greetings';
 import {
   greetingLanguageOf,
   isGreetingOnly,
   openingWelcomeFor,
 } from '../utils/openingGreeting';
+import { normalizePhrase } from '../utils/conversationalPhrases';
 
 const firstTurn = (message: string) =>
   openingWelcomeFor({
@@ -75,33 +74,39 @@ describe('greetingLanguageOf', () => {
     expect(isGreetingOnly(message)).toBe(false);
   });
 
-  it('keeps a greeting several languages share out of the table', () => {
-    const phrases = OPENING_GREETINGS.flatMap((group) => group.phrases);
+  it('keeps a greeting several languages share out of the answered ones', () => {
     for (const shared of ['hej', 'ciao', 'سلام', 'salve']) {
-      expect(phrases).not.toContain(shared);
-    }
-  });
-
-  it('files every phrase under one language only', () => {
-    const owners = new Map<string, Set<string>>();
-    for (const { answeredIn, phrases } of OPENING_GREETINGS) {
-      for (const phrase of phrases) {
-        owners.set(phrase, (owners.get(phrase) ?? new Set()).add(answeredIn));
+      for (const phrase of CONVERSATIONAL_PHRASES) {
+        if (phrase.text === shared && phrase.kind === 'greeting') {
+          expect(phrase.answeredIn).toBeNull();
+        }
       }
+      expect(greetingLanguageOf(shared)).toBeNull();
     }
-    const contested = [...owners].filter(([, languages]) => languages.size > 1);
-    expect(contested).toEqual([]);
   });
 
-  it('recognises every phrase it lists', () => {
-    for (const { answeredIn, phrases } of OPENING_GREETINGS) {
-      for (const phrase of phrases) {
-        expect([phrase, greetingLanguageOf(phrase)]).toEqual([
-          phrase,
-          answeredIn,
+  it('files every phrase under one kind and one language only', () => {
+    const texts = CONVERSATIONAL_PHRASES.map(({ text }) =>
+      normalizePhrase(text)
+    );
+    expect(texts.filter((text, at) => texts.indexOf(text) !== at)).toEqual([]);
+  });
+
+  it('recognises every greeting it lists in the language it is answered in', () => {
+    for (const phrase of CONVERSATIONAL_PHRASES) {
+      if (phrase.kind === 'greeting' && phrase.answeredIn) {
+        expect([phrase.text, greetingLanguageOf(phrase.text)]).toEqual([
+          phrase.text,
+          phrase.answeredIn,
         ]);
       }
     }
+  });
+
+  it('reads a greeting written without its diacritics', () => {
+    expect(greetingLanguageOf('czesc')).toBe('pl');
+    expect(greetingLanguageOf('dzien dobry')).toBe('pl');
+    expect(greetingLanguageOf('buenos dias')).toBe('es');
   });
 });
 
