@@ -37,6 +37,20 @@ describe('readDocumentText — PDF', () => {
 });
 
 describe('readDocumentText — TXT / MD', () => {
+  it.each(['txt', 'md', 'csv'])(
+    'drops the byte order mark at the start of a %s file',
+    async (extension) => {
+      const mockText = jest.fn().mockResolvedValue('\ufeffName,Price');
+      MockFile.mockImplementation(() => ({ text: mockText }));
+
+      const result = await readDocumentText(
+        `file:///list.${extension}`,
+        extension
+      );
+      expect(result).toBe('Name,Price');
+    }
+  );
+
   it('reads txt files via File.text()', async () => {
     const mockText = jest.fn().mockResolvedValue('plain text');
     MockFile.mockImplementation(() => ({ text: mockText }));
@@ -144,6 +158,18 @@ describe('readDocumentText — CSV', () => {
 });
 
 describe('normalizePdfText', () => {
+  it('keeps the zero-width non-joiner that Persian and Urdu spelling depends on', () => {
+    const nonJoiner = String.fromCharCode(0x200c);
+    const word = `\u0645\u06cc${nonJoiner}\u062e\u0648\u0627\u0647\u0645`;
+    expect(normalizePdfText(word)).toBe(word);
+  });
+
+  it('keeps the zero-width joiner that shapes Hindi conjuncts', () => {
+    const joiner = String.fromCharCode(0x200d);
+    const word = `\u0915\u094d${joiner}\u0937`;
+    expect(normalizePdfText(word)).toBe(word);
+  });
+
   it('collapses single soft-wrap line breaks into spaces', () => {
     expect(normalizePdfText('Sta\nwka\nVAT')).toBe('Sta wka VAT');
   });

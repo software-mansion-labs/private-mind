@@ -16,10 +16,20 @@ const stripHtml = (html: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const INVISIBLE_CHARS_THAT_CARRY_MEANING = new Set([
+  '\n',
+  '\t',
+  '\u200C',
+  '\u200D',
+]);
+
 const stripInvisibleChars = (text: string): string =>
   text.replace(/[\p{Cc}\p{Cf}\uFFF9-\uFFFF]/gu, (ch) =>
-    ch === '\n' || ch === '\t' ? ch : ''
+    INVISIBLE_CHARS_THAT_CARRY_MEANING.has(ch) ? ch : ''
   );
+
+const withoutByteOrderMark = (text: string): string =>
+  text.startsWith('\uFEFF') ? text.slice(1) : text;
 
 const rejoinHyphenatedWords = (text: string): string =>
   text.replace(/(\p{Ll})[-\u2010\u2011]\n(\p{Ll})/gu, '$1$2');
@@ -59,13 +69,13 @@ export async function readDocumentText(
     case 'markdown':
     case 'csv': {
       const textFile = new File(filePath);
-      return await textFile.text();
+      return withoutByteOrderMark(await textFile.text());
     }
 
     case 'html':
     case 'htm': {
       const htmlFile = new File(filePath);
-      const htmlContent = await htmlFile.text();
+      const htmlContent = withoutByteOrderMark(await htmlFile.text());
       return stripHtml(htmlContent);
     }
 
