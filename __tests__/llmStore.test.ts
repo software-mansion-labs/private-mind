@@ -1679,7 +1679,51 @@ describe('sendChatMessage', () => {
     expect(useLLMStore.getState().generationError).toBeNull();
     const shown = useLLMStore.getState().activeChatMessages.at(-1)?.content;
     expect(shown).not.toBe('co zabrać do samolotu?');
-    expect(shown).toContain('Nie udało mi się odpowiedzieć');
+    expect(shown).toContain('Nie udało mi się na to odpowiedzieć');
+  });
+
+  it('never shows the language instruction the app added to the question when the model repeats it', async () => {
+    mockInstance.generate.mockResolvedValue(
+      'Pack a passport and a charger. (Answer in the same language as this message.)'
+    );
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'what should I pack for a flight?',
+        1,
+        noSources,
+        settings
+      );
+
+    const shown = useLLMStore.getState().activeChatMessages.at(-1)?.content;
+    expect(shown).toBe('Pack a passport and a charger.');
+  });
+
+  it('blames the sources only when the answer had sources to work from', async () => {
+    mockInstance.generate.mockResolvedValue('co zabrać do samolotu?');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const withSources = async () => ({
+      ...(await noSources()),
+      context: ['Pasażer może zabrać jeden bagaż podręczny do 8 kg.'],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, withSources, settings);
+
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toContain(
+      'na podstawie znalezionych źródeł'
+    );
   });
 
   it('gives the no-answer line in the language of the question', async () => {
@@ -1700,7 +1744,7 @@ describe('sendChatMessage', () => {
       );
 
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toContain(
-      'could not answer this question'
+      "couldn't answer that"
     );
   });
 

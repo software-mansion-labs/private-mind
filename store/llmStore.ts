@@ -57,7 +57,10 @@ import {
   sourcesBlockOf,
 } from '../utils/messageSources';
 import { sourcesPresentInContext } from '../utils/contextUtils';
-import { normalizeModelText } from '../utils/normalizeModelText';
+import {
+  ECHOED_LANGUAGE_ANCHOR,
+  normalizeModelText,
+} from '../utils/normalizeModelText';
 import {
   isRepetitionFromTheStart,
   truncateAtRepeatedClause,
@@ -581,9 +584,20 @@ const NO_ANSWER_FALLBACK: Record<string, string> = {
   en: 'I could not answer this question from the sources I found.',
 };
 
-const noAnswerFallback = (question: string | undefined): string => {
+const NO_ANSWER_WITHOUT_SOURCES: Record<string, string> = {
+  pl: 'Nie udało mi się na to odpowiedzieć. Spróbuj zapytać inaczej.',
+  en: "I couldn't answer that. Try asking it another way.",
+};
+
+const noAnswerFallback = (
+  question: string | undefined,
+  answeredFromSources: boolean
+): string => {
   const code = detectQuestionLanguage(question ?? '')?.code ?? 'en';
-  return NO_ANSWER_FALLBACK[code] ?? NO_ANSWER_FALLBACK.en!;
+  const lines = answeredFromSources
+    ? NO_ANSWER_FALLBACK
+    : NO_ANSWER_WITHOUT_SOURCES;
+  return lines[code] ?? lines.en!;
 };
 
 const EVIDENCE_PRESENT_RETRY_PROMPT =
@@ -627,7 +641,9 @@ const carriesAnswer = (response: string): boolean => {
 
 const tidyVisibleAnswer = (response: string): string =>
   mapOutsideThink(response, (segment) =>
-    truncateAtRepeatedClause(normalizeModelText(segment))
+    truncateAtRepeatedClause(
+      normalizeModelText(segment).replace(ECHOED_LANGUAGE_ANCHOR, '')
+    )
   );
 
 const runUtilityGeneration = (
@@ -1383,7 +1399,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           finalResponse &&
           isQuestionEchoAnswer(finalResponse, currentQuestion)
         ) {
-          finalResponse = noAnswerFallback(currentQuestion);
+          finalResponse = noAnswerFallback(
+            currentQuestion,
+            context.some((chunk) => chunk.trim())
+          );
           loopGuardTrimmed = false;
         }
       }

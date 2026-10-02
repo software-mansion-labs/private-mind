@@ -1,8 +1,10 @@
 import {
+  answerLanguageAnchor,
   focusedRetrySystemPrompt,
   prepareMessagesForLLM,
 } from '../utils/promptUtils';
 import { looksLikeNoAnswer } from '../utils/messageSources';
+import { ECHOED_LANGUAGE_ANCHOR } from '../utils/normalizeModelText';
 import { sourceBlock } from '../utils/contextUtils';
 import {
   Message,
@@ -2544,6 +2546,19 @@ describe('prepareMessagesForLLM', () => {
       expect(result[0].content).not.toContain('IMPORTANT SOURCE INFORMATION');
       expect(String(result.at(-1)!.content)).not.toContain('<sources>');
     });
+  });
+});
+
+describe('the language anchor added to a question', () => {
+  it('is recognised when the model repeats it, whichever language it names', () => {
+    for (const language of [
+      null,
+      { code: 'ur', name: 'Urdu' },
+      { code: 'pl', name: 'Polish' },
+    ]) {
+      const echoed = `A reply.${answerLanguageAnchor(language)}`;
+      expect(echoed.replace(ECHOED_LANGUAGE_ANCHOR, '')).toBe('A reply.');
+    }
   });
 });
 

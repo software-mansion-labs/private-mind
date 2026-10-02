@@ -159,6 +159,9 @@ const foldHomoglyphsToLatin = (text: string): string =>
     return [...word].map((char) => HOMOGLYPHS[char] ?? char).join('');
   });
 
+export const ECHOED_LANGUAGE_ANCHOR =
+  /\s*\(Answer in (?:the same language as this message|[^()\n]{2,40})\.\)/gu;
+
 export const normalizeModelText = (text: string): string => {
   if (!text) return text;
   const script = detectDominantScript(text);
