@@ -184,3 +184,21 @@ export const keywordSearch = async (
     return [];
   }
 };
+
+export const countStoredChunks = async (
+  db: DB | undefined,
+  documentId: number
+): Promise<number | null> => {
+  if (!db) return null;
+  try {
+    const result = await db.execute(
+      'SELECT COUNT(*) AS stored FROM vectors WHERE id LIKE ?',
+      [`${documentId}:%`]
+    );
+    const stored = result.rows[0]?.stored;
+    return typeof stored === 'number' ? stored : null;
+  } catch (error) {
+    console.warn('Failed to count stored chunks', { documentId, error });
+    return null;
+  }
+};

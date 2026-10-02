@@ -17,6 +17,7 @@ import { useLLMStore } from './llmStore';
 import { LFMEmbeddings } from '../utils/lfmEmbeddings';
 import {
   addChunkToKeywordIndex,
+  countStoredChunks,
   removeDocumentFromKeywordIndex,
 } from '../database/keywordIndex';
 import {
@@ -134,7 +135,11 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         size: source.size,
         firstChunk: chunks[0] || undefined,
       });
-      if (matchingSource) {
+      const matchIsComplete = async (id: number) => {
+        const stored = await countStoredChunks(vectorStore?.db, id);
+        return stored === null || stored === chunks.length;
+      };
+      if (matchingSource && (await matchIsComplete(matchingSource.id))) {
         onProgress?.(1);
         set((state) => {
           const withoutTemporary = state.sources.filter(
@@ -155,10 +160,24 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
         };
       }
 
-      const sourceId = await insertSource(db, {
-        ...source,
-        firstChunk: chunks[0] || undefined,
-      });
+      const removeStoredChunks = async (id: number) => {
+        if (!vectorStore) return;
+        await vectorStore.delete({
+          predicate: (value) => value.metadata?.documentId === id,
+        });
+        await removeDocumentFromKeywordIndex(vectorStore.db, id);
+      };
+
+      const repairedSourceId = matchingSource?.id ?? null;
+      if (repairedSourceId !== null) {
+        await removeStoredChunks(repairedSourceId);
+      }
+      const sourceId =
+        repairedSourceId ??
+        (await insertSource(db, {
+          ...source,
+          firstChunk: chunks[0] || undefined,
+        }));
       if (!sourceId) {
         set((state) => ({
           sources: state.sources.filter((s) => s.id !== tempId),
@@ -167,13 +186,8 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
       }
 
       rollbackPartialSource = async () => {
-        if (vectorStore) {
-          await vectorStore.delete({
-            predicate: (value) => value.metadata?.documentId === sourceId,
-          });
-          await removeDocumentFromKeywordIndex(vectorStore.db, sourceId);
-        }
-        await deleteSource(db, sourceId);
+        await removeStoredChunks(sourceId);
+        if (repairedSourceId === null) await deleteSource(db, sourceId);
         set((state) => ({
           sources: state.sources.filter((s) => s.id !== tempId),
         }));
@@ -212,11 +226,18 @@ export const useSourceStore = create<SourceStore>((set, get) => ({
       }
 
       set((state) => ({
-        sources: state.sources.map((s) =>
-          s.id === tempId
-            ? { ...s, id: sourceId, isProcessing: false, firstChunk: chunks[0] }
-            : s
-        ),
+        sources: state.sources
+          .filter((s) => s.id !== sourceId)
+          .map((s) =>
+            s.id === tempId
+              ? {
+                  ...s,
+                  id: sourceId,
+                  isProcessing: false,
+                  firstChunk: chunks[0],
+                }
+              : s
+          ),
       }));
       return { success: true, sourceId, truncated };
     } catch (e) {
