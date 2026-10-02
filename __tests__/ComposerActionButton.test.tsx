@@ -91,3 +91,39 @@ describe('ComposerActionButton', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('ComposerActionButton for a screen reader', () => {
+  it.each([
+    ['send', 'Send message'],
+    ['stop', 'Stop generating'],
+    ['speech', 'Dictate message'],
+  ] as const)('reads the %s action as a button named "%s"', (action, name) => {
+    render(<ComposerActionButton action={action} onPress={jest.fn()} />);
+
+    expect(screen.getByRole('button', { name })).toBeTruthy();
+  });
+
+  it('changes its name when the action changes, so Send becomes Stop', () => {
+    const { rerender } = render(
+      <ComposerActionButton action="send" onPress={jest.fn()} />
+    );
+    expect(screen.getByRole('button', { name: 'Send message' })).toBeTruthy();
+
+    rerender(<ComposerActionButton action="stop" onPress={jest.fn()} />);
+
+    expect(screen.queryByRole('button', { name: 'Send message' })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Stop generating' })
+    ).toBeTruthy();
+  });
+
+  it('keeps its name while a send is pending and reports it as busy', () => {
+    render(
+      <ComposerActionButton action="send" onPress={jest.fn()} busy disabled />
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Send message', busy: true })
+    ).toBeTruthy();
+  });
+});

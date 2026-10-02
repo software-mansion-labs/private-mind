@@ -39,6 +39,8 @@ const NewChatHeaderButton = ({ noOp = false }: Props) => {
       onPress={handlePress}
       style={styles.button}
       hitSlop={15}
+      accessibilityRole="button"
+      accessibilityLabel="New chat"
       testID="new-chat-header-button"
     >
       <HeaderActionIcon
