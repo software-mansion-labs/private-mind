@@ -366,10 +366,16 @@ describe('no model selected', () => {
 // ─── model not downloaded ─────────────────────────────────────────────────────
 
 describe('model not downloaded', () => {
-  it('renders nothing interactive when model is not downloaded', () => {
-    renderBar({ model: { ...downloadedModel, isDownloaded: false } });
+  it('offers another model when the chat model was deleted, instead of leaving no way to reply (I-100)', () => {
+    const onSelectModel = jest.fn();
+    renderBar({
+      model: { ...downloadedModel, isDownloaded: false },
+      onSelectModel,
+    });
+
     expect(screen.queryByPlaceholderText('Ask about anything...')).toBeNull();
-    expect(screen.queryByText('Select Model')).toBeNull();
+    fireEvent.press(screen.getByText('Select Model'));
+    expect(onSelectModel).toHaveBeenCalled();
   });
 });
 
