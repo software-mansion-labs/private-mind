@@ -40,6 +40,7 @@ const WarningSheet = ({ bottomSheetModalRef, onDismiss }: Props) => {
 
   return (
     <BottomSheetModal
+      stackBehavior="push"
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       enableDynamicSizing

@@ -33,26 +33,17 @@ const ChatTitleMenuSheet = ({
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
 
-  const chosenAction = useRef<(() => void) | null>(null);
+  const optionChosen = useRef(false);
 
   const handleOption = (action: () => void) => {
-    if (chosenAction.current) return;
-    const sheet = bottomSheetModalRef.current;
-    if (!sheet) {
-      action();
-      return;
-    }
-    chosenAction.current = action;
-    sheet.dismiss();
+    if (optionChosen.current) return;
+    optionChosen.current = true;
+    bottomSheetModalRef.current?.dismiss();
+    action();
   };
 
   const handleDismiss = () => {
-    const action = chosenAction.current;
-    chosenAction.current = null;
-    if (action) {
-      action();
-      return;
-    }
+    optionChosen.current = false;
     onDismiss?.();
   };
 
