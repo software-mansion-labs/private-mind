@@ -26,11 +26,14 @@ interface Props {
 
 const CANCEL_ANIMATION_DURATION = 500;
 
-const ACTION_NOTES: Record<Status, string> = {
+type Phase = Status | 'ended';
+
+const ACTION_NOTES: Record<Phase, string> = {
   loading: 'Loading speech recognition...',
   idle: 'Loading speech recognition...',
   processing: 'Finishing the transcript...',
   listening: 'Click again to send',
+  ended: 'Dictation stopped',
 };
 
 const shownTranscript = (committed: string, nonCommitted: string) =>
@@ -56,7 +59,9 @@ const ChatSpeechInput: React.FC<Props> = ({
 
   const animationRef =
     useRef<React.ComponentRef<typeof RecordingAnimation>>(null);
-  const exitStateRef = useRef<null | 'pending_submit' | 'exited'>(null);
+  const exitStateRef = useRef<
+    null | 'pending_submit' | 'pending_cancel' | 'exited'
+  >(null);
 
   const onSubmit = useStableCallback((result: string) => {
     if (exitStateRef.current === 'exited') return;
@@ -78,6 +83,7 @@ const ChatSpeechInput: React.FC<Props> = ({
     },
   });
 
+  const [hasStarted, setHasStarted] = useState(false);
   const unmountedRef = useRef(false);
   const abandonRef = useRef(abandon);
   abandonRef.current = abandon;
@@ -114,6 +120,8 @@ const ChatSpeechInput: React.FC<Props> = ({
             Toast.show({ type: 'defaultToast', text1: 'No speech was heard.' });
             onCancel();
           }
+        } else if (exitStateRef.current === null) {
+          onEndedEarly(shownTranscript(text, pendingText));
         }
       } catch {
         if (unmountedRef.current) return;
@@ -128,6 +136,7 @@ const ChatSpeechInput: React.FC<Props> = ({
 
     if (!recordingAttemptedRef.current) {
       recordingAttemptedRef.current = true;
+      setHasStarted(true);
       startListening();
     }
 
@@ -141,6 +150,15 @@ const ChatSpeechInput: React.FC<Props> = ({
   const onInterrupted = useStableCallback((heard: string) => {
     if (onInterruptedProp) onInterruptedProp(heard);
     else onCancelProp();
+  });
+  const onEndedEarly = useStableCallback((heard: string) => {
+    if (heard) {
+      exitStateRef.current = 'exited';
+      onInterrupted(heard);
+      return;
+    }
+    Toast.show({ type: 'defaultToast', text1: 'Dictation stopped.' });
+    onCancel();
   });
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
@@ -176,6 +194,7 @@ const ChatSpeechInput: React.FC<Props> = ({
   });
 
   const handleCancel = () => {
+    if (exitStateRef.current === null) exitStateRef.current = 'pending_cancel';
     stop();
     cancelAnimationProgress.set(
       withTiming(1, {
@@ -187,10 +206,10 @@ const ChatSpeechInput: React.FC<Props> = ({
   };
 
   const [sending, setSending] = useState(false);
-  const isPreparing = status === 'loading' || status === 'idle';
-  const isFinishing = status === 'processing';
+  const phase: Phase = hasStarted && status === 'idle' ? 'ended' : status;
+  const isPreparing = phase === 'loading' || phase === 'idle';
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (isPreparing) {
       Toast.show({
         type: 'defaultToast',
@@ -198,14 +217,16 @@ const ChatSpeechInput: React.FC<Props> = ({
       });
       return;
     }
-    if (isFinishing || sending) return;
+    if (phase !== 'listening' || sending) return;
 
     exitStateRef.current = 'pending_submit';
     setSending(true);
-    stop();
+    if (await stop()) return;
+    exitStateRef.current = null;
+    setSending(false);
   };
 
-  const actionNote = ACTION_NOTES[status];
+  const actionNote = ACTION_NOTES[phase];
 
   const renderTopNote = () => {
     const fullTranscription = shownTranscript(
@@ -228,6 +249,8 @@ const ChatSpeechInput: React.FC<Props> = ({
     if (status === 'processing') {
       return <Text style={styles.secondaryNote}>Processing...</Text>;
     }
+
+    if (phase === 'ended') return null;
 
     const progressPercentage = Math.round(loadProgress * 100);
     return (
@@ -267,6 +290,7 @@ const ChatSpeechInput: React.FC<Props> = ({
           size={20}
           color={theme.text.contrastPrimary}
           backgroundColor={theme.bg.voiceModeSurface}
+          testID="speech-trash"
         />
         <Text style={[styles.secondaryNote, styles.actionNote]}>
           {actionNote}

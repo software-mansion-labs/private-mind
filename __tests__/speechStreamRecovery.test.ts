@@ -141,6 +141,36 @@ describe('speech input after a transcript is abandoned', () => {
   });
 });
 
+describe('speech input whose recorder will not stop', () => {
+  it('reports the failed stop and still closes the stream', async () => {
+    const recorder = jest.spyOn(audioApi, 'AudioRecorder').mockImplementation(
+      () =>
+        ({
+          onAudioReady: jest.fn(),
+          start: jest.fn(),
+          stop: jest.fn(() => {
+            throw new Error('recorder gone');
+          }),
+        }) as never
+    );
+    const { result } = renderHook(() => useSpeechInput());
+    await act(async () => {
+      readAll((await result.current.start())!);
+    });
+
+    let stopped!: boolean;
+    await act(async () => {
+      stopped = await result.current.stop();
+    });
+
+    expect(stopped).toBe(false);
+    expect(sttModule.streamStop).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe('idle');
+    await waitFor(() => expect(useSTTStore.getState().streamEnd).toBeNull());
+    recorder.mockRestore();
+  });
+});
+
 describe('the audio session dictation turns on', () => {
   const sessionTurnedOff = () =>
     (AudioManager.setAudioSessionActivity as jest.Mock).mock.calls.some(

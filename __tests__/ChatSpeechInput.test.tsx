@@ -30,7 +30,7 @@ const mockSpeech = {
   loadProgress: 0.4,
   status: 'loading' as 'loading' | 'listening' | 'processing' | 'idle',
   start: jest.fn(async () => null),
-  stop: jest.fn(),
+  stop: jest.fn(async () => true),
   abandon: jest.fn(),
 };
 
@@ -119,6 +119,123 @@ describe('ChatSpeechInput while the transcript finishes', () => {
     fireEvent.press(screen.getByTestId('speech-send'));
 
     expect(mockSpeech.stop).not.toHaveBeenCalled();
+  });
+});
+
+describe('ChatSpeechInput once dictation has ended', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSpeech.status = 'idle';
+  });
+
+  it('no longer claims to be loading speech recognition', async () => {
+    renderSheet();
+    await act(async () => {});
+
+    expect(screen.queryByText('Loading speech recognition...')).toBeNull();
+    expect(screen.queryByText(/Loading\.\.\./)).toBeNull();
+  });
+
+  it('answers a send without asking to wait for the model', async () => {
+    renderSheet();
+    await act(async () => {});
+
+    fireEvent.press(screen.getByTestId('speech-send'));
+
+    expect(Toast.show).not.toHaveBeenCalled();
+    expect(mockSpeech.stop).not.toHaveBeenCalled();
+  });
+});
+
+describe('ChatSpeechInput when the transcript ends without a send', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSpeech.status = 'listening';
+  });
+
+  const endingStream = (heard: string) => {
+    let endStream = () => {};
+    mockSpeech.start.mockImplementationOnce(
+      async () =>
+        (async function* () {
+          yield { committed: { text: heard }, nonCommitted: { text: '' } };
+          await new Promise<void>((resolve) => {
+            endStream = resolve;
+          });
+        })() as never
+    );
+    return () => endStream();
+  };
+
+  it('closes the sheet and hands over what it heard', async () => {
+    const endStream = endingStream('call mom');
+    const onInterrupted = jest.fn();
+    const onSubmit = jest.fn();
+    render(
+      <ChatSpeechInput
+        onSubmit={onSubmit}
+        onCancel={jest.fn()}
+        onInterrupted={onInterrupted}
+      />
+    );
+    await screen.findByText('call mom');
+
+    endStream();
+
+    await waitFor(() => expect(onInterrupted).toHaveBeenCalledWith('call mom'));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('closes the sheet saying dictation stopped when it heard nothing', async () => {
+    const endStream = endingStream('');
+    const onCancel = jest.fn();
+    render(<ChatSpeechInput onSubmit={jest.fn()} onCancel={onCancel} />);
+    await act(async () => {});
+
+    endStream();
+
+    await waitFor(() => expect(onCancel).toHaveBeenCalled());
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ text1: 'Dictation stopped.' })
+    );
+  });
+
+  it('stays quiet when the trash ended it', async () => {
+    const endStream = endingStream('call mom');
+    const onInterrupted = jest.fn();
+    render(
+      <ChatSpeechInput
+        onSubmit={jest.fn()}
+        onCancel={jest.fn()}
+        onInterrupted={onInterrupted}
+      />
+    );
+    await screen.findByText('call mom');
+
+    fireEvent.press(screen.getByTestId('speech-trash'));
+    endStream();
+    await act(async () => {});
+
+    expect(onInterrupted).not.toHaveBeenCalled();
+    expect(Toast.show).not.toHaveBeenCalled();
+  });
+});
+
+describe('ChatSpeechInput when the recording cannot be stopped', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSpeech.status = 'listening';
+  });
+
+  it('stops spinning the send it took', async () => {
+    mockSpeech.stop.mockResolvedValueOnce(false);
+    renderSheet();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-send'));
+    });
+
+    expect(screen.UNSAFE_queryAllByType(ActivityIndicator)).toHaveLength(0);
   });
 });
 

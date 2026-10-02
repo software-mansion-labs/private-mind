@@ -22,7 +22,7 @@ export type Status = 'loading' | 'idle' | 'listening' | 'processing';
 
 interface Result extends Pick<STTStore, 'loadProgress'> {
   start: () => StartReturnType;
-  stop: () => void;
+  stop: () => Promise<boolean>;
   abandon: () => void;
   status: Status;
 }
@@ -111,20 +111,22 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
     if (statusRef.current === 'loading') {
       isStartCanceled.current = true;
       changeStatus('idle');
-      return;
+      return true;
     }
 
-    if (statusRef.current !== 'listening') return;
+    if (statusRef.current !== 'listening') return true;
 
     try {
       changeStatus('processing');
       recorder.current!.stop();
       stt.module?.streamStop();
       releaseAudioSession(sessionClaim.current);
+      return true;
     } catch (error) {
       console.error('Error finishing audio recording:', error);
       closeAbandonedStream(stt.module);
       changeStatus('idle');
+      return false;
     }
   }, [stt]);
 
