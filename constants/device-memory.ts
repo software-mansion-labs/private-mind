@@ -11,3 +11,7 @@ export const APP_RUNTIME_MEMORY_GB = 0.5;
 export const MODEL_MEMORY_OVERHEAD_GB = 0.3;
 
 export const WEB_SEARCH_MEMORY_GB = 0.3;
+
+export const TIGHT_FIT_BUDGET_SHARE = 0.75;
+
+export const DECLARED_FLOOR_TIGHT_MARGIN_GB = 1;
