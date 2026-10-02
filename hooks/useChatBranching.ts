@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import Toast from 'react-native-toast-message';
@@ -62,11 +62,15 @@ export default function useChatBranching({
     };
   }, [chatId, db, isUnpersistedPhantomChat, messageHistoryLength]);
 
+  const forkInFlight = useRef(false);
+
   const handleForkMessage = useCallback(
     async (message: Message) => {
-      if (message.role !== 'assistant') return;
+      if (message.role !== 'assistant' || forkInFlight.current) return;
+      forkInFlight.current = true;
 
       if (await isUnpersistedPhantomChat()) {
+        forkInFlight.current = false;
         Toast.show({
           type: 'defaultToast',
           text1: 'Send a message before branching this chat.',
@@ -91,6 +95,8 @@ export default function useChatBranching({
           type: 'defaultToast',
           text1: 'Failed to fork conversation.',
         });
+      } finally {
+        forkInFlight.current = false;
       }
     },
     [chatId, forkChat, isUnpersistedPhantomChat, setActiveChatId]

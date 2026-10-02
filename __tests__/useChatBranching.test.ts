@@ -127,6 +127,45 @@ it('forks an assistant message and navigates to the new branch', async () => {
   });
 });
 
+it('creates one branch when Fork is tapped twice in quick succession', async () => {
+  let finishFork!: (id: number) => void;
+  mockForkChat.mockImplementationOnce(
+    () =>
+      new Promise<number>((resolve) => {
+        finishFork = resolve;
+      })
+  );
+  const { result } = renderHook(() =>
+    useChatBranching({ chatId: 1, messageHistoryLength: 2 })
+  );
+
+  await act(async () => {
+    const first = result.current.handleForkMessage(assistantMessage);
+    const second = result.current.handleForkMessage(assistantMessage);
+    await waitFor(() => expect(mockForkChat).toHaveBeenCalled());
+    finishFork(99);
+    await Promise.all([first, second]);
+  });
+
+  expect(mockForkChat).toHaveBeenCalledTimes(1);
+  expect(mockRouter.push).toHaveBeenCalledTimes(1);
+});
+
+it('lets a later tap fork again once the first fork finished', async () => {
+  const { result } = renderHook(() =>
+    useChatBranching({ chatId: 1, messageHistoryLength: 2 })
+  );
+
+  await act(async () => {
+    await result.current.handleForkMessage(assistantMessage);
+  });
+  await act(async () => {
+    await result.current.handleForkMessage(assistantMessage);
+  });
+
+  expect(mockForkChat).toHaveBeenCalledTimes(2);
+});
+
 it('blocks forking an unpersisted phantom chat', async () => {
   mockUseChatStore.mockReturnValue({
     phantomChat: { id: 1 },
