@@ -117,7 +117,12 @@ const failedTurnRecord = (
   };
 };
 
-export const failedTurnRecords = (run: BenchmarkRun): FailedTurnRecord[] =>
+export interface FailedTurn {
+  record: FailedTurnRecord;
+  turn: TurnResult;
+}
+
+export const failedTurns = (run: BenchmarkRun): FailedTurn[] =>
   run.models.flatMap((model) =>
     model.scenarios.flatMap((scenario) =>
       scenario.turns.flatMap((turn) => {
@@ -129,10 +134,13 @@ export const failedTurnRecords = (run: BenchmarkRun): FailedTurnRecord[] =>
           turn,
           turn.verdict
         );
-        return record ? [record] : [];
+        return record ? [{ record, turn }] : [];
       })
     )
   );
+
+export const failedTurnRecords = (run: BenchmarkRun): FailedTurnRecord[] =>
+  failedTurns(run).map((item) => item.record);
 
 export const modelIssues = (run: BenchmarkRun): ModelIssue[] =>
   run.models.flatMap((model): ModelIssue[] => {
@@ -154,7 +162,17 @@ export const modelIssues = (run: BenchmarkRun): ModelIssue[] =>
         },
       ];
     }
-    return [];
+    return model.scenarios.flatMap((scenario): ModelIssue[] =>
+      scenario.error
+        ? [
+            {
+              model: model.modelName,
+              severity: 'fail',
+              summary: `${scenario.title} stopped: ${scenario.error}`,
+            },
+          ]
+        : []
+    );
   });
 
 export const failedTurnSentence = (record: FailedTurnRecord): string => {
@@ -343,7 +361,7 @@ export const copyForAiMarkdown = (
     ...summaryTable(run),
   ];
   if (issues.length > 0) {
-    lines.push('', '## Models not tested', '');
+    lines.push('', '## Models not tested or stopped', '');
     lines.push(
       ...issues.map(
         (issue) =>

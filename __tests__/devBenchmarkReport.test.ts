@@ -217,13 +217,25 @@ describe('failedTurnRecords', () => {
 });
 
 describe('modelIssues', () => {
-  it('lists skipped models as yellow and models that did not load as red', () => {
+  it('lists skipped models yellow, and models that did not load or a scenario that broke red', () => {
     const issues = modelIssues(
       run({
         models: [
           model({ modelName: 'A', skippedReason: 'not enough free space' }),
           model({ modelName: 'B', loadError: 'out of memory' }),
           model({ modelName: 'C' }),
+          model({
+            modelName: 'D',
+            scenarios: [
+              {
+                scenarioId: 'base-chat',
+                title: 'Base chat',
+                verdict: 'fail',
+                turns: [],
+                error: 'the benchmark chat could not be created',
+              },
+            ],
+          }),
         ],
       })
     );
@@ -234,6 +246,11 @@ describe('modelIssues', () => {
         summary: 'not tested: not enough free space',
       },
       { model: 'B', severity: 'fail', summary: 'did not load: out of memory' },
+      {
+        model: 'D',
+        severity: 'fail',
+        summary: 'Base chat stopped: the benchmark chat could not be created',
+      },
     ]);
   });
 });
@@ -448,7 +465,7 @@ describe('copyForAiMarkdown', () => {
     const markdown = copyForAiMarkdown(run({ finishedAt: undefined }), []);
     expect(markdown).toContain('not finished');
     expect(markdown).toContain('## Failed turns (0)');
-    expect(markdown).not.toContain('## Models not tested');
+    expect(markdown).not.toContain('## Models not tested or stopped');
     expect(markdown).not.toContain('## Slower');
   });
 });
