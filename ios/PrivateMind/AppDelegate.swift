@@ -54,6 +54,11 @@ class AppDelegate: ExpoAppDelegate {
 class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
   // Extension point for config-plugins
 
+  override func customize(_ rootView: UIView) {
+    super.customize(rootView)
+    rootView.backgroundColor = UIColor(named: "SplashScreenBackground")
+  }
+
   override func sourceURL(for bridge: RCTBridge) -> URL? {
     // needed to return the correct URL for expo-dev-client.
     bridge.bundleURL ?? bundleURL()
