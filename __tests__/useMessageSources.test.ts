@@ -1,6 +1,15 @@
 import { renderHook } from '@testing-library/react-native';
 import { useMessageSources } from '../hooks/useMessageSources';
 import { type SourceDocument } from '../database/chatRepository';
+import { answerOverlapScorer } from '../utils/messageSources';
+
+jest.mock('../utils/messageSources', () => {
+  const actual = jest.requireActual('../utils/messageSources');
+  return {
+    ...actual,
+    answerOverlapScorer: jest.fn(actual.answerOverlapScorer),
+  };
+});
 
 const doc = (over: Partial<SourceDocument> = {}): SourceDocument => ({
   name: 'Doc',
@@ -11,6 +20,22 @@ const render = (sources?: SourceDocument[]) =>
   renderHook(() => useMessageSources(sources)).result.current;
 
 describe('useMessageSources', () => {
+  it('does not read a streaming answer while no document is listed twice', () => {
+    (answerOverlapScorer as jest.Mock).mockClear();
+    const sources = [
+      doc({ documentId: 1, name: 'A', passage: 'one' }),
+      doc({ kind: 'web', url: 'https://a.com', name: 'a.com' }),
+    ];
+    const { rerender } = renderHook(
+      ({ answer }: { answer: string }) => useMessageSources(sources, answer),
+      { initialProps: { answer: 'The answer' } }
+    );
+    rerender({ answer: 'The answer grows' });
+    rerender({ answer: 'The answer grows longer' });
+
+    expect(answerOverlapScorer).not.toHaveBeenCalled();
+  });
+
   it('returns everything empty when there are no sources', () => {
     const r = render(undefined);
     expect(r.displayedSources).toEqual([]);

@@ -15,7 +15,11 @@ export const useMessageSources = (
   const deduped = useMemo(() => {
     if (!sourceDocuments?.length) return [];
 
-    const score = answer ? answerOverlapScorer(answer) : () => 0;
+    let scorer: ((passage: string) => number) | undefined;
+    const score = (passage: string) => {
+      scorer ??= answer ? answerOverlapScorer(answer) : () => 0;
+      return scorer(passage);
+    };
     const kept: SourceDocument[] = [];
     const positionByKey = new Map<string, number>();
     for (const source of sourceDocuments) {
