@@ -529,16 +529,23 @@ The user just attached: ${sourceNames}. Treat these as the subject of the questi
 const HISTORY_REPLY_HEAD_CHARS = 220;
 const HISTORY_VERBATIM_REPLIES = 1;
 
+const SENTENCE_END = /[^\d\s][.!?](?=\s|$)/g;
+
+const endOfLastSentence = (text: string): number => {
+  let end = -1;
+  for (const match of text.matchAll(SENTENCE_END)) {
+    end = match.index + match[0].length;
+  }
+  return end;
+};
+
 const headOf = (text: string): string => {
   if (text.length <= HISTORY_REPLY_HEAD_CHARS) return text;
   const cut = text.slice(0, HISTORY_REPLY_HEAD_CHARS);
-  const boundary = Math.max(
-    cut.lastIndexOf('. '),
-    cut.lastIndexOf('! '),
-    cut.lastIndexOf('? '),
-    cut.lastIndexOf('\n')
-  );
-  return `${(boundary > HISTORY_REPLY_HEAD_CHARS / 2 ? cut.slice(0, boundary + 1) : cut).trimEnd()}…`;
+  const sentenceEnd = endOfLastSentence(cut);
+  if (sentenceEnd > 0) return cut.slice(0, sentenceEnd);
+  const wordEnd = cut.lastIndexOf(' ');
+  return (wordEnd > 0 ? cut.slice(0, wordEnd) : cut).trimEnd();
 };
 
 const compactOlderReplies = (
