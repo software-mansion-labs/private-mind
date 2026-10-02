@@ -814,6 +814,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               ...messageHistory,
               {
                 ...buildAssistantPlaceholder(chatId, get().model),
+                localId: get().generatingMessageLocalId ?? nextMessageLocalId(),
                 content: streamedSoFar,
               },
             ]
