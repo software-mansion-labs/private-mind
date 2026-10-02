@@ -165,6 +165,24 @@ describe('sending while another turn is open', () => {
     expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
   });
 
+  it('refuses a message too long for the model before it can fail in the runner', async () => {
+    const pastedArticle = 'Lorem ipsum dolor sit amet, consectetur. '.repeat(
+      200
+    );
+
+    expect(await useSend(1)(pastedArticle)).toBe('too-long');
+    expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+  });
+
+  it('sends a long message that still fits the model', async () => {
+    const longQuestion =
+      'The quick brown fox jumps over the lazy dog while the sun sets slowly behind the distant hills. '.repeat(
+        30
+      ) + 'Summarize all of the above in one short sentence.';
+
+    expect(await useSend(1)(longQuestion)).toBe(true);
+  });
+
   it('says the model is not ready rather than blaming a response', async () => {
     const loaded = mockedState().model;
     mockedState().model = null;
