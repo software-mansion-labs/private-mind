@@ -9,10 +9,9 @@ export interface STTStore {
   isReady: boolean;
   isLoading: boolean;
   loadProgress: number;
-  streamOpen: boolean;
+  streamEnd: Promise<void> | null;
   ensureLoaded: () => Promise<void>;
-  markStreamOpen: () => void;
-  markStreamClosed: () => void;
+  trackStream: (end: Promise<void>) => void;
   discardModule: () => void;
 }
 
@@ -24,17 +23,20 @@ export const useSTTStore = create<STTStore>((set, get) => {
     isReady: false,
     isLoading: false,
     loadProgress: 0,
-    streamOpen: false,
+    streamEnd: null,
 
-    markStreamOpen: () => set({ streamOpen: true }),
-    markStreamClosed: () => set({ streamOpen: false }),
+    trackStream: (end) => {
+      set({ streamEnd: end });
+      end.then(() => {
+        if (get().streamEnd === end) set({ streamEnd: null });
+      });
+    },
     discardModule: () =>
       set({
         module: null,
         isReady: false,
         isLoading: false,
         loadProgress: 0,
-        streamOpen: false,
       }),
 
     ensureLoaded: async () => {

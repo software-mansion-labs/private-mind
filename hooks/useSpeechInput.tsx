@@ -65,7 +65,6 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
   const start = useCallback(async (): StartReturnType => {
     if (statusRef.current !== 'idle') return null;
 
-    let streamOpened = false;
     try {
       isStartCanceled.current = false;
       changeStatus('loading');
@@ -76,6 +75,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       });
       await AudioManager.setAudioSessionActivity(true);
       await stt.ensureLoaded();
+      await closeOpenStream();
 
       if (isStartCanceled.current) {
         AudioManager.setAudioSessionActivity(false);
@@ -83,11 +83,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       }
 
       changeStatus('listening');
-      const store = useSTTStore.getState();
-      const module = store.module;
-      if (store.streamOpen) {
-        closeAbandonedStream(module);
-      }
+      const module = useSTTStore.getState().module;
 
       let streamGenerator;
       try {
@@ -96,8 +92,6 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
         useSTTStore.getState().discardModule();
         throw error;
       }
-      useSTTStore.getState().markStreamOpen();
-      streamOpened = true;
       throwIfRecorderFailed(
         recorder.current!.onAudioReady(
           {
@@ -110,14 +104,8 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       );
       throwIfRecorderFailed(recorder.current!.start());
 
-      return onGeneratorEnd(streamGenerator, () => {
-        useSTTStore.getState().markStreamClosed();
-        changeStatus('idle');
-      });
+      return followToTheEnd(streamGenerator, () => changeStatus('idle'));
     } catch (error) {
-      if (streamOpened) {
-        closeAbandonedStream(useSTTStore.getState().module);
-      }
       AudioManager.setAudioSessionActivity(false);
       changeStatus('idle');
       throw error;
@@ -140,6 +128,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       AudioManager.setAudioSessionActivity(false);
     } catch (error) {
       console.error('Error finishing audio recording:', error);
+      closeAbandonedStream(stt.module);
       changeStatus('idle');
     }
   }, [stt]);
@@ -180,16 +169,48 @@ function closeAbandonedStream(module: SpeechToTextModule | null) {
   } catch (error) {
     console.error('Error closing an abandoned transcript stream:', error);
   }
-  useSTTStore.getState().markStreamClosed();
 }
 
-async function* onGeneratorEnd<T>(
-  generator: AsyncGenerator<T, void, unknown>,
-  callback: () => void
+async function closeOpenStream() {
+  const { module, streamEnd } = useSTTStore.getState();
+  if (!streamEnd) return;
+  closeAbandonedStream(module);
+  await streamEnd;
+}
+
+async function* followToTheEnd<T>(
+  source: AsyncGenerator<T, void, unknown>,
+  onEnd: () => void
 ) {
-  for await (const item of generator) {
-    yield item;
+  let settle!: () => void;
+  useSTTStore.getState().trackStream(
+    new Promise<void>((resolve) => {
+      settle = resolve;
+    })
+  );
+
+  let leftByConsumer = false;
+  try {
+    let next = await source.next();
+    while (!next.done) {
+      leftByConsumer = true;
+      yield next.value;
+      leftByConsumer = false;
+      next = await source.next();
+    }
+  } finally {
+    if (leftByConsumer) readToTheEnd(source).then(settle);
+    else settle();
   }
 
-  callback();
+  onEnd();
+}
+
+async function readToTheEnd(source: AsyncGenerator<unknown, void, unknown>) {
+  try {
+    let next = await source.next();
+    while (!next.done) next = await source.next();
+  } catch (error) {
+    console.error('Error closing an abandoned transcript stream:', error);
+  }
 }

@@ -5,16 +5,29 @@ import { useSpeechInput } from '../hooks/useSpeechInput';
 import * as audioApi from 'react-native-audio-api';
 import { AudioManager } from 'react-native-audio-api';
 
-const neverEndingStream = async function* () {
-  yield await new Promise<never>(() => {});
+const makeModule = () => {
+  let requestStop = () => {};
+  const module = {
+    heardBeforeStop: [] as string[],
+    finishing: Promise.resolve(),
+    stream: jest.fn(async function* (): AsyncGenerator<string> {
+      const stopped = new Promise<void>((resolve) => {
+        requestStop = resolve;
+      });
+      yield* module.heardBeforeStop;
+      await stopped;
+      await module.finishing;
+    }),
+    streamStop: jest.fn(() => requestStop()),
+  };
+  return module;
 };
 
-const makeModule = () => ({
-  stream: jest.fn(() => neverEndingStream()),
-  streamStop: jest.fn(),
-});
-
 let sttModule: ReturnType<typeof makeModule>;
+
+const readAll = async (transcript: AsyncGenerator<unknown>) => {
+  for await (const _ of transcript);
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -25,7 +38,7 @@ beforeEach(() => {
     isReady: false,
     isLoading: false,
     loadProgress: 0,
-    streamOpen: false,
+    streamEnd: null,
   });
 });
 
@@ -33,9 +46,9 @@ describe('speech input after a transcript is abandoned', () => {
   it('closes the stream left open before opening the next one', async () => {
     const first = renderHook(() => useSpeechInput());
     await act(async () => {
-      await first.result.current.start();
+      readAll((await first.result.current.start())!);
     });
-    expect(useSTTStore.getState().streamOpen).toBe(true);
+    expect(useSTTStore.getState().streamEnd).not.toBeNull();
     first.unmount();
 
     const second = renderHook(() => useSpeechInput());
@@ -66,13 +79,44 @@ describe('speech input after a transcript is abandoned', () => {
   it('leaves no stream marked open once the recorder is abandoned', async () => {
     const { result } = renderHook(() => useSpeechInput());
     await act(async () => {
-      await result.current.start();
+      const transcript = (await result.current.start())!;
+      const reading = transcript.next();
+      result.current.abandon();
+      await reading;
+      await transcript.return();
     });
 
-    act(() => result.current.abandon());
-
     expect(sttModule.streamStop).toHaveBeenCalledTimes(1);
-    expect(useSTTStore.getState().streamOpen).toBe(false);
+    expect(useSTTStore.getState().streamEnd).toBeNull();
+  });
+
+  it('opens the next stream only once the abandoned one has finished', async () => {
+    let finishNatively!: () => void;
+    sttModule.finishing = new Promise((resolve) => {
+      finishNatively = resolve;
+    });
+    sttModule.heardBeforeStop = ['hello'];
+    const first = renderHook(() => useSpeechInput());
+    await act(async () => {
+      const transcript = (await first.result.current.start())!;
+      for await (const _ of transcript) break;
+    });
+    act(() => first.result.current.abandon());
+    first.unmount();
+
+    const second = renderHook(() => useSpeechInput());
+    let secondStart!: Promise<unknown>;
+    await act(async () => {
+      secondStart = second.result.current.start();
+    });
+    expect(sttModule.stream).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      finishNatively();
+      await secondStart;
+    });
+    expect(sttModule.stream).toHaveBeenCalledTimes(2);
+    expect(second.result.current.status).toBe('listening');
   });
 });
 
@@ -125,7 +169,7 @@ describe('the audio session dictation turns on', () => {
     });
 
     expect(sessionTurnedOff()).toBe(true);
-    expect(useSTTStore.getState().streamOpen).toBe(false);
+    expect(useSTTStore.getState().streamEnd).toBeNull();
     expect(result.current.status).toBe('idle');
   });
 
