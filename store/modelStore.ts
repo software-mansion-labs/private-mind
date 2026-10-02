@@ -48,10 +48,33 @@ interface ModelStore {
 
 const MS_PER_FRAME = 16; // ~60 fps
 
+const filesNoOtherModelUses = (
+  model: Model,
+  models: Model[],
+  sources: string[]
+): string[] => {
+  const inUse = new Set(
+    models
+      .filter(
+        (other) =>
+          other.id !== model.id &&
+          other.source !== 'local' &&
+          other.isDownloaded
+      )
+      .flatMap((other) => [
+        other.modelPath,
+        other.tokenizerPath,
+        other.tokenizerConfigPath,
+      ])
+  );
+  return sources.filter((source) => !inUse.has(source));
+};
+
 // Wrapper around ExpoResourceFetcher.deleteResources that swallows errors.
 // We pass model.* source paths (URLs); the fetcher derives the on-disk
 // filename and deletes only files it manages — never user-supplied local paths.
 async function deleteRemoteResources(...sources: string[]) {
+  if (sources.length === 0) return;
   try {
     await ExpoResourceFetcher.deleteResources(...sources);
   } catch (err) {
@@ -197,9 +220,11 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       // resource fetcher, so the same cleanup path applies to both.
       if (model.source !== 'local') {
         await deleteRemoteResources(
-          model.modelPath,
-          model.tokenizerPath,
-          model.tokenizerConfigPath
+          ...filesNoOtherModelUses(model, get().models, [
+            model.modelPath,
+            model.tokenizerPath,
+            model.tokenizerConfigPath,
+          ])
         );
       }
       await updateModelDownloaded(db, modelId, 0);
@@ -264,7 +289,9 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         if (oldSources.length > 0) {
           // Delete only the on-disk copies of the changed sources, leaving
           // the model file alone.
-          await deleteRemoteResources(...oldSources);
+          await deleteRemoteResources(
+            ...filesNoOtherModelUses(model, get().models, oldSources)
+          );
         }
 
         if (newSources.length > 0) {

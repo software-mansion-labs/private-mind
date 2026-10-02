@@ -219,6 +219,32 @@ describe('removeModel', () => {
     );
   });
 
+  it('keeps the tokenizer files another downloaded model of the same family still uses', async () => {
+    const family = 'https://example.com/qwen-3';
+    const small = {
+      ...baseModel,
+      id: 1,
+      source: 'built-in' as const,
+      isDownloaded: true,
+      modelPath: `${family}/0.6b/model.pte`,
+      tokenizerPath: `${family}/tokenizer.json`,
+      tokenizerConfigPath: `${family}/tokenizer_config.json`,
+    };
+    const larger = {
+      ...small,
+      id: 2,
+      modelName: 'Larger',
+      modelPath: `${family}/1.7b/model.pte`,
+    };
+    mockDeleteResources.mockResolvedValue(undefined);
+    mockUpdateModelDownloaded.mockResolvedValue(undefined);
+    useModelStore.setState({ models: [small, larger], db: mockDb });
+
+    await useModelStore.getState().removeModelFiles(small.id);
+
+    expect(mockDeleteResources).toHaveBeenCalledWith(small.modelPath);
+  });
+
   it('also deletes downloaded resources for built-in models', async () => {
     const builtInModel = {
       ...baseModel,
