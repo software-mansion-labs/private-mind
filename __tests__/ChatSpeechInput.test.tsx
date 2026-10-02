@@ -225,4 +225,48 @@ describe('ChatSpeechInput when the app goes to the background', () => {
     expect(onInterrupted).toHaveBeenCalledWith('remind me to buy milk');
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  it('lets a send already on its way finish and go out', async () => {
+    const { AppState } = require('react-native');
+    let reportState: ((state: string) => void) | undefined;
+    jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_event: unknown, handler: unknown) => {
+        reportState = handler as (state: string) => void;
+        return { remove: jest.fn() };
+      });
+    let endStream = () => {};
+    mockSpeech.start.mockImplementationOnce(
+      async () =>
+        (async function* () {
+          yield {
+            committed: { text: 'remind me to' },
+            nonCommitted: { text: 'buy milk' },
+          };
+          await new Promise<void>((resolve) => {
+            endStream = resolve;
+          });
+        })() as never
+    );
+    const onInterrupted = jest.fn();
+    const onSubmit = jest.fn();
+    render(
+      <ChatSpeechInput
+        onSubmit={onSubmit}
+        onCancel={jest.fn()}
+        onInterrupted={onInterrupted}
+      />
+    );
+    await screen.findByText('remind me to buy milk');
+
+    fireEvent.press(screen.getByTestId('speech-send'));
+    act(() => reportState?.('background'));
+    endStream();
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith('remind me to buy milk')
+    );
+    expect(mockSpeech.abandon).not.toHaveBeenCalled();
+    expect(onInterrupted).not.toHaveBeenCalled();
+  });
 });

@@ -144,7 +144,7 @@ const ChatSpeechInput: React.FC<Props> = ({
   });
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state !== 'background' || exitStateRef.current === 'exited') return;
+      if (state !== 'background' || exitStateRef.current !== null) return;
       exitStateRef.current = 'exited';
       const { committed, nonCommitted } = heardSoFarRef.current;
       abandonRef.current();
