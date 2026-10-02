@@ -122,6 +122,7 @@ export interface LLMStore {
   ) => Promise<boolean>;
   retryLastGeneration: () => Promise<void>;
   appLeftForeground: () => void;
+  appWentToBackground: () => void;
   appReturnedToForeground: () => void;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
   generateUtility: (messages: ExecutorchMessage[]) => Promise<string>;
@@ -181,6 +182,8 @@ type FailedGenerationRequest = {
 let failedGenerationRequest: FailedGenerationRequest | null = null;
 
 let appIsAway = false;
+let appIsInBackground = false;
+let backgroundReleaseTimer: ReturnType<typeof setTimeout> | null = null;
 let appWasAwayDuringTurn = false;
 let turnHeldUntilForeground: FailedGenerationRequest | null = null;
 
@@ -347,6 +350,34 @@ const unloadLLMWhenIdle = (): Promise<void> => {
   return withExclusiveRunner(async () => {
     if (llmInstance === target) unloadLLM();
   });
+};
+
+export const BACKGROUND_RELEASE_DELAY_MS = 5_000;
+
+const cancelBackgroundRelease = () => {
+  if (backgroundReleaseTimer === null) return;
+  clearTimeout(backgroundReleaseTimer);
+  backgroundReleaseTimer = null;
+};
+
+const modelIsInUse = (get: () => LLMStore) =>
+  get().isLoading ||
+  get().isGenerating ||
+  get().isProcessingPrompt ||
+  get().isBenchmarking ||
+  utilityGenerating;
+
+const releaseModelOnceIdleInBackground = (get: () => LLMStore) => {
+  cancelBackgroundRelease();
+  backgroundReleaseTimer = setTimeout(() => {
+    backgroundReleaseTimer = null;
+    if (!appIsInBackground) return;
+    if (modelIsInUse(get)) {
+      releaseModelOnceIdleInBackground(get);
+      return;
+    }
+    void unloadLLMWhenIdle();
+  }, BACKGROUND_RELEASE_DELAY_MS);
 };
 
 const loadModelInstance = async (
@@ -1716,8 +1747,16 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
+  appWentToBackground: () => {
+    get().appLeftForeground();
+    appIsInBackground = true;
+    releaseModelOnceIdleInBackground(get);
+  },
+
   appReturnedToForeground: () => {
     appIsAway = false;
+    appIsInBackground = false;
+    cancelBackgroundRelease();
     const held = turnHeldUntilForeground;
     turnHeldUntilForeground = null;
     if (!held || failedGenerationRequest !== held) return;

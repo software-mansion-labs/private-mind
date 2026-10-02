@@ -1,4 +1,4 @@
-import { useLLMStore } from '../store/llmStore';
+import { BACKGROUND_RELEASE_DELAY_MS, useLLMStore } from '../store/llmStore';
 import { LLMModule } from 'react-native-executorch/legacy';
 import * as chatRepository from '../database/chatRepository';
 import type { Message } from '../database/chatRepository';
@@ -3086,5 +3086,88 @@ describe('retrying a turn that failed part-way through its answer', () => {
         .activeChatMessages.filter((message) => message.role === 'assistant')
         .map((message) => message.content)
     ).toEqual(['Machine learning is a field.']);
+  });
+});
+
+describe('the model in the background', () => {
+  const settings = { systemPrompt: 'be helpful' };
+
+  beforeEach(async () => {
+    useLLMStore.getState().appReturnedToForeground();
+    await loadModel();
+    mockInstance.delete.mockClear();
+    mockLLMModule.fromModelName.mockClear();
+    mockPersistMessage.mockResolvedValue(42);
+    useLLMStore.setState({ activeChatId: 1, activeChatMessages: [] });
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'queueMicrotask'] });
+  });
+
+  afterEach(() => {
+    useLLMStore.getState().appReturnedToForeground();
+    jest.useRealTimers();
+  });
+
+  it('is released a few seconds after the app goes to the background', async () => {
+    useLLMStore.getState().appWentToBackground();
+    await jest.advanceTimersByTimeAsync(BACKGROUND_RELEASE_DELAY_MS);
+
+    expect(mockInstance.delete).toHaveBeenCalledTimes(1);
+    expect(useLLMStore.getState().model).toEqual(baseModel);
+  });
+
+  it('stays loaded through a short trip away', async () => {
+    useLLMStore.getState().appWentToBackground();
+    await jest.advanceTimersByTimeAsync(BACKGROUND_RELEASE_DELAY_MS / 2);
+    useLLMStore.getState().appReturnedToForeground();
+    await jest.advanceTimersByTimeAsync(BACKGROUND_RELEASE_DELAY_MS * 4);
+
+    expect(mockInstance.delete).not.toHaveBeenCalled();
+  });
+
+  it('stays loaded while the app is only inactive', async () => {
+    useLLMStore.getState().appLeftForeground();
+    await jest.advanceTimersByTimeAsync(BACKGROUND_RELEASE_DELAY_MS * 4);
+
+    expect(mockInstance.delete).not.toHaveBeenCalled();
+  });
+
+  it('lets an answer finish before it is released', async () => {
+    let finish!: (answer: string) => void;
+    mockInstance.generate.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        finish = resolve;
+      })
+    );
+    const turn = useLLMStore
+      .getState()
+      .sendChatMessage('question', 1, noSources, settings);
+    await jest.advanceTimersByTimeAsync(0);
+
+    useLLMStore.getState().appWentToBackground();
+    await jest.advanceTimersByTimeAsync(BACKGROUND_RELEASE_DELAY_MS * 3);
+    expect(mockInstance.delete).not.toHaveBeenCalled();
+
+    finish('The answer.');
+    await jest.advanceTimersByTimeAsync(BACKGROUND_RELEASE_DELAY_MS * 3);
+    await turn;
+    await jest.advanceTimersByTimeAsync(BACKGROUND_RELEASE_DELAY_MS);
+
+    expect(mockInstance.delete).toHaveBeenCalled();
+  });
+
+  it('is loaded again for the next message once the app is back', async () => {
+    useLLMStore.getState().appWentToBackground();
+    await jest.advanceTimersByTimeAsync(BACKGROUND_RELEASE_DELAY_MS);
+    useLLMStore.getState().appReturnedToForeground();
+    mockInstance.generate.mockResolvedValueOnce('Back again.');
+
+    const turn = useLLMStore
+      .getState()
+      .sendChatMessage('next question', 1, noSources, settings);
+    await jest.advanceTimersByTimeAsync(1000);
+    await turn;
+
+    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(1);
+    expect(mockInstance.generate).toHaveBeenCalled();
   });
 });

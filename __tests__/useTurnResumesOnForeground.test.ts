@@ -4,6 +4,7 @@ import { useTurnResumesOnForeground } from '../hooks/useTurnResumesOnForeground'
 
 const mockLlm = {
   appLeftForeground: jest.fn(),
+  appWentToBackground: jest.fn(),
   appReturnedToForeground: jest.fn(),
 };
 
@@ -28,18 +29,26 @@ beforeEach(() => {
 });
 
 describe('useTurnResumesOnForeground', () => {
-  it.each(['inactive', 'background'] as const)(
-    'tells the store the app left when it goes %s',
-    (state) => {
-      const appState = listenToAppState();
-      renderHook(() => useTurnResumesOnForeground());
+  it('tells the store the app left when it goes inactive, without sending it to the background', () => {
+    const appState = listenToAppState();
+    renderHook(() => useTurnResumesOnForeground());
 
-      appState.emit(state);
+    appState.emit('inactive');
 
-      expect(mockLlm.appLeftForeground).toHaveBeenCalledTimes(1);
-      expect(mockLlm.appReturnedToForeground).not.toHaveBeenCalled();
-    }
-  );
+    expect(mockLlm.appLeftForeground).toHaveBeenCalledTimes(1);
+    expect(mockLlm.appWentToBackground).not.toHaveBeenCalled();
+    expect(mockLlm.appReturnedToForeground).not.toHaveBeenCalled();
+  });
+
+  it('tells the store the app went to the background', () => {
+    const appState = listenToAppState();
+    renderHook(() => useTurnResumesOnForeground());
+
+    appState.emit('background');
+
+    expect(mockLlm.appWentToBackground).toHaveBeenCalledTimes(1);
+    expect(mockLlm.appReturnedToForeground).not.toHaveBeenCalled();
+  });
 
   it('tells the store the app is back when it turns active', () => {
     const appState = listenToAppState();
