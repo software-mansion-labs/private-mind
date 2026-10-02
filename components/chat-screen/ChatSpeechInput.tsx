@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { AppState, StyleSheet, Text, View } from 'react-native';
 import { Theme } from '../../styles/colors';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -21,6 +21,7 @@ import { useStableCallback } from '../../hooks/useStableCallback';
 interface Props {
   onSubmit: (text: string) => void;
   onCancel: () => void;
+  onInterrupted?: (heard: string) => void;
 }
 
 const CANCEL_ANIMATION_DURATION = 500;
@@ -38,6 +39,7 @@ const shownTranscript = (committed: string, nonCommitted: string) =>
 const ChatSpeechInput: React.FC<Props> = ({
   onSubmit: onSubmitProp,
   onCancel: onCancelProp,
+  onInterrupted: onInterruptedProp,
 }) => {
   const { styles, theme } = useThemedStyles(createStyles);
 
@@ -49,6 +51,8 @@ const ChatSpeechInput: React.FC<Props> = ({
     committed: string;
     nonCommitted: string;
   }>({ committed: '', nonCommitted: '' });
+
+  const heardSoFarRef = useRef({ committed: '', nonCommitted: '' });
 
   const animationRef =
     useRef<React.ComponentRef<typeof RecordingAnimation>>(null);
@@ -93,10 +97,11 @@ const ChatSpeechInput: React.FC<Props> = ({
           if (unmountedRef.current) break;
           text = text + committed.text;
           pendingText = nonCommitted.text;
-          setTranscription({
+          heardSoFarRef.current = {
             committed: text,
             nonCommitted: pendingText,
-          });
+          };
+          setTranscription(heardSoFarRef.current);
         }
 
         if (unmountedRef.current) return;
@@ -133,6 +138,21 @@ const ChatSpeechInput: React.FC<Props> = ({
     // onCancel/onSubmit are stable via useStableCallback; abandon is captured via ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const onInterrupted = useStableCallback((heard: string) => {
+    if (onInterruptedProp) onInterruptedProp(heard);
+    else onCancelProp();
+  });
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'background' || exitStateRef.current === 'exited') return;
+      exitStateRef.current = 'exited';
+      const { committed, nonCommitted } = heardSoFarRef.current;
+      abandonRef.current();
+      onInterrupted(shownTranscript(committed, nonCommitted));
+    });
+    return () => subscription.remove();
+  }, [onInterrupted]);
 
   const animationWrapperRef = useRef<View | null>(null);
   const [animationWidth, setAnimationWidth] = useState(0);

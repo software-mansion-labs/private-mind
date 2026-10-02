@@ -483,6 +483,17 @@ const ChatBar = ({
         <ChatSpeechInput
           onSubmit={handleSubmit}
           onCancel={() => setShowSpeechInput(false)}
+          onInterrupted={(heard) => {
+            setShowSpeechInput(false);
+            if (!heard) return;
+            setUserInput((current) =>
+              current ? `${current} ${heard}` : heard
+            );
+            Toast.show({
+              type: 'defaultToast',
+              text1: 'Dictation stopped. What it heard is in the message box.',
+            });
+          }}
         />
       </View>
     );
