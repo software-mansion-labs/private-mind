@@ -143,12 +143,14 @@ const hydrateModel = (model: RawModel): Model => {
       ? getActiveCatalog().find((m) => m.modelName === model.modelName)
       : undefined;
 
+  const downloadSource = model.isDownloaded === 1 ? undefined : defaults;
+
   return {
     ...model,
-    modelPath: defaults?.modelPath ?? model.modelPath,
-    tokenizerPath: defaults?.tokenizerPath ?? model.tokenizerPath,
+    modelPath: downloadSource?.modelPath ?? model.modelPath,
+    tokenizerPath: downloadSource?.tokenizerPath ?? model.tokenizerPath,
     tokenizerConfigPath:
-      defaults?.tokenizerConfigPath ?? model.tokenizerConfigPath,
+      downloadSource?.tokenizerConfigPath ?? model.tokenizerConfigPath,
     family: defaults?.family ?? model.family ?? undefined,
     isDownloaded: model.isDownloaded === 1,
     featured: model.featured === 1,
