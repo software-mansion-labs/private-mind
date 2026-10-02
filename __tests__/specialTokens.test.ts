@@ -98,6 +98,18 @@ describe('stripSpecialTokens', () => {
     );
   });
 
+  it('takes a marker on a line of its own away with its line, leaving no blank line', () => {
+    expect(stripSpecialTokens('Answer.\n<|im_end|>')).toBe('Answer.');
+    expect(stripSpecialTokens('Line one.\n<end_of_turn>\nLine two.')).toBe(
+      'Line one.\nLine two.'
+    );
+    expect(stripSpecialTokens('<|im_start|>\nHello')).toBe('Hello');
+  });
+
+  it('keeps a tight list tight when a marker sat between its items', () => {
+    expect(stripSpecialTokens('- one\n<|im_end|>\n- two')).toBe('- one\n- two');
+  });
+
   it('returns the same string when there is nothing to strip', () => {
     const text = 'A perfectly ordinary answer.';
     expect(stripSpecialTokens(text)).toBe(text);

@@ -15,12 +15,27 @@ const SENTINEL_RUN = new RegExp(
   'gi'
 );
 
+const SENTINEL_ALTERNATIVES = SENTINEL_NOTATIONS.map((p) => p.source).join('|');
+
+const SENTINEL_ONLY_FIRST_LINE = new RegExp(
+  `^[^\\S\\n]*(?:${SENTINEL_ALTERNATIVES})+[^\\S\\n]*\\n`,
+  'i'
+);
+
+const SENTINEL_ONLY_LATER_LINE = new RegExp(
+  `\\n[^\\S\\n]*(?:${SENTINEL_ALTERNATIVES})+[^\\S\\n]*(?=\\n|$)`,
+  'gi'
+);
+
 const CODE_SPAN = /```[\s\S]*?(?:```|$)|`[^`\n]*`/g;
 
 const withoutSentinels = (text: string): string =>
-  text.replace(SENTINEL_RUN, (_match, before: string, after: string) =>
-    before && after ? ' ' : ''
-  );
+  text
+    .replace(SENTINEL_ONLY_FIRST_LINE, '')
+    .replace(SENTINEL_ONLY_LATER_LINE, '')
+    .replace(SENTINEL_RUN, (_match, before: string, after: string) =>
+      before && after ? ' ' : ''
+    );
 
 export const stripSpecialTokens = (text: string): string => {
   if (!text || !text.includes('<')) return text;
