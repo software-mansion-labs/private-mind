@@ -93,11 +93,12 @@ const messagesRef = {
 const useSend = (
   chatId = 1,
   loading = false,
-  waitForModelSwitch?: () => Promise<void>
+  waitForModelSwitch?: () => Promise<void>,
+  model = { id: 1, modelName: 'Test LLM', vision: true } as Model
 ) =>
   useSendChatMessage({
     chatId,
-    model: { id: 1, modelName: 'Test LLM', vision: true } as Model,
+    model,
     messageHistory: [],
     chatSettings: {
       systemPrompt: '',
@@ -175,9 +176,15 @@ describe('sending while another turn is open', () => {
   });
 
   it('refuses a photo for a model that cannot see it, instead of answering without it', async () => {
-    expect(await useSend(1)('What is in this photo?', 'file://photo.jpg')).toBe(
-      'image-unsupported'
-    );
+    const textOnly = { id: 1, modelName: 'Text only' } as Model;
+    expect(
+      await useSend(
+        1,
+        false,
+        undefined,
+        textOnly
+      )('What is in this photo?', 'file://photo.jpg')
+    ).toBe('image-unsupported');
     expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
   });
 
