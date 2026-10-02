@@ -8,6 +8,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import PrimaryButton from '../../components/PrimaryButton';
 import { ScrollView } from 'react-native-gesture-handler';
 import UploadInput from '../../components/UploadInput';
+import { keepPickedModelFile } from '../../utils/localModelFiles';
 import Toast from 'react-native-toast-message';
 import { Theme } from '../../styles/colors';
 import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
@@ -58,9 +59,9 @@ export default function AddLocalModelScreen() {
       modelName,
       isDownloaded: true,
       source: 'local',
-      modelPath: `file://${localModelPath.uri}`,
-      tokenizerPath: `file://${localTokenizerPath.uri}`,
-      tokenizerConfigPath: `file://${localTokenizerConfigPath.uri}`,
+      modelPath: `file://${keepPickedModelFile(localModelPath.uri)}`,
+      tokenizerPath: `file://${keepPickedModelFile(localTokenizerPath.uri)}`,
+      tokenizerConfigPath: `file://${keepPickedModelFile(localTokenizerConfigPath.uri)}`,
       modelSize: localModelPath.size! / 1024 / 1024 / 1024,
     });
     Toast.show({
