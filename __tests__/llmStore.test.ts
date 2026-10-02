@@ -586,6 +586,46 @@ describe('sendChatMessage', () => {
     expect(mockPersistMessage).not.toHaveBeenCalled();
   });
 
+  it('saves the question before the model has finished loading, so a killed app keeps it', async () => {
+    let finishLoad!: () => void;
+    const loadGate = new Promise<void>((resolve) => {
+      finishLoad = resolve;
+    });
+    mockLLMModule.fromModelName.mockImplementationOnce(async (...args) => {
+      capturedTokenCallback = args[2];
+      await loadGate;
+      return mockInstance as unknown as LLMModule;
+    });
+    const reload = useLLMStore.getState().loadModel(baseModel, true);
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    const turn = useLLMStore
+      .getState()
+      .sendChatMessage('Tell me about the moon', 1, noSources, settings);
+    await flushFrame();
+
+    expect(mockPersistMessage).toHaveBeenCalledWith(
+      mockDb,
+      expect.objectContaining({
+        role: 'user',
+        content: 'Tell me about the moon',
+      })
+    );
+
+    finishLoad();
+    await reload;
+    await turn;
+    expect(
+      mockPersistMessage.mock.calls.filter(
+        ([, message]) => message.role === 'user'
+      )
+    ).toHaveLength(1);
+  });
+
   it('persists user message and assistant response', async () => {
     useLLMStore.setState({
       model: baseModel,
