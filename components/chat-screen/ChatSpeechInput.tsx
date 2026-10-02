@@ -157,7 +157,6 @@ const ChatSpeechInput: React.FC<Props> = ({
       onInterrupted(heard);
       return;
     }
-    Toast.show({ type: 'defaultToast', text1: 'Dictation stopped.' });
     onCancel();
   });
   useEffect(() => {

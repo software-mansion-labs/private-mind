@@ -125,6 +125,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
     } catch (error) {
       console.error('Error finishing audio recording:', error);
       closeAbandonedStream(stt.module);
+      releaseAudioSession(sessionClaim.current);
       changeStatus('idle');
       return false;
     }

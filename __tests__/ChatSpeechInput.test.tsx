@@ -186,7 +186,7 @@ describe('ChatSpeechInput when the transcript ends without a send', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('closes the sheet saying dictation stopped when it heard nothing', async () => {
+  it('closes the sheet without a toast when it heard nothing', async () => {
     const endStream = endingStream('');
     const onCancel = jest.fn();
     render(<ChatSpeechInput onSubmit={jest.fn()} onCancel={onCancel} />);
@@ -195,9 +195,7 @@ describe('ChatSpeechInput when the transcript ends without a send', () => {
     endStream();
 
     await waitFor(() => expect(onCancel).toHaveBeenCalled());
-    expect(Toast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ text1: 'Dictation stopped.' })
-    );
+    expect(Toast.show).not.toHaveBeenCalled();
   });
 
   it('stays quiet when the trash ended it', async () => {

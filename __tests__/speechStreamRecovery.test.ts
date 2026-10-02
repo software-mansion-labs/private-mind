@@ -231,6 +231,30 @@ describe('the audio session dictation turns on', () => {
     expect(sessionTurnedOff()).toBe(false);
   });
 
+  it('is turned off when the recorder will not stop', async () => {
+    const recorder = jest.spyOn(audioApi, 'AudioRecorder').mockImplementation(
+      () =>
+        ({
+          onAudioReady: jest.fn(),
+          start: jest.fn(),
+          stop: jest.fn(() => {
+            throw new Error('recorder gone');
+          }),
+        }) as never
+    );
+    const { result } = renderHook(() => useSpeechInput());
+    await act(async () => {
+      readAll((await result.current.start())!);
+    });
+
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    expect(sessionTurnedOff()).toBe(true);
+    recorder.mockRestore();
+  });
+
   it('is turned off and the stream closed when the recorder cannot start', async () => {
     jest.spyOn(audioApi, 'AudioRecorder').mockImplementation(
       () =>
