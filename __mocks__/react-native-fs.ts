@@ -17,3 +17,8 @@ export const readDir = jest.fn(async (dirpath: string) =>
     .filter((path) => path.startsWith(`${dirpath}/`))
     .map((path) => ({ path, name: path.slice(dirpath.length + 1) }))
 );
+export const readFile = jest.fn(async (path: string) => {
+  const contents = writtenFiles.get(path);
+  if (contents === undefined) throw new Error(`ENOENT: ${path}`);
+  return contents;
+});

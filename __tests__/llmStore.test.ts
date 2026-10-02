@@ -1,4 +1,8 @@
-import { BACKGROUND_RELEASE_DELAY_MS, useLLMStore } from '../store/llmStore';
+import {
+  BACKGROUND_RELEASE_DELAY_MS,
+  isModelBusy,
+  useLLMStore,
+} from '../store/llmStore';
 import { LLMModule } from 'react-native-executorch/legacy';
 import * as chatRepository from '../database/chatRepository';
 import type { Message } from '../database/chatRepository';
@@ -3131,6 +3135,29 @@ describe('one generation at a time on the shared native runner', () => {
     await planning;
     await turn;
     expect(mockInstance.generate.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('counts a utility call as the model being busy while no turn is generating', async () => {
+    let releaseDigest!: (answer: string) => void;
+    mockInstance.generate.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        releaseDigest = resolve;
+      })
+    );
+
+    const digest = useLLMStore
+      .getState()
+      .generateUtility([{ role: 'user', content: 'summarise' }]);
+
+    expect(useLLMStore.getState()).toMatchObject({
+      isGenerating: false,
+      isProcessingPrompt: false,
+      isLoading: false,
+    });
+    expect(isModelBusy()).toBe(true);
+    releaseDigest('');
+    await digest;
+    expect(isModelBusy()).toBe(false);
   });
 
   it('does not delete a model that is still generating', async () => {
