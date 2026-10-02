@@ -69,16 +69,15 @@ export default function useChatBranching({
       if (message.role !== 'assistant' || forkInFlight.current) return;
       forkInFlight.current = true;
 
-      if (await isUnpersistedPhantomChat()) {
-        forkInFlight.current = false;
-        Toast.show({
-          type: 'defaultToast',
-          text1: 'Send a message before branching this chat.',
-        });
-        return;
-      }
-
       try {
+        if (await isUnpersistedPhantomChat()) {
+          Toast.show({
+            type: 'defaultToast',
+            text1: 'Send a message before branching this chat.',
+          });
+          return;
+        }
+
         const newChatId = await forkChat(chatId, message.id);
         if (!newChatId) return;
 

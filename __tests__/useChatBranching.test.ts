@@ -166,6 +166,28 @@ it('lets a later tap fork again once the first fork finished', async () => {
   expect(mockForkChat).toHaveBeenCalledTimes(2);
 });
 
+it('lets Fork work again after checking the chat failed', async () => {
+  mockUseChatStore.mockReturnValue({
+    phantomChat: { id: 1 },
+    forkChat: mockForkChat,
+    getChatById: mockGetChatById,
+  });
+  const { result } = renderHook(() =>
+    useChatBranching({ chatId: 1, messageHistoryLength: 2 })
+  );
+  await act(async () => {});
+
+  mockCheckIfChatExists.mockRejectedValueOnce(new Error('database is locked'));
+  await act(async () => {
+    await result.current.handleForkMessage(assistantMessage).catch(() => {});
+  });
+  await act(async () => {
+    await result.current.handleForkMessage(assistantMessage);
+  });
+
+  expect(mockForkChat).toHaveBeenCalledTimes(1);
+});
+
 it('blocks forking an unpersisted phantom chat', async () => {
   mockUseChatStore.mockReturnValue({
     phantomChat: { id: 1 },
