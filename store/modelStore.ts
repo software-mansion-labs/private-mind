@@ -13,6 +13,7 @@ import Toast from 'react-native-toast-message';
 import { ResourceFetcher } from 'react-native-executorch/legacy';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import { Feedback } from '../utils/Feedback';
+import { removeKeptModelFiles } from '../utils/localModelFiles';
 
 export enum ModelState {
   Downloaded = 'downloaded',
@@ -228,6 +229,13 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       // Reuse removeModelFiles so file cleanup + state reset stay in one place.
       await get().removeModelFiles(modelId);
       await removeModelFiles(db, modelId);
+      if (model.source === 'local') {
+        removeKeptModelFiles([
+          model.modelPath,
+          model.tokenizerPath,
+          model.tokenizerConfigPath,
+        ]);
+      }
       await get().loadModels();
     } catch (err) {
       console.error('Failed to remove model:', err);

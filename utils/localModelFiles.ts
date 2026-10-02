@@ -17,3 +17,15 @@ export const keepPickedModelFile = (path: string): string => {
   picked.move(destination);
   return withoutScheme(destination.uri);
 };
+
+const isKeptCopy = (uri: string) =>
+  withoutScheme(uri).startsWith(
+    withoutScheme(new Directory(Paths.document, LOCAL_MODELS_DIR).uri)
+  );
+
+export const removeKeptModelFiles = (uris: string[]): void => {
+  for (const uri of uris.filter(isKeptCopy)) {
+    const file = new File(uri);
+    if (file.exists) file.delete();
+  }
+};

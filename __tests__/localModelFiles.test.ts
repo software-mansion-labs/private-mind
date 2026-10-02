@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
 const mockMove = jest.fn();
+const mockDelete = jest.fn();
 
 jest.mock('expo-file-system', () => ({
   Paths: {
@@ -18,11 +19,20 @@ jest.mock('expo-file-system', () => ({
         typeof parentOrUri === 'string'
           ? parentOrUri
           : `${parentOrUri.uri}${name}`;
-      return { uri, name: uri.split('/').pop(), move: mockMove };
+      return {
+        uri,
+        name: uri.split('/').pop(),
+        exists: true,
+        move: mockMove,
+        delete: () => mockDelete(uri),
+      };
     }),
 }));
 
-import { keepPickedModelFile } from '../utils/localModelFiles';
+import {
+  keepPickedModelFile,
+  removeKeptModelFiles,
+} from '../utils/localModelFiles';
 
 const setPlatform = (os: 'ios' | 'android') =>
   Object.defineProperty(Platform, 'OS', { value: os, configurable: true });
@@ -60,5 +70,28 @@ describe('keepPickedModelFile', () => {
 
     expect(keepPickedModelFile(path)).toBe(path);
     expect(mockMove).not.toHaveBeenCalled();
+  });
+});
+
+describe('removeKeptModelFiles', () => {
+  it('deletes the copies the app keeps of a removed model', () => {
+    removeKeptModelFiles([
+      'file:///data/app/files/local-models/1-model.pte',
+      'file:///data/app/files/local-models/1-tokenizer.json',
+    ]);
+
+    expect(mockDelete.mock.calls.map(([uri]) => uri)).toEqual([
+      'file:///data/app/files/local-models/1-model.pte',
+      'file:///data/app/files/local-models/1-tokenizer.json',
+    ]);
+  });
+
+  it('never deletes a file the user picked from their own folders', () => {
+    removeKeptModelFiles([
+      'file:///private/var/mobile/Downloads/model.pte',
+      'file:///storage/emulated/0/Download/tokenizer.json',
+    ]);
+
+    expect(mockDelete).not.toHaveBeenCalled();
   });
 });
