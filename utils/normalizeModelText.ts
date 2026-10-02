@@ -162,6 +162,12 @@ const foldHomoglyphsToLatin = (text: string): string =>
 export const ECHOED_LANGUAGE_ANCHOR =
   /\s*\(Answer in (?:the same language as this message|[^()\n]{2,40})\.\)/gu;
 
+export const ATTACHMENT_GROUNDING_HINT =
+  'The question is about the just-attached document(s) in the <sources> above.';
+
+export const ECHOED_GROUNDING_HINT =
+  /[ \t]*The question is about the just-attached document\(s\) in the <sources> above\.[ \t]*\n?/gu;
+
 export const normalizeModelText = (text: string): string => {
   if (!text) return text;
   const script = detectDominantScript(text);

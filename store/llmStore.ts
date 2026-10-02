@@ -58,6 +58,7 @@ import {
 } from '../utils/messageSources';
 import { sourcesPresentInContext } from '../utils/contextUtils';
 import {
+  ECHOED_GROUNDING_HINT,
   ECHOED_LANGUAGE_ANCHOR,
   normalizeModelText,
 } from '../utils/normalizeModelText';
@@ -642,7 +643,9 @@ const carriesAnswer = (response: string): boolean => {
 const tidyVisibleAnswer = (response: string): string =>
   mapOutsideThink(response, (segment) =>
     truncateAtRepeatedClause(
-      normalizeModelText(segment).replace(ECHOED_LANGUAGE_ANCHOR, '')
+      normalizeModelText(segment)
+        .replace(ECHOED_LANGUAGE_ANCHOR, '')
+        .replace(ECHOED_GROUNDING_HINT, '')
     )
   );
 

@@ -1705,6 +1705,29 @@ describe('sendChatMessage', () => {
     expect(shown).toBe('Pack a passport and a charger.');
   });
 
+  it('never shows the attachment hint the app added to the prompt when the model repeats it (A-70)', async () => {
+    mockInstance.generate.mockResolvedValue(
+      'The question is about the just-attached document(s) in the <sources> above. The amount for a monthly pass is 49 USD.'
+    );
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'How much does a monthly pass cost?',
+        1,
+        noSources,
+        settings
+      );
+
+    const shown = useLLMStore.getState().activeChatMessages.at(-1)?.content;
+    expect(shown).toBe('The amount for a monthly pass is 49 USD.');
+  });
+
   it('blames the sources only when the answer had sources to work from', async () => {
     mockInstance.generate.mockResolvedValue('co zabrać do samolotu?');
     useLLMStore.setState({

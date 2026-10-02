@@ -32,6 +32,7 @@ import {
   hasPeriodMatchedChangeData,
 } from './web/figureGrounding';
 import { selectRelevantContent } from './web/webResultsToContext';
+import { ATTACHMENT_GROUNDING_HINT } from './normalizeModelText';
 
 const CONTEXT_CLOSE_TAG_RESERVE_CHARS = 64;
 
@@ -717,7 +718,7 @@ export const prepareMessagesForLLM = (
 
     const userText = lastMessage.content;
     const groundingHint = preferredSourceDocuments?.length
-      ? 'The question is about the just-attached document(s) in the <sources> above.'
+      ? ATTACHMENT_GROUNDING_HINT
       : '';
     const hasWebSource = sourceDocuments?.some(
       (source) => sourceKind(source) === 'web'
