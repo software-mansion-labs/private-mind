@@ -89,7 +89,7 @@ const ChatBarActions = ({
   }));
   const isResponding = isGenerating || isProcessingPrompt;
   const isAttachmentBlocked = isResponding || isLoadingAttachment;
-  const hasComposedInput = !!userInput || hasAttachments;
+  const hasComposedInput = !!userInput.trim() || hasAttachments;
   const isSendable = hasComposedInput;
   const action = composerAction(
     isResponding,

@@ -205,6 +205,13 @@ describe('attach button', () => {
     expect(screen.queryByTestId('speech-btn')).toBeNull();
   });
 
+  it('offers the mic, not a send that would be refused, when the input is only spaces', () => {
+    renderActions({ userInput: '   \n  ' });
+
+    expect(screen.queryByTestId('send-btn')).toBeNull();
+    expect(screen.getByTestId('speech-btn')).toBeTruthy();
+  });
+
   it('keeps the send button live once the model is ready', () => {
     renderActions({ userInput: 'hi', modelBusy: false });
     expect(screen.getByTestId('send-btn').props.accessibilityState.busy).toBe(
