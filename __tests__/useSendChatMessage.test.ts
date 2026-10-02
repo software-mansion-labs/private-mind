@@ -5,6 +5,10 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import type { Model } from '../database/modelRepository';
 import type { MessagesHandle } from '../components/chat-screen/Messages';
 import Toast from 'react-native-toast-message';
+import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
+import type { Attachment } from '../hooks/useAttachment';
+import { runWebSearch } from '../utils/web/runWebSearch';
+import { WEB_SKIP_COPY } from '../constants/web-copy';
 
 jest.mock('expo-router', () => ({ router: { replace: jest.fn() } }));
 jest.mock('../database/chatRepository', () => ({
@@ -25,6 +29,15 @@ jest.mock('../utils/web/scrape/webViewScrapeProvider', () => ({
   webViewScrapeProvider: { releaseHost: jest.fn() },
 }));
 jest.mock('../utils/network', () => ({ isDeviceOnline: async () => true }));
+jest.mock('../constants/model-profiles', () => ({
+  ...jest.requireActual('../constants/model-profiles'),
+  isWebSearchReady: () => true,
+}));
+jest.mock('../utils/modelCompatibility', () => ({
+  ...jest.requireActual('../utils/modelCompatibility'),
+  hasMemoryForWebSearch: () => true,
+  isMemoryConstrained: () => false,
+}));
 const mockAddChat = jest.fn(async (_title: string, _modelId: number) => 9);
 jest.mock('../store/chatStore', () => ({
   useChatStore: () => ({
@@ -34,7 +47,7 @@ jest.mock('../store/chatStore', () => ({
   }),
 }));
 jest.mock('../store/sourceStore', () => ({
-  useSourceStore: { getState: () => ({ sources: [] }) },
+  useSourceStore: { getState: () => ({ sources: [{ id: 5 }] }) },
 }));
 const webEnabledByChat: Record<number, boolean> = {};
 jest.mock('../store/webSearchStore', () => ({
@@ -395,5 +408,62 @@ describe('the web toggle the composer is showing', () => {
     webEnabledByChat[1] = true;
     await buildSources();
     expect(Toast.show).toHaveBeenCalled();
+  });
+});
+
+describe('web search in a chat that has a document', () => {
+  const useDocumentChatSend = () =>
+    useSendChatMessage({
+      chatId: 1,
+      model: { id: 1, modelName: 'Test LLM' } as Model,
+      messageHistory: [],
+      chatSettings: { systemPrompt: '', thinkingEnabled: false },
+      enabledSources: [5],
+      vectorStore: {} as OPSQLiteVectorStore,
+      embeddings: null,
+      messagesRef,
+      db: {} as SQLiteDatabase,
+      isGenerating: false,
+      isModelLoading: false,
+      isSwitching: false,
+    });
+
+  const lastBuildSources = () => {
+    const calls = mockedState().sendChatMessage.mock.calls;
+    return calls[calls.length - 1][2] as () => Promise<unknown>;
+  };
+
+  beforeEach(() => {
+    (runWebSearch as jest.Mock).mockReset();
+    (runWebSearch as jest.Mock).mockResolvedValue({
+      context: [],
+      sourceDocuments: [],
+      telemetry: { needsSearch: false },
+    });
+    webEnabledByChat[1] = true;
+  });
+
+  it('searches the web for a later message once the document is already in the chat', async () => {
+    await useDocumentChatSend()('what is the weather in Kraków');
+
+    await lastBuildSources()();
+
+    expect(runWebSearch).toHaveBeenCalled();
+    expect(Toast.show).not.toHaveBeenCalledWith(
+      expect.objectContaining({ text1: WEB_SKIP_COPY.documents })
+    );
+  });
+
+  it('keeps the web out of the message the document is attached to', async () => {
+    await useDocumentChatSend()('summarise this', undefined, [
+      { type: 'document', sourceId: 5, name: 'report.pdf' } as Attachment,
+    ]);
+
+    await lastBuildSources()();
+
+    expect(runWebSearch).not.toHaveBeenCalled();
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ text1: WEB_SKIP_COPY.documents })
+    );
   });
 });

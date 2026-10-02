@@ -381,7 +381,7 @@ const ChatBar = ({
     }
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
-    const inputToSend = userInput;
+    const inputToSend = userInput.trim();
     const holdUntilSwitchLands = modelSwitching;
     setSendInFlight(true);
     const outcome = onSend(inputToSend, imageUriToSend, attachmentsToSend);
@@ -389,10 +389,10 @@ const ChatBar = ({
     if (disabled || modelSwitching) setSendPending(true);
 
     if (holdUntilSwitchLands) {
-      heldUntilSwitchLandsRef.current = inputToSend;
+      heldUntilSwitchLandsRef.current = userInput;
       setIsHoldingInput(true);
     } else {
-      clearComposer(inputToSend);
+      clearComposer(userInput);
     }
     Promise.resolve(outcome)
       .then((accepted) => {
