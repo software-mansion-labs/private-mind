@@ -27,6 +27,22 @@ describe('queryNamesDocument', () => {
 });
 
 describe('findCitedSpan', () => {
+  it('highlights the line that answers, not the section heading that names the topic', () => {
+    const passage =
+      '1. OPENING HOURS\n- Monday to Friday: 5:30 AM to 11:00 PM\n- Sunday: 8:00 AM to 6:00 PM (staffed desk closes at 4:00 PM)\n2. MEMBERSHIP PRICES';
+    const span = findCitedSpan(
+      passage,
+      'What are the opening hours on Sunday?'
+    );
+    expect(passage.slice(span!.start, span!.end)).toContain('Sunday: 8:00 AM');
+  });
+
+  it('still highlights a heading when nothing else in the passage matches', () => {
+    const passage = 'OPENING HOURS\nAsk at the front desk.';
+    const span = findCitedSpan(passage, 'opening hours');
+    expect(passage.slice(span!.start, span!.end)).toBe('OPENING HOURS');
+  });
+
   it('can highlight a list line that has no full stop', () => {
     const passage =
       'PRICES\n- Day pass: 12 USD\n- Monthly pass: 49 USD\nAll prices include tax.';

@@ -73,6 +73,23 @@ export const findCitedSpan = (
   const sentences = splitSentences(passage);
   if (sentences.length === 0) return null;
 
+  const evidence = sentences.filter((sentence) => !isHeading(sentence.text));
+  return bestSentence(evidence, terms) ?? bestSentence(sentences, terms);
+};
+
+const HEADING_MAX_CHARS = 40;
+const LIST_OR_SECTION_NUMBER = /^[\s\d.)#*_-]*/;
+
+const isHeading = (text: string): boolean => {
+  const words = text.replace(LIST_OR_SECTION_NUMBER, '').trim();
+  if (!words || words.length > HEADING_MAX_CHARS) return false;
+  return /\p{Lu}/u.test(words) && words === words.toUpperCase();
+};
+
+const bestSentence = (
+  sentences: Sentence[],
+  terms: Set<string>
+): CitationSpan | null => {
   let best: CitationSpan | null = null;
   let bestScore = 0;
   let bestExact = 0;
