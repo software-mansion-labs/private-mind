@@ -782,6 +782,29 @@ describe('speech input', () => {
     expect(screen.queryByTestId('speech-input')).toBeNull();
   });
 
+  it('does not open dictation while an attached document is still loading', async () => {
+    mockUseAttachment.attachments = [
+      {
+        id: 'doc-1',
+        type: 'document',
+        uri: 'file:///doc.pdf',
+        name: 'doc.pdf',
+        status: 'loading',
+      },
+    ];
+    renderBar();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+
+    expect(screen.queryByTestId('speech-input')).toBeNull();
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: 'Wait for the attachment to finish loading.',
+      })
+    );
+  });
+
   it('switches to speech input view after mic button press when permission granted', async () => {
     renderBar();
     await act(async () => {
@@ -815,6 +838,67 @@ describe('speech input', () => {
     fireEvent.press(screen.getByTestId('speech-submit'));
     expect(onSend).toHaveBeenCalledWith('voice transcript', undefined, []);
     expect(screen.queryByTestId('speech-input')).toBeNull();
+  });
+
+  it('spins the send button where the mic would be while a dictated message goes out', async () => {
+    const onSend = jest.fn(() => new Promise<boolean>(() => {}));
+    renderBar({ onSend });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+
+    fireEvent.press(screen.getByTestId('speech-submit'));
+
+    expect(screen.getByText('send pending')).toBeTruthy();
+    expect(screen.getByTestId('send-btn')).toBeTruthy();
+    expect(screen.queryByTestId('speech-btn')).toBeNull();
+  });
+
+  it('gives a refused dictated message back to the field and says why', async () => {
+    const onSend = jest.fn(async () => 'model-loading' as const);
+    renderBar({ onSend });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-submit'));
+    });
+
+    expect(
+      screen.getByPlaceholderText('Ask about anything...').props.value
+    ).toBe('voice transcript');
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the model to finish loading.',
+    });
+  });
+
+  it('lets go of the spinner once the answer to a dictated message starts', async () => {
+    const onSend = jest.fn(() => new Promise<boolean>(() => {}));
+    const { rerender } = renderBar({ onSend });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+    fireEvent.press(screen.getByTestId('speech-submit'));
+
+    mockUseLLMStore.mockImplementation(
+      (selector?: (state: Partial<LLMStore>) => unknown) => {
+        const state = {
+          isGenerating: true,
+          isProcessingPrompt: false,
+          generatingForChatId: defaultProps.chatId,
+          interrupt: jest.fn(),
+          loadModel: jest.fn(),
+          model: null,
+        };
+        return selector ? selector(state) : state;
+      }
+    );
+    rerender(<ChatBar {...defaultProps} onSend={jest.fn()} />);
+
+    expect(screen.getByTestId('interrupt-btn')).toBeTruthy();
+    expect(screen.queryByText('send pending')).toBeNull();
   });
 
   it('forwards attached imagePath when submitting speech transcript', async () => {
