@@ -1,11 +1,12 @@
 export const LATEST_RELEASE = {
-  version: '1.3.0',
-  title: 'Web search, privately',
+  version: '1.3.1',
+  title: 'Steadier answers',
   highlights: [
-    'Bring current information into any chat with the new Web toggle',
-    'See the pages an answer used, and open any of them',
-    'Pages are fetched and read on your device',
-    'Watch the search as it happens',
-    'More on-device models to choose from',
+    'Answers on iPhone start right away and keep a steady pace',
+    'Leave the app mid-answer: it finishes when you come back, and the model is freed to save battery',
+    'The model shown in the chat header is the one that answers',
+    'Attaching a document turns off web search for that message only',
+    'Dictation shows what it is waiting for and recovers on its own',
+    'Model downloads keep going in the background and cancel cleanly',
   ],
 };
