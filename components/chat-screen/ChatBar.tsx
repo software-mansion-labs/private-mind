@@ -368,8 +368,36 @@ const ChatBar = ({
   );
 
   useEffect(() => {
-    if (isGeneratingHere || isProcessingPromptHere) setSendInFlight(false);
+    if (!isGeneratingHere && !isProcessingPromptHere) return;
+    setSendInFlight(false);
+    setSendPending(false);
   }, [isGeneratingHere, isProcessingPromptHere]);
+
+  const settleSend = useCallback(
+    (
+      outcome: ReturnType<Props['onSend']>,
+      inputToSend: string,
+      attachmentsToSend: Attachment[]
+    ) => {
+      Promise.resolve(outcome)
+        .then((accepted) => {
+          if (accepted !== false && typeof accepted !== 'string') return;
+          lastSentRef.current = null;
+          setUserInput((current) => current || inputToSend);
+          if (attachmentsToSend.length) restoreAttachments(attachmentsToSend);
+          const text1 = REFUSAL_COPY[accepted === false ? 'busy' : accepted];
+          if (text1) Toast.show({ type: 'defaultToast', text1 });
+        })
+        .catch((error) => {
+          console.error('Failed to send message:', error);
+        })
+        .finally(() => {
+          setSendPending(false);
+          setSendInFlight(false);
+        });
+    },
+    [restoreAttachments]
+  );
 
   useEffect(() => {
     if (aTurnIsStarting) releaseHeldInput(true);
@@ -470,6 +498,13 @@ const ChatBar = ({
       showModelSwitchingToast();
       return;
     }
+    if (hasLoadingAttachment) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Wait for the attachment to finish loading.',
+      });
+      return;
+    }
 
     const permissionStatus = await AudioManager.requestRecordingPermissions();
     if (permissionStatus !== 'Granted') {
@@ -490,11 +525,13 @@ const ChatBar = ({
         const attachmentsToSend = attachments;
         const imageUriToSend = imageAttachment?.uri;
         clearAll({ cleanupSources: false });
-        Promise.resolve(
-          onSend(transcript, imageUriToSend, attachmentsToSend)
-        ).catch((error) => {
-          console.error('Failed to send transcript:', error);
-        });
+        setSendInFlight(true);
+        setSendPending(true);
+        settleSend(
+          onSend(transcript, imageUriToSend, attachmentsToSend),
+          transcript,
+          attachmentsToSend
+        );
       }
     };
 
@@ -503,6 +540,17 @@ const ChatBar = ({
         <ChatSpeechInput
           onSubmit={handleSubmit}
           onCancel={() => setShowSpeechInput(false)}
+          onInterrupted={(heard) => {
+            setShowSpeechInput(false);
+            if (!heard) return;
+            setUserInput((current) =>
+              current ? `${current} ${heard}` : heard
+            );
+            Toast.show({
+              type: 'defaultToast',
+              text1: 'Dictation stopped. What it heard is in the message box.',
+            });
+          }}
         />
       </View>
     );
