@@ -215,6 +215,7 @@ const armRetry = (
 let streamBuffer = '';
 let streamTokenCount = 0;
 let streamFirstTokenTime = 0;
+let streamStopRequested = false;
 let streamFlushScheduled = false;
 let streamedSoFar = '';
 
@@ -222,6 +223,7 @@ const resetStreamState = () => {
   streamBuffer = '';
   streamTokenCount = 0;
   streamFirstTokenTime = 0;
+  streamStopRequested = false;
   streamFlushScheduled = false;
   streamedSoFar = '';
 };
@@ -301,10 +303,27 @@ const waitForSettingsHydration = async (): Promise<void> => {
   });
 };
 
+const MODEL_IDLE_WAIT_LIMIT_MS = 60_000;
+
+const modelIsBusy = (get: () => LLMStore) =>
+  get().isLoading || get().isGenerating || utilityGenerating;
+
 const waitForModelToBecomeIdle = async (get: () => LLMStore) => {
-  while (get().isLoading || get().isGenerating || utilityGenerating) {
+  while (modelIsBusy(get)) {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
+};
+
+const waitForModelToBecomeIdleWithin = async (
+  get: () => LLMStore,
+  limitMs: number
+): Promise<boolean> => {
+  const deadline = Date.now() + limitMs;
+  while (modelIsBusy(get)) {
+    if (Date.now() >= deadline) return false;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return true;
 };
 
 type StoreSet = (
@@ -425,6 +444,7 @@ const loadModelInstance = async (
       () => {},
       (token) => {
         if (suppressUtilityStreaming) return;
+        if (streamStopRequested) return;
 
         const isFirstToken = streamTokenCount === 0;
 
@@ -438,6 +458,7 @@ const loadModelInstance = async (
         if (isFirstToken) {
           const snapshot = get();
           if (!snapshot.isProcessingPrompt && !snapshot.isGenerating) {
+            streamStopRequested = true;
             llmInstance?.interrupt();
             return;
           }
@@ -1130,6 +1151,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       Promise.all([modelLoadChain, utilityChain]),
       abortController.signal
     ).catch(() => undefined);
+    const modelBecameIdle = await endsWhenStopped(
+      waitForModelToBecomeIdleWithin(get, MODEL_IDLE_WAIT_LIMIT_MS),
+      abortController.signal
+    ).catch(() => true);
+    if (!modelBecameIdle) {
+      markGenerationFailed(new Error('The model stayed busy for too long'));
+      return true;
+    }
     const readyModel = get().model;
     if (!get().isProcessingPrompt) {
       if (!isRetry && !userMessagePersisted) {
@@ -1834,7 +1863,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     if (
       get().isGenerating ||
       get().isProcessingPrompt ||
-      get().isBenchmarking
+      get().isBenchmarking ||
+      utilityGenerating
     ) {
       return;
     }
@@ -1889,6 +1919,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             streamFirstTokenTime,
             instance.getGeneratedTokenCount()
           );
+
+        if (tokensPerSecond <= 0) return undefined;
 
         return {
           totalTime,

@@ -2673,6 +2673,18 @@ describe('sendChatMessage imagePath', () => {
 // ─── runBenchmark ─────────────────────────────────────────────────────────────
 
 describe('runBenchmark', () => {
+  const streamMeasurableRun = (tokenCallback: (token: string) => void) => {
+    let now = 0;
+    jest.spyOn(performance, 'now').mockImplementation(() => (now += 50));
+    mockInstance.getGeneratedTokenCount.mockReturnValue(50);
+    mockInstance.generate.mockImplementation(async () => {
+      await flushFrame();
+      tokenCallback('tok');
+      await flushFrame();
+      return 'output text';
+    });
+  };
+
   it('returns undefined and resets flags when no llmInstance is loaded', async () => {
     // Don't call loadModel — llmInstance is null from module reset
     useLLMStore.setState({ model: null });
@@ -2705,8 +2717,15 @@ describe('runBenchmark', () => {
   });
 
   it('returns performance metrics on success', async () => {
-    await loadModel();
-    mockInstance.generate.mockResolvedValue('output text');
+    const tokenCallback = await loadModel();
+    let now = 0;
+    jest.spyOn(performance, 'now').mockImplementation(() => (now += 50));
+    mockInstance.generate.mockImplementation(async () => {
+      await flushFrame();
+      tokenCallback('tok');
+      await flushFrame();
+      return 'output text';
+    });
     mockInstance.getGeneratedTokenCount.mockReturnValue(50);
     useLLMStore.setState({ model: baseModel });
 
@@ -2733,8 +2752,7 @@ describe('runBenchmark', () => {
   });
 
   it('reports the highest footprint the run reached', async () => {
-    await loadModel();
-    mockInstance.generate.mockResolvedValue('output text');
+    streamMeasurableRun(await loadModel());
     useLLMStore.setState({ model: baseModel });
     memoryProbe.available = true;
     memoryProbe.samples = [1_000_000_000, 5_000_000_000];
@@ -2745,8 +2763,7 @@ describe('runBenchmark', () => {
   });
 
   it('takes its first sample without waiting for the sampling interval', async () => {
-    await loadModel();
-    mockInstance.generate.mockResolvedValue('output text');
+    streamMeasurableRun(await loadModel());
     useLLMStore.setState({ model: baseModel });
     memoryProbe.available = true;
     memoryProbe.samples = [1_234_000_000];
@@ -2757,8 +2774,7 @@ describe('runBenchmark', () => {
   });
 
   it('reports nothing when the device has no footprint probe', async () => {
-    await loadModel();
-    mockInstance.generate.mockResolvedValue('output text');
+    streamMeasurableRun(await loadModel());
     useLLMStore.setState({ model: baseModel });
     memoryProbe.available = false;
     memoryProbe.samples = [9_000_000_000];
@@ -2827,7 +2843,7 @@ describe('runBenchmark', () => {
     // so on a fast machine startTime and the first token can share a millisecond
     // and the measured delta collapses to 0. Advance a virtual clock instead.
     let now = 0;
-    jest.spyOn(performance, 'now').mockImplementation(() => (now += 10));
+    jest.spyOn(performance, 'now').mockImplementation(() => (now += 50));
 
     mockInstance.generate.mockImplementation(async () => {
       await flushFrame();
@@ -3161,6 +3177,114 @@ describe('one generation at a time on the shared native runner', () => {
     await turn;
     await switching;
     expect(mockInstance.delete).toHaveBeenCalled();
+  });
+});
+
+// ─── the busy-model wait has a limit ──────────────────────────────────────────
+
+describe('sendChatMessage when the model never goes idle', () => {
+  const settings = { systemPrompt: 'be helpful' };
+
+  it('gives up instead of waiting forever', async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    mockGetChatMessages.mockResolvedValue([]);
+    useLLMStore.setState({ model: baseModel, activeChatId: 1 });
+    mockInstance.generate.mockResolvedValue('should never be reached');
+
+    const startedAt = Date.now();
+    let elapsed = 0;
+    jest.spyOn(Date, 'now').mockImplementation(() => {
+      elapsed += 5000;
+      return startedAt + elapsed;
+    });
+
+    useLLMStore.setState({ isLoading: true });
+
+    await useLLMStore.getState().sendChatMessage('hi', 1, noSources, settings);
+
+    expect(mockInstance.generate).not.toHaveBeenCalled();
+    expect(useLLMStore.getState().generationError).not.toBeNull();
+  }, 15000);
+});
+
+// ─── interrupted turns ────────────────────────────────────────────────────────
+
+describe('a turn abandoned before its first token', () => {
+  const settings = { systemPrompt: 'be helpful' };
+
+  beforeEach(async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    mockGetChatMessages.mockResolvedValue([]);
+    useLLMStore.setState({ model: baseModel, activeChatId: 1 });
+  });
+
+  const runAbandonedTurn = async (tokensAfterAbandon: number) => {
+    mockInstance.interrupt.mockClear();
+    mockInstance.generate.mockImplementation(async () => {
+      await flushFrame();
+      useLLMStore.getState().interrupt();
+      await flushFrame();
+      for (let i = 0; i < tokensAfterAbandon; i++) {
+        capturedTokenCallback!('tok');
+        await flushFrame();
+      }
+      return 'Sure, here we go';
+    });
+    mockInstance.getGeneratedTokenCount.mockReturnValue(2);
+
+    await useLLMStore.getState().sendChatMessage('hi', 1, noSources, settings);
+
+    return mockInstance.interrupt.mock.calls.length;
+  };
+
+  it('does not ask the runtime to stop again for every token it keeps delivering', async () => {
+    const withFewTokens = await runAbandonedTurn(6);
+    const withManyTokens = await runAbandonedTurn(40);
+
+    expect(withManyTokens).toBe(withFewTokens);
+  });
+
+  it('keeps streaming when the abandon happens after the first token landed', async () => {
+    mockInstance.generate.mockImplementation(async () => {
+      await flushFrame();
+      capturedTokenCallback!('Sure');
+      await flushFrame();
+      useLLMStore.getState().interrupt();
+      await flushFrame();
+      for (let i = 0; i < 10; i++) {
+        capturedTokenCallback!('tok');
+        await flushFrame();
+      }
+      return 'Sure, here we go';
+    });
+    mockInstance.getGeneratedTokenCount.mockReturnValue(11);
+
+    await useLLMStore.getState().sendChatMessage('hi', 1, noSources, settings);
+
+    expect(useLLMStore.getState().performance.tokenCount).toBe(11);
+  });
+});
+
+describe('runBenchmark when a turn is cut short', () => {
+  it('reports no result rather than a zero that would drag an average down', async () => {
+    const tokenCallback = await loadModel();
+    useLLMStore.setState({ model: baseModel });
+
+    mockInstance.generate.mockImplementation(async () => {
+      await flushFrame();
+      useLLMStore.getState().interrupt();
+      await flushFrame();
+      tokenCallback('tok');
+      await flushFrame();
+      return 'cut short';
+    });
+    mockInstance.getGeneratedTokenCount.mockReturnValue(2);
+
+    const result = await useLLMStore.getState().runBenchmark();
+
+    expect(result).toBeUndefined();
   });
 });
 
