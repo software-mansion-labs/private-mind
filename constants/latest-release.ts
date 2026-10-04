@@ -1,12 +1,12 @@
 export const LATEST_RELEASE = {
   version: '1.3.1',
-  title: 'Steadier answers',
+  title: 'Private web search, smoother chats',
   highlights: [
-    'Answers on iPhone start right away and keep a steady pace',
-    'Leave the app mid-answer: it finishes when you come back, and the model is freed to save battery',
-    'The model shown in the chat header is the one that answers',
-    'Attaching a document turns off web search for that message only',
-    'Dictation shows what it is waiting for and recovers on its own',
-    'Model downloads keep going in the background and cancel cleanly',
+    'Search the web privately and see the sources behind every answer — pages are read right on your device',
+    'Switch apps mid-answer — your reply is ready when you return, and your battery is spared',
+    'The model you pick is the model that answers',
+    'Documents and web search work side by side in the same chat',
+    'Dictation that keeps you in the loop and recovers on its own',
+    'Model downloads carry on in the background',
   ],
 };
