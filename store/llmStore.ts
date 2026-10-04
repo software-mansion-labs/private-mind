@@ -67,6 +67,7 @@ import {
 } from '../utils/loopDetection';
 import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
 import { updateConversationDigest } from '../utils/conversationDigest';
+import { NO_ANSWER_FALLBACK } from '../constants/no-answer-fallback';
 import type { WebIntentKind } from '../utils/web/intentKind';
 import { useSettingsStore } from './settingsStore';
 import { openingWelcomeFor } from '../utils/openingGreeting';
@@ -630,11 +631,6 @@ const QUESTION_ECHO_RETRY_PROMPT =
   'That reply only repeated the question back instead of answering it. Answer ' +
   'the question now, directly, using the information you were given. Do not ' +
   'restate or rephrase the question.';
-
-const NO_ANSWER_FALLBACK: Record<string, string> = {
-  pl: 'Nie udało mi się odpowiedzieć na to pytanie na podstawie znalezionych źródeł.',
-  en: 'I could not answer this question from the sources I found.',
-};
 
 const noAnswerFallback = (question: string | undefined): string => {
   const code = detectQuestionLanguage(question ?? '')?.code ?? 'en';
@@ -1659,6 +1655,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           typeof first?.content === 'string' ? first.content.length : 0)(
           effectivePrepared[0]
         ),
+        chatId,
+        promptMessages: effectivePrepared.length,
       });
 
       if (finalResponse && carriesAnswer(finalResponse)) {
@@ -2003,3 +2001,5 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     set({ activeChatMessages: messageHistory });
   },
 }));
+
+export const isModelBusy = (): boolean => modelIsInUse(useLLMStore.getState);
