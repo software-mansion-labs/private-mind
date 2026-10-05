@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import * as Application from 'expo-application';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
@@ -19,14 +19,20 @@ const WhatsNewCard = () => {
         <Text style={styles.version}>v{installedVersion}</Text>
       </View>
       <Text style={styles.title}>{LATEST_RELEASE.title}</Text>
-      <View style={styles.list}>
+      <ScrollView
+        testID="whats-new-highlights"
+        style={styles.listScroll}
+        contentContainerStyle={styles.list}
+        persistentScrollbar
+        nestedScrollEnabled
+      >
         {LATEST_RELEASE.highlights.map((item, i) => (
           <View key={i} style={styles.row}>
             <Text style={styles.bullet}>•</Text>
             <Text style={styles.item}>{item}</Text>
           </View>
         ))}
-      </View>
+      </ScrollView>
     </View>
   );
 };
@@ -37,6 +43,7 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     card: {
       width: '100%',
+      flexShrink: 1,
       backgroundColor: theme.bg.cardSurface,
       borderRadius: 16,
       padding: 16,
@@ -64,6 +71,10 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.lg,
       lineHeight: lineHeights.lg,
       color: theme.text.primary,
+    },
+    listScroll: {
+      flexGrow: 0,
+      flexShrink: 1,
     },
     list: {
       gap: 6,
