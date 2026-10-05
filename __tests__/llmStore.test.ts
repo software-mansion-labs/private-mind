@@ -1,4 +1,8 @@
-import { BACKGROUND_RELEASE_DELAY_MS, useLLMStore } from '../store/llmStore';
+import {
+  BACKGROUND_RELEASE_DELAY_MS,
+  MODEL_WARMUP_TIMEOUT_MS,
+  useLLMStore,
+} from '../store/llmStore';
 import { LLMModule } from 'react-native-executorch/legacy';
 import * as chatRepository from '../database/chatRepository';
 import type { Message } from '../database/chatRepository';
@@ -85,6 +89,8 @@ const makeMockInstance = () => ({
 
 let mockInstance = makeMockInstance();
 
+const WARMUP_REPLY = 'Hello';
+
 beforeEach(() => {
   memoryProbe.available = false;
   memoryProbe.samples = [];
@@ -140,6 +146,7 @@ afterEach(async () => {
 // Helper to load a model and get the registered token callback
 const loadModel = async (model = baseModel) => {
   await useLLMStore.getState().loadModel(model);
+  mockInstance.generate.mockClear();
   return capturedTokenCallback!;
 };
 
@@ -1236,6 +1243,7 @@ describe('sendChatMessage', () => {
     mockInstance.generate
       .mockRejectedValueOnce(new Error('out of memory'))
       .mockRejectedValueOnce(new Error('out of memory'))
+      .mockResolvedValueOnce(WARMUP_REPLY)
       .mockResolvedValueOnce('Recovered answer');
     useLLMStore.setState({
       model: baseModel,
@@ -3345,7 +3353,9 @@ describe('a turn cut short while the app is in the background', () => {
 
   it('answers the question again when the app comes back, in place of the cut answer', async () => {
     const failGeneration = generateFailingAfter('Machine learning is');
-    mockInstance.generate.mockResolvedValueOnce('Machine learning is a field.');
+    mockInstance.generate
+      .mockResolvedValueOnce(WARMUP_REPLY)
+      .mockResolvedValueOnce('Machine learning is a field.');
 
     const turn = useLLMStore
       .getState()
@@ -3369,7 +3379,9 @@ describe('a turn cut short while the app is in the background', () => {
 
   it('resumes at once when the failure only surfaces after the app is back', async () => {
     const failGeneration = generateFailingAfter('Machine learning is');
-    mockInstance.generate.mockResolvedValueOnce('Machine learning is a field.');
+    mockInstance.generate
+      .mockResolvedValueOnce(WARMUP_REPLY)
+      .mockResolvedValueOnce('Machine learning is a field.');
 
     const turn = useLLMStore
       .getState()
@@ -3543,7 +3555,9 @@ describe('the model in the background', () => {
     useLLMStore.getState().appWentToBackground();
     await jest.advanceTimersByTimeAsync(BACKGROUND_RELEASE_DELAY_MS);
     useLLMStore.getState().appReturnedToForeground();
-    mockInstance.generate.mockResolvedValueOnce('Back again.');
+    mockInstance.generate
+      .mockResolvedValueOnce(WARMUP_REPLY)
+      .mockResolvedValueOnce('Back again.');
 
     const turn = useLLMStore
       .getState()
@@ -3553,5 +3567,262 @@ describe('the model in the background', () => {
 
     expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(1);
     expect(mockInstance.generate).toHaveBeenCalled();
+  });
+
+  it('is warmed up again when it is loaded back for the next message', async () => {
+    useLLMStore.getState().appWentToBackground();
+    await jest.advanceTimersByTimeAsync(BACKGROUND_RELEASE_DELAY_MS);
+    useLLMStore.getState().appReturnedToForeground();
+    mockInstance.generate.mockClear();
+    mockInstance.generate
+      .mockResolvedValueOnce(WARMUP_REPLY)
+      .mockResolvedValueOnce('Back again.');
+
+    const turn = useLLMStore
+      .getState()
+      .sendChatMessage('next question', 1, noSources, settings);
+    await jest.advanceTimersByTimeAsync(1000);
+    await turn;
+
+    expect(mockInstance.generate.mock.calls[0][0]).toContainEqual({
+      role: 'user',
+      content: 'hi',
+    });
+    expect(mockInstance.generate.mock.calls[1][0]).toContainEqual({
+      role: 'user',
+      content: 'hello',
+    });
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Back again.'
+    );
+  });
+
+  it('is not warmed up while it is loaded with the app in the background', async () => {
+    useLLMStore.getState().appWentToBackground();
+    mockInstance.generate.mockClear();
+
+    await useLLMStore.getState().loadModel(baseModel, true);
+
+    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(1);
+    expect(mockInstance.generate).not.toHaveBeenCalled();
+  });
+});
+
+describe('warming the model up right after it loads', () => {
+  const settings = { systemPrompt: 'be helpful' };
+  const warmupPrompt = { role: 'user', content: 'hi' };
+
+  const until = async (ready: () => boolean) => {
+    for (let tick = 0; tick < 50 && !ready(); tick++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    return ready();
+  };
+
+  const warmupThatWaits = (instance = mockInstance) => {
+    let finish!: (reply: string) => void;
+    instance.generate.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          finish = resolve;
+        })
+    );
+    return (reply: string) => finish(reply);
+  };
+
+  beforeEach(() => {
+    mockPersistMessage.mockResolvedValue(42);
+  });
+
+  it('runs one generation on a tiny prompt and stops it at the first token', async () => {
+    mockInstance.generate.mockImplementationOnce(async () => {
+      capturedTokenCallback!('Hel');
+      capturedTokenCallback!('lo');
+      return 'Hello';
+    });
+
+    await useLLMStore.getState().loadModel(baseModel);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(1);
+    expect(mockInstance.generate.mock.calls[0][0]).toContainEqual(warmupPrompt);
+    expect(mockInstance.interrupt).toHaveBeenCalledTimes(1);
+    expect(useLLMStore.getState().isLoading).toBe(false);
+    expect(useLLMStore.getState().model).toEqual(baseModel);
+  });
+
+  it('keeps its tokens out of the chat, the metrics and the turn flags', async () => {
+    const placeholder: Message = {
+      id: -1,
+      localId: 7,
+      chatId: 1,
+      role: 'assistant',
+      content: '',
+      timestamp: 0,
+    };
+    useLLMStore.setState({
+      isProcessingPrompt: true,
+      activeChatId: 1,
+      generatingForChatId: 1,
+      generatingMessageLocalId: 7,
+      activeChatMessages: [placeholder],
+    });
+    mockInstance.generate.mockImplementationOnce(async () => {
+      capturedTokenCallback!('Hel');
+      capturedTokenCallback!('lo');
+      await flushFrame();
+      return 'Hello';
+    });
+
+    await useLLMStore.getState().loadModel(baseModel);
+    await flushFrame();
+
+    const state = useLLMStore.getState();
+    expect(state.activeChatMessages).toEqual([placeholder]);
+    expect(state.performance).toEqual({ tokenCount: 0, firstTokenTime: 0 });
+    expect(state.isProcessingPrompt).toBe(true);
+    expect(state.isGenerating).toBe(false);
+    expect(state.generationError).toBeNull();
+    expect(Feedback.Feedback.firstToken).not.toHaveBeenCalled();
+    expect(mockPersistMessage).not.toHaveBeenCalled();
+  });
+
+  it('holds a message sent meanwhile until it is over, then gives it a clean generation', async () => {
+    const finishWarmup = warmupThatWaits();
+    const loading = useLLMStore.getState().loadModel(baseModel);
+    expect(
+      await until(() => mockInstance.generate.mock.calls.length === 1)
+    ).toBe(true);
+
+    mockInstance.generate.mockImplementationOnce(async () => {
+      capturedTokenCallback!('The answer.');
+      await flushFrame();
+      return 'The answer.';
+    });
+    useLLMStore.setState({ activeChatId: 1, activeChatMessages: [] });
+    const turn = useLLMStore
+      .getState()
+      .sendChatMessage('question', 1, noSources, settings);
+
+    expect(await until(() => mockInstance.generate.mock.calls.length > 1)).toBe(
+      false
+    );
+
+    capturedTokenCallback!('Hel');
+    expect(mockInstance.interrupt).toHaveBeenCalledTimes(1);
+    finishWarmup('Hel');
+    await loading;
+    await turn;
+
+    expect(mockInstance.generate.mock.calls[1][0]).toContainEqual({
+      role: 'user',
+      content: 'hello',
+    });
+    expect(mockInstance.interrupt).toHaveBeenCalledTimes(1);
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'The answer.'
+    );
+    expect(useLLMStore.getState().generationError).toBeNull();
+  });
+
+  it('does not fail the load when it throws', async () => {
+    mockInstance.generate.mockRejectedValueOnce(new Error('Metal said no'));
+
+    await useLLMStore.getState().loadModel(baseModel);
+
+    expect(useLLMStore.getState().isLoading).toBe(false);
+    expect(useLLMStore.getState().model).toEqual(baseModel);
+    expect(mockInstance.delete).not.toHaveBeenCalled();
+    expect(useLLMStore.getState().generationError).toBeNull();
+  });
+
+  describe('against the clock', () => {
+    beforeEach(() => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'queueMicrotask'] });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('interrupts a warm-up that hangs and lets the load finish', async () => {
+      const finishWarmup = warmupThatWaits();
+      let loaded = false;
+      const loading = useLLMStore
+        .getState()
+        .loadModel(baseModel)
+        .then(() => {
+          loaded = true;
+        });
+
+      await jest.advanceTimersByTimeAsync(MODEL_WARMUP_TIMEOUT_MS - 1);
+      expect(loaded).toBe(false);
+      expect(mockInstance.interrupt).not.toHaveBeenCalled();
+
+      await jest.advanceTimersByTimeAsync(1);
+      await loading;
+
+      expect(mockInstance.interrupt).toHaveBeenCalledTimes(1);
+      expect(useLLMStore.getState().isLoading).toBe(false);
+      expect(useLLMStore.getState().model).toEqual(baseModel);
+      finishWarmup('');
+    });
+
+    it('never touches the model loaded in its place', async () => {
+      const firstInstance = mockInstance;
+      const finishFirstWarmup = warmupThatWaits(firstInstance);
+      const firstLoad = useLLMStore.getState().loadModel(baseModel);
+      await jest.advanceTimersByTimeAsync(MODEL_WARMUP_TIMEOUT_MS);
+      await firstLoad;
+      const firstTokenCallback = capturedTokenCallback!;
+
+      const secondInstance = makeMockInstance();
+      mockLLMModule.fromModelName.mockImplementationOnce(
+        async (_namedSources, _onProgress, onToken) => {
+          capturedTokenCallback = onToken;
+          return secondInstance as unknown as LLMModule;
+        }
+      );
+      const otherModel = { ...baseModel, id: 2, modelName: 'Other LLM' };
+      const switching = useLLMStore.getState().loadModel(otherModel);
+      await jest.advanceTimersByTimeAsync(0);
+
+      firstTokenCallback('late');
+      finishFirstWarmup('late');
+      await jest.advanceTimersByTimeAsync(MODEL_WARMUP_TIMEOUT_MS);
+      await switching;
+
+      expect(firstInstance.delete).toHaveBeenCalledTimes(1);
+      expect(secondInstance.generate).toHaveBeenCalledTimes(1);
+      expect(secondInstance.interrupt).not.toHaveBeenCalled();
+      expect(useLLMStore.getState().model).toEqual(otherModel);
+    });
+  });
+
+  it('makes a benchmark started meanwhile wait for it', async () => {
+    const finishWarmup = warmupThatWaits();
+    const loading = useLLMStore.getState().loadModel(baseModel);
+    expect(
+      await until(() => mockInstance.generate.mock.calls.length === 1)
+    ).toBe(true);
+
+    const configuredBefore = mockInstance.configure.mock.calls.length;
+    const benchmark = useLLMStore.getState().runBenchmark();
+
+    expect(
+      await until(
+        () => mockInstance.configure.mock.calls.length > configuredBefore
+      )
+    ).toBe(false);
+    expect(mockInstance.generate).toHaveBeenCalledTimes(1);
+
+    finishWarmup('');
+    await loading;
+    await benchmark;
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(2);
+    expect(mockInstance.generate.mock.calls[1][0]).toContainEqual({
+      role: 'user',
+      content: 'benchmark prompt text',
+    });
   });
 });
