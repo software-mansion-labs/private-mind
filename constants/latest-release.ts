@@ -1,11 +1,12 @@
 export const LATEST_RELEASE = {
-  version: '1.3.0',
-  title: 'Web search, privately',
+  version: '1.3.1',
+  title: 'Private web search, smoother chats',
   highlights: [
-    'Bring current information into any chat with the new Web toggle',
-    'See the pages an answer used, and open any of them',
-    'Pages are fetched and read on your device',
-    'Watch the search as it happens',
-    'More on-device models to choose from',
+    'Private web search with sources, read on your device',
+    'Switch apps mid-answer — your reply waits for you',
+    'The model you pick is the model that answers',
+    'Documents and web search work side by side in the same chat',
+    'Dictation that keeps you in the loop and recovers on its own',
+    'Model downloads carry on in the background',
   ],
 };
