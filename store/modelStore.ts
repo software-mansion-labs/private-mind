@@ -15,6 +15,7 @@ import {
   RnExecutorchErrorCode,
 } from 'react-native-executorch/legacy';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
+import { availableModelName } from '../utils/availableModelName';
 import { Feedback } from '../utils/Feedback';
 import {
   describeDownloadError,
@@ -103,7 +104,7 @@ interface ModelStore {
   downloadStates: Record<string, DownloadState>;
   setDB: (db: SQLiteDatabase) => void;
   loadModels: () => Promise<void>;
-  addModelToDB: (model: Omit<Model, 'id'>) => Promise<void>;
+  addModelToDB: (model: Omit<Model, 'id'>) => Promise<string | null>;
   getModelById: (id: number) => Model | undefined;
   downloadModel: (model: Model) => Promise<void>;
   cancelDownload: (model: Model) => Promise<void>;
@@ -340,9 +341,14 @@ export const useModelStore = create<ModelStore>((set, get) => ({
 
   addModelToDB: async (model: Omit<Model, 'id'>) => {
     const db = get().db;
-    if (!db) return;
-    await addModel(db, model);
+    if (!db) return null;
+    const modelName = availableModelName(
+      model.modelName,
+      get().models.map((existing) => existing.modelName)
+    );
+    const id = await addModel(db, { ...model, modelName });
     await get().loadModels();
+    return id ? modelName : null;
   },
 
   downloadModel: async (model: Model) => {

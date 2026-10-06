@@ -474,3 +474,34 @@ describe('a second download for the same model must not start while one is in fl
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('addModelToDB', () => {
+  const mockAddModel = modelRepository.addModel as jest.Mock;
+  const remote = {
+    modelName: 'model',
+    isDownloaded: false,
+    source: 'remote' as const,
+    modelPath: 'https://other.example/model.pte',
+    tokenizerPath: 'https://other.example/tokenizer.json',
+    tokenizerConfigPath: 'https://other.example/tokenizer_config.json',
+  };
+
+  it('gives a second model with the same file name a name of its own instead of dropping it', async () => {
+    useModelStore.setState({ models: [{ ...baseModel, modelName: 'model' }] });
+    mockAddModel.mockResolvedValue(9);
+
+    const added = await useModelStore.getState().addModelToDB(remote);
+
+    expect(added).toBe('model 2');
+    expect(mockAddModel).toHaveBeenCalledWith(
+      mockDb,
+      expect.objectContaining({ modelName: 'model 2' })
+    );
+  });
+
+  it('reports a model the database did not store, so the screen does not claim success', async () => {
+    mockAddModel.mockResolvedValue(0);
+
+    expect(await useModelStore.getState().addModelToDB(remote)).toBeNull();
+  });
+});

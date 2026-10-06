@@ -63,7 +63,7 @@ export const addModel = async (
     ]
   );
 
-  return result.lastInsertRowId;
+  return result.changes > 0 ? result.lastInsertRowId : 0;
 };
 
 export const updateModelDownloaded = async (

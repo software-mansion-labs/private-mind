@@ -55,7 +55,7 @@ export default function AddLocalModelScreen() {
       return;
     }
     const modelName = localModelPath.name.split('.')[0];
-    await addModelToDB({
+    const addedName = await addModelToDB({
       modelName,
       isDownloaded: true,
       source: 'local',
@@ -64,9 +64,16 @@ export default function AddLocalModelScreen() {
       tokenizerConfigPath: `file://${keepPickedModelFile(localTokenizerConfigPath.uri)}`,
       modelSize: localModelPath.size! / 1024 / 1024 / 1024,
     });
+    if (!addedName) {
+      Alert.alert(
+        'Model not added',
+        'The model could not be saved. Try again.'
+      );
+      return;
+    }
     Toast.show({
       type: 'defaultToast',
-      text1: `${modelName} has been successfully added`,
+      text1: `${addedName} has been successfully added`,
     });
     router.back();
   };
