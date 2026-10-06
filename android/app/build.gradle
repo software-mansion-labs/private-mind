@@ -99,8 +99,8 @@ android {
         applicationId 'com.swmansion.privatemind'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 145
-        versionName "1.3.70"
+        versionCode 146
+        versionName "1.3.71"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
