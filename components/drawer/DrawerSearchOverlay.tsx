@@ -107,6 +107,7 @@ export const DrawerSearchOverlay = ({
           <Pressable
             style={styles.backdropTouch}
             onPress={handleBackdropPress}
+            accessible={false}
           />
           <Animated.View style={[styles.panel, panelStyle]}>
             <View style={styles.panelContent}>

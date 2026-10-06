@@ -105,6 +105,7 @@ export const DrawerTopBar = ({
           placeholderTextColor={theme.text.defaultTertiary}
           style={styles.input}
           testID="drawer-search-input"
+          accessibilityLabel="Search chats"
           autoCorrect={false}
           autoCapitalize="none"
           clearButtonMode="while-editing"

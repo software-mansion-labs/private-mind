@@ -21,7 +21,7 @@ const ModelHubTabs = ({ value, onChange }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} accessibilityRole="tablist">
       {TABS.map((tab) => {
         const selected = tab.key === value;
         return (
@@ -29,6 +29,8 @@ const ModelHubTabs = ({ value, onChange }: Props) => {
             key={tab.key}
             style={[styles.tab, selected && styles.tabSelected]}
             onPress={() => onChange(tab.key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
           >
             <Text style={[styles.label, selected && styles.labelSelected]}>
               {tab.label}
