@@ -28,9 +28,15 @@ const renderBlock = (
 // ─── rendering ────────────────────────────────────────────────────────────────
 
 describe('rendering', () => {
-  it('always shows "Thinking..." title', () => {
-    renderBlock();
+  it('says "Thinking..." while the model is still thinking', () => {
+    renderBlock({ inProgress: true, isComplete: false });
     expect(screen.getByText('Thinking...')).toBeTruthy();
+  });
+
+  it('says "Thought" once the thinking is over, not "Thinking..." forever', () => {
+    renderBlock({ inProgress: false });
+    expect(screen.getByText('Thought')).toBeTruthy();
+    expect(screen.queryByText('Thinking...')).toBeNull();
   });
 
   it('starts collapsed when block is complete (isComplete=true)', () => {

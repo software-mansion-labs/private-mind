@@ -29,7 +29,9 @@ const ThinkingBlock = memo(
     return (
       <View style={styles.thinkingBox}>
         <View style={styles.thinkingHeader}>
-          <Text style={styles.thinkingTitle}>Thinking...</Text>
+          <Text style={styles.thinkingTitle}>
+            {inProgress ? 'Thinking...' : 'Thought'}
+          </Text>
           <TouchableOpacity
             onPress={toggleExpanded}
             style={styles.chevronButton}
