@@ -581,8 +581,8 @@ const LETTER_RANGES = [
   '\\u0370-\\u03ff', // Greek
   '\\u0400-\\u04ff', // Cyrillic
   '\\u0590-\\u05ff', // Hebrew
-  '\\u0600-\\u06ff', // Arabic
-  '\\u0900-\\u097f', // Devanagari
+  '\\u0600-\\u060b\\u060d-\\u061a\\u061c-\\u061e\\u0620-\\u06d3\\u06d5-\\u06ff', // Arabic, without ، ؛ ؟ ۔
+  '\\u0900-\\u0963\\u0966-\\u097f', // Devanagari, without । ॥
   '\\u0980-\\u09ff', // Bengali
   '\\u0e00-\\u0e7f', // Thai
   '\\u3040-\\u30ff', // Hiragana + Katakana
