@@ -26,9 +26,10 @@ export const useChatTitleMenu = ({ chatId, chatTitle }: Options) => {
 
   const menuTitle = chatLabel({ id: chatId, title: chatTitle });
 
-  const { rename, exportChat, confirmDelete, ConfirmElement } = useChatActions({
-    onDeleted: () => router.replace('/'),
-  });
+  const { rename, exportChat, confirmDelete, deleteConfirmed, ConfirmElement } =
+    useChatActions({
+      onDeleted: () => router.replace('/'),
+    });
 
   const handleRenameSubmit = useCallback(
     async (newTitle: string) => {
@@ -76,7 +77,7 @@ export const useChatTitleMenu = ({ chatId, chatTitle }: Options) => {
           title={menuTitle}
           onRename={() => setRenameVisible(true)}
           onExport={handleExport}
-          onDelete={handleDelete}
+          onDelete={() => deleteConfirmed(chatId)}
         />
       )}
       {ConfirmElement}

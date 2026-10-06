@@ -41,15 +41,8 @@ export const useChatActions = ({ onDeleted }: Options = {}) => {
     [db]
   );
 
-  const confirmDelete = useCallback(
+  const deleteConfirmed = useCallback(
     async (chatId: number) => {
-      const confirmed = await confirm({
-        title: 'Delete Chat',
-        message: 'Are you sure you want to delete this chat?',
-        confirmLabel: 'Delete',
-      });
-      if (!confirmed) return;
-
       try {
         await deleteChat(chatId, vectorStore ?? undefined);
         onDeleted?.(chatId);
@@ -58,8 +51,21 @@ export const useChatActions = ({ onDeleted }: Options = {}) => {
         Alert.alert('Error', 'Failed to delete chat. Please try again.');
       }
     },
-    [confirm, deleteChat, vectorStore, onDeleted]
+    [deleteChat, vectorStore, onDeleted]
   );
 
-  return { rename, exportChat, confirmDelete, ConfirmElement };
+  const confirmDelete = useCallback(
+    async (chatId: number) => {
+      const confirmed = await confirm({
+        title: 'Delete Chat',
+        message: 'Are you sure you want to delete this chat?',
+        confirmLabel: 'Delete',
+      });
+      if (!confirmed) return;
+      await deleteConfirmed(chatId);
+    },
+    [confirm, deleteConfirmed]
+  );
+
+  return { rename, exportChat, confirmDelete, deleteConfirmed, ConfirmElement };
 };
