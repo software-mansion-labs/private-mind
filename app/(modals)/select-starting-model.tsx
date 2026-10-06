@@ -15,6 +15,7 @@ import { getModelsByNames, Model } from '../../database/modelRepository';
 import { Theme } from '../../styles/colors';
 import { getStartingModels } from '../../constants/default-models';
 import { getDeviceMemoryGB } from '../../utils/modelCompatibility';
+import { keepStartingModelChoice } from '../../utils/startingModelChoice';
 
 function SelectStartingModelScreen() {
   const router = useRouter();
@@ -37,8 +38,10 @@ function SelectStartingModelScreen() {
   }, [db, suggestedStartingModelNames]);
 
   useEffect(() => {
-    if (downloadedModels.length > 0) setSelectedModel(downloadedModels[0]);
-  }, [downloadedModels]);
+    setSelectedModel((current) =>
+      keepStartingModelChoice(current, downloadedModels, startingModels)
+    );
+  }, [downloadedModels, startingModels]);
 
   const isContinuingRef = useRef(false);
   const handleContinue = async () => {
