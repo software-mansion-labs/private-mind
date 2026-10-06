@@ -2,19 +2,13 @@ import { renderHook, act, waitFor } from '@testing-library/react-native';
 import useBenchmarkRunner from '../hooks/useBenchmarkRunner';
 import { useLLMStore, type LLMStore } from '../store/llmStore';
 import * as benchmarkRepository from '../database/benchmarkRepository';
+import Toast from 'react-native-toast-message';
 
 jest.mock('../store/llmStore', () => ({ useLLMStore: jest.fn() }));
 jest.mock('expo-sqlite', () => ({ useSQLiteContext: jest.fn(() => ({})) }));
 jest.mock('../database/benchmarkRepository');
 
 const mockUseLLMStore = useLLMStore as unknown as jest.Mock;
-
-const setLLMStore = (state: Partial<LLMStore>) =>
-  mockUseLLMStore.mockImplementation(
-    (selector?: (s: Partial<LLMStore>) => unknown) =>
-      selector ? selector(state) : state
-  );
-const mockInsertBenchmark = benchmarkRepository.insertBenchmark as jest.Mock;
 
 const baseModel = {
   id: 1,
@@ -27,6 +21,21 @@ const baseModel = {
   thinking: false,
   featured: false,
 };
+
+const setLLMStore = (overrides: Partial<LLMStore>) => {
+  const state: Partial<LLMStore> = {
+    model: baseModel,
+    isBenchmarking: false,
+    ...overrides,
+  };
+  (mockUseLLMStore as unknown as { getState: () => unknown }).getState = () =>
+    state;
+  mockUseLLMStore.mockImplementation(
+    (selector?: (s: Partial<LLMStore>) => unknown) =>
+      selector ? selector(state) : state
+  );
+};
+const mockInsertBenchmark = benchmarkRepository.insertBenchmark as jest.Mock;
 
 const perfResult = {
   totalTime: 3000,
@@ -344,5 +353,133 @@ describe('cancelBenchmark', () => {
     });
 
     expect(runBenchmark.mock.calls.length).toBeLessThan(3);
+  });
+});
+
+describe('a benchmark that cannot measure anything', () => {
+  it('closes and says so when the chosen model did not load, instead of timing another model', async () => {
+    const runBenchmark = jest.fn().mockResolvedValue(perfResult);
+    setLLMStore({
+      model: { ...baseModel, id: 7, modelName: 'Previously loaded' },
+      runBenchmark,
+      loadModel: jest.fn().mockResolvedValue(undefined),
+      interrupt: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
+    await act(async () => {
+      await result.current.startBenchmark(baseModel);
+    });
+
+    expect(runBenchmark).not.toHaveBeenCalled();
+    expect(mockInsertBenchmark).not.toHaveBeenCalled();
+    expect(result.current.isRunning).toBe(false);
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: expect.stringContaining("Test LLM couldn't be loaded"),
+      })
+    );
+  });
+
+  it('closes and says so when every run came back empty, instead of hanging on the progress modal', async () => {
+    setLLMStore({
+      runBenchmark: jest.fn().mockResolvedValue(undefined),
+      loadModel: jest.fn().mockResolvedValue(undefined),
+      interrupt: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
+    await act(async () => {
+      await result.current.startBenchmark(baseModel);
+    });
+
+    expect(mockInsertBenchmark).not.toHaveBeenCalled();
+    expect(result.current.isRunning).toBe(false);
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: expect.stringContaining("The benchmark didn't run"),
+      })
+    );
+  });
+});
+
+describe('a cancelled run', () => {
+  it('stays stopped when a new run starts before it noticed the cancel', async () => {
+    let finishLoad!: () => void;
+    const loadModel = jest
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishLoad = resolve;
+          })
+      )
+      .mockResolvedValue(undefined);
+    const runBenchmark = jest.fn().mockResolvedValue(perfResult);
+    setLLMStore({ loadModel, runBenchmark, interrupt: jest.fn() });
+
+    const { result } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
+
+    let firstRun!: Promise<void>;
+    act(() => {
+      firstRun = result.current.startBenchmark(baseModel);
+    });
+    act(() => {
+      result.current.cancelBenchmark();
+    });
+    await act(async () => {
+      await result.current.startBenchmark(baseModel);
+    });
+    const callsByNewRun = runBenchmark.mock.calls.length;
+
+    await act(async () => {
+      finishLoad();
+      await firstRun;
+    });
+
+    expect(runBenchmark).toHaveBeenCalledTimes(callsByNewRun);
+    expect(mockInsertBenchmark).toHaveBeenCalledTimes(1);
+  });
+
+  it('is interrupted when the screen goes away mid-run', () => {
+    const interrupt = jest.fn();
+    setLLMStore({
+      isBenchmarking: true,
+      runBenchmark: jest.fn(() => new Promise(() => {})),
+      loadModel: jest.fn().mockResolvedValue(undefined),
+      interrupt,
+    });
+
+    const { result, unmount } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
+    act(() => {
+      result.current.startBenchmark(baseModel);
+    });
+    unmount();
+
+    expect(interrupt).toHaveBeenCalled();
+  });
+
+  it('leaves a chat generation alone when the screen goes away with no benchmark running', () => {
+    const interrupt = jest.fn();
+    setLLMStore({
+      runBenchmark: jest.fn(),
+      loadModel: jest.fn(),
+      interrupt,
+    });
+
+    const { unmount } = renderHook(() =>
+      useBenchmarkRunner({ onComplete: jest.fn() })
+    );
+    unmount();
+
+    expect(interrupt).not.toHaveBeenCalled();
   });
 });
