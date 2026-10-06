@@ -1193,6 +1193,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
     if (isRetry) await clearTurnStopMark();
 
+    if (!isRetry) {
+      await persistUserMessage().catch((error) =>
+        console.error('Failed to save the message before the model', error)
+      );
+    }
+
     await endsWhenStopped(
       Promise.all([modelLoadChain, utilityChain]),
       abortController.signal
