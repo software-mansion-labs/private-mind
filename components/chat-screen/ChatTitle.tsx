@@ -74,6 +74,8 @@ const ChatTitle = ({
       onPress={onPress}
       disabled={!onPress}
       hitSlop={8}
+      accessibilityRole={onPress ? 'button' : 'header'}
+      accessibilityHint={onPress ? 'Opens chat options' : undefined}
       accessibilityLabel={title ? `${shownTitle}, ${modelName}` : modelName}
       style={({ pressed }) => [
         styles.titleContainer,

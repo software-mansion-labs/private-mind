@@ -5,6 +5,7 @@ import { SvgComponent } from '../utils/SvgComponent';
 
 interface Props {
   icon: SvgComponent;
+  accessibilityLabel: string;
   size?: number;
   backgroundColor: string;
   color: string;
@@ -17,6 +18,7 @@ interface Props {
 
 const CircleButton = ({
   icon: Icon,
+  accessibilityLabel,
   size = 20,
   backgroundColor,
   color,
@@ -36,13 +38,15 @@ const CircleButton = ({
       onPress={disabled ? undefined : onPress}
       style={[styles.circle, (disabled || dimmed) && styles.dimmed]}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled, busy }}
       testID={testID}
     >
       {busy ? (
         <ActivityIndicator size="small" color={color} />
       ) : (
-        <Icon width={size} height={size} color={color} />
+        <Icon width={size} height={size} color={color} accessible={false} />
       )}
     </TouchableOpacity>
   );

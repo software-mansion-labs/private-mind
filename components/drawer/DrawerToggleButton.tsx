@@ -29,6 +29,8 @@ const DrawerToggleButton = () => {
       onPress={handlePress}
       style={styles.button}
       hitSlop={15}
+      accessibilityRole="button"
+      accessibilityLabel="Open menu"
       testID="drawer-toggle"
     >
       <HeaderActionIcon

@@ -14,6 +14,7 @@ const renderButton = (props = {}) =>
   render(
     <CircleButton
       icon={Icon}
+      accessibilityLabel="Attach file"
       backgroundColor="#000"
       color="#fff"
       testID="btn"
@@ -59,5 +60,17 @@ describe('CircleButton', () => {
     expect(screen.UNSAFE_queryByType(Icon)).toBeNull();
     fireEvent.press(screen.getByTestId('btn'));
     expect(onPress).toHaveBeenCalled();
+  });
+
+  it('is announced as a button named after what it does', () => {
+    renderButton();
+    expect(screen.getByRole('button', { name: 'Attach file' })).toBeTruthy();
+  });
+
+  it('is announced under the label it was given, not a generic one', () => {
+    renderButton({ accessibilityLabel: 'Cancel download' });
+    expect(
+      screen.getByRole('button', { name: 'Cancel download' })
+    ).toBeTruthy();
   });
 });

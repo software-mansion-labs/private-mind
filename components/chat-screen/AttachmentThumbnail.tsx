@@ -110,9 +110,19 @@ const AttachmentThumbnail = ({ attachment, onRemove }: Props) => {
       <TouchableOpacity
         style={styles.dismissButton}
         onPress={onRemove}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel={
+          attachment.name ? `Remove ${attachment.name}` : 'Remove attachment'
+        }
         testID={`attachment-dismiss-${attachment.id}`}
       >
-        <CloseIcon width={8} height={8} style={styles.dismissIcon} />
+        <CloseIcon
+          width={8}
+          height={8}
+          style={styles.dismissIcon}
+          accessible={false}
+        />
       </TouchableOpacity>
     </View>
   );

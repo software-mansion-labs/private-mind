@@ -285,6 +285,7 @@ const ChatSpeechInput: React.FC<Props> = ({
       <View style={styles.actionRow}>
         <CircleButton
           icon={TrashIcon}
+          accessibilityLabel="Cancel recording"
           onPress={handleCancel}
           size={20}
           color={theme.text.contrastPrimary}
@@ -301,6 +302,7 @@ const ChatSpeechInput: React.FC<Props> = ({
         >
           <CircleButton
             icon={SendIcon}
+            accessibilityLabel="Send recording"
             onPress={handleSend}
             busy={sending}
             disabled={sending}

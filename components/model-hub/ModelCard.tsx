@@ -193,6 +193,7 @@ const ModelCard = ({
             backgroundColor={theme.bg.errorSecondary}
             color={theme.text.primary}
             icon={CloseIcon}
+            accessibilityLabel="Cancel download"
             size={13.33}
           />
         )}
@@ -207,6 +208,7 @@ const ModelCard = ({
               !isCompatible ? theme.text.defaultTertiary : theme.text.primary
             }
             icon={DownloadIcon}
+            accessibilityLabel="Download model"
             size={15}
             disabled={!isCompatible}
           />
@@ -220,6 +222,7 @@ const ModelCard = ({
               backgroundColor={theme.bg.errorPrimary}
               color={theme.text.contrastPrimary}
               icon={TrashIcon}
+              accessibilityLabel="Delete model files"
               size={16}
             />
           )}

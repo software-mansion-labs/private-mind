@@ -14,6 +14,12 @@ import { Theme } from '../../styles/colors';
 
 export type ComposerAction = 'speech' | 'send' | 'stop';
 
+const ACTION_LABELS: Record<ComposerAction, string> = {
+  speech: 'Dictate message',
+  send: 'Send message',
+  stop: 'Stop generating',
+};
+
 export const MORPH_IN_MS = 170;
 export const MORPH_OUT_MS = 110;
 const RESTING_SCALE = 0.55;
@@ -91,6 +97,8 @@ const ComposerActionButton = ({
         (disabled || dimmed || pressed) && styles.dimmed,
       ]}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={ACTION_LABELS[action]}
       accessibilityState={{ disabled, busy }}
       testID={testID}
     >
@@ -101,7 +109,12 @@ const ComposerActionButton = ({
       {busy ? (
         <ActivityIndicator size="small" color={theme.text.contrastPrimary} />
       ) : (
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <View
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+          accessible={false}
+          importantForAccessibility="no-hide-descendants"
+        >
           <Reanimated.View style={[styles.iconLayer, speechStyle]}>
             <SoundwaveIcon
               width={20}

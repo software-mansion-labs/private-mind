@@ -49,9 +49,17 @@ const ChatBarToggle = ({
         !enabled && styles.off,
         pressed && styles.pressed,
       ]}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: enabled, disabled }}
       testID={testID}
     >
-      <Icon style={{ color: theme.text.onChatBar }} width={20} height={20} />
+      <Icon
+        style={{ color: theme.text.onChatBar }}
+        width={20}
+        height={20}
+        accessible={false}
+      />
       <Text style={styles.toggleText}>{label}</Text>
     </Pressable>
   );

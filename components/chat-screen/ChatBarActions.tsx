@@ -136,6 +136,7 @@ const ChatBarActions = ({
         {action === 'send' && hasAttachments && !userInput && !sendPending && (
           <CircleButton
             icon={SoundwaveIcon}
+            accessibilityLabel="Dictate message"
             onPress={onSpeechInput}
             backgroundColor="transparent"
             color={theme.text.onChatBar}
@@ -163,6 +164,7 @@ const ChatBarActions = ({
           <Animated.View style={plusStyle}>
             <CircleButton
               icon={PlusIcon}
+              accessibilityLabel="Attach file"
               size={14}
               onPress={handleAttach}
               backgroundColor={theme.bg.attachButton}
