@@ -202,3 +202,48 @@ describe('syncBuiltInModelPaths', () => {
     expect(runAsync).not.toHaveBeenCalled();
   });
 });
+
+describe('built-in model paths', () => {
+  const catalogModel = DEFAULT_MODELS[0];
+  const storedRow = (isDownloaded: number) => ({
+    id: 1,
+    modelName: catalogModel.modelName,
+    source: 'built-in',
+    isDownloaded,
+    modelPath: 'https://example.com/v1/model.pte',
+    tokenizerPath: 'https://example.com/v1/tokenizer.json',
+    tokenizerConfigPath: 'https://example.com/v1/tokenizer_config.json',
+    featured: 0,
+    thinking: 0,
+    vision: 0,
+    labels: null,
+    parameters: null,
+    modelSize: null,
+  });
+
+  it('keeps the URLs a downloaded model was fetched from, since they name its files on disk', async () => {
+    const mockDb: ModelReader = {
+      getAllAsync: jest.fn().mockResolvedValue([storedRow(1)]),
+    };
+
+    const [model] = await getAllModels(mockDb);
+
+    expect(model.modelPath).toBe('https://example.com/v1/model.pte');
+    expect(model.tokenizerPath).toBe('https://example.com/v1/tokenizer.json');
+    expect(model.tokenizerConfigPath).toBe(
+      'https://example.com/v1/tokenizer_config.json'
+    );
+  });
+
+  it('points a model that is not downloaded at the current catalog URLs', async () => {
+    const mockDb: ModelReader = {
+      getAllAsync: jest.fn().mockResolvedValue([storedRow(0)]),
+    };
+
+    const [model] = await getAllModels(mockDb);
+
+    expect(model.modelPath).toBe(catalogModel.modelPath);
+    expect(model.tokenizerPath).toBe(catalogModel.tokenizerPath);
+    expect(model.tokenizerConfigPath).toBe(catalogModel.tokenizerConfigPath);
+  });
+});
