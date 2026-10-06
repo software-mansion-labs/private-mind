@@ -34,6 +34,7 @@ import {
   hasPeriodMatchedChangeData,
 } from './web/figureGrounding';
 import { selectRelevantContent } from './web/webResultsToContext';
+import { stripThinkBlocks } from './thinking';
 
 const CONTEXT_CLOSE_TAG_RESERVE_CHARS = 64;
 
@@ -706,10 +707,16 @@ export const prepareMessagesForLLM = (
   }
   systemPrompt += getDateInstruction(sourceDocuments, question);
 
-  const nonEventMessages = activeChatMessages.filter(
-    (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
-      msg.role !== 'event' && !isAbandonedQuestion(msg)
-  );
+  const nonEventMessages = activeChatMessages
+    .filter(
+      (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
+        msg.role !== 'event' && !isAbandonedQuestion(msg)
+    )
+    .map((msg) =>
+      msg.role === 'assistant'
+        ? { ...msg, content: stripThinkBlocks(msg.content) }
+        : msg
+    );
   const lastNonEventMessage = nonEventMessages.at(-1);
   const messagesForLLM =
     lastNonEventMessage?.role === 'assistant' &&
