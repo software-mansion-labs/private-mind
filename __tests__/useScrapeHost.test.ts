@@ -70,6 +70,17 @@ describe('useScrapeHost', () => {
     expect(useWebSearchStore.getState().challengeActive).toBe(true);
   });
 
+  it('takes the challenge screen down when the search it belonged to is stopped or times out', () => {
+    useWebSearchStore.getState().updateChallengePolicy('reveal');
+    const { result } = renderHook(() => useScrapeHost());
+    act(() => registeredHost().onChallenge());
+
+    act(() => registeredHost().reset());
+
+    expect(result.current.revealed).toBe(false);
+    expect(useWebSearchStore.getState().challengeActive).toBe(false);
+  });
+
   it('skips the blocked engine on a challenge when the policy is skip, without revealing', () => {
     useWebSearchStore.getState().updateChallengePolicy('skip');
     const { result } = renderHook(() => useScrapeHost());

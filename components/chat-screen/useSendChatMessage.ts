@@ -227,6 +227,7 @@ export const useSendChatMessage = ({
       let webSubQueries: string[] | undefined;
       let webWeak: boolean | undefined;
       let webSearchFailed: boolean | undefined;
+      let webSearchOffline = false;
       const hasRagSources =
         enabledSources.length > 0 || attachmentSourceIds.length > 0;
       if (vectorStore && hasRagSources) {
@@ -329,8 +330,10 @@ export const useSendChatMessage = ({
             isOnline: isDeviceOnline,
             generate: (messages) =>
               useLLMStore.getState().generateUtility(messages),
-            onProgress: (event) =>
-              useWebSearchStore.getState().pushWebSearchEvent(event),
+            onProgress: (event) => {
+              if (signal?.aborted) return;
+              useWebSearchStore.getState().pushWebSearchEvent(event);
+            },
           });
           context = [...context, ...webContext];
           sourceDocuments = [...sourceDocuments, ...webSources];
@@ -341,7 +344,9 @@ export const useSendChatMessage = ({
             webWeak = webTelemetry.finalLabel === 'incorrect';
           } else {
             webSearchFailed =
-              webTelemetry.needsSearch && !webTelemetry.skippedReason;
+              webTelemetry.needsSearch &&
+              webTelemetry.skippedReason !== 'gated';
+            webSearchOffline = webTelemetry.skippedReason === 'offline';
           }
           if (WEB_BENCH_LOGS) {
             console.log(
@@ -356,14 +361,17 @@ export const useSendChatMessage = ({
           console.warn('Web search failed', error);
           webSearchFailed = true;
         } finally {
-          useWebSearchStore.getState().setSearchingWeb(false);
+          if (!signal?.aborted) {
+            useWebSearchStore.getState().setSearchingWeb(false);
+          }
           webViewScrapeProvider.releaseHost();
         }
         if (webSearchFailed && !signal?.aborted) {
           Toast.show({
             type: 'defaultToast',
-            text1:
-              'Couldn’t find anything useful online — answering without the web.',
+            text1: webSearchOffline
+              ? 'You’re offline — answering without the web.'
+              : 'Couldn’t find anything useful online — answering without the web.',
           });
         }
       }
