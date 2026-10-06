@@ -1,4 +1,5 @@
 import {
+  answerLanguageAnchor,
   focusedRetrySystemPrompt,
   prepareMessagesForLLM,
 } from '../utils/promptUtils';
@@ -16,6 +17,7 @@ import {
   getPromptCharBudget,
   getPromptTokenBudget,
 } from '../constants/context-window';
+import { ECHOED_LANGUAGE_ANCHOR } from '../utils/normalizeModelText';
 
 const baseSettings = {
   systemPrompt: 'You are a helpful assistant.',
@@ -3238,5 +3240,18 @@ describe('questions whose answer is a set of options or a measured value', () =>
     expect(groundedPromptFor('Ile kosztuje kulig w Zakopanem?')).not.toContain(
       'together with its unit'
     );
+  });
+});
+
+describe('the language anchor added to a question', () => {
+  it('is recognised when the model repeats it, whichever language it names', () => {
+    for (const language of [
+      null,
+      { code: 'ur', name: 'Urdu' },
+      { code: 'pl', name: 'Polish' },
+    ]) {
+      const echoed = `A reply.${answerLanguageAnchor(language)}`;
+      expect(echoed.replace(ECHOED_LANGUAGE_ANCHOR, '')).toBe('A reply.');
+    }
   });
 });
