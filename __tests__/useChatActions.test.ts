@@ -197,3 +197,30 @@ describe('confirmDelete', () => {
     expect(alertSpy).toHaveBeenLastCalledWith('Error', expect.any(String));
   });
 });
+
+describe('deleting the chat whose answer is still being written', () => {
+  it('keeps the chat and says to wait, instead of leaving the turn writing into a deleted chat', async () => {
+    const { useLLMStore } = jest.requireActual('../store/llmStore');
+    useLLMStore.setState({
+      isGenerating: true,
+      isProcessingPrompt: false,
+      generatingForChatId: 4,
+    });
+    const { result } = renderHook(() => useChatActions());
+
+    try {
+      await act(async () => {
+        await result.current.confirmDelete(4);
+      });
+
+      expect(mockDeleteChat).not.toHaveBeenCalled();
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text1: 'Wait for the response to finish or stop it first.',
+        })
+      );
+    } finally {
+      useLLMStore.setState({ isGenerating: false, generatingForChatId: null });
+    }
+  });
+});

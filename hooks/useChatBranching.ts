@@ -10,6 +10,10 @@ import {
 } from '../database/chatRepository';
 import { useChatStore } from '../store/chatStore';
 import { useLLMStore } from '../store/llmStore';
+import {
+  isTurnInFlightFor,
+  showTurnInFlightNotice,
+} from '../utils/turnInFlightNotice';
 import { CHAT_ENTRY_ANIMATION } from '../constants/chat-route-params';
 
 type UseChatBranchingOptions = {
@@ -98,6 +102,10 @@ export default function useChatBranching({
 
   const handleBranchMarkerPress = useCallback(
     async (marker: ChatBranchMarker) => {
+      if (isTurnInFlightFor(chatId)) {
+        showTurnInFlightNotice();
+        return;
+      }
       if (!getChatById(marker.sourceChatId)) {
         Toast.show({
           type: 'defaultToast',
@@ -109,7 +117,7 @@ export default function useChatBranching({
       await setActiveChatId(marker.sourceChatId);
       router.push({ pathname: `/chat/${marker.sourceChatId}` });
     },
-    [getChatById, setActiveChatId]
+    [chatId, getChatById, setActiveChatId]
   );
 
   return {
