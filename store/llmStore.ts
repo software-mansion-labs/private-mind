@@ -534,6 +534,10 @@ const loadModelInstance = async (
     console.error('Error loading model:', e);
     unloadLLM();
     set({ isLoading: false, model: null });
+    Toast.show({
+      type: 'defaultToast',
+      text1: `Couldn't load ${model.modelName}. Its files may be missing or unreadable.`,
+    });
   }
 };
 

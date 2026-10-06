@@ -1,3 +1,4 @@
+import Toast from 'react-native-toast-message';
 import {
   BACKGROUND_RELEASE_DELAY_MS,
   MODEL_WARMUP_TIMEOUT_MS,
@@ -203,6 +204,16 @@ describe('loadModel', () => {
     await useLLMStore.getState().loadModel(baseModel);
     expect(useLLMStore.getState().isLoading).toBe(false);
     expect(useLLMStore.getState().model).toBeNull();
+  });
+
+  it('tells the user the model could not be loaded instead of falling back in silence', async () => {
+    mockLLMModule.fromModelName.mockRejectedValue(new Error('load failed'));
+    await useLLMStore.getState().loadModel(baseModel);
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: expect.stringContaining(`Couldn't load ${baseModel.modelName}`),
+      })
+    );
   });
 
   it('serializes duplicate load requests for the same model', async () => {
