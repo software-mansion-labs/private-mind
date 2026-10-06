@@ -1491,6 +1491,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         let retryGeneration: Awaited<ReturnType<typeof generateLLMResponse>>;
         try {
           retryGeneration = await generateLLMResponse(messages, get);
+        } catch (error) {
+          console.warn(
+            `${reason}; the retry failed, kept the first answer`,
+            error
+          );
+          answerRetries.push({ reason, raw: null, accepted: false });
+          return;
         } finally {
           suppressUtilityStreaming = false;
         }
@@ -1676,7 +1683,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             { role: 'user', content: continuationPrompt },
           ],
           get
-        );
+        ).catch((error) => {
+          console.warn(
+            'Dangling list continuation failed, kept the first answer',
+            error
+          );
+          return NO_LLM_RESPONSE;
+        });
         const continuationResponse = continuationGeneration.response
           ? truncateAtRepeatedClause(
               normalizeModelText(continuationGeneration.response)

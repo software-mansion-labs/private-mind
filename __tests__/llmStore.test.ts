@@ -1374,6 +1374,27 @@ describe('sendChatMessage', () => {
     );
   });
 
+  it('keeps the first answer instead of failing the turn when the continuation nudge throws, e.g. on a prompt past the context window', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Oto co warto zabrać:')
+      .mockRejectedValueOnce(new Error('prompt exceeds the context window'))
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Oto co warto zabrać:'
+    );
+  });
+
   it('anchors the continuation nudge to the conversation language and continues from the dangling text', async () => {
     mockInstance.generate
       .mockResolvedValueOnce('Oto co warto zabrać:')
@@ -1905,6 +1926,10 @@ describe('sendChatMessage', () => {
 
     expect(useLLMStore.getState().isRefining).toBe(false);
     expect(useLLMStore.getState().isGenerating).toBe(false);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.'
+    );
   });
 
   it('keeps the first answer when the coverage retry still skips the aspect', async () => {
