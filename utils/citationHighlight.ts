@@ -61,18 +61,54 @@ const matchTermInSentence = (
   return words.some((word) => word.startsWith(prefix)) ? 'stem' : 'none';
 };
 
+const FIGURE = /\d+(?:[.,:]\d+)*/g;
+
+const figuresOf = (text: string): RegExp[] =>
+  [...new Set(text.match(FIGURE) ?? [])].map(
+    (figure) =>
+      new RegExp(`(?<![\\d.,:])${figure.replace(/[.]/g, '\\.')}(?![\\d])`)
+  );
+
+const termsOf = (text: string): Set<string> =>
+  text.trim()
+    ? extractQueryTerms(text, detectQuestionLanguage(text)?.code)
+    : new Set();
+
 export const findCitedSpan = (
   passage: string | undefined,
-  query: string
+  query: string,
+  answer = ''
 ): CitationSpan | null => {
-  if (!passage?.trim() || !query.trim()) return null;
+  if (!passage?.trim()) return null;
 
-  const terms = extractQueryTerms(query, detectQuestionLanguage(query)?.code);
-  if (terms.size === 0) return null;
+  const terms = new Set([...termsOf(query), ...termsOf(answer)]);
+  const figures = figuresOf(answer);
+  if (terms.size === 0 && figures.length === 0) return null;
 
   const sentences = splitSentences(passage);
   if (sentences.length === 0) return null;
 
+  const evidence = sentences.filter((sentence) => !isHeading(sentence.text));
+  return (
+    bestSentence(evidence, terms, figures) ??
+    bestSentence(sentences, terms, figures)
+  );
+};
+
+const HEADING_MAX_CHARS = 40;
+const LIST_OR_SECTION_NUMBER = /^[\s\d.)#*_-]*/;
+
+const isHeading = (text: string): boolean => {
+  const words = text.replace(LIST_OR_SECTION_NUMBER, '').trim();
+  if (!words || words.length > HEADING_MAX_CHARS) return false;
+  return /\p{Lu}/u.test(words) && words === words.toUpperCase();
+};
+
+const bestSentence = (
+  sentences: Sentence[],
+  terms: Set<string>,
+  figures: RegExp[]
+): CitationSpan | null => {
   let best: CitationSpan | null = null;
   let bestScore = 0;
   let bestExact = 0;
@@ -89,10 +125,19 @@ export const findCitedSpan = (
       score += 1;
       if (match === 'exact') exact += 1;
     }
+    for (const figure of figures) {
+      if (!figure.test(sentence.text)) continue;
+      score += 1;
+      exact += 1;
+    }
     if (score === 0) continue;
 
     const density = score / sentence.text.length;
-    if (score > bestScore || (score === bestScore && density > bestDensity)) {
+    const beatsBest =
+      score > bestScore ||
+      (score === bestScore &&
+        (exact > bestExact || (exact === bestExact && density > bestDensity)));
+    if (beatsBest) {
       best = { start: sentence.start, end: sentence.end };
       bestScore = score;
       bestExact = exact;

@@ -2,7 +2,7 @@ export const CITATION_PATTERN = /(^|[^\w$)\]])\[\d{1,3}\]/g;
 const SENTENCE_CHAR_OR_DECIMAL_POINT = '(?:[^.!?।॥۔؟\\n]|[.!?](?=\\d))';
 const SENTENCE_TERMINATOR = '[.!?।॥۔؟]+(?!\\d)';
 export const CITATION_SENTENCE_PATTERN = new RegExp(
-  `${SENTENCE_CHAR_OR_DECIMAL_POINT}*${SENTENCE_TERMINATOR}|\\n+|${SENTENCE_CHAR_OR_DECIMAL_POINT}+$`,
+  `${SENTENCE_CHAR_OR_DECIMAL_POINT}*${SENTENCE_TERMINATOR}|\\n+|${SENTENCE_CHAR_OR_DECIMAL_POINT}+(?=\\n|$)`,
   'g'
 );
 export const CITATION_STEM_PREFIX_LENGTH = 5;

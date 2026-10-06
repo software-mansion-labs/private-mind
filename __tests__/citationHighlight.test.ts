@@ -49,6 +49,53 @@ describe('findCitedSpan', () => {
     );
   });
 
+  it('highlights the line that answers, not the section heading that names the topic', () => {
+    const passage =
+      '1. OPENING HOURS\n- Monday to Friday: 5:30 AM to 11:00 PM\n- Sunday: 8:00 AM to 6:00 PM (staffed desk closes at 4:00 PM)\n2. MEMBERSHIP PRICES';
+    const span = findCitedSpan(
+      passage,
+      'What are the opening hours on Sunday?'
+    );
+    expect(passage.slice(span!.start, span!.end)).toContain('Sunday: 8:00 AM');
+  });
+
+  it('highlights the line holding the answer when the question words match another line as well (A-100)', () => {
+    const passage =
+      '1. OPENING HOURS\n- Sunday: 8:00 AM to 6:00 PM (staffed desk closes at 4:00 PM)\n3. LOCKER ROOM RULES\n- Cut padlocks are removed after 48 hours.';
+    const span = findCitedSpan(
+      passage,
+      'What are the opening hours on Sunday?',
+      'The opening hours on Sunday are 8:00 AM to 6:00 PM.'
+    );
+    expect(passage.slice(span!.start, span!.end)).toContain('Sunday: 8:00 AM');
+  });
+
+  it('highlights the price the answer gave, not a line that shares the question words', () => {
+    const passage =
+      '- Day pass: 12 USD\n- Monthly pass: 49 USD (auto-renews)\n- Rental lockers cost 8 USD per month.';
+    const span = findCitedSpan(
+      passage,
+      'How much does a rental locker cost per month?',
+      'A rental locker costs 8 USD per month.'
+    );
+    expect(passage.slice(span!.start, span!.end)).toContain('Rental lockers');
+  });
+
+  it('still highlights a heading when nothing else in the passage matches', () => {
+    const passage = 'OPENING HOURS\nAsk at the front desk.';
+    const span = findCitedSpan(passage, 'opening hours');
+    expect(passage.slice(span!.start, span!.end)).toBe('OPENING HOURS');
+  });
+
+  it('can highlight a list line that has no full stop', () => {
+    const passage =
+      'PRICES\n- Day pass: 12 USD\n- Monthly pass: 49 USD\nAll prices include tax.';
+    const span = findCitedSpan(passage, 'How much is the monthly pass?');
+    expect(passage.slice(span!.start, span!.end)).toBe(
+      '- Monthly pass: 49 USD'
+    );
+  });
+
   it('returns the span of the sentence most relevant to the query', () => {
     const passage =
       'The company was founded in 1998. Total revenue reached 2455 PLN last year. Employees enjoy free coffee.';

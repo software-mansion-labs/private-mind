@@ -308,7 +308,8 @@ describe('assistant messages', () => {
 
     expect(onShowSources).toHaveBeenCalledWith(
       [{ documentId: 1, name: 'financial_report.pdf' }],
-      'What was the revenue?'
+      'What was the revenue?',
+      expect.stringContaining('The answer is in the report.')
     );
   });
 

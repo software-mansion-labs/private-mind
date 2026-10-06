@@ -1,6 +1,15 @@
 import { renderHook } from '@testing-library/react-native';
 import { useMessageSources } from '../hooks/useMessageSources';
 import { type SourceDocument } from '../database/chatRepository';
+import { answerOverlapScorer } from '../utils/messageSources';
+
+jest.mock('../utils/messageSources', () => {
+  const actual = jest.requireActual('../utils/messageSources');
+  return {
+    ...actual,
+    answerOverlapScorer: jest.fn(actual.answerOverlapScorer),
+  };
+});
 
 const doc = (over: Partial<SourceDocument> = {}): SourceDocument => ({
   name: 'Doc',
@@ -11,6 +20,22 @@ const render = (sources?: SourceDocument[]) =>
   renderHook(() => useMessageSources(sources)).result.current;
 
 describe('useMessageSources', () => {
+  it('does not read a streaming answer while no document is listed twice', () => {
+    (answerOverlapScorer as jest.Mock).mockClear();
+    const sources = [
+      doc({ documentId: 1, name: 'A', passage: 'one' }),
+      doc({ kind: 'web', url: 'https://a.com', name: 'a.com' }),
+    ];
+    const { rerender } = renderHook(
+      ({ answer }: { answer: string }) => useMessageSources(sources, answer),
+      { initialProps: { answer: 'The answer' } }
+    );
+    rerender({ answer: 'The answer grows' });
+    rerender({ answer: 'The answer grows longer' });
+
+    expect(answerOverlapScorer).not.toHaveBeenCalled();
+  });
+
   it('returns everything empty when there are no sources', () => {
     const r = render(undefined);
     expect(r.displayedSources).toEqual([]);
@@ -27,6 +52,30 @@ describe('useMessageSources', () => {
     ]);
     expect(r.displayedSources).toHaveLength(2);
     expect(r.hasSources).toBe(true);
+  });
+
+  it('shows the passage of a document that answered, not the first one retrieved (A-71)', () => {
+    const lockers = doc({
+      documentId: 7,
+      name: 'iron_oak_rules.txt',
+      passage:
+        'LOCKER ROOM RULES\n- Rental lockers cost 8 USD per month.\n- Cut padlocks are removed after 48 hours.',
+    });
+    const prices = doc({
+      documentId: 7,
+      name: 'iron_oak_rules.txt',
+      passage:
+        'MEMBERSHIP PRICES\n- Day pass: 12 USD\n- Monthly pass: 49 USD (auto-renews)\n- Annual pass: 480 USD',
+    });
+
+    const { result } = renderHook(() =>
+      useMessageSources(
+        [lockers, prices],
+        'The amount for a monthly pass is 49 USD.'
+      )
+    );
+
+    expect(result.current.documentSources).toEqual([prices]);
   });
 
   it('splits web results from document sources', () => {
