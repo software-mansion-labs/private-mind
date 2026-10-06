@@ -63,7 +63,27 @@ describe('updateLastUsed', () => {
   });
 });
 
+jest.mock('../utils/persistImage', () => ({
+  removeImagesNoMessageUses: jest.fn(),
+}));
+
 describe('deleteChat', () => {
+  it('removes the photos no remaining message shows', async () => {
+    const { removeImagesNoMessageUses } = jest.requireMock(
+      '../utils/persistImage'
+    );
+    (chatRepository.deleteChat as jest.Mock).mockResolvedValue(undefined);
+    (chatRepository.getImagePathsInUse as jest.Mock).mockResolvedValue([
+      'file:///documents/chat-images/img-1-kept.jpg',
+    ]);
+
+    await useChatStore.getState().deleteChat(1);
+
+    expect(removeImagesNoMessageUses).toHaveBeenCalledWith([
+      'file:///documents/chat-images/img-1-kept.jpg',
+    ]);
+  });
+
   it('removes the chat from state', async () => {
     (chatRepository.deleteChat as jest.Mock).mockResolvedValue(undefined);
     useChatStore.setState({ chats: [mockChat(1), mockChat(2)] });

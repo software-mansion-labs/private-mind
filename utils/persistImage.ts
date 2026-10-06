@@ -28,3 +28,24 @@ function extractExtension(uri: string): string {
   }
   return lastSegment.slice(dotIndex).toLowerCase();
 }
+
+const SAVED_IMAGE_NAME = /^img-(\d+)-/;
+const IMAGE_BEING_SENT_MS = 60_000;
+
+const fileNameOf = (uri: string) => uri.split('/').pop() ?? '';
+
+export function removeImagesNoMessageUses(
+  pathsInUse: string[],
+  now = Date.now()
+): void {
+  const dir = new Directory(Paths.document, CHAT_IMAGES_DIR);
+  if (!dir.exists) return;
+  const namesInUse = new Set(pathsInUse.map(fileNameOf));
+  for (const entry of dir.list()) {
+    const name = fileNameOf(entry.uri);
+    const savedAt = SAVED_IMAGE_NAME.exec(name)?.[1];
+    if (savedAt === undefined || namesInUse.has(name)) continue;
+    if (now - Number(savedAt) < IMAGE_BEING_SENT_MS) continue;
+    entry.delete();
+  }
+}

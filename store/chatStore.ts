@@ -8,6 +8,7 @@ import {
   createChat,
   renameChat,
   deleteChat,
+  getImagePathsInUse,
   setChatModel,
   ChatSettings,
   getChatSettings,
@@ -19,6 +20,7 @@ import {
   clearPhantomChat,
 } from '../database/sourcesRepository';
 import { noteChatCreated } from '../utils/reviewPrompt';
+import { removeImagesNoMessageUses } from '../utils/persistImage';
 import { useWebSearchStore } from './webSearchStore';
 
 interface ChatStore {
@@ -216,6 +218,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set((state) => ({
       chats: state.chats.filter((chat) => chat.id !== id),
     }));
+
+    try {
+      removeImagesNoMessageUses(await getImagePathsInUse(db));
+    } catch (error) {
+      console.error('Failed to remove photos of a deleted chat', error);
+    }
 
     if (vectorStore) {
       // Lazy import to avoid circular dependency / transitive ESM issues in tests

@@ -536,6 +536,15 @@ export const deleteChat = async (
   await db.runAsync(`DELETE FROM chats WHERE id = ?;`, [chatId]);
 };
 
+export const getImagePathsInUse = async (
+  db: SQLiteDatabase
+): Promise<string[]> => {
+  const rows = await db.getAllAsync<{ imagePath: string }>(
+    `SELECT DISTINCT imagePath FROM messages WHERE imagePath IS NOT NULL`
+  );
+  return rows.map((row) => row.imagePath);
+};
+
 const thinkingEnabledFromDb = (value: number | null): boolean | undefined => {
   if (value === 1) return true;
   if (value === 0) return false;
