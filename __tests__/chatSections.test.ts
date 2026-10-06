@@ -86,6 +86,48 @@ describe('buildChatSections', () => {
     expect(sections).toEqual([['Today', [untitled]]]);
   });
 
+  it('finds a title with accents from a query typed without them', () => {
+    const polish = makeChat({
+      id: 7,
+      title: 'Wyjaśnij fotosyntezę. Łódź',
+      lastUsed: NOW - HOUR,
+    });
+    const german = makeChat({
+      id: 8,
+      title: 'Übersicht für Köln',
+      lastUsed: NOW - HOUR,
+    });
+
+    expect(buildChatSections([polish, german], 'fotosynteze', NOW)).toEqual([
+      ['Today', [polish]],
+    ]);
+    expect(buildChatSections([polish, german], 'lodz', NOW)).toEqual([
+      ['Today', [polish]],
+    ]);
+    expect(buildChatSections([polish, german], 'koln', NOW)).toEqual([
+      ['Today', [german]],
+    ]);
+  });
+
+  it('still finds an accented title from an accented query', () => {
+    const polish = makeChat({
+      id: 7,
+      title: 'Łódź trip',
+      lastUsed: NOW - HOUR,
+    });
+
+    expect(buildChatSections([polish], 'łódź', NOW)).toEqual([
+      ['Today', [polish]],
+    ]);
+  });
+
+  it('keeps Devanagari vowel signs, so a Hindi query does not match a different word', () => {
+    const kal = makeChat({ id: 9, title: 'कल का मौसम', lastUsed: NOW - HOUR });
+
+    expect(buildChatSections([kal], 'काल', NOW)).toEqual([]);
+    expect(buildChatSections([kal], 'कल', NOW)).toEqual([['Today', [kal]]]);
+  });
+
   it('returns no sections when nothing matches', () => {
     expect(buildChatSections(chats, 'nonexistent', NOW)).toEqual([]);
   });

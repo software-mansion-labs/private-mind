@@ -25,14 +25,24 @@ export type ChatSection = [string, Chat[]];
 export const sortChatsByRecency = (chats: Chat[]): Chat[] =>
   [...chats].sort((a, b) => b.lastUsed - a.lastUsed);
 
+const LATIN_LETTER_WITH_MARKS = /(\p{Script=Latin})\p{M}+/gu;
+
+const searchable = (text: string): string =>
+  text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(LATIN_LETTER_WITH_MARKS, '$1')
+    .replace(/ł/g, 'l');
+
 export const buildChatSections = (
   chats: Chat[],
   query: string,
   now: number
 ): ChatSection[] => {
   const nowDate = new Date(now);
+  const searchedFor = searchable(query);
   const matching = query
-    ? chats.filter((chat) => chatLabel(chat).toLowerCase().includes(query))
+    ? chats.filter((chat) => searchable(chatLabel(chat)).includes(searchedFor))
     : chats;
 
   const sections: Record<string, Chat[]> = {};
