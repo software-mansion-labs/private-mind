@@ -70,7 +70,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       alignItems: 'center',
       gap: 4,
-      height: 36,
+      minHeight: 36,
     },
     toggleText: {
       color: theme.text.onChatBar,

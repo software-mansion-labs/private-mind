@@ -24,6 +24,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
+import { ScrollView } from 'react-native-gesture-handler';
 import EmbeddingDownloadSheet from '../bottomSheets/EmbeddingDownloadSheet';
 import {
   useAttachment,
@@ -585,10 +586,15 @@ const ChatBar = ({
       {model?.isDownloaded && (
         <>
           {!hasMessages && (
-            <View style={styles.suggestionsContainer}>
+            <ScrollView
+              style={styles.suggestionsScroll}
+              contentContainerStyle={styles.suggestionsContainer}
+              alwaysBounceVertical={false}
+              keyboardShouldPersistTaps="handled"
+            >
               <WhatsNewCard />
               <PromptSuggestions onSelectPrompt={onSelectPrompt} />
-            </View>
+            </ScrollView>
           )}
           <View style={styles.inputContainer}>
             <Animated.View
@@ -724,9 +730,14 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'column',
       justifyContent: 'center',
       paddingHorizontal: 16,
+      flexShrink: 1,
+    },
+    suggestionsScroll: {
+      flexGrow: 0,
+      flexShrink: 1,
+      marginBottom: 12,
     },
     suggestionsContainer: {
-      marginBottom: 12,
       gap: 12,
     },
     modelSelection: {
