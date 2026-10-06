@@ -290,10 +290,23 @@ export const isRepetitionFromTheStart = (text: string): boolean => {
   return earliest !== null && earliest.first === 0;
 };
 
+const ORPHANED_LEAD_IN = /^\s*(?:[^\n]*[:：][*_]*|[-*_]{3,})\s*$/u;
+
+const withoutOrphanedLeadIn = (kept: string): string => {
+  const lines = kept.split('\n');
+  while (lines.length > 1 && ORPHANED_LEAD_IN.test(lines.at(-1)!)) {
+    lines.pop();
+    while (lines.length > 1 && !lines.at(-1)!.trim()) lines.pop();
+  }
+  return lines.join('\n').trimEnd();
+};
+
 export const truncateAtRepeatedClause = (text: string): string => {
   const spans = loopSpans(text);
   if (spans.length === 0) return text;
-  const kept = text.slice(0, Math.min(...spans.map((s) => s.repeat))).trimEnd();
+  const kept = withoutOrphanedLeadIn(
+    text.slice(0, Math.min(...spans.map((s) => s.repeat))).trimEnd()
+  );
   if (kept.trim()) return kept;
   return text.trim() ? salvageFirstUnit(text) : kept;
 };

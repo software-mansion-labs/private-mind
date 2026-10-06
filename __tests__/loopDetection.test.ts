@@ -3,6 +3,34 @@ import {
   truncateAtRepeatedClause,
 } from '../utils/loopDetection';
 
+describe('truncateAtRepeatedClause — the line that announced the repeat', () => {
+  const item1 =
+    '۱. **جغرافیہ:** پاکستان جنوبی ایشیا میں واقع ایک ایسا ملک ہے جو ایک خاص جغرافیائی اہمیت رکھتا ہے۔';
+  const item2 =
+    '۲. **تاریخ:** پاکستان کا قیام ایک علیحدہ مسلم ریاست کے طور پر ہوا اور اس کی تاریخ بہت اہم ہے۔';
+  const item3 =
+    '۳. **ثقافت:** پاکستان ایک ایسا ملک ہے جہاں مختلف لسانی اور ثقافتی گروہ ایک ساتھ رہتے ہیں۔';
+  const list = [item1, item2, item3].join('\n\n');
+
+  it('drops a heading that only introduced the list the model started to repeat (iPhone, Urdu)', () => {
+    const looped = `پاکستان کے بارے میں تین اہم باتیں یہ ہیں:\n\n${list}\n\n---\n\n**اردو میں مکمل جواب:**\n\n${list}`;
+
+    const kept = truncateAtRepeatedClause(looped);
+
+    expect(kept.endsWith(item3)).toBe(true);
+    expect(kept).not.toContain('مکمل جواب');
+    expect(kept).not.toContain('---');
+  });
+
+  it('keeps a line that only mentions a colon in passing', () => {
+    expect(
+      truncateAtRepeatedClause(
+        'Time: 10:30 is when it starts and it is fine. Time: 10:30 is when it starts and it is fine. Time: 10:30 is when it starts and it is fine.'
+      )
+    ).toContain('Time: 10:30');
+  });
+});
+
 describe('truncateAtRepeatedClause', () => {
   it.each([
     'Hi!',
