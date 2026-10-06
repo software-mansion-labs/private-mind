@@ -16,6 +16,7 @@ import {
   type EmbeddingModelStatus,
 } from '../../store/embeddingModelStore';
 import { embeddingModelDownloadSizeLabel } from '../../utils/embeddingModel';
+import BackClosableBottomSheetModal from './BackClosableBottomSheetModal';
 
 type DownloadContext = 'document' | 'web';
 
@@ -106,7 +107,7 @@ const EmbeddingDownloadSheet = ({
   );
 
   return (
-    <BottomSheetModal
+    <BackClosableBottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       enableDynamicSizing
@@ -143,7 +144,7 @@ const EmbeddingDownloadSheet = ({
           </View>
         )}
       </BottomSheetView>
-    </BottomSheetModal>
+    </BackClosableBottomSheetModal>
   );
 };
 

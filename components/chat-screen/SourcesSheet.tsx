@@ -50,6 +50,7 @@ import {
   queryNamesDocument,
   type CitationExcerpt,
 } from '../../utils/citationHighlight';
+import BackClosableBottomSheetModal from '../bottomSheets/BackClosableBottomSheetModal';
 
 export type SheetStyles = ReturnType<typeof createStyles>;
 
@@ -212,7 +213,7 @@ const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
   const animationConfigs = useBottomSheetSpringConfigs(SHEET_SPRING_CONFIG);
 
   return (
-    <BottomSheetModal
+    <BackClosableBottomSheetModal
       ref={sheetRef}
       index={0}
       snapPoints={snapPoints}
@@ -265,7 +266,7 @@ const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
           ))}
         </View>
       </BottomSheetScrollView>
-    </BottomSheetModal>
+    </BackClosableBottomSheetModal>
   );
 });
 

@@ -12,6 +12,7 @@ import { router } from 'expo-router';
 import EntryButton from '../EntryButton';
 import LinkAltIcon from '../../assets/icons/link-alt.svg';
 import FolderIcon from '../../assets/icons/folder.svg';
+import BackClosableBottomSheetModal from './BackClosableBottomSheetModal';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -34,7 +35,7 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
   );
 
   return (
-    <BottomSheetModal
+    <BackClosableBottomSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       enableDynamicSizing
@@ -63,7 +64,7 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
           />
         </View>
       </BottomSheetView>
-    </BottomSheetModal>
+    </BackClosableBottomSheetModal>
   );
 };
 

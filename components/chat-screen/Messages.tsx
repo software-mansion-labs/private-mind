@@ -81,6 +81,7 @@ import {
   stoppedTurnLandsShort,
 } from './pinScroll';
 import { visibleMessageText } from '../../utils/messageText';
+import { useBackToClose } from '../../hooks/useBackToClose';
 
 export interface MessagesHandle {
   onMessageSent: () => void;
@@ -436,6 +437,8 @@ const Messages = ({
     setActiveUserActionsId(null);
     onUserActionMenuChange?.({ isOpen: false });
   }, [onUserActionMenuChange]);
+
+  useBackToClose(activeUserActionsId !== null, closeUserActionMenu);
 
   const pendingMenuOpenRef = useRef<(() => void) | null>(null);
 

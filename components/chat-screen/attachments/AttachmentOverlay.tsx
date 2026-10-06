@@ -19,6 +19,7 @@ import PhotoGridBar from './PhotoGridBar';
 import { BOTTOM_BAR, DURATION, GRID, GUTTER, panelPalette } from './constants';
 import type { useAttachmentPanel } from './useAttachmentPanel';
 import { usePhotoLibrary, type LibraryPhoto } from './usePhotoLibrary';
+import { useBackToClose } from '../../../hooks/useBackToClose';
 
 interface Props {
   panel: ReturnType<typeof useAttachmentPanel>;
@@ -76,6 +77,9 @@ const AttachmentOverlay = ({
   useEffect(() => {
     if (panel.mode === 'photos') setPhotosOpened(true);
   }, [panel.mode]);
+  useBackToClose(panel.mode !== 'closed' && !panel.closing, () =>
+    panel.mode === 'menu' ? panel.dismiss() : panel.backToMenu()
+  );
   const [panelOpened, setPanelOpened] = useState(false);
   useEffect(() => {
     if (panel.mode !== 'closed') setPanelOpened(true);

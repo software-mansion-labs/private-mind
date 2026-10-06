@@ -15,6 +15,7 @@ import MenuRow from '../menu/MenuRow';
 import { Feedback } from '../../utils/Feedback';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
+import BackClosableBottomSheetModal from '../bottomSheets/BackClosableBottomSheetModal';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -52,7 +53,7 @@ const ChatTitleMenuSheet = ({
   };
 
   return (
-    <BottomSheetModal
+    <BackClosableBottomSheetModal
       ref={bottomSheetModalRef}
       enableDynamicSizing
       onDismiss={handleDismiss}
@@ -122,7 +123,7 @@ const ChatTitleMenuSheet = ({
           </>
         )}
       </BottomSheetView>
-    </BottomSheetModal>
+    </BackClosableBottomSheetModal>
   );
 };
 
