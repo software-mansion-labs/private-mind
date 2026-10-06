@@ -76,6 +76,65 @@ describe('truncateAtRepeatedClause', () => {
     expect(result).not.toContain('6. Ochłonienie');
   });
 
+  it('keeps a list whose items share one identical line, instead of erasing the items already on screen (I-71)', () => {
+    const text =
+      'भारत के प्रमुख त्योहार:\n' +
+      '1. **दिवाली**\n' +
+      '- **महत्व:** यह बुराई पर अच्छाई की जीत का प्रतीक है।\n' +
+      '- **अवधि:** यह कार्तिक अमावस्या को मनाया जाता है।\n' +
+      '2. **होली**\n' +
+      '- **महत्व:** यह वसंत के आगमन का उत्सव है।\n' +
+      '- **अवधि:** यह फाल्गुन पूर्णिमा को मनाया जाता है।\n' +
+      '3. **दशहरा**\n' +
+      '- **महत्व:** यह बुराई पर अच्छाई की जीत का प्रतीक है।\n' +
+      '- **अवधि:** यह आश्विन शुक्ल दशमी को मनाया जाता है।\n' +
+      '4. **दुर्गा पूजा**\n' +
+      '- **महत्व:** यह देवी दुर्गा की शक्ति की आराधना है।';
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
+  it('keeps a structured list whose items repeat the same section labels (I-80)', () => {
+    const festival = (n: number, name: string, when: string) =>
+      `${n}. **${name}**\n**महत्व:**\nयह ${name} का महत्वपूर्ण पर्व है।\n**समय:**\n${when}\n**परंपराएं:**\nलोग ${name} पर विशेष पूजा करते हैं।\n`;
+    const text =
+      'भारत के प्रमुख त्योहार:\n' +
+      festival(1, 'दिवाली', 'यह अक्टूबर या नवंबर में आता है।') +
+      festival(2, 'होली', 'यह मार्च के अंत में आता है।') +
+      festival(3, 'दशहरा', 'यह सितंबर या अक्टूबर में आता है।') +
+      festival(4, 'ईद', 'यह चंद्र कैलेंडर के अनुसार आती है।');
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
+  it('keeps an English answer that gives every item the same headings', () => {
+    const festival = (name: string) =>
+      `### ${name}\n**Significance:**\n${name} marks a major moment in the year.\n**Traditions:**\nPeople celebrate ${name} with food and music.\n`;
+    const text = festival('Diwali') + festival('Holi') + festival('Eid');
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
+  it('still cuts items that repeat their content under the same labels', () => {
+    const block =
+      '**Traditions:**\nPeople celebrate with food, music and prayers at home.\n';
+    const text = 'Festivals:\n' + block + block + block;
+    const result = truncateAtRepeatedClause(text);
+    expect(
+      result.match(/People celebrate with food, music and prayers at home\./g)
+    ).toHaveLength(1);
+  });
+
+  it('still cuts a block of lines that comes back in the same order', () => {
+    const text =
+      'Lyrics:\n' +
+      'Hey, how is it going today?\n' +
+      'Are you drinking to pass the time?\n' +
+      'Translation:\n' +
+      'Hey, how is it going today?\n' +
+      'Are you drinking to pass the time?';
+    const result = truncateAtRepeatedClause(text);
+    expect(result).toContain('Are you drinking to pass the time?');
+    expect(result.match(/Hey, how is it going today\?/g)).toHaveLength(1);
+  });
+
   it('does not cut an answer that merely names the same thing twice (live-found regression)', () => {
     const text =
       'To bake a chocolate cake, you need flour, sugar, cocoa powder, eggs, milk, and baking powder.\n' +

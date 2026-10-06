@@ -1,3 +1,20 @@
+const LIST_MARKER = /^\s*(?:\d+[.)]|[-*•])\s*/;
+const MARKDOWN_MARKS = /[*_#`]/g;
+const MAX_LABEL_CHARS = 40;
+const ENDS_WITH_COLON = /[:：]$/;
+const WHOLLY_BOLD = /^\*\*[^*]+\*\*$/;
+
+const isSectionLabel = (text: string): boolean => {
+  const trimmed = text.replace(LIST_MARKER, '').trim();
+  const bare = trimmed.replace(MARKDOWN_MARKS, '').trim();
+  if (!bare || bare.length > MAX_LABEL_CHARS) return false;
+  return (
+    ENDS_WITH_COLON.test(bare) ||
+    trimmed.startsWith('#') ||
+    WHOLLY_BOLD.test(trimmed)
+  );
+};
+
 const MIN_CLAUSE_CHARS = 12;
 const CLAUSE_SPLIT = /(?<=[,;.\n])/;
 const ALPHANUMERIC = /[\p{L}\p{N}]/u;
@@ -43,7 +60,11 @@ const substantialClauses = (text: string): Unit[] => {
     const start = cursor;
     cursor += clause.length;
     const norm = normalizeClause(clause);
-    if (norm.length >= MIN_CLAUSE_CHARS && ALPHANUMERIC.test(norm)) {
+    if (
+      norm.length >= MIN_CLAUSE_CHARS &&
+      ALPHANUMERIC.test(norm) &&
+      !isSectionLabel(clause)
+    ) {
       units.push({ norm, start });
     }
   }
@@ -79,7 +100,6 @@ const findRepeatedClauseSpans = (text: string): LoopSpan[] => {
 
 const MIN_LINE_CHARS = 12;
 const LINE_REPEAT_LIMIT = 2;
-const LIST_MARKER = /^\s*(?:\d+[.)]|[-*•])\s*/;
 
 const findRepeatedLineSpans = (text: string): LoopSpan[] => {
   const units: Unit[] = [];
@@ -93,7 +113,13 @@ const findRepeatedLineSpans = (text: string): LoopSpan[] => {
     cursor += line.length + 1;
 
     const norm = normalizeClause(line.replace(LIST_MARKER, ''));
-    if (norm.length < MIN_LINE_CHARS || !ALPHANUMERIC.test(norm)) continue;
+    if (
+      norm.length < MIN_LINE_CHARS ||
+      !ALPHANUMERIC.test(norm) ||
+      isSectionLabel(line)
+    ) {
+      continue;
+    }
 
     units.push({ norm, start });
     if (adjacent === null && norm === previousNorm) {
@@ -103,9 +129,46 @@ const findRepeatedLineSpans = (text: string): LoopSpan[] => {
     previousStart = start;
   }
 
-  return [adjacent, repeatedUnit(units, LINE_REPEAT_LIMIT)].filter(
-    (span): span is LoopSpan => span !== null
-  );
+  return [
+    adjacent,
+    repeatedUnit(units, LINE_REPEAT_LIMIT + 1),
+    repeatedLineBlock(units),
+    severalDuplicatedLines(units),
+  ].filter((span): span is LoopSpan => span !== null);
+};
+
+const repeatedLineBlock = (units: Unit[]): LoopSpan | null => {
+  let found: LoopSpan | null = null;
+  for (let j = 1; j + 1 < units.length; j++) {
+    for (let i = 0; i + 1 < j; i++) {
+      const continuesTogether =
+        units[i]!.norm === units[j]!.norm &&
+        units[i + 1]!.norm === units[j + 1]!.norm;
+      if (continuesTogether) {
+        if (found === null || units[j]!.start < found.repeat) {
+          found = { first: units[i]!.start, repeat: units[j]!.start };
+        }
+        break;
+      }
+    }
+  }
+  return found;
+};
+
+const DUPLICATED_LINES_FOR_A_LOOP = 2;
+
+const severalDuplicatedLines = (units: Unit[]): LoopSpan | null => {
+  const firstSeen = new Map<string, number>();
+  const repeats: LoopSpan[] = [];
+  for (const { norm, start } of units) {
+    const first = firstSeen.get(norm);
+    if (first === undefined) firstSeen.set(norm, start);
+    else if (!repeats.some((span) => span.first === first)) {
+      repeats.push({ first, repeat: start });
+    }
+  }
+  if (repeats.length < DUPLICATED_LINES_FOR_A_LOOP) return null;
+  return repeats[0]!;
 };
 
 export const normalizeLine = (line: string): string =>
