@@ -2,7 +2,7 @@ import { type SQLiteDatabase } from 'expo-sqlite';
 import { useChatStore } from '../store/chatStore';
 import { useLLMStore } from '../store/llmStore';
 import { useModelStore } from '../store/modelStore';
-import { addModel } from './modelRepository';
+import { addModel, removeDelistedBuiltInModels } from './modelRepository';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSourceStore } from '../store/sourceStore';
 import { initSourceLinkingBoundary } from '../utils/sourceLinkingBoundary';
@@ -214,15 +214,9 @@ export const runMigrations = async (db: SQLiteDatabase) => {
   );
 
   const catalog = getActiveCatalog();
-  const defaultModelNames = catalog.map((m) => m.modelName);
-  const placeholders = defaultModelNames.map(() => '?').join(',');
-
-  await db.runAsync(
-    `
-    DELETE FROM models
-    WHERE source = 'built-in' AND modelName NOT IN (${placeholders})
-    `,
-    ...defaultModelNames
+  await removeDelistedBuiltInModels(
+    db,
+    catalog.map((m) => m.modelName)
   );
 
   for (const model of catalog) {

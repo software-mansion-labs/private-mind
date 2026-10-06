@@ -3,6 +3,7 @@ import { type SQLiteDatabase } from 'expo-sqlite';
 import {
   getAllModels,
   getModelsByNames,
+  removeDelistedBuiltInModels,
   syncBuiltInModelPaths,
 } from '../database/modelRepository';
 import { DEFAULT_MODELS } from '../constants/default-models';
@@ -245,5 +246,18 @@ describe('built-in model paths', () => {
     expect(model.modelPath).toBe(catalogModel.modelPath);
     expect(model.tokenizerPath).toBe(catalogModel.tokenizerPath);
     expect(model.tokenizerConfigPath).toBe(catalogModel.tokenizerConfigPath);
+  });
+});
+
+describe('removeDelistedBuiltInModels', () => {
+  it('keeps a downloaded model the catalog no longer lists, so its chats and files stay reachable', async () => {
+    const runAsync = jest.fn().mockResolvedValue(undefined);
+
+    await removeDelistedBuiltInModels({ runAsync } as never, ['Qwen 3 - 1.7B']);
+
+    const [sql, params] = runAsync.mock.calls[0];
+    expect(sql).toMatch(/source = 'built-in'/);
+    expect(sql).toMatch(/isDownloaded = 0/);
+    expect(params).toEqual(['Qwen 3 - 1.7B']);
   });
 });

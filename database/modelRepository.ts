@@ -85,6 +85,22 @@ export const removeModelFiles = async (db: SQLiteDatabase, id: number) => {
   await db.runAsync(`DELETE FROM models WHERE id = ?`, [id]);
 };
 
+export const removeDelistedBuiltInModels = async (
+  db: Pick<SQLiteDatabase, 'runAsync'>,
+  catalogModelNames: string[]
+) => {
+  const placeholders = catalogModelNames.map(() => '?').join(',');
+  await db.runAsync(
+    `
+    DELETE FROM models
+    WHERE source = 'built-in'
+      AND isDownloaded = 0
+      AND modelName NOT IN (${placeholders})
+    `,
+    catalogModelNames
+  );
+};
+
 export const syncBuiltInModelPaths = async (
   db: SQLiteDatabase,
   id: number,
