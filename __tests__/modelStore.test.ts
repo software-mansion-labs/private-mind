@@ -14,6 +14,9 @@ import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetch
 import Toast from 'react-native-toast-message';
 
 jest.mock('../database/modelRepository');
+jest.mock('../utils/localModelFiles', () => ({
+  removeKeptModelFiles: jest.fn(),
+}));
 
 const mockDb = {} as any;
 const mockFetch = ResourceFetcher.fetch as jest.Mock;
@@ -275,6 +278,31 @@ describe('removeModel', () => {
 
     expect(mockDeleteResources).not.toHaveBeenCalled();
     expect(mockRemoveModelFiles).toHaveBeenCalledWith(mockDb, localModel.id);
+  });
+
+  it('deletes the copy the app keeps of a removed local model', async () => {
+    const { removeKeptModelFiles } = jest.requireMock(
+      '../utils/localModelFiles'
+    );
+    const localModel = {
+      ...baseModel,
+      source: 'local' as const,
+      isDownloaded: true,
+      modelPath: 'file:///data/app/files/local-models/1-model.pte',
+      tokenizerPath: 'file:///data/app/files/local-models/1-tokenizer.json',
+      tokenizerConfigPath:
+        'file:///data/app/files/local-models/1-tokenizer_config.json',
+    };
+    useModelStore.setState({ models: [localModel] });
+    mockRemoveModelFiles.mockResolvedValue(undefined);
+
+    await useModelStore.getState().removeModel(localModel.id);
+
+    expect(removeKeptModelFiles).toHaveBeenCalledWith([
+      localModel.modelPath,
+      localModel.tokenizerPath,
+      localModel.tokenizerConfigPath,
+    ]);
   });
 
   it('deletes downloaded resources and marks not-downloaded for remote models', async () => {

@@ -21,6 +21,8 @@ import {
   recordDownloadEvent,
 } from '../utils/downloadDiagnostics';
 
+import { removeKeptModelFiles } from '../utils/localModelFiles';
+
 export enum ModelState {
   Downloaded = 'downloaded',
   Downloading = 'downloading',
@@ -455,6 +457,13 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       // Reuse removeModelFiles so file cleanup + state reset stay in one place.
       await get().removeModelFiles(modelId);
       await removeModelFiles(db, modelId);
+      if (model.source === 'local') {
+        removeKeptModelFiles([
+          model.modelPath,
+          model.tokenizerPath,
+          model.tokenizerConfigPath,
+        ]);
+      }
       await get().loadModels();
     } catch (err) {
       console.error('Failed to remove model:', err);

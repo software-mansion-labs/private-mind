@@ -39,14 +39,13 @@ const UploadInput = ({ fileInfo, onChange, disabled = false }: Props) => {
   const handlePickFile = async () => {
     const result = await DocumentPicker.getDocumentAsync({
       type: '*/*',
-      copyToCacheDirectory: false,
+      copyToCacheDirectory: Platform.OS === 'android',
     });
 
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       const uri = asset.uri || '';
-      const normalizedUri =
-        Platform.OS === 'ios' ? uri.replace('file://', '') : uri;
+      const normalizedUri = uri.replace('file://', '');
 
       onChange({
         name: asset.name || asset.uri.split('/').pop() || 'Unnamed',
