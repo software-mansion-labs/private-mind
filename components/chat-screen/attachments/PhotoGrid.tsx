@@ -23,6 +23,7 @@ interface Props {
   selected: string[];
   lifting: boolean;
   onTogglePhoto: (photo: LibraryPhoto) => void;
+  onEndReached?: () => void;
 }
 
 export interface PhotoGridHandle {
@@ -31,7 +32,16 @@ export interface PhotoGridHandle {
 
 const PhotoGrid = forwardRef<PhotoGridHandle, Props>(
   function PhotoGridComponent(
-    { width, height, photos, status, selected, lifting, onTogglePhoto },
+    {
+      width,
+      height,
+      photos,
+      status,
+      selected,
+      lifting,
+      onTogglePhoto,
+      onEndReached,
+    },
     handle
   ) {
     const { styles } = useThemedStyles(createStyles);
@@ -82,6 +92,8 @@ const PhotoGrid = forwardRef<PhotoGridHandle, Props>(
               />
             )}
             extraData={`${selected.join()}|${lifting}`}
+            onEndReached={onEndReached}
+            onEndReachedThreshold={1}
             keyboardShouldPersistTaps="always"
             keyboardDismissMode="none"
             ListFooterComponent={<View style={styles.footer} />}

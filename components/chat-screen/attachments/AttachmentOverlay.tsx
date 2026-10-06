@@ -84,7 +84,10 @@ const AttachmentOverlay = ({
   useEffect(() => {
     if (panel.mode !== 'closed') setPanelOpened(true);
   }, [panel.mode]);
-  const { photos, status } = usePhotoLibrary(panelOpened, photosOpened);
+  const { photos, status, loadMore } = usePhotoLibrary(
+    panelOpened,
+    photosOpened
+  );
 
   const [enteredSheet, setEnteredSheet] = useState(false);
   useEffect(() => {
@@ -266,6 +269,7 @@ const AttachmentOverlay = ({
                   height={gridHeight}
                   photos={photos}
                   status={status}
+                  onEndReached={loadMore}
                   selected={selected}
                   lifting={isFlying}
                   onTogglePhoto={togglePhoto}
