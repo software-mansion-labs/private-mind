@@ -2545,6 +2545,58 @@ describe('setActiveChatId', () => {
     await turn;
   });
 
+  it('keeps streaming into the answer and finishes it after the user comes back to the chat', async () => {
+    const onToken = await loadModel();
+    mockPersistMessage.mockResolvedValue(7);
+    let finish!: (text: string) => void;
+    mockInstance.generate.mockImplementationOnce(
+      () => new Promise<string>((resolve) => (finish = resolve))
+    );
+    useLLMStore.setState({ activeChatId: 1, activeChatMessages: [] });
+    const turn = useLLMStore
+      .getState()
+      .sendChatMessage('Czy jest tam jedzenie vege?', 1, noSources, {
+        systemPrompt: '',
+      });
+    while (mockInstance.generate.mock.calls.length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    onToken('Tak, ');
+    await flushFrame();
+
+    mockGetChatMessages.mockResolvedValue([]);
+    await useLLMStore.getState().setActiveChatId(null);
+    mockGetChatMessages.mockResolvedValue([
+      {
+        id: 6,
+        chatId: 1,
+        role: 'user',
+        content: 'Czy jest tam jedzenie vege?',
+        timestamp: 0,
+      },
+    ]);
+    await useLLMStore.getState().setActiveChatId(1);
+
+    onToken('jest opcja wege.');
+    await flushFrame();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)).toMatchObject({
+      role: 'assistant',
+      content: 'Tak, jest opcja wege.',
+    });
+
+    finish('Tak, jest opcja wege.');
+    await turn;
+
+    const answers = useLLMStore
+      .getState()
+      .activeChatMessages.filter((message) => message.role === 'assistant');
+    expect(answers).toHaveLength(1);
+    expect(answers[0]).toMatchObject({
+      id: 7,
+      content: 'Tak, jest opcja wege.',
+    });
+  });
+
   it('does not lend one chat’s digest to another chat’s prompt (Pixel: coffee summary in a weather search)', async () => {
     mockGetChatMessages.mockResolvedValue([]);
     (chatRepository.getChatDigest as jest.Mock).mockResolvedValueOnce(
