@@ -18,7 +18,7 @@ import {
   activateSource,
   clearPhantomChat,
 } from '../database/sourcesRepository';
-import { maybePromptReview } from '../utils/reviewPrompt';
+import { noteChatCreated } from '../utils/reviewPrompt';
 import { useWebSearchStore } from './webSearchStore';
 
 interface ChatStore {
@@ -156,7 +156,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       phantomChat: null,
     }));
 
-    maybePromptReview();
+    noteChatCreated();
 
     return newChatId;
   },

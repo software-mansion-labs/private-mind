@@ -23,7 +23,9 @@ export async function incrementChatCount(): Promise<number> {
   return newCount;
 }
 
-export async function maybePromptReview(): Promise<void> {
+let reviewDue = false;
+
+export async function noteChatCreated(): Promise<void> {
   try {
     const totalChats = await incrementChatCount();
     const lastPromptedRaw = await AsyncStorage.getItem(LAST_PROMPT_KEY);
@@ -34,13 +36,20 @@ export async function maybePromptReview(): Promise<void> {
     if (!shouldPromptReview(totalChats, lastPromptedAt)) return;
 
     await AsyncStorage.setItem(LAST_PROMPT_KEY, String(totalChats));
+    reviewDue = true;
+  } catch (error) {
+    console.warn('Review prompt failed:', error);
+  }
+}
 
-    const isAvailable = await StoreReview.isAvailableAsync();
-    if (isAvailable) {
+export async function promptReviewIfDue(): Promise<void> {
+  if (!reviewDue) return;
+  reviewDue = false;
+  try {
+    if (await StoreReview.isAvailableAsync()) {
       await StoreReview.requestReview();
     }
   } catch (error) {
-    // Silently fail — rating prompt is non-critical
     console.warn('Review prompt failed:', error);
   }
 }
