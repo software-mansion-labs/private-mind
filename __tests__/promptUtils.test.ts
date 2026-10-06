@@ -2759,6 +2759,41 @@ describe('prepareMessagesForLLM — a question left without an answer', () => {
   });
 });
 
+describe('prepareMessagesForLLM — images in the history', () => {
+  const withPhoto: Message[] = [
+    {
+      id: 1,
+      chatId: 1,
+      role: 'user',
+      content: 'what is this?',
+      imagePath: 'file:///chat-images/cat.jpg',
+      timestamp: 0,
+    },
+    { id: 2, chatId: 1, role: 'assistant', content: 'A cat.', timestamp: 0 },
+    { id: 3, chatId: 1, role: 'user', content: 'and now?', timestamp: 0 },
+  ];
+
+  it('hands the photo to a vision model', () => {
+    const result = prepareMessagesForLLM(withPhoto, [], baseSettings, {
+      ...baseModel,
+      vision: true,
+    });
+
+    expect(result.find((m) => m.content === 'what is this?')?.mediaPath).toBe(
+      'file:///chat-images/cat.jpg'
+    );
+  });
+
+  it('keeps the photo away from a text model the chat was switched to, so the chat keeps working', () => {
+    const result = prepareMessagesForLLM(withPhoto, [], baseSettings, {
+      ...baseModel,
+      vision: false,
+    });
+
+    expect(result.some((m) => m.mediaPath)).toBe(false);
+  });
+});
+
 describe('getPromptCharBudget script awareness', () => {
   const english = 'plain ascii english text about concert tickets '.repeat(40);
   const polish =

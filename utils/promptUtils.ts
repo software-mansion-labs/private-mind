@@ -731,7 +731,7 @@ export const prepareMessagesForLLM = (
   const filteredMessages: ExecutorchMessage[] = messagesForLLM.map((msg) => ({
     role: msg.role,
     content: msg.content,
-    ...(msg.imagePath ? { mediaPath: msg.imagePath } : {}),
+    ...(msg.imagePath && model.vision ? { mediaPath: msg.imagePath } : {}),
   }));
 
   const messagesWithSystemPrompt: ExecutorchMessage[] = [
