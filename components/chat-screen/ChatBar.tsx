@@ -560,7 +560,7 @@ const ChatBar = ({
     );
   }
 
-  if (chatId && !model) {
+  if (chatId && !model?.isDownloaded) {
     return (
       <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
         <TouchableOpacity style={styles.modelSelection} onPress={onSelectModel}>

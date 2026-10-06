@@ -166,7 +166,7 @@ export default function ChatScreen({
         throw new Error(`Model ${selectedModel.id} did not finish loading`);
       }
 
-      if (chatId && !model) {
+      if (chatId && !model?.isDownloaded) {
         await setChatModel(chatId, selectedModel.id);
       }
 
