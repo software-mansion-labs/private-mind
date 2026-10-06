@@ -505,3 +505,71 @@ describe('addModelToDB', () => {
     expect(await useModelStore.getState().addModelToDB(remote)).toBeNull();
   });
 });
+
+describe('editModel', () => {
+  const mockUpdateModel = modelRepository.updateModel as jest.Mock;
+  const downloaded = { ...baseModel, isDownloaded: true };
+  const newTokenizer = 'https://example.com/fixed/tokenizer.json';
+
+  beforeEach(() => {
+    useModelStore.setState({ models: [downloaded] });
+  });
+
+  it('keeps the working tokenizer when the new one cannot be fetched', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('404'));
+
+    const updated = await useModelStore
+      .getState()
+      .editModel(
+        downloaded.id,
+        newTokenizer,
+        downloaded.tokenizerConfigPath,
+        downloaded.modelName
+      );
+
+    expect(updated).toBe(false);
+    expect(mockUpdateModel).not.toHaveBeenCalled();
+    expect(
+      mockDeleteResources.mock.calls.flat().includes(downloaded.tokenizerPath)
+    ).toBe(false);
+  });
+
+  it('reports a rename the database refused instead of claiming success', async () => {
+    mockUpdateModel.mockRejectedValueOnce(
+      new Error('UNIQUE constraint failed: models.modelName')
+    );
+
+    const updated = await useModelStore
+      .getState()
+      .editModel(
+        downloaded.id,
+        downloaded.tokenizerPath,
+        downloaded.tokenizerConfigPath,
+        'Taken Name'
+      );
+
+    expect(updated).toBe(false);
+  });
+
+  it('replaces the tokenizer only after the new one arrived', async () => {
+    mockFetch.mockResolvedValueOnce(['/local/fixed/tokenizer.json']);
+    mockUpdateModel.mockResolvedValueOnce(undefined);
+
+    const updated = await useModelStore
+      .getState()
+      .editModel(
+        downloaded.id,
+        newTokenizer,
+        downloaded.tokenizerConfigPath,
+        downloaded.modelName
+      );
+
+    expect(updated).toBe(true);
+    expect(mockFetch.mock.invocationCallOrder[0]).toBeLessThan(
+      mockDeleteResources.mock.invocationCallOrder[0]!
+    );
+    expect(
+      mockDeleteResources.mock.calls.flat().includes(downloaded.tokenizerPath)
+    ).toBe(true);
+  });
+});

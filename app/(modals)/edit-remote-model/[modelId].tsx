@@ -64,12 +64,19 @@ export default function EditRemoteModelScreen() {
       Alert.alert('Missing Fields', 'Please select all necessary files.');
       return;
     }
-    await editModel(
+    const updated = await editModel(
       modelId,
       remoteTokenizerPath,
       remoteTokenizerConfigPath,
       modelName
     );
+    if (!updated) {
+      Alert.alert(
+        'Model not updated',
+        'The changes could not be saved. Check the name and links, then try again.'
+      );
+      return;
+    }
     Feedback.editSave();
     Toast.show({
       type: 'defaultToast',

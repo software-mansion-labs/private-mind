@@ -115,7 +115,7 @@ interface ModelStore {
     localTokenizerPath: string,
     localTokenizerConfigPath: string,
     newModelName: string
-  ) => Promise<void>;
+  ) => Promise<boolean>;
 }
 
 const MS_PER_FRAME = 16; // ~60 fps
@@ -483,48 +483,48 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     newModelName: string
   ) => {
     const db = get().db;
-    if (!db) return;
+    if (!db) return false;
 
     const model = get().models.find((m) => m.id === modelId);
-    if (!model) return;
+    if (!model) return false;
+
+    const oldSources: string[] = [];
+    const newSources: string[] = [];
+    if (model.source === 'remote' && model.isDownloaded) {
+      if (model.tokenizerPath !== localTokenizerPath) {
+        oldSources.push(model.tokenizerPath);
+        newSources.push(localTokenizerPath);
+      }
+      if (model.tokenizerConfigPath !== localTokenizerConfigPath) {
+        oldSources.push(model.tokenizerConfigPath);
+        newSources.push(localTokenizerConfigPath);
+      }
+    }
 
     try {
-      if (model.source === 'remote' && model.isDownloaded) {
-        const oldSources: string[] = [];
-        const newSources: string[] = [];
-
-        if (model.tokenizerPath !== localTokenizerPath) {
-          oldSources.push(model.tokenizerPath);
-          newSources.push(localTokenizerPath);
-        }
-
-        if (model.tokenizerConfigPath !== localTokenizerConfigPath) {
-          oldSources.push(model.tokenizerConfigPath);
-          newSources.push(localTokenizerConfigPath);
-        }
-
-        if (oldSources.length > 0) {
-          // Delete only the on-disk copies of the changed sources, leaving
-          // the model file alone.
-          await deleteRemoteResources(
-            ...filesNoOtherModelUses(model, get().models, oldSources)
-          );
-        }
-
-        if (newSources.length > 0) {
-          await ResourceFetcher.fetch(() => {}, ...newSources);
-        }
+      if (newSources.length > 0) {
+        await ResourceFetcher.fetch(() => {}, ...newSources);
       }
-
       await updateModel(db, {
         modelId,
         tokenizerPath: localTokenizerPath,
         tokenizerConfigPath: localTokenizerConfigPath,
         newModelName,
       });
-      await get().loadModels();
     } catch (err) {
-      console.error('Failed to edit local model:', err);
+      console.error('Failed to edit model:', err);
+      if (newSources.length > 0) {
+        await deleteRemoteResources(...newSources);
+      }
+      return false;
     }
+
+    if (oldSources.length > 0) {
+      await deleteRemoteResources(
+        ...filesNoOtherModelUses(model, get().models, oldSources)
+      );
+    }
+    await get().loadModels();
+    return true;
   },
 }));
