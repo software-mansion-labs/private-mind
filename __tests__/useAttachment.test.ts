@@ -287,6 +287,45 @@ describe('useAttachment', () => {
     });
   });
 
+  it('refuses a text file too large to read whole, before reading it (C-65)', async () => {
+    mockGetDocumentAsync.mockResolvedValue({
+      canceled: false,
+      assets: [
+        {
+          uri: 'file://export.csv',
+          name: 'export.csv',
+          size: 60 * 1024 * 1024,
+        },
+      ],
+    });
+    const mockAddSource = jest.fn();
+    mockUseVectorStore.mockReturnValue({
+      vectorStore: {},
+      embeddings: {
+        runWithLoadedModel: jest.fn(async (op: () => Promise<unknown>) => op()),
+      },
+    });
+    const { useSourceStore } = require('../store/sourceStore');
+    useSourceStore.getState.mockReturnValue({
+      addSource: mockAddSource,
+      cleanupOrphanedSources: mockCleanupOrphanedSources,
+    });
+
+    const { result } = renderHook(() => useAttachment());
+    await act(async () => {
+      await result.current.pickDocument();
+    });
+
+    const Toast = require('react-native-toast-message');
+    expect(mockAddSource).not.toHaveBeenCalled();
+    expect(result.current.attachments).toHaveLength(0);
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: 'This file is too large to read. Split it into smaller files.',
+      })
+    );
+  });
+
   it('pickDocument processes document through RAG and stores sourceId', async () => {
     mockGetDocumentAsync.mockResolvedValue({
       canceled: false,
