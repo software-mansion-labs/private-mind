@@ -2731,6 +2731,34 @@ describe('prepareMessagesForLLM', () => {
   });
 });
 
+describe('prepareMessagesForLLM — a question left without an answer', () => {
+  it('drops a question whose answer never arrived, so the roles keep alternating for strict chat templates', () => {
+    const history: Message[] = [
+      {
+        id: 1,
+        chatId: 1,
+        role: 'user',
+        content: 'first question',
+        timestamp: 0,
+      },
+      {
+        id: 2,
+        chatId: 1,
+        role: 'user',
+        content: 'second question',
+        timestamp: 0,
+      },
+      { id: -1, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+    ];
+
+    const result = prepareMessagesForLLM(history, [], baseSettings, baseModel);
+
+    const roles = result.map((m) => m.role);
+    expect(roles).toEqual(['system', 'user']);
+    expect(result[1]!.content).toContain('second question');
+  });
+});
+
 describe('getPromptCharBudget script awareness', () => {
   const english = 'plain ascii english text about concert tickets '.repeat(40);
   const polish =

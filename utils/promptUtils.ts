@@ -620,6 +620,9 @@ const shapeInstructions = (candidates: string[]): string =>
 const isAbandonedQuestion = (message: Message): boolean =>
   message.role === 'user' && !!message.stoppedByUser;
 
+const isUnansweredQuestion = (message: Message, next?: Message): boolean =>
+  message.role === 'user' && next?.role === 'user';
+
 export const prepareMessagesForLLM = (
   activeChatMessages: Message[],
   context: string[],
@@ -707,11 +710,12 @@ export const prepareMessagesForLLM = (
   }
   systemPrompt += getDateInstruction(sourceDocuments, question);
 
-  const nonEventMessages = activeChatMessages
-    .filter(
-      (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
-        msg.role !== 'event' && !isAbandonedQuestion(msg)
-    )
+  const conversation = activeChatMessages.filter(
+    (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
+      msg.role !== 'event' && !isAbandonedQuestion(msg)
+  );
+  const nonEventMessages = conversation
+    .filter((msg, index) => !isUnansweredQuestion(msg, conversation[index + 1]))
     .map((msg) =>
       msg.role === 'assistant'
         ? { ...msg, content: stripThinkBlocks(msg.content) }
