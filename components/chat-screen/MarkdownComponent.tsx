@@ -131,6 +131,21 @@ const MarkdownComponent = memo(
           marginLeft: 20,
           marginBottom: 12,
         },
+        table: {
+          fontFamily: fontFamily.regular,
+          fontSize: baseFontSize,
+          color: baseColor,
+          headerFontFamily: fontFamily.bold,
+          headerTextColor: baseColor,
+          headerBackgroundColor: isUser
+            ? theme.bg.codeBlockStrong
+            : theme.bg.codeBlock,
+          rowEvenBackgroundColor: 'transparent',
+          rowOddBackgroundColor: 'transparent',
+          borderColor: theme.border.soft,
+          marginTop: 8,
+          marginBottom: 12,
+        },
         thematicBreak: {
           color: theme.border.soft,
           height: 1,
