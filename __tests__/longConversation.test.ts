@@ -141,11 +141,16 @@ describe('a conversation that outgrows the context window', () => {
       .filter((message) => message.role === 'assistant')
       .map((message) => String(message.content));
 
+    const originals = conversation(16)
+      .filter((message) => message.role === 'assistant')
+      .map((message) => message.content);
+
     expect(replies.length).toBeGreaterThan(1);
-    expect(replies.at(-1)).not.toMatch(/…$/);
-    expect(replies.slice(0, -1).some((reply) => reply.endsWith('…'))).toBe(
-      true
-    );
+    expect(originals).toContain(replies.at(-1));
+    expect(
+      replies.slice(0, -1).some((reply) => !originals.includes(reply))
+    ).toBe(true);
+    expect(replies.some((reply) => reply.endsWith('…'))).toBe(false);
   });
 
   it('never opens the kept history with an assistant reply whose question was cut', () => {

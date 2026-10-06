@@ -51,6 +51,64 @@ const makeMessages = (count: number): Message[] => [
 ];
 
 describe('prepareMessagesForLLM', () => {
+  describe('older answers shortened in the history', () => {
+    const turn = (
+      id: number,
+      role: 'user' | 'assistant',
+      content: string
+    ): Message => ({
+      id,
+      chatId: 1,
+      role,
+      content,
+      timestamp: 0,
+    });
+    const listAnswer = `Here is how the internet works, step by step:\n${Array.from(
+      { length: 30 },
+      (_, i) =>
+        `${i + 1}. Step ${i + 1} passes the request one hop further along the route.`
+    ).join('\n')}`;
+
+    const sentOlderAnswer = () => {
+      const history = Array.from({ length: 5 }, (_, i) => [
+        turn(
+          i * 2 + 1,
+          'user',
+          `Question ${i + 1}: how does the internet work?`
+        ),
+        turn(i * 2 + 2, 'assistant', listAnswer),
+      ]).flat();
+      const sent = prepareMessagesForLLM(
+        [
+          ...history,
+          turn(99, 'user', 'And a bicycle?'),
+          turn(100, 'assistant', ''),
+        ],
+        [],
+        baseSettings,
+        baseModel
+      );
+      const shortened = sent.filter(
+        (message) =>
+          message.role === 'assistant' &&
+          message.content.length < listAnswer.length
+      );
+      return shortened[0]!.content;
+    };
+
+    it('still shortens an older long answer', () => {
+      expect(sentOlderAnswer().length).toBeLessThan(listAnswer.length);
+    });
+
+    it('ends it on a whole sentence, not on a trailing ellipsis or a bare list number the model would copy', () => {
+      const shortened = sentOlderAnswer();
+
+      expect(shortened).not.toMatch(/…$/);
+      expect(shortened).not.toMatch(/(?:^|\n)\s*\d+\.$/);
+      expect(shortened).toMatch(/[.!?]$/);
+    });
+  });
+
   describe('system prompt', () => {
     it('always prepends the system prompt', () => {
       const messages = makeMessages(2);
