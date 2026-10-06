@@ -56,6 +56,7 @@ interface MessageItemProps {
   tokensPerSecond?: number;
   timeToFirstToken?: number;
   isLastMessage: boolean;
+  thinkingTurn?: boolean;
   imagePath?: string;
   documentName?: string;
   sourceDocuments?: SourceDocument[];
@@ -109,6 +110,7 @@ const MessageItem = memo(
     tokensPerSecond,
     timeToFirstToken,
     isLastMessage = false,
+    thinkingTurn = false,
     imagePath,
     documentName,
     sourceDocuments,
@@ -349,7 +351,9 @@ const MessageItem = memo(
                 />
               )}
               {isAwaitingFirstToken ? (
-                <AnimatedChatLoading label="Thinking…" />
+                <AnimatedChatLoading
+                  label={thinkingTurn ? 'Thinking…' : 'Writing…'}
+                />
               ) : null}
               <Animated.View
                 key={refinedSwap}

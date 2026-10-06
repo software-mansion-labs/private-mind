@@ -275,6 +275,7 @@ export default function ChatScreen({
           chatHistory={messageHistory}
           extraContentPadding={extraContentPadding}
           isGenerating={isGenerating}
+          thinkingTurn={thinkingEnabled}
           generationError={chatGenerationError}
           onRetryGeneration={handleRetryGeneration}
           canRetryGeneration={retryArmedForChatId === chatId}

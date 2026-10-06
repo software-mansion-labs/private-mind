@@ -224,12 +224,24 @@ describe('a response the user stopped', () => {
 // ─── assistant messages ───────────────────────────────────────────────────────
 
 describe('assistant messages', () => {
-  it('shows the model name above the thinking label before the first token', () => {
+  it('shows the model name above the thinking label before the first token of a thinking turn', () => {
     setLLMState({ isGenerating: false, isProcessingPrompt: true });
-    renderItem({ content: '', isLastMessage: true, modelName: 'Llama-3B' });
+    renderItem({
+      content: '',
+      isLastMessage: true,
+      modelName: 'Llama-3B',
+      thinkingTurn: true,
+    });
 
     expect(screen.getByText('Llama-3B')).toBeTruthy();
     expect(screen.getByTestId('chat-loading').props.children).toBe('Thinking…');
+  });
+
+  it('does not say it is thinking for a model that answers without thinking', () => {
+    setLLMState({ isGenerating: false, isProcessingPrompt: true });
+    renderItem({ content: '', isLastMessage: true, modelName: 'Gemma 4 - 2B' });
+
+    expect(screen.getByTestId('chat-loading').props.children).toBe('Writing…');
   });
 
   it('renders the model name', () => {
