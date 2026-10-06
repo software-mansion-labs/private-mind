@@ -10,13 +10,16 @@ import {
   type SourceDocument,
 } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
+import { fitsInOneTurn } from '../../constants/context-window';
 
 export type SendRefusal =
   | 'nothing-to-send'
   | 'model-loading'
   | 'busy'
   | 'chat-not-created'
-  | 'image-not-saved';
+  | 'image-not-saved'
+  | 'too-long'
+  | 'image-unsupported';
 import { Attachment } from '../../hooks/useAttachment';
 import { LFMEmbeddings } from '../../utils/lfmEmbeddings';
 import { loadModelPinnedToChat } from './loadModelPinnedToChat';
@@ -122,6 +125,9 @@ export const useSendChatMessage = ({
       return 'busy';
     }
     if (!llm.model && !isModelLoading) return 'model-loading';
+    const turnModel = pinnedModel ?? llm.model;
+    if (turnModel && !fitsInOneTurn(userInput, turnModel)) return 'too-long';
+    if (imagePath && turnModel && !turnModel.vision) return 'image-unsupported';
     loadModelPinnedToChat(pinnedModel);
 
     messagesRef.current?.onMessageSent();

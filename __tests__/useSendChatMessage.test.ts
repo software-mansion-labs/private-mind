@@ -109,11 +109,12 @@ const messagesRef = {
 const useSend = (
   chatId = 1,
   loading = false,
-  waitForModelSwitch?: () => Promise<Model | undefined>
+  waitForModelSwitch?: () => Promise<Model | undefined>,
+  model = { id: 1, modelName: 'Test LLM', vision: true } as Model
 ) =>
   useSendChatMessage({
     chatId,
-    model: { id: 1, modelName: 'Test LLM' } as Model,
+    model,
     messageHistory: [],
     chatSettings: {
       systemPrompt: '',
@@ -183,6 +184,37 @@ describe('sending while another turn is open', () => {
     expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
   });
 
+  it('refuses a message too long for the model before it can fail in the runner', async () => {
+    const pastedArticle = 'Lorem ipsum dolor sit amet, consectetur. '.repeat(
+      200
+    );
+
+    expect(await useSend(1)(pastedArticle)).toBe('too-long');
+    expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+  });
+
+  it('refuses a photo for a model that cannot see it, instead of answering without it', async () => {
+    const textOnly = { id: 1, modelName: 'Text only' } as Model;
+    expect(
+      await useSend(
+        1,
+        false,
+        undefined,
+        textOnly
+      )('What is in this photo?', 'file://photo.jpg')
+    ).toBe('image-unsupported');
+    expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+  });
+
+  it('sends a long message that still fits the model', async () => {
+    const longQuestion =
+      'The quick brown fox jumps over the lazy dog while the sun sets slowly behind the distant hills. '.repeat(
+        30
+      ) + 'Summarize all of the above in one short sentence.';
+
+    expect(await useSend(1)(longQuestion)).toBe(true);
+  });
+
   it('says the model is not ready rather than blaming a response', async () => {
     const loaded = mockedState().model;
     mockedState().model = null;
@@ -229,7 +261,7 @@ describe('a send that lands while the model is being switched', () => {
   it('refuses only when nothing can tell it the switch is over', async () => {
     const send = useSendChatMessage({
       chatId: 1,
-      model: { id: 1, modelName: 'Test LLM' } as Model,
+      model: { id: 1, modelName: 'Test LLM', vision: true } as Model,
       messageHistory: [],
       chatSettings: {
         systemPrompt: '',

@@ -97,3 +97,7 @@ export const getPromptCharBudget = (model: Model, sample?: string): number => {
   const density = estimatePromptTokens(sample) / sample.length;
   return Math.max(0, Math.floor((tokenBudget - 1) / density));
 };
+
+export const fitsInOneTurn = (text: string, model: Model): boolean =>
+  estimatePromptTokens(text) <=
+  Math.floor(getPromptTokenBudget(model) * PROMPT_TOKEN_SAFETY);
