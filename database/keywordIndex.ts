@@ -184,3 +184,26 @@ export const keywordSearch = async (
     return [];
   }
 };
+
+export const storedChunkTexts = async (
+  db: DB | undefined,
+  documentId: number
+): Promise<string[] | null> => {
+  if (!db) return null;
+  try {
+    const result = await db.execute(
+      'SELECT id, document FROM vectors WHERE id LIKE ?',
+      [`${documentId}:%`]
+    );
+    return result.rows
+      .map((row) => ({
+        index: Number(String(row.id).split(':')[1]),
+        text: String(row.document ?? ''),
+      }))
+      .sort((a, b) => a.index - b.index)
+      .map((chunk) => chunk.text);
+  } catch (error) {
+    console.warn('Failed to read stored chunks', { documentId, error });
+    return null;
+  }
+};

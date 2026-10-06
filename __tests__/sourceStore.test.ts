@@ -187,6 +187,94 @@ describe('addSource', () => {
     ]);
   });
 
+  describe('a matching document whose indexing was cut short', () => {
+    const storeWithChunks = (stored: string[]) =>
+      ({
+        add: vectorStoreAdd,
+        delete: vectorStoreDelete,
+        db: {
+          execute: jest.fn(async () => ({
+            rows: stored
+              .map((document, index) => ({ id: `7:${index}`, document }))
+              .reverse(),
+          })),
+        },
+      }) as unknown as OPSQLiteVectorStore;
+
+    beforeEach(() => {
+      mockReadDocumentText.mockResolvedValue('first part. second part.');
+      MockSplitter.mockImplementation(() => ({
+        splitText: jest.fn().mockResolvedValue(['first part.', 'second part.']),
+      }));
+      mockFindMatchingSource.mockResolvedValue({
+        id: 7,
+        name: 'report.txt',
+        type: 'txt',
+        size: 100,
+        firstChunk: 'first part.',
+      });
+    });
+
+    it('is indexed again under the same id instead of being reused as ready', async () => {
+      const result = await useSourceStore
+        .getState()
+        .addSource(
+          baseSource,
+          '/path/doc.txt',
+          storeWithChunks(['first part.'])
+        );
+
+      expect(result).toEqual({ success: true, sourceId: 7, truncated: false });
+      expect(mockInsertSource).not.toHaveBeenCalled();
+      expect(vectorStoreDelete).toHaveBeenCalled();
+      expect(vectorStoreAdd).toHaveBeenCalledTimes(2);
+      expect(
+        useSourceStore.getState().sources.filter((s) => s.id === 7)
+      ).toHaveLength(1);
+    });
+
+    it('keeps the document row when indexing it again fails, so chats that use it keep it', async () => {
+      vectorStoreAdd.mockRejectedValueOnce(new Error('disk full'));
+
+      const result = await useSourceStore
+        .getState()
+        .addSource(baseSource, '/path/doc.txt', storeWithChunks([]));
+
+      expect(result).toEqual({ success: false });
+      expect(mockDeleteSource).not.toHaveBeenCalled();
+    });
+
+    it('is reused as is when every chunk is stored', async () => {
+      const result = await useSourceStore
+        .getState()
+        .addSource(
+          baseSource,
+          '/path/doc.txt',
+          storeWithChunks(['first part.', 'second part.'])
+        );
+
+      expect(result).toEqual({ success: true, sourceId: 7, truncated: false });
+      expect(vectorStoreAdd).not.toHaveBeenCalled();
+    });
+
+    it('is a new document when its text differs after the first chunk, and the stored one is left alone', async () => {
+      mockInsertSource.mockResolvedValue(8);
+
+      const result = await useSourceStore
+        .getState()
+        .addSource(
+          baseSource,
+          '/path/doc.txt',
+          storeWithChunks(['first part.', 'second part, last year.'])
+        );
+
+      expect(result).toEqual({ success: true, sourceId: 8, truncated: false });
+      expect(mockInsertSource).toHaveBeenCalled();
+      expect(vectorStoreDelete).not.toHaveBeenCalled();
+      expect(vectorStoreAdd).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it('caps embedded chunks at MAX_SOURCE_CHUNKS and flags the result truncated', async () => {
     mockReadDocumentText.mockResolvedValue('content');
     mockInsertSource.mockResolvedValue(99);
