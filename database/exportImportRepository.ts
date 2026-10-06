@@ -7,13 +7,27 @@ import { Alert } from 'react-native';
 
 const VALID_ROLES = new Set(['user', 'assistant', 'system', 'event']);
 
+const isAbsentOr = (value: unknown, matches: (v: unknown) => boolean) =>
+  value === undefined || value === null || matches(value);
+
+const isNumber = (v: unknown) => typeof v === 'number';
+const isString = (v: unknown) => typeof v === 'string';
+
 const isValidMessage = (m: unknown): m is Message => {
   if (!m || typeof m !== 'object') return false;
   const msg = m as Record<string, unknown>;
   return (
     typeof msg.role === 'string' &&
     VALID_ROLES.has(msg.role) &&
-    typeof msg.content === 'string'
+    typeof msg.content === 'string' &&
+    isAbsentOr(msg.timestamp, isNumber) &&
+    isAbsentOr(msg.tokensPerSecond, isNumber) &&
+    isAbsentOr(msg.timeToFirstToken, isNumber) &&
+    isAbsentOr(msg.imagePath, isString) &&
+    isAbsentOr(msg.modelName, isString) &&
+    isAbsentOr(msg.documentName, isString) &&
+    isAbsentOr(msg.sourceDocuments, Array.isArray) &&
+    isAbsentOr(msg.groundingCaveats, Array.isArray)
   );
 };
 
@@ -34,31 +48,27 @@ export const exportChatRoom = async (
   chatId: number,
   chatTitle: string
 ): Promise<void> => {
-  try {
-    const messageHistory = await getChatMessages(db, chatId);
+  const messageHistory = await getChatMessages(db, chatId);
 
-    const jsonData = JSON.stringify({
-      id: chatId,
-      title: chatTitle,
-      history: messageHistory,
+  const jsonData = JSON.stringify({
+    id: chatId,
+    title: chatTitle,
+    history: messageHistory,
+  });
+
+  const fileName = `chat-${Date.now()}.json`;
+  const file = new File(Paths.document, fileName);
+  await file.write(jsonData);
+  const fileUri = file.uri;
+
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(fileUri, {
+      dialogTitle: `Export Chat Room: ${chatTitle}`,
+      mimeType: 'application/json',
+      UTI: 'public.json',
     });
-
-    const fileName = `chat-${Date.now()}.json`;
-    const file = new File(Paths.document, fileName);
-    await file.write(jsonData);
-    const fileUri = file.uri;
-
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(fileUri, {
-        dialogTitle: `Export Chat Room: ${chatTitle}`,
-        mimeType: 'application/json',
-        UTI: 'public.json',
-      });
-    } else {
-      Alert.alert('Sharing is not available on this device.');
-    }
-  } catch (error) {
-    console.error('Error exporting chat room:', error);
+  } else {
+    Alert.alert('Sharing is not available on this device.');
   }
 };
 

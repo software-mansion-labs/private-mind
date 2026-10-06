@@ -52,7 +52,7 @@ export default function App() {
     });
   }, [navigation]);
   const { styles, theme } = useThemedStyles(createStyles);
-  const { addImportedChat } = useChatStore();
+  const { addImportedChat, deleteChat } = useChatStore();
 
   const handleSetModel = async (model: Model, replace = false) => {
     await setLastUsedModelId(model.id);
@@ -65,13 +65,19 @@ export default function App() {
   const handleImport = async () => {
     const importedChat = await importChatRoom();
     if (importedChat) {
+      let newChatId: number | undefined;
       try {
-        const newChatId = await addImportedChat(importedChat.title);
+        newChatId = await addImportedChat(importedChat.title);
         if (!newChatId) throw new Error('The imported chat was not created');
         await importMessages(db!, newChatId, importedChat.messages);
         router.replace(`/chat/${newChatId}`);
       } catch (error) {
         console.error('Error importing chat:', error);
+        if (newChatId) {
+          await deleteChat(newChatId).catch((cleanupError) =>
+            console.error('Error removing half-imported chat:', cleanupError)
+          );
+        }
         Alert.alert('Error', 'Failed to import chat. Please try again.');
       }
     }

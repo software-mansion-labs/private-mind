@@ -107,6 +107,19 @@ describe('exportChatRoom', () => {
     expect(payload.history[1].timeToFirstToken).toBe(33964);
   });
 
+  it('lets a failure to share reach the caller', async () => {
+    mockGetChatMessages.mockResolvedValue(history);
+    mockShareAsync.mockRejectedValueOnce(new Error('disk full'));
+
+    await expect(exportChatRoom(db, 1, 'Wędki')).rejects.toThrow('disk full');
+  });
+
+  it('lets a failure to read the history reach the caller', async () => {
+    mockGetChatMessages.mockRejectedValueOnce(new Error('db locked'));
+
+    await expect(exportChatRoom(db, 1, 'Wędki')).rejects.toThrow('db locked');
+  });
+
   it('shares the file it just wrote', async () => {
     await exportedPayload();
 
@@ -137,5 +150,37 @@ describe('importChatRoom', () => {
 
   it('refuses a file that is not a chat export', async () => {
     expect(await importOf({ some: 'other json' })).toBeUndefined();
+  });
+
+  it.each([
+    ['timestamp', { timestamp: { when: 'now' } }],
+    ['tokensPerSecond', { tokensPerSecond: '5.1' }],
+    ['timeToFirstToken', { timeToFirstToken: {} }],
+    ['imagePath', { imagePath: 4 }],
+    ['modelName', { modelName: ['Gemma'] }],
+    ['documentName', { documentName: 7 }],
+    ['sourceDocuments', { sourceDocuments: 'none' }],
+    ['groundingCaveats', { groundingCaveats: {} }],
+  ])('refuses a message whose %s has the wrong type', async (_, bad) => {
+    const payload = await exportedPayload();
+    payload.history[1] = { ...payload.history[1], ...bad };
+
+    expect(await importOf(payload)).toBeUndefined();
+  });
+
+  it('accepts the nulls the database hands back for empty columns', async () => {
+    const payload = await exportedPayload();
+    payload.history[0] = {
+      ...payload.history[0],
+      modelName: null,
+      imagePath: null,
+      documentName: null,
+      tokensPerSecond: null,
+      timeToFirstToken: null,
+      sourceDocuments: null,
+      groundingCaveats: null,
+    };
+
+    expect((await importOf(payload))?.messages).toHaveLength(2);
   });
 });

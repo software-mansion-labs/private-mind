@@ -3,6 +3,7 @@ import {
   forkChat,
   getChatDigest,
   getChatMessages,
+  importMessages,
   persistMessage,
   setChatDigest,
 } from '../database/chatRepository';
@@ -584,5 +585,43 @@ describe('getChatMessages source provenance', () => {
     expect(source?.name).toBe('report.pdf');
     expect(source?.kind).toBeUndefined();
     expect(source?.url).toBeUndefined();
+  });
+});
+
+describe('importMessages', () => {
+  const message = (content: string) => ({
+    id: 0,
+    chatId: 1,
+    role: 'user' as const,
+    content,
+    timestamp: 1,
+  });
+
+  it('writes every batch inside one transaction', async () => {
+    let inTransaction = false;
+    const insertedInTransaction: boolean[] = [];
+    const runAsync = jest.fn(async () => {
+      insertedInTransaction.push(inTransaction);
+      return { lastInsertRowId: 1 };
+    });
+    const mockDb = {
+      runAsync,
+      withTransactionAsync: async (callback: TransactionCallback) => {
+        inTransaction = true;
+        try {
+          await callback();
+        } finally {
+          inTransaction = false;
+        }
+      },
+    } as unknown as SQLiteDatabase;
+
+    await importMessages(
+      mockDb,
+      1,
+      Array.from({ length: 200 }, (_, i) => message(`m${i}`))
+    );
+
+    expect(insertedInTransaction).toEqual([true, true, true]);
   });
 });

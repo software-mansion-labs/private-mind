@@ -291,32 +291,36 @@ export const importMessages = async (
 ): Promise<void> => {
   if (messages.length === 0) return;
 
-  for (let i = 0; i < messages.length; i += IMPORT_BATCH_SIZE) {
-    const batch = messages.slice(i, i + IMPORT_BATCH_SIZE);
-    const placeholders = batch
-      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .join(', ');
-    const flattenedValues = batch.flatMap((msg) => [
-      chatId,
-      msg.role,
-      msg.content,
-      msg.timestamp ?? Date.now(),
-      msg.modelName ?? '',
-      msg.tokensPerSecond ?? 0,
-      msg.timeToFirstToken ?? 0,
-      msg.imagePath ?? null,
-      msg.documentName ?? null,
-      msg.sourceDocuments?.length ? JSON.stringify(msg.sourceDocuments) : null,
-      msg.groundingCaveats?.length
-        ? JSON.stringify(msg.groundingCaveats)
-        : null,
-      msg.stoppedByUser ? 1 : 0,
-    ]);
-    await db.runAsync(
-      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, stoppedByUser) VALUES ${placeholders}`,
-      flattenedValues
-    );
-  }
+  await db.withTransactionAsync(async () => {
+    for (let i = 0; i < messages.length; i += IMPORT_BATCH_SIZE) {
+      const batch = messages.slice(i, i + IMPORT_BATCH_SIZE);
+      const placeholders = batch
+        .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .join(', ');
+      const flattenedValues = batch.flatMap((msg) => [
+        chatId,
+        msg.role,
+        msg.content,
+        msg.timestamp ?? Date.now(),
+        msg.modelName ?? '',
+        msg.tokensPerSecond ?? 0,
+        msg.timeToFirstToken ?? 0,
+        msg.imagePath ?? null,
+        msg.documentName ?? null,
+        msg.sourceDocuments?.length
+          ? JSON.stringify(msg.sourceDocuments)
+          : null,
+        msg.groundingCaveats?.length
+          ? JSON.stringify(msg.groundingCaveats)
+          : null,
+        msg.stoppedByUser ? 1 : 0,
+      ]);
+      await db.runAsync(
+        `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, stoppedByUser) VALUES ${placeholders}`,
+        flattenedValues
+      );
+    }
+  });
 };
 
 const getBranchMessagePreview = (message: Message): string => {
