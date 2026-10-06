@@ -172,13 +172,13 @@ export type ChatBranchMarker = {
 export const createChat = async (
   db: SQLiteDatabase,
   title: string,
-  modelId: number,
+  modelId: number | null,
   modelSystemPrompt?: string | null
 ): Promise<number | void> => {
   try {
     const result = await db.runAsync(
-      `INSERT INTO chats (title, modelId) VALUES (?, ?)`,
-      [title, modelId]
+      `INSERT INTO chats (title, modelId, lastUsed) VALUES (?, ?, ?)`,
+      [title, modelId, Date.now()]
     );
 
     if (result.lastInsertRowId) {

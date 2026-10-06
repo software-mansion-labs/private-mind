@@ -96,6 +96,44 @@ describe('renameChat', () => {
   });
 });
 
+describe('addImportedChat', () => {
+  const phantomChat = {
+    id: -1,
+    title: '',
+    modelId: -1,
+    lastUsed: 0,
+    enabledSources: [3],
+    settings: { systemPrompt: 'Answer like a pirate.' },
+  };
+
+  it('creates the chat without a model and lists it', async () => {
+    (chatRepository.createChat as jest.Mock).mockResolvedValue(12);
+    (chatRepository.getAllChats as jest.Mock).mockResolvedValue([mockChat(12)]);
+
+    const id = await useChatStore.getState().addImportedChat('From backup');
+
+    expect(id).toBe(12);
+    expect(chatRepository.createChat).toHaveBeenCalledWith(
+      mockDb,
+      'From backup',
+      null
+    );
+    expect(useChatStore.getState().chats.map((chat) => chat.id)).toEqual([12]);
+  });
+
+  it('leaves the chat the user is starting alone', async () => {
+    (chatRepository.createChat as jest.Mock).mockResolvedValue(12);
+    (chatRepository.getAllChats as jest.Mock).mockResolvedValue([]);
+    useChatStore.setState({ phantomChat });
+
+    await useChatStore.getState().addImportedChat('From backup');
+
+    expect(sourcesRepository.activateSource).not.toHaveBeenCalled();
+    expect(chatRepository.setChatSettings).not.toHaveBeenCalled();
+    expect(useChatStore.getState().phantomChat).toEqual(phantomChat);
+  });
+});
+
 describe('addChat', () => {
   it('prepends the new chat to state', async () => {
     (chatRepository.createChat as jest.Mock).mockResolvedValue(42);
