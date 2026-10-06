@@ -143,7 +143,7 @@ describe('a conversation that outgrows the context window', () => {
 
     const originals = conversation(16)
       .filter((message) => message.role === 'assistant')
-      .map((message) => message.content);
+      .map((message) => message.content.trim());
 
     expect(replies.length).toBeGreaterThan(1);
     expect(originals).toContain(replies.at(-1));
