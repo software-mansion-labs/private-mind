@@ -3954,3 +3954,24 @@ describe('warming the model up right after it loads', () => {
     });
   });
 });
+
+describe('loading a model whose files were deleted', () => {
+  it('refuses instead of fetching the whole model again behind a spinner (C-93)', async () => {
+    const { useModelStore } = jest.requireActual('../store/modelStore');
+    const Toast = jest.requireActual('react-native-toast-message').default;
+    const show = jest.spyOn(Toast, 'show');
+    const deleted = { ...baseModel, id: 77, isDownloaded: false };
+    useModelStore.setState({ models: [deleted] });
+    const fromModelName = jest.spyOn(LLMModule, 'fromModelName');
+
+    await useLLMStore.getState().loadModel({ ...deleted, isDownloaded: true });
+
+    expect(fromModelName).not.toHaveBeenCalled();
+    expect(show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: expect.stringContaining('is not downloaded'),
+      })
+    );
+    useModelStore.setState({ models: [] });
+  });
+});
