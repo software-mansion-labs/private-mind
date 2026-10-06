@@ -522,4 +522,88 @@ describe('cleanupOrphanedSources', () => {
 
     expect(useSourceStore.getState().sources).toEqual(updated);
   });
+
+  const sweepWith = (orphanIds: number[]) => {
+    mockGetOrphanedSources.mockResolvedValue(
+      orphanIds.map((id) => ({ id, name: `doc${id}.txt`, type: 'txt' }))
+    );
+    return useSourceStore.getState().cleanupOrphanedSources({
+      add: vectorStoreAdd,
+      delete: jest.fn(),
+    } as Partial<OPSQLiteVectorStore> as OPSQLiteVectorStore);
+  };
+
+  it('keeps a document attached to a message the user has not sent yet', async () => {
+    const unregister = useSourceStore.getState().registerComposer(() => [5]);
+
+    await sweepWith([5, 6]);
+
+    expect(mockDeleteSource).toHaveBeenCalledWith(mockDb, 6);
+    expect(mockDeleteSource).not.toHaveBeenCalledWith(mockDb, 5);
+
+    unregister();
+    await sweepWith([5]);
+    expect(mockDeleteSource).toHaveBeenCalledWith(mockDb, 5);
+  });
+
+  it('keeps a document that is attached again while the sweep is already running', async () => {
+    mockGetOrphanedSources.mockResolvedValue(
+      [5, 6].map((id) => ({ id, name: `doc${id}.txt`, type: 'txt' }))
+    );
+    let releases: (() => void)[] = [];
+    const deleteVectors = jest.fn(async () => {
+      if (releases.length === 0) {
+        releases = [useSourceStore.getState().holdSources([5, 6])];
+      }
+    });
+
+    await useSourceStore.getState().cleanupOrphanedSources({
+      add: vectorStoreAdd,
+      delete: deleteVectors,
+    } as Partial<OPSQLiteVectorStore> as OPSQLiteVectorStore);
+
+    expect(mockDeleteSource).not.toHaveBeenCalled();
+    expect(deleteVectors).toHaveBeenCalledTimes(1);
+    releases.forEach((release) => release());
+  });
+
+  it('keeps the documents of a send until it lets them go', async () => {
+    const release = useSourceStore.getState().holdSources([8]);
+
+    await sweepWith([8]);
+    expect(mockDeleteSource).not.toHaveBeenCalled();
+
+    release();
+    await sweepWith([8]);
+    expect(mockDeleteSource).toHaveBeenCalledWith(mockDb, 8);
+  });
+
+  it('keeps a document whose chunks are still being embedded', async () => {
+    mockReadDocumentText.mockResolvedValue('content');
+    mockInsertSource.mockResolvedValue(11);
+    MockSplitter.mockImplementation(() => ({
+      splitText: jest.fn().mockResolvedValue(['chunk1']),
+    }));
+    let finishChunk = () => {};
+    let chunkStarted = () => {};
+    const embedding = new Promise<void>((resolve) => {
+      chunkStarted = resolve;
+    });
+    vectorStoreAdd.mockImplementationOnce(() => {
+      chunkStarted();
+      return new Promise<void>((resolve) => {
+        finishChunk = resolve;
+      });
+    });
+    const adding = useSourceStore
+      .getState()
+      .addSource(baseSource, '/path/doc.txt', mockVectorStore);
+    await embedding;
+
+    await sweepWith([11]);
+    expect(mockDeleteSource).not.toHaveBeenCalled();
+
+    finishChunk();
+    await adding;
+  });
 });

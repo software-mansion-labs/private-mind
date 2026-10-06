@@ -103,7 +103,7 @@ export const useSendChatMessage = ({
   const { sendChatMessage, runWithModelOffloaded } = useLLMStore();
   const { addChat, updateLastUsed, enableSource } = useChatStore();
 
-  return async (
+  const send = async (
     userInput: string,
     imagePath?: string,
     attachments?: Attachment[]
@@ -400,5 +400,22 @@ export const useSendChatMessage = ({
     }
 
     return generation;
+  };
+
+  return async (
+    userInput: string,
+    imagePath?: string,
+    attachments?: Attachment[]
+  ): Promise<boolean | SendRefusal> => {
+    const releaseDocuments = useSourceStore
+      .getState()
+      .holdSources(
+        (attachments ?? []).flatMap((a) => (a.sourceId ? [a.sourceId] : []))
+      );
+    try {
+      return await send(userInput, imagePath, attachments);
+    } finally {
+      releaseDocuments();
+    }
   };
 };
