@@ -309,6 +309,7 @@ describe('useAttachment', () => {
     useSourceStore.getState.mockReturnValue({
       addSource: mockAddSource,
       cleanupOrphanedSources: mockCleanupOrphanedSources,
+      registerComposer: () => () => {},
     });
 
     const { result } = renderHook(() => useAttachment());
