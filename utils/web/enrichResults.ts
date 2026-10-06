@@ -1,6 +1,7 @@
 import type { WebSearchResult, ExtractedArticle } from './types';
 import { extractArticle, looksLikeBotWall } from './url/extractArticle';
 import { hostname } from './hostname';
+import { isMostlyUndecodable } from './security/charset';
 import {
   classifyFetchError,
   classifyUnusableContent,
@@ -51,12 +52,20 @@ export const enrichWebResults = async (
       );
       const text = article.text?.trim() ?? '';
       const botWall = looksLikeBotWall(text, article.title);
-      const usable = text.length >= WEB_CONTENT_MIN_CHARS && !botWall;
+      const undecodable = isMostlyUndecodable(text);
+      const usable =
+        text.length >= WEB_CONTENT_MIN_CHARS && !botWall && !undecodable;
       onPage?.({
         url: result.url,
         host: hostname(result.url),
         ok: usable,
-        ...(usable ? {} : { reason: classifyUnusableContent(botWall) }),
+        ...(usable
+          ? {}
+          : {
+              reason: undecodable
+                ? 'unsupported'
+                : classifyUnusableContent(botWall),
+            }),
       });
       if (usable) {
         enrichedByUrl.set(result.url, {
