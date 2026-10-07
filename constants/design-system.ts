@@ -30,6 +30,24 @@ export const stroke = {
   strong: 2,
 } as const;
 
+export const iconSize = {
+  sm: 16,
+  md: 20,
+  lg: 24,
+} as const;
+
+export const controlHeight = {
+  button: 48,
+  pill: 36,
+} as const;
+
+export const hitSlop = 12;
+
+export const opacity = {
+  pressed: 0.6,
+  disabled: 0.4,
+} as const;
+
 export const textStyles = {
   titleH1: {
     fontFamily: fontFamily.bold,
