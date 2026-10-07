@@ -63,6 +63,27 @@ describe('the embedding download prompt behind the web-search toggle', () => {
     );
   });
 
+  it('clears the way for the sheet just before it is presented', async () => {
+    const order: string[] = [];
+    const presentDownloadSheet = jest.fn(() => order.push('present'));
+    const onWillPresentWebPrompt = jest.fn(() => order.push('clear'));
+    const { result } = renderHook(() =>
+      useEmbeddingDownloadPrompt({
+        model,
+        webSearchEnabled: false,
+        onWebSearchToggle: jest.fn(),
+        presentDownloadSheet,
+        markDownloadSheetClosed: jest.fn(),
+        onWillPresentWebPrompt,
+      })
+    );
+
+    act(() => result.current.handleWebSearchToggle());
+
+    await waitFor(() => expect(presentDownloadSheet).toHaveBeenCalled());
+    expect(order).toEqual(['clear', 'present']);
+  });
+
   it('resumes nothing after the download, so no picker opens by itself', async () => {
     const { result, presentDownloadSheet } = setup(false);
     act(() => result.current.handleWebSearchToggle());

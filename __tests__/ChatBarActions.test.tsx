@@ -237,12 +237,59 @@ describe('sources button removed', () => {
   });
 });
 
-describe('thinking toggle', () => {
-  it('calls onThinkingToggle when Think button is pressed', () => {
+describe('tool chips', () => {
+  it('shows no tool in the bar while every tool is off', () => {
+    renderActions({ onWebSearchToggle: jest.fn() });
+
+    expect(screen.queryByTestId('tool-chip-think')).toBeNull();
+    expect(screen.queryByTestId('tool-chip-web')).toBeNull();
+    expect(screen.queryByText('Think')).toBeNull();
+  });
+
+  it('shows a chip for each tool that is on', () => {
+    renderActions({
+      thinkingEnabled: true,
+      webSearchEnabled: true,
+      onWebSearchToggle: jest.fn(),
+    });
+
+    expect(screen.getByTestId('tool-chip-think')).toBeTruthy();
+    expect(screen.getByText('Think')).toBeTruthy();
+    expect(screen.getByTestId('tool-chip-web')).toBeTruthy();
+    expect(screen.getByText('Web search')).toBeTruthy();
+  });
+
+  it('drops the chip once its tool is turned off', () => {
+    const { rerender } = renderActions({ thinkingEnabled: true });
+    expect(screen.getByTestId('tool-chip-think')).toBeTruthy();
+
+    rerender(<ChatBarActions {...defaultProps} thinkingEnabled={false} />);
+
+    expect(screen.queryByTestId('tool-chip-think')).toBeNull();
+  });
+
+  it('turns Think off from its chip', () => {
     const onThinkingToggle = jest.fn();
-    renderActions({ onThinkingToggle });
-    fireEvent.press(screen.getByText('Think'));
-    expect(onThinkingToggle).toHaveBeenCalled();
+    renderActions({ thinkingEnabled: true, onThinkingToggle });
+
+    fireEvent.press(screen.getByTestId('tool-chip-think'));
+
+    expect(onThinkingToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('turns Web search off from its chip', () => {
+    const onWebSearchToggle = jest.fn();
+    renderActions({ webSearchEnabled: true, onWebSearchToggle });
+
+    fireEvent.press(screen.getByTestId('tool-chip-web'));
+
+    expect(onWebSearchToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no Web search chip when the chat cannot search the web', () => {
+    renderActions({ webSearchEnabled: true });
+
+    expect(screen.queryByTestId('tool-chip-web')).toBeNull();
   });
 });
 

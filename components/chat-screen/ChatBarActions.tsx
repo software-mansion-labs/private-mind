@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { ScrollView, View, StyleSheet } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -12,15 +12,14 @@ import ComposerActionButton, {
   type ComposerAction,
 } from './ComposerActionButton';
 import SoundwaveIcon from '../../assets/icons/soundwave.svg';
-import LightBulbCrossedIcon from '../../assets/icons/light_bulb_crossed.svg';
 import LightBulbIcon from '../../assets/icons/light_bulb.svg';
 import PlusIcon from '../../assets/icons/plus.svg';
 import WebIcon from '../../assets/icons/web.svg';
-import WebCrossedIcon from '../../assets/icons/web_crossed.svg';
-import ChatBarToggle from './ChatBarToggle';
+import ToolChip from './ToolChip';
 import { Feedback } from '../../utils/Feedback';
 import Toast from 'react-native-toast-message';
 import { COMPOSER } from './attachments/constants';
+import { space } from '../../constants/design-system';
 import {
   usePrimaryActionGuard,
   type PrimaryAction,
@@ -46,7 +45,6 @@ interface Props {
   userInput: string;
   hasAttachments?: boolean;
   isLoadingAttachment?: boolean;
-  togglesDisabled?: boolean;
   modelBusy?: boolean;
   sendPending?: boolean;
   sendInFlight?: boolean;
@@ -67,7 +65,6 @@ const ChatBarActions = ({
   userInput,
   hasAttachments = false,
   isLoadingAttachment = false,
-  togglesDisabled = false,
   modelBusy = false,
   sendPending = false,
   sendInFlight = false,
@@ -112,8 +109,6 @@ const ChatBarActions = ({
     Feedback.attach();
     onAttach();
   };
-
-  const handleThinkingToggle = () => onThinkingToggle?.();
 
   const renderButton = () => {
     const handlePress = () =>
@@ -171,25 +166,30 @@ const ChatBarActions = ({
             />
           </Animated.View>
         </View>
-        <ChatBarToggle
-          label="Think"
-          enabled={thinkingEnabled}
-          iconOn={LightBulbIcon}
-          iconOff={LightBulbCrossedIcon}
-          onToggle={handleThinkingToggle}
-          disabled={togglesDisabled}
-        />
-        {onWebSearchToggle ? (
-          <ChatBarToggle
-            label="Web"
-            enabled={webSearchEnabled}
-            iconOn={WebIcon}
-            iconOff={WebCrossedIcon}
-            onToggle={onWebSearchToggle}
-            disabled={togglesDisabled}
-            testID="web-search-toggle"
-          />
-        ) : null}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          style={styles.chips}
+          contentContainerStyle={styles.chipsContent}
+        >
+          {thinkingEnabled && onThinkingToggle ? (
+            <ToolChip
+              label="Think"
+              icon={LightBulbIcon}
+              onTurnOff={onThinkingToggle}
+              testID="tool-chip-think"
+            />
+          ) : null}
+          {webSearchEnabled && onWebSearchToggle ? (
+            <ToolChip
+              label="Web search"
+              icon={WebIcon}
+              onTurnOff={onWebSearchToggle}
+              testID="tool-chip-web"
+            />
+          ) : null}
+        </ScrollView>
       </View>
 
       {renderButton()}
@@ -204,11 +204,21 @@ const createStyles = () =>
     container: {
       flexDirection: 'row',
       width: '100%',
-      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: space.two,
     },
     leftActions: {
+      flex: 1,
       flexDirection: 'row',
-      gap: 8,
+      alignItems: 'center',
+      gap: space.two,
+    },
+    chips: {
+      flex: 1,
+    },
+    chipsContent: {
+      alignItems: 'center',
+      gap: space.two,
     },
     blockedAttachment: {
       opacity: 0.4,

@@ -90,6 +90,7 @@ jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
     imagesEnabled,
     maxSelection,
     busyAction,
+    tools,
   }: {
     panel: {
       mode: string;
@@ -98,9 +99,28 @@ jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
     imagesEnabled: boolean;
     maxSelection: number;
     busyAction?: string | null;
+    tools?: {
+      thinkingEnabled?: boolean;
+      onThinkingToggle?: () => void;
+      webSearchEnabled?: boolean;
+      onWebSearchToggle?: () => void;
+    };
   }) => (
     <View testID="attachment-overlay">
       <Text>{`mode:${panel.mode}`}</Text>
+      <Text>{`menu-think:${tools?.thinkingEnabled ? 'on' : 'off'}`}</Text>
+      <TouchableOpacity
+        testID="menu-think-switch"
+        onPress={tools?.onThinkingToggle}
+      />
+      {tools?.onWebSearchToggle && (
+        <TouchableOpacity
+          testID="web-search-toggle"
+          onPress={tools.onWebSearchToggle}
+        >
+          <Text>Web search</Text>
+        </TouchableOpacity>
+      )}
       <Text>{`vision:${imagesEnabled}`}</Text>
       <Text>{`max:${maxSelection}`}</Text>
       <Text>{`busy:${busyAction ?? 'none'}`}</Text>
@@ -201,6 +221,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onThinkingToggle,
     thinkingEnabled,
     onAttach,
+    webSearchEnabled,
     onWebSearchToggle,
     modelBusy,
     sendPending,
@@ -216,6 +237,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onThinkingToggle: () => void;
     thinkingEnabled: boolean;
     onAttach: () => void;
+    webSearchEnabled?: boolean;
     onWebSearchToggle?: () => void;
     modelBusy?: boolean;
     sendPending?: boolean;
@@ -224,12 +246,9 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     <View testID="chat-bar-actions">
       {modelBusy && <Text>model busy</Text>}
       {sendPending && <Text>send pending</Text>}
-      {onWebSearchToggle && (
-        <TouchableOpacity
-          testID="web-search-toggle"
-          onPress={onWebSearchToggle}
-        >
-          <Text>Web</Text>
+      {webSearchEnabled && onWebSearchToggle && (
+        <TouchableOpacity testID="tool-chip-web" onPress={onWebSearchToggle}>
+          <Text>Web chip</Text>
         </TouchableOpacity>
       )}
       <TouchableOpacity testID="attach-btn" onPress={onAttach}>
@@ -615,6 +634,21 @@ describe('downloaded model — text input', () => {
     renderBar({ onThinkingToggle });
     fireEvent.press(screen.getByTestId('thinking-btn'));
     expect(onThinkingToggle).toHaveBeenCalled();
+  });
+
+  it('hands the Think switch in the + menu the same state and toggle', () => {
+    const onThinkingToggle = jest.fn();
+    renderBar({ thinkingEnabled: true, onThinkingToggle });
+
+    expect(screen.getByText('menu-think:on')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('menu-think-switch'));
+    expect(onThinkingToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers no Web search switch in the + menu when the chat cannot search', () => {
+    renderBar();
+
+    expect(screen.queryByTestId('web-search-toggle')).toBeNull();
   });
 });
 
@@ -1283,6 +1317,51 @@ describe('web search toggle and the embedding download sheet', () => {
     await flush();
 
     expect(onWebSearchToggle).toHaveBeenCalledTimes(2);
+    expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
+  });
+
+  it('closes the + menu before the download sheet opens, so the sheet is not left under it', async () => {
+    useEmbeddingModelStore.setState({ status: 'not_downloaded' });
+    renderBar({
+      webSearchEnabled: false,
+      onWebSearchToggle: jest.fn(),
+    } as Partial<typeof defaultProps>);
+    await openPanel();
+    expect(screen.getByText('mode:menu')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('web-search-toggle'));
+    await flush();
+
+    expect(mockPresentDownloadSheet).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('mode:closed')).toBeTruthy();
+  });
+
+  it('keeps the + menu open when web search turns on without a prompt', async () => {
+    useEmbeddingModelStore.setState({ status: 'ready' });
+    renderBar({
+      webSearchEnabled: false,
+      onWebSearchToggle: jest.fn(),
+    } as Partial<typeof defaultProps>);
+    await openPanel();
+
+    fireEvent.press(screen.getByTestId('web-search-toggle'));
+    await flush();
+
+    expect(screen.getByText('mode:menu')).toBeTruthy();
+  });
+
+  it('turns web search off from its chip without offering the download', async () => {
+    useEmbeddingModelStore.setState({ status: 'not_downloaded' });
+    const onWebSearchToggle = jest.fn();
+    renderBar({
+      webSearchEnabled: true,
+      onWebSearchToggle,
+    } as Partial<typeof defaultProps>);
+
+    fireEvent.press(screen.getByTestId('tool-chip-web'));
+    await flush();
+
+    expect(onWebSearchToggle).toHaveBeenCalledTimes(1);
     expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
   });
 });

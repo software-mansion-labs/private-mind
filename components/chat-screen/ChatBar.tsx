@@ -37,6 +37,8 @@ import { useAttachmentFlights } from './attachments/useAttachmentFlights';
 import { useAttachmentPanel } from './attachments/useAttachmentPanel';
 import { useSheetGeometry } from './attachments/useSheetGeometry';
 import { Model } from '../../database/modelRepository';
+import { isWebSearchReady } from '../../constants/model-profiles';
+import { hasMemoryForWebSearch } from '../../utils/modelCompatibility';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { radius } from '../../constants/design-system';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -232,10 +234,17 @@ const ChatBar = ({
 
   const pendingIds = flights.map((flight) => flight.photo.id);
 
+  const panelOpenRef = useRef(false);
   useEffect(() => {
+    panelOpenRef.current = panel.mode !== 'closed';
     if (panel.mode === 'closed') markPanelClosed();
     else markPanelOpen();
   }, [panel.mode, markPanelClosed, markPanelOpen]);
+
+  const { dismiss: dismissPanel } = panel;
+  const dismissPanelIfOpen = useCallback(() => {
+    if (panelOpenRef.current) dismissPanel();
+  }, [dismissPanel]);
 
   useEffect(() => {
     onAttachmentSheetStateChange?.(panel.mode !== 'closed');
@@ -252,7 +261,30 @@ const ChatBar = ({
     onWebSearchToggle,
     presentDownloadSheet,
     markDownloadSheetClosed,
+    onWillPresentWebPrompt: dismissPanelIfOpen,
   });
+  const webSearchToggle = onWebSearchToggle ? handleWebSearchToggle : undefined;
+  const thinkingAvailable = !model || model.thinking === true;
+  const webSearchAvailable =
+    isWebSearchReady(model) && hasMemoryForWebSearch(model);
+  const menuTools = useMemo(
+    () => ({
+      thinkingEnabled,
+      thinkingAvailable,
+      onThinkingToggle,
+      webSearchEnabled,
+      webSearchAvailable,
+      onWebSearchToggle: webSearchToggle,
+    }),
+    [
+      thinkingEnabled,
+      thinkingAvailable,
+      onThinkingToggle,
+      webSearchEnabled,
+      webSearchAvailable,
+      webSearchToggle,
+    ]
+  );
 
   const textInputRef = useRef<RNTextInput>(null);
   // iOS-only: bump the TextInput key to force a remount when a prompt
@@ -637,9 +669,7 @@ const ChatBar = ({
                 thinkingEnabled={thinkingEnabled}
                 onThinkingToggle={onThinkingToggle}
                 webSearchEnabled={webSearchEnabled}
-                onWebSearchToggle={
-                  onWebSearchToggle ? handleWebSearchToggle : undefined
-                }
+                onWebSearchToggle={webSearchToggle}
               />
             </View>
           </View>
@@ -663,6 +693,7 @@ const ChatBar = ({
             attachedIds={attachments.map((attachment) => attachment.id)}
             maxSelection={MAX_IMAGE_ATTACHMENTS}
             imagesEnabled={isVisionModel}
+            tools={menuTools}
           />
           <EmbeddingDownloadSheet
             bottomSheetModalRef={embeddingDownloadSheetRef}
