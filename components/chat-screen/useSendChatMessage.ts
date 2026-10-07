@@ -11,6 +11,10 @@ import {
 } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 
+export type SendOptions = {
+  regenerate?: boolean;
+};
+
 export type SendRefusal =
   | 'nothing-to-send'
   | 'model-loading'
@@ -103,8 +107,10 @@ export const useSendChatMessage = ({
   return async (
     userInput: string,
     imagePath?: string,
-    attachments?: Attachment[]
+    attachments?: Attachment[],
+    options?: SendOptions
   ): Promise<boolean | SendRefusal> => {
+    const regenerate = options?.regenerate === true;
     const hasDocuments = attachments?.some((a) => a.type === 'document');
     if (!userInput.trim() && !imagePath && !hasDocuments) {
       return 'nothing-to-send';
@@ -124,11 +130,12 @@ export const useSendChatMessage = ({
     if (!llm.model && !isModelLoading) return 'model-loading';
     loadModelPinnedToChat(pinnedModel);
 
-    messagesRef.current?.onMessageSent();
+    if (!regenerate) messagesRef.current?.onMessageSent();
     Keyboard.dismiss();
 
     let targetChatId = chatId!;
-    const isNewChat = !(await checkIfChatExists(db, targetChatId));
+    const isNewChat =
+      !regenerate && !(await checkIfChatExists(db, targetChatId));
     const llmAfterChatLookup = useLLMStore.getState();
     if (
       llmAfterChatLookup.isGenerating ||
@@ -154,7 +161,7 @@ export const useSendChatMessage = ({
     }
 
     let persistedImagePath: string | undefined = imagePath;
-    if (imagePath) {
+    if (imagePath && !regenerate) {
       try {
         persistedImagePath = await persistImage(imagePath);
       } catch (error) {
@@ -386,7 +393,8 @@ export const useSendChatMessage = ({
       buildSources,
       settings,
       persistedImagePath,
-      docName
+      docName,
+      regenerate
     );
 
     if (isNewChat && targetChatId !== chatId) {

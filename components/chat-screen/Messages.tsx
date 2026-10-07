@@ -17,6 +17,7 @@ import {
   NativeScrollEvent,
   Platform,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -98,6 +99,7 @@ export type UserMessageActionMenuState = {
     height: number;
   };
   onCopy?: () => void;
+  onEdit?: () => void;
 };
 
 interface Props {
@@ -141,6 +143,8 @@ interface Props {
   revealFromTop?: boolean;
   branchMarkers?: ChatBranchMarker[];
   onForkMessage?: (message: Message) => void;
+  onRegenerateMessage?: (message: Message) => void;
+  onEditMessage?: (message: Message) => void;
   onBranchMarkerPress?: (marker: ChatBranchMarker) => void;
   onUserActionMenuChange?: (menu: UserMessageActionMenuState) => void;
   ref?: Ref<MessagesHandle>;
@@ -149,6 +153,7 @@ interface Props {
 interface MessageActionsState {
   showActions: boolean;
   showForkAction: boolean;
+  showRegenerateAction: boolean;
 }
 
 const stoppedWithNothingToShow = (message: Message) => message.role === 'user';
@@ -201,6 +206,8 @@ const Messages = ({
   revealFromTop = false,
   branchMarkers = [],
   onForkMessage,
+  onRegenerateMessage,
+  onEditMessage,
   onBranchMarkerPress,
   onUserActionMenuChange,
   ref,
@@ -825,23 +832,37 @@ const Messages = ({
   );
 
   const getMessageActionsState = useCallback(
-    (message: Message): MessageActionsState => {
+    (message: Message, isLastMessage: boolean): MessageActionsState => {
       const isPersisted = message.id > 0;
 
       if (message.role === 'assistant') {
         return {
           showActions: isPersisted && message.content.trim().length > 0,
           showForkAction: isPersisted && !!onForkMessage && !isGenerating,
+          showRegenerateAction:
+            isPersisted &&
+            isLastMessage &&
+            !!onRegenerateMessage &&
+            !isGenerating,
         };
       }
 
       return {
         showActions: false,
         showForkAction: false,
+        showRegenerateAction: false,
       };
     },
-    [isGenerating, onForkMessage]
+    [isGenerating, onForkMessage, onRegenerateMessage]
   );
+
+  const handleShareMessage = useCallback(async (message: Message) => {
+    try {
+      await Share.share({ message: visibleMessageText(message) });
+    } catch (error) {
+      console.error('Failed to share message:', error);
+    }
+  }, []);
 
   const handleUserLongPress = useCallback(
     (messageId: number, target: ViewType | null) => {
@@ -864,6 +885,7 @@ const Messages = ({
             isOpen: true,
             anchor: { x, y, width, height },
             onCopy: () => handleCopyMessage(message),
+            onEdit: onEditMessage ? () => onEditMessage(message) : undefined,
           });
         });
       };
@@ -880,6 +902,7 @@ const Messages = ({
       activeUserActionsId,
       chatHistory,
       handleCopyMessage,
+      onEditMessage,
       onUserActionMenuChange,
     ]
   );
@@ -1067,8 +1090,8 @@ const Messages = ({
               onLayout = (event) => handleLastAssistantLayout(key, event);
             }
             const branchMarker = latestBranchMarkerByMessageId.get(message.id);
-            const { showActions, showForkAction } =
-              getMessageActionsState(message);
+            const { showActions, showForkAction, showRegenerateAction } =
+              getMessageActionsState(message, isLastMessage);
 
             const item = (
               <View
@@ -1091,8 +1114,11 @@ const Messages = ({
                   onShowSources={handleShowSources}
                   showActions={showActions}
                   showForkAction={showForkAction}
+                  showRegenerateAction={showRegenerateAction}
                   onCopy={handleCopyMessage}
                   onFork={handleForkMessage}
+                  onRegenerate={onRegenerateMessage}
+                  onShare={handleShareMessage}
                 />
                 {message.stoppedByUser && (
                   <StoppedMarker

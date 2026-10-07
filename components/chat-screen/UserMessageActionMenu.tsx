@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import CopyIcon from '../../assets/icons/copy.svg';
+import EditIcon from '../../assets/icons/edit.svg';
 import MenuRow from '../menu/MenuRow';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { radius } from '../../constants/design-system';
@@ -8,10 +9,12 @@ import { Theme } from '../../styles/colors';
 
 type UserMessageActionMenuProps = {
   onCopy?: () => void;
+  onEdit?: () => void;
 };
 
 export default function UserMessageActionMenu({
   onCopy,
+  onEdit,
 }: UserMessageActionMenuProps) {
   const { styles } = useThemedStyles(createStyles);
 
@@ -28,6 +31,14 @@ export default function UserMessageActionMenu({
           icon={CopyIcon}
           onPress={onCopy}
         />
+        {onEdit && (
+          <MenuRow
+            variant="compact"
+            label="Edit message"
+            icon={EditIcon}
+            onPress={onEdit}
+          />
+        )}
       </View>
     </View>
   );

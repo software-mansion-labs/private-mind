@@ -10,6 +10,7 @@ import { Model } from '../database/modelRepository';
 import { SQLiteDatabase } from 'expo-sqlite';
 import {
   ChatSettings,
+  deleteMessage,
   getChatDigest,
   getChatMessages,
   markMessageStopped,
@@ -133,6 +134,7 @@ export interface LLMStore {
   interrupt: () => void;
   sendEventMessage: (chatId: number, message: string) => Promise<void>;
   refreshActiveChatMessages: () => Promise<void>;
+  removeMessage: (messageId: number) => Promise<void>;
 }
 
 let llmInstance: LLMModule | null = null;
@@ -2001,5 +2003,16 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
     const messageHistory = await getChatMessages(db, activeChatId);
     set({ activeChatMessages: messageHistory });
+  },
+  removeMessage: async (messageId) => {
+    const { db } = get();
+    if (!db) return;
+
+    await deleteMessage(db, messageId);
+    set((state) => ({
+      activeChatMessages: state.activeChatMessages.filter(
+        (message) => message.id !== messageId
+      ),
+    }));
   },
 }));

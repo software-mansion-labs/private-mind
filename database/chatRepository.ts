@@ -525,6 +525,13 @@ export const forkChat = async (
   return newChatId;
 };
 
+export const deleteMessage = async (
+  db: SQLiteDatabase,
+  messageId: number
+): Promise<void> => {
+  await db.runAsync(`DELETE FROM messages WHERE id = ?;`, [messageId]);
+};
+
 export const deleteChat = async (
   db: SQLiteDatabase,
   chatId: number

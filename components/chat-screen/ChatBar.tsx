@@ -97,6 +97,7 @@ interface Props {
   disabled?: boolean;
   modelSwitching?: boolean;
   onAttachmentSheetStateChange?: (isOpen: boolean) => void;
+  initialText?: string;
 }
 
 const ChatBar = ({
@@ -118,6 +119,7 @@ const ChatBar = ({
   disabled = false,
   modelSwitching = false,
   onAttachmentSheetStateChange,
+  initialText,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const containerStyle = useMemo(
@@ -126,7 +128,8 @@ const ChatBar = ({
   );
 
   const phantomChatStarts = useChatStore((state) => state.phantomChatStarts);
-  const [userInput, setUserInput] = useState('');
+  const [userInput, setUserInput] = useState(initialText ?? '');
+  const hasInitialTextRef = useRef(Boolean(initialText));
   const lastSentRef = useRef<{ text: string; at: number } | null>(null);
   const heldUntilSwitchLandsRef = useRef<string | null>(null);
   const [isHoldingInput, setIsHoldingInput] = useState(false);
@@ -255,6 +258,12 @@ const ChatBar = ({
   // remounting is the only reliable way to make it grow to fit the
   // new content.
   const [iosInputKey, setIosInputKey] = useState(0);
+
+  useEffect(() => {
+    if (!hasInitialTextRef.current) return;
+    const frame = requestAnimationFrame(() => textInputRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   useImperativeHandle(
     ref,

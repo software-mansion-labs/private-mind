@@ -34,6 +34,11 @@ import useChatBranching from '../../hooks/useChatBranching';
 import { useStableCallback } from '../../hooks/useStableCallback';
 import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
 import { retryWithPinnedModel } from './loadModelPinnedToChat';
+import { visibleMessageText } from '../../utils/messageText';
+import { startPhantomChat } from '../../utils/startPhantomChat';
+import { CHAT_ENTRY_ANIMATION } from '../../constants/chat-route-params';
+import { router } from 'expo-router';
+import Toast from 'react-native-toast-message';
 
 interface Props {
   chatId: number;
@@ -46,6 +51,7 @@ interface Props {
   openModelSheetRef?: React.MutableRefObject<(() => void) | null>;
   revealFromTop?: boolean;
   headerTitleBottom?: number;
+  initialDraft?: string;
 }
 
 export default function ChatScreen({
@@ -59,6 +65,7 @@ export default function ChatScreen({
   openModelSheetRef,
   revealFromTop = false,
   headerTitleBottom,
+  initialDraft,
 }: Props) {
   const inputRef = useRef<{
     setInput: (text: string) => void;
@@ -74,7 +81,8 @@ export default function ChatScreen({
   const generationError = useLLMStore((state) => state.generationError);
   const retryLastGeneration = useLLMStore((state) => state.retryLastGeneration);
   const retryArmedForChatId = useLLMStore((state) => state.retryArmedForChatId);
-  const { setChatModel, phantomChat } = useChatStore();
+  const removeMessage = useLLMStore((state) => state.removeMessage);
+  const { setChatModel, phantomChat, forkChat } = useChatStore();
 
   const { styles, theme } = useThemedStyles(createStyles);
   const headerHeight = useHeaderHeight();
@@ -216,6 +224,57 @@ export default function ChatScreen({
   });
   const handleSendMessage = useStableCallback(sendChatMessage);
 
+  const questionBefore = (message: Message) => {
+    const history = useLLMStore.getState().activeChatMessages;
+    const index = history.findIndex((item) => item.id === message.id);
+    return history
+      .slice(0, index)
+      .reverse()
+      .find((item) => item.role === 'user' && item.id > 0);
+  };
+
+  const handleRegenerateMessage = useStableCallback(
+    async (message: Message) => {
+      const question = questionBefore(message);
+      if (!question) return;
+      await removeMessage(message.id);
+      await sendChatMessage(question.content, question.imagePath, undefined, {
+        regenerate: true,
+      });
+    }
+  );
+
+  const answerBefore = (message: Message) => {
+    const history = useLLMStore.getState().activeChatMessages;
+    const index = history.findIndex((item) => item.id === message.id);
+    return history
+      .slice(0, index)
+      .reverse()
+      .find((item) => item.role === 'assistant' && item.id > 0);
+  };
+
+  const handleEditMessage = useStableCallback(async (message: Message) => {
+    setUserActionMenu({ isOpen: false });
+    const draft = visibleMessageText(message);
+    const previousAnswer = answerBefore(message);
+    try {
+      if (!previousAnswer) {
+        await startPhantomChat(db, 'push', model, draft);
+        return;
+      }
+      const newChatId = await forkChat(chatId, previousAnswer.id);
+      if (!newChatId) return;
+      await useLLMStore.getState().setActiveChatId(newChatId);
+      router.push({
+        pathname: `/chat/${newChatId}`,
+        params: { entryAnimation: CHAT_ENTRY_ANIMATION.BranchCreated, draft },
+      });
+    } catch (error) {
+      console.error('Failed to edit message:', error);
+      Toast.show({ type: 'defaultToast', text1: 'Failed to edit message.' });
+    }
+  });
+
   const {
     handleThinkingToggle,
     thinkingEnabled,
@@ -282,6 +341,8 @@ export default function ChatScreen({
           revealFromTop={revealFromTop}
           branchMarkers={branchMarkers}
           onForkMessage={handleForkMessage}
+          onRegenerateMessage={handleRegenerateMessage}
+          onEditMessage={handleEditMessage}
           onBranchMarkerPress={handleBranchMarkerPress}
           onUserActionMenuChange={setUserActionMenu}
           chatBarInset={chatBarHeight}
@@ -296,6 +357,7 @@ export default function ChatScreen({
           onSend={handleSendMessage}
           onSelectModel={handlePresentModelSheet}
           onSelectPrompt={handleSelectPrompt}
+          initialText={initialDraft}
           ref={inputRef}
           model={model}
           isVisionModel={model?.vision === true}
@@ -333,7 +395,10 @@ export default function ChatScreen({
           style={[styles.userActionMenuOverlay, userActionMenuPosition]}
           pointerEvents="box-none"
         >
-          <UserMessageActionMenu onCopy={userActionMenu.onCopy} />
+          <UserMessageActionMenu
+            onCopy={userActionMenu.onCopy}
+            onEdit={userActionMenu.onEdit}
+          />
         </View>
       )}
 

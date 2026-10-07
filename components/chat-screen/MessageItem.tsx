@@ -37,6 +37,8 @@ import AttachmentIcon from '../../assets/icons/attachment.svg';
 import BookIcon from '../../assets/icons/book-open.svg';
 import CopyIcon from '../../assets/icons/copy.svg';
 import ForkIcon from '../../assets/icons/fork.svg';
+import RegenerateIcon from '../../assets/icons/rotate_left.svg';
+import ShareIcon from '../../assets/icons/upload.svg';
 import MessageActionButton from './MessageActionButton';
 import {
   MESSAGE_ACTION_ROW_HEIGHT,
@@ -63,8 +65,11 @@ interface MessageItemProps {
   onShowSources?: (sources: SourceDocument[], userQuestion?: string) => void;
   showActions?: boolean;
   showForkAction?: boolean;
+  showRegenerateAction?: boolean;
   onCopy?: (message: Message) => void;
   onFork?: (message: Message) => void;
+  onRegenerate?: (message: Message) => void;
+  onShare?: (message: Message) => void;
 }
 
 const splitDocumentName = (name: string) => {
@@ -116,8 +121,11 @@ const MessageItem = memo(
     onShowSources,
     showActions = false,
     showForkAction = false,
+    showRegenerateAction = false,
     onCopy,
     onFork,
+    onRegenerate,
+    onShare,
   }: MessageItemProps) => {
     const { styles } = useThemedStyles(createStyles);
     const showPerformanceMetrics = useSettingsStore(
@@ -231,9 +239,25 @@ const MessageItem = memo(
               onPress={() => onCopy?.(message)}
             />
           )}
+          {showActions && showRegenerateAction && (
+            <MessageActionButton
+              label="Regenerate"
+              icon={RegenerateIcon}
+              onPress={() => onRegenerate?.(message)}
+              testID="regenerate-action-button"
+            />
+          )}
+          {showActions && onShare && (
+            <MessageActionButton
+              label="Share"
+              icon={ShareIcon}
+              onPress={() => onShare(message)}
+              testID="share-action-button"
+            />
+          )}
           {showActions && showForkAction && (
             <MessageActionButton
-              label="Fork"
+              label="Branch in new chat"
               icon={ForkIcon}
               onPress={() => onFork?.(message)}
             />

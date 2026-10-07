@@ -25,7 +25,10 @@ export default function ChatScreenWrapper() {
 }
 
 function ChatScreenInner() {
-  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId, draft } = useLocalSearchParams<{
+    id: string;
+    draft?: string;
+  }>();
   const {
     modelId,
     entryAnimation,
@@ -102,6 +105,7 @@ function ChatScreenInner() {
   return (
     <>
       <ChatScreen
+        initialDraft={draft}
         chatId={chatId}
         chat={chat}
         messageHistory={isLoading ? [] : historyForThisChat}

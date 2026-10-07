@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { type Theme } from '../styles/colors';
 
-export const SUPPORTS_USER_ACTION_MENU = Platform.OS === 'android';
+export const SUPPORTS_USER_ACTION_MENU = true;
 
 export const USER_MESSAGE_BOTTOM_SPACING = 24;
 export const USER_ACTION_MENU_OFFSET = 6;

@@ -11,7 +11,7 @@ type NavMode = 'push' | 'replace';
 
 type NavTarget = {
   readonly pathname: string;
-  readonly params: { readonly modelId: string };
+  readonly params: { readonly modelId: string; readonly draft?: string };
 };
 
 const NAV_SETTLE_MS = 50;
@@ -45,7 +45,8 @@ const replaceWhenNavSettles = (
 export const startPhantomChat = async (
   db: SQLiteDatabase,
   mode: NavMode = 'push',
-  explicitModel?: Model
+  explicitModel?: Model,
+  draft?: string
 ) => {
   const { downloadedModels } = useModelStore.getState();
   if (!explicitModel && downloadedModels.length === 0) {
@@ -69,10 +70,12 @@ export const startPhantomChat = async (
   // Fire and forget: not on the critical path for navigating.
   void setLastUsedModelId(model.id);
 
-  const target = {
+  const target: NavTarget = {
     pathname: `/chat/${nextChatId}`,
-    params: { modelId: String(model.id) },
-  } as const;
+    params: draft
+      ? { modelId: String(model.id), draft }
+      : { modelId: String(model.id) },
+  };
 
   if (mode === 'replace') {
     await replaceWhenNavSettles(

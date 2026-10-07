@@ -169,13 +169,54 @@ describe('sending while another turn is open', () => {
       expect.any(Function),
       expect.anything(),
       undefined,
-      undefined
+      undefined,
+      false
     );
   });
 
   it('sends normally when nothing is in flight', async () => {
     expect(await useSend(1)('hello')).toBe(true);
     expect(mockedState().interrupt).not.toHaveBeenCalled();
+  });
+
+  describe('regenerating the last answer', () => {
+    it('re-asks the persisted question without a send motion or a new chat', async () => {
+      const { checkIfChatExists } = jest.requireMock(
+        '../database/chatRepository'
+      ) as { checkIfChatExists: jest.Mock };
+      const { persistImage } = jest.requireMock('../utils/persistImage') as {
+        persistImage: jest.Mock;
+      };
+      const onMessageSent = messagesRef.current.onMessageSent as jest.Mock;
+      onMessageSent.mockClear();
+      checkIfChatExists.mockClear();
+      persistImage.mockClear();
+
+      expect(
+        await useSend(7)(
+          'Compare three capitals',
+          'file://photo.jpg',
+          undefined,
+          {
+            regenerate: true,
+          }
+        )
+      ).toBe(true);
+
+      expect(onMessageSent).not.toHaveBeenCalled();
+      expect(checkIfChatExists).not.toHaveBeenCalled();
+      expect(persistImage).not.toHaveBeenCalled();
+      expect(mockAddChat).not.toHaveBeenCalled();
+      expect(mockedState().sendChatMessage).toHaveBeenCalledWith(
+        'Compare three capitals',
+        7,
+        expect.any(Function),
+        expect.anything(),
+        'file://photo.jpg',
+        undefined,
+        true
+      );
+    });
   });
 
   it('refuses an empty message', async () => {
