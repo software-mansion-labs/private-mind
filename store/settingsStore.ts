@@ -12,6 +12,8 @@ export interface SettingsStore {
   setShowPerformanceMetrics: (show: boolean) => void;
   themePreference: ThemePreference;
   setThemePreference: (preference: ThemePreference) => void;
+  dismissedWhatsNewVersion: string | null;
+  dismissWhatsNew: (version: string) => void;
   hasHydrated: boolean;
 }
 
@@ -30,6 +32,9 @@ export const useSettingsStore = create<SettingsStore>()(
         set({ showPerformanceMetrics }),
       themePreference: 'system',
       setThemePreference: (themePreference) => set({ themePreference }),
+      dismissedWhatsNewVersion: null,
+      dismissWhatsNew: (dismissedWhatsNewVersion) =>
+        set({ dismissedWhatsNewVersion }),
       hasHydrated: false,
     }),
     {
@@ -39,6 +44,7 @@ export const useSettingsStore = create<SettingsStore>()(
         customSystemPrompt: state.customSystemPrompt,
         showPerformanceMetrics: state.showPerformanceMetrics,
         themePreference: state.themePreference,
+        dismissedWhatsNewVersion: state.dismissedWhatsNewVersion,
       }),
       onRehydrateStorage: () => () => {
         useSettingsStore.setState({ hasHydrated: true });

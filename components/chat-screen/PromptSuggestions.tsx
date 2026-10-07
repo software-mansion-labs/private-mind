@@ -23,7 +23,6 @@ const PromptSuggestions = ({ onSelectPrompt }: Props) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{PROMPT_SUGGESTIONS_TEXT.title}</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -43,7 +42,7 @@ const PromptSuggestions = ({ onSelectPrompt }: Props) => {
             >
               {suggestion.title}
             </Text>
-            <Text style={styles.suggestionPrompt} numberOfLines={3}>
+            <Text style={styles.suggestionPrompt} numberOfLines={2}>
               {suggestion.prompt}
             </Text>
           </TouchableOpacity>
@@ -55,16 +54,27 @@ const PromptSuggestions = ({ onSelectPrompt }: Props) => {
 
 export default PromptSuggestions;
 
+export const PromptSuggestionsHeadline = () => {
+  const { styles } = useThemedStyles(createStyles);
+  return (
+    <Text style={styles.headline} accessibilityRole="header">
+      {PROMPT_SUGGESTIONS_TEXT.headline}
+    </Text>
+  );
+};
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       paddingVertical: 8,
     },
-    title: {
-      fontSize: fontSizes.md,
+    headline: {
+      fontSize: fontSizes.xl,
+      lineHeight: lineHeights.xl,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
-      marginBottom: 12,
+      textAlign: 'center',
+      marginBottom: 4,
     },
     scrollContent: {
       gap: 8,

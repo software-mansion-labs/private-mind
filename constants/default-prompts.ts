@@ -65,5 +65,5 @@ export const DEFAULT_PROMPT_SUGGESTIONS: PromptSuggestion[] = [
 ];
 
 export const PROMPT_SUGGESTIONS_TEXT = {
-  title: 'Suggested messages',
+  headline: 'What can I help with?',
 } as const;

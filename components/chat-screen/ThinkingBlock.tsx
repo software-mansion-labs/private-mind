@@ -1,5 +1,5 @@
 import React, { memo, useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, Pressable } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -20,6 +20,8 @@ const ThinkingBlock = memo(
     const [expanded, setExpanded] = useState(!isComplete);
     const { styles } = useThemedStyles(createStyles);
 
+    const title = inProgress ? 'Thinking…' : 'Thoughts';
+
     const toggleExpanded = () => {
       if (inProgress) return;
       Feedback.sheetOpen();
@@ -28,12 +30,17 @@ const ThinkingBlock = memo(
 
     return (
       <View style={styles.thinkingBox}>
-        <View style={styles.thinkingHeader}>
-          <Text style={styles.thinkingTitle}>Thinking...</Text>
-          <TouchableOpacity
-            onPress={toggleExpanded}
-            style={styles.chevronButton}
-          >
+        <Pressable
+          onPress={toggleExpanded}
+          style={({ pressed }) => [
+            styles.thinkingHeader,
+            pressed && styles.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+        >
+          <Text style={styles.thinkingTitle}>{title}</Text>
+          <View style={styles.chevronButton}>
             {inProgress ? (
               <RotateLeftIcon
                 width={15}
@@ -49,8 +56,8 @@ const ThinkingBlock = memo(
                 style={styles.chevronIcon}
               />
             )}
-          </TouchableOpacity>
-        </View>
+          </View>
+        </Pressable>
         {expanded && (
           <MarkdownComponent
             text={content}
@@ -85,6 +92,9 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.sm,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
+    },
+    pressed: {
+      opacity: 0.6,
     },
     chevronButton: {
       padding: 4,

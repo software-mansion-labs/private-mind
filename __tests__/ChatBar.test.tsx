@@ -168,7 +168,11 @@ jest.mock('../components/chat-screen/ChatSpeechInput', () => {
 
 jest.mock('../components/chat-screen/PromptSuggestions', () => {
   const { TouchableOpacity, Text } = require('react-native');
-  return ({ onSelectPrompt }: { onSelectPrompt: (prompt: string) => void }) => (
+  const PromptSuggestions = ({
+    onSelectPrompt,
+  }: {
+    onSelectPrompt: (prompt: string) => void;
+  }) => (
     <TouchableOpacity
       testID="prompt-suggestion"
       onPress={() => onSelectPrompt('Suggested prompt')}
@@ -176,6 +180,12 @@ jest.mock('../components/chat-screen/PromptSuggestions', () => {
       <Text>Suggest something</Text>
     </TouchableOpacity>
   );
+  const PromptSuggestionsHeadline = () => <Text>What can I help with?</Text>;
+  return {
+    __esModule: true,
+    default: PromptSuggestions,
+    PromptSuggestionsHeadline,
+  };
 });
 
 jest.mock('../components/chat-screen/ChatBarActions', () => {
@@ -360,7 +370,7 @@ describe('no model selected', () => {
 
   it('does not render the text input when model is undefined', () => {
     renderBar({ model: undefined });
-    expect(screen.queryByPlaceholderText('Ask about anything...')).toBeNull();
+    expect(screen.queryByPlaceholderText('Ask anything')).toBeNull();
   });
 });
 
@@ -369,7 +379,7 @@ describe('no model selected', () => {
 describe('model not downloaded', () => {
   it('renders nothing interactive when model is not downloaded', () => {
     renderBar({ model: { ...downloadedModel, isDownloaded: false } });
-    expect(screen.queryByPlaceholderText('Ask about anything...')).toBeNull();
+    expect(screen.queryByPlaceholderText('Ask anything')).toBeNull();
     expect(screen.queryByText('Select Model')).toBeNull();
   });
 });
@@ -379,7 +389,7 @@ describe('model not downloaded', () => {
 describe('downloaded model — text input', () => {
   it('renders the text input', () => {
     renderBar();
-    expect(screen.getByPlaceholderText('Ask about anything...')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Ask anything')).toBeTruthy();
   });
 
   it('hands the message over before it closes the keyboard', () => {
@@ -388,10 +398,7 @@ describe('downloaded model — text input', () => {
       .mockImplementation(() => {});
     const onSend = jest.fn();
     renderBar({ onSend });
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'Hello'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'Hello');
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(onSend.mock.invocationCallOrder[0]).toBeLessThan(
       dismiss.mock.invocationCallOrder[0]
@@ -403,7 +410,7 @@ describe('downloaded model — text input', () => {
     const onSend = jest.fn();
     renderBar({ onSend });
     fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
+      screen.getByPlaceholderText('Ask anything'),
       'Help me write a Python function.\n'
     );
     fireEvent.press(screen.getByTestId('send-btn'));
@@ -423,10 +430,7 @@ describe('downloaded model — text input', () => {
         })
     );
     renderBar({ onSend });
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'Hello'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'Hello');
     fireEvent.press(screen.getByTestId('send-btn'));
 
     expect(screen.queryByTestId('speech-btn')).toBeNull();
@@ -442,18 +446,14 @@ describe('downloaded model — text input', () => {
   it('calls onSend with current input when send button is pressed', () => {
     const onSend = jest.fn();
     renderBar({ onSend });
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'Hello'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'Hello');
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(onSend).toHaveBeenCalledWith('Hello', undefined, []);
   });
 
   it('stays empty when the native input echoes the sent text back', () => {
     renderBar();
-    const textInput = () =>
-      screen.getByPlaceholderText('Ask about anything...');
+    const textInput = () => screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(textInput(), 'czesc test wysylki');
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(textInput().props.value).toBe('');
@@ -466,8 +466,7 @@ describe('downloaded model — text input', () => {
     const now = jest.spyOn(Date, 'now');
     now.mockReturnValue(10_000);
     renderBar();
-    const textInput = () =>
-      screen.getByPlaceholderText('Ask about anything...');
+    const textInput = () => screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(textInput(), 'czesc test wysylki');
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(textInput().props.value).toBe('');
@@ -480,8 +479,7 @@ describe('downloaded model — text input', () => {
 
   it('accepts genuine typing right after a send', () => {
     renderBar();
-    const textInput = () =>
-      screen.getByPlaceholderText('Ask about anything...');
+    const textInput = () => screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(textInput(), 'first');
     fireEvent.press(screen.getByTestId('send-btn'));
 
@@ -493,8 +491,7 @@ describe('downloaded model — text input', () => {
 
   it('does not swallow a repeat of the same message typed again', () => {
     renderBar();
-    const textInput = () =>
-      screen.getByPlaceholderText('Ask about anything...');
+    const textInput = () => screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(textInput(), 'again');
     fireEvent.press(screen.getByTestId('send-btn'));
 
@@ -506,7 +503,7 @@ describe('downloaded model — text input', () => {
   it('takes a send made while the model is still switching, instead of refusing it', () => {
     const onSend = jest.fn(() => new Promise<boolean>(() => {}));
     renderBar({ onSend, modelSwitching: true });
-    const input = screen.getByPlaceholderText('Ask about anything...');
+    const input = screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(input, 'Keep this message');
 
     fireEvent.press(screen.getByTestId('send-btn'));
@@ -519,7 +516,7 @@ describe('downloaded model — text input', () => {
   });
 
   describe('a send that waits for the model switch to land', () => {
-    const input = () => screen.getByPlaceholderText('Ask about anything...');
+    const input = () => screen.getByPlaceholderText('Ask anything');
 
     const storeWith = (isProcessingPrompt: boolean) =>
       mockUseLLMStore.mockImplementation(
@@ -700,7 +697,7 @@ describe('the model the field loads on focus', () => {
       }
     );
     renderBar({ modelSwitching });
-    fireEvent(screen.getByPlaceholderText('Ask about anything...'), 'focus');
+    fireEvent(screen.getByPlaceholderText('Ask anything'), 'focus');
     return loadModel;
   };
 
@@ -737,10 +734,7 @@ describe('speech input', () => {
     const onSend = jest.fn(() => new Promise<boolean>(() => {}));
     renderBar({ disabled: true, onSend });
 
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'hi'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'hi');
     fireEvent.press(screen.getByTestId('send-btn'));
 
     await waitFor(() => expect(screen.getByText('send pending')).toBeTruthy());
@@ -750,10 +744,7 @@ describe('speech input', () => {
     const onSend = jest.fn(async () => true);
     renderBar({ disabled: true, onSend });
 
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'hi'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'hi');
     fireEvent.press(screen.getByTestId('send-btn'));
 
     await waitFor(() => expect(screen.queryByText('send pending')).toBeNull(), {
@@ -765,10 +756,7 @@ describe('speech input', () => {
     const onSend = jest.fn(() => new Promise<boolean>(() => {}));
     renderBar({ onSend });
 
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'hi'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'hi');
     fireEvent.press(screen.getByTestId('send-btn'));
 
     await waitFor(() => expect(onSend).toHaveBeenCalled());
@@ -1302,23 +1290,21 @@ describe('web search toggle and the embedding download sheet', () => {
 describe('opening another chat', () => {
   it('leaves the composer empty, so a suggestion typed into the last chat does not follow you', () => {
     const view = renderBar();
-    const input = screen.getByPlaceholderText('Ask about anything...');
+    const input = screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(input, 'a draft from the previous chat');
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('a draft from the previous chat');
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe(
+      'a draft from the previous chat'
+    );
 
     view.rerender(<ChatBar {...defaultProps} chatId={2} />);
 
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('');
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe('');
   });
 
   it('empties the composer when another blank chat is started, which reuses the same unsaved id', () => {
     renderBar();
     fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
+      screen.getByPlaceholderText('Ask anything'),
       'a suggestion tapped by mistake'
     );
 
@@ -1328,23 +1314,21 @@ describe('opening another chat', () => {
       }));
     });
 
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('');
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe('');
   });
 
   it('keeps what is being typed while the same chat stays open', () => {
     const view = renderBar();
     fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
+      screen.getByPlaceholderText('Ask anything'),
       'still writing this'
     );
 
     view.rerender(<ChatBar {...defaultProps} hasMessages />);
 
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('still writing this');
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe(
+      'still writing this'
+    );
   });
 });
 
@@ -1352,7 +1336,7 @@ describe('a refused send', () => {
   it('puts the text back and says why instead of dropping it silently', async () => {
     const onSend = jest.fn(async () => false);
     renderBar({ onSend });
-    const input = screen.getByPlaceholderText('Ask about anything...');
+    const input = screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(input, 'Lost message');
 
     await act(async () => {
@@ -1360,9 +1344,9 @@ describe('a refused send', () => {
     });
 
     expect(onSend).toHaveBeenCalledWith('Lost message', undefined, []);
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('Lost message');
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe(
+      'Lost message'
+    );
     expect(Toast.show).toHaveBeenCalledWith({
       type: 'defaultToast',
       text1: 'Wait for the response to finish or stop it first.',
@@ -1372,7 +1356,7 @@ describe('a refused send', () => {
   it('says which of the five reasons it was, not always the busy one', async () => {
     const onSend = jest.fn(async () => 'model-loading' as const);
     renderBar({ onSend });
-    const input = screen.getByPlaceholderText('Ask about anything...');
+    const input = screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(input, 'Hello');
 
     await act(async () => {

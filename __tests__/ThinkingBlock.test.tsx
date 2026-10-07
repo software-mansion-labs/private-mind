@@ -1,5 +1,4 @@
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 
 jest.mock('../context/ThemeContext', () => ({
@@ -28,9 +27,14 @@ const renderBlock = (
 // ─── rendering ────────────────────────────────────────────────────────────────
 
 describe('rendering', () => {
-  it('always shows "Thinking..." title', () => {
+  it('shows "Thinking…" while in progress', () => {
+    renderBlock({ inProgress: true, isComplete: false });
+    expect(screen.getByText('Thinking…')).toBeTruthy();
+  });
+
+  it('shows "Thoughts" once complete', () => {
     renderBlock();
-    expect(screen.getByText('Thinking...')).toBeTruthy();
+    expect(screen.getByText('Thoughts')).toBeTruthy();
   });
 
   it('starts collapsed when block is complete (isComplete=true)', () => {
@@ -56,8 +60,7 @@ describe('expand/collapse', () => {
     renderBlock({ isComplete: true, inProgress: false });
     expect(screen.queryByTestId('thinking-content')).toBeNull();
 
-    // The toggle button is the TouchableOpacity in the header
-    const toggleBtn = screen.UNSAFE_getAllByType(TouchableOpacity)[0];
+    const toggleBtn = screen.getByRole('button');
     fireEvent.press(toggleBtn);
 
     expect(screen.getByTestId('thinking-content')).toBeTruthy();
@@ -67,7 +70,7 @@ describe('expand/collapse', () => {
     renderBlock({ isComplete: false, inProgress: false });
     expect(screen.getByTestId('thinking-content')).toBeTruthy();
 
-    const toggleBtn = screen.UNSAFE_getAllByType(TouchableOpacity)[0];
+    const toggleBtn = screen.getByRole('button');
     fireEvent.press(toggleBtn);
 
     expect(screen.queryByTestId('thinking-content')).toBeNull();
@@ -77,7 +80,7 @@ describe('expand/collapse', () => {
     renderBlock({ isComplete: false, inProgress: true });
     expect(screen.getByTestId('thinking-content')).toBeTruthy();
 
-    const toggleBtn = screen.UNSAFE_getAllByType(TouchableOpacity)[0];
+    const toggleBtn = screen.getByRole('button');
     fireEvent.press(toggleBtn);
 
     // Still visible — inProgress blocks the toggle

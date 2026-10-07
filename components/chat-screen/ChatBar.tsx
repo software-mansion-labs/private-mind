@@ -49,7 +49,9 @@ import { showPermissionToast } from '../../utils/permissionToast';
 import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
-import PromptSuggestions from './PromptSuggestions';
+import PromptSuggestions, {
+  PromptSuggestionsHeadline,
+} from './PromptSuggestions';
 import WhatsNewCard from '../WhatsNewCard';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
@@ -543,6 +545,7 @@ const ChatBar = ({
         <>
           {!hasMessages && (
             <View style={styles.suggestionsContainer}>
+              <PromptSuggestionsHeadline />
               <WhatsNewCard />
               <PromptSuggestions onSelectPrompt={onSelectPrompt} />
             </View>
@@ -608,7 +611,7 @@ const ChatBar = ({
                     multiline
                     numberOfLines={3}
                     onFocus={() => loadSelectedModel()}
-                    placeholder="Ask about anything..."
+                    placeholder="Ask anything"
                     placeholderTextColor={theme.text.onChatBarMuted}
                     value={userInput}
                     editable={!isHoldingInput}
