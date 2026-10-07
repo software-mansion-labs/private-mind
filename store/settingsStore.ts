@@ -3,11 +3,15 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { MAX_CUSTOM_SYSTEM_PROMPT_LENGTH } from '../constants/settings';
 
+export type ThemePreference = 'system' | 'light' | 'dark';
+
 export interface SettingsStore {
   customSystemPrompt: string;
   setCustomSystemPrompt: (prompt: string) => void;
   showPerformanceMetrics: boolean;
   setShowPerformanceMetrics: (show: boolean) => void;
+  themePreference: ThemePreference;
+  setThemePreference: (preference: ThemePreference) => void;
   hasHydrated: boolean;
 }
 
@@ -24,6 +28,8 @@ export const useSettingsStore = create<SettingsStore>()(
       showPerformanceMetrics: false,
       setShowPerformanceMetrics: (showPerformanceMetrics) =>
         set({ showPerformanceMetrics }),
+      themePreference: 'system',
+      setThemePreference: (themePreference) => set({ themePreference }),
       hasHydrated: false,
     }),
     {
@@ -32,6 +38,7 @@ export const useSettingsStore = create<SettingsStore>()(
       partialize: (state) => ({
         customSystemPrompt: state.customSystemPrompt,
         showPerformanceMetrics: state.showPerformanceMetrics,
+        themePreference: state.themePreference,
       }),
       onRehydrateStorage: () => () => {
         useSettingsStore.setState({ hasHydrated: true });

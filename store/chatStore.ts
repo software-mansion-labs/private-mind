@@ -39,6 +39,7 @@ interface ChatStore {
     targetMessageId: number
   ) => Promise<number | undefined>;
   deleteChat: (id: number, vectorStore?: OPSQLiteVectorStore) => Promise<void>;
+  deleteAllChats: (vectorStore?: OPSQLiteVectorStore) => Promise<void>;
   enableSource: (chatId: number, sourceId: number) => Promise<void>;
   initPhantomChat: (phantomChatId: number, model?: Model) => Promise<void>;
   setPhantomChatSettings: (settings: ChatSettings) => Promise<void>;
@@ -209,6 +210,18 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     if (vectorStore) {
       // Lazy import to avoid circular dependency / transitive ESM issues in tests
+      const { useSourceStore } = require('./sourceStore');
+      await useSourceStore.getState().cleanupOrphanedSources(vectorStore);
+    }
+  },
+
+  deleteAllChats: async (vectorStore?: OPSQLiteVectorStore) => {
+    const chatIds = get().chats.map((chat) => chat.id);
+    for (const id of chatIds) {
+      await get().deleteChat(id);
+    }
+
+    if (vectorStore) {
       const { useSourceStore } = require('./sourceStore');
       await useSourceStore.getState().cleanupOrphanedSources(vectorStore);
     }

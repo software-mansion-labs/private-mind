@@ -6,7 +6,14 @@ describe('useSettingsStore', () => {
     useSettingsStore.setState({
       customSystemPrompt: '',
       showPerformanceMetrics: false,
+      themePreference: 'system',
     });
+  });
+
+  it('follows the system theme until the user picks one', () => {
+    expect(useSettingsStore.getState().themePreference).toBe('system');
+    useSettingsStore.getState().setThemePreference('dark');
+    expect(useSettingsStore.getState().themePreference).toBe('dark');
   });
 
   it('defaults to an empty custom system prompt', () => {

@@ -9,9 +9,10 @@ interface Props {
   label: string;
   icon?: React.ReactNode;
   onPress: () => void;
+  destructive?: boolean;
 }
 
-export const SettingsRow = ({ label, icon, onPress }: Props) => {
+export const SettingsRow = ({ label, icon, onPress, destructive }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
   return (
@@ -20,7 +21,10 @@ export const SettingsRow = ({ label, icon, onPress }: Props) => {
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       {icon}
-      <Text numberOfLines={1} style={styles.label}>
+      <Text
+        numberOfLines={1}
+        style={[styles.label, destructive && styles.destructive]}
+      >
         {label}
       </Text>
     </Pressable>
@@ -45,5 +49,8 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
       color: theme.text.primary,
+    },
+    destructive: {
+      color: theme.text.error,
     },
   });

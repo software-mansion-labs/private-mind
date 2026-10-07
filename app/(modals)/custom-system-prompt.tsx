@@ -57,7 +57,7 @@ export default function CustomSystemPromptScreen() {
     >
       <View style={styles.container}>
         <ModalHeader
-          title="Personal preferences"
+          title="Custom instructions"
           leftIcon="back"
           onClose={() => router.back()}
         />

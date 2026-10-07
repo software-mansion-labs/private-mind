@@ -6,21 +6,19 @@ import React, {
   useState,
 } from 'react';
 import { startPhantomChat } from '../../utils/startPhantomChat';
-import { router, useFocusEffect, useNavigation } from 'expo-router';
+import { useFocusEffect, useNavigation } from 'expo-router';
 import { configureReanimatedLogger } from 'react-native-reanimated';
 import NewChatHeaderButton from '../../components/NewChatHeaderButton';
 import { Model } from '../../database/modelRepository';
-import { importMessages } from '../../database/chatRepository';
 import { useSQLiteContext } from 'expo-sqlite';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
-import { View, Image, StyleSheet, Alert } from 'react-native';
+import { View, Image, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import PrimaryButton from '../../components/PrimaryButton';
 import TextButton from '../../components/TextButton';
 import { Theme } from '../../styles/colors';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { importChatRoom } from '../../database/exportImportRepository';
-import { useChatStore } from '../../store/chatStore';
+import { useImportChat } from '../../hooks/useImportChat';
 import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
@@ -52,7 +50,6 @@ export default function App() {
     });
   }, [navigation]);
   const { styles, theme } = useThemedStyles(createStyles);
-  const { addChat } = useChatStore();
 
   const handleSetModel = async (model: Model, replace = false) => {
     await setLastUsedModelId(model.id);
@@ -62,21 +59,7 @@ export default function App() {
 
   const { pickModel, handleSheetStateChange } = useModelSwitch(handleSetModel);
 
-  const handleImport = async () => {
-    const importedChat = await importChatRoom();
-    if (importedChat) {
-      try {
-        const newChatId = await addChat(importedChat.title, -1);
-        if (newChatId) {
-          await importMessages(db!, newChatId, importedChat.messages);
-          router.replace(`/chat/${newChatId}`);
-        }
-      } catch (error) {
-        console.error('Error importing chat:', error);
-        Alert.alert('Error', 'Failed to import chat. Please try again.');
-      }
-    }
-  };
+  const handleImport = useImportChat();
 
   useEffect(() => {
     loadSources();
