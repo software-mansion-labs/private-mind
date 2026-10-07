@@ -16,7 +16,6 @@ import { startPhantomChat } from '../../utils/startPhantomChat';
 import { Theme } from '../../styles/colors';
 import ChatIcon from '../../assets/icons/chat.svg';
 import ModelsIcon from '../../assets/icons/models.svg';
-import SettingsIcon from '../../assets/icons/settings.svg';
 import { DrawerItem } from './DrawerItem';
 import { useIsOnPhantomChat } from './useIsOnPhantomChat';
 import { useTurnInFlight } from '../../hooks/useTurnInFlight';
@@ -119,12 +118,6 @@ export const DrawerNavSection = ({
     onNavigate?.();
   };
 
-  const goToSettings = () => {
-    interrupt();
-    router.replace('/settings');
-    onNavigate?.();
-  };
-
   if (!rendered) return null;
 
   return (
@@ -149,12 +142,6 @@ export const DrawerNavSection = ({
           label="Models"
           active={pathname === '/model-hub'}
           onPress={goToModelHub}
-        />
-        <DrawerItem
-          icon={<SettingsIcon width={18} height={18} style={styles.icon} />}
-          label="Settings"
-          active={pathname === '/settings'}
-          onPress={goToSettings}
         />
       </View>
     </Animated.View>

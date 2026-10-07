@@ -27,6 +27,7 @@ import {
 } from '../../constants/drawer-layout';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import SettingsIcon from '../../assets/icons/settings.svg';
 import { scrollIndicatorProps } from '../../constants/scroll-indicator';
 
 interface Props {
@@ -138,6 +139,12 @@ const DrawerMenu = ({
     onNavigate?.();
   };
 
+  const goToSettings = () => {
+    interrupt();
+    router.replace('/settings');
+    onNavigate?.();
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.topBar}>
@@ -157,7 +164,10 @@ const DrawerMenu = ({
         ref={scrollRef}
         testID="drawer-scroll"
         style={styles.scrollView}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          searching && styles.contentSearching,
+        ]}
         contentOffset={initialContentOffset}
         onScroll={handleScroll}
         onContentSizeChange={handleContentSizeChange}
@@ -193,6 +203,18 @@ const DrawerMenu = ({
         {hasNoResults && <DrawerEmptyState onNavigate={onNavigate} />}
       </ScrollView>
 
+      {!searching && (
+        <View style={styles.footer}>
+          <DrawerItem
+            testID="drawer-settings"
+            icon={<SettingsIcon width={18} height={18} style={styles.icon} />}
+            label="Settings"
+            active={pathname === '/settings'}
+            onPress={goToSettings}
+          />
+        </View>
+      )}
+
       {MenuElements}
     </View>
   );
@@ -213,8 +235,21 @@ const createStyles = (theme: Theme) =>
     },
     content: {
       paddingTop: 16,
-      paddingBottom: theme.insets.bottom + 16,
+      paddingBottom: 16,
       paddingHorizontal: DRAWER_HORIZONTAL_PADDING,
+    },
+    contentSearching: {
+      paddingBottom: theme.insets.bottom + 16,
+    },
+    footer: {
+      paddingTop: 8,
+      paddingBottom: theme.insets.bottom + 8,
+      paddingHorizontal: DRAWER_HORIZONTAL_PADDING,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.border.soft,
+    },
+    icon: {
+      color: theme.text.primary,
     },
     section: {
       gap: 8,

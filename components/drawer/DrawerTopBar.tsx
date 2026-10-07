@@ -53,7 +53,7 @@ export const DrawerTopBar = ({
   const fallbackProgress = useSharedValue(1);
   const value = progress ?? fallbackProgress;
 
-  const titleLayerStyle = useAnimatedStyle(() => ({
+  const pillLayerStyle = useAnimatedStyle(() => ({
     opacity: interpolate(value.get(), [0, 0.4], [1, 0]),
   }));
 
@@ -64,19 +64,15 @@ export const DrawerTopBar = ({
   if (!searching) {
     return (
       <View style={styles.bar}>
-        <Text style={styles.title}>Private Mind</Text>
         <Pressable
           onPress={onOpenSearch}
           testID="drawer-search-open"
           accessibilityRole="button"
           accessibilityLabel="Search chats"
-          hitSlop={12}
-          style={({ pressed }) => [
-            styles.iconButton,
-            pressed && styles.pressed,
-          ]}
+          style={({ pressed }) => [styles.pill, pressed && styles.dimmed]}
         >
-          <SearchIcon width={20} height={20} style={styles.icon} />
+          <SearchIcon width={18} height={18} style={styles.placeholderIcon} />
+          <Text style={styles.placeholder}>Search</Text>
         </Pressable>
       </View>
     );
@@ -101,7 +97,7 @@ export const DrawerTopBar = ({
           value={search}
           onChangeText={onChangeSearch}
           onBlur={onBlur}
-          placeholder="Search chats..."
+          placeholder="Search"
           placeholderTextColor={theme.text.defaultTertiary}
           style={styles.input}
           testID="drawer-search-input"
@@ -115,17 +111,17 @@ export const DrawerTopBar = ({
 
       <Animated.View
         style={[
-          styles.titleLayer,
+          styles.pillLayer,
           { width: collapsedTitleWidth },
-          titleLayerStyle,
+          pillLayerStyle,
         ]}
         pointerEvents="none"
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        <Text style={styles.title}>Private Mind</Text>
-        <View style={styles.iconButton}>
-          <SearchIcon width={20} height={20} style={styles.icon} />
+        <View style={styles.pill}>
+          <SearchIcon width={18} height={18} style={styles.placeholderIcon} />
+          <Text style={styles.placeholder}>Search</Text>
         </View>
       </Animated.View>
     </View>
@@ -140,38 +136,42 @@ const createStyles = (theme: Theme) =>
       gap: 8,
       minHeight: 44,
     },
-    titleLayer: {
+    pillLayer: {
       position: 'absolute',
       left: 0,
       top: 0,
       bottom: 0,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
       backgroundColor: theme.bg.softPrimary,
     },
-    title: {
+    pill: {
       flex: 1,
-      paddingHorizontal: 12,
-      fontFamily: fontFamily.bold,
-      fontSize: fontSizes.lg,
-      color: theme.text.primary,
-    },
-    iconButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      justifyContent: 'center',
+      minHeight: 44,
+      flexDirection: 'row',
       alignItems: 'center',
-    },
-    pressed: {
+      gap: 8,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border.soft,
       backgroundColor: theme.bg.softSecondary,
+    },
+    placeholder: {
+      flex: 1,
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.md,
+      color: theme.text.defaultTertiary,
+    },
+    placeholderIcon: {
+      color: theme.text.defaultTertiary,
     },
     icon: {
       color: theme.text.primary,
     },
     field: {
       flex: 1,
+      minHeight: 44,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,

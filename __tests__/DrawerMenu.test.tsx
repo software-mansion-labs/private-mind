@@ -133,7 +133,7 @@ beforeEach(() => {
 afterEach(() => setPlatform(ORIGINAL_OS));
 
 describe('DrawerMenu — collapsed', () => {
-  it('keeps New chat, Models and Settings at the top', () => {
+  it('keeps New chat and Models at the top and Settings pinned in the footer', () => {
     renderMenu();
 
     expect(screen.getByText('New chat')).toBeTruthy();
@@ -141,10 +141,19 @@ describe('DrawerMenu — collapsed', () => {
     expect(screen.getByText('Settings')).toBeTruthy();
   });
 
-  it('renders the app name and a search button instead of a search field', () => {
+  it('opens Settings from the footer', () => {
     renderMenu();
 
-    expect(screen.getByText('Private Mind')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('drawer-settings'));
+
+    expect(mockReplace).toHaveBeenCalledWith('/settings');
+  });
+
+  it('renders a search field look-alike instead of the app name', () => {
+    renderMenu();
+
+    expect(screen.queryByText('Private Mind')).toBeNull();
+    expect(screen.getByText('Search')).toBeTruthy();
     expect(screen.getByTestId('drawer-search-open')).toBeTruthy();
     expect(screen.queryByTestId('drawer-search-input')).toBeNull();
   });
@@ -302,7 +311,7 @@ describe('DrawerMenu — searching', () => {
 
     expect(screen.getByText('New chat')).toBeTruthy();
     expect(screen.getByText('Models')).toBeTruthy();
-    expect(screen.getByText('Settings')).toBeTruthy();
+    expect(screen.queryByText('Settings')).toBeNull();
   });
 
   it('hides the navigation items once a query is typed, leaving only results', () => {
@@ -388,7 +397,7 @@ describe('DrawerMenu — context menu', () => {
 
     expect(spy).toHaveBeenCalledWith(
       expect.objectContaining({
-        options: ['Rename', 'Export Chat', 'Delete Chat', 'Cancel'],
+        options: ['Share', 'Rename', 'Delete', 'Cancel'],
         destructiveButtonIndex: 2,
         cancelButtonIndex: 3,
       }),
