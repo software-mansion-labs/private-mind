@@ -110,6 +110,10 @@ export const attachmentMenuHeight = (tools: MenuTools) => {
 };
 
 const flip = (tool: Tool) => {
+  if (!tool.available) {
+    tool.onToggle();
+    return;
+  }
   if (tool.enabled) Feedback.toggleOff();
   else Feedback.toggleOn();
   tool.onToggle();

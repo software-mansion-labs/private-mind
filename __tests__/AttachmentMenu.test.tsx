@@ -163,6 +163,14 @@ describe('the tool switches in the menu', () => {
     expect(tools.onThinkingToggle).toHaveBeenCalledTimes(1);
   });
 
+  it('gives no on-haptic for a tool the model cannot use', () => {
+    renderWithTools({ thinkingAvailable: false });
+
+    fireEvent.press(screen.getByTestId('menu-think-switch'));
+
+    expect(Feedback.toggleOn).not.toHaveBeenCalled();
+  });
+
   it('draws no divider when there is no tool to follow it', () => {
     render(<AttachmentMenu onSelect={jest.fn()} />);
 
