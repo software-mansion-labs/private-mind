@@ -69,7 +69,7 @@ function ChatScreenInner() {
     chatModel: pendingModel ?? model,
     isModelLoading: !!pendingModel,
     isEmpty,
-    onSelectModelFromTitle: isPhantom ? openModelSheet : undefined,
+    onSelectModelFromTitle: openModelSheet,
   });
 
   useFocusEffect(

@@ -18,7 +18,7 @@ interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
   title: string;
   onRename: () => void;
-  onExport: () => void;
+  onShare: () => void;
   onDelete: () => void;
   onDismiss?: () => void;
 }
@@ -27,7 +27,7 @@ const ChatTitleMenuSheet = ({
   bottomSheetModalRef,
   title,
   onRename,
-  onExport,
+  onShare,
   onDelete,
   onDismiss,
 }: Props) => {
@@ -61,18 +61,18 @@ const ChatTitleMenuSheet = ({
           {title}
         </Text>
         <MenuRow
+          icon={UploadIcon}
+          label="Share"
+          onPress={() => handleOption(onShare)}
+        />
+        <MenuRow
           icon={EditIcon}
           label="Rename"
           onPress={() => handleOption(onRename)}
         />
         <MenuRow
-          icon={UploadIcon}
-          label="Export Chat"
-          onPress={() => handleOption(onExport)}
-        />
-        <MenuRow
           icon={TrashIcon}
-          label="Delete Chat"
+          label="Delete"
           destructive
           onPress={() => {
             Feedback.destructive();

@@ -37,7 +37,7 @@ export const PIN_RELEASE_SETTLE_DELAY_MS = 50;
 
 export const PIN_FREEZE_FALLBACK_MS = 1000;
 
-export const HEADER_BUTTON_SLOT_PX = 36;
+export const HEADER_BUTTON_SLOT_PX = 68;
 
 export const HEADER_TITLE_GUTTER_PX = 24;
 

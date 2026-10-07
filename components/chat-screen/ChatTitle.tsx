@@ -103,13 +103,15 @@ const ChatTitle = ({
           <View style={styles.modelRow}>
             <Text style={styles.modelName}>{modelName}</Text>
             <View style={styles.accessory} pointerEvents="none">
-              {isModelLoading && (
+              {isModelLoading ? (
                 <ActivityIndicator
                   size="small"
                   color={styles.modelName.color}
                   style={styles.loader}
                 />
-              )}
+              ) : showChevron ? (
+                <ChevronDown width={10} height={10} style={styles.chevron} />
+              ) : null}
             </View>
           </View>
         </>

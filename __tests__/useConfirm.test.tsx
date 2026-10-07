@@ -55,7 +55,7 @@ const setPlatform = (os: string) => {
 const ORIGINAL_OS = Platform.OS;
 
 const OPTIONS = {
-  title: 'Delete Chat',
+  title: 'Delete chat?',
   message: 'Are you sure you want to delete this chat?',
   confirmLabel: 'Delete',
 };
@@ -109,7 +109,7 @@ describe('useConfirm — Android', () => {
   it('shows nothing until a confirmation is requested', () => {
     render(<Harness />);
 
-    expect(screen.queryByText('Delete Chat')).toBeNull();
+    expect(screen.queryByText('Delete chat?')).toBeNull();
   });
 
   it('presents the sheet with the requested copy', () => {
@@ -117,7 +117,7 @@ describe('useConfirm — Android', () => {
 
     fireEvent.press(screen.getByTestId('ask'));
 
-    expect(screen.getByText('Delete Chat')).toBeTruthy();
+    expect(screen.getByText('Delete chat?')).toBeTruthy();
     expect(
       screen.getByText('Are you sure you want to delete this chat?')
     ).toBeTruthy();
@@ -149,7 +149,7 @@ describe('useConfirm — Android', () => {
 
     fireEvent.press(screen.getByText('Delete'));
 
-    await waitFor(() => expect(screen.queryByText('Delete Chat')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('Delete chat?')).toBeNull());
   });
 
   it('settles a pending confirmation as cancelled when a new one is requested', async () => {
@@ -159,7 +159,7 @@ describe('useConfirm — Android', () => {
     fireEvent.press(screen.getByTestId('ask'));
 
     await waitFor(() => expect(onResult).toHaveBeenCalledWith(false));
-    expect(screen.getByText('Delete Chat')).toBeTruthy();
+    expect(screen.getByText('Delete chat?')).toBeTruthy();
   });
 
   it('does not use the native alert', () => {
@@ -190,7 +190,7 @@ describe('useConfirm — iOS', () => {
     fireEvent.press(screen.getByTestId('ask'));
 
     expect(alertSpy).toHaveBeenCalledWith(
-      'Delete Chat',
+      'Delete chat?',
       'Are you sure you want to delete this chat?',
       expect.arrayContaining([
         expect.objectContaining({ text: 'Cancel', style: 'cancel' }),

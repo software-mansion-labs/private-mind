@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
-import { useWindowDimensions } from 'react-native';
+import { useWindowDimensions, View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useChatStore } from '../store/chatStore';
 import NewChatHeaderButton from '../components/NewChatHeaderButton';
@@ -7,6 +7,7 @@ import { Model } from '../database/modelRepository';
 import ChatTitle from '../components/chat-screen/ChatTitle';
 import DrawerToggleButton from '../components/drawer/DrawerToggleButton';
 import { useNavigation } from 'expo-router';
+import ChatOptionsHeaderButton from '../components/chat-screen/ChatOptionsHeaderButton';
 import { useChatTitleMenu } from '../components/chat-screen/ChatTitleMenu';
 import { headerTitleMaxWidth } from '../constants/chat-screen';
 
@@ -17,6 +18,10 @@ interface Props {
   isEmpty: boolean;
   onSelectModelFromTitle?: () => void;
 }
+
+const headerRightStyles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center' },
+});
 
 export default function useChatHeader({
   chatId,
@@ -43,13 +48,18 @@ export default function useChatHeader({
     navigation.setOptions({
       headerTitleContainerStyle: { maxWidth: titleMaxWidth },
       headerLeft: () => <DrawerToggleButton />,
-      headerRight: () => <NewChatHeaderButton noOp={isEmpty} />,
+      headerRight: () => (
+        <View style={headerRightStyles.row}>
+          {chat ? <ChatOptionsHeaderButton onPress={openMenu} /> : null}
+          <NewChatHeaderButton noOp={isEmpty} />
+        </View>
+      ),
       headerTitle: () => (
         <ChatTitle
           title={chatTitle}
           modelName={chatModel?.modelName || 'No model selected'}
           isModelLoading={isModelLoading}
-          onPress={onSelectModelFromTitle ?? (chat ? openMenu : undefined)}
+          onPress={onSelectModelFromTitle}
           showChevron={!!onSelectModelFromTitle}
           onBottomMeasured={setTitleBottom}
           maxWidth={titleMaxWidth}

@@ -11,7 +11,7 @@ import ChatTitleMenuSheet from '../chat-screen/ChatTitleMenuSheet';
 import {
   CHAT_MENU_CANCEL_INDEX,
   CHAT_MENU_DELETE_INDEX,
-  CHAT_MENU_EXPORT_INDEX,
+  CHAT_MENU_SHARE_INDEX,
   CHAT_MENU_OPTIONS,
   CHAT_MENU_RENAME_INDEX,
   getActionSheetTitle,
@@ -72,7 +72,7 @@ export const useDrawerChatMenu = ({ onMenuActiveChange }: Options = {}) => {
           (index) => {
             if (index === CHAT_MENU_RENAME_INDEX) {
               setRenameVisible(true);
-            } else if (index === CHAT_MENU_EXPORT_INDEX) {
+            } else if (index === CHAT_MENU_SHARE_INDEX) {
               runAction(() => exportChat(chat.id, chatLabel(chat)));
             } else if (index === CHAT_MENU_DELETE_INDEX) {
               runAction(() => confirmDelete(chat.id));
@@ -110,7 +110,7 @@ export const useDrawerChatMenu = ({ onMenuActiveChange }: Options = {}) => {
           bottomSheetModalRef={androidSheetRef}
           title={targetChat ? chatLabel(targetChat) : ''}
           onRename={() => setRenameVisible(true)}
-          onExport={() => {
+          onShare={() => {
             if (targetChat)
               runAction(() => exportChat(targetChat.id, chatLabel(targetChat)));
           }}

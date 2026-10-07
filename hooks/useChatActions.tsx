@@ -44,7 +44,7 @@ export const useChatActions = ({ onDeleted }: Options = {}) => {
   const confirmDelete = useCallback(
     async (chatId: number) => {
       const confirmed = await confirm({
-        title: 'Delete Chat',
+        title: 'Delete chat?',
         message: 'Are you sure you want to delete this chat?',
         confirmLabel: 'Delete',
       });

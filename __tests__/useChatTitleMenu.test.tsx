@@ -99,7 +99,7 @@ describe('iOS', () => {
 
     expect(spy).toHaveBeenCalledWith(
       expect.objectContaining({
-        options: ['Rename', 'Export Chat', 'Delete Chat', 'Cancel'],
+        options: ['Share', 'Rename', 'Delete', 'Cancel'],
         destructiveButtonIndex: 2,
         cancelButtonIndex: 3,
       }),
@@ -122,7 +122,7 @@ describe('iOS', () => {
     });
 
     await act(async () => {
-      capturedCallback!(1);
+      capturedCallback!(0);
     });
 
     expect(mockExportChatRoom).toHaveBeenCalledWith({}, 42, 'My Chat');
@@ -148,7 +148,7 @@ describe('iOS', () => {
     });
 
     expect(alertSpy).toHaveBeenCalledWith(
-      'Delete Chat',
+      'Delete chat?',
       expect.any(String),
       expect.any(Array)
     );
@@ -253,7 +253,7 @@ describe('rename flow via MenuElements', () => {
     });
 
     act(() => {
-      capturedCallback!(0); // Rename
+      capturedCallback!(1); // Rename
     });
 
     rerender(<>{result.current.MenuElements}</>);
@@ -276,7 +276,7 @@ describe('rename flow via MenuElements', () => {
     });
 
     act(() => {
-      capturedCallback!(0);
+      capturedCallback!(1);
     });
 
     rerender(<>{result.current.MenuElements}</>);
@@ -305,7 +305,7 @@ describe('rename flow via MenuElements', () => {
     });
 
     act(() => {
-      capturedCallback!(0);
+      capturedCallback!(1);
     });
 
     rerender(<>{result.current.MenuElements}</>);

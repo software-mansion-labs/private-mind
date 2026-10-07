@@ -103,7 +103,7 @@ describe('opening the menu', () => {
 
     expect(spy).toHaveBeenCalledWith(
       expect.objectContaining({
-        options: ['Rename', 'Export Chat', 'Delete Chat', 'Cancel'],
+        options: ['Share', 'Rename', 'Delete', 'Cancel'],
         destructiveButtonIndex: 2,
         cancelButtonIndex: 3,
       }),
@@ -200,7 +200,7 @@ describe('actions', () => {
     const { result } = renderHook(() => useDrawerChatMenu());
 
     act(() => result.current.openMenuFor(chat));
-    await act(async () => getCallback()(1));
+    await act(async () => getCallback()(0));
 
     expect(mockExportChatRoom).toHaveBeenCalledWith({}, 7, 'Trip to Rome');
   });
@@ -210,7 +210,7 @@ describe('actions', () => {
     const { result } = renderHook(() => useDrawerChatMenu());
 
     act(() => result.current.openMenuFor(untitledChat));
-    await act(async () => getCallback()(1));
+    await act(async () => getCallback()(0));
 
     expect(mockExportChatRoom).toHaveBeenCalledWith({}, 9, 'Chat 9');
   });
@@ -277,7 +277,7 @@ describe('rename flow', () => {
     const { rerender } = render(<>{result.current.MenuElements}</>);
 
     act(() => result.current.openMenuFor(chat));
-    act(() => getCallback()(0));
+    act(() => getCallback()(1));
     rerender(<>{result.current.MenuElements}</>);
 
     expect(screen.getByDisplayValue('Trip to Rome')).toBeTruthy();
@@ -289,7 +289,7 @@ describe('rename flow', () => {
     const { rerender } = render(<>{result.current.MenuElements}</>);
 
     act(() => result.current.openMenuFor(untitledChat));
-    act(() => getCallback()(0));
+    act(() => getCallback()(1));
     rerender(<>{result.current.MenuElements}</>);
 
     expect(screen.queryByDisplayValue('Chat 9')).toBeNull();
@@ -302,7 +302,7 @@ describe('rename flow', () => {
     const { rerender } = render(<>{result.current.MenuElements}</>);
 
     act(() => result.current.openMenuFor(chat));
-    act(() => getCallback()(0));
+    act(() => getCallback()(1));
     rerender(<>{result.current.MenuElements}</>);
 
     fireEvent.changeText(screen.getByDisplayValue('Trip to Rome'), 'Rome 2026');
@@ -322,7 +322,7 @@ describe('rename flow', () => {
     render(<>{result.current.MenuElements}</>);
 
     act(() => result.current.openMenuFor(chat));
-    act(() => getCallback()(0));
+    act(() => getCallback()(1));
 
     expect(onMenuActiveChange).toHaveBeenCalledTimes(1);
     expect(onMenuActiveChange).toHaveBeenCalledWith(true);
@@ -337,7 +337,7 @@ describe('rename flow', () => {
     const { rerender } = render(<>{result.current.MenuElements}</>);
 
     act(() => result.current.openMenuFor(chat));
-    act(() => getCallback()(0));
+    act(() => getCallback()(1));
     rerender(<>{result.current.MenuElements}</>);
 
     fireEvent.press(screen.getByText('Cancel'));

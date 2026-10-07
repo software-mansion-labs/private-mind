@@ -133,7 +133,7 @@ describe('confirmDelete', () => {
     });
 
     expect(alertSpy).toHaveBeenCalledWith(
-      'Delete Chat',
+      'Delete chat?',
       expect.any(String),
       expect.arrayContaining([
         expect.objectContaining({ text: 'Cancel', style: 'cancel' }),

@@ -14,7 +14,7 @@ const renderSheet = (title: string) =>
       bottomSheetModalRef={{ current: null }}
       title={title}
       onRename={jest.fn()}
-      onExport={jest.fn()}
+      onShare={jest.fn()}
       onDelete={jest.fn()}
     />
   );
