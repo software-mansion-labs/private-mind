@@ -44,7 +44,37 @@ const opacityOf = () =>
   StyleSheet.flatten(screen.getByTestId('family-card-Gemma 4').props.style)
     .opacity;
 
+const variant = (id: number, isDownloaded: boolean) => ({
+  ...family.models[0],
+  id,
+  modelName: `Gemma 4 - variant ${id}`,
+  isDownloaded,
+});
+
 describe('FamilyCard', () => {
+  it('shows the family logo, the provider summary and the variant count', () => {
+    render(<FamilyCard family={family} onPress={jest.fn()} />);
+    expect(screen.getByTestId('family-icon-Gemma 4')).toBeTruthy();
+    expect(screen.getByText('Google · small, chat and vision')).toBeTruthy();
+    expect(screen.getByText('1 variant')).toBeTruthy();
+  });
+
+  it('counts downloaded variants next to the total', () => {
+    const mixed = {
+      ...family,
+      models: [variant(1, true), variant(2, false), variant(3, true)],
+    };
+    render(<FamilyCard family={mixed} onPress={jest.fn()} />);
+    expect(screen.getByText('3 variants · 2 downloaded')).toBeTruthy();
+  });
+
+  it('falls back to a generic logo and no summary for an unknown family', () => {
+    const custom = { ...family, name: 'My Remote' };
+    render(<FamilyCard family={custom} onPress={jest.fn()} />);
+    expect(screen.getByTestId('family-icon-My Remote')).toBeTruthy();
+    expect(screen.queryByText(/·/)).toBeNull();
+  });
+
   it('reads as available when the device can run at least one variant', () => {
     render(<FamilyCard family={family} onPress={jest.fn()} />);
     expect(screen.queryByTestId('chip-Incompatible')).toBeNull();

@@ -16,7 +16,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { scrollIndicatorProps } from '../../constants/scroll-indicator';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import { radius } from '../../constants/design-system';
+import { radius, space } from '../../constants/design-system';
 import { Model } from '../../database/modelRepository';
 import TextFieldInput from '../../components/TextFieldInput';
 import SearchIcon from '../../assets/icons/search.svg';
@@ -27,6 +27,10 @@ import ModelHubTabs, {
 } from '../../components/model-hub/ModelHubTabs';
 import FamilyCard from '../../components/model-hub/FamilyCard';
 import ModelCard from '../../components/model-hub/ModelCard';
+import RowGroup, {
+  ROW_PADDING,
+  TILE_ROW_TEXT_INSET,
+} from '../../components/model-hub/RowGroup';
 import {
   groupModelsByFamily,
   orderFamiliesForDevice,
@@ -164,7 +168,7 @@ const ModelHubScreen = () => {
           <TextFieldInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Search Models..."
+            placeholder="Search models"
             icon={
               <SearchIcon
                 width={20}
@@ -183,19 +187,24 @@ const ModelHubScreen = () => {
             contentContainerStyle={styles.scrollContent}
             {...scrollIndicatorProps()}
           >
-            {tab === 'mine'
-              ? mineModels.map((model) => (
+            {tab === 'mine' ? (
+              <RowGroup separatorInset={ROW_PADDING}>
+                {mineModels.map((model) => (
                   <ModelCard
                     key={model.id}
                     model={model}
                     compactView={false}
+                    variant="row"
                     onPress={() =>
                       modelManagementSheetRef.current?.present(model)
                     }
                     wifiWarningSheetRef={wifiWarningSheetRef}
                   />
-                ))
-              : families.map((family) => (
+                ))}
+              </RowGroup>
+            ) : (
+              <RowGroup separatorInset={TILE_ROW_TEXT_INSET}>
+                {families.map((family) => (
                   <FamilyCard
                     runnable={family.runnable}
                     key={family.name}
@@ -203,6 +212,8 @@ const ModelHubScreen = () => {
                     onPress={openFamily}
                   />
                 ))}
+              </RowGroup>
+            )}
 
             {tab !== 'mine' && deletableDownloaded.length > 0 && (
               <View style={styles.storageFooter}>
@@ -259,7 +270,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     scrollContent: {
-      gap: 8,
+      gap: space.four,
       paddingHorizontal: 16,
       paddingBottom: theme.insets.bottom + 16 + 56,
     },
@@ -294,7 +305,6 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
     },
     storageFooter: {
-      marginTop: 16,
       padding: 16,
       borderWidth: 1,
       borderRadius: radius.twelve,

@@ -133,11 +133,11 @@ beforeEach(() => {
 afterEach(() => setPlatform(ORIGINAL_OS));
 
 describe('DrawerMenu — collapsed', () => {
-  it('keeps New chat and Models at the top and Settings pinned in the footer', () => {
+  it('keeps New chat and Manage models at the top and Settings pinned in the footer', () => {
     renderMenu();
 
     expect(screen.getByText('New chat')).toBeTruthy();
-    expect(screen.getByText('Models')).toBeTruthy();
+    expect(screen.getByText('Manage models')).toBeTruthy();
     expect(screen.getByText('Settings')).toBeTruthy();
   });
 
@@ -310,7 +310,7 @@ describe('DrawerMenu — searching', () => {
     renderMenu({ searching: true });
 
     expect(screen.getByText('New chat')).toBeTruthy();
-    expect(screen.getByText('Models')).toBeTruthy();
+    expect(screen.getByText('Manage models')).toBeTruthy();
     expect(screen.queryByText('Settings')).toBeNull();
   });
 
@@ -318,14 +318,14 @@ describe('DrawerMenu — searching', () => {
     renderMenu({ searching: true, search: 'pizza' });
 
     expect(screen.queryByText('New chat')).toBeNull();
-    expect(screen.queryByText('Models')).toBeNull();
+    expect(screen.queryByText('Manage models')).toBeNull();
     expect(screen.queryByText('Settings')).toBeNull();
     expect(screen.getByText('Pizza recipe')).toBeTruthy();
   });
 
   it('brings the navigation back when the query is cleared', () => {
     const { rerender } = renderMenu({ searching: true, search: 'pizza' });
-    expect(screen.queryByText('Models')).toBeNull();
+    expect(screen.queryByText('Manage models')).toBeNull();
 
     rerender(
       <DrawerMenu
@@ -336,7 +336,7 @@ describe('DrawerMenu — searching', () => {
       />
     );
 
-    expect(screen.getByText('Models')).toBeTruthy();
+    expect(screen.getByText('Manage models')).toBeTruthy();
   });
 
   it('filters the chat list by the query', () => {

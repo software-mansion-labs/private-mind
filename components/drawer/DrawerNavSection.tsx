@@ -15,7 +15,7 @@ import { useLLMStore } from '../../store/llmStore';
 import { startPhantomChat } from '../../utils/startPhantomChat';
 import { Theme } from '../../styles/colors';
 import ChatIcon from '../../assets/icons/chat.svg';
-import ModelsIcon from '../../assets/icons/models.svg';
+import CubeIcon from '../../assets/icons/cube.svg';
 import { DrawerItem } from './DrawerItem';
 import { useIsOnPhantomChat } from './useIsOnPhantomChat';
 import { useTurnInFlight } from '../../hooks/useTurnInFlight';
@@ -146,13 +146,13 @@ export const DrawerNavSection = ({
         />
         <DrawerItem
           icon={
-            <ModelsIcon
+            <CubeIcon
               width={iconSize.md}
               height={iconSize.md}
               style={styles.icon}
             />
           }
-          label="Models"
+          label="Manage models"
           active={pathname === '/model-hub'}
           onPress={goToModelHub}
         />

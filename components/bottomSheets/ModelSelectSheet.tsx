@@ -74,7 +74,7 @@ const ModelSelectSheet = ({
           <BottomSheetSearchInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Search Models..."
+            placeholder="Search models"
           />
 
           <BottomSheetFlatList

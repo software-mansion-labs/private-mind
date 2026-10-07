@@ -181,14 +181,9 @@ describe('display', () => {
     expect(screen.getByText('Llama-3B')).toBeTruthy();
   });
 
-  it('shows parameters chip', () => {
+  it('shows size and parameters as one plain meta line', () => {
     renderCard();
-    expect(screen.getByTestId('chip-3.21 B')).toBeTruthy();
-  });
-
-  it('shows model size chip', () => {
-    renderCard();
-    expect(screen.getByTestId('chip-2.50 GB')).toBeTruthy();
+    expect(screen.getByText('2.50 GB · 3.21 B')).toBeTruthy();
   });
 
   it('shows Incompatible chip when model is not compatible', () => {
@@ -197,25 +192,35 @@ describe('display', () => {
     expect(screen.getByTestId('chip-Incompatible')).toBeTruthy();
   });
 
-  it('shows Vision chip when model supports vision', () => {
+  it('shows a Vision badge when model supports vision', () => {
     renderCard({ vision: true });
-    expect(screen.getByTestId('chip-Vision')).toBeTruthy();
+    expect(screen.getByTestId('capability-badge-Vision')).toBeTruthy();
   });
 
-  it('does not show Vision chip when model does not support vision', () => {
+  it('does not show a Vision badge when model does not support vision', () => {
     renderCard({ vision: false });
-    expect(screen.queryByTestId('chip-Vision')).toBeNull();
+    expect(screen.queryByTestId('capability-badge-Vision')).toBeNull();
   });
 
-  it('renders label chips from model.labels', () => {
-    renderCard({ compactView: false, labels: ['Fast', 'Reasoning'] });
-    expect(screen.getByTestId('chip-Fast')).toBeTruthy();
-    expect(screen.getByTestId('chip-Reasoning')).toBeTruthy();
+  it('shows a Thinking badge for a thinking model, even in compact view', () => {
+    renderCard({ thinking: true, compactView: true });
+    expect(screen.getByTestId('capability-badge-Thinking')).toBeTruthy();
   });
 
-  it('omits label chips in compact view', () => {
+  it('renders label badges without repeating a capability', () => {
+    renderCard({
+      compactView: false,
+      thinking: true,
+      labels: ['Fast', 'Reasoning'],
+    });
+    expect(screen.getByTestId('capability-badge-Fast')).toBeTruthy();
+    expect(screen.getByTestId('capability-badge-Thinking')).toBeTruthy();
+    expect(screen.queryByTestId('capability-badge-Reasoning')).toBeNull();
+  });
+
+  it('omits label badges in compact view', () => {
     renderCard({ compactView: true, labels: ['Fast'] });
-    expect(screen.queryByTestId('chip-Fast')).toBeNull();
+    expect(screen.queryByTestId('capability-badge-Fast')).toBeNull();
   });
 
   it('calls onPress when card is tapped', () => {
@@ -245,12 +250,40 @@ describe('download state rendering', () => {
     expect(screen.getByText('40%')).toBeTruthy();
   });
 
-  it('does not show download button when already downloaded', () => {
+  it('shows a check instead of the download button once downloaded', () => {
     withDownloadStates({
       1: { status: ModelState.Downloaded, progress: 1 },
     });
-    renderCard({ isDownloaded: true });
+    renderCard({ isDownloaded: true, compactView: false });
     expect(screen.queryByTestId('circle-btn')).toBeNull();
+    expect(screen.getByTestId('model-downloaded-check')).toBeTruthy();
+  });
+
+  it('leaves the check out of compact pickers, where every model is downloaded', () => {
+    renderCard({ isDownloaded: true, compactView: true });
+    expect(screen.queryByTestId('model-downloaded-check')).toBeNull();
+  });
+
+  it('offers deleting files next to the check only when asked to', () => {
+    const { rerender } = render(
+      <ModelCard
+        model={{ ...baseModel, isDownloaded: true }}
+        compactView={false}
+        onPress={jest.fn()}
+      />
+    );
+    expect(screen.queryByTestId('model-delete-files')).toBeNull();
+
+    rerender(
+      <ModelCard
+        model={{ ...baseModel, isDownloaded: true }}
+        compactView={false}
+        onPress={jest.fn()}
+        showDeleteButton
+      />
+    );
+    expect(screen.getByTestId('model-delete-files')).toBeTruthy();
+    expect(screen.getByTestId('model-downloaded-check')).toBeTruthy();
   });
 });
 

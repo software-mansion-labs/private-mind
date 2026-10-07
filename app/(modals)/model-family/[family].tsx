@@ -18,8 +18,13 @@ import WarningSheet, {
   WarningSheetData,
 } from '../../../components/bottomSheets/WarningSheet';
 import ModalHeader from '../../../components/ModalHeader';
-import { FAMILY_DESCRIPTIONS } from '../../../constants/family-descriptions';
+import RowGroup, { ROW_PADDING } from '../../../components/model-hub/RowGroup';
+import { familyIcon, MODEL_FAMILIES } from '../../../constants/model-families';
 import { scrollIndicatorProps } from '../../../constants/scroll-indicator';
+import { radius, space, textStyles } from '../../../constants/design-system';
+
+const HERO_TILE_SIZE = space.fourteen;
+const HERO_ICON_SIZE = space.eight;
 
 const FamilyScreen = () => {
   const router = useRouter();
@@ -42,17 +47,14 @@ const FamilyScreen = () => {
     [models, familyName]
   );
 
-  const description = FAMILY_DESCRIPTIONS[familyName];
+  const info = MODEL_FAMILIES[familyName];
+  const Icon = familyIcon(familyName);
 
   return (
     <BottomSheetModalProvider>
       <View style={styles.container}>
         <View style={styles.content}>
-          <ModalHeader
-            title={familyName}
-            onClose={() => router.back()}
-            leftIcon="back"
-          />
+          <ModalHeader title="" onClose={() => router.back()} leftIcon="back" />
           {familyModels.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No variants available.</Text>
@@ -63,21 +65,36 @@ const FamilyScreen = () => {
               contentContainerStyle={styles.scrollContent}
               {...scrollIndicatorProps()}
             >
-              {description && (
-                <Text style={styles.description}>{description}</Text>
+              <View style={styles.hero}>
+                <View style={styles.heroTile}>
+                  <Icon
+                    width={HERO_ICON_SIZE}
+                    height={HERO_ICON_SIZE}
+                    style={styles.heroIcon}
+                  />
+                </View>
+                <View style={styles.heroText}>
+                  <Text style={styles.familyName}>{familyName}</Text>
+                  {info && <Text style={styles.provider}>{info.provider}</Text>}
+                </View>
+              </View>
+              {info && (
+                <Text style={styles.description}>{info.description}</Text>
               )}
-              {familyModels.map((model) => (
-                <ModelCard
-                  key={model.id}
-                  model={model}
-                  compactView={false}
-                  onPress={() =>
-                    modelManagementSheetRef.current?.present(model)
-                  }
-                  wifiWarningSheetRef={wifiWarningSheetRef}
-                  showDeleteButton
-                />
-              ))}
+              <RowGroup separatorInset={ROW_PADDING}>
+                {familyModels.map((model) => (
+                  <ModelCard
+                    key={model.id}
+                    model={model}
+                    compactView={false}
+                    variant="row"
+                    onPress={() =>
+                      modelManagementSheetRef.current?.present(model)
+                    }
+                    wifiWarningSheetRef={wifiWarningSheetRef}
+                  />
+                ))}
+              </RowGroup>
             </ScrollView>
           )}
         </View>
@@ -105,8 +122,37 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     scrollContent: {
-      gap: 8,
-      paddingBottom: 16,
+      gap: space.four,
+      paddingBottom: space.four,
+    },
+    hero: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.four,
+    },
+    heroTile: {
+      width: HERO_TILE_SIZE,
+      height: HERO_TILE_SIZE,
+      borderRadius: radius.eighteen,
+      backgroundColor: theme.bg.softSecondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    heroIcon: {
+      color: theme.text.primary,
+    },
+    heroText: {
+      flex: 1,
+      gap: space.half,
+    },
+    familyName: {
+      ...textStyles.titleH2,
+      color: theme.text.primary,
+    },
+    provider: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      color: theme.text.defaultSecondary,
     },
     emptyContainer: {
       flex: 1,
@@ -124,6 +170,5 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.sm,
       color: theme.text.defaultSecondary,
       lineHeight: 20,
-      marginBottom: 8,
     },
   });

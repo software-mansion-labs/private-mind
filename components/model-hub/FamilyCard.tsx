@@ -3,11 +3,18 @@ import { StyleSheet, Text, View } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { ModelFamily } from '../../utils/modelFamily';
 import Chip from '../Chip';
-import { FAMILY_DESCRIPTIONS } from '../../constants/family-descriptions';
-import { opacity, radius } from '../../constants/design-system';
+import { familyIcon, MODEL_FAMILIES } from '../../constants/model-families';
+import {
+  iconSize,
+  opacity,
+  radius,
+  space,
+} from '../../constants/design-system';
+import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
+import { ROW_PADDING, ROW_TILE_SIZE } from './RowGroup';
 
 interface Props {
   family: ModelFamily;
@@ -15,24 +22,44 @@ interface Props {
   runnable?: boolean;
 }
 
+const CHEVRON_WIDTH = 8;
+const CHEVRON_HEIGHT = 14;
+
+const pluralize = (count: number, noun: string) =>
+  `${count} ${count === 1 ? noun : `${noun}s`}`;
+
+const familyCounts = (family: ModelFamily) => {
+  const variants = pluralize(family.models.length, 'variant');
+  const downloaded = family.models.filter((m) => m.isDownloaded).length;
+  return downloaded > 0 ? `${variants} · ${downloaded} downloaded` : variants;
+};
+
 const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
 
-  const downloadedCount = family.models.filter((m) => m.isDownloaded).length;
-  const variantCount = family.models.length;
-  const description = FAMILY_DESCRIPTIONS[family.name];
+  const info = MODEL_FAMILIES[family.name];
+  const Icon = familyIcon(family.name);
 
   return (
     <TouchableOpacity
-      style={[styles.card, !runnable && styles.unrunnableCard]}
+      style={[styles.row, !runnable && styles.unrunnableRow]}
       onPress={() => onPress(family)}
       activeOpacity={opacity.pressed}
       testID={`family-card-${family.name}`}
     >
+      <View style={styles.tile}>
+        <Icon
+          width={iconSize.lg}
+          height={iconSize.lg}
+          style={styles.icon}
+          testID={`family-icon-${family.name}`}
+        />
+      </View>
       <View style={styles.info}>
-        <Text style={styles.name}>{family.name}</Text>
-        {description && <Text style={styles.description}>{description}</Text>}
-        <View style={styles.chipContainer}>
+        <View style={styles.titleRow}>
+          <Text style={styles.name} numberOfLines={1}>
+            {family.name}
+          </Text>
           {!runnable && (
             <Chip
               title="Incompatible"
@@ -41,19 +68,19 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
               textColor={theme.text.error}
             />
           )}
-          <Chip
-            title={`${variantCount} ${variantCount === 1 ? 'variant' : 'variants'}`}
-            borderColor={theme.border.soft}
-          />
-          {downloadedCount > 0 && (
-            <Chip
-              title={`${downloadedCount} downloaded`}
-              borderColor={theme.border.soft}
-            />
-          )}
         </View>
+        {info && (
+          <Text style={styles.summary} numberOfLines={1}>
+            {`${info.provider} · ${info.summary}`}
+          </Text>
+        )}
+        <Text style={styles.counts}>{familyCounts(family)}</Text>
       </View>
-      <Text style={styles.chevron}>›</Text>
+      <ChevronRightIcon
+        width={CHEVRON_WIDTH}
+        height={CHEVRON_HEIGHT}
+        style={styles.chevron}
+      />
     </TouchableOpacity>
   );
 };
@@ -62,42 +89,55 @@ export default FamilyCard;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    card: {
-      padding: 16,
-      borderWidth: 1,
-      borderRadius: radius.twelve,
-      borderColor: theme.border.soft,
+    row: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: ROW_PADDING,
+      paddingHorizontal: ROW_PADDING,
+      paddingVertical: space.twoHalf,
+    },
+    unrunnableRow: {
+      opacity: opacity.disabled,
+    },
+    tile: {
+      width: ROW_TILE_SIZE,
+      height: ROW_TILE_SIZE,
+      borderRadius: radius.twelve,
+      backgroundColor: theme.bg.softSecondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    icon: {
+      color: theme.text.primary,
     },
     info: {
       flex: 1,
-      gap: 8,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.two,
     },
     name: {
+      flexShrink: 1,
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
       color: theme.text.primary,
     },
-    description: {
+    summary: {
       fontFamily: fontFamily.regular,
       fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
       color: theme.text.defaultSecondary,
-      lineHeight: 20,
     },
-    chipContainer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 4,
-    },
-    unrunnableCard: {
-      opacity: opacity.disabled,
+    counts: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.xs,
+      lineHeight: lineHeights.xs,
+      color: theme.text.defaultTertiary,
     },
     chevron: {
-      fontSize: 28,
-      fontFamily: fontFamily.regular,
-      color: theme.bg.main,
-      lineHeight: 28,
+      color: theme.text.defaultTertiary,
     },
   });
