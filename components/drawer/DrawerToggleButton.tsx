@@ -9,6 +9,7 @@ import { useSteadyFlag } from '../../hooks/useSteadyFlag';
 import { showTurnInFlightNotice } from '../../utils/turnInFlightNotice';
 import { TURN_IN_FLIGHT_HOLD_MS } from '../../constants/header-actions';
 import HeaderActionIcon from '../HeaderActionIcon';
+import { hitSlop, iconSize, opacity } from '../../constants/design-system';
 
 const DrawerToggleButton = () => {
   const navigation: DrawerContentComponentProps['navigation'] = useNavigation();
@@ -28,13 +29,14 @@ const DrawerToggleButton = () => {
     <TouchableOpacity
       onPress={handlePress}
       style={styles.button}
-      hitSlop={15}
+      hitSlop={hitSlop}
+      activeOpacity={opacity.pressed}
       testID="drawer-toggle"
     >
       <HeaderActionIcon
         icon={Menu}
-        width={16}
-        height={14}
+        width={iconSize.md}
+        height={(iconSize.md * 14) / 16}
         color={theme.text.primary}
         dimmed={looksBusy}
       />

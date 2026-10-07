@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { opacity, radius } from '../../constants/design-system';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 
 type StoppedMarkerProps = {
@@ -68,13 +69,13 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      borderRadius: 16,
+      borderRadius: radius.twelve,
       backgroundColor: theme.bg.softSecondary,
       paddingHorizontal: 10,
       paddingVertical: 6,
     },
     pressed: {
-      opacity: 0.6,
+      opacity: opacity.pressed,
     },
     icon: {
       color: theme.text.primary,

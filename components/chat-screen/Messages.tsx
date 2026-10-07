@@ -67,6 +67,8 @@ import {
   MESSAGE_LIST_SIDE_PADDING,
 } from '../../constants/chat-screen';
 import { messageRowKey } from '../../utils/messageRowKey';
+import { opacity as opacityToken, radius } from '../../constants/design-system';
+import { fontSizes } from '../../styles/fontStyles';
 import { scrollIndicatorProps } from '../../constants/scroll-indicator';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
@@ -1312,27 +1314,27 @@ const createStyles = (theme: Theme) => {
     },
     generationErrorText: {
       color: theme.text.defaultSecondary,
-      fontSize: 14,
+      fontSize: fontSizes.sm,
     },
     retryButton: {
       alignSelf: 'flex-start',
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      borderRadius: 8,
+      borderRadius: radius.twelve,
       backgroundColor: theme.bg.softSecondary,
       paddingHorizontal: 12,
       paddingVertical: 8,
     },
     retryButtonPressed: {
-      opacity: 0.7,
+      opacity: opacityToken.pressed,
     },
     retryButtonIcon: {
       color: theme.text.primary,
     },
     retryButtonText: {
       color: theme.text.primary,
-      fontSize: 14,
+      fontSize: fontSizes.sm,
     },
     scrollToBottomButtonContainer: {
       position: 'absolute',

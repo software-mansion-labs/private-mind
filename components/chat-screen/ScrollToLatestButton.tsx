@@ -12,6 +12,7 @@ import ChevronDown from '../../assets/icons/chevron-down.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { Feedback } from '../../utils/Feedback';
+import { iconSize, radius } from '../../constants/design-system';
 
 export const SCROLL_BUTTON_ENTER_MS = 240;
 export const SCROLL_BUTTON_EXIT_MS = 140;
@@ -81,8 +82,8 @@ const ScrollToLatestButton = ({ visible, onPress }: Props) => {
         testID="scroll-to-latest"
       >
         <ChevronDown
-          width={20}
-          height={20}
+          width={iconSize.md}
+          height={iconSize.md}
           style={{ color: theme.text.primary }}
         />
       </Pressable>
@@ -97,7 +98,7 @@ const createStyles = (theme: Theme) =>
     button: {
       width: 40,
       height: 40,
-      borderRadius: 20,
+      borderRadius: radius.full,
       backgroundColor: theme.bg.softPrimary,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border.soft,
@@ -109,7 +110,7 @@ const createStyles = (theme: Theme) =>
     },
     hitArea: {
       flex: 1,
-      borderRadius: 20,
+      borderRadius: radius.full,
       justifyContent: 'center',
       alignItems: 'center',
     },

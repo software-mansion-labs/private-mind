@@ -16,6 +16,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { TEXT_SELECTION, Theme } from '../../styles/colors';
+import { radius, space } from '../../constants/design-system';
 import { MAX_CHAT_TITLE_LENGTH } from '../../utils/chatLabel';
 import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 import SecondaryButton from '../SecondaryButton';
@@ -141,13 +142,14 @@ const createStyles = (theme: Theme) =>
       maxWidth: 360,
       backgroundColor:
         Platform.OS === 'ios' ? 'transparent' : theme.bg.softPrimary,
-      borderRadius: 16,
+      borderRadius: radius.eighteen,
       overflow: 'hidden',
       padding: 20,
       gap: 16,
     },
     title: {
-      fontSize: fontSizes.md,
+      fontSize: fontSizes.lg,
+      lineHeight: lineHeights.lg,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
       textAlign: 'center',
@@ -156,9 +158,9 @@ const createStyles = (theme: Theme) =>
       borderWidth: 1,
       borderColor: theme.border.soft,
       backgroundColor: theme.bg.softPrimary,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
+      borderRadius: radius.twelve,
+      paddingHorizontal: space.four,
+      paddingVertical: space.three,
       fontSize: fontSizes.md,
       fontFamily: fontFamily.regular,
       color: theme.text.primary,
@@ -170,7 +172,7 @@ const createStyles = (theme: Theme) =>
     actionButton: {
       flex: 1,
       height: 40,
-      borderRadius: 20,
+      borderRadius: radius.full,
       backgroundColor: theme.bg.dialogAction,
       borderColor: 'transparent',
     },

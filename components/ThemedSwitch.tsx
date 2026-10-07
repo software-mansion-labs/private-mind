@@ -16,6 +16,7 @@ import {
   SWITCH_TRACK_HEIGHT,
   SWITCH_TRACK_WIDTH,
 } from '../constants/switch';
+import { hitSlop, opacity } from '../constants/design-system';
 
 interface Props {
   value: boolean;
@@ -62,7 +63,7 @@ export const ThemedSwitch = ({ value, onValueChange, disabled }: Props) => {
       accessibilityRole="switch"
       accessibilityState={{ checked: value, disabled }}
       disabled={disabled}
-      hitSlop={8}
+      hitSlop={hitSlop}
       onPress={() => onValueChange(!value)}
       style={disabled && styles.disabled}
     >
@@ -94,6 +95,6 @@ const createStyles = (theme: Theme) =>
       shadowOffset: { width: 0, height: 1 },
     },
     disabled: {
-      opacity: 0.5,
+      opacity: opacity.disabled,
     },
   });

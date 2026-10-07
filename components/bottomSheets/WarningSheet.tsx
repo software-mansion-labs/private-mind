@@ -1,13 +1,11 @@
-import React, { RefObject, useCallback } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
+import React, { RefObject } from 'react';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { StyleSheet, Text, View } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import SheetBackdrop from './SheetBackdrop';
+import { createSheetStyles } from './sheetStyles';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
 
@@ -25,28 +23,17 @@ interface Props {
 
 const WarningSheet = ({ bottomSheetModalRef, onDismiss }: Props) => {
   const { styles } = useThemedStyles(createStyles);
-
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
+  const { styles: sheet } = useThemedStyles(createSheetStyles);
 
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
+      backdropComponent={SheetBackdrop}
       enableDynamicSizing
       onDismiss={onDismiss}
-      handleStyle={styles.handleStyle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}
+      handleStyle={sheet.handle}
+      handleIndicatorStyle={sheet.handleIndicator}
+      backgroundStyle={sheet.background}
     >
       {(props) => (
         <BottomSheetView style={styles.sheet}>
@@ -85,22 +72,6 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: 16,
       paddingBottom: theme.insets.bottom + 16,
       gap: 24,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
-    handleStyle: {
-      backgroundColor: theme.bg.softPrimary,
-      borderRadius: 16,
-    },
-    handleIndicator: {
-      width: 64,
-      height: 4,
-      borderRadius: 20,
-      backgroundColor: theme.text.primary,
-    },
-    background: {
       backgroundColor: theme.bg.softPrimary,
     },
     title: {

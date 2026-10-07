@@ -6,6 +6,7 @@ import { SpinningCircleTimer } from '../SpinningCircleTimer';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import { radius, space } from '../../constants/design-system';
 import { Model } from '../../database/modelRepository';
 import CheckIcon from '../../assets/icons/check.svg';
 
@@ -83,9 +84,9 @@ const createStyles = (theme: Theme) =>
     },
     benchmarkCard: {
       width: '90%',
-      borderRadius: 18,
+      borderRadius: radius.eighteen,
       paddingVertical: 16,
-      paddingHorizontal: 24,
+      paddingHorizontal: space.five,
       backgroundColor: theme.bg.softPrimary,
       alignItems: 'center',
       gap: 24,
@@ -93,9 +94,9 @@ const createStyles = (theme: Theme) =>
     },
     benchmarkCardSuccess: {
       width: '90%',
-      borderRadius: 18,
+      borderRadius: radius.eighteen,
       paddingVertical: 16,
-      paddingHorizontal: 24,
+      paddingHorizontal: space.five,
       backgroundColor: theme.bg.softPrimary,
       justifyContent: 'center',
       alignItems: 'center',
@@ -125,7 +126,7 @@ const createStyles = (theme: Theme) =>
     successIcon: {
       width: 100,
       height: 100,
-      borderRadius: 9999,
+      borderRadius: radius.full,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: theme.bg.main,

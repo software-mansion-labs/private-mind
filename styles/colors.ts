@@ -11,7 +11,6 @@ export const lightTheme = {
     switchThumb: '#ffffff',
     strongPrimary: '#020f3c',
     chatBar: '#E4E4E7',
-    cardSurface: '#E4E4E7',
     attachButton: '#3D61D6',
     voiceModeSurface: 'rgba(2, 15, 60, 0.2)',
     errorSecondary: '#F5D0D1',
@@ -58,7 +57,6 @@ export const darkTheme = {
     switchThumb: '#ffffff',
     strongPrimary: '#FFFFFF',
     chatBar: '#FFFFFF',
-    cardSurface: '#121212',
     attachButton: '#000000',
     // Voice mode sits on `bg.main` in both themes, so use the same tint here
     // for parity across light and dark.

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { radius } from '../../constants/design-system';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 
@@ -35,7 +36,7 @@ const createStyles = (theme: Theme) =>
     card: {
       borderWidth: 1,
       borderColor: theme.border.soft,
-      borderRadius: 4,
+      borderRadius: radius.twelve,
       padding: 16,
       gap: 16,
     },

@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, StyleSheet, View } from 'react-native';
 import InfoCircleIcon from '../assets/icons/info-circle.svg';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
+import { radius } from '../constants/design-system';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 
@@ -30,7 +31,7 @@ export const InfoAlert = ({ text }: Props) => {
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      borderRadius: 4,
+      borderRadius: radius.twelve,
       padding: 12,
       gap: 12,
       flexDirection: 'row',

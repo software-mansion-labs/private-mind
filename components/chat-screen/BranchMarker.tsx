@@ -4,6 +4,7 @@ import type { ChatBranchMarker } from '../../database/chatRepository';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { opacity, radius } from '../../constants/design-system';
 import ForkIcon from '../../assets/icons/fork.svg';
 
 type BranchMarkerProps = {
@@ -54,13 +55,13 @@ const createStyles = (theme: Theme) =>
       maxWidth: '78%',
       minHeight: 32,
       paddingHorizontal: 10,
-      borderRadius: 16,
+      borderRadius: radius.twelve,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
     },
     linkPressed: {
-      opacity: 0.6,
+      opacity: opacity.pressed,
     },
     icon: {
       color: theme.text.primary,

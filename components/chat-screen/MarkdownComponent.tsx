@@ -6,6 +6,7 @@ import {
 import { StreamdownText } from 'react-native-streamdown';
 import { Platform } from 'react-native';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { radius } from '../../constants/design-system';
 import { useTheme } from '../../context/ThemeContext';
 
 const MD4C_FLAGS = { latexMath: true } as const;
@@ -104,7 +105,7 @@ const MarkdownComponent = memo(
           backgroundColor: isUser
             ? theme.bg.codeBlockStrong
             : theme.bg.codeBlock,
-          borderRadius: 10,
+          borderRadius: radius.twelve,
           padding: 14,
           marginTop: 8,
           marginBottom: 12,

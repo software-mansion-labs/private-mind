@@ -38,6 +38,7 @@ import { useAttachmentPanel } from './attachments/useAttachmentPanel';
 import { useSheetGeometry } from './attachments/useSheetGeometry';
 import { Model } from '../../database/modelRepository';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { radius } from '../../constants/design-system';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useChatStore } from '../../store/chatStore';
 import { useLLMStore } from '../../store/llmStore';
@@ -696,12 +697,12 @@ const createStyles = (theme: Theme) =>
       height: 52,
       borderWidth: 1,
       borderColor: theme.border.soft,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
       paddingHorizontal: 16,
       paddingVertical: 12,
     },
     selectedModel: {
-      fontSize: 14,
+      fontSize: fontSizes.sm,
       fontFamily: fontFamily.regular,
       color: theme.text.primary,
     },
@@ -712,7 +713,7 @@ const createStyles = (theme: Theme) =>
     inputContainer: {
       flexDirection: 'column',
       backgroundColor: theme.bg.chatBar,
-      borderRadius: 18,
+      borderRadius: radius.eighteen,
       padding: COMPOSER.cardPadding,
       justifyContent: 'center',
     },

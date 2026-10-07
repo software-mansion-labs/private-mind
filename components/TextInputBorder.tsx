@@ -7,6 +7,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Theme } from '../styles/colors';
 import { useThemedStyles } from '../hooks/useThemedStyles';
+import { radius } from '../constants/design-system';
 
 interface TextInputBorderProps {
   active: boolean;
@@ -55,7 +56,7 @@ export default TextInputBorder;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     common: {
-      borderRadius: 12,
+      borderRadius: radius.twelve,
       pointerEvents: 'none',
       ...StyleSheet.absoluteFill,
     },

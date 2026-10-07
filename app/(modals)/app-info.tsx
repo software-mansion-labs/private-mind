@@ -13,6 +13,7 @@ import * as Application from 'expo-application';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
+import { radius } from '../../constants/design-system';
 import { useTheme } from '../../context/ThemeContext';
 import ModalHeader from '../../components/ModalHeader';
 import SecondaryButton from '../../components/SecondaryButton';
@@ -169,14 +170,14 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     gap: 16,
-    borderRadius: 12,
+    borderRadius: radius.twelve,
     borderWidth: 1,
   },
   versionCard: {
     padding: 16,
     alignItems: 'center',
     gap: 16,
-    borderRadius: 12,
+    borderRadius: radius.twelve,
     borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',

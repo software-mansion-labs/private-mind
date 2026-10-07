@@ -48,14 +48,14 @@ describe('FamilyCard', () => {
   it('reads as available when the device can run at least one variant', () => {
     render(<FamilyCard family={family} onPress={jest.fn()} />);
     expect(screen.queryByTestId('chip-Incompatible')).toBeNull();
-    expect(opacityOf()).not.toBe(0.5);
+    expect(opacityOf()).not.toBe(0.4);
   });
 
   it('says so at the list level when no variant fits, but still opens (#372)', () => {
     const onPress = jest.fn();
     render(<FamilyCard family={family} onPress={onPress} runnable={false} />);
     expect(screen.getByTestId('chip-Incompatible')).toBeTruthy();
-    expect(opacityOf()).toBe(0.5);
+    expect(opacityOf()).toBe(0.4);
     fireEvent.press(screen.getByTestId('family-card-Gemma 4'));
     expect(onPress).toHaveBeenCalledWith(family);
   });

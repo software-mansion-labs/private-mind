@@ -11,6 +11,7 @@ import { DrawerItem } from './DrawerItem';
 import { useIsOnPhantomChat } from './useIsOnPhantomChat';
 import { useTurnInFlight } from '../../hooks/useTurnInFlight';
 import { showTurnInFlightNotice } from '../../utils/turnInFlightNotice';
+import { iconSize, radius } from '../../constants/design-system';
 
 interface Props {
   onNavigate?: () => void;
@@ -44,7 +45,13 @@ export const DrawerEmptyState = ({ onNavigate }: Props) => {
       <Text style={styles.text}>No chats found</Text>
       <View style={styles.action}>
         <DrawerItem
-          icon={<ChatIcon width={18} height={18} style={styles.icon} />}
+          icon={
+            <ChatIcon
+              width={iconSize.md}
+              height={iconSize.md}
+              style={styles.icon}
+            />
+          }
           label="Start new chat"
           testID="drawer-empty-new-chat"
           active={false}
@@ -74,7 +81,7 @@ const createStyles = (theme: Theme) =>
     action: {
       alignSelf: 'center',
       overflow: 'hidden',
-      borderRadius: 12,
+      borderRadius: radius.twelve,
       borderWidth: 1,
       borderColor: theme.border.soft,
     },

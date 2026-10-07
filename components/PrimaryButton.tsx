@@ -8,8 +8,9 @@ import {
   GestureResponderEvent,
 } from 'react-native';
 import { useThemedStyles } from '../hooks/useThemedStyles';
-import { fontFamily, fontSizes } from '../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
+import { controlHeight, opacity, radius } from '../constants/design-system';
 
 interface Props {
   text: string;
@@ -34,6 +35,7 @@ const PrimaryButton = ({
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
+      activeOpacity={opacity.pressed}
       style={[styles.button, style]}
     >
       {icon}
@@ -47,20 +49,21 @@ export default PrimaryButton;
 const createStyles = (theme: Theme, disabled: boolean) =>
   StyleSheet.create({
     button: {
-      height: 48,
+      height: controlHeight.button,
       width: '100%',
-      borderRadius: 12,
+      borderRadius: radius.twelve,
       paddingHorizontal: 10,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: theme.bg.main,
-      opacity: disabled ? 0.4 : 1,
+      opacity: disabled ? opacity.disabled : 1,
       flexDirection: 'row',
       gap: 2,
     },
     text: {
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
       color: theme.text.contrastPrimary,
     },
   });

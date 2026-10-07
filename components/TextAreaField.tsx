@@ -7,7 +7,7 @@ import {
   TextInputProps,
 } from 'react-native';
 import { useThemedStyles } from '../hooks/useThemedStyles';
-import { fontFamily, fontSizes } from '../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
 import { TEXT_SELECTION, Theme } from '../styles/colors';
 import TextInputBorder from './TextInputBorder';
 
@@ -71,7 +71,8 @@ const createStyles = (theme: Theme) =>
     textArea: {
       height: 120,
       fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
+      fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
       color: theme.text.primary,
     },
     error: {

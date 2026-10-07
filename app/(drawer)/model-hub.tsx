@@ -16,6 +16,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { scrollIndicatorProps } from '../../constants/scroll-indicator';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { radius } from '../../constants/design-system';
 import { Model } from '../../database/modelRepository';
 import TextFieldInput from '../../components/TextFieldInput';
 import SearchIcon from '../../assets/icons/search.svg';
@@ -296,7 +297,7 @@ const createStyles = (theme: Theme) =>
       marginTop: 16,
       padding: 16,
       borderWidth: 1,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
       borderColor: theme.border.soft,
       flexDirection: 'row',
       alignItems: 'center',

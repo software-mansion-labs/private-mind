@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
+import { radius } from '../constants/design-system';
 
 interface Props {
   title: string;
@@ -46,7 +47,7 @@ const createStyles = (
     container: {
       flexDirection: 'row',
       alignItems: 'center',
-      borderRadius: 100,
+      borderRadius: radius.full,
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderWidth: 1,

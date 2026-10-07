@@ -3,6 +3,12 @@ import { StyleSheet, TouchableOpacity } from 'react-native';
 import PlusIcon from '../../assets/icons/plus.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import {
+  iconSize,
+  opacity,
+  radius,
+  space,
+} from '../../constants/design-system';
 
 interface Props {
   onPress: () => void;
@@ -17,8 +23,9 @@ const FloatingActionButton = ({ onPress, disabled = false }: Props) => {
       style={styles.button}
       onPress={onPress}
       disabled={disabled}
+      activeOpacity={opacity.pressed}
     >
-      <PlusIcon width={18} height={18} style={styles.icon} />
+      <PlusIcon width={iconSize.lg} height={iconSize.lg} style={styles.icon} />
     </TouchableOpacity>
   );
 };
@@ -29,11 +36,11 @@ const createStyles = (theme: Theme, disabled: boolean) =>
   StyleSheet.create({
     button: {
       position: 'absolute',
-      right: 20,
+      right: space.four,
       bottom: 16 + theme.insets.bottom,
       width: 56,
       height: 56,
-      borderRadius: 28,
+      borderRadius: radius.full,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: disabled ? theme.text.defaultTertiary : theme.bg.main,

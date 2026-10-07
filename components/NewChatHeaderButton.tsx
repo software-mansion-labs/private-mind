@@ -10,6 +10,7 @@ import { useSteadyFlag } from '../hooks/useSteadyFlag';
 import { showTurnInFlightNotice } from '../utils/turnInFlightNotice';
 import { TURN_IN_FLIGHT_HOLD_MS } from '../constants/header-actions';
 import HeaderActionIcon from './HeaderActionIcon';
+import { hitSlop, iconSize, opacity } from '../constants/design-system';
 
 interface Props {
   noOp?: boolean;
@@ -38,13 +39,14 @@ const NewChatHeaderButton = ({ noOp = false }: Props) => {
     <TouchableOpacity
       onPress={handlePress}
       style={styles.button}
-      hitSlop={15}
+      hitSlop={hitSlop}
+      activeOpacity={opacity.pressed}
       testID="new-chat-header-button"
     >
       <HeaderActionIcon
         icon={ChatIcon}
-        width={20}
-        height={20}
+        width={iconSize.md}
+        height={iconSize.md}
         color={theme.text.primary}
         dimmed={looksBusy}
       />

@@ -22,6 +22,7 @@ import {
 } from '../../constants/drawer-layout';
 import SearchIcon from '../../assets/icons/search.svg';
 import ArrowLeftIcon from '../../assets/icons/arrow-left.svg';
+import { hitSlop, iconSize, opacity } from '../../constants/design-system';
 
 interface Props {
   searching: boolean;
@@ -71,7 +72,11 @@ export const DrawerTopBar = ({
           accessibilityLabel="Search chats"
           style={({ pressed }) => [styles.pill, pressed && styles.dimmed]}
         >
-          <SearchIcon width={18} height={18} style={styles.placeholderIcon} />
+          <SearchIcon
+            width={iconSize.md}
+            height={iconSize.md}
+            style={styles.placeholderIcon}
+          />
           <Text style={styles.placeholder}>Search</Text>
         </Pressable>
       </View>
@@ -86,10 +91,14 @@ export const DrawerTopBar = ({
           testID="drawer-search-back"
           accessibilityRole="button"
           accessibilityLabel="Close search"
-          hitSlop={12}
+          hitSlop={hitSlop}
           style={({ pressed }) => [styles.backButton, pressed && styles.dimmed]}
         >
-          <ArrowLeftIcon width={20} height={20} style={styles.icon} />
+          <ArrowLeftIcon
+            width={iconSize.md}
+            height={iconSize.md}
+            style={styles.icon}
+          />
         </Pressable>
         <TextInput
           {...TEXT_SELECTION}
@@ -120,7 +129,11 @@ export const DrawerTopBar = ({
         importantForAccessibility="no-hide-descendants"
       >
         <View style={styles.pill}>
-          <SearchIcon width={18} height={18} style={styles.placeholderIcon} />
+          <SearchIcon
+            width={iconSize.md}
+            height={iconSize.md}
+            style={styles.placeholderIcon}
+          />
           <Text style={styles.placeholder}>Search</Text>
         </View>
       </Animated.View>
@@ -190,7 +203,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
     },
     dimmed: {
-      opacity: 0.5,
+      opacity: opacity.pressed,
     },
     input: {
       flex: 1,

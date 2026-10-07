@@ -5,6 +5,7 @@ import * as Application from 'expo-application';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
+import { radius } from '../constants/design-system';
 import { LATEST_RELEASE } from '../constants/latest-release';
 import { useSettingsStore } from '../store/settingsStore';
 import { Feedback } from '../utils/Feedback';
@@ -73,8 +74,8 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     card: {
       width: '100%',
-      backgroundColor: theme.bg.cardSurface,
-      borderRadius: 16,
+      backgroundColor: theme.bg.softSecondary,
+      borderRadius: radius.eighteen,
       padding: 16,
       gap: 12,
     },
@@ -91,7 +92,7 @@ const createStyles = (theme: Theme) =>
     closeButton: {
       width: 24,
       height: 24,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
       alignItems: 'center',
       justifyContent: 'center',
     },

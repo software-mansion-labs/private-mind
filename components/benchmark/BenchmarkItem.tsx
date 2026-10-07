@@ -6,6 +6,7 @@ import BenchmarkIcon from '../../assets/icons/benchmark.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { iconSize, opacity, radius } from '../../constants/design-system';
 
 interface Props {
   entry: BenchmarkResult;
@@ -21,9 +22,17 @@ const BenchmarkItem = ({ entry, onPress }: Props) => {
   })}`;
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <TouchableOpacity
+      style={styles.container}
+      onPress={onPress}
+      activeOpacity={opacity.pressed}
+    >
       <View style={styles.iconWrapper}>
-        <BenchmarkIcon width={15} height={15} style={styles.icon} />
+        <BenchmarkIcon
+          width={iconSize.sm}
+          height={iconSize.sm}
+          style={styles.icon}
+        />
       </View>
       <View>
         <Text style={styles.title}>{entry.modelName}</Text>
@@ -43,14 +52,14 @@ const createStyles = (theme: Theme) =>
       gap: 12,
       padding: 16,
       paddingLeft: 12,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
       borderWidth: 1,
       borderColor: theme.border.soft,
     },
     iconWrapper: {
       width: 36,
       height: 36,
-      borderRadius: 9999,
+      borderRadius: radius.full,
       backgroundColor: theme.bg.softSecondary,
       alignItems: 'center',
       justifyContent: 'center',

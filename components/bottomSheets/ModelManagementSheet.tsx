@@ -1,13 +1,11 @@
-import React, { RefObject, useCallback, useState } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
+import React, { RefObject, useState } from 'react';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { StyleSheet, Text, View } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import SheetBackdrop from './SheetBackdrop';
+import { createSheetStyles } from './sheetStyles';
 import EntryButton from '../EntryButton';
 import ModelCard from '../model-hub/ModelCard';
 import TrashIcon from '../../assets/icons/trash.svg';
@@ -35,22 +33,11 @@ enum ModalStage {
 
 const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
   const { styles } = useThemedStyles(createStyles);
+  const { styles: sheet } = useThemedStyles(createSheetStyles);
 
   const { removeModel, removeModelFiles } = useModelStore();
   const [stage, setStage] = useState<ModalStage>(ModalStage.Initial);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
 
   const renderStageContent = (model: Model) => {
     switch (stage) {
@@ -218,16 +205,16 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
+      backdropComponent={SheetBackdrop}
       enableDynamicSizing
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
         setStage(ModalStage.Initial);
         setIsProcessing(false);
       }}
-      handleStyle={styles.handle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}
+      handleStyle={sheet.handle}
+      handleIndicatorStyle={sheet.handleIndicator}
+      backgroundStyle={sheet.background}
     >
       {(props) =>
         props.data ? (
@@ -284,21 +271,5 @@ const createStyles = (theme: Theme) =>
     },
     buttonDestructive: {
       backgroundColor: theme.bg.errorPrimary,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
-    handle: {
-      borderRadius: 16,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    handleIndicator: {
-      backgroundColor: theme.text.primary,
-      width: 64,
-      height: 4,
-      borderRadius: 20,
-    },
-    background: {
-      backgroundColor: theme.bg.softPrimary,
     },
   });

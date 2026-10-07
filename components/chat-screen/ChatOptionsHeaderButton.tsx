@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import MoreIcon from '../../assets/icons/more_horizontal.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
+import { hitSlop, iconSize, opacity } from '../../constants/design-system';
 
 interface Props {
   onPress: () => void;
@@ -14,12 +15,16 @@ const ChatOptionsHeaderButton = ({ onPress }: Props) => {
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.button, pressed && styles.pressed]}
-      hitSlop={12}
+      hitSlop={hitSlop}
       accessibilityRole="button"
       accessibilityLabel="Chat options"
       testID="chat-options-button"
     >
-      <MoreIcon width={20} height={20} color={theme.text.primary} />
+      <MoreIcon
+        width={iconSize.md}
+        height={iconSize.md}
+        color={theme.text.primary}
+      />
     </Pressable>
   );
 };
@@ -34,6 +39,6 @@ const createStyles = () =>
       marginRight: 12,
     },
     pressed: {
-      opacity: 0.6,
+      opacity: opacity.pressed,
     },
   });

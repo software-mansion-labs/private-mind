@@ -1,13 +1,11 @@
-import React, { RefObject, useCallback, useEffect, useState } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetBackdrop,
-  BottomSheetScrollView,
-} from '@gorhom/bottom-sheet';
+import React, { RefObject, useEffect, useState } from 'react';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { StyleSheet, Text } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import SheetBackdrop from './SheetBackdrop';
+import { createSheetStyles } from './sheetStyles';
 import DeviceInfo from 'react-native-device-info';
 import SecondaryButton from '../SecondaryButton';
 import ModelCard from '../model-hub/ModelCard';
@@ -29,24 +27,13 @@ interface Props {
 
 const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
   const { styles } = useThemedStyles(createStyles);
+  const { styles: sheet } = useThemedStyles(createSheetStyles);
 
   const [deviceInfo, setDeviceInfo] = useState({
     model: '',
     systemVersion: '',
     memory: '',
   });
-
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
 
   useEffect(() => {
     const fetchDeviceInfo = async () => {
@@ -66,14 +53,14 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
+      backdropComponent={SheetBackdrop}
       snapPoints={['50%', '90%']}
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
       }}
-      handleStyle={styles.handleStyle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.sheetBackground}
+      handleStyle={sheet.handle}
+      handleIndicatorStyle={sheet.handleIndicator}
+      backgroundStyle={sheet.background}
     >
       {({ data }) => {
         if (!data) return null;
@@ -119,21 +106,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.lg,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
-    },
-    handleStyle: {
-      borderRadius: 16,
-    },
-    handleIndicator: {
-      width: 64,
-      height: 4,
-      borderRadius: 20,
-      backgroundColor: theme.text.primary,
-    },
-    sheetBackground: {
-      backgroundColor: theme.bg.softPrimary,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
     },
     deleteButton: {
       borderColor: theme.text.error,

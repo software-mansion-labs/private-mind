@@ -1,12 +1,11 @@
 import React, { RefObject } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Text, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import { space } from '../../constants/design-system';
+import SheetBackdrop from '../bottomSheets/SheetBackdrop';
+import { createSheetStyles } from '../bottomSheets/sheetStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import EditIcon from '../../assets/icons/edit.svg';
 import UploadIcon from '../../assets/icons/upload.svg';
@@ -31,7 +30,8 @@ const ChatTitleMenuSheet = ({
   onDelete,
   onDismiss,
 }: Props) => {
-  const { styles, theme } = useThemedStyles(createStyles);
+  const { styles } = useThemedStyles(createStyles);
+  const { styles: sheet } = useThemedStyles(createSheetStyles);
 
   const handleOption = (action: () => void) => {
     bottomSheetModalRef.current?.dismiss();
@@ -46,15 +46,10 @@ const ChatTitleMenuSheet = ({
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
       }}
-      backdropComponent={(props) => (
-        <BottomSheetBackdrop
-          {...props}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-        />
-      )}
-      backgroundStyle={{ backgroundColor: theme.bg.softPrimary }}
-      handleIndicatorStyle={{ backgroundColor: theme.border.soft }}
+      backdropComponent={SheetBackdrop}
+      handleStyle={sheet.handle}
+      handleIndicatorStyle={sheet.handleIndicator}
+      backgroundStyle={sheet.background}
     >
       <BottomSheetView style={styles.container}>
         <Text numberOfLines={1} style={styles.title} testID="chat-menu-title">
@@ -91,7 +86,7 @@ const createStyles = (theme: Theme) =>
     container: {
       paddingHorizontal: 16,
       paddingTop: 8,
-      paddingBottom: 32,
+      paddingBottom: theme.insets.bottom + space.four,
       gap: 4,
     },
     title: {

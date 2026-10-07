@@ -9,10 +9,10 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import CloseIcon from '../assets/icons/close.svg';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { openAppSettings } from '../utils/openAppSettings';
+import { hitSlop, opacity, radius } from '../constants/design-system';
 
 const NAV_HEADER_HEIGHT = Platform.OS === 'ios' ? 44 : 56;
 const TOAST_HEADER_GAP = 2;
-const CLOSE_HIT_SLOP = 12;
 
 export const toastTopOffset = (safeAreaTop: number) =>
   safeAreaTop + NAV_HEADER_HEIGHT + TOAST_HEADER_GAP;
@@ -47,7 +47,7 @@ const AppToast: React.FC = () => {
         <Pressable
           onPress={() => Toast.hide()}
           cancelable={false}
-          hitSlop={CLOSE_HIT_SLOP}
+          hitSlop={hitSlop}
           accessibilityRole="button"
           accessibilityLabel="Dismiss"
           style={({ pressed }) => [
@@ -82,7 +82,7 @@ const createStyles = (theme: Theme) =>
     toastContainer: {
       width: '90%',
       backgroundColor: theme.bg.softSecondary,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
       padding: 16,
       flexDirection: 'row',
       borderWidth: StyleSheet.hairlineWidth,
@@ -106,7 +106,7 @@ const createStyles = (theme: Theme) =>
       alignSelf: 'flex-start',
       paddingVertical: 8,
       paddingHorizontal: 16,
-      borderRadius: 999,
+      borderRadius: radius.full,
       backgroundColor: theme.bg.main,
     },
     toastActionLabel: {
@@ -123,6 +123,6 @@ const createStyles = (theme: Theme) =>
       color: theme.text.primary,
     },
     pressed: {
-      opacity: 0.2,
+      opacity: opacity.pressed,
     },
   });

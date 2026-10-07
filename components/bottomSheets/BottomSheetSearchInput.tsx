@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { iconSize } from '../../constants/design-system';
 import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import SearchIcon from '../../assets/icons/search.svg';
 import TextInputBorder from '../TextInputBorder';
@@ -31,7 +32,11 @@ const BottomSheetSearchInput = ({
     <View style={[styles.container, style]}>
       <View style={styles.inputWrapper}>
         <TextInputBorder active={active} />
-        <SearchIcon width={20} height={20} style={styles.searchIcon} />
+        <SearchIcon
+          width={iconSize.md}
+          height={iconSize.md}
+          style={styles.searchIcon}
+        />
         <BottomSheetTextInput
           {...TEXT_SELECTION}
           style={styles.input}
@@ -66,7 +71,7 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.md,
       fontFamily: fontFamily.regular,
       color: theme.text.primary,
-      lineHeight: 22,
+      lineHeight: lineHeights.md,
     },
     searchIcon: {
       color: theme.text.primary,

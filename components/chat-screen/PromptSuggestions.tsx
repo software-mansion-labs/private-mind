@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { ScrollView, TouchableOpacity } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { opacity, radius } from '../../constants/design-system';
 import { Theme } from '../../styles/colors';
 import {
   DEFAULT_PROMPT_SUGGESTIONS,
@@ -33,7 +34,7 @@ const PromptSuggestions = ({ onSelectPrompt }: Props) => {
             key={suggestion.id}
             style={styles.suggestionCard}
             onPress={() => handlePromptPress(suggestion.prompt)}
-            activeOpacity={0.7}
+            activeOpacity={opacity.pressed}
           >
             <Text
               style={styles.suggestionTitle}
@@ -82,11 +83,9 @@ const createStyles = (theme: Theme) =>
     },
     suggestionCard: {
       width: SUGGESTION_CARD_WIDTH,
-      backgroundColor: theme.bg.cardSurface,
-      borderRadius: 10,
+      backgroundColor: theme.bg.softSecondary,
+      borderRadius: radius.twelve,
       padding: 12,
-      borderWidth: 1,
-      borderColor: theme.bg.cardSurface,
     },
     suggestionTitle: {
       fontSize: fontSizes.xs,

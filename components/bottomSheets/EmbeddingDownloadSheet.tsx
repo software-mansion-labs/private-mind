@@ -1,14 +1,11 @@
 import React, { RefObject, useCallback } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { StyleSheet, Text, View } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import SheetBackdrop from './SheetBackdrop';
+import { createSheetStyles } from './sheetStyles';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
 import {
@@ -81,24 +78,12 @@ const EmbeddingDownloadSheet = ({
   required = false,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
+  const { styles: sheet } = useThemedStyles(createSheetStyles);
   const status = useEmbeddingModelStore((state) => state.status);
   const progress = useEmbeddingModelStore((state) => state.progress);
 
   const isDownloading = status === 'downloading';
   const isError = status === 'error';
-
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        pressBehavior="close"
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
 
   const handleCancel = useCallback(
     () => bottomSheetModalRef.current?.dismiss(),
@@ -108,13 +93,13 @@ const EmbeddingDownloadSheet = ({
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
+      backdropComponent={SheetBackdrop}
       enableDynamicSizing
       enablePanDownToClose
       onDismiss={onDismiss}
-      handleStyle={styles.handleStyle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}
+      handleStyle={sheet.handle}
+      handleIndicatorStyle={sheet.handleIndicator}
+      backgroundStyle={sheet.background}
     >
       <BottomSheetView style={styles.sheet}>
         <Text style={styles.title}>{TITLES[context]}</Text>
@@ -156,22 +141,6 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: 16,
       paddingBottom: theme.insets.bottom + 16,
       gap: 24,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
-    handleStyle: {
-      backgroundColor: theme.bg.softPrimary,
-      borderRadius: 18,
-    },
-    handleIndicator: {
-      width: 64,
-      height: 4,
-      borderRadius: 9999,
-      backgroundColor: theme.text.primary,
-    },
-    background: {
       backgroundColor: theme.bg.softPrimary,
     },
     title: {

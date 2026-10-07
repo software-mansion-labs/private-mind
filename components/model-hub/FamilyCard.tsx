@@ -7,6 +7,7 @@ import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { ModelFamily } from '../../utils/modelFamily';
 import Chip from '../Chip';
 import { FAMILY_DESCRIPTIONS } from '../../constants/family-descriptions';
+import { opacity, radius } from '../../constants/design-system';
 
 interface Props {
   family: ModelFamily;
@@ -25,6 +26,7 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
     <TouchableOpacity
       style={[styles.card, !runnable && styles.unrunnableCard]}
       onPress={() => onPress(family)}
+      activeOpacity={opacity.pressed}
       testID={`family-card-${family.name}`}
     >
       <View style={styles.info}>
@@ -63,7 +65,7 @@ const createStyles = (theme: Theme) =>
     card: {
       padding: 16,
       borderWidth: 1,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
       borderColor: theme.border.soft,
       flexDirection: 'row',
       alignItems: 'center',
@@ -90,7 +92,7 @@ const createStyles = (theme: Theme) =>
       gap: 4,
     },
     unrunnableCard: {
-      opacity: 0.5,
+      opacity: opacity.disabled,
     },
     chevron: {
       fontSize: 28,

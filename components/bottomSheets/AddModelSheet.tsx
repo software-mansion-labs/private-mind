@@ -1,13 +1,11 @@
-import React, { RefObject, useCallback } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
+import React, { RefObject } from 'react';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import SheetBackdrop from './SheetBackdrop';
+import { createSheetStyles } from './sheetStyles';
 import { router } from 'expo-router';
 import EntryButton from '../EntryButton';
 import LinkAltIcon from '../../assets/icons/link-alt.svg';
@@ -19,28 +17,16 @@ interface Props {
 
 const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
   const { styles } = useThemedStyles(createStyles);
-
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={1}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
+  const { styles: sheet } = useThemedStyles(createSheetStyles);
 
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
+      backdropComponent={SheetBackdrop}
       enableDynamicSizing
-      handleStyle={styles.handleStyle}
-      handleIndicatorStyle={styles.handleIndicatorStyle}
-      backgroundStyle={styles.sheetBackground}
+      handleStyle={sheet.handle}
+      handleIndicatorStyle={sheet.handleIndicator}
+      backgroundStyle={sheet.background}
     >
       <BottomSheetView style={styles.sheetContent}>
         <Text style={styles.title}>Add model</Text>
@@ -88,21 +74,5 @@ const createStyles = (theme: Theme) =>
     },
     icon: {
       color: theme.text.primary,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
-    handleStyle: {
-      backgroundColor: theme.bg.softPrimary,
-      borderRadius: 16,
-    },
-    handleIndicatorStyle: {
-      width: 64,
-      height: 4,
-      borderRadius: 20,
-      backgroundColor: theme.text.primary,
-    },
-    sheetBackground: {
-      backgroundColor: theme.bg.softPrimary,
     },
   });

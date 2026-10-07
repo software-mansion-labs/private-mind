@@ -4,6 +4,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { Feedback } from '../../utils/Feedback';
+import { opacity, radius } from '../../constants/design-system';
 
 export interface ChoiceOption<T extends string> {
   value: T;
@@ -67,7 +68,7 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     card: {
       padding: 16,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
       backgroundColor: theme.bg.softSecondary,
       gap: 12,
     },
@@ -83,7 +84,7 @@ const createStyles = (theme: Theme) =>
     option: {
       flex: 1,
       paddingVertical: 10,
-      borderRadius: 999,
+      borderRadius: radius.full,
       alignItems: 'center',
       borderWidth: 1,
       borderColor: theme.border.soft,
@@ -93,7 +94,7 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.bg.main,
     },
     pressed: {
-      opacity: 0.6,
+      opacity: opacity.pressed,
     },
     optionText: {
       fontFamily: fontFamily.medium,

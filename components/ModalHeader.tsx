@@ -11,6 +11,7 @@ import ArrowLeftIcon from '../assets/icons/arrow-left.svg';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
+import { hitSlop, iconSize, opacity } from '../constants/design-system';
 
 interface Props {
   title: string;
@@ -21,12 +22,17 @@ interface Props {
 const ModalHeader = ({ title, onClose, leftIcon = 'close' }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const Icon = leftIcon === 'back' ? ArrowLeftIcon : CloseIcon;
-  const iconSize = leftIcon === 'back' ? 20 : 16;
+  const size = leftIcon === 'back' ? iconSize.md : iconSize.sm;
 
   return (
     <View style={styles.headerContainer}>
-      <TouchableOpacity style={styles.iconWrap} onPress={onClose} hitSlop={15}>
-        <Icon width={iconSize} height={iconSize} style={styles.icon} />
+      <TouchableOpacity
+        style={styles.iconWrap}
+        onPress={onClose}
+        activeOpacity={opacity.pressed}
+        hitSlop={hitSlop}
+      >
+        <Icon width={size} height={size} style={styles.icon} />
       </TouchableOpacity>
       <Text style={styles.title}>{title}</Text>
       <View style={styles.iconWrap} />

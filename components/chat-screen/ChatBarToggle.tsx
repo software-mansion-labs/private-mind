@@ -1,10 +1,16 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { fontSizes, lineHeights } from '../../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { SvgComponent } from '../../utils/SvgComponent';
 import { Feedback } from '../../utils/Feedback';
+import {
+  controlHeight,
+  iconSize,
+  opacity,
+  radius,
+} from '../../constants/design-system';
 
 interface Props {
   label: string;
@@ -51,7 +57,11 @@ const ChatBarToggle = ({
       ]}
       testID={testID}
     >
-      <Icon style={{ color: theme.text.onChatBar }} width={20} height={20} />
+      <Icon
+        style={{ color: theme.text.onChatBar }}
+        width={iconSize.md}
+        height={iconSize.md}
+      />
       <Text style={styles.toggleText}>{label}</Text>
     </Pressable>
   );
@@ -63,24 +73,25 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     toggleButton: {
       padding: 8,
-      borderRadius: 9999,
+      borderRadius: radius.full,
       borderWidth: 1,
       borderColor: theme.text.onChatBar,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
       gap: 4,
-      height: 36,
+      height: controlHeight.pill,
     },
     toggleText: {
+      fontFamily: fontFamily.medium,
       color: theme.text.onChatBar,
       fontSize: fontSizes.sm,
       lineHeight: lineHeights.sm,
     },
     off: {
-      opacity: 0.4,
+      opacity: opacity.disabled,
     },
     pressed: {
-      opacity: 0.7,
+      opacity: opacity.pressed,
     },
   });

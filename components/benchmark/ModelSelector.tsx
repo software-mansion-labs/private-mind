@@ -4,6 +4,7 @@ import { Model } from '../../database/modelRepository';
 import ModelCard from '../model-hub/ModelCard';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
+import { radius } from '../../constants/design-system';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -58,7 +59,7 @@ const createStyles = (theme: Theme) =>
     },
     selectorContainer: {
       padding: 16,
-      borderRadius: 4,
+      borderRadius: radius.twelve,
       borderWidth: 1,
       borderColor: theme.border.soft,
       gap: 16,

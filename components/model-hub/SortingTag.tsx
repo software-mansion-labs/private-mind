@@ -4,6 +4,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import CheckIcon from '../../assets/icons/check.svg';
+import { iconSize, opacity, radius } from '../../constants/design-system';
 
 interface Props {
   text: string;
@@ -15,9 +16,19 @@ const SortingTag = ({ text, selected, onPress }: Props) => {
   const { styles } = useThemedStyles(createStyles, selected);
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <TouchableOpacity
+      style={styles.container}
+      onPress={onPress}
+      activeOpacity={opacity.pressed}
+    >
       <Text style={styles.text}>{text}</Text>
-      {selected && <CheckIcon width={20} height={20} style={styles.icon} />}
+      {selected && (
+        <CheckIcon
+          width={iconSize.md}
+          height={iconSize.md}
+          style={styles.icon}
+        />
+      )}
       <View style={styles.border} />
     </TouchableOpacity>
   );
@@ -32,7 +43,7 @@ const createStyles = (theme: Theme, selected: boolean) =>
       paddingHorizontal: 12,
       justifyContent: 'center',
       alignItems: 'center',
-      borderRadius: 9999,
+      borderRadius: radius.full,
       flexDirection: 'row',
       maxHeight: 44,
       minHeight: 20,
@@ -49,7 +60,7 @@ const createStyles = (theme: Theme, selected: boolean) =>
     border: {
       pointerEvents: 'none',
       ...StyleSheet.absoluteFill,
-      borderRadius: 9999,
+      borderRadius: radius.full,
       borderWidth: selected ? 2 : 1,
       borderColor: selected ? theme.bg.strongPrimary : theme.border.soft,
     },

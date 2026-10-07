@@ -8,7 +8,7 @@ import {
   type PressableProps,
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { radius } from '../../constants/design-system';
+import { iconSize, opacity, radius } from '../../constants/design-system';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { SvgComponent } from '../../utils/SvgComponent';
@@ -20,13 +20,13 @@ export const MENU_ROW = {
     gap: 16,
     well: 44,
     wellRadius: radius.twelve,
-    icon: 24,
+    icon: iconSize.lg,
   },
   compact: {
     height: 42,
     paddingHorizontal: 12,
     gap: 10,
-    icon: 16,
+    icon: iconSize.sm,
   },
 } as const;
 
@@ -110,10 +110,10 @@ const createStyles = (theme: Theme, variant: MenuRowVariant) => {
       alignItems: 'center',
     },
     dimmed: {
-      opacity: 0.4,
+      opacity: opacity.disabled,
     },
     pressed: {
-      opacity: 0.6,
+      opacity: opacity.pressed,
     },
     well: {
       width: MENU_ROW.regular.well,

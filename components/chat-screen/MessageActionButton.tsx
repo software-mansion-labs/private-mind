@@ -3,6 +3,12 @@ import { Pressable, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { SvgComponent } from '../../utils/SvgComponent';
+import {
+  hitSlop,
+  iconSize,
+  opacity,
+  radius,
+} from '../../constants/design-system';
 
 type MessageActionButtonProps = {
   label: string;
@@ -23,12 +29,12 @@ export default function MessageActionButton({
     <Pressable
       style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
       onPress={onPress}
-      hitSlop={8}
+      hitSlop={hitSlop}
       accessibilityRole="button"
       accessibilityLabel={label}
       testID={testID}
     >
-      <Icon width={16} height={16} style={styles.icon} />
+      <Icon width={iconSize.sm} height={iconSize.sm} style={styles.icon} />
     </Pressable>
   );
 }
@@ -38,13 +44,13 @@ const createStyles = (theme: Theme) =>
     button: {
       width: 24,
       height: 24,
-      borderRadius: 8,
+      borderRadius: radius.six,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
     },
     buttonPressed: {
-      opacity: 0.6,
+      opacity: opacity.pressed,
     },
     icon: {
       color: theme.text.primary,

@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import { space } from '../../constants/design-system';
 import {
   SCRAPE_IDLE_SOURCE,
   SCRAPE_HOST_OFFSCREEN_TOP,
@@ -118,7 +119,7 @@ const createStyles = (theme: Theme) =>
     header: {
       paddingTop: theme.insets.top + 12,
       paddingBottom: 12,
-      paddingHorizontal: 20,
+      paddingHorizontal: space.four,
       gap: 2,
     },
     headerTitle: {

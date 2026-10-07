@@ -27,6 +27,7 @@ import { attributeSourcesByBlock } from '../../utils/attributeSources';
 import DominantSourceBadge from './DominantSourceBadge';
 import { WEB_TRACE_TRANSITION_MS } from './webSearchTraceConstants';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { radius } from '../../constants/design-system';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useWebSearchActivity } from '../../hooks/useWebSearchActivity';
 import { useMessageSources } from '../../hooks/useMessageSources';
@@ -462,7 +463,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'flex-start',
       justifyContent: 'center',
       maxWidth: `${USER_BUBBLE_WIDTH_SHARE * 100}%`,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
       backgroundColor: theme.bg.softSecondary,
       overflow: 'hidden',
     },
@@ -482,7 +483,7 @@ const createStyles = (theme: Theme) =>
       maxWidth: '75%',
       paddingVertical: 10,
       paddingHorizontal: 12,
-      borderRadius: 16,
+      borderRadius: radius.twelve,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border.soft,
       backgroundColor: theme.bg.softSecondary,

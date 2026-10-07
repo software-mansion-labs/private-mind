@@ -1,10 +1,8 @@
-import React, { RefObject, useCallback, useMemo, useState } from 'react';
+import React, { RefObject, useMemo, useState } from 'react';
 import {
   BottomSheetModal,
   BottomSheetFlatList,
   BottomSheetView,
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 import { router } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
@@ -12,6 +10,8 @@ import { useModelStore } from '../../store/modelStore';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import SheetBackdrop from './SheetBackdrop';
+import { createSheetStyles } from './sheetStyles';
 import { Model } from '../../database/modelRepository';
 import ModelCard from '../model-hub/ModelCard';
 import PrimaryButton from '../PrimaryButton';
@@ -30,6 +30,7 @@ const ModelSelectSheet = ({
   onSheetStateChange,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
+  const { styles: sheet } = useThemedStyles(createSheetStyles);
   const downloadedModels = useModelStore((state) => state.downloadedModels);
   const [search, setSearch] = useState('');
   const [snapIndex, setSnapIndex] = useState(0);
@@ -41,28 +42,16 @@ const ModelSelectSheet = ({
     );
   }, [downloadedModels, search]);
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
-
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
+      backdropComponent={SheetBackdrop}
       index={snapIndex}
       snapPoints={['30%', '50%']}
       enableDynamicSizing={false}
-      handleStyle={styles.handle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}
+      handleStyle={sheet.handle}
+      handleIndicatorStyle={sheet.handleIndicator}
+      backgroundStyle={sheet.background}
       keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
       keyboardBlurBehavior="restore"
       onChange={(index) => {
@@ -134,22 +123,6 @@ export default ModelSelectSheet;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    handle: {
-      backgroundColor: theme.bg.softPrimary,
-      borderRadius: 16,
-    },
-    handleIndicator: {
-      width: 64,
-      height: 4,
-      borderRadius: 20,
-      backgroundColor: theme.text.primary,
-    },
-    background: {
-      backgroundColor: theme.bg.softPrimary,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
     content: {
       flex: 1,
       paddingTop: 16,

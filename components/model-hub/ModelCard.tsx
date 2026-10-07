@@ -21,6 +21,7 @@ import CloseIcon from '../../assets/icons/close.svg';
 import EyeIcon from '../../assets/icons/eye.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 import { Feedback } from '../../utils/Feedback';
+import { opacity, radius } from '../../constants/design-system';
 
 interface Props {
   model: Model;
@@ -119,6 +120,7 @@ const ModelCard = ({
       style={[styles.card, !isCompatible && styles.incompatibleCard]}
       onPress={() => onPress(model)}
       disabled={disabled}
+      activeOpacity={opacity.pressed}
     >
       <View style={styles.topRow}>
         <View
@@ -261,7 +263,7 @@ const createStyles = (theme: Theme, selected: boolean) =>
     card: {
       padding: 16,
       borderWidth: 1,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
       borderColor: selected ? theme.bg.strongPrimary : theme.border.soft,
       flexDirection: 'column',
       gap: 16,
@@ -308,7 +310,7 @@ const createStyles = (theme: Theme, selected: boolean) =>
       color: theme.text.defaultSecondary,
     },
     incompatibleCard: {
-      opacity: 0.5,
+      opacity: opacity.disabled,
       borderColor: theme.border.soft,
     },
     incompatibleText: {

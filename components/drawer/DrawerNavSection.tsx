@@ -25,6 +25,7 @@ import {
   SECTION_GAP,
 } from '../../constants/drawer-layout';
 import { EMPHASIZED_STANDARD } from '../../constants/motion';
+import { iconSize } from '../../constants/design-system';
 
 const NAV_EASING = Easing.bezier(...EMPHASIZED_STANDARD);
 
@@ -130,7 +131,13 @@ export const DrawerNavSection = ({
         onLayout={height ? undefined : handleSectionLayout}
       >
         <DrawerItem
-          icon={<ChatIcon width={18} height={18} style={styles.icon} />}
+          icon={
+            <ChatIcon
+              width={iconSize.md}
+              height={iconSize.md}
+              style={styles.icon}
+            />
+          }
           label="New chat"
           testID="drawer-new-chat"
           active={pathname === '/' || isOnPhantomChat}
@@ -138,7 +145,13 @@ export const DrawerNavSection = ({
           onPress={startNewChat}
         />
         <DrawerItem
-          icon={<ModelsIcon width={18} height={18} style={styles.icon} />}
+          icon={
+            <ModelsIcon
+              width={iconSize.md}
+              height={iconSize.md}
+              style={styles.icon}
+            />
+          }
           label="Models"
           active={pathname === '/model-hub'}
           onPress={goToModelHub}

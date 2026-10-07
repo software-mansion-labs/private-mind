@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { SvgComponent } from '../utils/SvgComponent';
+import { opacity, radius } from '../constants/design-system';
 
 interface Props {
   icon: SvgComponent;
@@ -36,6 +37,7 @@ const CircleButton = ({
       onPress={disabled ? undefined : onPress}
       style={[styles.circle, (disabled || dimmed) && styles.dimmed]}
       disabled={disabled}
+      activeOpacity={opacity.pressed}
       accessibilityState={{ disabled, busy }}
       testID={testID}
     >
@@ -56,12 +58,12 @@ const createStyles = (backgroundColor: string) =>
       width: 36,
       height: 36,
       padding: 8,
-      borderRadius: 18,
+      borderRadius: radius.full,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor,
     },
     dimmed: {
-      opacity: 0.6,
+      opacity: opacity.pressed,
     },
   });

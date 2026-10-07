@@ -31,6 +31,7 @@ import {
   stroke,
   textStyles,
 } from '../../constants/design-system';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import {
   EST_ROW_GAP,
   EST_ROW_HEIGHT,
@@ -42,6 +43,7 @@ import {
   SHEET_SPRING_CONFIG,
 } from '../../constants/sources-sheet';
 import SheetBackdrop from '../bottomSheets/SheetBackdrop';
+import { createSheetStyles } from '../bottomSheets/sheetStyles';
 import SourceRow from './SourceRow';
 import { type SourceDocument } from '../../database/chatRepository';
 import {
@@ -68,6 +70,7 @@ interface SourcesSheetPayload {
 
 const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
   const { styles, theme } = useThemedStyles(createStyles);
+  const { styles: sheet } = useThemedStyles(createSheetStyles);
   const { height: screenHeight } = useWindowDimensions();
 
   const sheetRef = useRef<BottomSheetModal>(null);
@@ -211,8 +214,9 @@ const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
       snapPoints={snapPoints}
       animationConfigs={animationConfigs}
       backdropComponent={renderBackdrop}
-      backgroundStyle={styles.sourcesSheetBackground}
-      handleIndicatorStyle={styles.sourcesSheetHandle}
+      handleStyle={sheet.handle}
+      handleIndicatorStyle={sheet.handleIndicator}
+      backgroundStyle={sheet.background}
       onChange={(index) => {
         isOpenRef.current = index >= 0;
       }}
@@ -268,12 +272,6 @@ export default memo(SourcesSheet);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    sourcesSheetBackground: {
-      backgroundColor: theme.bg.softPrimary,
-    },
-    sourcesSheetHandle: {
-      backgroundColor: theme.border.soft,
-    },
     sourcesSheet: {
       paddingHorizontal: space.four,
       paddingTop: space.two,
@@ -282,7 +280,9 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bg.softPrimary,
     },
     sourcesSheetTitle: {
-      ...textStyles.titleH3,
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.lg,
+      lineHeight: lineHeights.lg,
       color: theme.text.primary,
     },
     sourcesList: {

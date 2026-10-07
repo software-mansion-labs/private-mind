@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { opacity, radius } from '../../constants/design-system';
 
 export type ModelHubTab = 'featured' | 'experimental' | 'mine';
 
@@ -29,6 +30,7 @@ const ModelHubTabs = ({ value, onChange }: Props) => {
             key={tab.key}
             style={[styles.tab, selected && styles.tabSelected]}
             onPress={() => onChange(tab.key)}
+            activeOpacity={opacity.pressed}
           >
             <Text style={[styles.label, selected && styles.labelSelected]}>
               {tab.label}
@@ -47,7 +49,7 @@ const createStyles = (theme: Theme) =>
     container: {
       flexDirection: 'row',
       backgroundColor: theme.bg.softSecondary,
-      borderRadius: 9999,
+      borderRadius: radius.full,
       padding: 4,
       gap: 4,
     },
@@ -56,7 +58,7 @@ const createStyles = (theme: Theme) =>
       paddingVertical: 10,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 9999,
+      borderRadius: radius.full,
     },
     tabSelected: {
       backgroundColor: theme.bg.main,

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TextInput, StyleSheet, View, TextInputProps } from 'react-native';
 import { useThemedStyles } from '../hooks/useThemedStyles';
-import { fontFamily, fontSizes } from '../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
 import { TEXT_SELECTION, Theme } from '../styles/colors';
 import TextInputBorder from './TextInputBorder';
 
@@ -70,6 +70,6 @@ const createStyles = (
       fontFamily: fontFamily.regular,
       color: theme.text.primary,
       opacity: isEditable ? 1 : 0.4,
-      lineHeight: 22,
+      lineHeight: lineHeights.md,
     },
   });

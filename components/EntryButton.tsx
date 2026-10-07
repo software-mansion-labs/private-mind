@@ -8,8 +8,9 @@ import {
   GestureResponderEvent,
 } from 'react-native';
 import { useThemedStyles } from '../hooks/useThemedStyles';
-import { fontFamily, fontSizes } from '../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
+import { controlHeight, opacity, radius } from '../constants/design-system';
 
 interface Props {
   text: string;
@@ -34,6 +35,7 @@ const EntryButton = ({
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
+      activeOpacity={opacity.pressed}
       style={[styles.button, style]}
     >
       {icon}
@@ -47,18 +49,19 @@ export default EntryButton;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     button: {
-      height: 40,
+      height: controlHeight.button,
       paddingVertical: 8,
       paddingHorizontal: 12,
       gap: 12,
       alignItems: 'center',
-      borderRadius: 4,
+      borderRadius: radius.twelve,
       width: '100%',
       flexDirection: 'row',
     },
     text: {
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
       color: theme.text.primary,
     },
   });

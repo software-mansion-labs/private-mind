@@ -29,6 +29,7 @@ import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import SettingsIcon from '../../assets/icons/settings.svg';
 import { scrollIndicatorProps } from '../../constants/scroll-indicator';
+import { iconSize } from '../../constants/design-system';
 
 interface Props {
   searching: boolean;
@@ -207,7 +208,13 @@ const DrawerMenu = ({
         <View style={styles.footer}>
           <DrawerItem
             testID="drawer-settings"
-            icon={<SettingsIcon width={18} height={18} style={styles.icon} />}
+            icon={
+              <SettingsIcon
+                width={iconSize.md}
+                height={iconSize.md}
+                style={styles.icon}
+              />
+            }
             label="Settings"
             active={pathname === '/settings'}
             onPress={goToSettings}

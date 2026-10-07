@@ -11,6 +11,7 @@ import PauseIcon from '../../assets/icons/pause_icon.svg';
 import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import { iconSize, opacity, radius } from '../../constants/design-system';
 
 export type ComposerAction = 'speech' | 'send' | 'stop';
 
@@ -104,15 +105,15 @@ const ComposerActionButton = ({
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           <Reanimated.View style={[styles.iconLayer, speechStyle]}>
             <SoundwaveIcon
-              width={20}
-              height={20}
+              width={iconSize.md}
+              height={iconSize.md}
               color={theme.text.onChatBar}
             />
           </Reanimated.View>
           <Reanimated.View style={[styles.iconLayer, sendStyle]}>
             <SendIcon
-              width={20}
-              height={20}
+              width={iconSize.md}
+              height={iconSize.md}
               color={theme.text.contrastPrimary}
             />
           </Reanimated.View>
@@ -136,13 +137,13 @@ const createStyles = (theme: Theme) =>
     circle: {
       width: 36,
       height: 36,
-      borderRadius: 18,
+      borderRadius: radius.full,
       justifyContent: 'center',
       alignItems: 'center',
       overflow: 'hidden',
     },
     fill: {
-      borderRadius: 18,
+      borderRadius: radius.full,
       backgroundColor: theme.bg.main,
     },
     iconLayer: {
@@ -151,6 +152,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
     },
     dimmed: {
-      opacity: 0.6,
+      opacity: opacity.pressed,
     },
   });

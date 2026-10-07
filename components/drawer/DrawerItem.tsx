@@ -4,6 +4,7 @@ import { Pressable } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import { opacity, radius } from '../../constants/design-system';
 
 interface Props {
   label: string;
@@ -57,10 +58,10 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     item: {
       padding: 12,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
     },
     contentDimmed: {
-      opacity: 0.4,
+      opacity: opacity.disabled,
     },
     activeBackground: {
       backgroundColor: theme.bg.softSecondary,
