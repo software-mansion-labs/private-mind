@@ -1,7 +1,10 @@
 import * as MediaLibrary from 'expo-media-library';
 import { useCallback, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 
 const PAGE_SIZE = 180;
+
+export const USES_SYSTEM_PHOTO_PICKER = Platform.OS === 'android';
 
 export interface LibraryPhoto {
   id: string;
@@ -24,6 +27,7 @@ function isReadable(permission: MediaLibrary.PermissionResponse | null) {
 
 export function usePhotoLibrary(read: boolean, ask: boolean): PhotoLibrary {
   const [permission, requestPermission] = MediaLibrary.usePermissions({
+    get: !USES_SYSTEM_PHOTO_PICKER,
     granularPermissions: ['photo'],
   });
   const [photos, setPhotos] = useState<LibraryPhoto[]>([]);

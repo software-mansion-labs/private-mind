@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Keyboard } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
@@ -210,6 +211,22 @@ export const useAttachment = () => {
       })
     );
   }, []);
+
+  const pickSystemPhoto =
+    useCallback(async (): Promise<DocumentPickOutcome> => {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 1,
+      });
+      const asset = result.canceled ? undefined : result.assets[0];
+      if (!asset) return 'canceled';
+      addImages([{ id: asset.assetId ?? asset.uri, uri: asset.uri }]).catch(
+        (error) => {
+          console.error('Failed to attach the picked photo:', error);
+        }
+      );
+      return 'picked';
+    }, [addImages]);
 
   const runDocumentPicker = useCallback(async () => {
     const pickedFileResult = await DocumentPicker.getDocumentAsync({
@@ -631,6 +648,7 @@ export const useAttachment = () => {
     attachments,
     embeddingDownloadSheetRef,
     addImages,
+    pickSystemPhoto,
     presentDownloadSheet,
     pickDocument,
     addUrlSource,

@@ -32,6 +32,7 @@ import {
   type LibraryImage,
 } from '../../hooks/useAttachment';
 import AttachmentOverlay from './attachments/AttachmentOverlay';
+import { USES_SYSTEM_PHOTO_PICKER } from './attachments/usePhotoLibrary';
 import { COMPOSER, COMPOSER_STRIP_HEIGHT } from './attachments/constants';
 import { useAttachmentFlights } from './attachments/useAttachmentFlights';
 import { useAttachmentPanel } from './attachments/useAttachmentPanel';
@@ -147,6 +148,7 @@ const ChatBar = ({
     attachments,
     embeddingDownloadSheetRef,
     addImages,
+    pickSystemPhoto,
     presentDownloadSheet,
     pickDocument,
     addUrlSource,
@@ -189,8 +191,18 @@ const ChatBar = ({
     });
   }, []);
 
+  const handleSelectPhotos = useCallback(
+    () =>
+      pickSystemPhoto().catch((error) => {
+        console.error('Failed to open the photo picker:', error);
+        return 'canceled' as const;
+      }),
+    [pickSystemPhoto]
+  );
+
   const panel = useAttachmentPanel({
     onSelectFiles: handleSelectFiles,
+    onSelectPhotos: USES_SYSTEM_PHOTO_PICKER ? handleSelectPhotos : undefined,
     canAttachImages: isVisionModel,
     onImagesUnsupported: showImagesUnsupported,
   });
