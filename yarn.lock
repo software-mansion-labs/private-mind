@@ -6321,17 +6321,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-image-picker@npm:~55.0.24":
-  version: 55.0.24
-  resolution: "expo-image-picker@npm:55.0.24"
-  dependencies:
-    expo-image-loader: ~55.0.1
-  peerDependencies:
-    expo: "*"
-  checksum: d8d86078d25000cc8d7ce26ac01943237f758806bee6353ea05b43cc03ede8e46845ebb27767cc9d3dea9f55505c97aa4c56ccba8368a1f13807923d2a2cd56f
-  languageName: node
-  linkType: hard
-
 "expo-image@npm:^55.0.11, expo-image@npm:~55.0.11":
   version: 55.0.11
   resolution: "expo-image@npm:55.0.11"
@@ -10599,7 +10588,6 @@ __metadata:
     expo-glass-effect: ~55.0.11
     expo-image: ~55.0.11
     expo-image-manipulator: ~55.0.21
-    expo-image-picker: ~55.0.24
     expo-linear-gradient: ~55.0.13
     expo-linking: ~55.0.11
     expo-localization: ~55.0.12
