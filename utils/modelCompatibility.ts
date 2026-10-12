@@ -11,9 +11,11 @@ import {
   ANDROID_SYSTEM_RESERVE_GB,
   ANDROID_SYSTEM_RESERVE_SHARE,
   APP_RUNTIME_MEMORY_GB,
+  DECLARED_FLOOR_TIGHT_MARGIN_GB,
   IOS_JETSAM_SHARE,
   MEMORY_SAFETY_FACTOR,
   MODEL_MEMORY_OVERHEAD_GB,
+  TIGHT_FIT_BUDGET_SHARE,
   WEB_SEARCH_MEMORY_GB,
 } from '../constants/device-memory';
 import {
@@ -65,32 +67,81 @@ const getModelMemoryCostGB = (
   return getModelMemoryRequirement(model as CompatibilityCheckedModel);
 };
 
+export type ModelRiskTier = 'ok' | 'tight' | 'unsafe';
+
+export type ModelRiskReason =
+  | 'fits'
+  | 'little-headroom'
+  | 'over-budget'
+  | 'below-declared-floor'
+  | 'unknown-size';
+
+export type ModelRisk = {
+  readonly tier: ModelRiskTier;
+  readonly reason: ModelRiskReason;
+};
+
+const FITS: ModelRisk = { tier: 'ok', reason: 'fits' };
+
+const riskAgainstDeclaredFloor = (
+  totalGB: number,
+  declaredMinRamGB: number
+): ModelRisk => {
+  const nominalGB = Math.ceil(totalGB);
+  if (nominalGB < declaredMinRamGB) {
+    return { tier: 'unsafe', reason: 'below-declared-floor' };
+  }
+  if (nominalGB <= declaredMinRamGB + DECLARED_FLOOR_TIGHT_MARGIN_GB) {
+    return { tier: 'tight', reason: 'little-headroom' };
+  }
+  return FITS;
+};
+
+const riskAgainstBudget = (
+  cost: number | null,
+  modelBudgetGB: number
+): ModelRisk => {
+  if (cost === null) return { tier: 'tight', reason: 'unknown-size' };
+  if (cost > modelBudgetGB) return { tier: 'unsafe', reason: 'over-budget' };
+  if (cost > modelBudgetGB * TIGHT_FIT_BUDGET_SHARE) {
+    return { tier: 'tight', reason: 'little-headroom' };
+  }
+  return FITS;
+};
+
+const riskOnDeviceWithTotalGB = (
+  model: CompatibilityCheckedModel,
+  totalGB: number
+): ModelRisk => {
+  const declaredMinRamGB = MODEL_MIN_RAM_GB[model.modelName];
+  if (declaredMinRamGB !== undefined) {
+    return riskAgainstDeclaredFloor(totalGB, declaredMinRamGB);
+  }
+  return riskAgainstBudget(
+    getModelMemoryCostGB(model),
+    modelBudgetForGB(totalGB)
+  );
+};
+
+export const getModelRisk = (model: CompatibilityCheckedModel): ModelRisk => {
+  try {
+    return riskOnDeviceWithTotalGB(model, getTotalMemoryGB());
+  } catch {
+    return FITS;
+  }
+};
+
+export const getModelRiskTier = (
+  model: CompatibilityCheckedModel
+): ModelRiskTier => getModelRisk(model).tier;
+
+export const isModelCompatible = (model: CompatibilityCheckedModel): boolean =>
+  getModelRiskTier(model) !== 'unsafe';
+
 export const isModelCompatibleWithRam = (
   model: CompatibilityCheckedModel,
   deviceRamGB: number
-): boolean => {
-  const declaredMinRamGB = MODEL_MIN_RAM_GB[model.modelName];
-
-  if (declaredMinRamGB !== undefined) {
-    return Math.ceil(deviceRamGB) >= declaredMinRamGB;
-  }
-
-  const cost = getModelMemoryCostGB(model);
-
-  if (cost === null) {
-    return true;
-  }
-
-  return cost <= modelBudgetForGB(deviceRamGB);
-};
-
-export const isModelCompatible = (model: Model): boolean => {
-  try {
-    return isModelCompatibleWithRam(model, getTotalMemoryGB());
-  } catch {
-    return true;
-  }
-};
+): boolean => riskOnDeviceWithTotalGB(model, deviceRamGB).tier !== 'unsafe';
 
 export const getDeviceMemoryGB = (): number => {
   return getTotalMemoryGB();

@@ -14,7 +14,12 @@ import TrashIcon from '../../assets/icons/trash.svg';
 import EditIcon from '../../assets/icons/edit.svg';
 import CrossCircleIcon from '../../assets/icons/cross-circle.svg';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
-import { isModelCompatible } from '../../utils/modelCompatibility';
+import { getModelRisk } from '../../utils/modelCompatibility';
+import {
+  BENCHMARK_FIRST_LABEL,
+  getModelRiskCopy,
+} from '../../constants/model-risk';
+import { InfoAlert } from '../InfoAlert';
 import { useModelStore } from '../../store/modelStore';
 import { Model } from '../../database/modelRepository';
 import Toast from 'react-native-toast-message';
@@ -52,14 +57,43 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
     [styles.backdrop]
   );
 
+  const openBenchmark = (model: Model) => {
+    bottomSheetModalRef.current?.dismiss();
+    if (router.canDismiss()) router.dismissAll();
+    router.replace(`/benchmark?modelId=${model.id}`);
+  };
+
+  const renderRiskNotice = (model: Model) => {
+    const risk = getModelRisk(model);
+    const copy = getModelRiskCopy(risk, model.modelName);
+    if (!copy) return null;
+    return (
+      <InfoAlert
+        testID="model-risk-notice"
+        variant={risk.tier === 'unsafe' ? 'danger' : 'warning'}
+        title={copy.title}
+        text={copy.body}
+        action={
+          model.isDownloaded
+            ? {
+                label: BENCHMARK_FIRST_LABEL,
+                onPress: () => openBenchmark(model),
+              }
+            : undefined
+        }
+      />
+    );
+  };
+
   const renderStageContent = (model: Model) => {
     switch (stage) {
       case ModalStage.Initial:
         return (
           <>
             <ModelCard model={model} onPress={() => {}} />
+            {renderRiskNotice(model)}
             <View style={styles.buttonGroup}>
-              {model.isDownloaded && isModelCompatible(model) && (
+              {model.isDownloaded && (
                 <EntryButton
                   text="Run benchmark"
                   icon={
@@ -71,11 +105,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
                       />
                     </View>
                   }
-                  onPress={() => {
-                    bottomSheetModalRef.current?.dismiss();
-                    if (router.canDismiss()) router.dismissAll();
-                    router.replace(`/benchmark?modelId=${model.id}`);
-                  }}
+                  onPress={() => openBenchmark(model)}
                 />
               )}
 

@@ -24,7 +24,18 @@ jest.mock('../store/modelStore', () => ({
   })),
 }));
 
-jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
+jest.mock('expo-router', () => ({
+  router: {
+    push: jest.fn(),
+    replace: jest.fn(),
+    canDismiss: jest.fn(() => false),
+    dismissAll: jest.fn(),
+  },
+}));
+
+jest.mock('../utils/modelCompatibility', () => ({
+  getModelRisk: jest.fn(() => ({ tier: 'ok', reason: 'fits' })),
+}));
 
 // ModelCard — stub to show model name
 jest.mock('../components/model-hub/ModelCard', () => {
@@ -62,6 +73,10 @@ import ModelManagementSheet from '../components/bottomSheets/ModelManagementShee
 import { useModelStore } from '../store/modelStore';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
+import { router } from 'expo-router';
+import { getModelRisk } from '../utils/modelCompatibility';
+
+const mockGetModelRisk = getModelRisk as jest.Mock;
 
 const mockUseModelStore = useModelStore as unknown as jest.Mock;
 const setSheetData = (BottomSheetModal as any).__setData;
@@ -212,5 +227,49 @@ describe('RemoveModel stage', () => {
     fireEvent.press(screen.getByText('Remove from the app'));
     fireEvent.press(screen.getByText('Close'));
     expect(screen.getByTestId('model-card')).toBeTruthy();
+  });
+});
+
+describe('risk notice (#363)', () => {
+  beforeEach(() => {
+    mockGetModelRisk.mockReturnValue({ tier: 'ok', reason: 'fits' });
+  });
+
+  const renderWith = (model: any) => {
+    setSheetData(model);
+    render(<ModelManagementSheet bottomSheetModalRef={createRef()} />);
+  };
+
+  it('shows nothing extra for a model that fits comfortably', () => {
+    renderWith(baseModel);
+    expect(screen.queryByTestId('model-risk-notice')).toBeNull();
+    expect(screen.getByText('Run benchmark')).toBeTruthy();
+  });
+
+  it('warns about a tight fit and links straight to the benchmark', () => {
+    mockGetModelRisk.mockReturnValue({
+      tier: 'tight',
+      reason: 'little-headroom',
+    });
+    renderWith(baseModel);
+    expect(screen.getByText('Tight fit for this device')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('model-risk-notice-action'));
+    expect(router.replace).toHaveBeenCalledWith('/benchmark?modelId=1');
+  });
+
+  it('says the app may crash for a model over budget, and still offers the benchmark', () => {
+    mockGetModelRisk.mockReturnValue({ tier: 'unsafe', reason: 'over-budget' });
+    renderWith(baseModel);
+    expect(screen.getByText('May crash the app')).toBeTruthy();
+    expect(screen.getByText('Run benchmark')).toBeTruthy();
+    expect(screen.getByTestId('model-risk-notice-action')).toBeTruthy();
+  });
+
+  it('does not offer a benchmark for a risky model that is not downloaded', () => {
+    mockGetModelRisk.mockReturnValue({ tier: 'unsafe', reason: 'over-budget' });
+    renderWith({ ...baseModel, isDownloaded: false });
+    expect(screen.getByTestId('model-risk-notice')).toBeTruthy();
+    expect(screen.queryByTestId('model-risk-notice-action')).toBeNull();
+    expect(screen.queryByText('Run benchmark')).toBeNull();
   });
 });
