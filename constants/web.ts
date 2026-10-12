@@ -5,6 +5,7 @@ export const WEB_VERBATIM_MIN_RESULTS = 3;
 export const WEB_MIN_SAME_SCRIPT_RESULTS = 1;
 export const WEB_SEARCH_TIMEOUT_MS = 8000;
 export const WEB_SEARCH_OVERALL_TIMEOUT_MS = 90000;
+export const WEB_SLOW_DEVICE_NOTE_MS = 8000;
 export const WEB_SNIPPET_MAX_CHARS = 500;
 export const WEB_FETCH_TOP_N_CONTENT = 2;
 export const WEB_CONTENT_MAX_CHARS = 1500;
