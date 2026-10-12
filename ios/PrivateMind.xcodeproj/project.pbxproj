@@ -12,6 +12,7 @@
 		32F43A4FAAFE43CAB9BE00A7 /* DMSans_600SemiBold_Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6C29292FCCC44E1586B7C9CF /* DMSans_600SemiBold_Italic.ttf */; };
 		3A30DC296BB4ECFE97F3FF29 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272ACEAAFDD8426E0C1F6403 /* ExpoModulesProvider.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
+		5C3E9A1E2E8B4F0100A1B2C3 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C3E9A1D2E8B4F0100A1B2C3 /* SceneDelegate.swift */; };
 		6630830CFD817D04D79F6004 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 310E719E7D17B68EAB076840 /* PrivacyInfo.xcprivacy */; };
 		9FA66496D2A1FE342CB78E4C /* libPods-PrivateMind.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 398D0253698E87EA13053414 /* libPods-PrivateMind.a */; };
 		A456D382113E4F809F5F3370 /* DMSans_400Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FA101E8EB8804D83A63257DB /* DMSans_400Regular.ttf */; };
@@ -32,6 +33,7 @@
 		310E719E7D17B68EAB076840 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = PrivateMind/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		398D0253698E87EA13053414 /* libPods-PrivateMind.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PrivateMind.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5424661DD6A31C495A946056 /* Pods-PrivateMind.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PrivateMind.debug.xcconfig"; path = "Target Support Files/Pods-PrivateMind/Pods-PrivateMind.debug.xcconfig"; sourceTree = "<group>"; };
+		5C3E9A1D2E8B4F0100A1B2C3 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = PrivateMind/SceneDelegate.swift; sourceTree = "<group>"; };
 		6C29292FCCC44E1586B7C9CF /* DMSans_600SemiBold_Italic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DMSans_600SemiBold_Italic.ttf; path = "../node_modules/@expo-google-fonts/dm-sans/600SemiBold_Italic/DMSans_600SemiBold_Italic.ttf"; sourceTree = "<group>"; };
 		6C31CD20F36A84CED522B085 /* Pods-PrivateMind.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PrivateMind.release.xcconfig"; path = "Target Support Files/Pods-PrivateMind/Pods-PrivateMind.release.xcconfig"; sourceTree = "<group>"; };
 		88CBAE5AD83E41D2B52FB11B /* DMSans_600SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = DMSans_600SemiBold.ttf; path = "../node_modules/@expo-google-fonts/dm-sans/600SemiBold/DMSans_600SemiBold.ttf"; sourceTree = "<group>"; };
@@ -68,6 +70,7 @@
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
+				5C3E9A1D2E8B4F0100A1B2C3 /* SceneDelegate.swift */,
 				F11748442D0722820044C1D9 /* PrivateMind-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -391,6 +394,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
+				5C3E9A1E2E8B4F0100A1B2C3 /* SceneDelegate.swift in Sources */,
 				3A30DC296BB4ECFE97F3FF29 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
