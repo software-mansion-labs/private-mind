@@ -1284,6 +1284,29 @@ describe('sendChatMessage', () => {
     );
   });
 
+  it('keeps the first answer when the continuation retry no longer fits the model context', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Oto co warto zabrać:')
+      .mockRejectedValueOnce(
+        new Error('num_prompt_tokens 2210 >= seq cap 2048')
+      )
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Oto co warto zabrać:'
+    );
+  });
+
   it('shows what it has rather than a banner when the continuation retry is still a dangling list', async () => {
     mockInstance.generate
       .mockResolvedValueOnce('Oto co warto zabrać:')
@@ -1857,6 +1880,10 @@ describe('sendChatMessage', () => {
 
     expect(useLLMStore.getState().isRefining).toBe(false);
     expect(useLLMStore.getState().isGenerating).toBe(false);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.'
+    );
   });
 
   it('keeps the first answer when the coverage retry still skips the aspect', async () => {
