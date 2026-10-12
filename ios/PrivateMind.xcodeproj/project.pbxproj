@@ -172,6 +172,7 @@
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				54C9EBF7FBE2295F5827DA55 /* [CP] Embed Pods Frameworks */,
 				EA4216B189D4A1CB7679CEA5 /* [CP] Copy Pods Resources */,
+				5C3E9A202E8B4F0100A1B2C3 /* Generate ExecutorchLib dSYM */,
 			);
 			buildRules = (
 			);
@@ -305,6 +306,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PrivateMind/Pods-PrivateMind-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		5C3E9A202E8B4F0100A1B2C3 /* Generate ExecutorchLib dSYM */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ExecutorchLib.framework/ExecutorchLib",
+			);
+			name = "Generate ExecutorchLib dSYM";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/ExecutorchLib.framework.dSYM",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"${CONFIGURATION}\" != \"Release\" ]; then\n  exit 0\nfi\nbinary=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ExecutorchLib.framework/ExecutorchLib\"\ndsym=\"${DWARF_DSYM_FOLDER_PATH}/ExecutorchLib.framework.dSYM\"\nif [ ! -f \"${binary}\" ]; then\n  exit 0\nfi\nxcrun dsymutil \"${binary}\" -o \"${dsym}\" 2>&1 | grep -v \"no debug symbols in executable\" || true\nif [ ! -d \"${dsym}\" ]; then\n  echo \"error: dsymutil did not produce ${dsym}\" >&2\n  exit 1\nfi\n";
 			showEnvVarsInLog = 0;
 		};
 		BF6AC1D5FD18C4112BBD27FA /* [Expo] Configure project */ = {
