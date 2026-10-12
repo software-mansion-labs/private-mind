@@ -22,6 +22,21 @@ describe('formatContextChunks / getSourceDocumentsFromChunks', () => {
     expect(getSourceDocumentsFromChunks([])).toEqual([]);
   });
 
+  it('saves each document under the number its own header printed', () => {
+    const chunks = [
+      makeChunk('Revenue was 3.6 million.', 0.9, 1, 'report.pdf'),
+      makeChunk('The lease runs to 2031.', 0.8, 2, 'lease.pdf'),
+      makeChunk('Headcount reached 240.', 0.7, 3, 'hr.pdf'),
+    ];
+    const joined = formatContextChunks(chunks).join('\n');
+
+    for (const source of getSourceDocumentsFromChunks(chunks)) {
+      expect(joined).toContain(
+        `--- Source ${source.ordinal}: ${source.name} ---`
+      );
+    }
+  });
+
   it('does not leak the relevance score into the LLM context', () => {
     const chunks = [makeChunk('Content', 0.85, 1)];
     const result = formatContextChunks(chunks);
