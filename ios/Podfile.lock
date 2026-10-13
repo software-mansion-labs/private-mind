@@ -176,9 +176,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - Pulsar (1.6.1):
+  - Pulsar (1.7.0):
     - hermes-engine
-    - Pulsar-haptics (= 1.1.4)
+    - PulsarHaptics (= 1.4.0)
     - RCTRequired
     - RCTTypeSafety
     - React-Core
@@ -199,7 +199,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - Pulsar-haptics (1.1.4)
+  - PulsarHaptics (1.4.0)
   - RCTDeprecation (0.86.3)
   - RCTRequired (0.86.3)
   - RCTSwiftUI (0.86.3)
@@ -1623,7 +1623,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-background-downloader (4.6.2):
+  - react-native-background-downloader (4.6.3):
     - hermes-engine
     - "MMKV (!= 2.4.1, >= 1.2.0)"
     - "MMKVCore (!= 2.4.1)"
@@ -1669,7 +1669,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-executorch (0.10.4):
+  - react-native-executorch (0.10.5):
     - hermes-engine
     - opencv-rne (~> 4.11.0)
     - RCTRequired
@@ -1692,7 +1692,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-keyboard-controller (1.22.3):
+  - react-native-keyboard-controller (1.22.6):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1704,7 +1704,7 @@ PODS:
     - React-graphics
     - React-ImageManager
     - React-jsi
-    - react-native-keyboard-controller/common (= 1.22.3)
+    - react-native-keyboard-controller/common (= 1.22.6)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-renderercss
@@ -1715,7 +1715,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-keyboard-controller/common (1.22.3):
+  - react-native-keyboard-controller/common (1.22.6):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2881,7 +2881,7 @@ SPEC REPOS:
     - MMKV
     - MMKVCore
     - opencv-rne
-    - Pulsar-haptics
+    - PulsarHaptics
 
 EXTERNAL SOURCES:
   EXApplication:
@@ -3191,8 +3191,8 @@ SPEC CHECKSUMS:
   op-sqlite: 10397885c9f2d478a9d099d20e2a7915c5fda944
   opencv-rne: 2305807573b6e29c8c87e3416ab096d09047a7a0
   Pdfium: 63eaa72ced37c4912acbe21bb73d1650954b2c06
-  Pulsar: b7e2b04a978131e30b53267878254ea984e23e80
-  Pulsar-haptics: f795eaf55d8d0290148fd97c747dcc6689c3d079
+  Pulsar: 26e18cdb1c30b233be9bec431aeec9b8048c5ae9
+  PulsarHaptics: 62d13e9ef63535263f110a925e587d5d027dc683
   RCTDeprecation: 96f68ebf33f8762466b01d57d6e873c4f30efb07
   RCTRequired: 166eed8ad6d8440e73e56d09a9090366609823d2
   RCTSwiftUI: e818198d11928a78c2b2afe281d072171dab617f
@@ -3230,10 +3230,10 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 3c805ea54675b00ef1755f23b3c1fccf34962b93
   React-microtasksnativemodule: 97a771dbbb4315c71579995b53e4e3e351a99d89
   React-mutationobservernativemodule: 530bff1bba9511a5133e3cf8170e3b2c0df49e89
-  react-native-background-downloader: be5d8b714cda2ea6ab00584a60f3cf10f67b761b
+  react-native-background-downloader: 330dc6a497b8e5ee328a95af9a34aaa1c6bf3d54
   react-native-blob-util: a531aa1020e42b454a2bc0d324daa7da8328023d
-  react-native-executorch: 063e62a356402f48d33e0222b26a6253fba5c448
-  react-native-keyboard-controller: 5e60c2c86ab073ba55b6030317c709ccb880e99e
+  react-native-executorch: 69da0781f27bde7c44e5021d1f715fc5566a05c2
+  react-native-keyboard-controller: 13b569883abad989ad75b635c8904527857b0e5f
   react-native-netinfo: 2f906d5d9a639090ed1c079135d6485a95f749f1
   react-native-safe-area-context: 6b4966397ada0f7dd481e4486a2ef936834861a1
   react-native-webview: 2da09bdea1aeb6c46e27dd94632e21059cade6c1
