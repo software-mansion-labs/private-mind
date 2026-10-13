@@ -111,6 +111,7 @@ export const useSendChatMessage = ({
     if (!userInput.trim() && !imagePath && !hasDocuments) {
       return 'nothing-to-send';
     }
+    // TEMPORARY FIX (#437 A2): remove with utils/cpuSupport.ts.
     if (useCpuSupportStore.getState().lacksLseAtomics) return 'cpu-unsupported';
     let pinnedModel = model;
     if (isSwitching) {

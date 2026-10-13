@@ -1,6 +1,12 @@
 import { readFile } from '@dr.pogodin/react-native-fs';
 import { Platform } from 'react-native';
 
+// TEMPORARY FIX (#437 A2): react-native-executorch 0.10.4 ships a libexecutorch.so
+// with LSE atomics that crash ARMv8.0 CPUs (SIGILL). Remove this whole check once
+// RNE ships a build that runs on those CPUs: this file, store/cpuSupportStore.ts,
+// hooks/useUnsupportedCpuNotice.ts, constants/cpu-support.ts, the gate in
+// llmStore.loadModel and the 'cpu-unsupported' send refusal.
+
 const FEATURES_LINE = /^Features\s*:(.*)$/;
 
 export const cpuinfoLacksLseAtomics = (cpuinfo: string): boolean => {

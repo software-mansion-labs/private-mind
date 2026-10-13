@@ -906,6 +906,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       return;
     }
     const result = modelLoadChain.then(async () => {
+      // TEMPORARY FIX (#437 A2): remove with utils/cpuSupport.ts.
       if (await cpuLacksLseAtomics()) {
         Toast.show({
           type: 'defaultToast',
