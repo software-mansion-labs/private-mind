@@ -56,6 +56,7 @@ import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
 import { useEmbeddingDownloadPrompt } from './useEmbeddingDownloadPrompt';
 import type { SendRefusal } from './useSendChatMessage';
+import { UNSUPPORTED_CPU_COPY } from '../../constants/cpu-support';
 import {
   BAR_GROW_DURATION,
   BAR_GROW_LAYOUT,
@@ -66,6 +67,7 @@ const SENT_ECHO_WINDOW_MS = 300;
 
 const REFUSAL_COPY: Record<SendRefusal, string | null> = {
   'nothing-to-send': 'Add a message or an attachment first.',
+  'cpu-unsupported': UNSUPPORTED_CPU_COPY.refusal,
   'model-loading': 'Wait for the model to finish loading.',
   'busy': 'Wait for the response to finish or stop it first.',
   'chat-not-created': 'Could not start this chat. Try again.',

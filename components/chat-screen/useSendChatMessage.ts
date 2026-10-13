@@ -13,6 +13,7 @@ import { Model } from '../../database/modelRepository';
 
 export type SendRefusal =
   | 'nothing-to-send'
+  | 'cpu-unsupported'
   | 'model-loading'
   | 'busy'
   | 'chat-not-created'
@@ -50,6 +51,7 @@ import { useLLMStore } from '../../store/llmStore';
 import { useSourceStore } from '../../store/sourceStore';
 import { useWebSearchStore } from '../../store/webSearchStore';
 import { useEmbeddingModelStore } from '../../store/embeddingModelStore';
+import { useCpuSupportStore } from '../../store/cpuSupportStore';
 import type { MessagesHandle } from './Messages';
 
 interface UseSendChatMessageOptions {
@@ -109,6 +111,7 @@ export const useSendChatMessage = ({
     if (!userInput.trim() && !imagePath && !hasDocuments) {
       return 'nothing-to-send';
     }
+    if (useCpuSupportStore.getState().lacksLseAtomics) return 'cpu-unsupported';
     let pinnedModel = model;
     if (isSwitching) {
       if (!waitForModelSwitch) return 'model-loading';

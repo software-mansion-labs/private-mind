@@ -16,6 +16,7 @@ import { ThemeProvider } from '../context/ThemeContext';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import AppToast from '../components/AppToast';
+import UnsupportedCpuNotice from '../components/UnsupportedCpuNotice';
 import { useTurnResumesOnForeground } from '../hooks/useTurnResumesOnForeground';
 import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -128,18 +129,20 @@ export default function Layout() {
   return (
     <GestureHandlerRootView>
       <SQLiteProvider databaseName="executorch.db" onInit={initDatabase}>
-        <ThemeProvider>
-          <VectorStoreProvider>
-            <KeyboardProvider>
-              <BottomSheetModalProvider>
-                <RootNavigator />
-                {Platform.OS === 'android' && <StatusBar style="auto" />}
-              </BottomSheetModalProvider>
-              <AppToast />
-            </KeyboardProvider>
-          </VectorStoreProvider>
-          <SplashScreenAnimation />
-        </ThemeProvider>
+        <UnsupportedCpuNotice>
+          <ThemeProvider>
+            <VectorStoreProvider>
+              <KeyboardProvider>
+                <BottomSheetModalProvider>
+                  <RootNavigator />
+                  {Platform.OS === 'android' && <StatusBar style="auto" />}
+                </BottomSheetModalProvider>
+                <AppToast />
+              </KeyboardProvider>
+            </VectorStoreProvider>
+            <SplashScreenAnimation />
+          </ThemeProvider>
+        </UnsupportedCpuNotice>
       </SQLiteProvider>
     </GestureHandlerRootView>
   );
