@@ -78,7 +78,7 @@ import {
 import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
 import { cpuLacksLseAtomics } from '../utils/cpuSupport';
-import { UNSUPPORTED_CPU_COPY } from '../constants/cpu-support';
+import { UNSUPPORTED_CPU_REFUSAL } from '../constants/cpu-support';
 
 export interface LLMStore {
   isLoading: boolean;
@@ -909,7 +909,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       if (await cpuLacksLseAtomics()) {
         Toast.show({
           type: 'defaultToast',
-          text1: UNSUPPORTED_CPU_COPY.refusal,
+          text1: UNSUPPORTED_CPU_REFUSAL,
         });
         return;
       }

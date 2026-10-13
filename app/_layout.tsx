@@ -16,7 +16,8 @@ import { ThemeProvider } from '../context/ThemeContext';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import AppToast from '../components/AppToast';
-import UnsupportedCpuNotice from '../components/UnsupportedCpuNotice';
+import NoticeHost from '../components/notices/NoticeHost';
+import { useUnsupportedCpuNotice } from '../hooks/useUnsupportedCpuNotice';
 import { useTurnResumesOnForeground } from '../hooks/useTurnResumesOnForeground';
 import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -37,6 +38,7 @@ SplashScreen.setOptions({ fade: false, duration: 0 });
 function RootNavigator() {
   useTurnResumesOnForeground();
   useDownloadsSurviveBackground();
+  useUnsupportedCpuNotice();
   useEffect(() => {
     SplashScreen.hideAsync();
     removeBundledModelLeftovers().catch((error) =>
@@ -129,8 +131,8 @@ export default function Layout() {
   return (
     <GestureHandlerRootView>
       <SQLiteProvider databaseName="executorch.db" onInit={initDatabase}>
-        <UnsupportedCpuNotice>
-          <ThemeProvider>
+        <ThemeProvider>
+          <NoticeHost>
             <VectorStoreProvider>
               <KeyboardProvider>
                 <BottomSheetModalProvider>
@@ -140,9 +142,9 @@ export default function Layout() {
                 <AppToast />
               </KeyboardProvider>
             </VectorStoreProvider>
-            <SplashScreenAnimation />
-          </ThemeProvider>
-        </UnsupportedCpuNotice>
+          </NoticeHost>
+          <SplashScreenAnimation />
+        </ThemeProvider>
       </SQLiteProvider>
     </GestureHandlerRootView>
   );
