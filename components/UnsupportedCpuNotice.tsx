@@ -7,8 +7,24 @@ import {
 import { useCpuSupportStore } from '../store/cpuSupportStore';
 import { UNSUPPORTED_CPU_COPY } from '../constants/cpu-support';
 import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
+import WarningIcon from '../assets/icons/warning-triangle.svg';
 
 const BANNER_VERTICAL_PADDING = 10;
+const WARNING_ICON_SIZE = 20;
+
+const LIGHT_COLORS = {
+  background: '#FDE9D2',
+  accent: '#B8630A',
+  title: '#7A4105',
+  body: '#020f3c',
+};
+
+const DARK_COLORS = {
+  background: '#4A2A07',
+  accent: '#F0A860',
+  title: '#F0A860',
+  body: '#ffffff',
+};
 
 interface Props {
   children: ReactNode;
@@ -18,7 +34,7 @@ const UnsupportedCpuNotice = ({ children }: Props) => {
   const lacksLseAtomics = useCpuSupportStore((state) => state.lacksLseAtomics);
   const checkCpu = useCpuSupportStore((state) => state.checkCpu);
   const insets = useSafeAreaInsets();
-  const palette = useColorScheme() === 'dark' ? darkStyles : lightStyles;
+  const colors = useColorScheme() === 'dark' ? DARK_COLORS : LIGHT_COLORS;
 
   useEffect(() => {
     checkCpu();
@@ -31,18 +47,28 @@ const UnsupportedCpuNotice = ({ children }: Props) => {
       <View
         style={[
           styles.banner,
-          palette.banner,
-          { paddingTop: insets.top + BANNER_VERTICAL_PADDING },
+          {
+            backgroundColor: colors.background,
+            paddingTop: insets.top + BANNER_VERTICAL_PADDING,
+          },
         ]}
         accessibilityRole="alert"
         testID="unsupported-cpu-notice"
       >
-        <Text style={[styles.title, palette.title]}>
-          {UNSUPPORTED_CPU_COPY.title}
-        </Text>
-        <Text style={[styles.body, palette.body]}>
-          {UNSUPPORTED_CPU_COPY.body}
-        </Text>
+        <WarningIcon
+          width={WARNING_ICON_SIZE}
+          height={WARNING_ICON_SIZE}
+          color={colors.accent}
+          style={styles.icon}
+        />
+        <View style={styles.copy}>
+          <Text style={[styles.title, { color: colors.title }]}>
+            {UNSUPPORTED_CPU_COPY.title}
+          </Text>
+          <Text style={[styles.body, { color: colors.body }]}>
+            {UNSUPPORTED_CPU_COPY.body}
+          </Text>
+        </View>
       </View>
       <SafeAreaInsetsContext.Provider value={{ ...insets, top: 0 }}>
         <View style={styles.content}>{children}</View>
@@ -58,8 +84,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   banner: {
+    flexDirection: 'row',
     paddingHorizontal: 16,
     paddingBottom: BANNER_VERTICAL_PADDING,
+    gap: 12,
+  },
+  icon: {
+    marginTop: 1,
+  },
+  copy: {
+    flex: 1,
     gap: 2,
   },
   title: {
@@ -74,16 +108,4 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-});
-
-const lightStyles = StyleSheet.create({
-  banner: { backgroundColor: '#FDE9D2' },
-  title: { color: '#7A4105' },
-  body: { color: '#020f3c' },
-});
-
-const darkStyles = StyleSheet.create({
-  banner: { backgroundColor: '#4A2A07' },
-  title: { color: '#F0A860' },
-  body: { color: '#ffffff' },
 });
