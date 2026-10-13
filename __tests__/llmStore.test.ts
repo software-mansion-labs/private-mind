@@ -43,6 +43,11 @@ jest.mock('../constants/default-benchmark', () => ({
   BENCHMARK_ITERATIONS: 3,
   BENCHMARK_GENERATION_CONFIG: { temperature: 0.01, topP: 1, minP: 0 },
 }));
+const cpu = { lacksLseAtomics: false };
+jest.mock('../utils/cpuSupport', () => ({
+  cpuLacksLseAtomics: () => Promise.resolve(cpu.lacksLseAtomics),
+}));
+
 jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
   default: { fetch: jest.fn().mockResolvedValue({ isConnected: true }) },
@@ -189,6 +194,17 @@ describe('loadModel', () => {
     await useLLMStore.getState().loadModel({ ...baseModel, id: 2 });
 
     expect(firstInstance.delete).toHaveBeenCalled();
+  });
+
+  it('refuses to load a model on a CPU without LSE atomics', async () => {
+    cpu.lacksLseAtomics = true;
+    try {
+      await useLLMStore.getState().loadModel(baseModel);
+    } finally {
+      cpu.lacksLseAtomics = false;
+    }
+    expect(mockLLMModule.fromModelName).not.toHaveBeenCalled();
+    expect(useLLMStore.getState().model).toBeNull();
   });
 
   it('clears model and isLoading on load failure', async () => {

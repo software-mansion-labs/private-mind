@@ -77,6 +77,7 @@ import {
 } from '../modules/memory-probe';
 import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
+import { cpuLacksLseAtomics } from '../utils/cpuSupport';
 
 export interface LLMStore {
   isLoading: boolean;
@@ -904,6 +905,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       return;
     }
     const result = modelLoadChain.then(async () => {
+      if (await cpuLacksLseAtomics()) {
+        Toast.show({
+          type: 'defaultToast',
+          text1: "This phone's processor can't run on-device models yet.",
+        });
+        return;
+      }
       const network = model.isDownloaded
         ? null
         : await NetInfo.fetch().catch(() => null);
