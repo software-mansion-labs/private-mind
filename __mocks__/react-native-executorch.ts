@@ -93,3 +93,19 @@ export const TextEmbeddingsModule = {
 export const ResourceFetcher = {
   fetch: jest.fn(),
 };
+
+export enum RnExecutorchErrorCode {
+  DownloadInterrupted = 118,
+  ResourceFetcherDownloadInProgress = 181,
+  ResourceFetcherNotActive = 184,
+}
+
+export class RnExecutorchError extends Error {
+  public code: RnExecutorchErrorCode | number;
+
+  constructor(code: RnExecutorchErrorCode | number, message?: string) {
+    super(message ?? `RnExecutorchError ${code}`);
+    this.name = 'RnExecutorchError';
+    this.code = code;
+  }
+}

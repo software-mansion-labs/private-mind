@@ -10,7 +10,7 @@ import { getDrawerTopPadding } from '../../constants/drawer-layout';
 import {
   DrawerContentComponentProps,
   useDrawerStatus,
-} from '@react-navigation/drawer';
+} from 'expo-router/drawer';
 
 const CustomDrawer = ({ navigation }: DrawerContentComponentProps) => {
   const isFirstRender = useRef(true);

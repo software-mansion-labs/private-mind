@@ -146,7 +146,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bg.main,
     },
     iconLayer: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       justifyContent: 'center',
       alignItems: 'center',
     },

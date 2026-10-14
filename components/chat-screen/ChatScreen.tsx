@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useHeaderHeight } from '@react-navigation/elements';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useModelSwitch } from './useModelSwitch';
 import { useSendChatMessage } from './useSendChatMessage';
@@ -33,6 +33,7 @@ import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import useChatBranching from '../../hooks/useChatBranching';
 import { useStableCallback } from '../../hooks/useStableCallback';
 import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
+import { retryWithPinnedModel } from './loadModelPinnedToChat';
 
 interface Props {
   chatId: number;
@@ -171,8 +172,10 @@ export default function ChatScreen({
 
       await setLastUsedModelId(selectedModel.id);
       await selectModel?.(selectedModel);
+      return true;
     } catch (error) {
       console.error('Error loading model:', error);
+      return false;
     }
   };
 
@@ -227,6 +230,7 @@ export default function ChatScreen({
     setSetting,
     db,
     inputRef,
+    modelSwitching: isSwitching,
   });
 
   const chatGenerationError =
@@ -234,10 +238,13 @@ export default function ChatScreen({
 
   const handleRetryGeneration = useCallback(() => {
     messagesRef.current?.onMessageSent();
-    retryLastGeneration().catch((error) => {
+    retryWithPinnedModel(
+      isSwitching ? undefined : model,
+      retryLastGeneration
+    ).catch((error) => {
       console.error('Failed to retry generation:', error);
     });
-  }, [retryLastGeneration]);
+  }, [model, retryLastGeneration, isSwitching]);
 
   const scrollBottomOffset = theme.insets.bottom;
 

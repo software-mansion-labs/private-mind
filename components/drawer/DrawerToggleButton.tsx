@@ -3,7 +3,7 @@ import { Pressable, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import Menu from '../../assets/icons/menu.svg';
 import { useNavigation } from 'expo-router';
-import { DrawerContentComponentProps } from '@react-navigation/drawer';
+import { DrawerContentComponentProps } from 'expo-router/drawer';
 import { pressedOpacity } from '../../styles/pressable';
 import { useTurnInFlight } from '../../hooks/useTurnInFlight';
 import { useSteadyFlag } from '../../hooks/useSteadyFlag';

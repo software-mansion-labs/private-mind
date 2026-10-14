@@ -207,10 +207,10 @@ export default OnboardingCarousel;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     scroll: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     controls: {
       position: 'absolute',

@@ -63,6 +63,7 @@ import {
   SCROLL_INDICATOR_GUTTER,
   SEAM_OVERLAP,
   SUPPORTS_USER_ACTION_MENU,
+  MESSAGE_LIST_SIDE_PADDING,
 } from '../../constants/chat-screen';
 import { messageRowKey } from '../../utils/messageRowKey';
 import { scrollIndicatorProps } from '../../constants/scroll-indicator';
@@ -1245,7 +1246,7 @@ const createStyles = (theme: Theme) => {
       opacity: 1,
     },
     contentContainer: {
-      paddingHorizontal: 16,
+      paddingHorizontal: MESSAGE_LIST_SIDE_PADDING,
     },
     bottomFade: {
       position: 'absolute',

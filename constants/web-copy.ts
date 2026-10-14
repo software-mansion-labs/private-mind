@@ -10,7 +10,7 @@ export type WebSkipReason = 'documents' | 'image' | 'model' | 'memory';
 
 export const WEB_SKIP_COPY: Record<WebSkipReason, string> = {
   documents:
-    'Using your documents for this chat — web search is off while they’re active.',
+    'Reading the attached document — web search is off for this message.',
   image:
     'Reading the attached image — web search is off while an image is attached.',
   model: 'Web search is off for this model — answering without it.',

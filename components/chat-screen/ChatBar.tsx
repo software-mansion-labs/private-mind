@@ -129,6 +129,8 @@ const ChatBar = ({
   const phantomChatStarts = useChatStore((state) => state.phantomChatStarts);
   const [userInput, setUserInput] = useState('');
   const lastSentRef = useRef<{ text: string; at: number } | null>(null);
+  const heldUntilSwitchLandsRef = useRef<string | null>(null);
+  const [isHoldingInput, setIsHoldingInput] = useState(false);
 
   const handleChangeText = useCallback((text: string) => {
     const justSent = lastSentRef.current;
@@ -274,6 +276,8 @@ const ChatBar = ({
     composerKeyRef.current = composerKey;
     setUserInput('');
     lastSentRef.current = null;
+    heldUntilSwitchLandsRef.current = null;
+    setIsHoldingInput(false);
     if (Platform.OS === 'ios') setIosInputKey((key) => key + 1);
   }
 
@@ -292,14 +296,16 @@ const ChatBar = ({
   const isProcessingPromptHere = useLLMStore(
     (state) => state.isProcessingPrompt && state.generatingForChatId === chatId
   );
+  const aTurnIsStarting = useLLMStore((state) => state.isProcessingPrompt);
   const interrupt = useLLMStore((state) => state.interrupt);
   const loadModel = useLLMStore((state) => state.loadModel);
   const loadedModel = useLLMStore((state) => state.model);
   const loadSelectedModel = useCallback(async () => {
+    if (modelSwitching) return;
     if (model?.isDownloaded && loadedModel?.id !== model.id) {
       return loadModel(model);
     }
-  }, [model, loadedModel, loadModel]);
+  }, [model, loadedModel, loadModel, modelSwitching]);
 
   const imageAttachment = attachments.find((a) => a.type === 'image');
   const hasLoadingAttachment = attachments.some((a) => a.status === 'loading');
@@ -336,37 +342,99 @@ const ChatBar = ({
   const [sendPending, setSendPending] = useState(false);
   const [sendInFlight, setSendInFlight] = useState(false);
 
+  const clearComposer = useCallback(
+    (sentText: string) => {
+      lastSentRef.current = sentText
+        ? { text: sentText, at: Date.now() }
+        : null;
+      if (Platform.OS === 'ios') {
+        textInputRef.current?.blur();
+        setIosInputKey((key) => key + 1);
+      }
+      setUserInput('');
+      clearAll({ cleanupSources: false });
+    },
+    [clearAll]
+  );
+
+  const releaseHeldInput = useCallback(
+    (clear: boolean) => {
+      const held = heldUntilSwitchLandsRef.current;
+      if (held === null) return;
+      heldUntilSwitchLandsRef.current = null;
+      setIsHoldingInput(false);
+      if (clear) clearComposer(held);
+    },
+    [clearComposer]
+  );
+
   useEffect(() => {
-    if (isGeneratingHere || isProcessingPromptHere) setSendInFlight(false);
+    if (!isGeneratingHere && !isProcessingPromptHere) return;
+    setSendInFlight(false);
+    setSendPending(false);
   }, [isGeneratingHere, isProcessingPromptHere]);
 
+  const settleSend = useCallback(
+    (
+      outcome: ReturnType<Props['onSend']>,
+      inputToSend: string,
+      attachmentsToSend: Attachment[]
+    ) => {
+      Promise.resolve(outcome)
+        .then((accepted) => {
+          if (accepted !== false && typeof accepted !== 'string') return;
+          lastSentRef.current = null;
+          setUserInput((current) => current || inputToSend);
+          if (attachmentsToSend.length) restoreAttachments(attachmentsToSend);
+          const text1 = REFUSAL_COPY[accepted === false ? 'busy' : accepted];
+          if (text1) Toast.show({ type: 'defaultToast', text1 });
+        })
+        .catch((error) => {
+          console.error('Failed to send message:', error);
+        })
+        .finally(() => {
+          setSendPending(false);
+          setSendInFlight(false);
+        });
+    },
+    [restoreAttachments]
+  );
+
+  useEffect(() => {
+    if (aTurnIsStarting) releaseHeldInput(true);
+  }, [aTurnIsStarting, releaseHeldInput]);
+
   const handleSend = useCallback(() => {
-    if (hasLoadingAttachment) return;
+    if (hasLoadingAttachment || heldUntilSwitchLandsRef.current !== null) {
+      return;
+    }
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
-    const inputToSend = userInput;
+    const inputToSend = userInput.trim();
+    const holdUntilSwitchLands = modelSwitching;
     setSendInFlight(true);
     const outcome = onSend(inputToSend, imageUriToSend, attachmentsToSend);
     Keyboard.dismiss();
     if (disabled || modelSwitching) setSendPending(true);
 
-    lastSentRef.current = inputToSend
-      ? { text: inputToSend, at: Date.now() }
-      : null;
-    if (Platform.OS === 'ios') {
-      textInputRef.current?.blur();
-      setIosInputKey((key) => key + 1);
+    if (holdUntilSwitchLands) {
+      heldUntilSwitchLandsRef.current = userInput;
+      setIsHoldingInput(true);
+    } else {
+      clearComposer(userInput);
     }
-    setUserInput('');
-    clearAll({ cleanupSources: false });
     Promise.resolve(outcome)
       .then((accepted) => {
         if (accepted !== false && typeof accepted !== 'string') return;
+        const text1 = REFUSAL_COPY[accepted === false ? 'busy' : accepted];
+        if (text1) Toast.show({ type: 'defaultToast', text1 });
+        if (holdUntilSwitchLands) {
+          releaseHeldInput(false);
+          return;
+        }
         lastSentRef.current = null;
         setUserInput((current) => current || inputToSend);
         if (attachmentsToSend.length) restoreAttachments(attachmentsToSend);
-        const text1 = REFUSAL_COPY[accepted === false ? 'busy' : accepted];
-        if (text1) Toast.show({ type: 'defaultToast', text1 });
       })
       .catch((error) => {
         console.error('Failed to send message:', error);
@@ -374,6 +442,7 @@ const ChatBar = ({
       .finally(() => {
         setSendPending(false);
         setSendInFlight(false);
+        if (holdUntilSwitchLands) releaseHeldInput(true);
       });
   }, [
     onSend,
@@ -381,7 +450,8 @@ const ChatBar = ({
     userInput,
     imageAttachment,
     attachments,
-    clearAll,
+    clearComposer,
+    releaseHeldInput,
     restoreAttachments,
     hasLoadingAttachment,
     modelSwitching,
@@ -429,6 +499,13 @@ const ChatBar = ({
       showModelSwitchingToast();
       return;
     }
+    if (hasLoadingAttachment) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Wait for the attachment to finish loading.',
+      });
+      return;
+    }
 
     const permissionStatus = await AudioManager.requestRecordingPermissions();
     if (permissionStatus !== 'Granted') {
@@ -449,11 +526,13 @@ const ChatBar = ({
         const attachmentsToSend = attachments;
         const imageUriToSend = imageAttachment?.uri;
         clearAll({ cleanupSources: false });
-        Promise.resolve(
-          onSend(transcript, imageUriToSend, attachmentsToSend)
-        ).catch((error) => {
-          console.error('Failed to send transcript:', error);
-        });
+        setSendInFlight(true);
+        setSendPending(true);
+        settleSend(
+          onSend(transcript, imageUriToSend, attachmentsToSend),
+          transcript,
+          attachmentsToSend
+        );
       }
     };
 
@@ -462,6 +541,17 @@ const ChatBar = ({
         <ChatSpeechInput
           onSubmit={handleSubmit}
           onCancel={() => setShowSpeechInput(false)}
+          onInterrupted={(heard) => {
+            setShowSpeechInput(false);
+            if (!heard) return;
+            setUserInput((current) =>
+              current ? `${current} ${heard}` : heard
+            );
+            Toast.show({
+              type: 'defaultToast',
+              text1: 'Dictation stopped. What it heard is in the message box.',
+            });
+          }}
         />
       </View>
     );
@@ -570,6 +660,7 @@ const ChatBar = ({
                     placeholder="Ask about anything..."
                     placeholderTextColor={theme.text.onChatBarMuted}
                     value={userInput}
+                    editable={!isHoldingInput}
                     onChangeText={handleChangeText}
                   />
                 </TextInputWrapper>

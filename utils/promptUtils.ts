@@ -4,6 +4,8 @@ import {
   SourceDocument,
   sourceKind,
 } from '../database/chatRepository';
+import { isGreetingOnly } from './openingGreeting';
+import { OPENING_WELCOME_INSTRUCTION } from '../constants/opening-greetings';
 import { Model } from '../database/modelRepository';
 import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
 import { type Message as ExecutorchMessage } from 'react-native-executorch/legacy';
@@ -207,16 +209,40 @@ const getContextInstruction = (
   return `\n\n${instruction}`;
 };
 
-const languageInstruction = (language?: QuestionLanguage | null): string => {
-  if (!language) {
-    return 'Write the whole answer in the language of the latest user message, and do not switch language or script partway through. Take that language from the message itself, not from the sources and not from these instructions: if the message is not written in English, the answer is not in English either.';
-  }
+const MIRROR_UNKNOWN_LANGUAGE =
+  'Write the whole answer in the same language the latest user message is written in, and do not switch language or script partway through.';
+
+const MIRROR_UNKNOWN_LANGUAGE_OVER_SOURCES =
+  'Write the whole answer in the language of the latest user message, and do not switch language or script partway through. Take that language from the message itself, not from the sources and not from these instructions: if the message is not written in English, the answer is not in English either.';
+
+const namedLanguageInstruction = (language: QuestionLanguage): string => {
   const inScript = language.script ? `, written in ${language.script}` : '';
   const noLatin = language.script
     ? ' Never transliterate the answer into the Latin alphabet.'
     : '';
   return `Write the whole answer in ${language.name}${inScript} — the language of the question — and do not switch language or script partway through.${noLatin}`;
 };
+
+const languageInstruction = (language?: QuestionLanguage | null): string =>
+  language
+    ? namedLanguageInstruction(language)
+    : MIRROR_UNKNOWN_LANGUAGE_OVER_SOURCES;
+
+const unsourcedLanguageInstruction = (
+  language?: QuestionLanguage | null
+): string =>
+  language ? namedLanguageInstruction(language) : MIRROR_UNKNOWN_LANGUAGE;
+
+const GREETING_ONLY_INSTRUCTION =
+  'The latest user message is only a greeting. Greet the user back in one or two short, friendly sentences in the same language and ask what they would like help with. Do not answer a question that was not asked.';
+
+const getOpeningWelcomeInstruction = (welcome: string): string =>
+  `\n\n${OPENING_WELCOME_INSTRUCTION}\n\nExample of such a welcome:\n${welcome}`;
+
+const getGreetingOnlyInstruction = (question?: string): string =>
+  question && isGreetingOnly(question)
+    ? `\n\n${GREETING_ONLY_INSTRUCTION}`
+    : '';
 
 export const focusedRetrySystemPrompt = (
   language: QuestionLanguage | null
@@ -572,6 +598,7 @@ export interface PrepareMessagesOptions {
   webWeak?: boolean;
   webSearchFailed?: boolean;
   digest?: string;
+  openingWelcome?: string;
 }
 
 const MAX_SHAPE_INSTRUCTIONS = 4;
@@ -603,6 +630,7 @@ export const prepareMessagesForLLM = (
     webWeak,
     webSearchFailed,
     digest,
+    openingWelcome,
   } = options;
   const hasContext = context.some((chunk) => chunk.trim().length > 0);
   const question = activeChatMessages.findLast(
@@ -657,7 +685,10 @@ export const prepareMessagesForLLM = (
     systemPrompt += getVerifiedProductInstruction(contextText);
     systemPrompt += getWeakRetrievalInstruction(webWeak);
   } else {
-    systemPrompt += `\n\n${languageInstruction(language)}`;
+    systemPrompt += `\n\n${unsourcedLanguageInstruction(language)}`;
+    systemPrompt += openingWelcome
+      ? getOpeningWelcomeInstruction(openingWelcome)
+      : getGreetingOnlyInstruction(question);
     systemPrompt += getWebSearchFailedInstruction(webSearchFailed);
     const hasPriorWebAnswer = activeChatMessages.some(
       (msg) =>

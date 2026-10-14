@@ -18,11 +18,14 @@ jest.mock('../context/ThemeContext', () => ({
 }));
 
 jest.mock('../store/modelStore', () => ({
-  useModelStore: jest.fn(() => ({
-    downloadStates: {},
-    downloadModel: jest.fn(),
-    cancelDownload: jest.fn(),
-  })),
+  useModelStore: jest.fn((selector) =>
+    selector({
+      downloadStates: {},
+      downloadModel: jest.fn(),
+      cancelDownload: jest.fn(),
+      removeModelFiles: jest.fn(),
+    })
+  ),
   ModelState: {
     NotStarted: 'NotStarted',
     Downloading: 'Downloading',

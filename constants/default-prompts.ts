@@ -4,6 +4,8 @@ export interface PromptSuggestion {
   prompt: string;
 }
 
+export const SUGGESTION_CARD_WIDTH = 184;
+
 export const DEFAULT_PROMPT_SUGGESTIONS: PromptSuggestion[] = [
   {
     id: '1',

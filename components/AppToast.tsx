@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, StyleSheet, Text, Pressable, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { FullWindowOverlay } from 'react-native-screens';
 import Toast, { ToastConfig } from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,10 +9,10 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import CloseIcon from '../assets/icons/close.svg';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { openAppSettings } from '../utils/openAppSettings';
-import { pressedOpacity } from '../styles/pressable';
 
 const NAV_HEADER_HEIGHT = Platform.OS === 'ios' ? 44 : 56;
 const TOAST_HEADER_GAP = 2;
+const CLOSE_HIT_SLOP = 12;
 
 export const toastTopOffset = (safeAreaTop: number) =>
   safeAreaTop + NAV_HEADER_HEIGHT + TOAST_HEADER_GAP;
@@ -32,9 +32,11 @@ const AppToast: React.FC = () => {
                 Toast.hide();
                 openAppSettings();
               }}
+              cancelable={false}
+              accessibilityRole="button"
               style={({ pressed }) => [
                 styles.toastAction,
-                pressed && pressedOpacity,
+                pressed && styles.pressed,
               ]}
               testID="toast-open-settings"
             >
@@ -44,10 +46,15 @@ const AppToast: React.FC = () => {
         </View>
         <Pressable
           onPress={() => Toast.hide()}
+          cancelable={false}
+          hitSlop={CLOSE_HIT_SLOP}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss"
           style={({ pressed }) => [
             styles.toastCloseButton,
-            pressed && pressedOpacity,
+            pressed && styles.pressed,
           ]}
+          testID="toast-close"
         >
           <CloseIcon width={13.33} height={13.33} style={styles.toastIcon} />
         </Pressable>
@@ -114,5 +121,8 @@ const createStyles = (theme: Theme) =>
     },
     toastIcon: {
       color: theme.text.primary,
+    },
+    pressed: {
+      opacity: 0.2,
     },
   });

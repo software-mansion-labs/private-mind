@@ -11,27 +11,31 @@ type ModelSwitchState =
 
 const IDLE: ModelSwitchState = { status: 'idle' };
 
-export const useModelSwitch = (loadModel: (model: Model) => Promise<void>) => {
+type SwitchWaiter = (landedOn: Model | undefined) => void;
+
+export const useModelSwitch = (
+  loadModel: (model: Model) => Promise<boolean>
+) => {
   const [state, setState] = useState<ModelSwitchState>(IDLE);
   const stateRef = useRef<ModelSwitchState>(IDLE);
   const framesRef = useRef<number[]>([]);
   const stableLoadModel = useStableCallback(loadModel);
 
-  const settleWaiters = useRef<(() => void)[]>([]);
+  const settleWaiters = useRef<SwitchWaiter[]>([]);
 
-  const commit = useCallback((next: ModelSwitchState) => {
+  const commit = useCallback((next: ModelSwitchState, landedOn?: Model) => {
     stateRef.current = next;
     setState(next);
     if (next.status === 'idle') {
-      settleWaiters.current.splice(0).forEach((resolve) => resolve());
+      settleWaiters.current.splice(0).forEach((resolve) => resolve(landedOn));
     }
   }, []);
 
   const whenSettled = useCallback(
     () =>
       stateRef.current.status === 'idle'
-        ? Promise.resolve()
-        : new Promise<void>((resolve) => {
+        ? Promise.resolve(undefined)
+        : new Promise<Model | undefined>((resolve) => {
             settleWaiters.current.push(resolve);
           }),
     []
@@ -45,7 +49,8 @@ export const useModelSwitch = (loadModel: (model: Model) => Promise<void>) => {
   useEffect(() => cancelFrames, [cancelFrames]);
 
   useEffect(
-    () => () => settleWaiters.current.splice(0).forEach((resolve) => resolve()),
+    () => () =>
+      settleWaiters.current.splice(0).forEach((resolve) => resolve(undefined)),
     []
   );
 
@@ -58,10 +63,14 @@ export const useModelSwitch = (loadModel: (model: Model) => Promise<void>) => {
   useEffect(() => {
     if (state.status !== 'loading') return;
     let cancelled = false;
-    stableLoadModel(state.model)
-      .catch((error) => console.error('Error switching model:', error))
-      .finally(() => {
-        if (!cancelled) commit(IDLE);
+    const picked = state.model;
+    stableLoadModel(picked)
+      .catch((error) => {
+        console.error('Error switching model:', error);
+        return false;
+      })
+      .then((loaded) => {
+        if (!cancelled) commit(IDLE, loaded ? picked : undefined);
       });
     return () => {
       cancelled = true;
