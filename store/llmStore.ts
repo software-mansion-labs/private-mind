@@ -77,6 +77,8 @@ import {
 } from '../modules/memory-probe';
 import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
+import { cpuLacksLseAtomics } from '../utils/cpuSupport';
+import { UNSUPPORTED_CPU_REFUSAL } from '../constants/cpu-support';
 
 export interface LLMStore {
   isLoading: boolean;
@@ -950,6 +952,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       return;
     }
     const result = modelLoadChain.then(async () => {
+      // TEMPORARY FIX (#437 A2): remove with utils/cpuSupport.ts.
+      if (await cpuLacksLseAtomics()) {
+        Toast.show({
+          type: 'defaultToast',
+          text1: UNSUPPORTED_CPU_REFUSAL,
+        });
+        return;
+      }
       const network = model.isDownloaded
         ? null
         : await NetInfo.fetch().catch(() => null);
