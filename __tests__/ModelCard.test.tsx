@@ -142,6 +142,7 @@ const renderCard = (
       compactView?: boolean;
       selected?: boolean;
       checkable?: boolean;
+      showFamilyIcon?: boolean;
       downloadStatus?: ModelCardProps['downloadStatus'];
       locked?: boolean;
       onCancel?: ModelCardProps['onCancel'];
@@ -159,6 +160,7 @@ const renderCard = (
       compactView={props.compactView}
       selected={props.selected}
       checkable={props.checkable}
+      showFamilyIcon={props.showFamilyIcon}
       downloadStatus={props.downloadStatus}
       locked={props.locked}
       onCancel={props.onCancel}
@@ -190,9 +192,9 @@ describe('display', () => {
     expect(screen.getByText('2.50 GB · 3.21 B')).toBeTruthy();
   });
 
-  it('shows a placeholder family tile', () => {
+  it('shows no family tile by default', () => {
     renderCard();
-    expect(screen.getByTestId('model-family-tile')).toBeTruthy();
+    expect(screen.queryByTestId('model-family-tile')).toBeNull();
   });
 
   it('shows Incompatible badge when model is not compatible', () => {
@@ -236,6 +238,26 @@ describe('display', () => {
   it('does not repeat a capability that the catalog also lists as a label', () => {
     renderCard({ vision: true, compactView: false, labels: ['Vision'] });
     expect(screen.getAllByTestId('model-badge-Vision')).toHaveLength(1);
+  });
+
+  it('shows the family icon in the tile when asked to', () => {
+    renderCard({ modelName: 'Qwen 3 - 1.7B', showFamilyIcon: true });
+    expect(
+      screen.getByTestId('model-family-icon', { includeHiddenElements: true })
+    ).toBeTruthy();
+  });
+
+  it('shows the first letter of a family without an icon', () => {
+    renderCard({ modelName: 'Bielik - v3.0', showFamilyIcon: true });
+    expect(
+      screen.queryByTestId('model-family-icon', { includeHiddenElements: true })
+    ).toBeNull();
+    expect(screen.getByText('B', { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it('keeps the family tile out of the screen reader, the name already says it', () => {
+    renderCard({ modelName: 'Bielik - v3.0', showFamilyIcon: true });
+    expect(screen.queryByText('B')).toBeNull();
   });
 
   it('shows a label the app does not know yet', () => {

@@ -225,6 +225,7 @@ function SelectStartingModelScreen() {
                 compactView={false}
                 selected={selectedIds.includes(model.id)}
                 checkable
+                showFamilyIcon
                 locked={phase !== 'select'}
                 downloadStatus={downloadStatusFor(model)}
                 onCancel={handleCancel}
