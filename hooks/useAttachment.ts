@@ -542,6 +542,21 @@ export const useAttachment = () => {
     [runUrlSource, presentDownloadSheet]
   );
 
+  const loadWithLanguageModelOffloaded = useCallback(
+    (load: () => Promise<unknown>) =>
+      useLLMStore.getState().runWithModelOffloaded(
+        async () => {
+          try {
+            await load();
+          } finally {
+            await embeddingsRef.current?.unload();
+          }
+        },
+        { restore: false }
+      ),
+    []
+  );
+
   const downloadModelAndContinue = useCallback(async () => {
     const store = await awaitVectorStore(STORE_READY_TIMEOUT_MS);
     if (!store) {
@@ -551,16 +566,9 @@ export const useAttachment = () => {
       });
       return;
     }
-    const ready = await useLLMStore.getState().runWithModelOffloaded(
-      async () => {
-        const loaded = await useEmbeddingModelStore
-          .getState()
-          .ensureReady(store);
-        await embeddingsRef.current?.unload();
-        return loaded;
-      },
-      { restore: false }
-    );
+    const ready = await useEmbeddingModelStore
+      .getState()
+      .ensureReady(store, loadWithLanguageModelOffloaded);
     if (!ready) {
       Toast.show({
         type: 'defaultToast',
@@ -571,7 +579,7 @@ export const useAttachment = () => {
     if (!embeddingDownloadSheetOpenRef.current) return;
     pendingDocumentPickRef.current = downloadResumeRef.current === 'attachment';
     embeddingDownloadSheetRef.current?.dismiss();
-  }, [awaitVectorStore]);
+  }, [awaitVectorStore, loadWithLanguageModelOffloaded]);
 
   const restoreAttachments = useCallback((previous: Attachment[]) => {
     setAttachments(previous);
