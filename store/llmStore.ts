@@ -234,6 +234,9 @@ let benchmarkTokenBudget: number | null = null;
 let suppressUtilityStreaming = false;
 let utilityGenerating = false;
 let utilityChain: Promise<void> = Promise.resolve();
+let warmingUp: LLMModule | null = null;
+let warmupStopRequested = false;
+let modelWarmup: Promise<void> = Promise.resolve();
 let sendAbortController: AbortController | null = null;
 let messageLocalIdSeq = 0;
 const nextMessageLocalId = () => (messageLocalIdSeq += 1);
@@ -372,6 +375,41 @@ const modelIsInUse = (get: () => LLMStore) =>
   get().isBenchmarking ||
   utilityGenerating;
 
+export const MODEL_WARMUP_TIMEOUT_MS = 3_000;
+
+const WARMUP_MESSAGES: ExecutorchMessage[] = [
+  { role: 'system', content: 'Reply in one word.' },
+  { role: 'user', content: 'hi' },
+];
+
+const warmUpModel = (instance: LLMModule): Promise<void> => {
+  if (appIsInBackground) return Promise.resolve();
+  const generation = withExclusiveRunner(async (isCancelled) => {
+    if (llmInstance !== instance || isCancelled()) return;
+    warmingUp = instance;
+    warmupStopRequested = false;
+    try {
+      await instance.generate(WARMUP_MESSAGES);
+    } catch (error) {
+      console.warn('Model warm-up failed', error);
+    } finally {
+      warmingUp = null;
+    }
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeLimit = new Promise<void>((resolve) => {
+    timer = setTimeout(() => {
+      if (warmingUp === instance) interruptQuietly(instance);
+      resolve();
+    }, MODEL_WARMUP_TIMEOUT_MS);
+  });
+  const warmup = Promise.race([generation, timeLimit]).finally(() =>
+    clearTimeout(timer)
+  );
+  modelWarmup = warmup;
+  return warmup;
+};
+
 const releaseModelOnceIdleInBackground = (get: () => LLMStore) => {
   cancelBackgroundRelease();
   backgroundReleaseTimer = setTimeout(() => {
@@ -445,6 +483,13 @@ const loadModelInstance = async (
       },
       () => {},
       (token) => {
+        if (warmingUp) {
+          if (!warmupStopRequested) {
+            warmupStopRequested = true;
+            interruptQuietly(warmingUp);
+          }
+          return;
+        }
         if (suppressUtilityStreaming) return;
         if (streamStopRequested) return;
 
@@ -483,6 +528,7 @@ const loadModelInstance = async (
     );
 
     applyGenerationConfig(llmInstance, getGenerationConfigForModel(model));
+    await warmUpModel(llmInstance);
 
     set({ isLoading: false });
   } catch (e) {
@@ -1891,6 +1937,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         performance: { tokenCount: 0, firstTokenTime: 0 },
         isBenchmarking: true,
       });
+      await modelWarmup;
       const instance = llmInstance;
       if (!instance || !get().model) {
         return;
