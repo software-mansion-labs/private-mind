@@ -187,7 +187,7 @@ describe('sending while another turn is open', () => {
     const loaded = mockedState().model;
     mockedState().model = null;
     try {
-      expect(await useSend(1)('', 'file://photo.jpg')).toBe('model-loading');
+      expect(await useSend(1)('hello')).toBe('model-loading');
       expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
     } finally {
       mockedState().model = loaded;
@@ -198,7 +198,7 @@ describe('sending while another turn is open', () => {
     const loaded = mockedState().model;
     mockedState().model = null;
     try {
-      expect(await useSend(1, true)('', 'file://photo.jpg')).toBe(true);
+      expect(await useSend(1, true)('hello')).toBe(true);
       expect(mockedState().sendChatMessage).toHaveBeenCalled();
     } finally {
       mockedState().model = loaded;
@@ -464,6 +464,66 @@ describe('web search in a chat that has a document', () => {
     expect(runWebSearch).not.toHaveBeenCalled();
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({ text1: WEB_SKIP_COPY.documents })
+    );
+  });
+});
+
+describe('a photo for the model that will answer', () => {
+  const textModel = { id: 1, modelName: 'Qwen 3 - 0.6B' } as Model;
+  const visionModel = {
+    id: 2,
+    modelName: 'LFM 2.5 VL - 450M',
+    vision: true,
+  } as Model;
+
+  const useSendPhoto = (
+    model: Model,
+    waitForModelSwitch?: () => Promise<Model | undefined>
+  ) =>
+    useSendChatMessage({
+      chatId: 1,
+      model,
+      messageHistory: [],
+      chatSettings: { systemPrompt: '', thinkingEnabled: false },
+      enabledSources: [],
+      vectorStore: null,
+      embeddings: null,
+      messagesRef,
+      db: {} as SQLiteDatabase,
+      isGenerating: false,
+      isModelLoading: false,
+      isSwitching: !!waitForModelSwitch,
+      waitForModelSwitch,
+    })('what is this?', 'file:///photo.jpg');
+
+  it('refuses a photo for a model without vision and starts nothing', async () => {
+    expect(await useSendPhoto(textModel)).toBe('image-unsupported');
+
+    expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+    expect(mockedState().loadModel).not.toHaveBeenCalled();
+    expect(mockedState().interrupt).not.toHaveBeenCalled();
+  });
+
+  it('refuses a photo sent while switching from a vision model to a text model', async () => {
+    mockedState().model = textModel;
+
+    expect(await useSendPhoto(visionModel, async () => textModel)).toBe(
+      'image-unsupported'
+    );
+    expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+  });
+
+  it('sends a photo to a model with vision', async () => {
+    mockedState().model = visionModel;
+
+    expect(await useSendPhoto(visionModel)).toBe(true);
+    expect(mockedState().sendChatMessage).toHaveBeenCalledWith(
+      'what is this?',
+      1,
+      expect.any(Function),
+      expect.anything(),
+      'file:///photo.jpg',
+      undefined
     );
   });
 });
