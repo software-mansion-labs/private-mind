@@ -1,5 +1,6 @@
 import {
   BACKGROUND_RELEASE_DELAY_MS,
+  isModelBusy,
   MODEL_WARMUP_TIMEOUT_MS,
   useLLMStore,
 } from '../store/llmStore';
@@ -3254,6 +3255,29 @@ describe('one generation at a time on the shared native runner', () => {
     await planning;
     await turn;
     expect(mockInstance.generate.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('counts a utility call as the model being busy while no turn is generating', async () => {
+    let releaseDigest!: (answer: string) => void;
+    mockInstance.generate.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        releaseDigest = resolve;
+      })
+    );
+
+    const digest = useLLMStore
+      .getState()
+      .generateUtility([{ role: 'user', content: 'summarise' }]);
+
+    expect(useLLMStore.getState()).toMatchObject({
+      isGenerating: false,
+      isProcessingPrompt: false,
+      isLoading: false,
+    });
+    expect(isModelBusy()).toBe(true);
+    releaseDigest('');
+    await digest;
+    expect(isModelBusy()).toBe(false);
   });
 
   it('does not delete a model that is still generating', async () => {

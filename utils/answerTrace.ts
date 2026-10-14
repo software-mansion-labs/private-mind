@@ -17,12 +17,38 @@ export interface AnswerTrace {
   final: string;
   systemPromptChars: number;
   shape?: Record<string, boolean>;
+  chatId?: number;
+  promptMessages?: number;
 }
+
+export type AnswerTraceListener = (trace: AnswerTrace) => void;
+
+const answerTraceListeners = new Set<AnswerTraceListener>();
+
+export const listenToAnswerTraces = (
+  listener: AnswerTraceListener
+): (() => void) => {
+  answerTraceListeners.add(listener);
+  return () => {
+    answerTraceListeners.delete(listener);
+  };
+};
+
+const notifyAnswerTraceListeners = (trace: AnswerTrace): void => {
+  for (const listener of answerTraceListeners) {
+    try {
+      listener(trace);
+    } catch (error) {
+      console.warn(`Answer trace listener failed ${String(error)}`);
+    }
+  }
+};
 
 export const recordAnswerTrace = async (
   trace: AnswerTrace,
   { toFile = WEB_TRACE_TO_FILE }: { toFile?: boolean } = {}
 ): Promise<void> => {
+  notifyAnswerTraceListeners(trace);
   if (!toFile) return;
   await writeTraceFile(
     TRACE_DIR,
