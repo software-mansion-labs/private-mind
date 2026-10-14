@@ -187,6 +187,8 @@ export default function ChatScreen({
     whenSettled: whenModelSwitchSettles,
   } = useModelSwitch(handleSelectModel);
 
+  const answeringModel = pendingModel ?? model;
+
   useEffect(() => {
     onPendingModelChange?.(pendingModel);
   }, [pendingModel, onPendingModelChange]);
@@ -298,7 +300,7 @@ export default function ChatScreen({
           onSelectPrompt={handleSelectPrompt}
           ref={inputRef}
           model={model}
-          isVisionModel={model?.vision === true}
+          isVisionModel={answeringModel?.vision === true}
           extraContentPadding={extraContentPadding}
           thinkingEnabled={thinkingEnabled}
           onThinkingToggle={handleThinkingToggle}

@@ -72,6 +72,8 @@ const REFUSAL_COPY: Record<SendRefusal, string | null> = {
   'busy': 'Wait for the response to finish or stop it first.',
   'chat-not-created': 'Could not start this chat. Try again.',
   'image-not-saved': null,
+  'image-unsupported':
+    "This model can't see images. Remove the photo or pick a model with Vision.",
 };
 
 interface Props {

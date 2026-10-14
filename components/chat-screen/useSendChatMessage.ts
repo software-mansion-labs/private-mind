@@ -17,7 +17,8 @@ export type SendRefusal =
   | 'model-loading'
   | 'busy'
   | 'chat-not-created'
-  | 'image-not-saved';
+  | 'image-not-saved'
+  | 'image-unsupported';
 import { Attachment } from '../../hooks/useAttachment';
 import { LFMEmbeddings } from '../../utils/lfmEmbeddings';
 import { loadModelPinnedToChat } from './loadModelPinnedToChat';
@@ -117,6 +118,9 @@ export const useSendChatMessage = ({
     if (isSwitching) {
       if (!waitForModelSwitch) return 'model-loading';
       pinnedModel = (await waitForModelSwitch()) ?? model;
+    }
+    if (imagePath && pinnedModel && !pinnedModel.vision) {
+      return 'image-unsupported';
     }
     const llm = useLLMStore.getState();
     const busy = llm.isGenerating || llm.isProcessingPrompt;
