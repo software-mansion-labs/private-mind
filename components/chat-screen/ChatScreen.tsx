@@ -80,9 +80,6 @@ export default function ChatScreen({
   const headerHeight = useHeaderHeight();
 
   const keyboardLift = useKeyboardLift();
-  const chatBarStickyStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: keyboardLift.value }],
-  }));
 
   const { settings: chatSettings, setSetting } = useChatSettings(chatId);
 
@@ -114,6 +111,14 @@ export default function ChatScreen({
     topFadeAnchor,
     emptyFadeColors,
   } = useChatScreenLayout({ isEmpty, headerTitleBottom, headerHeight, theme });
+
+  const chatBarStickyStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: keyboardLift.value }],
+    ...(rootFrame.height > 0 && {
+      maxHeight:
+        rootFrame.height - headerHeight + (isEmpty ? keyboardLift.value : 0),
+    }),
+  }));
 
   const { branchMarkers, handleForkMessage, handleBranchMarkerPress } =
     useChatBranching({
@@ -293,15 +298,7 @@ export default function ChatScreen({
         />
       </View>
 
-      <Animated.View
-        style={[
-          styles.chatBarSticky,
-          rootFrame.height > 0 && {
-            maxHeight: rootFrame.height - headerHeight,
-          },
-          chatBarStickyStyle,
-        ]}
-      >
+      <Animated.View style={[styles.chatBarSticky, chatBarStickyStyle]}>
         <ChatBar
           chatId={chatId}
           onSend={handleSendMessage}
