@@ -4,21 +4,25 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { radius, space } from '../../constants/design-system';
-import { SvgComponent } from '../../utils/SvgComponent';
+import {
+  LabelColor,
+  labelColor,
+  labelIcon,
+} from '../../constants/model-labels';
 
-export type ModelBadgeTone = 'neutral' | 'error';
+export type ModelBadgeColor = LabelColor | 'error';
 
 interface Props {
   label: string;
-  icon?: SvgComponent;
-  tone?: ModelBadgeTone;
+  color?: ModelBadgeColor;
 }
 
 const BADGE_HEIGHT = 24;
 const BADGE_ICON_SIZE = 14;
 
-const ModelBadge = ({ label, icon: Icon, tone = 'neutral' }: Props) => {
-  const { styles } = useThemedStyles(createStyles, tone);
+const ModelBadge = ({ label, color = labelColor(label) }: Props) => {
+  const { styles } = useThemedStyles(createStyles, color);
+  const Icon = labelIcon(label);
 
   return (
     <View style={styles.badge} testID={`model-badge-${label}`}>
@@ -36,9 +40,11 @@ const ModelBadge = ({ label, icon: Icon, tone = 'neutral' }: Props) => {
 
 export default ModelBadge;
 
-const createStyles = (theme: Theme, tone: ModelBadgeTone) => {
-  const foreground =
-    tone === 'error' ? theme.text.error : theme.text.defaultSecondary;
+const createStyles = (theme: Theme, color: ModelBadgeColor) => {
+  const { background, foreground } =
+    color === 'error'
+      ? { background: theme.bg.errorSecondary, foreground: theme.text.error }
+      : theme.label[color];
   return StyleSheet.create({
     badge: {
       height: BADGE_HEIGHT,
@@ -47,8 +53,7 @@ const createStyles = (theme: Theme, tone: ModelBadgeTone) => {
       gap: space.one,
       paddingHorizontal: space.two,
       borderRadius: radius.full,
-      backgroundColor:
-        tone === 'error' ? theme.bg.errorSecondary : theme.bg.tile,
+      backgroundColor: background,
     },
     icon: {
       color: foreground,

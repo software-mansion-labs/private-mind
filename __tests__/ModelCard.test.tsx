@@ -222,6 +222,27 @@ describe('display', () => {
     expect(screen.queryByTestId('model-badge-Fast')).toBeNull();
   });
 
+  it('shows a Thinking badge for a thinking model, even in compact view', () => {
+    renderCard({ thinking: true, compactView: true });
+    expect(screen.getByTestId('model-badge-Thinking')).toBeTruthy();
+  });
+
+  it('keeps the Reasoning label next to the Thinking badge', () => {
+    renderCard({ thinking: true, compactView: false, labels: ['Reasoning'] });
+    expect(screen.getByTestId('model-badge-Thinking')).toBeTruthy();
+    expect(screen.getByTestId('model-badge-Reasoning')).toBeTruthy();
+  });
+
+  it('does not repeat a capability that the catalog also lists as a label', () => {
+    renderCard({ vision: true, compactView: false, labels: ['Vision'] });
+    expect(screen.getAllByTestId('model-badge-Vision')).toHaveLength(1);
+  });
+
+  it('shows a label the app does not know yet', () => {
+    renderCard({ compactView: false, labels: ['Multilingual'] });
+    expect(screen.getByTestId('model-badge-Multilingual')).toBeTruthy();
+  });
+
   it('calls onPress when card is tapped', () => {
     const onPress = jest.fn();
     render(<ModelCard model={baseModel} onPress={onPress} />);

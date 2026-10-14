@@ -14,9 +14,13 @@ import { isModelCompatible } from '../../utils/modelCompatibility';
 import { useConfirm } from '../../hooks/useConfirm';
 import CircleButton from '../CircleButton';
 import ModelBadge from './ModelBadge';
+import {
+  THINKING_LABEL,
+  VISION_LABEL,
+  isCapabilityLabel,
+} from '../../constants/model-labels';
 import DownloadIcon from '../../assets/icons/download.svg';
 import CloseIcon from '../../assets/icons/close.svg';
-import EyeIcon from '../../assets/icons/eye.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 import CheckIcon from '../../assets/icons/check.svg';
 import { Feedback } from '../../utils/Feedback';
@@ -159,8 +163,9 @@ const ModelCard = ({
   const meta = modelMeta(model);
   const labels = compactView
     ? []
-    : (model.labels ?? []).filter((label) => label !== 'Vision');
-  const hasBadges = !isCompatible || model.vision || labels.length > 0;
+    : (model.labels ?? []).filter((label) => !isCapabilityLabel(label));
+  const hasBadges =
+    !isCompatible || model.thinking || model.vision || labels.length > 0;
 
   return (
     <View style={locked && !selected && styles.dimmedCard}>
@@ -189,9 +194,10 @@ const ModelCard = ({
             {hasBadges && (
               <View style={styles.badges}>
                 {!isCompatible && (
-                  <ModelBadge label="Incompatible" tone="error" />
+                  <ModelBadge label="Incompatible" color="error" />
                 )}
-                {model.vision && <ModelBadge label="Vision" icon={EyeIcon} />}
+                {model.thinking && <ModelBadge label={THINKING_LABEL} />}
+                {model.vision && <ModelBadge label={VISION_LABEL} />}
                 {labels.map((label) => (
                   <ModelBadge key={label} label={label} />
                 ))}
