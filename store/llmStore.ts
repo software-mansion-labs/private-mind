@@ -876,6 +876,15 @@ const generateLLMResponse = (
   });
 };
 
+const generateRefinement = (
+  messages: ExecutorchMessage[],
+  get: () => LLMStore
+): Promise<LLMGenerationResult> =>
+  generateLLMResponse(messages, get).catch((error) => {
+    console.warn('Refinement generation failed, keeping the answer', error);
+    return NO_LLM_RESPONSE;
+  });
+
 export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
   isGenerating: false,
@@ -1493,7 +1502,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         set({ isRefining: true });
         let retryGeneration: Awaited<ReturnType<typeof generateLLMResponse>>;
         try {
-          retryGeneration = await generateLLMResponse(messages, get);
+          retryGeneration = await generateRefinement(messages, get);
         } finally {
           suppressUtilityStreaming = false;
         }
@@ -1672,7 +1681,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         const continuationPrompt =
           DANGLING_LIST_CONTINUATION_PROMPT +
           answerLanguageAnchor(detectQuestionLanguage(currentQuestion ?? ''));
-        const continuationGeneration = await generateLLMResponse(
+        const continuationGeneration = await generateRefinement(
           [
             ...effectivePrepared,
             { role: 'assistant', content: finalResponse },
