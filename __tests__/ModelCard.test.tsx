@@ -7,6 +7,7 @@ import {
 } from '@testing-library/react-native';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
+import { Alert, AlertButton } from 'react-native';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
@@ -48,13 +49,6 @@ jest.mock('../utils/Feedback', () => ({
 jest.mock('@react-native-community/netinfo', () => ({
   fetch: jest.fn(),
 }));
-
-jest.mock('../components/Chip', () => {
-  const { Text } = require('react-native');
-  return ({ title }: { title: string }) => (
-    <Text testID={`chip-${title}`}>{title}</Text>
-  );
-});
 
 jest.mock('../components/CircleButton', () => {
   const { TouchableOpacity } = require('react-native');
@@ -114,7 +108,7 @@ const mockNetInfoFetch = NetInfo.fetch as jest.Mock;
 const baseModel: {
   id: number;
   modelName: string;
-  source: 'remote';
+  source: 'remote' | 'built-in';
   isDownloaded: boolean;
   featured: boolean;
   parameters: number;
@@ -147,6 +141,11 @@ const renderCard = (
     typeof baseModel & {
       compactView?: boolean;
       selected?: boolean;
+      checkable?: boolean;
+      downloadStatus?: ModelCardProps['downloadStatus'];
+      locked?: boolean;
+      onCancel?: ModelCardProps['onCancel'];
+      onDeleted?: ModelCardProps['onDeleted'];
       onPress?: ModelCardProps['onPress'];
       wifiWarningSheetRef?: ModelCardProps['wifiWarningSheetRef'];
     }
@@ -159,6 +158,11 @@ const renderCard = (
       onPress={onPress}
       compactView={props.compactView}
       selected={props.selected}
+      checkable={props.checkable}
+      downloadStatus={props.downloadStatus}
+      locked={props.locked}
+      onCancel={props.onCancel}
+      onDeleted={props.onDeleted}
       wifiWarningSheetRef={props.wifiWarningSheetRef}
     />
   );
@@ -181,41 +185,41 @@ describe('display', () => {
     expect(screen.getByText('Llama-3B')).toBeTruthy();
   });
 
-  it('shows parameters chip', () => {
+  it('shows model size and parameters on one meta line', () => {
     renderCard();
-    expect(screen.getByTestId('chip-3.21 B')).toBeTruthy();
+    expect(screen.getByText('2.50 GB · 3.21 B')).toBeTruthy();
   });
 
-  it('shows model size chip', () => {
+  it('shows a placeholder family tile', () => {
     renderCard();
-    expect(screen.getByTestId('chip-2.50 GB')).toBeTruthy();
+    expect(screen.getByTestId('model-family-tile')).toBeTruthy();
   });
 
-  it('shows Incompatible chip when model is not compatible', () => {
+  it('shows Incompatible badge when model is not compatible', () => {
     mockIsModelCompatible.mockReturnValue(false);
     renderCard();
-    expect(screen.getByTestId('chip-Incompatible')).toBeTruthy();
+    expect(screen.getByTestId('model-badge-Incompatible')).toBeTruthy();
   });
 
-  it('shows Vision chip when model supports vision', () => {
+  it('shows Vision badge when model supports vision', () => {
     renderCard({ vision: true });
-    expect(screen.getByTestId('chip-Vision')).toBeTruthy();
+    expect(screen.getByTestId('model-badge-Vision')).toBeTruthy();
   });
 
-  it('does not show Vision chip when model does not support vision', () => {
+  it('does not show Vision badge when model does not support vision', () => {
     renderCard({ vision: false });
-    expect(screen.queryByTestId('chip-Vision')).toBeNull();
+    expect(screen.queryByTestId('model-badge-Vision')).toBeNull();
   });
 
-  it('renders label chips from model.labels', () => {
+  it('renders label badges from model.labels', () => {
     renderCard({ compactView: false, labels: ['Fast', 'Reasoning'] });
-    expect(screen.getByTestId('chip-Fast')).toBeTruthy();
-    expect(screen.getByTestId('chip-Reasoning')).toBeTruthy();
+    expect(screen.getByTestId('model-badge-Fast')).toBeTruthy();
+    expect(screen.getByTestId('model-badge-Reasoning')).toBeTruthy();
   });
 
-  it('omits label chips in compact view', () => {
+  it('omits label badges in compact view', () => {
     renderCard({ compactView: true, labels: ['Fast'] });
-    expect(screen.queryByTestId('chip-Fast')).toBeNull();
+    expect(screen.queryByTestId('model-badge-Fast')).toBeNull();
   });
 
   it('calls onPress when card is tapped', () => {
@@ -251,6 +255,108 @@ describe('download state rendering', () => {
     });
     renderCard({ isDownloaded: true });
     expect(screen.queryByTestId('circle-btn')).toBeNull();
+  });
+});
+
+// ─── checkable ────────────────────────────────────────────────────────────────
+
+describe('checkable', () => {
+  it('shows a checkbox instead of the download button', () => {
+    renderCard({ checkable: true });
+    expect(screen.getByTestId('model-card-checkbox')).toBeTruthy();
+    expect(screen.queryByTestId('circle-btn')).toBeNull();
+  });
+
+  it('has no checkbox by default', () => {
+    renderCard();
+    expect(screen.queryByTestId('model-card-checkbox')).toBeNull();
+  });
+
+  it('reports the checked state to accessibility', () => {
+    renderCard({ checkable: true, selected: true });
+    expect(screen.getByRole('checkbox', { checked: true })).toBeTruthy();
+  });
+
+  it('can be toggled before the model is downloaded', () => {
+    const onPress = jest.fn();
+    renderCard({ checkable: true, source: 'built-in', onPress });
+    fireEvent.press(screen.getByText('Llama-3B'));
+    expect(onPress).toHaveBeenCalled();
+  });
+
+  it('is disabled when the model is incompatible', () => {
+    mockIsModelCompatible.mockReturnValue(false);
+    renderCard({ checkable: true });
+    expect(screen.getByRole('checkbox', { disabled: true })).toBeTruthy();
+  });
+});
+
+// ─── selection download ───────────────────────────────────────────────────────
+
+describe('selection download', () => {
+  it('shows no progress row before downloading starts', () => {
+    renderCard({ checkable: true, selected: true });
+    expect(screen.queryByText('0%')).toBeNull();
+    expect(screen.queryByTestId('model-card-cancel')).toBeNull();
+  });
+
+  it('shows the percentage of the model being downloaded', () => {
+    withDownloadStates({
+      1: { status: ModelState.Downloading, progress: 0.7 },
+    });
+    renderCard({
+      checkable: true,
+      selected: true,
+      downloadStatus: 'downloading',
+    });
+    expect(screen.getByText('70%')).toBeTruthy();
+  });
+
+  it('labels a finished model as Done', () => {
+    renderCard({ checkable: true, selected: true, downloadStatus: 'done' });
+    expect(screen.getByText('Done')).toBeTruthy();
+  });
+
+  it('cancels a downloading model', () => {
+    const onCancel = jest.fn();
+    renderCard({
+      checkable: true,
+      selected: true,
+      downloadStatus: 'downloading',
+      onCancel,
+    });
+    fireEvent.press(screen.getByTestId('model-card-cancel'));
+    expect(onCancel).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+  });
+
+  it('offers no cancel once the model is done', () => {
+    renderCard({ checkable: true, selected: true, downloadStatus: 'done' });
+    expect(screen.queryByTestId('model-card-cancel')).toBeNull();
+  });
+
+  it('deletes a finished model after confirmation', async () => {
+    const removeModelFiles = jest.fn();
+    withDownloadStates({}, { removeModelFiles });
+    jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation((_title, _message, buttons?: AlertButton[]) =>
+        buttons?.find((b) => b.style === 'destructive')?.onPress?.()
+      );
+    const onDeleted = jest.fn();
+    renderCard({
+      checkable: true,
+      selected: true,
+      downloadStatus: 'done',
+      onDeleted,
+    });
+    fireEvent.press(screen.getByTestId('model-card-delete'));
+    await waitFor(() => expect(onDeleted).toHaveBeenCalled());
+    expect(removeModelFiles).toHaveBeenCalledWith(1);
+  });
+
+  it('is disabled while downloads run', () => {
+    renderCard({ checkable: true, locked: true });
+    expect(screen.getByRole('checkbox', { disabled: true })).toBeTruthy();
   });
 });
 
