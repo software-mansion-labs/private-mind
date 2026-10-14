@@ -216,6 +216,7 @@ const armRetry = (
 let streamBuffer = '';
 let streamTokenCount = 0;
 let streamFirstTokenTime = 0;
+let streamStopRequested = false;
 let streamFlushScheduled = false;
 let streamedSoFar = '';
 
@@ -223,6 +224,7 @@ const resetStreamState = () => {
   streamBuffer = '';
   streamTokenCount = 0;
   streamFirstTokenTime = 0;
+  streamStopRequested = false;
   streamFlushScheduled = false;
   streamedSoFar = '';
 };
@@ -231,6 +233,9 @@ let benchmarkTokenBudget: number | null = null;
 let suppressUtilityStreaming = false;
 let utilityGenerating = false;
 let utilityChain: Promise<void> = Promise.resolve();
+let warmingUp: LLMModule | null = null;
+let warmupStopRequested = false;
+let modelWarmup: Promise<void> = Promise.resolve();
 let sendAbortController: AbortController | null = null;
 let messageLocalIdSeq = 0;
 const nextMessageLocalId = () => (messageLocalIdSeq += 1);
@@ -302,10 +307,27 @@ const waitForSettingsHydration = async (): Promise<void> => {
   });
 };
 
+const MODEL_IDLE_WAIT_LIMIT_MS = 60_000;
+
+const modelIsBusy = (get: () => LLMStore) =>
+  get().isLoading || get().isGenerating || utilityGenerating;
+
 const waitForModelToBecomeIdle = async (get: () => LLMStore) => {
-  while (get().isLoading || get().isGenerating || utilityGenerating) {
+  while (modelIsBusy(get)) {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
+};
+
+const waitForModelToBecomeIdleWithin = async (
+  get: () => LLMStore,
+  limitMs: number
+): Promise<boolean> => {
+  const deadline = Date.now() + limitMs;
+  while (modelIsBusy(get)) {
+    if (Date.now() >= deadline) return false;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return true;
 };
 
 type StoreSet = (
@@ -351,6 +373,41 @@ const modelIsInUse = (get: () => LLMStore) =>
   get().isProcessingPrompt ||
   get().isBenchmarking ||
   utilityGenerating;
+
+export const MODEL_WARMUP_TIMEOUT_MS = 3_000;
+
+const WARMUP_MESSAGES: ExecutorchMessage[] = [
+  { role: 'system', content: 'Reply in one word.' },
+  { role: 'user', content: 'hi' },
+];
+
+const warmUpModel = (instance: LLMModule): Promise<void> => {
+  if (appIsInBackground) return Promise.resolve();
+  const generation = withExclusiveRunner(async (isCancelled) => {
+    if (llmInstance !== instance || isCancelled()) return;
+    warmingUp = instance;
+    warmupStopRequested = false;
+    try {
+      await instance.generate(WARMUP_MESSAGES);
+    } catch (error) {
+      console.warn('Model warm-up failed', error);
+    } finally {
+      warmingUp = null;
+    }
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeLimit = new Promise<void>((resolve) => {
+    timer = setTimeout(() => {
+      if (warmingUp === instance) interruptQuietly(instance);
+      resolve();
+    }, MODEL_WARMUP_TIMEOUT_MS);
+  });
+  const warmup = Promise.race([generation, timeLimit]).finally(() =>
+    clearTimeout(timer)
+  );
+  modelWarmup = warmup;
+  return warmup;
+};
 
 const releaseModelOnceIdleInBackground = (get: () => LLMStore) => {
   cancelBackgroundRelease();
@@ -425,7 +482,15 @@ const loadModelInstance = async (
       },
       () => {},
       (token) => {
+        if (warmingUp) {
+          if (!warmupStopRequested) {
+            warmupStopRequested = true;
+            interruptQuietly(warmingUp);
+          }
+          return;
+        }
         if (suppressUtilityStreaming) return;
+        if (streamStopRequested) return;
 
         const isFirstToken = streamTokenCount === 0;
 
@@ -439,6 +504,7 @@ const loadModelInstance = async (
         if (isFirstToken) {
           const snapshot = get();
           if (!snapshot.isProcessingPrompt && !snapshot.isGenerating) {
+            streamStopRequested = true;
             llmInstance?.interrupt();
             return;
           }
@@ -461,6 +527,7 @@ const loadModelInstance = async (
     );
 
     applyGenerationConfig(llmInstance, getGenerationConfigForModel(model));
+    await warmUpModel(llmInstance);
 
     set({ isLoading: false });
   } catch (e) {
@@ -1126,6 +1193,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       Promise.all([modelLoadChain, utilityChain]),
       abortController.signal
     ).catch(() => undefined);
+    const modelBecameIdle = await endsWhenStopped(
+      waitForModelToBecomeIdleWithin(get, MODEL_IDLE_WAIT_LIMIT_MS),
+      abortController.signal
+    ).catch(() => true);
+    if (!modelBecameIdle) {
+      markGenerationFailed(new Error('The model stayed busy for too long'));
+      return true;
+    }
     const readyModel = get().model;
     if (!get().isProcessingPrompt) {
       if (!isRetry && !userMessagePersisted) {
@@ -1832,7 +1907,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     if (
       get().isGenerating ||
       get().isProcessingPrompt ||
-      get().isBenchmarking
+      get().isBenchmarking ||
+      utilityGenerating
     ) {
       return;
     }
@@ -1849,6 +1925,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         performance: { tokenCount: 0, firstTokenTime: 0 },
         isBenchmarking: true,
       });
+      await modelWarmup;
       const instance = llmInstance;
       if (!instance || !get().model) {
         return;
@@ -1887,6 +1964,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             streamFirstTokenTime,
             instance.getGeneratedTokenCount()
           );
+
+        if (tokensPerSecond <= 0) return undefined;
 
         return {
           totalTime,

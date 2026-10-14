@@ -95,7 +95,7 @@ export default OnboardingIntroPanel;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     root: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     artZone: {
       position: 'absolute',

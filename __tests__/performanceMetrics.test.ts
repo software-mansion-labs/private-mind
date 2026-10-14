@@ -58,3 +58,27 @@ describe('the token rate a finished answer reports', () => {
     expect(timeToFirstToken).toBe(totalTime);
   });
 });
+
+describe('a first-token stamp from another generation', () => {
+  it('ignores a stamp left behind by an earlier generation', () => {
+    const { tokensPerSecond } = calculatePerformanceMetrics(
+      100000,
+      112000,
+      40000,
+      5
+    );
+
+    expect(tokensPerSecond).toBe(0);
+  });
+
+  it('ignores a stamp written by a generation that overlapped this one', () => {
+    const { tokensPerSecond } = calculatePerformanceMetrics(
+      1000,
+      1600,
+      9000,
+      5
+    );
+
+    expect(tokensPerSecond).toBe(0);
+  });
+});

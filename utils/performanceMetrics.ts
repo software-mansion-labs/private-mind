@@ -8,6 +8,12 @@ export interface PerformanceMetrics {
   tokensPerSecond: number;
 }
 
+const firstTokenBelongsToTurn = (
+  firstTokenTime: number,
+  startTime: number,
+  endTime: number
+) => firstTokenTime >= startTime && firstTokenTime <= endTime;
+
 export const calculatePerformanceMetrics = (
   startTime: number,
   endTime: number,
@@ -15,7 +21,11 @@ export const calculatePerformanceMetrics = (
   tokenCount: number
 ): PerformanceMetrics => {
   const totalTime = endTime - startTime;
-  const timeToFirstToken = firstTokenTime
+  const timeToFirstToken = firstTokenBelongsToTurn(
+    firstTokenTime,
+    startTime,
+    endTime
+  )
     ? firstTokenTime - startTime
     : totalTime;
   const streamedWindow = totalTime - timeToFirstToken;
