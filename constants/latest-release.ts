@@ -1,12 +1,12 @@
 export const LATEST_RELEASE = {
-  version: '1.3.1',
-  title: 'Private web search, smoother chats',
+  version: '1.3.3',
+  title: 'Offline loading, fewer crashes',
   highlights: [
-    'Private web search with sources',
-    'Replies wait while you switch apps',
-    'Answers come from the model you pick',
-    'Documents and web search in one chat',
-    'Dictation that recovers on its own',
-    'Model downloads run in the background',
+    'Downloaded models load offline',
+    'Ready for iOS 27 and Android 17',
+    'Older CPUs get a notice, not a crash',
+    'Photos only offered to vision models',
+    'No more asking for missing documents',
+    'Chat search keyboard fixed on Android',
   ],
 };
