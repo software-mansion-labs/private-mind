@@ -16,7 +16,7 @@ import { ThemeProvider } from '../context/ThemeContext';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import AppToast from '../components/AppToast';
-import NoticeHost from '../components/notices/NoticeHost';
+import AppNotices from '../components/notices/AppNotices';
 import { useUnsupportedCpuNotice } from '../hooks/useUnsupportedCpuNotice';
 import { useTurnResumesOnForeground } from '../hooks/useTurnResumesOnForeground';
 import { Platform } from 'react-native';
@@ -132,7 +132,7 @@ export default function Layout() {
     <GestureHandlerRootView>
       <SQLiteProvider databaseName="executorch.db" onInit={initDatabase}>
         <ThemeProvider>
-          <NoticeHost>
+          <AppNotices>
             <VectorStoreProvider>
               <KeyboardProvider>
                 <BottomSheetModalProvider>
@@ -142,7 +142,7 @@ export default function Layout() {
                 <AppToast />
               </KeyboardProvider>
             </VectorStoreProvider>
-          </NoticeHost>
+          </AppNotices>
           <SplashScreenAnimation />
         </ThemeProvider>
       </SQLiteProvider>
