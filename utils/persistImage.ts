@@ -14,7 +14,7 @@ export async function persistImage(sourceUri: string): Promise<string> {
   const destination = new File(Paths.document, CHAT_IMAGES_DIR, filename);
 
   const source = new File(readableUri);
-  source.copy(destination);
+  await source.copy(destination);
 
   return destination.uri;
 }
