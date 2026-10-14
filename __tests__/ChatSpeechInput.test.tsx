@@ -18,6 +18,11 @@ jest.mock('../context/ThemeContext', () => ({
   }),
 }));
 
+jest.mock('react-native-gesture-handler', () => {
+  const { Pressable, ScrollView } = require('react-native');
+  return { Pressable, ScrollView };
+});
+
 jest.mock('../components/chat-screen/RecordingAnimation', () => {
   const { View } = require('react-native');
   return {
