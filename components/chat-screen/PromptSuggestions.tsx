@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { ScrollView, TouchableOpacity } from 'react-native-gesture-handler';
+import { ScrollView, Pressable } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -9,6 +9,7 @@ import {
   PROMPT_SUGGESTIONS_TEXT,
   SUGGESTION_CARD_WIDTH,
 } from '../../constants/default-prompts';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
   onSelectPrompt: (prompt: string) => void;
@@ -30,11 +31,13 @@ const PromptSuggestions = ({ onSelectPrompt }: Props) => {
         contentContainerStyle={styles.scrollContent}
       >
         {DEFAULT_PROMPT_SUGGESTIONS.map((suggestion) => (
-          <TouchableOpacity
+          <Pressable
             key={suggestion.id}
-            style={styles.suggestionCard}
+            style={({ pressed }) => [
+              styles.suggestionCard,
+              pressed && pressedOpacity,
+            ]}
             onPress={() => handlePromptPress(suggestion.prompt)}
-            activeOpacity={0.7}
           >
             <Text
               style={styles.suggestionTitle}
@@ -46,7 +49,7 @@ const PromptSuggestions = ({ onSelectPrompt }: Props) => {
             <Text style={styles.suggestionPrompt} numberOfLines={3}>
               {suggestion.prompt}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         ))}
       </ScrollView>
     </View>

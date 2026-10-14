@@ -1,5 +1,5 @@
 import React, { Dispatch, SetStateAction, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Model } from '../../database/modelRepository';
 import ModelCard from '../model-hub/ModelCard';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -8,6 +8,7 @@ import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { Theme } from '../../styles/colors';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
   model?: Model | null;
@@ -28,13 +29,16 @@ export const ModelSelector = ({ model, setSelectedModel }: Props) => {
             onPress={() => bottomSheetModalRef.current?.present()}
           />
         ) : (
-          <TouchableOpacity
-            style={styles.selectorContainer}
+          <Pressable
+            style={({ pressed }) => [
+              styles.selectorContainer,
+              pressed && pressedOpacity,
+            ]}
             onPress={() => bottomSheetModalRef.current?.present()}
           >
             <Text style={styles.selectorText}>Select a model</Text>
             <ChevronDownIcon width={18} height={10} style={styles.icon} />
-          </TouchableOpacity>
+          </Pressable>
         )}
       </View>
 

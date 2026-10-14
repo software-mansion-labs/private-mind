@@ -1,8 +1,9 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, Pressable, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { pressedOpacity } from '../../styles/pressable';
 
 export type ModelHubTab = 'featured' | 'experimental' | 'mine';
 
@@ -25,15 +26,19 @@ const ModelHubTabs = ({ value, onChange }: Props) => {
       {TABS.map((tab) => {
         const selected = tab.key === value;
         return (
-          <TouchableOpacity
+          <Pressable
             key={tab.key}
-            style={[styles.tab, selected && styles.tabSelected]}
+            style={({ pressed }) => [
+              styles.tab,
+              selected && styles.tabSelected,
+              pressed && pressedOpacity,
+            ]}
             onPress={() => onChange(tab.key)}
           >
             <Text style={[styles.label, selected && styles.labelSelected]}>
               {tab.label}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         );
       })}
     </View>
