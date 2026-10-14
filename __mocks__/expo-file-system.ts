@@ -20,7 +20,7 @@ export const File = jest
       write: jest.fn(async (contents: string) => {
         writtenFiles.set(uri, contents);
       }),
-      copy: jest.fn(),
+      copy: jest.fn(async () => {}),
       delete: jest.fn(),
     };
   });

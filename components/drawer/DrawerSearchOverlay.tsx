@@ -139,11 +139,11 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: theme.bg.softPrimary,
     },
     backdropTouch: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     panel: {
       position: 'absolute',
