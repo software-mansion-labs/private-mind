@@ -4,6 +4,7 @@ export const Paths = {
 };
 
 export const writtenFiles = new Map<string, string>();
+export const existingFiles = new Set<string>();
 
 export const File = jest
   .fn()
@@ -16,6 +17,7 @@ export const File = jest
     return {
       uri,
       size: 0,
+      exists: existingFiles.has(uri),
       text: jest.fn(async () => writtenFiles.get(uri) ?? ''),
       write: jest.fn(async (contents: string) => {
         writtenFiles.set(uri, contents);

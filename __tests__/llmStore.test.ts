@@ -13,6 +13,7 @@ import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWebSearchStore } from '../store/webSearchStore';
 import { OPENING_WELCOMES } from '../constants/opening-greetings';
+import { existingFiles } from '../__mocks__/expo-file-system';
 
 const memoryProbe = { samples: [] as number[], available: false };
 jest.mock('../modules/memory-probe', () => ({
@@ -180,6 +181,61 @@ describe('loadModel', () => {
     useLLMStore.setState({ model: baseModel });
     await useLLMStore.getState().loadModel(baseModel, true);
     expect(mockLLMModule.fromModelName).toHaveBeenCalled();
+  });
+
+  describe('sources handed to the library', () => {
+    const DOWNLOADED = {
+      model: 'file:///documents/react-native-executorch/example.com_model.pte',
+      tokenizer:
+        'file:///documents/react-native-executorch/example.com_tokenizer.json',
+      tokenizerConfig:
+        'file:///documents/react-native-executorch/example.com_tokenizer_config.json',
+    };
+
+    const loadedSources = () => {
+      const [namedSources] = mockLLMModule.fromModelName.mock.calls[0];
+      return {
+        model: namedSources.modelSource,
+        tokenizer: namedSources.tokenizerSource,
+        tokenizerConfig: namedSources.tokenizerConfigSource,
+      };
+    };
+
+    beforeEach(() => {
+      existingFiles.clear();
+      Object.values(DOWNLOADED).forEach((uri) => existingFiles.add(uri));
+    });
+
+    afterEach(() => existingFiles.clear());
+
+    it('loads a downloaded model from its files, so no HEAD request goes out', async () => {
+      await useLLMStore.getState().loadModel(baseModel);
+
+      expect(loadedSources()).toEqual(DOWNLOADED);
+    });
+
+    it('passes the urls for a model that is not downloaded', async () => {
+      await useLLMStore
+        .getState()
+        .loadModel({ ...baseModel, isDownloaded: false });
+
+      expect(loadedSources()).toEqual({
+        model: baseModel.modelPath,
+        tokenizer: baseModel.tokenizerPath,
+        tokenizerConfig: baseModel.tokenizerConfigPath,
+      });
+    });
+
+    it('falls back to the url for a file missing from disk', async () => {
+      existingFiles.delete(DOWNLOADED.tokenizerConfig);
+
+      await useLLMStore.getState().loadModel(baseModel);
+
+      expect(loadedSources()).toEqual({
+        ...DOWNLOADED,
+        tokenizerConfig: baseModel.tokenizerConfigPath,
+      });
+    });
   });
 
   it('calls delete on previous instance before loading new model', async () => {

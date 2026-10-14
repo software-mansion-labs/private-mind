@@ -6,6 +6,7 @@ import {
 } from '../utils/thinking';
 import { create } from 'zustand';
 import { LLMModule } from 'react-native-executorch/legacy';
+import { preferDownloadedCopy } from '../utils/downloadedCopy';
 import { Model } from '../database/modelRepository';
 import { SQLiteDatabase } from 'expo-sqlite';
 import {
@@ -468,15 +469,18 @@ const loadModelInstance = async (
     }));
   };
 
+  const fromDisk = (path: string) =>
+    model.isDownloaded ? preferDownloadedCopy(path) : path;
+
   try {
     llmInstance = await LLMModule.fromModelName(
       {
         modelName: 'custom' as Parameters<
           typeof LLMModule.fromModelName
         >[0]['modelName'],
-        modelSource: model.modelPath,
-        tokenizerSource: model.tokenizerPath,
-        tokenizerConfigSource: model.tokenizerConfigPath,
+        modelSource: fromDisk(model.modelPath),
+        tokenizerSource: fromDisk(model.tokenizerPath),
+        tokenizerConfigSource: fromDisk(model.tokenizerConfigPath),
         capabilities: model.vision ? (['vision'] as const) : undefined,
       },
       () => {},
