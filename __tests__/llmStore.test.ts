@@ -8,6 +8,7 @@ import { LLMModule } from 'react-native-executorch/legacy';
 import * as chatRepository from '../database/chatRepository';
 import type { Message } from '../database/chatRepository';
 import type { Model } from '../database/modelRepository';
+import { DEFAULT_MODELS } from '../constants/default-models';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import * as Feedback from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
@@ -2965,6 +2966,60 @@ describe('runBenchmark', () => {
 
     expect(first?.timeToFirstToken).toBeGreaterThan(0);
     expect(second?.timeToFirstToken).toBeGreaterThan(0);
+  });
+});
+
+describe('sampling a chat turn runs with after a speed test', () => {
+  const settings = { systemPrompt: 'be helpful' };
+  const qwen25: Model = {
+    ...DEFAULT_MODELS.find((model) => model.modelName === 'Qwen 2.5 - 0.5B')!,
+    id: 7,
+    isDownloaded: true,
+  };
+
+  const emulateRunnerSampling = () => {
+    const sampling: Record<string, number> = {
+      temperature: 0.8,
+      topP: 0.9,
+      minP: 0,
+      repetitionPenalty: 1,
+    };
+    mockInstance.configure.mockImplementation(
+      ({ generationConfig }: { generationConfig?: Record<string, number> }) => {
+        for (const [key, value] of Object.entries(generationConfig ?? {})) {
+          if (value !== undefined) sampling[key] = value;
+        }
+      }
+    );
+    return sampling;
+  };
+
+  const samplingOfNextTurn = async (sampling: Record<string, number>) => {
+    let seen: Record<string, number> = {};
+    mockInstance.generate.mockImplementation(async () => {
+      seen = { ...sampling };
+      return 'Bo chlorofil się rozpada.';
+    });
+    useLLMStore.setState({ activeChatId: 1, activeChatMessages: [] });
+    await useLLMStore
+      .getState()
+      .sendChatMessage('a dlaczego?', 1, noSources, settings);
+    return seen;
+  };
+
+  it('is the sampling the model chats with before any speed test', async () => {
+    const sampling = emulateRunnerSampling();
+    await useLLMStore.getState().loadModel(qwen25);
+    useLLMStore.setState({ model: qwen25 });
+    mockPersistMessage.mockResolvedValue(42);
+    const beforeSpeedTest = await samplingOfNextTurn(sampling);
+
+    mockInstance.generate.mockResolvedValue('out');
+    await useLLMStore.getState().runBenchmark();
+    const afterSpeedTest = await samplingOfNextTurn(sampling);
+
+    expect(afterSpeedTest).toEqual(beforeSpeedTest);
+    expect(afterSpeedTest.temperature).not.toBe(0.01);
   });
 });
 
