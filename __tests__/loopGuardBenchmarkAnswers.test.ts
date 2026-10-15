@@ -35,6 +35,33 @@ const mostRepeatedSentenceCount = (text: string): number => {
 const untouched = (raw: string): string =>
   mapOutsideThink(raw, normalizeModelText);
 
+describe('benchmark answers that looped in Hindi and Urdu (UW-58)', () => {
+  it.each([
+    ['hindi-danda-loop-s20fe', 'इन्टेक्स के लिए एक शीर्षक लिखिए।'],
+    ['hindi-danda-loop-iphone', 'जिन्या बिनद के लिए एक शीर्षक लिखिए।'],
+  ])(
+    'cuts %s where the sentence ending in a danda starts repeating',
+    (name, loopingSentence) => {
+      const { raw } = answerNamed(name);
+      const tidied = tidyVisibleAnswer(raw);
+      expect(raw.split(loopingSentence).length - 1).toBeGreaterThan(40);
+      expect(tidied.split(loopingSentence).length - 1).toBe(1);
+      expect(tidied.endsWith('।')).toBe(true);
+    }
+  );
+
+  it.each(['urdu-full-stop-loop', 'urdu-clause-pair-loop'])(
+    'cuts %s where the sentence ending in ۔ starts repeating',
+    (name) => {
+      const { raw } = answerNamed(name);
+      const tidied = tidyVisibleAnswer(raw);
+      expect(mostRepeatedSentenceCount(raw)).toBeGreaterThan(20);
+      expect(mostRepeatedSentenceCount(tidied)).toBeLessThanOrEqual(2);
+      expect(tidied.length).toBeLessThan(raw.length / 4);
+    }
+  );
+});
+
 describe('benchmark answers the guard used to cut without a loop', () => {
   it.each([
     ['table-labels-across-columns', '| 149,600,000 km | 384,400 km |'],

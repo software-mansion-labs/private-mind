@@ -1,8 +1,8 @@
 const MIN_CLAUSE_CHARS = 12;
-const CLAUSE_SPLIT = /(?<=[,;.\n])/;
+const CLAUSE_SPLIT = /(?<=[,;.\n،؛۔।॥，；。])/u;
 const TABLE_CELL_SEPARATOR = /\|/g;
 const ALPHANUMERIC = /[\p{L}\p{N}]/u;
-const TRAILING_PUNCTUATION = /[,;.!?]+$/;
+const TRAILING_PUNCTUATION = /[,;.!?،؛۔؟।॥，；。！？]+$/u;
 
 const normalizeClause = (clause: string): string =>
   clause.trim().replace(TRAILING_PUNCTUATION, '').toLowerCase();
@@ -41,7 +41,7 @@ const repeatedUnit = (units: Unit[], limit: number): LoopSpan | null => {
 
 const spansTableCells = (clause: string): boolean => clause.includes('|');
 
-const ENDS_SENTENCE = /[.!?\n]\s*$/u;
+const ENDS_SENTENCE = /[.!?\n।॥۔؟。！？]\s*$/u;
 
 const substantialClauses = (text: string): Clause[] => {
   const units: Clause[] = [];

@@ -286,6 +286,12 @@ describe('a clause that ends several different sentences', () => {
         '3. **स्क्रीन बंद करें**: सोने से एक घंटा पहले फोन बंद करें, जिससे नींद बेहतर होती है।',
     ],
     [
+      'Urdu',
+      '1. **وقت پر سوئیں**: ہر روز ایک ہی وقت پر سونے جائیں، جس سے نیند بہتر ہوتی ہے۔\n' +
+        '2. **کیفین سے بچیں**: شام کو چائے اور کافی نہ پئیں، جس سے نیند بہتر ہوتی ہے۔\n' +
+        '3. **اسکرین بند کریں**: سونے سے ایک گھنٹہ پہلے فون بند کریں، جس سے نیند بہتر ہوتی ہے۔',
+    ],
+    [
       'English',
       '1. **Keep a schedule**: go to bed at the same time every night, which helps you sleep better.\n' +
         '2. **Skip caffeine**: avoid coffee and tea in the evening, which helps you sleep better.\n' +
@@ -314,5 +320,30 @@ describe('markdown tables', () => {
     expect(truncateAtRepeatedClause(text)).toBe(
       '| Body | Note |\n| --- | --- |\n| Sun | really hot'
     );
+  });
+});
+
+describe('sentence marks outside the Latin script', () => {
+  it('cuts a Chinese sentence repeated after its full stop', () => {
+    const sentence = '我每天早上都会去公园散步一个小时。';
+    const text = `北京的天气很好。${sentence.repeat(4)}`;
+    expect(truncateAtRepeatedClause(text)).toBe(`北京的天气很好。${sentence}`);
+  });
+
+  it.each([
+    [
+      'Chinese',
+      '北京是中国的首都，有三千多年的历史。故宫、长城和天坛都是著名的景点。春天和秋天是最适合旅游的季节，天气温和。',
+    ],
+    [
+      'Hindi',
+      'पत्तियों का रंग शरद ऋतु में बदलता है। दिन छोटे होने पर पेड़ क्लोरोफिल बनाना बंद कर देते हैं। तब पीले और लाल रंग दिखाई देने लगते हैं।',
+    ],
+    [
+      'Urdu',
+      'زمین سورج کے گرد کشش ثقل کی وجہ سے گھومتی ہے۔ سورج کی کشش زمین کو اپنے مدار میں رکھتی ہے۔ ایک چکر تقریباً 365 دن میں پورا ہوتا ہے۔',
+    ],
+  ])('leaves loop-free %s prose alone', (_language, text) => {
+    expect(truncateAtRepeatedClause(text)).toBe(text);
   });
 });
