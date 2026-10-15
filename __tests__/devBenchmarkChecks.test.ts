@@ -16,6 +16,7 @@ import {
   checkTurnTime,
   countListItems,
   hasMarkdownTable,
+  loopIn,
   isCannedAnswer,
   loopGuardCutAnswer,
   mostRepeatedUnit,
@@ -160,6 +161,56 @@ describe('checkLoopGuardCut', () => {
     expect(checkLoopGuardCut(guardCut(sample))).toBeNull();
   });
 
+  it('stays quiet when the guard cut an echo that came back twice in a row', () => {
+    const echo = 'बनाइए। (Answer in Hindi.)';
+    expect(
+      checkLoopGuardCut(
+        guardCut({
+          prompt: 'अच्छी नींद के लिए सुझाव दीजिए',
+          raw: `अच्छी नींद के लिए सुझाव।\n\n${echo}\n\n${echo}`,
+          tidied: `अच्छी नींद के लिए सुझाव।\n\n${echo}`,
+        })
+      )
+    ).toBeNull();
+  });
+
+  it('stays quiet when the guard cut a two-copy sentence', () => {
+    const sentence = 'To pytanie pozwala na zrozumienie procesu zmian.';
+    expect(
+      checkLoopGuardCut(
+        guardCut({
+          prompt: 'dlaczego',
+          raw: `${sentence} ${sentence}`,
+          tidied: sentence,
+        })
+      )
+    ).toBeNull();
+  });
+
+  it('stays quiet when the guard cut one short word repeated four times', () => {
+    expect(
+      checkLoopGuardCut(
+        guardCut({
+          prompt: 'x',
+          raw: 'जिससे पलन पडल पडल पडल पडल होता',
+          tidied: 'जिससे पलन पडल',
+        })
+      )
+    ).toBeNull();
+  });
+
+  it('still fails a cut when nothing in the raw answer repeats', () => {
+    expect(
+      checkLoopGuardCut(
+        guardCut({
+          prompt: 'x',
+          raw: 'First distinct sentence here. Second one differs.',
+          tidied: 'First distinct sentence here.',
+        })
+      )
+    ).toMatchObject({ check: 'loop-guard-cut' });
+  });
+
   it('does not count text normalisation as a cut', () => {
     const raw = 'Ｗater boils at 100 degrees.';
     expect(loopGuardCutAnswer(raw, 'Water boils at 100 degrees.')).toBe(false);
@@ -192,6 +243,29 @@ describe('checkLoop', () => {
       'so the leaves lose the green pigment that hid the other colours.';
     const result = checkLoop(answering([long, long, long].join('\n')));
     expect(result?.actual).toMatch(/…" ×3$/);
+  });
+
+  it('does not read identical table cells as a loop', () => {
+    const cells = '149.6 million km';
+    const table =
+      '| Feature | Sun | Moon | Earth |\n| --- | --- | --- | --- |\n' +
+      `| Distance | ${cells} | ${cells} | ${cells} |`;
+    expect(checkLoop(answering(table))).toBeNull();
+    expect(loopIn(table)).toBeNull();
+  });
+
+  it('still fails a table row repeated line after line', () => {
+    const row = '| Characteristics | Sun | Moon | Earth |';
+    expect(checkLoop(answering([row, row, row].join('\n')))).toMatchObject({
+      check: 'loop',
+    });
+  });
+
+  it('still fails a phrase cycle that sits in prose next to a table', () => {
+    const prose = 'the long road home the long road home the long road home';
+    expect(
+      checkLoop(answering(`| a | b |\n| --- | --- |\n| 1 | 2 |\n\n${prose}`))
+    ).toMatchObject({ check: 'loop' });
   });
 
   it('accepts a sentence said twice', () => {
@@ -520,6 +594,26 @@ describe('checkTable', () => {
     const table = '| Body | Diameter |\n| :--- | ---: |\n| Sun | 1.39 |';
     expect(checkTable(answering(table, { turn: tableTurn }))).toBeNull();
     expect(hasMarkdownTable('a|b\n---|---\n1|2')).toBe(true);
+  });
+
+  it.each([
+    [
+      'an empty trailing separator cell',
+      '| A | B |\n| --- | --- | |\n| 1 | 2 |',
+    ],
+    ['no outer pipes', 'A | B\n--- | ---\n1 | 2'],
+    ['alignment colons', '| A | B |\n|:---|---:|\n| 1 | 2 |'],
+  ])('accepts a table with %s', (_, table) => {
+    expect(hasMarkdownTable(table)).toBe(true);
+    expect(checkTable(answering(table, { turn: tableTurn }))).toBeNull();
+  });
+
+  it.each([
+    ['a single dashed cell', '| A |\n| --- |\n| 1 |'],
+    ['a rule between paragraphs', 'one\n\n---\n\ntwo'],
+    ['dashes beside text', '| A | B |\n| --- | text |\n| 1 | 2 |'],
+  ])('does not take %s for a table', (_, text) => {
+    expect(hasMarkdownTable(text)).toBe(false);
   });
 
   it('leaves a turn without a table expectation alone', () => {

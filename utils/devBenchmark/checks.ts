@@ -69,6 +69,7 @@ export const loopGuardCutAnswer = (raw: string, tidied: string): boolean =>
   !!raw && tidied !== mapOutsideThink(raw, normalizeModelText);
 
 const REPEAT_LIMIT = 3;
+const GUARD_REPEAT_LIMIT = 2;
 const MIN_REPEATED_UNIT_CHARS = 20;
 const SENTENCE_BOUNDARY = /(?<=[.!?。！？।॥۔؟])\s+/u;
 const HAS_WORD_CHARACTER = /[\p{L}\p{N}]/u;
@@ -101,8 +102,16 @@ const MAX_CYCLE_WORDS = 12;
 const MIN_CYCLE_CHARS = 8;
 const WORD_EDGE_PUNCTUATION = /^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu;
 
-const wordsOf = (text: string): string[] =>
+const TABLE_ROW_LINE = /^\s*\|/;
+
+const withoutTableRows = (text: string): string =>
   text
+    .split('\n')
+    .filter((line) => !TABLE_ROW_LINE.test(line))
+    .join('\n');
+
+const wordsOf = (text: string): string[] =>
+  withoutTableRows(text)
     .split(/\s+/)
     .map((word) => word.replace(WORD_EDGE_PUNCTUATION, '').toLowerCase())
     .filter((word) => HAS_WORD_CHARACTER.test(word));
@@ -144,7 +153,8 @@ export const mostRepeatedWordCycle = (
 };
 
 export const loopIn = (
-  text: string
+  text: string,
+  limit = REPEAT_LIMIT
 ): { unit: string; count: number } | null => {
   const visible = visibleText(text);
   const candidates = [
@@ -153,7 +163,7 @@ export const loopIn = (
   ];
   return (
     candidates.find(
-      (candidate) => candidate !== null && candidate.count >= REPEAT_LIMIT
+      (candidate) => candidate !== null && candidate.count >= limit
     ) ?? null
   );
 };
@@ -177,8 +187,27 @@ export const checkLoop: TurnCheck = ({ raw, tidied, final }) => {
     : null;
 };
 
+const GUARD_WORD_RUN_LIMIT = 4;
+const GUARD_MIN_WORD_CHARS = 3;
+
+const hasWordRun = (text: string): boolean => {
+  let run = 0;
+  let previous = '';
+  for (const word of wordsOf(visibleText(text))) {
+    run = word === previous ? run + 1 : 1;
+    previous = word;
+    if (word.length >= GUARD_MIN_WORD_CHARS && run >= GUARD_WORD_RUN_LIMIT) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const guardHadALoopToCut = (raw: string): boolean =>
+  !!loopIn(raw, GUARD_REPEAT_LIMIT) || hasWordRun(raw);
+
 export const checkLoopGuardCut: TurnCheck = ({ raw, tidied }) =>
-  loopGuardCutAnswer(raw, tidied) && !loopIn(raw)
+  loopGuardCutAnswer(raw, tidied) && !guardHadALoopToCut(raw)
     ? finding(
         'loop-guard-cut',
         'fail',
@@ -321,12 +350,26 @@ export const checkListLength: TurnCheck = ({ final, turn }) => {
     : null;
 };
 
-const TABLE_SEPARATOR = /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/;
+const SEPARATOR_CELL = /^:?-{3,}:?$/;
+const MIN_SEPARATOR_CELLS = 2;
+
+const isTableSeparator = (line: string): boolean => {
+  if (!line.includes('|')) return false;
+  const cells = line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim());
+  const dashed = cells.filter((cell) => SEPARATOR_CELL.test(cell));
+  return (
+    dashed.length >= MIN_SEPARATOR_CELLS &&
+    cells.every((cell) => cell === '' || SEPARATOR_CELL.test(cell))
+  );
+};
 
 export const hasMarkdownTable = (text: string): boolean =>
-  visibleText(text)
-    .split('\n')
-    .some((line) => TABLE_SEPARATOR.test(line));
+  visibleText(text).split('\n').some(isTableSeparator);
 
 export const checkTable: TurnCheck = ({ final, turn }) =>
   turn.expectTable && visibleText(final) && !hasMarkdownTable(final)
