@@ -183,7 +183,7 @@ describe('attach button', () => {
 
   it('leaves the send button plain while the model loads and nothing was sent (#380)', () => {
     const onSend = jest.fn();
-    renderActions({ onSend, userInput: 'hi', modelBusy: true });
+    renderActions({ onSend, userInput: 'hi' });
 
     const send = screen.getByTestId('send-btn');
     expect(send.props.accessibilityState.busy).toBe(false);
@@ -206,19 +206,10 @@ describe('attach button', () => {
   });
 
   it('keeps the send button live once the model is ready', () => {
-    renderActions({ userInput: 'hi', modelBusy: false });
+    renderActions({ userInput: 'hi' });
     expect(screen.getByTestId('send-btn').props.accessibilityState.busy).toBe(
       false
     );
-  });
-
-  it('dims the mic while the model is busy but leaves it tappable', () => {
-    const onSpeechInput = jest.fn();
-    renderActions({ onSpeechInput, modelBusy: true });
-    const mic = screen.getByTestId('speech-btn');
-    expect(mic.props.accessibilityHint).toBe('dimmed');
-    fireEvent.press(mic);
-    expect(onSpeechInput).toHaveBeenCalled();
   });
 
   it('keeps the attachment button at full opacity when idle', () => {

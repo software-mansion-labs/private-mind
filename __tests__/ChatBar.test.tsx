@@ -192,7 +192,6 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     thinkingEnabled,
     onAttach,
     onWebSearchToggle,
-    modelBusy,
     sendPending,
     sendInFlight,
   }: {
@@ -207,12 +206,10 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     thinkingEnabled: boolean;
     onAttach: () => void;
     onWebSearchToggle?: () => void;
-    modelBusy?: boolean;
     sendPending?: boolean;
     sendInFlight?: boolean;
   }) => (
     <View testID="chat-bar-actions">
-      {modelBusy && <Text>model busy</Text>}
       {sendPending && <Text>send pending</Text>}
       {onWebSearchToggle && (
         <Pressable testID="web-search-toggle" onPress={onWebSearchToggle}>
@@ -509,10 +506,7 @@ describe('downloaded model — text input', () => {
     fireEvent.press(screen.getByTestId('send-btn'));
 
     expect(onSend).toHaveBeenCalledWith('Keep this message', undefined, []);
-    expect(Toast.show).not.toHaveBeenCalledWith({
-      type: 'defaultToast',
-      text1: 'Wait for the model to finish loading.',
-    });
+    expect(Toast.show).not.toHaveBeenCalled();
   });
 
   describe('a send that waits for the model switch to land', () => {
@@ -715,14 +709,13 @@ describe('the model the field loads on focus', () => {
 const SETTLE_ON_CI_MS = 4000;
 
 describe('speech input', () => {
-  it('shows a toast instead of opening speech input while switching models', () => {
+  it('opens dictation while switching models instead of asking to wait', async () => {
     renderBar({ modelSwitching: true });
-    fireEvent.press(screen.getByTestId('speech-btn'));
-    expect(mockAudioManager.requestRecordingPermissions).not.toHaveBeenCalled();
-    expect(Toast.show).toHaveBeenCalledWith({
-      type: 'defaultToast',
-      text1: 'Wait for the model to finish loading.',
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
     });
+    expect(screen.getByTestId('speech-input')).toBeTruthy();
+    expect(Toast.show).not.toHaveBeenCalled();
   });
 
   it('says nothing on the send button while the model merely loads (#380)', () => {
@@ -772,11 +765,13 @@ describe('speech input', () => {
     expect(screen.queryByText('send pending')).toBeNull();
   });
 
-  it('does not open speech input while the model is loading', () => {
+  it('opens dictation while the chat’s model is still starting', async () => {
     renderBar({ disabled: true });
-    fireEvent.press(screen.getByTestId('speech-btn'));
-    expect(mockAudioManager.requestRecordingPermissions).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('speech-input')).toBeNull();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+    expect(screen.getByTestId('speech-input')).toBeTruthy();
+    expect(Toast.show).not.toHaveBeenCalled();
   });
 
   it('does not open dictation while an attached document is still loading', async () => {
@@ -852,7 +847,7 @@ describe('speech input', () => {
   });
 
   it('gives a refused dictated message back to the field and says why', async () => {
-    const onSend = jest.fn(async () => 'model-loading' as const);
+    const onSend = jest.fn(async () => 'model-not-started' as const);
     renderBar({ onSend });
     await act(async () => {
       fireEvent.press(screen.getByTestId('speech-btn'));
@@ -867,7 +862,7 @@ describe('speech input', () => {
     ).toBe('voice transcript');
     expect(Toast.show).toHaveBeenCalledWith({
       type: 'defaultToast',
-      text1: 'Wait for the model to finish loading.',
+      text1: 'Could not start the model. Try again.',
     });
   });
 
@@ -1448,7 +1443,7 @@ describe('a refused send', () => {
   });
 
   it('says which of the five reasons it was, not always the busy one', async () => {
-    const onSend = jest.fn(async () => 'model-loading' as const);
+    const onSend = jest.fn(async () => 'model-not-started' as const);
     renderBar({ onSend });
     const input = screen.getByPlaceholderText('Ask about anything...');
     fireEvent.changeText(input, 'Hello');
@@ -1459,7 +1454,7 @@ describe('a refused send', () => {
 
     expect(Toast.show).toHaveBeenCalledWith({
       type: 'defaultToast',
-      text1: 'Wait for the model to finish loading.',
+      text1: 'Could not start the model. Try again.',
     });
   });
 

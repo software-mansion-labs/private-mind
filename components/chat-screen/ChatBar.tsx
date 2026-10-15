@@ -70,7 +70,7 @@ const SENT_ECHO_WINDOW_MS = 300;
 const REFUSAL_COPY: Record<SendRefusal, string | null> = {
   'nothing-to-send': 'Add a message or an attachment first.',
   'cpu-unsupported': UNSUPPORTED_CPU_REFUSAL,
-  'model-loading': 'Wait for the model to finish loading.',
+  'model-not-started': 'Could not start the model. Try again.',
   'busy': 'Wait for the response to finish or stop it first.',
   'chat-not-created': 'Could not start this chat. Try again.',
   'image-not-saved': null,
@@ -326,13 +326,6 @@ const ChatBar = ({
   const imageAttachment = attachments.find((a) => a.type === 'image');
   const hasLoadingAttachment = attachments.some((a) => a.status === 'loading');
 
-  const showModelSwitchingToast = useCallback(() => {
-    Toast.show({
-      type: 'defaultToast',
-      text1: 'Wait for the model to finish loading.',
-    });
-  }, []);
-
   const handleAttach = useCallback(() => {
     loadSelectedModel();
     panel.onPlusPress();
@@ -511,10 +504,6 @@ const ChatBar = ({
   const [showSpeechInput, setShowSpeechInput] = useState(false);
 
   const openSpeechInput = async () => {
-    if (modelSwitching || disabled) {
-      showModelSwitchingToast();
-      return;
-    }
     if (hasLoadingAttachment) {
       Toast.show({
         type: 'defaultToast',
@@ -683,7 +672,6 @@ const ChatBar = ({
               </View>
               <ChatBarActions
                 plusOut={panel.plusOut}
-                modelBusy={disabled || modelSwitching}
                 sendPending={sendPending}
                 sendInFlight={sendInFlight}
                 onAttach={handleAttach}

@@ -23,7 +23,6 @@ interface Props {
   onPress: () => void;
   busy?: boolean;
   disabled?: boolean;
-  dimmed?: boolean;
   testID?: string;
 }
 
@@ -53,7 +52,6 @@ const ComposerActionButton = ({
   onPress,
   busy = false,
   disabled = false,
-  dimmed = false,
   testID,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
@@ -88,7 +86,7 @@ const ComposerActionButton = ({
       onPress={onPress}
       style={({ pressed }) => [
         styles.circle,
-        (disabled || dimmed || pressed) && styles.dimmed,
+        (disabled || pressed) && styles.dimmed,
       ]}
       disabled={disabled}
       accessibilityState={{ disabled, busy }}

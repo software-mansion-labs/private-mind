@@ -88,7 +88,21 @@ jest.mock('../store/llmStore', () => {
     }),
     loadModel: jest.fn(async () => {}),
   };
-  const store = Object.assign(() => state, { getState: () => state });
+  type MockState = typeof state;
+  const listeners = new Set<(mockCurrent: MockState) => void>();
+  const subscribe = (listener: (mockCurrent: MockState) => void) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  };
+  const setState = (patch: Partial<MockState>) => {
+    Object.assign(state, patch);
+    listeners.forEach((listener) => listener(state));
+  };
+  const store = Object.assign(() => state, {
+    getState: () => state,
+    setState,
+    subscribe,
+  });
   return { useLLMStore: store };
 });
 
@@ -109,6 +123,8 @@ const messagesRef = {
     cancelMessageSent: jest.fn(),
   } as unknown as MessagesHandle,
 };
+
+const noSwitchInFlight = async () => undefined;
 
 const useSend = (
   chatId = 1,
@@ -131,7 +147,7 @@ const useSend = (
     isGenerating: false,
     isModelLoading: loading,
     isSwitching: !!waitForModelSwitch,
-    waitForModelSwitch,
+    waitForModelSwitch: waitForModelSwitch ?? noSwitchInFlight,
   });
 
 beforeEach(() => {
@@ -187,15 +203,34 @@ describe('sending while another turn is open', () => {
     expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
   });
 
-  it('says the model is not ready rather than blaming a response', async () => {
-    const loaded = mockedState().model;
-    mockedState().model = null;
-    try {
-      expect(await useSend(1)('hello')).toBe('model-loading');
-      expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
-    } finally {
-      mockedState().model = loaded;
-    }
+  it('starts the chat’s model and sends, instead of asking to wait for a load nobody started', async () => {
+    const state = mockedState();
+    state.model = null;
+    let finishLoad = () => {};
+    state.loadModel.mockImplementationOnce((model: Model) => {
+      (
+        useLLMStore as unknown as { setState: (patch: object) => void }
+      ).setState({ model });
+      return new Promise<void>((resolve) => {
+        finishLoad = resolve;
+      });
+    });
+
+    expect(await useSend(1)('hello')).toBe(true);
+
+    expect(state.loadModel).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1 })
+    );
+    expect(state.sendChatMessage).toHaveBeenCalled();
+    finishLoad();
+  });
+
+  it('says the model could not start when the load gives it nothing', async () => {
+    const state = mockedState();
+    state.model = null;
+
+    expect(await useSend(1)('hello')).toBe('model-not-started');
+    expect(state.sendChatMessage).not.toHaveBeenCalled();
   });
 
   it('names the processor, not a load that will never finish, on a CPU the engine cannot run', async () => {
@@ -242,29 +277,6 @@ describe('a send that lands while the model is being switched', () => {
     settle();
     expect(await sent).toBe(true);
     expect(mockedState().sendChatMessage).toHaveBeenCalled();
-  });
-
-  it('refuses only when nothing can tell it the switch is over', async () => {
-    const send = useSendChatMessage({
-      chatId: 1,
-      model: { id: 1, modelName: 'Test LLM' } as Model,
-      messageHistory: [],
-      chatSettings: {
-        systemPrompt: '',
-        thinkingEnabled: false,
-      },
-      enabledSources: [],
-      vectorStore: null,
-      embeddings: null,
-      messagesRef,
-      db: {} as SQLiteDatabase,
-      isGenerating: false,
-      isModelLoading: false,
-      isSwitching: true,
-    });
-
-    expect(await send('hello')).toBe('model-loading');
-    expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
   });
 });
 
@@ -358,6 +370,7 @@ describe('the model in the header is the one that answers', () => {
       isGenerating: false,
       isModelLoading: false,
       isSwitching: false,
+      waitForModelSwitch: noSwitchInFlight,
     });
 
   it('loads the chat’s model before sending, so a new chat does not answer with the last one', async () => {
@@ -444,6 +457,7 @@ describe('web search in a chat that has a document', () => {
       isGenerating: false,
       isModelLoading: false,
       isSwitching: false,
+      waitForModelSwitch: noSwitchInFlight,
     });
 
   const lastBuildSources = () => {
