@@ -3359,3 +3359,74 @@ describe('a welcome that answered an opening greeting (dev benchmark 15.10, base
     expect(prepared).toHaveLength(4);
   });
 });
+
+describe('a regeneration after the answer only echoed the turn (dev benchmark 15.10, LFM 2.5 VL 450M)', () => {
+  const lfmVl450m = DEFAULT_MODELS.find(
+    (model) => model.modelName === 'LFM 2.5 VL - 450M'
+  )!;
+  const lfmSettings = {
+    systemPrompt: lfmVl450m.systemPrompt,
+    thinkingEnabled: false,
+  } as ChatSettings;
+  const lfmModel = { ...baseModel, ...lfmVl450m };
+
+  const chat = (...contents: string[]): Message[] =>
+    [...contents, ''].map((content, index) => ({
+      id: index + 1,
+      chatId: 1,
+      role: index % 2 === 0 ? ('user' as const) : ('assistant' as const),
+      content,
+      timestamp: index,
+    }));
+
+  const followUp = chat(
+    'Why do leaves change colour in autumn?',
+    'Leaves change colour in autumn because chlorophyll breaks down.',
+    'a dlaczego?'
+  );
+
+  it('carries the note on the question by default, the turn the model echoed', () => {
+    const prepared = prepareMessagesForLLM(followUp, [], lfmSettings, lfmModel);
+
+    expect(prepared.at(-1)!.content).toBe('a dlaczego? (Answer in Polish.)');
+  });
+
+  it('asks again with the question as the user wrote it and the language in the system prompt only', () => {
+    const prepared = prepareMessagesForLLM(
+      followUp,
+      [],
+      lfmSettings,
+      lfmModel,
+      { languageNoteOnQuestion: false }
+    );
+
+    expect(prepared.at(-1)!.content).toBe('a dlaczego?');
+    expect(prepared[0]!.content).toContain('Write the whole answer in Polish');
+  });
+
+  it('keeps the thinking switch on the question without the note', () => {
+    const prepared = prepareMessagesForLLM(
+      followUp,
+      [],
+      lfmSettings,
+      { ...lfmModel, thinking: true },
+      { languageNoteOnQuestion: false }
+    );
+
+    expect(prepared.at(-1)!.content).toBe('a dlaczego? /no_think');
+  });
+
+  it('leaves the note out of a question asked over sources as well', () => {
+    const prepared = prepareMessagesForLLM(
+      chat('Ile kosztuje bilet?'),
+      ['Bilet normalny kosztuje 4,40 zł.'],
+      lfmSettings,
+      lfmModel,
+      { languageNoteOnQuestion: false }
+    );
+
+    expect(prepared.at(-1)!.content).not.toContain('(Answer in');
+    expect(prepared.at(-1)!.content).toContain('Ile kosztuje bilet?');
+    expect(prepared[0]!.content).toContain('Write the whole answer in Polish');
+  });
+});

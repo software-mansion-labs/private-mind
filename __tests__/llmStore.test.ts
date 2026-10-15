@@ -1463,7 +1463,7 @@ describe('sendChatMessage', () => {
     );
   });
 
-  it('spends the echo nudge, not the list nudge, when the reply is both', async () => {
+  it('spends the echo retry, not the list nudge, when the reply is both', async () => {
     mockInstance.generate
       .mockResolvedValueOnce('Co zabrać do samolotu?:')
       .mockResolvedValueOnce('Zabierz paszport, bilet i ładowarkę.');
@@ -1481,7 +1481,13 @@ describe('sendChatMessage', () => {
       role: string;
       content: string;
     }[];
-    expect(nudge.at(-1)!.content).toContain('only repeated the question back');
+    expect(prepareMessagesForLLM).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ languageNoteOnQuestion: false })
+    );
     expect(nudge.at(-1)!.content).not.toContain('ONLY the actual list items');
     expect(useLLMStore.getState().generationError).toBeNull();
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
@@ -2032,45 +2038,107 @@ describe('sendChatMessage', () => {
     );
   });
 
-  it('says plainly there is no answer instead of echoing the question back (live-found)', async () => {
-    mockInstance.generate.mockResolvedValue('co zabrać do samolotu?');
-    useLLMStore.setState({
-      model: baseModel,
-      activeChatId: 1,
-      activeChatMessages: [],
+  describe('an answer that only echoes the turn (dev benchmark 15.10, LFM 2.5 VL 450M)', () => {
+    const echoOfWhy = 'A dlaczego? (Answer in Polish.)';
+    const echoOfEarth = 'Zamani Sourge Khe Mohtia? (Answer in Urdu.)';
+    const earth = 'زمین سورج کے گرد کیوں گھومتی ہے؟';
+    const promptOf = (call: number) =>
+      mockInstance.generate.mock.calls[call]![0] as {
+        role: string;
+        content: string;
+      }[];
+
+    beforeEach(() => {
+      useLLMStore.setState({
+        model: baseModel,
+        activeChatId: 1,
+        activeChatMessages: [],
+      });
     });
 
-    await useLLMStore
-      .getState()
-      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+    it('asks again without the language note on the question and shows that answer', async () => {
+      mockInstance.generate
+        .mockResolvedValueOnce(echoOfWhy)
+        .mockResolvedValueOnce('Bo jesienią w liściach rozkłada się chlorofil.')
+        .mockResolvedValue('');
 
-    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
-    expect(useLLMStore.getState().generationError).toBeNull();
-    const shown = useLLMStore.getState().activeChatMessages.at(-1)?.content;
-    expect(shown).not.toBe('co zabrać do samolotu?');
-    expect(shown).toContain('Nie udało mi się odpowiedzieć');
-  });
+      await useLLMStore
+        .getState()
+        .sendChatMessage('a dlaczego?', 1, noSources, settings);
 
-  it('gives the no-answer line in the language of the question', async () => {
-    mockInstance.generate.mockResolvedValue('what should I pack for a flight?');
-    useLLMStore.setState({
-      model: baseModel,
-      activeChatId: 1,
-      activeChatMessages: [],
-    });
-
-    await useLLMStore
-      .getState()
-      .sendChatMessage(
-        'what should I pack for a flight?',
-        1,
-        noSources,
-        settings
+      expect(prepareMessagesForLLM).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.objectContaining({ languageNoteOnQuestion: false })
       );
+      expect(promptOf(1).map((message) => message.content)).not.toContain(
+        echoOfWhy
+      );
+      expect(useLLMStore.getState().generationError).toBeNull();
+      expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+        'Bo jesienią w liściach rozkłada się chlorofil.'
+      );
+    });
 
-    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toContain(
-      'could not answer this question'
+    it.each([
+      ['a dlaczego?', echoOfWhy],
+      [earth, echoOfEarth],
+      ['co zabrać do samolotu?', 'co zabrać do samolotu?'],
+    ])(
+      'fails the turn for %s when the second answer echoes too, instead of showing the echo',
+      async (question, echo) => {
+        mockInstance.generate.mockResolvedValue(echo);
+
+        await useLLMStore
+          .getState()
+          .sendChatMessage(question, 1, noSources, settings);
+
+        expect(mockInstance.generate).toHaveBeenCalledTimes(2);
+        expect(useLLMStore.getState().generationError).toEqual({
+          chatId: 1,
+          message: 'Failed to generate a response.',
+        });
+        expect(
+          useLLMStore
+            .getState()
+            .activeChatMessages.filter(
+              (message) => message.role === 'assistant'
+            )
+            .map((message) => message.content)
+        ).not.toContain(echo);
+        expect(mockPersistMessage).not.toHaveBeenCalledWith(
+          mockDb,
+          expect.objectContaining({ role: 'assistant', content: echo })
+        );
+      }
     );
+
+    it('says in the language of the question that the sources gave no answer, when the turn had sources', async () => {
+      mockInstance.generate.mockResolvedValue(
+        'what should I pack for a flight?'
+      );
+      const withSources = async () => ({
+        context: ['Pack a passport, a charger and a light jacket.'],
+        sourceDocuments: [],
+        preferredSourceDocuments: [],
+      });
+
+      await useLLMStore
+        .getState()
+        .sendChatMessage(
+          'what should I pack for a flight?',
+          1,
+          withSources,
+          settings
+        );
+
+      expect(useLLMStore.getState().generationError).toBeNull();
+      expect(
+        useLLMStore.getState().activeChatMessages.at(-1)?.content
+      ).toContain('could not answer this question');
+    });
   });
 
   it('fails the turn when the model produces only a think block (live-found)', async () => {

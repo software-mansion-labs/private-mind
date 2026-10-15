@@ -3,6 +3,7 @@ import { truncateAtRepeatedClause } from '../utils/loopDetection';
 import {
   isCircularNonAnswer,
   isDanglingListAnswer,
+  isEchoOnlyAnswer,
   isQuestionEchoAnswer,
 } from '../utils/messageSources';
 import { carryReferentIntoQuery } from '../utils/web/buildSearchQuery';
@@ -83,6 +84,18 @@ describe('real device answers — how often each guard fires', () => {
       isQuestionEchoAnswer(answer, question)
     );
     expect(echoed.map(({ answer }) => label(answer))).toHaveLength(8);
+  });
+
+  it('flags an echo-only answer on exactly the echoes the question guard sees', () => {
+    const echoOnly = firing(answersWithQuestions, ({ answer, question }) =>
+      isEchoOnlyAnswer(answer, question)
+    );
+    const echoed = firing(answersWithQuestions, ({ answer, question }) =>
+      isQuestionEchoAnswer(answer, question)
+    );
+    expect(echoOnly.map(({ answer }) => label(answer))).toEqual(
+      echoed.map(({ answer }) => label(answer))
+    );
   });
 
   it('lets a greeting the model returned stand instead of calling it an echo', () => {

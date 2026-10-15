@@ -12,6 +12,7 @@ import {
   joinContinuation,
   isConversationalOpener,
   isQuestionEchoAnswer,
+  isEchoOnlyAnswer,
   isWrongLanguageAnswer,
   strayedFromWelcome,
   retryDropsGroundedDetail,
@@ -1505,6 +1506,127 @@ describe('stripEchoedQuestionPrefix — the question echoed with the language no
     expect(
       stripEchoedQuestionPrefix(echo, 'زمین سورج کے گرد کیوں گھومتی ہے؟')
     ).toBe(echo);
+  });
+});
+
+describe('isEchoOnlyAnswer — the turn written back as the answer (dev benchmark 15.10)', () => {
+  const think = '<think>\n\n</think>\n\n';
+  const why = 'a dlaczego?';
+  const sleep =
+    'अच्छी नींद के लिए 7 सुझावों की सूची बनाइए। हर बिंदु के लिए एक शीर्षक लिखिए।';
+  const earth = 'زمین سورج کے گرد کیوں گھومتی ہے؟';
+
+  it.each([
+    [
+      'LFM 2.5 VL 450M, the question and the note',
+      why,
+      'A dlaczego? (Answer in Polish.)',
+    ],
+    [
+      'LFM 2.5 VL 1.6B, part of the question',
+      why,
+      'Dlaczego? (Answer in Polish.)',
+    ],
+    [
+      'Qwen 3 1.7B, the note translated',
+      why,
+      `${think}A dlaczego? (Odpowiedź w polskim.)`,
+    ],
+    [
+      'Qwen 3 1.7B, the question twice',
+      why,
+      `${think}A dlaczego?  \nA dlaczego? (Odpowiedź w polskim)`,
+    ],
+    ['the bare question', why, 'A dlaczego?'],
+    ['Qwen 3 1.7B, Hindi', sleep, `${think}${sleep} (Answer in Hindi.)`],
+    [
+      'LFM 2.5 VL 450M, Hindi reworded',
+      sleep,
+      'अच्छी नींद के लिए 7 सुझावों की सूर्यात्मक सूची बनाइए। (Answer in Hindi.)',
+    ],
+    [
+      'Bielik, Hindi and a stray word of it',
+      sleep,
+      `${sleep}\n\nबनाइए। (Answer in Hindi.)`,
+    ],
+    [
+      'LFM 2.5 VL 450M, Urdu transliterated',
+      earth,
+      'Zamani Sourge Khe Mohtia? (Answer in Urdu.)',
+    ],
+    [
+      'LFM 2.5 VL 450M, Urdu half transliterated',
+      earth,
+      'Zamani Sourg کے گرد کیوں گھومتی ہے? (Answer in Urdu.)',
+    ],
+    [
+      'Bielik, Urdu garbled',
+      earth,
+      'براه اها به سورج گرد گھومتی ہے؟ (Answer in Urdu.)',
+    ],
+    [
+      'Qwen 3 0.6B, Urdu cut short',
+      earth,
+      `${think}سورج کے گرد کیوں گھومتی ہے؟ (Answer in Urdu.)`,
+    ],
+    ['only the note', why, '(Answer in Polish.)'],
+  ])('flags %s', (_, question, answer) => {
+    expect(isEchoOnlyAnswer(answer, question)).toBe(true);
+  });
+
+  it.each([
+    [
+      'Qwen 3 1.7B, a list after the echo',
+      sleep,
+      `${think}${sleep} (Answer in Hindi.)  \n\n1. **स्वास्थ्य आहार**: अच्छा आहार नींद के लिए बेहतरीन बिंदु होता है।  \n2. **स्वास्थ्य तापमान**: नींद के लिए तापमान 18-22 डिग्री सेल्सियस रखें।`,
+    ],
+    [
+      'Qwen 2.5 1.5B, an answer after the echo',
+      why,
+      'A dlaczego? Bo w czasie zima, gdy dni są krótsze i nocy dłuższe, zmienia się intensywność światła.',
+    ],
+    [
+      'Qwen 2.5 3B, an aside and an answer',
+      why,
+      'A dlaczego? (A więc?) Odpowiedź na poinformowany sposób to, że na początku roku rośliny produkują chlorofil.',
+    ],
+    [
+      'Qwen 3 1.7B, an Urdu answer after the echo',
+      earth,
+      `${think}${earth} (Answer in Urdu.)  \n\nزمین سورج کی کشش ثقل کی وجہ سے اس کے گرد گھومتی ہے اور ایک چکر ایک سال میں پورا کرتی ہے۔`,
+    ],
+    [
+      'Qwen 3 0.6B, a table that ends with the note',
+      'Make a markdown table comparing the Sun, the Moon and Earth: diameter and distance from Earth.',
+      `${think}| **Subject** | **Diameter (in km)** | **Distance from Earth (in km)** |\n|---|---|---|\n| **Sun** | 695,100 | 150,000 |\n| **Moon** | 1,300,000 | 384,400 |\n| **Earth** | 1,700,000 | 1,496,000 | (Answer in English.)`,
+    ],
+    [
+      'Qwen 3 1.7B, a short Urdu answer after the echo',
+      earth,
+      `${think}${earth} (Answer in Urdu.)  \n\nزمین چھوٹا ہے،`,
+    ],
+    [
+      'an answer made of the question words',
+      'Is Paris the capital of France?',
+      'Paris is the capital of France.',
+    ],
+    [
+      'an answer that ends in a parenthesis',
+      'Kiedy urodził się Macron?',
+      'Macron urodził się 21 grudnia 1977 roku (we Francji).',
+    ],
+    ['a greeting returned', 'Hej, jak leci?', 'Hej, jak leci?'],
+    [
+      'an answer left inside an unclosed think block',
+      why,
+      '<think>A dlaczego?',
+    ],
+  ])('leaves %s alone', (_, question, answer) => {
+    expect(isEchoOnlyAnswer(answer, question)).toBe(false);
+  });
+
+  it('needs a question to compare against', () => {
+    expect(isEchoOnlyAnswer('A dlaczego?', undefined)).toBe(false);
   });
 });
 

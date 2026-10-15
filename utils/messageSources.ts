@@ -486,6 +486,59 @@ const TRAILING_LANGUAGE_ANCHOR =
 const endsWithEchoedLanguageAnchor = (text: string): boolean =>
   TRAILING_LANGUAGE_ANCHOR.test(text);
 
+const ECHOED_LANGUAGE_NOTE =
+  /\(\s*(?:(?:answer|response|reply)\s+in\b|in the same language)[^)]{0,80}\)/i;
+const PROMPT_TAIL = /[^\S\n]*(?:\([^()\n]{0,80}\)|\/(?:no_)?think)[^\S\n]*$/u;
+const ECHO_WORD_SHARE = 0.75;
+const REWORDED_ECHO_LETTER_ALLOWANCE = 2;
+const RESPELLED_ECHO_LETTER_ALLOWANCE = 1.25;
+
+const withoutPromptTails = (line: string): string => {
+  let rest = line.trim();
+  while (PROMPT_TAIL.test(rest)) rest = rest.replace(PROMPT_TAIL, '').trim();
+  return rest;
+};
+
+const echoWordsOf = (text: string): string[] => wordsOf(foldForMatching(text));
+
+const letterCount = (text: string): number =>
+  [...text].filter((char) => LETTER.test(char)).length;
+
+export const isEchoOnlyAnswer = (
+  answer: string,
+  question: string | undefined
+): boolean => {
+  if (!question?.trim() || isConversationalOpener(question)) return false;
+  const lines = stripThinkBlocks(answer)
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return false;
+
+  const asked = echoWordsOf(question);
+  const askedWords = new Set(asked);
+  const bodies = lines.map(withoutPromptTails).filter(Boolean);
+  const repeatsQuestion = (body: string): boolean =>
+    echoWordsOf(body).join(' ') === asked.join(' ');
+  if (bodies.length > 0 && bodies.every(repeatsQuestion)) return true;
+
+  if (!lines.some((line) => ECHOED_LANGUAGE_NOTE.test(line))) return false;
+  const reusesQuestionWords = (body: string): boolean => {
+    const written = echoWordsOf(body);
+    const reused = written.filter((word) => askedWords.has(word)).length;
+    return written.length > 0 && reused / written.length >= ECHO_WORD_SHARE;
+  };
+  const written = letterCount(bodies.join(' '));
+  const askedLetters = letterCount(question);
+  const rewordsQuestion =
+    bodies.every(reusesQuestionWords) &&
+    written <= askedLetters * REWORDED_ECHO_LETTER_ALLOWANCE;
+  const respellsQuestion =
+    bodies.length === 1 &&
+    written <= askedLetters * RESPELLED_ECHO_LETTER_ALLOWANCE;
+  return rewordsQuestion || respellsQuestion;
+};
+
 export const strayedFromWelcome = (
   answer: string,
   welcome: string
