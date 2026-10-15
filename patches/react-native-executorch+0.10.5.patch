@@ -1,0 +1,42 @@
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/sampler.h b/node_modules/react-native-executorch/legacy/cpp/runner/sampler.h
+index 3bed466..7bde0f2 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/sampler.h
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/sampler.h
+@@ -45,6 +45,8 @@ struct ProbIndex {
+     int32_t index;
+ }; // struct used when sorting probabilities during top-p sampling
+ 
++inline constexpr size_t kRepetitionPenaltyWindow = 64;
++
+ class Sampler {
+ public:
+     // topk <= 0 disables top-k filtering. topp <= 0 || topp >= 1 disables top-p.
+@@ -88,7 +90,14 @@ private:
+                              const std::vector<uint64_t> &recent_tokens) {
+         if (repetition_penalty_ == 1.0f || recent_tokens.empty())
+             return;
+-        for (uint64_t id : recent_tokens) {
++        const size_t window =
++            std::min(recent_tokens.size(), kRepetitionPenaltyWindow);
++        std::vector<uint64_t> penalized(recent_tokens.end() - window,
++                                        recent_tokens.end());
++        std::sort(penalized.begin(), penalized.end());
++        penalized.erase(std::unique(penalized.begin(), penalized.end()),
++                        penalized.end());
++        for (uint64_t id : penalized) {
+             if (!std::cmp_less(id, vocab_size)) {
+                 continue;
+             }
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h b/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
+index 6c68441..5c961f0 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
+@@ -90,7 +90,7 @@ public:
+         auto tokens_managed = from_blob(token_data.data(), token_shape,
+                                         executorch::aten::ScalarType::Long);
+ 
+-        std::vector<uint64_t> generated_tokens(tokens.begin(), tokens.end());
++        std::vector<uint64_t> generated_tokens(tokens.end() - 1, tokens.end());
+         should_stop_ = false;
+         timestamp_ = std::chrono::high_resolution_clock::now();
+ 
