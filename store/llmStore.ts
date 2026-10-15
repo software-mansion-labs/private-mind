@@ -61,6 +61,7 @@ import {
   truncateAtRepeatedClause,
 } from '../utils/loopDetection';
 import {
+  answerOpensNextTurn,
   answerRunsAwayInLoop,
   tidyVisibleAnswer,
 } from '../utils/visibleAnswer';
@@ -235,7 +236,12 @@ const loopWatchCaughtRunaway = (token: string): boolean => {
   loopWatch.streamed += token;
   loopWatch.tokens += 1;
   if (loopWatch.tokens % LOOP_CHECK_EVERY_TOKENS !== 0) return false;
-  if (!answerRunsAwayInLoop(loopWatch.streamed)) return false;
+  if (
+    !answerRunsAwayInLoop(loopWatch.streamed) &&
+    !answerOpensNextTurn(loopWatch.streamed)
+  ) {
+    return false;
+  }
   loopWatch = null;
   return true;
 };
