@@ -1446,6 +1446,68 @@ describe('stripEchoedQuestionPrefix — the model restating the question first',
   });
 });
 
+describe('stripEchoedQuestionPrefix — the question echoed with the language note (dev benchmark 15.10, Qwen 3 - 1.7B)', () => {
+  const think = '<think>\n\n</think>\n\n';
+
+  it('drops a Hindi question and its "(Answer in Hindi.)" note', () => {
+    const question =
+      'अच्छी नींद के लिए 7 सुझावों की सूची बनाइए। हर बिंदु के लिए एक शीर्षक लिखिए।';
+    const list =
+      '1. **स्वास्थ्य आहार रखें**  \n2. **संवेदनशील आहार रखें**  \n3. **अधिक समय आहार करें**';
+    expect(
+      stripEchoedQuestionPrefix(
+        `${think}${question} (Answer in Hindi.)  \n\n${list}`,
+        question
+      )
+    ).toBe(`${think}${list}`);
+  });
+
+  it('drops an Urdu question and its note, though Urdu has no capital letters', () => {
+    const question = 'زمین سورج کے گرد کیوں گھومتی ہے؟';
+    expect(
+      stripEchoedQuestionPrefix(
+        `${think}${question} (Answer in Urdu.)  \n\nزمین چھوٹا ہے،`,
+        question
+      )
+    ).toBe(`${think}زمین چھوٹا ہے،`);
+  });
+
+  it('drops a note the model translated into the language of the question', () => {
+    const answer =
+      'Wiosna zaczyna się od krótszych dni i mniejszej ilości światła słońca.';
+    expect(
+      stripEchoedQuestionPrefix(
+        `${think}A dlaczego? (Odpowiedź w polskim.)  \n\n${answer}`,
+        'a dlaczego?'
+      )
+    ).toBe(`${think}${answer}`);
+  });
+
+  it('drops the question when the model echoes it twice', () => {
+    const answer =
+      'Wiosna to okres, kiedy drzewa zatrzymują produkcję pigmentu.';
+    expect(
+      stripEchoedQuestionPrefix(
+        `${think}A dlaczego? (Odpowiedź w polskim.)  \n\nA dlaczego?  \n${answer}`,
+        'a dlaczego?'
+      )
+    ).toBe(`${think}${answer}`);
+  });
+
+  it('keeps a parenthesis that carries on the same line as the answer', () => {
+    const answer =
+      'What is DNA (deoxyribonucleic acid)? It carries genetic information.';
+    expect(stripEchoedQuestionPrefix(answer, 'What is DNA')).toBe(answer);
+  });
+
+  it('keeps an answer that is only the echo and its note, so the echo guard still sees it', () => {
+    const echo = 'زمین سورج کے گرد کیوں گھومتی ہے؟ (Answer in Urdu.)';
+    expect(
+      stripEchoedQuestionPrefix(echo, 'زمین سورج کے گرد کیوں گھومتی ہے؟')
+    ).toBe(echo);
+  });
+});
+
 describe('isCircularNonAnswer — an answer that only talks about its sources', () => {
   it('flags a reply that keeps pointing at the sources without naming one', () => {
     expect(
