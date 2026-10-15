@@ -54,6 +54,7 @@ export interface TurnAttempt {
   raw: string;
   tidied: string;
   final: string;
+  traceFinal?: string;
   retries: AnswerRetry[];
   generationError: string | null;
   timings: TurnTimings;
