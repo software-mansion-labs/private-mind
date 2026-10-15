@@ -1,6 +1,7 @@
 import { OPENING_WELCOMES } from '../constants/opening-greetings';
 import {
   isCircularNonAnswer,
+  stripEchoedLanguageNotes,
   stripEchoedQuestionPrefix,
   assembleSourceDocuments,
   buildMessageSources,
@@ -2097,6 +2098,39 @@ describe('joinContinuation', () => {
   it('returns the base when the continuation adds nothing', () => {
     expect(joinContinuation('Lista:\n1. Pierwsza.', '1. Pierwsza.')).toBe(
       'Lista:\n1. Pierwsza.'
+    );
+  });
+});
+
+describe('stripEchoedLanguageNotes (dev benchmark 15.10, LFM 2.5 VL 450M)', () => {
+  it.each([
+    [
+      'Leaves change colour in autumn because chlorophyll breaks down (Answer in English).',
+      'Leaves change colour in autumn because chlorophyll breaks down.',
+    ],
+    [
+      'Liście zmieniają kolor, bo rozkłada się chlorofil. (Answer in Polish.)',
+      'Liście zmieniają kolor, bo rozkłada się chlorofil.',
+    ],
+    [
+      '| Body | Diameter |\n|---|---|\n| Moon | 3,474 km |\n\nAnswer in English',
+      '| Body | Diameter |\n|---|---|\n| Moon | 3,474 km |',
+    ],
+  ])('drops the language note the model copied into %j', (answer, expected) => {
+    expect(stripEchoedLanguageNotes(answer)).toBe(expected);
+  });
+
+  it.each([
+    'You can reply in kind (respond in a calm tone) when someone is rude.',
+    'Write the letter (answer in full sentences, please).',
+    'In the exam, answer in English or in German.',
+  ])('leaves ordinary prose alone: %j', (answer) => {
+    expect(stripEchoedLanguageNotes(answer)).toBe(answer);
+  });
+
+  it('keeps an answer that is nothing but the note rather than blanking it', () => {
+    expect(stripEchoedLanguageNotes('(Answer in Polish.)')).toBe(
+      '(Answer in Polish.)'
     );
   });
 });

@@ -51,6 +51,7 @@ import {
   isWrongLanguageAnswer,
   strayedFromWelcome,
   retryDropsGroundedDetail,
+  stripEchoedLanguageNotes,
   stripEchoedQuestionPrefix,
   stripSourceLabels,
   pickCitationsByAnswer,
@@ -82,6 +83,8 @@ import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
 import { cpuLacksLseAtomics } from '../utils/cpuSupport';
 import { UNSUPPORTED_CPU_REFUSAL } from '../constants/cpu-support';
+import { ECHO_FALLBACK } from '../constants/echo-fallback';
+import type { WelcomeLanguage } from '../constants/opening-greetings';
 
 export interface LLMStore {
   isLoading: boolean;
@@ -700,6 +703,13 @@ const CIRCULAR_ANSWER_RETRY_PROMPT =
 const noAnswerFallback = (question: string | undefined): string => {
   const code = detectQuestionLanguage(question ?? '')?.code ?? 'en';
   return NO_ANSWER_FALLBACK[code] ?? NO_ANSWER_FALLBACK.en!;
+};
+
+const echoFallback = (question: string | undefined): string => {
+  const code = detectQuestionLanguage(question ?? '')?.code;
+  return code && code in ECHO_FALLBACK
+    ? ECHO_FALLBACK[code as WelcomeLanguage]
+    : ECHO_FALLBACK.en;
 };
 
 const EVIDENCE_PRESENT_RETRY_PROMPT =
@@ -1582,7 +1592,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         if (finalResponse && isEchoOnlyAnswer(finalResponse, currentQuestion)) {
           finalResponse = turnHadSources
             ? noAnswerFallback(currentQuestion)
-            : '';
+            : echoFallback(currentQuestion);
           loopGuardTrimmed = false;
         }
       }
@@ -1759,7 +1769,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           stripSourceLabels(
             openingWelcome
               ? finalResponse
-              : stripEchoedQuestionPrefix(finalResponse, currentQuestion)
+              : stripEchoedLanguageNotes(
+                  stripEchoedQuestionPrefix(finalResponse, currentQuestion)
+                )
           ),
           sourceDocuments ?? []
         );

@@ -351,6 +351,18 @@ export const stripEchoedQuestionPrefix = (
   return startsLikeSentence(cleaned) ? `${head}${cleaned}` : answer;
 };
 
+const LANGUAGE_NOTE_IN_ANSWER =
+  /[^\S\n]*\(\s*(?:[Aa]nswer|[Rr]espon(?:d|se)|[Rr]eply)\s+in\s+\p{Lu}\p{Ll}+\.?\s*\)/gu;
+const LANGUAGE_NOTE_AT_END =
+  /[^\S\n]*\(?\s*(?:[Aa]nswer|[Rr]espon(?:d|se)|[Rr]eply)\s+in\s+\p{Lu}\p{Ll}+\.?\s*\)?\s*$/u;
+
+export const stripEchoedLanguageNotes = (answer: string): string => {
+  const stripped = answer
+    .replace(LANGUAGE_NOTE_IN_ANSWER, '')
+    .replace(LANGUAGE_NOTE_AT_END, '');
+  return stripped.trim() ? stripped.trimEnd() : answer;
+};
+
 const DANGLING_LIST_INTRO = /[:：]\s*$/;
 const DANGLING_LIST_MARKER_ONLY = /^\s*(?:\d+[.)]|[-*•])\s*$/;
 
