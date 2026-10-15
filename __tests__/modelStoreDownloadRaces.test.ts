@@ -49,10 +49,9 @@ const settleWhileReleasing = async (work: Promise<unknown>) => {
   await finished;
 };
 
-const failureToast = {
-  type: 'defaultToast',
-  text1: 'The model could not be downloaded',
-};
+const failureToast = expect.objectContaining({
+  text1: expect.stringMatching(/could not be downloaded|interrupted/),
+});
 
 beforeEach(() => {
   useModelStore.setState({

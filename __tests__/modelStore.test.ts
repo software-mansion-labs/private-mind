@@ -107,7 +107,8 @@ describe('downloadModel', () => {
     expect(state.progress).toBe(0);
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({
-        text1: expect.stringContaining('could not be downloaded'),
+        text1: 'Test Model could not be downloaded.',
+        props: { onRetry: expect.any(Function) },
       })
     );
   });

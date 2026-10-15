@@ -252,6 +252,11 @@ async function deleteRemoteResources(...sources: string[]) {
   }
 }
 
+const retryDownload = (model: Model) => {
+  const { getModelById, downloadModel } = useModelStore.getState();
+  return downloadModel(getModelById(model.id) ?? model);
+};
+
 const runDownload = async (model: Model, attempt: DownloadAttempt) => {
   const isCurrent = () =>
     attempts.get(model.id) === attempt && !attempt.cancelled;
@@ -297,6 +302,8 @@ const runDownload = async (model: Model, attempt: DownloadAttempt) => {
       }
     };
 
+    let filesOnDisk = 0;
+
     try {
       attempt.fetching = true;
       const sources = sourcesOf(model);
@@ -312,6 +319,7 @@ const runDownload = async (model: Model, attempt: DownloadAttempt) => {
         );
         if (!fetched) break;
         completed += weight;
+        filesOnDisk += 1;
       }
 
       if (!isCurrent()) {
@@ -358,7 +366,11 @@ const runDownload = async (model: Model, attempt: DownloadAttempt) => {
       console.error('Failed:', err);
       Toast.show({
         type: 'defaultToast',
-        text1: 'The model could not be downloaded',
+        text1:
+          filesOnDisk > 0
+            ? `${model.modelName} download was interrupted. Downloaded files are kept.`
+            : `${model.modelName} could not be downloaded.`,
+        props: { onRetry: () => retryDownload(model) },
       });
     }
   } finally {

@@ -228,3 +228,43 @@ describe('progress of a model fetched file by file', () => {
     expect(progress(small)).toBe(1);
   });
 });
+
+describe('a download that stops after some of its files landed', () => {
+  const lastToast = () =>
+    (Toast.show as jest.Mock).mock.calls.at(-1)?.[0] as {
+      text1: string;
+      props?: { onRetry?: () => Promise<void> };
+    };
+
+  const failOnTokenizer = async () => {
+    const started = download(small);
+    await settle();
+    await fetcher.finish(small.modelPath);
+    await settle();
+    await fetcher.fail(tokenizer, new Error('network connection was lost'));
+    await started;
+  };
+
+  it('says the downloaded files are kept and offers a retry', async () => {
+    await failOnTokenizer();
+
+    expect(status(small)).toBe(ModelState.NotStarted);
+    expect(fetcher.isOnDisk(small.modelPath)).toBe(true);
+    expect(lastToast().text1).toBe(
+      'Qwen 3 - 0.6B download was interrupted. Downloaded files are kept.'
+    );
+    expect(lastToast().props?.onRetry).toEqual(expect.any(Function));
+  });
+
+  it('retries from the toast without fetching the model file again', async () => {
+    await failOnTokenizer();
+
+    const retrying = lastToast().props!.onRetry!();
+    await fetcher.finishEverything();
+    await retrying;
+
+    expect(status(small)).toBe(ModelState.Downloaded);
+    expect(fetcher.timesDownloaded(small.modelPath)).toBe(1);
+    expect(fetcher.timesDownloaded(tokenizer)).toBe(2);
+  });
+});
