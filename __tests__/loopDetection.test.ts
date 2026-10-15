@@ -380,4 +380,87 @@ describe('hasRunawayLoop', () => {
       'Brown is what is left when both are gone.';
     expect(hasRunawayLoop(text)).toBe(false);
   });
+
+  it('still sees a glued loop at the end of a long answer', () => {
+    const prose = Array.from(
+      { length: 80 },
+      (_, i) => `Point ${i + 1} adds something new.`
+    ).join(' ');
+    expect(prose.length).toBeGreaterThan(2048);
+    expect(truncateAtRepeatedClause(prose)).toBe(prose);
+    expect(hasRunawayLoop(`${prose} हे${'करा'.repeat(10)}`)).toBe(false);
+    expect(hasRunawayLoop(`${prose} हे${'करा'.repeat(40)}`)).toBe(true);
+  });
+});
+
+describe('a short unit repeated with no space between its copies', () => {
+  it.each([
+    [
+      'Devanagari',
+      `सोने से पहले हेकरा${'करा'.repeat(30)}`,
+      'सोने से पहले हेकरा',
+    ],
+    ['Chinese', `答案是${'我们'.repeat(20)}`, '答案是我们'],
+    ['Thai', `สวัสดี${'ครับ'.repeat(12)}`, 'สวัสดีครับ'],
+    ['Latin', `Okay ${'ha'.repeat(40)}`, 'Okay ha'],
+  ])('cuts a %s loop after its first copy', (_script, text, kept) => {
+    expect(truncateAtRepeatedClause(text)).toBe(kept);
+  });
+
+  it('cuts a two-word loop whose words are too short for the phrase check', () => {
+    const text = `1. नींद नाता दूर ${'न तू '.repeat(30)}`;
+    expect(truncateAtRepeatedClause(text)).toBe('1. नींद नाता दूर न तू');
+  });
+
+  it('ends the cut where the next copy starts a sentence', () => {
+    const text = `زمین چھوٹا ہے، ${'یہ چھوٹا ہے یا گھٹا ہے؟ '.repeat(6)}`;
+    expect(truncateAtRepeatedClause(text)).toBe(
+      'زمین چھوٹا ہے، یہ چھوٹا ہے یا گھٹا ہے؟'
+    );
+  });
+
+  it('counts a consonant and its vowel sign as one letter', () => {
+    const text = `नमस्ते ${'कि'.repeat(40)}`;
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+    expect(truncateAtRepeatedClause(`नमस्ते ${'किता'.repeat(20)}`)).toBe(
+      'नमस्ते किता'
+    );
+  });
+
+  it.each([
+    ['two letters', 'ha', 16],
+    ['one letter', 'x', 64],
+    ['a symbol', '-', 256],
+  ])('waits until %s has filled its run', (_unit, unit, copies) => {
+    const short = `Notes: ${unit.repeat(copies - 1)}`;
+    expect(truncateAtRepeatedClause(short)).toBe(short);
+    expect(truncateAtRepeatedClause(`Notes: ${unit.repeat(copies)}`)).toBe(
+      `Notes: ${unit}`
+    );
+  });
+
+  it.each([
+    'ॐॐॐ शान्तिः शान्तिः शान्तिः',
+    'Wow!!!!!!!!!!!! That is great.',
+    `Loading${'.'.repeat(40)} done`,
+    `Intro\n\n${'-'.repeat(80)}\n\nOutro`,
+    `Title\n${'='.repeat(80)}\nBody text.`,
+    `| ${'Col | '.repeat(12)}\n${'|---'.repeat(12)}|\n| ${'Yes | '.repeat(12)}`,
+    `|${'Yes|'.repeat(12)}`,
+    '🎉🎉🎉🎉🎉🎉 Congratulations! 👨‍👩‍👧👨‍👩‍👧👨‍👩‍👧',
+    'Card: 1111111111111111',
+    `Binary: ${'10'.repeat(30)}`,
+    'hahahahaha, that was funny',
+    '哈哈哈哈哈哈，太好笑了。',
+    'ｗｗｗｗｗｗｗｗｗｗ',
+    '555555 ตลกมาก',
+    `OPENAI_API_KEY=sk-${'x'.repeat(48)}`,
+    'Gooooooooooooooooooal!',
+    '高高兴兴地回家。研究研究再说。',
+    'धीरे-धीरे चलो, बार-बार अभ्यास करो।',
+    'どんどん良くなる。いろいろありがとう。',
+  ])('leaves %s alone', (text) => {
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+    expect(hasRunawayLoop(text)).toBe(false);
+  });
 });

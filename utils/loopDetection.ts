@@ -233,6 +233,114 @@ const findRepeatedPhraseRun = (text: string): LoopSpan | null => {
   return earliest;
 };
 
+const GRAPHEME = /\P{M}\p{M}*(?:\u200D\P{M}\p{M}*)*/gu;
+const WHITESPACE_GRAPHEME = /^\s/u;
+const SENTENCE_END_GRAPHEME = /^[.!?\n।॥۔؟。！？]/u;
+const TABLE_PIPE = '|';
+const MAX_TANDEM_UNIT_GRAPHEMES = 48;
+const MIN_TANDEM_REPEATS = 4;
+const MIN_WORDY_RUN_GRAPHEMES = 32;
+const MIN_SINGLE_LETTER_RUN_GRAPHEMES = 64;
+const MIN_SYMBOL_RUN_GRAPHEMES = 256;
+
+type Graphemes = { ids: number[]; starts: number[]; texts: string[] };
+
+const SPACE_ID = 0;
+
+const splitGraphemes = (text: string, from: number): Graphemes => {
+  const idOf = new Map<string, number>();
+  const graphemes: Graphemes = { ids: [], starts: [], texts: [] };
+  for (const match of text.slice(from).matchAll(GRAPHEME)) {
+    const grapheme = match[0];
+    let id = WHITESPACE_GRAPHEME.test(grapheme) ? SPACE_ID : idOf.get(grapheme);
+    if (id === undefined) {
+      id = idOf.size + 1;
+      idOf.set(grapheme, id);
+    }
+    graphemes.ids.push(id);
+    graphemes.starts.push(from + match.index!);
+    graphemes.texts.push(grapheme);
+  }
+  return graphemes;
+};
+
+const isPrimitiveUnit = (ids: number[], start: number, length: number) => {
+  for (let shorter = 1; shorter < length; shorter++) {
+    if (length % shorter !== 0) continue;
+    let repeatsShorter = true;
+    for (let k = shorter; k < length; k++) {
+      if (ids[start + k] !== ids[start + k - shorter]) {
+        repeatsShorter = false;
+        break;
+      }
+    }
+    if (repeatsShorter) return false;
+  }
+  return true;
+};
+
+const shortestLoopRun = (unit: number) =>
+  Math.max(MIN_WORDY_RUN_GRAPHEMES, MIN_TANDEM_REPEATS * unit);
+
+const minRunGraphemes = (g: Graphemes, start: number, length: number) => {
+  const unit = g.texts.slice(start, start + length).join('');
+  if (unit.includes(TABLE_PIPE) || !LETTER.test(unit)) {
+    return MIN_SYMBOL_RUN_GRAPHEMES;
+  }
+  if (length === 1) return MIN_SINGLE_LETTER_RUN_GRAPHEMES;
+  return shortestLoopRun(length);
+};
+
+const isSpace = (g: Graphemes, index: number) => g.ids[index] === SPACE_ID;
+
+const followsSentenceEnd = (g: Graphemes, index: number): boolean => {
+  let k = index - 1;
+  while (k >= 0 && isSpace(g, k)) k--;
+  return k >= 0 && SENTENCE_END_GRAPHEME.test(g.texts[k]!);
+};
+
+const secondCopyStart = (g: Graphemes, runStart: number, unit: number) => {
+  let wordStart: number | null = null;
+  for (let k = runStart + unit; k < runStart + 2 * unit; k++) {
+    if (isSpace(g, k)) continue;
+    if (followsSentenceEnd(g, k)) return k;
+    if (isSpace(g, k - 1)) wordStart ??= k;
+  }
+  return wordStart ?? runStart + unit;
+};
+
+const findTandemUnitRun = (text: string, from: number): LoopSpan | null => {
+  const g = splitGraphemes(text, from);
+  const count = g.ids.length;
+  let earliest: LoopSpan | null = null;
+  for (let unit = 1; unit <= MAX_TANDEM_UNIT_GRAPHEMES; unit++) {
+    const shortest = shortestLoopRun(unit);
+    let matched = 0;
+    let needed: number | null = null;
+    for (let j = 0; j + unit < count; j++) {
+      if (g.ids[j] !== g.ids[j + unit]) {
+        matched = 0;
+        needed = null;
+        continue;
+      }
+      matched++;
+      if (matched + unit < shortest) continue;
+      const runStart = j - matched + 1;
+      needed ??= isPrimitiveUnit(g.ids, runStart, unit)
+        ? minRunGraphemes(g, runStart, unit)
+        : Infinity;
+      if (matched + unit < needed) continue;
+      const span = {
+        first: g.starts[runStart]!,
+        repeat: g.starts[secondCopyStart(g, runStart, unit)]!,
+      };
+      if (earliest === null || span.repeat < earliest.repeat) earliest = span;
+      break;
+    }
+  }
+  return earliest;
+};
+
 const SALVAGE_UNIT = /[^.!?\n。！？।॥۔؟]+(?:[.!?\n。！？।॥۔؟]+|$)/;
 
 const salvageFirstUnit = (text: string): string => {
@@ -241,12 +349,13 @@ const salvageFirstUnit = (text: string): string => {
   return text.trim();
 };
 
-const loopSpans = (text: string): LoopSpan[] =>
+const loopSpans = (text: string, tandemFrom = 0): LoopSpan[] =>
   [
     ...findRepeatedClauseSpans(text),
     ...findRepeatedLineSpans(text),
     findRepeatedWordRun(text),
     findRepeatedPhraseRun(text),
+    findTandemUnitRun(text, tandemFrom),
   ].filter((span): span is LoopSpan => span !== null);
 
 export const isRepetitionFromTheStart = (text: string): boolean => {
@@ -255,6 +364,7 @@ export const isRepetitionFromTheStart = (text: string): boolean => {
 };
 
 const MIN_RUNAWAY_TAIL_CHARS = 64;
+const RUNAWAY_TANDEM_SCAN_CHARS = 2048;
 const RUNAWAY_TAIL_PERIODS = 2;
 
 const runsAway = (span: LoopSpan, textLength: number): boolean =>
@@ -265,7 +375,9 @@ const runsAway = (span: LoopSpan, textLength: number): boolean =>
   );
 
 export const hasRunawayLoop = (text: string): boolean =>
-  loopSpans(text).some((span) => runsAway(span, text.length));
+  loopSpans(text, Math.max(0, text.length - RUNAWAY_TANDEM_SCAN_CHARS)).some(
+    (span) => runsAway(span, text.length)
+  );
 
 export const truncateAtRepeatedClause = (text: string): string => {
   const spans = loopSpans(text);
