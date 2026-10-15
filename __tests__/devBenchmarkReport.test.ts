@@ -3,11 +3,17 @@ import {
   copyForAiMarkdown,
   failedTurnRecords,
   failedTurnSentence,
+  closeAbandonedReports,
+  closeRun,
+  isModelTested,
   loadSavedRuns,
+  loadSavedReports,
   modelIssues,
   passedTurnCount,
   regressionSentence,
   reportFileName,
+  resumableReport,
+  runStatusOf,
   saveRunReport,
 } from '../utils/devBenchmark/report';
 import type {
@@ -17,6 +23,7 @@ import type {
   TurnAttempt,
   TurnResult,
 } from '../utils/devBenchmark/types';
+import { OPENING_WELCOMES } from '../constants/opening-greetings';
 import { readDir, writtenFiles } from '../__mocks__/react-native-fs';
 
 const loopFinding: CheckFinding = {
@@ -163,6 +170,7 @@ describe('failedTurnRecords', () => {
       prompt: { systemChars: 1200, historyTurns: 2, lastUser: 'question 2' },
       timings: { ttftMs: 500, tokPerS: 20, turnMs: 10_000 },
       retriedOnce: true,
+      canned: false,
       passedOnRetry: false,
     });
   });
@@ -462,10 +470,13 @@ describe('copyForAiMarkdown', () => {
   });
 
   it('leaves out the empty sections and says when a run did not finish', () => {
-    const markdown = copyForAiMarkdown(run({ finishedAt: undefined }), []);
-    expect(markdown).toContain('not finished');
+    const markdown = copyForAiMarkdown(
+      run({ finishedAt: undefined, status: 'stopped', models: [model()] }),
+      []
+    );
+    expect(markdown).toContain('status stopped');
     expect(markdown).toContain('## Failed turns (0)');
-    expect(markdown).not.toContain('## Models not tested or stopped');
+    expect(markdown).toContain('not finished: 2 of 6 turns tested');
     expect(markdown).not.toContain('## Slower');
   });
 });
@@ -514,5 +525,222 @@ describe('saved runs', () => {
     readDir.mockRejectedValueOnce(new Error('ENOENT'));
 
     expect(await loadSavedRuns()).toEqual([]);
+  });
+});
+
+const cannedAttempt = (tokPerS: number) =>
+  attempt({
+    final: OPENING_WELCOMES.pl,
+    timings: { ttftMs: 0, tokPerS, turnMs: 140 },
+    canned: tokPerS === 0,
+  });
+
+const modelWithTurns = (count: number, overrides: Partial<ModelResult> = {}) =>
+  model({
+    scenarios: [
+      {
+        scenarioId: 'base-chat',
+        title: 'Base chat',
+        verdict: 'pass',
+        turns: Array.from({ length: count }, (_, index) => turn(index)),
+      },
+    ],
+    ...overrides,
+  });
+
+describe('canned turns in the speed comparison', () => {
+  it('does not report a canned greeting as a speed regression', () => {
+    const previous = run({
+      startedAt: '2026-10-01T10:00:00.000Z',
+      models: [
+        model({
+          scenarios: [
+            {
+              scenarioId: 'base-chat',
+              title: 'Base chat',
+              verdict: 'pass',
+              turns: [turn(0), turn(1)],
+            },
+          ],
+        }),
+      ],
+    });
+    const current = run({
+      models: [
+        model({
+          scenarios: [
+            {
+              scenarioId: 'base-chat',
+              title: 'Base chat',
+              verdict: 'pass',
+              turns: [turn(0, { attempts: [cannedAttempt(0)] }), turn(1)],
+            },
+          ],
+        }),
+      ],
+    });
+
+    expect(compareWithPreviousRuns(current, [previous])).toEqual([]);
+  });
+
+  it('labels the canned turn in the failed turn record', () => {
+    const records = failedTurnRecords(
+      run({
+        models: [
+          model({
+            scenarios: [
+              {
+                scenarioId: 'base-chat',
+                title: 'Base chat',
+                verdict: 'warn',
+                turns: [
+                  turn(0, {
+                    verdict: 'warn',
+                    attempts: [
+                      {
+                        ...cannedAttempt(0),
+                        findings: [retryFinding],
+                      },
+                    ],
+                  }),
+                ],
+              },
+            ],
+          }),
+        ],
+      })
+    );
+
+    expect(records[0]!.canned).toBe(true);
+  });
+});
+
+describe('run status', () => {
+  it('reads the status of a report from before statuses existed', () => {
+    expect(runStatusOf(run())).toBe('finished');
+    expect(runStatusOf(run({ finishedAt: undefined }))).toBe('interrupted');
+    expect(runStatusOf(run({ status: 'stopped' }))).toBe('stopped');
+  });
+
+  it('counts a model as tested only when every turn ran, or it failed to load', () => {
+    expect(isModelTested(modelWithTurns(6))).toBe(true);
+    expect(isModelTested(modelWithTurns(3))).toBe(false);
+    expect(isModelTested(model({ scenarios: [] }))).toBe(false);
+    expect(
+      isModelTested(model({ scenarios: [], loadError: 'did not load' }))
+    ).toBe(true);
+    expect(isModelTested(modelWithTurns(0, { skippedReason: 'offline' }))).toBe(
+      false
+    );
+  });
+
+  it('closes a run as finished with a finish time', () => {
+    const finished = run({ status: 'running', finishedAt: undefined });
+    closeRun(finished, 'finished');
+    expect(finished.status).toBe('finished');
+    expect(finished.finishedAt).toBeDefined();
+  });
+
+  it('closes an unfinished run without a finish time and downgrades the model it cut short', () => {
+    const cut = run({
+      status: 'running',
+      models: [modelWithTurns(6), modelWithTurns(3, { modelId: 2 })],
+    });
+    closeRun(cut, 'interrupted');
+
+    expect(cut.status).toBe('interrupted');
+    expect(cut.finishedAt).toBeUndefined();
+    expect(cut.models.map((item) => item.verdict)).toEqual(['pass', 'warn']);
+    expect(modelIssues(cut)).toEqual([
+      {
+        model: 'Qwen 3 0.6B',
+        severity: 'warn',
+        summary: 'not finished: 3 of 6 turns tested',
+      },
+    ]);
+  });
+
+  it('does not call a model unfinished while its run is still going', () => {
+    expect(
+      modelIssues(run({ status: 'running', models: [modelWithTurns(3)] }))
+    ).toEqual([]);
+  });
+});
+
+describe('reports left behind by a killed app', () => {
+  beforeEach(() => writtenFiles.clear());
+
+  it('marks a run that never closed as interrupted and writes it back', async () => {
+    const path = await saveRunReport(
+      run({ status: 'running', finishedAt: undefined })
+    );
+    await saveRunReport(
+      run({ startedAt: '2026-10-03T10:00:00.000Z', status: 'finished' })
+    );
+
+    const reports = await closeAbandonedReports();
+
+    expect(reports.map((item) => item.run.status).sort()).toEqual([
+      'finished',
+      'interrupted',
+    ]);
+    expect(JSON.parse(writtenFiles.get(path)!).status).toBe('interrupted');
+  });
+
+  it('closes a legacy report that has no status and no finish time', async () => {
+    const path = await saveRunReport(run({ finishedAt: undefined }));
+    await closeAbandonedReports();
+    expect(JSON.parse(writtenFiles.get(path)!).status).toBe('interrupted');
+  });
+
+  it('leaves a stopped run alone', async () => {
+    const path = await saveRunReport(run({ status: 'stopped' }));
+    const before = writtenFiles.get(path);
+    await closeAbandonedReports();
+    expect(writtenFiles.get(path)).toBe(before);
+  });
+});
+
+describe('resumableReport', () => {
+  const report = (overrides: Partial<BenchmarkRun>) => ({
+    path: `/reports/${overrides.startedAt}.json`,
+    run: run(overrides),
+  });
+
+  it('offers the latest full run of this device and build when it did not finish', () => {
+    const reports = [
+      report({ startedAt: '2026-10-01T10:00:00.000Z', status: 'interrupted' }),
+      report({ startedAt: '2026-10-02T10:00:00.000Z', status: 'stopped' }),
+    ];
+    expect(resumableReport(reports, 'device-a', '42')?.run.startedAt).toBe(
+      '2026-10-02T10:00:00.000Z'
+    );
+  });
+
+  it('offers nothing when the latest run finished', () => {
+    const reports = [
+      report({ startedAt: '2026-10-01T10:00:00.000Z', status: 'interrupted' }),
+      report({ startedAt: '2026-10-02T10:00:00.000Z', status: 'finished' }),
+    ];
+    expect(resumableReport(reports, 'device-a', '42')).toBeNull();
+  });
+
+  it('ignores quick runs, other devices and other builds', () => {
+    const reports = [
+      report({
+        startedAt: '2026-10-01T10:00:00.000Z',
+        status: 'stopped',
+        mode: 'quick',
+      }),
+      report({ startedAt: '2026-10-02T10:00:00.000Z', status: 'stopped' }),
+    ];
+    expect(resumableReport(reports, 'device-b', '42')).toBeNull();
+    expect(resumableReport(reports, 'device-a', '43')).toBeNull();
+    expect(resumableReport([reports[0]!], 'device-a', '42')).toBeNull();
+  });
+
+  it('reads reports with their paths', async () => {
+    const path = await saveRunReport(run({ status: 'stopped' }));
+    expect((await loadSavedReports()).map((item) => item.path)).toEqual([path]);
   });
 });

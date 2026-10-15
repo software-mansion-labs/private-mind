@@ -16,6 +16,7 @@ import {
   checkTurnTime,
   countListItems,
   hasMarkdownTable,
+  isCannedAnswer,
   loopGuardCutAnswer,
   mostRepeatedUnit,
   runTurnChecks,
@@ -25,6 +26,7 @@ import {
   worstVerdict,
 } from '../utils/devBenchmark/checks';
 import { NO_ANSWER_FALLBACK } from '../constants/no-answer-fallback';
+import { OPENING_WELCOMES } from '../constants/opening-greetings';
 import type {
   CheckFinding,
   TurnObservation,
@@ -587,6 +589,23 @@ describe('checkSpeed', () => {
 
   it('skips a turn without a measured rate', () => {
     expect(checkSpeed(at(null))).toBeNull();
+  });
+
+  it('skips a canned greeting the model did not generate', () => {
+    const canned = observation({
+      final: OPENING_WELCOMES.pl,
+      timings: { ttftMs: 0, tokPerS: 0, turnMs: 143 },
+    });
+    expect(checkSpeed(canned)).toBeNull();
+    expect(isCannedAnswer(canned)).toBe(true);
+  });
+
+  it('still warns about a zero rate on an answer the model wrote', () => {
+    const generated = observation({
+      timings: { ttftMs: 0, tokPerS: 0, turnMs: 143 },
+    });
+    expect(isCannedAnswer(generated)).toBe(false);
+    expect(checkSpeed(generated)).not.toBeNull();
   });
 
   it('skips a turn that failed anyway', () => {

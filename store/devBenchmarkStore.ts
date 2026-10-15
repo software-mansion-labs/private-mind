@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Regression } from '../utils/devBenchmark/report';
+import type { Regression, SavedReport } from '../utils/devBenchmark/report';
 import type { BenchmarkRun } from '../utils/devBenchmark/types';
 
 export type DevBenchmarkStatus = 'idle' | 'running' | 'stopping' | 'finished';
@@ -20,6 +20,7 @@ interface DevBenchmarkStore {
   queue: QueuedModel[];
   regressions: Regression[];
   reportPath: string | null;
+  resumable: SavedReport | null;
 }
 
 export const useDevBenchmarkStore = create<DevBenchmarkStore>(() => ({
@@ -29,4 +30,5 @@ export const useDevBenchmarkStore = create<DevBenchmarkStore>(() => ({
   queue: [],
   regressions: [],
   reportPath: null,
+  resumable: null,
 }));

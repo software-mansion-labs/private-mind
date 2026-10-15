@@ -1,5 +1,6 @@
 import { THINK_CLOSE, THINK_OPEN } from '../../constants/citations';
 import { NO_ANSWER_FALLBACK } from '../../constants/no-answer-fallback';
+import { OPENING_WELCOMES } from '../../constants/opening-greetings';
 import { normalizeLine } from '../loopDetection';
 import {
   isDanglingListAnswer,
@@ -18,6 +19,7 @@ import type {
   CheckFinding,
   CheckId,
   FindingSeverity,
+  TurnAttempt,
   TurnObservation,
   Verdict,
 } from './types';
@@ -365,8 +367,23 @@ export const checkGuardRetries: TurnCheck = ({ retries }) => {
 
 const MAX_REALISTIC_TOKENS_PER_SECOND = 1000;
 
-export const checkSpeed: TurnCheck = ({ timings, final, generationError }) => {
+const CANNED_WELCOMES = new Set(Object.values(OPENING_WELCOMES));
+
+export const isCannedAnswer = ({
+  final,
+  timings,
+}: Pick<TurnAttempt, 'final' | 'timings'>): boolean =>
+  CANNED_WELCOMES.has(visibleText(final).trim()) &&
+  (timings.tokPerS ?? 0) === 0;
+
+export const checkSpeed: TurnCheck = ({
+  timings,
+  final,
+  generationError,
+  canned,
+}) => {
   const { tokPerS } = timings;
+  if (canned || isCannedAnswer({ final, timings })) return null;
   if (tokPerS === null || generationError || !visibleText(final)) return null;
   const unreal = tokPerS <= 0 || tokPerS > MAX_REALISTIC_TOKENS_PER_SECOND;
   return unreal
