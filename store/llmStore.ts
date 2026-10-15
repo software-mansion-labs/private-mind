@@ -1937,11 +1937,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       benchmarkTokenBudget = BENCHMARK_TOKEN_TARGET;
       benchmarkedModel = get().model;
       if (benchmarkedModel) {
-        instance.configure({
-          generationConfig: {
-            ...getGenerationConfigForModel(benchmarkedModel),
-            ...BENCHMARK_GENERATION_CONFIG,
-          },
+        applyGenerationConfig(instance, {
+          ...getGenerationConfigForModel(benchmarkedModel),
+          ...BENCHMARK_GENERATION_CONFIG,
         });
       }
 
@@ -1982,9 +1980,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     } finally {
       benchmarkTokenBudget = null;
       if (llmInstance && benchmarkedModel) {
-        llmInstance.configure({
-          generationConfig: getGenerationConfigForModel(benchmarkedModel),
-        });
+        applyGenerationConfig(
+          llmInstance,
+          getGenerationConfigForModel(benchmarkedModel)
+        );
       }
       memoryTracker.stop();
       set({ isGenerating: false, isBenchmarking: false });
