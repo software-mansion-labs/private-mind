@@ -464,3 +464,41 @@ describe('a short unit repeated with no space between its copies', () => {
     expect(hasRunawayLoop(text)).toBe(false);
   });
 });
+
+describe('a table whose cells repeat a value (dev benchmark 15.10, LLaMA 3.2 3B QLoRa on S25)', () => {
+  const comparison = [
+    '**Comparison of Sun, Moon, and Earth**',
+    '=====================================',
+    '',
+    '| **Parameter** | **Sun** | **Moon** | **Earth** |',
+    '| --- | --- | --- | --- |',
+    '| **Diameter** | 1,392,684 km (864,000 miles) | 2,159,800 km (1,332,500 miles) | 12,742 km (7,918 miles) |',
+    '| **Distance from Earth (avg.)** | 149.6 million km (92.96 million miles) | 384,400 km (238,900 miles) | 149.6 million km (92.96 million miles) |',
+    '| **Orbital Period** | 365.25 days | 27.3 days | 365.25 days |',
+    '| **Surface Temperature** | 5,500°C (10,000°F) | -173°C to 127°C | 15°C (59°F) |',
+  ].join('\n');
+
+  it('keeps the whole table', () => {
+    expect(truncateAtRepeatedClause(comparison)).toBe(comparison);
+  });
+
+  it('does not stop the stream in the middle of it', () => {
+    expect(hasRunawayLoop(comparison)).toBe(false);
+  });
+
+  it('still cuts a decimal that the model keeps repeating outside a table', () => {
+    const looping =
+      'The distance is 149.6 million km. ' +
+      'It is 149.6 million km away, 149.6 million km away, 149.6 million km away, 149.6 million km away.';
+    expect(truncateAtRepeatedClause(looping).length).toBeLessThan(
+      looping.length
+    );
+  });
+
+  it('still cuts a row of one cell repeated until the token limit', () => {
+    const runaway =
+      '| **Sun** | **Moon** | **Earth** |\n|---|---|---|\n| **Diameter** |' +
+      ' **1.5 × 10^8 km** |'.repeat(40);
+    expect(hasRunawayLoop(runaway)).toBe(true);
+  });
+});
