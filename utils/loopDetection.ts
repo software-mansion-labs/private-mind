@@ -1,5 +1,5 @@
 const MIN_CLAUSE_CHARS = 12;
-const CLAUSE_SPLIT = /(?<=[,;.\n،؛۔।॥，；。])/u;
+const CLAUSE_SPLIT = /(?<=[\n۔।॥，；。])|(?<=[,;.،؛])(?!\d)/u;
 const TABLE_CELL_SEPARATOR = /\|/g;
 const ALPHANUMERIC = /[\p{L}\p{N}]/u;
 const TRAILING_PUNCTUATION = /[,;.!?،؛۔؟।॥，；。！？]+$/u;
@@ -41,6 +41,8 @@ const repeatedUnit = (units: Unit[], limit: number): LoopSpan | null => {
 
 const spansTableCells = (clause: string): boolean => clause.includes('|');
 
+const tableCellBarrier = (start: number): string => `\u0000${start}`;
+
 const ENDS_SENTENCE = /[.!?\n।॥۔؟。！？]\s*$/u;
 
 const substantialClauses = (text: string): Clause[] => {
@@ -51,11 +53,13 @@ const substantialClauses = (text: string): Clause[] => {
     const start = cursor;
     cursor += clause.length;
     const norm = normalizeClause(clause);
-    if (
-      norm.length >= MIN_CLAUSE_CHARS &&
-      ALPHANUMERIC.test(norm) &&
-      !spansTableCells(clause)
-    ) {
+    if (spansTableCells(clause)) {
+      units.push({
+        norm: tableCellBarrier(start),
+        start,
+        opensSentence: false,
+      });
+    } else if (norm.length >= MIN_CLAUSE_CHARS && ALPHANUMERIC.test(norm)) {
       units.push({ norm, start, opensSentence });
     }
     opensSentence = ENDS_SENTENCE.test(clause);
