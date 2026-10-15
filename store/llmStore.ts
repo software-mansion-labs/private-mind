@@ -1,9 +1,5 @@
 import { estimatePromptTokens } from '../constants/context-window';
-import {
-  mapOutsideThink,
-  stripThinkBlocks,
-  unclosedThinkText,
-} from '../utils/thinking';
+import { stripThinkBlocks, unclosedThinkText } from '../utils/thinking';
 import { create } from 'zustand';
 import { LLMModule } from 'react-native-executorch/legacy';
 import { Model } from '../database/modelRepository';
@@ -60,11 +56,11 @@ import {
 } from '../utils/messageSources';
 import { sourcesPresentInContext } from '../utils/contextUtils';
 import { normalizeModelText } from '../utils/normalizeModelText';
-import { stripSpecialTokens } from '../utils/specialTokens';
 import {
   isRepetitionFromTheStart,
   truncateAtRepeatedClause,
 } from '../utils/loopDetection';
+import { tidyVisibleAnswer } from '../utils/visibleAnswer';
 import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
 import { updateConversationDigest } from '../utils/conversationDigest';
 import type { WebIntentKind } from '../utils/web/intentKind';
@@ -725,11 +721,6 @@ const carriesAnswer = (response: string): boolean => {
   const unclosed = unclosedThinkText(response).trim();
   return Boolean(unclosed) && !isRepetitionFromTheStart(unclosed);
 };
-
-const tidyVisibleAnswer = (response: string): string =>
-  mapOutsideThink(stripSpecialTokens(response), (segment) =>
-    truncateAtRepeatedClause(normalizeModelText(segment))
-  );
 
 const runUtilityGeneration = (
   instance: LLMModule,
