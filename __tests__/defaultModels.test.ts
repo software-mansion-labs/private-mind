@@ -6,12 +6,30 @@ import {
   DEFAULT_MODELS,
   DEFAULT_REPETITION_PENALTY,
   getGenerationConfigForModel,
+  GROUNDED_REPETITION_PENALTY,
   getStartingModels,
 } from '../constants/default-models';
 import { isModelCompatibleWithRam } from '../utils/modelCompatibility';
 
 describe('getGenerationConfigForModel', () => {
-  it('applies the profile repetitionPenalty, which defaults to none', () => {
+  it('penalises repeats in plain chat, where small models loop', () => {
+    expect(DEFAULT_REPETITION_PENALTY).toBe(1.1);
+  });
+
+  it('turns the penalty off for an answer grounded in documents or the web', () => {
+    expect(
+      getGenerationConfigForModel(
+        {
+          modelName: 'Qwen 3 - 1.7B',
+          family: 'Qwen 3',
+          modelPath: QWEN3_1_7B_QUANTIZED.modelSource,
+        },
+        true
+      ).repetitionPenalty
+    ).toBe(GROUNDED_REPETITION_PENALTY);
+  });
+
+  it('applies the profile repetitionPenalty to models without their own', () => {
     expect(
       getGenerationConfigForModel({
         modelName: 'Qwen 3 - 1.7B',
