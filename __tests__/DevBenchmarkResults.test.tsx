@@ -84,7 +84,10 @@ describe('dev benchmark results', () => {
     expect(screen.getByText('2.1 s')).toBeTruthy();
     expect(screen.getByText('31.4')).toBeTruthy();
     expect(screen.getByText('0/1')).toBeTruthy();
-    expect(screen.getAllByText('–')).toHaveLength(3);
+    expect(screen.getByText('20.0')).toBeTruthy();
+    expect(screen.getAllByText('test tok/s')).toHaveLength(2);
+    expect(screen.getAllByText('chat tok/s')).toHaveLength(2);
+    expect(screen.getAllByText('–')).toHaveLength(4);
   });
 
   it('lists red and yellow results in one sentence each and opens a turn', () => {

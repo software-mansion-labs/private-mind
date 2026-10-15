@@ -3,7 +3,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
-import { passedTurnCount } from '../../utils/devBenchmark/report';
+import {
+  chatTokPerSMedian,
+  formatTokPerS,
+  passedTurnCount,
+} from '../../utils/devBenchmark/report';
 import type {
   BenchmarkRun,
   ModelResult,
@@ -20,7 +24,7 @@ const formatLoad = (model: ModelResult): string =>
   model.loadMs === undefined ? '–' : `${(model.loadMs / 1000).toFixed(1)} s`;
 
 const formatSpeed = (model: ModelResult): string =>
-  model.speed ? model.speed.tokPerS.toFixed(1) : '–';
+  formatTokPerS(model.speed?.tokPerS);
 
 const scenarioLabel = (scenario: ScenarioResult): string =>
   `${passedTurnCount(scenario)}/${scenario.turns.length}`;
@@ -73,7 +77,11 @@ export const ResultsTable = ({ run, scenarioTitles }: Props) => {
               {model.modelName}
             </Text>
             {renderMetric('load', formatLoad(model))}
-            {renderMetric('tok/s', formatSpeed(model))}
+            {renderMetric('test tok/s', formatSpeed(model))}
+            {renderMetric(
+              'chat tok/s',
+              formatTokPerS(chatTokPerSMedian(model))
+            )}
           </View>
           {scenarioTitles.map((title) => renderScenarioRow(model, title))}
         </View>
@@ -107,7 +115,7 @@ const createStyles = (theme: Theme) =>
       color: theme.text.primary,
     },
     metric: {
-      width: 56,
+      width: 68,
       alignItems: 'flex-end',
     },
     metricValue: {

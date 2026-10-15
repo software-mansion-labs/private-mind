@@ -41,6 +41,7 @@ export interface FailedTurnRecord {
   raw: string;
   tidied: string;
   final: string;
+  traceFinal?: string;
   retries: TurnAttempt['retries'];
   guards: { loopCut: boolean; specialTokens: string[] };
   prompt: { systemChars: number; historyTurns: number; lastUser: string };
@@ -148,6 +149,9 @@ const failedTurnRecord = (
     raw: attempt.raw,
     tidied: attempt.tidied,
     final: attempt.final,
+    ...(attempt.traceFinal !== undefined && attempt.traceFinal !== attempt.final
+      ? { traceFinal: attempt.traceFinal }
+      : {}),
     retries: attempt.retries,
     guards: {
       loopCut: loopGuardCutAnswer(attempt.raw, attempt.tidied),
@@ -357,7 +361,7 @@ const METRIC_LABELS: Record<RegressionMetric, string> = {
   ttftMs: 'time to first token',
   tokPerS: 'tokens per second',
   turnMs: 'turn time',
-  peakMemoryBytes: 'peak memory',
+  peakMemoryBytes: 'process peak memory',
 };
 
 const formatMetric = (metric: RegressionMetric, value: number): string => {
@@ -383,6 +387,31 @@ const VERDICT_WORDS: Record<Verdict, string> = {
   fail: 'red',
 };
 
+const median = (values: number[]): number | null => {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1
+    ? sorted[middle]!
+    : (sorted[middle - 1]! + sorted[middle]!) / 2;
+};
+
+export const chatTokPerSMedian = (model: ModelResult): number | null =>
+  median(
+    model.scenarios.flatMap((scenario) =>
+      scenario.turns.flatMap((turn) => {
+        const attempt = turn.attempts.at(-1);
+        const tokPerS = attempt?.timings.tokPerS ?? null;
+        return attempt && !isCannedAnswer(attempt) && tokPerS && tokPerS > 0
+          ? [tokPerS]
+          : [];
+      })
+    )
+  );
+
+export const formatTokPerS = (value: number | null | undefined): string =>
+  value === null || value === undefined ? '–' : value.toFixed(1);
+
 export const passedTurnCount = (scenario: ScenarioResult): number =>
   scenario.turns.filter((turn) => turn.verdict === 'pass').length;
 
@@ -401,12 +430,22 @@ const scenarioTitles = (run: BenchmarkRun): string[] => [
 
 const summaryTable = (run: BenchmarkRun): string[] => {
   const titles = scenarioTitles(run);
-  const header = ['Model', 'Result', 'Load', 'tok/s', ...titles];
+  const header = [
+    'Model',
+    'Result',
+    'Load',
+    'Speed-test tok/s',
+    'Chat tok/s (median)',
+    'Process peak (GB)',
+    ...titles,
+  ];
   const rows = run.models.map((model) => [
     model.modelName,
     VERDICT_WORDS[model.verdict],
     model.loadMs === undefined ? '–' : `${(model.loadMs / 1000).toFixed(1)} s`,
-    model.speed ? model.speed.tokPerS.toFixed(1) : '–',
+    formatTokPerS(model.speed?.tokPerS),
+    formatTokPerS(chatTokPerSMedian(model)),
+    model.speed ? (model.speed.peakMemoryBytes / 1024 ** 3).toFixed(2) : '–',
     ...titles.map((title) =>
       scenarioCell(model.scenarios.find((item) => item.title === title))
     ),
