@@ -127,8 +127,17 @@ export const normalizeLine = (line: string): string =>
 
 const MIN_WORD_CHARS = 3;
 const WORD_REPEAT_THRESHOLD = 4;
+const SHORT_WORD_REPEAT_THRESHOLD = 8;
 const WORD_SPLIT = /(\s+)/;
 const ONLY_WHITESPACE = /^\s*$/;
+const LETTER = /\p{L}/u;
+
+const runThresholdFor = (norm: string): number | null => {
+  if (norm.length >= MIN_WORD_CHARS && ALPHANUMERIC.test(norm)) {
+    return WORD_REPEAT_THRESHOLD;
+  }
+  return LETTER.test(norm) ? SHORT_WORD_REPEAT_THRESHOLD : null;
+};
 
 const findRepeatedWordRun = (text: string): LoopSpan | null => {
   let cursor = 0;
@@ -140,11 +149,12 @@ const findRepeatedWordRun = (text: string): LoopSpan | null => {
   for (const token of text.split(WORD_SPLIT)) {
     if (!ONLY_WHITESPACE.test(token)) {
       const norm = normalizeClause(token);
-      if (norm.length >= MIN_WORD_CHARS && ALPHANUMERIC.test(norm)) {
+      const threshold = runThresholdFor(norm);
+      if (threshold !== null) {
         if (norm === runWord) {
           runCount++;
           if (runCount === 2) runSecond = cursor;
-          if (runCount >= WORD_REPEAT_THRESHOLD) {
+          if (runCount >= threshold) {
             return { first: runStart, repeat: runSecond };
           }
         } else {

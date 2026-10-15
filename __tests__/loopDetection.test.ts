@@ -347,3 +347,19 @@ describe('sentence marks outside the Latin script', () => {
     expect(truncateAtRepeatedClause(text)).toBe(text);
   });
 });
+
+describe('one-letter words', () => {
+  it('cuts one repeated eight times in a row', () => {
+    expect(truncateAtRepeatedClause('उत्तर द द द द द द द द')).toBe('उत्तर द');
+  });
+
+  it('leaves one repeated a few times alone', () => {
+    const text = 'Ha ha ha ha, to było zabawne.';
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
+  it('leaves a run of the same digit alone', () => {
+    const text = 'Macierz zerowa: 0 0 0 0 0 0 0 0 0 0.';
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+});

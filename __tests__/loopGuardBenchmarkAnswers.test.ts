@@ -60,6 +60,14 @@ describe('benchmark answers that looped in Hindi and Urdu (UW-58)', () => {
       expect(tidied.length).toBeLessThan(raw.length / 4);
     }
   );
+
+  it('cuts a single Devanagari letter repeated a hundred times', () => {
+    const { raw } = answerNamed('devanagari-letter-run');
+    const tidied = tidyVisibleAnswer(raw);
+    expect(raw).toContain('द द द द द द द द');
+    expect(tidied).not.toContain('द द');
+    expect(tidied).toContain('1. न तात द');
+  });
 });
 
 describe('benchmark answers the guard used to cut without a loop', () => {
