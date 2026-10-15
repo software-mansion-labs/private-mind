@@ -1,3 +1,4 @@
+import { ECHO_FALLBACK } from '../constants/echo-fallback';
 import {
   checkAnswered,
   checkBlankLine,
@@ -394,14 +395,14 @@ describe('checkQuestionEcho', () => {
     ).toMatchObject({ check: 'question-echo', severity: 'fail' });
   });
 
-  it.each(Object.values(NO_ANSWER_FALLBACK))(
-    'fails the no-answer fallback "%s"',
-    (fallback) => {
-      expect(checkQuestionEcho(answering(fallback))).toMatchObject({
-        check: 'question-echo',
-      });
-    }
-  );
+  it.each([
+    ...Object.values(NO_ANSWER_FALLBACK),
+    ...Object.values(ECHO_FALLBACK),
+  ])('fails the no-answer fallback "%s"', (fallback) => {
+    expect(checkQuestionEcho(answering(fallback))).toMatchObject({
+      check: 'question-echo',
+    });
+  });
 
   it('accepts a real answer', () => {
     expect(checkQuestionEcho(observation())).toBeNull();

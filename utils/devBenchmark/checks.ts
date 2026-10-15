@@ -1,4 +1,5 @@
 import { THINK_CLOSE, THINK_OPEN } from '../../constants/citations';
+import { ECHO_FALLBACK } from '../../constants/echo-fallback';
 import { NO_ANSWER_FALLBACK } from '../../constants/no-answer-fallback';
 import { OPENING_WELCOMES } from '../../constants/opening-greetings';
 import { normalizeLine } from '../loopDetection';
@@ -230,7 +231,10 @@ export const checkLanguage: TurnCheck = ({ final, turn }) => {
   );
 };
 
-const NO_ANSWER_FALLBACK_TEXTS = new Set(Object.values(NO_ANSWER_FALLBACK));
+const NO_ANSWER_FALLBACK_TEXTS = new Set([
+  ...Object.values(NO_ANSWER_FALLBACK),
+  ...Object.values(ECHO_FALLBACK),
+]);
 
 export const checkQuestionEcho: TurnCheck = ({ final, turn }) => {
   const visible = visibleText(final);
