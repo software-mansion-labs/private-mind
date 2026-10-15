@@ -291,7 +291,19 @@ const restatesQuestion = (line: string, question: string): boolean => {
 };
 
 const startsLikeSentence = (text: string): boolean =>
-  /^[\p{Lu}\p{N}"'„«\-*#]/u.test(text.trim());
+  /^[\p{Lu}\p{Lo}\p{N}"'„«\-*#]/u.test(text.trim());
+
+const ECHOED_PROMPT_NOTE_LINE =
+  /^\([^()\n]{1,80}\)(?:[^\S\n]*\/(?:no_)?think)?[^\S\n]*(?:\n|$)/u;
+
+const afterEchoedQuestion = (text: string, asked: string): string | null => {
+  if (!text.toLowerCase().startsWith(asked.toLowerCase())) return null;
+  return text
+    .slice(asked.length)
+    .replace(ECHO_PREFIX_TRAILER, '')
+    .replace(ECHOED_PROMPT_NOTE_LINE, '')
+    .replace(/^\s+/, '');
+};
 
 export const stripEchoedQuestionPrefix = (
   answer: string,
@@ -302,8 +314,9 @@ export const stripEchoedQuestionPrefix = (
   const head = answer.match(THINK_PREFIX)?.[0] ?? '';
   let rest = answer.slice(head.length);
 
-  if (rest.toLowerCase().startsWith(asked.toLowerCase())) {
-    const remainder = rest.slice(asked.length).replace(ECHO_PREFIX_TRAILER, '');
+  for (let guard = 0; guard < 3; guard++) {
+    const remainder = afterEchoedQuestion(rest, asked);
+    if (remainder === null) break;
     if (!remainder.trim()) return answer;
     rest = remainder;
   }
