@@ -1,5 +1,6 @@
 const MIN_CLAUSE_CHARS = 12;
 const CLAUSE_SPLIT = /(?<=[,;.\n])/;
+const TABLE_CELL_SEPARATOR = /\|/g;
 const ALPHANUMERIC = /[\p{L}\p{N}]/u;
 const TRAILING_PUNCTUATION = /[,;.!?]+$/;
 
@@ -38,6 +39,8 @@ const repeatedUnit = (units: Unit[], limit: number): LoopSpan | null => {
   return found;
 };
 
+const spansTableCells = (clause: string): boolean => clause.includes('|');
+
 const ENDS_SENTENCE = /[.!?\n]\s*$/u;
 
 const substantialClauses = (text: string): Clause[] => {
@@ -48,7 +51,11 @@ const substantialClauses = (text: string): Clause[] => {
     const start = cursor;
     cursor += clause.length;
     const norm = normalizeClause(clause);
-    if (norm.length >= MIN_CLAUSE_CHARS && ALPHANUMERIC.test(norm)) {
+    if (
+      norm.length >= MIN_CLAUSE_CHARS &&
+      ALPHANUMERIC.test(norm) &&
+      !spansTableCells(clause)
+    ) {
       units.push({ norm, start, opensSentence });
     }
     opensSentence = ENDS_SENTENCE.test(clause);
@@ -161,14 +168,16 @@ const PHRASE_REPEAT_THRESHOLD = 3;
 const MIN_PHRASE_CHARS = 8;
 
 const findRepeatedPhraseRun = (text: string): LoopSpan | null => {
-  const words: Unit[] = [];
+  const words: (Unit & { cell: number })[] = [];
   let cursor = 0;
+  let cell = 0;
   for (const token of text.split(WORD_SPLIT)) {
     if (!ONLY_WHITESPACE.test(token)) {
       const norm = normalizeClause(token);
       if (norm.length > 0 && ALPHANUMERIC.test(norm)) {
-        words.push({ norm, start: cursor });
+        words.push({ norm, start: cursor, cell });
       }
+      cell += token.match(TABLE_CELL_SEPARATOR)?.length ?? 0;
     }
     cursor += token.length;
   }
@@ -193,6 +202,7 @@ const findRepeatedPhraseRun = (text: string): LoopSpan | null => {
       let repeats = 1;
       while (
         i + (repeats + 1) * phraseLen <= words.length &&
+        words[i + (repeats + 1) * phraseLen - 1]!.cell === words[i]!.cell &&
         windowEquals(i, i + repeats * phraseLen, phraseLen)
       ) {
         repeats++;

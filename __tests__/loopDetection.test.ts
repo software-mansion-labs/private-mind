@@ -295,3 +295,24 @@ describe('a clause that ends several different sentences', () => {
     expect(truncateAtRepeatedClause(text)).toBe(text);
   });
 });
+
+describe('markdown tables', () => {
+  it('keeps a row that gives every column the same value', () => {
+    const text =
+      '| Feature | iPhone | Pixel | Galaxy |\n' +
+      '| --- | --- | --- | --- |\n' +
+      '| Wireless charging | Yes, built in | Yes, built in | Yes, built in |\n' +
+      '| Headphone jack | No | No | No |';
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
+  it('still cuts a phrase looping inside one cell', () => {
+    const text =
+      '| Body | Note |\n' +
+      '| --- | --- |\n' +
+      '| Sun | really hot really hot really hot really hot |';
+    expect(truncateAtRepeatedClause(text)).toBe(
+      '| Body | Note |\n| --- | --- |\n| Sun | really hot'
+    );
+  });
+});

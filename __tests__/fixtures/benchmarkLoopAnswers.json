@@ -1,5 +1,26 @@
 [
   {
+    "name": "table-labels-across-columns",
+    "model": "Bielik - v3.0",
+    "device": "Galaxy S20 FE",
+    "prompt": "Make a markdown table comparing the Sun, the Moon and Earth: diameter and distance from Earth.",
+    "raw": "| **Sun** | **Moon** | **Earth** |\n| --- | --- | --- |\n| **Diameter:**** | **Diameter:**** | **Diameter:**** |\n| 1.392 million km | 1.471 million km | 12,742 km |\n| **Distance from Earth:**** | **Distance from Earth:**** | **Distance from Earth:**** |\n| 149,600,000 km | 384,400 km | 3,962,000 km |\n\nNote: These values are approximate and subject to change due to various factors."
+  },
+  {
+    "name": "table-same-value-across-columns",
+    "model": "LLaMA 3.2 - 1B - QLoRa",
+    "device": "Galaxy S20 FE",
+    "prompt": "Make a markdown table comparing the Sun, the Moon and Earth: diameter and distance from Earth.",
+    "raw": "| **Parameter** | **Sun** | **Moon** | **Earth** |\n| --- | --- | --- | --- |\n| **Diameter** | 1,392,684 km | 3,475 km | 7,918 km |\n| **Distance from Earth** | 149.6 million km | 384,400 km | 149.6 million km |\n| **Surface Area** | 510 million km² | 14 million km² | 510 million km² |\n| **Volume** | 1.412 x 10^18 km³ | 2.2 x 10^12 km³ | 1.412 x 10^18 km³ |\n| **Mass** | 1.989 x 10^30 kg | 7.35 x 10^22 kg | 1.989 x 10^30 kg |\n| **Surface Gravity** | 274 m/s² | 1.62 m/s² | 274 m/s² |\n| **Atmospheric Pressure** | 1013 mbar | 1013 mbar | 1013 mbar |\n| **Temperature** | 5,500°C | 127°C | 0°C |\n| **Rotation Period** | 25.4 days | 27.3 days | 24 hours |\n| **Orbital Period** | 365.25 days | 27.3"
+  },
+  {
+    "name": "table-same-distance-across-columns",
+    "model": "Qwen 2.5 - 0.5B",
+    "device": "Galaxy S20 FE",
+    "prompt": "Make a markdown table comparing the Sun, the Moon and Earth: diameter and distance from Earth.",
+    "raw": "Here's a markdown table comparing the Sun, the Moon, and Earth: diameter and distance from Earth:\n\n| Parameter | Sun | Moon | Earth |\n| --- | --- | --- | --- |\n| Diameter | 12,742 km | 385,900 km | 149.6 million km |\n| Distance from Earth | 149.6 million km | 149.6 million km | 149.6 million km |"
+  },
+  {
     "name": "polish-shared-sentence-tail",
     "model": "LLaMA 3.2 - 1B - QLoRa",
     "device": "Galaxy S20 FE",

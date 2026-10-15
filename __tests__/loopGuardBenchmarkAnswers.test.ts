@@ -36,6 +36,23 @@ const untouched = (raw: string): string =>
   mapOutsideThink(raw, normalizeModelText);
 
 describe('benchmark answers the guard used to cut without a loop', () => {
+  it.each([
+    ['table-labels-across-columns', '| 149,600,000 km | 384,400 km |'],
+    ['table-same-value-across-columns', '| **Orbital Period** |'],
+    [
+      'table-same-distance-across-columns',
+      '| Distance from Earth | 149.6 million km | 149.6 million km | 149.6 million km |',
+    ],
+  ])(
+    'keeps the whole table in %s when one row repeats a value in every column',
+    (name, laterRow) => {
+      const { raw } = answerNamed(name);
+      const tidied = tidyVisibleAnswer(raw);
+      expect(tidied).toContain(laterRow);
+      expect(tidied).toBe(untouched(raw));
+    }
+  );
+
   it('keeps a Polish list whose items end in the same clause after a comma', () => {
     const { raw } = answerNamed('polish-shared-sentence-tail');
     const tidied = tidyVisibleAnswer(raw);
