@@ -12,6 +12,7 @@ import * as Feedback from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWebSearchStore } from '../store/webSearchStore';
+import { ECHO_FALLBACK } from '../constants/echo-fallback';
 import { OPENING_WELCOMES } from '../constants/opening-greetings';
 
 const memoryProbe = { samples: [] as number[], available: false };
@@ -1982,31 +1983,26 @@ describe('sendChatMessage', () => {
     });
 
     it.each([
-      ['a dlaczego?', echoOfWhy],
-      [earth, echoOfEarth],
-      ['co zabrać do samolotu?', 'co zabrać do samolotu?'],
+      ['a dlaczego?', echoOfWhy, ECHO_FALLBACK.pl],
+      [earth, echoOfEarth, ECHO_FALLBACK.ur],
+      ['co zabrać do samolotu?', 'co zabrać do samolotu?', ECHO_FALLBACK.pl],
     ])(
-      'fails the turn for %s when the second answer echoes too, instead of showing the echo',
-      async (question, echo) => {
+      'asks for %s to be put another way when the second answer echoes too, instead of showing the echo or an error',
+      async (question, echo, fallback) => {
         mockInstance.generate.mockResolvedValue(echo);
 
         await useLLMStore
           .getState()
           .sendChatMessage(question, 1, noSources, settings);
 
-        expect(mockInstance.generate).toHaveBeenCalledTimes(2);
-        expect(useLLMStore.getState().generationError).toEqual({
-          chatId: 1,
-          message: 'Failed to generate a response.',
-        });
-        expect(
-          useLLMStore
-            .getState()
-            .activeChatMessages.filter(
-              (message) => message.role === 'assistant'
-            )
-            .map((message) => message.content)
-        ).not.toContain(echo);
+        expect(prepareMessagesForLLM).toHaveBeenCalledTimes(2);
+        expect(useLLMStore.getState().generationError).toBeNull();
+        const answers = useLLMStore
+          .getState()
+          .activeChatMessages.filter((message) => message.role === 'assistant')
+          .map((message) => message.content);
+        expect(answers).not.toContain(echo);
+        expect(answers.at(-1)).toBe(fallback);
         expect(mockPersistMessage).not.toHaveBeenCalledWith(
           mockDb,
           expect.objectContaining({ role: 'assistant', content: echo })
