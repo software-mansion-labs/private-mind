@@ -58,6 +58,7 @@ import type {
 
 const KEEP_AWAKE_TAG = 'dev-benchmark';
 const CHAT_TITLE_PREFIX = 'Dev benchmark';
+const RETRY_TURN_TIMEOUT_MS = 60_000;
 const DIGEST_SETTLE_TIMEOUT_MS = 15_000;
 const DIGEST_POLL_MS = 250;
 const MODEL_IDLE_POLL_MS = 100;
@@ -263,7 +264,8 @@ const observeTurn = async (
   const observed: Omit<TurnObservation, 'turn' | 'turnTimeoutMs'> = {
     raw: trace?.raw ?? '',
     tidied: trace?.tidied ?? '',
-    final: trace?.final ?? '',
+    final: answer?.content ?? '',
+    traceFinal: trace?.final ?? '',
     retries: trace?.retries ?? [],
     generationError:
       sendError ?? (storeError?.chatId === chatId ? storeError.message : null),
@@ -286,6 +288,9 @@ const lastMessageId = async (
   db: SQLiteDatabase,
   chatId: number
 ): Promise<number> => (await getChatMessages(db, chatId)).at(-1)?.id ?? 0;
+
+export const retryTimeoutMs = (scenario: Scenario): number =>
+  Math.min(scenario.turnTimeoutMs, RETRY_TURN_TIMEOUT_MS);
 
 const runScenario = async (
   db: SQLiteDatabase,
@@ -336,7 +341,7 @@ const runScenario = async (
           chatId,
           settings,
           turn,
-          scenario.turnTimeoutMs
+          retryTimeoutMs(scenario)
         );
         attempts.push(retry);
         retriedVerdict = verdictOf(retry.findings);

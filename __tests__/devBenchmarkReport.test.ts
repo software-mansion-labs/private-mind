@@ -1,4 +1,5 @@
 import {
+  chatTokPerSMedian,
   compareWithPreviousRuns,
   copyForAiMarkdown,
   failedTurnRecords,
@@ -427,7 +428,114 @@ describe('compareWithPreviousRuns', () => {
         current: 1.5 * 1024 ** 3,
         change: 0.5,
       })
-    ).toContain('1.00 GB → 1.50 GB');
+    ).toContain('process peak memory 1.00 GB → 1.50 GB');
+  });
+});
+
+describe('failed turn record', () => {
+  it('keeps the trace answer only when it differs from the shown one', () => {
+    const shown = run({
+      models: [
+        model({
+          verdict: 'fail',
+          scenarios: [
+            {
+              scenarioId: 'base-chat',
+              title: 'Base chat',
+              verdict: 'fail',
+              turns: [
+                turn(0, {
+                  verdict: 'fail',
+                  attempts: [
+                    attempt({
+                      final: 'Answer.',
+                      traceFinal: 'Question? Answer.',
+                      findings: [loopFinding],
+                    }),
+                  ],
+                }),
+                turn(1, {
+                  verdict: 'fail',
+                  attempts: [
+                    attempt({
+                      final: 'Answer.',
+                      traceFinal: 'Answer.',
+                      findings: [loopFinding],
+                    }),
+                  ],
+                }),
+              ],
+            },
+          ],
+        }),
+      ],
+    });
+    const [differs, same] = failedTurnRecords(shown);
+    expect(differs?.traceFinal).toBe('Question? Answer.');
+    expect(differs?.final).toBe('Answer.');
+    expect(same?.traceFinal).toBeUndefined();
+  });
+});
+
+describe('chatTokPerSMedian', () => {
+  const turnAt = (index: number, tokPerS: number | null) =>
+    turn(index, {
+      attempts: [attempt({ timings: { ttftMs: 1, tokPerS, turnMs: 1000 } })],
+    });
+
+  const modelWith = (speeds: Array<number | null>): ModelResult =>
+    model({
+      scenarios: [
+        {
+          scenarioId: 'base-chat',
+          title: 'Base chat',
+          verdict: 'pass',
+          turns: speeds.map((speed, index) => turnAt(index, speed)),
+        },
+      ],
+    });
+
+  it('takes the middle chat turn, not the speed test', () => {
+    expect(chatTokPerSMedian(modelWith([10, 30, 20]))).toBe(20);
+  });
+
+  it('averages the two middle turns of an even count', () => {
+    expect(chatTokPerSMedian(modelWith([10, 20, 30, 40]))).toBe(25);
+  });
+
+  it('ignores turns with no measured speed', () => {
+    expect(chatTokPerSMedian(modelWith([null, 0, 12]))).toBe(12);
+  });
+
+  it('ignores a canned welcome that generated nothing', () => {
+    const canned = turn(0, {
+      attempts: [
+        attempt({
+          final: OPENING_WELCOMES.en,
+          timings: { ttftMs: 1, tokPerS: 0, turnMs: 10 },
+        }),
+      ],
+    });
+    const other = turnAt(1, 18);
+    expect(
+      chatTokPerSMedian(
+        model({
+          scenarios: [
+            {
+              scenarioId: 'base-chat',
+              title: 'Base chat',
+              verdict: 'pass',
+              turns: [canned, other],
+            },
+          ],
+        })
+      )
+    ).toBe(18);
+  });
+
+  it('is null when no chat turn was measured', () => {
+    expect(chatTokPerSMedian(modelWith([null]))).toBeNull();
+    expect(chatTokPerSMedian(model({ scenarios: [] }))).toBeNull();
   });
 });
 
@@ -457,9 +565,12 @@ describe('copyForAiMarkdown', () => {
 
     expect(markdown).toContain('# Private Mind dev benchmark — 1.3.1 (42)');
     expect(markdown).toContain(
-      '| Qwen 3 0.6B | red | 2.0 s | 30.0 | red 1/5 |'
+      '| Qwen 3 0.6B | red | 2.0 s | 30.0 | 20.0 | 1.00 | red 1/5 |'
     );
-    expect(markdown).toContain('| Big model | yellow | – | – | – |');
+    expect(markdown).toContain('| Big model | yellow | – | – | – | – | – |');
+    expect(markdown).toContain(
+      '| Model | Result | Load | Speed-test tok/s | Chat tok/s (median) | Process peak (GB) |'
+    );
     expect(markdown).toContain(
       '- Big model (yellow): not tested: not enough free space'
     );

@@ -3,6 +3,7 @@ import type { Model } from '../database/modelRepository';
 import { recordAnswerTrace } from '../utils/answerTrace';
 import {
   refreshResumableReport,
+  retryTimeoutMs,
   runDevBenchmark,
   stopDevBenchmark,
 } from '../utils/devBenchmark/runner';
@@ -108,6 +109,8 @@ const mockAttempts = new Map<string, number>();
 let mockBusyUntil = 0;
 let mockInterrupted = false;
 const mockBusyAtSend: boolean[] = [];
+let mockTraceFinalFor: ((prompt: string, answer: string) => string) | null =
+  null;
 let mockHangOn: { prompt: string; attempt: number } | null = null;
 let mockAfterAnswer: ((prompt: string) => void) | null = null;
 
@@ -193,7 +196,7 @@ const mockLlm = {
         raw: answer,
         tidied: answer,
         retries: [],
-        final: answer,
+        final: mockTraceFinalFor?.(prompt, answer) ?? answer,
         systemPromptChars: 900,
         chatId,
         promptMessages: history + 2,
@@ -252,11 +255,24 @@ beforeEach(() => {
   mockInterrupted = false;
   mockBusyAtSend.length = 0;
   mockHangOn = null;
+  mockTraceFinalFor = null;
   mockAfterAnswer = null;
   mockLlm.isGenerating = false;
   mockLlm.model = userModel;
   mockLlm.activeChatId = 7;
   useDevBenchmarkStore.setState({ status: 'idle', run: null, queue: [] });
+});
+
+describe('retryTimeoutMs', () => {
+  it('gives a retry a minute at most', () => {
+    expect(retryTimeoutMs(BASE_CHAT_SCENARIO)).toBe(60_000);
+  });
+
+  it('never gives a retry more than the scenario allows a turn', () => {
+    expect(
+      retryTimeoutMs({ ...BASE_CHAT_SCENARIO, turnTimeoutMs: 40_000 })
+    ).toBe(40_000);
+  });
 });
 
 describe('runDevBenchmark', () => {
@@ -323,6 +339,43 @@ describe('runDevBenchmark', () => {
     expect(turn.attempts[1]!.promptMessages).toBe(6);
     const chatRepository = jest.requireMock('../database/chatRepository');
     expect(chatRepository.deleteMessagesAfter).toHaveBeenCalledTimes(1);
+  });
+
+  it('judges the text stored in the chat, not the trace taken before the question prefix was stripped', async () => {
+    mockModelState.models = [baseModel({ id: 1, modelName: 'Small' })];
+    mockTraceFinalFor = (prompt, answer) => `${prompt} ${answer}`;
+
+    await runDevBenchmark({ db, mode: 'full' });
+
+    const turns =
+      useDevBenchmarkStore.getState().run!.models[0]!.scenarios[0]!.turns;
+    const second = turns[1]!.attempts[0]!;
+    expect(second.final).toBe(
+      GOOD_ANSWERS['Why do leaves change colour in autumn?']
+    );
+    expect(second.traceFinal).toBe(
+      `Why do leaves change colour in autumn? ${second.final}`
+    );
+    expect(turns.every((turn) => turn.verdict === 'pass')).toBe(true);
+  });
+
+  it('shows no answer for a turn that stored none', async () => {
+    mockModelState.models = [baseModel({ id: 1, modelName: 'Small' })];
+    mockHangOn = { prompt: 'a dlaczego?', attempt: 1 };
+    const replaced = jest.replaceProperty(
+      BASE_CHAT_SCENARIO,
+      'turnTimeoutMs',
+      50
+    );
+
+    await runDevBenchmark({ db, mode: 'full' });
+    replaced.restore();
+
+    const first =
+      useDevBenchmarkStore.getState().run!.models[0]!.scenarios[0]!.turns[2]!
+        .attempts[0]!;
+    expect(first.final).toBe('');
+    expect(first.traceFinal).toBe('');
   });
 
   it('keeps a turn red when its retry fails as well', async () => {
