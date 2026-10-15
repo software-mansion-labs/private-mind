@@ -411,7 +411,11 @@ describe('a second download for the same model must not start while one is in fl
 
   it('lets a different model download at the same time', async () => {
     mockFetch.mockReturnValue(new Promise(() => {}));
-    const other = { ...baseModel, id: 2 };
+    const other = {
+      ...baseModel,
+      id: 2,
+      modelPath: 'https://example.com/other.pte',
+    };
 
     useModelStore.getState().downloadModel(baseModel);
     useModelStore.getState().downloadModel(other);

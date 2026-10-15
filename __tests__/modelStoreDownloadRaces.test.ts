@@ -3,6 +3,7 @@ import {
   ModelState,
   pauseDownloadsForBackground,
   resumeDownloadsAfterBackground,
+  resetDownloadAttempts,
 } from '../store/modelStore';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
 import * as modelRepository from '../database/modelRepository';
@@ -60,6 +61,7 @@ beforeEach(() => {
     downloadedModels: [],
     downloadStates: {},
   });
+  resetDownloadAttempts();
   jest.clearAllMocks();
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -123,7 +125,7 @@ describe('downloading again while the previous download is being cancelled', () 
     expect(status()).toBe(ModelState.Downloading);
     expect(fetcher.activeSources()).toHaveLength(1);
 
-    await fetcher.finish(model.modelPath);
+    await fetcher.finishEverything();
     await Promise.all([first, second]);
   });
 });
@@ -148,12 +150,6 @@ describe('a burst of download and cancel taps', () => {
 });
 
 describe('a download while the app is in the background (UW-22)', () => {
-  const sources = [
-    model.modelPath,
-    model.tokenizerPath,
-    model.tokenizerConfigPath,
-  ];
-
   const downloadUnderway = async () => {
     const started = download();
     await flushMicrotasks();
@@ -165,13 +161,17 @@ describe('a download while the app is in the background (UW-22)', () => {
     const { started } = await downloadUnderway();
 
     await pauseDownloadsForBackground();
-    expect(ExpoResourceFetcher.pauseFetching).toHaveBeenCalledWith(...sources);
+    expect(ExpoResourceFetcher.pauseFetching).toHaveBeenCalledWith(
+      model.modelPath
+    );
     expect(status()).toBe(ModelState.Downloading);
 
     await resumeDownloadsAfterBackground();
-    expect(ExpoResourceFetcher.resumeFetching).toHaveBeenCalledWith(...sources);
+    expect(ExpoResourceFetcher.resumeFetching).toHaveBeenCalledWith(
+      model.modelPath
+    );
 
-    await fetcher.finish(model.modelPath);
+    await fetcher.finishEverything();
     await started;
     expect(status()).toBe(ModelState.Downloaded);
   });
@@ -205,7 +205,7 @@ describe('a download while the app is in the background (UW-22)', () => {
     await resuming;
 
     expect(ExpoResourceFetcher.resumeFetching).toHaveBeenCalledTimes(1);
-    await fetcher.finish(model.modelPath);
+    await fetcher.finishEverything();
     await started;
   });
 });
