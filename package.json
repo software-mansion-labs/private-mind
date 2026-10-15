@@ -84,6 +84,7 @@
     "@expo-google-fonts/dm-sans": "^0.4.0",
     "@gorhom/bottom-sheet": "^5.2.9",
     "@kesha-antonov/react-native-background-downloader": "^4.6.3",
+    "@lobehub/icons-static-svg": "1.95.1",
     "@op-engineering/op-sqlite": "^15.2.7",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/netinfo": "12.0.1",
