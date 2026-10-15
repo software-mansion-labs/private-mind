@@ -1,4 +1,5 @@
 import {
+  hasRunawayLoop,
   isRepetitionFromTheStart,
   truncateAtRepeatedClause,
 } from '../utils/loopDetection';
@@ -274,5 +275,109 @@ describe('isRepetitionFromTheStart', () => {
       'Powtarzam to zdanie. Powtarzam to zdanie. Powtarzam to zdanie.';
     expect(isRepetitionFromTheStart(looping)).toBe(true);
     expect(truncateAtRepeatedClause(looping)).toBe('Powtarzam to zdanie.');
+  });
+});
+
+describe('a clause that ends several different sentences', () => {
+  it.each([
+    [
+      'Hindi',
+      '1. **नियमित समय पर सोएं**: रोज़ एक ही समय पर सोने जाएं, जिससे नींद बेहतर होती है।\n' +
+        '2. **कैफीन से बचें**: शाम को चाय और कॉफी न पिएं, जिससे नींद बेहतर होती है।\n' +
+        '3. **स्क्रीन बंद करें**: सोने से एक घंटा पहले फोन बंद करें, जिससे नींद बेहतर होती है।',
+    ],
+    [
+      'Urdu',
+      '1. **وقت پر سوئیں**: ہر روز ایک ہی وقت پر سونے جائیں، جس سے نیند بہتر ہوتی ہے۔\n' +
+        '2. **کیفین سے بچیں**: شام کو چائے اور کافی نہ پئیں، جس سے نیند بہتر ہوتی ہے۔\n' +
+        '3. **اسکرین بند کریں**: سونے سے ایک گھنٹہ پہلے فون بند کریں، جس سے نیند بہتر ہوتی ہے۔',
+    ],
+    [
+      'English',
+      '1. **Keep a schedule**: go to bed at the same time every night, which helps you sleep better.\n' +
+        '2. **Skip caffeine**: avoid coffee and tea in the evening, which helps you sleep better.\n' +
+        '3. **Dim the screens**: put the phone away an hour before bed, which helps you sleep better.',
+    ],
+  ])('keeps a %s list whose items all end in it', (_language, text) => {
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+});
+
+describe('markdown tables', () => {
+  it('keeps a row that gives every column the same value', () => {
+    const text =
+      '| Feature | iPhone | Pixel | Galaxy |\n' +
+      '| --- | --- | --- | --- |\n' +
+      '| Wireless charging | Yes, built in | Yes, built in | Yes, built in |\n' +
+      '| Headphone jack | No | No | No |';
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
+  it('still cuts a phrase looping inside one cell', () => {
+    const text =
+      '| Body | Note |\n' +
+      '| --- | --- |\n' +
+      '| Sun | really hot really hot really hot really hot |';
+    expect(truncateAtRepeatedClause(text)).toBe(
+      '| Body | Note |\n| --- | --- |\n| Sun | really hot'
+    );
+  });
+});
+
+describe('sentence marks outside the Latin script', () => {
+  it('cuts a Chinese sentence repeated after its full stop', () => {
+    const sentence = '我每天早上都会去公园散步一个小时。';
+    const text = `北京的天气很好。${sentence.repeat(4)}`;
+    expect(truncateAtRepeatedClause(text)).toBe(`北京的天气很好。${sentence}`);
+  });
+
+  it.each([
+    [
+      'Chinese',
+      '北京是中国的首都，有三千多年的历史。故宫、长城和天坛都是著名的景点。春天和秋天是最适合旅游的季节，天气温和。',
+    ],
+    [
+      'Hindi',
+      'पत्तियों का रंग शरद ऋतु में बदलता है। दिन छोटे होने पर पेड़ क्लोरोफिल बनाना बंद कर देते हैं। तब पीले और लाल रंग दिखाई देने लगते हैं।',
+    ],
+    [
+      'Urdu',
+      'زمین سورج کے گرد کشش ثقل کی وجہ سے گھومتی ہے۔ سورج کی کشش زمین کو اپنے مدار میں رکھتی ہے۔ ایک چکر تقریباً 365 دن میں پورا ہوتا ہے۔',
+    ],
+  ])('leaves loop-free %s prose alone', (_language, text) => {
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+});
+
+describe('one-letter words', () => {
+  it('cuts one repeated eight times in a row', () => {
+    expect(truncateAtRepeatedClause('उत्तर द द द द द द द द')).toBe('उत्तर द');
+  });
+
+  it('leaves one repeated a few times alone', () => {
+    const text = 'Ha ha ha ha, to było zabawne.';
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
+  it('leaves a run of the same digit alone', () => {
+    const text = 'Macierz zerowa: 0 0 0 0 0 0 0 0 0 0.';
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+});
+
+describe('hasRunawayLoop', () => {
+  const sentence = 'Sunlight scatters off the molecules in the air. ';
+
+  it('waits until the loop has run on for two more copies', () => {
+    expect(hasRunawayLoop(`Lead. ${sentence.repeat(2)}`)).toBe(false);
+    expect(hasRunawayLoop(`Lead. ${sentence.repeat(3)}`)).toBe(true);
+  });
+
+  it('never fires on text the guard would not cut', () => {
+    const text =
+      'Leaves turn yellow when chlorophyll breaks down. ' +
+      'Red comes from anthocyanins made in autumn. ' +
+      'Brown is what is left when both are gone.';
+    expect(hasRunawayLoop(text)).toBe(false);
   });
 });

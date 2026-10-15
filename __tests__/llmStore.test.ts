@@ -4004,3 +4004,65 @@ describe('warming the model up right after it loads', () => {
     });
   });
 });
+
+describe('a generation that collapses into a loop', () => {
+  const settings = { systemPrompt: 'be helpful' };
+  const STREAMED_CHUNK_CHARS = 4;
+
+  const streamUntilInterrupted =
+    (onToken: (token: string) => void, answer: string) => async () => {
+      let streamed = '';
+      for (let at = 0; at < answer.length; at += STREAMED_CHUNK_CHARS) {
+        if (mockInstance.interrupt.mock.calls.length > 0) break;
+        const token = answer.slice(at, at + STREAMED_CHUNK_CHARS);
+        onToken(token);
+        streamed += token;
+      }
+      return streamed;
+    };
+
+  const sendWhileStreaming = async (answer: string) => {
+    const onToken = await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    mockInstance.interrupt.mockClear();
+    mockInstance.generate.mockImplementation(
+      streamUntilInterrupted(onToken, answer)
+    );
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    await useLLMStore
+      .getState()
+      .sendChatMessage('Why is the sky blue?', 1, noSources, settings);
+  };
+
+  const persistedAnswer = () =>
+    mockPersistMessage.mock.calls
+      .map(([, message]) => message)
+      .find((message) => message.role === 'assistant')?.content;
+
+  it('stops it while it streams instead of letting it run to the token limit', async () => {
+    const lead = 'The sky is blue because of Rayleigh scattering.';
+    const loop = ' Sunlight scatters off the molecules in the air.';
+    await sendWhileStreaming(lead + loop.repeat(60));
+
+    expect(mockInstance.interrupt).toHaveBeenCalled();
+    const streamed = await mockInstance.generate.mock.results[0]!.value;
+    expect(streamed.length).toBeLessThan((lead + loop.repeat(10)).length);
+    expect(persistedAnswer()).toBe(lead + loop);
+  });
+
+  it('lets a long answer that does not loop finish', async () => {
+    const answer = Array.from(
+      { length: 40 },
+      (_, index) =>
+        `Point ${index + 1} adds a different detail number ${index}.`
+    ).join(' ');
+    await sendWhileStreaming(answer);
+
+    expect(mockInstance.interrupt).not.toHaveBeenCalled();
+    expect(persistedAnswer()).toBe(answer);
+  });
+});

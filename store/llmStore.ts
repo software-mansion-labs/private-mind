@@ -1,9 +1,5 @@
 import { estimatePromptTokens } from '../constants/context-window';
-import {
-  mapOutsideThink,
-  stripThinkBlocks,
-  unclosedThinkText,
-} from '../utils/thinking';
+import { stripThinkBlocks, unclosedThinkText } from '../utils/thinking';
 import { create } from 'zustand';
 import { LLMModule } from 'react-native-executorch/legacy';
 import { preferDownloadedCopy } from '../utils/downloadedCopy';
@@ -61,11 +57,14 @@ import {
 } from '../utils/messageSources';
 import { sourcesPresentInContext } from '../utils/contextUtils';
 import { normalizeModelText } from '../utils/normalizeModelText';
-import { stripSpecialTokens } from '../utils/specialTokens';
 import {
   isRepetitionFromTheStart,
   truncateAtRepeatedClause,
 } from '../utils/loopDetection';
+import {
+  answerRunsAwayInLoop,
+  tidyVisibleAnswer,
+} from '../utils/visibleAnswer';
 import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
 import { updateConversationDigest } from '../utils/conversationDigest';
 import { NO_ANSWER_FALLBACK } from '../constants/no-answer-fallback';
@@ -230,6 +229,19 @@ const resetStreamState = () => {
   streamStopRequested = false;
   streamFlushScheduled = false;
   streamedSoFar = '';
+};
+
+const LOOP_CHECK_EVERY_TOKENS = 8;
+let loopWatch: { streamed: string; tokens: number } | null = null;
+
+const loopWatchCaughtRunaway = (token: string): boolean => {
+  if (!loopWatch) return false;
+  loopWatch.streamed += token;
+  loopWatch.tokens += 1;
+  if (loopWatch.tokens % LOOP_CHECK_EVERY_TOKENS !== 0) return false;
+  if (!answerRunsAwayInLoop(loopWatch.streamed)) return false;
+  loopWatch = null;
+  return true;
 };
 
 let benchmarkTokenBudget: number | null = null;
@@ -495,6 +507,10 @@ const loadModelInstance = async (
           }
           return;
         }
+        if (loopWatchCaughtRunaway(token)) {
+          console.warn('Generation collapsed into a repetition loop, stopping');
+          llmInstance?.interrupt();
+        }
         if (suppressUtilityStreaming) return;
         if (streamStopRequested) return;
 
@@ -728,11 +744,6 @@ const carriesAnswer = (response: string): boolean => {
   return Boolean(unclosed) && !isRepetitionFromTheStart(unclosed);
 };
 
-const tidyVisibleAnswer = (response: string): string =>
-  mapOutsideThink(stripSpecialTokens(response), (segment) =>
-    truncateAtRepeatedClause(normalizeModelText(segment))
-  );
-
 const runUtilityGeneration = (
   instance: LLMModule,
   messages: ExecutorchMessage[],
@@ -853,7 +864,13 @@ const generateLLMResponse = (
     applyGenerationConfig(instance, generationConfig);
 
     const startTime = performance.now();
-    const finalResponse = await instance.generate(preparedMessages);
+    loopWatch = { streamed: '', tokens: 0 };
+    let finalResponse: string;
+    try {
+      finalResponse = await instance.generate(preparedMessages);
+    } finally {
+      loopWatch = null;
+    }
     const endTime = performance.now();
 
     reportPromptEstimateAccuracy(messages, instance);
