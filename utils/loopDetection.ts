@@ -12,6 +12,8 @@ const CLAUSE_REPEAT_LIMIT = 3;
 
 type Unit = { norm: string; start: number };
 
+type Clause = Unit & { opensSentence: boolean };
+
 type LoopSpan = { first: number; repeat: number };
 
 const earliestSpan = (spans: LoopSpan[]): LoopSpan | null =>
@@ -36,16 +38,20 @@ const repeatedUnit = (units: Unit[], limit: number): LoopSpan | null => {
   return found;
 };
 
-const substantialClauses = (text: string): Unit[] => {
-  const units: Unit[] = [];
+const ENDS_SENTENCE = /[.!?\n]\s*$/u;
+
+const substantialClauses = (text: string): Clause[] => {
+  const units: Clause[] = [];
   let cursor = 0;
+  let opensSentence = true;
   for (const clause of text.split(CLAUSE_SPLIT)) {
     const start = cursor;
     cursor += clause.length;
     const norm = normalizeClause(clause);
     if (norm.length >= MIN_CLAUSE_CHARS && ALPHANUMERIC.test(norm)) {
-      units.push({ norm, start });
+      units.push({ norm, start, opensSentence });
     }
+    opensSentence = ENDS_SENTENCE.test(clause);
   }
   return units;
 };
@@ -70,10 +76,11 @@ const findClauseCycle = (units: Unit[]): LoopSpan | null => {
 };
 
 const findRepeatedClauseSpans = (text: string): LoopSpan[] => {
-  const units = substantialClauses(text);
+  const clauses = substantialClauses(text);
+  const sentenceOpeners = clauses.filter((clause) => clause.opensSentence);
   return [
-    findClauseCycle(units),
-    repeatedUnit(units, CLAUSE_REPEAT_LIMIT),
+    findClauseCycle(clauses),
+    repeatedUnit(sentenceOpeners, CLAUSE_REPEAT_LIMIT),
   ].filter((span): span is LoopSpan => span !== null);
 };
 

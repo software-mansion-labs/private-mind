@@ -276,3 +276,22 @@ describe('isRepetitionFromTheStart', () => {
     expect(truncateAtRepeatedClause(looping)).toBe('Powtarzam to zdanie.');
   });
 });
+
+describe('a clause that ends several different sentences', () => {
+  it.each([
+    [
+      'Hindi',
+      '1. **नियमित समय पर सोएं**: रोज़ एक ही समय पर सोने जाएं, जिससे नींद बेहतर होती है।\n' +
+        '2. **कैफीन से बचें**: शाम को चाय और कॉफी न पिएं, जिससे नींद बेहतर होती है।\n' +
+        '3. **स्क्रीन बंद करें**: सोने से एक घंटा पहले फोन बंद करें, जिससे नींद बेहतर होती है।',
+    ],
+    [
+      'English',
+      '1. **Keep a schedule**: go to bed at the same time every night, which helps you sleep better.\n' +
+        '2. **Skip caffeine**: avoid coffee and tea in the evening, which helps you sleep better.\n' +
+        '3. **Dim the screens**: put the phone away an hour before bed, which helps you sleep better.',
+    ],
+  ])('keeps a %s list whose items all end in it', (_language, text) => {
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+});
