@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import * as Clipboard from 'expo-clipboard';
@@ -15,10 +15,13 @@ import {
 import {
   copyForAiMarkdown,
   failedTurns,
+  isModelTested,
   modelIssues,
+  runStatusOf,
   type FailedTurn,
 } from '../../utils/devBenchmark/report';
 import {
+  refreshResumableReport,
   runDevBenchmark,
   stopDevBenchmark,
 } from '../../utils/devBenchmark/runner';
@@ -64,12 +67,17 @@ export const DevBenchmarkScreen = () => {
   const queue = useDevBenchmarkStore((state) => state.queue);
   const regressions = useDevBenchmarkStore((state) => state.regressions);
   const reportPath = useDevBenchmarkStore((state) => state.reportPath);
+  const resumable = useDevBenchmarkStore((state) => state.resumable);
   const [mode, setMode] = useState<BenchmarkMode>('quick');
   const [quickModel, setQuickModel] = useState<Model | undefined>();
   const [openTurn, setOpenTurn] = useState<FailedTurn | null>(null);
 
   const isBusy = status === 'running' || status === 'stopping';
   const canStart = !isBusy && (mode === 'full' || !!quickModel);
+  useEffect(() => {
+    if (!isBusy) refreshResumableReport();
+  }, [isBusy]);
+
   const issues = useMemo(() => (run ? modelIssues(run) : []), [run]);
   const turns = useMemo(() => (run ? failedTurns(run) : []), [run]);
 
@@ -79,6 +87,10 @@ export const DevBenchmarkScreen = () => {
       mode,
       quickModel: mode === 'quick' ? quickModel : undefined,
     });
+
+  const handleResume = () => {
+    if (resumable) runDevBenchmark({ db, mode: 'full', resume: resumable });
+  };
 
   const handleCopy = async () => {
     if (!run) return;
@@ -137,6 +149,17 @@ export const DevBenchmarkScreen = () => {
             onPress={handleStart}
           />
         )}
+        {!isBusy && resumable && (
+          <View style={styles.section}>
+            <Text style={styles.caption}>
+              The full run started {resumable.run.startedAt} did not finish (
+              {runStatusOf(resumable.run)}).{' '}
+              {resumable.run.models.filter(isModelTested).length} models are
+              done. Resuming skips them and adds the rest to the same report.
+            </Text>
+            <SecondaryButton text="Resume full run" onPress={handleResume} />
+          </View>
+        )}
         {!!activity && <Text style={styles.activity}>{activity}</Text>}
         {isBusy && queue.length > 0 && (
           <View style={styles.section}>
@@ -153,7 +176,7 @@ export const DevBenchmarkScreen = () => {
             <Text style={styles.caption}>
               {run.appVersion} ({run.build}) · {run.device.name} ·{' '}
               {run.device.platform} {run.device.osVersion} · {run.device.ramGB}{' '}
-              GB RAM
+              GB RAM · {runStatusOf(run)}
             </Text>
             <ResultsTable run={run} scenarioTitles={SCENARIO_TITLES} />
             <Text style={styles.heading}>Red and yellow</Text>

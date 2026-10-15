@@ -22,6 +22,7 @@ import { listenToAnswerTraces, type AnswerTrace } from '../answerTrace';
 import { getDeviceMemoryGB } from '../modelCompatibility';
 import { isDeviceOnline } from '../network';
 import {
+  isCannedAnswer,
   runTurnChecks,
   verdictAfterRetry,
   verdictOf,
@@ -33,9 +34,13 @@ import {
   smallestFirst,
 } from './inventory';
 import {
+  closeAbandonedReports,
+  closeRun,
   compareWithPreviousRuns,
-  loadSavedRuns,
+  isModelTested,
+  resumableReport,
   saveRunReport,
+  type SavedReport,
 } from './report';
 import { DEV_BENCHMARK_SCENARIOS } from './scenarios';
 import type {
@@ -273,6 +278,7 @@ const observeTurn = async (
     systemChars: trace?.systemPromptChars ?? 0,
     promptMessages: trace?.promptMessages ?? 0,
     findings: runTurnChecks({ ...observed, turn, turnTimeoutMs }),
+    canned: isCannedAnswer(observed),
   };
 };
 
@@ -430,33 +436,72 @@ export const stopDevBenchmark = (): void => {
   wakeModelQueue = null;
 };
 
+const sameModel = (result: ModelResult, model: Model): boolean =>
+  result.modelId === model.id || result.modelName === model.modelName;
+
+const startingRun = (
+  mode: BenchmarkMode,
+  resume: SavedReport | undefined
+): BenchmarkRun => {
+  if (!resume) {
+    return {
+      startedAt: new Date().toISOString(),
+      status: 'running',
+      appVersion: DeviceInfo.getVersion(),
+      build: DeviceInfo.getBuildNumber(),
+      mode,
+      device: describeDevice(),
+      models: [],
+    };
+  }
+  const resumed = snapshotOf(resume.run);
+  delete resumed.finishedAt;
+  resumed.status = 'running';
+  resumed.models = resumed.models.filter(isModelTested);
+  return resumed;
+};
+
+export const refreshResumableReport = async (): Promise<void> => {
+  const reports = await closeAbandonedReports();
+  const resumable = resumableReport(
+    reports,
+    DeviceInfo.getUniqueIdSync(),
+    DeviceInfo.getBuildNumber()
+  );
+  const current = useDevBenchmarkStore.getState();
+  useDevBenchmarkStore.setState({
+    resumable,
+    ...(resumable && !current.run
+      ? { run: resumable.run, reportPath: resumable.path }
+      : {}),
+  });
+};
+
 export const runDevBenchmark = async ({
   db,
   mode,
   quickModel,
+  resume,
 }: {
   db: SQLiteDatabase;
   mode: BenchmarkMode;
   quickModel?: Model;
+  resume?: SavedReport;
 }): Promise<void> => {
   if (useDevBenchmarkStore.getState().status === 'running') return;
   stopRequested = false;
 
-  const candidates = modelsToBenchmark(mode, quickModel);
-  const run: BenchmarkRun = {
-    startedAt: new Date().toISOString(),
-    appVersion: DeviceInfo.getVersion(),
-    build: DeviceInfo.getBuildNumber(),
-    mode,
-    device: describeDevice(),
-    models: [],
-  };
+  const run = startingRun(resume ? 'full' : mode, resume);
+  const candidates = modelsToBenchmark(run.mode, quickModel).filter(
+    (model) => !run.models.some((result) => sameModel(result, model))
+  );
   useDevBenchmarkStore.setState({
     status: 'running',
     activity: 'Preparing',
     run,
     regressions: [],
-    reportPath: null,
+    reportPath: resume?.path ?? null,
+    resumable: null,
     queue: candidates.map((model) => ({
       modelId: model.id,
       modelName: model.modelName,
@@ -468,7 +513,9 @@ export const runDevBenchmark = async ({
   const userChatId = useLLMStore.getState().activeChatId;
   await activateKeepAwakeAsync(KEEP_AWAKE_TAG);
   try {
-    const previousRuns = await loadSavedRuns();
+    const previousRuns = (await closeAbandonedReports()).map(
+      (report) => report.run
+    );
     const queue = createModelQueue(
       candidates.filter((model) => model.isDownloaded)
     );
@@ -485,13 +532,14 @@ export const runDevBenchmark = async ({
       await benchmarkModel(db, run, model);
     }
     if (!stopRequested) await downloads;
-    if (!stopRequested) run.finishedAt = new Date().toISOString();
+    closeRun(run, stopRequested ? 'stopped' : 'finished');
     await publish(run);
     useDevBenchmarkStore.setState({
       regressions: compareWithPreviousRuns(run, previousRuns),
     });
   } catch (error) {
     console.error('Dev benchmark failed', error);
+    closeRun(run, 'interrupted');
     await publish(run);
   } finally {
     deactivateKeepAwake(KEEP_AWAKE_TAG);

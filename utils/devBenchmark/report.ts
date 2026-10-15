@@ -5,12 +5,19 @@ import {
   writeFile,
 } from '@dr.pogodin/react-native-fs';
 import { traceDirectory } from '../traceFile';
-import { loopGuardCutAnswer, specialTokensIn } from './checks';
+import {
+  isCannedAnswer,
+  loopGuardCutAnswer,
+  specialTokensIn,
+  worstVerdict,
+} from './checks';
+import { DEV_BENCHMARK_SCENARIOS } from './scenarios';
 import type {
   BenchmarkRun,
   CheckId,
   FindingSeverity,
   ModelResult,
+  RunStatus,
   ScenarioResult,
   TurnAttempt,
   TurnResult,
@@ -40,6 +47,7 @@ export interface FailedTurnRecord {
   timings: TurnAttempt['timings'];
   retriedOnce: boolean;
   passedOnRetry: boolean;
+  canned: boolean;
 }
 
 export interface ModelIssue {
@@ -69,6 +77,48 @@ export const REGRESSION_THRESHOLDS: Record<RegressionMetric, number> = {
 };
 
 const SYSTEM_AND_CURRENT_MESSAGES = 2;
+
+const TURNS_PER_MODEL = DEV_BENCHMARK_SCENARIOS.reduce(
+  (total, scenario) => total + scenario.turns.length,
+  0
+);
+
+export const runStatusOf = (run: BenchmarkRun): RunStatus =>
+  run.status ?? (run.finishedAt ? 'finished' : 'interrupted');
+
+const isScenarioDone = (result: ScenarioResult): boolean => {
+  if (result.error) return true;
+  const definition = DEV_BENCHMARK_SCENARIOS.find(
+    (scenario) => scenario.id === result.scenarioId
+  );
+  return !definition || result.turns.length >= definition.turns.length;
+};
+
+export const isModelTested = (model: ModelResult): boolean =>
+  !model.skippedReason &&
+  (!!model.loadError ||
+    (model.scenarios.length >= DEV_BENCHMARK_SCENARIOS.length &&
+      model.scenarios.every(isScenarioDone)));
+
+const turnsDone = (model: ModelResult): number =>
+  model.scenarios.reduce((total, scenario) => total + scenario.turns.length, 0);
+
+export const closeRun = (
+  run: BenchmarkRun,
+  status: Exclude<RunStatus, 'running'>
+): void => {
+  run.status = status;
+  if (status === 'finished') {
+    run.finishedAt = new Date().toISOString();
+    return;
+  }
+  delete run.finishedAt;
+  for (const model of run.models) {
+    if (!model.skippedReason && !isModelTested(model)) {
+      model.verdict = worstVerdict([model.verdict, 'warn']);
+    }
+  }
+};
 
 const isUnfinishedVerdict = (verdict: Verdict): verdict is FindingSeverity =>
   verdict !== 'pass';
@@ -114,6 +164,7 @@ const failedTurnRecord = (
     timings: attempt.timings,
     retriedOnce: !!retry,
     passedOnRetry: !!retry && severity === 'warn',
+    canned: isCannedAnswer(attempt),
   };
 };
 
@@ -162,7 +213,7 @@ export const modelIssues = (run: BenchmarkRun): ModelIssue[] =>
         },
       ];
     }
-    return model.scenarios.flatMap((scenario): ModelIssue[] =>
+    const errors = model.scenarios.flatMap((scenario): ModelIssue[] =>
       scenario.error
         ? [
             {
@@ -173,6 +224,19 @@ export const modelIssues = (run: BenchmarkRun): ModelIssue[] =>
           ]
         : []
     );
+    const unfinished =
+      runStatusOf(run) !== 'running' &&
+      runStatusOf(run) !== 'finished' &&
+      !isModelTested(model)
+        ? [
+            {
+              model: model.modelName,
+              severity: 'warn' as const,
+              summary: `not finished: ${turnsDone(model)} of ${TURNS_PER_MODEL} turns tested`,
+            },
+          ]
+        : [];
+    return [...errors, ...unfinished];
   });
 
 export const failedTurnSentence = (record: FailedTurnRecord): string => {
@@ -216,16 +280,21 @@ const regressionOf = (
   return regressed ? { model, where, metric, previous, current, change } : null;
 };
 
+const generatedAttempt = (turn: TurnResult | undefined): TurnAttempt | null => {
+  const attempt = turn?.attempts[0];
+  return attempt && !isCannedAnswer(attempt) ? attempt : null;
+};
+
 const turnRegressions = (
   model: string,
   scenario: ScenarioResult,
   previousScenario: ScenarioResult
 ): (Regression | null)[] =>
   scenario.turns.flatMap((turn) => {
-    const now = turn.attempts[0]?.timings;
-    const before = previousScenario.turns.find(
-      (candidate) => candidate.index === turn.index
-    )?.attempts[0]?.timings;
+    const now = generatedAttempt(turn)?.timings;
+    const before = generatedAttempt(
+      previousScenario.turns.find((candidate) => candidate.index === turn.index)
+    )?.timings;
     if (!now || !before) return [];
     const where = `${scenario.title} turn ${turn.index + 1}`;
     return [
@@ -356,7 +425,7 @@ export const copyForAiMarkdown = (
   const lines = [
     `# Private Mind dev benchmark — ${run.appVersion} (${run.build})`,
     '',
-    `${run.device.name}, ${run.device.platform} ${run.device.osVersion}, ${run.device.ramGB} GB RAM. Mode ${run.mode}, started ${run.startedAt}${run.finishedAt ? `, finished ${run.finishedAt}` : ', not finished'}.`,
+    `${run.device.name}, ${run.device.platform} ${run.device.osVersion}, ${run.device.ramGB} GB RAM. Mode ${run.mode}, started ${run.startedAt}, status ${runStatusOf(run)}${run.finishedAt ? ` at ${run.finishedAt}` : ''}.`,
     '',
     ...summaryTable(run),
   ];
@@ -392,13 +461,21 @@ export const reportFileName = (run: BenchmarkRun): string =>
 
 export const reportDirectory = (): string => traceDirectory(REPORT_DIRECTORY);
 
+const writeReport = (path: string, run: BenchmarkRun): Promise<void> =>
+  writeFile(path, JSON.stringify(run, null, 2), 'utf8');
+
 export const saveRunReport = async (run: BenchmarkRun): Promise<string> => {
   const directory = reportDirectory();
   await mkdir(directory);
   const path = `${directory}/${reportFileName(run)}`;
-  await writeFile(path, JSON.stringify(run, null, 2), 'utf8');
+  await writeReport(path, run);
   return path;
 };
+
+export interface SavedReport {
+  path: string;
+  run: BenchmarkRun;
+}
 
 const readRun = async (path: string): Promise<BenchmarkRun | null> => {
   try {
@@ -409,16 +486,54 @@ const readRun = async (path: string): Promise<BenchmarkRun | null> => {
   }
 };
 
-export const loadSavedRuns = async (): Promise<BenchmarkRun[]> => {
+export const loadSavedReports = async (): Promise<SavedReport[]> => {
   try {
     const entries = await readDir(reportDirectory());
-    const runs = await Promise.all(
+    const reports = await Promise.all(
       entries
         .filter((entry) => entry.name.endsWith('.json'))
-        .map((entry) => readRun(entry.path))
+        .map(async (entry) => ({
+          path: entry.path,
+          run: await readRun(entry.path),
+        }))
     );
-    return runs.filter((run): run is BenchmarkRun => run !== null);
+    return reports.filter(
+      (report): report is SavedReport => report.run !== null
+    );
   } catch {
     return [];
   }
+};
+
+export const loadSavedRuns = async (): Promise<BenchmarkRun[]> =>
+  (await loadSavedReports()).map((report) => report.run);
+
+const neverClosed = (run: BenchmarkRun): boolean =>
+  run.status === 'running' || (run.status === undefined && !run.finishedAt);
+
+export const closeAbandonedReports = async (): Promise<SavedReport[]> => {
+  const reports = await loadSavedReports();
+  for (const report of reports.filter((item) => neverClosed(item.run))) {
+    closeRun(report.run, 'interrupted');
+    try {
+      await writeReport(report.path, report.run);
+    } catch (error) {
+      console.warn(`Dev benchmark report not closed ${String(error)}`);
+    }
+  }
+  return reports;
+};
+
+export const resumableReport = (
+  reports: SavedReport[],
+  deviceId: string,
+  build: string
+): SavedReport | null => {
+  const latest = reports
+    .filter(
+      ({ run }) =>
+        run.mode === 'full' && run.device.id === deviceId && run.build === build
+    )
+    .sort((a, b) => b.run.startedAt.localeCompare(a.run.startedAt))[0];
+  return latest && runStatusOf(latest.run) !== 'finished' ? latest : null;
 };

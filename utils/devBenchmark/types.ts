@@ -60,6 +60,7 @@ export interface TurnAttempt {
   systemChars: number;
   promptMessages: number;
   findings: CheckFinding[];
+  canned?: boolean;
 }
 
 export interface TurnObservation extends Omit<
@@ -113,9 +114,12 @@ export interface DeviceSummary {
 
 export type BenchmarkMode = 'quick' | 'full';
 
+export type RunStatus = 'running' | 'finished' | 'stopped' | 'interrupted';
+
 export interface BenchmarkRun {
   startedAt: string;
   finishedAt?: string;
+  status?: RunStatus;
   appVersion: string;
   build: string;
   mode: BenchmarkMode;

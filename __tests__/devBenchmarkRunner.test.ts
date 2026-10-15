@@ -2,6 +2,7 @@ import type { Message } from '../database/chatRepository';
 import type { Model } from '../database/modelRepository';
 import { recordAnswerTrace } from '../utils/answerTrace';
 import {
+  refreshResumableReport,
   runDevBenchmark,
   stopDevBenchmark,
 } from '../utils/devBenchmark/runner';
@@ -290,6 +291,7 @@ describe('runDevBenchmark', () => {
       timings: { ttftMs: 250, tokPerS: 22 },
     });
     expect(run!.finishedAt).toBeDefined();
+    expect(run!.status).toBe('finished');
     expect(mockDeleteChat).toHaveBeenCalledTimes(2);
     expect(mockMessages.size).toBe(0);
     expect([...writtenFiles.keys()][0]).toContain('/dev-benchmark/');
@@ -442,6 +444,8 @@ describe('runDevBenchmark', () => {
     const { run, status } = useDevBenchmarkStore.getState();
     expect(status).toBe('finished');
     expect(run!.finishedAt).toBeUndefined();
+    expect(run!.status).toBe('stopped');
+    expect(run!.models[0]!.verdict).toBe('warn');
     expect(run!.models).toHaveLength(1);
     expect(run!.models[0]!.scenarios[0]!.turns).toHaveLength(3);
     expect(mockLlm.interrupt).toHaveBeenCalled();
@@ -467,6 +471,91 @@ describe('runDevBenchmark', () => {
     );
     expect(greeting.attempts[1]!.generationError).toBeNull();
     expect(greeting.verdict).toBe('warn');
+  });
+
+  it('writes the running status to the report while the run is going', async () => {
+    mockModelState.models = [baseModel({ id: 1, modelName: 'Small' })];
+    const statuses: string[] = [];
+    mockAfterAnswer = (prompt) => {
+      if (prompt !== 'a dlaczego?') return;
+      const saved = [...writtenFiles.values()].map((text) => JSON.parse(text));
+      statuses.push(saved[0].status);
+    };
+
+    await runDevBenchmark({ db, mode: 'full' });
+
+    expect(statuses).toEqual(['running']);
+  });
+
+  it('resumes an unfinished full run from the first untested model, in the same report', async () => {
+    mockModelState.models = [
+      baseModel({ id: 1, modelName: 'Small', modelSize: 0.5 }),
+      baseModel({ id: 2, modelName: 'Bigger', modelSize: 1 }),
+    ];
+    mockAnswerFor = (prompt) => {
+      if (prompt === 'a dlaczego?') stopDevBenchmark();
+      return goodAnswer(prompt);
+    };
+    await runDevBenchmark({ db, mode: 'full' });
+    mockAnswerFor = goodAnswer;
+    mockLlm.loadModel.mockClear();
+    await refreshResumableReport();
+    const { resumable } = useDevBenchmarkStore.getState();
+    expect(resumable?.run.status).toBe('stopped');
+
+    await runDevBenchmark({ db, mode: 'full', resume: resumable! });
+
+    const { run, reportPath } = useDevBenchmarkStore.getState();
+    expect(run!.status).toBe('finished');
+    expect(run!.models.map((model) => model.modelName)).toEqual([
+      'Small',
+      'Bigger',
+    ]);
+    expect(run!.models.every((model) => model.verdict === 'pass')).toBe(true);
+    expect(reportPath).toBe(resumable!.path);
+    expect(JSON.parse(writtenFiles.get(resumable!.path)!).models).toHaveLength(
+      2
+    );
+  });
+
+  it('keeps the models a resumed run already tested and does not load them again', async () => {
+    mockModelState.models = [
+      baseModel({ id: 1, modelName: 'Small', modelSize: 0.5 }),
+      baseModel({ id: 2, modelName: 'Bigger', modelSize: 1 }),
+    ];
+    await runDevBenchmark({ db, mode: 'full' });
+    const finished = useDevBenchmarkStore.getState().run!;
+    const unfinished = {
+      ...finished,
+      status: 'interrupted' as const,
+      finishedAt: undefined,
+      models: [
+        finished.models[0]!,
+        {
+          ...finished.models[1]!,
+          scenarios: [
+            {
+              ...finished.models[1]!.scenarios[0]!,
+              turns: finished.models[1]!.scenarios[0]!.turns.slice(0, 3),
+            },
+          ],
+        },
+      ],
+    };
+    mockLlm.loadModel.mockClear();
+
+    await runDevBenchmark({
+      db,
+      mode: 'full',
+      resume: { path: '/reports/old.json', run: unfinished },
+    });
+
+    expect(
+      mockLlm.loadModel.mock.calls.map(([model]) => model.modelName)
+    ).toEqual(['Bigger', 'User model']);
+    expect(
+      useDevBenchmarkStore.getState().run!.models[1]!.scenarios[0]!.turns
+    ).toHaveLength(6);
   });
 
   describe('with a turn limit of 50 ms', () => {
