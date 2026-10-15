@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useMemo, useState } from 'react';
 import {
   EnrichedMarkdownText,
   type MarkdownStyle,
@@ -141,11 +141,16 @@ const MarkdownComponent = memo(
       [baseColor, baseFontSize, isUser, monoFont, theme]
     );
 
-    if (streaming) {
+    const [hasStreamed, setHasStreamed] = useState(streaming);
+    if (streaming && !hasStreamed) setHasStreamed(true);
+
+    if (hasStreamed) {
       return (
         <StreamdownText
           markdown={text}
           markdownStyle={markdownStyle}
+          md4cFlags={MD4C_FLAGS}
+          flavor="github"
           selectable={true}
           onLinkPress={onLinkPress}
         />
