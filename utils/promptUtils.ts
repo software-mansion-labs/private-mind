@@ -599,6 +599,7 @@ export interface PrepareMessagesOptions {
   webSearchFailed?: boolean;
   digest?: string;
   openingWelcome?: string;
+  languageNoteOnQuestion?: boolean;
 }
 
 const MAX_SHAPE_INSTRUCTIONS = 4;
@@ -649,6 +650,7 @@ export const prepareMessagesForLLM = (
     webSearchFailed,
     digest,
     openingWelcome,
+    languageNoteOnQuestion = true,
   } = options;
   const hasContext = context.some((chunk) => chunk.trim().length > 0);
   const question = activeChatMessages.findLast(
@@ -747,7 +749,9 @@ export const prepareMessagesForLLM = (
 
   const lastMessage = messagesWithSystemPrompt.at(-1)!;
 
-  lastMessage.content += answerLanguageAnchor(language);
+  if (languageNoteOnQuestion) {
+    lastMessage.content += answerLanguageAnchor(language);
+  }
 
   if (settings.thinkingEnabled) {
     lastMessage.content += ' /think';

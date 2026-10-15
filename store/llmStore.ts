@@ -33,6 +33,7 @@ import {
   answerLanguageAnchor,
   focusedRetrySystemPrompt,
   prepareMessagesForLLM,
+  type PrepareMessagesOptions,
 } from '../utils/promptUtils';
 import { detectQuestionLanguage } from '../utils/questionLanguage';
 import {
@@ -48,6 +49,7 @@ import {
   isDanglingListAnswer,
   endsInsideList,
   joinContinuation,
+  isEchoOnlyAnswer,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
   strayedFromWelcome,
@@ -671,11 +673,6 @@ const CIRCULAR_ANSWER_RETRY_PROMPT =
   'That reply only talked about the sources instead of answering. State the ' +
   'answer itself now, in your own words, and mention a source only where it ' +
   'backs a specific fact.';
-
-const QUESTION_ECHO_RETRY_PROMPT =
-  'That reply only repeated the question back instead of answering it. Answer ' +
-  'the question now, directly, using the information you were given. Do not ' +
-  'restate or rephrase the question.';
 
 const NO_ANSWER_FALLBACK: Record<string, string> = {
   pl: 'Nie udało mi się odpowiedzieć na to pytanie na podstawie znalezionych źródeł.',
@@ -1314,24 +1311,26 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       await waitForSettingsHydration();
 
+      const turnMessages = get().activeChatMessages;
+      const turnPromptOptions: PrepareMessagesOptions = {
+        customSystemPrompt: useSettingsStore.getState().customSystemPrompt,
+        preferredSourceDocuments: preferredSourceDocuments,
+        sourceDocuments: sourceDocuments,
+        webIntent: webIntent,
+        webIntentKind: webIntentKind,
+        webSubQueries: webSubQueries,
+        webWeak: webWeak,
+        webSearchFailed: webSearchFailed,
+        digest: digestForChat(get, chatId) ?? undefined,
+        openingWelcome: openingWelcome ?? undefined,
+      };
+      let promptBudgetScale = 1;
       const messagesWithSystemPrompt = prepareMessagesForLLM(
-        get().activeChatMessages,
+        turnMessages,
         context,
         settings,
         currentModel,
-        {
-          customSystemPrompt: useSettingsStore.getState().customSystemPrompt,
-          preferredSourceDocuments: preferredSourceDocuments,
-          sourceDocuments: sourceDocuments,
-          budgetScale: 1,
-          webIntent: webIntent,
-          webIntentKind: webIntentKind,
-          webSubQueries: webSubQueries,
-          webWeak: webWeak,
-          webSearchFailed: webSearchFailed,
-          digest: digestForChat(get, chatId) ?? undefined,
-          openingWelcome: openingWelcome ?? undefined,
-        }
+        { ...turnPromptOptions, budgetScale: promptBudgetScale }
       );
 
       const lastPreparedMessage = messagesWithSystemPrompt.at(-1);
@@ -1385,6 +1384,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           error
         );
         updateChatStateForGeneration(set, 'generating');
+        promptBudgetScale = 0.5;
         effectivePrepared = prepareMessagesForLLM(
           get().activeChatMessages,
           context,
@@ -1394,7 +1394,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             customSystemPrompt: useSettingsStore.getState().customSystemPrompt,
             preferredSourceDocuments: preferredSourceDocuments,
             sourceDocuments: sourceDocuments,
-            budgetScale: 0.5,
+            budgetScale: promptBudgetScale,
             webIntent: webIntent,
             webSubQueries: webSubQueries,
             webWeak: webWeak,
@@ -1522,7 +1522,37 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         loopGuardTrimmed = retried !== retryGeneration.response;
       };
 
+      const regenerationWithoutLanguageNote = (): ExecutorchMessage[] =>
+        prepareMessagesForLLM(turnMessages, context, settings, currentModel, {
+          ...turnPromptOptions,
+          budgetScale: promptBudgetScale,
+          languageNoteOnQuestion: false,
+        });
+      const turnHadSources = context.some((chunk) => chunk.trim().length > 0);
+      let askedAgainAfterEcho = false;
+
       if (
+        !nudged &&
+        get().isGenerating &&
+        finalResponse &&
+        isEchoOnlyAnswer(finalResponse, currentQuestion)
+      ) {
+        askedAgainAfterEcho = true;
+        await nudgeOnce(
+          'Answer only echoed the question, asking again without the language note',
+          regenerationWithoutLanguageNote(),
+          (retried) => isEchoOnlyAnswer(retried, currentQuestion)
+        );
+        if (finalResponse && isEchoOnlyAnswer(finalResponse, currentQuestion)) {
+          finalResponse = turnHadSources
+            ? noAnswerFallback(currentQuestion)
+            : '';
+          loopGuardTrimmed = false;
+        }
+      }
+
+      if (
+        !askedAgainAfterEcho &&
         get().isGenerating &&
         finalResponse &&
         isWrongLanguageAnswer(finalResponse, currentQuestion)
@@ -1532,27 +1562,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           continuedRetry(WRONG_LANGUAGE_RETRY_PROMPT),
           (retried) => isWrongLanguageAnswer(retried, currentQuestion)
         );
-      }
-
-      if (
-        !nudged &&
-        get().isGenerating &&
-        finalResponse &&
-        isQuestionEchoAnswer(finalResponse, currentQuestion) &&
-        !isWrongLanguageAnswer(finalResponse, currentQuestion)
-      ) {
-        await nudgeOnce(
-          'Question echoed back, retrying once with a nudge',
-          continuedRetry(QUESTION_ECHO_RETRY_PROMPT),
-          (retried) => isQuestionEchoAnswer(retried, currentQuestion)
-        );
-        if (
-          finalResponse &&
-          isQuestionEchoAnswer(finalResponse, currentQuestion)
-        ) {
-          finalResponse = noAnswerFallback(currentQuestion);
-          loopGuardTrimmed = false;
-        }
       }
 
       if (
