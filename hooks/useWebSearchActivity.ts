@@ -23,6 +23,9 @@ export const useWebSearchActivity = ({
     (state) => isLastMessage && state.isProcessingPrompt
   );
   const isRefining = useLLMStore((state) => isLastMessage && state.isRefining);
+  const isModelLoading = useLLMStore(
+    (state) => isLastMessage && state.isLoading
+  );
   const isSearchingWeb = useWebSearchStore(
     (state) => isLastMessage && state.isSearchingWeb
   );
@@ -38,6 +41,7 @@ export const useWebSearchActivity = ({
     (hasWebResults || isSearchingThis || (isLastMessage && trace.length > 0));
   const isAwaitingFirstToken =
     !hasContent && isLastMessage && isProcessingPrompt;
+  const isModelStarting = isAwaitingFirstToken && isModelLoading;
 
   return {
     isGenerating,
@@ -45,6 +49,7 @@ export const useWebSearchActivity = ({
     isRefining,
     isSearchingThis,
     isAwaitingFirstToken,
+    isModelStarting,
     trace,
     webActive,
   };
