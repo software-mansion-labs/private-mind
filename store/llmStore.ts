@@ -60,7 +60,10 @@ import {
   isRepetitionFromTheStart,
   truncateAtRepeatedClause,
 } from '../utils/loopDetection';
-import { tidyVisibleAnswer } from '../utils/visibleAnswer';
+import {
+  answerRunsAwayInLoop,
+  tidyVisibleAnswer,
+} from '../utils/visibleAnswer';
 import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
 import { updateConversationDigest } from '../utils/conversationDigest';
 import type { WebIntentKind } from '../utils/web/intentKind';
@@ -222,6 +225,19 @@ const resetStreamState = () => {
   streamStopRequested = false;
   streamFlushScheduled = false;
   streamedSoFar = '';
+};
+
+const LOOP_CHECK_EVERY_TOKENS = 8;
+let loopWatch: { streamed: string; tokens: number } | null = null;
+
+const loopWatchCaughtRunaway = (token: string): boolean => {
+  if (!loopWatch) return false;
+  loopWatch.streamed += token;
+  loopWatch.tokens += 1;
+  if (loopWatch.tokens % LOOP_CHECK_EVERY_TOKENS !== 0) return false;
+  if (!answerRunsAwayInLoop(loopWatch.streamed)) return false;
+  loopWatch = null;
+  return true;
 };
 
 let benchmarkTokenBudget: number | null = null;
@@ -483,6 +499,10 @@ const loadModelInstance = async (
             interruptQuietly(warmingUp);
           }
           return;
+        }
+        if (loopWatchCaughtRunaway(token)) {
+          console.warn('Generation collapsed into a repetition loop, stopping');
+          llmInstance?.interrupt();
         }
         if (suppressUtilityStreaming) return;
         if (streamStopRequested) return;
@@ -842,7 +862,13 @@ const generateLLMResponse = (
     applyGenerationConfig(instance, generationConfig);
 
     const startTime = performance.now();
-    const finalResponse = await instance.generate(preparedMessages);
+    loopWatch = { streamed: '', tokens: 0 };
+    let finalResponse: string;
+    try {
+      finalResponse = await instance.generate(preparedMessages);
+    } finally {
+      loopWatch = null;
+    }
     const endTime = performance.now();
 
     reportPromptEstimateAccuracy(messages, instance);

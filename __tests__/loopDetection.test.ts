@@ -1,4 +1,5 @@
 import {
+  hasRunawayLoop,
   isRepetitionFromTheStart,
   truncateAtRepeatedClause,
 } from '../utils/loopDetection';
@@ -361,5 +362,22 @@ describe('one-letter words', () => {
   it('leaves a run of the same digit alone', () => {
     const text = 'Macierz zerowa: 0 0 0 0 0 0 0 0 0 0.';
     expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+});
+
+describe('hasRunawayLoop', () => {
+  const sentence = 'Sunlight scatters off the molecules in the air. ';
+
+  it('waits until the loop has run on for two more copies', () => {
+    expect(hasRunawayLoop(`Lead. ${sentence.repeat(2)}`)).toBe(false);
+    expect(hasRunawayLoop(`Lead. ${sentence.repeat(3)}`)).toBe(true);
+  });
+
+  it('never fires on text the guard would not cut', () => {
+    const text =
+      'Leaves turn yellow when chlorophyll breaks down. ' +
+      'Red comes from anthocyanins made in autumn. ' +
+      'Brown is what is left when both are gone.';
+    expect(hasRunawayLoop(text)).toBe(false);
   });
 });

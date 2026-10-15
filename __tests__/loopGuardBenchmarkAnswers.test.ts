@@ -1,7 +1,10 @@
 import benchmarkAnswers from './fixtures/benchmarkLoopAnswers.json';
 import { normalizeModelText } from '../utils/normalizeModelText';
 import { mapOutsideThink } from '../utils/thinking';
-import { tidyVisibleAnswer } from '../utils/visibleAnswer';
+import {
+  answerRunsAwayInLoop,
+  tidyVisibleAnswer,
+} from '../utils/visibleAnswer';
 
 type BenchmarkAnswer = {
   name: string;
@@ -34,6 +37,15 @@ const mostRepeatedSentenceCount = (text: string): number => {
 
 const untouched = (raw: string): string =>
   mapOutsideThink(raw, normalizeModelText);
+
+const STREAM_CHUNK_CHARS = 3;
+
+const stopPointWhileStreaming = (raw: string): number | null => {
+  for (let end = STREAM_CHUNK_CHARS; end < raw.length; end += 1) {
+    if (answerRunsAwayInLoop(raw.slice(0, end))) return end;
+  }
+  return null;
+};
 
 describe('benchmark answers that looped in Hindi and Urdu (UW-58)', () => {
   it.each([
@@ -103,5 +115,41 @@ describe('where a cut leaves a looping answer', () => {
     expect(tidied.length).toBeLessThan(raw.length / 4);
     expect(tidied.endsWith('.')).toBe(true);
     expect(mostRepeatedSentenceCount(tidied)).toBeLessThanOrEqual(2);
+  });
+});
+
+describe('stopping a loop while it streams', () => {
+  const looping = [
+    'hindi-danda-loop-s20fe',
+    'hindi-danda-loop-iphone',
+    'devanagari-letter-run',
+    'urdu-full-stop-loop',
+    'urdu-clause-pair-loop',
+    'urdu-word-loop',
+    'polish-paragraph-loop',
+    'polish-repeated-sentence-loop',
+  ];
+
+  it.each(looping)(
+    'stops %s before half of it is written, keeping the same answer',
+    (name) => {
+      const { raw } = answerNamed(name);
+      const stop = stopPointWhileStreaming(raw);
+      expect(stop).not.toBeNull();
+      expect(stop!).toBeLessThan(raw.length / 2);
+      expect(tidyVisibleAnswer(raw.slice(0, stop!))).toBe(
+        tidyVisibleAnswer(raw)
+      );
+    }
+  );
+
+  it.each([
+    'table-labels-across-columns',
+    'table-same-value-across-columns',
+    'table-same-distance-across-columns',
+    'polish-shared-sentence-tail',
+  ])('never stops %s, which does not loop', (name) => {
+    const { raw } = answerNamed(name);
+    expect(stopPointWhileStreaming(raw)).toBeNull();
   });
 });

@@ -254,6 +254,19 @@ export const isRepetitionFromTheStart = (text: string): boolean => {
   return earliest !== null && earliest.first === 0;
 };
 
+const MIN_RUNAWAY_TAIL_CHARS = 64;
+const RUNAWAY_TAIL_PERIODS = 2;
+
+const runsAway = (span: LoopSpan, textLength: number): boolean =>
+  textLength - span.repeat >=
+  Math.max(
+    MIN_RUNAWAY_TAIL_CHARS,
+    RUNAWAY_TAIL_PERIODS * (span.repeat - span.first)
+  );
+
+export const hasRunawayLoop = (text: string): boolean =>
+  loopSpans(text).some((span) => runsAway(span, text.length));
+
 export const truncateAtRepeatedClause = (text: string): string => {
   const spans = loopSpans(text);
   if (spans.length === 0) return text;
