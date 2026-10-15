@@ -3481,7 +3481,7 @@ describe('a turn abandoned before its first token', () => {
       useLLMStore.getState().interrupt();
       await flushFrame();
       for (let i = 0; i < tokensAfterAbandon; i++) {
-        capturedTokenCallback!('tok');
+        capturedTokenCallback!(` word${i}`);
         await flushFrame();
       }
       return 'Sure, here we go';
