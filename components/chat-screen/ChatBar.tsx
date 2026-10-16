@@ -816,8 +816,8 @@ const createStyles = (theme: Theme) =>
     },
     suggestionsContainer: {
       flexShrink: 1,
-      marginBottom: 12,
-      gap: 12,
+      marginBottom: 20,
+      gap: 24,
     },
     modelSelection: {
       flexDirection: 'row',

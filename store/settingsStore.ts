@@ -8,6 +8,8 @@ export interface SettingsStore {
   setCustomSystemPrompt: (prompt: string) => void;
   showPerformanceMetrics: boolean;
   setShowPerformanceMetrics: (show: boolean) => void;
+  dismissedWhatsNewVersion: string | null;
+  dismissWhatsNew: (version: string) => void;
   hasHydrated: boolean;
 }
 
@@ -24,6 +26,9 @@ export const useSettingsStore = create<SettingsStore>()(
       showPerformanceMetrics: false,
       setShowPerformanceMetrics: (showPerformanceMetrics) =>
         set({ showPerformanceMetrics }),
+      dismissedWhatsNewVersion: null,
+      dismissWhatsNew: (dismissedWhatsNewVersion) =>
+        set({ dismissedWhatsNewVersion }),
       hasHydrated: false,
     }),
     {
@@ -32,6 +37,7 @@ export const useSettingsStore = create<SettingsStore>()(
       partialize: (state) => ({
         customSystemPrompt: state.customSystemPrompt,
         showPerformanceMetrics: state.showPerformanceMetrics,
+        dismissedWhatsNewVersion: state.dismissedWhatsNewVersion,
       }),
       onRehydrateStorage: () => () => {
         useSettingsStore.setState({ hasHydrated: true });

@@ -12,7 +12,10 @@ jest.mock('react-native-gesture-handler', () => {
 });
 
 import PromptSuggestions from '../components/chat-screen/PromptSuggestions';
-import { DEFAULT_PROMPT_SUGGESTIONS } from '../constants/default-prompts';
+import {
+  DEFAULT_PROMPT_SUGGESTIONS,
+  PROMPT_SUGGESTIONS_TEXT,
+} from '../constants/default-prompts';
 
 const firstPrompt = DEFAULT_PROMPT_SUGGESTIONS[0];
 
@@ -48,6 +51,45 @@ describe('the suggested message cards', () => {
 
     expect(content.alignItems).toBe('stretch');
   });
+  it('heads the row with a centered question rather than a label', () => {
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    const heading = screen.getByText(PROMPT_SUGGESTIONS_TEXT.title);
+    expect(PROMPT_SUGGESTIONS_TEXT.title).toBe('How can I help?');
+    expect(StyleSheet.flatten(heading.props.style)).toEqual(
+      expect.objectContaining({ textAlign: 'center' })
+    );
+    expect(screen.queryByText('Suggested messages')).toBeNull();
+  });
+
+  it('shows each prompt on a single line under its title', () => {
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    for (const suggestion of DEFAULT_PROMPT_SUGGESTIONS) {
+      expect(screen.getByText(suggestion.prompt).props.numberOfLines).toBe(1);
+    }
+  });
+
+  it('tints each card icon with its own label color', () => {
+    const { testTheme } = require('./helpers/renderWithTheme');
+    const view = render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    const cards = screen.getAllByTestId('prompt-suggestion-card');
+    expect(cards).toHaveLength(DEFAULT_PROMPT_SUGGESTIONS.length);
+    const tiles = view.UNSAFE_root.findAll(
+      (node) =>
+        node.props.accessibilityElementsHidden === true &&
+        typeof node.type === 'string'
+    );
+    DEFAULT_PROMPT_SUGGESTIONS.forEach((suggestion, i) => {
+      expect(StyleSheet.flatten(tiles[i]!.props.style)).toEqual(
+        expect.objectContaining({
+          backgroundColor: testTheme.label[suggestion.tone].background,
+        })
+      );
+    });
+  });
+
   it('holds every card title to one line, so no card outgrows the row', () => {
     render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
 
