@@ -2116,6 +2116,14 @@ describe('stripEchoedLanguageNotes (dev benchmark 15.10, LFM 2.5 VL 450M)', () =
       '| Body | Diameter |\n|---|---|\n| Moon | 3,474 km |\n\nAnswer in English',
       '| Body | Diameter |\n|---|---|\n| Moon | 3,474 km |',
     ],
+    [
+      'Bo chlorofil się rozpada. (It follows up on: "Why do leaves change colour in autumn?")',
+      'Bo chlorofil się rozpada.',
+    ],
+    [
+      'a dlaczego? (It follows up on: "Why do leaves change colour in autumn?") (Answer in Polish.) Bo chlorofil się rozpada.',
+      'a dlaczego? Bo chlorofil się rozpada.',
+    ],
   ])('drops the language note the model copied into %j', (answer, expected) => {
     expect(stripEchoedLanguageNotes(answer)).toBe(expected);
   });

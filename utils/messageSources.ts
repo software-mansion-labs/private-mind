@@ -1,4 +1,5 @@
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
+import { FOLLOW_UP_NOTE_LEAD } from '../constants/follow-up-note';
 import { LFMEmbeddings } from './lfmEmbeddings';
 import { toAsciiDigits } from './asciiDigits';
 import {
@@ -356,8 +357,14 @@ const LANGUAGE_NOTE_IN_ANSWER =
 const LANGUAGE_NOTE_AT_END =
   /[^\S\n]*\(?\s*(?:[Aa]nswer|[Rr]espon(?:d|se)|[Rr]eply)\s+in\s+\p{Lu}\p{Ll}+\.?\s*\)?\s*$/u;
 
+const FOLLOW_UP_NOTE_IN_ANSWER = new RegExp(
+  `[^\\S\\n]*\\(\\s*${FOLLOW_UP_NOTE_LEAD}:?\\s*"[^"]*"?\\s*\\)?`,
+  'gu'
+);
+
 export const stripEchoedLanguageNotes = (answer: string): string => {
   const stripped = answer
+    .replace(FOLLOW_UP_NOTE_IN_ANSWER, '')
     .replace(LANGUAGE_NOTE_IN_ANSWER, '')
     .replace(LANGUAGE_NOTE_AT_END, '');
   return stripped.trim() ? stripped.trimEnd() : answer;
