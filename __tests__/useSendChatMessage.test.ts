@@ -9,8 +9,12 @@ import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import type { Attachment } from '../hooks/useAttachment';
 import { runWebSearch } from '../utils/web/runWebSearch';
 import { WEB_SKIP_COPY } from '../constants/web-copy';
+import { useCpuSupportStore } from '../store/cpuSupportStore';
 
 jest.mock('expo-router', () => ({ router: { replace: jest.fn() } }));
+jest.mock('../utils/cpuSupport', () => ({
+  cpuLacksLseAtomics: async () => false,
+}));
 jest.mock('../database/chatRepository', () => ({
   checkIfChatExists: jest.fn(async () => true),
 }));
@@ -190,6 +194,20 @@ describe('sending while another turn is open', () => {
       expect(await useSend(1)('', 'file://photo.jpg')).toBe('model-loading');
       expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
     } finally {
+      mockedState().model = loaded;
+    }
+  });
+
+  it('names the processor, not a load that will never finish, on a CPU the engine cannot run', async () => {
+    const loaded = mockedState().model;
+    mockedState().model = null;
+    useCpuSupportStore.setState({ lacksLseAtomics: true });
+    try {
+      expect(await useSend(1)('hello')).toBe('cpu-unsupported');
+      expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
+      expect(mockedState().loadModel).not.toHaveBeenCalled();
+    } finally {
+      useCpuSupportStore.setState({ lacksLseAtomics: false });
       mockedState().model = loaded;
     }
   });
