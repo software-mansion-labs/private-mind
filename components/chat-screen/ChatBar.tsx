@@ -521,6 +521,7 @@ const ChatBar = ({
     }
 
     loadSelectedModel();
+    Keyboard.dismiss();
     setShowSpeechInput(true);
   };
 
@@ -538,6 +539,7 @@ const ChatBar = ({
           transcript,
           attachmentsToSend
         );
+        Keyboard.dismiss();
       }
     };
 

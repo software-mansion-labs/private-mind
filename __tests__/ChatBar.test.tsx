@@ -765,6 +765,46 @@ describe('speech input', () => {
     expect(screen.queryByText('send pending')).toBeNull();
   });
 
+  it('closes the keyboard when dictation opens, so Android does not leave it over the sheet (UW-59)', async () => {
+    const dismiss = jest
+      .spyOn(Keyboard, 'dismiss')
+      .mockImplementation(() => {});
+    renderBar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+
+    expect(screen.getByTestId('speech-input')).toBeTruthy();
+    expect(dismiss).toHaveBeenCalled();
+    dismiss.mockRestore();
+  });
+
+  it('closes the keyboard after a dictated message is handed over (UW-59)', async () => {
+    const onSend = jest.fn();
+    renderBar({ onSend });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+    const dismiss = jest
+      .spyOn(Keyboard, 'dismiss')
+      .mockImplementation(() => {});
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-submit'));
+    });
+
+    expect(onSend).toHaveBeenCalledWith(
+      'voice transcript',
+      undefined,
+      expect.any(Array)
+    );
+    expect(onSend.mock.invocationCallOrder[0]).toBeLessThan(
+      dismiss.mock.invocationCallOrder[0]
+    );
+    dismiss.mockRestore();
+  });
+
   it('opens dictation while the chat’s model is still starting', async () => {
     renderBar({ disabled: true });
     await act(async () => {
