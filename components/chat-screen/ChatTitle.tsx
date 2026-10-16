@@ -39,14 +39,9 @@ const ChatTitle = ({
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const containerRef = useRef<View>(null);
-  const lastReportedBottom = useRef<number | null>(null);
   const handleLayout = useCallback(() => {
     containerRef.current?.measureInWindow((_x, y, _width, height) => {
-      const bottom = Math.round(y + height);
-      if (bottom !== lastReportedBottom.current) {
-        lastReportedBottom.current = bottom;
-        onBottomMeasured?.(bottom);
-      }
+      onBottomMeasured?.(Math.round(y + height));
     });
   }, [onBottomMeasured]);
 
