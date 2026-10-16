@@ -4,6 +4,8 @@ import { recordAnswerTrace } from '../utils/answerTrace';
 import {
   refreshResumableReport,
   retryTimeoutMs,
+  DEV_BENCHMARK_RETRY_SEED,
+  DEV_BENCHMARK_SEED,
   runDevBenchmark,
   stopDevBenchmark,
 } from '../utils/devBenchmark/runner';
@@ -113,6 +115,8 @@ let mockTraceFinalFor: ((prompt: string, answer: string) => string) | null =
   null;
 let mockHangOn: { prompt: string; attempt: number } | null = null;
 let mockAfterAnswer: ((prompt: string) => void) | null = null;
+let mockSeed = 0;
+const mockSeedsAtSend: number[] = [];
 
 const mockModelBusy = () =>
   mockLlm.isGenerating || performance.now() < mockBusyUntil;
@@ -158,6 +162,7 @@ const mockLlm = {
   sendChatMessage: jest.fn(async (prompt: string, chatId: number) => {
     mockLlm.generationError = null;
     mockBusyAtSend.push(mockModelBusy());
+    mockSeedsAtSend.push(mockSeed);
     mockInterrupted = false;
     const key = `${mockLlm.model?.modelName}:${prompt}`;
     const attempt = (mockAttempts.get(key) ?? 0) + 1;
@@ -212,6 +217,9 @@ const mockLlm = {
 jest.mock('../store/llmStore', () => ({
   useLLMStore: { getState: () => mockLlm },
   isModelBusy: () => mockModelBusy(),
+  setGenerationSeed: (seed = 0) => {
+    mockSeed = seed;
+  },
 }));
 
 const baseModel = (overrides: Partial<Model>): Model => ({
@@ -257,6 +265,8 @@ beforeEach(() => {
   mockHangOn = null;
   mockTraceFinalFor = null;
   mockAfterAnswer = null;
+  mockSeed = 0;
+  mockSeedsAtSend.length = 0;
   mockLlm.isGenerating = false;
   mockLlm.model = userModel;
   mockLlm.activeChatId = 7;
@@ -661,6 +671,82 @@ describe('runDevBenchmark', () => {
       });
       expect(mockBusyAtSend).not.toContain(true);
     });
+  });
+
+  it('samples every turn with the benchmark seed and a retry with a seed of its own, then hands sampling back to the clock', async () => {
+    mockModelState.models = [baseModel({ id: 1, modelName: 'Small' })];
+    mockAnswerFor = (prompt, attempt) =>
+      prompt === 'a dlaczego?' && attempt === 1 ? '' : goodAnswer(prompt);
+
+    await runDevBenchmark({ db, mode: 'full' });
+
+    expect(mockSeedsAtSend).toEqual([
+      DEV_BENCHMARK_SEED,
+      DEV_BENCHMARK_SEED,
+      DEV_BENCHMARK_SEED,
+      DEV_BENCHMARK_RETRY_SEED,
+      DEV_BENCHMARK_SEED,
+      DEV_BENCHMARK_SEED,
+      DEV_BENCHMARK_SEED,
+    ]);
+    expect(useDevBenchmarkStore.getState().run!.seed).toBe(DEV_BENCHMARK_SEED);
+    expect(mockSeed).toBe(0);
+  });
+
+  it('downloads the search model before the first model and records that it is ready', async () => {
+    mockModelState.models = [baseModel({ id: 1, modelName: 'Small' })];
+    const order: string[] = [];
+    const prepareEmbeddingModel = jest.fn(async () => {
+      order.push('search model');
+      return true;
+    });
+    mockLlm.loadModel.mockImplementationOnce(async (model: Model) => {
+      order.push(model.modelName);
+      mockLlm.model = model;
+    });
+
+    await runDevBenchmark({ db, mode: 'full', prepareEmbeddingModel });
+
+    expect(order.slice(0, 2)).toEqual(['search model', 'Small']);
+    expect(useDevBenchmarkStore.getState().run!.embeddingModel).toBe('ready');
+  });
+
+  it('still runs the models when the search model cannot be had, and says so in the report', async () => {
+    mockModelState.models = [baseModel({ id: 1, modelName: 'Small' })];
+
+    await runDevBenchmark({
+      db,
+      mode: 'full',
+      prepareEmbeddingModel: async () => false,
+    });
+
+    const { run } = useDevBenchmarkStore.getState();
+    expect(run!.embeddingModel).toBe('unavailable');
+    expect(run!.models[0]!.verdict).toBe('pass');
+  });
+
+  it('lets the conversation digest of a turn land before it sends the next turn', async () => {
+    mockModelState.models = [baseModel({ id: 1, modelName: 'Small' })];
+    let digestBeforeTurn: string | undefined;
+    let digestLanded = false;
+    let sentBeforeDigestLanded = false;
+    mockAfterAnswer = (prompt) => {
+      if (prompt === 'cześć') digestBeforeTurn = mockDigests.get(mockChatId);
+      if (prompt === 'Why do leaves change colour in autumn?') {
+        const chatId = mockChatId;
+        const fresh = mockDigests.get(chatId)!;
+        mockDigests.set(chatId, digestBeforeTurn!);
+        setTimeout(() => {
+          mockDigests.set(chatId, fresh);
+          digestLanded = true;
+        }, 60);
+      }
+      if (prompt === 'a dlaczego?') sentBeforeDigestLanded = !digestLanded;
+    };
+
+    await runDevBenchmark({ db, mode: 'full' });
+
+    expect(sentBeforeDigestLanded).toBe(false);
   });
 
   it('ignores a second start while a run is going', async () => {

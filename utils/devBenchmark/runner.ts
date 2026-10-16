@@ -16,7 +16,11 @@ import {
   useDevBenchmarkStore,
   type QueuedModelState,
 } from '../../store/devBenchmarkStore';
-import { isModelBusy, useLLMStore } from '../../store/llmStore';
+import {
+  isModelBusy,
+  setGenerationSeed,
+  useLLMStore,
+} from '../../store/llmStore';
 import { useModelStore } from '../../store/modelStore';
 import { listenToAnswerTraces, type AnswerTrace } from '../answerTrace';
 import { getDeviceMemoryGB } from '../modelCompatibility';
@@ -59,6 +63,9 @@ import type {
 const KEEP_AWAKE_TAG = 'dev-benchmark';
 const CHAT_TITLE_PREFIX = 'Dev benchmark';
 const RETRY_TURN_TIMEOUT_MS = 60_000;
+export const DEV_BENCHMARK_SEED = 1016;
+export const DEV_BENCHMARK_RETRY_SEED = DEV_BENCHMARK_SEED + 1;
+
 const DIGEST_SETTLE_TIMEOUT_MS = 15_000;
 const DIGEST_POLL_MS = 250;
 const MODEL_IDLE_POLL_MS = 100;
@@ -336,13 +343,14 @@ const runScenario = async (
         setActivity(
           `${model.modelName} · ${scenario.title} · retrying turn ${index + 1}`
         );
+        setGenerationSeed(DEV_BENCHMARK_RETRY_SEED);
         const retry = await observeTurn(
           db,
           chatId,
           settings,
           turn,
           retryTimeoutMs(scenario)
-        );
+        ).finally(() => setGenerationSeed(DEV_BENCHMARK_SEED));
         attempts.push(retry);
         retriedVerdict = verdictOf(retry.findings);
       }
@@ -355,6 +363,9 @@ const runScenario = async (
       });
       result.verdict = worstVerdict(result.turns.map((item) => item.verdict));
       await publish(run);
+      if (lastTurnAnswered && !turn.greeting) {
+        await waitForDigestUpdate(db, chatId, digestBeforeLastTurn);
+      }
     }
   } catch (error) {
     result.error = String(error);
@@ -487,11 +498,13 @@ export const runDevBenchmark = async ({
   mode,
   quickModel,
   resume,
+  prepareEmbeddingModel,
 }: {
   db: SQLiteDatabase;
   mode: BenchmarkMode;
   quickModel?: Model;
   resume?: SavedReport;
+  prepareEmbeddingModel?: () => Promise<boolean>;
 }): Promise<void> => {
   if (useDevBenchmarkStore.getState().status === 'running') return;
   stopRequested = false;
@@ -517,7 +530,14 @@ export const runDevBenchmark = async ({
   const userModel = useLLMStore.getState().model;
   const userChatId = useLLMStore.getState().activeChatId;
   await activateKeepAwakeAsync(KEEP_AWAKE_TAG);
+  setGenerationSeed(DEV_BENCHMARK_SEED);
+  run.seed = DEV_BENCHMARK_SEED;
   try {
+    setActivity('Preparing the search model');
+    run.embeddingModel = (await prepareEmbeddingModel?.())
+      ? 'ready'
+      : 'unavailable';
+    await publish(run);
     const previousRuns = (await closeAbandonedReports()).map(
       (report) => report.run
     );
@@ -547,6 +567,7 @@ export const runDevBenchmark = async ({
     closeRun(run, 'interrupted');
     await publish(run);
   } finally {
+    setGenerationSeed();
     deactivateKeepAwake(KEEP_AWAKE_TAG);
     setActivity('Restoring your model');
     await restoreUserState(userModel, userChatId).catch((error) =>

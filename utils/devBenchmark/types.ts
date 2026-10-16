@@ -117,6 +117,8 @@ export type BenchmarkMode = 'quick' | 'full';
 
 export type RunStatus = 'running' | 'finished' | 'stopped' | 'interrupted';
 
+export type EmbeddingModelReadiness = 'ready' | 'unavailable';
+
 export interface BenchmarkRun {
   startedAt: string;
   finishedAt?: string;
@@ -125,5 +127,7 @@ export interface BenchmarkRun {
   build: string;
   mode: BenchmarkMode;
   device: DeviceSummary;
+  seed?: number;
+  embeddingModel?: EmbeddingModelReadiness;
   models: ModelResult[];
 }

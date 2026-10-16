@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
+import { useVectorStore } from '../../context/VectorStoreContext';
+import { useEmbeddingModelStore } from '../../store/embeddingModelStore';
+import { useLLMStore } from '../../store/llmStore';
 import * as Clipboard from 'expo-clipboard';
 import Toast from 'react-native-toast-message';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
@@ -67,6 +70,7 @@ export const DevBenchmarkScreen = () => {
   const queue = useDevBenchmarkStore((state) => state.queue);
   const regressions = useDevBenchmarkStore((state) => state.regressions);
   const reportPath = useDevBenchmarkStore((state) => state.reportPath);
+  const { vectorStore, embeddings } = useVectorStore();
   const resumable = useDevBenchmarkStore((state) => state.resumable);
   const [mode, setMode] = useState<BenchmarkMode>('quick');
   const [quickModel, setQuickModel] = useState<Model | undefined>();
@@ -81,15 +85,41 @@ export const DevBenchmarkScreen = () => {
   const issues = useMemo(() => (run ? modelIssues(run) : []), [run]);
   const turns = useMemo(() => (run ? failedTurns(run) : []), [run]);
 
+  const loadEmbeddingModelOnce = (load: () => Promise<unknown>) =>
+    useLLMStore.getState().runWithModelOffloaded(
+      async () => {
+        try {
+          await load();
+        } finally {
+          await embeddings?.unload();
+        }
+      },
+      { restore: false }
+    );
+
+  const prepareEmbeddingModel = async (): Promise<boolean> =>
+    !!vectorStore &&
+    useEmbeddingModelStore
+      .getState()
+      .ensureReady(vectorStore, loadEmbeddingModelOnce);
+
   const handleStart = () =>
     runDevBenchmark({
       db,
       mode,
       quickModel: mode === 'quick' ? quickModel : undefined,
+      prepareEmbeddingModel,
     });
 
   const handleResume = () => {
-    if (resumable) runDevBenchmark({ db, mode: 'full', resume: resumable });
+    if (resumable) {
+      runDevBenchmark({
+        db,
+        mode: 'full',
+        resume: resumable,
+        prepareEmbeddingModel,
+      });
+    }
   };
 
   const handleCopy = async () => {
