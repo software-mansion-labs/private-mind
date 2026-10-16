@@ -97,7 +97,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
           handleAudioData
         )
       );
-      throwIfRecorderFailed(recorder.current!.start());
+      throwIfRecorderFailed(await recorder.current!.start());
 
       return followToTheEnd(streamGenerator, () => changeStatus('idle'));
     } catch (error) {
