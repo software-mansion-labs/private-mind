@@ -53,6 +53,8 @@ const DrawerLayout = () => {
           name="settings"
           options={{
             title: 'Settings',
+            headerTransparent: true,
+            headerStyle: { backgroundColor: 'transparent' },
           }}
         />
         <Drawer.Screen

@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, Text, StyleSheet, View } from 'react-native';
+import { Text, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
-import ModalHeader from '../../components/ModalHeader';
+import GlassScreenHeader, {
+  useGlassScreenHeaderHeight,
+} from '../../components/GlassScreenHeader';
 import PrimaryButton from '../../components/PrimaryButton';
 import TextAreaField from '../../components/TextAreaField';
 import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
@@ -16,7 +18,8 @@ import { MAX_CUSTOM_SYSTEM_PROMPT_LENGTH } from '../../constants/settings';
 
 export default function CustomSystemPromptScreen() {
   const router = useRouter();
-  const { styles } = useThemedStyles(createStyles);
+  const headerHeight = useGlassScreenHeaderHeight();
+  const { styles } = useThemedStyles(createStyles, headerHeight);
 
   const customSystemPrompt = useSettingsStore((s) => s.customSystemPrompt);
   const setCustomSystemPrompt = useSettingsStore(
@@ -56,11 +59,6 @@ export default function CustomSystemPromptScreen() {
       style={styles.keyboardAvoidingView}
     >
       <View style={styles.container}>
-        <ModalHeader
-          title="Personal preferences"
-          leftIcon="back"
-          onClose={() => router.back()}
-        />
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollViewContent}
@@ -95,11 +93,15 @@ export default function CustomSystemPromptScreen() {
           </View>
         </ScrollView>
       </View>
+      <GlassScreenHeader
+        title="Custom instructions"
+        onBack={() => router.back()}
+      />
     </CustomKeyboardAvoidingView>
   );
 }
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, headerHeight: number) =>
   StyleSheet.create({
     keyboardAvoidingView: {
       flex: 1,
@@ -107,8 +109,7 @@ const createStyles = (theme: Theme) =>
     },
     container: {
       flex: 1,
-      padding: 16,
-      paddingTop: Platform.OS === 'ios' ? theme.insets.top : 16,
+      paddingHorizontal: 16,
       paddingBottom: theme.insets.bottom + 16,
     },
     scrollView: {
@@ -116,6 +117,7 @@ const createStyles = (theme: Theme) =>
     },
     scrollViewContent: {
       gap: 24,
+      paddingTop: headerHeight + 24,
       paddingBottom: 24,
     },
     section: {
