@@ -1,9 +1,10 @@
 import React from 'react';
-import { Text, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text, StyleSheet, Pressable, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import CheckIcon from '../../assets/icons/check.svg';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
   text: string;
@@ -15,11 +16,14 @@ const SortingTag = ({ text, selected, onPress }: Props) => {
   const { styles } = useThemedStyles(createStyles, selected);
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <Pressable
+      style={({ pressed }) => [styles.container, pressed && pressedOpacity]}
+      onPress={onPress}
+    >
       <Text style={styles.text}>{text}</Text>
       {selected && <CheckIcon width={20} height={20} style={styles.icon} />}
       <View style={styles.border} />
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 

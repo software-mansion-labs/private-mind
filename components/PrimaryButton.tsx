@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  TouchableOpacity,
+  Pressable,
   Text,
   StyleSheet,
   ViewStyle,
@@ -10,6 +10,7 @@ import {
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
+import { pressedOpacity } from '../styles/pressable';
 
 interface Props {
   text: string;
@@ -31,14 +32,14 @@ const PrimaryButton = ({
   const { styles } = useThemedStyles(createStyles, disabled);
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={[styles.button, style]}
+      style={({ pressed }) => [styles.button, style, pressed && pressedOpacity]}
     >
       {icon}
       <Text style={[styles.text, textStyle]}>{text}</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 

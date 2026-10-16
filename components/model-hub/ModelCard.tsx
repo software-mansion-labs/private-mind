@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import { Pressable } from 'react-native-gesture-handler';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -30,6 +30,7 @@ import CloseIcon from '../../assets/icons/close.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 import CheckIcon from '../../assets/icons/check.svg';
 import { Feedback } from '../../utils/Feedback';
+import { pressedOpacity } from '../../styles/pressable';
 import { radius, space, stroke } from '../../constants/design-system';
 
 const FAMILY_TILE_SIZE = 44;
@@ -41,7 +42,6 @@ const CHECKBOX_BORDER_WIDTH = 1.5;
 const CHECKBOX_ICON_SIZE = 14;
 const PROGRESS_ACTION_ICON_SIZE = 16;
 const PROGRESS_ACTION_HIT_SLOP = 12;
-const PRESSED_OPACITY = 0.6;
 const LOCKED_CARD_OPACITY = 0.4;
 
 export type DownloadStatus = 'downloading' | 'done';
@@ -180,11 +180,14 @@ const ModelCard = ({
 
   return (
     <View style={locked && !selected && styles.dimmedCard}>
-      <TouchableOpacity
-        style={[styles.card, !isCompatible && styles.incompatibleCard]}
+      <Pressable
+        style={({ pressed }) => [
+          styles.card,
+          !isCompatible && styles.incompatibleCard,
+          pressed && pressedOpacity,
+        ]}
         onPress={locked ? undefined : () => onPress(model)}
-        disabled={disabled}
-        activeOpacity={locked ? 1 : undefined}
+        disabled={disabled || locked}
         accessibilityRole={checkable ? 'checkbox' : undefined}
         accessibilityState={
           checkable
@@ -296,10 +299,10 @@ const ModelCard = ({
             </View>
             <Text style={styles.progressText}>{progressLabel}</Text>
             {isDone && model.source !== 'local' && (
-              <TouchableOpacity
+              <Pressable
                 onPress={handleDelete}
                 hitSlop={PROGRESS_ACTION_HIT_SLOP}
-                activeOpacity={PRESSED_OPACITY}
+                style={({ pressed }) => pressed && pressedOpacity}
                 accessibilityRole="button"
                 accessibilityLabel={`Delete ${model.modelName}`}
                 testID="model-card-delete"
@@ -309,13 +312,13 @@ const ModelCard = ({
                   height={PROGRESS_ACTION_ICON_SIZE}
                   style={styles.progressActionIcon}
                 />
-              </TouchableOpacity>
+              </Pressable>
             )}
             {downloadStatus === 'downloading' && (
-              <TouchableOpacity
+              <Pressable
                 onPress={() => onCancel?.(model)}
                 hitSlop={PROGRESS_ACTION_HIT_SLOP}
-                activeOpacity={PRESSED_OPACITY}
+                style={({ pressed }) => pressed && pressedOpacity}
                 accessibilityRole="button"
                 accessibilityLabel={`Cancel ${model.modelName} download`}
                 testID="model-card-cancel"
@@ -325,13 +328,13 @@ const ModelCard = ({
                   height={PROGRESS_ACTION_ICON_SIZE}
                   style={styles.progressActionIcon}
                 />
-              </TouchableOpacity>
+              </Pressable>
             )}
           </View>
         )}
 
         {(showDeleteButton || checkable) && ConfirmElement}
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 };

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
@@ -20,6 +20,7 @@ import CloseIcon from '../../assets/icons/close.svg';
 import AttachmentIcon from '../../assets/icons/attachment.svg';
 import { Attachment } from '../../hooks/useAttachment';
 import { ATTACHMENT_PROGRESS_TRACK_WIDTH } from '../../constants/chat';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
   attachment: Attachment;
@@ -107,13 +108,16 @@ const AttachmentThumbnail = ({ attachment, onRemove }: Props) => {
   return (
     <View style={styles.wrapper} testID={`attachment-thumb-${attachment.id}`}>
       {renderContent()}
-      <TouchableOpacity
-        style={styles.dismissButton}
+      <Pressable
+        style={({ pressed }) => [
+          styles.dismissButton,
+          pressed && pressedOpacity,
+        ]}
         onPress={onRemove}
         testID={`attachment-dismiss-${attachment.id}`}
       >
         <CloseIcon width={8} height={8} style={styles.dismissIcon} />
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 };

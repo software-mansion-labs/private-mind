@@ -91,7 +91,7 @@ jest.mock('../store/modelStore', () => {
 });
 
 jest.mock('../components/model-hub/ModelCard', () => {
-  const { Text, TouchableOpacity } = require('react-native');
+  const { Text, Pressable } = require('react-native');
   return ({
     model,
     selected,
@@ -108,15 +108,15 @@ jest.mock('../components/model-hub/ModelCard', () => {
     onCancel: (model: unknown) => void;
   }) => (
     <>
-      <TouchableOpacity
+      <Pressable
         testID={`card-${model.modelName}`}
         accessibilityState={{ checked: selected, disabled: locked }}
         onPress={() => !locked && onPress(model)}
       >
         <Text>{downloadStatus ?? 'idle'}</Text>
-      </TouchableOpacity>
+      </Pressable>
       {downloadStatus === 'downloading' && (
-        <TouchableOpacity
+        <Pressable
           testID={`cancel-${model.modelName}`}
           onPress={() => onCancel(model)}
         />

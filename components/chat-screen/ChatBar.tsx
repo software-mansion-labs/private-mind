@@ -11,7 +11,7 @@ import React, {
 import {
   View,
   TextInput as RNTextInput,
-  TouchableOpacity,
+  Pressable,
   Text,
   StyleSheet,
   Keyboard,
@@ -32,6 +32,7 @@ import {
   type LibraryImage,
 } from '../../hooks/useAttachment';
 import AttachmentOverlay from './attachments/AttachmentOverlay';
+import { USES_SYSTEM_PHOTO_PICKER } from './attachments/usePhotoLibrary';
 import { COMPOSER, COMPOSER_STRIP_HEIGHT } from './attachments/constants';
 import { useAttachmentFlights } from './attachments/useAttachmentFlights';
 import { useAttachmentPanel } from './attachments/useAttachmentPanel';
@@ -61,6 +62,7 @@ import {
   BAR_GROW_LAYOUT,
   useBarGrowth,
 } from './useBarGrowth';
+import { pressedOpacity } from '../../styles/pressable';
 
 const SENT_ECHO_WINDOW_MS = 300;
 
@@ -147,6 +149,7 @@ const ChatBar = ({
     attachments,
     embeddingDownloadSheetRef,
     addImages,
+    pickSystemPhoto,
     presentDownloadSheet,
     pickDocument,
     addUrlSource,
@@ -189,8 +192,18 @@ const ChatBar = ({
     });
   }, []);
 
+  const handleSelectPhotos = useCallback(
+    () =>
+      pickSystemPhoto().catch((error) => {
+        console.error('Failed to open the photo picker:', error);
+        return 'canceled' as const;
+      }),
+    [pickSystemPhoto]
+  );
+
   const panel = useAttachmentPanel({
     onSelectFiles: handleSelectFiles,
+    onSelectPhotos: USES_SYSTEM_PHOTO_PICKER ? handleSelectPhotos : undefined,
     canAttachImages: isVisionModel,
     onImagesUnsupported: showImagesUnsupported,
   });
@@ -559,14 +572,20 @@ const ChatBar = ({
   if (chatId && !model) {
     return (
       <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
-        <TouchableOpacity style={styles.modelSelection} onPress={onSelectModel}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.modelSelection,
+            pressed && pressedOpacity,
+          ]}
+          onPress={onSelectModel}
+        >
           <Text style={styles.selectedModel}>Select Model</Text>
           <RotateLeft
             width={20}
             height={20}
             style={{ color: theme.text.primary }}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }
@@ -619,8 +638,11 @@ const ChatBar = ({
               onLayout={handleRowsBelowStripLayout}
             >
               {showIndexChip && (
-                <TouchableOpacity
-                  style={styles.indexUrlChip}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.indexUrlChip,
+                    pressed && pressedOpacity,
+                  ]}
                   onPress={handleIndexUrl}
                   testID="index-url-chip"
                 >
@@ -632,7 +654,7 @@ const ChatBar = ({
                   <Text style={styles.indexUrlChipText} numberOfLines={1}>
                     Index {hostname(detectedUrl!)}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               )}
               <View style={styles.content}>
                 <TextInputWrapper
@@ -720,8 +742,10 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'column',
       justifyContent: 'center',
       paddingHorizontal: 16,
+      flexShrink: 1,
     },
     suggestionsContainer: {
+      flexShrink: 1,
       marginBottom: 12,
       gap: 12,
     },

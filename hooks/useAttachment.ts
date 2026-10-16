@@ -12,6 +12,7 @@ import { documentErrorMessage } from '../utils/documentErrorMessage';
 import { extractArticle } from '../utils/web/url/extractArticle';
 import { buildUrlSource } from '../utils/web/url/urlSource';
 import { hostname } from '../utils/web/hostname';
+import { launchSystemPhotoPicker } from '../utils/systemPhotoPicker';
 
 export type DownloadResume = 'attachment' | 'none';
 
@@ -210,6 +211,16 @@ export const useAttachment = () => {
       })
     );
   }, []);
+
+  const pickSystemPhoto =
+    useCallback(async (): Promise<DocumentPickOutcome> => {
+      const photo = await launchSystemPhotoPicker();
+      if (!photo) return 'canceled';
+      addImages([photo]).catch((error) => {
+        console.error('Failed to attach the picked photo:', error);
+      });
+      return 'picked';
+    }, [addImages]);
 
   const runDocumentPicker = useCallback(async () => {
     const pickedFileResult = await DocumentPicker.getDocumentAsync({
@@ -631,6 +642,7 @@ export const useAttachment = () => {
     attachments,
     embeddingDownloadSheetRef,
     addImages,
+    pickSystemPhoto,
     presentDownloadSheet,
     pickDocument,
     addUrlSource,
