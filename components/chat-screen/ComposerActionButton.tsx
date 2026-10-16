@@ -11,6 +11,7 @@ import PauseIcon from '../../assets/icons/pause_icon.svg';
 import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import { composerControlSurface } from './composerControl';
 
 export type ComposerAction = 'speech' | 'send' | 'stop';
 
@@ -148,9 +149,7 @@ const createStyles = (theme: Theme) =>
     },
     rest: {
       borderRadius: 18,
-      borderWidth: 1,
-      borderColor: theme.border.chatBar,
-      backgroundColor: theme.bg.chatBarBadge,
+      ...composerControlSurface(theme),
     },
     fill: {
       borderRadius: 18,

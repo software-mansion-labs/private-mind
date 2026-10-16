@@ -17,15 +17,10 @@ import { Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
 import { WarningSheetData } from '../bottomSheets/WarningSheet';
 import { isModelCompatible } from '../../utils/modelCompatibility';
-import { getModelFamily } from '../../utils/modelFamily';
-import {
-  UNKNOWN_FAMILY_COLOR,
-  familyIcon,
-  familyInitial,
-} from '../../constants/model-families';
 import { useConfirm } from '../../hooks/useConfirm';
 import CircleButton from '../CircleButton';
 import ModelBadge from './ModelBadge';
+import ModelFamilyTile from './ModelFamilyTile';
 import {
   THINKING_LABEL,
   VISION_LABEL,
@@ -39,8 +34,6 @@ import { Feedback } from '../../utils/Feedback';
 import { pressedOpacity } from '../../styles/pressable';
 import { radius, space, stroke } from '../../constants/design-system';
 
-const FAMILY_TILE_SIZE = 44;
-const FAMILY_ICON_SIZE = 24;
 const PROGRESS_LABEL_MIN_WIDTH = 48;
 const CHECKBOX_SIZE = 24;
 const CHECKBOX_RADIUS = 7;
@@ -176,8 +169,6 @@ const ModelCard = ({
     : modelState !== ModelState.Downloaded && model.source === 'built-in';
   const showDownloadControls = !checkable;
   const meta = modelMeta(model);
-  const family = getModelFamily(model);
-  const FamilyIcon = familyIcon(family);
   const labels = compactView
     ? []
     : (model.labels ?? []).filter((label) => !isCapabilityLabel(label));
@@ -251,27 +242,7 @@ const ModelCard = ({
         onAccessibilityAction={handleAccessibilityAction}
       >
         <View style={styles.topRow}>
-          {showFamilyIcon && (
-            <View
-              style={[styles.familyTile, !FamilyIcon && styles.initialTile]}
-              testID="model-family-tile"
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-            >
-              {FamilyIcon ? (
-                <FamilyIcon
-                  width={FAMILY_ICON_SIZE}
-                  height={FAMILY_ICON_SIZE}
-                  style={styles.familyIcon}
-                  testID="model-family-icon"
-                />
-              ) : (
-                <Text style={styles.familyInitial}>
-                  {familyInitial(family)}
-                </Text>
-              )}
-            </View>
-          )}
+          {showFamilyIcon && <ModelFamilyTile model={model} size="card" />}
 
           <View style={styles.info}>
             <Text
@@ -411,26 +382,6 @@ const createStyles = (theme: Theme, selected: boolean) => {
       flexDirection: 'row',
       alignItems: 'center',
       gap: space.three,
-    },
-    familyTile: {
-      width: FAMILY_TILE_SIZE,
-      height: FAMILY_TILE_SIZE,
-      borderRadius: radius.twelve,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.bg.tile,
-    },
-    familyIcon: {
-      color: theme.text.primary,
-    },
-    initialTile: {
-      backgroundColor: theme.label[UNKNOWN_FAMILY_COLOR].background,
-    },
-    familyInitial: {
-      fontFamily: fontFamily.bold,
-      fontSize: fontSizes.lg,
-      lineHeight: lineHeights.lg,
-      color: theme.label[UNKNOWN_FAMILY_COLOR].foreground,
     },
     info: {
       flex: 1,

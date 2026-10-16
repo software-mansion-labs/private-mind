@@ -17,6 +17,7 @@ import LightBulbIcon from '../../assets/icons/light_bulb.svg';
 import WebIcon from '../../assets/icons/web.svg';
 import ComposerToolChip from './ComposerToolChip';
 import ComposerModelBadge from './ComposerModelBadge';
+import { composerControlColors } from './composerControl';
 import { Model } from '../../database/modelRepository';
 import { Feedback } from '../../utils/Feedback';
 import Toast from 'react-native-toast-message';
@@ -139,8 +140,7 @@ const ChatBarActions = ({
           <CircleButton
             icon={SoundwaveIcon}
             onPress={onSpeechInput}
-            backgroundColor={theme.bg.chatBarBadge}
-            borderColor={theme.border.chatBar}
+            {...composerControlColors(theme)}
             color={theme.text.onChatBar}
           />
         )}
@@ -167,8 +167,7 @@ const ChatBarActions = ({
               icon={PlusIcon}
               size={16}
               onPress={handleAttach}
-              backgroundColor={theme.bg.chatBarBadge}
-              borderColor={theme.border.chatBar}
+              {...composerControlColors(theme)}
               color={theme.text.onChatBar}
               testID="attach-btn"
             />
