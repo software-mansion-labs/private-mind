@@ -455,3 +455,90 @@ describe('download action', () => {
     await waitFor(() => expect(present).toHaveBeenCalled());
   });
 });
+
+describe('model card for a screen reader', () => {
+  const actionsOf = (role: 'button' | 'checkbox') =>
+    screen
+      .getByRole(role, { name: /Llama-3B/ })
+      .props.accessibilityActions.map(
+        (action: { name: string }) => action.name
+      );
+  const perform = (role: 'button' | 'checkbox', actionName: string) =>
+    fireEvent(
+      screen.getByRole(role, { name: /Llama-3B/ }),
+      'accessibilityAction',
+      { nativeEvent: { actionName } }
+    );
+
+  it('offers a Download action that starts the download', async () => {
+    const downloadModel = jest.fn().mockResolvedValue(undefined);
+    withDownloadStates({}, { downloadModel });
+    renderCard();
+    expect(actionsOf('button')).toEqual(['download']);
+    perform('button', 'download');
+    await waitFor(() =>
+      expect(downloadModel).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1 })
+      )
+    );
+  });
+
+  it('keeps a bundled model that is not downloaded yet from reading as dimmed, since it can be downloaded', () => {
+    renderCard({ source: 'built-in' });
+    expect(
+      screen.getByRole('button', { name: /Llama-3B/ }).props.accessibilityState
+    ).toEqual(expect.objectContaining({ disabled: false }));
+  });
+
+  it('offers no Download action for a model the device cannot run', () => {
+    mockIsModelCompatible.mockReturnValue(false);
+    renderCard();
+    expect(actionsOf('button')).toEqual([]);
+  });
+
+  it('offers Cancel download while the model is downloading', async () => {
+    const cancelDownload = jest.fn().mockResolvedValue(undefined);
+    withDownloadStates(
+      { 1: { status: ModelState.Downloading, progress: 0.5 } },
+      { cancelDownload }
+    );
+    renderCard();
+    expect(actionsOf('button')).toEqual(['cancelDownload']);
+    perform('button', 'cancelDownload');
+    await waitFor(() =>
+      expect(cancelDownload).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1 })
+      )
+    );
+  });
+
+  it('offers Delete model files where the card shows the delete button', () => {
+    withDownloadStates({ 1: { status: ModelState.Downloaded, progress: 1 } });
+    render(
+      <ModelCard
+        model={{ ...baseModel, isDownloaded: true }}
+        onPress={jest.fn()}
+        showDeleteButton
+      />
+    );
+    expect(actionsOf('button')).toEqual(['delete']);
+  });
+
+  it('lets the starting-model picker cancel a model it is downloading', () => {
+    const onCancel = jest.fn();
+    renderCard({
+      checkable: true,
+      selected: true,
+      downloadStatus: 'downloading',
+      onCancel,
+    });
+    expect(actionsOf('checkbox')).toEqual(['cancelDownload']);
+    perform('checkbox', 'cancelDownload');
+    expect(onCancel).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+  });
+
+  it('lets the starting-model picker delete a model it has finished', () => {
+    renderCard({ checkable: true, selected: true, downloadStatus: 'done' });
+    expect(actionsOf('checkbox')).toEqual(['delete']);
+  });
+});

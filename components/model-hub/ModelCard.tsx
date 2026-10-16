@@ -1,5 +1,11 @@
 import React from 'react';
-import { StyleSheet, View, Text } from 'react-native';
+import {
+  type AccessibilityActionEvent,
+  type AccessibilityActionInfo,
+  StyleSheet,
+  View,
+  Text,
+} from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
@@ -178,6 +184,53 @@ const ModelCard = ({
   const hasBadges =
     !isCompatible || model.thinking || model.vision || labels.length > 0;
 
+  const isPickedDownloadRunning = downloadStatus === 'downloading';
+  const canDownload =
+    showDownloadControls &&
+    modelState === ModelState.NotStarted &&
+    isCompatible;
+  const canCancelDownload =
+    (showDownloadControls && isDownloading) || isPickedDownloadRunning;
+  const canDelete =
+    model.source !== 'local' &&
+    (isDone ||
+      (showDownloadControls &&
+        showDeleteButton &&
+        modelState === ModelState.Downloaded));
+
+  const accessibilityActions: AccessibilityActionInfo[] = [
+    ...(canDownload ? [{ name: 'download', label: 'Download' }] : []),
+    ...(canCancelDownload
+      ? [{ name: 'cancelDownload', label: 'Cancel download' }]
+      : []),
+    ...(canDelete ? [{ name: 'delete', label: 'Delete model files' }] : []),
+  ];
+
+  const hasAccessibilityActions = accessibilityActions.length > 0;
+
+  const handleCancelDownload = () => {
+    if (isPickedDownloadRunning) {
+      onCancel?.(model);
+      return;
+    }
+    handlePress();
+  };
+
+  const handleAccessibilityAction = ({
+    nativeEvent,
+  }: AccessibilityActionEvent) => {
+    switch (nativeEvent.actionName) {
+      case 'download':
+        handlePress();
+        return;
+      case 'cancelDownload':
+        handleCancelDownload();
+        return;
+      case 'delete':
+        handleDelete();
+    }
+  };
+
   return (
     <View style={locked && !selected && styles.dimmedCard}>
       <TouchableOpacity
@@ -185,12 +238,14 @@ const ModelCard = ({
         onPress={locked ? undefined : () => onPress(model)}
         disabled={disabled}
         activeOpacity={locked ? 1 : undefined}
-        accessibilityRole={checkable ? 'checkbox' : undefined}
+        accessibilityRole={checkable ? 'checkbox' : 'button'}
         accessibilityState={
           checkable
             ? { checked: selected, disabled: disabled || locked }
-            : undefined
+            : { selected, disabled: disabled && !hasAccessibilityActions }
         }
+        accessibilityActions={accessibilityActions}
+        onAccessibilityAction={handleAccessibilityAction}
       >
         <View style={styles.topRow}>
           {showFamilyIcon && (
