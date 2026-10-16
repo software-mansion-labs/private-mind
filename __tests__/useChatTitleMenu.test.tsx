@@ -3,11 +3,10 @@ import {
   render,
   screen,
   fireEvent,
-  renderHook,
   act,
   waitFor,
 } from '@testing-library/react-native';
-import { Platform, ActionSheetIOS, Alert } from 'react-native';
+import { Alert, Text, TouchableOpacity } from 'react-native';
 
 // ── mocks ──────────────────────────────────────────────────────────────────────
 
@@ -15,6 +14,14 @@ jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
     theme: { ...require('../styles/colors').lightTheme },
   }),
+}));
+
+jest.mock('react-native-keyboard-controller', () => ({
+  OverKeyboardView: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+jest.mock('../utils/Feedback', () => ({
+  Feedback: { sheetOpen: jest.fn() },
 }));
 
 jest.mock('expo-sqlite', () => ({
@@ -60,11 +67,27 @@ const mockRouter = jest.requireMock('expo-router').router as {
 
 import Toast from 'react-native-toast-message';
 
-// ── component under test ───────────────────────────────────────────────────────
-
 import { useChatTitleMenu } from '../components/chat-screen/ChatTitleMenu';
 
-const defaultOptions = { chatId: 42, chatTitle: 'My Chat' };
+const Harness = ({ chatTitle = 'My Chat' }: { chatTitle?: string }) => {
+  const { openMenu, isOpen, MenuElements } = useChatTitleMenu({
+    chatId: 42,
+    chatTitle,
+    anchorTop: 100,
+  });
+  return (
+    <>
+      <TouchableOpacity testID="open-menu" onPress={openMenu} />
+      <Text>{`menu:${isOpen ? 'open' : 'closed'}`}</Text>
+      {MenuElements}
+    </>
+  );
+};
+
+const openMenu = () => {
+  render(<Harness />);
+  fireEvent.press(screen.getByTestId('open-menu'));
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -76,77 +99,111 @@ beforeEach(() => {
 
 afterEach(() => jest.restoreAllMocks());
 
-const setPlatform = (os: string) => {
-  Object.defineProperty(Platform, 'OS', { get: () => os, configurable: true });
-};
-
-// ─── iOS path ─────────────────────────────────────────────────────────────────
-
-describe('iOS', () => {
-  beforeEach(() => {
-    setPlatform('ios');
+describe('opening the chat menu', () => {
+  it('stays closed until the title is tapped', () => {
+    render(<Harness />);
+    expect(screen.getByText('menu:closed')).toBeTruthy();
+    expect(screen.queryByTestId('chat-menu')).toBeNull();
   });
 
-  it('calls ActionSheetIOS.showActionSheetWithOptions with the expected options', () => {
-    const spy = jest
-      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
-      .mockImplementation(() => {});
-    const { result } = renderHook(() => useChatTitleMenu(defaultOptions));
-
-    act(() => {
-      result.current.openMenu();
-    });
-
-    expect(spy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        options: ['Rename', 'Export Chat', 'Delete Chat', 'Cancel'],
-        destructiveButtonIndex: 2,
-        cancelButtonIndex: 3,
-      }),
-      expect.any(Function)
-    );
+  it('opens a menu naming the chat, with no model choice in it', () => {
+    openMenu();
+    expect(screen.getByText('menu:open')).toBeTruthy();
+    expect(screen.getByText('Chat')).toBeTruthy();
+    expect(screen.getByText('My Chat')).toBeTruthy();
+    expect(screen.getByText('Share')).toBeTruthy();
+    expect(screen.getByText('Delete chat')).toBeTruthy();
+    expect(screen.queryByText('Model')).toBeNull();
+    expect(screen.queryByText('All models')).toBeNull();
   });
 
-  it('calls exportChatRoom when index 1 is chosen', async () => {
-    let capturedCallback: ((index: number) => void) | null = null;
-    jest
-      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
-      .mockImplementation((_options, callback) => {
-        capturedCallback = callback;
-      });
-
-    const { result } = renderHook(() => useChatTitleMenu(defaultOptions));
-
-    act(() => {
-      result.current.openMenu();
-    });
-
-    await act(async () => {
-      capturedCallback!(1);
-    });
-
-    expect(mockExportChatRoom).toHaveBeenCalledWith({}, 42, 'My Chat');
+  it('falls back to the numbered label for an untitled chat', () => {
+    render(<Harness chatTitle="" />);
+    fireEvent.press(screen.getByTestId('open-menu'));
+    expect(screen.getByText('Chat 42')).toBeTruthy();
   });
 
-  it('triggers Alert.alert for delete when index 2 is chosen', () => {
-    const alertSpy = jest.spyOn(Alert, 'alert');
-    let capturedCallback: ((index: number) => void) | null = null;
-    jest
-      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
-      .mockImplementation((_options, callback) => {
-        capturedCallback = callback;
-      });
+  it('closes from a tap outside the menu', () => {
+    openMenu();
+    fireEvent.press(screen.getByTestId('chat-menu-backdrop'));
+    expect(screen.getByText('menu:closed')).toBeTruthy();
+  });
+});
 
-    const { result } = renderHook(() => useChatTitleMenu(defaultOptions));
+describe('renaming inside the menu', () => {
+  it('turns the title into a field holding the current name', () => {
+    openMenu();
+    fireEvent.press(screen.getByTestId('chat-menu-rename'));
+    expect(screen.getByDisplayValue('My Chat')).toBeTruthy();
+  });
 
-    act(() => {
-      result.current.openMenu();
+  it('saves the edited name', async () => {
+    openMenu();
+    fireEvent.press(screen.getByTestId('chat-menu-rename'));
+    fireEvent.changeText(screen.getByDisplayValue('My Chat'), 'Renamed Chat');
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(mockRenameChat).toHaveBeenCalledWith(42, 'Renamed Chat');
     });
+    expect(screen.queryByTestId('chat-menu-rename-input')).toBeNull();
+  });
 
-    act(() => {
-      capturedCallback!(2);
+  it('saves from the keyboard return key too', async () => {
+    openMenu();
+    fireEvent.press(screen.getByTestId('chat-menu-rename'));
+    const field = screen.getByDisplayValue('My Chat');
+    fireEvent.changeText(field, 'From return');
+    fireEvent(field, 'submitEditing');
+
+    await waitFor(() => {
+      expect(mockRenameChat).toHaveBeenCalledWith(42, 'From return');
     });
+  });
 
+  it('leaves the chat alone when the name is unchanged or blank', () => {
+    openMenu();
+    fireEvent.press(screen.getByTestId('chat-menu-rename'));
+    fireEvent.press(screen.getByText('Save'));
+    fireEvent.press(screen.getByTestId('chat-menu-rename'));
+    fireEvent.changeText(screen.getByDisplayValue('My Chat'), '   ');
+    fireEvent.press(screen.getByText('Save'));
+
+    expect(mockRenameChat).not.toHaveBeenCalled();
+  });
+
+  it('renames without putting a toast over the chat', async () => {
+    openMenu();
+    fireEvent.press(screen.getByTestId('chat-menu-rename'));
+    fireEvent.changeText(screen.getByDisplayValue('My Chat'), 'Quiet');
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => expect(mockRenameChat).toHaveBeenCalled());
+    expect(Toast.show).not.toHaveBeenCalled();
+  });
+});
+
+describe('sharing and deleting', () => {
+  it('closes the menu and exports the chat on Share', async () => {
+    openMenu();
+    fireEvent.press(screen.getByTestId('chat-menu-share'));
+
+    expect(screen.getByText('menu:closed')).toBeTruthy();
+    await waitFor(() => {
+      expect(mockExportChatRoom).toHaveBeenCalledWith(
+        expect.anything(),
+        42,
+        'My Chat'
+      );
+    });
+  });
+
+  it('asks before deleting', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    openMenu();
+    fireEvent.press(screen.getByTestId('chat-menu-delete'));
+
+    expect(screen.getByText('menu:closed')).toBeTruthy();
     expect(alertSpy).toHaveBeenCalledWith(
       'Delete Chat',
       expect.any(String),
@@ -154,35 +211,19 @@ describe('iOS', () => {
     );
   });
 
-  it('calls deleteChat and router.replace("/") when Delete is confirmed', async () => {
-    let capturedCallback: ((index: number) => void) | null = null;
-    jest
-      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
-      .mockImplementation((_options, callback) => {
-        capturedCallback = callback;
-      });
-
-    let capturedOnPress: (() => Promise<void>) | undefined;
+  it('deletes the chat and leaves it once confirmed', async () => {
+    let confirm: (() => Promise<void>) | undefined;
     jest.spyOn(Alert, 'alert').mockImplementation((...args: any[]) => {
       const buttons = args[2];
-      const deleteBtn = Array.isArray(buttons)
-        ? buttons.find((b: any) => b.text === 'Delete')
+      confirm = Array.isArray(buttons)
+        ? buttons.find((b: any) => b.text === 'Delete')?.onPress
         : undefined;
-      capturedOnPress = deleteBtn?.onPress;
     });
-
-    const { result } = renderHook(() => useChatTitleMenu(defaultOptions));
-
-    act(() => {
-      result.current.openMenu();
-    });
-
-    act(() => {
-      capturedCallback!(2);
-    });
+    openMenu();
+    fireEvent.press(screen.getByTestId('chat-menu-delete'));
 
     await act(async () => {
-      await capturedOnPress?.();
+      await confirm?.();
     });
 
     await waitFor(() => {
@@ -190,131 +231,32 @@ describe('iOS', () => {
     });
     expect(mockRouter.replace).toHaveBeenCalledWith('/');
   });
-
-  it('does NOT call ActionSheetIOS on Android', () => {
-    setPlatform('android');
-    const spy = jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions');
-    const { result } = renderHook(() => useChatTitleMenu(defaultOptions));
-
-    act(() => {
-      result.current.openMenu();
-    });
-
-    expect(spy).not.toHaveBeenCalled();
-  });
 });
 
-// ─── Android path ─────────────────────────────────────────────────────────────
+describe('keeping the chat still while renaming', () => {
+  const { useKeyboardOwnerStore } = jest.requireActual(
+    '../store/keyboardOwnerStore'
+  );
+  const ownsKeyboard = () => useKeyboardOwnerStore.getState().modalOwnsKeyboard;
 
-describe('Android', () => {
-  beforeEach(() => {
-    setPlatform('android');
+  beforeEach(() =>
+    useKeyboardOwnerStore.setState({ modalOwnsKeyboard: false })
+  );
+
+  it('holds the keyboard for the menu while it is open', () => {
+    openMenu();
+    expect(ownsKeyboard()).toBe(true);
   });
 
-  it('does not call ActionSheetIOS when Platform.OS is android', () => {
-    const spy = jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions');
-    const { result } = renderHook(() => useChatTitleMenu(defaultOptions));
-
-    act(() => {
-      result.current.openMenu();
-    });
-
-    expect(spy).not.toHaveBeenCalled();
-  });
-});
-
-// ─── Rename flow (via MenuElements) ──────────────────────────────────────────
-
-describe('rename flow via MenuElements', () => {
-  beforeEach(() => {
-    setPlatform('ios');
+  it('hands the keyboard back once the menu closes', () => {
+    openMenu();
+    fireEvent.press(screen.getByTestId('chat-menu-backdrop'));
+    expect(ownsKeyboard()).toBe(false);
   });
 
-  it('renders RenameChatModal with visible=false initially', () => {
-    const { result } = renderHook(() => useChatTitleMenu(defaultOptions));
-    render(<>{result.current.MenuElements}</>);
-    // Modal exists but is not visible — input should not be in the tree
-    expect(screen.queryByDisplayValue('My Chat')).toBeNull();
-  });
-
-  it('shows RenameChatModal after rename is chosen on iOS', () => {
-    let capturedCallback: ((index: number) => void) | null = null;
-    jest
-      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
-      .mockImplementation((_options, callback) => {
-        capturedCallback = callback;
-      });
-
-    const { result } = renderHook(() => useChatTitleMenu(defaultOptions));
-    const { rerender } = render(<>{result.current.MenuElements}</>);
-
-    act(() => {
-      result.current.openMenu();
-    });
-
-    act(() => {
-      capturedCallback!(0); // Rename
-    });
-
-    rerender(<>{result.current.MenuElements}</>);
-    expect(screen.getByDisplayValue('My Chat')).toBeTruthy();
-  });
-
-  it('calls renameChat with the submitted title', async () => {
-    let capturedCallback: ((index: number) => void) | null = null;
-    jest
-      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
-      .mockImplementation((_options, callback) => {
-        capturedCallback = callback;
-      });
-
-    const { result } = renderHook(() => useChatTitleMenu(defaultOptions));
-    const { rerender } = render(<>{result.current.MenuElements}</>);
-
-    act(() => {
-      result.current.openMenu();
-    });
-
-    act(() => {
-      capturedCallback!(0);
-    });
-
-    rerender(<>{result.current.MenuElements}</>);
-
-    fireEvent.changeText(screen.getByDisplayValue('My Chat'), 'Renamed Chat');
-    fireEvent.press(screen.getByText('Save'));
-
-    await waitFor(() => {
-      expect(mockRenameChat).toHaveBeenCalledWith(42, 'Renamed Chat');
-    });
-  });
-
-  it('renames without putting a toast over the chat', async () => {
-    let capturedCallback: ((index: number) => void) | null = null;
-    jest
-      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
-      .mockImplementation((_options, callback) => {
-        capturedCallback = callback;
-      });
-
-    const { result } = renderHook(() => useChatTitleMenu(defaultOptions));
-    const { rerender } = render(<>{result.current.MenuElements}</>);
-
-    act(() => {
-      result.current.openMenu();
-    });
-
-    act(() => {
-      capturedCallback!(0);
-    });
-
-    rerender(<>{result.current.MenuElements}</>);
-
-    fireEvent.press(screen.getByText('Save'));
-
-    await waitFor(() => {
-      expect(mockRenameChat).toHaveBeenCalled();
-    });
-    expect(Toast.show).not.toHaveBeenCalled();
+  it('leaves another owner alone while the menu was never opened', () => {
+    useKeyboardOwnerStore.setState({ modalOwnsKeyboard: true });
+    render(<Harness />);
+    expect(ownsKeyboard()).toBe(true);
   });
 });

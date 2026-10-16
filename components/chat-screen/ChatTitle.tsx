@@ -4,20 +4,25 @@ import {
   StyleSheet,
   View,
   Pressable,
-  ActivityIndicator,
   useWindowDimensions,
   type NativeSyntheticEvent,
   type TextLayoutEventData,
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import { radius, space } from '../../constants/design-system';
 import { firstLineOf } from '../../utils/chatLabel';
+import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
+
+const TITLE_HEIGHT = 48;
+const CHEVRON_WIDTH = 10;
+const CHEVRON_HEIGHT = 6;
+const CHEVRON_SPACE = CHEVRON_WIDTH + space.one + space.two * 2;
 
 interface Props {
   title: string;
-  modelName: string;
-  isModelLoading?: boolean;
+  open?: boolean;
   onPress?: () => void;
   onBottomMeasured?: (bottomY: number) => void;
   maxWidth?: number;
@@ -25,8 +30,7 @@ interface Props {
 
 const ChatTitle = ({
   title,
-  modelName,
-  isModelLoading = false,
+  open = false,
   onPress,
   onBottomMeasured,
   maxWidth,
@@ -64,6 +68,8 @@ const ChatTitle = ({
     return () => cancelAnimationFrame(frame);
   }, [handleLayout, onBottomMeasured, windowWidth, windowHeight]);
 
+  const titleWidth = maxWidth ? maxWidth - CHEVRON_SPACE : undefined;
+
   return (
     <Pressable
       ref={containerRef}
@@ -71,59 +77,39 @@ const ChatTitle = ({
       onPress={onPress}
       disabled={!onPress}
       hitSlop={8}
-      accessibilityLabel={title ? `${shownTitle}, ${modelName}` : modelName}
+      accessibilityRole="button"
+      accessibilityLabel={onPress ? `${shownTitle}. Chat options` : shownTitle}
+      accessibilityState={{ expanded: open }}
       style={({ pressed }) => [
         styles.titleContainer,
-        pressed && onPress ? styles.pressed : null,
+        (open || (pressed && onPress)) && styles.pressed,
       ]}
     >
-      {title !== '' ? (
-        <>
-          {maxWidth ? (
-            <View
-              style={styles.measure}
-              pointerEvents="none"
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-            >
-              <Text
-                style={[styles.title, { width: maxWidth }]}
-                onTextLayout={handleTitleWrap}
-              >
-                {title}
-              </Text>
-            </View>
-          ) : null}
-          <Text numberOfLines={1} style={styles.title}>
-            {shownTitle}
+      {titleWidth ? (
+        <View
+          style={styles.measure}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <Text
+            style={[styles.title, { width: titleWidth }]}
+            onTextLayout={handleTitleWrap}
+          >
+            {title}
           </Text>
-          <View style={styles.modelRow}>
-            <Text style={styles.modelName}>{modelName}</Text>
-            <View style={styles.accessory} pointerEvents="none">
-              {isModelLoading && (
-                <ActivityIndicator
-                  size="small"
-                  color={styles.modelName.color}
-                  style={styles.loader}
-                />
-              )}
-            </View>
-          </View>
-        </>
-      ) : (
-        <View style={styles.modelRow}>
-          <Text style={styles.modelNameTitle}>{modelName}</Text>
-          <View style={styles.accessory} pointerEvents="none">
-            {isModelLoading && (
-              <ActivityIndicator
-                size="small"
-                color={styles.modelNameTitle.color}
-                style={styles.loader}
-              />
-            )}
-          </View>
         </View>
-      )}
+      ) : null}
+      <Text numberOfLines={1} style={styles.title}>
+        {shownTitle}
+      </Text>
+      {onPress ? (
+        <ChevronDownIcon
+          width={CHEVRON_WIDTH}
+          height={CHEVRON_HEIGHT}
+          style={[styles.chevron, open && styles.chevronOpen]}
+        />
+      ) : null}
     </Pressable>
   );
 };
@@ -133,15 +119,21 @@ export default ChatTitle;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     titleContainer: {
-      flexDirection: 'column',
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: space.one,
+      height: TITLE_HEIGHT,
+      paddingHorizontal: space.two,
+      borderRadius: radius.twelve + space.half,
     },
     pressed: {
-      opacity: 0.6,
+      backgroundColor: theme.bg.titlePressed,
     },
     title: {
+      flexShrink: 1,
       fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
     },
@@ -150,31 +142,10 @@ const createStyles = (theme: Theme) =>
       opacity: 0,
       top: 0,
     },
-    modelName: {
-      fontSize: fontSizes.xs,
-      fontFamily: fontFamily.regular,
-      color: theme.text.defaultSecondary,
-      textAlign: 'center',
+    chevron: {
+      color: theme.text.primary,
     },
-    modelNameTitle: {
-      color: theme.text.defaultSecondary,
-      fontFamily: fontFamily.medium,
-    },
-    modelRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      position: 'relative',
-    },
-    accessory: {
-      position: 'absolute',
-      left: '100%',
-      marginLeft: 4,
-      width: 14,
-      height: 14,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    loader: {
-      transform: [{ scale: 0.65 }],
+    chevronOpen: {
+      transform: [{ rotate: '180deg' }],
     },
   });
