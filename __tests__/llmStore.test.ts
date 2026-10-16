@@ -3,6 +3,7 @@ import {
   isModelBusy,
   MODEL_WARMUP_TIMEOUT_MS,
   useLLMStore,
+  setGenerationSeed,
 } from '../store/llmStore';
 import { LLMModule } from 'react-native-executorch/legacy';
 import * as chatRepository from '../database/chatRepository';
@@ -3118,6 +3119,21 @@ describe('sampling a chat turn runs with after a speed test', () => {
 
     expect(afterSpeedTest).toEqual(beforeSpeedTest);
     expect(afterSpeedTest.temperature).not.toBe(0.01);
+  });
+
+  it('samples with the seed a benchmark sets, and from the clock again once it is cleared', async () => {
+    const sampling = emulateRunnerSampling();
+    await useLLMStore.getState().loadModel(qwen25);
+    useLLMStore.setState({ model: qwen25 });
+    mockPersistMessage.mockResolvedValue(42);
+
+    setGenerationSeed(1016);
+    const seeded = await samplingOfNextTurn(sampling);
+    setGenerationSeed();
+    const unseeded = await samplingOfNextTurn(sampling);
+
+    expect(seeded.seed).toBe(1016);
+    expect(unseeded.seed).toBe(0);
   });
 });
 

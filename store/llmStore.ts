@@ -171,14 +171,22 @@ type LLMGenerationConfig = ReturnType<typeof getGenerationConfigForModel>;
 
 let appliedGenerationConfig: string | null = null;
 
+const CLOCK_SEEDED = 0;
+let generationSeed = CLOCK_SEEDED;
+
+export const setGenerationSeed = (seed: number = CLOCK_SEEDED): void => {
+  generationSeed = seed;
+};
+
 const applyGenerationConfig = (
   instance: LLMModule,
   generationConfig: LLMGenerationConfig | undefined
 ) => {
   if (!generationConfig) return;
-  const requested = JSON.stringify(generationConfig);
+  const seeded = { ...generationConfig, seed: generationSeed };
+  const requested = JSON.stringify(seeded);
   if (requested === appliedGenerationConfig) return;
-  instance.configure({ generationConfig });
+  instance.configure({ generationConfig: seeded });
   appliedGenerationConfig = requested;
 };
 
