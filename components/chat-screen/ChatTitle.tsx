@@ -11,14 +11,16 @@ import {
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
-import { radius, space } from '../../constants/design-system';
+import { space } from '../../constants/design-system';
 import { firstLineOf } from '../../utils/chatLabel';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
+import GlassSurface from '../GlassSurface';
+import { GLASS_BUTTON_SIZE } from '../../constants/header-actions';
 
-const TITLE_HEIGHT = 48;
 const CHEVRON_WIDTH = 10;
 const CHEVRON_HEIGHT = 6;
-const CHEVRON_SPACE = CHEVRON_WIDTH + space.one + space.two * 2;
+const CHEVRON_SPACE = CHEVRON_WIDTH + space.one + space.four * 2;
+const PRESSED_OPACITY = 0.6;
 
 interface Props {
   title: string;
@@ -71,46 +73,50 @@ const ChatTitle = ({
   const titleWidth = maxWidth ? maxWidth - CHEVRON_SPACE : undefined;
 
   return (
-    <Pressable
-      ref={containerRef}
-      onLayout={onBottomMeasured ? handleLayout : undefined}
-      onPress={onPress}
-      disabled={!onPress}
-      hitSlop={8}
-      accessibilityRole="button"
-      accessibilityLabel={onPress ? `${shownTitle}. Chat options` : shownTitle}
-      accessibilityState={{ expanded: open }}
-      style={({ pressed }) => [
-        styles.titleContainer,
-        (open || (pressed && onPress)) && styles.pressed,
-      ]}
-    >
-      {titleWidth ? (
-        <View
-          style={styles.measure}
-          pointerEvents="none"
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <Text
-            style={[styles.title, { width: titleWidth }]}
-            onTextLayout={handleTitleWrap}
+    <GlassSurface interactive style={styles.capsule}>
+      <Pressable
+        ref={containerRef}
+        onLayout={onBottomMeasured ? handleLayout : undefined}
+        onPress={onPress}
+        disabled={!onPress}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={
+          onPress ? `${shownTitle}. Chat options` : shownTitle
+        }
+        accessibilityState={{ expanded: open }}
+        style={({ pressed }) => [
+          styles.title,
+          pressed && onPress && styles.pressed,
+        ]}
+      >
+        {titleWidth ? (
+          <View
+            style={styles.measure}
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
           >
-            {title}
-          </Text>
-        </View>
-      ) : null}
-      <Text numberOfLines={1} style={styles.title}>
-        {shownTitle}
-      </Text>
-      {onPress ? (
-        <ChevronDownIcon
-          width={CHEVRON_WIDTH}
-          height={CHEVRON_HEIGHT}
-          style={[styles.chevron, open && styles.chevronOpen]}
-        />
-      ) : null}
-    </Pressable>
+            <Text
+              style={[styles.titleText, { width: titleWidth }]}
+              onTextLayout={handleTitleWrap}
+            >
+              {title}
+            </Text>
+          </View>
+        ) : null}
+        <Text numberOfLines={1} style={styles.titleText}>
+          {shownTitle}
+        </Text>
+        {onPress ? (
+          <ChevronDownIcon
+            width={CHEVRON_WIDTH}
+            height={CHEVRON_HEIGHT}
+            style={[styles.chevron, open && styles.chevronOpen]}
+          />
+        ) : null}
+      </Pressable>
+    </GlassSurface>
   );
 };
 
@@ -118,19 +124,22 @@ export default ChatTitle;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    titleContainer: {
+    capsule: {
+      height: GLASS_BUTTON_SIZE,
+      borderRadius: GLASS_BUTTON_SIZE / 2,
+    },
+    title: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: space.one,
-      height: TITLE_HEIGHT,
-      paddingHorizontal: space.two,
-      borderRadius: radius.twelve + space.half,
+      height: GLASS_BUTTON_SIZE,
+      paddingHorizontal: space.four,
     },
     pressed: {
-      backgroundColor: theme.bg.titlePressed,
+      opacity: PRESSED_OPACITY,
     },
-    title: {
+    titleText: {
       flexShrink: 1,
       fontSize: fontSizes.md,
       lineHeight: lineHeights.md,

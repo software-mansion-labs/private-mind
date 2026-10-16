@@ -37,7 +37,8 @@ import MessageItem from './MessageItem';
 import ScrollToLatestButton from './ScrollToLatestButton';
 import SourcesSheet, { type SourcesSheetHandle } from './SourcesSheet';
 import { EdgeFade } from './EdgeFade';
-import { TopFade, topFadeHeight } from './TopFade';
+import { topFadeHeight } from './TopFade';
+import { GlassScrollEdge } from './GlassScrollEdge';
 import {
   Message,
   SourceDocument,
@@ -1208,7 +1209,7 @@ const Messages = ({
         </KeyboardChatScrollView>
       </Reanimated.View>
 
-      {hasMessages && <TopFade anchor={fadeAnchor} />}
+      {hasMessages && <GlassScrollEdge anchor={fadeAnchor} />}
       {hasMessages && (
         <Reanimated.View
           style={[styles.bottomFade, bottomFadeAnimatedStyle]}
