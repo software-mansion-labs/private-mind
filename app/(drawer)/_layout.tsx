@@ -8,6 +8,7 @@ import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import WebScrapeSheet from '../../components/bottomSheets/WebScrapeSheet';
 import { WEB_SEARCH_ENABLED } from '../../constants/web';
 import { useTurnInFlight } from '../../hooks/useTurnInFlight';
+import { DEV_TOOLS } from '../../constants/dev-tools';
 
 const DrawerLayout = () => {
   const { width } = useWindowDimensions();
@@ -61,6 +62,14 @@ const DrawerLayout = () => {
             title: 'Benchmark',
           }}
         />
+        {DEV_TOOLS && (
+          <Drawer.Screen
+            name="dev-benchmark"
+            options={{
+              title: 'Dev benchmark',
+            }}
+          />
+        )}
         <Drawer.Screen
           name="chat/[id]"
           options={{

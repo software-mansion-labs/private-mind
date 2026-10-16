@@ -39,6 +39,7 @@ export const lightTheme = {
     onAttachButton: '#ffffff',
     error: '#DE595B',
     warning: '#B8630A',
+    success: '#2E7D32',
     onBrand: '#ffffff',
   },
   border: {
@@ -88,6 +89,7 @@ export const darkTheme = {
     onAttachButton: '#ffffff',
     error: '#E68485',
     warning: '#F0A860',
+    success: '#7BC47F',
     onBrand: '#ffffff',
   },
   border: {

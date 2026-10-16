@@ -532,6 +532,17 @@ export const deleteChat = async (
   await db.runAsync(`DELETE FROM chats WHERE id = ?;`, [chatId]);
 };
 
+export const deleteMessagesAfter = async (
+  db: SQLiteDatabase,
+  chatId: number,
+  messageId: number
+): Promise<void> => {
+  await db.runAsync(`DELETE FROM messages WHERE chatId = ? AND id > ?;`, [
+    chatId,
+    messageId,
+  ]);
+};
+
 const thinkingEnabledFromDb = (value: number | null): boolean | undefined => {
   if (value === 1) return true;
   if (value === 0) return false;
