@@ -50,8 +50,25 @@ jest.mock('@react-native-community/netinfo', () => ({
   fetch: jest.fn(),
 }));
 
+jest.mock('react-native-gesture-handler', () => {
+  const { Pressable: NativePressable } = require('react-native');
+  return {
+    ...jest.requireActual('react-native-gesture-handler'),
+    Pressable: ({
+      disabled,
+      onPress,
+      ...props
+    }: {
+      disabled?: boolean;
+      onPress?: () => void;
+    }) => (
+      <NativePressable {...props} onPress={disabled ? undefined : onPress} />
+    ),
+  };
+});
+
 jest.mock('../components/CircleButton', () => {
-  const { TouchableOpacity } = require('react-native');
+  const { Pressable } = require('react-native');
   return ({
     onPress,
     disabled,
@@ -61,7 +78,7 @@ jest.mock('../components/CircleButton', () => {
     disabled?: boolean;
     testID?: string;
   }) => (
-    <TouchableOpacity
+    <Pressable
       testID={testID || 'circle-btn'}
       onPress={onPress}
       disabled={disabled}

@@ -298,7 +298,15 @@ export default function ChatScreen({
         />
       </View>
 
-      <Animated.View style={[styles.chatBarSticky, chatBarStickyStyle]}>
+      <Animated.View
+        style={[
+          styles.chatBarSticky,
+          rootFrame.height > 0 && {
+            maxHeight: rootFrame.height - headerHeight,
+          },
+          chatBarStickyStyle,
+        ]}
+      >
         <ChatBar
           chatId={chatId}
           onSend={handleSendMessage}
