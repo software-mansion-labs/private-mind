@@ -612,22 +612,17 @@ const shapeInstructions = (candidates: string[]): string =>
 const isAbandonedQuestion = (message: Message): boolean =>
   message.role === 'user' && !!message.stoppedByUser;
 
-const DEFAULT_PROMPT_DOCUMENT_SENTENCES = [
-  'When given context from documents, use that information to give comprehensive answers while being concise and relevant.',
-  'Gdy otrzymasz kontekst z dokumentów, wykorzystaj te informacje, aby udzielać wyczerpujących odpowiedzi, będąc jednocześnie zwięzłym i rzeczowym.',
-];
+const DEFAULT_PROMPT_DOCUMENT_SENTENCE =
+  'When given context from documents, use that information to give comprehensive answers while being concise and relevant.';
 
-const withoutSentence = (prompt: string, sentence: string): string => {
-  const parts = prompt.split(sentence);
+const withoutDefaultDocumentSentence = (prompt: string): string => {
+  const parts = prompt.split(DEFAULT_PROMPT_DOCUMENT_SENTENCE);
   if (parts.length === 1) return prompt;
   return parts
     .map((part) => part.trim())
     .filter((part) => part.length > 0)
     .join(' ');
 };
-
-const withoutDefaultDocumentSentences = (prompt: string): string =>
-  DEFAULT_PROMPT_DOCUMENT_SENTENCES.reduce(withoutSentence, prompt);
 
 export const prepareMessagesForLLM = (
   activeChatMessages: Message[],
@@ -661,7 +656,7 @@ export const prepareMessagesForLLM = (
 
   let systemPrompt = hasContext
     ? settings.systemPrompt
-    : withoutDefaultDocumentSentences(settings.systemPrompt);
+    : withoutDefaultDocumentSentence(settings.systemPrompt);
 
   const trimmedCustomPrompt = customSystemPrompt.trim();
   if (trimmedCustomPrompt) {
