@@ -13,6 +13,7 @@ import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWebSearchStore } from '../store/webSearchStore';
 import { OPENING_WELCOMES } from '../constants/opening-greetings';
+import { existingFiles } from '../__mocks__/expo-file-system';
 
 const memoryProbe = { samples: [] as number[], available: false };
 jest.mock('../modules/memory-probe', () => ({
@@ -47,6 +48,11 @@ jest.mock('../constants/default-benchmark', () => ({
   BENCHMARK_ITERATIONS: 3,
   BENCHMARK_GENERATION_CONFIG: { temperature: 0.01, topP: 1, minP: 0 },
 }));
+const cpu = { lacksLseAtomics: false };
+jest.mock('../utils/cpuSupport', () => ({
+  cpuLacksLseAtomics: () => Promise.resolve(cpu.lacksLseAtomics),
+}));
+
 jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
   default: { fetch: jest.fn().mockResolvedValue({ isConnected: true }) },
@@ -182,6 +188,61 @@ describe('loadModel', () => {
     expect(mockLLMModule.fromModelName).toHaveBeenCalled();
   });
 
+  describe('sources handed to the library', () => {
+    const DOWNLOADED = {
+      model: 'file:///documents/react-native-executorch/example.com_model.pte',
+      tokenizer:
+        'file:///documents/react-native-executorch/example.com_tokenizer.json',
+      tokenizerConfig:
+        'file:///documents/react-native-executorch/example.com_tokenizer_config.json',
+    };
+
+    const loadedSources = () => {
+      const [namedSources] = mockLLMModule.fromModelName.mock.calls[0];
+      return {
+        model: namedSources.modelSource,
+        tokenizer: namedSources.tokenizerSource,
+        tokenizerConfig: namedSources.tokenizerConfigSource,
+      };
+    };
+
+    beforeEach(() => {
+      existingFiles.clear();
+      Object.values(DOWNLOADED).forEach((uri) => existingFiles.add(uri));
+    });
+
+    afterEach(() => existingFiles.clear());
+
+    it('loads a downloaded model from its files, so no HEAD request goes out', async () => {
+      await useLLMStore.getState().loadModel(baseModel);
+
+      expect(loadedSources()).toEqual(DOWNLOADED);
+    });
+
+    it('passes the urls for a model that is not downloaded', async () => {
+      await useLLMStore
+        .getState()
+        .loadModel({ ...baseModel, isDownloaded: false });
+
+      expect(loadedSources()).toEqual({
+        model: baseModel.modelPath,
+        tokenizer: baseModel.tokenizerPath,
+        tokenizerConfig: baseModel.tokenizerConfigPath,
+      });
+    });
+
+    it('falls back to the url for a file missing from disk', async () => {
+      existingFiles.delete(DOWNLOADED.tokenizerConfig);
+
+      await useLLMStore.getState().loadModel(baseModel);
+
+      expect(loadedSources()).toEqual({
+        ...DOWNLOADED,
+        tokenizerConfig: baseModel.tokenizerConfigPath,
+      });
+    });
+  });
+
   it('calls delete on previous instance before loading new model', async () => {
     // Load first model
     await useLLMStore.getState().loadModel(baseModel);
@@ -196,6 +257,17 @@ describe('loadModel', () => {
     await useLLMStore.getState().loadModel({ ...baseModel, id: 2 });
 
     expect(firstInstance.delete).toHaveBeenCalled();
+  });
+
+  it('refuses to load a model on a CPU without LSE atomics', async () => {
+    cpu.lacksLseAtomics = true;
+    try {
+      await useLLMStore.getState().loadModel(baseModel);
+    } finally {
+      cpu.lacksLseAtomics = false;
+    }
+    expect(mockLLMModule.fromModelName).not.toHaveBeenCalled();
+    expect(useLLMStore.getState().model).toBeNull();
   });
 
   it('clears model and isLoading on load failure', async () => {
@@ -1292,6 +1364,29 @@ describe('sendChatMessage', () => {
     );
   });
 
+  it('keeps the first answer when the continuation retry no longer fits the model context', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Oto co warto zabrać:')
+      .mockRejectedValueOnce(
+        new Error('num_prompt_tokens 2210 >= seq cap 2048')
+      )
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Oto co warto zabrać:'
+    );
+  });
+
   it('shows what it has rather than a banner when the continuation retry is still a dangling list', async () => {
     mockInstance.generate
       .mockResolvedValueOnce('Oto co warto zabrać:')
@@ -1865,6 +1960,10 @@ describe('sendChatMessage', () => {
 
     expect(useLLMStore.getState().isRefining).toBe(false);
     expect(useLLMStore.getState().isGenerating).toBe(false);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.'
+    );
   });
 
   it('keeps the first answer when the coverage retry still skips the aspect', async () => {

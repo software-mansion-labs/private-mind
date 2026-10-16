@@ -1,5 +1,4 @@
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 
 jest.mock('../context/ThemeContext', () => ({
@@ -56,8 +55,7 @@ describe('expand/collapse', () => {
     renderBlock({ isComplete: true, inProgress: false });
     expect(screen.queryByTestId('thinking-content')).toBeNull();
 
-    // The toggle button is the TouchableOpacity in the header
-    const toggleBtn = screen.UNSAFE_getAllByType(TouchableOpacity)[0];
+    const toggleBtn = screen.getByTestId('thinking-toggle');
     fireEvent.press(toggleBtn);
 
     expect(screen.getByTestId('thinking-content')).toBeTruthy();
@@ -67,7 +65,7 @@ describe('expand/collapse', () => {
     renderBlock({ isComplete: false, inProgress: false });
     expect(screen.getByTestId('thinking-content')).toBeTruthy();
 
-    const toggleBtn = screen.UNSAFE_getAllByType(TouchableOpacity)[0];
+    const toggleBtn = screen.getByTestId('thinking-toggle');
     fireEvent.press(toggleBtn);
 
     expect(screen.queryByTestId('thinking-content')).toBeNull();
@@ -77,7 +75,7 @@ describe('expand/collapse', () => {
     renderBlock({ isComplete: false, inProgress: true });
     expect(screen.getByTestId('thinking-content')).toBeTruthy();
 
-    const toggleBtn = screen.UNSAFE_getAllByType(TouchableOpacity)[0];
+    const toggleBtn = screen.getByTestId('thinking-toggle');
     fireEvent.press(toggleBtn);
 
     // Still visible — inProgress blocks the toggle

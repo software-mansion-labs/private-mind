@@ -6,6 +6,7 @@ import {
 } from '../utils/thinking';
 import { create } from 'zustand';
 import { LLMModule } from 'react-native-executorch/legacy';
+import { preferDownloadedCopy } from '../utils/downloadedCopy';
 import { Model } from '../database/modelRepository';
 import { SQLiteDatabase } from 'expo-sqlite';
 import {
@@ -77,6 +78,8 @@ import {
 } from '../modules/memory-probe';
 import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
+import { cpuLacksLseAtomics } from '../utils/cpuSupport';
+import { UNSUPPORTED_CPU_REFUSAL } from '../constants/cpu-support';
 
 export interface LLMStore {
   isLoading: boolean;
@@ -468,15 +471,18 @@ const loadModelInstance = async (
     }));
   };
 
+  const fromDisk = (path: string) =>
+    model.isDownloaded ? preferDownloadedCopy(path) : path;
+
   try {
     llmInstance = await LLMModule.fromModelName(
       {
         modelName: 'custom' as Parameters<
           typeof LLMModule.fromModelName
         >[0]['modelName'],
-        modelSource: model.modelPath,
-        tokenizerSource: model.tokenizerPath,
-        tokenizerConfigSource: model.tokenizerConfigPath,
+        modelSource: fromDisk(model.modelPath),
+        tokenizerSource: fromDisk(model.tokenizerPath),
+        tokenizerConfigSource: fromDisk(model.tokenizerConfigPath),
         capabilities: model.vision ? (['vision'] as const) : undefined,
       },
       () => {},
@@ -874,6 +880,15 @@ const generateLLMResponse = (
   });
 };
 
+const generateRefinement = (
+  messages: ExecutorchMessage[],
+  get: () => LLMStore
+): Promise<LLMGenerationResult> =>
+  generateLLMResponse(messages, get).catch((error) => {
+    console.warn('Refinement generation failed, keeping the answer', error);
+    return NO_LLM_RESPONSE;
+  });
+
 export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
   isGenerating: false,
@@ -950,6 +965,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       return;
     }
     const result = modelLoadChain.then(async () => {
+      // TEMPORARY FIX (#437 A2): remove with utils/cpuSupport.ts.
+      if (await cpuLacksLseAtomics()) {
+        Toast.show({
+          type: 'defaultToast',
+          text1: UNSUPPORTED_CPU_REFUSAL,
+        });
+        return;
+      }
       const network = model.isDownloaded
         ? null
         : await NetInfo.fetch().catch(() => null);
@@ -1483,7 +1506,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         set({ isRefining: true });
         let retryGeneration: Awaited<ReturnType<typeof generateLLMResponse>>;
         try {
-          retryGeneration = await generateLLMResponse(messages, get);
+          retryGeneration = await generateRefinement(messages, get);
         } finally {
           suppressUtilityStreaming = false;
         }
@@ -1662,7 +1685,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         const continuationPrompt =
           DANGLING_LIST_CONTINUATION_PROMPT +
           answerLanguageAnchor(detectQuestionLanguage(currentQuestion ?? ''));
-        const continuationGeneration = await generateLLMResponse(
+        const continuationGeneration = await generateRefinement(
           [
             ...effectivePrepared,
             { role: 'assistant', content: finalResponse },

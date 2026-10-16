@@ -630,6 +630,18 @@ const withoutAnsweredOpeningGreeting = <T extends Message>(
   return chatMovedOn ? later : messages;
 };
 
+const DEFAULT_PROMPT_DOCUMENT_SENTENCE =
+  'When given context from documents, use that information to give comprehensive answers while being concise and relevant.';
+
+const withoutDefaultDocumentSentence = (prompt: string): string => {
+  const parts = prompt.split(DEFAULT_PROMPT_DOCUMENT_SENTENCE);
+  if (parts.length === 1) return prompt;
+  return parts
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+    .join(' ');
+};
+
 export const prepareMessagesForLLM = (
   activeChatMessages: Message[],
   context: string[],
@@ -660,7 +672,9 @@ export const prepareMessagesForLLM = (
       .map((msg) => msg.content)
   );
 
-  let systemPrompt = settings.systemPrompt;
+  let systemPrompt = hasContext
+    ? settings.systemPrompt
+    : withoutDefaultDocumentSentence(settings.systemPrompt);
 
   const trimmedCustomPrompt = customSystemPrompt.trim();
   if (trimmedCustomPrompt) {
@@ -733,7 +747,7 @@ export const prepareMessagesForLLM = (
   const filteredMessages: ExecutorchMessage[] = messagesForLLM.map((msg) => ({
     role: msg.role,
     content: msg.content,
-    ...(msg.imagePath ? { mediaPath: msg.imagePath } : {}),
+    ...(msg.imagePath && model.vision ? { mediaPath: msg.imagePath } : {}),
   }));
 
   const messagesWithSystemPrompt: ExecutorchMessage[] = [

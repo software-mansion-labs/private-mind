@@ -11,7 +11,7 @@ import React, {
 import {
   View,
   TextInput as RNTextInput,
-  TouchableOpacity,
+  Pressable,
   Text,
   StyleSheet,
   Keyboard,
@@ -32,6 +32,7 @@ import {
   type LibraryImage,
 } from '../../hooks/useAttachment';
 import AttachmentOverlay from './attachments/AttachmentOverlay';
+import { USES_SYSTEM_PHOTO_PICKER } from './attachments/usePhotoLibrary';
 import { COMPOSER, COMPOSER_STRIP_HEIGHT } from './attachments/constants';
 import { useAttachmentFlights } from './attachments/useAttachmentFlights';
 import { useAttachmentPanel } from './attachments/useAttachmentPanel';
@@ -56,20 +57,25 @@ import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
 import { useEmbeddingDownloadPrompt } from './useEmbeddingDownloadPrompt';
 import type { SendRefusal } from './useSendChatMessage';
+import { UNSUPPORTED_CPU_REFUSAL } from '../../constants/cpu-support';
 import {
   BAR_GROW_DURATION,
   BAR_GROW_LAYOUT,
   useBarGrowth,
 } from './useBarGrowth';
+import { pressedOpacity } from '../../styles/pressable';
 
 const SENT_ECHO_WINDOW_MS = 300;
 
 const REFUSAL_COPY: Record<SendRefusal, string | null> = {
   'nothing-to-send': 'Add a message or an attachment first.',
+  'cpu-unsupported': UNSUPPORTED_CPU_REFUSAL,
   'model-loading': 'Wait for the model to finish loading.',
   'busy': 'Wait for the response to finish or stop it first.',
   'chat-not-created': 'Could not start this chat. Try again.',
   'image-not-saved': null,
+  'image-unsupported':
+    "This model can't see images. Remove the photo or pick a model with Vision.",
 };
 
 interface Props {
@@ -147,6 +153,7 @@ const ChatBar = ({
     attachments,
     embeddingDownloadSheetRef,
     addImages,
+    pickSystemPhoto,
     presentDownloadSheet,
     pickDocument,
     addUrlSource,
@@ -189,8 +196,18 @@ const ChatBar = ({
     });
   }, []);
 
+  const handleSelectPhotos = useCallback(
+    () =>
+      pickSystemPhoto().catch((error) => {
+        console.error('Failed to open the photo picker:', error);
+        return 'canceled' as const;
+      }),
+    [pickSystemPhoto]
+  );
+
   const panel = useAttachmentPanel({
     onSelectFiles: handleSelectFiles,
+    onSelectPhotos: USES_SYSTEM_PHOTO_PICKER ? handleSelectPhotos : undefined,
     canAttachImages: isVisionModel,
     onImagesUnsupported: showImagesUnsupported,
   });
@@ -559,14 +576,20 @@ const ChatBar = ({
   if (chatId && !model) {
     return (
       <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
-        <TouchableOpacity style={styles.modelSelection} onPress={onSelectModel}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.modelSelection,
+            pressed && pressedOpacity,
+          ]}
+          onPress={onSelectModel}
+        >
           <Text style={styles.selectedModel}>Select Model</Text>
           <RotateLeft
             width={20}
             height={20}
             style={{ color: theme.text.primary }}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }
@@ -619,8 +642,11 @@ const ChatBar = ({
               onLayout={handleRowsBelowStripLayout}
             >
               {showIndexChip && (
-                <TouchableOpacity
-                  style={styles.indexUrlChip}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.indexUrlChip,
+                    pressed && pressedOpacity,
+                  ]}
                   onPress={handleIndexUrl}
                   testID="index-url-chip"
                 >
@@ -632,7 +658,7 @@ const ChatBar = ({
                   <Text style={styles.indexUrlChipText} numberOfLines={1}>
                     Index {hostname(detectedUrl!)}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               )}
               <View style={styles.content}>
                 <TextInputWrapper
@@ -720,8 +746,10 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'column',
       justifyContent: 'center',
       paddingHorizontal: 16,
+      flexShrink: 1,
     },
     suggestionsContainer: {
+      flexShrink: 1,
       marginBottom: 12,
       gap: 12,
     },

@@ -1,12 +1,13 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import { Pressable } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { ModelFamily } from '../../utils/modelFamily';
 import Chip from '../Chip';
 import { FAMILY_DESCRIPTIONS } from '../../constants/family-descriptions';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
   family: ModelFamily;
@@ -22,8 +23,12 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
   const description = FAMILY_DESCRIPTIONS[family.name];
 
   return (
-    <TouchableOpacity
-      style={[styles.card, !runnable && styles.unrunnableCard]}
+    <Pressable
+      style={({ pressed }) => [
+        styles.card,
+        !runnable && styles.unrunnableCard,
+        pressed && pressedOpacity,
+      ]}
       onPress={() => onPress(family)}
       testID={`family-card-${family.name}`}
     >
@@ -52,7 +57,7 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
         </View>
       </View>
       <Text style={styles.chevron}>›</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 

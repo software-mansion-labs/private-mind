@@ -66,6 +66,78 @@ describe('prepareMessagesForLLM', () => {
       expect(result[0].content).toContain(baseSettings.systemPrompt);
     });
 
+    describe('default prompt sentence about documents', () => {
+      const defaultPromptLead =
+        'You are a knowledgeable and helpful assistant. Provide clear, accurate, and well-structured responses.';
+      const defaultDocumentSentence =
+        'When given context from documents, use that information to give comprehensive answers while being concise and relevant.';
+      const defaultSettings = {
+        ...baseSettings,
+        systemPrompt: `${defaultPromptLead} ${defaultDocumentSentence}`,
+      } as ChatSettings;
+      const bielikPromptLead =
+        'Jesteś pomocnym asystentem. Udzielaj jasnych, dokładnych i dobrze ustrukturyzowanych odpowiedzi w języku polskim.';
+      const bielikDocumentSentence =
+        'Gdy otrzymasz kontekst z dokumentów, wykorzystaj te informacje, aby udzielać wyczerpujących odpowiedzi, będąc jednocześnie zwięzłym i rzeczowym.';
+      const question: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'Name three mountains.',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const systemPromptFor = (settings: ChatSettings, context: string[]) =>
+        prepareMessagesForLLM(question, context, settings, baseModel)[0]
+          .content as string;
+
+      it('is dropped when the turn carries no documents, so the model does not ask for them', () => {
+        const systemPrompt = systemPromptFor(defaultSettings, []);
+
+        expect(systemPrompt).not.toContain(defaultDocumentSentence);
+        expect(systemPrompt.startsWith(`${defaultPromptLead}\n\n`)).toBe(true);
+      });
+
+      it('stays when the turn carries retrieved context', () => {
+        const systemPrompt = systemPromptFor(defaultSettings, [
+          'some retrieved passage',
+        ]);
+
+        expect(systemPrompt).toContain(
+          `${defaultPromptLead} ${defaultDocumentSentence}`
+        );
+      });
+
+      it('leaves a custom prompt that mentions documents in its own words untouched', () => {
+        const customPrompt =
+          'You are a concise assistant. If documents are attached, quote them; otherwise answer from what you know.';
+        const systemPrompt = systemPromptFor(
+          { ...baseSettings, systemPrompt: customPrompt } as ChatSettings,
+          []
+        );
+
+        expect(systemPrompt.startsWith(`${customPrompt}\n\n`)).toBe(true);
+      });
+
+      it('leaves the Polish Bielik prompt as it is', () => {
+        const systemPrompt = systemPromptFor(
+          {
+            ...baseSettings,
+            systemPrompt: `${bielikPromptLead} ${bielikDocumentSentence}`,
+          } as ChatSettings,
+          []
+        );
+
+        expect(
+          systemPrompt.startsWith(
+            `${bielikPromptLead} ${bielikDocumentSentence}\n\n`
+          )
+        ).toBe(true);
+      });
+    });
+
     it('tells the model to greet back when the latest message is only a greeting', () => {
       const underWay: Message[] = [
         { id: 1, chatId: 1, role: 'user', content: 'ping', timestamp: 0 },
@@ -2621,6 +2693,41 @@ describe('prepareMessagesForLLM', () => {
       expect(result[0].content).not.toContain('IMPORTANT SOURCE INFORMATION');
       expect(String(result.at(-1)!.content)).not.toContain('<sources>');
     });
+  });
+});
+
+describe('prepareMessagesForLLM — images in the history', () => {
+  const withPhoto: Message[] = [
+    {
+      id: 1,
+      chatId: 1,
+      role: 'user',
+      content: 'what is this?',
+      imagePath: 'file:///chat-images/cat.jpg',
+      timestamp: 0,
+    },
+    { id: 2, chatId: 1, role: 'assistant', content: 'A cat.', timestamp: 0 },
+    { id: 3, chatId: 1, role: 'user', content: 'and now?', timestamp: 0 },
+  ];
+
+  it('hands the photo to a vision model', () => {
+    const result = prepareMessagesForLLM(withPhoto, [], baseSettings, {
+      ...baseModel,
+      vision: true,
+    });
+
+    expect(result.find((m) => m.content === 'what is this?')?.mediaPath).toBe(
+      'file:///chat-images/cat.jpg'
+    );
+  });
+
+  it('keeps the photo away from a text model the chat was switched to, so the chat keeps working', () => {
+    const result = prepareMessagesForLLM(withPhoto, [], baseSettings, {
+      ...baseModel,
+      vision: false,
+    });
+
+    expect(result.some((m) => m.mediaPath)).toBe(false);
   });
 });
 

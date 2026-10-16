@@ -21,6 +21,7 @@ import { Theme } from '../../styles/colors';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import DrawerMenu from './DrawerMenu';
 import { useSearchOverlayAnimation } from './useSearchOverlayAnimation';
+import { useSearchInputFocus } from './useSearchInputFocus';
 import {
   getDrawerTopPadding,
   getDrawerWidth,
@@ -63,6 +64,10 @@ export const DrawerSearchOverlay = ({
   const { mounted, progress, contentProgress, backdropOpacity, startExpand } =
     useSearchOverlayAnimation({ active, closeInstantly });
   const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
+  const { focusAfterShow, refocus, cancelPendingFocus } = useSearchInputFocus(
+    inputRef,
+    active
+  );
 
   const collapsedWidth = getDrawerWidth(screenWidth);
 
@@ -84,8 +89,20 @@ export const DrawerSearchOverlay = ({
 
   const handleShow = useCallback(() => {
     startExpand();
-    requestAnimationFrame(() => inputRef.current?.focus());
-  }, [startExpand, inputRef]);
+    focusAfterShow();
+  }, [startExpand, focusAfterShow]);
+
+  const handleMenuActiveChange = useCallback(
+    (menuActive: boolean) => {
+      onMenuActiveChange(menuActive);
+      if (menuActive) {
+        cancelPendingFocus();
+        return;
+      }
+      refocus();
+    },
+    [onMenuActiveChange, cancelPendingFocus, refocus]
+  );
 
   if (!mounted) return null;
 
@@ -119,7 +136,7 @@ export const DrawerSearchOverlay = ({
                 onChangeSearch={onChangeSearch}
                 onCloseSearch={onRequestClose}
                 onSearchBlur={onSearchBlur}
-                onMenuActiveChange={onMenuActiveChange}
+                onMenuActiveChange={handleMenuActiveChange}
                 onNavigate={onNavigate}
                 inputRef={inputRef}
                 scrollOffsetRef={scrollOffsetRef}

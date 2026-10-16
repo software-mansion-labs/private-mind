@@ -102,6 +102,7 @@ export default function ChatScreen({
 
   const {
     rootRef,
+    rootFrame,
     handleRootLayout,
     userActionMenu,
     setUserActionMenu,
@@ -186,6 +187,8 @@ export default function ChatScreen({
     handleSheetStateChange: handleModelSwitchSheetState,
     whenSettled: whenModelSwitchSettles,
   } = useModelSwitch(handleSelectModel);
+
+  const answeringModel = pendingModel ?? model;
 
   useEffect(() => {
     onPendingModelChange?.(pendingModel);
@@ -290,7 +293,15 @@ export default function ChatScreen({
         />
       </View>
 
-      <Animated.View style={[styles.chatBarSticky, chatBarStickyStyle]}>
+      <Animated.View
+        style={[
+          styles.chatBarSticky,
+          rootFrame.height > 0 && {
+            maxHeight: rootFrame.height - headerHeight,
+          },
+          chatBarStickyStyle,
+        ]}
+      >
         <ChatBar
           chatId={chatId}
           onSend={handleSendMessage}
@@ -298,7 +309,7 @@ export default function ChatScreen({
           onSelectPrompt={handleSelectPrompt}
           ref={inputRef}
           model={model}
-          isVisionModel={model?.vision === true}
+          isVisionModel={answeringModel?.vision === true}
           extraContentPadding={extraContentPadding}
           thinkingEnabled={thinkingEnabled}
           onThinkingToggle={handleThinkingToggle}

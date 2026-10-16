@@ -109,3 +109,13 @@ export class RnExecutorchError extends Error {
     this.code = code;
   }
 }
+
+const actualResourceFetcherUtils = () =>
+  jest.requireActual(
+    '../node_modules/react-native-executorch/lib/module/legacy/src/utils/ResourceFetcherUtils'
+  ).ResourceFetcherUtils;
+
+export const ResourceFetcherUtils = {
+  getFilenameFromUri: (uri: string): string =>
+    actualResourceFetcherUtils().getFilenameFromUri(uri),
+};

@@ -2214,6 +2214,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@lobehub/icons-static-svg@npm:1.95.1":
+  version: 1.95.1
+  resolution: "@lobehub/icons-static-svg@npm:1.95.1"
+  checksum: 4cb933bfe228fbe3d155aae411bf98e73fabb2721f3a361eaca59d8f7b42eab91a95ff6c10f38cff0c5c45cb1290f7ca3c3f6e36859da6372f6181df48d2167c
+  languageName: node
+  linkType: hard
+
 "@nicolo-ribaudo/eslint-scope-5-internals@npm:5.1.1-v1":
   version: 5.1.1-v1
   resolution: "@nicolo-ribaudo/eslint-scope-5-internals@npm:5.1.1-v1"
@@ -5890,6 +5897,17 @@ __metadata:
   peerDependencies:
     expo: "*"
   checksum: e353b705f34f6b4ac8939961d8c28d68ccda139053ed37f39fe174702684142b47f7ff85592954ed1cfc2a12d1ff3f55b11777ed45dd42f8f5d725a41749d3b2
+  languageName: node
+  linkType: hard
+
+"expo-image-picker@npm:~57.0.20":
+  version: 57.0.20
+  resolution: "expo-image-picker@npm:57.0.20"
+  dependencies:
+    expo-image-loader: ~57.0.1
+  peerDependencies:
+    expo: "*"
+  checksum: 8aab1021923e9a375efd3edf3ebcea45c7b0da2d35cdccaca9623fed128b818165b406a527561e031ff34b7f4d21b9e39b99faed8aa33c869a3290980934e388
   languageName: node
   linkType: hard
 
@@ -9921,6 +9939,7 @@ __metadata:
     "@expo-google-fonts/dm-sans": ^0.4.0
     "@gorhom/bottom-sheet": ^5.2.9
     "@kesha-antonov/react-native-background-downloader": ^4.6.3
+    "@lobehub/icons-static-svg": 1.95.1
     "@op-engineering/op-sqlite": ^15.2.7
     "@react-native-async-storage/async-storage": 2.2.0
     "@react-native-community/netinfo": 12.0.1
@@ -9954,6 +9973,7 @@ __metadata:
     expo-glass-effect: ~57.0.4
     expo-image: ~57.0.5
     expo-image-manipulator: ~57.0.21
+    expo-image-picker: ~57.0.20
     expo-linear-gradient: ~57.0.2
     expo-linking: ~57.0.12
     expo-localization: ~57.0.2

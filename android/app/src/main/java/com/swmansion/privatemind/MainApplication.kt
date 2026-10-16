@@ -3,6 +3,7 @@ import com.facebook.react.common.assets.ReactFontManager
 
 import android.app.Application
 import android.content.res.Configuration
+import android.system.Os
 
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
@@ -30,6 +31,7 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    disableOpenMpAffinityBeforeExecutorchLoads()
     // @generated begin xml-fonts-init - expo prebuild (DO NOT MODIFY) sync-da39a3ee5e6b4b0d3255bfef95601890afd80709
 
     // @generated end xml-fonts-init
@@ -40,6 +42,10 @@ class MainApplication : Application(), ReactApplication {
     }
     loadReactNative(this)
     ApplicationLifecycleDispatcher.onApplicationCreate(this)
+  }
+
+  private fun disableOpenMpAffinityBeforeExecutorchLoads() {
+    Os.setenv("KMP_AFFINITY", "disabled", true)
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {

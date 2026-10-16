@@ -13,10 +13,12 @@ import { Model } from '../../database/modelRepository';
 
 export type SendRefusal =
   | 'nothing-to-send'
+  | 'cpu-unsupported'
   | 'model-loading'
   | 'busy'
   | 'chat-not-created'
-  | 'image-not-saved';
+  | 'image-not-saved'
+  | 'image-unsupported';
 import { Attachment } from '../../hooks/useAttachment';
 import { LFMEmbeddings } from '../../utils/lfmEmbeddings';
 import { loadModelPinnedToChat } from './loadModelPinnedToChat';
@@ -50,6 +52,7 @@ import { useLLMStore } from '../../store/llmStore';
 import { useSourceStore } from '../../store/sourceStore';
 import { useWebSearchStore } from '../../store/webSearchStore';
 import { useEmbeddingModelStore } from '../../store/embeddingModelStore';
+import { useCpuSupportStore } from '../../store/cpuSupportStore';
 import type { MessagesHandle } from './Messages';
 
 interface UseSendChatMessageOptions {
@@ -109,10 +112,15 @@ export const useSendChatMessage = ({
     if (!userInput.trim() && !imagePath && !hasDocuments) {
       return 'nothing-to-send';
     }
+    // TEMPORARY FIX (#437 A2): remove with utils/cpuSupport.ts.
+    if (useCpuSupportStore.getState().lacksLseAtomics) return 'cpu-unsupported';
     let pinnedModel = model;
     if (isSwitching) {
       if (!waitForModelSwitch) return 'model-loading';
       pinnedModel = (await waitForModelSwitch()) ?? model;
+    }
+    if (imagePath && pinnedModel && !pinnedModel.vision) {
+      return 'image-unsupported';
     }
     const llm = useLLMStore.getState();
     const busy = llm.isGenerating || llm.isProcessingPrompt;

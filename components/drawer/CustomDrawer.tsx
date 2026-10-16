@@ -78,7 +78,6 @@ const CustomDrawer = ({ navigation }: DrawerContentComponentProps) => {
 
   const handleMenuActiveChange = useCallback((active: boolean) => {
     menuActiveRef.current = active;
-    if (!active) inputRef.current?.focus();
   }, []);
 
   return (

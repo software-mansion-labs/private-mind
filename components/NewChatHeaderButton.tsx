@@ -1,10 +1,11 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import ChatIcon from '../assets/icons/chat.svg';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { startPhantomChat } from '../utils/startPhantomChat';
 import { useChatStore } from '../store/chatStore';
+import { pressedOpacity } from '../styles/pressable';
 import { useTurnInFlight } from '../hooks/useTurnInFlight';
 import { useSteadyFlag } from '../hooks/useSteadyFlag';
 import { showTurnInFlightNotice } from '../utils/turnInFlightNotice';
@@ -35,9 +36,9 @@ const NewChatHeaderButton = ({ noOp = false }: Props) => {
   };
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={handlePress}
-      style={styles.button}
+      style={({ pressed }) => [styles.button, pressed && pressedOpacity]}
       hitSlop={15}
       testID="new-chat-header-button"
     >
@@ -48,7 +49,7 @@ const NewChatHeaderButton = ({ noOp = false }: Props) => {
         color={theme.text.primary}
         dimmed={looksBusy}
       />
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
