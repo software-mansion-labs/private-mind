@@ -4,6 +4,8 @@ export const DRAWER_TOP_SPACING = 12;
 
 export const DRAWER_HORIZONTAL_PADDING = 16;
 
+export const DRAWER_ITEM_INSET = 12;
+
 export const SEARCH_EXPAND_DURATION = 500;
 
 export const SEARCH_COLLAPSE_DURATION = 240;
@@ -24,7 +26,7 @@ export const ANDROID_SEARCH_FOCUS_DELAY = 200;
 
 export const ANDROID_KEYBOARD_RETRY_DELAY = 400;
 
-export const SECTION_GAP = 24;
+export const SECTION_GAP = 20;
 
 export const getDrawerWidth = (screenWidth: number) =>
   Math.max(screenWidth - DRAWER_EDGE_INSET, 0);
