@@ -38,8 +38,8 @@ export default function useChatHeader({
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitleContainerStyle: { maxWidth: titleMaxWidth },
-      headerLeft: () => <DrawerToggleButton />,
-      headerRight: () => <NewChatHeaderButton noOp={isEmpty} />,
+      headerLeft: () => <DrawerToggleButton glass />,
+      headerRight: () => <NewChatHeaderButton noOp={isEmpty} glass />,
       headerTitle: hideTitle
         ? () => null
         : () => (
