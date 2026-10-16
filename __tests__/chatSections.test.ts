@@ -24,6 +24,10 @@ describe('getRelativeDateSection', () => {
     expect(getRelativeDateSection(new Date(NOW - HOUR), now)).toBe('Today');
   });
 
+  it('files a chat used after the clock was read under Today, not "-1 days ago"', () => {
+    expect(getRelativeDateSection(new Date(NOW + HOUR), now)).toBe('Today');
+  });
+
   it('labels the previous day as Yesterday', () => {
     expect(getRelativeDateSection(new Date(NOW - DAY), now)).toBe('Yesterday');
   });
