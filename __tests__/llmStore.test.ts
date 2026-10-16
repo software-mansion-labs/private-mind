@@ -44,7 +44,6 @@ jest.mock('../utils/promptUtils', () => ({
     () => ' (Answer in the same language as this message.)'
   ),
   focusedRetrySystemPrompt: jest.fn(() => 'Answer from the quoted lines.'),
-  isShortFollowUp: jest.requireActual('../utils/promptUtils').isShortFollowUp,
 }));
 jest.mock('../constants/default-benchmark', () => ({
   BENCHMARK_PROMPT: 'benchmark prompt text',

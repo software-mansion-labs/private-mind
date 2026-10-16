@@ -1,4 +1,3 @@
-import { FOLLOW_UP_NOTE_LEAD } from '../constants/follow-up-note';
 import {
   ChatSettings,
   Message,
@@ -252,18 +251,6 @@ export const focusedRetrySystemPrompt = (
     'The user message quotes lines taken from the sources retrieved for the question. They are the only material to answer from; do not add anything from memory.',
     languageInstruction(language),
   ].join('\n');
-
-const SHORT_FOLLOW_UP_MAX_WORDS = 3;
-const FOLLOW_UP_QUOTE_MAX_CHARS = 200;
-
-export const isShortFollowUp = (question: string | undefined): boolean =>
-  !!question &&
-  question.trim().split(/\s+/u).length <= SHORT_FOLLOW_UP_MAX_WORDS;
-
-const followUpNote = (previousQuestion: string): string =>
-  ` (${FOLLOW_UP_NOTE_LEAD}: "${previousQuestion
-    .trim()
-    .slice(0, FOLLOW_UP_QUOTE_MAX_CHARS)}")`;
 
 export const answerLanguageAnchor = (
   language: QuestionLanguage | null
@@ -780,16 +767,6 @@ export const prepareMessagesForLLM = (
   }
 
   const lastMessage = messagesWithSystemPrompt.at(-1)!;
-
-  const askedBefore = activeChatMessages.filter((msg) => msg.role === 'user');
-  const previousQuestion = askedBefore.at(-2)?.content;
-  if (
-    lastMessage.role === 'user' &&
-    previousQuestion?.trim() &&
-    isShortFollowUp(question)
-  ) {
-    lastMessage.content += followUpNote(previousQuestion);
-  }
 
   if (languageNoteOnQuestion) {
     lastMessage.content += answerLanguageAnchor(language);

@@ -3388,43 +3388,7 @@ describe('a regeneration after the answer only echoed the turn (dev benchmark 15
   it('carries the note on the question by default, the turn the model echoed', () => {
     const prepared = prepareMessagesForLLM(followUp, [], lfmSettings, lfmModel);
 
-    expect(prepared.at(-1)!.content).toBe(
-      'a dlaczego? (It follows up on: "Why do leaves change colour in autumn?") (Answer in Polish.)'
-    );
-  });
-
-  it('tells a small model up front what a short follow-up asks about', () => {
-    const prepared = prepareMessagesForLLM(followUp, [], lfmSettings, lfmModel);
-
-    expect(prepared.at(-1)!.content).toContain(
-      '(It follows up on: "Why do leaves change colour in autumn?")'
-    );
-  });
-
-  it('adds no follow-up note to a question that stands on its own', () => {
-    const prepared = prepareMessagesForLLM(
-      chat(
-        'Why do leaves change colour in autumn?',
-        'Because chlorophyll breaks down.',
-        'Why is the sky blue in the afternoon?'
-      ),
-      [],
-      lfmSettings,
-      lfmModel
-    );
-
-    expect(prepared.at(-1)!.content).not.toContain('It follows up on');
-  });
-
-  it('adds no follow-up note to the first question of a chat, however short', () => {
-    const prepared = prepareMessagesForLLM(
-      chat('cześć'),
-      [],
-      lfmSettings,
-      lfmModel
-    );
-
-    expect(prepared.at(-1)!.content).not.toContain('It follows up on');
+    expect(prepared.at(-1)!.content).toBe('a dlaczego? (Answer in Polish.)');
   });
 
   it('asks again with the question as the user wrote it and the language in the system prompt only', () => {
@@ -3436,9 +3400,7 @@ describe('a regeneration after the answer only echoed the turn (dev benchmark 15
       { languageNoteOnQuestion: false }
     );
 
-    expect(prepared.at(-1)!.content).toBe(
-      'a dlaczego? (It follows up on: "Why do leaves change colour in autumn?")'
-    );
+    expect(prepared.at(-1)!.content).toBe('a dlaczego?');
     expect(prepared[0]!.content).toContain('Write the whole answer in Polish');
   });
 
@@ -3451,9 +3413,7 @@ describe('a regeneration after the answer only echoed the turn (dev benchmark 15
       { languageNoteOnQuestion: false }
     );
 
-    expect(prepared.at(-1)!.content).toBe(
-      'a dlaczego? (It follows up on: "Why do leaves change colour in autumn?") /no_think'
-    );
+    expect(prepared.at(-1)!.content).toBe('a dlaczego? /no_think');
   });
 
   it('leaves the note out of a question asked over sources as well', () => {

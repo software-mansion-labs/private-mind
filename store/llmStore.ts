@@ -29,7 +29,6 @@ import { Feedback } from '../utils/Feedback';
 import {
   answerLanguageAnchor,
   focusedRetrySystemPrompt,
-  isShortFollowUp,
   prepareMessagesForLLM,
   type PrepareMessagesOptions,
 } from '../utils/promptUtils';
@@ -759,6 +758,12 @@ const WRONG_LANGUAGE_RETRY_PROMPT =
   'That reply was written in the wrong language. Write the same answer again, ' +
   'with the same facts, in the language of the question, and do not switch ' +
   'language or script partway through.';
+
+const SHORT_FOLLOW_UP_MAX_WORDS = 3;
+
+const isShortFollowUp = (question: string | undefined): boolean =>
+  !!question &&
+  question.trim().split(/\s+/u).length <= SHORT_FOLLOW_UP_MAX_WORDS;
 
 const followUpEchoRetryPrompt = (previousQuestion: string): string =>
   'You only repeated my question instead of answering it. It follows up on ' +
