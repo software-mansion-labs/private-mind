@@ -1,5 +1,9 @@
 import { estimatePromptTokens } from '../constants/context-window';
-import { stripThinkBlocks, unclosedThinkText } from '../utils/thinking';
+import {
+  stripThinkBlocks,
+  unclosedThinkAsAnswer,
+  unclosedThinkText,
+} from '../utils/thinking';
 import { create } from 'zustand';
 import { LLMModule } from 'react-native-executorch/legacy';
 import { preferDownloadedCopy } from '../utils/downloadedCopy';
@@ -1485,6 +1489,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         ? tidyVisibleAnswer(rawResponse)
         : rawResponse;
       let loopGuardTrimmed = !!rawResponse && finalResponse !== rawResponse;
+      if (
+        finalResponse &&
+        !settings.thinkingEnabled &&
+        !isRepetitionFromTheStart(unclosedThinkText(finalResponse).trim())
+      ) {
+        finalResponse = unclosedThinkAsAnswer(finalResponse);
+      }
       if (
         openingWelcome &&
         get().isGenerating &&

@@ -658,6 +658,24 @@ describe('sendChatMessage', () => {
     mockInstance.generate.mockResolvedValue('The answer is 42.');
   });
 
+  it('shows an answer the model wrapped in a think block it never closed as the answer when thinking is off', async () => {
+    useLLMStore.setState({ model: baseModel, activeChatId: 1 });
+    mockInstance.generate.mockResolvedValueOnce(
+      '<think>\n\n**Photosynthesis**\n\nPlants turn light into energy.'
+    );
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('Explain photosynthesis.', 1, noSources, {
+        ...settings,
+        thinkingEnabled: false,
+      });
+
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      '**Photosynthesis**\n\nPlants turn light into energy.'
+    );
+  });
+
   it('returns early when db is not set', async () => {
     useLLMStore.setState({ db: null });
     await useLLMStore.getState().sendChatMessage('hi', 1, noSources, settings);
