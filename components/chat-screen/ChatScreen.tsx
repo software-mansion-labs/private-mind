@@ -42,7 +42,6 @@ interface Props {
   messageHistory: Message[];
   isLoading?: boolean;
   model: Model | undefined;
-  onPendingModelChange?: (model: Model | undefined) => void;
   selectModel?: (model: Model) => Promise<void>;
   revealFromTop?: boolean;
   headerTitleBottom?: number;
@@ -54,7 +53,6 @@ export default function ChatScreen({
   messageHistory,
   isLoading = false,
   model,
-  onPendingModelChange,
   selectModel,
   revealFromTop = false,
   headerTitleBottom,
@@ -178,10 +176,6 @@ export default function ChatScreen({
     handleSheetStateChange: handleModelSwitchSheetState,
     whenSettled: whenModelSwitchSettles,
   } = useModelSwitch(handleSelectModel);
-
-  useEffect(() => {
-    onPendingModelChange?.(pendingModel);
-  }, [pendingModel, onPendingModelChange]);
 
   const handleModelPickedFromMenu = useCallback(
     (picked: Model) => {

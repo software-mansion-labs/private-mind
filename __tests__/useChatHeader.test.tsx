@@ -44,7 +44,6 @@ const renderChatHeader = () =>
   renderHook(() =>
     useChatHeader({
       chatId: 42,
-      chatModel: undefined,
       isEmpty: false,
     })
   );
@@ -80,7 +79,6 @@ describe('the title in a chat not saved yet', () => {
     renderHook(() =>
       useChatHeader({
         chatId: 42,
-        chatModel: undefined,
         isEmpty: true,
         hideTitle,
       })
