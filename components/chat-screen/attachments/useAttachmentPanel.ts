@@ -20,6 +20,7 @@ export type Sheet = 'photos' | 'camera';
 interface PanelOptions {
   onLeaveSheet?: () => void;
   onSelectFiles?: () => void | Promise<DocumentPickOutcome | void>;
+  onSelectPhotos?: () => Promise<DocumentPickOutcome | void>;
   canAttachImages?: boolean;
   onImagesUnsupported?: () => void;
 }
@@ -27,6 +28,7 @@ interface PanelOptions {
 export function useAttachmentPanel({
   onLeaveSheet,
   onSelectFiles,
+  onSelectPhotos,
   canAttachImages = true,
   onImagesUnsupported,
 }: PanelOptions = {}) {
@@ -159,21 +161,24 @@ export function useAttachmentPanel({
     );
   }, [gridOpacity, menuOpacity, morph, onLeaveSheet, pulseBlur]);
 
+  const dismissUnlessCanceled = useCallback(
+    (picking: void | Promise<DocumentPickOutcome | void>) => {
+      if (picking && typeof (picking as Promise<unknown>).then === 'function') {
+        (picking as Promise<DocumentPickOutcome | void>).then((outcome) => {
+          if (outcome === 'canceled') return;
+          dismiss();
+        }, dismiss);
+      } else {
+        dismiss();
+      }
+    },
+    [dismiss]
+  );
+
   const onMenuAction = useCallback(
     (action: MenuAction) => {
       if (action === 'files') {
-        const picking = onSelectFiles?.();
-        if (
-          picking &&
-          typeof (picking as Promise<unknown>).then === 'function'
-        ) {
-          (picking as Promise<DocumentPickOutcome | void>).then((outcome) => {
-            if (outcome === 'canceled') return;
-            dismiss();
-          }, dismiss);
-        } else {
-          dismiss();
-        }
+        dismissUnlessCanceled(onSelectFiles?.());
         return;
       }
       if (!canAttachImages) {
@@ -181,9 +186,21 @@ export function useAttachmentPanel({
         onImagesUnsupported?.();
         return;
       }
+      if (action === 'photos' && onSelectPhotos) {
+        dismissUnlessCanceled(onSelectPhotos());
+        return;
+      }
       showSheet(action === 'camera' ? 'camera' : 'photos');
     },
-    [canAttachImages, dismiss, onImagesUnsupported, onSelectFiles, showSheet]
+    [
+      canAttachImages,
+      dismiss,
+      dismissUnlessCanceled,
+      onImagesUnsupported,
+      onSelectFiles,
+      onSelectPhotos,
+      showSheet,
+    ]
   );
 
   const onPlusPress = useCallback(() => {

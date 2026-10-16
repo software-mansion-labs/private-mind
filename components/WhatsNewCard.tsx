@@ -6,6 +6,8 @@ import { Theme } from '../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
 import { LATEST_RELEASE } from '../constants/latest-release';
 
+const SCROLL_INDICATOR_GUTTER = 12;
+
 const installedVersion =
   Application.nativeApplicationVersion ?? LATEST_RELEASE.version;
 
@@ -75,9 +77,11 @@ const createStyles = (theme: Theme) =>
     listScroll: {
       flexGrow: 0,
       flexShrink: 1,
+      marginRight: -SCROLL_INDICATOR_GUTTER,
     },
     list: {
       gap: 6,
+      paddingRight: SCROLL_INDICATOR_GUTTER,
     },
     row: {
       flexDirection: 'row',
