@@ -525,7 +525,7 @@ describe('a photo for the model that will answer', () => {
       isGenerating: false,
       isModelLoading: false,
       isSwitching: !!waitForModelSwitch,
-      waitForModelSwitch,
+      waitForModelSwitch: waitForModelSwitch ?? (async () => model),
     })('what is this?', 'file:///photo.jpg');
 
   it('refuses a photo for a model without vision and starts nothing', async () => {
