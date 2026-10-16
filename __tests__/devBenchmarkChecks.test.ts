@@ -162,6 +162,20 @@ describe('checkLoopGuardCut', () => {
     expect(checkLoopGuardCut(guardCut(sample))).toBeNull();
   });
 
+  it('stays quiet when only the chat turn the model invented after its answer was dropped', () => {
+    const answer =
+      'Liście zmieniają kolor, bo jesienią rozkłada się chlorofil.';
+    expect(
+      checkLoopGuardCut(
+        guardCut({
+          prompt: 'a dlaczego?',
+          raw: `${answer}\n<|im_start|>user\nJaka jest prawdziwa historia o`,
+          tidied: answer,
+        })
+      )
+    ).toBeNull();
+  });
+
   it('stays quiet when the guard cut an echo that came back twice in a row', () => {
     const echo = 'बनाइए। (Answer in Hindi.)';
     expect(

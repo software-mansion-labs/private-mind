@@ -10,6 +10,7 @@ import {
 } from '../messageSources';
 import { normalizeModelText } from '../normalizeModelText';
 import { answerLanguageAnchor } from '../promptUtils';
+import { beforeNextTurn } from '../visibleAnswer';
 import { detectQuestionLanguage } from '../questionLanguage';
 import {
   mapOutsideThink,
@@ -67,7 +68,7 @@ export const checkTurnTime: TurnCheck = ({ timings, turnTimeoutMs }) =>
     : null;
 
 export const loopGuardCutAnswer = (raw: string, tidied: string): boolean =>
-  !!raw && tidied !== mapOutsideThink(raw, normalizeModelText);
+  !!raw && tidied !== mapOutsideThink(beforeNextTurn(raw), normalizeModelText);
 
 const REPEAT_LIMIT = 3;
 const GUARD_REPEAT_LIMIT = 2;

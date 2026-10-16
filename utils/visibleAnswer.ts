@@ -14,7 +14,7 @@ const turnBoundaryAfterText = (response: string): number | null => {
   return at;
 };
 
-const beforeNextTurn = (response: string): string => {
+export const beforeNextTurn = (response: string): string => {
   const at = turnBoundaryAfterText(response);
   return at === null ? response : response.slice(0, at).trimEnd();
 };
