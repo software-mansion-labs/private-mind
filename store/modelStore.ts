@@ -245,6 +245,7 @@ const fetchSharedSource = async (
 // We pass model.* source paths (URLs); the fetcher derives the on-disk
 // filename and deletes only files it manages — never user-supplied local paths.
 async function deleteRemoteResources(...sources: string[]) {
+  if (sources.length === 0) return;
   try {
     await ExpoResourceFetcher.deleteResources(...sources);
   } catch (err) {
@@ -255,6 +256,25 @@ async function deleteRemoteResources(...sources: string[]) {
 const retryDownload = (model: Model) => {
   const { getModelById, downloadModel } = useModelStore.getState();
   return downloadModel(getModelById(model.id) ?? model);
+};
+
+const sourcesNoOtherModelNeeds = (
+  modelId: number,
+  sources: string[]
+): string[] => {
+  const { models, downloadStates } = useModelStore.getState();
+  const needed = new Set(
+    models
+      .filter(
+        (other) =>
+          other.id !== modelId &&
+          other.source !== 'local' &&
+          (other.isDownloaded ||
+            downloadStates[other.id]?.status === ModelState.Downloading)
+      )
+      .flatMap(sourcesOf)
+  );
+  return sources.filter((source) => !needed.has(source));
 };
 
 const runDownload = async (model: Model, attempt: DownloadAttempt) => {
@@ -483,9 +503,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       // resource fetcher, so the same cleanup path applies to both.
       if (model.source !== 'local') {
         await deleteRemoteResources(
-          model.modelPath,
-          model.tokenizerPath,
-          model.tokenizerConfigPath
+          ...sourcesNoOtherModelNeeds(modelId, [...sourcesOf(model)])
         );
       }
       await updateModelDownloaded(db, modelId, 0);
@@ -551,7 +569,9 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         if (oldSources.length > 0) {
           // Delete only the on-disk copies of the changed sources, leaving
           // the model file alone.
-          await deleteRemoteResources(...oldSources);
+          await deleteRemoteResources(
+            ...sourcesNoOtherModelNeeds(modelId, oldSources)
+          );
         }
 
         if (newSources.length > 0) {
