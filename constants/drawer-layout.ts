@@ -20,6 +20,10 @@ export const FIELD_FADE_IN_DURATION = 460;
 
 export const FIELD_FADE_OUT_DURATION = 180;
 
+export const ANDROID_SEARCH_FOCUS_DELAY = 200;
+
+export const ANDROID_KEYBOARD_RETRY_DELAY = 400;
+
 export const SECTION_GAP = 24;
 
 export const getDrawerWidth = (screenWidth: number) =>
