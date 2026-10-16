@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
 import { useState } from 'react';
@@ -9,9 +9,7 @@ import { useChatStore } from '../../../store/chatStore';
 import useChatHeader from '../../../hooks/useChatHeader';
 import { useChatBackGuard } from '../../../hooks/useChatBackGuard';
 import {
-  CHAT_ENTRY_ACTION,
   CHAT_ENTRY_ANIMATION,
-  ChatEntryAction,
   ChatEntryAnimation,
 } from '../../../constants/chat-route-params';
 
@@ -31,12 +29,8 @@ function ChatScreenInner() {
   const {
     modelId,
     entryAnimation,
-    entryAction,
-  }: {
-    modelId: string;
-    entryAnimation?: ChatEntryAnimation;
-    entryAction?: ChatEntryAction;
-  } = useLocalSearchParams();
+  }: { modelId: string; entryAnimation?: ChatEntryAnimation } =
+    useLocalSearchParams();
   const { activeChatMessages, activeChatId } = useLLMStore();
   const { getModelById } = useModelStore();
   const { getChatById, setChatModel, loadChats, phantomChat } = useChatStore();
@@ -70,20 +64,13 @@ function ChatScreenInner() {
 
   const isEmpty = !isLoading && historyForThisChat.length === 0;
   const shouldExitOnBack = isPhantom && isEmpty;
-  const openModelSheetRef = useRef<(() => void) | null>(null);
-  const openModelSheet = useCallback(() => openModelSheetRef.current?.(), []);
-  const opensOnModelPicker = entryAction === CHAT_ENTRY_ACTION.PickModel;
-
-  useEffect(() => {
-    if (opensOnModelPicker) openModelSheet();
-  }, [opensOnModelPicker, openModelSheet]);
 
   const { MenuElements, titleBottom } = useChatHeader({
     chatId: chatId,
     chatModel: pendingModel ?? model,
     isModelLoading: !!pendingModel || chatModelIsStarting,
     isEmpty,
-    onSelectModelFromTitle: isPhantom ? openModelSheet : undefined,
+    hideTitle: isPhantom,
   });
 
   useFocusEffect(
@@ -123,7 +110,6 @@ function ChatScreenInner() {
         model={model}
         onPendingModelChange={setPendingModel}
         selectModel={handleSetModel}
-        openModelSheetRef={openModelSheetRef}
         revealFromTop={shouldPlayBranchEntryAnimation}
         headerTitleBottom={titleBottom}
       />
