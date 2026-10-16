@@ -612,6 +612,24 @@ const shapeInstructions = (candidates: string[]): string =>
 const isAbandonedQuestion = (message: Message): boolean =>
   message.role === 'user' && !!message.stoppedByUser;
 
+const isBareGreeting = (message: Message): boolean =>
+  message.role === 'user' &&
+  !message.imagePath &&
+  !message.documentName &&
+  isGreetingOnly(message.content);
+
+const withoutAnsweredOpeningGreeting = <T extends Message>(
+  messages: T[]
+): T[] => {
+  const [opening, welcome, ...later] = messages;
+  const chatMovedOn =
+    !!opening &&
+    isBareGreeting(opening) &&
+    welcome?.role === 'assistant' &&
+    later.some((message) => message.role === 'user');
+  return chatMovedOn ? later : messages;
+};
+
 const DEFAULT_PROMPT_DOCUMENT_SENTENCE =
   'When given context from documents, use that information to give comprehensive answers while being concise and relevant.';
 
@@ -713,9 +731,11 @@ export const prepareMessagesForLLM = (
   }
   systemPrompt += getDateInstruction(sourceDocuments, question);
 
-  const nonEventMessages = activeChatMessages.filter(
-    (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
-      msg.role !== 'event' && !isAbandonedQuestion(msg)
+  const nonEventMessages = withoutAnsweredOpeningGreeting(
+    activeChatMessages.filter(
+      (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
+        msg.role !== 'event' && !isAbandonedQuestion(msg)
+    )
   );
   const lastNonEventMessage = nonEventMessages.at(-1);
   const messagesForLLM =
