@@ -751,6 +751,16 @@ const WRONG_LANGUAGE_RETRY_PROMPT =
   'with the same facts, in the language of the question, and do not switch ' +
   'language or script partway through.';
 
+const SHORT_FOLLOW_UP_MAX_WORDS = 3;
+
+const isShortFollowUp = (question: string | undefined): boolean =>
+  !!question &&
+  question.trim().split(/\s+/u).length <= SHORT_FOLLOW_UP_MAX_WORDS;
+
+const followUpEchoRetryPrompt = (previousQuestion: string): string =>
+  'You only repeated my question instead of answering it. It follows up on ' +
+  `what I asked before: "${previousQuestion}". Answer it now, in a few sentences.`;
+
 const carriesAnswer = (response: string): boolean => {
   if (stripThinkBlocks(response).trim()) return true;
   const unclosed = unclosedThinkText(response).trim();
@@ -1479,6 +1489,15 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const currentQuestion = get().activeChatMessages.findLast(
         (msg) => msg.role === 'user'
       )?.content;
+      const previousQuestion = ((messages) =>
+        messages
+          .slice(
+            0,
+            messages.findLastIndex((msg) => msg.role === 'user')
+          )
+          .findLast((msg) => msg.role === 'user')?.content)(
+        get().activeChatMessages
+      );
       const priorAnswerText = get()
         .activeChatMessages.slice(0, -1)
         .findLast((msg) => msg.role === 'assistant')?.content;
@@ -1590,11 +1609,19 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         isEchoOnlyAnswer(finalResponse, currentQuestion)
       ) {
         askedAgainAfterEcho = true;
-        await nudgeOnce(
-          'Answer only echoed the question, asking again without the language note',
-          regenerationWithoutLanguageNote(),
-          (retried) => isEchoOnlyAnswer(retried, currentQuestion)
-        );
+        if (previousQuestion && isShortFollowUp(currentQuestion)) {
+          await nudgeOnce(
+            'Answer only echoed a short follow-up, asking again with the question it follows',
+            continuedRetry(followUpEchoRetryPrompt(previousQuestion)),
+            (retried) => isEchoOnlyAnswer(retried, currentQuestion)
+          );
+        } else {
+          await nudgeOnce(
+            'Answer only echoed the question, asking again without the language note',
+            regenerationWithoutLanguageNote(),
+            (retried) => isEchoOnlyAnswer(retried, currentQuestion)
+          );
+        }
         if (finalResponse && isEchoOnlyAnswer(finalResponse, currentQuestion)) {
           finalResponse = turnHadSources
             ? noAnswerFallback(currentQuestion)

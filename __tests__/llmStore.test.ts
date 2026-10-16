@@ -2083,6 +2083,40 @@ describe('sendChatMessage', () => {
       );
     });
 
+    it('reminds the model what a short follow-up asks about when it only echoed it', async () => {
+      const leaves = 'Why do leaves change colour in autumn?';
+      useLLMStore.setState({
+        activeChatMessages: [
+          { id: 1, chatId: 1, role: 'user', content: leaves, timestamp: 0 },
+          {
+            id: 2,
+            chatId: 1,
+            role: 'assistant',
+            content: 'Chlorophyll breaks down in autumn.',
+            timestamp: 0,
+          },
+        ],
+      });
+      mockInstance.generate
+        .mockResolvedValueOnce(echoOfWhy)
+        .mockResolvedValueOnce('Bo jesienią w liściach rozkłada się chlorofil.')
+        .mockResolvedValue('');
+
+      await useLLMStore
+        .getState()
+        .sendChatMessage('a dlaczego?', 1, noSources, settings);
+
+      const retryPrompt = promptOf(1);
+      expect(retryPrompt.at(-2)).toEqual({
+        role: 'assistant',
+        content: echoOfWhy,
+      });
+      expect(retryPrompt.at(-1)?.content).toContain(`"${leaves}"`);
+      expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+        'Bo jesienią w liściach rozkłada się chlorofil.'
+      );
+    });
+
     it.each([
       ['a dlaczego?', echoOfWhy, ECHO_FALLBACK.pl],
       [earth, echoOfEarth, ECHO_FALLBACK.ur],
