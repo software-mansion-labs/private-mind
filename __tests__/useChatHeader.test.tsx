@@ -46,7 +46,6 @@ const renderChatHeader = () =>
       chatId: 42,
       chatModel: undefined,
       isEmpty: false,
-      onSelectModelFromTitle: jest.fn(),
     })
   );
 
@@ -73,5 +72,28 @@ describe('useChatHeader', () => {
     expect(headerTitleContainerStyle.maxWidth).toBeGreaterThan(
       402 - (80 + 16) * 2
     );
+  });
+});
+
+describe('the title in a chat not saved yet', () => {
+  const headerTitleOf = (hideTitle: boolean) => {
+    renderHook(() =>
+      useChatHeader({
+        chatId: 42,
+        chatModel: undefined,
+        isEmpty: true,
+        hideTitle,
+      })
+    );
+    const { headerTitle } = mockSetOptions.mock.calls.at(-1)![0];
+    return headerTitle();
+  };
+
+  it('leaves the header without a title, since the input names the model', () => {
+    expect(headerTitleOf(true)).toBeNull();
+  });
+
+  it('keeps the title in a saved chat', () => {
+    expect(headerTitleOf(false)).not.toBeNull();
   });
 });

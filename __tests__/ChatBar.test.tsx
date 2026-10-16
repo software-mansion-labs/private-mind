@@ -90,6 +90,7 @@ jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
     imagesEnabled,
     maxSelection,
     busyAction,
+    tools,
   }: {
     panel: {
       mode: string;
@@ -98,9 +99,30 @@ jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
     imagesEnabled: boolean;
     maxSelection: number;
     busyAction?: string | null;
+    tools?: {
+      thinkingEnabled?: boolean;
+      thinkingAvailable?: boolean;
+      onThinkingToggle?: () => void;
+      webSearchEnabled?: boolean;
+      onWebSearchToggle?: () => void;
+    };
   }) => (
     <View testID="attachment-overlay">
       <Text>{`mode:${panel.mode}`}</Text>
+      <Text>{`menu-think:${tools?.thinkingEnabled ? 'on' : 'off'}`}</Text>
+      <Text>{`menu-think-available:${tools?.thinkingAvailable ? 'yes' : 'no'}`}</Text>
+      <TouchableOpacity
+        testID="menu-think-switch"
+        onPress={tools?.onThinkingToggle}
+      />
+      {tools?.onWebSearchToggle && (
+        <TouchableOpacity
+          testID="web-search-toggle"
+          onPress={tools.onWebSearchToggle}
+        >
+          <Text>Web search</Text>
+        </TouchableOpacity>
+      )}
       <Text>{`vision:${imagesEnabled}`}</Text>
       <Text>{`max:${maxSelection}`}</Text>
       <Text>{`busy:${busyAction ?? 'none'}`}</Text>
@@ -188,10 +210,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     isProcessingPrompt,
     onInterrupt,
     onSpeechInput,
-    onThinkingToggle,
-    thinkingEnabled,
     onAttach,
-    onWebSearchToggle,
     modelBusy,
     sendPending,
     sendInFlight,
@@ -203,10 +222,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     isProcessingPrompt: boolean;
     onInterrupt: () => void;
     onSpeechInput: () => void;
-    onThinkingToggle: () => void;
-    thinkingEnabled: boolean;
     onAttach: () => void;
-    onWebSearchToggle?: () => void;
     modelBusy?: boolean;
     sendPending?: boolean;
     sendInFlight?: boolean;
@@ -214,14 +230,6 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     <View testID="chat-bar-actions">
       {modelBusy && <Text>model busy</Text>}
       {sendPending && <Text>send pending</Text>}
-      {onWebSearchToggle && (
-        <TouchableOpacity
-          testID="web-search-toggle"
-          onPress={onWebSearchToggle}
-        >
-          <Text>Web</Text>
-        </TouchableOpacity>
-      )}
       <TouchableOpacity testID="attach-btn" onPress={onAttach}>
         <Text>+</Text>
       </TouchableOpacity>
@@ -245,9 +253,32 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
           <Text>Mic</Text>
         </TouchableOpacity>
       )}
-      <TouchableOpacity testID="thinking-btn" onPress={onThinkingToggle}>
-        <Text>{thinkingEnabled ? 'Think ON' : 'Think OFF'}</Text>
-      </TouchableOpacity>
+    </View>
+  );
+});
+
+jest.mock('../components/chat-screen/ComposerModelMenu', () => {
+  const { View, TouchableOpacity, Text } = require('react-native');
+  return ({
+    visible,
+    onPick,
+    onShowAllModels,
+  }: {
+    visible: boolean;
+    onPick: (model: { id: number }) => void;
+    onShowAllModels: () => void;
+  }) => (
+    <View>
+      <Text>{`model-menu:${visible ? 'open' : 'closed'}`}</Text>
+      <TouchableOpacity
+        testID="menu-pick-current"
+        onPress={() => onPick({ id: 1 })}
+      />
+      <TouchableOpacity
+        testID="menu-pick-other"
+        onPress={() => onPick({ id: 2 })}
+      />
+      <TouchableOpacity testID="menu-all-models" onPress={onShowAllModels} />
     </View>
   );
 });
@@ -288,6 +319,8 @@ const defaultProps = {
   extraContentPadding: { value: 0 } as unknown as SharedValue<number>,
   onSend: jest.fn(),
   onSelectModel: jest.fn(),
+  onPickModel: jest.fn(),
+  onShowAllModels: jest.fn(),
   onSelectPrompt: jest.fn(),
   model: downloadedModel,
   scrollRef: { current: null },
@@ -360,7 +393,7 @@ describe('no model selected', () => {
 
   it('does not render the text input when model is undefined', () => {
     renderBar({ model: undefined });
-    expect(screen.queryByPlaceholderText('Ask about anything...')).toBeNull();
+    expect(screen.queryByPlaceholderText('Ask anything')).toBeNull();
   });
 });
 
@@ -369,7 +402,7 @@ describe('no model selected', () => {
 describe('model not downloaded', () => {
   it('renders nothing interactive when model is not downloaded', () => {
     renderBar({ model: { ...downloadedModel, isDownloaded: false } });
-    expect(screen.queryByPlaceholderText('Ask about anything...')).toBeNull();
+    expect(screen.queryByPlaceholderText('Ask anything')).toBeNull();
     expect(screen.queryByText('Select Model')).toBeNull();
   });
 });
@@ -379,7 +412,7 @@ describe('model not downloaded', () => {
 describe('downloaded model — text input', () => {
   it('renders the text input', () => {
     renderBar();
-    expect(screen.getByPlaceholderText('Ask about anything...')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Ask anything')).toBeTruthy();
   });
 
   it('hands the message over before it closes the keyboard', () => {
@@ -388,10 +421,7 @@ describe('downloaded model — text input', () => {
       .mockImplementation(() => {});
     const onSend = jest.fn();
     renderBar({ onSend });
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'Hello'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'Hello');
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(onSend.mock.invocationCallOrder[0]).toBeLessThan(
       dismiss.mock.invocationCallOrder[0]
@@ -403,7 +433,7 @@ describe('downloaded model — text input', () => {
     const onSend = jest.fn();
     renderBar({ onSend });
     fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
+      screen.getByPlaceholderText('Ask anything'),
       'Help me write a Python function.\n'
     );
     fireEvent.press(screen.getByTestId('send-btn'));
@@ -423,10 +453,7 @@ describe('downloaded model — text input', () => {
         })
     );
     renderBar({ onSend });
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'Hello'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'Hello');
     fireEvent.press(screen.getByTestId('send-btn'));
 
     expect(screen.queryByTestId('speech-btn')).toBeNull();
@@ -442,18 +469,14 @@ describe('downloaded model — text input', () => {
   it('calls onSend with current input when send button is pressed', () => {
     const onSend = jest.fn();
     renderBar({ onSend });
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'Hello'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'Hello');
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(onSend).toHaveBeenCalledWith('Hello', undefined, []);
   });
 
   it('stays empty when the native input echoes the sent text back', () => {
     renderBar();
-    const textInput = () =>
-      screen.getByPlaceholderText('Ask about anything...');
+    const textInput = () => screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(textInput(), 'czesc test wysylki');
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(textInput().props.value).toBe('');
@@ -466,8 +489,7 @@ describe('downloaded model — text input', () => {
     const now = jest.spyOn(Date, 'now');
     now.mockReturnValue(10_000);
     renderBar();
-    const textInput = () =>
-      screen.getByPlaceholderText('Ask about anything...');
+    const textInput = () => screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(textInput(), 'czesc test wysylki');
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(textInput().props.value).toBe('');
@@ -480,8 +502,7 @@ describe('downloaded model — text input', () => {
 
   it('accepts genuine typing right after a send', () => {
     renderBar();
-    const textInput = () =>
-      screen.getByPlaceholderText('Ask about anything...');
+    const textInput = () => screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(textInput(), 'first');
     fireEvent.press(screen.getByTestId('send-btn'));
 
@@ -493,8 +514,7 @@ describe('downloaded model — text input', () => {
 
   it('does not swallow a repeat of the same message typed again', () => {
     renderBar();
-    const textInput = () =>
-      screen.getByPlaceholderText('Ask about anything...');
+    const textInput = () => screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(textInput(), 'again');
     fireEvent.press(screen.getByTestId('send-btn'));
 
@@ -506,7 +526,7 @@ describe('downloaded model — text input', () => {
   it('takes a send made while the model is still switching, instead of refusing it', () => {
     const onSend = jest.fn(() => new Promise<boolean>(() => {}));
     renderBar({ onSend, modelSwitching: true });
-    const input = screen.getByPlaceholderText('Ask about anything...');
+    const input = screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(input, 'Keep this message');
 
     fireEvent.press(screen.getByTestId('send-btn'));
@@ -519,7 +539,7 @@ describe('downloaded model — text input', () => {
   });
 
   describe('a send that waits for the model switch to land', () => {
-    const input = () => screen.getByPlaceholderText('Ask about anything...');
+    const input = () => screen.getByPlaceholderText('Ask anything');
 
     const storeWith = (isProcessingPrompt: boolean) =>
       mockUseLLMStore.mockImplementation(
@@ -608,16 +628,26 @@ describe('downloaded model — text input', () => {
     expect(onSelectPrompt).toHaveBeenCalledWith('Suggested prompt');
   });
 
-  it('passes thinkingEnabled to ChatBarActions', () => {
+  it('passes thinkingEnabled to the + menu', () => {
     renderBar({ thinkingEnabled: true });
-    expect(screen.getByText('Think ON')).toBeTruthy();
+    expect(screen.getByText('menu-think:on')).toBeTruthy();
   });
 
-  it('calls onThinkingToggle when thinking button is pressed', () => {
+  it('calls onThinkingToggle from the + menu', () => {
     const onThinkingToggle = jest.fn();
     renderBar({ onThinkingToggle });
-    fireEvent.press(screen.getByTestId('thinking-btn'));
+    fireEvent.press(screen.getByTestId('menu-think-switch'));
     expect(onThinkingToggle).toHaveBeenCalled();
+  });
+
+  it('marks thinking unavailable for a model without thinking', () => {
+    renderBar();
+    expect(screen.getByText('menu-think-available:no')).toBeTruthy();
+  });
+
+  it('leaves web search out of the + menu when the screen offers no toggle', () => {
+    renderBar();
+    expect(screen.queryByTestId('web-search-toggle')).toBeNull();
   });
 });
 
@@ -700,7 +730,7 @@ describe('the model the field loads on focus', () => {
       }
     );
     renderBar({ modelSwitching });
-    fireEvent(screen.getByPlaceholderText('Ask about anything...'), 'focus');
+    fireEvent(screen.getByPlaceholderText('Ask anything'), 'focus');
     return loadModel;
   };
 
@@ -737,10 +767,7 @@ describe('speech input', () => {
     const onSend = jest.fn(() => new Promise<boolean>(() => {}));
     renderBar({ disabled: true, onSend });
 
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'hi'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'hi');
     fireEvent.press(screen.getByTestId('send-btn'));
 
     await waitFor(() => expect(screen.getByText('send pending')).toBeTruthy());
@@ -750,10 +777,7 @@ describe('speech input', () => {
     const onSend = jest.fn(async () => true);
     renderBar({ disabled: true, onSend });
 
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'hi'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'hi');
     fireEvent.press(screen.getByTestId('send-btn'));
 
     await waitFor(() => expect(screen.queryByText('send pending')).toBeNull(), {
@@ -765,10 +789,7 @@ describe('speech input', () => {
     const onSend = jest.fn(() => new Promise<boolean>(() => {}));
     renderBar({ onSend });
 
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'hi'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'hi');
     fireEvent.press(screen.getByTestId('send-btn'));
 
     await waitFor(() => expect(onSend).toHaveBeenCalled());
@@ -865,9 +886,9 @@ describe('speech input', () => {
       fireEvent.press(screen.getByTestId('speech-submit'));
     });
 
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('voice transcript');
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe(
+      'voice transcript'
+    );
     expect(Toast.show).toHaveBeenCalledWith({
       type: 'defaultToast',
       text1: 'Wait for the model to finish loading.',
@@ -1271,6 +1292,135 @@ describe('paste functionality', () => {
   });
 });
 
+describe('opening another chat', () => {
+  it('leaves the composer empty, so a suggestion typed into the last chat does not follow you', () => {
+    const view = renderBar();
+    const input = screen.getByPlaceholderText('Ask anything');
+    fireEvent.changeText(input, 'a draft from the previous chat');
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe(
+      'a draft from the previous chat'
+    );
+
+    view.rerender(<ChatBar {...defaultProps} chatId={2} />);
+
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe('');
+  });
+
+  it('empties the composer when another blank chat is started, which reuses the same unsaved id', () => {
+    renderBar();
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask anything'),
+      'a suggestion tapped by mistake'
+    );
+
+    act(() => {
+      useChatStore.setState((state) => ({
+        phantomChatStarts: state.phantomChatStarts + 1,
+      }));
+    });
+
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe('');
+  });
+
+  it('keeps what is being typed while the same chat stays open', () => {
+    const view = renderBar();
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask anything'),
+      'still writing this'
+    );
+
+    view.rerender(<ChatBar {...defaultProps} hasMessages />);
+
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe(
+      'still writing this'
+    );
+  });
+});
+
+describe('a refused send', () => {
+  it('puts the text back and says why instead of dropping it silently', async () => {
+    const onSend = jest.fn(async () => false);
+    renderBar({ onSend });
+    const input = screen.getByPlaceholderText('Ask anything');
+    fireEvent.changeText(input, 'Lost message');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('send-btn'));
+    });
+
+    expect(onSend).toHaveBeenCalledWith('Lost message', undefined, []);
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe(
+      'Lost message'
+    );
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the response to finish or stop it first.',
+    });
+  });
+
+  it('says which of the five reasons it was, not always the busy one', async () => {
+    const onSend = jest.fn(async () => 'model-loading' as const);
+    renderBar({ onSend });
+    const input = screen.getByPlaceholderText('Ask anything');
+    fireEvent.changeText(input, 'Hello');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('send-btn'));
+    });
+
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the model to finish loading.',
+    });
+  });
+
+  it('hands the attachment back rather than dropping it on the floor', async () => {
+    const image: Attachment = {
+      id: 'img-1',
+      type: 'image',
+      uri: 'file://photo.jpg',
+      status: 'ready',
+    };
+    mockUseAttachment.attachments = [image];
+    const onSend = jest.fn(async () => 'busy' as const);
+    renderBar({ onSend, isVisionModel: true });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('send-btn'));
+    });
+
+    expect(mockUseAttachment.restoreAttachments).toHaveBeenCalledWith([image]);
+  });
+});
+
+describe('model menu', () => {
+  it('starts closed', () => {
+    renderBar();
+    expect(screen.getByText('model-menu:closed')).toBeTruthy();
+  });
+
+  it('switches to a different model picked from the menu', () => {
+    const onPickModel = jest.fn();
+    renderBar({ onPickModel });
+    fireEvent.press(screen.getByTestId('menu-pick-other'));
+    expect(onPickModel).toHaveBeenCalledWith({ id: 2 });
+  });
+
+  it('does not reload the model the chat already uses', () => {
+    const onPickModel = jest.fn();
+    renderBar({ onPickModel });
+    fireEvent.press(screen.getByTestId('menu-pick-current'));
+    expect(onPickModel).not.toHaveBeenCalled();
+  });
+
+  it('opens the full model list from the menu', () => {
+    const onShowAllModels = jest.fn();
+    renderBar({ onShowAllModels });
+    fireEvent.press(screen.getByTestId('menu-all-models'));
+    expect(onShowAllModels).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('web search toggle and the embedding download sheet', () => {
   const flush = () => act(async () => {});
 
@@ -1380,110 +1530,5 @@ describe('web search toggle and the embedding download sheet', () => {
 
     expect(onWebSearchToggle).toHaveBeenCalledTimes(2);
     expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
-  });
-});
-
-describe('opening another chat', () => {
-  it('leaves the composer empty, so a suggestion typed into the last chat does not follow you', () => {
-    const view = renderBar();
-    const input = screen.getByPlaceholderText('Ask about anything...');
-    fireEvent.changeText(input, 'a draft from the previous chat');
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('a draft from the previous chat');
-
-    view.rerender(<ChatBar {...defaultProps} chatId={2} />);
-
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('');
-  });
-
-  it('empties the composer when another blank chat is started, which reuses the same unsaved id', () => {
-    renderBar();
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'a suggestion tapped by mistake'
-    );
-
-    act(() => {
-      useChatStore.setState((state) => ({
-        phantomChatStarts: state.phantomChatStarts + 1,
-      }));
-    });
-
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('');
-  });
-
-  it('keeps what is being typed while the same chat stays open', () => {
-    const view = renderBar();
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'still writing this'
-    );
-
-    view.rerender(<ChatBar {...defaultProps} hasMessages />);
-
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('still writing this');
-  });
-});
-
-describe('a refused send', () => {
-  it('puts the text back and says why instead of dropping it silently', async () => {
-    const onSend = jest.fn(async () => false);
-    renderBar({ onSend });
-    const input = screen.getByPlaceholderText('Ask about anything...');
-    fireEvent.changeText(input, 'Lost message');
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('send-btn'));
-    });
-
-    expect(onSend).toHaveBeenCalledWith('Lost message', undefined, []);
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('Lost message');
-    expect(Toast.show).toHaveBeenCalledWith({
-      type: 'defaultToast',
-      text1: 'Wait for the response to finish or stop it first.',
-    });
-  });
-
-  it('says which of the five reasons it was, not always the busy one', async () => {
-    const onSend = jest.fn(async () => 'model-loading' as const);
-    renderBar({ onSend });
-    const input = screen.getByPlaceholderText('Ask about anything...');
-    fireEvent.changeText(input, 'Hello');
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('send-btn'));
-    });
-
-    expect(Toast.show).toHaveBeenCalledWith({
-      type: 'defaultToast',
-      text1: 'Wait for the model to finish loading.',
-    });
-  });
-
-  it('hands the attachment back rather than dropping it on the floor', async () => {
-    const image: Attachment = {
-      id: 'img-1',
-      type: 'image',
-      uri: 'file://photo.jpg',
-      status: 'ready',
-    };
-    mockUseAttachment.attachments = [image];
-    const onSend = jest.fn(async () => 'busy' as const);
-    renderBar({ onSend, isVisionModel: true });
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('send-btn'));
-    });
-
-    expect(mockUseAttachment.restoreAttachments).toHaveBeenCalledWith([image]);
   });
 });

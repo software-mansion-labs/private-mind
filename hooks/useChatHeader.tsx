@@ -15,7 +15,7 @@ interface Props {
   chatModel: Model | undefined;
   isModelLoading?: boolean;
   isEmpty: boolean;
-  onSelectModelFromTitle?: () => void;
+  hideTitle?: boolean;
 }
 
 export default function useChatHeader({
@@ -23,7 +23,7 @@ export default function useChatHeader({
   chatModel,
   isModelLoading = false,
   isEmpty,
-  onSelectModelFromTitle,
+  hideTitle = false,
 }: Props) {
   const navigation = useNavigation();
   const { getChatById } = useChatStore();
@@ -44,17 +44,18 @@ export default function useChatHeader({
       headerTitleContainerStyle: { maxWidth: titleMaxWidth },
       headerLeft: () => <DrawerToggleButton />,
       headerRight: () => <NewChatHeaderButton noOp={isEmpty} />,
-      headerTitle: () => (
-        <ChatTitle
-          title={chatTitle}
-          modelName={chatModel?.modelName || 'No model selected'}
-          isModelLoading={isModelLoading}
-          onPress={onSelectModelFromTitle ?? (chat ? openMenu : undefined)}
-          showChevron={!!onSelectModelFromTitle}
-          onBottomMeasured={setTitleBottom}
-          maxWidth={titleMaxWidth}
-        />
-      ),
+      headerTitle: hideTitle
+        ? () => null
+        : () => (
+            <ChatTitle
+              title={chatTitle}
+              modelName={chatModel?.modelName || 'No model selected'}
+              isModelLoading={isModelLoading}
+              onPress={chat ? openMenu : undefined}
+              onBottomMeasured={setTitleBottom}
+              maxWidth={titleMaxWidth}
+            />
+          ),
     });
   }, [
     navigation,
@@ -65,9 +66,9 @@ export default function useChatHeader({
     openMenu,
     chat,
     isEmpty,
-    onSelectModelFromTitle,
+    hideTitle,
     titleMaxWidth,
   ]);
 
-  return { MenuElements, titleBottom };
+  return { MenuElements, titleBottom: hideTitle ? undefined : titleBottom };
 }

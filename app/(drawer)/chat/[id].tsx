@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
 import { useState } from 'react';
@@ -61,15 +61,13 @@ function ChatScreenInner() {
 
   const isEmpty = !isLoading && historyForThisChat.length === 0;
   const shouldExitOnBack = isPhantom && isEmpty;
-  const openModelSheetRef = useRef<(() => void) | null>(null);
-  const openModelSheet = useCallback(() => openModelSheetRef.current?.(), []);
 
   const { MenuElements, titleBottom } = useChatHeader({
     chatId: chatId,
     chatModel: pendingModel ?? model,
     isModelLoading: !!pendingModel,
     isEmpty,
-    onSelectModelFromTitle: isPhantom ? openModelSheet : undefined,
+    hideTitle: isPhantom,
   });
 
   useFocusEffect(
@@ -109,7 +107,6 @@ function ChatScreenInner() {
         model={model}
         onPendingModelChange={setPendingModel}
         selectModel={handleSetModel}
-        openModelSheetRef={openModelSheetRef}
         revealFromTop={shouldPlayBranchEntryAnimation}
         headerTitleBottom={titleBottom}
       />

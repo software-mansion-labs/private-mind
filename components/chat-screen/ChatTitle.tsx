@@ -12,7 +12,6 @@ import {
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
-import ChevronDown from '../../assets/icons/chevron-down.svg';
 import { firstLineOf } from '../../utils/chatLabel';
 
 interface Props {
@@ -20,7 +19,6 @@ interface Props {
   modelName: string;
   isModelLoading?: boolean;
   onPress?: () => void;
-  showChevron?: boolean;
   onBottomMeasured?: (bottomY: number) => void;
   maxWidth?: number;
 }
@@ -30,7 +28,6 @@ const ChatTitle = ({
   modelName,
   isModelLoading = false,
   onPress,
-  showChevron = false,
   onBottomMeasured,
   maxWidth,
 }: Props) => {
@@ -117,15 +114,13 @@ const ChatTitle = ({
         <View style={styles.modelRow}>
           <Text style={styles.modelNameTitle}>{modelName}</Text>
           <View style={styles.accessory} pointerEvents="none">
-            {isModelLoading ? (
+            {isModelLoading && (
               <ActivityIndicator
                 size="small"
                 color={styles.modelNameTitle.color}
                 style={styles.loader}
               />
-            ) : showChevron ? (
-              <ChevronDown width={10} height={10} style={styles.chevron} />
-            ) : null}
+            )}
           </View>
         </View>
       )}
@@ -178,10 +173,6 @@ const createStyles = (theme: Theme) =>
       height: 14,
       alignItems: 'center',
       justifyContent: 'center',
-    },
-    chevron: {
-      color: theme.text.defaultSecondary,
-      transform: [{ rotate: '-90deg' }],
     },
     loader: {
       transform: [{ scale: 0.65 }],

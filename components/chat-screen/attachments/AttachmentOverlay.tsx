@@ -10,7 +10,11 @@ import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
 import { Feedback } from '../../../utils/Feedback';
 import AttachmentFlight, { type Flight } from './AttachmentFlight';
-import AttachmentMenu, { type MenuAction } from './AttachmentMenu';
+import AttachmentMenu, {
+  attachmentMenuHeight,
+  type MenuAction,
+  type MenuTools,
+} from './AttachmentMenu';
 import AttachmentPanel from './AttachmentPanel';
 import CameraBar from './CameraBar';
 import CameraSheet, { type CameraSheetHandle } from './CameraSheet';
@@ -40,6 +44,7 @@ interface Props {
   attachedIds: string[];
   maxSelection: number;
   imagesEnabled: boolean;
+  tools?: MenuTools;
 }
 
 const AttachmentOverlay = ({
@@ -62,6 +67,7 @@ const AttachmentOverlay = ({
   attachedIds,
   maxSelection,
   imagesEnabled,
+  tools = {},
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const barTop = sheetBottom - BOTTOM_BAR.inset - BOTTOM_BAR.controlSize;
@@ -223,6 +229,7 @@ const AttachmentOverlay = ({
             gridWidth={gridWidth}
             gridHeight={gridHeight}
             menuMaxBottom={menuMaxBottom}
+            menuHeight={attachmentMenuHeight(tools)}
             sheetTop={sheetTop}
             sheetHeight={gridHeight}
             interactive={
@@ -240,6 +247,7 @@ const AttachmentOverlay = ({
                 onSelect={panel.onMenuAction}
                 imagesEnabled={imagesEnabled}
                 busy={busyAction}
+                {...tools}
               />
             }
             grid={
