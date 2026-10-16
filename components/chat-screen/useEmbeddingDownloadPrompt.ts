@@ -20,6 +20,7 @@ interface Options {
   onWebSearchToggle?: () => boolean | void;
   presentDownloadSheet: (resume?: DownloadResume) => void;
   markDownloadSheetClosed: () => void;
+  onWillPresentWebPrompt?: () => void;
 }
 
 interface EmbeddingDownloadPrompt {
@@ -35,6 +36,7 @@ export const useEmbeddingDownloadPrompt = ({
   onWebSearchToggle,
   presentDownloadSheet,
   markDownloadSheetClosed,
+  onWillPresentWebPrompt,
 }: Options): EmbeddingDownloadPrompt => {
   const [embeddingSheetContext, setEmbeddingSheetContext] =
     useState<EmbeddingSheetContext>('document');
@@ -58,9 +60,16 @@ export const useEmbeddingDownloadPrompt = ({
       if (!embeddingModelNeedsDownloadPrompt(status)) return;
       setEmbeddingSheetContext('web');
       embeddingSheetRequiredRef.current = required;
+      onWillPresentWebPrompt?.();
       presentDownloadSheet('none');
     });
-  }, [webSearchEnabled, onWebSearchToggle, model, presentDownloadSheet]);
+  }, [
+    webSearchEnabled,
+    onWebSearchToggle,
+    model,
+    presentDownloadSheet,
+    onWillPresentWebPrompt,
+  ]);
 
   const handleEmbeddingSheetDismiss = useCallback(() => {
     if (embeddingSheetContext === 'web') {

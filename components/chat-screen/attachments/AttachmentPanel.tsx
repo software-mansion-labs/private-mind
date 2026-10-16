@@ -15,7 +15,6 @@ import {
   GRID,
   GUTTER,
   MENU,
-  MENU_HEIGHT,
   mix,
   PANEL_CONTENT,
   PLUS_CENTER_ABOVE_BOTTOM,
@@ -37,6 +36,7 @@ interface Props extends PanelDrivers {
   gridWidth: number;
   gridHeight: number;
   menuMaxBottom: number;
+  menuHeight: number;
   sheetTop: number;
   sheetHeight: number;
   interactive: 'menu' | 'grid' | 'none';
@@ -49,6 +49,7 @@ const AttachmentPanel = ({
   gridWidth,
   gridHeight,
   menuMaxBottom,
+  menuHeight,
   sheetTop,
   sheetHeight,
   interactive,
@@ -70,15 +71,15 @@ const AttachmentPanel = ({
     const plusCenter = bottom - PLUS_CENTER_ABOVE_BOTTOM;
 
     const menuTop = Math.min(
-      menuTopFromComposerBottom(bottom),
-      menuMaxBottom - MENU_HEIGHT
+      menuTopFromComposerBottom(bottom, menuHeight),
+      menuMaxBottom - menuHeight
     );
 
     const m = morph.get();
     let x = GUTTER;
     let y = mix(m, menuTop, sheetTop);
     let w = mix(m, MENU.width, gridWidth);
-    let h = mix(m, MENU_HEIGHT, sheetHeight);
+    let h = mix(m, menuHeight, sheetHeight);
     let r = mix(m, MENU.radius, GRID.panelRadius);
 
     const o = open.get();
@@ -151,7 +152,7 @@ const AttachmentPanel = ({
           pointerEvents={interactive === 'menu' ? 'auto' : 'none'}
           style={[
             styles.content,
-            { width: MENU.width, height: MENU_HEIGHT },
+            { width: MENU.width, height: menuHeight },
             menuStyle,
           ]}
         >

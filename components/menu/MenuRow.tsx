@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -40,6 +40,8 @@ interface Props {
   destructive?: boolean;
   dimmed?: boolean;
   busy?: boolean;
+  checked?: boolean;
+  trailing?: ReactNode;
   pressRetentionOffset?: PressableProps['pressRetentionOffset'];
   accessibilityLabel?: string;
   testID?: string;
@@ -53,6 +55,8 @@ const MenuRow = ({
   destructive = false,
   dimmed = false,
   busy = false,
+  checked,
+  trailing,
   pressRetentionOffset,
   accessibilityLabel,
   testID,
@@ -64,12 +68,13 @@ const MenuRow = ({
       ? theme.text.onChatBar
       : theme.text.primary;
   const size = MENU_ROW[variant].icon;
+  const isSwitch = checked !== undefined;
 
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={isSwitch ? 'switch' : 'button'}
       accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ disabled: dimmed }}
+      accessibilityState={{ disabled: dimmed, checked }}
       testID={testID}
       onPress={onPress}
       pressRetentionOffset={pressRetentionOffset}
@@ -93,6 +98,14 @@ const MenuRow = ({
       <Text numberOfLines={1} style={[styles.label, { color }]}>
         {label}
       </Text>
+      {trailing ? (
+        <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          {trailing}
+        </View>
+      ) : null}
     </Pressable>
   );
 };
@@ -124,6 +137,8 @@ const createStyles = (theme: Theme, variant: MenuRowVariant) => {
       justifyContent: 'center',
     },
     label: {
+      flexGrow: 1,
+      flexShrink: 1,
       fontFamily: fontFamily.medium,
       fontSize: variant === 'compact' ? fontSizes.sm : fontSizes.md,
       lineHeight: variant === 'compact' ? lineHeights.sm : lineHeights.md,

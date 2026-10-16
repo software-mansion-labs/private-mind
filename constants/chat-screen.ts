@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { type Theme } from '../styles/colors';
+import { GLASS_BUTTON_SIZE, HEADER_EDGE_PX } from './header-actions';
 
 export const SUPPORTS_USER_ACTION_MENU = Platform.OS === 'android';
 
@@ -37,9 +38,7 @@ export const PIN_RELEASE_SETTLE_DELAY_MS = 50;
 
 export const PIN_FREEZE_FALLBACK_MS = 1000;
 
-export const HEADER_BUTTON_SLOT_PX = 36;
-
-export const HEADER_TITLE_GUTTER_PX = 24;
+export const HEADER_TITLE_GAP_PX = 8;
 
 export const headerTitleMaxWidth = (
   width: number,
@@ -47,6 +46,7 @@ export const headerTitleMaxWidth = (
 ) =>
   width -
   2 *
-    (HEADER_BUTTON_SLOT_PX +
-      HEADER_TITLE_GUTTER_PX +
+    (HEADER_EDGE_PX +
+      GLASS_BUTTON_SIZE +
+      HEADER_TITLE_GAP_PX +
       Math.max(insets.left, insets.right));

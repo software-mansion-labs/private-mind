@@ -68,6 +68,7 @@ jest.mock('../components/chat-screen/ComposerActionButton', () => {
 
 import ChatBarActions from '../components/chat-screen/ChatBarActions';
 import type { SharedValue } from 'react-native-reanimated';
+import type { Model } from '../database/modelRepository';
 
 const makeSharedValue = (init: number) => {
   const shared = {
@@ -88,10 +89,11 @@ const defaultProps = {
   isProcessingPrompt: false,
   onInterrupt: jest.fn(),
   onSpeechInput: jest.fn(),
-  thinkingEnabled: false,
-  onThinkingToggle: jest.fn(),
+  onSelectModel: jest.fn(),
   onAttach: jest.fn(),
 };
+
+const qwen = { id: 1, modelName: 'Qwen 3 - 1.7B' } as Model;
 
 const renderActions = (props = {}) =>
   render(<ChatBarActions {...defaultProps} {...props} />);
@@ -237,12 +239,139 @@ describe('sources button removed', () => {
   });
 });
 
-describe('thinking toggle', () => {
-  it('calls onThinkingToggle when Think button is pressed', () => {
+describe('model badge', () => {
+  it('shows the selected model name', () => {
+    renderActions({ model: qwen });
+    expect(screen.getByText('Qwen 3 - 1.7B')).toBeTruthy();
+  });
+
+  it('opens the model picker when pressed', () => {
+    renderActions({ model: qwen });
+    fireEvent.press(screen.getByTestId('composer-model-badge'));
+    expect(defaultProps.onSelectModel).toHaveBeenCalled();
+  });
+
+  it('does nothing when pressed in an existing chat', () => {
+    renderActions({ model: qwen, modelLocked: true });
+    fireEvent.press(screen.getByTestId('composer-model-badge'));
+    expect(defaultProps.onSelectModel).not.toHaveBeenCalled();
+  });
+
+  it('still names the model in an existing chat, without offering a change', () => {
+    renderActions({ model: qwen, modelLocked: true });
+    expect(screen.getByText('Qwen 3 - 1.7B')).toBeTruthy();
+    expect(screen.getByLabelText('Model: Qwen 3 - 1.7B')).toBeTruthy();
+    expect(
+      screen.getByTestId('composer-model-badge').props.accessibilityState
+        .disabled
+    ).toBe(true);
+  });
+
+  it('names the model being switched to, with a spinner in place of the chevron', () => {
+    const gemma = { id: 2, modelName: 'Gemma 4 - 2B' } as Model;
+    renderActions({ model: qwen, pendingModel: gemma });
+
+    expect(screen.getByText('Gemma 4 - 2B')).toBeTruthy();
+    expect(screen.queryByText('Qwen 3 - 1.7B')).toBeNull();
+    expect(screen.getByTestId('composer-model-badge-loader')).toBeTruthy();
+  });
+
+  it('cannot be pressed while a model is loading', () => {
+    const gemma = { id: 2, modelName: 'Gemma 4 - 2B' } as Model;
+    renderActions({ model: qwen, pendingModel: gemma });
+
+    fireEvent.press(screen.getByTestId('composer-model-badge'));
+
+    expect(defaultProps.onSelectModel).not.toHaveBeenCalled();
+    expect(
+      screen.getByTestId('composer-model-badge').props.accessibilityState.busy
+    ).toBe(true);
+  });
+
+  it('shows no spinner once the model has settled', () => {
+    renderActions({ model: qwen });
+    expect(screen.queryByTestId('composer-model-badge-loader')).toBeNull();
+  });
+
+  it('is absent without a model', () => {
+    renderActions();
+    expect(screen.queryByTestId('composer-model-badge')).toBeNull();
+  });
+
+  it('replaces the Think and Web toggles', () => {
+    renderActions({ model: qwen });
+    expect(screen.queryByText('Think')).toBeNull();
+    expect(screen.queryByText('Web')).toBeNull();
+  });
+});
+
+describe('tool chips', () => {
+  it('shows no chip while every tool is off', () => {
+    renderActions({
+      onThinkingToggle: jest.fn(),
+      onWebSearchToggle: jest.fn(),
+    });
+
+    expect(screen.queryByTestId('tool-chip-think')).toBeNull();
+    expect(screen.queryByTestId('tool-chip-web')).toBeNull();
+  });
+
+  it('shows an icon-only chip for each tool that is on', () => {
+    renderActions({
+      thinkingEnabled: true,
+      onThinkingToggle: jest.fn(),
+      webSearchEnabled: true,
+      onWebSearchToggle: jest.fn(),
+    });
+
+    expect(screen.getByLabelText('Think is on. Turn off Think')).toBeTruthy();
+    expect(
+      screen.getByLabelText('Web search is on. Turn off Web search')
+    ).toBeTruthy();
+    expect(screen.queryByText('Think')).toBeNull();
+  });
+
+  it('drops the chip once its tool is turned off', () => {
     const onThinkingToggle = jest.fn();
-    renderActions({ onThinkingToggle });
-    fireEvent.press(screen.getByText('Think'));
-    expect(onThinkingToggle).toHaveBeenCalled();
+    const { rerender } = renderActions({
+      thinkingEnabled: true,
+      onThinkingToggle,
+    });
+    expect(screen.getByTestId('tool-chip-think')).toBeTruthy();
+
+    rerender(
+      <ChatBarActions
+        {...defaultProps}
+        thinkingEnabled={false}
+        onThinkingToggle={onThinkingToggle}
+      />
+    );
+
+    expect(screen.queryByTestId('tool-chip-think')).toBeNull();
+  });
+
+  it('turns Think off from its chip', () => {
+    const onThinkingToggle = jest.fn();
+    renderActions({ thinkingEnabled: true, onThinkingToggle });
+
+    fireEvent.press(screen.getByTestId('tool-chip-think'));
+
+    expect(onThinkingToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('turns Web search off from its chip', () => {
+    const onWebSearchToggle = jest.fn();
+    renderActions({ webSearchEnabled: true, onWebSearchToggle });
+
+    fireEvent.press(screen.getByTestId('tool-chip-web'));
+
+    expect(onWebSearchToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no Web search chip when the chat cannot search the web', () => {
+    renderActions({ webSearchEnabled: true });
+
+    expect(screen.queryByTestId('tool-chip-web')).toBeNull();
   });
 });
 

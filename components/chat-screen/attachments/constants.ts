@@ -9,6 +9,8 @@ export const GUTTER = 16;
 export const COMPOSER = {
   barPaddingBottom: 16,
   cardPadding: 16,
+  cardPaddingTop: 5,
+  inputGapBelow: 5,
   plusWell: 36,
   stripPaddingTop: 8,
   stripGap: 8,
@@ -34,11 +36,21 @@ export const MENU = {
   paddingHorizontal: 16,
   radius: radius.eighteen,
   centerOffset: 7,
+  dividerThickness: 1,
+  dividerMarginVertical: 4,
+  dividerMarginHorizontal: 8,
 } as const;
 
-export const MENU_ITEMS = 3;
-export const MENU_HEIGHT =
-  MENU.itemHeight * MENU_ITEMS + MENU.paddingVertical * 2;
+export function menuHeight({
+  rows,
+  dividers = 0,
+}: {
+  rows: number;
+  dividers?: number;
+}) {
+  const divider = MENU.dividerThickness + MENU.dividerMarginVertical * 2;
+  return rows * MENU.itemHeight + dividers * divider + MENU.paddingVertical * 2;
+}
 
 export const SHEET_TOP_GAP = 44;
 
@@ -111,11 +123,9 @@ export const PANEL_CONTENT = {
   transformOrigin: 'top left',
 } as const satisfies ViewStyle;
 
-export function menuTopFromComposerBottom(bottom: number) {
+export function menuTopFromComposerBottom(bottom: number, height: number) {
   'worklet';
-  return (
-    bottom - PLUS_CENTER_ABOVE_BOTTOM + MENU.centerOffset - MENU_HEIGHT / 2
-  );
+  return bottom - PLUS_CENTER_ABOVE_BOTTOM + MENU.centerOffset - height / 2;
 }
 
 export interface Frame {

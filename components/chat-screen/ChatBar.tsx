@@ -37,6 +37,8 @@ import { useAttachmentFlights } from './attachments/useAttachmentFlights';
 import { useAttachmentPanel } from './attachments/useAttachmentPanel';
 import { useSheetGeometry } from './attachments/useSheetGeometry';
 import { Model } from '../../database/modelRepository';
+import { isWebSearchReady } from '../../constants/model-profiles';
+import { hasMemoryForWebSearch } from '../../utils/modelCompatibility';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useChatStore } from '../../store/chatStore';
@@ -46,8 +48,10 @@ import LinkIcon from '../../assets/icons/link-alt.svg';
 import { detectUrls } from '../../utils/web/url/urlDetection';
 import { hostname } from '../../utils/web/hostname';
 import { showPermissionToast } from '../../utils/permissionToast';
+import { Feedback } from '../../utils/Feedback';
 import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
+import ComposerModelMenu from './ComposerModelMenu';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
 import WhatsNewCard from '../WhatsNewCard';
@@ -63,6 +67,7 @@ import {
 } from './useBarGrowth';
 
 const SENT_ECHO_WINDOW_MS = 300;
+const MODEL_MENU_GAP = 8;
 
 const REFUSAL_COPY: Record<SendRefusal, string | null> = {
   'nothing-to-send': 'Add a message or an attachment first.',
@@ -80,11 +85,15 @@ interface Props {
     attachments?: Attachment[]
   ) => boolean | void | SendRefusal | Promise<boolean | void | SendRefusal>;
   onSelectModel: () => void;
+  onPickModel: (model: Model) => void;
+  onShowAllModels: () => void;
+  modelLocked?: boolean;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
     setInput: (text: string) => void;
   }>;
   model: Model | undefined;
+  pendingModel?: Model;
   isVisionModel: boolean;
   extraContentPadding: SharedValue<number>;
   onHeightChange?: (height: number) => void;
@@ -103,9 +112,13 @@ const ChatBar = ({
   chatId,
   onSend,
   onSelectModel,
+  onPickModel,
+  onShowAllModels,
+  modelLocked = false,
   onSelectPrompt,
   ref,
   model,
+  pendingModel,
   isVisionModel,
   extraContentPadding,
   onHeightChange,
@@ -164,6 +177,7 @@ const ChatBar = ({
 
   const {
     width: screenWidth,
+    height: windowHeight,
     composerBottom,
     gridWidth,
     gridHeight,
@@ -171,6 +185,27 @@ const ChatBar = ({
     sheetBottom,
     menuMaxBottom,
   } = useSheetGeometry(panelWindowHeight);
+
+  const inputCardRef = useRef<View>(null);
+  const [modelMenuBottom, setModelMenuBottom] = useState<number | null>(null);
+  const openModelMenu = useCallback(() => {
+    inputCardRef.current?.measureInWindow((_x, y) => {
+      Feedback.sheetOpen();
+      setModelMenuBottom(windowHeight - y + MODEL_MENU_GAP);
+    });
+  }, [windowHeight]);
+  const closeModelMenu = useCallback(() => setModelMenuBottom(null), []);
+  const handlePickModel = useCallback(
+    (picked: Model) => {
+      setModelMenuBottom(null);
+      if (picked.id !== model?.id) onPickModel(picked);
+    },
+    [model?.id, onPickModel]
+  );
+  const handleShowAllModels = useCallback(() => {
+    setModelMenuBottom(null);
+    onShowAllModels();
+  }, [onShowAllModels]);
 
   const [filesBusy, setFilesBusy] = useState(false);
   const handleSelectFiles = useCallback(() => {
@@ -226,10 +261,17 @@ const ChatBar = ({
 
   const pendingIds = flights.map((flight) => flight.photo.id);
 
+  const panelOpenRef = useRef(false);
   useEffect(() => {
+    panelOpenRef.current = panel.mode !== 'closed';
     if (panel.mode === 'closed') markPanelClosed();
     else markPanelOpen();
   }, [panel.mode, markPanelClosed, markPanelOpen]);
+
+  const { dismiss: dismissPanel } = panel;
+  const dismissPanelIfOpen = useCallback(() => {
+    if (panelOpenRef.current) dismissPanel();
+  }, [dismissPanel]);
 
   useEffect(() => {
     onAttachmentSheetStateChange?.(panel.mode !== 'closed');
@@ -246,7 +288,30 @@ const ChatBar = ({
     onWebSearchToggle,
     presentDownloadSheet,
     markDownloadSheetClosed,
+    onWillPresentWebPrompt: dismissPanelIfOpen,
   });
+  const webSearchToggle = onWebSearchToggle ? handleWebSearchToggle : undefined;
+  const thinkingAvailable = !model || model.thinking === true;
+  const webSearchAvailable =
+    isWebSearchReady(model) && hasMemoryForWebSearch(model);
+  const menuTools = useMemo(
+    () => ({
+      thinkingEnabled,
+      thinkingAvailable,
+      onThinkingToggle,
+      webSearchEnabled,
+      webSearchAvailable,
+      onWebSearchToggle: webSearchToggle,
+    }),
+    [
+      thinkingEnabled,
+      thinkingAvailable,
+      onThinkingToggle,
+      webSearchEnabled,
+      webSearchAvailable,
+      webSearchToggle,
+    ]
+  );
 
   const textInputRef = useRef<RNTextInput>(null);
   // iOS-only: bump the TextInput key to force a remount when a prompt
@@ -586,7 +651,7 @@ const ChatBar = ({
               <PromptSuggestions onSelectPrompt={onSelectPrompt} />
             </View>
           )}
-          <View style={styles.inputContainer}>
+          <View ref={inputCardRef} style={styles.inputContainer}>
             <Animated.View
               pointerEvents={attachments.length ? 'auto' : 'none'}
               style={[styles.strip, stripStyle]}
@@ -647,7 +712,7 @@ const ChatBar = ({
                     multiline
                     numberOfLines={3}
                     onFocus={() => loadSelectedModel()}
-                    placeholder="Ask about anything..."
+                    placeholder="Ask anything"
                     placeholderTextColor={theme.text.onChatBarMuted}
                     value={userInput}
                     editable={!isHoldingInput}
@@ -669,12 +734,14 @@ const ChatBar = ({
                 isProcessingPrompt={isProcessingPromptHere}
                 onInterrupt={interrupt}
                 onSpeechInput={openSpeechInput}
+                model={model}
+                pendingModel={pendingModel}
+                onSelectModel={openModelMenu}
+                modelLocked={modelLocked}
                 thinkingEnabled={thinkingEnabled}
                 onThinkingToggle={onThinkingToggle}
                 webSearchEnabled={webSearchEnabled}
-                onWebSearchToggle={
-                  onWebSearchToggle ? handleWebSearchToggle : undefined
-                }
+                onWebSearchToggle={webSearchToggle}
               />
             </View>
           </View>
@@ -698,6 +765,15 @@ const ChatBar = ({
             attachedIds={attachments.map((attachment) => attachment.id)}
             maxSelection={MAX_IMAGE_ATTACHMENTS}
             imagesEnabled={isVisionModel}
+            tools={menuTools}
+          />
+          <ComposerModelMenu
+            visible={modelMenuBottom !== null}
+            anchorBottom={modelMenuBottom ?? 0}
+            currentModelId={model?.id}
+            onPick={handlePickModel}
+            onShowAllModels={handleShowAllModels}
+            onClose={closeModelMenu}
           />
           <EmbeddingDownloadSheet
             bottomSheetModalRef={embeddingDownloadSheetRef}
@@ -722,8 +798,8 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: 16,
     },
     suggestionsContainer: {
-      marginBottom: 12,
-      gap: 12,
+      marginBottom: 20,
+      gap: 24,
     },
     modelSelection: {
       flexDirection: 'row',
@@ -744,12 +820,16 @@ const createStyles = (theme: Theme) =>
     content: {
       flexDirection: 'row',
       width: '100%',
+      marginBottom: COMPOSER.inputGapBelow,
     },
     inputContainer: {
       flexDirection: 'column',
       backgroundColor: theme.bg.chatBar,
+      borderWidth: 1,
+      borderColor: theme.border.chatBar,
       borderRadius: 18,
       padding: COMPOSER.cardPadding,
+      paddingTop: COMPOSER.cardPaddingTop,
       justifyContent: 'center',
     },
     textInputWrapper: {
