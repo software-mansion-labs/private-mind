@@ -460,6 +460,9 @@ const releaseModelOnceIdleInBackground = (get: () => LLMStore) => {
   }, BACKGROUND_RELEASE_DELAY_MS);
 };
 
+export const modelLoadFailedCopy = (modelName: string) =>
+  `${modelName} could not be loaded. Try again or pick another model.`;
+
 const loadModelInstance = async (
   model: Model,
   hardReload: boolean,
@@ -579,6 +582,10 @@ const loadModelInstance = async (
     console.error('Error loading model:', e);
     unloadLLM();
     set({ isLoading: false, model: null });
+    Toast.show({
+      type: 'defaultToast',
+      text1: modelLoadFailedCopy(model.modelName),
+    });
   }
 };
 
