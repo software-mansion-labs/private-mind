@@ -12,6 +12,8 @@ export const lightTheme = {
     strongPrimary: '#020f3c',
     chatBar: '#E4E4E7',
     cardSurface: '#E4E4E7',
+    cardSelected: '#F6F7F9',
+    tile: '#E6E7EB',
     attachButton: '#3D61D6',
     voiceModeSurface: 'rgba(2, 15, 60, 0.2)',
     errorSecondary: '#F5D0D1',
@@ -47,6 +49,21 @@ export const lightTheme = {
     codeInline: 'rgba(0, 0, 0, 0.08)',
     codeInlineStrong: 'rgba(255, 255, 255, 0.1)',
   },
+  label: {
+    red: { background: '#FEBFBA', foreground: '#770212' },
+    orange: { background: '#FFE5D7', foreground: '#713401' },
+    gold: { background: '#E8D170', foreground: '#493C00' },
+    lime: { background: '#E1F4C1', foreground: '#3D5002' },
+    green: { background: '#A0E69E', foreground: '#014B0A' },
+    mint: { background: '#79EAC2', foreground: '#024936' },
+    cyan: { background: '#B9F8FF', foreground: '#015258' },
+    sky: { background: '#98DBFF', foreground: '#03435C' },
+    blue: { background: '#DBEEFE', foreground: '#014C78' },
+    periwinkle: { background: '#BBD1FF', foreground: '#11338A' },
+    violet: { background: '#D9C6FE', foreground: '#4B1F7E' },
+    lilac: { background: '#F7E3FF', foreground: '#66247C' },
+    pink: { background: '#FFB7E6', foreground: '#6B0755' },
+  },
 };
 
 export const darkTheme = {
@@ -59,6 +76,8 @@ export const darkTheme = {
     strongPrimary: '#FFFFFF',
     chatBar: '#FFFFFF',
     cardSurface: '#121212',
+    cardSelected: '#121212',
+    tile: '#1C1C1E',
     attachButton: '#000000',
     // Voice mode sits on `bg.main` in both themes, so use the same tint here
     // for parity across light and dark.
@@ -95,6 +114,24 @@ export const darkTheme = {
     contrast: '#FFFFFF',
     codeInline: 'rgba(255, 255, 255, 0.1)',
     codeInlineStrong: 'rgba(255, 255, 255, 0.1)',
+  },
+  label: {
+    red: { background: 'rgba(226, 72, 74, 0.24)', foreground: '#FFA09A' },
+    orange: { background: 'rgba(230, 128, 58, 0.24)', foreground: '#FEC29E' },
+    gold: { background: 'rgba(157, 133, 7, 0.24)', foreground: '#D9BD44' },
+    lime: { background: 'rgba(139, 173, 53, 0.24)', foreground: '#C3DD93' },
+    green: { background: 'rgba(29, 161, 43, 0.24)', foreground: '#83D582' },
+    mint: { background: 'rgba(9, 157, 120, 0.24)', foreground: '#49DAAC' },
+    cyan: { background: 'rgba(12, 179, 192, 0.24)', foreground: '#79E4EF' },
+    sky: { background: 'rgba(3, 146, 196, 0.24)', foreground: '#60CBFF' },
+    blue: { background: 'rgba(55, 166, 244, 0.24)', foreground: '#A8D7FF' },
+    periwinkle: {
+      background: 'rgba(73, 126, 247, 0.24)',
+      foreground: '#9DBDFF',
+    },
+    violet: { background: 'rgba(153, 100, 229, 0.24)', foreground: '#C9ACFF' },
+    lilac: { background: 'rgba(194, 127, 221, 0.24)', foreground: '#EBBDFE' },
+    pink: { background: 'rgba(204, 77, 169, 0.24)', foreground: '#F999DA' },
   },
 };
 
