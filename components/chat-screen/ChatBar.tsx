@@ -798,8 +798,8 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: 16,
     },
     suggestionsContainer: {
-      marginBottom: 12,
-      gap: 12,
+      marginBottom: 20,
+      gap: 24,
     },
     modelSelection: {
       flexDirection: 'row',
