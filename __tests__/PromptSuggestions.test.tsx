@@ -8,7 +8,7 @@ jest.mock('../context/ThemeContext', () => ({
 
 jest.mock('react-native-gesture-handler', () => {
   const RN = require('react-native');
-  return { ScrollView: RN.ScrollView, TouchableOpacity: RN.TouchableOpacity };
+  return { ScrollView: RN.ScrollView, Pressable: RN.Pressable };
 });
 
 import PromptSuggestions from '../components/chat-screen/PromptSuggestions';

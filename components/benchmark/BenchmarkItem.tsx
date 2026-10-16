@@ -1,11 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import { Pressable } from 'react-native-gesture-handler';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
   entry: BenchmarkResult;
@@ -21,7 +22,10 @@ const BenchmarkItem = ({ entry, onPress }: Props) => {
   })}`;
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <Pressable
+      style={({ pressed }) => [styles.container, pressed && pressedOpacity]}
+      onPress={onPress}
+    >
       <View style={styles.iconWrapper}>
         <BenchmarkIcon width={15} height={15} style={styles.icon} />
       </View>
@@ -29,7 +33,7 @@ const BenchmarkItem = ({ entry, onPress }: Props) => {
         <Text style={styles.title}>{entry.modelName}</Text>
         <Text style={styles.date}>{formattedDate}</Text>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 

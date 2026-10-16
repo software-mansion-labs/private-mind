@@ -5,7 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
+  Pressable,
   View,
   useWindowDimensions,
 } from 'react-native';
@@ -33,6 +33,7 @@ import {
   TEXT_CONTROLS_GAP,
 } from '../../constants/onboarding';
 import { Feedback } from '../../utils/Feedback';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
   onSkip: () => void;
@@ -184,15 +185,19 @@ function OnboardingCarousel({ onSkip, onComplete, onExitToIntro }: Props) {
         )}
       </View>
 
-      <TouchableOpacity
-        style={[styles.skip, { top: theme.insets.top + CARD_INSET }]}
+      <Pressable
+        style={({ pressed }) => [
+          styles.skip,
+          { top: theme.insets.top + CARD_INSET },
+          pressed && pressedOpacity,
+        ]}
         onPress={onSkip}
         hitSlop={12}
         accessibilityRole="button"
         accessibilityLabel="Skip onboarding"
       >
         <Text style={styles.skipText}>Skip</Text>
-      </TouchableOpacity>
+      </Pressable>
     </Animated.View>
   );
 }

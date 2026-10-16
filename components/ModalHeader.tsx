@@ -1,16 +1,11 @@
 import React from 'react';
-import {
-  View,
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  Platform,
-} from 'react-native';
+import { View, Pressable, Text, StyleSheet, Platform } from 'react-native';
 import CloseIcon from '../assets/icons/close.svg';
 import ArrowLeftIcon from '../assets/icons/arrow-left.svg';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
+import { pressedOpacity } from '../styles/pressable';
 
 interface Props {
   title: string;
@@ -25,9 +20,13 @@ const ModalHeader = ({ title, onClose, leftIcon = 'close' }: Props) => {
 
   return (
     <View style={styles.headerContainer}>
-      <TouchableOpacity style={styles.iconWrap} onPress={onClose} hitSlop={15}>
+      <Pressable
+        style={({ pressed }) => [styles.iconWrap, pressed && pressedOpacity]}
+        onPress={onClose}
+        hitSlop={15}
+      >
         <Icon width={iconSize} height={iconSize} style={styles.icon} />
-      </TouchableOpacity>
+      </Pressable>
       <Text style={styles.title}>{title}</Text>
       <View style={styles.iconWrap} />
     </View>

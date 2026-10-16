@@ -3,7 +3,7 @@ import {
   StyleSheet,
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   Linking,
   Platform,
 } from 'react-native';
@@ -20,6 +20,7 @@ import Logo from '../../assets/icons/logo.svg';
 import GithubIcon from '../../assets/icons/github.svg';
 import CopyIcon from '../../assets/icons/copy.svg';
 import FooterIcon from '../../assets/icons/footer.svg';
+import { pressedOpacity } from '../../styles/pressable';
 
 const APP_VERSION = `v.${Application.nativeApplicationVersion ?? ''}`;
 
@@ -112,13 +113,16 @@ const VersionInfo = () => {
         <Text style={[styles.versionText, { color: theme.text.primary }]}>
           {APP_VERSION}
         </Text>
-        <TouchableOpacity onPress={handleCopyVersion}>
+        <Pressable
+          onPress={handleCopyVersion}
+          style={({ pressed }) => pressed && pressedOpacity}
+        >
           <CopyIcon
             width={16}
             height={16}
             style={{ color: theme.text.defaultTertiary }}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );

@@ -4,8 +4,8 @@ import { StyleSheet } from 'react-native';
 import CircleButton from '../components/CircleButton';
 
 jest.mock('react-native-gesture-handler', () => {
-  const { TouchableOpacity } = require('react-native');
-  return { TouchableOpacity };
+  const { Pressable } = require('react-native');
+  return { Pressable };
 });
 
 const Icon = () => null;
