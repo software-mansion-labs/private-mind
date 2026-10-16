@@ -121,7 +121,7 @@ describe('prepareMessagesForLLM', () => {
         expect(systemPrompt.startsWith(`${customPrompt}\n\n`)).toBe(true);
       });
 
-      it('is dropped from the Bielik prompt too', () => {
+      it('leaves the Polish Bielik prompt as it is', () => {
         const systemPrompt = systemPromptFor(
           {
             ...baseSettings,
@@ -130,8 +130,11 @@ describe('prepareMessagesForLLM', () => {
           []
         );
 
-        expect(systemPrompt).not.toContain(bielikDocumentSentence);
-        expect(systemPrompt.startsWith(`${bielikPromptLead}\n\n`)).toBe(true);
+        expect(
+          systemPrompt.startsWith(
+            `${bielikPromptLead} ${bielikDocumentSentence}\n\n`
+          )
+        ).toBe(true);
       });
     });
 
