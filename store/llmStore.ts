@@ -2,6 +2,7 @@ import { estimatePromptTokens } from '../constants/context-window';
 import {
   mapOutsideThink,
   stripThinkBlocks,
+  unclosedThinkAsAnswer,
   unclosedThinkText,
 } from '../utils/thinking';
 import { create } from 'zustand';
@@ -1438,6 +1439,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         ? tidyVisibleAnswer(rawResponse)
         : rawResponse;
       let loopGuardTrimmed = !!rawResponse && finalResponse !== rawResponse;
+      if (
+        finalResponse &&
+        !settings.thinkingEnabled &&
+        !isRepetitionFromTheStart(unclosedThinkText(finalResponse).trim())
+      ) {
+        finalResponse = unclosedThinkAsAnswer(finalResponse);
+      }
       if (
         openingWelcome &&
         get().isGenerating &&

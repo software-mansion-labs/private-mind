@@ -82,6 +82,15 @@ export const unclosedThinkText = (text: string): string => {
     : '';
 };
 
+export const unclosedThinkAsAnswer = (text: string): string => {
+  const source = normalizeThinkMarkup(text);
+  const open = source.lastIndexOf(THINK_OPEN);
+  if (open === -1) return text;
+  const contentStart = open + THINK_OPEN.length;
+  if (source.indexOf(THINK_CLOSE, contentStart) !== -1) return text;
+  return `${source.slice(0, open)}${source.slice(contentStart).trimStart()}`;
+};
+
 export const mapOutsideThink = (
   text: string,
   transform: (segment: string) => string
