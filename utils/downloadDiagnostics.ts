@@ -2,6 +2,7 @@ export type DownloadPhase =
   | 'requested'
   | 'queued'
   | 'started'
+  | 'waiting-for-shared-file'
   | 'completed'
   | 'failed'
   | 'abandoned'

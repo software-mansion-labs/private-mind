@@ -1,6 +1,5 @@
 import { estimatePromptTokens } from '../constants/context-window';
 import {
-  mapOutsideThink,
   stripThinkBlocks,
   unclosedThinkAsAnswer,
   unclosedThinkText,
@@ -35,6 +34,7 @@ import {
   answerLanguageAnchor,
   focusedRetrySystemPrompt,
   prepareMessagesForLLM,
+  type PrepareMessagesOptions,
 } from '../utils/promptUtils';
 import { detectQuestionLanguage } from '../utils/questionLanguage';
 import {
@@ -50,10 +50,12 @@ import {
   isDanglingListAnswer,
   endsInsideList,
   joinContinuation,
+  isEchoOnlyAnswer,
   isQuestionEchoAnswer,
   isWrongLanguageAnswer,
   strayedFromWelcome,
   retryDropsGroundedDetail,
+  stripEchoedLanguageNotes,
   stripEchoedQuestionPrefix,
   stripSourceLabels,
   pickCitationsByAnswer,
@@ -62,13 +64,18 @@ import {
 } from '../utils/messageSources';
 import { sourcesPresentInContext } from '../utils/contextUtils';
 import { normalizeModelText } from '../utils/normalizeModelText';
-import { stripSpecialTokens } from '../utils/specialTokens';
 import {
   isRepetitionFromTheStart,
   truncateAtRepeatedClause,
 } from '../utils/loopDetection';
+import {
+  answerOpensNextTurn,
+  answerRunsAwayInLoop,
+  tidyVisibleAnswer,
+} from '../utils/visibleAnswer';
 import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
 import { updateConversationDigest } from '../utils/conversationDigest';
+import { NO_ANSWER_FALLBACK } from '../constants/no-answer-fallback';
 import type { WebIntentKind } from '../utils/web/intentKind';
 import { useSettingsStore } from './settingsStore';
 import { openingWelcomeFor } from '../utils/openingGreeting';
@@ -81,6 +88,8 @@ import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
 import { cpuLacksLseAtomics } from '../utils/cpuSupport';
 import { UNSUPPORTED_CPU_REFUSAL } from '../constants/cpu-support';
+import { ECHO_FALLBACK } from '../constants/echo-fallback';
+import type { WelcomeLanguage } from '../constants/opening-greetings';
 
 export interface LLMStore {
   isLoading: boolean;
@@ -166,14 +175,22 @@ type LLMGenerationConfig = ReturnType<typeof getGenerationConfigForModel>;
 
 let appliedGenerationConfig: string | null = null;
 
+const CLOCK_SEEDED = 0;
+let generationSeed = CLOCK_SEEDED;
+
+export const setGenerationSeed = (seed: number = CLOCK_SEEDED): void => {
+  generationSeed = seed;
+};
+
 const applyGenerationConfig = (
   instance: LLMModule,
   generationConfig: LLMGenerationConfig | undefined
 ) => {
   if (!generationConfig) return;
-  const requested = JSON.stringify(generationConfig);
+  const seeded = { ...generationConfig, seed: generationSeed };
+  const requested = JSON.stringify(seeded);
   if (requested === appliedGenerationConfig) return;
-  instance.configure({ generationConfig });
+  instance.configure({ generationConfig: seeded });
   appliedGenerationConfig = requested;
 };
 
@@ -230,6 +247,24 @@ const resetStreamState = () => {
   streamStopRequested = false;
   streamFlushScheduled = false;
   streamedSoFar = '';
+};
+
+const LOOP_CHECK_EVERY_TOKENS = 8;
+let loopWatch: { streamed: string; tokens: number } | null = null;
+
+const loopWatchCaughtRunaway = (token: string): boolean => {
+  if (!loopWatch) return false;
+  loopWatch.streamed += token;
+  loopWatch.tokens += 1;
+  if (loopWatch.tokens % LOOP_CHECK_EVERY_TOKENS !== 0) return false;
+  if (
+    !answerRunsAwayInLoop(loopWatch.streamed) &&
+    !answerOpensNextTurn(loopWatch.streamed)
+  ) {
+    return false;
+  }
+  loopWatch = null;
+  return true;
 };
 
 let benchmarkTokenBudget: number | null = null;
@@ -425,6 +460,9 @@ const releaseModelOnceIdleInBackground = (get: () => LLMStore) => {
   }, BACKGROUND_RELEASE_DELAY_MS);
 };
 
+export const modelLoadFailedCopy = (modelName: string) =>
+  `${modelName} could not be loaded. Try again or pick another model.`;
+
 const loadModelInstance = async (
   model: Model,
   hardReload: boolean,
@@ -495,6 +533,10 @@ const loadModelInstance = async (
           }
           return;
         }
+        if (loopWatchCaughtRunaway(token)) {
+          console.warn('Generation collapsed into a repetition loop, stopping');
+          llmInstance?.interrupt();
+        }
         if (suppressUtilityStreaming) return;
         if (streamStopRequested) return;
 
@@ -540,6 +582,10 @@ const loadModelInstance = async (
     console.error('Error loading model:', e);
     unloadLLM();
     set({ isLoading: false, model: null });
+    Toast.show({
+      type: 'defaultToast',
+      text1: modelLoadFailedCopy(model.modelName),
+    });
   }
 };
 
@@ -679,19 +725,16 @@ const CIRCULAR_ANSWER_RETRY_PROMPT =
   'answer itself now, in your own words, and mention a source only where it ' +
   'backs a specific fact.';
 
-const QUESTION_ECHO_RETRY_PROMPT =
-  'That reply only repeated the question back instead of answering it. Answer ' +
-  'the question now, directly, using the information you were given. Do not ' +
-  'restate or rephrase the question.';
-
-const NO_ANSWER_FALLBACK: Record<string, string> = {
-  pl: 'Nie udało mi się odpowiedzieć na to pytanie na podstawie znalezionych źródeł.',
-  en: 'I could not answer this question from the sources I found.',
-};
-
 const noAnswerFallback = (question: string | undefined): string => {
   const code = detectQuestionLanguage(question ?? '')?.code ?? 'en';
   return NO_ANSWER_FALLBACK[code] ?? NO_ANSWER_FALLBACK.en!;
+};
+
+const echoFallback = (question: string | undefined): string => {
+  const code = detectQuestionLanguage(question ?? '')?.code;
+  return code && code in ECHO_FALLBACK
+    ? ECHO_FALLBACK[code as WelcomeLanguage]
+    : ECHO_FALLBACK.en;
 };
 
 const EVIDENCE_PRESENT_RETRY_PROMPT =
@@ -727,16 +770,21 @@ const WRONG_LANGUAGE_RETRY_PROMPT =
   'with the same facts, in the language of the question, and do not switch ' +
   'language or script partway through.';
 
+const SHORT_FOLLOW_UP_MAX_WORDS = 3;
+
+const isShortFollowUp = (question: string | undefined): boolean =>
+  !!question &&
+  question.trim().split(/\s+/u).length <= SHORT_FOLLOW_UP_MAX_WORDS;
+
+const followUpEchoRetryPrompt = (previousQuestion: string): string =>
+  'You only repeated my question instead of answering it. It follows up on ' +
+  `what I asked before: "${previousQuestion}". Answer it now, in a few sentences.`;
+
 const carriesAnswer = (response: string): boolean => {
   if (stripThinkBlocks(response).trim()) return true;
   const unclosed = unclosedThinkText(response).trim();
   return Boolean(unclosed) && !isRepetitionFromTheStart(unclosed);
 };
-
-const tidyVisibleAnswer = (response: string): string =>
-  mapOutsideThink(stripSpecialTokens(response), (segment) =>
-    truncateAtRepeatedClause(normalizeModelText(segment))
-  );
 
 const runUtilityGeneration = (
   instance: LLMModule,
@@ -858,7 +906,13 @@ const generateLLMResponse = (
     applyGenerationConfig(instance, generationConfig);
 
     const startTime = performance.now();
-    const finalResponse = await instance.generate(preparedMessages);
+    loopWatch = { streamed: '', tokens: 0 };
+    let finalResponse: string;
+    try {
+      finalResponse = await instance.generate(preparedMessages);
+    } finally {
+      loopWatch = null;
+    }
     const endTime = performance.now();
 
     reportPromptEstimateAccuracy(messages, instance);
@@ -1338,24 +1392,26 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       await waitForSettingsHydration();
 
+      const turnMessages = get().activeChatMessages;
+      const turnPromptOptions: PrepareMessagesOptions = {
+        customSystemPrompt: useSettingsStore.getState().customSystemPrompt,
+        preferredSourceDocuments: preferredSourceDocuments,
+        sourceDocuments: sourceDocuments,
+        webIntent: webIntent,
+        webIntentKind: webIntentKind,
+        webSubQueries: webSubQueries,
+        webWeak: webWeak,
+        webSearchFailed: webSearchFailed,
+        digest: digestForChat(get, chatId) ?? undefined,
+        openingWelcome: openingWelcome ?? undefined,
+      };
+      let promptBudgetScale = 1;
       const messagesWithSystemPrompt = prepareMessagesForLLM(
-        get().activeChatMessages,
+        turnMessages,
         context,
         settings,
         currentModel,
-        {
-          customSystemPrompt: useSettingsStore.getState().customSystemPrompt,
-          preferredSourceDocuments: preferredSourceDocuments,
-          sourceDocuments: sourceDocuments,
-          budgetScale: 1,
-          webIntent: webIntent,
-          webIntentKind: webIntentKind,
-          webSubQueries: webSubQueries,
-          webWeak: webWeak,
-          webSearchFailed: webSearchFailed,
-          digest: digestForChat(get, chatId) ?? undefined,
-          openingWelcome: openingWelcome ?? undefined,
-        }
+        { ...turnPromptOptions, budgetScale: promptBudgetScale }
       );
 
       const lastPreparedMessage = messagesWithSystemPrompt.at(-1);
@@ -1409,6 +1465,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           error
         );
         updateChatStateForGeneration(set, 'generating');
+        promptBudgetScale = 0.5;
         effectivePrepared = prepareMessagesForLLM(
           get().activeChatMessages,
           context,
@@ -1418,7 +1475,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             customSystemPrompt: useSettingsStore.getState().customSystemPrompt,
             preferredSourceDocuments: preferredSourceDocuments,
             sourceDocuments: sourceDocuments,
-            budgetScale: 0.5,
+            budgetScale: promptBudgetScale,
             webIntent: webIntent,
             webSubQueries: webSubQueries,
             webWeak: webWeak,
@@ -1458,6 +1515,15 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const currentQuestion = get().activeChatMessages.findLast(
         (msg) => msg.role === 'user'
       )?.content;
+      const previousQuestion = ((messages) =>
+        messages
+          .slice(
+            0,
+            messages.findLastIndex((msg) => msg.role === 'user')
+          )
+          .findLast((msg) => msg.role === 'user')?.content)(
+        get().activeChatMessages
+      );
       const priorAnswerText = get()
         .activeChatMessages.slice(0, -1)
         .findLast((msg) => msg.role === 'assistant')?.content;
@@ -1553,7 +1619,45 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         loopGuardTrimmed = retried !== retryGeneration.response;
       };
 
+      const regenerationWithoutLanguageNote = (): ExecutorchMessage[] =>
+        prepareMessagesForLLM(turnMessages, context, settings, currentModel, {
+          ...turnPromptOptions,
+          budgetScale: promptBudgetScale,
+          languageNoteOnQuestion: false,
+        });
+      const turnHadSources = context.some((chunk) => chunk.trim().length > 0);
+      let askedAgainAfterEcho = false;
+
       if (
+        !nudged &&
+        get().isGenerating &&
+        finalResponse &&
+        isEchoOnlyAnswer(finalResponse, currentQuestion)
+      ) {
+        askedAgainAfterEcho = true;
+        if (previousQuestion && isShortFollowUp(currentQuestion)) {
+          await nudgeOnce(
+            'Answer only echoed a short follow-up, asking again with the question it follows',
+            continuedRetry(followUpEchoRetryPrompt(previousQuestion)),
+            (retried) => isEchoOnlyAnswer(retried, currentQuestion)
+          );
+        } else {
+          await nudgeOnce(
+            'Answer only echoed the question, asking again without the language note',
+            regenerationWithoutLanguageNote(),
+            (retried) => isEchoOnlyAnswer(retried, currentQuestion)
+          );
+        }
+        if (finalResponse && isEchoOnlyAnswer(finalResponse, currentQuestion)) {
+          finalResponse = turnHadSources
+            ? noAnswerFallback(currentQuestion)
+            : echoFallback(currentQuestion);
+          loopGuardTrimmed = false;
+        }
+      }
+
+      if (
+        !askedAgainAfterEcho &&
         get().isGenerating &&
         finalResponse &&
         isWrongLanguageAnswer(finalResponse, currentQuestion)
@@ -1563,27 +1667,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           continuedRetry(WRONG_LANGUAGE_RETRY_PROMPT),
           (retried) => isWrongLanguageAnswer(retried, currentQuestion)
         );
-      }
-
-      if (
-        !nudged &&
-        get().isGenerating &&
-        finalResponse &&
-        isQuestionEchoAnswer(finalResponse, currentQuestion) &&
-        !isWrongLanguageAnswer(finalResponse, currentQuestion)
-      ) {
-        await nudgeOnce(
-          'Question echoed back, retrying once with a nudge',
-          continuedRetry(QUESTION_ECHO_RETRY_PROMPT),
-          (retried) => isQuestionEchoAnswer(retried, currentQuestion)
-        );
-        if (
-          finalResponse &&
-          isQuestionEchoAnswer(finalResponse, currentQuestion)
-        ) {
-          finalResponse = noAnswerFallback(currentQuestion);
-          loopGuardTrimmed = false;
-        }
       }
 
       if (
@@ -1736,6 +1819,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           typeof first?.content === 'string' ? first.content.length : 0)(
           effectivePrepared[0]
         ),
+        chatId,
+        promptMessages: effectivePrepared.length,
       });
 
       if (finalResponse && carriesAnswer(finalResponse)) {
@@ -1743,7 +1828,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           stripSourceLabels(
             openingWelcome
               ? finalResponse
-              : stripEchoedQuestionPrefix(finalResponse, currentQuestion)
+              : stripEchoedLanguageNotes(
+                  stripEchoedQuestionPrefix(finalResponse, currentQuestion)
+                )
           ),
           sourceDocuments ?? []
         );
@@ -1968,11 +2055,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       benchmarkTokenBudget = BENCHMARK_TOKEN_TARGET;
       benchmarkedModel = get().model;
       if (benchmarkedModel) {
-        instance.configure({
-          generationConfig: {
-            ...getGenerationConfigForModel(benchmarkedModel),
-            ...BENCHMARK_GENERATION_CONFIG,
-          },
+        applyGenerationConfig(instance, {
+          ...getGenerationConfigForModel(benchmarkedModel),
+          ...BENCHMARK_GENERATION_CONFIG,
         });
       }
 
@@ -2013,9 +2098,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     } finally {
       benchmarkTokenBudget = null;
       if (llmInstance && benchmarkedModel) {
-        llmInstance.configure({
-          generationConfig: getGenerationConfigForModel(benchmarkedModel),
-        });
+        applyGenerationConfig(
+          llmInstance,
+          getGenerationConfigForModel(benchmarkedModel)
+        );
       }
       memoryTracker.stop();
       set({ isGenerating: false, isBenchmarking: false });
@@ -2081,3 +2167,5 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     set({ activeChatMessages: messageHistory });
   },
 }));
+
+export const isModelBusy = (): boolean => modelIsInUse(useLLMStore.getState);

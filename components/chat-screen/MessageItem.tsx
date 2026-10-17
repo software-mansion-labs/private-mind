@@ -80,6 +80,8 @@ const splitDocumentName = (name: string) => {
 
 const REFINED_SWAP_MS = 320;
 
+export const MODEL_STARTING_LABEL = 'Starting the model on your phone…';
+
 const useRefinedSwap = (isRefining: boolean): number => {
   const [swap, setSwap] = useState(0);
   const wasRefining = useRef(false);
@@ -191,6 +193,7 @@ const MessageItem = memo(
       isRefining,
       isSearchingThis,
       isAwaitingFirstToken,
+      isModelStarting,
       trace: webSearchTrace,
       webActive,
     } = useWebSearchActivity({
@@ -349,7 +352,9 @@ const MessageItem = memo(
                 />
               )}
               {isAwaitingFirstToken ? (
-                <AnimatedChatLoading label="Thinking…" />
+                <AnimatedChatLoading
+                  label={isModelStarting ? MODEL_STARTING_LABEL : 'Thinking…'}
+                />
               ) : null}
               <Animated.View
                 key={refinedSwap}

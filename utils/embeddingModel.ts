@@ -1,7 +1,9 @@
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
+import { ResourceFetcher } from 'react-native-executorch/legacy';
 import {
   LFM_2_5_EMBEDDING_DOWNLOAD_SIZE_BYTES,
   LFM_2_5_EMBEDDING_MODEL_FILE,
+  LFM_2_5_EMBEDDING_SOURCES,
 } from '../constants/embedding-model';
 
 export const isEmbeddingModelDownloaded = async (): Promise<boolean> => {
@@ -17,4 +19,15 @@ export const isEmbeddingModelDownloaded = async (): Promise<boolean> => {
 export const embeddingModelDownloadSizeLabel = (): string => {
   const megabytes = LFM_2_5_EMBEDDING_DOWNLOAD_SIZE_BYTES / (1024 * 1024);
   return `${Math.round(megabytes)} MB`;
+};
+
+export const fetchEmbeddingModelFiles = async (
+  onProgress: (progress: number) => void
+): Promise<boolean> => {
+  const paths = await ResourceFetcher.fetch(
+    onProgress,
+    LFM_2_5_EMBEDDING_SOURCES.modelSource!,
+    LFM_2_5_EMBEDDING_SOURCES.tokenizerSource!
+  );
+  return paths !== null;
 };

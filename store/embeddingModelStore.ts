@@ -1,8 +1,15 @@
 import { create } from 'zustand';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
+import { fetchEmbeddingModelFiles } from '../utils/embeddingModel';
 
 export type EmbeddingModelStatus =
   'unknown' | 'not_downloaded' | 'downloading' | 'ready' | 'error';
+
+export type EmbeddingModelLoader = (
+  load: () => Promise<unknown>
+) => Promise<unknown>;
+
+const loadInPlace: EmbeddingModelLoader = (load) => load();
 
 type EmbeddingModelStore = {
   status: EmbeddingModelStatus;
@@ -10,7 +17,10 @@ type EmbeddingModelStore = {
   setProgress: (progress: number) => void;
   setStatus: (status: EmbeddingModelStatus) => void;
   markReady: () => void;
-  ensureReady: (vectorStore: OPSQLiteVectorStore) => Promise<boolean>;
+  ensureReady: (
+    vectorStore: OPSQLiteVectorStore,
+    loadModel?: EmbeddingModelLoader
+  ) => Promise<boolean>;
 };
 
 let inFlightLoad: Promise<boolean> | null = null;
@@ -36,7 +46,7 @@ export const useEmbeddingModelStore = create<EmbeddingModelStore>(
     setStatus: (status) => set({ status }),
     markReady: () => set({ status: 'ready', progress: 1 }),
 
-    ensureReady: async (vectorStore) => {
+    ensureReady: async (vectorStore, loadModel = loadInPlace) => {
       if (get().status === 'ready') return true;
       if (inFlightLoad) return inFlightLoad;
 
@@ -44,7 +54,12 @@ export const useEmbeddingModelStore = create<EmbeddingModelStore>(
 
       inFlightLoad = (async () => {
         try {
-          await vectorStore.load();
+          const fetched = await fetchEmbeddingModelFiles(get().setProgress);
+          if (!fetched) {
+            throw new Error('The embedding model download was interrupted');
+          }
+          set({ progress: 1 });
+          await loadModel(() => vectorStore.load());
           set({ status: 'ready', progress: 1 });
           return true;
         } catch (error) {

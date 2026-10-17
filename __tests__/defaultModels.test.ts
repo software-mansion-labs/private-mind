@@ -5,13 +5,32 @@ import {
 import {
   DEFAULT_MODELS,
   DEFAULT_REPETITION_PENALTY,
+  RUNNER_DEFAULT_SAMPLING,
   getGenerationConfigForModel,
+  GROUNDED_REPETITION_PENALTY,
   getStartingModels,
 } from '../constants/default-models';
 import { isModelCompatibleWithRam } from '../utils/modelCompatibility';
 
 describe('getGenerationConfigForModel', () => {
-  it('applies the profile repetitionPenalty, which defaults to none', () => {
+  it('penalises repeats in plain chat, where small models loop', () => {
+    expect(DEFAULT_REPETITION_PENALTY).toBe(1.1);
+  });
+
+  it('turns the penalty off for an answer grounded in documents or the web', () => {
+    expect(
+      getGenerationConfigForModel(
+        {
+          modelName: 'Qwen 3 - 1.7B',
+          family: 'Qwen 3',
+          modelPath: QWEN3_1_7B_QUANTIZED.modelSource,
+        },
+        true
+      ).repetitionPenalty
+    ).toBe(GROUNDED_REPETITION_PENALTY);
+  });
+
+  it('applies the profile repetitionPenalty to models without their own', () => {
     expect(
       getGenerationConfigForModel({
         modelName: 'Qwen 3 - 1.7B',
@@ -25,6 +44,36 @@ describe('getGenerationConfigForModel', () => {
         modelPath: 'https://example.com/custom.pte',
       }).repetitionPenalty
     ).toBe(DEFAULT_REPETITION_PENALTY);
+  });
+
+  it.each(DEFAULT_MODELS.map((model) => [model.modelName, model] as const))(
+    'states every sampling setting for %s, so a configure() leaves nothing of the previous one behind',
+    (_name, model) => {
+      const config = getGenerationConfigForModel(model);
+      for (const key of [
+        'temperature',
+        'topP',
+        'minP',
+        'repetitionPenalty',
+      ] as const) {
+        expect(typeof config[key]).toBe('number');
+      }
+    }
+  );
+
+  it('gives a model the catalogue sets no sampling for the sampling the runner loads with', () => {
+    const bielik = DEFAULT_MODELS.find(
+      (model) => model.modelPath === BIELIK_V3_0_1_5B_QUANTIZED.modelSource
+    )!;
+    expect(getGenerationConfigForModel(bielik)).toEqual({
+      ...RUNNER_DEFAULT_SAMPLING,
+      repetitionPenalty: DEFAULT_REPETITION_PENALTY,
+    });
+    expect(RUNNER_DEFAULT_SAMPLING).toEqual({
+      temperature: 0.8,
+      topP: 0.9,
+      minP: 0,
+    });
   });
 });
 

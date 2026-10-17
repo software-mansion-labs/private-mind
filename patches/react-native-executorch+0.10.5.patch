@@ -1,0 +1,224 @@
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/sampler.h b/node_modules/react-native-executorch/legacy/cpp/runner/sampler.h
+index 3bed4667..7bde0f20 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/sampler.h
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/sampler.h
+@@ -45,6 +45,8 @@ struct ProbIndex {
+     int32_t index;
+ }; // struct used when sorting probabilities during top-p sampling
+ 
++inline constexpr size_t kRepetitionPenaltyWindow = 64;
++
+ class Sampler {
+ public:
+     // topk <= 0 disables top-k filtering. topp <= 0 || topp >= 1 disables top-p.
+@@ -88,7 +90,14 @@ private:
+                              const std::vector<uint64_t> &recent_tokens) {
+         if (repetition_penalty_ == 1.0f || recent_tokens.empty())
+             return;
+-        for (uint64_t id : recent_tokens) {
++        const size_t window =
++            std::min(recent_tokens.size(), kRepetitionPenaltyWindow);
++        std::vector<uint64_t> penalized(recent_tokens.end() - window,
++                                        recent_tokens.end());
++        std::sort(penalized.begin(), penalized.end());
++        penalized.erase(std::unique(penalized.begin(), penalized.end()),
++                        penalized.end());
++        for (uint64_t id : penalized) {
+             if (!std::cmp_less(id, vocab_size)) {
+                 continue;
+             }
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h b/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
+index 6c684419..5c961f09 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
+@@ -90,7 +90,7 @@ public:
+         auto tokens_managed = from_blob(token_data.data(), token_shape,
+                                         executorch::aten::ScalarType::Long);
+ 
+-        std::vector<uint64_t> generated_tokens(tokens.begin(), tokens.end());
++        std::vector<uint64_t> generated_tokens(tokens.end() - 1, tokens.end());
+         should_stop_ = false;
+         timestamp_ = std::chrono::high_resolution_clock::now();
+ 
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/irunner.h b/node_modules/react-native-executorch/legacy/cpp/runner/irunner.h
+index 3637dd6a..f8faeb6c 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/irunner.h
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/irunner.h
+@@ -71,6 +71,8 @@ struct GenerationConfig {
+     // Values > 1.0 discourage repetition. 1.0 disables the penalty.
+     float repetition_penalty = 1.0f;
+ 
++    uint64_t seed = 0;
++
+     // Token-batching parameters for the streaming token callback. The
+     // generator flushes a batch when either `output_token_batch_size` tokens
+     // have accumulated or `batch_time_interval_ms` milliseconds have elapsed
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.h b/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.h
+index dbd10fba..4a12d654 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.h
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.h
+@@ -61,6 +61,7 @@ public:
+     void set_topp(float topp) noexcept;
+     void set_min_p(float min_p) noexcept;
+     void set_repetition_penalty(float repetition_penalty) noexcept;
++    void set_seed(uint64_t seed) noexcept;
+     void set_topk(int32_t topk) noexcept;
+     void set_count_interval(size_t count_interval);
+     void set_time_interval(size_t time_interval);
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.cpp
+index 72301a85..755e14d9 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.cpp
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.cpp
+@@ -159,6 +159,8 @@ void BaseLLMRunner::set_repetition_penalty(float repetition_penalty) noexcept {
+     config_.repetition_penalty = repetition_penalty;
+ }
+ 
++void BaseLLMRunner::set_seed(uint64_t seed) noexcept { config_.seed = seed; }
++
+ void BaseLLMRunner::set_topk(int32_t topk) noexcept { config_.topk = topk; }
+ 
+ void BaseLLMRunner::set_count_interval(size_t count_interval) {
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp
+index dbc4459a..a849fc6f 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp
+@@ -86,6 +86,15 @@ TextDecoderRunner::step(TensorPtr &tokens, int64_t start_pos) {
+     }
+ }
+ 
++namespace {
++uint64_t seed_for_step(uint64_t seed, uint64_t step) {
++    uint64_t z = seed + 0x9E3779B97F4A7C15ull * (step + 1);
++    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull;
++    z = (z ^ (z >> 27)) * 0x94D049BB133111EBull;
++    return z ^ (z >> 31);
++}
++} // namespace
++
+ int32_t TextDecoderRunner::logits_to_token(
+     const executorch::aten::Tensor &logits_tensor,
+     const std::vector<uint64_t> &recent_tokens) {
+@@ -106,7 +115,11 @@ int32_t TextDecoderRunner::logits_to_token(
+                 auto num_tokens = logits_tensor.size(1);
+                 logits += (num_tokens - 1) * vocab_size;
+             }
+-            Sampler sampler(vocab_size, config_);
++            const unsigned long long rng_seed =
++                config_.seed == 0
++                    ? static_cast<unsigned long long>(std::time(nullptr))
++                    : seed_for_step(config_.seed, recent_tokens.size());
++            Sampler sampler(vocab_size, config_, rng_seed);
+             result = sampler.sample(logits, recent_tokens);
+         });
+     return result;
+diff --git a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.h b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.h
+index bf7c7f58..359bcf5e 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.h
++++ b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.h
+@@ -41,6 +41,7 @@ public:
+     void setTopp(float topp);
+     void setMinP(float minP);
+     void setRepetitionPenalty(float repetitionPenalty);
++    void setSeed(double seed);
+     void setTimeInterval(size_t timeInterval);
+     int32_t getMaxContextLength() const;
+ 
+diff --git a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
+index 528cf3f5..d467bbea 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
++++ b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
+@@ -286,6 +286,18 @@ void LLM::setMinP(float minP) {
+     runner_->set_min_p(minP);
+ }
+ 
++void LLM::setSeed(double seed) {
++    if (!runner_ || !runner_->is_loaded()) {
++        throw RnExecutorchError(RnExecutorchErrorCode::ModuleNotLoaded,
++                                "Can't configure a model that's not loaded");
++    }
++    if (seed < 0.0) {
++        throw RnExecutorchError(RnExecutorchErrorCode::InvalidConfig,
++                                "Seed must be non-negative");
++    }
++    runner_->set_seed(static_cast<uint64_t>(seed));
++}
++
+ void LLM::setRepetitionPenalty(float repetitionPenalty) {
+     if (!runner_ || !runner_->is_loaded()) {
+         throw RnExecutorchError(RnExecutorchErrorCode::ModuleNotLoaded,
+diff --git a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/host_objects/ModelHostObject.h b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/host_objects/ModelHostObject.h
+index 11a61f00..20c84ac4 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/host_objects/ModelHostObject.h
++++ b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/host_objects/ModelHostObject.h
+@@ -182,6 +182,10 @@ public:
+                 synchronousHostFunction<&Model::setRepetitionPenalty>,
+                 "setRepetitionPenalty"));
+ 
++            addFunctions(JSI_EXPORT_FUNCTION(ModelHostObject<Model>,
++                                             synchronousHostFunction<&Model::setSeed>,
++                                             "setSeed"));
++
+             addFunctions(JSI_EXPORT_FUNCTION(
+                 ModelHostObject<Model>,
+                 synchronousHostFunction<&Model::getMaxContextLength>,
+diff --git a/node_modules/react-native-executorch/legacy/src/controllers/LLMController.ts b/node_modules/react-native-executorch/legacy/src/controllers/LLMController.ts
+index af0450a2..f209bed3 100644
+--- a/node_modules/react-native-executorch/legacy/src/controllers/LLMController.ts
++++ b/node_modules/react-native-executorch/legacy/src/controllers/LLMController.ts
+@@ -206,6 +206,15 @@ export class LLMController {
+       }
+       this.nativeModule.setRepetitionPenalty(generationConfig.repetitionPenalty);
+     }
++    if (generationConfig.seed !== undefined) {
++      if (!Number.isInteger(generationConfig.seed) || generationConfig.seed < 0) {
++        throw new RnExecutorchError(
++          RnExecutorchErrorCode.InvalidConfig,
++          'Seed must be a non-negative integer'
++        );
++      }
++      this.nativeModule.setSeed(generationConfig.seed);
++    }
+   }
+ 
+   private getImageToken(): string {
+diff --git a/node_modules/react-native-executorch/legacy/src/types/llm.ts b/node_modules/react-native-executorch/legacy/src/types/llm.ts
+index 16de2f2b..7304c1d7 100644
+--- a/node_modules/react-native-executorch/legacy/src/types/llm.ts
++++ b/node_modules/react-native-executorch/legacy/src/types/llm.ts
+@@ -384,6 +384,7 @@ export interface GenerationConfig {
+   topp?: number;
+   minP?: number;
+   repetitionPenalty?: number;
++  seed?: number;
+   outputTokenBatchSize?: number;
+   batchTimeInterval?: number;
+ }
+diff --git a/node_modules/react-native-executorch/lib/module/legacy/src/controllers/LLMController.js b/node_modules/react-native-executorch/lib/module/legacy/src/controllers/LLMController.js
+index a71f4a0d..817d5e7b 100644
+--- a/node_modules/react-native-executorch/lib/module/legacy/src/controllers/LLMController.js
++++ b/node_modules/react-native-executorch/lib/module/legacy/src/controllers/LLMController.js
+@@ -137,6 +137,12 @@ export class LLMController {
+             }
+             this.nativeModule.setRepetitionPenalty(generationConfig.repetitionPenalty);
+         }
++        if (generationConfig.seed !== undefined) {
++            if (!Number.isInteger(generationConfig.seed) || generationConfig.seed < 0) {
++                throw new RnExecutorchError(RnExecutorchErrorCode.InvalidConfig, 'Seed must be a non-negative integer');
++            }
++            this.nativeModule.setSeed(generationConfig.seed);
++        }
+     }
+     getImageToken() {
+         const token = this.tokenizerConfig.image_token;
+diff --git a/node_modules/react-native-executorch/lib/typescript/legacy/src/types/llm.d.ts b/node_modules/react-native-executorch/lib/typescript/legacy/src/types/llm.d.ts
+index 86ed7281..e5413c53 100644
+--- a/node_modules/react-native-executorch/lib/typescript/legacy/src/types/llm.d.ts
++++ b/node_modules/react-native-executorch/lib/typescript/legacy/src/types/llm.d.ts
+@@ -310,6 +310,7 @@ export interface GenerationConfig {
+     topp?: number;
+     minP?: number;
+     repetitionPenalty?: number;
++    seed?: number;
+     outputTokenBatchSize?: number;
+     batchTimeInterval?: number;
+ }

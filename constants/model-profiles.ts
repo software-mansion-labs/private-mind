@@ -31,7 +31,7 @@ export const DEFAULT_PROFILE: ModelProfile = {
   webPlanner: 'verbatim',
   contextWindowTokens: 2048,
   generationReserveTokens: 512,
-  repetitionPenalty: 1,
+  repetitionPenalty: 1.1,
   webRetrievalTopK: WEB_RETRIEVAL_TOP_K,
   webFetchTopNContent: WEB_FETCH_TOP_N_CONTENT,
   ragMaxRelevantChunks: MAX_RELEVANT_CHUNKS,

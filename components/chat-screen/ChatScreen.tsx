@@ -80,9 +80,6 @@ export default function ChatScreen({
   const headerHeight = useHeaderHeight();
 
   const keyboardLift = useKeyboardLift();
-  const chatBarStickyStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: keyboardLift.value }],
-  }));
 
   const { settings: chatSettings, setSetting } = useChatSettings(chatId);
 
@@ -114,6 +111,14 @@ export default function ChatScreen({
     topFadeAnchor,
     emptyFadeColors,
   } = useChatScreenLayout({ isEmpty, headerTitleBottom, headerHeight, theme });
+
+  const chatBarStickyStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: keyboardLift.value }],
+    ...(rootFrame.height > 0 && {
+      maxHeight:
+        rootFrame.height - headerHeight + (isEmpty ? keyboardLift.value : 0),
+    }),
+  }));
 
   const { branchMarkers, handleForkMessage, handleBranchMarkerPress } =
     useChatBranching({

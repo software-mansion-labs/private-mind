@@ -107,7 +107,8 @@ describe('downloadModel', () => {
     expect(state.progress).toBe(0);
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({
-        text1: expect.stringContaining('could not be downloaded'),
+        text1: 'Test Model could not be downloaded.',
+        props: { onRetry: expect.any(Function) },
       })
     );
   });
@@ -374,6 +375,60 @@ describe('removeModelFiles vs removeModel', () => {
   });
 });
 
+describe('removeModelFiles keeps files another model still needs', () => {
+  const sibling = {
+    ...baseModel,
+    id: 2,
+    modelName: 'Sibling',
+    modelPath: 'https://example.com/sibling.pte',
+  };
+
+  beforeEach(() => {
+    mockDeleteResources.mockResolvedValue(undefined);
+    mockUpdateModelDownloaded.mockResolvedValue(undefined);
+  });
+
+  it('leaves the shared tokenizer when a downloaded sibling uses it', async () => {
+    useModelStore.setState({
+      models: [
+        { ...baseModel, isDownloaded: true },
+        { ...sibling, isDownloaded: true },
+      ],
+    });
+
+    await useModelStore.getState().removeModelFiles(baseModel.id);
+
+    expect(mockDeleteResources).toHaveBeenCalledWith(baseModel.modelPath);
+  });
+
+  it('leaves the shared tokenizer while a sibling is downloading', async () => {
+    useModelStore.setState({
+      models: [{ ...baseModel, isDownloaded: true }, sibling],
+      downloadStates: {
+        [sibling.id]: { progress: 0.4, status: ModelState.Downloading },
+      },
+    });
+
+    await useModelStore.getState().removeModelFiles(baseModel.id);
+
+    expect(mockDeleteResources).toHaveBeenCalledWith(baseModel.modelPath);
+  });
+
+  it('deletes the tokenizer once no other model needs it', async () => {
+    useModelStore.setState({
+      models: [{ ...baseModel, isDownloaded: true }, sibling],
+    });
+
+    await useModelStore.getState().removeModelFiles(baseModel.id);
+
+    expect(mockDeleteResources).toHaveBeenCalledWith(
+      baseModel.modelPath,
+      baseModel.tokenizerPath,
+      baseModel.tokenizerConfigPath
+    );
+  });
+});
+
 describe('a second download for the same model must not start while one is in flight', () => {
   it('ignores a repeat call and fetches only once', async () => {
     mockFetch.mockReturnValue(new Promise(() => {}));
@@ -411,7 +466,11 @@ describe('a second download for the same model must not start while one is in fl
 
   it('lets a different model download at the same time', async () => {
     mockFetch.mockReturnValue(new Promise(() => {}));
-    const other = { ...baseModel, id: 2 };
+    const other = {
+      ...baseModel,
+      id: 2,
+      modelPath: 'https://example.com/other.pte',
+    };
 
     useModelStore.getState().downloadModel(baseModel);
     useModelStore.getState().downloadModel(other);

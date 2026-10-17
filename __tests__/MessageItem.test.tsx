@@ -6,6 +6,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 type MockLLMState = {
   isGenerating: boolean;
   isProcessingPrompt: boolean;
+  isLoading?: boolean;
   isRefining?: boolean;
   isSearchingWeb?: boolean;
   webSearchTrace?: unknown[];
@@ -230,6 +231,24 @@ describe('assistant messages', () => {
 
     expect(screen.getByText('Llama-3B')).toBeTruthy();
     expect(screen.getByTestId('chat-loading').props.children).toBe('Thinking…');
+  });
+
+  it('says the model is starting on the phone, not that it is thinking, while the answer waits for the load', () => {
+    setLLMState({
+      isGenerating: false,
+      isProcessingPrompt: true,
+      isLoading: true,
+    });
+    renderItem({
+      content: '',
+      isLastMessage: true,
+      modelName: 'Gemma 4 - E2B',
+    });
+
+    expect(screen.getByText('Gemma 4 - E2B')).toBeTruthy();
+    expect(screen.getByTestId('chat-loading').props.children).toBe(
+      'Starting the model on your phone…'
+    );
   });
 
   it('renders the model name', () => {

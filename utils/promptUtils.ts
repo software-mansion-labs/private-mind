@@ -599,6 +599,7 @@ export interface PrepareMessagesOptions {
   webSearchFailed?: boolean;
   digest?: string;
   openingWelcome?: string;
+  languageNoteOnQuestion?: boolean;
 }
 
 const MAX_SHAPE_INSTRUCTIONS = 4;
@@ -624,6 +625,24 @@ const withoutDefaultDocumentSentence = (prompt: string): string => {
     .join(' ');
 };
 
+const isBareGreeting = (message: Message): boolean =>
+  message.role === 'user' &&
+  !message.imagePath &&
+  !message.documentName &&
+  isGreetingOnly(message.content);
+
+const withoutAnsweredOpeningGreeting = <T extends Message>(
+  messages: T[]
+): T[] => {
+  const [opening, welcome, ...later] = messages;
+  const chatMovedOn =
+    !!opening &&
+    isBareGreeting(opening) &&
+    welcome?.role === 'assistant' &&
+    later.some((message) => message.role === 'user');
+  return chatMovedOn ? later : messages;
+};
+
 export const prepareMessagesForLLM = (
   activeChatMessages: Message[],
   context: string[],
@@ -643,6 +662,7 @@ export const prepareMessagesForLLM = (
     webSearchFailed,
     digest,
     openingWelcome,
+    languageNoteOnQuestion = true,
   } = options;
   const hasContext = context.some((chunk) => chunk.trim().length > 0);
   const question = activeChatMessages.findLast(
@@ -713,9 +733,11 @@ export const prepareMessagesForLLM = (
   }
   systemPrompt += getDateInstruction(sourceDocuments, question);
 
-  const nonEventMessages = activeChatMessages.filter(
-    (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
-      msg.role !== 'event' && !isAbandonedQuestion(msg)
+  const nonEventMessages = withoutAnsweredOpeningGreeting(
+    activeChatMessages.filter(
+      (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
+        msg.role !== 'event' && !isAbandonedQuestion(msg)
+    )
   );
   const lastNonEventMessage = nonEventMessages.at(-1);
   const messagesForLLM =
@@ -741,7 +763,9 @@ export const prepareMessagesForLLM = (
 
   const lastMessage = messagesWithSystemPrompt.at(-1)!;
 
-  lastMessage.content += answerLanguageAnchor(language);
+  if (languageNoteOnQuestion) {
+    lastMessage.content += answerLanguageAnchor(language);
+  }
 
   if (settings.thinkingEnabled) {
     lastMessage.content += ' /think';

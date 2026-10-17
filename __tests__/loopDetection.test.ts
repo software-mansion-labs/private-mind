@@ -1,4 +1,5 @@
 import {
+  hasRunawayLoop,
   isRepetitionFromTheStart,
   truncateAtRepeatedClause,
 } from '../utils/loopDetection';
@@ -274,5 +275,230 @@ describe('isRepetitionFromTheStart', () => {
       'Powtarzam to zdanie. Powtarzam to zdanie. Powtarzam to zdanie.';
     expect(isRepetitionFromTheStart(looping)).toBe(true);
     expect(truncateAtRepeatedClause(looping)).toBe('Powtarzam to zdanie.');
+  });
+});
+
+describe('a clause that ends several different sentences', () => {
+  it.each([
+    [
+      'Hindi',
+      '1. **नियमित समय पर सोएं**: रोज़ एक ही समय पर सोने जाएं, जिससे नींद बेहतर होती है।\n' +
+        '2. **कैफीन से बचें**: शाम को चाय और कॉफी न पिएं, जिससे नींद बेहतर होती है।\n' +
+        '3. **स्क्रीन बंद करें**: सोने से एक घंटा पहले फोन बंद करें, जिससे नींद बेहतर होती है।',
+    ],
+    [
+      'Urdu',
+      '1. **وقت پر سوئیں**: ہر روز ایک ہی وقت پر سونے جائیں، جس سے نیند بہتر ہوتی ہے۔\n' +
+        '2. **کیفین سے بچیں**: شام کو چائے اور کافی نہ پئیں، جس سے نیند بہتر ہوتی ہے۔\n' +
+        '3. **اسکرین بند کریں**: سونے سے ایک گھنٹہ پہلے فون بند کریں، جس سے نیند بہتر ہوتی ہے۔',
+    ],
+    [
+      'English',
+      '1. **Keep a schedule**: go to bed at the same time every night, which helps you sleep better.\n' +
+        '2. **Skip caffeine**: avoid coffee and tea in the evening, which helps you sleep better.\n' +
+        '3. **Dim the screens**: put the phone away an hour before bed, which helps you sleep better.',
+    ],
+  ])('keeps a %s list whose items all end in it', (_language, text) => {
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+});
+
+describe('markdown tables', () => {
+  it('keeps a row that gives every column the same value', () => {
+    const text =
+      '| Feature | iPhone | Pixel | Galaxy |\n' +
+      '| --- | --- | --- | --- |\n' +
+      '| Wireless charging | Yes, built in | Yes, built in | Yes, built in |\n' +
+      '| Headphone jack | No | No | No |';
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
+  it('still cuts a phrase looping inside one cell', () => {
+    const text =
+      '| Body | Note |\n' +
+      '| --- | --- |\n' +
+      '| Sun | really hot really hot really hot really hot |';
+    expect(truncateAtRepeatedClause(text)).toBe(
+      '| Body | Note |\n| --- | --- |\n| Sun | really hot'
+    );
+  });
+});
+
+describe('sentence marks outside the Latin script', () => {
+  it('cuts a Chinese sentence repeated after its full stop', () => {
+    const sentence = '我每天早上都会去公园散步一个小时。';
+    const text = `北京的天气很好。${sentence.repeat(4)}`;
+    expect(truncateAtRepeatedClause(text)).toBe(`北京的天气很好。${sentence}`);
+  });
+
+  it.each([
+    [
+      'Chinese',
+      '北京是中国的首都，有三千多年的历史。故宫、长城和天坛都是著名的景点。春天和秋天是最适合旅游的季节，天气温和。',
+    ],
+    [
+      'Hindi',
+      'पत्तियों का रंग शरद ऋतु में बदलता है। दिन छोटे होने पर पेड़ क्लोरोफिल बनाना बंद कर देते हैं। तब पीले और लाल रंग दिखाई देने लगते हैं।',
+    ],
+    [
+      'Urdu',
+      'زمین سورج کے گرد کشش ثقل کی وجہ سے گھومتی ہے۔ سورج کی کشش زمین کو اپنے مدار میں رکھتی ہے۔ ایک چکر تقریباً 365 دن میں پورا ہوتا ہے۔',
+    ],
+  ])('leaves loop-free %s prose alone', (_language, text) => {
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+});
+
+describe('one-letter words', () => {
+  it('cuts one repeated eight times in a row', () => {
+    expect(truncateAtRepeatedClause('उत्तर द द द द द द द द')).toBe('उत्तर द');
+  });
+
+  it('leaves one repeated a few times alone', () => {
+    const text = 'Ha ha ha ha, to było zabawne.';
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+
+  it('leaves a run of the same digit alone', () => {
+    const text = 'Macierz zerowa: 0 0 0 0 0 0 0 0 0 0.';
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+  });
+});
+
+describe('hasRunawayLoop', () => {
+  const sentence = 'Sunlight scatters off the molecules in the air. ';
+
+  it('waits until the loop has run on for two more copies', () => {
+    expect(hasRunawayLoop(`Lead. ${sentence.repeat(2)}`)).toBe(false);
+    expect(hasRunawayLoop(`Lead. ${sentence.repeat(3)}`)).toBe(true);
+  });
+
+  it('never fires on text the guard would not cut', () => {
+    const text =
+      'Leaves turn yellow when chlorophyll breaks down. ' +
+      'Red comes from anthocyanins made in autumn. ' +
+      'Brown is what is left when both are gone.';
+    expect(hasRunawayLoop(text)).toBe(false);
+  });
+
+  it('still sees a glued loop at the end of a long answer', () => {
+    const prose = Array.from(
+      { length: 80 },
+      (_, i) => `Point ${i + 1} adds something new.`
+    ).join(' ');
+    expect(prose.length).toBeGreaterThan(2048);
+    expect(truncateAtRepeatedClause(prose)).toBe(prose);
+    expect(hasRunawayLoop(`${prose} हे${'करा'.repeat(10)}`)).toBe(false);
+    expect(hasRunawayLoop(`${prose} हे${'करा'.repeat(40)}`)).toBe(true);
+  });
+});
+
+describe('a short unit repeated with no space between its copies', () => {
+  it.each([
+    [
+      'Devanagari',
+      `सोने से पहले हेकरा${'करा'.repeat(30)}`,
+      'सोने से पहले हेकरा',
+    ],
+    ['Chinese', `答案是${'我们'.repeat(20)}`, '答案是我们'],
+    ['Thai', `สวัสดี${'ครับ'.repeat(12)}`, 'สวัสดีครับ'],
+    ['Latin', `Okay ${'ha'.repeat(40)}`, 'Okay ha'],
+  ])('cuts a %s loop after its first copy', (_script, text, kept) => {
+    expect(truncateAtRepeatedClause(text)).toBe(kept);
+  });
+
+  it('cuts a two-word loop whose words are too short for the phrase check', () => {
+    const text = `1. नींद नाता दूर ${'न तू '.repeat(30)}`;
+    expect(truncateAtRepeatedClause(text)).toBe('1. नींद नाता दूर न तू');
+  });
+
+  it('ends the cut where the next copy starts a sentence', () => {
+    const text = `زمین چھوٹا ہے، ${'یہ چھوٹا ہے یا گھٹا ہے؟ '.repeat(6)}`;
+    expect(truncateAtRepeatedClause(text)).toBe(
+      'زمین چھوٹا ہے، یہ چھوٹا ہے یا گھٹا ہے؟'
+    );
+  });
+
+  it('counts a consonant and its vowel sign as one letter', () => {
+    const text = `नमस्ते ${'कि'.repeat(40)}`;
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+    expect(truncateAtRepeatedClause(`नमस्ते ${'किता'.repeat(20)}`)).toBe(
+      'नमस्ते किता'
+    );
+  });
+
+  it.each([
+    ['two letters', 'ha', 16],
+    ['one letter', 'x', 64],
+    ['a symbol', '-', 256],
+  ])('waits until %s has filled its run', (_unit, unit, copies) => {
+    const short = `Notes: ${unit.repeat(copies - 1)}`;
+    expect(truncateAtRepeatedClause(short)).toBe(short);
+    expect(truncateAtRepeatedClause(`Notes: ${unit.repeat(copies)}`)).toBe(
+      `Notes: ${unit}`
+    );
+  });
+
+  it.each([
+    'ॐॐॐ शान्तिः शान्तिः शान्तिः',
+    'Wow!!!!!!!!!!!! That is great.',
+    `Loading${'.'.repeat(40)} done`,
+    `Intro\n\n${'-'.repeat(80)}\n\nOutro`,
+    `Title\n${'='.repeat(80)}\nBody text.`,
+    `| ${'Col | '.repeat(12)}\n${'|---'.repeat(12)}|\n| ${'Yes | '.repeat(12)}`,
+    `|${'Yes|'.repeat(12)}`,
+    '🎉🎉🎉🎉🎉🎉 Congratulations! 👨‍👩‍👧👨‍👩‍👧👨‍👩‍👧',
+    'Card: 1111111111111111',
+    `Binary: ${'10'.repeat(30)}`,
+    'hahahahaha, that was funny',
+    '哈哈哈哈哈哈，太好笑了。',
+    'ｗｗｗｗｗｗｗｗｗｗ',
+    '555555 ตลกมาก',
+    `OPENAI_API_KEY=sk-${'x'.repeat(48)}`,
+    'Gooooooooooooooooooal!',
+    '高高兴兴地回家。研究研究再说。',
+    'धीरे-धीरे चलो, बार-बार अभ्यास करो।',
+    'どんどん良くなる。いろいろありがとう。',
+  ])('leaves %s alone', (text) => {
+    expect(truncateAtRepeatedClause(text)).toBe(text);
+    expect(hasRunawayLoop(text)).toBe(false);
+  });
+});
+
+describe('a table whose cells repeat a value (dev benchmark 15.10, LLaMA 3.2 3B QLoRa on S25)', () => {
+  const comparison = [
+    '**Comparison of Sun, Moon, and Earth**',
+    '=====================================',
+    '',
+    '| **Parameter** | **Sun** | **Moon** | **Earth** |',
+    '| --- | --- | --- | --- |',
+    '| **Diameter** | 1,392,684 km (864,000 miles) | 2,159,800 km (1,332,500 miles) | 12,742 km (7,918 miles) |',
+    '| **Distance from Earth (avg.)** | 149.6 million km (92.96 million miles) | 384,400 km (238,900 miles) | 149.6 million km (92.96 million miles) |',
+    '| **Orbital Period** | 365.25 days | 27.3 days | 365.25 days |',
+    '| **Surface Temperature** | 5,500°C (10,000°F) | -173°C to 127°C | 15°C (59°F) |',
+  ].join('\n');
+
+  it('keeps the whole table', () => {
+    expect(truncateAtRepeatedClause(comparison)).toBe(comparison);
+  });
+
+  it('does not stop the stream in the middle of it', () => {
+    expect(hasRunawayLoop(comparison)).toBe(false);
+  });
+
+  it('still cuts a decimal that the model keeps repeating outside a table', () => {
+    const looping =
+      'The distance is 149.6 million km. ' +
+      'It is 149.6 million km away, 149.6 million km away, 149.6 million km away, 149.6 million km away.';
+    expect(truncateAtRepeatedClause(looping).length).toBeLessThan(
+      looping.length
+    );
+  });
+
+  it('still cuts a row of one cell repeated until the token limit', () => {
+    const runaway =
+      '| **Sun** | **Moon** | **Earth** |\n|---|---|---|\n| **Diameter** |' +
+      ' **1.5 × 10^8 km** |'.repeat(40);
+    expect(hasRunawayLoop(runaway)).toBe(true);
   });
 });

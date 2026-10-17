@@ -17,6 +17,33 @@ const CLOSE_HIT_SLOP = 12;
 export const toastTopOffset = (safeAreaTop: number) =>
   safeAreaTop + NAV_HEADER_HEIGHT + TOAST_HEADER_GAP;
 
+interface ToastActionProps {
+  label: string;
+  testID: string;
+  onPress: () => void;
+}
+
+const ToastAction = ({ label, testID, onPress }: ToastActionProps) => {
+  const { styles } = useThemedStyles(createStyles);
+
+  const handlePress = () => {
+    Toast.hide();
+    onPress();
+  };
+
+  return (
+    <Pressable
+      onPress={handlePress}
+      cancelable={false}
+      accessibilityRole="button"
+      style={({ pressed }) => [styles.toastAction, pressed && styles.pressed]}
+      testID={testID}
+    >
+      <Text style={styles.toastActionLabel}>{label}</Text>
+    </Pressable>
+  );
+};
+
 const AppToast: React.FC = () => {
   const { styles } = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -27,21 +54,18 @@ const AppToast: React.FC = () => {
         <View style={styles.toastBody}>
           <Text style={styles.toastText}>{text1}</Text>
           {props?.settings && (
-            <Pressable
-              onPress={() => {
-                Toast.hide();
-                openAppSettings();
-              }}
-              cancelable={false}
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.toastAction,
-                pressed && styles.pressed,
-              ]}
+            <ToastAction
+              label="Open Settings"
               testID="toast-open-settings"
-            >
-              <Text style={styles.toastActionLabel}>Open Settings</Text>
-            </Pressable>
+              onPress={openAppSettings}
+            />
+          )}
+          {props?.onRetry && (
+            <ToastAction
+              label="Retry"
+              testID="toast-retry"
+              onPress={props.onRetry}
+            />
           )}
         </View>
         <Pressable

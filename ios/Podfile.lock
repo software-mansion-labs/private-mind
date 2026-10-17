@@ -3170,7 +3170,7 @@ SPEC CHECKSUMS:
   ExpoLocalization: f204d4ca963bfcea932068a978247878f664f5a4
   ExpoLogBox: 80957303325cd4439137765c90a87d7f22aaf2ff
   ExpoMediaLibrary: 341321256621e7bf220b6272c42fedcb095607d0
-  ExpoModulesCore: ce66dcc64661acdfc13eadcd3c1e8428c39a9137
+  ExpoModulesCore: 7572791976569299affef8b48fed1b0b3dd798b2
   ExpoModulesJSI: 383849017851b1ebacbd78cfaa32b18b6152585e
   ExpoModulesWorklets: 1916bfde983876e6caf849398b91a0b492b73869
   ExpoModulesWorkletsAdapter: 85697593f57f6fd1375621d545c596dcd59dac1f
@@ -3190,7 +3190,7 @@ SPEC CHECKSUMS:
   MMKVCore: a58d2ce5b580948122e85be3ddf378c9b1ef739e
   op-sqlite: 10397885c9f2d478a9d099d20e2a7915c5fda944
   opencv-rne: 2305807573b6e29c8c87e3416ab096d09047a7a0
-  Pdfium: 63eaa72ced37c4912acbe21bb73d1650954b2c06
+  Pdfium: a6b05c250862bab26fd31997b947bad584b5ac28
   Pulsar: 26e18cdb1c30b233be9bec431aeec9b8048c5ae9
   PulsarHaptics: 62d13e9ef63535263f110a925e587d5d027dc683
   RCTDeprecation: 96f68ebf33f8762466b01d57d6e873c4f30efb07
@@ -3232,7 +3232,7 @@ SPEC CHECKSUMS:
   React-mutationobservernativemodule: 530bff1bba9511a5133e3cf8170e3b2c0df49e89
   react-native-background-downloader: 330dc6a497b8e5ee328a95af9a34aaa1c6bf3d54
   react-native-blob-util: a531aa1020e42b454a2bc0d324daa7da8328023d
-  react-native-executorch: 69da0781f27bde7c44e5021d1f715fc5566a05c2
+  react-native-executorch: 50058c94653526d98f0658a6091abaa5579953ea
   react-native-keyboard-controller: 13b569883abad989ad75b635c8904527857b0e5f
   react-native-netinfo: 2f906d5d9a639090ed1c079135d6485a95f749f1
   react-native-safe-area-context: 6b4966397ada0f7dd481e4486a2ef936834861a1
@@ -3287,4 +3287,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: 5d671e59fed505c672a2356c9699ee2391e3d7be
 
-COCOAPODS: 1.17.0
+COCOAPODS: 1.16.2

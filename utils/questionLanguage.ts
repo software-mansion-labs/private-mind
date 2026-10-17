@@ -75,6 +75,27 @@ const SCRIPT_GROUPS: [RegExp, string[]][] = [
 
 const MIN_SCRIPT_CHARS = 2;
 
+const PERSO_URDU_LETTERS =
+  /[\u067E\u0686\u0698\u06A9\u06AF\u06CC\u06D2\u06D3\u06C1\u06C2\u06BA\u06BE\u0679\u0688\u0691]/gu;
+const ARABIC_ONLY_LETTERS = /[\u0643\u064A]/gu;
+
+const countOf = (text: string, letters: RegExp): number =>
+  text.match(letters)?.length ?? 0;
+
+const rulesOutArabic = (text: string): boolean =>
+  countOf(text, PERSO_URDU_LETTERS) > countOf(text, ARABIC_ONLY_LETTERS);
+
+const narrowedByLetters = (candidates: string[], text: string): string[] =>
+  candidates.includes('ar') && rulesOutArabic(text)
+    ? candidates.filter((code) => code !== 'ar')
+    : candidates;
+
+const fallbackWithinScript = (candidates: string[]): string | null => {
+  if (candidates.includes('ar')) return 'ar';
+  if (candidates.includes('ur')) return 'ur';
+  return null;
+};
+
 const LATIN_CANDIDATES = [
   'en',
   'pl',
@@ -358,15 +379,13 @@ export const detectQuestionLanguage = (
   question: string
 ): QuestionLanguage | null => {
   if (!question.trim()) return null;
-  const candidates = dominantScript(question);
-  if (candidates) {
+  const scriptCandidates = dominantScript(question);
+  if (scriptCandidates) {
+    const candidates = narrowedByLetters(scriptCandidates, question);
     const picked = pickCandidate(question, candidates);
-    if (!picked) {
-      return candidates.includes('ar')
-        ? named({ code: 'ar', evidence: 0 })
-        : null;
-    }
-    return named(picked);
+    if (picked) return named(picked);
+    const fallback = fallbackWithinScript(candidates);
+    return fallback ? named({ code: fallback, evidence: 0 }) : null;
   }
   const latin = pickCandidate(question, LATIN_CANDIDATES);
   return latin ? named(latin) : null;
