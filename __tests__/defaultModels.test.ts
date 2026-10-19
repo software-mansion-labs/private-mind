@@ -43,8 +43,8 @@ describe('the memory stall watch', () => {
     expect(MEMORY_STALL_PASS_COUNT).toBe(2);
   });
 
-  it('needs three slow prefill chunks in a row, so a cold first chunk read from flash never trips it', () => {
-    expect(MEMORY_STALL_PREFILL_PASS_MS).toBe(750);
+  it('lets slow prefill chunks run 9 s before giving up, above the 5.5 s a healthy long prompt took under load', () => {
+    expect(MEMORY_STALL_PREFILL_PASS_MS).toBe(3_000);
     expect(MEMORY_STALL_PREFILL_PASS_COUNT).toBe(3);
   });
 

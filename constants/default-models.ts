@@ -171,7 +171,7 @@ export const runsOnMlxDelegate = (model: Pick<Model, 'modelPath'>): boolean =>
 
 export const MEMORY_STALL_PASS_MS = 3_000;
 export const MEMORY_STALL_PASS_COUNT = 2;
-export const MEMORY_STALL_PREFILL_PASS_MS = 750;
+export const MEMORY_STALL_PREFILL_PASS_MS = 3_000;
 export const MEMORY_STALL_PREFILL_PASS_COUNT = 3;
 
 const MEMORY_STALL_WATCH = {
