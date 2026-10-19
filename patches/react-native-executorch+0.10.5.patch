@@ -1,0 +1,160 @@
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp
+index bfef1f5..884c617 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp
+@@ -399,6 +399,9 @@ MultimodalPrefiller::prefill(const std::vector<MultimodalInput> &inputs,
+     }
+     const int64_t num_chunks = (total_len + chunk_cap - 1) / chunk_cap;
+     for (int64_t ci = 0; ci < num_chunks; ++ci) {
++        if (decoder_runner_->stop_requested()) {
++            return static_cast<uint64_t>(0);
++        }
+         const int64_t chunk_start = ci * chunk_cap;
+         const int64_t chunk_end = std::min(chunk_start + chunk_cap, total_len);
+         const int64_t chunk_len = chunk_end - chunk_start;
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp
+index ec11c10..e300fa8 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp
+@@ -87,10 +87,21 @@ Error MultimodalRunner::generate_internal(
+         ET_CHECK_OK_OR_RETURN_ERROR(load());
+     }
+ 
++    mm_decoder_runner_->clear_stop();
++    mm_token_generator_->clear_stop();
++
+     stats_.inference_start_ms = time_in_ms();
+     auto prefill_result = mm_prefiller_->prefill(inputs, pos_);
+     if (!prefill_result.ok())
+         return prefill_result.error();
++
++    if (mm_decoder_runner_->stop_requested()) {
++        stats_.inference_end_ms = time_in_ms();
++        stats_.num_prompt_tokens = pos_;
++        stats_.num_generated_tokens = 0;
++        return Error::Ok;
++    }
++
+     uint64_t prefill_next_token = prefill_result.get();
+ 
+     stats_.first_token_ms = time_in_ms();
+@@ -132,6 +143,9 @@ Error MultimodalRunner::generate_internal(
+ }
+ 
+ void MultimodalRunner::stop_impl() {
++    if (mm_decoder_runner_) {
++        mm_decoder_runner_->stop();
++    }
+     if (mm_token_generator_) {
+         mm_token_generator_->stop();
+     }
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h
+index e289df8..7f5c17b 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h
+@@ -13,6 +13,7 @@
+ #include "constants.h"
+ #include "io_manager.h"
+ #include "sampler.h"
++#include <atomic>
+ 
+ namespace rne_legacy {
+ namespace extension {
+@@ -62,6 +63,8 @@ public:
+     }
+ 
+     inline void stop() { should_stop_ = true; }
++    inline void clear_stop() { should_stop_ = false; }
++    inline bool stop_requested() const { return should_stop_.load(); }
+ 
+     /**
+      * Sample the next token from the logits tensor using the sampling
+@@ -76,7 +79,7 @@ protected:
+     // Non-owning. The runner (BaseLLMRunner) owns the Module and outlives this.
+     Module *module_;
+     IOManager *io_manager_;
+-    bool should_stop_{false};
++    std::atomic<bool> should_stop_{false};
+     const GenerationConfig &config_;
+ };
+ 
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_prefiller.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/text_prefiller.cpp
+index 6a10166..a0f3ab3 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_prefiller.cpp
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_prefiller.cpp
+@@ -46,6 +46,9 @@ TextPrefiller::prefill(std::vector<uint64_t> &prompt_tokens,
+         int num_tokens_to_process = 0;
+ 
+         while (num_tokens_to_process < num_prompt_tokens) {
++            if (text_decoder_runner_->stop_requested()) {
++                break;
++            }
+             auto num_tokens_to_prefill_with =
+                 std::min<int>(num_prompt_tokens - num_tokens_to_process, chunk_size);
+ 
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.cpp
+index e65c70f..4b99770 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.cpp
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.cpp
+@@ -73,6 +73,9 @@ Error TextRunner::generate_internal(
+         stats_.model_load_end_ms = time_in_ms();
+     }
+ 
++    text_decoder_runner_->clear_stop();
++    text_token_generator_->clear_stop();
++
+     std::function<void(const std::string &)> wrapped_callback =
+         [token_callback](const std::string &piece) {
+             safe_printf(piece.c_str());
+@@ -132,6 +135,13 @@ Error TextRunner::generate_internal(
+     stats_.prompt_eval_end_ms = time_in_ms();
+     ET_CHECK_OK_OR_RETURN_ERROR(prefill_res.error());
+ 
++    if (text_decoder_runner_->stop_requested()) {
++        stats_.inference_end_ms = time_in_ms();
++        stats_.num_prompt_tokens = num_prompt_tokens;
++        stats_.num_generated_tokens = 0;
++        return Error::Ok;
++    }
++
+     uint64_t cur_token = prefill_res.get();
+     auto decodeResult = tokenizer_->decode({cur_token});
+     if (!decodeResult.ok()) {
+@@ -154,6 +164,8 @@ Error TextRunner::generate_internal(
+ }
+ 
+ void TextRunner::stop_impl() {
++    if (text_decoder_runner_)
++        text_decoder_runner_->stop();
+     if (text_token_generator_)
+         text_token_generator_->stop();
+ }
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h b/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
+index 6c68441..9b9a22e 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
+@@ -91,7 +91,6 @@ public:
+                                         executorch::aten::ScalarType::Long);
+ 
+         std::vector<uint64_t> generated_tokens(tokens.begin(), tokens.end());
+-        should_stop_ = false;
+         timestamp_ = std::chrono::high_resolution_clock::now();
+ 
+         // Generate our tokens
+@@ -170,6 +169,7 @@ public:
+      * Stop the generation loop.
+      */
+     inline void stop() { should_stop_ = true; }
++    inline void clear_stop() { should_stop_ = false; }
+ 
+     /**
+      * Load the necessary resources for TextTokenGenerator.
+@@ -201,7 +201,7 @@ private:
+     bool use_kv_cache_;
+ 
+     // state machine
+-    bool should_stop_ = false;
++    std::atomic<bool> should_stop_{false};
+     std::chrono::high_resolution_clock::time_point timestamp_;
+ 
+     // stats
