@@ -1,8 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { Model } from '../../database/modelRepository';
-import { getModelFamily } from '../../utils/modelFamily';
 import {
   UNKNOWN_FAMILY_COLOR,
   familyIcon,
@@ -15,20 +13,20 @@ import { Theme } from '../../styles/colors';
 const FAMILY_TILE = {
   badge: { tile: 20, icon: 12, radius: radius.six, initial: 'xxs' },
   row: { tile: 28, icon: 16, radius: radius.six + space.half, initial: 'xs' },
+  list: { tile: 40, icon: 24, radius: radius.twelve, initial: 'lg' },
   card: { tile: 44, icon: 24, radius: radius.twelve, initial: 'lg' },
 } as const;
 
 export type ModelFamilyTileSize = keyof typeof FAMILY_TILE;
 
 interface Props {
-  model: Model;
+  family: string;
   size: ModelFamilyTileSize;
   iconColor?: string;
 }
 
-const ModelFamilyTile = ({ model, size, iconColor }: Props) => {
+const ModelFamilyTile = ({ family, size, iconColor }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles, size);
-  const family = getModelFamily(model);
   const FamilyIcon = familyIcon(family);
   const iconSize = FAMILY_TILE[size].icon;
 

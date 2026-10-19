@@ -12,6 +12,7 @@ import { radius, space } from '../../constants/design-system';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { pressedOpacity } from '../../styles/pressable';
+import { getModelFamily } from '../../utils/modelFamily';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
 import { composerControlSurface } from './composerControl';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
@@ -55,7 +56,7 @@ const ComposerModelBadge = ({
       testID="composer-model-badge"
     >
       <ModelFamilyTile
-        model={model}
+        family={getModelFamily(model)}
         size="badge"
         iconColor={theme.text.onChatBar}
       />

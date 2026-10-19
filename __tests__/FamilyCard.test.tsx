@@ -16,12 +16,7 @@ jest.mock('react-native-gesture-handler', () => {
   return { Pressable };
 });
 
-jest.mock('../components/Chip', () => {
-  const { Text } = require('react-native');
-  return ({ title }: { title: string }) => (
-    <Text testID={`chip-${title}`}>{title}</Text>
-  );
-});
+jest.mock('../components/model-hub/ModelFamilyTile', () => () => null);
 
 import FamilyCard from '../components/model-hub/FamilyCard';
 import { DIMMED_OPACITY } from '../styles/pressable';
@@ -48,16 +43,67 @@ const opacityOf = () =>
 describe('FamilyCard', () => {
   it('reads as available when the device can run at least one variant', () => {
     render(<FamilyCard family={family} onPress={jest.fn()} />);
-    expect(screen.queryByTestId('chip-Incompatible')).toBeNull();
+    expect(screen.queryByText('Incompatible')).toBeNull();
     expect(opacityOf()).not.toBe(DIMMED_OPACITY);
   });
 
   it('says so at the list level when no variant fits, but still opens (#372)', () => {
     const onPress = jest.fn();
     render(<FamilyCard family={family} onPress={onPress} runnable={false} />);
-    expect(screen.getByTestId('chip-Incompatible')).toBeTruthy();
+    expect(screen.getByText('Incompatible')).toBeTruthy();
     expect(opacityOf()).toBe(DIMMED_OPACITY);
     fireEvent.press(screen.getByTestId('family-card-Gemma 4'));
     expect(onPress).toHaveBeenCalledWith(family);
+  });
+
+  it('counts variants and marks the family once a variant is downloaded', () => {
+    const { rerender } = render(
+      <FamilyCard family={family} onPress={jest.fn()} />
+    );
+    expect(screen.getByText('1 variant')).toBeTruthy();
+    expect(screen.queryByTestId('family-card-downloaded')).toBeNull();
+
+    rerender(
+      <FamilyCard
+        family={{
+          ...family,
+          models: [
+            { ...family.models[0], isDownloaded: true },
+            { ...family.models[0], id: 2, modelName: 'Gemma 4 - 4B' },
+          ],
+        }}
+        onPress={jest.fn()}
+      />
+    );
+    expect(screen.getByText('2 variants · 1 downloaded')).toBeTruthy();
+    expect(screen.getByTestId('family-card-downloaded')).toBeTruthy();
+  });
+
+  it('shows the summary and up to five labels gathered from its variants', () => {
+    render(
+      <FamilyCard
+        family={{
+          ...family,
+          models: [
+            { ...family.models[0], vision: true, labels: ['Fast', 'Small'] },
+            {
+              ...family.models[0],
+              id: 2,
+              thinking: true,
+              labels: ['Fast', 'Balanced', 'Vision', 'Powerful', 'Smart'],
+            },
+          ],
+        }}
+        onPress={jest.fn()}
+      />
+    );
+    expect(screen.getByText('Google · small, chat and vision')).toBeTruthy();
+    expect(
+      ['Thinking', 'Vision', 'Fast', 'Small', 'Balanced'].map((label) =>
+        screen.getByText(label)
+      )
+    ).toHaveLength(5);
+    expect(screen.queryByText('Powerful')).toBeNull();
+    expect(screen.getByText('+2')).toBeTruthy();
   });
 });

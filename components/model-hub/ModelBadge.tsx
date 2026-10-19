@@ -10,7 +10,7 @@ import {
   labelIcon,
 } from '../../constants/model-labels';
 
-export type ModelBadgeColor = LabelColor | 'error';
+export type ModelBadgeColor = LabelColor | 'error' | 'neutral';
 
 interface Props {
   label: string;
@@ -44,7 +44,9 @@ const createStyles = (theme: Theme, color: ModelBadgeColor) => {
   const { background, foreground } =
     color === 'error'
       ? { background: theme.bg.errorSecondary, foreground: theme.text.error }
-      : theme.label[color];
+      : color === 'neutral'
+        ? { background: theme.bg.tile, foreground: theme.text.defaultSecondary }
+        : theme.label[color];
   return StyleSheet.create({
     badge: {
       height: BADGE_HEIGHT,

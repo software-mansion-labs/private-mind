@@ -12,3 +12,12 @@ export const FAMILY_DESCRIPTIONS: Record<string, string> = {
   'Bielik':
     'A Polish-language model from SpeakLeash, fine-tuned to natively understand and respond in Polish. Great for Polish-language chat, writing, and summarization tasks where other models feel clunky. Currently experimental in this app.',
 };
+
+export const FAMILY_SUMMARIES: Record<string, string> = {
+  'Qwen 3': 'Alibaba · reasoning, optional thinking',
+  'Qwen 2.5': 'Alibaba · chat, writing and code',
+  'LLaMA 3.2': 'Meta · general chat and coding',
+  'LFM 2.5': 'Liquid AI · fast, some with vision',
+  'Gemma 4': 'Google · small, chat and vision',
+  'Bielik': 'SpeakLeash · Polish chat and writing',
+};

@@ -20,6 +20,7 @@ import { isModelCompatible } from '../../utils/modelCompatibility';
 import { useConfirm } from '../../hooks/useConfirm';
 import CircleButton from '../CircleButton';
 import ModelBadge from './ModelBadge';
+import { getModelFamily } from '../../utils/modelFamily';
 import ModelFamilyTile from './ModelFamilyTile';
 import {
   THINKING_LABEL,
@@ -243,7 +244,9 @@ const ModelCard = ({
         onAccessibilityAction={handleAccessibilityAction}
       >
         <View style={styles.topRow}>
-          {showFamilyIcon && <ModelFamilyTile model={model} size="card" />}
+          {showFamilyIcon && (
+            <ModelFamilyTile family={getModelFamily(model)} size="card" />
+          )}
 
           <View style={styles.info}>
             <Text

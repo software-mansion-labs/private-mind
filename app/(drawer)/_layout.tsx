@@ -46,7 +46,9 @@ const DrawerLayout = () => {
         <Drawer.Screen
           name="model-hub"
           options={{
-            title: 'Models',
+            title: 'Manage models',
+            headerTransparent: true,
+            headerStyle: { backgroundColor: 'transparent' },
           }}
         />
         <Drawer.Screen
