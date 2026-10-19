@@ -10,6 +10,8 @@ import {
   DEFAULT_REPETITION_PENALTY,
   MEMORY_STALL_PASS_COUNT,
   MEMORY_STALL_PASS_MS,
+  MEMORY_STALL_PREFILL_PASS_COUNT,
+  MEMORY_STALL_PREFILL_PASS_MS,
   getGenerationConfigForModel,
   getStartingModels,
   pickMemoryStallFallback,
@@ -41,12 +43,32 @@ describe('the memory stall watch', () => {
     expect(MEMORY_STALL_PASS_COUNT).toBe(2);
   });
 
+  it('needs three slow prefill chunks in a row, so a cold first chunk read from flash never trips it', () => {
+    expect(MEMORY_STALL_PREFILL_PASS_MS).toBe(750);
+    expect(MEMORY_STALL_PREFILL_PASS_COUNT).toBe(3);
+  });
+
   const stallWatchOf = (modelPath: string) => {
-    const { stallPassMs, stallPassCount } = getGenerationConfigForModel({
+    const {
+      stallPassMs,
+      stallPassCount,
+      stallPrefillPassMs,
+      stallPrefillPassCount,
+    } = getGenerationConfigForModel({
       modelName: 'Any',
       modelPath,
-    }) as { stallPassMs?: number; stallPassCount?: number };
-    return { stallPassMs, stallPassCount };
+    }) as {
+      stallPassMs?: number;
+      stallPassCount?: number;
+      stallPrefillPassMs?: number;
+      stallPrefillPassCount?: number;
+    };
+    return {
+      stallPassMs,
+      stallPassCount,
+      stallPrefillPassMs,
+      stallPrefillPassCount,
+    };
   };
 
   it('is on for the Gemma builds that run on the MLX delegate', () => {
@@ -54,6 +76,8 @@ describe('the memory stall watch', () => {
       expect(stallWatchOf(modelPath)).toEqual({
         stallPassMs: MEMORY_STALL_PASS_MS,
         stallPassCount: MEMORY_STALL_PASS_COUNT,
+        stallPrefillPassMs: MEMORY_STALL_PREFILL_PASS_MS,
+        stallPrefillPassCount: MEMORY_STALL_PREFILL_PASS_COUNT,
       });
     }
   });
@@ -76,6 +100,8 @@ describe('the memory stall watch', () => {
       expect(stallWatchOf(modelPath)).toEqual({
         stallPassMs: undefined,
         stallPassCount: undefined,
+        stallPrefillPassMs: undefined,
+        stallPrefillPassCount: undefined,
       });
     }
   });

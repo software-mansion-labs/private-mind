@@ -6,7 +6,12 @@ type NativeLLM = {
 
 type PatchedController = {
   configure: (config: {
-    generationConfig?: { stallPassMs?: number; stallPassCount?: number };
+    generationConfig?: {
+      stallPassMs?: number;
+      stallPassCount?: number;
+      stallPrefillPassMs?: number;
+      stallPrefillPassCount?: number;
+    };
   }) => void;
   lastGenerationStalled: () => boolean;
   nativeModule?: NativeLLM;
@@ -31,12 +36,41 @@ const nativeLLM = (stalled = false): NativeLLM => ({
 });
 
 describe('react-native-executorch stall watch patch', () => {
-  it('hands the stall threshold to the native runner with two passes by default', () => {
+  it('hands the decode and prefill thresholds to the native runner with two passes by default', () => {
+    const native = nativeLLM();
+    controllerOver(native).configure({
+      generationConfig: { stallPassMs: 3000, stallPrefillPassMs: 750 },
+    });
+    expect(native.setStallWatch).toHaveBeenCalledWith(3000, 2, 750, 2);
+  });
+
+  it('counts slow prefill chunks against their own pass count', () => {
+    const native = nativeLLM();
+    controllerOver(native).configure({
+      generationConfig: {
+        stallPassMs: 3000,
+        stallPassCount: 2,
+        stallPrefillPassMs: 750,
+        stallPrefillPassCount: 3,
+      },
+    });
+    expect(native.setStallWatch).toHaveBeenCalledWith(3000, 2, 750, 3);
+  });
+
+  it('leaves the prefill watch off unless it is asked for', () => {
     const native = nativeLLM();
     controllerOver(native).configure({
       generationConfig: { stallPassMs: 2000 },
     });
-    expect(native.setStallWatch).toHaveBeenCalledWith(2000, 2);
+    expect(native.setStallWatch).toHaveBeenCalledWith(2000, 2, 0, 2);
+  });
+
+  it('leaves the decode watch off when only the prefill threshold is set', () => {
+    const native = nativeLLM();
+    controllerOver(native).configure({
+      generationConfig: { stallPrefillPassMs: 500 },
+    });
+    expect(native.setStallWatch).toHaveBeenCalledWith(0, 2, 500, 2);
   });
 
   it('passes an explicit pass count through', () => {
@@ -44,7 +78,7 @@ describe('react-native-executorch stall watch patch', () => {
     controllerOver(native).configure({
       generationConfig: { stallPassMs: 1500, stallPassCount: 3 },
     });
-    expect(native.setStallWatch).toHaveBeenCalledWith(1500, 3);
+    expect(native.setStallWatch).toHaveBeenCalledWith(1500, 3, 0, 2);
   });
 
   it('leaves the stall watch alone when the config does not set it', () => {
@@ -58,6 +92,14 @@ describe('react-native-executorch stall watch patch', () => {
     const controller = controllerOver(native);
     expect(() =>
       controller.configure({ generationConfig: { stallPassMs: -1 } })
+    ).toThrow();
+    expect(() =>
+      controller.configure({ generationConfig: { stallPrefillPassMs: -1 } })
+    ).toThrow();
+    expect(() =>
+      controller.configure({
+        generationConfig: { stallPrefillPassMs: 750, stallPrefillPassCount: 0 },
+      })
     ).toThrow();
     expect(() =>
       controller.configure({
