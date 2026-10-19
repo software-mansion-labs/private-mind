@@ -208,7 +208,7 @@ index 4ecec3e..bd224c5 100644
      ::executorch::runtime::Error generate_internal(
          const std::vector<MultimodalInput> &inputs,
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp
-index dbc4459..0cb04e1 100644
+index dbc4459..ec1dd84 100644
 --- a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp
 @@ -13,6 +13,7 @@
@@ -219,36 +219,40 @@ index dbc4459..0cb04e1 100644
  #include <ctime>
  
  namespace rne_legacy {
-@@ -86,6 +87,37 @@ TextDecoderRunner::step(TensorPtr &tokens, int64_t start_pos) {
+@@ -86,6 +87,41 @@ TextDecoderRunner::step(TensorPtr &tokens, int64_t start_pos) {
      }
  }
  
 +void TextDecoderRunner::record_prefill_pass(
 +    std::chrono::steady_clock::duration elapsed) {
 +    record_pass(elapsed, config_.stall_prefill_pass_ms,
-+                config_.stall_prefill_pass_count, slow_prefill_passes_);
++                config_.stall_prefill_pass_count, slow_prefill_run_);
 +}
 +
 +void TextDecoderRunner::record_decode_pass(
 +    std::chrono::steady_clock::duration elapsed) {
 +    record_pass(elapsed, config_.stall_pass_ms, config_.stall_pass_count,
-+                slow_decode_passes_);
++                slow_decode_run_);
 +}
 +
 +void TextDecoderRunner::record_pass(std::chrono::steady_clock::duration elapsed,
 +                                    int32_t threshold_ms, int32_t pass_count,
-+                                    int32_t &slow_passes) {
++                                    SlowRun &slow_run) {
 +    if (threshold_ms <= 0) {
 +        return;
 +    }
 +    const auto elapsed_ms =
 +        std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
 +    if (elapsed_ms < threshold_ms) {
-+        slow_passes = 0;
++        slow_run = {};
 +        return;
 +    }
-+    slow_passes += 1;
-+    if (slow_passes >= std::max<int32_t>(1, pass_count)) {
++    const int32_t passes_allowed = std::max<int32_t>(1, pass_count);
++    slow_run.passes += 1;
++    slow_run.elapsed_ms += elapsed_ms;
++    if (slow_run.passes >= passes_allowed ||
++        slow_run.elapsed_ms >=
++            static_cast<int64_t>(threshold_ms) * passes_allowed) {
 +        stalled_ = true;
 +        should_stop_ = true;
 +    }
@@ -258,7 +262,7 @@ index dbc4459..0cb04e1 100644
      const executorch::aten::Tensor &logits_tensor,
      const std::vector<uint64_t> &recent_tokens) {
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h
-index e289df8..57f84a0 100644
+index e289df8..97b2268 100644
 --- a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h
 @@ -13,6 +13,8 @@
@@ -277,8 +281,8 @@ index e289df8..57f84a0 100644
 +    inline void clear_stop() {
 +        should_stop_ = false;
 +        stalled_ = false;
-+        slow_prefill_passes_ = 0;
-+        slow_decode_passes_ = 0;
++        slow_prefill_run_ = {};
++        slow_decode_run_ = {};
 +    }
 +    inline bool stop_requested() const { return should_stop_.load(); }
 +    inline bool stalled() const { return stalled_.load(); }
@@ -287,21 +291,25 @@ index e289df8..57f84a0 100644
  
      /**
       * Sample the next token from the logits tensor using the sampling
-@@ -76,8 +88,16 @@ protected:
+@@ -76,8 +88,20 @@ protected:
      // Non-owning. The runner (BaseLLMRunner) owns the Module and outlives this.
      Module *module_;
      IOManager *io_manager_;
 -    bool should_stop_{false};
 +    std::atomic<bool> should_stop_{false};
 +    std::atomic<bool> stalled_{false};
-+    int32_t slow_prefill_passes_{0};
-+    int32_t slow_decode_passes_{0};
++    struct SlowRun {
++        int32_t passes{0};
++        int64_t elapsed_ms{0};
++    };
++    SlowRun slow_prefill_run_;
++    SlowRun slow_decode_run_;
      const GenerationConfig &config_;
 +
 +private:
 +    void record_pass(std::chrono::steady_clock::duration elapsed,
 +                     int32_t threshold_ms, int32_t pass_count,
-+                     int32_t &slow_passes);
++                     SlowRun &slow_run);
  };
  
  } // namespace llm
