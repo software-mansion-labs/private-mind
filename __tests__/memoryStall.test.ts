@@ -4,11 +4,13 @@ import * as chatRepository from '../database/chatRepository';
 import type { Message } from '../database/chatRepository';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { useSettingsStore } from '../store/settingsStore';
+import { releaseMlxCache } from '../modules/memory-probe';
 
 jest.mock('../modules/memory-probe', () => ({
   isMemoryMetricAvailable: () => false,
   memorySampleIntervalMs: () => 250,
   getMemoryFootprintBytes: () => null,
+  releaseMlxCache: jest.fn(),
 }));
 jest.mock('../database/chatRepository');
 jest.mock('../utils/Feedback', () => ({
@@ -158,6 +160,23 @@ describe('a turn the memory stall cut short', () => {
     await settle();
 
     expect(instance.delete).toHaveBeenCalled();
+  });
+
+  it('gives the MLX buffer cache back to the system with the stalled model', async () => {
+    stallNextTurn('It began in');
+    await send();
+    await settle();
+
+    expect(releaseMlxCache).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the MLX cache alone when a model off the MLX delegate is unloaded', async () => {
+    await useLLMStore.getState().loadModel(qwen);
+    (releaseMlxCache as jest.Mock).mockClear();
+
+    await useLLMStore.getState().loadModel(gemma);
+
+    expect(releaseMlxCache).not.toHaveBeenCalled();
   });
 
   it('never shows the generic failure, even when nothing was decoded yet', async () => {

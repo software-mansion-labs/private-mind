@@ -4,6 +4,7 @@ import DeviceInfo from 'react-native-device-info';
 
 interface NativeMemoryProbe {
   getPhysFootprintBytes: () => number;
+  releaseMlxCache?: () => void;
 }
 
 const nativeModule =
@@ -56,4 +57,8 @@ export const getMemoryFootprintBytes = (): number | null => {
     console.warn('Unable to read memory:', error);
     return null;
   }
+};
+
+export const releaseMlxCache = (): void => {
+  nativeModule?.releaseMlxCache?.();
 };

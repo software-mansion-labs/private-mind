@@ -24,6 +24,7 @@ jest.mock('../modules/memory-probe', () => ({
   memorySampleIntervalMs: () => 250,
   getPhysFootprintBytes: () => memoryProbe.samples.shift() ?? null,
   getMemoryFootprintBytes: () => memoryProbe.samples.shift() ?? null,
+  releaseMlxCache: jest.fn(),
 }));
 
 jest.mock('../database/chatRepository');

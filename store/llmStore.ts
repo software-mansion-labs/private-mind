@@ -78,9 +78,13 @@ import {
   getMemoryFootprintBytes,
   isMemoryMetricAvailable,
   memorySampleIntervalMs,
+  releaseMlxCache,
 } from '../modules/memory-probe';
 import { useWebSearchStore } from './webSearchStore';
-import { getGenerationConfigForModel } from '../constants/default-models';
+import {
+  getGenerationConfigForModel,
+  runsOnMlxDelegate,
+} from '../constants/default-models';
 import { cpuLacksLseAtomics } from '../utils/cpuSupport';
 import { UNSUPPORTED_CPU_REFUSAL } from '../constants/cpu-support';
 
@@ -143,6 +147,7 @@ export interface LLMStore {
 }
 
 let llmInstance: LLMModule | null = null;
+let instanceRunsOnMlx = false;
 let modelOffloadChain: Promise<void> = Promise.resolve();
 let modelLoadChain: Promise<void> = Promise.resolve();
 let runnerChain: Promise<unknown> = Promise.resolve();
@@ -355,6 +360,8 @@ const unloadLLM = () => {
   if (!llmInstance) return false;
   llmInstance.delete();
   llmInstance = null;
+  if (instanceRunsOnMlx) releaseMlxCache();
+  instanceRunsOnMlx = false;
   return true;
 };
 
@@ -492,6 +499,7 @@ const loadModelInstance = async (
     model.isDownloaded ? preferDownloadedCopy(path) : path;
 
   try {
+    instanceRunsOnMlx = runsOnMlxDelegate(model);
     llmInstance = await LLMModule.fromModelName(
       {
         modelName: 'custom' as Parameters<
