@@ -15,6 +15,7 @@ const FAMILY_TILE = {
   row: { tile: 28, icon: 16, radius: radius.six + space.half, initial: 'xs' },
   list: { tile: 40, icon: 24, radius: radius.twelve, initial: 'lg' },
   card: { tile: 44, icon: 24, radius: radius.twelve, initial: 'lg' },
+  hero: { tile: 56, icon: 32, radius: radius.eighteen, initial: 'xl' },
 } as const;
 
 export type ModelFamilyTileSize = keyof typeof FAMILY_TILE;

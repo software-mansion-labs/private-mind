@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -15,33 +16,38 @@ import ArrowLeftIcon from '../assets/icons/arrow-left.svg';
 import HeaderGlassButton, { headerGlassButtonFill } from './HeaderGlassButton';
 import { GlassScrollEdge } from './chat-screen/GlassScrollEdge';
 import { GLASS_BUTTON_SIZE, HEADER_EDGE_PX } from '../constants/header-actions';
+import { space } from '../constants/design-system';
 
 const TITLE_SIDE_SPACE = GLASS_BUTTON_SIZE + HEADER_EDGE_PX * 2;
+const SHEET_TOP_INSET = space.four;
 
-export const useGlassScreenHeaderHeight = () => {
-  const layout = useWindowDimensions();
+const useHeaderTopInset = (sheet: boolean) => {
   const insets = useSafeAreaInsets();
-  return getDefaultHeaderHeight(layout, false, insets.top);
+  return sheet && Platform.OS === 'ios' ? SHEET_TOP_INSET : insets.top;
+};
+
+export const useGlassScreenHeaderHeight = (sheet = false) => {
+  const layout = useWindowDimensions();
+  const topInset = useHeaderTopInset(sheet);
+  return getDefaultHeaderHeight(layout, sheet, topInset);
 };
 
 interface Props {
   title: string;
   onBack: () => void;
+  sheet?: boolean;
 }
 
-const GlassScreenHeader = ({ title, onBack }: Props) => {
+const GlassScreenHeader = ({ title, onBack, sheet = false }: Props) => {
   const { styles } = useThemedStyles(createStyles);
-  const insets = useSafeAreaInsets();
-  const headerHeight = useGlassScreenHeaderHeight();
+  const topInset = useHeaderTopInset(sheet);
+  const headerHeight = useGlassScreenHeaderHeight(sheet);
 
   return (
     <>
       <GlassScrollEdge anchor={headerHeight} />
       <View
-        style={[
-          styles.bar,
-          { top: insets.top, height: headerHeight - insets.top },
-        ]}
+        style={[styles.bar, { top: topInset, height: headerHeight - topInset }]}
         pointerEvents="box-none"
       >
         <View style={styles.titleContainer} pointerEvents="none">

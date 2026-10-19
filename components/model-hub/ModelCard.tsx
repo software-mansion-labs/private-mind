@@ -28,6 +28,7 @@ import {
   isCapabilityLabel,
 } from '../../constants/model-labels';
 import DownloadIcon from '../../assets/icons/download.svg';
+import DownloadArrowIcon from '../../assets/icons/download-arrow.svg';
 import CloseIcon from '../../assets/icons/close.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 import CheckIcon from '../../assets/icons/check.svg';
@@ -44,8 +45,12 @@ const CHECKBOX_ICON_SIZE = 14;
 const PROGRESS_ACTION_ICON_SIZE = 16;
 const PROGRESS_ACTION_HIT_SLOP = 12;
 const LOCKED_CARD_OPACITY = 0.4;
+const ROW_ACTION_SIZE = 36;
+const ROW_CHECK_ICON_SIZE = 16;
+const ROW_DOWNLOAD_ICON_SIZE = 16;
 
 export type DownloadStatus = 'downloading' | 'done';
+export type ModelCardVariant = 'card' | 'row';
 
 interface Props {
   model: Model;
@@ -60,6 +65,7 @@ interface Props {
   locked?: boolean;
   onCancel?: (model: Model) => void;
   onDeleted?: (model: Model) => void;
+  variant?: ModelCardVariant;
 }
 
 const modelMeta = (model: Model) =>
@@ -83,8 +89,10 @@ const ModelCard = ({
   locked = false,
   onCancel,
   onDeleted,
+  variant = 'card',
 }: Props) => {
-  const { styles, theme } = useThemedStyles(createStyles, selected);
+  const { styles, theme } = useThemedStyles(createStyles, selected, variant);
+  const isRow = variant === 'row';
 
   const trackedDownload = useModelStore(
     (state) => state.downloadStates[model.id]
@@ -284,7 +292,7 @@ const ModelCard = ({
           {showDownloadControls && modelState === ModelState.Downloading && (
             <CircleButton
               onPress={handlePress}
-              backgroundColor={theme.bg.errorSecondary}
+              backgroundColor={isRow ? theme.bg.tile : theme.bg.errorSecondary}
               color={theme.text.primary}
               icon={CloseIcon}
               size={13.33}
@@ -295,16 +303,39 @@ const ModelCard = ({
             <CircleButton
               onPress={!isCompatible ? undefined : handlePress}
               backgroundColor={
-                !isCompatible ? theme.border.soft : theme.bg.softSecondary
+                !isCompatible
+                  ? theme.border.soft
+                  : isRow
+                    ? theme.bg.accentSoft
+                    : theme.bg.softSecondary
               }
               color={
-                !isCompatible ? theme.text.defaultTertiary : theme.text.primary
+                !isCompatible
+                  ? theme.text.defaultTertiary
+                  : isRow
+                    ? theme.text.accent
+                    : theme.text.primary
               }
-              icon={DownloadIcon}
-              size={15}
+              icon={isRow ? DownloadArrowIcon : DownloadIcon}
+              size={isRow ? ROW_DOWNLOAD_ICON_SIZE : 15}
               disabled={!isCompatible}
             />
           )}
+
+          {showDownloadControls &&
+            isRow &&
+            modelState === ModelState.Downloaded && (
+              <View
+                style={styles.downloadedCheck}
+                testID="model-card-downloaded"
+              >
+                <CheckIcon
+                  width={ROW_CHECK_ICON_SIZE}
+                  height={ROW_CHECK_ICON_SIZE}
+                  style={styles.downloadedCheckIcon}
+                />
+              </View>
+            )}
 
           {showDownloadControls &&
             showDeleteButton &&
@@ -312,8 +343,10 @@ const ModelCard = ({
             model.source !== 'local' && (
               <CircleButton
                 onPress={handleDelete}
-                backgroundColor={theme.bg.errorPrimary}
-                color={theme.text.contrastPrimary}
+                backgroundColor={
+                  isRow ? theme.bg.errorSecondary : theme.bg.errorPrimary
+                }
+                color={isRow ? theme.text.error : theme.text.contrastPrimary}
                 icon={TrashIcon}
                 size={16}
               />
@@ -371,21 +404,28 @@ const ModelCard = ({
 
 export default ModelCard;
 
-const createStyles = (theme: Theme, selected: boolean) => {
+const createStyles = (
+  theme: Theme,
+  selected: boolean,
+  variant: ModelCardVariant
+) => {
   const borderWidth = selected ? stroke.strong : stroke.soft;
+  const isRow = variant === 'row';
   return StyleSheet.create({
-    card: {
-      padding: space.four - (borderWidth - stroke.soft),
-      borderWidth,
-      borderRadius: radius.twelve,
-      borderColor: selected ? theme.bg.strongPrimary : theme.border.soft,
-      backgroundColor: selected ? theme.bg.cardSelected : undefined,
-      gap: space.three,
-    },
+    card: isRow
+      ? { padding: space.four, gap: space.three }
+      : {
+          padding: space.four - (borderWidth - stroke.soft),
+          borderWidth,
+          borderRadius: radius.twelve,
+          borderColor: selected ? theme.bg.strongPrimary : theme.border.soft,
+          backgroundColor: selected ? theme.bg.cardSelected : undefined,
+          gap: space.three,
+        },
     topRow: {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.three,
+      alignItems: isRow ? 'flex-start' : 'center',
+      gap: isRow ? space.two : space.three,
     },
     info: {
       flex: 1,
@@ -437,7 +477,7 @@ const createStyles = (theme: Theme, selected: boolean) => {
     progressBar: {
       height: '100%',
       borderRadius: radius.full,
-      backgroundColor: theme.bg.strongPrimary,
+      backgroundColor: isRow ? theme.bg.main : theme.bg.strongPrimary,
     },
     progressText: {
       minWidth: PROGRESS_LABEL_MIN_WIDTH,
@@ -446,6 +486,17 @@ const createStyles = (theme: Theme, selected: boolean) => {
       lineHeight: lineHeights.xs,
       fontFamily: fontFamily.regular,
       color: theme.text.defaultSecondary,
+    },
+    downloadedCheck: {
+      width: ROW_ACTION_SIZE,
+      height: ROW_ACTION_SIZE,
+      borderRadius: radius.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.bg.success,
+    },
+    downloadedCheckIcon: {
+      color: theme.text.onSuccess,
     },
     progressActionIcon: {
       color: theme.text.defaultSecondary,

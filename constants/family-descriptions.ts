@@ -21,3 +21,12 @@ export const FAMILY_SUMMARIES: Record<string, string> = {
   'Gemma 4': 'Google · small, chat and vision',
   'Bielik': 'SpeakLeash · Polish chat and writing',
 };
+
+export const FAMILY_PROVIDERS: Record<string, string> = {
+  'Qwen 3': 'Alibaba',
+  'Qwen 2.5': 'Alibaba',
+  'LLaMA 3.2': 'Meta',
+  'LFM 2.5': 'Liquid AI',
+  'Gemma 4': 'Google',
+  'Bielik': 'SpeakLeash',
+};
