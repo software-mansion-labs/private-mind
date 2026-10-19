@@ -318,7 +318,7 @@ export const importMessages = async (
   for (let i = 0; i < messages.length; i += IMPORT_BATCH_SIZE) {
     const batch = messages.slice(i, i + IMPORT_BATCH_SIZE);
     const placeholders = batch
-      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .join(', ');
     const flattenedValues = batch.flatMap((msg) => [
       chatId,
@@ -335,9 +335,10 @@ export const importMessages = async (
         ? JSON.stringify(msg.groundingCaveats)
         : null,
       msg.stoppedByUser ? 1 : 0,
+      parseCutShortReason(msg.cutShortReason) ?? null,
     ]);
     await db.runAsync(
-      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, stoppedByUser) VALUES ${placeholders}`,
+      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, stoppedByUser, cutShortReason) VALUES ${placeholders}`,
       flattenedValues
     );
   }
@@ -378,8 +379,9 @@ const copyMessagesWithIdMap = async (
           documentName,
           sourceDocuments,
           groundingCaveats,
-          stoppedByUser
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          stoppedByUser,
+          cutShortReason
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         chatId,
@@ -398,6 +400,7 @@ const copyMessagesWithIdMap = async (
           ? JSON.stringify(msg.groundingCaveats)
           : null,
         msg.stoppedByUser ? 1 : 0,
+        msg.cutShortReason ?? null,
       ]
     );
     idMap.set(msg.id, result.lastInsertRowId);
