@@ -191,6 +191,7 @@ type FailedGenerationRequest = {
 };
 
 let failedGenerationRequest: FailedGenerationRequest | null = null;
+let instanceBehindFailedTurn: LLMModule | null = null;
 
 let appIsAway = false;
 let appIsInBackground = false;
@@ -216,6 +217,7 @@ const armRetry = (
   request: FailedGenerationRequest | null
 ) => {
   failedGenerationRequest = request;
+  instanceBehindFailedTurn = request ? llmInstance : null;
   set({ retryArmedForChatId: request?.chatId ?? null });
 };
 
@@ -1419,7 +1421,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         openingWelcome !== null && cannotWriteWelcome(currentModel);
 
       if (!preparedWelcomeOnly) {
-        await loadModelForTurn(isRetry);
+        await loadModelForTurn(
+          isRetry &&
+            llmInstance !== null &&
+            llmInstance === instanceBehindFailedTurn
+        );
         if (!llmInstance && get().isProcessingPrompt) {
           await loadModelForTurn(true);
         }

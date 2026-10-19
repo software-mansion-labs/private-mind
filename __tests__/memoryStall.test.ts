@@ -52,6 +52,13 @@ const gemma = {
   tokenizerConfigPath: 'https://example.com/tokenizer_config.json',
 };
 
+const qwen = {
+  ...gemma,
+  id: 3,
+  modelName: 'Qwen 2.5 - 0.5B',
+  modelPath: 'https://example.com/qwen/xnnpack/model.pte',
+};
+
 const makeInstance = () => ({
   generate: jest.fn(),
   interrupt: jest.fn(),
@@ -229,6 +236,22 @@ describe('a turn the memory stall cut short', () => {
     await send();
 
     expect(mockLLMModule.fromModelName).toHaveBeenCalled();
+    expect(
+      messages().find((message) => message.role === 'assistant')?.content
+    ).toBe('Rome was founded in 753 BC.');
+  });
+
+  it('answers with a smaller model loaded after the stall without loading it a second time', async () => {
+    stallNextTurn('');
+    await send();
+    await settle();
+    await useLLMStore.getState().loadModel(qwen);
+    mockLLMModule.fromModelName.mockClear();
+
+    instance.generate.mockResolvedValue('Rome was founded in 753 BC.');
+    await useLLMStore.getState().retryLastGeneration();
+
+    expect(mockLLMModule.fromModelName).not.toHaveBeenCalled();
     expect(
       messages().find((message) => message.role === 'assistant')?.content
     ).toBe('Rome was founded in 753 BC.');
