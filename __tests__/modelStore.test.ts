@@ -107,7 +107,8 @@ describe('downloadModel', () => {
     expect(state.progress).toBe(0);
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({
-        text1: expect.stringContaining('could not be downloaded'),
+        text1: 'Test Model could not be downloaded.',
+        props: { onRetry: expect.any(Function) },
       })
     );
   });
@@ -411,7 +412,11 @@ describe('a second download for the same model must not start while one is in fl
 
   it('lets a different model download at the same time', async () => {
     mockFetch.mockReturnValue(new Promise(() => {}));
-    const other = { ...baseModel, id: 2 };
+    const other = {
+      ...baseModel,
+      id: 2,
+      modelPath: 'https://example.com/other.pte',
+    };
 
     useModelStore.getState().downloadModel(baseModel);
     useModelStore.getState().downloadModel(other);

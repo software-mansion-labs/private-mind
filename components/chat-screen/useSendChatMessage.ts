@@ -14,14 +14,17 @@ import { Model } from '../../database/modelRepository';
 export type SendRefusal =
   | 'nothing-to-send'
   | 'cpu-unsupported'
-  | 'model-loading'
+  | 'model-not-started'
   | 'busy'
   | 'chat-not-created'
   | 'image-not-saved'
   | 'image-unsupported';
 import { Attachment } from '../../hooks/useAttachment';
 import { LFMEmbeddings } from '../../utils/lfmEmbeddings';
-import { loadModelPinnedToChat } from './loadModelPinnedToChat';
+import {
+  beginLoadingPinnedModel,
+  loadModelPinnedToChat,
+} from './loadModelPinnedToChat';
 import { buildMessageSources } from '../../utils/messageSources';
 import { isDeviceOnline } from '../../utils/network';
 import { runWebSearch } from '../../utils/web/runWebSearch';
@@ -71,7 +74,7 @@ interface UseSendChatMessageOptions {
   isGenerating: boolean;
   isModelLoading: boolean;
   isSwitching: boolean;
-  waitForModelSwitch?: () => Promise<Model | undefined>;
+  waitForModelSwitch: () => Promise<Model | undefined>;
 }
 
 const webSkipReason = (
@@ -116,7 +119,6 @@ export const useSendChatMessage = ({
     if (useCpuSupportStore.getState().lacksLseAtomics) return 'cpu-unsupported';
     let pinnedModel = model;
     if (isSwitching) {
-      if (!waitForModelSwitch) return 'model-loading';
       pinnedModel = (await waitForModelSwitch()) ?? model;
     }
     if (imagePath && pinnedModel && !pinnedModel.vision) {
@@ -129,7 +131,11 @@ export const useSendChatMessage = ({
     } else if (busy || isGenerating) {
       return 'busy';
     }
-    if (!llm.model && !isModelLoading) return 'model-loading';
+    if (!llm.model && !isModelLoading) {
+      const started =
+        !!pinnedModel && (await beginLoadingPinnedModel(pinnedModel));
+      if (!started) return 'model-not-started';
+    }
     loadModelPinnedToChat(pinnedModel);
 
     messagesRef.current?.onMessageSent();

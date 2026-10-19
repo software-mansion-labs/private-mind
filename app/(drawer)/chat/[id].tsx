@@ -45,6 +45,9 @@ function ChatScreenInner() {
     : undefined;
   const [model, setModel] = useState<Model | undefined>(resolvedModel);
   const [pendingModel, setPendingModel] = useState<Model | undefined>();
+  const chatModelIsStarting = useLLMStore(
+    (state) => state.isLoading && !!model && state.model?.id === model.id
+  );
   // Only show the loading/empty state on the very first mount for this
   // chat. useFocusEffect refires on every refocus (including returning
   // from a bottom sheet), and flipping messageHistory to [] mid-session
@@ -67,7 +70,7 @@ function ChatScreenInner() {
   const { MenuElements, titleBottom } = useChatHeader({
     chatId: chatId,
     chatModel: pendingModel ?? model,
-    isModelLoading: !!pendingModel,
+    isModelLoading: !!pendingModel || chatModelIsStarting,
     isEmpty,
     onSelectModelFromTitle: isPhantom ? openModelSheet : undefined,
   });

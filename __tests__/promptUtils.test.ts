@@ -2833,8 +2833,8 @@ describe('prepareMessagesForLLM — conversation digest replaces dropped turns',
 
   it('leaves a short conversation untouched — nothing was dropped, nothing to replace', () => {
     const short: Message[] = [
-      turn('user', 'czesc'),
-      turn('assistant', 'czesc, w czym pomoc?'),
+      turn('user', 'jaki rower gorski na start?'),
+      turn('assistant', 'Hardtail z amortyzatorem z przodu.'),
       turn('user', 'a jakie hamulce?'),
     ];
     const result = prepareMessagesForLLM(short, [], baseSettings, baseModel, {

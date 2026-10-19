@@ -425,6 +425,9 @@ const releaseModelOnceIdleInBackground = (get: () => LLMStore) => {
   }, BACKGROUND_RELEASE_DELAY_MS);
 };
 
+export const modelLoadFailedCopy = (modelName: string) =>
+  `${modelName} could not be loaded. Try again or pick another model.`;
+
 const loadModelInstance = async (
   model: Model,
   hardReload: boolean,
@@ -540,6 +543,10 @@ const loadModelInstance = async (
     console.error('Error loading model:', e);
     unloadLLM();
     set({ isLoading: false, model: null });
+    Toast.show({
+      type: 'defaultToast',
+      text1: modelLoadFailedCopy(model.modelName),
+    });
   }
 };
 
@@ -1968,11 +1975,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       benchmarkTokenBudget = BENCHMARK_TOKEN_TARGET;
       benchmarkedModel = get().model;
       if (benchmarkedModel) {
-        instance.configure({
-          generationConfig: {
-            ...getGenerationConfigForModel(benchmarkedModel),
-            ...BENCHMARK_GENERATION_CONFIG,
-          },
+        applyGenerationConfig(instance, {
+          ...getGenerationConfigForModel(benchmarkedModel),
+          ...BENCHMARK_GENERATION_CONFIG,
         });
       }
 
@@ -2013,9 +2018,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     } finally {
       benchmarkTokenBudget = null;
       if (llmInstance && benchmarkedModel) {
-        llmInstance.configure({
-          generationConfig: getGenerationConfigForModel(benchmarkedModel),
-        });
+        applyGenerationConfig(
+          llmInstance,
+          getGenerationConfigForModel(benchmarkedModel)
+        );
       }
       memoryTracker.stop();
       set({ isGenerating: false, isBenchmarking: false });
