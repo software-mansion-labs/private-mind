@@ -1479,6 +1479,32 @@ describe('sendChatMessage', () => {
     );
   });
 
+  it('spends the echo nudge, not the list nudge, when the reply is both', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Co zabrać do samolotu?:')
+      .mockResolvedValueOnce('Zabierz paszport, bilet i ładowarkę.');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('Co zabrać do samolotu?', 1, noSources, settings);
+
+    const nudge = mockInstance.generate.mock.calls[1]![0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(nudge.at(-1)!.content).toContain('only repeated the question back');
+    expect(nudge.at(-1)!.content).not.toContain('ONLY the actual list items');
+    expect(useLLMStore.getState().generationError).toBeNull();
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Zabierz paszport, bilet i ładowarkę.'
+    );
+  });
+
   it('nudges for the language, not the dangling list, when the answer drifted language (live-found)', async () => {
     const question = 'Kim był Kazimierz Wielki i czego dokonał?';
     const wrongLanguageDanglingAnswer =
@@ -2019,6 +2045,47 @@ describe('sendChatMessage', () => {
     expect(useLLMStore.getState().generationError).toBeNull();
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
       'Zabierz paszport, bilet, ładowarkę i lekką kurtkę.'
+    );
+  });
+
+  it('says plainly there is no answer instead of echoing the question back (live-found)', async () => {
+    mockInstance.generate.mockResolvedValue('co zabrać do samolotu?');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(mockInstance.generate).toHaveBeenCalledTimes(3);
+    expect(useLLMStore.getState().generationError).toBeNull();
+    const shown = useLLMStore.getState().activeChatMessages.at(-1)?.content;
+    expect(shown).not.toBe('co zabrać do samolotu?');
+    expect(shown).toContain('Nie udało mi się odpowiedzieć');
+  });
+
+  it('gives the no-answer line in the language of the question', async () => {
+    mockInstance.generate.mockResolvedValue('what should I pack for a flight?');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage(
+        'what should I pack for a flight?',
+        1,
+        noSources,
+        settings
+      );
+
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toContain(
+      'could not answer this question'
     );
   });
 
@@ -3285,7 +3352,7 @@ describe('a turn abandoned before its first token', () => {
       useLLMStore.getState().interrupt();
       await flushFrame();
       for (let i = 0; i < tokensAfterAbandon; i++) {
-        capturedTokenCallback!(` word${i}`);
+        capturedTokenCallback!('tok');
         await flushFrame();
       }
       return 'Sure, here we go';
