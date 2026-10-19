@@ -1,8 +1,120 @@
+diff --git a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/host_objects/ModelHostObject.h b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/host_objects/ModelHostObject.h
+index 11a61f0..6d86bb0 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/host_objects/ModelHostObject.h
++++ b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/host_objects/ModelHostObject.h
+@@ -182,6 +182,15 @@ public:
+                 synchronousHostFunction<&Model::setRepetitionPenalty>,
+                 "setRepetitionPenalty"));
+ 
++            addFunctions(JSI_EXPORT_FUNCTION(
++                ModelHostObject<Model>,
++                synchronousHostFunction<&Model::setStallWatch>, "setStallWatch"));
++
++            addFunctions(JSI_EXPORT_FUNCTION(
++                ModelHostObject<Model>,
++                synchronousHostFunction<&Model::lastGenerationStalled>,
++                "lastGenerationStalled"));
++
+             addFunctions(JSI_EXPORT_FUNCTION(
+                 ModelHostObject<Model>,
+                 synchronousHostFunction<&Model::getMaxContextLength>,
+diff --git a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
+index 528cf3f..3e270d6 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
++++ b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
+@@ -298,6 +298,23 @@ void LLM::setRepetitionPenalty(float repetitionPenalty) {
+     runner_->set_repetition_penalty(repetitionPenalty);
+ }
+ 
++void LLM::setStallWatch(int32_t passMs, int32_t passCount) {
++    if (!runner_ || !runner_->is_loaded()) {
++        throw RnExecutorchError(RnExecutorchErrorCode::ModuleNotLoaded,
++                                "Can't configure a model that's not loaded");
++    }
++    if (passMs < 0 || passCount < 1) {
++        throw RnExecutorchError(RnExecutorchErrorCode::InvalidConfig,
++                                "Stall pass time must be non-negative and the "
++                                "pass count at least 1");
++    }
++    runner_->set_stall_watch(passMs, passCount);
++}
++
++bool LLM::lastGenerationStalled() const noexcept {
++    return runner_ && runner_->is_loaded() && runner_->last_generation_stalled();
++}
++
+ int32_t LLM::getMaxContextLength() const {
+     if (!runner_ || !runner_->is_loaded()) {
+         throw RnExecutorchError(
+diff --git a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.h b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.h
+index bf7c7f5..0c66139 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.h
++++ b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.h
+@@ -42,6 +42,8 @@ public:
+     void setMinP(float minP);
+     void setRepetitionPenalty(float repetitionPenalty);
+     void setTimeInterval(size_t timeInterval);
++    void setStallWatch(int32_t passMs, int32_t passCount);
++    bool lastGenerationStalled() const noexcept;
+     int32_t getMaxContextLength() const;
+ 
+ private:
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.cpp
+index 72301a8..a3f055e 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.cpp
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.cpp
+@@ -169,6 +169,12 @@ void BaseLLMRunner::set_time_interval(size_t time_interval) {
+     config_.batch_time_interval_ms = time_interval;
+ }
+ 
++void BaseLLMRunner::set_stall_watch(int32_t pass_ms,
++                                    int32_t pass_count) noexcept {
++    config_.stall_pass_ms = pass_ms;
++    config_.stall_pass_count = pass_count;
++}
++
+ int32_t BaseLLMRunner::resolve_max_new_tokens(int32_t num_prompt_tokens,
+                                               int32_t max_seq_len,
+                                               int32_t max_context_len,
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.h b/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.h
+index dbd10fb..de05752 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.h
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.h
+@@ -56,6 +56,7 @@ public:
+     int32_t get_max_context_length() const;
+     virtual bool is_multimodal() const { return false; }
+     virtual int32_t get_visual_token_count() const { return 0; }
++    virtual bool last_generation_stalled() const { return false; }
+ 
+     void set_temperature(float temperature) noexcept;
+     void set_topp(float topp) noexcept;
+@@ -64,6 +65,7 @@ public:
+     void set_topk(int32_t topk) noexcept;
+     void set_count_interval(size_t count_interval);
+     void set_time_interval(size_t time_interval);
++    void set_stall_watch(int32_t pass_ms, int32_t pass_count) noexcept;
+ 
+     Stats stats_;
+ 
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/irunner.h b/node_modules/react-native-executorch/legacy/cpp/runner/irunner.h
+index 3637dd6..64360b0 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/irunner.h
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/irunner.h
+@@ -71,6 +71,9 @@ struct GenerationConfig {
+     // Values > 1.0 discourage repetition. 1.0 disables the penalty.
+     float repetition_penalty = 1.0f;
+ 
++    int32_t stall_pass_ms = 0;
++    int32_t stall_pass_count = 2;
++
+     // Token-batching parameters for the streaming token callback. The
+     // generator flushes a batch when either `output_token_batch_size` tokens
+     // have accumulated or `batch_time_interval_ms` milliseconds have elapsed
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp
-index bfef1f5..884c617 100644
+index bfef1f5..18ac58f 100644
 --- a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp
-@@ -399,6 +399,9 @@ MultimodalPrefiller::prefill(const std::vector<MultimodalInput> &inputs,
+@@ -399,12 +399,18 @@ MultimodalPrefiller::prefill(const std::vector<MultimodalInput> &inputs,
      }
      const int64_t num_chunks = (total_len + chunk_cap - 1) / chunk_cap;
      for (int64_t ci = 0; ci < num_chunks; ++ci) {
@@ -12,6 +124,15 @@ index bfef1f5..884c617 100644
          const int64_t chunk_start = ci * chunk_cap;
          const int64_t chunk_end = std::min(chunk_start + chunk_cap, total_len);
          const int64_t chunk_len = chunk_end - chunk_start;
++        const auto chunk_started = std::chrono::steady_clock::now();
+         auto res = prefillChunk(last_outs, embeds_buf, chunk_start, chunk_len,
+                                 hidden, embeds_elem_size, embeds_dtype,
+                                 ple_embeddings, cache_positions);
++        decoder_runner_->record_pass(std::chrono::steady_clock::now() -
++                                     chunk_started);
+         if (res != ::executorch::runtime::Error::Ok) {
+             return res;
+         }
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp
 index ec11c10..e300fa8 100644
 --- a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp
@@ -48,38 +169,98 @@ index ec11c10..e300fa8 100644
      if (mm_token_generator_) {
          mm_token_generator_->stop();
      }
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.h b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.h
+index 4ecec3e..bd224c5 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.h
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.h
+@@ -28,6 +28,9 @@ public:
+     bool is_loaded() const override;
+     bool is_multimodal() const override { return true; }
+     int32_t get_visual_token_count() const override;
++    bool last_generation_stalled() const override {
++        return mm_decoder_runner_ && mm_decoder_runner_->stalled();
++    }
+ 
+     ::executorch::runtime::Error generate_internal(
+         const std::vector<MultimodalInput> &inputs,
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp
+index dbc4459..88fcaa1 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp
+@@ -13,6 +13,7 @@
+ #include "irunner.h"
+ #include "stats.h"
+ 
++#include <algorithm>
+ #include <ctime>
+ 
+ namespace rne_legacy {
+@@ -86,6 +87,24 @@ TextDecoderRunner::step(TensorPtr &tokens, int64_t start_pos) {
+     }
+ }
+ 
++void TextDecoderRunner::record_pass(
++    std::chrono::steady_clock::duration elapsed) {
++    if (config_.stall_pass_ms <= 0) {
++        return;
++    }
++    const auto elapsed_ms =
++        std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
++    if (elapsed_ms < config_.stall_pass_ms) {
++        slow_passes_ = 0;
++        return;
++    }
++    slow_passes_ += 1;
++    if (slow_passes_ >= std::max<int32_t>(1, config_.stall_pass_count)) {
++        stalled_ = true;
++        should_stop_ = true;
++    }
++}
++
+ int32_t TextDecoderRunner::logits_to_token(
+     const executorch::aten::Tensor &logits_tensor,
+     const std::vector<uint64_t> &recent_tokens) {
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h
-index e289df8..7f5c17b 100644
+index e289df8..df315e8 100644
 --- a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h
-@@ -13,6 +13,7 @@
+@@ -13,6 +13,8 @@
  #include "constants.h"
  #include "io_manager.h"
  #include "sampler.h"
 +#include <atomic>
++#include <chrono>
  
  namespace rne_legacy {
  namespace extension {
-@@ -62,6 +63,8 @@ public:
+@@ -62,6 +64,14 @@ public:
      }
  
      inline void stop() { should_stop_ = true; }
-+    inline void clear_stop() { should_stop_ = false; }
++    inline void clear_stop() {
++        should_stop_ = false;
++        stalled_ = false;
++        slow_passes_ = 0;
++    }
 +    inline bool stop_requested() const { return should_stop_.load(); }
++    inline bool stalled() const { return stalled_.load(); }
++    void record_pass(std::chrono::steady_clock::duration elapsed);
  
      /**
       * Sample the next token from the logits tensor using the sampling
-@@ -76,7 +79,7 @@ protected:
+@@ -76,7 +86,9 @@ protected:
      // Non-owning. The runner (BaseLLMRunner) owns the Module and outlives this.
      Module *module_;
      IOManager *io_manager_;
 -    bool should_stop_{false};
 +    std::atomic<bool> should_stop_{false};
++    std::atomic<bool> stalled_{false};
++    int32_t slow_passes_{0};
      const GenerationConfig &config_;
  };
  
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_prefiller.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/text_prefiller.cpp
-index 6a10166..a0f3ab3 100644
+index 6a10166..65bcdba 100644
 --- a/node_modules/react-native-executorch/legacy/cpp/runner/text_prefiller.cpp
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_prefiller.cpp
 @@ -46,6 +46,9 @@ TextPrefiller::prefill(std::vector<uint64_t> &prompt_tokens,
@@ -91,6 +272,30 @@ index 6a10166..a0f3ab3 100644
 +            }
              auto num_tokens_to_prefill_with =
                  std::min<int>(num_prompt_tokens - num_tokens_to_process, chunk_size);
+ 
+@@ -57,7 +60,10 @@ TextPrefiller::prefill(std::vector<uint64_t> &prompt_tokens,
+                       prompt_tokens_to_process.begin());
+ 
+             // Process this chunk
++            const auto chunk_started = std::chrono::steady_clock::now();
+             auto chunk_result = prefill_chunk(prompt_tokens_to_process, start_pos);
++            text_decoder_runner_->record_pass(std::chrono::steady_clock::now() -
++                                              chunk_started);
+             ET_CHECK_OK_OR_RETURN_ERROR(chunk_result.error());
+             cur_token = chunk_result.get();
+ 
+@@ -67,7 +73,11 @@ TextPrefiller::prefill(std::vector<uint64_t> &prompt_tokens,
+         return cur_token;
+     } else {
+         // If prompt tokens don't exceed max_seq_len_, process them directly
+-        return prefill_chunk(prompt_tokens, start_pos);
++        const auto chunk_started = std::chrono::steady_clock::now();
++        auto chunk_result = prefill_chunk(prompt_tokens, start_pos);
++        text_decoder_runner_->record_pass(std::chrono::steady_clock::now() -
++                                          chunk_started);
++        return chunk_result;
+     }
+ }
  
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.cpp
 index e65c70f..4b99770 100644
@@ -129,11 +334,25 @@ index e65c70f..4b99770 100644
      if (text_token_generator_)
          text_token_generator_->stop();
  }
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.h b/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.h
+index 63d4ec6..4892a88 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.h
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.h
+@@ -21,6 +21,9 @@ public:
+                                                           .topp = 0.9F});
+ 
+     bool is_loaded() const override;
++    bool last_generation_stalled() const override {
++        return text_decoder_runner_ && text_decoder_runner_->stalled();
++    }
+ 
+     ::executorch::runtime::Error generate_internal(
+         const std::vector<MultimodalInput> &inputs,
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h b/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
-index 6c68441..9b9a22e 100644
+index 6c68441..2a55f83 100644
 --- a/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
-@@ -91,7 +91,6 @@ public:
+@@ -91,13 +91,15 @@ public:
                                          executorch::aten::ScalarType::Long);
  
          std::vector<uint64_t> generated_tokens(tokens.begin(), tokens.end());
@@ -141,7 +360,36 @@ index 6c68441..9b9a22e 100644
          timestamp_ = std::chrono::high_resolution_clock::now();
  
          // Generate our tokens
-@@ -170,6 +169,7 @@ public:
+         while (pos < start_pos + max_new_tokens) {
+             // Run the model
++            const auto pass_started = std::chrono::steady_clock::now();
+             auto logits_res = text_decoder_runner_->step(tokens_managed, pos);
++            text_decoder_runner_->record_pass(std::chrono::steady_clock::now() -
++                                              pass_started);
+ 
+             ET_CHECK_OK_OR_RETURN_ERROR(logits_res.error());
+             executorch::aten::Tensor &logits_tensor = logits_res.get();
+@@ -145,15 +147,17 @@ public:
+             const auto countIntervalElapsed =
+                 token_cache.size() > config_.output_token_batch_size;
+             const auto eos_reached = eos_ids_->contains(cur_token);
++            const bool stopping =
++                should_stop_ || text_decoder_runner_->stop_requested();
+ 
+             if (!cache_decoded.ends_with("�") &&
+-                (countIntervalElapsed || timeIntervalElapsed || should_stop_ || eos_reached)) {
++                (countIntervalElapsed || timeIntervalElapsed || stopping || eos_reached)) {
+                 token_callback(cache_decoded);
+                 token_cache.clear();
+                 timestamp_ = std::chrono::high_resolution_clock::now();
+             }
+ 
+-            if (should_stop_) {
++            if (stopping) {
+                 break;
+             }
+             // data-dependent terminating condition: we have n_eos_ number of EOS
+@@ -170,6 +174,7 @@ public:
       * Stop the generation loop.
       */
      inline void stop() { should_stop_ = true; }
@@ -149,7 +397,7 @@ index 6c68441..9b9a22e 100644
  
      /**
       * Load the necessary resources for TextTokenGenerator.
-@@ -201,7 +201,7 @@ private:
+@@ -201,7 +206,7 @@ private:
      bool use_kv_cache_;
  
      // state machine
@@ -158,3 +406,165 @@ index 6c68441..9b9a22e 100644
      std::chrono::high_resolution_clock::time_point timestamp_;
  
      // stats
+diff --git a/node_modules/react-native-executorch/legacy/src/controllers/LLMController.ts b/node_modules/react-native-executorch/legacy/src/controllers/LLMController.ts
+index af0450a..8189fbf 100644
+--- a/node_modules/react-native-executorch/legacy/src/controllers/LLMController.ts
++++ b/node_modules/react-native-executorch/legacy/src/controllers/LLMController.ts
+@@ -16,6 +16,8 @@ import { Logger } from '../common/Logger';
+ import { RnExecutorchError, parseUnknownError } from '../errors/errorUtils';
+ import { RnExecutorchErrorCode } from '../errors/ErrorCodes';
+ 
++const DEFAULT_STALL_PASS_COUNT = 2;
++
+ export class LLMController {
+   private nativeModule: any;
+   private chatConfig: ChatConfig = DEFAULT_CHAT_CONFIG;
+@@ -206,6 +208,16 @@ export class LLMController {
+       }
+       this.nativeModule.setRepetitionPenalty(generationConfig.repetitionPenalty);
+     }
++    if (generationConfig.stallPassMs !== undefined) {
++      const stallPassCount = generationConfig.stallPassCount ?? DEFAULT_STALL_PASS_COUNT;
++      if (generationConfig.stallPassMs < 0 || stallPassCount < 1) {
++        throw new RnExecutorchError(
++          RnExecutorchErrorCode.InvalidConfig,
++          'Stall pass time must be non-negative and the pass count at least 1'
++        );
++      }
++      this.nativeModule.setStallWatch(generationConfig.stallPassMs, stallPassCount);
++    }
+   }
+ 
+   private getImageToken(): string {
+@@ -329,6 +341,13 @@ export class LLMController {
+     return this.getGeneratedTokenCount() + this.getPromptTokenCount();
+   }
+ 
++  public lastGenerationStalled(): boolean {
++    if (!this.nativeModule) {
++      return false;
++    }
++    return this.nativeModule.lastGenerationStalled();
++  }
++
+   public async generate(messages: Message[], tools?: LLMTool[]): Promise<string> {
+     if (!this._isReady) {
+       throw new RnExecutorchError(
+diff --git a/node_modules/react-native-executorch/legacy/src/modules/natural_language_processing/LLMModule.ts b/node_modules/react-native-executorch/legacy/src/modules/natural_language_processing/LLMModule.ts
+index f5b0d72..76a9dd5 100644
+--- a/node_modules/react-native-executorch/legacy/src/modules/natural_language_processing/LLMModule.ts
++++ b/node_modules/react-native-executorch/legacy/src/modules/natural_language_processing/LLMModule.ts
+@@ -225,6 +225,10 @@ export class LLMModule {
+     return this.controller.getTotalTokenCount();
+   }
+ 
++  lastGenerationStalled(): boolean {
++    return this.controller.lastGenerationStalled();
++  }
++
+   /**
+    * Method to delete the model from memory.
+    * Note you cannot delete model while it's generating.
+diff --git a/node_modules/react-native-executorch/legacy/src/types/llm.ts b/node_modules/react-native-executorch/legacy/src/types/llm.ts
+index 16de2f2..c52f01b 100644
+--- a/node_modules/react-native-executorch/legacy/src/types/llm.ts
++++ b/node_modules/react-native-executorch/legacy/src/types/llm.ts
+@@ -386,6 +386,8 @@ export interface GenerationConfig {
+   repetitionPenalty?: number;
+   outputTokenBatchSize?: number;
+   batchTimeInterval?: number;
++  stallPassMs?: number;
++  stallPassCount?: number;
+ }
+ 
+ /**
+diff --git a/node_modules/react-native-executorch/lib/module/legacy/src/controllers/LLMController.js b/node_modules/react-native-executorch/lib/module/legacy/src/controllers/LLMController.js
+index a71f4a0..1e8d0bd 100644
+--- a/node_modules/react-native-executorch/lib/module/legacy/src/controllers/LLMController.js
++++ b/node_modules/react-native-executorch/lib/module/legacy/src/controllers/LLMController.js
+@@ -6,6 +6,7 @@ import { parseToolCall } from '../utils/llm';
+ import { Logger } from '../common/Logger';
+ import { RnExecutorchError, parseUnknownError } from '../errors/errorUtils';
+ import { RnExecutorchErrorCode } from '../errors/ErrorCodes';
++const DEFAULT_STALL_PASS_COUNT = 2;
+ export class LLMController {
+     nativeModule;
+     chatConfig = DEFAULT_CHAT_CONFIG;
+@@ -137,6 +138,13 @@ export class LLMController {
+             }
+             this.nativeModule.setRepetitionPenalty(generationConfig.repetitionPenalty);
+         }
++        if (generationConfig.stallPassMs !== undefined) {
++            const stallPassCount = generationConfig.stallPassCount ?? DEFAULT_STALL_PASS_COUNT;
++            if (generationConfig.stallPassMs < 0 || stallPassCount < 1) {
++                throw new RnExecutorchError(RnExecutorchErrorCode.InvalidConfig, 'Stall pass time must be non-negative and the pass count at least 1');
++            }
++            this.nativeModule.setStallWatch(generationConfig.stallPassMs, stallPassCount);
++        }
+     }
+     getImageToken() {
+         const token = this.tokenizerConfig.image_token;
+@@ -230,6 +238,12 @@ export class LLMController {
+     getTotalTokenCount() {
+         return this.getGeneratedTokenCount() + this.getPromptTokenCount();
+     }
++    lastGenerationStalled() {
++        if (!this.nativeModule) {
++            return false;
++        }
++        return this.nativeModule.lastGenerationStalled();
++    }
+     async generate(messages, tools) {
+         if (!this._isReady) {
+             throw new RnExecutorchError(RnExecutorchErrorCode.ModuleNotLoaded, 'The model is currently not loaded. Please load the model before calling generate().');
+diff --git a/node_modules/react-native-executorch/lib/module/legacy/src/modules/natural_language_processing/LLMModule.js b/node_modules/react-native-executorch/lib/module/legacy/src/modules/natural_language_processing/LLMModule.js
+index 8e348d8..5e87e13 100644
+--- a/node_modules/react-native-executorch/lib/module/legacy/src/modules/natural_language_processing/LLMModule.js
++++ b/node_modules/react-native-executorch/lib/module/legacy/src/modules/natural_language_processing/LLMModule.js
+@@ -164,6 +164,9 @@ export class LLMModule {
+     getTotalTokensCount() {
+         return this.controller.getTotalTokenCount();
+     }
++    lastGenerationStalled() {
++        return this.controller.lastGenerationStalled();
++    }
+     /**
+      * Method to delete the model from memory.
+      * Note you cannot delete model while it's generating.
+diff --git a/node_modules/react-native-executorch/lib/typescript/legacy/src/controllers/LLMController.d.ts b/node_modules/react-native-executorch/lib/typescript/legacy/src/controllers/LLMController.d.ts
+index 0aef856..bafb0a3 100644
+--- a/node_modules/react-native-executorch/lib/typescript/legacy/src/controllers/LLMController.d.ts
++++ b/node_modules/react-native-executorch/lib/typescript/legacy/src/controllers/LLMController.d.ts
+@@ -42,6 +42,7 @@ export declare class LLMController {
+     getGeneratedTokenCount(): number;
+     getPromptTokenCount(): number;
+     getTotalTokenCount(): number;
++    lastGenerationStalled(): boolean;
+     generate(messages: Message[], tools?: LLMTool[]): Promise<string>;
+     sendMessage(message: string, media?: {
+         imagePath?: string;
+diff --git a/node_modules/react-native-executorch/lib/typescript/legacy/src/modules/natural_language_processing/LLMModule.d.ts b/node_modules/react-native-executorch/lib/typescript/legacy/src/modules/natural_language_processing/LLMModule.d.ts
+index 9e3ba4a..d89b954 100644
+--- a/node_modules/react-native-executorch/lib/typescript/legacy/src/modules/natural_language_processing/LLMModule.d.ts
++++ b/node_modules/react-native-executorch/lib/typescript/legacy/src/modules/natural_language_processing/LLMModule.d.ts
+@@ -121,6 +121,7 @@ export declare class LLMModule {
+      * @returns The count of prompt and generated tokens.
+      */
+     getTotalTokensCount(): number;
++    lastGenerationStalled(): boolean;
+     /**
+      * Method to delete the model from memory.
+      * Note you cannot delete model while it's generating.
+diff --git a/node_modules/react-native-executorch/lib/typescript/legacy/src/types/llm.d.ts b/node_modules/react-native-executorch/lib/typescript/legacy/src/types/llm.d.ts
+index 86ed728..eb5aed2 100644
+--- a/node_modules/react-native-executorch/lib/typescript/legacy/src/types/llm.d.ts
++++ b/node_modules/react-native-executorch/lib/typescript/legacy/src/types/llm.d.ts
+@@ -312,6 +312,8 @@ export interface GenerationConfig {
+     repetitionPenalty?: number;
+     outputTokenBatchSize?: number;
+     batchTimeInterval?: number;
++    stallPassMs?: number;
++    stallPassCount?: number;
+ }
+ /**
+  * Defines a strategy for managing the conversation context window and message history.
