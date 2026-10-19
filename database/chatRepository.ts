@@ -37,6 +37,10 @@ export type ChatSettings = {
 
 export type GroundingCaveatKind = 'figure' | 'trend' | 'conversion';
 
+export const MEMORY_CUT_SHORT = 'memory';
+
+export type CutShortReason = typeof MEMORY_CUT_SHORT;
+
 export type Message = {
   id: number;
   localId?: number;
@@ -51,6 +55,7 @@ export type Message = {
   tokensPerSecond?: number;
   timeToFirstToken?: number;
   stoppedByUser?: boolean;
+  cutShortReason?: CutShortReason;
   timestamp: number;
 };
 
@@ -74,12 +79,18 @@ export const sourceKind = (source: SourceDocument): SourceKind =>
 
 type RawMessage = Omit<
   Message,
-  'sourceDocuments' | 'groundingCaveats' | 'stoppedByUser'
+  'sourceDocuments' | 'groundingCaveats' | 'stoppedByUser' | 'cutShortReason'
 > & {
   sourceDocuments?: string | null;
   groundingCaveats?: string | null;
   stoppedByUser?: number | null;
+  cutShortReason?: string | null;
 };
+
+const parseCutShortReason = (
+  cutShortReason?: string | null
+): CutShortReason | undefined =>
+  cutShortReason === MEMORY_CUT_SHORT ? MEMORY_CUT_SHORT : undefined;
 
 const GROUNDING_CAVEAT_KINDS: GroundingCaveatKind[] = [
   'figure',
@@ -228,6 +239,7 @@ export const getChatMessages = async (
     sourceDocuments: parseSourceDocuments(message.sourceDocuments),
     groundingCaveats: parseGroundingCaveats(message.groundingCaveats),
     stoppedByUser: message.stoppedByUser === 1,
+    cutShortReason: parseCutShortReason(message.cutShortReason),
   }));
 };
 
@@ -242,12 +254,23 @@ export const markMessageStopped = async (
   ]);
 };
 
+export const markMessageCutShort = async (
+  db: SQLiteDatabase,
+  messageId: number,
+  reason: CutShortReason | null
+): Promise<void> => {
+  await db.runAsync(`UPDATE messages SET cutShortReason = ? WHERE id = ?`, [
+    reason,
+    messageId,
+  ]);
+};
+
 export const persistMessage = async (
   db: SQLiteDatabase,
   message: Omit<Message, 'id' | 'timestamp'>
 ): Promise<number> => {
   const result = await db.runAsync(
-    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, stoppedByUser) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, stoppedByUser, cutShortReason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
     [
       message.chatId,
       message.role,
@@ -264,6 +287,7 @@ export const persistMessage = async (
         ? JSON.stringify(message.groundingCaveats)
         : null,
       message.stoppedByUser ? 1 : 0,
+      message.cutShortReason ?? null,
     ]
   );
 

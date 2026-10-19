@@ -49,6 +49,7 @@ import { Feedback } from '../../utils/Feedback';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import BranchMarker from './BranchMarker';
 import StoppedMarker from './StoppedMarker';
+import { endsTurnCutShort } from './cutShortTurn';
 import Toast from 'react-native-toast-message';
 import {
   BOTTOM_FADE_HEIGHT,
@@ -665,7 +666,7 @@ const Messages = ({
 
   const lastMessage = chatHistory[chatHistory.length - 1];
   const stoppedTurnKey =
-    lastMessage && lastMessage.stoppedByUser
+    lastMessage && (lastMessage.stoppedByUser || lastMessage.cutShortReason)
       ? messageRowKey(lastMessage, chatHistory.length - 1)
       : null;
 
@@ -1105,6 +1106,9 @@ const Messages = ({
                         : undefined
                     }
                   />
+                )}
+                {endsTurnCutShort(chatHistory, index) && (
+                  <StoppedMarker reason={message.cutShortReason} />
                 )}
                 {branchMarker && (
                   <BranchMarker

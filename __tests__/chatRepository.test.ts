@@ -2,6 +2,7 @@ import {
   forkChat,
   getChatDigest,
   getChatMessages,
+  markMessageCutShort,
   persistMessage,
   setChatDigest,
 } from '../database/chatRepository';
@@ -75,6 +76,67 @@ describe('persistMessage with imagePath', () => {
       expect.stringContaining('sourceDocuments'),
       expect.arrayContaining([JSON.stringify(sourceDocuments)])
     );
+  });
+});
+
+describe('a message a memory stall cut short', () => {
+  it('stores why it was cut short', async () => {
+    const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 4 });
+    const mockDb = { runAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    await persistMessage(mockDb, {
+      role: 'assistant',
+      content: 'It began in',
+      chatId: 1,
+      cutShortReason: 'memory',
+    });
+
+    expect(runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('cutShortReason'),
+      expect.arrayContaining(['memory'])
+    );
+  });
+
+  it('marks and clears an existing message', async () => {
+    const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 0 });
+    const mockDb = { runAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    await markMessageCutShort(mockDb, 9, 'memory');
+    await markMessageCutShort(mockDb, 9, null);
+
+    expect(runAsync).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('cutShortReason'),
+      ['memory', 9]
+    );
+    expect(runAsync).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('cutShortReason'),
+      [null, 9]
+    );
+  });
+
+  it('reads the reason back and ignores one it does not know', async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 1,
+        chatId: 1,
+        role: 'user',
+        content: 'a',
+        cutShortReason: 'memory',
+      },
+      { id: 2, chatId: 1, role: 'user', content: 'b', cutShortReason: 'gpu' },
+      { id: 3, chatId: 1, role: 'user', content: 'c', cutShortReason: null },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(messages.map((message) => message.cutShortReason)).toEqual([
+      'memory',
+      undefined,
+      undefined,
+    ]);
   });
 });
 

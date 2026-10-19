@@ -612,6 +612,8 @@ const shapeInstructions = (candidates: string[]): string =>
 const isAbandonedQuestion = (message: Message): boolean =>
   message.role === 'user' && !!message.stoppedByUser;
 
+const wasCutShort = (message: Message): boolean => !!message.cutShortReason;
+
 const DEFAULT_PROMPT_DOCUMENT_SENTENCE =
   'When given context from documents, use that information to give comprehensive answers while being concise and relevant.';
 
@@ -715,7 +717,7 @@ export const prepareMessagesForLLM = (
 
   const nonEventMessages = activeChatMessages.filter(
     (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
-      msg.role !== 'event' && !isAbandonedQuestion(msg)
+      msg.role !== 'event' && !isAbandonedQuestion(msg) && !wasCutShort(msg)
   );
   const lastNonEventMessage = nonEventMessages.at(-1);
   const messagesForLLM =

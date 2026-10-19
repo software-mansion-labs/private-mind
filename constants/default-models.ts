@@ -124,6 +124,19 @@ export const DEFAULT_REPETITION_PENALTY = DEFAULT_PROFILE.repetitionPenalty;
 
 export const GROUNDED_REPETITION_PENALTY = 1;
 
+const MLX_DELEGATE_PATH_SEGMENT = 'mlx';
+
+export const runsOnMlxDelegate = (model: Pick<Model, 'modelPath'>): boolean =>
+  model.modelPath.split('/').includes(MLX_DELEGATE_PATH_SEGMENT);
+
+export const MEMORY_STALL_PASS_MS = 3_000;
+export const MEMORY_STALL_PASS_COUNT = 2;
+
+const MEMORY_STALL_WATCH = {
+  stallPassMs: MEMORY_STALL_PASS_MS,
+  stallPassCount: MEMORY_STALL_PASS_COUNT,
+};
+
 export const getGenerationConfigForModel = (
   model: ProfileTarget & Pick<Model, 'modelPath'>,
   grounded: boolean = false
@@ -131,6 +144,7 @@ export const getGenerationConfigForModel = (
   repetitionPenalty: getModelProfile(model).repetitionPenalty,
   ...GENERATION_CONFIG_BY_MODEL_PATH[model.modelPath],
   ...(grounded ? { repetitionPenalty: GROUNDED_REPETITION_PENALTY } : {}),
+  ...(runsOnMlxDelegate(model) ? MEMORY_STALL_WATCH : {}),
 });
 
 export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [

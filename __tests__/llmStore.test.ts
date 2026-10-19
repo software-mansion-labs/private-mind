@@ -91,6 +91,7 @@ const makeMockInstance = () => ({
   delete: jest.fn(),
   configure: jest.fn(),
   getGeneratedTokenCount: jest.fn(() => 10),
+  lastGenerationStalled: jest.fn(() => false),
 });
 
 let mockInstance = makeMockInstance();
