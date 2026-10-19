@@ -8,7 +8,7 @@ import {
 } from '@dr.pogodin/react-native-fs';
 import { WEB_TRACE_KEEP_FILES } from '../constants/web';
 
-export const traceDirectory = (name: string): string =>
+const traceDirectory = (name: string): string =>
   `${ExternalDirectoryPath || DocumentDirectoryPath}/${name}`;
 
 export const traceFileName = (question: string): string => {

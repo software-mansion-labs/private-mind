@@ -12,7 +12,6 @@ import BenchmarkIcon from '../../assets/icons/benchmark.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useSettingsStore } from '../../store/settingsStore';
 import { Theme } from '../../styles/colors';
-import { DEV_TOOLS } from '../../constants/dev-tools';
 
 const SettingsScreen = () => {
   useDefaultHeader();
@@ -24,8 +23,6 @@ const SettingsScreen = () => {
   const setShowPerformanceMetrics = useSettingsStore(
     (state) => state.setShowPerformanceMetrics
   );
-
-  const handleOpenDevBenchmark = () => router.push('/dev-benchmark');
 
   return (
     <View style={styles.container}>
@@ -58,17 +55,6 @@ const SettingsScreen = () => {
             onPress={() => router.push('/app-info')}
           />
         </SettingsSection>
-        {DEV_TOOLS && (
-          <SettingsSection title="Developer">
-            <SettingsRow
-              label="Dev benchmark"
-              icon={
-                <BenchmarkIcon width={20} height={20} style={styles.rowIcon} />
-              }
-              onPress={handleOpenDevBenchmark}
-            />
-          </SettingsSection>
-        )}
       </ScrollView>
     </View>
   );
