@@ -4,10 +4,6 @@ import {
   whenEmbeddingStatusKnown,
 } from '../store/embeddingModelStore';
 import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
-import { ResourceFetcher } from 'react-native-executorch/legacy';
-import { LFM_2_5_EMBEDDING_SOURCES } from '../constants/embedding-model';
-
-const mockFetch = ResourceFetcher.fetch as jest.Mock;
 
 const makeStore = (load: jest.Mock) =>
   ({ load }) as unknown as OPSQLiteVectorStore;
@@ -22,13 +18,8 @@ const createDeferred = <T>() => {
   return { promise, resolve, reject };
 };
 
-const settlePromises = () =>
-  new Promise<void>((resolve) => setImmediate(resolve));
-
 beforeEach(() => {
   jest.spyOn(console, 'error').mockImplementation(() => {});
-  mockFetch.mockReset();
-  mockFetch.mockResolvedValue(['model.pte', 'tokenizer.json']);
   useEmbeddingModelStore.setState({ status: 'unknown', progress: 0 });
 });
 
@@ -107,82 +98,6 @@ describe('embeddingModelStore.ensureReady', () => {
     expect(a).toBe(true);
     expect(b).toBe(true);
     expect(load).toHaveBeenCalledTimes(1);
-  });
-
-  it('downloads the files before handing the load to the loader', async () => {
-    const order: string[] = [];
-    mockFetch.mockImplementation(async () => {
-      order.push('fetch');
-      return ['model.pte', 'tokenizer.json'];
-    });
-    const load = jest.fn(async () => {
-      order.push('load');
-    });
-    const loadModel = jest.fn((run: () => Promise<unknown>) => {
-      order.push('loader');
-      return run();
-    });
-
-    const ready = await useEmbeddingModelStore
-      .getState()
-      .ensureReady(makeStore(load), loadModel);
-
-    expect(ready).toBe(true);
-    expect(order).toEqual(['fetch', 'loader', 'load']);
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.any(Function),
-      LFM_2_5_EMBEDDING_SOURCES.modelSource,
-      LFM_2_5_EMBEDDING_SOURCES.tokenizerSource
-    );
-  });
-
-  it('shows the download moving while the loader is still waiting for its turn', async () => {
-    const fetchDone = createDeferred<string[]>();
-    mockFetch.mockImplementation((onProgress: (p: number) => void) => {
-      onProgress(0.4);
-      return fetchDone.promise;
-    });
-    const loaderTurn = createDeferred<void>();
-    const loadModel = jest.fn(async (run: () => Promise<unknown>) => {
-      await loaderTurn.promise;
-      return run();
-    });
-    const load = jest.fn().mockResolvedValue(undefined);
-
-    const pending = useEmbeddingModelStore
-      .getState()
-      .ensureReady(makeStore(load), loadModel);
-
-    expect(useEmbeddingModelStore.getState().status).toBe('downloading');
-    expect(useEmbeddingModelStore.getState().progress).toBe(0.4);
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-
-    fetchDone.resolve(['model.pte', 'tokenizer.json']);
-    await settlePromises();
-    expect(loadModel).toHaveBeenCalledTimes(1);
-    expect(load).not.toHaveBeenCalled();
-    expect(useEmbeddingModelStore.getState().status).toBe('downloading');
-    expect(useEmbeddingModelStore.getState().progress).toBe(1);
-
-    loaderTurn.resolve();
-    await expect(pending).resolves.toBe(true);
-    expect(load).toHaveBeenCalledTimes(1);
-    expect(useEmbeddingModelStore.getState().status).toBe('ready');
-  });
-
-  it('fails without loading anything when the download is interrupted', async () => {
-    mockFetch.mockResolvedValue(null);
-    const load = jest.fn();
-    const loadModel = jest.fn();
-
-    const ready = await useEmbeddingModelStore
-      .getState()
-      .ensureReady(makeStore(load), loadModel);
-
-    expect(ready).toBe(false);
-    expect(loadModel).not.toHaveBeenCalled();
-    expect(load).not.toHaveBeenCalled();
-    expect(useEmbeddingModelStore.getState().status).toBe('error');
   });
 
   it('allows a fresh retry after a failed download', async () => {

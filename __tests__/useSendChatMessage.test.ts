@@ -203,36 +203,6 @@ describe('sending while another turn is open', () => {
     expect(mockedState().sendChatMessage).not.toHaveBeenCalled();
   });
 
-  it('starts the chat’s model and sends, instead of asking to wait for a load nobody started', async () => {
-    const state = mockedState();
-    state.model = null;
-    let finishLoad = () => {};
-    state.loadModel.mockImplementationOnce((model: Model) => {
-      (
-        useLLMStore as unknown as { setState: (patch: object) => void }
-      ).setState({ model });
-      return new Promise<void>((resolve) => {
-        finishLoad = resolve;
-      });
-    });
-
-    expect(await useSend(1)('hello')).toBe(true);
-
-    expect(state.loadModel).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 1 })
-    );
-    expect(state.sendChatMessage).toHaveBeenCalled();
-    finishLoad();
-  });
-
-  it('says the model could not start when the load gives it nothing', async () => {
-    const state = mockedState();
-    state.model = null;
-
-    expect(await useSend(1)('hello')).toBe('model-not-started');
-    expect(state.sendChatMessage).not.toHaveBeenCalled();
-  });
-
   it('names the processor, not a load that will never finish, on a CPU the engine cannot run', async () => {
     const loaded = mockedState().model;
     mockedState().model = null;

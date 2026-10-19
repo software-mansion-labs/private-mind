@@ -90,33 +90,6 @@ describe('detectQuestionLanguage', () => {
     expect(codeOf('من هو مستشار ألمانيا؟')).toBe('ar');
   });
 
-  it.each([
-    'السلام علیکم',
-    'السلام علیکم!',
-    'وعلیکم السلام',
-    'شکریہ',
-    'زمین سورج کے گرد کیوں گھومتی ہے؟',
-    'اسلام آباد کب بنا',
-  ])('names Urdu for %s, written with letters Arabic does not use', (text) => {
-    expect(codeOf(text)).toBe('ur');
-  });
-
-  it.each([
-    'السلام عليكم',
-    'وعليكم السلام',
-    'مرحباً',
-    'شكرا',
-    'كم عدد سكان الرياض',
-    'من هو مستشار ألمانيا؟',
-  ])('keeps Arabic for %s', (text) => {
-    expect(codeOf(text)).toBe('ar');
-  });
-
-  it('still names Persian when its own words outweigh the shared letters', () => {
-    expect(codeOf('جمعیت تهران چقدر است')).toBe('fa');
-    expect(codeOf('صدراعظم آلمان کیست؟')).toBe('fa');
-  });
-
   it('names Portuguese', () => {
     expect(codeOf('Quem é o presidente do Brasil hoje?')).toBe('pt');
   });

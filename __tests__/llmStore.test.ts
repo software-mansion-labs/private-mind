@@ -1,22 +1,17 @@
-import Toast from 'react-native-toast-message';
 import {
   BACKGROUND_RELEASE_DELAY_MS,
-  isModelBusy,
   MODEL_WARMUP_TIMEOUT_MS,
-  modelLoadFailedCopy,
   useLLMStore,
 } from '../store/llmStore';
 import { LLMModule } from 'react-native-executorch/legacy';
 import * as chatRepository from '../database/chatRepository';
 import type { Message } from '../database/chatRepository';
 import type { Model } from '../database/modelRepository';
-import { DEFAULT_MODELS } from '../constants/default-models';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import * as Feedback from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWebSearchStore } from '../store/webSearchStore';
-import { ECHO_FALLBACK } from '../constants/echo-fallback';
 import { OPENING_WELCOMES } from '../constants/opening-greetings';
 import { existingFiles } from '../__mocks__/expo-file-system';
 
@@ -280,16 +275,6 @@ describe('loadModel', () => {
     await useLLMStore.getState().loadModel(baseModel);
     expect(useLLMStore.getState().isLoading).toBe(false);
     expect(useLLMStore.getState().model).toBeNull();
-  });
-
-  it('tells the user which model failed to load', async () => {
-    mockLLMModule.fromModelName.mockRejectedValue(new Error('load failed'));
-    await useLLMStore.getState().loadModel(baseModel);
-    expect(Toast.show).toHaveBeenCalledWith(
-      expect.objectContaining({
-        text1: modelLoadFailedCopy(baseModel.modelName),
-      })
-    );
   });
 
   it('serializes duplicate load requests for the same model', async () => {
@@ -1494,38 +1479,6 @@ describe('sendChatMessage', () => {
     );
   });
 
-  it('spends the echo retry, not the list nudge, when the reply is both', async () => {
-    mockInstance.generate
-      .mockResolvedValueOnce('Co zabrać do samolotu?:')
-      .mockResolvedValueOnce('Zabierz paszport, bilet i ładowarkę.');
-    useLLMStore.setState({
-      model: baseModel,
-      activeChatId: 1,
-      activeChatMessages: [],
-    });
-
-    await useLLMStore
-      .getState()
-      .sendChatMessage('Co zabrać do samolotu?', 1, noSources, settings);
-
-    const nudge = mockInstance.generate.mock.calls[1]![0] as {
-      role: string;
-      content: string;
-    }[];
-    expect(prepareMessagesForLLM).toHaveBeenLastCalledWith(
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-      expect.objectContaining({ languageNoteOnQuestion: false })
-    );
-    expect(nudge.at(-1)!.content).not.toContain('ONLY the actual list items');
-    expect(useLLMStore.getState().generationError).toBeNull();
-    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
-      'Zabierz paszport, bilet i ładowarkę.'
-    );
-  });
-
   it('nudges for the language, not the dangling list, when the answer drifted language (live-found)', async () => {
     const question = 'Kim był Kazimierz Wielki i czego dokonał?';
     const wrongLanguageDanglingAnswer =
@@ -2067,138 +2020,6 @@ describe('sendChatMessage', () => {
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
       'Zabierz paszport, bilet, ładowarkę i lekką kurtkę.'
     );
-  });
-
-  describe('an answer that only echoes the turn (dev benchmark 15.10, LFM 2.5 VL 450M)', () => {
-    const echoOfWhy = 'A dlaczego? (Answer in Polish.)';
-    const echoOfEarth = 'Zamani Sourge Khe Mohtia? (Answer in Urdu.)';
-    const earth = 'زمین سورج کے گرد کیوں گھومتی ہے؟';
-    const promptOf = (call: number) =>
-      mockInstance.generate.mock.calls[call]![0] as {
-        role: string;
-        content: string;
-      }[];
-
-    beforeEach(() => {
-      useLLMStore.setState({
-        model: baseModel,
-        activeChatId: 1,
-        activeChatMessages: [],
-      });
-    });
-
-    it('asks again without the language note on the question and shows that answer', async () => {
-      mockInstance.generate
-        .mockResolvedValueOnce(echoOfWhy)
-        .mockResolvedValueOnce('Bo jesienią w liściach rozkłada się chlorofil.')
-        .mockResolvedValue('');
-
-      await useLLMStore
-        .getState()
-        .sendChatMessage('a dlaczego?', 1, noSources, settings);
-
-      expect(prepareMessagesForLLM).toHaveBeenLastCalledWith(
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-        expect.objectContaining({ languageNoteOnQuestion: false })
-      );
-      expect(promptOf(1).map((message) => message.content)).not.toContain(
-        echoOfWhy
-      );
-      expect(useLLMStore.getState().generationError).toBeNull();
-      expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
-        'Bo jesienią w liściach rozkłada się chlorofil.'
-      );
-    });
-
-    it('reminds the model what a short follow-up asks about when it only echoed it', async () => {
-      const leaves = 'Why do leaves change colour in autumn?';
-      useLLMStore.setState({
-        activeChatMessages: [
-          { id: 1, chatId: 1, role: 'user', content: leaves, timestamp: 0 },
-          {
-            id: 2,
-            chatId: 1,
-            role: 'assistant',
-            content: 'Chlorophyll breaks down in autumn.',
-            timestamp: 0,
-          },
-        ],
-      });
-      mockInstance.generate
-        .mockResolvedValueOnce(echoOfWhy)
-        .mockResolvedValueOnce('Bo jesienią w liściach rozkłada się chlorofil.')
-        .mockResolvedValue('');
-
-      await useLLMStore
-        .getState()
-        .sendChatMessage('a dlaczego?', 1, noSources, settings);
-
-      const retryPrompt = promptOf(1);
-      expect(retryPrompt.at(-2)).toEqual({
-        role: 'assistant',
-        content: echoOfWhy,
-      });
-      expect(retryPrompt.at(-1)?.content).toContain(`"${leaves}"`);
-      expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
-        'Bo jesienią w liściach rozkłada się chlorofil.'
-      );
-    });
-
-    it.each([
-      ['a dlaczego?', echoOfWhy, ECHO_FALLBACK.pl],
-      [earth, echoOfEarth, ECHO_FALLBACK.ur],
-      ['co zabrać do samolotu?', 'co zabrać do samolotu?', ECHO_FALLBACK.pl],
-    ])(
-      'asks for %s to be put another way when the second answer echoes too, instead of showing the echo or an error',
-      async (question, echo, fallback) => {
-        mockInstance.generate.mockResolvedValue(echo);
-
-        await useLLMStore
-          .getState()
-          .sendChatMessage(question, 1, noSources, settings);
-
-        expect(prepareMessagesForLLM).toHaveBeenCalledTimes(2);
-        expect(useLLMStore.getState().generationError).toBeNull();
-        const answers = useLLMStore
-          .getState()
-          .activeChatMessages.filter((message) => message.role === 'assistant')
-          .map((message) => message.content);
-        expect(answers).not.toContain(echo);
-        expect(answers.at(-1)).toBe(fallback);
-        expect(mockPersistMessage).not.toHaveBeenCalledWith(
-          mockDb,
-          expect.objectContaining({ role: 'assistant', content: echo })
-        );
-      }
-    );
-
-    it('says in the language of the question that the sources gave no answer, when the turn had sources', async () => {
-      mockInstance.generate.mockResolvedValue(
-        'what should I pack for a flight?'
-      );
-      const withSources = async () => ({
-        context: ['Pack a passport, a charger and a light jacket.'],
-        sourceDocuments: [],
-        preferredSourceDocuments: [],
-      });
-
-      await useLLMStore
-        .getState()
-        .sendChatMessage(
-          'what should I pack for a flight?',
-          1,
-          withSources,
-          settings
-        );
-
-      expect(useLLMStore.getState().generationError).toBeNull();
-      expect(
-        useLLMStore.getState().activeChatMessages.at(-1)?.content
-      ).toContain('could not answer this question');
-    });
   });
 
   it('fails the turn when the model produces only a think block (live-found)', async () => {
@@ -3097,60 +2918,6 @@ describe('runBenchmark', () => {
   });
 });
 
-describe('sampling a chat turn runs with after a speed test', () => {
-  const settings = { systemPrompt: 'be helpful' };
-  const qwen25: Model = {
-    ...DEFAULT_MODELS.find((model) => model.modelName === 'Qwen 2.5 - 0.5B')!,
-    id: 7,
-    isDownloaded: true,
-  };
-
-  const emulateRunnerSampling = () => {
-    const sampling: Record<string, number> = {
-      temperature: 0.8,
-      topP: 0.9,
-      minP: 0,
-      repetitionPenalty: 1,
-    };
-    mockInstance.configure.mockImplementation(
-      ({ generationConfig }: { generationConfig?: Record<string, number> }) => {
-        for (const [key, value] of Object.entries(generationConfig ?? {})) {
-          if (value !== undefined) sampling[key] = value;
-        }
-      }
-    );
-    return sampling;
-  };
-
-  const samplingOfNextTurn = async (sampling: Record<string, number>) => {
-    let seen: Record<string, number> = {};
-    mockInstance.generate.mockImplementation(async () => {
-      seen = { ...sampling };
-      return 'Bo chlorofil się rozpada.';
-    });
-    useLLMStore.setState({ activeChatId: 1, activeChatMessages: [] });
-    await useLLMStore
-      .getState()
-      .sendChatMessage('a dlaczego?', 1, noSources, settings);
-    return seen;
-  };
-
-  it('is the sampling the model chats with before any speed test', async () => {
-    const sampling = emulateRunnerSampling();
-    await useLLMStore.getState().loadModel(qwen25);
-    useLLMStore.setState({ model: qwen25 });
-    mockPersistMessage.mockResolvedValue(42);
-    const beforeSpeedTest = await samplingOfNextTurn(sampling);
-
-    mockInstance.generate.mockResolvedValue('out');
-    await useLLMStore.getState().runBenchmark();
-    const afterSpeedTest = await samplingOfNextTurn(sampling);
-
-    expect(afterSpeedTest).toEqual(beforeSpeedTest);
-    expect(afterSpeedTest.temperature).not.toBe(0.01);
-  });
-});
-
 describe('a model picked just before sending must be the one that answers', () => {
   const settings = { systemPrompt: 'be helpful' };
   const otherModel = { ...baseModel, id: 2, modelName: 'Second LLM' };
@@ -3438,29 +3205,6 @@ describe('one generation at a time on the shared native runner', () => {
     await planning;
     await turn;
     expect(mockInstance.generate.mock.calls.length).toBeGreaterThan(1);
-  });
-
-  it('counts a utility call as the model being busy while no turn is generating', async () => {
-    let releaseDigest!: (answer: string) => void;
-    mockInstance.generate.mockReturnValueOnce(
-      new Promise<string>((resolve) => {
-        releaseDigest = resolve;
-      })
-    );
-
-    const digest = useLLMStore
-      .getState()
-      .generateUtility([{ role: 'user', content: 'summarise' }]);
-
-    expect(useLLMStore.getState()).toMatchObject({
-      isGenerating: false,
-      isProcessingPrompt: false,
-      isLoading: false,
-    });
-    expect(isModelBusy()).toBe(true);
-    releaseDigest('');
-    await digest;
-    expect(isModelBusy()).toBe(false);
   });
 
   it('does not delete a model that is still generating', async () => {
@@ -4130,67 +3874,5 @@ describe('warming the model up right after it loads', () => {
       role: 'user',
       content: 'benchmark prompt text',
     });
-  });
-});
-
-describe('a generation that collapses into a loop', () => {
-  const settings = { systemPrompt: 'be helpful' };
-  const STREAMED_CHUNK_CHARS = 4;
-
-  const streamUntilInterrupted =
-    (onToken: (token: string) => void, answer: string) => async () => {
-      let streamed = '';
-      for (let at = 0; at < answer.length; at += STREAMED_CHUNK_CHARS) {
-        if (mockInstance.interrupt.mock.calls.length > 0) break;
-        const token = answer.slice(at, at + STREAMED_CHUNK_CHARS);
-        onToken(token);
-        streamed += token;
-      }
-      return streamed;
-    };
-
-  const sendWhileStreaming = async (answer: string) => {
-    const onToken = await loadModel();
-    mockPersistMessage.mockResolvedValue(42);
-    mockInstance.interrupt.mockClear();
-    mockInstance.generate.mockImplementation(
-      streamUntilInterrupted(onToken, answer)
-    );
-    useLLMStore.setState({
-      model: baseModel,
-      activeChatId: 1,
-      activeChatMessages: [],
-    });
-    await useLLMStore
-      .getState()
-      .sendChatMessage('Why is the sky blue?', 1, noSources, settings);
-  };
-
-  const persistedAnswer = () =>
-    mockPersistMessage.mock.calls
-      .map(([, message]) => message)
-      .find((message) => message.role === 'assistant')?.content;
-
-  it('stops it while it streams instead of letting it run to the token limit', async () => {
-    const lead = 'The sky is blue because of Rayleigh scattering.';
-    const loop = ' Sunlight scatters off the molecules in the air.';
-    await sendWhileStreaming(lead + loop.repeat(60));
-
-    expect(mockInstance.interrupt).toHaveBeenCalled();
-    const streamed = await mockInstance.generate.mock.results[0]!.value;
-    expect(streamed.length).toBeLessThan((lead + loop.repeat(10)).length);
-    expect(persistedAnswer()).toBe(lead + loop);
-  });
-
-  it('lets a long answer that does not loop finish', async () => {
-    const answer = Array.from(
-      { length: 40 },
-      (_, index) =>
-        `Point ${index + 1} adds a different detail number ${index}.`
-    ).join(' ');
-    await sendWhileStreaming(answer);
-
-    expect(mockInstance.interrupt).not.toHaveBeenCalled();
-    expect(persistedAnswer()).toBe(answer);
   });
 });

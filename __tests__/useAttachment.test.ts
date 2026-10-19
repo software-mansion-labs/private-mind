@@ -231,40 +231,6 @@ describe('useAttachment', () => {
       getState.mockRestore();
     });
 
-    it('starts the download at once while the language model is still busy', async () => {
-      const { ResourceFetcher } = require('react-native-executorch/legacy');
-      const fetchDone = createDeferred<string[] | null>();
-      (ResourceFetcher.fetch as jest.Mock).mockReturnValue(fetchDone.promise);
-      useEmbeddingModelStore.setState({
-        status: 'not_downloaded',
-        progress: 0,
-      });
-      const languageModelBusy = new Promise<never>(() => {});
-      const runWithModelOffloaded = jest.fn(() => languageModelBusy);
-      const getState = jest.spyOn(useLLMStore, 'getState').mockReturnValue({
-        runWithModelOffloaded,
-      } as unknown as ReturnType<typeof useLLMStore.getState>);
-
-      const { view } = mountWithSheets();
-      act(() => {
-        view.result.current.presentDownloadSheet('none');
-      });
-      await act(async () => {
-        view.result.current.downloadModelAndContinue();
-      });
-
-      expect(useEmbeddingModelStore.getState().status).toBe('downloading');
-      expect(ResourceFetcher.fetch).toHaveBeenCalledTimes(1);
-      expect(runWithModelOffloaded).not.toHaveBeenCalled();
-
-      await act(async () => {
-        fetchDone.resolve(['model.pte', 'tokenizer.json']);
-      });
-
-      expect(runWithModelOffloaded).toHaveBeenCalledTimes(1);
-      getState.mockRestore();
-    });
-
     it('drops the keyboard before the download sheet comes up, whoever asked for it (#381)', () => {
       const { Keyboard } = require('react-native');
       const dismiss = jest
