@@ -80,7 +80,7 @@ const splitDocumentName = (name: string) => {
 
 const REFINED_SWAP_MS = 320;
 
-export const MODEL_STARTING_LABEL = 'Starting the model on your phone…';
+export const MODEL_STARTING_LABEL = 'Starting the model on your device…';
 
 const useRefinedSwap = (isRefining: boolean): number => {
   const [swap, setSwap] = useState(0);
