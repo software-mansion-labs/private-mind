@@ -18,6 +18,19 @@ index 11a61f0..6d86bb0 100644
              addFunctions(JSI_EXPORT_FUNCTION(
                  ModelHostObject<Model>,
                  synchronousHostFunction<&Model::getMaxContextLength>,
+diff --git a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/embeddings/BaseEmbeddings.cpp b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/embeddings/BaseEmbeddings.cpp
+index 79b550b..5f22c05 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/embeddings/BaseEmbeddings.cpp
++++ b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/embeddings/BaseEmbeddings.cpp
+@@ -6,7 +6,7 @@ namespace rnexecutorch::models::embeddings {
+ 
+ BaseEmbeddings::BaseEmbeddings(const std::string &modelSource,
+                                std::shared_ptr<react::CallInvoker> callInvoker)
+-    : BaseModel(modelSource, callInvoker) {}
++    : BaseModel(modelSource, callInvoker, Module::LoadMode::Mmap) {}
+ 
+ std::shared_ptr<OwningArrayBuffer>
+ BaseEmbeddings::postprocess(const Result<std::vector<EValue>> &forwardResult) {
 diff --git a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
 index 528cf3f..3e270d6 100644
 --- a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
