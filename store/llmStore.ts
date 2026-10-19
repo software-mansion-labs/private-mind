@@ -79,6 +79,7 @@ import {
 } from '../modules/memory-probe';
 import { useWebSearchStore } from './webSearchStore';
 import { getGenerationConfigForModel } from '../constants/default-models';
+import { promptReviewAfterAnswer } from '../utils/reviewPrompt';
 import { cpuLacksLseAtomics } from '../utils/cpuSupport';
 import { UNSUPPORTED_CPU_REFUSAL } from '../constants/cpu-support';
 
@@ -1816,6 +1817,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         }
         armRetry(set, null);
         set({ generationError: null });
+        promptReviewAfterAnswer(
+          {
+            stoppedByUser,
+            tokensPerSecond: responsePerformance.tokensPerSecond,
+            cannedReply: !!openingWelcome,
+          },
+          () => !get().isGenerating && !get().isLoading
+        );
 
         if (stoppedByUser) {
           armRetry(set, {
