@@ -64,6 +64,40 @@ const HIGH_END_STARTING_MODELS = [
   'Qwen 3 - 1.7B',
 ];
 
+const MEMORY_STALL_FALLBACK_CANDIDATES = [
+  ...new Set([...MID_RANGE_STARTING_MODELS, ...LOW_END_STARTING_MODELS]),
+];
+
+type FallbackCandidate = Pick<
+  Model,
+  'modelName' | 'family' | 'modelSize' | 'modelPath' | 'vision' | 'isDownloaded'
+>;
+
+const isLighterThan = (
+  candidate: FallbackCandidate,
+  stalled: FallbackCandidate
+): boolean =>
+  candidate.modelSize !== undefined &&
+  stalled.modelSize !== undefined &&
+  candidate.modelSize < stalled.modelSize;
+
+export const pickMemoryStallFallback = <T extends FallbackCandidate>(
+  stalled: FallbackCandidate,
+  models: readonly T[],
+  needsVision: boolean
+): T | undefined => {
+  const candidates = MEMORY_STALL_FALLBACK_CANDIDATES.flatMap((modelName) =>
+    models.filter((model) => model.modelName === modelName)
+  ).filter(
+    (model) =>
+      model.family !== stalled.family &&
+      !runsOnMlxDelegate(model) &&
+      isLighterThan(model, stalled) &&
+      (!needsVision || !!model.vision)
+  );
+  return candidates.find((model) => model.isDownloaded) ?? candidates[0];
+};
+
 const getStartingModelCandidates = (deviceRamInGB: number): string[] => {
   if (deviceRamInGB <= 6) {
     return [

@@ -34,6 +34,7 @@ import useChatBranching from '../../hooks/useChatBranching';
 import { useStableCallback } from '../../hooks/useStableCallback';
 import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
 import { retryWithPinnedModel } from './loadModelPinnedToChat';
+import { useMemoryStallCard } from './useMemoryStallCard';
 
 interface Props {
   chatId: number;
@@ -249,6 +250,23 @@ export default function ChatScreen({
     });
   }, [model, retryLastGeneration, isSwitching]);
 
+  const handleAnswerWithModel = async (fallbackModel: Model) => {
+    if (!(await handleSelectModel(fallbackModel))) return;
+    messagesRef.current?.onMessageSent();
+    await retryLastGeneration().catch((error) => {
+      console.error('Failed to answer with the smaller model:', error);
+    });
+  };
+
+  const memoryStallCard = useMemoryStallCard({
+    chatId,
+    model,
+    messageHistory,
+    busy: isModelLoading || isSwitching,
+    answerWithModel: handleAnswerWithModel,
+    retryWithChatModel: handleRetryGeneration,
+  });
+
   const scrollBottomOffset = theme.insets.bottom;
 
   useLegacyChatNotice(messageHistory);
@@ -280,6 +298,7 @@ export default function ChatScreen({
           generationError={chatGenerationError}
           onRetryGeneration={handleRetryGeneration}
           canRetryGeneration={retryArmedForChatId === chatId}
+          turnFooter={memoryStallCard}
           bottomOffset={scrollBottomOffset}
           freeze={overlayOpen}
           revealFromTop={revealFromTop}
