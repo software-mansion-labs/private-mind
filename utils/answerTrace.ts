@@ -17,8 +17,6 @@ export interface AnswerTrace {
   final: string;
   systemPromptChars: number;
   shape?: Record<string, boolean>;
-  chatId?: number;
-  promptMessages?: number;
 }
 
 export const recordAnswerTrace = async (

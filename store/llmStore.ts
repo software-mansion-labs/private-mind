@@ -1811,8 +1811,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           typeof first?.content === 'string' ? first.content.length : 0)(
           effectivePrepared[0]
         ),
-        chatId,
-        promptMessages: effectivePrepared.length,
       });
 
       if (finalResponse && carriesAnswer(finalResponse)) {
