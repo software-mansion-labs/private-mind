@@ -47,7 +47,6 @@ interface Props {
   hasAttachments?: boolean;
   isLoadingAttachment?: boolean;
   togglesDisabled?: boolean;
-  modelBusy?: boolean;
   sendPending?: boolean;
   sendInFlight?: boolean;
   onSend: () => void;
@@ -68,7 +67,6 @@ const ChatBarActions = ({
   hasAttachments = false,
   isLoadingAttachment = false,
   togglesDisabled = false,
-  modelBusy = false,
   sendPending = false,
   sendInFlight = false,
   onSend,
@@ -146,7 +144,6 @@ const ChatBarActions = ({
           onPress={handlePress}
           busy={action === 'send' && sendPending}
           disabled={action === 'send' && (sendPending || isLoadingAttachment)}
-          dimmed={action === 'speech' && modelBusy}
           testID={ACTION_TEST_IDS[action]}
         />
       </View>

@@ -158,6 +158,12 @@ export const DEFAULT_REPETITION_PENALTY = DEFAULT_PROFILE.repetitionPenalty;
 
 export const GROUNDED_REPETITION_PENALTY = 1;
 
+export const RUNNER_DEFAULT_SAMPLING = {
+  temperature: 0.8,
+  topP: 0.9,
+  minP: 0,
+};
+
 const MLX_DELEGATE_PATH_SEGMENT = 'mlx';
 
 export const runsOnMlxDelegate = (model: Pick<Model, 'modelPath'>): boolean =>
@@ -179,6 +185,7 @@ export const getGenerationConfigForModel = (
   model: ProfileTarget & Pick<Model, 'modelPath'>,
   grounded: boolean = false
 ) => ({
+  ...RUNNER_DEFAULT_SAMPLING,
   repetitionPenalty: getModelProfile(model).repetitionPenalty,
   ...GENERATION_CONFIG_BY_MODEL_PATH[model.modelPath],
   ...(grounded ? { repetitionPenalty: GROUNDED_REPETITION_PENALTY } : {}),
