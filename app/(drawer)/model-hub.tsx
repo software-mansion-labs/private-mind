@@ -1,8 +1,14 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { ScrollView } from 'react-native-gesture-handler';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
 import { useModelStore } from '../../store/modelStore';
@@ -38,6 +44,7 @@ import { radius, space } from '../../constants/design-system';
 import { GlassScrollEdge } from '../../components/chat-screen/GlassScrollEdge';
 import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
 import { useConfirm } from '../../hooks/useConfirm';
+import DownloadsHeaderButton from '../../components/model-hub/DownloadsHeaderButton';
 
 const HEADER_INSET = space.four;
 
@@ -96,11 +103,25 @@ const ModelHubScreen = () => {
       isNavigatingRef.current = false;
     }, [])
   );
-  const openFamily = (family: ModelFamily) => {
-    if (isNavigatingRef.current) return;
-    isNavigatingRef.current = true;
-    router.push(`/model-family/${encodeURIComponent(family.name)}`);
-  };
+  const navigateOnce = useCallback(
+    (href: string) => {
+      if (isNavigatingRef.current) return;
+      isNavigatingRef.current = true;
+      router.push(href);
+    },
+    [router]
+  );
+  const openFamily = (family: ModelFamily) =>
+    navigateOnce(`/model-family/${encodeURIComponent(family.name)}`);
+
+  const navigation = useNavigation();
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <DownloadsHeaderButton onPress={() => navigateOnce('/downloads')} />
+      ),
+    });
+  }, [navigation, navigateOnce]);
 
   const deletableDownloaded = useMemo(
     () => models.filter((m) => m.isDownloaded && m.source !== 'local'),

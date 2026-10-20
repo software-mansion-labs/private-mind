@@ -10,6 +10,8 @@ import { FAMILY_SUMMARIES } from '../../constants/family-descriptions';
 import ModelFamilyTile from './ModelFamilyTile';
 import ModelBadge from './ModelBadge';
 import { dimmedOpacity } from '../../styles/pressable';
+import SpinningCircle from '../SpinningCircle';
+import { ModelState, useModelStore } from '../../store/modelStore';
 import CheckIcon from '../../assets/icons/check.svg';
 import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
 
@@ -17,6 +19,8 @@ const MAX_LABELS = 5;
 const TRAILING_WIDTH = 20;
 const CHECK_SIZE = 20;
 const CHECK_ICON_SIZE = 12;
+const SPINNER_STROKE = 2;
+const STATUS_ICON_GAP = space.two;
 const CHEVRON_WIDTH = 8;
 const CHEVRON_HEIGHT = 14;
 
@@ -30,10 +34,22 @@ const pluralize = (count: number, noun: string) =>
   `${count} ${count === 1 ? noun : `${noun}s`}`;
 
 const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
-  const { styles } = useThemedStyles(createStyles);
+  const { styles, theme } = useThemedStyles(createStyles);
 
   const downloadedCount = family.models.filter((m) => m.isDownloaded).length;
+  const downloadingCount = useModelStore(
+    (state) =>
+      family.models.filter(
+        (m) => state.downloadStates[m.id]?.status === ModelState.Downloading
+      ).length
+  );
   const variants = pluralize(family.models.length, 'variant');
+  const statusIconCount =
+    Number(downloadingCount > 0) + Number(downloadedCount > 0);
+  const trailingWidth = Math.max(
+    TRAILING_WIDTH,
+    statusIconCount * CHECK_SIZE + (statusIconCount - 1) * STATUS_ICON_GAP
+  );
   const counts =
     downloadedCount > 0
       ? `${variants} · ${downloadedCount} downloaded`
@@ -51,11 +67,13 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
       ]}
       onPress={() => onPress(family)}
       accessibilityRole="button"
-      accessibilityLabel={
-        downloadedCount > 0
-          ? `${family.name}, ${downloadedCount} downloaded`
-          : family.name
-      }
+      accessibilityLabel={[
+        family.name,
+        downloadedCount > 0 && `${downloadedCount} downloaded`,
+        downloadingCount > 0 && `${downloadingCount} downloading`,
+      ]
+        .filter(Boolean)
+        .join(', ')}
       testID={`family-card-${family.name}`}
     >
       <View style={styles.tile}>
@@ -83,21 +101,34 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
         )}
         <Text style={styles.counts}>{counts}</Text>
       </View>
-      <View style={styles.trailing}>
-        {downloadedCount > 0 && (
-          <View style={styles.check} testID="family-card-downloaded">
-            <CheckIcon
-              width={CHECK_ICON_SIZE}
-              height={CHECK_ICON_SIZE}
-              style={styles.checkIcon}
+      <View style={[styles.trailing, { width: trailingWidth }]}>
+        <View style={styles.status}>
+          {downloadingCount > 0 && (
+            <SpinningCircle
+              size={CHECK_SIZE}
+              strokeWidth={SPINNER_STROKE}
+              trackColor={theme.bg.tile}
+              arcColor={theme.bg.main}
+              testID="family-card-downloading"
             />
-          </View>
-        )}
-        <ChevronRightIcon
-          width={CHEVRON_WIDTH}
-          height={CHEVRON_HEIGHT}
-          style={styles.chevron}
-        />
+          )}
+          {downloadedCount > 0 && (
+            <View style={styles.check} testID="family-card-downloaded">
+              <CheckIcon
+                width={CHECK_ICON_SIZE}
+                height={CHECK_ICON_SIZE}
+                style={styles.checkIcon}
+              />
+            </View>
+          )}
+        </View>
+        <View style={styles.chevronSlot}>
+          <ChevronRightIcon
+            width={CHEVRON_WIDTH}
+            height={CHEVRON_HEIGHT}
+            style={styles.chevron}
+          />
+        </View>
       </View>
     </Pressable>
   );
@@ -148,14 +179,22 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultTertiary,
     },
     trailing: {
-      width: TRAILING_WIDTH,
       alignSelf: 'stretch',
-      alignItems: 'center',
+      alignItems: 'flex-end',
       justifyContent: 'center',
     },
-    check: {
+    status: {
       position: 'absolute',
       top: space.half,
+      right: 0,
+      flexDirection: 'row',
+      gap: STATUS_ICON_GAP,
+    },
+    chevronSlot: {
+      width: TRAILING_WIDTH,
+      alignItems: 'center',
+    },
+    check: {
       width: CHECK_SIZE,
       height: CHECK_SIZE,
       borderRadius: radius.full,

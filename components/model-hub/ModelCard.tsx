@@ -17,7 +17,7 @@ import { Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
 import { WarningSheetData } from '../bottomSheets/WarningSheet';
 import { isModelCompatible } from '../../utils/modelCompatibility';
-import { useConfirm } from '../../hooks/useConfirm';
+import { useDeleteModelFiles } from '../../hooks/useDeleteModelFiles';
 import CircleButton from '../CircleButton';
 import ModelBadge from './ModelBadge';
 import { getModelFamily } from '../../utils/modelFamily';
@@ -99,8 +99,7 @@ const ModelCard = ({
   );
   const downloadModel = useModelStore((state) => state.downloadModel);
   const cancelDownload = useModelStore((state) => state.cancelDownload);
-  const removeModelFiles = useModelStore((state) => state.removeModelFiles);
-  const { confirm, ConfirmElement } = useConfirm();
+  const { deleteModelFiles, ConfirmElement } = useDeleteModelFiles();
 
   const downloadState = trackedDownload ?? {
     progress: model.isDownloaded ? 1 : 0,
@@ -149,19 +148,7 @@ const ModelCard = ({
   };
 
   const handleDelete = async () => {
-    const confirmed = await confirm({
-      title: 'Delete model files?',
-      message: `${model.modelName} will be removed from your device. You can redownload it later.`,
-      confirmLabel: 'Delete',
-    });
-    if (!confirmed) return;
-
-    await removeModelFiles(model.id);
-    Toast.show({
-      type: 'defaultToast',
-      text1: `${model.modelName} has been successfully deleted`,
-    });
-    onDeleted?.(model);
+    if (await deleteModelFiles(model)) onDeleted?.(model);
   };
 
   const isDone = downloadStatus === 'done';
@@ -306,15 +293,15 @@ const ModelCard = ({
                 !isCompatible
                   ? theme.border.soft
                   : isRow
-                    ? theme.bg.accentSoft
-                    : theme.bg.softSecondary
+                  ? theme.bg.accentSoft
+                  : theme.bg.softSecondary
               }
               color={
                 !isCompatible
                   ? theme.text.defaultTertiary
                   : isRow
-                    ? theme.text.accent
-                    : theme.text.primary
+                  ? theme.text.accent
+                  : theme.text.primary
               }
               icon={isRow ? DownloadArrowIcon : DownloadIcon}
               size={isRow ? ROW_DOWNLOAD_ICON_SIZE : 15}

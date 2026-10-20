@@ -18,6 +18,15 @@ jest.mock('react-native-gesture-handler', () => {
 
 jest.mock('../components/model-hub/ModelFamilyTile', () => () => null);
 
+const mockDownloadStates: Record<number, { progress: number; status: string }> =
+  {};
+jest.mock('../store/modelStore', () => ({
+  useModelStore: (
+    selector: (state: { downloadStates: typeof mockDownloadStates }) => unknown
+  ) => selector({ downloadStates: mockDownloadStates }),
+  ModelState: { Downloading: 'downloading' },
+}));
+
 import FamilyCard from '../components/model-hub/FamilyCard';
 import { DIMMED_OPACITY } from '../styles/pressable';
 
@@ -105,5 +114,45 @@ describe('FamilyCard', () => {
     ).toHaveLength(5);
     expect(screen.queryByText('Powerful')).toBeNull();
     expect(screen.getByText('+2')).toBeTruthy();
+  });
+
+  describe('download status icons', () => {
+    afterEach(() => {
+      for (const id of Object.keys(mockDownloadStates)) {
+        delete mockDownloadStates[Number(id)];
+      }
+    });
+
+    const twoVariants = {
+      ...family,
+      models: [
+        { ...family.models[0], isDownloaded: true },
+        { ...family.models[0], id: 2, modelName: 'Gemma 4 - 4B' },
+      ],
+    };
+
+    it('shows a spinner while a variant is downloading', () => {
+      mockDownloadStates[1] = { progress: 0.3, status: 'downloading' };
+      render(<FamilyCard family={family} onPress={jest.fn()} />);
+      expect(screen.getByTestId('family-card-downloading')).toBeTruthy();
+      expect(screen.queryByTestId('family-card-downloaded')).toBeNull();
+      expect(screen.getByLabelText('Gemma 4, 1 downloading')).toBeTruthy();
+    });
+
+    it('shows the spinner and the check side by side when one variant is downloaded and another is downloading', () => {
+      mockDownloadStates[2] = { progress: 0.3, status: 'downloading' };
+      render(<FamilyCard family={twoVariants} onPress={jest.fn()} />);
+      expect(screen.getByTestId('family-card-downloading')).toBeTruthy();
+      expect(screen.getByTestId('family-card-downloaded')).toBeTruthy();
+      expect(
+        screen.getByLabelText('Gemma 4, 1 downloaded, 1 downloading')
+      ).toBeTruthy();
+    });
+
+    it('shows only the check once nothing is downloading', () => {
+      render(<FamilyCard family={twoVariants} onPress={jest.fn()} />);
+      expect(screen.queryByTestId('family-card-downloading')).toBeNull();
+      expect(screen.getByTestId('family-card-downloaded')).toBeTruthy();
+    });
   });
 });
