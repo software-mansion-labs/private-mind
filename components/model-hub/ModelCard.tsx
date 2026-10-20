@@ -293,15 +293,15 @@ const ModelCard = ({
                 !isCompatible
                   ? theme.border.soft
                   : isRow
-                  ? theme.bg.accentSoft
-                  : theme.bg.softSecondary
+                    ? theme.bg.accentSoft
+                    : theme.bg.softSecondary
               }
               color={
                 !isCompatible
                   ? theme.text.defaultTertiary
                   : isRow
-                  ? theme.text.accent
-                  : theme.text.primary
+                    ? theme.text.accent
+                    : theme.text.primary
               }
               icon={isRow ? DownloadArrowIcon : DownloadIcon}
               size={isRow ? ROW_DOWNLOAD_ICON_SIZE : 15}
