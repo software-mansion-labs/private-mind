@@ -14,7 +14,6 @@ import {
   MEMORY_STALL_PREFILL_PASS_MS,
   getGenerationConfigForModel,
   getStartingModels,
-  pickMemoryStallFallback,
   runsOnMlxDelegate,
 } from '../constants/default-models';
 import { isModelCompatibleWithRam } from '../utils/modelCompatibility';
@@ -104,66 +103,6 @@ describe('the memory stall watch', () => {
         stallPrefillPassCount: undefined,
       });
     }
-  });
-});
-
-describe('the smaller model offered after a memory stall', () => {
-  const catalog = DEFAULT_MODELS.map((model, index) => ({
-    ...model,
-    id: index + 1,
-    isDownloaded: false,
-  }));
-  const named = (modelName: string) =>
-    catalog.find((model) => model.modelName === modelName)!;
-  const withDownloaded = (...names: string[]) =>
-    catalog.map((model) => ({
-      ...model,
-      isDownloaded: names.includes(model.modelName),
-    }));
-  const gemma = {
-    ...named('Gemma 4 - 2B'),
-    modelPath: GEMMA4_E2B_MLX_MODEL,
-    modelSize: 2.9,
-  };
-
-  it('suggests downloading Qwen 3 1.7B when nothing smaller is on the phone', () => {
-    const fallback = pickMemoryStallFallback(gemma, catalog, false);
-    expect(fallback?.modelName).toBe('Qwen 3 - 1.7B');
-    expect(fallback?.isDownloaded).toBe(false);
-  });
-
-  it('prefers a smaller model that is already downloaded', () => {
-    const fallback = pickMemoryStallFallback(
-      gemma,
-      withDownloaded('Gemma 4 - 2B', 'LFM 2.5 - 1.2B'),
-      false
-    );
-    expect(fallback?.modelName).toBe('LFM 2.5 - 1.2B');
-    expect(fallback?.isDownloaded).toBe(true);
-  });
-
-  it('never offers another Gemma build, which would stall the same way', () => {
-    const gemmaVision = { ...named('Gemma 4 VL - 2B'), modelSize: 3.0 };
-    const fallback = pickMemoryStallFallback(
-      gemmaVision,
-      withDownloaded('Gemma 4 - 2B'),
-      false
-    );
-    expect(fallback?.family).not.toBe('Gemma 4');
-  });
-
-  it('keeps to models with vision when the question carries a photo', () => {
-    const fallback = pickMemoryStallFallback(
-      gemma,
-      withDownloaded('Qwen 3 - 1.7B'),
-      true
-    );
-    expect(fallback?.modelName).toBe('LFM 2.5 VL - 1.6B');
-  });
-
-  it('offers nothing when no candidate is lighter', () => {
-    const tiny = { ...named('Qwen 3 - 0.6B'), family: 'Other', modelSize: 0.1 };
-    expect(pickMemoryStallFallback(tiny, catalog, false)).toBeUndefined();
   });
 });
 

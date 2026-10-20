@@ -1,106 +1,54 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import MemoryStallCard, {
-  type MemoryStallFallback,
-} from '../components/chat-screen/MemoryStallCard';
+import MemoryStallCard from '../components/chat-screen/MemoryStallCard';
 
 const handlers = () => ({
-  onAnswerWithFallback: jest.fn(),
-  onDownloadFallback: jest.fn(),
+  onStartNewChat: jest.fn(),
   onTryAgain: jest.fn(),
-});
-
-const qwen = (fields: Partial<MemoryStallFallback> = {}) => ({
-  modelName: 'Qwen 3 - 1.7B',
-  isDownloaded: true,
-  isDownloading: false,
-  ...fields,
 });
 
 describe('MemoryStallCard', () => {
   it('explains the slowdown without blaming the user', () => {
-    render(
-      <MemoryStallCard
-        stalledModelName="Gemma 4 - 2B"
-        fallback={qwen()}
-        {...handlers()}
-      />
-    );
+    render(<MemoryStallCard stalledModelName="Gemma 4 - 2B" {...handlers()} />);
 
     expect(screen.getByText('This is taking longer than usual')).toBeTruthy();
     expect(
       screen.getByText(
-        'Your phone is short on memory right now, so Gemma 4 - 2B is running very slowly. A smaller model can answer right away.'
+        'Your phone is short on memory right now, so Gemma 4 - 2B is running very slowly. A smaller model in a new chat can answer right away.'
       )
     ).toBeTruthy();
   });
 
-  it('answers with the smaller model when it is downloaded', () => {
+  it('sends the user to a new chat to pick another model', () => {
     const actions = handlers();
-    render(
-      <MemoryStallCard
-        stalledModelName="Gemma 4 - 2B"
-        fallback={qwen()}
-        {...actions}
-      />
-    );
+    render(<MemoryStallCard stalledModelName="Gemma 4 - 2B" {...actions} />);
 
-    fireEvent.press(screen.getByText('Answer with Qwen 3 - 1.7B'));
+    fireEvent.press(screen.getByText('New chat with another model'));
 
-    expect(actions.onAnswerWithFallback).toHaveBeenCalledTimes(1);
-    expect(actions.onDownloadFallback).not.toHaveBeenCalled();
-  });
-
-  it('offers to download the smaller model when it is not on the phone', () => {
-    const actions = handlers();
-    render(
-      <MemoryStallCard
-        stalledModelName="Gemma 4 - 2B"
-        fallback={qwen({ isDownloaded: false })}
-        {...actions}
-      />
-    );
-
-    fireEvent.press(screen.getByText('Download Qwen 3 - 1.7B'));
-
-    expect(actions.onDownloadFallback).toHaveBeenCalledTimes(1);
-    expect(actions.onAnswerWithFallback).not.toHaveBeenCalled();
-  });
-
-  it('does not start a second download while one is running', () => {
-    const actions = handlers();
-    render(
-      <MemoryStallCard
-        stalledModelName="Gemma 4 - 2B"
-        fallback={qwen({ isDownloaded: false, isDownloading: true })}
-        {...actions}
-      />
-    );
-
-    fireEvent.press(screen.getByText('Downloading Qwen 3 - 1.7B…'));
-
-    expect(actions.onDownloadFallback).not.toHaveBeenCalled();
+    expect(actions.onStartNewChat).toHaveBeenCalledTimes(1);
+    expect(actions.onTryAgain).not.toHaveBeenCalled();
   });
 
   it('retries with the same model', () => {
     const actions = handlers();
-    render(
-      <MemoryStallCard
-        stalledModelName="Gemma 4 - 2B"
-        fallback={qwen()}
-        {...actions}
-      />
-    );
+    render(<MemoryStallCard stalledModelName="Gemma 4 - 2B" {...actions} />);
 
     fireEvent.press(screen.getByText('Try again'));
 
     expect(actions.onTryAgain).toHaveBeenCalledTimes(1);
+    expect(actions.onStartNewChat).not.toHaveBeenCalled();
   });
 
-  it('keeps only the retry when there is no smaller model to offer', () => {
-    render(<MemoryStallCard stalledModelName="Gemma 4 - 2B" {...handlers()} />);
+  it('ignores both buttons while a model is loading', () => {
+    const actions = handlers();
+    render(
+      <MemoryStallCard stalledModelName="Gemma 4 - 2B" disabled {...actions} />
+    );
 
-    expect(screen.getByText('Try again')).toBeTruthy();
-    expect(screen.queryByText(/Answer with|Download/)).toBeNull();
+    fireEvent.press(screen.getByText('New chat with another model'));
+    fireEvent.press(screen.getByText('Try again'));
+
+    expect(actions.onStartNewChat).not.toHaveBeenCalled();
+    expect(actions.onTryAgain).not.toHaveBeenCalled();
   });
 });
