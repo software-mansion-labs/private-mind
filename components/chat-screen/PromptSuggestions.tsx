@@ -8,6 +8,7 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { radius, space } from '../../constants/design-system';
 import { MASK_CLEAR, MASK_OPAQUE } from '../../constants/mask';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import {
   DEFAULT_PROMPT_SUGGESTIONS,
   PROMPT_SUGGESTIONS_TEXT,
@@ -34,7 +35,11 @@ const PromptSuggestions = ({ onSelectPrompt }: Props) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading} accessibilityRole="header">
+      <Text
+        style={styles.heading}
+        accessibilityRole="header"
+        maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+      >
         {PROMPT_SUGGESTIONS_TEXT.title}
       </Text>
       <MaskedView

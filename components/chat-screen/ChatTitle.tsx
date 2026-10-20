@@ -12,6 +12,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { space } from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { firstLineOf } from '../../utils/chatLabel';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
 import GlassSurface from '../GlassSurface';
@@ -95,12 +96,17 @@ const ChatTitle = ({
             <Text
               style={[styles.titleText, { width: titleWidth }]}
               onTextLayout={handleTitleWrap}
+              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
             >
               {title}
             </Text>
           </View>
         ) : null}
-        <Text numberOfLines={1} style={styles.titleText}>
+        <Text
+          numberOfLines={1}
+          style={styles.titleText}
+          maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+        >
           {shownTitle}
         </Text>
         {onPress ? (

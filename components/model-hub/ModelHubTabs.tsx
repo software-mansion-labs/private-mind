@@ -4,6 +4,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { radius, space, stroke } from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 
 export type ModelHubTab = 'featured' | 'experimental' | 'mine';
 
@@ -48,7 +49,10 @@ const ModelHubTabs = ({ value, onChange, edgeInset = 0 }: Props) => {
             accessibilityState={{ selected }}
             testID={`model-hub-tab-${tab.key}`}
           >
-            <Text style={[styles.label, selected && styles.labelSelected]}>
+            <Text
+              style={[styles.label, selected && styles.labelSelected]}
+              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+            >
               {tab.label}
             </Text>
           </Pressable>
@@ -71,8 +75,9 @@ const createStyles = (theme: Theme, edgeInset: number) =>
       paddingHorizontal: edgeInset,
     },
     tab: {
-      height: TAB_HEIGHT,
+      minHeight: TAB_HEIGHT,
       paddingHorizontal: space.four,
+      paddingVertical: space.one,
       justifyContent: 'center',
       borderRadius: radius.full,
       borderWidth: stroke.soft,

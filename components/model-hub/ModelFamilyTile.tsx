@@ -46,7 +46,9 @@ const ModelFamilyTile = ({ family, size, iconColor }: Props) => {
           testID="model-family-icon"
         />
       ) : (
-        <Text style={styles.initial}>{familyInitial(family)}</Text>
+        <Text style={styles.initial} allowFontScaling={false}>
+          {familyInitial(family)}
+        </Text>
       )}
     </View>
   );

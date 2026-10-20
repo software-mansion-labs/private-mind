@@ -4,6 +4,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { radius, space } from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import {
   LabelColor,
   labelColor,
@@ -33,7 +34,9 @@ const ModelBadge = ({ label, color = labelColor(label) }: Props) => {
           style={styles.icon}
         />
       )}
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label} maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}>
+        {label}
+      </Text>
     </View>
   );
 };
@@ -49,7 +52,8 @@ const createStyles = (theme: Theme, color: ModelBadgeColor) => {
         : theme.label[color];
   return StyleSheet.create({
     badge: {
-      height: BADGE_HEIGHT,
+      minHeight: BADGE_HEIGHT,
+      paddingVertical: space.half,
       flexDirection: 'row',
       alignItems: 'center',
       gap: space.one,

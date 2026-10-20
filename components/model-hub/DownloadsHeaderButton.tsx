@@ -92,7 +92,9 @@ const DownloadsHeaderButton = ({ onPress }: Props) => {
           pointerEvents="none"
           testID="downloads-count-badge"
         >
-          <Text style={styles.badgeText}>{count}</Text>
+          <Text style={styles.badgeText} allowFontScaling={false}>
+            {count}
+          </Text>
         </View>
       )}
     </View>

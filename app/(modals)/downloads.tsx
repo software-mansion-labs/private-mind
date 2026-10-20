@@ -122,9 +122,12 @@ const createStyles = (theme: Theme, headerHeight: number) =>
       flexDirection: 'row',
       alignItems: 'baseline',
       justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      columnGap: space.two,
       paddingHorizontal: space.one,
     },
     sectionTitle: {
+      flexShrink: 1,
       fontFamily: fontFamily.bold,
       fontSize: fontSizes.sm,
       lineHeight: lineHeights.sm,

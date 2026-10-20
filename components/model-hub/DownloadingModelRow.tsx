@@ -121,8 +121,9 @@ const createStyles = (theme: Theme) =>
     },
     detailsRow: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       justifyContent: 'space-between',
-      gap: space.two,
+      columnGap: space.two,
       minHeight: lineHeights.xs,
     },
     bytes: {
@@ -134,6 +135,7 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultTertiary,
     },
     timeLeft: {
+      flexShrink: 1,
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.xs,
       lineHeight: lineHeights.xs,

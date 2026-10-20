@@ -101,7 +101,7 @@ export const DrawerNavSection = ({
       style={[styles.wrapper, animatedStyle]}
       pointerEvents={collapsed ? 'none' : 'auto'}
     >
-      <View onLayout={height ? undefined : handleSectionLayout}>
+      <View onLayout={handleSectionLayout}>
         <DrawerItem
           icon={<CubeIcon width={20} height={20} style={styles.icon} />}
           label="Manage models"

@@ -17,6 +17,7 @@ import HeaderGlassButton, { headerGlassButtonFill } from './HeaderGlassButton';
 import { GlassScrollEdge } from './chat-screen/GlassScrollEdge';
 import { GLASS_BUTTON_SIZE, HEADER_EDGE_PX } from '../constants/header-actions';
 import { space } from '../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../constants/font-scale';
 
 const TITLE_SIDE_SPACE = GLASS_BUTTON_SIZE + HEADER_EDGE_PX * 2;
 const SHEET_TOP_INSET = space.four;
@@ -51,7 +52,11 @@ const GlassScreenHeader = ({ title, onBack, sheet = false }: Props) => {
         pointerEvents="box-none"
       >
         <View style={styles.titleContainer} pointerEvents="none">
-          <Text numberOfLines={1} style={styles.title}>
+          <Text
+            numberOfLines={1}
+            style={styles.title}
+            maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+          >
             {title}
           </Text>
         </View>

@@ -9,6 +9,7 @@ import {
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Model } from '../../database/modelRepository';
 import { radius, space } from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { pressedOpacity } from '../../styles/pressable';
@@ -60,7 +61,11 @@ const ComposerModelBadge = ({
         size="badge"
         iconColor={theme.text.onChatBar}
       />
-      <Text style={styles.name} numberOfLines={1}>
+      <Text
+        style={styles.name}
+        numberOfLines={1}
+        maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+      >
         {model.modelName}
       </Text>
       {loading ? (
@@ -92,7 +97,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       alignSelf: 'center',
       flexShrink: 1,
-      height: BADGE_HEIGHT,
+      minHeight: BADGE_HEIGHT,
       maxWidth: BADGE_MAX_WIDTH,
       gap: space.one + space.half,
       paddingLeft: space.one + space.half,

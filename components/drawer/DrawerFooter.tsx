@@ -13,6 +13,7 @@ import {
   DRAWER_ITEM_INSET,
 } from '../../constants/drawer-layout';
 import { radius } from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { useStartNewChat } from './useStartNewChat';
 import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
 
@@ -50,7 +51,13 @@ export const DrawerFooter = ({ onNavigate }: Props) => {
         ]}
       >
         <ChatIcon width={18} height={18} style={styles.newChatIcon} />
-        <Text style={styles.newChatLabel}>New chat</Text>
+        <Text
+          style={styles.newChatLabel}
+          numberOfLines={1}
+          maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+        >
+          New chat
+        </Text>
       </Pressable>
 
       <Pressable
@@ -82,7 +89,8 @@ const createStyles = (theme: Theme) =>
       paddingRight: DRAWER_HORIZONTAL_PADDING,
     },
     newChat: {
-      height: FOOTER_BUTTON_HEIGHT,
+      flexShrink: 1,
+      minHeight: FOOTER_BUTTON_HEIGHT,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
@@ -95,6 +103,7 @@ const createStyles = (theme: Theme) =>
       color: theme.text.onBrand,
     },
     newChatLabel: {
+      flexShrink: 1,
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
       color: theme.text.onBrand,
