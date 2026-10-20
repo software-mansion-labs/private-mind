@@ -14,6 +14,7 @@ export type MemoryStallFallback = {
 
 type MemoryStallCardProps = {
   stalledModelName: string;
+  didNotStart?: boolean;
   fallback?: MemoryStallFallback;
   disabled?: boolean;
   onAnswerWithFallback: () => void;
@@ -21,8 +22,16 @@ type MemoryStallCardProps = {
   onTryAgain: () => void;
 };
 
-const stallExplanation = (modelName: string) =>
-  `Your phone is short on memory right now, so ${modelName} is running very slowly. A smaller model can answer right away.`;
+const cardCopy = (modelName: string, didNotStart: boolean) =>
+  didNotStart
+    ? {
+        title: `${modelName} couldn't start`,
+        body: `Last time your phone ran out of memory while ${modelName} was starting, and the app closed. A smaller model can answer right away.`,
+      }
+    : {
+        title: 'This is taking longer than usual',
+        body: `Your phone is short on memory right now, so ${modelName} is running very slowly. A smaller model can answer right away.`,
+      };
 
 const fallbackActionLabel = (fallback: MemoryStallFallback): string => {
   if (fallback.isDownloaded) return `Answer with ${fallback.modelName}`;
@@ -32,6 +41,7 @@ const fallbackActionLabel = (fallback: MemoryStallFallback): string => {
 
 export default function MemoryStallCard({
   stalledModelName,
+  didNotStart = false,
   fallback,
   disabled = false,
   onAnswerWithFallback,
@@ -39,11 +49,12 @@ export default function MemoryStallCard({
   onTryAgain,
 }: MemoryStallCardProps) {
   const { styles } = useThemedStyles(createStyles);
+  const copy = cardCopy(stalledModelName, didNotStart);
 
   return (
     <View style={styles.card} testID="memory-stall-card">
-      <Text style={styles.title}>This is taking longer than usual</Text>
-      <Text style={styles.body}>{stallExplanation(stalledModelName)}</Text>
+      <Text style={styles.title}>{copy.title}</Text>
+      <Text style={styles.body}>{copy.body}</Text>
       <View style={styles.actions}>
         {fallback && (
           <PrimaryButton

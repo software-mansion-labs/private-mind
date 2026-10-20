@@ -30,6 +30,9 @@ export const useMemoryStallCard = ({
   const stalledHere = useLLMStore(
     (state) => model !== undefined && state.memoryStalls[chatId] === model.id
   );
+  const didNotStart = useLLMStore(
+    (state) => model !== undefined && state.failedToStartIn[chatId] === model.id
+  );
   const isGenerating = useLLMStore((state) => state.isGenerating);
   const models = useModelStore((state) => state.models);
   const downloadStates = useModelStore((state) => state.downloadStates);
@@ -60,6 +63,7 @@ export const useMemoryStallCard = ({
   return (
     <MemoryStallCard
       stalledModelName={model.modelName}
+      didNotStart={didNotStart}
       fallback={
         fallback && {
           modelName: fallback.modelName,

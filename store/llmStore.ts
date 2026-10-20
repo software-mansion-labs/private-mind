@@ -86,6 +86,11 @@ import {
   runsOnMlxDelegate,
 } from '../constants/default-models';
 import { cpuLacksLseAtomics } from '../utils/cpuSupport';
+import {
+  markMlxLoadSettled,
+  markMlxLoadStarted,
+  takeModelThatDiedLoading,
+} from '../utils/mlxLoadGuard';
 import { UNSUPPORTED_CPU_REFUSAL } from '../constants/cpu-support';
 
 export interface LLMStore {
@@ -109,6 +114,7 @@ export interface LLMStore {
   generationError: { chatId: number; message: string } | null;
   retryArmedForChatId: number | null;
   memoryStalls: Record<number, number>;
+  failedToStartIn: Record<number, number>;
 
   setDB: (db: SQLiteDatabase) => void;
   loadModel: (model: Model, hardReload?: boolean) => Promise<void>;
@@ -148,6 +154,23 @@ export interface LLMStore {
 
 let llmInstance: LLMModule | null = null;
 let instanceRunsOnMlx = false;
+let mlxLoadInFlight = false;
+let modelThatDiedStarting: number | null | undefined;
+
+const readModelThatDiedStarting = async (): Promise<number | null> => {
+  if (modelThatDiedStarting === undefined) {
+    modelThatDiedStarting = await takeModelThatDiedLoading().catch(() => null);
+  }
+  return modelThatDiedStarting;
+};
+
+const settleMlxLoad = () => {
+  mlxLoadInFlight = false;
+  markMlxLoadSettled().catch((error) =>
+    console.error('Failed to clear the model load marker', error)
+  );
+};
+
 let modelOffloadChain: Promise<void> = Promise.resolve();
 let modelLoadChain: Promise<void> = Promise.resolve();
 let runnerChain: Promise<unknown> = Promise.resolve();
@@ -460,6 +483,14 @@ const loadModelInstance = async (
   }
   await unloadLLMWhenIdle();
 
+  if (
+    runsOnMlxDelegate(model) &&
+    (await readModelThatDiedStarting()) === model.id
+  ) {
+    set({ model });
+    return;
+  }
+
   resetStreamState();
   set({ isLoading: true, model });
 
@@ -500,6 +531,12 @@ const loadModelInstance = async (
 
   try {
     instanceRunsOnMlx = runsOnMlxDelegate(model);
+    if (instanceRunsOnMlx) {
+      mlxLoadInFlight = true;
+      await markMlxLoadStarted(model.id).catch((error) =>
+        console.error('Failed to mark the model load', error)
+      );
+    }
     llmInstance = await LLMModule.fromModelName(
       {
         modelName: 'custom' as Parameters<
@@ -558,10 +595,12 @@ const loadModelInstance = async (
 
     applyGenerationConfig(llmInstance, getGenerationConfigForModel(model));
     await warmUpModel(llmInstance);
+    if (mlxLoadInFlight) settleMlxLoad();
 
     set({ isLoading: false });
   } catch (e) {
     console.error('Error loading model:', e);
+    if (mlxLoadInFlight) settleMlxLoad();
     unloadLLM();
     set({ isLoading: false, model: null });
     Toast.show({
@@ -850,6 +889,12 @@ type LLMGenerationResult = {
   stalled: boolean;
 };
 
+const NOTHING_GENERATED: LLMGenerationResult = {
+  response: null,
+  performance: { timeToFirstToken: 0, tokensPerSecond: 0 },
+  stalled: true,
+};
+
 const NOTHING_GATHERED: Awaited<
   ReturnType<Parameters<LLMStore['sendChatMessage']>[2]>
 > = { context: [] };
@@ -947,6 +992,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   generationError: null,
   retryArmedForChatId: null,
   memoryStalls: {},
+  failedToStartIn: {},
 
   setDB: (db) => set({ db }),
 
@@ -1130,6 +1176,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     set((state) => ({
       generationError: null,
       memoryStalls: withoutMemoryStall(state.memoryStalls, chatId),
+      failedToStartIn: withoutMemoryStall(state.failedToStartIn, chatId),
     }));
     updateChatStateForGeneration(set, 'start', {
       chatId,
@@ -1388,6 +1435,20 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     try {
       if (!isRetry && !userMessagePersisted) {
         await persistUserMessage();
+      }
+
+      if ((await readModelThatDiedStarting()) === currentModel.id) {
+        modelThatDiedStarting = null;
+        if (!isRetry) {
+          await settleMemoryStall(NOTHING_GENERATED, []);
+          set((state) => ({
+            failedToStartIn: {
+              ...state.failedToStartIn,
+              [chatId]: currentModel.id,
+            },
+          }));
+          return true;
+        }
       }
 
       const openingWelcome = await openingWelcomeOfThisTurn();
@@ -2011,6 +2072,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   appWentToBackground: () => {
     get().appLeftForeground();
     appIsInBackground = true;
+    if (mlxLoadInFlight) settleMlxLoad();
     releaseModelOnceIdleInBackground(get);
   },
 
