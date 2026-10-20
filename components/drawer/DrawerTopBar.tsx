@@ -16,6 +16,7 @@ import Animated, {
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import { pressedOpacity } from '../../styles/pressable';
 import {
   DRAWER_HORIZONTAL_PADDING,
   getDrawerWidth,
@@ -25,7 +26,6 @@ import SearchField, {
   SearchFieldSurface,
 } from '../SearchField';
 import ArrowLeftIcon from '../../assets/icons/arrow-left.svg';
-import { pressedOpacity } from '../../styles/pressable';
 
 const BACK_ICON_SIZE = 20;
 

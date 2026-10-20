@@ -1,9 +1,9 @@
 import React from 'react';
 import {
   Platform,
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getDefaultHeaderHeight } from 'expo-router/react-navigation';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
+import { pressedOpacity } from '../styles/pressable';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import ArrowLeftIcon from '../assets/icons/arrow-left.svg';
 import HeaderGlassButton, { headerGlassButtonFill } from './HeaderGlassButton';
@@ -61,16 +62,19 @@ const GlassScreenHeader = ({ title, onBack, sheet = false }: Props) => {
           </Text>
         </View>
         <HeaderGlassButton edge="leading">
-          <TouchableOpacity
+          <Pressable
             onPress={onBack}
-            style={headerGlassButtonFill}
+            style={({ pressed }) => [
+              headerGlassButtonFill,
+              pressed && pressedOpacity,
+            ]}
             hitSlop={15}
             accessibilityRole="button"
             accessibilityLabel="Back"
             testID="glass-header-back"
           >
             <ArrowLeftIcon width={20} height={20} style={styles.icon} />
-          </TouchableOpacity>
+          </Pressable>
         </HeaderGlassButton>
       </View>
     </>

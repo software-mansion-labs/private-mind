@@ -3,9 +3,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import { pressedOpacity } from '../../styles/pressable';
 import { radius } from '../../constants/design-system';
 import { Feedback } from '../../utils/Feedback';
-import { pressedOpacity } from '../../styles/pressable';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 
 export interface ChoiceOption<T extends string> {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import DownloadArrowIcon from '../../assets/icons/download-arrow.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -8,6 +8,7 @@ import {
   useActiveDownloads,
 } from '../../hooks/useActiveDownloads';
 import { Theme } from '../../styles/colors';
+import { pressedOpacity } from '../../styles/pressable';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { radius, space } from '../../constants/design-system';
 import {
@@ -40,9 +41,12 @@ const DownloadsHeaderButton = ({ onPress }: Props) => {
   return (
     <View>
       <HeaderGlassButton edge="trailing">
-        <TouchableOpacity
+        <Pressable
           onPress={onPress}
-          style={headerGlassButtonFill}
+          style={({ pressed }) => [
+            headerGlassButtonFill,
+            pressed && pressedOpacity,
+          ]}
           hitSlop={15}
           accessibilityRole="button"
           accessibilityLabel={
@@ -84,7 +88,7 @@ const DownloadsHeaderButton = ({ onPress }: Props) => {
             height={iconSize}
             color={theme.text.primary}
           />
-        </TouchableOpacity>
+        </Pressable>
       </HeaderGlassButton>
       {count > 0 && (
         <View

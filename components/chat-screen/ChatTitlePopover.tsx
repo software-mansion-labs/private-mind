@@ -13,6 +13,7 @@ import { radius, space, stroke } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { TEXT_SELECTION, Theme } from '../../styles/colors';
+import { pressedOpacity } from '../../styles/pressable';
 import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 import { MAX_CHAT_TITLE_LENGTH } from '../../utils/chatLabel';
 import { SvgComponent } from '../../utils/SvgComponent';
@@ -21,7 +22,6 @@ import PopoverRow from '../menu/PopoverRow';
 import EditIcon from '../../assets/icons/edit.svg';
 import ShareIcon from '../../assets/icons/upload.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
-import { pressedOpacity } from '../../styles/pressable';
 
 const GAP_BELOW_TITLE = 8;
 const ICON_BUTTON_SIZE = 36;
