@@ -1,12 +1,10 @@
 export const LATEST_RELEASE = {
-  version: '1.3.3',
-  title: 'Offline loading, improved stability',
+  version: '1.3.4',
+  title: 'Steadier when memory runs low',
   highlights: [
-    'A new way to pick your first model',
-    'Downloaded models load offline',
-    'Ready for iOS 27 and Android 17',
-    'Older CPUs get a clear notice',
-    'Photos only offered to vision models',
-    'Answers no longer flicker as they finish',
+    'A stuck answer stops and offers a fix',
+    'Switch to a smaller model in one tap',
+    "No crash loop when a model can't start",
+    'Rating prompt waits for a good answer',
   ],
 };
