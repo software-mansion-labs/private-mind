@@ -219,6 +219,26 @@ describe('a turn the memory stall cut short', () => {
     expect(instance.generate).toHaveBeenCalledTimes(1);
   });
 
+  it('ends as a turn the user stopped when Stop lands on a stalled pass', async () => {
+    instance.generate.mockImplementationOnce(async () => {
+      useLLMStore.getState().interrupt();
+      return 'Rome was founded';
+    });
+    instance.lastGenerationStalled.mockReturnValueOnce(true);
+
+    await send();
+
+    expect(useLLMStore.getState().memoryStalls).toEqual({});
+    expect(mockPersistMessage).toHaveBeenCalledWith(
+      mockDb,
+      expect.objectContaining({ role: 'assistant', stoppedByUser: true })
+    );
+    expect(mockPersistMessage).not.toHaveBeenCalledWith(
+      mockDb,
+      expect.objectContaining({ cutShortReason: 'memory' })
+    );
+  });
+
   it('leaves a healthy turn alone', async () => {
     instance.generate.mockResolvedValueOnce('Rome was founded in 753 BC.');
 
