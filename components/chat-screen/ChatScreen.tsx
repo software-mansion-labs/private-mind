@@ -35,6 +35,8 @@ import { useStableCallback } from '../../hooks/useStableCallback';
 import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
 import { retryWithPinnedModel } from './loadModelPinnedToChat';
 import { useMemoryStallCard } from './useMemoryStallCard';
+import { startPhantomChat } from '../../utils/startPhantomChat';
+import { CHAT_ENTRY_ACTION } from '../../constants/chat-route-params';
 
 interface Props {
   chatId: number;
@@ -250,20 +252,19 @@ export default function ChatScreen({
     });
   }, [model, retryLastGeneration, isSwitching]);
 
-  const handleAnswerWithModel = async (fallbackModel: Model) => {
-    if (!(await handleSelectModel(fallbackModel))) return;
-    messagesRef.current?.onMessageSent();
-    await retryLastGeneration().catch((error) => {
-      console.error('Failed to answer with the smaller model:', error);
-    });
-  };
+  const handleNewChatWithAnotherModel = useCallback(() => {
+    startPhantomChat(db, 'push', undefined, CHAT_ENTRY_ACTION.PickModel).catch(
+      (error) => {
+        console.error('Failed to open a new chat for another model:', error);
+      }
+    );
+  }, [db]);
 
   const memoryStallCard = useMemoryStallCard({
     chatId,
     model,
-    messageHistory,
     busy: isModelLoading || isSwitching,
-    answerWithModel: handleAnswerWithModel,
+    startNewChat: handleNewChatWithAnotherModel,
     retryWithChatModel: handleRetryGeneration,
   });
 

@@ -2,40 +2,24 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { radius, space, textStyles } from '../../constants/design-system';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
 
-export type MemoryStallFallback = {
-  modelName: string;
-  isDownloaded: boolean;
-  isDownloading: boolean;
-};
-
 type MemoryStallCardProps = {
   stalledModelName: string;
-  fallback?: MemoryStallFallback;
   disabled?: boolean;
-  onAnswerWithFallback: () => void;
-  onDownloadFallback: () => void;
+  onStartNewChat: () => void;
   onTryAgain: () => void;
 };
 
 const stallExplanation = (modelName: string) =>
-  `Your phone is short on memory right now, so ${modelName} is running very slowly. A smaller model can answer right away.`;
-
-const fallbackActionLabel = (fallback: MemoryStallFallback): string => {
-  if (fallback.isDownloaded) return `Answer with ${fallback.modelName}`;
-  if (fallback.isDownloading) return `Downloading ${fallback.modelName}…`;
-  return `Download ${fallback.modelName}`;
-};
+  `Your phone is short on memory right now, so ${modelName} is running very slowly. A smaller model in a new chat can answer right away.`;
 
 export default function MemoryStallCard({
   stalledModelName,
-  fallback,
   disabled = false,
-  onAnswerWithFallback,
-  onDownloadFallback,
+  onStartNewChat,
   onTryAgain,
 }: MemoryStallCardProps) {
   const { styles } = useThemedStyles(createStyles);
@@ -45,15 +29,11 @@ export default function MemoryStallCard({
       <Text style={styles.title}>This is taking longer than usual</Text>
       <Text style={styles.body}>{stallExplanation(stalledModelName)}</Text>
       <View style={styles.actions}>
-        {fallback && (
-          <PrimaryButton
-            text={fallbackActionLabel(fallback)}
-            onPress={
-              fallback.isDownloaded ? onAnswerWithFallback : onDownloadFallback
-            }
-            disabled={disabled || fallback.isDownloading}
-          />
-        )}
+        <PrimaryButton
+          text="New chat with another model"
+          onPress={onStartNewChat}
+          disabled={disabled}
+        />
         <SecondaryButton
           text="Try again"
           onPress={onTryAgain}
@@ -69,25 +49,21 @@ const createStyles = (theme: Theme) =>
     card: {
       width: '100%',
       backgroundColor: theme.bg.cardSurface,
-      borderRadius: 16,
-      padding: 16,
-      gap: 8,
-      marginBottom: 24,
+      borderRadius: radius.twelve,
+      padding: space.four,
+      gap: space.two,
+      marginBottom: space.six,
     },
     title: {
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
+      ...textStyles.bodySecondaryMedium,
       color: theme.text.primary,
     },
     body: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
+      ...textStyles.bodyTertiaryRegular,
       color: theme.text.defaultSecondary,
     },
     actions: {
-      marginTop: 8,
-      gap: 8,
+      marginTop: space.two,
+      gap: space.two,
     },
   });
