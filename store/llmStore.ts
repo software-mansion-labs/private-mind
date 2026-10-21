@@ -841,6 +841,11 @@ const NO_LLM_RESPONSE: LLMGenerationResult = {
   performance: { timeToFirstToken: 0, tokensPerSecond: 0 },
 };
 
+const IMAGE_ONLY_QUESTION = 'Describe this image.';
+
+const questionForImage = (content: string): string =>
+  content.trim() || IMAGE_ONLY_QUESTION;
+
 const generateLLMResponse = (
   messages: ExecutorchMessage[],
   get: () => LLMStore,
@@ -854,7 +859,7 @@ const generateLLMResponse = (
           ...msg,
           content: [
             { type: 'image' },
-            { type: 'text', text: msg.content as string },
+            { type: 'text', text: questionForImage(msg.content as string) },
           ] as unknown as string,
         }
       : msg
