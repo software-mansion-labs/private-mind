@@ -219,7 +219,7 @@ index dbc4459..ec1dd84 100644
  #include <ctime>
  
  namespace rne_legacy {
-@@ -86,6 +87,41 @@ TextDecoderRunner::step(TensorPtr &tokens, int64_t start_pos) {
+@@ -86,6 +87,38 @@ TextDecoderRunner::step(TensorPtr &tokens, int64_t start_pos) {
      }
  }
  
@@ -249,10 +249,7 @@ index dbc4459..ec1dd84 100644
 +    }
 +    const int32_t passes_allowed = std::max<int32_t>(1, pass_count);
 +    slow_run.passes += 1;
-+    slow_run.elapsed_ms += elapsed_ms;
-+    if (slow_run.passes >= passes_allowed ||
-+        slow_run.elapsed_ms >=
-+            static_cast<int64_t>(threshold_ms) * passes_allowed) {
++    if (slow_run.passes >= passes_allowed) {
 +        stalled_ = true;
 +        should_stop_ = true;
 +    }
@@ -291,7 +288,7 @@ index e289df8..97b2268 100644
  
      /**
       * Sample the next token from the logits tensor using the sampling
-@@ -76,8 +88,20 @@ protected:
+@@ -76,8 +88,19 @@ protected:
      // Non-owning. The runner (BaseLLMRunner) owns the Module and outlives this.
      Module *module_;
      IOManager *io_manager_;
@@ -300,7 +297,6 @@ index e289df8..97b2268 100644
 +    std::atomic<bool> stalled_{false};
 +    struct SlowRun {
 +        int32_t passes{0};
-+        int64_t elapsed_ms{0};
 +    };
 +    SlowRun slow_prefill_run_;
 +    SlowRun slow_decode_run_;
