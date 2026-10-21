@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
@@ -34,10 +34,12 @@ const BenchmarkScreen = () => {
   const { styles } = useThemedStyles(createStyles, headerHeight);
   const db = useSQLiteContext();
   const { getModelById } = useModelStore();
+  const router = useRouter();
   const { modelId } = useLocalSearchParams<{ modelId?: string }>();
-
-  const [selectedModel, setSelectedModel] = useState<Model | undefined>(() =>
-    modelId ? getModelById(Number(modelId)) : undefined
+  const selectedModel = modelId ? getModelById(Number(modelId)) : undefined;
+  const selectModel = useCallback(
+    (model: Model) => router.setParams({ modelId: String(model.id) }),
+    [router]
   );
   const [benchmarkList, setBenchmarkList] = useState<BenchmarkResult[]>([]);
 
@@ -77,10 +79,7 @@ const BenchmarkScreen = () => {
     <>
       <View style={styles.container}>
         <SettingsSection title="Model">
-          <ModelSelector
-            model={selectedModel}
-            setSelectedModel={setSelectedModel}
-          />
+          <ModelSelector model={selectedModel} onSelect={selectModel} />
           <PrimaryButton
             disabled={!selectedModel || isRunning}
             text="Run benchmark"

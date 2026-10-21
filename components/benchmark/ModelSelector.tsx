@@ -1,4 +1,4 @@
-import React, { Dispatch, SetStateAction, useRef } from 'react';
+import React, { useRef } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { Model } from '../../database/modelRepository';
@@ -14,7 +14,7 @@ import ModelFamilyTile from '../model-hub/ModelFamilyTile';
 
 interface Props {
   model?: Model | null;
-  setSelectedModel: Dispatch<SetStateAction<Model | undefined>>;
+  onSelect: (model: Model) => void;
 }
 
 const modelMeta = (model: Model) =>
@@ -25,7 +25,7 @@ const modelMeta = (model: Model) =>
     .filter(Boolean)
     .join(' · ');
 
-export const ModelSelector = ({ model, setSelectedModel }: Props) => {
+export const ModelSelector = ({ model, onSelect }: Props) => {
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { styles } = useThemedStyles(createStyles);
   const meta = model ? modelMeta(model) : '';
@@ -60,7 +60,7 @@ export const ModelSelector = ({ model, setSelectedModel }: Props) => {
 
       <ModelSelectSheet
         bottomSheetModalRef={bottomSheetModalRef}
-        onModelPicked={setSelectedModel}
+        onModelPicked={onSelect}
         currentModelId={model?.id}
       />
     </>
