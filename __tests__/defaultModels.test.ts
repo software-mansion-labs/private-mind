@@ -10,8 +10,6 @@ import {
   DEFAULT_REPETITION_PENALTY,
   MEMORY_STALL_PASS_COUNT,
   MEMORY_STALL_PASS_MS,
-  MEMORY_STALL_PREFILL_PASS_COUNT,
-  MEMORY_STALL_PREFILL_PASS_MS,
   getGenerationConfigForModel,
   getStartingModels,
   runsOnMlxDelegate,
@@ -37,37 +35,22 @@ describe('getGenerationConfigForModel', () => {
 });
 
 describe('the memory stall watch', () => {
-  it('gives up only on a drastic slowdown, far beyond a healthy 40 ms pass', () => {
-    expect(MEMORY_STALL_PASS_MS).toBe(3_000);
-    expect(MEMORY_STALL_PASS_COUNT).toBe(2);
-  });
+  it('watches only the answer being written, never the prompt being read', () => {
+    const config = getGenerationConfigForModel({
+      modelName: 'Any',
+      modelPath: GEMMA4_E2B_MLX_MODEL,
+    }) as { stallPrefillPassMs?: number; stallPrefillPassCount?: number };
 
-  it('lets slow prefill chunks run 9 s before giving up, above the 5.5 s a healthy long prompt took under load', () => {
-    expect(MEMORY_STALL_PREFILL_PASS_MS).toBe(3_000);
-    expect(MEMORY_STALL_PREFILL_PASS_COUNT).toBe(3);
+    expect(config.stallPrefillPassMs).toBeUndefined();
+    expect(config.stallPrefillPassCount).toBeUndefined();
   });
 
   const stallWatchOf = (modelPath: string) => {
-    const {
-      stallPassMs,
-      stallPassCount,
-      stallPrefillPassMs,
-      stallPrefillPassCount,
-    } = getGenerationConfigForModel({
+    const { stallPassMs, stallPassCount } = getGenerationConfigForModel({
       modelName: 'Any',
       modelPath,
-    }) as {
-      stallPassMs?: number;
-      stallPassCount?: number;
-      stallPrefillPassMs?: number;
-      stallPrefillPassCount?: number;
-    };
-    return {
-      stallPassMs,
-      stallPassCount,
-      stallPrefillPassMs,
-      stallPrefillPassCount,
-    };
+    }) as { stallPassMs?: number; stallPassCount?: number };
+    return { stallPassMs, stallPassCount };
   };
 
   it('is on for the Gemma builds that run on the MLX delegate', () => {
@@ -75,8 +58,6 @@ describe('the memory stall watch', () => {
       expect(stallWatchOf(modelPath)).toEqual({
         stallPassMs: MEMORY_STALL_PASS_MS,
         stallPassCount: MEMORY_STALL_PASS_COUNT,
-        stallPrefillPassMs: MEMORY_STALL_PREFILL_PASS_MS,
-        stallPrefillPassCount: MEMORY_STALL_PREFILL_PASS_COUNT,
       });
     }
   });
@@ -99,8 +80,6 @@ describe('the memory stall watch', () => {
       expect(stallWatchOf(modelPath)).toEqual({
         stallPassMs: undefined,
         stallPassCount: undefined,
-        stallPrefillPassMs: undefined,
-        stallPrefillPassCount: undefined,
       });
     }
   });

@@ -239,6 +239,24 @@ describe('a turn the memory stall cut short', () => {
     );
   });
 
+  it('shows no memory card for a stall in a turn the app left the foreground during', async () => {
+    instance.generate.mockImplementationOnce(async () => {
+      useLLMStore.getState().appLeftForeground();
+      return 'Rome was founded in 753 BC and';
+    });
+    instance.lastGenerationStalled.mockReturnValueOnce(true);
+
+    await send();
+    useLLMStore.getState().appReturnedToForeground();
+
+    expect(useLLMStore.getState().memoryStalls).toEqual({});
+    expect(mockMarkMessageCutShort).not.toHaveBeenCalledWith(
+      mockDb,
+      expect.anything(),
+      'memory'
+    );
+  });
+
   it('leaves a healthy turn alone', async () => {
     instance.generate.mockResolvedValueOnce('Rome was founded in 753 BC.');
 

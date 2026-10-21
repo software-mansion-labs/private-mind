@@ -1549,7 +1549,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         );
       }
       const userStoppedTurn = !get().isGenerating;
-      if (generation.stalled && stillOurs() && !userStoppedTurn) {
+      const stallCameFromMemory =
+        generation.stalled && !userStoppedTurn && !appWasAwayDuringTurn;
+      if (stallCameFromMemory && stillOurs()) {
         await settleMemoryStall(generation, sourceDocuments ?? []);
         return true;
       }

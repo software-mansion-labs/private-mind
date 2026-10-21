@@ -136,15 +136,11 @@ export const runsOnMlxDelegate = (model: Pick<Model, 'modelPath'>): boolean =>
   model.modelPath.split('/').includes(MLX_DELEGATE_PATH_SEGMENT);
 
 export const MEMORY_STALL_PASS_MS = 3_000;
-export const MEMORY_STALL_PASS_COUNT = 2;
-export const MEMORY_STALL_PREFILL_PASS_MS = 3_000;
-export const MEMORY_STALL_PREFILL_PASS_COUNT = 3;
+export const MEMORY_STALL_PASS_COUNT = 3;
 
 const MEMORY_STALL_WATCH = {
   stallPassMs: MEMORY_STALL_PASS_MS,
   stallPassCount: MEMORY_STALL_PASS_COUNT,
-  stallPrefillPassMs: MEMORY_STALL_PREFILL_PASS_MS,
-  stallPrefillPassCount: MEMORY_STALL_PREFILL_PASS_COUNT,
 };
 
 export const getGenerationConfigForModel = (
