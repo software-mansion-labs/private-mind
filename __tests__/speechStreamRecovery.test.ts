@@ -141,6 +141,53 @@ describe('speech input after a transcript is abandoned', () => {
   });
 });
 
+describe('the speech model after dictation', () => {
+  it('is released once a finished dictation has been read to the end', async () => {
+    const { result } = renderHook(() => useSpeechInput());
+    await act(async () => {
+      readAll((await result.current.start())!);
+    });
+    await act(async () => {
+      await result.current.stop();
+    });
+
+    await waitFor(() => expect(sttModule.delete).toHaveBeenCalledTimes(1));
+    expect(useSTTStore.getState().module).toBeNull();
+    expect(useSTTStore.getState().isReady).toBe(false);
+  });
+
+  it('is released when the dictation is abandoned', async () => {
+    const { result } = renderHook(() => useSpeechInput());
+    await act(async () => {
+      const transcript = (await result.current.start())!;
+      const reading = transcript.next();
+      result.current.abandon();
+      await reading;
+      await transcript.return();
+    });
+
+    await waitFor(() => expect(sttModule.delete).toHaveBeenCalledTimes(1));
+    expect(useSTTStore.getState().module).toBeNull();
+  });
+
+  it('is loaded again for the next dictation', async () => {
+    const { result } = renderHook(() => useSpeechInput());
+    await act(async () => {
+      readAll((await result.current.start())!);
+    });
+    await act(async () => {
+      await result.current.stop();
+    });
+    await waitFor(() => expect(sttModule.delete).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(SpeechToTextModule.fromModelName).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('speech input whose recorder will not stop', () => {
   it('reports the failed stop and still closes the stream', async () => {
     const recorder = jest.spyOn(audioApi, 'AudioRecorder').mockImplementation(
