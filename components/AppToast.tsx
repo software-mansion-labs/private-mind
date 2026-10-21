@@ -4,7 +4,8 @@ import { FullWindowOverlay } from 'react-native-screens';
 import Toast, { ToastConfig } from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Theme } from '../styles/colors';
+import { Theme, isDarkTheme } from '../styles/colors';
+import { radius } from '../constants/design-system';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import CloseIcon from '../assets/icons/close.svg';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
@@ -106,17 +107,17 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     toastContainer: {
       width: '90%',
-      backgroundColor: theme.bg.softSecondary,
-      borderRadius: 12,
+      backgroundColor: theme.bg.toast,
+      borderRadius: radius.eighteen,
       padding: 16,
       flexDirection: 'row',
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border.soft,
+      borderWidth: 1,
+      borderColor: theme.border.toast,
       shadowColor: theme.bg.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: isDarkTheme(theme) ? 0.6 : 0.18,
+      shadowRadius: 20,
+      elevation: 12,
     },
     toastBody: {
       width: '80%',
