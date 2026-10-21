@@ -7,15 +7,16 @@ import { Theme } from '../../styles/colors';
 interface Props {
   title: string;
   children: React.ReactNode;
+  fill?: boolean;
 }
 
-export const SettingsSection = ({ title, children }: Props) => {
+export const SettingsSection = ({ title, children, fill = false }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
   return (
-    <View style={styles.section}>
+    <View style={[styles.section, fill && styles.fill]}>
       <Text style={styles.title}>{title}</Text>
-      <View style={styles.rows}>{children}</View>
+      <View style={[styles.rows, fill && styles.fill]}>{children}</View>
     </View>
   );
 };
@@ -35,5 +36,8 @@ const createStyles = (theme: Theme) =>
     },
     rows: {
       gap: 8,
+    },
+    fill: {
+      flex: 1,
     },
   });

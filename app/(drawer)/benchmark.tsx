@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useLocalSearchParams } from 'expo-router';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -20,14 +21,17 @@ import BenchmarkResultSheet, {
   BenchmarkResultSheetData,
 } from '../../components/bottomSheets/BenchmarkResultSheet';
 import BenchmarkHistory from '../../components/benchmark/BenchmarkHistory';
+import { SettingsSection } from '../../components/settings/SettingsSection';
 import useBenchmarkRunner from '../../hooks/useBenchmarkRunner';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
+import { space } from '../../constants/design-system';
 
 const BenchmarkScreen = () => {
-  useDefaultHeader();
+  useDefaultHeader({ glass: true });
+  const headerHeight = useHeaderHeight();
   const bottomSheetModalRef =
     useRef<BottomSheetModal<BenchmarkResultSheetData>>(null);
-  const { styles } = useThemedStyles(createStyles);
+  const { styles } = useThemedStyles(createStyles, headerHeight);
   const db = useSQLiteContext();
   const { getModelById } = useModelStore();
   const { modelId } = useLocalSearchParams<{ modelId?: string }>();
@@ -72,7 +76,7 @@ const BenchmarkScreen = () => {
   return (
     <>
       <View style={styles.container}>
-        <View style={styles.controls}>
+        <SettingsSection title="Model">
           <ModelSelector
             model={selectedModel}
             setSelectedModel={setSelectedModel}
@@ -80,13 +84,16 @@ const BenchmarkScreen = () => {
           <PrimaryButton
             disabled={!selectedModel || isRunning}
             text="Run benchmark"
+            style={styles.runButton}
             onPress={() => startBenchmark(selectedModel)}
           />
-        </View>
-        <BenchmarkHistory
-          modalRef={bottomSheetModalRef}
-          benchmarkList={benchmarkList}
-        />
+        </SettingsSection>
+        <SettingsSection title="History" fill>
+          <BenchmarkHistory
+            modalRef={bottomSheetModalRef}
+            benchmarkList={benchmarkList}
+          />
+        </SettingsSection>
       </View>
 
       <BenchmarkModal
@@ -107,16 +114,16 @@ const BenchmarkScreen = () => {
 
 export default BenchmarkScreen;
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, headerHeight: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      gap: 16,
+      gap: space.six,
+      paddingTop: headerHeight + space.six,
+      paddingHorizontal: space.four,
       backgroundColor: theme.bg.softPrimary,
-      paddingTop: 16,
     },
-    controls: {
-      gap: 16,
-      paddingHorizontal: 16,
+    runButton: {
+      marginTop: space.two,
     },
   });
