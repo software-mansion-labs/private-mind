@@ -39,20 +39,7 @@ jest.mock('expo-router', () => ({
   router: { push: jest.fn(), replace: jest.fn() },
 }));
 
-jest.mock('../components/model-hub/ModelCard', () => {
-  const { Pressable, Text } = require('react-native');
-  return ({
-    model,
-    onPress,
-  }: {
-    model: Model;
-    onPress: (model: Model) => void;
-  }) => (
-    <Pressable testID={`model-card-${model.id}`} onPress={() => onPress(model)}>
-      <Text>{model.modelName}</Text>
-    </Pressable>
-  );
-});
+jest.mock('../components/model-hub/ModelFamilyTile', () => () => null);
 
 jest.mock('../components/bottomSheets/BottomSheetSearchInput', () => {
   const { TextInput } = require('react-native');
@@ -202,9 +189,9 @@ describe('with downloaded models', () => {
     withDownloadedModels([makeModel(1, 'Llama-3B'), makeModel(2, 'Qwen-1B')]);
   });
 
-  it('shows "Select a Model" title', () => {
+  it('shows "Select a model" title', () => {
     renderSheet();
-    expect(screen.getByText('Select a Model')).toBeTruthy();
+    expect(screen.getByText('Select a model')).toBeTruthy();
   });
 
   it('renders all downloaded models', () => {
@@ -237,12 +224,34 @@ describe('with downloaded models', () => {
     const onSheetStateChange = jest.fn();
     renderSheet({ onModelPicked, onSheetStateChange });
 
-    fireEvent.press(screen.getByTestId('model-card-1'));
+    fireEvent.press(screen.getByTestId('model-select-row-1'));
 
     expect(onModelPicked).toHaveBeenCalledWith(
       expect.objectContaining({ id: 1 })
     );
     expect(onSheetStateChange).toHaveBeenLastCalledWith(false);
+  });
+});
+
+describe('current model', () => {
+  beforeEach(() => {
+    withDownloadedModels([makeModel(1, 'Llama-3B'), makeModel(2, 'Qwen-1B')]);
+  });
+
+  it('checks only the current model', () => {
+    renderSheet({ currentModelId: 2 });
+    expect(
+      screen.getByTestId('model-select-row-2').props.accessibilityState.checked
+    ).toBe(true);
+    expect(
+      screen.getByTestId('model-select-row-1').props.accessibilityState.checked
+    ).toBe(false);
+    expect(screen.getAllByTestId('model-select-current')).toHaveLength(1);
+  });
+
+  it('checks nothing when no model is current', () => {
+    renderSheet();
+    expect(screen.queryByTestId('model-select-current')).toBeNull();
   });
 });
 

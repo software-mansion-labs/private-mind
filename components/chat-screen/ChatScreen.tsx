@@ -382,6 +382,7 @@ export default function ChatScreen({
         bottomSheetModalRef={modelBottomSheetModalRef}
         onModelPicked={pickModel}
         onSheetStateChange={handleModelSheetStateChange}
+        currentModelId={model?.id}
       />
     </View>
   );

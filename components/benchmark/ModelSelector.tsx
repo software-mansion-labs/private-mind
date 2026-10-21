@@ -61,6 +61,7 @@ export const ModelSelector = ({ model, setSelectedModel }: Props) => {
       <ModelSelectSheet
         bottomSheetModalRef={bottomSheetModalRef}
         onModelPicked={setSelectedModel}
+        currentModelId={model?.id}
       />
     </>
   );
