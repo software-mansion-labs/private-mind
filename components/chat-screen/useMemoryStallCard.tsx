@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import type { Model } from '../../database/modelRepository';
 import { useLLMStore } from '../../store/llmStore';
 import MemoryStallCard from './MemoryStallCard';
@@ -17,7 +17,7 @@ export const useMemoryStallCard = ({
   busy,
   startNewChat,
   retryWithChatModel,
-}: UseMemoryStallCardOptions): React.ReactNode => {
+}: UseMemoryStallCardOptions): ReactNode => {
   const stalledHere = useLLMStore(
     (state) => model !== undefined && state.memoryStalls[chatId] === model.id
   );
