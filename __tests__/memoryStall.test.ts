@@ -4,14 +4,17 @@ import * as chatRepository from '../database/chatRepository';
 import type { Message } from '../database/chatRepository';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { useSettingsStore } from '../store/settingsStore';
-import { releaseMlxCache } from '../modules/memory-probe';
+import { memoryStrainedSince, releaseMlxCache } from '../modules/memory-probe';
 
 jest.mock('../modules/memory-probe', () => ({
   isMemoryMetricAvailable: () => false,
   memorySampleIntervalMs: () => 250,
   getMemoryFootprintBytes: () => null,
   releaseMlxCache: jest.fn(),
+  memoryStrainedSince: jest.fn(() => true),
 }));
+
+const mockMemoryStrainedSince = memoryStrainedSince as jest.Mock;
 jest.mock('../database/chatRepository');
 jest.mock('../utils/Feedback', () => ({
   Feedback: { firstToken: jest.fn() },
@@ -98,6 +101,7 @@ beforeEach(async () => {
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
   instance = makeInstance();
+  mockMemoryStrainedSince.mockReturnValue(true);
   mockLLMModule.fromModelName.mockImplementation(
     async () => instance as unknown as LLMModule
   );
@@ -255,6 +259,31 @@ describe('a turn the memory stall cut short', () => {
       expect.anything(),
       'memory'
     );
+  });
+
+  it('shows no memory card unless iOS itself reported memory pressure around the turn', async () => {
+    mockMemoryStrainedSince.mockReturnValue(false);
+    stallNextTurn('Rome was founded in 753 BC and');
+
+    await send();
+
+    expect(useLLMStore.getState().memoryStalls).toEqual({});
+    expect(mockMarkMessageCutShort).not.toHaveBeenCalledWith(
+      mockDb,
+      expect.anything(),
+      'memory'
+    );
+  });
+
+  it('asks about memory pressure from the moment this turn started', async () => {
+    const before = Date.now();
+    stallNextTurn('Rome was founded in 753 BC and');
+
+    await send();
+
+    const [sinceMs] = mockMemoryStrainedSince.mock.calls[0];
+    expect(sinceMs).toBeGreaterThanOrEqual(before);
+    expect(sinceMs).toBeLessThanOrEqual(Date.now());
   });
 
   it('leaves a healthy turn alone', async () => {
