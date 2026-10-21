@@ -213,17 +213,24 @@ const ModelHubScreen = () => {
           ) : (
             <View style={styles.list}>
               {tab === 'mine'
-                ? mineModels.map((model) => (
-                    <ModelCard
-                      key={model.id}
-                      model={model}
-                      compactView={false}
-                      onPress={() =>
-                        modelManagementSheetRef.current?.present(model)
-                      }
-                      wifiWarningSheetRef={wifiWarningSheetRef}
-                    />
-                  ))
+                ? mineModels.length > 0 && (
+                    <RowGroup separatorInset={0}>
+                      {mineModels.map((model) => (
+                        <ModelCard
+                          key={model.id}
+                          model={model}
+                          compactView={false}
+                          variant="row"
+                          showFamilyIcon
+                          onPress={() =>
+                            modelManagementSheetRef.current?.present(model)
+                          }
+                          wifiWarningSheetRef={wifiWarningSheetRef}
+                          showDeleteButton
+                        />
+                      ))}
+                    </RowGroup>
+                  )
                 : families.length > 0 && (
                     <RowGroup separatorInset={0}>
                       {families.map((family) => (

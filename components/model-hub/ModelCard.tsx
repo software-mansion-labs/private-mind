@@ -27,7 +27,6 @@ import {
   VISION_LABEL,
   isCapabilityLabel,
 } from '../../constants/model-labels';
-import DownloadIcon from '../../assets/icons/download.svg';
 import DownloadArrowIcon from '../../assets/icons/download-arrow.svg';
 import CloseIcon from '../../assets/icons/close.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
@@ -47,7 +46,7 @@ const PROGRESS_ACTION_HIT_SLOP = 12;
 const LOCKED_CARD_OPACITY = 0.4;
 const ROW_ACTION_SIZE = 36;
 const ROW_CHECK_ICON_SIZE = 16;
-const ROW_DOWNLOAD_ICON_SIZE = 16;
+const DOWNLOAD_ICON_SIZE = 16;
 
 export type DownloadStatus = 'downloading' | 'done';
 export type ModelCardVariant = 'card' | 'row';
@@ -240,7 +239,10 @@ const ModelCard = ({
       >
         <View style={styles.topRow}>
           {showFamilyIcon && (
-            <ModelFamilyTile family={getModelFamily(model)} size="card" />
+            <ModelFamilyTile
+              family={getModelFamily(model)}
+              size={isRow ? 'list' : 'card'}
+            />
           )}
 
           <View style={styles.info}>
@@ -290,21 +292,13 @@ const ModelCard = ({
             <CircleButton
               onPress={!isCompatible ? undefined : handlePress}
               backgroundColor={
-                !isCompatible
-                  ? theme.border.soft
-                  : isRow
-                    ? theme.bg.accentSoft
-                    : theme.bg.softSecondary
+                isCompatible ? theme.bg.accentSoft : theme.border.soft
               }
               color={
-                !isCompatible
-                  ? theme.text.defaultTertiary
-                  : isRow
-                    ? theme.text.accent
-                    : theme.text.primary
+                isCompatible ? theme.text.accent : theme.text.defaultTertiary
               }
-              icon={isRow ? DownloadArrowIcon : DownloadIcon}
-              size={isRow ? ROW_DOWNLOAD_ICON_SIZE : 15}
+              icon={DownloadArrowIcon}
+              size={DOWNLOAD_ICON_SIZE}
               disabled={!isCompatible}
             />
           )}
