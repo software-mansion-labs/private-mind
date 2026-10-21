@@ -78,7 +78,6 @@ import {
   getMemoryFootprintBytes,
   isMemoryMetricAvailable,
   memorySampleIntervalMs,
-  memoryStrainedSince,
   releaseMlxCache,
 } from '../modules/memory-probe';
 import { useWebSearchStore } from './webSearchStore';
@@ -1108,7 +1107,6 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       : get().activeChatMessages;
     appWasAwayDuringTurn = appIsAway;
     turnHeldUntilForeground = null;
-    const turnStartedAt = Date.now();
 
     const abortController = new AbortController();
     sendAbortController = abortController;
@@ -1553,10 +1551,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       }
       const userStoppedTurn = !get().isGenerating;
       const stallCameFromMemory =
-        generation.stalled &&
-        !userStoppedTurn &&
-        !appWasAwayDuringTurn &&
-        memoryStrainedSince(turnStartedAt);
+        generation.stalled && !userStoppedTurn && !appWasAwayDuringTurn;
       if (stallCameFromMemory && stillOurs()) {
         await settleMemoryStall(generation, sourceDocuments ?? []);
         return true;

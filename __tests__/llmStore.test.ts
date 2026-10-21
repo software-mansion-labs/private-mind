@@ -17,7 +17,6 @@ import { existingFiles } from '../__mocks__/expo-file-system';
 
 const memoryProbe = { samples: [] as number[], available: false };
 jest.mock('../modules/memory-probe', () => ({
-  memoryStrainedSince: () => true,
   PHYS_FOOTPRINT_METRIC: 'phys_footprint',
   TOTAL_PSS_METRIC: 'total_pss',
   isPhysFootprintAvailable: () => memoryProbe.available,
