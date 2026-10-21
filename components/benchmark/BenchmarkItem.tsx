@@ -12,6 +12,7 @@ import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { getModelFamily } from '../../utils/modelFamily';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
 import { ROW_PADDING } from '../model-hub/RowGroup';
+import { formatBenchmarkDate } from '../../utils/formatBenchmarkDate';
 import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
 
 const CHEVRON_WIDTH = 7;
@@ -23,22 +24,6 @@ interface Props {
   model?: Model;
   onPress: () => void;
 }
-
-const formatBenchmarkDate = (timestamp: string) => {
-  const date = new Date(timestamp);
-  const day = date.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    ...(date.getFullYear() !== new Date().getFullYear() && {
-      year: 'numeric',
-    }),
-  });
-  const time = date.toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  return `${day}, ${time}`;
-};
 
 const BenchmarkItem = ({ entry, model, onPress }: Props) => {
   const { styles } = useThemedStyles(createStyles);

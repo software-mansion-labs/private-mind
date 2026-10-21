@@ -2,22 +2,32 @@ import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import {
   BottomSheetModal,
   BottomSheetBackdrop,
-  BottomSheetScrollView,
+  BottomSheetView,
+  type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 import BackDismissibleSheetModal from './BackDismissibleSheetModal';
-import { StyleSheet, Text } from 'react-native';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import { pressedOpacity } from '../../styles/pressable';
+import { radius, space } from '../../constants/design-system';
 import DeviceInfo from 'react-native-device-info';
-import SecondaryButton from '../SecondaryButton';
-import ModelCard from '../model-hub/ModelCard';
 import BenchmarkStatsCard from '../benchmark/BenchmarkStatsCard';
-import DeviceInfoCard from '../benchmark/DeviceInfoCard';
-import BenchmarkDateCard from '../benchmark/BenchmarkDateCard';
+import ModelFamilyTile from '../model-hub/ModelFamilyTile';
+import PhoneIcon from '../../assets/icons/phone.svg';
 import { Feedback } from '../../utils/Feedback';
+import { getModelFamily } from '../../utils/modelFamily';
+import { formatBenchmarkDate } from '../../utils/formatBenchmarkDate';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
 import { Model } from '../../database/modelRepository';
+
+const BYTES_PER_GB = 1024 * 1024 * 1024;
+const DEVICE_ICON_SIZE = 14;
+const DELETE_BUTTON_HEIGHT = 44;
+const HANDLE_WIDTH = 36;
+const HANDLE_HEIGHT = 5;
+const SHEET_RADIUS = 24;
 
 export interface BenchmarkResultSheetData extends BenchmarkResult {
   model?: Model;
@@ -28,17 +38,25 @@ interface Props {
   handleDelete: (benchmarkId: number) => Promise<void>;
 }
 
+interface DeviceDetails {
+  model: string;
+  systemName: string;
+  systemVersion: string;
+  memory: string;
+}
+
 const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
-  const [deviceInfo, setDeviceInfo] = useState({
+  const [deviceInfo, setDeviceInfo] = useState<DeviceDetails>({
     model: '',
+    systemName: '',
     systemVersion: '',
     memory: '',
   });
 
   const renderBackdrop = useCallback(
-    (props: any) => (
+    (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
@@ -51,30 +69,38 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
 
   useEffect(() => {
     const fetchDeviceInfo = async () => {
-      const model = await DeviceInfo.getModel();
-      const systemVersion = await DeviceInfo.getSystemVersion();
-      const memoryInGB =
-        (await DeviceInfo.getTotalMemory()) / 1024 / 1024 / 1024;
+      const [model, totalMemory] = await Promise.all([
+        DeviceInfo.getModel(),
+        DeviceInfo.getTotalMemory(),
+      ]);
       setDeviceInfo({
         model,
-        systemVersion,
-        memory: `${memoryInGB.toFixed(1)} GB`,
+        systemName: DeviceInfo.getSystemName(),
+        systemVersion: DeviceInfo.getSystemVersion(),
+        memory: `${(totalMemory / BYTES_PER_GB).toFixed(1)} GB`,
       });
     };
     fetchDeviceInfo();
   }, []);
 
+  const deviceLine = [
+    deviceInfo.model,
+    [deviceInfo.systemName, deviceInfo.systemVersion].filter(Boolean).join(' '),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
     <BackDismissibleSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
-      snapPoints={['50%', '90%']}
+      enableDynamicSizing
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
       }}
-      handleStyle={styles.handleStyle}
+      handleStyle={styles.handle}
       handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.sheetBackground}
+      backgroundStyle={styles.background}
     >
       {({ data }) => {
         if (!data) return null;
@@ -85,21 +111,47 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
         };
 
         return (
-          <BottomSheetScrollView
-            contentContainerStyle={styles.contentContainer}
-          >
-            <Text style={styles.header}>Benchmark results</Text>
-            {data.model && <ModelCard model={data.model} onPress={() => {}} />}
-            <BenchmarkStatsCard data={data} />
-            <DeviceInfoCard deviceInfo={deviceInfo} />
-            <BenchmarkDateCard timestamp={data.timestamp} />
-            <SecondaryButton
-              text="Delete this benchmark"
-              style={styles.deleteButton}
-              textStyle={styles.deleteText}
+          <BottomSheetView style={styles.container}>
+            <Text style={styles.title}>Benchmark results</Text>
+            <View style={styles.modelRow}>
+              <ModelFamilyTile
+                family={getModelFamily(
+                  data.model ?? { modelName: data.modelName }
+                )}
+                size="list"
+              />
+              <View style={styles.modelText}>
+                <Text style={styles.modelName} numberOfLines={1}>
+                  {data.modelName}
+                </Text>
+                <Text style={styles.date}>
+                  {formatBenchmarkDate(data.timestamp)}
+                </Text>
+              </View>
+            </View>
+            <BenchmarkStatsCard data={data} deviceMemory={deviceInfo.memory} />
+            {deviceLine.length > 0 && (
+              <View style={styles.deviceRow}>
+                <PhoneIcon
+                  width={DEVICE_ICON_SIZE}
+                  height={DEVICE_ICON_SIZE}
+                  style={styles.deviceIcon}
+                />
+                <Text style={styles.deviceText}>{deviceLine}</Text>
+              </View>
+            )}
+            <Pressable
+              accessibilityRole="button"
               onPress={onDeletePress}
-            />
-          </BottomSheetScrollView>
+              style={({ pressed }) => [
+                styles.deleteButton,
+                pressed && pressedOpacity,
+              ]}
+              testID="benchmark-result-delete"
+            >
+              <Text style={styles.deleteText}>Delete result</Text>
+            </Pressable>
+          </BottomSheetView>
         );
       }}
     </BackDismissibleSheetModal>
@@ -110,36 +162,81 @@ export default BenchmarkResultSheet;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    contentContainer: {
-      gap: 24,
-      paddingVertical: 24,
-      paddingHorizontal: 16,
-      paddingBottom: theme.insets.bottom + 16,
+    container: {
+      gap: space.four,
+      paddingTop: space.two,
+      paddingHorizontal: space.four,
+      paddingBottom: theme.insets.bottom + space.two,
     },
-    header: {
+    title: {
+      fontFamily: fontFamily.bold,
       fontSize: fontSizes.lg,
-      fontFamily: fontFamily.medium,
+      lineHeight: lineHeights.lg,
       color: theme.text.primary,
     },
-    handleStyle: {
-      borderRadius: 16,
+    modelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.three,
     },
-    handleIndicator: {
-      width: 64,
-      height: 4,
-      borderRadius: 20,
-      backgroundColor: theme.text.primary,
+    modelText: {
+      flex: 1,
+      minWidth: 0,
     },
-    sheetBackground: {
-      backgroundColor: theme.bg.softPrimary,
+    modelName: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
+      color: theme.text.primary,
+    },
+    date: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
+      color: theme.text.defaultTertiary,
+    },
+    deviceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.two,
+    },
+    deviceIcon: {
+      color: theme.text.defaultTertiary,
+    },
+    deviceText: {
+      flex: 1,
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
+      color: theme.text.defaultTertiary,
+    },
+    deleteButton: {
+      height: DELETE_BUTTON_HEIGHT,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.twelve,
+    },
+    deleteText: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.md,
+      color: theme.text.error,
     },
     backdrop: {
       backgroundColor: theme.bg.overlay,
     },
-    deleteButton: {
-      borderColor: theme.text.error,
+    handle: {
+      borderTopLeftRadius: SHEET_RADIUS,
+      borderTopRightRadius: SHEET_RADIUS,
+      backgroundColor: theme.bg.softPrimary,
     },
-    deleteText: {
-      color: theme.text.error,
+    handleIndicator: {
+      width: HANDLE_WIDTH,
+      height: HANDLE_HEIGHT,
+      borderRadius: radius.full,
+      backgroundColor: theme.border.soft,
+    },
+    background: {
+      borderRadius: SHEET_RADIUS,
+      backgroundColor: theme.bg.softPrimary,
     },
   });
