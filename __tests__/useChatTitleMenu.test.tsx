@@ -6,13 +6,16 @@ import {
   act,
   waitFor,
 } from '@testing-library/react-native';
-import { Alert, Text, TouchableOpacity } from 'react-native';
+import { Alert, Modal, Platform, Text, TouchableOpacity } from 'react-native';
 
 // ── mocks ──────────────────────────────────────────────────────────────────────
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
-    theme: { ...require('../styles/colors').lightTheme },
+    theme: {
+      ...require('../styles/colors').lightTheme,
+      insets: { top: 0, bottom: 0, left: 0, right: 0 },
+    },
   }),
 }));
 
@@ -126,6 +129,37 @@ describe('opening the chat menu', () => {
   it('closes from a tap outside the menu', () => {
     openMenu();
     fireEvent.press(screen.getByTestId('chat-menu-backdrop'));
+    expect(screen.getByText('menu:closed')).toBeTruthy();
+  });
+});
+
+describe('the chat menu on Android', () => {
+  const ORIGINAL_OS = Platform.OS;
+  const setPlatform = (os: string) =>
+    Object.defineProperty(Platform, 'OS', {
+      get: () => os,
+      configurable: true,
+    });
+
+  beforeEach(() => setPlatform('android'));
+  afterEach(() => setPlatform(ORIGINAL_OS));
+
+  const menuWindow = () => {
+    let node = screen.getByTestId('chat-menu').parent;
+    while (node && node.type !== Modal) node = node.parent;
+    return node;
+  };
+
+  it('opens in a window the name field can type into', () => {
+    openMenu();
+    fireEvent.press(screen.getByTestId('chat-menu-rename'));
+    expect(menuWindow()?.props.visible).toBe(true);
+    expect(screen.getByTestId('chat-menu-rename-input')).toBeTruthy();
+  });
+
+  it('closes on the back button instead of leaving the chat', () => {
+    openMenu();
+    fireEvent(menuWindow()!, 'requestClose');
     expect(screen.getByText('menu:closed')).toBeTruthy();
   });
 });

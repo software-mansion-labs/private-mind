@@ -80,6 +80,7 @@ const ChatTitlePopover = ({
       backdropTestID="chat-menu-backdrop"
       accessibilityLabel="Chat options"
       testID="chat-menu"
+      hostsTextInput
     >
       <View style={styles.titleBlock}>
         {draft === null ? (

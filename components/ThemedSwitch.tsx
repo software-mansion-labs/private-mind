@@ -75,7 +75,9 @@ export const ThemedSwitch = ({
       style={disabled && styles.disabled}
     >
       <Animated.View style={[styles.track, trackStyle]}>
-        <Animated.View style={[styles.thumb, thumbStyle]} />
+        <Animated.View
+          style={[styles.thumb, disabled && styles.flatThumb, thumbStyle]}
+        />
       </Animated.View>
     </Pressable>
   );
@@ -103,5 +105,9 @@ const createStyles = (theme: Theme) =>
     },
     disabled: {
       opacity: 0.5,
+    },
+    flatThumb: {
+      elevation: 0,
+      shadowOpacity: 0,
     },
   });

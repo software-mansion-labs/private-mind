@@ -100,6 +100,7 @@ const MenuRow = ({
       </Text>
       {trailing ? (
         <View
+          pointerEvents="none"
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >

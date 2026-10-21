@@ -3,6 +3,7 @@ import { Pressable, PressableProps, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { space } from '../../constants/design-system';
 import { Theme } from '../../styles/colors';
+import { PRESS_ANYWHERE } from '../chat-screen/attachments/constants';
 
 const ROW_MIN_HEIGHT = 44;
 
@@ -13,6 +14,7 @@ const PopoverRow = (props: Props) => {
 
   return (
     <Pressable
+      pressRetentionOffset={PRESS_ANYWHERE}
       {...props}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     />

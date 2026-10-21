@@ -1,6 +1,8 @@
 import React, { PropsWithChildren } from 'react';
 import {
   AccessibilityRole,
+  Modal,
+  Platform,
   Pressable,
   StyleProp,
   StyleSheet,
@@ -36,6 +38,7 @@ type Props = PropsWithChildren<{
   accessibilityRole?: AccessibilityRole;
   testID: string;
   contentStyle?: StyleProp<ViewStyle>;
+  hostsTextInput?: boolean;
 }>;
 
 const Popover = ({
@@ -48,43 +51,57 @@ const Popover = ({
   accessibilityRole,
   testID,
   contentStyle,
+  hostsTextInput = false,
   children,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
-  return (
-    <OverKeyboardView visible={visible}>
-      {visible ? (
-        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-          <Animated.View
-            entering={FadeIn.duration(FADE_IN_MS)}
-            style={StyleSheet.absoluteFill}
-          >
-            <Pressable
-              style={[StyleSheet.absoluteFill, styles.scrim]}
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel={closeLabel}
-              testID={backdropTestID}
-            />
-          </Animated.View>
-          <Animated.View
-            entering={FadeIn.duration(FADE_IN_MS)}
-            style={[styles.shadow, anchor]}
-          >
-            <View
-              style={[styles.card, contentStyle]}
-              accessibilityRole={accessibilityRole}
-              accessibilityLabel={accessibilityLabel}
-              testID={testID}
-            >
-              {children}
-            </View>
-          </Animated.View>
+  const content = visible ? (
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      <Animated.View
+        entering={FadeIn.duration(FADE_IN_MS)}
+        style={StyleSheet.absoluteFill}
+      >
+        <Pressable
+          style={[StyleSheet.absoluteFill, styles.scrim]}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel={closeLabel}
+          testID={backdropTestID}
+        />
+      </Animated.View>
+      <Animated.View
+        entering={FadeIn.duration(FADE_IN_MS)}
+        style={[styles.shadow, anchor]}
+      >
+        <View
+          style={[styles.card, contentStyle]}
+          accessibilityRole={accessibilityRole}
+          accessibilityLabel={accessibilityLabel}
+          testID={testID}
+        >
+          {children}
         </View>
-      ) : null}
-    </OverKeyboardView>
-  );
+      </Animated.View>
+    </View>
+  ) : null;
+
+  if (hostsTextInput && Platform.OS === 'android') {
+    return (
+      <Modal
+        visible={visible}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        navigationBarTranslucent
+        onRequestClose={onClose}
+      >
+        {content}
+      </Modal>
+    );
+  }
+
+  return <OverKeyboardView visible={visible}>{content}</OverKeyboardView>;
 };
 
 export default Popover;

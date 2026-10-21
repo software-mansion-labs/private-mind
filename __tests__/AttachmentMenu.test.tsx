@@ -109,17 +109,22 @@ describe('the tool switches in the menu', () => {
     expect(Feedback.toggleOn).toHaveBeenCalledTimes(1);
   });
 
-  it('flips Web search off from the switch itself', () => {
+  it('turns Web search off from its row', () => {
     const tools = renderWithTools({ webSearchEnabled: true });
 
-    fireEvent(
-      screen.getByTestId('web-search-toggle', hidden),
-      'valueChange',
-      false
-    );
+    fireEvent.press(screen.getByTestId('menu-web-switch'));
 
     expect(tools.onWebSearchToggle).toHaveBeenCalledTimes(1);
     expect(Feedback.toggleOff).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the tap on a switch to its row, so a finger that drifts is not lost', () => {
+    renderWithTools();
+
+    let node = screen.getByTestId('thinking-toggle', hidden).parent;
+    while (node && node.props.pointerEvents === undefined) node = node.parent;
+
+    expect(node?.props.pointerEvents).toBe('none');
   });
 
   it('flips Web search from its row', () => {
