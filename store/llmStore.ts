@@ -841,7 +841,7 @@ const NO_LLM_RESPONSE: LLMGenerationResult = {
   performance: { timeToFirstToken: 0, tokensPerSecond: 0 },
 };
 
-const IMAGE_ONLY_QUESTION = 'Describe this image.';
+const IMAGE_ONLY_QUESTION = 'What is in this picture?';
 
 const questionForImage = (content: string): string =>
   content.trim() || IMAGE_ONLY_QUESTION;

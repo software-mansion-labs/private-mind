@@ -2806,7 +2806,7 @@ describe('sendChatMessage imagePath', () => {
     const calledMessages = mockInstance.generate.mock.calls[0][0];
     expect(calledMessages[calledMessages.length - 1].content).toEqual([
       { type: 'image' },
-      { type: 'text', text: 'Describe this image.' },
+      { type: 'text', text: 'What is in this picture?' },
     ]);
   });
 
