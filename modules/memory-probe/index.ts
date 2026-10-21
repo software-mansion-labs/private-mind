@@ -2,17 +2,9 @@ import { Platform } from 'react-native';
 import { requireOptionalNativeModule } from 'expo';
 import DeviceInfo from 'react-native-device-info';
 
-export type MemoryPressureLevel = 'normal' | 'warning' | 'critical';
-
-export interface MemoryPressure {
-  level: MemoryPressureLevel;
-  lastStrainAt: number;
-}
-
 interface NativeMemoryProbe {
   getPhysFootprintBytes: () => number;
   releaseMlxCache?: () => void;
-  getMemoryPressure?: () => MemoryPressure;
 }
 
 const nativeModule =
@@ -70,17 +62,3 @@ export const getMemoryFootprintBytes = (): number | null => {
 export const releaseMlxCache = (): void => {
   nativeModule?.releaseMlxCache?.();
 };
-
-export const MEMORY_STRAIN_GRACE_MS = 30_000;
-
-export const strainedSince = (
-  pressure: MemoryPressure | null | undefined,
-  sinceMs: number
-): boolean => {
-  if (!pressure) return false;
-  if (pressure.level !== 'normal') return true;
-  return pressure.lastStrainAt >= sinceMs - MEMORY_STRAIN_GRACE_MS;
-};
-
-export const memoryStrainedSince = (sinceMs: number): boolean =>
-  strainedSince(nativeModule?.getMemoryPressure?.(), sinceMs);
