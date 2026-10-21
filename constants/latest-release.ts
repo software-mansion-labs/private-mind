@@ -4,7 +4,6 @@ export const LATEST_RELEASE = {
   highlights: [
     'A stuck answer stops and offers a fix',
     'Pick another model in a new chat',
-    "No crash loop when a model can't start",
     'Rating prompt waits for a good answer',
   ],
 };
