@@ -888,7 +888,9 @@ export const prepareMessagesForLLM = (
   const mandatoryChars =
     systemChars + lastMessage.content.length + digestLine.length;
   const remainingChars = budgetChars - mandatoryChars;
-  const history = messagesWithSystemPrompt.slice(1, -1);
+  const greetingTurn =
+    lastMessage.role === 'user' && !!question && isGreetingOnly(question);
+  const history = greetingTurn ? [] : messagesWithSystemPrompt.slice(1, -1);
   const fitFrom = (turns: ExecutorchMessage[]): ExecutorchMessage[] => {
     let room = remainingChars;
     const takenReversed: ExecutorchMessage[] = [];
