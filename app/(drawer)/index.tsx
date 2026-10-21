@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { startPhantomChat } from '../../utils/startPhantomChat';
 import { useFocusEffect, useNavigation } from 'expo-router';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { configureReanimatedLogger } from 'react-native-reanimated';
 import NewChatHeaderButton from '../../components/NewChatHeaderButton';
 import { Model } from '../../database/modelRepository';
@@ -42,14 +43,15 @@ export default function App() {
   const hasAutoRedirectedRef = useRef(false);
   const [redirectFailed, setRedirectFailed] = useState(false);
   const db = useSQLiteContext();
-  useDefaultHeader();
+  useDefaultHeader({ glass: true });
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerRight: () => <NewChatHeaderButton noOp />,
+      headerRight: () => <NewChatHeaderButton noOp glass />,
     });
   }, [navigation]);
-  const { styles, theme } = useThemedStyles(createStyles);
+  const headerHeight = useHeaderHeight();
+  const { styles, theme } = useThemedStyles(createStyles, headerHeight);
 
   const handleSetModel = async (model: Model, replace = false) => {
     await setLastUsedModelId(model.id);
@@ -128,7 +130,7 @@ export default function App() {
   );
 }
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, headerHeight: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -139,7 +141,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'flex-start',
       alignItems: 'center',
       paddingHorizontal: 16,
-      paddingTop: 64,
+      paddingTop: headerHeight + 64,
       gap: 24,
     },
     icon: {

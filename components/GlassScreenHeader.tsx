@@ -14,12 +14,18 @@ import { Theme } from '../styles/colors';
 import { pressedOpacity } from '../styles/pressable';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import ArrowLeftIcon from '../assets/icons/arrow-left.svg';
+import CloseIcon from '../assets/icons/close.svg';
 import HeaderGlassButton, { headerGlassButtonFill } from './HeaderGlassButton';
 import { GlassScrollEdge } from './chat-screen/GlassScrollEdge';
 import { GLASS_BUTTON_SIZE, HEADER_EDGE_PX } from '../constants/header-actions';
 import { space } from '../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../constants/font-scale';
 import { Feedback } from '../utils/Feedback';
+
+const LEADING_ICONS = {
+  back: { Icon: ArrowLeftIcon, size: 20, label: 'Back' },
+  close: { Icon: CloseIcon, size: 16, label: 'Close' },
+};
 
 const TITLE_SIDE_SPACE = GLASS_BUTTON_SIZE + HEADER_EDGE_PX * 2;
 const SHEET_TOP_INSET = space.four;
@@ -40,6 +46,7 @@ interface Props {
   titleIcon?: React.ReactNode;
   onBack: () => void;
   sheet?: boolean;
+  icon?: keyof typeof LEADING_ICONS;
 }
 
 const GlassScreenHeader = ({
@@ -47,7 +54,9 @@ const GlassScreenHeader = ({
   titleIcon,
   onBack,
   sheet = false,
+  icon = 'back',
 }: Props) => {
+  const { Icon, size, label } = LEADING_ICONS[icon];
   const { styles } = useThemedStyles(createStyles);
   const topInset = useHeaderTopInset(sheet);
   const headerHeight = useGlassScreenHeaderHeight(sheet);
@@ -83,10 +92,10 @@ const GlassScreenHeader = ({
             ]}
             hitSlop={15}
             accessibilityRole="button"
-            accessibilityLabel="Back"
+            accessibilityLabel={label}
             testID="glass-header-back"
           >
-            <ArrowLeftIcon width={20} height={20} style={styles.icon} />
+            <Icon width={size} height={size} style={styles.icon} />
           </Pressable>
         </HeaderGlassButton>
       </View>
