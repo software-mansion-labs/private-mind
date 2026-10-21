@@ -2794,22 +2794,6 @@ describe('sendChatMessage imagePath', () => {
     });
   });
 
-  it('asks the model to describe an image sent without any text', async () => {
-    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
-      { role: 'user', content: '', mediaPath: '/local/image.jpg' },
-    ]);
-
-    await useLLMStore
-      .getState()
-      .sendChatMessage('', 1, noSources, settings, '/local/image.jpg');
-
-    const calledMessages = mockInstance.generate.mock.calls[0][0];
-    expect(calledMessages[calledMessages.length - 1].content).toEqual([
-      { type: 'image' },
-      { type: 'text', text: 'What is in this picture?' },
-    ]);
-  });
-
   it('keeps the question the user typed with an image', async () => {
     (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
       { role: 'user', content: 'What is this?', mediaPath: '/local/image.jpg' },

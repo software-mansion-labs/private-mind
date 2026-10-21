@@ -2719,6 +2719,39 @@ describe('prepareMessagesForLLM — images in the history', () => {
     );
   });
 
+  const photoAlone: Message[] = [
+    {
+      id: 1,
+      chatId: 1,
+      role: 'user',
+      content: '',
+      imagePath: 'file:///chat-images/cat.jpg',
+      timestamp: 0,
+    },
+  ];
+
+  it('asks what is in a photo sent without any text, ahead of the language anchor', () => {
+    const result = prepareMessagesForLLM(photoAlone, [], baseSettings, {
+      ...baseModel,
+      vision: true,
+    });
+
+    expect(result.at(-1)!.content).toMatch(
+      /^What is in this picture\? \(Answer in English\.\)/
+    );
+  });
+
+  it('keeps the question typed next to a photo', () => {
+    const result = prepareMessagesForLLM(
+      [{ ...photoAlone[0]!, content: 'what is this?' }],
+      [],
+      baseSettings,
+      { ...baseModel, vision: true }
+    );
+
+    expect(result.at(-1)!.content).toMatch(/^what is this\?/);
+  });
+
   it('keeps the photo away from a text model the chat was switched to, so the chat keeps working', () => {
     const result = prepareMessagesForLLM(withPhoto, [], baseSettings, {
       ...baseModel,

@@ -5,6 +5,7 @@ import {
   sourceKind,
 } from '../database/chatRepository';
 import { isGreetingOnly } from './openingGreeting';
+import { questionForImage } from './imageQuestion';
 import { OPENING_WELCOME_INSTRUCTION } from '../constants/opening-greetings';
 import { Model } from '../database/modelRepository';
 import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
@@ -642,8 +643,13 @@ const withoutAnsweredOpeningGreeting = <T extends Message>(
   return chatMovedOn ? later : messages;
 };
 
+const withQuestionForImage = (message: Message): Message =>
+  message.imagePath
+    ? { ...message, content: questionForImage(message.content) }
+    : message;
+
 export const prepareMessagesForLLM = (
-  activeChatMessages: Message[],
+  chatMessages: Message[],
   context: string[],
   settings: ChatSettings,
   model: Model,
@@ -662,6 +668,7 @@ export const prepareMessagesForLLM = (
     digest,
     openingWelcome,
   } = options;
+  const activeChatMessages = chatMessages.map(withQuestionForImage);
   const hasContext = context.some((chunk) => chunk.trim().length > 0);
   const question = activeChatMessages.findLast(
     (msg) => msg.role === 'user'
