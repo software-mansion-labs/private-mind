@@ -176,9 +176,9 @@ describe('the tool switches in the menu', () => {
     expect(
       screen.getByTestId('menu-think-switch').props.accessibilityState.disabled
     ).toBe(true);
-    expect(screen.getByTestId('menu-thinking-toggle', hidden).props.disabled).toBe(
-      true
-    );
+    expect(
+      screen.getByTestId('menu-thinking-toggle', hidden).props.disabled
+    ).toBe(true);
     expect(screen.getByTestId('web-search-toggle', hidden).props.disabled).toBe(
       true
     );
