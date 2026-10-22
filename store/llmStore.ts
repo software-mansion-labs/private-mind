@@ -14,7 +14,9 @@ import {
   ChatSettings,
   getChatDigest,
   getChatMessages,
+  markMessageCutShort,
   markMessageStopped,
+  MEMORY_CUT_SHORT,
   Message,
   persistMessage,
   setChatDigest,
@@ -76,9 +78,13 @@ import {
   getMemoryFootprintBytes,
   isMemoryMetricAvailable,
   memorySampleIntervalMs,
+  releaseMlxCache,
 } from '../modules/memory-probe';
 import { useWebSearchStore } from './webSearchStore';
-import { getGenerationConfigForModel } from '../constants/default-models';
+import {
+  getGenerationConfigForModel,
+  runsOnMlxDelegate,
+} from '../constants/default-models';
 import { promptReviewAfterAnswer } from '../utils/reviewPrompt';
 import { cpuLacksLseAtomics } from '../utils/cpuSupport';
 import { UNSUPPORTED_CPU_REFUSAL } from '../constants/cpu-support';
@@ -103,6 +109,7 @@ export interface LLMStore {
   activeChatDigestChatId: number | null;
   generationError: { chatId: number; message: string } | null;
   retryArmedForChatId: number | null;
+  memoryStalls: Record<number, number>;
 
   setDB: (db: SQLiteDatabase) => void;
   loadModel: (model: Model, hardReload?: boolean) => Promise<void>;
@@ -141,6 +148,7 @@ export interface LLMStore {
 }
 
 let llmInstance: LLMModule | null = null;
+let instanceRunsOnMlx = false;
 let modelOffloadChain: Promise<void> = Promise.resolve();
 let modelLoadChain: Promise<void> = Promise.resolve();
 let runnerChain: Promise<unknown> = Promise.resolve();
@@ -189,6 +197,7 @@ type FailedGenerationRequest = {
 };
 
 let failedGenerationRequest: FailedGenerationRequest | null = null;
+let instanceBehindFailedTurn: LLMModule | null = null;
 
 let appIsAway = false;
 let appIsInBackground = false;
@@ -214,6 +223,7 @@ const armRetry = (
   request: FailedGenerationRequest | null
 ) => {
   failedGenerationRequest = request;
+  instanceBehindFailedTurn = request ? llmInstance : null;
   set({ retryArmedForChatId: request?.chatId ?? null });
 };
 
@@ -293,6 +303,14 @@ const createMemoryTracker = (onUpdate: (footprintBytes: number) => void) => {
   };
 };
 
+const withoutMemoryStall = (
+  memoryStalls: Record<number, number>,
+  chatId: number
+): Record<number, number> => {
+  const { [chatId]: _retired, ...rest } = memoryStalls;
+  return rest;
+};
+
 const waitForModelLoad = async (get: () => LLMStore): Promise<void> => {
   while (get().isLoading) {
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -343,6 +361,8 @@ const unloadLLM = () => {
   if (!llmInstance) return false;
   llmInstance.delete();
   llmInstance = null;
+  if (instanceRunsOnMlx) releaseMlxCache();
+  instanceRunsOnMlx = false;
   return true;
 };
 
@@ -480,6 +500,7 @@ const loadModelInstance = async (
     model.isDownloaded ? preferDownloadedCopy(path) : path;
 
   try {
+    instanceRunsOnMlx = runsOnMlxDelegate(model);
     llmInstance = await LLMModule.fromModelName(
       {
         modelName: 'custom' as Parameters<
@@ -625,6 +646,8 @@ const updateChatStateForGeneration = (
                     msg.groundingCaveats,
                   stoppedByUser:
                     data.assistantMessage?.stoppedByUser ?? msg.stoppedByUser,
+                  cutShortReason:
+                    data.assistantMessage?.cutShortReason ?? msg.cutShortReason,
                   timeToFirstToken: data.timeToFirstToken!,
                   tokensPerSecond: data.tokensPerSecond!,
                 }
@@ -825,6 +848,7 @@ const reportPromptEstimateAccuracy = (
 type LLMGenerationResult = {
   response: string | null;
   performance: { timeToFirstToken: number; tokensPerSecond: number };
+  stalled: boolean;
 };
 
 const NOTHING_GATHERED: Awaited<
@@ -840,6 +864,7 @@ const cannotWriteWelcome = (model: Model): boolean =>
 const NO_LLM_RESPONSE: LLMGenerationResult = {
   response: null,
   performance: { timeToFirstToken: 0, tokensPerSecond: 0 },
+  stalled: false,
 };
 
 const generateLLMResponse = (
@@ -868,6 +893,7 @@ const generateLLMResponse = (
     const startTime = performance.now();
     const finalResponse = await instance.generate(preparedMessages);
     const endTime = performance.now();
+    const stalled = instance.lastGenerationStalled();
 
     reportPromptEstimateAccuracy(messages, instance);
 
@@ -882,10 +908,11 @@ const generateLLMResponse = (
       return {
         response: finalResponse,
         performance: { timeToFirstToken, tokensPerSecond },
+        stalled,
       };
     }
 
-    return NO_LLM_RESPONSE;
+    return { ...NO_LLM_RESPONSE, stalled };
   });
 };
 
@@ -893,10 +920,12 @@ const generateRefinement = (
   messages: ExecutorchMessage[],
   get: () => LLMStore
 ): Promise<LLMGenerationResult> =>
-  generateLLMResponse(messages, get).catch((error) => {
-    console.warn('Refinement generation failed, keeping the answer', error);
-    return NO_LLM_RESPONSE;
-  });
+  generateLLMResponse(messages, get)
+    .then((result) => (result.stalled ? NO_LLM_RESPONSE : result))
+    .catch((error) => {
+      console.warn('Refinement generation failed, keeping the answer', error);
+      return NO_LLM_RESPONSE;
+    });
 
 export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
@@ -918,6 +947,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
   activeChatDigestChatId: null,
   generationError: null,
   retryArmedForChatId: null,
+  memoryStalls: {},
 
   setDB: (db) => set({ db }),
 
@@ -1098,7 +1128,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       currentModel
     );
 
-    set({ generationError: null });
+    set((state) => ({
+      generationError: null,
+      memoryStalls: withoutMemoryStall(state.memoryStalls, chatId),
+    }));
     updateChatStateForGeneration(set, 'start', {
       chatId,
       localId: assistantPlaceholder.localId,
@@ -1183,6 +1216,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       if (messageId === null) return;
       try {
         await markMessageStopped(db, messageId, false);
+        await markMessageCutShort(db, messageId, null);
       } catch (error) {
         console.error('Failed to clear the stopped turn', error);
         return;
@@ -1190,7 +1224,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       set((state) => ({
         activeChatMessages: state.activeChatMessages.map((message) =>
           message.id === messageId
-            ? { ...message, stoppedByUser: false }
+            ? { ...message, stoppedByUser: false, cutShortReason: undefined }
             : message
         ),
       }));
@@ -1220,6 +1254,76 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             ? { ...message, stoppedByUser: true }
             : message
         ),
+      }));
+    };
+
+    const markQuestionCutShortByMemory = async () => {
+      const messageId = lastUserMessageId();
+      if (messageId === null) return;
+      try {
+        await markMessageCutShort(db, messageId, MEMORY_CUT_SHORT);
+      } catch (error) {
+        console.error('Failed to record the turn a memory stall cut', error);
+        return;
+      }
+      set((state) => ({
+        activeChatMessages: state.activeChatMessages.map((message) =>
+          message.id === messageId
+            ? { ...message, cutShortReason: MEMORY_CUT_SHORT }
+            : message
+        ),
+      }));
+    };
+
+    const settleMemoryStall = async (
+      { response, performance: stalledPerformance }: LLMGenerationResult,
+      sourceDocuments: SourceDocument[]
+    ) => {
+      void unloadLLMWhenIdle();
+      const partial = response ? tidyVisibleAnswer(response) : '';
+      if (carriesAnswer(partial)) {
+        const cutShortAnswer: Message = {
+          ...assistantPlaceholder,
+          content: humanizeSourceReferences(
+            stripSourceLabels(partial),
+            sourceDocuments
+          ),
+          tokensPerSecond: stalledPerformance.tokensPerSecond,
+          timeToFirstToken: stalledPerformance.timeToFirstToken,
+          stoppedByUser: false,
+          cutShortReason: MEMORY_CUT_SHORT,
+        };
+        const answerId = await persistMessage(db, cutShortAnswer);
+        updateChatStateForGeneration(
+          set,
+          'complete',
+          get().activeChatId === chatId
+            ? {
+                localId: assistantPlaceholder.localId,
+                assistantMessage: { ...cutShortAnswer, id: answerId },
+                timeToFirstToken: stalledPerformance.timeToFirstToken,
+                tokensPerSecond: stalledPerformance.tokensPerSecond,
+              }
+            : undefined
+        );
+      } else {
+        updateChatStateForGeneration(set, 'failed', {
+          localId: assistantPlaceholder.localId,
+        });
+      }
+      await markQuestionCutShortByMemory();
+      armRetry(set, {
+        newMessage,
+        chatId,
+        buildSources,
+        settings,
+        imagePath,
+        documentName,
+        reusePersistedUser: true,
+      });
+      set((state) => ({
+        generationError: null,
+        memoryStalls: { ...state.memoryStalls, [chatId]: currentModel.id },
       }));
     };
 
@@ -1326,7 +1430,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         openingWelcome !== null && cannotWriteWelcome(currentModel);
 
       if (!preparedWelcomeOnly) {
-        await loadModelForTurn(isRetry);
+        await loadModelForTurn(
+          isRetry &&
+            llmInstance !== null &&
+            llmInstance === instanceBehindFailedTurn
+        );
         if (!llmInstance && get().isProcessingPrompt) {
           await loadModelForTurn(true);
         }
@@ -1441,6 +1549,14 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           turnGenerationConfig
         );
       }
+      const userStoppedTurn = !get().isGenerating;
+      const stallCameFromMemory =
+        generation.stalled && !userStoppedTurn && !appWasAwayDuringTurn;
+      if (stallCameFromMemory && stillOurs()) {
+        await settleMemoryStall(generation, sourceDocuments ?? []);
+        return true;
+      }
+
       const { response: rawResponse } = generation;
       let responsePerformance = generation.performance;
       let finalResponse = rawResponse

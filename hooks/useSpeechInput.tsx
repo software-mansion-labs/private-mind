@@ -77,8 +77,8 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
         iosMode: 'spokenAudio',
       });
       await AudioManager.setAudioSessionActivity(true);
-      await stt.ensureLoaded();
       await closeOpenStream();
+      await stt.ensureLoaded();
 
       if (isStartCanceled.current) {
         releaseAudioSession(claim);
@@ -191,6 +191,10 @@ async function* followToTheEnd<T>(
       settle = resolve;
     })
   );
+  const endStream = () => {
+    settle();
+    useSTTStore.getState().discardModule();
+  };
 
   let leftByConsumer = false;
   try {
@@ -202,8 +206,8 @@ async function* followToTheEnd<T>(
       next = await source.next();
     }
   } finally {
-    if (leftByConsumer) readToTheEnd(source).then(settle);
-    else settle();
+    if (leftByConsumer) readToTheEnd(source).then(endStream);
+    else endStream();
   }
 
   onEnd();

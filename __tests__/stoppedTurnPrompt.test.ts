@@ -34,6 +34,43 @@ const turns = (history: Message[]) =>
     .filter((entry) => entry.role !== 'system')
     .map((entry) => `${entry.role}: ${entry.content}`);
 
+describe('a turn a memory stall cut short', () => {
+  it('leaves both the question and its partial answer out of the next prompt', () => {
+    const prompt = turns([
+      message({
+        id: 1,
+        content: 'Explain the Byzantine Empire',
+        cutShortReason: 'memory',
+      }),
+      message({
+        id: 2,
+        role: 'assistant',
+        content: 'It began in',
+        cutShortReason: 'memory',
+      }),
+      message({ id: 3, content: 'What is the capital of France?' }),
+    ]);
+
+    expect(prompt).toHaveLength(1);
+    expect(prompt[0]).toContain('What is the capital of France?');
+  });
+
+  it('retries the question without the partial answer in front of it', () => {
+    const prompt = turns([
+      message({ id: 1, content: 'Explain the Byzantine Empire' }),
+      message({
+        id: 2,
+        role: 'assistant',
+        content: 'It began in',
+        cutShortReason: 'memory',
+      }),
+    ]);
+
+    expect(prompt).toHaveLength(1);
+    expect(prompt[0]).toContain('Explain the Byzantine Empire');
+  });
+});
+
 describe('a question the user stopped before any answer', () => {
   it('is left out of the prompt so the model answers the new question', () => {
     const prompt = turns([

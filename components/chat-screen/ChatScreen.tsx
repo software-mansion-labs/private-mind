@@ -34,6 +34,9 @@ import useChatBranching from '../../hooks/useChatBranching';
 import { useStableCallback } from '../../hooks/useStableCallback';
 import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
 import { retryWithPinnedModel } from './loadModelPinnedToChat';
+import { useMemoryStallCard } from './useMemoryStallCard';
+import { startPhantomChat } from '../../utils/startPhantomChat';
+import { CHAT_ENTRY_ACTION } from '../../constants/chat-route-params';
 
 interface Props {
   chatId: number;
@@ -249,6 +252,22 @@ export default function ChatScreen({
     });
   }, [model, retryLastGeneration, isSwitching]);
 
+  const handleNewChatWithAnotherModel = useCallback(() => {
+    startPhantomChat(db, 'push', undefined, CHAT_ENTRY_ACTION.PickModel).catch(
+      (error) => {
+        console.error('Failed to open a new chat for another model:', error);
+      }
+    );
+  }, [db]);
+
+  const memoryStallCard = useMemoryStallCard({
+    chatId,
+    model,
+    busy: isModelLoading || isSwitching,
+    startNewChat: handleNewChatWithAnotherModel,
+    retryWithChatModel: handleRetryGeneration,
+  });
+
   const scrollBottomOffset = theme.insets.bottom;
 
   useLegacyChatNotice(messageHistory);
@@ -280,6 +299,7 @@ export default function ChatScreen({
           generationError={chatGenerationError}
           onRetryGeneration={handleRetryGeneration}
           canRetryGeneration={retryArmedForChatId === chatId}
+          turnFooter={memoryStallCard}
           bottomOffset={scrollBottomOffset}
           freeze={overlayOpen}
           revealFromTop={revealFromTop}
