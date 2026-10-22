@@ -24,10 +24,11 @@ import { getModelsByNames, Model } from '../../database/modelRepository';
 import { Theme } from '../../styles/colors';
 import { getStartingModels } from '../../constants/default-models';
 import { getDeviceMemoryGB } from '../../utils/modelCompatibility';
-import { radius, space } from '../../constants/design-system';
+import { radius, space, stroke } from '../../constants/design-system';
 
 const APP_ICON_SIZE = 72;
 const SECTION_GAP = 28;
+const CARD_BORDER_ROOM = stroke.strong;
 
 const downloadLabel = (models: Model[]) => {
   if (models.length === 0) return 'Select a model';
@@ -215,7 +216,10 @@ function SelectStartingModelScreen() {
           </Text>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.modelsScroll}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.modelsContainer}>
             {startingModels.map((model) => (
               <ModelCard
@@ -293,8 +297,12 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultSecondary,
       textAlign: 'center',
     },
+    modelsScroll: {
+      margin: -CARD_BORDER_ROOM,
+    },
     modelsContainer: {
       gap: 8,
+      padding: CARD_BORDER_ROOM,
     },
     footer: {
       gap: 10,
