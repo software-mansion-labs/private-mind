@@ -3,6 +3,7 @@ import { DEFAULT_MODELS } from '../constants/default-models';
 import {
   MODEL_CATALOG_CACHE_KEY,
   MODEL_CATALOG_FETCH_TIMEOUT_MS,
+  MODEL_CATALOG_STARTUP_WAIT_MS,
   MODEL_CATALOG_URL,
 } from '../constants/modelCatalog';
 import {
@@ -53,21 +54,38 @@ const readCachedCatalog = async (): Promise<CatalogModel[] | null> => {
   }
 };
 
-export const resolveModelCatalog = async (): Promise<ResolvedModelCatalog> => {
+const fetchAndCacheCatalog = async (): Promise<CatalogModel[] | null> => {
   try {
     const text = await fetchManifestText();
     const models = parseManifest(text);
-    if (models) {
-      try {
-        await AsyncStorage.setItem(MODEL_CATALOG_CACHE_KEY, text);
-      } catch (error) {
-        console.warn('Failed to cache model catalog', error);
-      }
-      return { models, origin: 'remote' };
+    if (!models) return null;
+    try {
+      await AsyncStorage.setItem(MODEL_CATALOG_CACHE_KEY, text);
+    } catch (error) {
+      console.warn('Failed to cache model catalog', error);
     }
+    return models;
   } catch (error) {
     console.warn('Failed to fetch model catalog, falling back to cache', error);
+    return null;
   }
+};
+
+const withinStartupBudget = <T>(work: Promise<T>): Promise<T | null> =>
+  new Promise((resolve) => {
+    const timer = setTimeout(
+      () => resolve(null),
+      MODEL_CATALOG_STARTUP_WAIT_MS
+    );
+    work.then((value) => {
+      clearTimeout(timer);
+      resolve(value);
+    });
+  });
+
+export const resolveModelCatalog = async (): Promise<ResolvedModelCatalog> => {
+  const remote = await withinStartupBudget(fetchAndCacheCatalog());
+  if (remote) return { models: remote, origin: 'remote' };
 
   const cached = await readCachedCatalog();
   if (cached) {

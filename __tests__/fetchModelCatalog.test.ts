@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEFAULT_MODELS } from '../constants/default-models';
-import { MODEL_CATALOG_CACHE_KEY } from '../constants/modelCatalog';
+import {
+  MODEL_CATALOG_CACHE_KEY,
+  MODEL_CATALOG_STARTUP_WAIT_MS,
+} from '../constants/modelCatalog';
 import { resolveModelCatalog } from '../utils/fetchModelCatalog';
 
 const VALID_MANIFEST = {
@@ -145,5 +148,66 @@ describe('resolveModelCatalog', () => {
     await expect(resolveModelCatalog()).resolves.toEqual(
       expect.objectContaining({ origin: 'fallback' })
     );
+  });
+
+  describe('when the network is slow at startup', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    it('does not hold the start of the app for a slow answer: it starts from the cache and still caches the answer', async () => {
+      await AsyncStorage.setItem(
+        MODEL_CATALOG_CACHE_KEY,
+        JSON.stringify({
+          ...VALID_MANIFEST,
+          models: [{ ...VALID_MANIFEST.models[0], modelName: 'Cached Model' }],
+        })
+      );
+      let answer!: () => void;
+      mockFetchOnce(
+        () =>
+          new Promise((resolve) => {
+            answer = () =>
+              resolve({
+                ok: true,
+                status: 200,
+                text: () => Promise.resolve(JSON.stringify(VALID_MANIFEST)),
+              });
+          })
+      );
+
+      const pending = resolveModelCatalog();
+      await jest.advanceTimersByTimeAsync(MODEL_CATALOG_STARTUP_WAIT_MS);
+      const result = await pending;
+
+      expect(result.origin).toBe('cache');
+      expect(result.models[0].modelName).toBe('Cached Model');
+
+      answer();
+      await jest.advanceTimersByTimeAsync(10);
+      expect(await AsyncStorage.getItem(MODEL_CATALOG_CACHE_KEY)).toBe(
+        JSON.stringify(VALID_MANIFEST)
+      );
+    });
+
+    it('falls back to the bundled catalog on a first launch with a slow network', async () => {
+      mockFetchOnce(() => new Promise(() => {}));
+
+      const pending = resolveModelCatalog();
+      await jest.advanceTimersByTimeAsync(MODEL_CATALOG_STARTUP_WAIT_MS);
+
+      expect((await pending).origin).toBe('fallback');
+    });
+
+    it('still takes a fast answer', async () => {
+      mockFetchOnce(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve(JSON.stringify(VALID_MANIFEST)),
+        })
+      );
+
+      expect((await resolveModelCatalog()).origin).toBe('remote');
+    });
   });
 });

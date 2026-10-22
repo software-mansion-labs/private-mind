@@ -4,4 +4,6 @@ export const MODEL_CATALOG_URL =
 
 export const MODEL_CATALOG_FETCH_TIMEOUT_MS = 3000;
 
+export const MODEL_CATALOG_STARTUP_WAIT_MS = 600;
+
 export const MODEL_CATALOG_CACHE_KEY = 'model_catalog_cache_v1';
