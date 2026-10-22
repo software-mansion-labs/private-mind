@@ -6,6 +6,7 @@ import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
+import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { router } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
@@ -54,7 +55,7 @@ const ModelSelectSheet = ({
   );
 
   return (
-    <BottomSheetModal
+    <BackDismissibleSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       index={snapIndex}
@@ -126,7 +127,7 @@ const ModelSelectSheet = ({
           />
         </BottomSheetView>
       )}
-    </BottomSheetModal>
+    </BackDismissibleSheetModal>
   );
 };
 

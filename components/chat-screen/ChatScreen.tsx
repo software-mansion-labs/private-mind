@@ -33,6 +33,7 @@ import useChatSettings from '../../hooks/useChatSettings';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import useChatBranching from '../../hooks/useChatBranching';
 import { useStableCallback } from '../../hooks/useStableCallback';
+import { useBackToDismiss } from '../../hooks/useBackToDismiss';
 import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
 import { retryWithPinnedModel } from './loadModelPinnedToChat';
 import { useMemoryStallCard } from './useMemoryStallCard';
@@ -115,6 +116,9 @@ export default function ChatScreen({
     topFadeAnchor,
     emptyFadeColors,
   } = useChatScreenLayout({ isEmpty, headerTitleBottom, headerHeight, theme });
+  useBackToDismiss(userActionMenu.isOpen, () =>
+    setUserActionMenu({ isOpen: false })
+  );
 
   const { branchMarkers, handleForkMessage, handleBranchMarkerPress } =
     useChatBranching({

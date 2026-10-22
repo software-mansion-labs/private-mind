@@ -12,6 +12,7 @@ import {
 import { OverKeyboardView } from 'react-native-keyboard-controller';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
+import { useBackToDismiss } from '../../hooks/useBackToDismiss';
 import { radius, stroke } from '../../constants/design-system';
 import { Theme } from '../../styles/colors';
 
@@ -55,6 +56,7 @@ const Popover = ({
   children,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
+  useBackToDismiss(visible, onClose);
 
   const content = visible ? (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">

@@ -7,6 +7,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
+import { useBackToDismiss } from '../../../hooks/useBackToDismiss';
 import { Theme } from '../../../styles/colors';
 import { Feedback } from '../../../utils/Feedback';
 import AttachmentFlight, { type Flight } from './AttachmentFlight';
@@ -203,6 +204,12 @@ const AttachmentOverlay = ({
     if (Date.now() - barLeftAt.current < DURATION.crossfade) return;
     panel.dismiss();
   }, [panel]);
+
+  useBackToDismiss(panel.mode !== 'closed', () => {
+    if (panel.closing || isFlying) return;
+    if (panel.mode === 'menu') panel.dismiss();
+    else panel.backToMenu();
+  });
 
   return (
     <OverKeyboardView visible={panel.mode !== 'closed'}>

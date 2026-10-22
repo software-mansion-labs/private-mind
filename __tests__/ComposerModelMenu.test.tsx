@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
+import { BackHandler } from 'react-native';
 import type { Model } from '../database/modelRepository';
 
 jest.mock('../context/ThemeContext', () => ({
@@ -109,5 +110,18 @@ describe('ComposerModelMenu', () => {
     expect(anchored?.props.style).toEqual(
       expect.arrayContaining([expect.objectContaining({ bottom: 140 })])
     );
+  });
+
+  it('closes on the Android back button instead of leaving the chat', () => {
+    const addListener = jest
+      .spyOn(BackHandler, 'addEventListener')
+      .mockReturnValue({ remove: jest.fn() } as never);
+    const { onClose } = renderMenu();
+
+    const handler = addListener.mock.calls.at(-1)?.[1] as () => boolean;
+
+    expect(handler()).toBe(true);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    addListener.mockRestore();
   });
 });
