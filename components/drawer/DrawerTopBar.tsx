@@ -23,6 +23,7 @@ import {
 import SearchIcon from '../../assets/icons/search.svg';
 import { radius } from '../../constants/design-system';
 import ArrowLeftIcon from '../../assets/icons/arrow-left.svg';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
   searching: boolean;
@@ -70,7 +71,7 @@ export const DrawerTopBar = ({
           testID="drawer-search-open"
           accessibilityRole="button"
           accessibilityLabel="Search chats"
-          style={({ pressed }) => [styles.pill, pressed && styles.dimmed]}
+          style={({ pressed }) => [styles.pill, pressed && pressedOpacity]}
         >
           <SearchIcon width={18} height={18} style={styles.placeholderIcon} />
           <Text style={styles.placeholder}>Search</Text>
@@ -88,7 +89,10 @@ export const DrawerTopBar = ({
           accessibilityRole="button"
           accessibilityLabel="Close search"
           hitSlop={12}
-          style={({ pressed }) => [styles.backButton, pressed && styles.dimmed]}
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && pressedOpacity,
+          ]}
         >
           <ArrowLeftIcon width={20} height={20} style={styles.icon} />
         </Pressable>
@@ -185,9 +189,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: 18,
       justifyContent: 'center',
       alignItems: 'center',
-    },
-    dimmed: {
-      opacity: 0.5,
     },
     input: {
       flex: 1,

@@ -10,7 +10,7 @@ import {
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
-import { pressedOpacity } from '../styles/pressable';
+import { DIMMED_OPACITY, pressedOpacity } from '../styles/pressable';
 
 interface Props {
   text: string;
@@ -54,7 +54,7 @@ const createStyles = (theme: Theme, disabled: boolean) =>
       width: '100%',
       borderColor: theme.border.soft,
       backgroundColor: 'transparent',
-      opacity: disabled ? 0.4 : 1,
+      opacity: disabled ? DIMMED_OPACITY : 1,
     },
     text: {
       fontFamily: fontFamily.medium,

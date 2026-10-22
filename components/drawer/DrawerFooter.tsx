@@ -14,6 +14,7 @@ import {
 } from '../../constants/drawer-layout';
 import { radius } from '../../constants/design-system';
 import { useStartNewChat } from './useStartNewChat';
+import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
 
 const FOOTER_BUTTON_HEIGHT = 44;
 
@@ -44,8 +45,8 @@ export const DrawerFooter = ({ onNavigate }: Props) => {
         accessibilityRole="button"
         style={({ pressed }) => [
           styles.newChat,
-          pressed && styles.newChatPressed,
-          turnInFlight && styles.newChatDimmed,
+          pressed && pressedOpacity,
+          turnInFlight && dimmedOpacity,
         ]}
       >
         <ChatIcon width={18} height={18} style={styles.newChatIcon} />
@@ -89,12 +90,6 @@ const createStyles = (theme: Theme) =>
       paddingRight: 18,
       borderRadius: radius.full,
       backgroundColor: theme.bg.main,
-    },
-    newChatPressed: {
-      opacity: 0.8,
-    },
-    newChatDimmed: {
-      opacity: 0.4,
     },
     newChatIcon: {
       color: theme.text.onBrand,

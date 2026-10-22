@@ -12,6 +12,7 @@ import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { composerControlSurface } from './composerControl';
+import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
 
 export type ComposerAction = 'speech' | 'send' | 'stop';
 
@@ -90,7 +91,8 @@ const ComposerActionButton = ({
       onPress={onPress}
       style={({ pressed }) => [
         styles.circle,
-        (disabled || pressed) && styles.dimmed,
+        disabled && dimmedOpacity,
+        pressed && pressedOpacity,
       ]}
       disabled={disabled}
       accessibilityState={{ disabled, busy }}
@@ -159,8 +161,5 @@ const createStyles = (theme: Theme) =>
       ...StyleSheet.absoluteFill,
       justifyContent: 'center',
       alignItems: 'center',
-    },
-    dimmed: {
-      opacity: 0.6,
     },
   });

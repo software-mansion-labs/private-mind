@@ -5,6 +5,7 @@ import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { radius } from '../../constants/design-system';
 import { Feedback } from '../../utils/Feedback';
+import { pressedOpacity } from '../../styles/pressable';
 
 export interface ChoiceOption<T extends string> {
   value: T;
@@ -48,7 +49,7 @@ export const SettingsChoiceRow = <T extends string>({
               style={({ pressed }) => [
                 styles.option,
                 selected && styles.optionSelected,
-                pressed && styles.pressed,
+                pressed && pressedOpacity,
               ]}
             >
               <Text
@@ -92,9 +93,6 @@ const createStyles = (theme: Theme) =>
     optionSelected: {
       backgroundColor: theme.bg.main,
       borderColor: theme.bg.main,
-    },
-    pressed: {
-      opacity: 0.6,
     },
     optionText: {
       fontFamily: fontFamily.medium,

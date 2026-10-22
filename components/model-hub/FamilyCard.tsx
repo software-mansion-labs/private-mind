@@ -8,6 +8,7 @@ import { ModelFamily } from '../../utils/modelFamily';
 import Chip from '../Chip';
 import { FAMILY_DESCRIPTIONS } from '../../constants/family-descriptions';
 import { pressedOpacity } from '../../styles/pressable';
+import { dimmedOpacity } from '../../styles/pressable';
 
 interface Props {
   family: ModelFamily;
@@ -26,7 +27,7 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
     <Pressable
       style={({ pressed }) => [
         styles.card,
-        !runnable && styles.unrunnableCard,
+        !runnable && dimmedOpacity,
         pressed && pressedOpacity,
       ]}
       onPress={() => onPress(family)}
@@ -93,9 +94,6 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 4,
-    },
-    unrunnableCard: {
-      opacity: 0.5,
     },
     chevron: {
       fontSize: 28,

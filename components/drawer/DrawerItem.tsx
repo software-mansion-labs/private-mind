@@ -5,6 +5,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { DRAWER_ITEM_INSET } from '../../constants/drawer-layout';
+import { dimmedOpacity } from '../../styles/pressable';
 
 const CHAT_LABEL_FONT_SIZE = 15;
 
@@ -44,7 +45,7 @@ export const DrawerItem = memo(
           (active || pressed) && styles.activeBackground,
         ]}
       >
-        <View style={[styles.content, dimmed && styles.contentDimmed]}>
+        <View style={[styles.content, dimmed && dimmedOpacity]}>
           {icon}
           <Text
             numberOfLines={1}
@@ -71,9 +72,6 @@ const createStyles = (theme: Theme) =>
       paddingVertical: 8,
       paddingHorizontal: DRAWER_ITEM_INSET,
       borderRadius: 12,
-    },
-    contentDimmed: {
-      opacity: 0.4,
     },
     activeBackground: {
       backgroundColor: theme.bg.softTertiary,

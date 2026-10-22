@@ -33,6 +33,7 @@ import CheckIcon from '../../assets/icons/check.svg';
 import { Feedback } from '../../utils/Feedback';
 import { pressedOpacity } from '../../styles/pressable';
 import { radius, space, stroke } from '../../constants/design-system';
+import { DIMMED_OPACITY } from '../../styles/pressable';
 
 const PROGRESS_LABEL_MIN_WIDTH = 48;
 const CHECKBOX_SIZE = 24;
@@ -450,7 +451,7 @@ const createStyles = (theme: Theme, selected: boolean) => {
       opacity: LOCKED_CARD_OPACITY,
     },
     incompatibleCard: {
-      opacity: 0.5,
+      opacity: DIMMED_OPACITY,
       borderColor: theme.border.soft,
     },
     incompatibleText: {

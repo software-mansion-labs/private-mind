@@ -12,6 +12,7 @@ import { radius } from '../../constants/design-system';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { SvgComponent } from '../../utils/SvgComponent';
+import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
 
 export const MENU_ROW = {
   regular: {
@@ -80,8 +81,8 @@ const MenuRow = ({
       pressRetentionOffset={pressRetentionOffset}
       style={({ pressed }) => [
         styles.row,
-        dimmed && styles.dimmed,
-        pressed && styles.pressed,
+        dimmed && dimmedOpacity,
+        pressed && pressedOpacity,
       ]}
     >
       {variant === 'regular' ? (
@@ -122,12 +123,6 @@ const createStyles = (theme: Theme, variant: MenuRowVariant) => {
       gap: spec.gap,
       flexDirection: 'row',
       alignItems: 'center',
-    },
-    dimmed: {
-      opacity: 0.4,
-    },
-    pressed: {
-      opacity: 0.6,
     },
     well: {
       width: MENU_ROW.regular.well,

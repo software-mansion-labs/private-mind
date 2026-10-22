@@ -5,6 +5,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { radius } from '../../constants/design-system';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
   label: string;
@@ -19,7 +20,7 @@ export const SettingsRow = ({ label, icon, onPress, destructive }: Props) => {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.card, pressed && pressedOpacity]}
     >
       {icon}
       <Text
@@ -41,9 +42,6 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-    },
-    pressed: {
-      opacity: 0.6,
     },
     label: {
       flex: 1,
