@@ -18,7 +18,6 @@ import { Theme } from '../../styles/colors';
 
 export const POPOVER_WIDTH = 300;
 const FADE_IN_MS = 150;
-const SHADOW_OPACITY = 0.18;
 const SHADOW_RADIUS = 20;
 const SHADOW_OFFSET_Y = 12;
 const ANDROID_ELEVATION = 8;
@@ -120,7 +119,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: radius.eighteen,
       shadowColor: theme.bg.shadow,
       shadowOffset: { width: 0, height: SHADOW_OFFSET_Y },
-      shadowOpacity: SHADOW_OPACITY,
+      shadowOpacity: theme.shadow.floatingOpacity,
       shadowRadius: SHADOW_RADIUS,
       elevation: ANDROID_ELEVATION,
     },

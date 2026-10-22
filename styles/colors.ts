@@ -67,6 +67,9 @@ export const lightTheme = {
     codeInline: 'rgba(0, 0, 0, 0.08)',
     codeInlineStrong: 'rgba(255, 255, 255, 0.1)',
   },
+  shadow: {
+    floatingOpacity: 0.18,
+  },
   label: {
     red: { background: '#FEBFBA', foreground: '#770212' },
     orange: { background: '#FFE5D7', foreground: '#713401' },
@@ -150,6 +153,9 @@ export const darkTheme = {
     contrast: '#FFFFFF',
     codeInline: 'rgba(255, 255, 255, 0.1)',
     codeInlineStrong: 'rgba(255, 255, 255, 0.1)',
+  },
+  shadow: {
+    floatingOpacity: 0.6,
   },
   label: {
     red: { background: 'rgba(226, 72, 74, 0.24)', foreground: '#FFA09A' },

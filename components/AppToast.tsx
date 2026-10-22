@@ -4,7 +4,7 @@ import { FullWindowOverlay } from 'react-native-screens';
 import Toast, { ToastConfig } from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Theme, isDarkTheme } from '../styles/colors';
+import { Theme } from '../styles/colors';
 import { radius } from '../constants/design-system';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import CloseIcon from '../assets/icons/close.svg';
@@ -115,7 +115,7 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.border.toast,
       shadowColor: theme.bg.shadow,
       shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: isDarkTheme(theme) ? 0.6 : 0.18,
+      shadowOpacity: theme.shadow.floatingOpacity,
       shadowRadius: 20,
       elevation: 12,
     },
