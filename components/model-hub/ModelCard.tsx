@@ -22,6 +22,7 @@ import CircleButton from '../CircleButton';
 import ModelBadge from './ModelBadge';
 import { getModelFamily } from '../../utils/modelFamily';
 import ModelFamilyTile from './ModelFamilyTile';
+import DownloadedBadge from './DownloadedBadge';
 import {
   THINKING_LABEL,
   VISION_LABEL,
@@ -44,8 +45,6 @@ const CHECKBOX_ICON_SIZE = 14;
 const PROGRESS_ACTION_ICON_SIZE = 16;
 const PROGRESS_ACTION_HIT_SLOP = 12;
 const LOCKED_CARD_OPACITY = 0.4;
-const ROW_ACTION_SIZE = 36;
-const ROW_CHECK_ICON_SIZE = 16;
 const DOWNLOAD_ICON_SIZE = 16;
 
 export type DownloadStatus = 'downloading' | 'done';
@@ -168,6 +167,8 @@ const ModelCard = ({
   const labels = compactView
     ? []
     : (model.labels ?? []).filter((label) => !isCapabilityLabel(label));
+  const showDownloadedBadge =
+    showDownloadControls && isRow && modelState === ModelState.Downloaded;
   const hasBadges =
     !isCompatible || model.thinking || model.vision || labels.length > 0;
 
@@ -246,11 +247,16 @@ const ModelCard = ({
           )}
 
           <View style={styles.info}>
-            <Text
-              style={[styles.name, !isCompatible && styles.incompatibleText]}
-            >
-              {model.modelName}
-            </Text>
+            <View style={styles.nameRow}>
+              <Text
+                style={[styles.name, !isCompatible && styles.incompatibleText]}
+              >
+                {model.modelName}
+              </Text>
+              {showDownloadedBadge && (
+                <DownloadedBadge testID="model-card-downloaded" />
+              )}
+            </View>
             {meta.length > 0 && <Text style={styles.meta}>{meta}</Text>}
             {hasBadges && (
               <View style={styles.badges}>
@@ -302,21 +308,6 @@ const ModelCard = ({
               disabled={!isCompatible}
             />
           )}
-
-          {showDownloadControls &&
-            isRow &&
-            modelState === ModelState.Downloaded && (
-              <View
-                style={styles.downloadedCheck}
-                testID="model-card-downloaded"
-              >
-                <CheckIcon
-                  width={ROW_CHECK_ICON_SIZE}
-                  height={ROW_CHECK_ICON_SIZE}
-                  style={styles.downloadedCheckIcon}
-                />
-              </View>
-            )}
 
           {showDownloadControls &&
             showDeleteButton &&
@@ -412,7 +403,13 @@ const createStyles = (
       flex: 1,
       gap: space.one,
     },
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.four,
+    },
     name: {
+      flexShrink: 1,
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
       lineHeight: lineHeights.md,
@@ -467,17 +464,6 @@ const createStyles = (
       lineHeight: lineHeights.xs,
       fontFamily: fontFamily.regular,
       color: theme.text.defaultSecondary,
-    },
-    downloadedCheck: {
-      width: ROW_ACTION_SIZE,
-      height: ROW_ACTION_SIZE,
-      borderRadius: radius.full,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.bg.success,
-    },
-    downloadedCheckIcon: {
-      color: theme.text.onSuccess,
     },
     progressActionIcon: {
       color: theme.text.defaultSecondary,

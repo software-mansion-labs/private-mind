@@ -18,6 +18,7 @@ import RowGroup, {
 } from '../../components/model-hub/RowGroup';
 import DownloadedModelRow from '../../components/model-hub/DownloadedModelRow';
 import DownloadingModelRow from '../../components/model-hub/DownloadingModelRow';
+import SectionHeader from '../../components/model-hub/SectionHeader';
 import { scrollIndicatorProps } from '../../constants/scroll-indicator';
 import { radius, space, stroke } from '../../constants/design-system';
 
@@ -50,11 +51,7 @@ const DownloadsScreen = () => {
       >
         {downloading.length > 0 && (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle} accessibilityRole="header">
-                Downloading · {downloading.length}
-              </Text>
-            </View>
+            <SectionHeader title={`Downloading · ${downloading.length}`} />
             <RowGroup separatorInset={TILE_ROW_TEXT_INSET}>
               {downloading.map(({ model, progress, rate }) => (
                 <DownloadingModelRow
@@ -69,14 +66,10 @@ const DownloadsScreen = () => {
           </View>
         )}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle} accessibilityRole="header">
-              On this device · {onDevice.length}
-            </Text>
-            <Text style={styles.sectionSummary}>
-              {usedGB.toFixed(2)} GB used
-            </Text>
-          </View>
+          <SectionHeader
+            title={`On this device · ${onDevice.length}`}
+            summary={`${usedGB.toFixed(2)} GB used`}
+          />
           {onDevice.length > 0 ? (
             <RowGroup separatorInset={TILE_ROW_TEXT_INSET}>
               {onDevice.map((model) => (
@@ -117,27 +110,6 @@ const createStyles = (theme: Theme, headerHeight: number) =>
     },
     section: {
       gap: space.two,
-    },
-    sectionHeader: {
-      flexDirection: 'row',
-      alignItems: 'baseline',
-      justifyContent: 'space-between',
-      flexWrap: 'wrap',
-      columnGap: space.two,
-      paddingHorizontal: space.one,
-    },
-    sectionTitle: {
-      flexShrink: 1,
-      fontFamily: fontFamily.bold,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
-      color: theme.text.defaultSecondary,
-    },
-    sectionSummary: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.xs,
-      lineHeight: lineHeights.xs,
-      color: theme.text.defaultTertiary,
     },
     empty: {
       padding: space.four,

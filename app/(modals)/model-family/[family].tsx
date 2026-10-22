@@ -22,12 +22,14 @@ import GlassScreenHeader, {
 } from '../../../components/GlassScreenHeader';
 import ModelFamilyTile from '../../../components/model-hub/ModelFamilyTile';
 import RowGroup from '../../../components/model-hub/RowGroup';
+import FamilyProviderRow from '../../../components/model-hub/FamilyProviderRow';
+import SectionHeader from '../../../components/model-hub/SectionHeader';
 import {
   FAMILY_DESCRIPTIONS,
   FAMILY_PROVIDERS,
 } from '../../../constants/family-descriptions';
 import { scrollIndicatorProps } from '../../../constants/scroll-indicator';
-import { space, textStyles } from '../../../constants/design-system';
+import { space } from '../../../constants/design-system';
 
 const FamilyScreen = () => {
   const router = useRouter();
@@ -54,7 +56,13 @@ const FamilyScreen = () => {
   const description = FAMILY_DESCRIPTIONS[familyName];
   const provider = FAMILY_PROVIDERS[familyName];
   const downloadedCount = familyModels.filter((m) => m.isDownloaded).length;
-  const downloadedSummary = `${downloadedCount} of ${familyModels.length} downloaded`;
+  const downloadedGB = familyModels
+    .filter((m) => m.isDownloaded)
+    .reduce((sum, m) => sum + (m.modelSize ?? 0), 0);
+  const downloadedSummary =
+    downloadedCount > 0
+      ? `${downloadedCount} downloaded · ${downloadedGB.toFixed(2)} GB`
+      : 'None downloaded';
 
   return (
     <BottomSheetModalProvider>
@@ -69,38 +77,39 @@ const FamilyScreen = () => {
             contentContainerStyle={styles.scrollContent}
             {...scrollIndicatorProps(headerHeight)}
           >
-            <View style={styles.hero}>
-              <ModelFamilyTile family={familyName} size="hero" />
-              <View style={styles.heroText}>
-                <Text style={styles.familyName}>{familyName}</Text>
-                <Text style={styles.heroMeta}>
-                  {provider
-                    ? `${provider} · ${downloadedSummary}`
-                    : downloadedSummary}
-                </Text>
-              </View>
-            </View>
+            {provider && <FamilyProviderRow provider={provider} />}
             {description && (
               <Text style={styles.description}>{description}</Text>
             )}
-            <RowGroup separatorInset={0}>
-              {familyModels.map((model) => (
-                <ModelCard
-                  key={model.id}
-                  model={model}
-                  compactView={false}
-                  variant="row"
-                  onPress={() =>
-                    modelManagementSheetRef.current?.present(model)
-                  }
-                  wifiWarningSheetRef={wifiWarningSheetRef}
-                  showDeleteButton
-                />
-              ))}
-            </RowGroup>
+            <View style={styles.section}>
+              <SectionHeader
+                title={`Variants · ${familyModels.length}`}
+                summary={downloadedSummary}
+              />
+              <RowGroup separatorInset={0}>
+                {familyModels.map((model) => (
+                  <ModelCard
+                    key={model.id}
+                    model={model}
+                    compactView={false}
+                    variant="row"
+                    onPress={() =>
+                      modelManagementSheetRef.current?.present(model)
+                    }
+                    wifiWarningSheetRef={wifiWarningSheetRef}
+                    showDeleteButton
+                  />
+                ))}
+              </RowGroup>
+            </View>
           </ScrollView>
         )}
-        <GlassScreenHeader title="" onBack={() => router.back()} sheet />
+        <GlassScreenHeader
+          title={familyName}
+          titleIcon={<ModelFamilyTile family={familyName} size="row" />}
+          onBack={() => router.back()}
+          sheet
+        />
         <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
         <WarningSheet bottomSheetModalRef={wifiWarningSheetRef} />
       </View>
@@ -120,29 +129,13 @@ const createStyles = (theme: Theme, headerHeight: number) =>
       flex: 1,
     },
     scrollContent: {
-      gap: space.four,
+      gap: space.five,
       paddingTop: headerHeight + space.six,
       paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + space.four,
     },
-    hero: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.four,
-    },
-    heroText: {
-      flex: 1,
-      gap: space.half,
-    },
-    familyName: {
-      ...textStyles.titleH2,
-      color: theme.text.primary,
-    },
-    heroMeta: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
-      color: theme.text.defaultSecondary,
+    section: {
+      gap: space.two,
     },
     emptyContainer: {
       flex: 1,
@@ -156,6 +149,7 @@ const createStyles = (theme: Theme, headerHeight: number) =>
       color: theme.text.defaultSecondary,
     },
     description: {
+      paddingHorizontal: space.one,
       fontFamily: fontFamily.regular,
       fontSize: fontSizes.sm,
       color: theme.text.defaultSecondary,

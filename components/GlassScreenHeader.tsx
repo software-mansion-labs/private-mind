@@ -36,11 +36,17 @@ export const useGlassScreenHeaderHeight = (sheet = false) => {
 
 interface Props {
   title: string;
+  titleIcon?: React.ReactNode;
   onBack: () => void;
   sheet?: boolean;
 }
 
-const GlassScreenHeader = ({ title, onBack, sheet = false }: Props) => {
+const GlassScreenHeader = ({
+  title,
+  titleIcon,
+  onBack,
+  sheet = false,
+}: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const topInset = useHeaderTopInset(sheet);
   const headerHeight = useGlassScreenHeaderHeight(sheet);
@@ -53,6 +59,7 @@ const GlassScreenHeader = ({ title, onBack, sheet = false }: Props) => {
         pointerEvents="box-none"
       >
         <View style={styles.titleContainer} pointerEvents="none">
+          {titleIcon}
           <Text
             numberOfLines={1}
             style={styles.title}
@@ -94,11 +101,14 @@ const createStyles = (theme: Theme) =>
     },
     titleContainer: {
       ...StyleSheet.absoluteFill,
+      flexDirection: 'row',
+      gap: space.two,
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: TITLE_SIDE_SPACE,
     },
     title: {
+      flexShrink: 1,
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
       color: theme.text.primary,
