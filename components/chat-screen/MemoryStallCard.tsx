@@ -48,7 +48,7 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     card: {
       width: '100%',
-      backgroundColor: theme.bg.cardSurface,
+      backgroundColor: theme.bg.whatsNewCard,
       borderRadius: radius.twelve,
       padding: space.four,
       gap: space.two,
