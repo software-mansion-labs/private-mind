@@ -218,7 +218,7 @@ const AttachmentOverlay = ({
       {panel.mode !== 'closed' ? (
         <View
           key={resumeKey}
-          pointerEvents={isFlying ? 'none' : 'box-none'}
+          pointerEvents={isFlying || panel.closing ? 'none' : 'box-none'}
           style={StyleSheet.absoluteFill}
           onLayout={(event) =>
             onWindowHeight?.(event.nativeEvent.layout.height)
