@@ -49,6 +49,7 @@ interface Props {
   selectModel?: (model: Model) => Promise<void>;
   revealFromTop?: boolean;
   headerTitleBottom?: number;
+  opensModelMenu?: boolean;
 }
 
 export default function ChatScreen({
@@ -60,6 +61,7 @@ export default function ChatScreen({
   selectModel,
   revealFromTop = false,
   headerTitleBottom,
+  opensModelMenu = false,
 }: Props) {
   const inputRef = useRef<{
     setInput: (text: string) => void;
@@ -332,6 +334,7 @@ export default function ChatScreen({
           onPickModel={handleModelPickedFromMenu}
           onShowAllModels={handleShowAllModels}
           modelLocked={!isPhantomChat}
+          opensModelMenu={opensModelMenu}
           onSelectPrompt={handleSelectPrompt}
           ref={inputRef}
           model={model}

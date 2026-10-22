@@ -94,6 +94,7 @@ interface Props {
   onPickModel: (model: Model) => void;
   onShowAllModels: () => void;
   modelLocked?: boolean;
+  opensModelMenu?: boolean;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
     setInput: (text: string) => void;
@@ -121,6 +122,7 @@ const ChatBar = ({
   onPickModel,
   onShowAllModels,
   modelLocked = false,
+  opensModelMenu = false,
   onSelectPrompt,
   ref,
   model,
@@ -202,6 +204,12 @@ const ChatBar = ({
     });
   }, [windowHeight]);
   const closeModelMenu = useCallback(() => setModelMenuBottom(null), []);
+  const openedModelMenuOnEntry = useRef(false);
+  useEffect(() => {
+    if (!opensModelMenu || openedModelMenuOnEntry.current) return;
+    openedModelMenuOnEntry.current = true;
+    openModelMenu();
+  }, [opensModelMenu, openModelMenu]);
   const handlePickModel = useCallback(
     (picked: Model) => {
       setModelMenuBottom(null);

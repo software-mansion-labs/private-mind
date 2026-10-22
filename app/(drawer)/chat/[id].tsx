@@ -9,7 +9,9 @@ import { useChatStore } from '../../../store/chatStore';
 import useChatHeader from '../../../hooks/useChatHeader';
 import { useChatBackGuard } from '../../../hooks/useChatBackGuard';
 import {
+  CHAT_ENTRY_ACTION,
   CHAT_ENTRY_ANIMATION,
+  ChatEntryAction,
   ChatEntryAnimation,
 } from '../../../constants/chat-route-params';
 
@@ -29,8 +31,12 @@ function ChatScreenInner() {
   const {
     modelId,
     entryAnimation,
-  }: { modelId: string; entryAnimation?: ChatEntryAnimation } =
-    useLocalSearchParams();
+    entryAction,
+  }: {
+    modelId: string;
+    entryAnimation?: ChatEntryAnimation;
+    entryAction?: ChatEntryAction;
+  } = useLocalSearchParams();
   const { activeChatMessages, activeChatId } = useLLMStore();
   const { getModelById } = useModelStore();
   const { getChatById, setChatModel, loadChats, phantomChat } = useChatStore();
@@ -105,6 +111,7 @@ function ChatScreenInner() {
         selectModel={handleSetModel}
         revealFromTop={shouldPlayBranchEntryAnimation}
         headerTitleBottom={titleBottom}
+        opensModelMenu={entryAction === CHAT_ENTRY_ACTION.PickModel}
       />
       {MenuElements}
     </>

@@ -321,6 +321,7 @@ const defaultProps = {
   hasMessages: false,
   disabled: false,
   modelSwitching: false,
+  opensModelMenu: false,
 };
 
 const renderBar = (props: Partial<typeof defaultProps> = {}) =>
@@ -1426,6 +1427,19 @@ describe('model menu', () => {
     renderBar({ onPickModel });
     fireEvent.press(screen.getByTestId('menu-pick-current'));
     expect(onPickModel).not.toHaveBeenCalled();
+  });
+
+  it('opens on arrival when the chat was started to pick another model', () => {
+    renderBar({ opensModelMenu: true });
+    const [measuredCard] = screen.UNSAFE_root.findAll(
+      (node) => node.instance?.measureInWindow?.mock?.calls.length > 0
+    );
+    const measureCalls = measuredCard.instance.measureInWindow.mock.calls;
+    const reportCardPosition = measureCalls.at(-1)[0];
+
+    act(() => reportCardPosition(0, 600));
+
+    expect(screen.getByText('model-menu:open')).toBeTruthy();
   });
 
   it('opens the full model list from the menu', () => {
