@@ -13,6 +13,7 @@ import { radius, space, stroke } from '../../constants/design-system';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
+import { MAX_CHAT_TITLE_LENGTH } from '../../utils/chatLabel';
 import { SvgComponent } from '../../utils/SvgComponent';
 import Popover, { POPOVER_WIDTH } from '../menu/Popover';
 import PopoverRow from '../menu/PopoverRow';
@@ -117,6 +118,7 @@ const ChatTitlePopover = ({
               onSubmitEditing={saveDraft}
               autoFocus
               selectTextOnFocus
+              maxLength={MAX_CHAT_TITLE_LENGTH}
               returnKeyType="done"
               accessibilityLabel="Chat name"
               placeholderTextColor={theme.text.defaultTertiary}

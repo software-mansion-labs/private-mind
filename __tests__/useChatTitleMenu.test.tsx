@@ -71,6 +71,7 @@ const mockRouter = jest.requireMock('expo-router').router as {
 import Toast from 'react-native-toast-message';
 
 import { useChatTitleMenu } from '../components/chat-screen/ChatTitleMenu';
+import { MAX_CHAT_TITLE_LENGTH } from '../utils/chatLabel';
 
 const Harness = ({ chatTitle = 'My Chat' }: { chatTitle?: string }) => {
   const { openMenu, isOpen, MenuElements } = useChatTitleMenu({
@@ -169,6 +170,14 @@ describe('renaming inside the menu', () => {
     openMenu();
     fireEvent.press(screen.getByTestId('chat-menu-rename'));
     expect(screen.getByDisplayValue('My Chat')).toBeTruthy();
+  });
+
+  it('caps the name at the same length as every other chat title', () => {
+    openMenu();
+    fireEvent.press(screen.getByTestId('chat-menu-rename'));
+    expect(screen.getByTestId('chat-menu-rename-input').props.maxLength).toBe(
+      MAX_CHAT_TITLE_LENGTH
+    );
   });
 
   it('saves the edited name', async () => {

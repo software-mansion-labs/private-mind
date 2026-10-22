@@ -81,7 +81,7 @@ const toolsOf = ({
           available: thinkingAvailable,
           onToggle: onThinkingToggle,
           rowTestID: 'menu-think-switch',
-          switchTestID: 'thinking-toggle',
+          switchTestID: 'menu-thinking-toggle',
         },
       ]
     : []),

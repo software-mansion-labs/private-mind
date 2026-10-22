@@ -7,6 +7,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { radius, space } from '../../constants/design-system';
+import { MASK_CLEAR, MASK_OPAQUE } from '../../constants/mask';
 import {
   DEFAULT_PROMPT_SUGGESTIONS,
   PROMPT_SUGGESTIONS_TEXT,
@@ -23,8 +24,6 @@ const CARD_TITLE_LINE_HEIGHT = 18;
 const PROMPT_SIZE = 13;
 const PROMPT_LINE_HEIGHT = 18;
 const EDGE_FADE_WIDTH = GUTTER;
-const MASK_OPAQUE = '#000000';
-const MASK_CLEAR = 'rgba(0, 0, 0, 0)';
 
 interface Props {
   onSelectPrompt: (prompt: string) => void;

@@ -5,14 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme, withAlpha } from '../../styles/colors';
+import { MASK_CLEAR, MASK_OPAQUE } from '../../constants/mask';
 
 const BLUR_INTENSITY = 8;
 const BLUR_REACH_BELOW_ANCHOR = 32;
 const RAMP_HEIGHT = 72;
 const TOP_ALPHA = 0.92;
 const GRADIENT_STOPS = 10;
-const MASK_OPAQUE = '#000000';
-const MASK_CLEAR = 'rgba(0, 0, 0, 0)';
 
 const smoothstep = (t: number) => t * t * (3 - 2 * t);
 

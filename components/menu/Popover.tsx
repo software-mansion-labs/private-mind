@@ -79,6 +79,7 @@ const Popover = ({
         <View
           style={[styles.card, contentStyle]}
           accessibilityRole={accessibilityRole}
+          accessibilityViewIsModal
           accessibilityLabel={accessibilityLabel}
           testID={testID}
         >

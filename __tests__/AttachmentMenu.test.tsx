@@ -113,7 +113,7 @@ describe('the tool switches in the menu', () => {
   it('shows each switch in the state the composer holds', () => {
     renderWithTools({ thinkingEnabled: true, webSearchEnabled: false });
 
-    expect(screen.getByTestId('thinking-toggle', hidden).props.value).toBe(
+    expect(screen.getByTestId('menu-thinking-toggle', hidden).props.value).toBe(
       true
     );
     expect(screen.getByTestId('web-search-toggle', hidden).props.value).toBe(
@@ -145,7 +145,7 @@ describe('the tool switches in the menu', () => {
   it('leaves the tap on a switch to its row, so a finger that drifts is not lost', () => {
     renderWithTools();
 
-    let node = screen.getByTestId('thinking-toggle', hidden).parent;
+    let node = screen.getByTestId('menu-thinking-toggle', hidden).parent;
     while (node && node.props.pointerEvents === undefined) node = node.parent;
 
     expect(node?.props.pointerEvents).toBe('none');
@@ -176,7 +176,7 @@ describe('the tool switches in the menu', () => {
     expect(
       screen.getByTestId('menu-think-switch').props.accessibilityState.disabled
     ).toBe(true);
-    expect(screen.getByTestId('thinking-toggle', hidden).props.disabled).toBe(
+    expect(screen.getByTestId('menu-thinking-toggle', hidden).props.disabled).toBe(
       true
     );
     expect(screen.getByTestId('web-search-toggle', hidden).props.disabled).toBe(

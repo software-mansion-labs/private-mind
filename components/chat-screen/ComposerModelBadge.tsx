@@ -1,9 +1,9 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -11,6 +11,7 @@ import { Model } from '../../database/modelRepository';
 import { radius, space } from '../../constants/design-system';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import { pressedOpacity } from '../../styles/pressable';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
 import { composerControlSurface } from './composerControl';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
@@ -38,8 +39,8 @@ const ComposerModelBadge = ({
   const { styles, theme } = useThemedStyles(createStyles);
 
   return (
-    <TouchableOpacity
-      style={styles.badge}
+    <Pressable
+      style={({ pressed }) => [styles.badge, pressed && pressedOpacity]}
       onPress={onPress}
       disabled={locked || loading}
       accessibilityRole="button"
@@ -77,7 +78,7 @@ const ComposerModelBadge = ({
           style={styles.chevron}
         />
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
