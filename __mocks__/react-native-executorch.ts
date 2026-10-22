@@ -66,13 +66,15 @@ export const BIELIK_V3_0_1_5B_QUANTIZED = makeModelConstants(
   'bielik-v3.0-1.5b-quantized'
 );
 const gemma4E2b = makeModelConstants('gemma4-e2b');
+const gemma4E2bBase = 'https://huggingface.co/mock/gemma4-e2b';
+const gemma4E2bMultimodalBase = 'https://huggingface.co/mock/gemma4-e2b-mm';
 
-export const GEMMA4_E2B_MLX_MODEL = `${gemma4E2b.modelSource}#mlx`;
-export const GEMMA4_E2B_VULKAN_MODEL = `${gemma4E2b.modelSource}#vulkan`;
-export const GEMMA4_E2B_XNNPACK_MODEL = `${gemma4E2b.modelSource}#xnnpack`;
-export const GEMMA4_E2B_MLX_MM = `${gemma4E2b.modelSource}#mm-mlx`;
-export const GEMMA4_E2B_VULKAN_MM = `${gemma4E2b.modelSource}#mm-vulkan`;
-export const GEMMA4_E2B_XNNPACK_MM = `${gemma4E2b.modelSource}#mm-xnnpack`;
+export const GEMMA4_E2B_MLX_MODEL = `${gemma4E2bBase}/mlx/model.pte`;
+export const GEMMA4_E2B_VULKAN_MODEL = `${gemma4E2bBase}/vulkan/model.pte`;
+export const GEMMA4_E2B_XNNPACK_MODEL = `${gemma4E2bBase}/xnnpack/model.pte`;
+export const GEMMA4_E2B_MLX_MM = `${gemma4E2bMultimodalBase}/mlx/model.pte`;
+export const GEMMA4_E2B_VULKAN_MM = `${gemma4E2bMultimodalBase}/vulkan/model.pte`;
+export const GEMMA4_E2B_XNNPACK_MM = `${gemma4E2bMultimodalBase}/xnnpack/model.pte`;
 export const GEMMA4_E2B_TOKENIZER = gemma4E2b.tokenizerSource;
 export const GEMMA4_E2B_TOKENIZER_CONFIG = gemma4E2b.tokenizerConfigSource;
 export const WHISPER_TINY_EN = 'whisper-tiny-en';

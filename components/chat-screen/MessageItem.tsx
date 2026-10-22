@@ -222,7 +222,8 @@ const MessageItem = memo(
     const canShowSourcesAction =
       !!content.trim() && documentSources.length > 0 && !isBusy;
 
-    const answerIsIncomplete = !!message.stoppedByUser;
+    const answerIsIncomplete =
+      !!message.stoppedByUser || !!message.cutShortReason;
 
     const actions =
       !answerIsIncomplete && (showActions || canShowSourcesAction) ? (

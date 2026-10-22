@@ -49,6 +49,7 @@ import { Feedback } from '../../utils/Feedback';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import BranchMarker from './BranchMarker';
 import StoppedMarker from './StoppedMarker';
+import { endsTurnCutShort } from './cutShortTurn';
 import Toast from 'react-native-toast-message';
 import {
   BOTTOM_FADE_HEIGHT,
@@ -108,6 +109,7 @@ interface Props {
   generationError?: string;
   onRetryGeneration?: () => void;
   canRetryGeneration?: boolean;
+  turnFooter?: ReactNode;
   /**
    * Bottom inset forwarded to KeyboardChatScrollView's `offset`. Only the
    * safe-area inset stays fixed below the scroll view while the keyboard
@@ -193,6 +195,7 @@ const Messages = ({
   generationError,
   onRetryGeneration,
   canRetryGeneration = false,
+  turnFooter,
   bottomOffset,
   freeze = false,
   chatBarInset,
@@ -665,7 +668,7 @@ const Messages = ({
 
   const lastMessage = chatHistory[chatHistory.length - 1];
   const stoppedTurnKey =
-    lastMessage && lastMessage.stoppedByUser
+    lastMessage && (lastMessage.stoppedByUser || lastMessage.cutShortReason)
       ? messageRowKey(lastMessage, chatHistory.length - 1)
       : null;
 
@@ -1002,11 +1005,14 @@ const Messages = ({
 
   const hasMessages = chatHistory.length > 0;
 
+  const footerMeasuresTurn = !!generationError || !!turnFooter;
   const { userIndex: lastUserIndex, answerIndex: lastAssistantIndex } =
     lastTurnRows(
       chatHistory.map((message) => message.role),
-      !!generationError
+      footerMeasuresTurn
     );
+
+  const firstRowUnderFooter = turnFooter ? lastUserIndex : chatHistory.length;
 
   const measurementKeyAt = (index: number): string | null => {
     const message = chatHistory[index];
@@ -1015,7 +1021,7 @@ const Messages = ({
   };
 
   const assistantMeasurementKey = (): string | null => {
-    if (generationError) return GENERATION_ERROR_MEASUREMENT_KEY;
+    if (footerMeasuresTurn) return GENERATION_ERROR_MEASUREMENT_KEY;
     return measurementKeyAt(lastAssistantIndex);
   };
 
@@ -1106,6 +1112,10 @@ const Messages = ({
                     }
                   />
                 )}
+                {endsTurnCutShort(chatHistory, index) &&
+                  index < firstRowUnderFooter && (
+                    <StoppedMarker reason={message.cutShortReason} />
+                  )}
                 {branchMarker && (
                   <BranchMarker
                     key={`branch-${branchMarker.id}`}
@@ -1202,6 +1212,21 @@ const Messages = ({
                   />
                   <Text style={styles.retryButtonText}>Retry</Text>
                 </Pressable>
+              </View>
+            </View>
+          )}
+          {!generationError && turnFooter && (
+            <View style={pinFloorStyle} collapsable={false}>
+              <View
+                onLayout={(event) =>
+                  handleLastAssistantLayout(
+                    GENERATION_ERROR_MEASUREMENT_KEY,
+                    event
+                  )
+                }
+                collapsable={false}
+              >
+                {turnFooter}
               </View>
             </View>
           )}

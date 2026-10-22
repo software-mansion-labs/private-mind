@@ -2,6 +2,8 @@ import {
   forkChat,
   getChatDigest,
   getChatMessages,
+  importMessages,
+  markMessageCutShort,
   persistMessage,
   setChatDigest,
 } from '../database/chatRepository';
@@ -75,6 +77,147 @@ describe('persistMessage with imagePath', () => {
       expect.stringContaining('sourceDocuments'),
       expect.arrayContaining([JSON.stringify(sourceDocuments)])
     );
+  });
+});
+
+describe('a message a memory stall cut short', () => {
+  it('stores why it was cut short', async () => {
+    const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 4 });
+    const mockDb = { runAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    await persistMessage(mockDb, {
+      role: 'assistant',
+      content: 'It began in',
+      chatId: 1,
+      cutShortReason: 'memory',
+    });
+
+    expect(runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('cutShortReason'),
+      expect.arrayContaining(['memory'])
+    );
+  });
+
+  it('marks and clears an existing message', async () => {
+    const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 0 });
+    const mockDb = { runAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    await markMessageCutShort(mockDb, 9, 'memory');
+    await markMessageCutShort(mockDb, 9, null);
+
+    expect(runAsync).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('cutShortReason'),
+      ['memory', 9]
+    );
+    expect(runAsync).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('cutShortReason'),
+      [null, 9]
+    );
+  });
+
+  it('reads the reason back and ignores one it does not know', async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 1,
+        chatId: 1,
+        role: 'user',
+        content: 'a',
+        cutShortReason: 'memory',
+      },
+      { id: 2, chatId: 1, role: 'user', content: 'b', cutShortReason: 'gpu' },
+      { id: 3, chatId: 1, role: 'user', content: 'c', cutShortReason: null },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(messages.map((message) => message.cutShortReason)).toEqual([
+      'memory',
+      undefined,
+      undefined,
+    ]);
+  });
+});
+
+describe('a cut-short mark carried into another chat', () => {
+  it('survives a fork', async () => {
+    const runAsync = jest
+      .fn()
+      .mockResolvedValueOnce({ lastInsertRowId: 10 })
+      .mockResolvedValueOnce({ lastInsertRowId: 101 })
+      .mockResolvedValueOnce({ lastInsertRowId: 102 })
+      .mockResolvedValue({ lastInsertRowId: 0 });
+    const mockDb = {
+      runAsync,
+      getFirstAsync: jest.fn().mockResolvedValue({
+        id: 1,
+        title: 'Original',
+        modelId: 7,
+        lastUsed: 1,
+      }),
+      getAllAsync: jest
+        .fn()
+        .mockResolvedValueOnce([
+          {
+            id: 1,
+            chatId: 1,
+            role: 'user',
+            content: 'q',
+            timestamp: 100,
+            cutShortReason: 'memory',
+          },
+          {
+            id: 2,
+            chatId: 1,
+            role: 'assistant',
+            content: 'It began in',
+            timestamp: 200,
+            cutShortReason: 'memory',
+          },
+        ])
+        .mockResolvedValueOnce([]),
+      withTransactionAsync: async (callback: TransactionCallback) => callback(),
+    } as unknown as SQLiteDatabase;
+
+    await forkChat(mockDb, 1, 2);
+
+    expect(runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('cutShortReason'),
+      [
+        10,
+        'assistant',
+        'It began in',
+        200,
+        '',
+        0,
+        0,
+        null,
+        null,
+        null,
+        null,
+        0,
+        'memory',
+      ]
+    );
+  });
+
+  it('survives an import, and an unknown reason from the file is dropped', async () => {
+    const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 0 });
+    const mockDb = { runAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+    const imported = [
+      { role: 'assistant', content: 'It began in', cutShortReason: 'memory' },
+      { role: 'assistant', content: 'Paris', cutShortReason: 'gpu' },
+    ] as unknown as Parameters<typeof importMessages>[2];
+
+    await importMessages(mockDb, 5, imported);
+
+    const [sql, values] = runAsync.mock.calls[0];
+    expect(sql).toContain('cutShortReason');
+    expect(values.length).toBe(26);
+    expect(values[12]).toBe('memory');
+    expect(values[25]).toBeNull();
   });
 });
 
@@ -167,11 +310,25 @@ describe('forkChat', () => {
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO messages'),
-      [10, 'user', 'one', 100, '', 0, 0, null, null, null, null, 0]
+      [10, 'user', 'one', 100, '', 0, 0, null, null, null, null, 0, null]
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO messages'),
-      [10, 'assistant', 'two', 200, 'model', 0, 0, null, null, null, null, 0]
+      [
+        10,
+        'assistant',
+        'two',
+        200,
+        'model',
+        0,
+        0,
+        null,
+        null,
+        null,
+        null,
+        0,
+        null,
+      ]
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO chatBranches'),
@@ -226,7 +383,21 @@ describe('forkChat', () => {
 
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('stoppedByUser'),
-      [10, 'assistant', 'two', 200, 'model', 0, 0, null, null, null, null, 1]
+      [
+        10,
+        'assistant',
+        'two',
+        200,
+        'model',
+        0,
+        0,
+        null,
+        null,
+        null,
+        null,
+        1,
+        null,
+      ]
     );
   });
 

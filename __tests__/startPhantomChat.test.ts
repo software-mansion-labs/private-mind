@@ -6,6 +6,7 @@ import { useModelStore } from '../store/modelStore';
 import { getNextChatId } from '../database/chatRepository';
 import { getLastUsedModelId } from '../utils/lastUsedModel';
 import type { Model } from '../database/modelRepository';
+import { CHAT_ENTRY_ACTION } from '../constants/chat-route-params';
 
 jest.mock('expo-router', () => ({
   router: { replace: jest.fn(), push: jest.fn() },
@@ -116,5 +117,19 @@ describe('startPhantomChat', () => {
       params: { modelId: '7' },
     });
     expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it('asks the new chat to open the model list when told to', async () => {
+    await startPhantomChat(
+      {} as never,
+      'push',
+      undefined,
+      CHAT_ENTRY_ACTION.PickModel
+    );
+
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/chat/42',
+      params: { modelId: '7', entryAction: 'pick-model' },
+    });
   });
 });
