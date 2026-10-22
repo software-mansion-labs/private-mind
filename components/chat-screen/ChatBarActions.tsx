@@ -93,7 +93,6 @@ const ChatBarActions = ({
     transform: [{ translateX: plusOut.get() * COMPOSER.plusSlide }],
   }));
   const isResponding = isGenerating || isProcessingPrompt;
-  const isAttachmentBlocked = isResponding || isLoadingAttachment;
   const hasComposedInput = !!userInput || hasAttachments;
   const isSendable = hasComposedInput;
   const action = composerAction(
@@ -104,12 +103,10 @@ const ChatBarActions = ({
   const guardPrimaryPress = usePrimaryActionGuard(guardedAction);
 
   const handleAttach = () => {
-    if (isAttachmentBlocked) {
+    if (isLoadingAttachment) {
       Toast.show({
         type: 'defaultToast',
-        text1: isResponding
-          ? 'Wait for the response to finish or stop it first.'
-          : 'Wait for the document to finish processing.',
+        text1: 'Wait for the document to finish processing.',
       });
       return;
     }
@@ -160,7 +157,7 @@ const ChatBarActions = ({
       <View style={styles.leftActions}>
         <View
           testID="attach-btn-container"
-          style={isAttachmentBlocked ? styles.blockedAttachment : undefined}
+          style={isLoadingAttachment ? styles.blockedAttachment : undefined}
         >
           <Animated.View style={plusStyle}>
             <CircleButton

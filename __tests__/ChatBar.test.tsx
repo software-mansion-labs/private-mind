@@ -90,6 +90,7 @@ jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
     imagesEnabled,
     maxSelection,
     busyAction,
+    attachmentsBlocked,
     tools,
   }: {
     panel: {
@@ -99,6 +100,7 @@ jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
     imagesEnabled: boolean;
     maxSelection: number;
     busyAction?: string | null;
+    attachmentsBlocked?: boolean;
     tools?: {
       thinkingEnabled?: boolean;
       thinkingAvailable?: boolean;
@@ -122,6 +124,7 @@ jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
       <Text>{`vision:${imagesEnabled}`}</Text>
       <Text>{`max:${maxSelection}`}</Text>
       <Text>{`busy:${busyAction ?? 'none'}`}</Text>
+      <Text>{`attachments-blocked:${!!attachmentsBlocked}`}</Text>
       <Pressable
         testID="menu-photos"
         onPress={() => panel.onMenuAction('photos')}
@@ -695,6 +698,54 @@ describe('generating state', () => {
 
     expect(screen.queryByTestId('interrupt-btn')).toBeNull();
     expect(screen.getByTestId('speech-btn')).toBeTruthy();
+  });
+
+  describe('the + menu while this chat is responding', () => {
+    beforeEach(() => {
+      mockUseLLMStore.mockImplementation(
+        (selector?: (state: Partial<LLMStore>) => unknown) => {
+          const state = {
+            isGenerating: true,
+            isProcessingPrompt: false,
+            generatingForChatId: defaultProps.chatId,
+            interrupt: jest.fn(),
+            loadModel: jest.fn(),
+            model: null,
+          };
+          return selector ? selector(state) : state;
+        }
+      );
+    });
+
+    it('still flips Think', async () => {
+      const onThinkingToggle = jest.fn();
+      renderBar({ onThinkingToggle });
+      await openPanel();
+
+      expect(screen.getByText('mode:menu')).toBeTruthy();
+      fireEvent.press(screen.getByTestId('menu-think-switch'));
+      expect(onThinkingToggle).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['menu-files', 'menu-photos', 'menu-camera'])(
+      'refuses %s with the reason and keeps the menu open',
+      async (row) => {
+        renderBar({ isVisionModel: true });
+        await openPanel();
+
+        expect(screen.getByText('attachments-blocked:true')).toBeTruthy();
+        await act(async () => {
+          fireEvent.press(screen.getByTestId(row));
+        });
+
+        expect(mockUseAttachment.pickDocument).not.toHaveBeenCalled();
+        expect(screen.getByText('mode:menu')).toBeTruthy();
+        expect(Toast.show).toHaveBeenCalledWith({
+          type: 'defaultToast',
+          text1: 'Wait for the response to finish or stop it first.',
+        });
+      }
+    );
   });
 });
 

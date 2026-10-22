@@ -133,7 +133,7 @@ describe('attach button', () => {
   });
 
   it.each([{ isGenerating: true }, { isProcessingPrompt: true }])(
-    'greys out attachments and explains why they cannot be opened while responding',
+    'keeps + open while responding so the tool switches stay reachable',
     (state) => {
       const onAttach = jest.fn();
       renderActions({ ...state, onAttach });
@@ -142,15 +142,12 @@ describe('attach button', () => {
         StyleSheet.flatten(
           screen.getByTestId('attach-btn-container').props.style
         )
-      ).toEqual(expect.objectContaining({ opacity: 0.4 }));
+      ).not.toEqual(expect.objectContaining({ opacity: 0.4 }));
 
       fireEvent.press(screen.getByTestId('attach-btn'));
 
-      expect(onAttach).not.toHaveBeenCalled();
-      expect(Toast.show).toHaveBeenCalledWith({
-        type: 'defaultToast',
-        text1: 'Wait for the response to finish or stop it first.',
-      });
+      expect(onAttach).toHaveBeenCalledTimes(1);
+      expect(Toast.show).not.toHaveBeenCalled();
     }
   );
 
@@ -171,14 +168,16 @@ describe('attach button', () => {
     });
   });
 
-  it('prefers the response message when generating over an indexing document', () => {
-    renderActions({ isLoadingAttachment: true, isGenerating: true });
+  it('still blocks + while a document indexes during a response', () => {
+    const onAttach = jest.fn();
+    renderActions({ isLoadingAttachment: true, isGenerating: true, onAttach });
 
     fireEvent.press(screen.getByTestId('attach-btn'));
 
+    expect(onAttach).not.toHaveBeenCalled();
     expect(Toast.show).toHaveBeenCalledWith({
       type: 'defaultToast',
-      text1: 'Wait for the response to finish or stop it first.',
+      text1: 'Wait for the document to finish processing.',
     });
   });
 

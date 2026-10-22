@@ -45,6 +45,7 @@ interface Props {
   attachedIds: string[];
   maxSelection: number;
   imagesEnabled: boolean;
+  attachmentsBlocked?: boolean;
   tools?: MenuTools;
 }
 
@@ -68,6 +69,7 @@ const AttachmentOverlay = ({
   attachedIds,
   maxSelection,
   imagesEnabled,
+  attachmentsBlocked = false,
   tools = {},
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
@@ -253,6 +255,7 @@ const AttachmentOverlay = ({
               <AttachmentMenu
                 onSelect={panel.onMenuAction}
                 imagesEnabled={imagesEnabled}
+                attachmentsBlocked={attachmentsBlocked}
                 busy={busyAction}
                 {...tools}
               />

@@ -122,12 +122,14 @@ const flip = (tool: Tool) => {
 interface Props extends MenuTools {
   onSelect: (action: MenuAction) => void;
   imagesEnabled?: boolean;
+  attachmentsBlocked?: boolean;
   busy?: MenuAction | null;
 }
 
 const AttachmentMenu = ({
   onSelect,
   imagesEnabled = true,
+  attachmentsBlocked = false,
   busy = null,
   ...menuTools
 }: Props) => {
@@ -137,7 +139,8 @@ const AttachmentMenu = ({
   return (
     <View style={[styles.root, { height: attachmentMenuHeight(menuTools) }]}>
       {ITEMS.map((item) => {
-        const dimmed = !imagesEnabled && item.action !== 'files';
+        const dimmed =
+          attachmentsBlocked || (!imagesEnabled && item.action !== 'files');
         return (
           <MenuRow
             key={item.action}

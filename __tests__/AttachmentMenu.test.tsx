@@ -75,6 +75,30 @@ describe('AttachmentMenu', () => {
     expect(screen.getByText('Files')).toBeTruthy();
     expect(screen.queryByText('Images not supported')).toBeNull();
   });
+
+  it('dims the attachment rows but not the tool switches while attachments are blocked', () => {
+    const view = render(
+      <AttachmentMenu
+        onSelect={jest.fn()}
+        attachmentsBlocked
+        onThinkingToggle={jest.fn()}
+        onWebSearchToggle={jest.fn()}
+      />
+    );
+
+    const dimmedByTestID = Object.fromEntries(
+      view
+        .UNSAFE_getAllByType(MenuRow)
+        .map((row) => [row.props.testID, row.props.dimmed])
+    );
+    expect(dimmedByTestID).toEqual({
+      'attachment-camera': true,
+      'attachment-library': true,
+      'attachment-document': true,
+      'menu-think-switch': false,
+      'menu-web-switch': false,
+    });
+  });
 });
 
 describe('the tool switches in the menu', () => {

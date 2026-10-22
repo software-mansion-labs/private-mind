@@ -23,6 +23,8 @@ interface PanelOptions {
   onSelectPhotos?: () => Promise<DocumentPickOutcome | void>;
   canAttachImages?: boolean;
   onImagesUnsupported?: () => void;
+  attachmentsBlocked?: boolean;
+  onAttachmentsBlocked?: () => void;
 }
 
 export function useAttachmentPanel({
@@ -31,6 +33,8 @@ export function useAttachmentPanel({
   onSelectPhotos,
   canAttachImages = true,
   onImagesUnsupported,
+  attachmentsBlocked = false,
+  onAttachmentsBlocked,
 }: PanelOptions = {}) {
   const [mode, setMode] = useState<Mode>('closed');
   const [sheet, setSheet] = useState<Sheet>('photos');
@@ -177,6 +181,10 @@ export function useAttachmentPanel({
 
   const onMenuAction = useCallback(
     (action: MenuAction) => {
+      if (attachmentsBlocked) {
+        onAttachmentsBlocked?.();
+        return;
+      }
       if (action === 'files') {
         dismissUnlessCanceled(onSelectFiles?.());
         return;
@@ -193,9 +201,11 @@ export function useAttachmentPanel({
       showSheet(action === 'camera' ? 'camera' : 'photos');
     },
     [
+      attachmentsBlocked,
       canAttachImages,
       dismiss,
       dismissUnlessCanceled,
+      onAttachmentsBlocked,
       onImagesUnsupported,
       onSelectFiles,
       onSelectPhotos,

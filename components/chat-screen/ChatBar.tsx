@@ -240,11 +240,28 @@ const ChatBar = ({
     [pickSystemPhoto]
   );
 
+  const isGeneratingHere = useLLMStore(
+    (state) => state.isGenerating && state.generatingForChatId === chatId
+  );
+  const isProcessingPromptHere = useLLMStore(
+    (state) => state.isProcessingPrompt && state.generatingForChatId === chatId
+  );
+  const isRespondingHere = isGeneratingHere || isProcessingPromptHere;
+
+  const showAttachmentsBlocked = useCallback(() => {
+    Toast.show({
+      type: 'defaultToast',
+      text1: 'Wait for the response to finish or stop it first.',
+    });
+  }, []);
+
   const panel = useAttachmentPanel({
     onSelectFiles: handleSelectFiles,
     onSelectPhotos: USES_SYSTEM_PHOTO_PICKER ? handleSelectPhotos : undefined,
     canAttachImages: isVisionModel,
     onImagesUnsupported: showImagesUnsupported,
+    attachmentsBlocked: isRespondingHere,
+    onAttachmentsBlocked: showAttachmentsBlocked,
   });
 
   const handleAttachPhotos = useCallback(
@@ -371,12 +388,6 @@ const ChatBar = ({
     ...(onBarGrow ? { onBarGrow } : {}),
   });
 
-  const isGeneratingHere = useLLMStore(
-    (state) => state.isGenerating && state.generatingForChatId === chatId
-  );
-  const isProcessingPromptHere = useLLMStore(
-    (state) => state.isProcessingPrompt && state.generatingForChatId === chatId
-  );
   const aTurnIsStarting = useLLMStore((state) => state.isProcessingPrompt);
   const interrupt = useLLMStore((state) => state.interrupt);
   const loadModel = useLLMStore((state) => state.loadModel);
@@ -782,6 +793,7 @@ const ChatBar = ({
             attachedIds={attachments.map((attachment) => attachment.id)}
             maxSelection={MAX_IMAGE_ATTACHMENTS}
             imagesEnabled={isVisionModel}
+            attachmentsBlocked={isRespondingHere}
             tools={menuTools}
           />
           <ComposerModelMenu
