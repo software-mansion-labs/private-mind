@@ -8,26 +8,37 @@ import SecondaryButton from '../SecondaryButton';
 
 type MemoryStallCardProps = {
   stalledModelName: string;
+  didNotStart?: boolean;
   disabled?: boolean;
   onStartNewChat: () => void;
   onTryAgain: () => void;
 };
 
-const stallExplanation = (modelName: string) =>
-  `Your phone is short on memory right now, so ${modelName} is running very slowly. A smaller model in a new chat can answer right away.`;
+const cardCopy = (modelName: string, didNotStart: boolean) =>
+  didNotStart
+    ? {
+        title: `${modelName} couldn't start`,
+        body: `Last time your phone ran out of memory while ${modelName} was starting, and the app closed. A smaller model in a new chat can answer right away.`,
+      }
+    : {
+        title: 'This is taking longer than usual',
+        body: `Your phone is short on memory right now, so ${modelName} is running very slowly. A smaller model in a new chat can answer right away.`,
+      };
 
 export default function MemoryStallCard({
   stalledModelName,
+  didNotStart = false,
   disabled = false,
   onStartNewChat,
   onTryAgain,
 }: MemoryStallCardProps) {
   const { styles } = useThemedStyles(createStyles);
+  const copy = cardCopy(stalledModelName, didNotStart);
 
   return (
     <View style={styles.card} testID="memory-stall-card">
-      <Text style={styles.title}>This is taking longer than usual</Text>
-      <Text style={styles.body}>{stallExplanation(stalledModelName)}</Text>
+      <Text style={styles.title}>{copy.title}</Text>
+      <Text style={styles.body}>{copy.body}</Text>
       <View style={styles.actions}>
         <PrimaryButton
           text="New chat with another model"
