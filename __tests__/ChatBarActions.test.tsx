@@ -66,7 +66,19 @@ jest.mock('../components/chat-screen/ComposerActionButton', () => {
   };
 });
 
+jest.mock('../utils/Feedback', () => ({
+  Feedback: {
+    sheetOpen: jest.fn(),
+    attach: jest.fn(),
+    send: jest.fn(),
+    interrupt: jest.fn(),
+    toggleOn: jest.fn(),
+    toggleOff: jest.fn(),
+  },
+}));
+
 import ChatBarActions from '../components/chat-screen/ChatBarActions';
+import { Feedback } from '../utils/Feedback';
 import type { SharedValue } from 'react-native-reanimated';
 import type { Model } from '../database/modelRepository';
 
@@ -111,6 +123,13 @@ describe('attach button', () => {
     renderActions({ onAttach });
     fireEvent.press(screen.getByTestId('attach-btn'));
     expect(onAttach).toHaveBeenCalled();
+  });
+
+  it('opens its menu with the same tap the model menu gives', () => {
+    renderActions();
+    fireEvent.press(screen.getByTestId('attach-btn'));
+    expect(Feedback.sheetOpen).toHaveBeenCalledTimes(1);
+    expect(Feedback.attach).not.toHaveBeenCalled();
   });
 
   it.each([{ isGenerating: true }, { isProcessingPrompt: true }])(

@@ -114,7 +114,7 @@ const ChatBarActions = ({
       return;
     }
 
-    Feedback.attach();
+    Feedback.sheetOpen();
     onAttach();
   };
 

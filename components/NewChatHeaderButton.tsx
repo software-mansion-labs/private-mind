@@ -3,6 +3,7 @@ import { Pressable, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import ChatIcon from '../assets/icons/chat.svg';
 import { useThemedStyles } from '../hooks/useThemedStyles';
+import { Feedback } from '../utils/Feedback';
 import { startPhantomChat } from '../utils/startPhantomChat';
 import { useChatStore } from '../store/chatStore';
 import { pressedOpacity } from '../styles/pressable';
@@ -30,6 +31,7 @@ const NewChatHeaderButton = ({ noOp = false, glass = false }: Props) => {
       showTurnInFlightNotice();
       return;
     }
+    Feedback.newChat();
     if (noOp) {
       useChatStore.getState().startBlankChat();
       return;

@@ -577,6 +577,7 @@ const ChatBar = ({
       return;
     }
 
+    Feedback.speechMode();
     const permissionStatus = await AudioManager.requestRecordingPermissions();
     if (permissionStatus !== 'Granted') {
       showPermissionToast(
