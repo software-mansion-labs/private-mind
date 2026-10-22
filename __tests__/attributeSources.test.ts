@@ -115,3 +115,70 @@ describe('attributeSourcesByBlock', () => {
     expect(listBlock!.source?.name).toBe(gold.name);
   });
 });
+
+describe('the source the model named beats the one term overlap would pick', () => {
+  const numbered = (source: SourceDocument, ordinal: number) => ({
+    ...source,
+    ordinal,
+  });
+  const sources = [numbered(gold, 1), numbered(bitcoin, 2)];
+
+  it('follows a bracketed marker away from the better-overlapping source', () => {
+    const goldWording =
+      'The gold price today per troy ounce is 4812.50 dollars.';
+
+    const [guessed] = attributeSourcesByBlock(goldWording, sources);
+    const [named] = attributeSourcesByBlock(`${goldWording} [2]`, sources);
+
+    expect(guessed!.source?.name).toBe(gold.name);
+    expect(named!.source?.name).toBe(bitcoin.name);
+  });
+
+  it('follows the prose label the prompt taught the model to write', () => {
+    const [named] = attributeSourcesByBlock(
+      'According to Source 2, the gold price today per troy ounce is 4812.50 dollars.',
+      sources
+    );
+
+    expect(named!.source?.name).toBe(bitcoin.name);
+  });
+
+  it('takes the marker the block repeats when it names several', () => {
+    const [named] = attributeSourcesByBlock(
+      'Gold is 4812.50 dollars [2]. Gold moved again [1]. Gold settled there [1].',
+      sources
+    );
+
+    expect(named!.source?.name).toBe(gold.name);
+  });
+
+  it('falls back to overlap for a number that names no source we kept', () => {
+    const goldWording =
+      'The gold price today per troy ounce is 4812.50 dollars.';
+
+    const [named] = attributeSourcesByBlock(`${goldWording} [7]`, sources);
+
+    expect(named!.source?.name).toBe(gold.name);
+  });
+
+  it('falls back to overlap when the sources carry no ordinal at all', () => {
+    const goldWording =
+      'The gold price today per troy ounce is 4812.50 dollars.';
+
+    const [named] = attributeSourcesByBlock(`${goldWording} [2]`, [
+      gold,
+      bitcoin,
+    ]);
+
+    expect(named!.source?.name).toBe(gold.name);
+  });
+
+  it('hands back text with the marker already taken out', () => {
+    const [named] = attributeSourcesByBlock(
+      'Gold is 4812.50 dollars per troy ounce today [2].',
+      sources
+    );
+
+    expect(named!.text).toBe('Gold is 4812.50 dollars per troy ounce today.');
+  });
+});
