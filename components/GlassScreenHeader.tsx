@@ -19,6 +19,7 @@ import { GlassScrollEdge } from './chat-screen/GlassScrollEdge';
 import { GLASS_BUTTON_SIZE, HEADER_EDGE_PX } from '../constants/header-actions';
 import { space } from '../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../constants/font-scale';
+import { Feedback } from '../utils/Feedback';
 
 const TITLE_SIDE_SPACE = GLASS_BUTTON_SIZE + HEADER_EDGE_PX * 2;
 const SHEET_TOP_INSET = space.four;
@@ -51,6 +52,11 @@ const GlassScreenHeader = ({
   const topInset = useHeaderTopInset(sheet);
   const headerHeight = useGlassScreenHeaderHeight(sheet);
 
+  const handleBack = () => {
+    Feedback.navigate();
+    onBack();
+  };
+
   return (
     <>
       <GlassScrollEdge anchor={headerHeight} />
@@ -70,7 +76,7 @@ const GlassScreenHeader = ({
         </View>
         <HeaderGlassButton edge="leading">
           <Pressable
-            onPress={onBack}
+            onPress={handleBack}
             style={({ pressed }) => [
               headerGlassButtonFill,
               pressed && pressedOpacity,

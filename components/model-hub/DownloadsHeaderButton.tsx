@@ -16,6 +16,7 @@ import {
   HEADER_EDGE_PX,
 } from '../../constants/header-actions';
 import HeaderGlassButton, { headerGlassButtonFill } from '../HeaderGlassButton';
+import { Feedback } from '../../utils/Feedback';
 
 const IDLE_ICON_SIZE = 20;
 const RING_ICON_SIZE = 16;
@@ -38,11 +39,16 @@ const DownloadsHeaderButton = ({ onPress }: Props) => {
   const progress = overallProgress(downloads);
   const iconSize = count > 0 ? RING_ICON_SIZE : IDLE_ICON_SIZE;
 
+  const handlePress = () => {
+    Feedback.navigate();
+    onPress();
+  };
+
   return (
     <View>
       <HeaderGlassButton edge="trailing">
         <Pressable
-          onPress={onPress}
+          onPress={handlePress}
           style={({ pressed }) => [
             headerGlassButtonFill,
             pressed && pressedOpacity,
