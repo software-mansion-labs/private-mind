@@ -48,6 +48,8 @@ const DrawerLayout = () => {
           name="index"
           options={{
             title: '',
+            headerTransparent: true,
+            headerStyle: { backgroundColor: 'transparent' },
           }}
         />
         <Drawer.Screen
