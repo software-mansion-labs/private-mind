@@ -9,7 +9,7 @@ import { radius, space } from '../../constants/design-system';
 import CircleButton from '../CircleButton';
 import ModelFamilyTile from './ModelFamilyTile';
 import { ROW_PADDING } from './RowGroup';
-import { formatTimeLeft, secondsLeft } from '../../utils/downloadEta';
+import DownloadProgressDetails from './DownloadProgressDetails';
 import CloseIcon from '../../assets/icons/close.svg';
 
 const PROGRESS_TRACK_HEIGHT = 6;
@@ -25,7 +25,6 @@ interface Props {
 const DownloadingModelRow = ({ model, progress, rate, onCancel }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const percent = Math.floor(progress * 100);
-  const remaining = secondsLeft(progress, rate);
 
   return (
     <View style={styles.row} testID="downloading-model-row">
@@ -45,19 +44,11 @@ const DownloadingModelRow = ({ model, progress, rate, onCancel }: Props) => {
         >
           <View style={[styles.fill, { width: `${progress * 100}%` }]} />
         </View>
-        <View style={styles.detailsRow}>
-          {model.modelSize ? (
-            <Text style={styles.bytes} numberOfLines={1}>
-              {(model.modelSize * progress).toFixed(2)} of{' '}
-              {model.modelSize.toFixed(2)} GB
-            </Text>
-          ) : null}
-          {remaining !== undefined && (
-            <Text style={styles.timeLeft} testID="downloading-model-time-left">
-              {formatTimeLeft(remaining)}
-            </Text>
-          )}
-        </View>
+        <DownloadProgressDetails
+          modelSize={model.modelSize}
+          progress={progress}
+          rate={rate}
+        />
       </View>
       <CircleButton
         onPress={() => onCancel(model)}
@@ -118,28 +109,5 @@ const createStyles = (theme: Theme) =>
       height: '100%',
       borderRadius: radius.full,
       backgroundColor: theme.bg.main,
-    },
-    detailsRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      columnGap: space.two,
-      minHeight: lineHeights.xs,
-    },
-    bytes: {
-      flexShrink: 1,
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.xs,
-      lineHeight: lineHeights.xs,
-      fontVariant: ['tabular-nums'],
-      color: theme.text.defaultTertiary,
-    },
-    timeLeft: {
-      flexShrink: 1,
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.xs,
-      lineHeight: lineHeights.xs,
-      fontVariant: ['tabular-nums'],
-      color: theme.text.defaultSecondary,
     },
   });

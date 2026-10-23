@@ -118,6 +118,10 @@ export default function ChatScreen({
     topFadeAnchor,
     emptyFadeColors,
   } = useChatScreenLayout({ isEmpty, headerTitleBottom, headerHeight, theme });
+  const chatBarTopClearance = Math.max(
+    headerHeight,
+    topFadeHeight(topFadeAnchor)
+  );
   useBackToDismiss(userActionMenu.isOpen, () =>
     setUserActionMenu({ isOpen: false })
   );
@@ -322,7 +326,7 @@ export default function ChatScreen({
         style={[
           styles.chatBarSticky,
           rootFrame.height > 0 && {
-            maxHeight: rootFrame.height - headerHeight,
+            maxHeight: rootFrame.height - chatBarTopClearance,
           },
           chatBarStickyStyle,
         ]}

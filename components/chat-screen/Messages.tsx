@@ -347,7 +347,8 @@ const Messages = ({
     ],
   }));
 
-  const listTopPadding = topInset + 16;
+  const fadeAnchor = fadeBottom ?? topInset;
+  const listTopPadding = Math.max(topInset, topFadeHeight(fadeAnchor)) + 16;
   const listBottomPadding = chatBarInset + 8;
   const listPaddingRef = useRef({
     top: listTopPadding,
@@ -361,7 +362,6 @@ const Messages = ({
     ],
     [styles.contentContainer, listBottomPadding, listTopPadding]
   );
-  const fadeAnchor = fadeBottom ?? topInset;
   const scrollButtonStyle = useMemo(
     () => [styles.scrollToBottomButtonContainer, { bottom: chatBarInset + 16 }],
     [styles.scrollToBottomButtonContainer, chatBarInset]
@@ -1327,7 +1327,7 @@ const createStyles = (theme: Theme) => {
       alignItems: 'center',
       gap: 6,
       borderRadius: 8,
-      backgroundColor: theme.bg.softSecondary,
+      backgroundColor: theme.bg.softTertiary,
       paddingHorizontal: 12,
       paddingVertical: 8,
     },

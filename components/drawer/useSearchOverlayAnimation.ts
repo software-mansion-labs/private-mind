@@ -8,9 +8,8 @@ import {
 } from 'react-native-reanimated';
 import {
   BACKDROP_FADE_IN_DURATION,
-  FIELD_FADE_IN_DELAY,
-  FIELD_FADE_IN_DURATION,
-  FIELD_FADE_OUT_DURATION,
+  ICON_MORPH_DELAY,
+  ICON_MORPH_DURATION,
   SEARCH_COLLAPSE_DURATION,
   SEARCH_EXPAND_DURATION,
   SEARCH_UNMOUNT_GRACE,
@@ -22,7 +21,7 @@ import {
 
 const EXPAND_EASING = Easing.bezier(...EMPHASIZED_DECELERATE);
 const COLLAPSE_EASING = Easing.bezier(...EMPHASIZED_ACCELERATE);
-const FADE_EASING = Easing.bezier(0.33, 1, 0.68, 1);
+const MORPH_EASING = Easing.inOut(Easing.quad);
 
 interface Options {
   active: boolean;
@@ -36,8 +35,8 @@ export const useSearchOverlayAnimation = ({
   const [mounted, setMounted] = useState(active);
   const mountedRef = useRef(active);
   const progress = useSharedValue(0);
-  const contentProgress = useSharedValue(0);
   const backdropOpacity = useSharedValue(0);
+  const iconMorph = useSharedValue(0);
 
   const applyMounted = useCallback((value: boolean) => {
     mountedRef.current = value;
@@ -51,22 +50,19 @@ export const useSearchOverlayAnimation = ({
         easing: EXPAND_EASING,
       })
     );
+    iconMorph.set(
+      withDelay(
+        ICON_MORPH_DELAY,
+        withTiming(1, { duration: ICON_MORPH_DURATION, easing: MORPH_EASING })
+      )
+    );
     progress.set(
       withTiming(1, {
         duration: SEARCH_EXPAND_DURATION,
         easing: EXPAND_EASING,
       })
     );
-    contentProgress.set(
-      withDelay(
-        FIELD_FADE_IN_DELAY,
-        withTiming(1, {
-          duration: FIELD_FADE_IN_DURATION,
-          easing: FADE_EASING,
-        })
-      )
-    );
-  }, [progress, contentProgress, backdropOpacity]);
+  }, [progress, backdropOpacity, iconMorph]);
 
   useEffect(() => {
     if (active) {
@@ -76,8 +72,8 @@ export const useSearchOverlayAnimation = ({
       }
 
       progress.set(0);
-      contentProgress.set(0);
       backdropOpacity.set(0);
+      iconMorph.set(0);
       applyMounted(true);
       return;
     }
@@ -86,16 +82,16 @@ export const useSearchOverlayAnimation = ({
 
     if (closeInstantly) {
       progress.set(0);
-      contentProgress.set(0);
       backdropOpacity.set(0);
+      iconMorph.set(0);
       applyMounted(false);
       return;
     }
 
-    contentProgress.set(
+    iconMorph.set(
       withTiming(0, {
-        duration: FIELD_FADE_OUT_DURATION,
-        easing: FADE_EASING,
+        duration: SEARCH_COLLAPSE_DURATION,
+        easing: MORPH_EASING,
       })
     );
     backdropOpacity.set(
@@ -123,11 +119,11 @@ export const useSearchOverlayAnimation = ({
     active,
     closeInstantly,
     progress,
-    contentProgress,
     backdropOpacity,
+    iconMorph,
     startExpand,
     applyMounted,
   ]);
 
-  return { mounted, progress, contentProgress, backdropOpacity, startExpand };
+  return { mounted, progress, iconMorph, backdropOpacity, startExpand };
 };

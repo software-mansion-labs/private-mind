@@ -94,6 +94,7 @@ const createStyles = (theme: Theme) =>
     input: {
       flex: 1,
       paddingVertical: space.twoHalf,
+      paddingHorizontal: 0,
       fontFamily: fontFamily.regular,
       fontSize: fontSizes.md,
       color: theme.text.primary,

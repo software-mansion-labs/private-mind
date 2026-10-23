@@ -154,6 +154,7 @@ const renderCard = (
       onDeleted?: ModelCardProps['onDeleted'];
       onPress?: ModelCardProps['onPress'];
       wifiWarningSheetRef?: ModelCardProps['wifiWarningSheetRef'];
+      variant?: ModelCardProps['variant'];
     }
   > = {}
 ) => {
@@ -171,6 +172,7 @@ const renderCard = (
       onCancel={props.onCancel}
       onDeleted={props.onDeleted}
       wifiWarningSheetRef={props.wifiWarningSheetRef}
+      variant={props.variant}
     />
   );
 };
@@ -295,6 +297,35 @@ describe('download state rendering', () => {
     });
     renderCard();
     expect(screen.getByText('40%')).toBeTruthy();
+  });
+
+  it('shows downloaded GB and time left in a row while downloading', () => {
+    withDownloadStates({
+      1: { status: ModelState.Downloading, progress: 0.4, rate: 0.01 },
+    });
+    renderCard({ variant: 'row' });
+    expect(screen.getByText('1.00 of 2.50 GB')).toBeTruthy();
+    expect(screen.getByTestId('downloading-model-time-left')).toHaveTextContent(
+      '~1 min left'
+    );
+  });
+
+  it('keeps the card variant to the percentage alone', () => {
+    withDownloadStates({
+      1: { status: ModelState.Downloading, progress: 0.4, rate: 0.01 },
+    });
+    renderCard();
+    expect(screen.queryByText('1.00 of 2.50 GB')).toBeNull();
+    expect(screen.queryByTestId('downloading-model-time-left')).toBeNull();
+  });
+
+  it('shows no time left in a row before the rate is known', () => {
+    withDownloadStates({
+      1: { status: ModelState.Downloading, progress: 0.4 },
+    });
+    renderCard({ variant: 'row' });
+    expect(screen.getByText('1.00 of 2.50 GB')).toBeTruthy();
+    expect(screen.queryByTestId('downloading-model-time-left')).toBeNull();
   });
 
   it('does not show download button when already downloaded', () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Keyboard, Pressable, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import Menu from '../../assets/icons/menu.svg';
 import { useNavigation } from 'expo-router';
@@ -27,6 +27,7 @@ const DrawerToggleButton = ({ glass = false }: Props) => {
       showTurnInFlightNotice();
       return;
     }
+    Keyboard.dismiss();
     navigation.openDrawer();
   };
 

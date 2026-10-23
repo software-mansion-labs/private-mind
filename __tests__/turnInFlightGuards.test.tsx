@@ -32,7 +32,7 @@ jest.mock('react-native-toast-message', () => ({
 import { useLLMStore } from '../store/llmStore';
 import { useTurnInFlight } from '../hooks/useTurnInFlight';
 import { TURN_IN_FLIGHT_MESSAGE } from '../utils/turnInFlightNotice';
-import { BackHandler } from 'react-native';
+import { BackHandler, Keyboard } from 'react-native';
 import { useChatBackGuard } from '../hooks/useChatBackGuard';
 import DrawerToggleButton from '../components/drawer/DrawerToggleButton';
 import NewChatHeaderButton from '../components/NewChatHeaderButton';
@@ -86,6 +86,14 @@ describe('the hamburger while a turn is in flight', () => {
     fireEvent.press(getByTestId('drawer-toggle'));
     expect(mockOpenDrawer).toHaveBeenCalled();
     expect(mockToast).not.toHaveBeenCalled();
+  });
+
+  it('dismisses the keyboard so typing cannot fill the hidden composer', () => {
+    const dismiss = jest.spyOn(Keyboard, 'dismiss');
+    const { getByTestId } = render(<DrawerToggleButton />);
+    fireEvent.press(getByTestId('drawer-toggle'));
+    expect(dismiss).toHaveBeenCalled();
+    dismiss.mockRestore();
   });
 
   it('refuses and says why while the answer is being written', () => {
