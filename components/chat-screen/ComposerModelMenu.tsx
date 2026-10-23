@@ -9,28 +9,17 @@ import { Theme } from '../../styles/colors';
 import { GUTTER } from './attachments/constants';
 import Popover from '../menu/Popover';
 import PopoverRow from '../menu/PopoverRow';
-import { getModelFamily } from '../../utils/modelFamily';
-import ModelFamilyTile from '../model-hub/ModelFamilyTile';
-import CheckIcon from '../../assets/icons/check.svg';
+import ModelPickerRow from '../model-hub/ModelPickerRow';
 import ModelsIcon from '../../assets/icons/models.svg';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
 
 const ICON_WELL = 28;
-const CHECK_SIZE = 16;
 const ALL_MODELS_ICON_SIZE = 16;
 const ROW_CHEVRON_WIDTH = 10;
 const ROW_CHEVRON_HEIGHT = 6;
 const VISIBLE_ROWS = 5;
 const ROW_HEIGHT = 52;
 const NAME_SIZE = 15;
-
-const modelNote = (model: Model) =>
-  [
-    model.thinking ? 'Thinking' : model.vision ? 'Vision' : null,
-    model.modelSize ? `${model.modelSize.toFixed(2)} GB` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
 
 interface Props {
   visible: boolean;
@@ -71,11 +60,13 @@ const ComposerModelMenu = ({
         keyboardShouldPersistTaps="handled"
       >
         {downloadedModels.map((model) => (
-          <ModelRow
+          <ModelPickerRow
             key={model.id}
             model={model}
             current={model.id === currentModelId}
             onPress={() => onPick(model)}
+            accessibilityRole="menuitem"
+            testIDPrefix="model-menu"
           />
         ))}
       </ScrollView>
@@ -99,49 +90,6 @@ const ComposerModelMenu = ({
         />
       </PopoverRow>
     </Popover>
-  );
-};
-
-interface RowProps {
-  model: Model;
-  current: boolean;
-  onPress: () => void;
-}
-
-const ModelRow = ({ model, current, onPress }: RowProps) => {
-  const { styles } = useThemedStyles(createStyles);
-  const note = modelNote(model);
-
-  return (
-    <PopoverRow
-      onPress={onPress}
-      accessibilityRole="menuitem"
-      accessibilityState={{ checked: current }}
-      accessibilityLabel={
-        note ? `${model.modelName}, ${note}` : model.modelName
-      }
-      testID={`model-menu-row-${model.id}`}
-    >
-      <ModelFamilyTile family={getModelFamily(model)} size="row" />
-      <View style={styles.grow}>
-        <Text style={styles.name} numberOfLines={1}>
-          {model.modelName}
-        </Text>
-        {note ? (
-          <Text style={styles.note} numberOfLines={1}>
-            {note}
-          </Text>
-        ) : null}
-      </View>
-      {current && (
-        <CheckIcon
-          width={CHECK_SIZE}
-          height={CHECK_SIZE}
-          style={styles.check}
-          testID="model-menu-current"
-        />
-      )}
-    </PopoverRow>
   );
 };
 
@@ -173,15 +121,6 @@ const createStyles = (theme: Theme) =>
       fontSize: NAME_SIZE,
       lineHeight: lineHeights.sm,
       color: theme.text.primary,
-    },
-    note: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.xs,
-      lineHeight: lineHeights.xs,
-      color: theme.text.defaultTertiary,
-    },
-    check: {
-      color: theme.text.accent,
     },
     allModelsIcon: {
       width: ICON_WELL,

@@ -1,4 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
+import {
+  BottomSheetModal,
+  BottomSheetModalProvider,
+} from '@gorhom/bottom-sheet';
 import { StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
@@ -13,9 +17,8 @@ import { Feedback } from '../../utils/Feedback';
 import GlassScreenHeader, {
   useGlassScreenHeaderHeight,
 } from '../../components/GlassScreenHeader';
-import RowGroup, {
-  TILE_ROW_TEXT_INSET,
-} from '../../components/model-hub/RowGroup';
+import RowGroup from '../../components/model-hub/RowGroup';
+import ModelManagementSheet from '../../components/bottomSheets/ModelManagementSheet';
 import DownloadedModelRow from '../../components/model-hub/DownloadedModelRow';
 import DownloadingModelRow from '../../components/model-hub/DownloadingModelRow';
 import SectionHeader from '../../components/model-hub/SectionHeader';
@@ -27,6 +30,7 @@ const DownloadsScreen = () => {
   const headerHeight = useGlassScreenHeaderHeight(true);
   const { styles } = useThemedStyles(createStyles, headerHeight);
   const { deleteModelFiles, ConfirmElement } = useDeleteModelFiles();
+  const modelManagementSheetRef = useRef<BottomSheetModal<Model> | null>(null);
 
   const models = useModelStore((state) => state.models);
   const cancelDownload = useModelStore((state) => state.cancelDownload);
@@ -43,51 +47,59 @@ const DownloadsScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        {...scrollIndicatorProps(headerHeight)}
-      >
-        {downloading.length > 0 && (
-          <View style={styles.section}>
-            <SectionHeader title={`Downloading · ${downloading.length}`} />
-            <RowGroup separatorInset={TILE_ROW_TEXT_INSET}>
-              {downloading.map(({ model, progress, rate }) => (
-                <DownloadingModelRow
-                  key={model.id}
-                  model={model}
-                  progress={progress}
-                  rate={rate}
-                  onCancel={handleCancel}
-                />
-              ))}
-            </RowGroup>
-          </View>
-        )}
-        <View style={styles.section}>
-          <SectionHeader
-            title={`On this device · ${onDevice.length}`}
-            summary={`${usedGB.toFixed(2)} GB used`}
-          />
-          {onDevice.length > 0 ? (
-            <RowGroup separatorInset={TILE_ROW_TEXT_INSET}>
-              {onDevice.map((model) => (
-                <DownloadedModelRow
-                  key={model.id}
-                  model={model}
-                  onDelete={deleteModelFiles}
-                />
-              ))}
-            </RowGroup>
-          ) : (
-            <Text style={styles.empty}>No models on this device yet.</Text>
+    <BottomSheetModalProvider>
+      <View style={styles.container}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          {...scrollIndicatorProps(headerHeight)}
+        >
+          {downloading.length > 0 && (
+            <View style={styles.section}>
+              <SectionHeader title={`Downloading · ${downloading.length}`} />
+              <RowGroup separatorInset={0}>
+                {downloading.map(({ model, progress, rate }) => (
+                  <DownloadingModelRow
+                    key={model.id}
+                    model={model}
+                    progress={progress}
+                    rate={rate}
+                    onCancel={handleCancel}
+                  />
+                ))}
+              </RowGroup>
+            </View>
           )}
-        </View>
-      </ScrollView>
-      <GlassScreenHeader title="Downloads" onBack={() => router.back()} sheet />
-      {ConfirmElement}
-    </View>
+          <View style={styles.section}>
+            <SectionHeader
+              title={`On this device · ${onDevice.length}`}
+              summary={`${usedGB.toFixed(2)} GB used`}
+            />
+            {onDevice.length > 0 ? (
+              <RowGroup separatorInset={0}>
+                {onDevice.map((model) => (
+                  <DownloadedModelRow
+                    key={model.id}
+                    model={model}
+                    onDelete={deleteModelFiles}
+                    onPress={(m) => modelManagementSheetRef.current?.present(m)}
+                  />
+                ))}
+              </RowGroup>
+            ) : (
+              <Text style={styles.empty}>No models on this device yet.</Text>
+            )}
+          </View>
+        </ScrollView>
+        <GlassScreenHeader
+          title="Downloads"
+          onBack={() => router.back()}
+          sheet
+        />
+        {ConfirmElement}
+        <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
+      </View>
+    </BottomSheetModalProvider>
   );
 };
 

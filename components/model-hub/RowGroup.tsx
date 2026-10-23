@@ -5,8 +5,6 @@ import { Theme } from '../../styles/colors';
 import { radius, space, stroke } from '../../constants/design-system';
 
 export const ROW_PADDING = space.three;
-export const ROW_TILE_SIZE = space.ten;
-export const TILE_ROW_TEXT_INSET = ROW_PADDING * 2 + ROW_TILE_SIZE;
 
 interface Props {
   children: React.ReactNode;

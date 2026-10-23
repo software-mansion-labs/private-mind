@@ -1,11 +1,13 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Model } from '../../database/modelRepository';
 import { getModelFamily } from '../../utils/modelFamily';
 import { space } from '../../constants/design-system';
+import { pressedOpacity } from '../../styles/pressable';
 import CircleButton from '../CircleButton';
 import ModelFamilyTile from './ModelFamilyTile';
 import DownloadedBadge from './DownloadedBadge';
@@ -15,13 +17,21 @@ import TrashIcon from '../../assets/icons/trash.svg';
 interface Props {
   model: Model;
   onDelete?: (model: Model) => void;
+  onPress?: (model: Model) => void;
 }
 
-const DownloadedModelRow = ({ model, onDelete }: Props) => {
+const DownloadedModelRow = ({ model, onDelete, onPress }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
 
   return (
-    <View style={styles.row} testID="downloaded-model-row">
+    <Pressable
+      style={({ pressed }) => [styles.row, pressed && pressedOpacity]}
+      onPress={onPress ? () => onPress(model) : undefined}
+      disabled={!onPress}
+      accessibilityRole="button"
+      accessibilityLabel={model.modelName}
+      testID="downloaded-model-row"
+    >
       <ModelFamilyTile family={getModelFamily(model)} size="list" />
       <View style={styles.info}>
         <View style={styles.nameRow}>
@@ -44,7 +54,7 @@ const DownloadedModelRow = ({ model, onDelete }: Props) => {
           testID="downloaded-model-delete"
         />
       )}
-    </View>
+    </Pressable>
   );
 };
 

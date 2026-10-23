@@ -2,37 +2,64 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
-import BenchmarkIcon from '../../assets/icons/benchmark.svg';
+import { Model } from '../../database/modelRepository';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { pressedOpacity } from '../../styles/pressable';
+import { space } from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
+import { getModelFamily } from '../../utils/modelFamily';
+import ModelFamilyTile from '../model-hub/ModelFamilyTile';
+import { ROW_PADDING } from '../model-hub/RowGroup';
+import { formatBenchmarkDate } from '../../utils/formatBenchmarkDate';
+import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
+
+const CHEVRON_WIDTH = 7;
+const CHEVRON_HEIGHT = 12;
+const CHEVRON_OPACITY = 0.4;
 
 interface Props {
   entry: BenchmarkResult;
+  model?: Model;
   onPress: () => void;
 }
 
-const BenchmarkItem = ({ entry, onPress }: Props) => {
+const BenchmarkItem = ({ entry, model, onPress }: Props) => {
   const { styles } = useThemedStyles(createStyles);
-
-  const date = new Date(entry.timestamp);
-  const formattedDate = `${date.getDate()} ${date.toLocaleString('default', {
-    month: 'short',
-  })}`;
+  const family = getModelFamily(model ?? { modelName: entry.modelName });
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.container, pressed && pressedOpacity]}
+      style={({ pressed }) => [styles.row, pressed && pressedOpacity]}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${entry.modelName}, ${entry.tokensPerSecond.toFixed(1)} tokens per second`}
+      testID="benchmark-history-row"
     >
-      <View style={styles.iconWrapper}>
-        <BenchmarkIcon width={15} height={15} style={styles.icon} />
+      <ModelFamilyTile family={family} size="list" />
+      <View style={styles.info}>
+        <Text style={styles.name} numberOfLines={1}>
+          {entry.modelName}
+        </Text>
+        <Text style={styles.date}>{formatBenchmarkDate(entry.timestamp)}</Text>
       </View>
-      <View>
-        <Text style={styles.title}>{entry.modelName}</Text>
-        <Text style={styles.date}>{formattedDate}</Text>
+      <View style={styles.speed}>
+        <Text style={styles.speedValue}>
+          {entry.tokensPerSecond.toFixed(1)}
+        </Text>
+        <Text
+          style={styles.speedUnit}
+          maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+        >
+          tokens/s
+        </Text>
       </View>
+      <ChevronRightIcon
+        width={CHEVRON_WIDTH}
+        height={CHEVRON_HEIGHT}
+        style={styles.chevron}
+      />
     </Pressable>
   );
 };
@@ -41,35 +68,46 @@ export default BenchmarkItem;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    container: {
+    row: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
-      padding: 16,
-      paddingLeft: 12,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border.soft,
+      gap: space.three,
+      padding: ROW_PADDING,
     },
-    iconWrapper: {
-      width: 36,
-      height: 36,
-      borderRadius: 9999,
-      backgroundColor: theme.bg.softSecondary,
-      alignItems: 'center',
-      justifyContent: 'center',
+    info: {
+      flex: 1,
+      minWidth: 0,
     },
-    icon: {
-      color: theme.text.defaultTertiary,
-    },
-    title: {
+    name: {
       fontFamily: fontFamily.medium,
-      fontSize: fontSizes.sm,
+      fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
       color: theme.text.primary,
     },
     date: {
       fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
+      color: theme.text.defaultTertiary,
+    },
+    speed: {
+      alignItems: 'flex-end',
+    },
+    speedValue: {
+      fontFamily: fontFamily.bold,
+      fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
+      fontVariant: ['tabular-nums'],
+      color: theme.text.primary,
+    },
+    speedUnit: {
+      fontFamily: fontFamily.regular,
       fontSize: fontSizes.xs,
-      color: theme.text.defaultSecondary,
+      lineHeight: lineHeights.xs,
+      color: theme.text.defaultTertiary,
+    },
+    chevron: {
+      color: theme.text.primary,
+      opacity: CHEVRON_OPACITY,
     },
   });
