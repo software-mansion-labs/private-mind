@@ -1,93 +1,62 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { ActionSheetIOS, Platform } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Keyboard } from 'react-native';
 import { router } from 'expo-router';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useChatActions } from '../../hooks/useChatActions';
 import { chatLabel } from '../../utils/chatLabel';
-import RenameChatModal from './RenameChatModal';
-import ChatTitleMenuSheet from './ChatTitleMenuSheet';
-import {
-  CHAT_MENU_CANCEL_INDEX,
-  CHAT_MENU_DELETE_INDEX,
-  CHAT_MENU_EXPORT_INDEX,
-  CHAT_MENU_OPTIONS,
-  CHAT_MENU_RENAME_INDEX,
-  getActionSheetTitle,
-} from '../../constants/chat-menu';
+import { Feedback } from '../../utils/Feedback';
+import ChatTitlePopover from './ChatTitlePopover';
 
 interface Options {
   chatId: number;
   chatTitle: string;
+  anchorTop?: number;
 }
 
-export const useChatTitleMenu = ({ chatId, chatTitle }: Options) => {
-  const [renameVisible, setRenameVisible] = useState(false);
-  const androidSheetRef = useRef<BottomSheetModal>(null);
-
+export const useChatTitleMenu = ({ chatId, chatTitle, anchorTop }: Options) => {
+  const [isOpen, setIsOpen] = useState(false);
   const menuTitle = chatLabel({ id: chatId, title: chatTitle });
 
   const { rename, exportChat, confirmDelete, ConfirmElement } = useChatActions({
     onDeleted: () => router.replace('/'),
   });
 
-  const handleRenameSubmit = useCallback(
-    async (newTitle: string) => {
-      setRenameVisible(false);
-      await rename(chatId, newTitle);
-    },
+  const closeMenu = useCallback(() => setIsOpen(false), []);
+
+  const openMenu = useCallback(() => {
+    Keyboard.dismiss();
+    Feedback.sheetOpen();
+    setIsOpen(true);
+  }, []);
+
+  const handleRename = useCallback(
+    (newTitle: string) => rename(chatId, newTitle),
     [chatId, rename]
   );
 
-  const handleExport = useCallback(
-    () => exportChat(chatId, chatTitle),
-    [exportChat, chatId, chatTitle]
-  );
+  const handleShare = useCallback(() => {
+    setIsOpen(false);
+    exportChat(chatId, chatTitle);
+  }, [exportChat, chatId, chatTitle]);
 
-  const handleDelete = useCallback(
-    () => confirmDelete(chatId),
-    [confirmDelete, chatId]
-  );
-
-  const openMenu = useCallback(() => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title: getActionSheetTitle(menuTitle),
-          options: CHAT_MENU_OPTIONS,
-          destructiveButtonIndex: CHAT_MENU_DELETE_INDEX,
-          cancelButtonIndex: CHAT_MENU_CANCEL_INDEX,
-        },
-        (index) => {
-          if (index === CHAT_MENU_RENAME_INDEX) setRenameVisible(true);
-          else if (index === CHAT_MENU_EXPORT_INDEX) handleExport();
-          else if (index === CHAT_MENU_DELETE_INDEX) handleDelete();
-        }
-      );
-    } else {
-      androidSheetRef.current?.present();
-    }
-  }, [menuTitle, handleExport, handleDelete]);
+  const handleDelete = useCallback(() => {
+    setIsOpen(false);
+    confirmDelete(chatId);
+  }, [confirmDelete, chatId]);
 
   const MenuElements = (
     <>
-      {Platform.OS === 'android' && (
-        <ChatTitleMenuSheet
-          bottomSheetModalRef={androidSheetRef}
-          title={menuTitle}
-          onRename={() => setRenameVisible(true)}
-          onExport={handleExport}
-          onDelete={handleDelete}
-        />
-      )}
-      {ConfirmElement}
-      <RenameChatModal
-        visible={renameVisible}
-        initialTitle={chatTitle}
-        onCancel={() => setRenameVisible(false)}
-        onSubmit={handleRenameSubmit}
+      <ChatTitlePopover
+        visible={isOpen}
+        anchorTop={anchorTop ?? 0}
+        title={menuTitle}
+        onRename={handleRename}
+        onShare={handleShare}
+        onDelete={handleDelete}
+        onClose={closeMenu}
       />
+      {ConfirmElement}
     </>
   );
 
-  return { openMenu, MenuElements };
+  return { openMenu, isOpen, menuTitle, MenuElements };
 };

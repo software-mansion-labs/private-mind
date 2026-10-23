@@ -11,6 +11,7 @@ import PauseIcon from '../../assets/icons/pause_icon.svg';
 import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import { composerControlSurface } from './composerControl';
 
 export type ComposerAction = 'speech' | 'send' | 'stop';
 
@@ -65,6 +66,9 @@ const ComposerActionButton = ({
     stop.set(morphTo(action === 'stop'));
   }, [action, send, speech, stop]);
 
+  const restStyle = useAnimatedStyle(() => ({
+    opacity: morphOpacity(speech.get()),
+  }));
   const fillStyle = useAnimatedStyle(() => ({
     opacity: morphFillOpacity(send.get(), stop.get()),
   }));
@@ -92,6 +96,10 @@ const ComposerActionButton = ({
       accessibilityState={{ disabled, busy }}
       testID={testID}
     >
+      <Reanimated.View
+        style={[StyleSheet.absoluteFill, styles.rest, restStyle]}
+        pointerEvents="none"
+      />
       <Reanimated.View
         style={[StyleSheet.absoluteFill, styles.fill, fillStyle]}
         pointerEvents="none"
@@ -138,6 +146,10 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       alignItems: 'center',
       overflow: 'hidden',
+    },
+    rest: {
+      borderRadius: 18,
+      ...composerControlSurface(theme),
     },
     fill: {
       borderRadius: 18,

@@ -13,6 +13,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useLLMStore } from '../../store/llmStore';
 import { startPhantomChat } from '../../utils/startPhantomChat';
+import { Feedback } from '../../utils/Feedback';
 import { Theme } from '../../styles/colors';
 import ChatIcon from '../../assets/icons/chat.svg';
 import ModelsIcon from '../../assets/icons/models.svg';
@@ -104,6 +105,7 @@ export const DrawerNavSection = ({
       showTurnInFlightNotice();
       return;
     }
+    Feedback.newChat();
     if (isOnPhantomChat) {
       onNavigate?.();
       return;

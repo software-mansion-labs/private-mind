@@ -445,7 +445,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       maxWidth: `${USER_BUBBLE_WIDTH_SHARE * 100}%`,
       borderRadius: 12,
-      backgroundColor: theme.bg.softSecondary,
+      backgroundColor: theme.bg.chatBar,
       overflow: 'hidden',
     },
     userMessageContent: {
@@ -467,7 +467,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: 16,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border.soft,
-      backgroundColor: theme.bg.softSecondary,
+      backgroundColor: theme.bg.chatBar,
     },
     documentIcon: {
       color: theme.text.defaultSecondary,

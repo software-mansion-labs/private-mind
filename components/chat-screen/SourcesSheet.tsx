@@ -22,6 +22,7 @@ import {
   type BottomSheetBackdropProps,
   type BottomSheetScrollViewMethods,
 } from '@gorhom/bottom-sheet';
+import BackDismissibleSheetModal from '../bottomSheets/BackDismissibleSheetModal';
 import { KeyboardEvents } from 'react-native-keyboard-controller';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
@@ -205,7 +206,7 @@ const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
   const animationConfigs = useBottomSheetSpringConfigs(SHEET_SPRING_CONFIG);
 
   return (
-    <BottomSheetModal
+    <BackDismissibleSheetModal
       ref={sheetRef}
       index={0}
       snapPoints={snapPoints}
@@ -258,7 +259,7 @@ const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
           ))}
         </View>
       </BottomSheetScrollView>
-    </BottomSheetModal>
+    </BackDismissibleSheetModal>
   );
 });
 

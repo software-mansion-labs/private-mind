@@ -3,6 +3,7 @@ import { Keyboard, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useHeaderHeight } from 'expo-router/react-navigation';
+import { router } from 'expo-router';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useModelSwitch } from './useModelSwitch';
 import { useSendChatMessage } from './useSendChatMessage';
@@ -32,6 +33,7 @@ import useChatSettings from '../../hooks/useChatSettings';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import useChatBranching from '../../hooks/useChatBranching';
 import { useStableCallback } from '../../hooks/useStableCallback';
+import { useBackToDismiss } from '../../hooks/useBackToDismiss';
 import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
 import { retryWithPinnedModel } from './loadModelPinnedToChat';
 import { useMemoryStallCard } from './useMemoryStallCard';
@@ -44,11 +46,10 @@ interface Props {
   messageHistory: Message[];
   isLoading?: boolean;
   model: Model | undefined;
-  onPendingModelChange?: (model: Model | undefined) => void;
   selectModel?: (model: Model) => Promise<void>;
-  openModelSheetRef?: React.MutableRefObject<(() => void) | null>;
   revealFromTop?: boolean;
   headerTitleBottom?: number;
+  opensModelMenu?: boolean;
 }
 
 export default function ChatScreen({
@@ -57,11 +58,10 @@ export default function ChatScreen({
   messageHistory,
   isLoading = false,
   model,
-  onPendingModelChange,
   selectModel,
-  openModelSheetRef,
   revealFromTop = false,
   headerTitleBottom,
+  opensModelMenu = false,
 }: Props) {
   const inputRef = useRef<{
     setInput: (text: string) => void;
@@ -78,6 +78,7 @@ export default function ChatScreen({
   const retryLastGeneration = useLLMStore((state) => state.retryLastGeneration);
   const retryArmedForChatId = useLLMStore((state) => state.retryArmedForChatId);
   const { setChatModel, phantomChat } = useChatStore();
+  const isPhantomChat = phantomChat?.id === chatId && !chat;
 
   const { styles, theme } = useThemedStyles(createStyles);
   const headerHeight = useHeaderHeight();
@@ -117,6 +118,9 @@ export default function ChatScreen({
     topFadeAnchor,
     emptyFadeColors,
   } = useChatScreenLayout({ isEmpty, headerTitleBottom, headerHeight, theme });
+  useBackToDismiss(userActionMenu.isOpen, () =>
+    setUserActionMenu({ isOpen: false })
+  );
 
   const { branchMarkers, handleForkMessage, handleBranchMarkerPress } =
     useChatBranching({
@@ -155,14 +159,6 @@ export default function ChatScreen({
     );
   }, []);
 
-  useEffect(() => {
-    if (!openModelSheetRef) return;
-    openModelSheetRef.current = handlePresentModelSheet;
-    return () => {
-      openModelSheetRef.current = null;
-    };
-  }, [openModelSheetRef, handlePresentModelSheet]);
-
   const handleSelectModel = async (selectedModel: Model) => {
     try {
       await loadModel(selectedModel);
@@ -193,9 +189,18 @@ export default function ChatScreen({
 
   const answeringModel = pendingModel ?? model;
 
-  useEffect(() => {
-    onPendingModelChange?.(pendingModel);
-  }, [pendingModel, onPendingModelChange]);
+  const handleModelPickedFromMenu = useCallback(
+    (picked: Model) => {
+      pickModel(picked);
+      handleModelSwitchSheetState(false);
+    },
+    [pickModel, handleModelSwitchSheetState]
+  );
+
+  const handleShowAllModels = useCallback(() => {
+    Keyboard.dismiss();
+    router.push('/model-hub');
+  }, []);
 
   const handleModelSheetStateChange = useCallback(
     (isOpen: boolean) => {
@@ -326,9 +331,14 @@ export default function ChatScreen({
           chatId={chatId}
           onSend={handleSendMessage}
           onSelectModel={handlePresentModelSheet}
+          onPickModel={handleModelPickedFromMenu}
+          onShowAllModels={handleShowAllModels}
+          modelLocked={!isPhantomChat}
+          opensModelMenu={opensModelMenu}
           onSelectPrompt={handleSelectPrompt}
           ref={inputRef}
           model={model}
+          pendingModel={pendingModel}
           isVisionModel={answeringModel?.vision === true}
           extraContentPadding={extraContentPadding}
           thinkingEnabled={thinkingEnabled}

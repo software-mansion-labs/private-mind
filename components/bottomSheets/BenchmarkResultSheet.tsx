@@ -4,6 +4,7 @@ import {
   BottomSheetBackdrop,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
+import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { StyleSheet, Text } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -64,7 +65,7 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
   }, []);
 
   return (
-    <BottomSheetModal
+    <BackDismissibleSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       snapPoints={['50%', '90%']}
@@ -101,7 +102,7 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
           </BottomSheetScrollView>
         );
       }}
-    </BottomSheetModal>
+    </BackDismissibleSheetModal>
   );
 };
 

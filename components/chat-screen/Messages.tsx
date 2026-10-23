@@ -37,7 +37,8 @@ import MessageItem from './MessageItem';
 import ScrollToLatestButton from './ScrollToLatestButton';
 import SourcesSheet, { type SourcesSheetHandle } from './SourcesSheet';
 import { EdgeFade } from './EdgeFade';
-import { TopFade, topFadeHeight } from './TopFade';
+import { topFadeHeight } from './TopFade';
+import { GlassScrollEdge } from './GlassScrollEdge';
 import {
   Message,
   SourceDocument,
@@ -67,7 +68,10 @@ import {
   MESSAGE_LIST_SIDE_PADDING,
 } from '../../constants/chat-screen';
 import { messageRowKey } from '../../utils/messageRowKey';
-import { scrollIndicatorProps } from '../../constants/scroll-indicator';
+import {
+  SCROLL_INDICATOR_INPUT_GAP,
+  scrollIndicatorProps,
+} from '../../constants/scroll-indicator';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 import { useSendKeyboardFreeze } from './useSendKeyboardFreeze';
@@ -1048,7 +1052,10 @@ const Messages = ({
           applyWorkaroundForContentInsetHitTestBug
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={contentContainerStyle}
-          {...scrollIndicatorProps(topFadeHeight(fadeAnchor))}
+          {...scrollIndicatorProps(
+            topFadeHeight(fadeAnchor),
+            chatBarInset + SCROLL_INDICATOR_INPUT_GAP
+          )}
           onLayout={handleContainerLayout}
           onScroll={handleScroll}
           onScrollBeginDrag={handleScrollBeginDrag}
@@ -1233,7 +1240,7 @@ const Messages = ({
         </KeyboardChatScrollView>
       </Reanimated.View>
 
-      {hasMessages && <TopFade anchor={fadeAnchor} />}
+      {hasMessages && <GlassScrollEdge anchor={fadeAnchor} />}
       {hasMessages && (
         <Reanimated.View
           style={[styles.bottomFade, bottomFadeAnimatedStyle]}

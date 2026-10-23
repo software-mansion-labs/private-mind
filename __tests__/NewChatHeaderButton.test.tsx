@@ -16,8 +16,13 @@ jest.mock('../utils/startPhantomChat', () => ({
   startPhantomChat: (...args: unknown[]) => mockStart(...args),
 }));
 
+jest.mock('../utils/Feedback', () => ({
+  Feedback: { newChat: jest.fn() },
+}));
+
 import NewChatHeaderButton from '../components/NewChatHeaderButton';
 import { useChatStore } from '../store/chatStore';
+import { Feedback } from '../utils/Feedback';
 
 beforeEach(() => jest.clearAllMocks());
 afterEach(() => jest.restoreAllMocks());
@@ -45,5 +50,13 @@ describe('NewChatHeaderButton', () => {
     const { getByTestId } = render(<NewChatHeaderButton noOp={true} />);
     fireEvent.press(getByTestId('new-chat-header-button'));
     expect(useChatStore.getState().phantomChatStarts).toBe(before + 1);
+  });
+
+  it('taps back like the rest of the chat controls, on either screen', () => {
+    const { getByTestId, rerender } = render(<NewChatHeaderButton />);
+    fireEvent.press(getByTestId('new-chat-header-button'));
+    rerender(<NewChatHeaderButton noOp={true} />);
+    fireEvent.press(getByTestId('new-chat-header-button'));
+    expect(Feedback.newChat).toHaveBeenCalledTimes(2);
   });
 });

@@ -10,8 +10,13 @@ import { useSteadyFlag } from '../../hooks/useSteadyFlag';
 import { showTurnInFlightNotice } from '../../utils/turnInFlightNotice';
 import { TURN_IN_FLIGHT_HOLD_MS } from '../../constants/header-actions';
 import HeaderActionIcon from '../HeaderActionIcon';
+import HeaderGlassButton, { headerGlassButtonFill } from '../HeaderGlassButton';
 
-const DrawerToggleButton = () => {
+interface Props {
+  glass?: boolean;
+}
+
+const DrawerToggleButton = ({ glass = false }: Props) => {
   const navigation: DrawerContentComponentProps['navigation'] = useNavigation();
   const { styles, theme } = useThemedStyles(createStyles);
   const turnInFlight = useTurnInFlight();
@@ -25,10 +30,13 @@ const DrawerToggleButton = () => {
     navigation.openDrawer();
   };
 
-  return (
+  const button = (
     <Pressable
       onPress={handlePress}
-      style={({ pressed }) => [styles.button, pressed && pressedOpacity]}
+      style={({ pressed }) => [
+        glass ? headerGlassButtonFill : styles.button,
+        pressed && pressedOpacity,
+      ]}
       hitSlop={15}
       testID="drawer-toggle"
     >
@@ -41,6 +49,10 @@ const DrawerToggleButton = () => {
       />
     </Pressable>
   );
+
+  if (!glass) return button;
+
+  return <HeaderGlassButton edge="leading">{button}</HeaderGlassButton>;
 };
 
 export default React.memo(DrawerToggleButton);

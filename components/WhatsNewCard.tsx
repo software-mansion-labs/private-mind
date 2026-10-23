@@ -1,10 +1,19 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated';
 import * as Application from 'expo-application';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
+import { radius } from '../constants/design-system';
 import { LATEST_RELEASE } from '../constants/latest-release';
+import { useSettingsStore } from '../store/settingsStore';
+import { Feedback } from '../utils/Feedback';
+import CloseIcon from '../assets/icons/cross-small.svg';
+
+const CLOSE_BUTTON_SIZE = 24;
+const CLOSE_ICON_SIZE = 16;
+const DISMISS_FADE_MS = 160;
 
 const SCROLL_INDICATOR_GUTTER = 12;
 
@@ -13,12 +22,48 @@ const installedVersion =
 
 const WhatsNewCard = () => {
   const { styles } = useThemedStyles(createStyles);
+  const dismissedVersion = useSettingsStore(
+    (state) => state.dismissedWhatsNewVersion
+  );
+  const dismissWhatsNew = useSettingsStore((state) => state.dismissWhatsNew);
+  const hasHydrated = useSettingsStore((state) => state.hasHydrated);
+
+  if (!hasHydrated || dismissedVersion === installedVersion) return null;
+
+  const handleDismiss = () => {
+    Feedback.toggleOff();
+    dismissWhatsNew(installedVersion);
+  };
 
   return (
-    <View style={styles.card}>
+    <Animated.View
+      style={styles.card}
+      exiting={FadeOut.duration(DISMISS_FADE_MS)}
+      layout={LinearTransition}
+      testID="whats-new-card"
+    >
       <View style={styles.header}>
         <Text style={styles.badge}>What's new</Text>
-        <Text style={styles.version}>v{installedVersion}</Text>
+        <View style={styles.headerTrailing}>
+          <Text style={styles.version}>v{installedVersion}</Text>
+          <Pressable
+            onPress={handleDismiss}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss what's new"
+            testID="whats-new-dismiss"
+            style={({ pressed }) => [
+              styles.closeButton,
+              pressed && styles.closeButtonPressed,
+            ]}
+          >
+            <CloseIcon
+              width={CLOSE_ICON_SIZE}
+              height={CLOSE_ICON_SIZE}
+              style={styles.closeIcon}
+            />
+          </Pressable>
+        </View>
       </View>
       <Text style={styles.title}>{LATEST_RELEASE.title}</Text>
       <ScrollView
@@ -35,7 +80,7 @@ const WhatsNewCard = () => {
           </View>
         ))}
       </ScrollView>
-    </View>
+    </Animated.View>
   );
 };
 
@@ -46,8 +91,8 @@ const createStyles = (theme: Theme) =>
     card: {
       width: '100%',
       flexShrink: 1,
-      backgroundColor: theme.bg.cardSurface,
-      borderRadius: 16,
+      backgroundColor: theme.bg.whatsNewCard,
+      borderRadius: radius.eighteen,
       padding: 16,
       gap: 12,
     },
@@ -62,6 +107,24 @@ const createStyles = (theme: Theme) =>
       color: theme.bg.main,
       textTransform: 'uppercase',
       letterSpacing: 1,
+    },
+    headerTrailing: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    closeButton: {
+      width: CLOSE_BUTTON_SIZE,
+      height: CLOSE_BUTTON_SIZE,
+      borderRadius: radius.twelve,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    closeButtonPressed: {
+      backgroundColor: theme.bg.softSecondary,
+    },
+    closeIcon: {
+      color: theme.text.defaultSecondary,
     },
     version: {
       fontFamily: fontFamily.regular,
