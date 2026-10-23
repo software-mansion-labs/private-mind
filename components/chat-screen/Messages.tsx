@@ -1327,7 +1327,7 @@ const createStyles = (theme: Theme) => {
       alignItems: 'center',
       gap: 6,
       borderRadius: 8,
-      backgroundColor: theme.bg.softSecondary,
+      backgroundColor: theme.bg.softTertiary,
       paddingHorizontal: 12,
       paddingVertical: 8,
     },
