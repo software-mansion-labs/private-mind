@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Keyboard } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
@@ -269,7 +269,10 @@ const ModelHubScreen = () => {
         <GlassScrollEdge anchor={headerHeight} />
 
         <FloatingActionButton
-          onPress={() => addModelSheetRef.current?.present()}
+          onPress={() => {
+            Keyboard.dismiss();
+            addModelSheetRef.current?.present();
+          }}
         />
       </View>
       <AddModelSheet bottomSheetModalRef={addModelSheetRef} />
