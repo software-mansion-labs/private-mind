@@ -82,7 +82,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.swmansion.privatemind",
-      "appleTeamId": "B357MU264T"
+      "appleTeamId": "B357MU264T",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "blockedPermissions": [
