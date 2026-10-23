@@ -5,6 +5,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import ForkIcon from '../../assets/icons/fork.svg';
+import { pressedOpacity } from '../../styles/pressable';
 
 type BranchMarkerProps = {
   marker: ChatBranchMarker;
@@ -18,7 +19,7 @@ export default function BranchMarker({ marker, onPress }: BranchMarkerProps) {
     <View style={styles.container}>
       <View style={styles.line} />
       <Pressable
-        style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
+        style={({ pressed }) => [styles.link, pressed && pressedOpacity]}
         onPress={() => onPress?.(marker)}
         accessibilityRole="button"
         accessibilityLabel={`Open source conversation: ${marker.sourceChatTitle}`}
@@ -58,9 +59,6 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-    },
-    linkPressed: {
-      opacity: 0.6,
     },
     icon: {
       color: theme.text.primary,

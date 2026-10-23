@@ -20,6 +20,7 @@ import PopoverRow from '../menu/PopoverRow';
 import EditIcon from '../../assets/icons/edit.svg';
 import ShareIcon from '../../assets/icons/upload.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
+import { pressedOpacity } from '../../styles/pressable';
 
 const GAP_BELOW_TITLE = 8;
 const ICON_BUTTON_SIZE = 36;
@@ -129,7 +130,7 @@ const ChatTitlePopover = ({
               onPress={saveDraft}
               style={({ pressed }) => [
                 styles.saveButton,
-                pressed && styles.pressedSave,
+                pressed && pressedOpacity,
               ]}
               accessibilityRole="button"
               testID="chat-menu-rename-save"
@@ -298,9 +299,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.bg.main,
-    },
-    pressedSave: {
-      opacity: 0.8,
     },
     saveLabel: {
       fontFamily: fontFamily.bold,

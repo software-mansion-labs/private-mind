@@ -26,6 +26,7 @@ import {
   usePrimaryActionGuard,
   type PrimaryAction,
 } from './usePrimaryActionGuard';
+import { dimmedOpacity } from '../../styles/pressable';
 
 const composerAction = (
   isResponding: boolean,
@@ -157,7 +158,7 @@ const ChatBarActions = ({
       <View style={styles.leftActions}>
         <View
           testID="attach-btn-container"
-          style={isLoadingAttachment ? styles.blockedAttachment : undefined}
+          style={isLoadingAttachment ? dimmedOpacity : undefined}
         >
           <Animated.View style={plusStyle}>
             <CircleButton
@@ -215,9 +216,6 @@ const createStyles = () =>
       alignItems: 'center',
       flexShrink: 1,
       gap: 4,
-    },
-    blockedAttachment: {
-      opacity: 0.4,
     },
     rightActions: {
       flexDirection: 'row',

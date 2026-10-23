@@ -7,7 +7,7 @@ import AttachmentIcon from '../assets/icons/attachment.svg';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
-import { pressedOpacity } from '../styles/pressable';
+import { DIMMED_OPACITY, pressedOpacity } from '../styles/pressable';
 
 interface Props {
   fileInfo: { name: string; size: number | null; uri: string } | null;
@@ -135,7 +135,7 @@ const createStyles = (theme: Theme, disabled: boolean) =>
       alignItems: 'center',
       gap: 8,
       backgroundColor: theme.bg.softSecondary,
-      opacity: disabled ? 0.4 : 1,
+      opacity: disabled ? DIMMED_OPACITY : 1,
     },
     fileInfo: {
       flexDirection: 'row',

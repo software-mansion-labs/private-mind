@@ -27,7 +27,7 @@ const createStyles = (theme: Theme) =>
     },
     title: {
       alignSelf: 'flex-start',
-      paddingHorizontal: 4,
+      paddingHorizontal: 12,
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.xs,
       letterSpacing: 0.1,

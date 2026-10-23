@@ -86,6 +86,7 @@ import {
   stoppedTurnLandsShort,
 } from './pinScroll';
 import { visibleMessageText } from '../../utils/messageText';
+import { pressedOpacity } from '../../styles/pressable';
 
 export interface MessagesHandle {
   onMessageSent: () => void;
@@ -1209,7 +1210,7 @@ const Messages = ({
                   accessibilityLabel="Retry response generation"
                   style={({ pressed }) => [
                     styles.retryButton,
-                    pressed && styles.retryButtonPressed,
+                    pressed && pressedOpacity,
                   ]}
                 >
                   <RotateLeftIcon
@@ -1329,9 +1330,6 @@ const createStyles = (theme: Theme) => {
       backgroundColor: theme.bg.softSecondary,
       paddingHorizontal: 12,
       paddingVertical: 8,
-    },
-    retryButtonPressed: {
-      opacity: 0.7,
     },
     retryButtonIcon: {
       color: theme.text.primary,

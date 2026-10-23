@@ -79,6 +79,7 @@ jest.mock('../utils/Feedback', () => ({
 
 import ChatBarActions from '../components/chat-screen/ChatBarActions';
 import { Feedback } from '../utils/Feedback';
+import { DIMMED_OPACITY } from '../styles/pressable';
 import type { SharedValue } from 'react-native-reanimated';
 import type { Model } from '../database/modelRepository';
 
@@ -142,7 +143,7 @@ describe('attach button', () => {
         StyleSheet.flatten(
           screen.getByTestId('attach-btn-container').props.style
         )
-      ).not.toEqual(expect.objectContaining({ opacity: 0.4 }));
+      ).not.toEqual(expect.objectContaining({ opacity: DIMMED_OPACITY }));
 
       fireEvent.press(screen.getByTestId('attach-btn'));
 
@@ -157,7 +158,7 @@ describe('attach button', () => {
 
     expect(
       StyleSheet.flatten(screen.getByTestId('attach-btn-container').props.style)
-    ).toEqual(expect.objectContaining({ opacity: 0.4 }));
+    ).toEqual(expect.objectContaining({ opacity: DIMMED_OPACITY }));
 
     fireEvent.press(screen.getByTestId('attach-btn'));
 

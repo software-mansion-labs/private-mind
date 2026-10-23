@@ -16,6 +16,7 @@ import {
   SWITCH_TRACK_HEIGHT,
   SWITCH_TRACK_WIDTH,
 } from '../constants/switch';
+import { dimmedOpacity } from '../styles/pressable';
 
 interface Props {
   value: boolean;
@@ -72,7 +73,7 @@ export const ThemedSwitch = ({
       disabled={disabled}
       hitSlop={8}
       onPress={() => onValueChange(!value)}
-      style={disabled && styles.disabled}
+      style={disabled && dimmedOpacity}
     >
       <Animated.View style={[styles.track, trackStyle]}>
         <Animated.View
@@ -102,9 +103,6 @@ const createStyles = (theme: Theme) =>
       shadowOpacity: 0.2,
       shadowRadius: 2,
       shadowOffset: { width: 0, height: 1 },
-    },
-    disabled: {
-      opacity: 0.5,
     },
     flatThumb: {
       elevation: 0,

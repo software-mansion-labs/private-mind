@@ -47,6 +47,7 @@ import { Message, type SourceDocument } from '../../database/chatRepository';
 import { stripCitations } from '../../utils/citations';
 import { parseThinkingContent, stripThinkMarkers } from '../../utils/thinking';
 import { stripSpecialTokens } from '../../utils/specialTokens';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface MessageItemProps {
   message: Message;
@@ -246,7 +247,7 @@ const MessageItem = memo(
             <Pressable
               style={({ pressed }) => [
                 styles.sourcesButton,
-                pressed && styles.sourcesButtonPressed,
+                pressed && pressedOpacity,
               ]}
               onPress={() => onShowSources?.(displayedSources, userQuestion)}
               hitSlop={8}
@@ -534,9 +535,6 @@ const createStyles = (theme: Theme) =>
       gap: 6,
       paddingLeft: 4,
       paddingVertical: 4,
-    },
-    sourcesButtonPressed: {
-      opacity: 0.6,
     },
     sourcesButtonIcon: {
       color: theme.text.primary,

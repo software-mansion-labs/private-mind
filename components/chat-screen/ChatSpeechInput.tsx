@@ -17,6 +17,7 @@ import Animated, {
 import { ScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { useStableCallback } from '../../hooks/useStableCallback';
+import { dimmedOpacity } from '../../styles/pressable';
 
 interface Props {
   onSubmit: (text: string) => void;
@@ -295,9 +296,7 @@ const ChatSpeechInput: React.FC<Props> = ({
           {actionNote}
         </Text>
         <View
-          style={
-            status === 'listening' || sending ? undefined : styles.sendNotReady
-          }
+          style={status === 'listening' || sending ? undefined : dimmedOpacity}
         >
           <CircleButton
             icon={SendIcon}
@@ -404,9 +403,6 @@ const createStyles = (theme: Theme) =>
     actionNote: {
       flex: 1,
       textAlign: 'center',
-    },
-    sendNotReady: {
-      opacity: 0.5,
     },
 
     transcriptWrapper: {
