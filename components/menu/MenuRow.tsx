@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { radius } from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { SvgComponent } from '../../utils/SvgComponent';
@@ -96,7 +97,11 @@ const MenuRow = ({
       ) : (
         <Icon width={size} height={size} style={{ color }} />
       )}
-      <Text numberOfLines={1} style={[styles.label, { color }]}>
+      <Text
+        numberOfLines={1}
+        style={[styles.label, { color }]}
+        maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+      >
         {label}
       </Text>
       {trailing ? (

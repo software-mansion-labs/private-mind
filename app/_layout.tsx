@@ -101,6 +101,13 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen
+        name="(modals)/downloads"
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
         name="(modals)/onboarding"
         options={{
           headerShown: false,

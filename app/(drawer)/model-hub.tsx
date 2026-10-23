@@ -1,8 +1,15 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { ScrollView } from 'react-native-gesture-handler';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
 import { useModelStore } from '../../store/modelStore';
 import FloatingActionButton from '../../components/model-hub/FloatingActionButton';
@@ -17,14 +24,14 @@ import { Theme } from '../../styles/colors';
 import { scrollIndicatorProps } from '../../constants/scroll-indicator';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Model } from '../../database/modelRepository';
-import TextFieldInput from '../../components/TextFieldInput';
-import SearchIcon from '../../assets/icons/search.svg';
+import SearchField from '../../components/SearchField';
 import QuestionIcon from '../../assets/icons/question.svg';
 import SecondaryButton from '../../components/SecondaryButton';
 import ModelHubTabs, {
   ModelHubTab,
 } from '../../components/model-hub/ModelHubTabs';
 import FamilyCard from '../../components/model-hub/FamilyCard';
+import RowGroup from '../../components/model-hub/RowGroup';
 import ModelCard from '../../components/model-hub/ModelCard';
 import {
   groupModelsByFamily,
@@ -33,13 +40,19 @@ import {
   ModelFamily,
 } from '../../utils/modelFamily';
 import { isModelCompatible } from '../../utils/modelCompatibility';
+import { radius, space } from '../../constants/design-system';
+import { GlassScrollEdge } from '../../components/chat-screen/GlassScrollEdge';
 import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
 import { useConfirm } from '../../hooks/useConfirm';
+import DownloadsHeaderButton from '../../components/model-hub/DownloadsHeaderButton';
+
+const HEADER_INSET = space.four;
 
 const ModelHubScreen = () => {
-  useDefaultHeader();
+  useDefaultHeader({ glass: true });
+  const headerHeight = useHeaderHeight();
   const router = useRouter();
-  const { styles, theme } = useThemedStyles(createStyles);
+  const { styles, theme } = useThemedStyles(createStyles, headerHeight);
 
   const addModelSheetRef = useRef<BottomSheetModal | null>(null);
   const wifiWarningSheetRef = useRef<BottomSheetModal<WarningSheetData> | null>(
@@ -90,11 +103,25 @@ const ModelHubScreen = () => {
       isNavigatingRef.current = false;
     }, [])
   );
-  const openFamily = (family: ModelFamily) => {
-    if (isNavigatingRef.current) return;
-    isNavigatingRef.current = true;
-    router.push(`/model-family/${encodeURIComponent(family.name)}`);
-  };
+  const navigateOnce = useCallback(
+    (href: string) => {
+      if (isNavigatingRef.current) return;
+      isNavigatingRef.current = true;
+      router.push(href);
+    },
+    [router]
+  );
+  const openFamily = (family: ModelFamily) =>
+    navigateOnce(`/model-family/${encodeURIComponent(family.name)}`);
+
+  const navigation = useNavigation();
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <DownloadsHeaderButton onPress={() => navigateOnce('/downloads')} />
+      ),
+    });
+  }, [navigation, navigateOnce]);
 
   const deletableDownloaded = useMemo(
     () => models.filter((m) => m.isDownloaded && m.source !== 'local'),
@@ -156,74 +183,90 @@ const ModelHubScreen = () => {
   );
 
   return (
-    <CustomKeyboardAvoidingView style={styles.keyboardAvoidingView}>
+    <CustomKeyboardAvoidingView
+      style={styles.keyboardAvoidingView}
+      underTransparentHeader
+    >
       <View style={styles.container}>
-        <View style={styles.header}>
-          <ModelHubTabs value={tab} onChange={setTab} />
-          <TextFieldInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search Models..."
-            icon={
-              <SearchIcon
-                width={20}
-                height={20}
-                style={{ color: theme.text.primary }}
-              />
-            }
-          />
-        </View>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          {...scrollIndicatorProps(headerHeight)}
+        >
+          <View style={styles.header}>
+            <ModelHubTabs
+              value={tab}
+              onChange={setTab}
+              edgeInset={HEADER_INSET}
+            />
+            <SearchField
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search models"
+              accessibilityLabel="Search models"
+            />
+          </View>
 
-        {isEmpty ? (
-          renderEmptyState()
-        ) : (
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            {...scrollIndicatorProps()}
-          >
-            {tab === 'mine'
-              ? mineModels.map((model) => (
-                  <ModelCard
-                    key={model.id}
-                    model={model}
-                    compactView={false}
-                    onPress={() =>
-                      modelManagementSheetRef.current?.present(model)
-                    }
-                    wifiWarningSheetRef={wifiWarningSheetRef}
-                  />
-                ))
-              : families.map((family) => (
-                  <FamilyCard
-                    runnable={family.runnable}
-                    key={family.name}
-                    family={family}
-                    onPress={openFamily}
-                  />
-                ))}
+          {isEmpty ? (
+            renderEmptyState()
+          ) : (
+            <View style={styles.list}>
+              {tab === 'mine'
+                ? mineModels.length > 0 && (
+                    <RowGroup separatorInset={0}>
+                      {mineModels.map((model) => (
+                        <ModelCard
+                          key={model.id}
+                          model={model}
+                          compactView={false}
+                          variant="row"
+                          showFamilyIcon
+                          onPress={() =>
+                            modelManagementSheetRef.current?.present(model)
+                          }
+                          wifiWarningSheetRef={wifiWarningSheetRef}
+                          showDeleteButton
+                        />
+                      ))}
+                    </RowGroup>
+                  )
+                : families.length > 0 && (
+                    <RowGroup separatorInset={0}>
+                      {families.map((family) => (
+                        <FamilyCard
+                          runnable={family.runnable}
+                          key={family.name}
+                          family={family}
+                          onPress={openFamily}
+                        />
+                      ))}
+                    </RowGroup>
+                  )}
 
-            {tab !== 'mine' && deletableDownloaded.length > 0 && (
-              <View style={styles.storageFooter}>
-                <View style={styles.storageInfo}>
-                  <Text style={styles.storageTitle}>
-                    {totalDownloadedSizeGB.toFixed(2)} GB downloaded
-                  </Text>
-                  <Text style={styles.storageSubtitle}>
-                    Across {deletableDownloaded.length} model
-                    {deletableDownloaded.length === 1 ? '' : 's'}
-                  </Text>
+              {tab !== 'mine' && deletableDownloaded.length > 0 && (
+                <View style={styles.storageFooter}>
+                  <View style={styles.storageInfo}>
+                    <Text style={styles.storageTitle}>
+                      {totalDownloadedSizeGB.toFixed(2)} GB downloaded
+                    </Text>
+                    <Text style={styles.storageSubtitle}>
+                      Across {deletableDownloaded.length} model
+                      {deletableDownloaded.length === 1 ? '' : 's'}
+                    </Text>
+                  </View>
+                  <SecondaryButton
+                    text="Clear all"
+                    onPress={handleClearAll}
+                    textStyle={{ color: theme.text.error }}
+                    style={{ borderColor: theme.text.error }}
+                  />
                 </View>
-                <SecondaryButton
-                  text="Clear all"
-                  onPress={handleClearAll}
-                  textStyle={{ color: theme.text.error }}
-                  style={{ borderColor: theme.text.error }}
-                />
-              </View>
-            )}
-          </ScrollView>
-        )}
+              )}
+            </View>
+          )}
+        </ScrollView>
+        <GlassScrollEdge anchor={headerHeight} />
 
         <FloatingActionButton
           onPress={() => addModelSheetRef.current?.present()}
@@ -239,7 +282,7 @@ const ModelHubScreen = () => {
 
 export default ModelHubScreen;
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, headerHeight: number) =>
   StyleSheet.create({
     keyboardAvoidingView: {
       flex: 1,
@@ -247,20 +290,23 @@ const createStyles = (theme: Theme) =>
     },
     container: {
       flex: 1,
-      paddingTop: 16,
     },
     header: {
-      gap: 16,
-      paddingHorizontal: 16,
-      paddingBottom: 16,
+      gap: space.four,
+      paddingHorizontal: HEADER_INSET,
+      paddingBottom: space.four,
     },
     scrollView: {
       flex: 1,
     },
     scrollContent: {
-      gap: 8,
-      paddingHorizontal: 16,
+      flexGrow: 1,
+      paddingTop: headerHeight + space.six,
       paddingBottom: theme.insets.bottom + 16 + 56,
+    },
+    list: {
+      gap: space.two,
+      paddingHorizontal: HEADER_INSET,
     },
     emptyContainer: {
       flex: 1,
@@ -293,10 +339,10 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
     },
     storageFooter: {
-      marginTop: 16,
+      marginTop: space.two,
       padding: 16,
       borderWidth: 1,
-      borderRadius: 12,
+      borderRadius: radius.eighteen,
       borderColor: theme.border.soft,
       flexDirection: 'row',
       alignItems: 'center',

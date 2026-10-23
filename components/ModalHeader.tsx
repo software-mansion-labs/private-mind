@@ -6,6 +6,7 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { pressedOpacity } from '../styles/pressable';
+import { Feedback } from '../utils/Feedback';
 
 interface Props {
   title: string;
@@ -18,11 +19,16 @@ const ModalHeader = ({ title, onClose, leftIcon = 'close' }: Props) => {
   const Icon = leftIcon === 'back' ? ArrowLeftIcon : CloseIcon;
   const iconSize = leftIcon === 'back' ? 20 : 16;
 
+  const handleClose = () => {
+    Feedback.navigate();
+    onClose();
+  };
+
   return (
     <View style={styles.headerContainer}>
       <Pressable
         style={({ pressed }) => [styles.iconWrap, pressed && pressedOpacity]}
-        onPress={onClose}
+        onPress={handleClose}
         hitSlop={15}
       >
         <Icon width={iconSize} height={iconSize} style={styles.icon} />

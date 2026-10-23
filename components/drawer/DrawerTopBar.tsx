@@ -15,15 +15,19 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import { TEXT_SELECTION, Theme } from '../../styles/colors';
+import { Theme } from '../../styles/colors';
+import { pressedOpacity } from '../../styles/pressable';
 import {
   DRAWER_HORIZONTAL_PADDING,
   getDrawerWidth,
 } from '../../constants/drawer-layout';
-import SearchIcon from '../../assets/icons/search.svg';
-import { radius } from '../../constants/design-system';
+import SearchField, {
+  SearchFieldIcon,
+  SearchFieldSurface,
+} from '../SearchField';
 import ArrowLeftIcon from '../../assets/icons/arrow-left.svg';
-import { pressedOpacity } from '../../styles/pressable';
+
+const BACK_ICON_SIZE = 20;
 
 interface Props {
   searching: boolean;
@@ -46,7 +50,7 @@ export const DrawerTopBar = ({
   inputRef,
   progress,
 }: Props) => {
-  const { styles, theme } = useThemedStyles(createStyles);
+  const { styles } = useThemedStyles(createStyles);
   const { width: screenWidth } = useWindowDimensions();
 
   const collapsedTitleWidth =
@@ -71,10 +75,12 @@ export const DrawerTopBar = ({
           testID="drawer-search-open"
           accessibilityRole="button"
           accessibilityLabel="Search chats"
-          style={({ pressed }) => [styles.pill, pressed && pressedOpacity]}
+          style={({ pressed }) => [styles.grow, pressed && pressedOpacity]}
         >
-          <SearchIcon width={18} height={18} style={styles.placeholderIcon} />
-          <Text style={styles.placeholder}>Search</Text>
+          <SearchFieldSurface>
+            <SearchFieldIcon />
+            <Text style={styles.placeholder}>Search</Text>
+          </SearchFieldSurface>
         </Pressable>
       </View>
     );
@@ -82,35 +88,31 @@ export const DrawerTopBar = ({
 
   return (
     <View style={styles.bar}>
-      <Animated.View style={[styles.field, fieldStyle]}>
-        <Pressable
-          onPress={() => onCloseSearch()}
-          testID="drawer-search-back"
-          accessibilityRole="button"
-          accessibilityLabel="Close search"
-          hitSlop={12}
-          style={({ pressed }) => [
-            styles.backButton,
-            pressed && pressedOpacity,
-          ]}
-        >
-          <ArrowLeftIcon width={20} height={20} style={styles.icon} />
-        </Pressable>
-        <TextInput
-          {...TEXT_SELECTION}
-          ref={inputRef}
+      <Animated.View style={[styles.grow, fieldStyle]}>
+        <SearchField
+          inputRef={inputRef}
           value={search}
           onChangeText={onChangeSearch}
           onBlur={onBlur}
           placeholder="Search chats..."
-          placeholderTextColor={theme.text.defaultTertiary}
-          style={styles.input}
           testID="drawer-search-input"
-          autoCorrect={false}
-          autoCapitalize="none"
-          clearButtonMode="while-editing"
-          returnKeyType="search"
           submitBehavior="submit"
+          leading={
+            <Pressable
+              onPress={() => onCloseSearch()}
+              testID="drawer-search-back"
+              accessibilityRole="button"
+              accessibilityLabel="Close search"
+              hitSlop={12}
+              style={({ pressed }) => pressed && pressedOpacity}
+            >
+              <ArrowLeftIcon
+                width={BACK_ICON_SIZE}
+                height={BACK_ICON_SIZE}
+                style={styles.icon}
+              />
+            </Pressable>
+          }
         />
       </Animated.View>
 
@@ -124,10 +126,10 @@ export const DrawerTopBar = ({
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        <View style={styles.pill}>
-          <SearchIcon width={18} height={18} style={styles.placeholderIcon} />
+        <SearchFieldSurface style={styles.grow}>
+          <SearchFieldIcon />
           <Text style={styles.placeholder}>Search</Text>
-        </View>
+        </SearchFieldSurface>
       </Animated.View>
     </View>
   );
@@ -150,15 +152,8 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       backgroundColor: theme.bg.softPrimary,
     },
-    pill: {
+    grow: {
       flex: 1,
-      minHeight: 44,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      paddingHorizontal: 14,
-      borderRadius: radius.full,
-      backgroundColor: theme.bg.softTertiary,
     },
     placeholder: {
       flex: 1,
@@ -166,35 +161,7 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.md,
       color: theme.text.defaultTertiary,
     },
-    placeholderIcon: {
-      color: theme.text.defaultTertiary,
-    },
     icon: {
-      color: theme.text.primary,
-    },
-    field: {
-      flex: 1,
-      minHeight: 44,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingLeft: 4,
-      paddingRight: 14,
-      borderRadius: radius.full,
-      backgroundColor: theme.bg.softTertiary,
-    },
-    backButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    input: {
-      flex: 1,
-      paddingVertical: 10,
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.md,
       color: theme.text.primary,
     },
   });

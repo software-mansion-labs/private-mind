@@ -11,6 +11,7 @@ interface Props extends Omit<
   'behavior' | 'contentContainerStyle'
 > {
   isModalScreen?: boolean;
+  underTransparentHeader?: boolean;
 }
 
 const headerBarHeight = Platform.select({
@@ -21,15 +22,18 @@ const headerBarHeight = Platform.select({
 
 export const CustomKeyboardAvoidingView: React.FC<Props> = ({
   isModalScreen,
+  underTransparentHeader,
   ...props
 }: Props) => {
   const insets = useSafeAreaInsets();
 
-  const topOffset = isModalScreen
-    ? // modal screens wrap the entire screen in KAV and render the header inside
-      // so we only need to account for modal screen position on iOS
-      Platform.select({ ios: insets.top + 10, default: 0 })
-    : insets.top + headerBarHeight;
+  const topOffset = underTransparentHeader
+    ? 0
+    : isModalScreen
+      ? // modal screens wrap the entire screen in KAV and render the header inside
+        // so we only need to account for modal screen position on iOS
+        Platform.select({ ios: insets.top + 10, default: 0 })
+      : insets.top + headerBarHeight;
 
   return (
     <KeyboardAvoidingView

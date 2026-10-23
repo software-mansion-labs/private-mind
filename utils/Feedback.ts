@@ -22,6 +22,7 @@ export class Feedback {
   static scrollToLatest = () => Presets.chip();
   static newChat = () => Presets.chip();
   static speechMode = () => Presets.chip();
+  static navigate = () => Presets.chip();
 
   // Async completions
   static firstToken = () => Presets.peck();

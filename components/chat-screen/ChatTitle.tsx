@@ -11,7 +11,9 @@ import {
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import { pressedOpacity } from '../../styles/pressable';
 import { space } from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { firstLineOf } from '../../utils/chatLabel';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
 import GlassSurface from '../GlassSurface';
@@ -20,7 +22,6 @@ import { GLASS_BUTTON_SIZE } from '../../constants/header-actions';
 const CHEVRON_WIDTH = 10;
 const CHEVRON_HEIGHT = 6;
 const CHEVRON_SPACE = CHEVRON_WIDTH + space.one + space.four * 2;
-const PRESSED_OPACITY = 0.6;
 
 interface Props {
   title: string;
@@ -82,7 +83,7 @@ const ChatTitle = ({
         accessibilityState={{ expanded: open }}
         style={({ pressed }) => [
           styles.title,
-          pressed && onPress && styles.pressed,
+          pressed && onPress && pressedOpacity,
         ]}
       >
         {titleWidth ? (
@@ -95,12 +96,17 @@ const ChatTitle = ({
             <Text
               style={[styles.titleText, { width: titleWidth }]}
               onTextLayout={handleTitleWrap}
+              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
             >
               {title}
             </Text>
           </View>
         ) : null}
-        <Text numberOfLines={1} style={styles.titleText}>
+        <Text
+          numberOfLines={1}
+          style={styles.titleText}
+          maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+        >
           {shownTitle}
         </Text>
         {onPress ? (
@@ -130,9 +136,6 @@ const createStyles = (theme: Theme) =>
       gap: space.one,
       height: GLASS_BUTTON_SIZE,
       paddingHorizontal: space.four,
-    },
-    pressed: {
-      opacity: PRESSED_OPACITY,
     },
     titleText: {
       flexShrink: 1,

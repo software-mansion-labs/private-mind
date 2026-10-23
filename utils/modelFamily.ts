@@ -1,4 +1,9 @@
 import { Model } from '../database/modelRepository';
+import {
+  THINKING_LABEL,
+  VISION_LABEL,
+  isCapabilityLabel,
+} from '../constants/model-labels';
 
 export const getModelFamily = (
   model: Pick<Model, 'modelName' | 'family'>
@@ -48,3 +53,15 @@ export const orderFamiliesForDevice = (
       (a, b) =>
         Number(b.runnable) - Number(a.runnable) || a.name.localeCompare(b.name)
     );
+
+export const familyLabels = (family: ModelFamily): string[] => {
+  const labels = new Set<string>();
+  if (family.models.some((m) => m.thinking)) labels.add(THINKING_LABEL);
+  if (family.models.some((m) => m.vision)) labels.add(VISION_LABEL);
+  for (const model of family.models) {
+    for (const label of model.labels ?? []) {
+      if (!isCapabilityLabel(label)) labels.add(label);
+    }
+  }
+  return Array.from(labels);
+};

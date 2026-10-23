@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { radius, space, stroke } from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { TEXT_SELECTION, Theme } from '../../styles/colors';
+import { pressedOpacity } from '../../styles/pressable';
 import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 import { MAX_CHAT_TITLE_LENGTH } from '../../utils/chatLabel';
 import { SvgComponent } from '../../utils/SvgComponent';
@@ -20,7 +22,6 @@ import PopoverRow from '../menu/PopoverRow';
 import EditIcon from '../../assets/icons/edit.svg';
 import ShareIcon from '../../assets/icons/upload.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
-import { pressedOpacity } from '../../styles/pressable';
 
 const GAP_BELOW_TITLE = 8;
 const ICON_BUTTON_SIZE = 36;
@@ -89,7 +90,11 @@ const ChatTitlePopover = ({
           <View style={styles.grow}>
             <Text style={styles.caption}>Chat</Text>
             <View style={styles.nameRow}>
-              <Text style={styles.chatTitle} numberOfLines={1}>
+              <Text
+                style={styles.chatTitle}
+                numberOfLines={1}
+                maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+              >
                 {title}
               </Text>
               <Pressable
@@ -113,6 +118,7 @@ const ChatTitlePopover = ({
         ) : (
           <>
             <TextInput
+              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
               {...TEXT_SELECTION}
               value={draft}
               onChangeText={setDraft}
@@ -135,7 +141,12 @@ const ChatTitlePopover = ({
               accessibilityRole="button"
               testID="chat-menu-rename-save"
             >
-              <Text style={styles.saveLabel}>Save</Text>
+              <Text
+                style={styles.saveLabel}
+                maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+              >
+                Save
+              </Text>
             </Pressable>
           </>
         )}
@@ -253,7 +264,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: space.two,
-      height: NAME_LINE_HEIGHT,
+      minHeight: NAME_LINE_HEIGHT,
     },
     chatTitle: {
       flex: 1,
@@ -280,7 +291,7 @@ const createStyles = (theme: Theme) =>
     field: {
       flex: 1,
       minWidth: 0,
-      height: FIELD_HEIGHT,
+      minHeight: FIELD_HEIGHT,
       paddingHorizontal: space.twoHalf,
       paddingVertical: 0,
       includeFontPadding: false,
@@ -293,7 +304,7 @@ const createStyles = (theme: Theme) =>
       color: theme.text.primary,
     },
     saveButton: {
-      height: FIELD_HEIGHT,
+      minHeight: FIELD_HEIGHT,
       paddingHorizontal: space.three,
       borderRadius: FIELD_RADIUS,
       alignItems: 'center',

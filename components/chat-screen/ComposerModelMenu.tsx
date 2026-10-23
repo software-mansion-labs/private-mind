@@ -9,6 +9,7 @@ import { Theme } from '../../styles/colors';
 import { GUTTER } from './attachments/constants';
 import Popover from '../menu/Popover';
 import PopoverRow from '../menu/PopoverRow';
+import { getModelFamily } from '../../utils/modelFamily';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
 import CheckIcon from '../../assets/icons/check.svg';
 import ModelsIcon from '../../assets/icons/models.svg';
@@ -121,7 +122,7 @@ const ModelRow = ({ model, current, onPress }: RowProps) => {
       }
       testID={`model-menu-row-${model.id}`}
     >
-      <ModelFamilyTile model={model} size="row" />
+      <ModelFamilyTile family={getModelFamily(model)} size="row" />
       <View style={styles.grow}>
         <Text style={styles.name} numberOfLines={1}>
           {model.modelName}
