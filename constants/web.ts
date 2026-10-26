@@ -134,8 +134,5 @@ export const SCRAPE_CHALLENGE_TIMEOUT_MS = 120000;
 export const SCRAPE_REINJECT_DELAY_MIN_MS = 1000;
 export const SCRAPE_REINJECT_DELAY_MAX_MS = 2200;
 
-export const SCRAPE_IDLE_SOURCE = {
-  html: '<!DOCTYPE html><html><head></head><body></body></html>',
-} as const;
 export const SCRAPE_HOST_OFFSCREEN_TOP = -10000;
 export const SCRAPE_HOST_OFFSCREEN_HEIGHT = 600;
