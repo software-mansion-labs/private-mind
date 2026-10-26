@@ -5,26 +5,27 @@
 [![Ad](https://swm-delivery.com/www/images/zone-gh-private-mind-2?n=1)](https://swm-delivery.com/www/delivery/ck-slug.php?zoneid=zone-gh-private-mind-2&n=1)
 [![Ad](https://swm-delivery.com/www/images/zone-gh-private-mind-3?n=1)](https://swm-delivery.com/www/delivery/ck-slug.php?zoneid=zone-gh-private-mind-3&n=1)
 
-Private Mind represents a new era of AI—powerful, personal, and completely offline. Built around the belief that AI should live entirely on your device, Private Mind opens the door to a new kind of experience: fast, secure, and fully private.
+Private Mind represents a new era of AI—powerful, personal, and private by design. Built around the belief that AI should live entirely on your device, Private Mind opens the door to a new kind of experience: fast, secure, and fully private.
 
-All conversations happen locally, with no data sent to the cloud and no internet connection required. There are no sign-ups, no subscriptions, and no hidden costs—just intelligent, customizable AI available anytime, anywhere.
+All conversations happen locally, with no account and no server of ours. Once a model is downloaded, chat works without an internet connection, and web search is there only when you turn it on. There are no sign-ups, no subscriptions, and no hidden costs—just intelligent, customizable AI available anytime, anywhere.
 
 ## Key Features
 
-- **Fully Private & Secure**: All conversations and data stay on your device. Nothing is collected or shared.
+- **Fully Private & Secure**: Conversations, documents and their embeddings stay on your device. There is no account and no server of ours, and nothing is collected.
 - **Free & Accessible**: Use advanced AI models without subscriptions, accounts, or paywalls.
 - **Chat With Your Documents**: Attach a PDF, TXT, Markdown, HTML or CSV file and ask about it. Retrieval and embeddings run on-device, and every answer links back to the passages it came from.
+- **Private Web Search**: When a question needs fresh information, turn on web search for that chat. The phone runs the search and reads the pages itself, and the answer shows its sources. Only the search query leaves the device, and search is off until you turn it on.
 - **Images & Voice**: Send a photo to a vision-capable model, or dictate a message with on-device speech input.
 - **Branch Any Conversation**: Fork a chat from any message to explore a different direction without losing the original.
 - **Customizable AI**: Choose from supported models or add your own. Save system prompts as reusable presets and tune behavior per chat.
 - **Built-in Benchmarks**: Test and compare models on performance, memory use, and speed — measured on your own hardware.
-- **Offline by Design**: Once a model is downloaded, every feature works without an internet connection.
+- **Offline by Design**: Once a model is downloaded, chat, documents and voice input work without an internet connection. Only model downloads and the optional web search need one.
 
 ## Installation
 
 Private Mind is available in App Store and Google Play:
 
-- [App Store](https://apps.apple.com/pl/app/private-mind/id6746713439?l=pl)
+- [App Store](https://apps.apple.com/app/private-mind/id6746713439)
 - [Google Play](https://play.google.com/store/apps/details?id=com.swmansion.privatemind)
 
 <table style="width: 100%; border-collapse: collapse; border: none;">
