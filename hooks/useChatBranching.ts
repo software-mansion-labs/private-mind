@@ -12,6 +12,14 @@ import { useChatStore } from '../store/chatStore';
 import { useLLMStore } from '../store/llmStore';
 import { CHAT_ENTRY_ANIMATION } from '../constants/chat-route-params';
 
+const sameMarkers = (previous: ChatBranchMarker[], next: ChatBranchMarker[]) =>
+  previous.length === next.length &&
+  previous.every((marker, index) => marker.id === next[index].id);
+
+const keepPreviousIfSame =
+  (next: ChatBranchMarker[]) => (previous: ChatBranchMarker[]) =>
+    sameMarkers(previous, next) ? previous : next;
+
 type UseChatBranchingOptions = {
   chatId: number;
   messageHistoryLength: number;
@@ -37,7 +45,7 @@ export default function useChatBranching({
     const loadBranchMarkers = async () => {
       if (await isUnpersistedPhantomChat()) {
         if (!cancelled) {
-          setBranchMarkers([]);
+          setBranchMarkers(keepPreviousIfSame([]));
         }
         return;
       }
@@ -45,12 +53,12 @@ export default function useChatBranching({
       try {
         const markers = await getChatBranchMarkers(db, chatId);
         if (!cancelled) {
-          setBranchMarkers(markers);
+          setBranchMarkers(keepPreviousIfSame(markers));
         }
       } catch (error) {
         console.error('Failed to load branch markers:', error);
         if (!cancelled) {
-          setBranchMarkers([]);
+          setBranchMarkers(keepPreviousIfSame([]));
         }
       }
     };
