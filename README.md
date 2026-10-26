@@ -1,6 +1,6 @@
 # Private Mind
 
-![promo](./promo/promo.png)
+![Private Mind: ask anything, tell no one](./promo/promo.png)
 [![Ad](https://swm-delivery.com/www/images/zone-gh-private-mind-1?n=1)](https://swm-delivery.com/www/delivery/ck-slug.php?zoneid=zone-gh-private-mind-1&n=1)
 [![Ad](https://swm-delivery.com/www/images/zone-gh-private-mind-2?n=1)](https://swm-delivery.com/www/delivery/ck-slug.php?zoneid=zone-gh-private-mind-2&n=1)
 [![Ad](https://swm-delivery.com/www/images/zone-gh-private-mind-3?n=1)](https://swm-delivery.com/www/delivery/ck-slug.php?zoneid=zone-gh-private-mind-3&n=1)
@@ -28,19 +28,7 @@ Private Mind is available in App Store and Google Play:
 - [App Store](https://apps.apple.com/app/private-mind/id6746713439)
 - [Google Play](https://play.google.com/store/apps/details?id=com.swmansion.privatemind)
 
-<table style="width: 100%; border-collapse: collapse; border: none;">
-  <tr>
-    <td style="width: 33.33%; border: none; padding: 0;">
-      <img src="./promo/phone1.png" alt="Phone 1" style="width: 100%; height: auto;" />
-    </td>
-    <td style="width: 33.33%; border: none; padding: 0;">
-      <img src="./promo/phone2.png" alt="Phone 2" style="width: 100%; height: auto;" />
-    </td>
-    <td style="width: 33.33%; border: none; padding: 0;">
-      <img src="./promo/phone3.png" alt="Phone 3" style="width: 100%; height: auto;" />
-    </td>
-  </tr>
-</table>
+![Private Mind features: documents with sources, images and voice, private web search, any open model, offline use, free and open source](./promo/features.png)
 
 ## Getting Started
 
