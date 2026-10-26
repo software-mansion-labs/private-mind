@@ -189,6 +189,38 @@ describe('resolveModelCatalog', () => {
       );
     });
 
+    it('starts from the cache without waiting at all, even when the network would have answered in time', async () => {
+      await AsyncStorage.setItem(
+        MODEL_CATALOG_CACHE_KEY,
+        JSON.stringify({
+          ...VALID_MANIFEST,
+          models: [{ ...VALID_MANIFEST.models[0], modelName: 'Cached Model' }],
+        })
+      );
+      let answer!: () => void;
+      mockFetchOnce(
+        () =>
+          new Promise((resolve) => {
+            answer = () =>
+              resolve({
+                ok: true,
+                status: 200,
+                text: () => Promise.resolve(JSON.stringify(VALID_MANIFEST)),
+              });
+          })
+      );
+
+      const result = await resolveModelCatalog();
+
+      expect(result.origin).toBe('cache');
+      expect(result.models[0].modelName).toBe('Cached Model');
+      answer();
+      await jest.advanceTimersByTimeAsync(10);
+      expect(await AsyncStorage.getItem(MODEL_CATALOG_CACHE_KEY)).toBe(
+        JSON.stringify(VALID_MANIFEST)
+      );
+    });
+
     it('falls back to the bundled catalog on a first launch with a slow network', async () => {
       mockFetchOnce(() => new Promise(() => {}));
 

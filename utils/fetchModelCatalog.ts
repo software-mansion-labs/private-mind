@@ -84,13 +84,14 @@ const withinStartupBudget = <T>(work: Promise<T>): Promise<T | null> =>
   });
 
 export const resolveModelCatalog = async (): Promise<ResolvedModelCatalog> => {
-  const remote = await withinStartupBudget(fetchAndCacheCatalog());
-  if (remote) return { models: remote, origin: 'remote' };
-
   const cached = await readCachedCatalog();
+  const refresh = fetchAndCacheCatalog();
   if (cached) {
     return { models: cached, origin: 'cache' };
   }
+
+  const remote = await withinStartupBudget(refresh);
+  if (remote) return { models: remote, origin: 'remote' };
 
   return { models: DEFAULT_MODELS, origin: 'fallback' };
 };
