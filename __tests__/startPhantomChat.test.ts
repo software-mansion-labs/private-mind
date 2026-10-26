@@ -58,6 +58,26 @@ describe('startPhantomChat', () => {
     jest.useRealTimers();
   });
 
+  it('replaces at once when asked to, without waiting for the navigation to settle', async () => {
+    await startPhantomChat({} as never, 'replace-immediately');
+
+    expect(router.replace).toHaveBeenCalledWith({
+      pathname: '/chat/42',
+      params: { modelId: '7' },
+    });
+  });
+
+  it('drops an immediate replace once its phantom chat is no longer the current one', async () => {
+    (useChatStore.getState as jest.Mock).mockReturnValue({
+      initPhantomChat: jest.fn().mockResolvedValue(undefined),
+      phantomChat: { id: 99 },
+    });
+
+    await startPhantomChat({} as never, 'replace-immediately');
+
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
   it('waits briefly before a replace navigation', async () => {
     const promise = startPhantomChat({} as never, 'replace');
     await jest.advanceTimersByTimeAsync(0);
