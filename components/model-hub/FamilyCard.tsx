@@ -4,21 +4,20 @@ import { Pressable } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
-import { radius, space, textStyles } from '../../constants/design-system';
+import { space, textStyles } from '../../constants/design-system';
 import { ModelFamily, familyLabels } from '../../utils/modelFamily';
 import { FAMILY_SUMMARIES } from '../../constants/family-descriptions';
 import ModelFamilyTile from './ModelFamilyTile';
 import ModelBadge from './ModelBadge';
+import DownloadedBadge from './DownloadedBadge';
 import { dimmedOpacity } from '../../styles/pressable';
 import SpinningCircle from '../SpinningCircle';
 import { ModelState, useModelStore } from '../../store/modelStore';
-import CheckIcon from '../../assets/icons/check.svg';
 import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
 
 const MAX_LABELS = 5;
 const TRAILING_WIDTH = 20;
 const CHECK_SIZE = 20;
-const CHECK_ICON_SIZE = 12;
 const SPINNER_STROKE = 2;
 const STATUS_ICON_GAP = space.two;
 const CHEVRON_WIDTH = 8;
@@ -113,13 +112,7 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
             />
           )}
           {downloadedCount > 0 && (
-            <View style={styles.check} testID="family-card-downloaded">
-              <CheckIcon
-                width={CHECK_ICON_SIZE}
-                height={CHECK_ICON_SIZE}
-                style={styles.checkIcon}
-              />
-            </View>
+            <DownloadedBadge size="medium" testID="family-card-downloaded" />
           )}
         </View>
         <View style={styles.chevronSlot}>
@@ -193,17 +186,6 @@ const createStyles = (theme: Theme) =>
     chevronSlot: {
       width: TRAILING_WIDTH,
       alignItems: 'center',
-    },
-    check: {
-      width: CHECK_SIZE,
-      height: CHECK_SIZE,
-      borderRadius: radius.full,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.bg.success,
-    },
-    checkIcon: {
-      color: theme.text.onSuccess,
     },
     chevron: {
       color: theme.text.defaultTertiary,

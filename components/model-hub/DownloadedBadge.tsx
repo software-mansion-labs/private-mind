@@ -5,15 +5,22 @@ import { Theme } from '../../styles/colors';
 import { radius } from '../../constants/design-system';
 import CheckIcon from '../../assets/icons/check.svg';
 
-const CHECK_BADGE_SIZE = 16;
-const CHECK_ICON_SIZE = 10;
+const BADGE_SIZE = {
+  small: { badge: 16, icon: 10 },
+  medium: { badge: 20, icon: 12 },
+  large: { badge: 32, icon: 16 },
+} as const;
+
+export type DownloadedBadgeSize = keyof typeof BADGE_SIZE;
 
 interface Props {
+  size?: DownloadedBadgeSize;
   testID?: string;
 }
 
-const DownloadedBadge = ({ testID }: Props) => {
-  const { styles, theme } = useThemedStyles(createStyles);
+const DownloadedBadge = ({ size = 'small', testID }: Props) => {
+  const { styles, theme } = useThemedStyles(createStyles, size);
+  const iconSize = BADGE_SIZE[size].icon;
 
   return (
     <View
@@ -24,8 +31,8 @@ const DownloadedBadge = ({ testID }: Props) => {
       testID={testID}
     >
       <CheckIcon
-        width={CHECK_ICON_SIZE}
-        height={CHECK_ICON_SIZE}
+        width={iconSize}
+        height={iconSize}
         color={theme.text.onSuccess}
       />
     </View>
@@ -34,11 +41,11 @@ const DownloadedBadge = ({ testID }: Props) => {
 
 export default DownloadedBadge;
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, size: DownloadedBadgeSize) =>
   StyleSheet.create({
     badge: {
-      width: CHECK_BADGE_SIZE,
-      height: CHECK_BADGE_SIZE,
+      width: BADGE_SIZE[size].badge,
+      height: BADGE_SIZE[size].badge,
       borderRadius: radius.full,
       alignItems: 'center',
       justifyContent: 'center',

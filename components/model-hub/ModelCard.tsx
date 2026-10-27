@@ -19,16 +19,12 @@ import { WarningSheetData } from '../bottomSheets/WarningSheet';
 import { isModelCompatible } from '../../utils/modelCompatibility';
 import { useDeleteModelFiles } from '../../hooks/useDeleteModelFiles';
 import CircleButton from '../CircleButton';
-import ModelBadge from './ModelBadge';
+import ModelCapabilityBadges from './ModelCapabilityBadges';
 import { getModelFamily } from '../../utils/modelFamily';
 import ModelFamilyTile from './ModelFamilyTile';
 import DownloadedBadge from './DownloadedBadge';
 import DownloadProgressDetails from './DownloadProgressDetails';
-import {
-  THINKING_LABEL,
-  VISION_LABEL,
-  isCapabilityLabel,
-} from '../../constants/model-labels';
+import { formatModelMeta } from '../../utils/modelMeta';
 import DownloadArrowIcon from '../../assets/icons/download-arrow.svg';
 import CloseIcon from '../../assets/icons/close.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
@@ -66,14 +62,6 @@ interface Props {
   onDeleted?: (model: Model) => void;
   variant?: ModelCardVariant;
 }
-
-const modelMeta = (model: Model) =>
-  [
-    model.modelSize ? `${model.modelSize.toFixed(2)} GB` : null,
-    model.parameters ? `${model.parameters.toFixed(2)} B` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
 
 const ModelCard = ({
   model,
@@ -165,14 +153,9 @@ const ModelCard = ({
     ? !isCompatible
     : modelState !== ModelState.Downloaded && model.source === 'built-in';
   const showDownloadControls = !checkable;
-  const meta = modelMeta(model);
-  const labels = compactView
-    ? []
-    : (model.labels ?? []).filter((label) => !isCapabilityLabel(label));
+  const meta = formatModelMeta(model, 'B');
   const showDownloadedBadge =
     showDownloadControls && isRow && modelState === ModelState.Downloaded;
-  const hasBadges =
-    !isCompatible || model.thinking || model.vision || labels.length > 0;
 
   const isPickedDownloadRunning = downloadStatus === 'downloading';
   const canDownload =
@@ -260,18 +243,11 @@ const ModelCard = ({
               )}
             </View>
             {meta.length > 0 && <Text style={styles.meta}>{meta}</Text>}
-            {hasBadges && (
-              <View style={styles.badges}>
-                {!isCompatible && (
-                  <ModelBadge label="Incompatible" color="error" />
-                )}
-                {model.thinking && <ModelBadge label={THINKING_LABEL} />}
-                {model.vision && <ModelBadge label={VISION_LABEL} />}
-                {labels.map((label) => (
-                  <ModelBadge key={label} label={label} />
-                ))}
-              </View>
-            )}
+            <ModelCapabilityBadges
+              model={model}
+              showLabels={!compactView}
+              style={styles.badges}
+            />
           </View>
 
           {checkable && (
@@ -433,9 +409,6 @@ const createStyles = (
       color: theme.text.defaultSecondary,
     },
     badges: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: space.one,
       marginTop: space.one,
     },
     checkbox: {
