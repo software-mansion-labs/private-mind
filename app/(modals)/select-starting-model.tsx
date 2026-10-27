@@ -23,7 +23,10 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { getModelsByNames, Model } from '../../database/modelRepository';
 import { Theme } from '../../styles/colors';
 import { getStartingModels } from '../../constants/default-models';
-import { getDeviceMemoryGB } from '../../utils/modelCompatibility';
+import {
+  getDeviceMemoryGB,
+  isModelCompatible,
+} from '../../utils/modelCompatibility';
 import { radius, space, stroke } from '../../constants/design-system';
 
 const APP_ICON_SIZE = 72;
@@ -68,7 +71,7 @@ function SelectStartingModelScreen() {
   const cancelDownload = useModelStore((state) => state.cancelDownload);
   const downloadStates = useModelStore((state) => state.downloadStates);
   const storeModels = useModelStore((state) => state.models);
-  const [startingModels, setStartingModels] = useState<Model[]>([]);
+  const [startingModels, setStartingModels] = useState<Model[] | null>(null);
   const suggestedStartingModelNames = useMemo(
     () => getStartingModels(getDeviceMemoryGB()),
     []
@@ -76,11 +79,11 @@ function SelectStartingModelScreen() {
 
   useEffect(() => {
     getModelsByNames(db, suggestedStartingModelNames).then((models) =>
-      setStartingModels(models)
+      setStartingModels(models.filter(isModelCompatible))
     );
   }, [db, suggestedStartingModelNames]);
 
-  const selectedModels = startingModels.filter((model) =>
+  const selectedModels = (startingModels ?? []).filter((model) =>
     selectedIds.includes(model.id)
   );
 
@@ -221,7 +224,12 @@ function SelectStartingModelScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.modelsContainer}>
-            {startingModels.map((model) => (
+            {startingModels?.length === 0 && (
+              <Text style={styles.noModelsFit}>
+                No suggested model fits this device's memory.
+              </Text>
+            )}
+            {startingModels?.map((model) => (
               <ModelCard
                 key={model.id}
                 model={model}
@@ -299,6 +307,13 @@ const createStyles = (theme: Theme) =>
     },
     modelsScroll: {
       margin: -CARD_BORDER_ROOM,
+    },
+    noModelsFit: {
+      fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
+      fontFamily: fontFamily.regular,
+      color: theme.text.defaultSecondary,
+      textAlign: 'center',
     },
     modelsContainer: {
       gap: 8,
