@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import { space, textStyles } from '../../constants/design-system';
+import { space, textStyles, rowChevron } from '../../constants/design-system';
 import { ModelFamily, familyLabels } from '../../utils/modelFamily';
 import { FAMILY_SUMMARIES } from '../../constants/family-descriptions';
 import ModelFamilyTile from './ModelFamilyTile';
@@ -20,8 +20,6 @@ const TRAILING_WIDTH = 20;
 const CHECK_SIZE = 20;
 const SPINNER_STROKE = 2;
 const STATUS_ICON_GAP = space.two;
-const CHEVRON_WIDTH = 8;
-const CHEVRON_HEIGHT = 14;
 
 interface Props {
   family: ModelFamily;
@@ -106,8 +104,8 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
         </View>
         <View style={styles.chevronSlot}>
           <ChevronRightIcon
-            width={CHEVRON_WIDTH}
-            height={CHEVRON_HEIGHT}
+            width={rowChevron.width}
+            height={rowChevron.height}
             style={styles.chevron}
           />
         </View>

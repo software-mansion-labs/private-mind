@@ -10,6 +10,7 @@ import {
   radius,
   space,
   stroke,
+  rowChevron,
   textStyles,
 } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
@@ -46,8 +47,6 @@ const ACTION_ROW_MIN_HEIGHT = 52;
 const ACTION_WELL_SIZE = 32;
 const ACTION_WELL_RADIUS = 10;
 const ACTION_ICON_SIZE = 16;
-const CHEVRON_WIDTH = 7;
-const CHEVRON_HEIGHT = 12;
 const CHEVRON_OPACITY = 0.5;
 
 type ActionTone = 'accent' | 'neutral' | 'destructive';
@@ -107,8 +106,8 @@ const ActionRow = ({ action }: { action: Action }) => {
       </Text>
       {!destructive && (
         <ChevronRightIcon
-          width={CHEVRON_WIDTH}
-          height={CHEVRON_HEIGHT}
+          width={rowChevron.width}
+          height={rowChevron.height}
           style={styles.chevron}
         />
       )}

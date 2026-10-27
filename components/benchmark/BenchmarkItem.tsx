@@ -13,10 +13,8 @@ import ModelRowText from '../model-hub/ModelRowText';
 import { ROW_PADDING } from '../model-hub/RowGroup';
 import { formatBenchmarkDate } from '../../utils/formatBenchmarkDate';
 import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
-import { textStyles } from '../../constants/design-system';
+import { rowChevron, textStyles } from '../../constants/design-system';
 
-const CHEVRON_WIDTH = 7;
-const CHEVRON_HEIGHT = 12;
 const CHEVRON_OPACITY = 0.4;
 
 interface Props {
@@ -55,8 +53,8 @@ const BenchmarkItem = ({ entry, model, onPress }: Props) => {
         </Text>
       </View>
       <ChevronRightIcon
-        width={CHEVRON_WIDTH}
-        height={CHEVRON_HEIGHT}
+        width={rowChevron.width}
+        height={rowChevron.height}
         style={styles.chevron}
       />
     </ModelRow>

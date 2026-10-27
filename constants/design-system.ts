@@ -30,6 +30,11 @@ export const stroke = {
   strong: 2,
 } as const;
 
+export const rowChevron = {
+  width: 8,
+  height: 14,
+} as const;
+
 export const textStyles = {
   titleH1: {
     fontFamily: fontFamily.bold,
