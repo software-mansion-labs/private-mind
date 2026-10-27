@@ -193,6 +193,14 @@ const LongPressableMessage = memo(
   }
 );
 
+const MESSAGE_WINDOW_INITIAL = 40;
+const MESSAGE_WINDOW_STEP = 40;
+const MESSAGE_WINDOW_TOP_TRIGGER = 600;
+const KEEP_VISIBLE_ROW_ON_PREPEND = { minIndexForVisible: 0 };
+
+const initialWindowStart = (length: number) =>
+  Math.max(0, length - MESSAGE_WINDOW_INITIAL);
+
 const Messages = ({
   chatHistory,
   extraContentPadding,
@@ -226,6 +234,18 @@ const Messages = ({
   const [activeUserActionsId, setActiveUserActionsId] = useState<number | null>(
     null
   );
+  const [windowStart, setWindowStart] = useState(() =>
+    initialWindowStart(chatHistory.length)
+  );
+  const firstMessageId = chatHistory[0]?.id;
+  const [windowOwnerId, setWindowOwnerId] = useState(firstMessageId);
+  if (windowOwnerId !== firstMessageId) {
+    setWindowOwnerId(firstMessageId);
+    setWindowStart(initialWindowStart(chatHistory.length));
+  }
+  const firstRenderedIndex = Math.min(windowStart, chatHistory.length);
+  const firstRenderedIndexRef = useRef(firstRenderedIndex);
+  firstRenderedIndexRef.current = firstRenderedIndex;
   const lastScrollOffset = useRef(0);
   const lastLayoutHeight = useRef(0);
   const sourcesSheetRef = useRef<SourcesSheetHandle>(null);
@@ -799,6 +819,15 @@ const Messages = ({
       isAtBottomRef.current = atBottom;
       updateScrollButton(atBottom);
       if (
+        hasScrolledToEnd.current &&
+        firstRenderedIndexRef.current > 0 &&
+        contentOffset.y < MESSAGE_WINDOW_TOP_TRIGGER
+      ) {
+        setWindowStart(
+          Math.max(0, firstRenderedIndexRef.current - MESSAGE_WINDOW_STEP)
+        );
+      }
+      if (
         pinReleaseRef.current &&
         floorIsOffscreen(contentOffset.y, releaseTarget())
       ) {
@@ -1052,7 +1081,8 @@ const Messages = ({
 
   const messageRows = useMemo(
     () =>
-      chatHistory.map((message, index) => {
+      chatHistory.slice(firstRenderedIndex).map((message, offset) => {
+        const index = firstRenderedIndex + offset;
         const isLastMessage = index === chatHistory.length - 1;
         const userQuestion = questionForAssistantAt[index];
         const key = messageRowKey(message, index);
@@ -1173,6 +1203,7 @@ const Messages = ({
     [
       canRetryGeneration,
       chatHistory,
+      firstRenderedIndex,
       firstRowUnderFooter,
       getMessageActionsState,
       handleCopyMessage,
@@ -1209,6 +1240,7 @@ const Messages = ({
           freeze={scrollFreeze}
           applyWorkaroundForContentInsetHitTestBug
           keyboardShouldPersistTaps="handled"
+          maintainVisibleContentPosition={KEEP_VISIBLE_ROW_ON_PREPEND}
           contentContainerStyle={contentContainerStyle}
           {...scrollIndicatorProps(
             topFadeHeight(fadeAnchor),
