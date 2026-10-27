@@ -1,16 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Pressable } from 'react-native-gesture-handler';
 import { BenchmarkResult } from '../../database/benchmarkRepository';
 import { Model } from '../../database/modelRepository';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
-import { pressedOpacity } from '../../styles/pressable';
-import { space } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { getModelFamily } from '../../utils/modelFamily';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
+import ModelRow from '../model-hub/ModelRow';
+import ModelRowText from '../model-hub/ModelRowText';
 import { ROW_PADDING } from '../model-hub/RowGroup';
 import { formatBenchmarkDate } from '../../utils/formatBenchmarkDate';
 import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
@@ -30,20 +29,19 @@ const BenchmarkItem = ({ entry, model, onPress }: Props) => {
   const family = getModelFamily(model ?? { modelName: entry.modelName });
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.row, pressed && pressedOpacity]}
+    <ModelRow
+      style={styles.row}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${entry.modelName}, ${entry.tokensPerSecond.toFixed(1)} tokens per second`}
       testID="benchmark-history-row"
     >
       <ModelFamilyTile family={family} size="list" />
-      <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
-          {entry.modelName}
-        </Text>
-        <Text style={styles.date}>{formatBenchmarkDate(entry.timestamp)}</Text>
-      </View>
+      <ModelRowText
+        title={entry.modelName}
+        subtitle={formatBenchmarkDate(entry.timestamp)}
+        subtitleTone="tertiary"
+      />
       <View style={styles.speed}>
         <Text style={styles.speedValue}>
           {entry.tokensPerSecond.toFixed(1)}
@@ -60,7 +58,7 @@ const BenchmarkItem = ({ entry, model, onPress }: Props) => {
         height={CHEVRON_HEIGHT}
         style={styles.chevron}
       />
-    </Pressable>
+    </ModelRow>
   );
 };
 
@@ -69,26 +67,7 @@ export default BenchmarkItem;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.three,
       padding: ROW_PADDING,
-    },
-    info: {
-      flex: 1,
-      minWidth: 0,
-    },
-    name: {
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
-      color: theme.text.primary,
-    },
-    date: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
-      color: theme.text.defaultTertiary,
     },
     speed: {
       alignItems: 'flex-end',

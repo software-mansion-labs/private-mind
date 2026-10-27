@@ -1,15 +1,15 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Pressable } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { space, textStyles } from '../../constants/design-system';
 import { ModelFamily, familyLabels } from '../../utils/modelFamily';
 import { FAMILY_SUMMARIES } from '../../constants/family-descriptions';
 import ModelFamilyTile from './ModelFamilyTile';
 import ModelBadge from './ModelBadge';
 import DownloadedBadge from './DownloadedBadge';
+import ModelRow from './ModelRow';
+import ModelRowText from './ModelRowText';
 import { dimmedOpacity } from '../../styles/pressable';
 import SpinningCircle from '../SpinningCircle';
 import { ModelState, useModelStore } from '../../store/modelStore';
@@ -58,12 +58,9 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
   const hiddenLabelCount = labels.length - MAX_LABELS;
 
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.row,
-        pressed && styles.pressed,
-        !runnable && dimmedOpacity,
-      ]}
+    <ModelRow
+      style={[styles.row, !runnable && dimmedOpacity]}
+      pressedStyle={styles.pressed}
       onPress={() => onPress(family)}
       accessibilityRole="button"
       accessibilityLabel={[
@@ -78,15 +75,7 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
       <View style={styles.tile}>
         <ModelFamilyTile family={family.name} size="list" />
       </View>
-      <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
-          {family.name}
-        </Text>
-        {summary && (
-          <Text style={styles.summary} numberOfLines={1}>
-            {summary}
-          </Text>
-        )}
+      <ModelRowText title={family.name} subtitle={summary} subtitleLines={1}>
         {(!runnable || labels.length > 0) && (
           <View style={styles.labels}>
             {!runnable && <ModelBadge label="Incompatible" color="error" />}
@@ -99,7 +88,7 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
           </View>
         )}
         <Text style={styles.counts}>{counts}</Text>
-      </View>
+      </ModelRowText>
       <View style={[styles.trailing, { width: trailingWidth }]}>
         <View style={styles.status}>
           {downloadingCount > 0 && (
@@ -123,7 +112,7 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
           />
         </View>
       </View>
-    </Pressable>
+    </ModelRow>
   );
 };
 
@@ -132,8 +121,6 @@ export default FamilyCard;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     row: {
-      flexDirection: 'row',
-      alignItems: 'center',
       gap: space.four,
       padding: space.five,
       paddingLeft: space.four,
@@ -144,21 +131,6 @@ const createStyles = (theme: Theme) =>
     tile: {
       alignSelf: 'flex-start',
       marginTop: space.half,
-    },
-    info: {
-      flex: 1,
-    },
-    name: {
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
-      color: theme.text.primary,
-    },
-    summary: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
-      color: theme.text.defaultSecondary,
     },
     labels: {
       flexDirection: 'row',

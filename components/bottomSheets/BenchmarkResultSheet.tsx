@@ -15,6 +15,8 @@ import { radius, space } from '../../constants/design-system';
 import DeviceInfo from 'react-native-device-info';
 import BenchmarkStatsCard from '../benchmark/BenchmarkStatsCard';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
+import ModelRow from '../model-hub/ModelRow';
+import ModelRowText from '../model-hub/ModelRowText';
 import PhoneIcon from '../../assets/icons/phone.svg';
 import { Feedback } from '../../utils/Feedback';
 import { getModelFamily } from '../../utils/modelFamily';
@@ -113,22 +115,19 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
         return (
           <BottomSheetView style={styles.container}>
             <Text style={styles.title}>Benchmark results</Text>
-            <View style={styles.modelRow}>
+            <ModelRow>
               <ModelFamilyTile
                 family={getModelFamily(
                   data.model ?? { modelName: data.modelName }
                 )}
                 size="list"
               />
-              <View style={styles.modelText}>
-                <Text style={styles.modelName} numberOfLines={1}>
-                  {data.modelName}
-                </Text>
-                <Text style={styles.date}>
-                  {formatBenchmarkDate(data.timestamp)}
-                </Text>
-              </View>
-            </View>
+              <ModelRowText
+                title={data.modelName}
+                subtitle={formatBenchmarkDate(data.timestamp)}
+                subtitleTone="tertiary"
+              />
+            </ModelRow>
             <BenchmarkStatsCard data={data} deviceMemory={deviceInfo.memory} />
             {deviceLine.length > 0 && (
               <View style={styles.deviceRow}>
@@ -173,27 +172,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.lg,
       lineHeight: lineHeights.lg,
       color: theme.text.primary,
-    },
-    modelRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.three,
-    },
-    modelText: {
-      flex: 1,
-      minWidth: 0,
-    },
-    modelName: {
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
-      color: theme.text.primary,
-    },
-    date: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
-      color: theme.text.defaultTertiary,
     },
     deviceRow: {
       flexDirection: 'row',
