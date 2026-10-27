@@ -230,6 +230,64 @@ describe('resolveModelCatalog', () => {
       expect((await pending).origin).toBe('fallback');
     });
 
+    it('hands over the refreshed catalog when it was served from the cache', async () => {
+      await AsyncStorage.setItem(
+        MODEL_CATALOG_CACHE_KEY,
+        JSON.stringify({
+          ...VALID_MANIFEST,
+          models: [{ ...VALID_MANIFEST.models[0], modelName: 'Cached Model' }],
+        })
+      );
+      mockFetchOnce(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve(JSON.stringify(VALID_MANIFEST)),
+        })
+      );
+
+      const result = await resolveModelCatalog();
+      const refreshed = await result.refreshed;
+
+      expect(result.models[0].modelName).toBe('Cached Model');
+      expect(refreshed?.[0].modelName).toBe('Remote Model');
+    });
+
+    it('hands over the real catalog when a slow first launch showed the bundled one', async () => {
+      let answer: () => void = () => {};
+      mockFetchOnce(
+        () =>
+          new Promise((resolve) => {
+            answer = () =>
+              resolve({
+                ok: true,
+                status: 200,
+                text: () => Promise.resolve(JSON.stringify(VALID_MANIFEST)),
+              });
+          })
+      );
+
+      const pending = resolveModelCatalog();
+      await jest.advanceTimersByTimeAsync(MODEL_CATALOG_STARTUP_WAIT_MS);
+      const result = await pending;
+      answer();
+
+      expect(result.origin).toBe('fallback');
+      expect((await result.refreshed)?.[0].modelName).toBe('Remote Model');
+    });
+
+    it('has nothing to hand over after a fast remote answer', async () => {
+      mockFetchOnce(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve(JSON.stringify(VALID_MANIFEST)),
+        })
+      );
+
+      expect((await resolveModelCatalog()).refreshed).toBeUndefined();
+    });
+
     it('still takes a fast answer', async () => {
       mockFetchOnce(() =>
         Promise.resolve({

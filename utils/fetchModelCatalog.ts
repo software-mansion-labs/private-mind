@@ -14,9 +14,12 @@ import { resolveCatalogManifest } from './resolveCatalogEntry';
 
 export type ModelCatalogOrigin = 'remote' | 'cache' | 'fallback';
 
+export type { CatalogModel };
+
 export type ResolvedModelCatalog = {
   models: CatalogModel[];
   origin: ModelCatalogOrigin;
+  refreshed?: Promise<CatalogModel[] | null>;
 };
 
 const fetchManifestText = async (): Promise<string> => {
@@ -87,11 +90,11 @@ export const resolveModelCatalog = async (): Promise<ResolvedModelCatalog> => {
   const cached = await readCachedCatalog();
   const refresh = fetchAndCacheCatalog();
   if (cached) {
-    return { models: cached, origin: 'cache' };
+    return { models: cached, origin: 'cache', refreshed: refresh };
   }
 
   const remote = await withinStartupBudget(refresh);
   if (remote) return { models: remote, origin: 'remote' };
 
-  return { models: DEFAULT_MODELS, origin: 'fallback' };
+  return { models: DEFAULT_MODELS, origin: 'fallback', refreshed: refresh };
 };
