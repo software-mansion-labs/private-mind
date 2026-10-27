@@ -29,7 +29,7 @@ Private Mind is available in App Store and Google Play:
 - [Google Play](https://play.google.com/store/apps/details?id=com.swmansion.privatemind)
 - [Website](https://privatemind.swmansion.com)
 
-![Private Mind features: documents with sources, images and voice, private web search, any open model, offline use, free and open source](./promo/features.png)
+![Private Mind features: documents with sources, images and voice, private web search, a choice of models, offline use, free and open source](./promo/features.png)
 
 ## Getting Started
 
