@@ -7,6 +7,7 @@ import { StreamdownText } from 'react-native-streamdown';
 import { Platform } from 'react-native';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
+import { space } from '../../constants/design-system';
 
 const MD4C_FLAGS = { latexMath: true } as const;
 
@@ -42,15 +43,15 @@ const MarkdownComponent = memo(
             android: lineHeights.md + 2,
             default: lineHeights.md,
           }),
-          marginBottom: 12,
+          marginBottom: space.three,
         },
         h1: {
           fontFamily: fontFamily.bold,
           fontSize: fontSizes.xxl,
           color: baseColor,
           lineHeight: 36,
-          marginTop: 16,
-          marginBottom: 8,
+          marginTop: space.four,
+          marginBottom: space.two,
         },
         h2: {
           fontFamily: fontFamily.bold,
@@ -65,16 +66,16 @@ const MarkdownComponent = memo(
           fontSize: fontSizes.lg,
           color: baseColor,
           lineHeight: 26,
-          marginTop: 12,
-          marginBottom: 4,
+          marginTop: space.three,
+          marginBottom: space.one,
         },
         h4: {
           fontFamily: fontFamily.bold,
           fontSize: 17,
           color: baseColor,
           lineHeight: 24,
-          marginTop: 10,
-          marginBottom: 4,
+          marginTop: space.twoHalf,
+          marginBottom: space.one,
         },
         strong: {
           color: baseColor,
@@ -106,8 +107,8 @@ const MarkdownComponent = memo(
             : theme.bg.codeBlock,
           borderRadius: 10,
           padding: 14,
-          marginTop: 8,
-          marginBottom: 12,
+          marginTop: space.two,
+          marginBottom: space.three,
         },
         blockquote: {
           fontFamily: fontFamily.regular,
@@ -116,8 +117,8 @@ const MarkdownComponent = memo(
           borderColor: theme.bg.main,
           borderWidth: 3,
           gapWidth: 14,
-          marginTop: 8,
-          marginBottom: 12,
+          marginTop: space.two,
+          marginBottom: space.three,
         },
         list: {
           fontSize: baseFontSize,
@@ -128,14 +129,14 @@ const MarkdownComponent = memo(
           bulletSize: 5,
           markerColor: theme.text.defaultSecondary,
           gapWidth: 10,
-          marginLeft: 20,
-          marginBottom: 12,
+          marginLeft: space.five,
+          marginBottom: space.three,
         },
         thematicBreak: {
           color: theme.border.soft,
           height: 1,
-          marginTop: 20,
-          marginBottom: 20,
+          marginTop: space.five,
+          marginBottom: space.five,
         },
       }),
       [baseColor, baseFontSize, isUser, monoFont, theme]

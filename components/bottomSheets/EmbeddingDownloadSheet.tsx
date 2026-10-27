@@ -12,6 +12,7 @@ import {
   type EmbeddingModelStatus,
 } from '../../store/embeddingModelStore';
 import { embeddingModelDownloadSizeLabel } from '../../utils/embeddingModel';
+import { radius, space } from '../../constants/design-system';
 
 type DownloadContext = 'document' | 'web';
 
@@ -131,10 +132,10 @@ export default EmbeddingDownloadSheet;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     sheet: {
-      paddingVertical: 24,
-      paddingHorizontal: 16,
+      paddingVertical: space.six,
+      paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + 16,
-      gap: 24,
+      gap: space.six,
       backgroundColor: theme.bg.softPrimary,
     },
     title: {
@@ -148,23 +149,23 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultSecondary,
     },
     buttonGroup: {
-      gap: 8,
+      gap: space.two,
     },
     progressRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: space.three,
     },
     progressBarContainer: {
       flex: 1,
       height: 8,
-      borderRadius: 9999,
+      borderRadius: radius.full,
       overflow: 'hidden',
       backgroundColor: theme.bg.softSecondary,
     },
     progressBar: {
       height: '100%',
-      borderRadius: 9999,
+      borderRadius: radius.full,
       backgroundColor: theme.bg.strongPrimary,
     },
     progressText: {

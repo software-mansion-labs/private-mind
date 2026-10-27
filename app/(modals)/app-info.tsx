@@ -17,6 +17,7 @@ import GithubIcon from '../../assets/icons/github.svg';
 import CopyIcon from '../../assets/icons/copy.svg';
 import FooterIcon from '../../assets/icons/footer.svg';
 import { pressedOpacity } from '../../styles/pressable';
+import { radius, space, stroke } from '../../constants/design-system';
 
 const APP_VERSION = `v.${Application.nativeApplicationVersion ?? ''}`;
 
@@ -160,29 +161,29 @@ const styles = StyleSheet.create({
   },
   container: {
     flexGrow: 1,
-    paddingHorizontal: 16,
-    gap: 16,
+    paddingHorizontal: space.four,
+    gap: space.four,
   },
   card: {
-    padding: 16,
+    padding: space.four,
     alignItems: 'center',
-    gap: 16,
-    borderRadius: 12,
-    borderWidth: 1,
+    gap: space.four,
+    borderRadius: radius.twelve,
+    borderWidth: stroke.soft,
   },
   versionCard: {
-    padding: 16,
+    padding: space.four,
     alignItems: 'center',
-    gap: 16,
-    borderRadius: 12,
-    borderWidth: 1,
+    gap: space.four,
+    borderRadius: radius.twelve,
+    borderWidth: stroke.soft,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: space.two,
   },
   appName: {
     fontSize: fontSizes.xxl,
@@ -204,7 +205,7 @@ const styles = StyleSheet.create({
   versionInfoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: space.two,
   },
   versionText: {
     fontFamily: fontFamily.regular,
@@ -214,6 +215,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingBottom: 16,
+    paddingBottom: space.four,
   },
 });

@@ -9,8 +9,7 @@ import {
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
-import { space } from '../../constants/design-system';
+import { space, textStyles } from '../../constants/design-system';
 
 export type SubtitleTone = 'secondary' | 'tertiary';
 export type AccessoryPlacement = 'inline' | 'end';
@@ -105,15 +104,11 @@ const createStyles = (theme: Theme) =>
     },
     title: {
       flexShrink: 1,
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
+      ...textStyles.bodyPrimaryMedium,
       color: theme.text.primary,
     },
     subtitle: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
+      ...textStyles.bodySecondaryRegular,
       color: theme.text.defaultSecondary,
     },
     subtitleTertiary: {

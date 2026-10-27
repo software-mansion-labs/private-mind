@@ -9,7 +9,6 @@ import { useRouter } from 'expo-router';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useActiveDownloads } from '../../hooks/useActiveDownloads';
 import { Theme } from '../../styles/colors';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useModelStore } from '../../store/modelStore';
 import { Model } from '../../database/modelRepository';
 import GlassScreenHeader, {
@@ -20,7 +19,12 @@ import ModelManagementSheet from '../../components/bottomSheets/ModelManagementS
 import ModelDownloadRow from '../../components/model-hub/ModelDownloadRow';
 import SectionHeader from '../../components/model-hub/SectionHeader';
 import { scrollIndicatorProps } from '../../constants/scroll-indicator';
-import { radius, space, stroke } from '../../constants/design-system';
+import {
+  radius,
+  space,
+  stroke,
+  textStyles,
+} from '../../constants/design-system';
 
 const DownloadsScreen = () => {
   const router = useRouter();
@@ -120,9 +124,7 @@ const createStyles = (theme: Theme, headerHeight: number) =>
       borderWidth: stroke.soft,
       borderStyle: 'dashed',
       borderColor: theme.border.soft,
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
+      ...textStyles.bodySecondaryRegular,
       textAlign: 'center',
       color: theme.text.defaultTertiary,
     },

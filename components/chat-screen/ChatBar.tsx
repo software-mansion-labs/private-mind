@@ -68,6 +68,7 @@ import {
   useBarGrowth,
 } from './useBarGrowth';
 import { pressedOpacity } from '../../styles/pressable';
+import { radius, space, stroke } from '../../constants/design-system';
 
 const SENT_ECHO_WINDOW_MS = 300;
 const MODEL_MENU_GAP = 8;
@@ -832,24 +833,24 @@ const createStyles = (theme: Theme) =>
     container: {
       flexDirection: 'column',
       justifyContent: 'center',
-      paddingHorizontal: 16,
+      paddingHorizontal: space.four,
       flexShrink: 1,
     },
     suggestionsContainer: {
       flexShrink: 1,
-      marginBottom: 20,
-      gap: 24,
+      marginBottom: space.five,
+      gap: space.six,
     },
     modelSelection: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       height: 52,
-      borderWidth: 1,
+      borderWidth: stroke.soft,
       borderColor: theme.border.soft,
-      borderRadius: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
+      borderRadius: radius.twelve,
+      paddingHorizontal: space.four,
+      paddingVertical: space.three,
     },
     selectedModel: {
       fontSize: 14,
@@ -864,9 +865,9 @@ const createStyles = (theme: Theme) =>
     inputContainer: {
       flexDirection: 'column',
       backgroundColor: theme.bg.chatBar,
-      borderWidth: 1,
+      borderWidth: stroke.soft,
       borderColor: theme.border.chatBar,
-      borderRadius: 18,
+      borderRadius: radius.eighteen,
       padding: COMPOSER.cardPadding,
       paddingTop: COMPOSER.cardPaddingTop,
       justifyContent: 'center',
@@ -900,7 +901,7 @@ const createStyles = (theme: Theme) =>
       opacity: 0,
     },
     belowStrip: {
-      gap: 8,
+      gap: space.two,
     },
     indexUrlChip: {
       flexDirection: 'row',
@@ -908,11 +909,11 @@ const createStyles = (theme: Theme) =>
       alignSelf: 'flex-start',
       gap: 6,
       paddingVertical: 6,
-      paddingHorizontal: 10,
-      borderRadius: 9999,
-      borderWidth: 1,
+      paddingHorizontal: space.twoHalf,
+      borderRadius: radius.full,
+      borderWidth: stroke.soft,
       borderColor: theme.text.onChatBar,
-      marginBottom: 8,
+      marginBottom: space.two,
       maxWidth: '100%',
     },
     indexUrlChipText: {

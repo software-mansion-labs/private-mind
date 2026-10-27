@@ -6,6 +6,7 @@ import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import ForkIcon from '../../assets/icons/fork.svg';
 import { pressedOpacity } from '../../styles/pressable';
+import { space } from '../../constants/design-system';
 
 type BranchMarkerProps = {
   marker: ChatBranchMarker;
@@ -42,8 +43,8 @@ const createStyles = (theme: Theme) =>
     container: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      marginTop: -10,
+      gap: space.two,
+      marginTop: -space.twoHalf,
       marginBottom: 18,
     },
     line: {
@@ -54,7 +55,7 @@ const createStyles = (theme: Theme) =>
     link: {
       maxWidth: '78%',
       minHeight: 32,
-      paddingHorizontal: 10,
+      paddingHorizontal: space.twoHalf,
       borderRadius: 16,
       flexDirection: 'row',
       alignItems: 'center',

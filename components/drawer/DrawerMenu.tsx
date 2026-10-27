@@ -29,6 +29,7 @@ import {
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { scrollIndicatorProps } from '../../constants/scroll-indicator';
+import { space } from '../../constants/design-system';
 
 interface Props {
   searching: boolean;
@@ -221,21 +222,21 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     content: {
-      paddingTop: 12,
-      paddingBottom: 16,
+      paddingTop: space.three,
+      paddingBottom: space.four,
       paddingHorizontal: DRAWER_HORIZONTAL_PADDING,
     },
     contentSearching: {
       paddingBottom: theme.insets.bottom + 16,
     },
     section: {
-      gap: 2,
+      gap: space.half,
       marginBottom: SECTION_GAP,
     },
     sectionTitle: {
       alignSelf: 'flex-start',
-      paddingHorizontal: 12,
-      paddingBottom: 4,
+      paddingHorizontal: space.three,
+      paddingBottom: space.one,
       fontFamily: fontFamily.bold,
       fontSize: fontSizes.xs,
       lineHeight: lineHeights.xs,

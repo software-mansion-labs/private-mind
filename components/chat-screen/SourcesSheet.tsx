@@ -303,7 +303,7 @@ const createStyles = (theme: Theme) =>
     },
     webRowText: {
       flex: 1,
-      gap: 2,
+      gap: space.half,
     },
     webRowTitle: {
       ...textStyles.bodySecondaryMedium,

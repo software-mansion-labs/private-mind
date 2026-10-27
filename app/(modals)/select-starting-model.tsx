@@ -315,11 +315,11 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
     },
     modelsContainer: {
-      gap: 8,
+      gap: space.two,
       padding: CARD_BORDER_ROOM,
     },
     footer: {
-      gap: 10,
+      gap: space.twoHalf,
       backgroundColor: theme.bg.softPrimary,
       justifyContent: 'center',
       alignItems: 'center',
@@ -328,6 +328,6 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       alignItems: 'center',
       height: 48,
-      paddingHorizontal: 10,
+      paddingHorizontal: space.twoHalf,
     },
   });

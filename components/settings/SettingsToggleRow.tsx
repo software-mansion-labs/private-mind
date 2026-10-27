@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
-import { radius } from '../../constants/design-system';
+import { radius, space } from '../../constants/design-system';
 import { ThemedSwitch } from '../ThemedSwitch';
 
 interface Props {
@@ -40,16 +40,16 @@ export const SettingsToggleRow = ({
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     card: {
-      padding: 16,
+      padding: space.four,
       borderRadius: radius.twelve,
       backgroundColor: theme.bg.softTertiary,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: space.three,
     },
     texts: {
       flex: 1,
-      gap: 2,
+      gap: space.half,
     },
     label: {
       fontFamily: fontFamily.medium,

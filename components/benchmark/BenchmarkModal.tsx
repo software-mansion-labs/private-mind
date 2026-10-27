@@ -107,23 +107,23 @@ const createStyles = (theme: Theme) =>
     },
     benchmarkCard: {
       width: '90%',
-      borderRadius: 18,
-      paddingVertical: 16,
-      paddingHorizontal: 24,
+      borderRadius: radius.eighteen,
+      paddingVertical: space.four,
+      paddingHorizontal: space.six,
       backgroundColor: theme.bg.softPrimary,
       alignItems: 'center',
-      gap: 24,
+      gap: space.six,
       minHeight: 368,
     },
     benchmarkCardSuccess: {
       width: '90%',
-      borderRadius: 18,
-      paddingVertical: 16,
-      paddingHorizontal: 24,
+      borderRadius: radius.eighteen,
+      paddingVertical: space.four,
+      paddingHorizontal: space.six,
       backgroundColor: theme.bg.softPrimary,
       justifyContent: 'center',
       alignItems: 'center',
-      gap: 24,
+      gap: space.six,
       minHeight: 368,
     },
     statusText: {
@@ -140,11 +140,11 @@ const createStyles = (theme: Theme) =>
       width: '100%',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 8,
+      gap: space.two,
     },
     bottomSection: {
       width: '100%',
-      gap: 8,
+      gap: space.two,
     },
     modelCard: {
       padding: space.four,
@@ -161,7 +161,7 @@ const createStyles = (theme: Theme) =>
     successIcon: {
       width: 100,
       height: 100,
-      borderRadius: 9999,
+      borderRadius: radius.full,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: theme.bg.main,
@@ -171,7 +171,7 @@ const createStyles = (theme: Theme) =>
     },
     successContent: {
       alignItems: 'center',
-      gap: 24,
+      gap: space.six,
     },
     successSpacer: {
       // Split the bottom section height in half to center the content

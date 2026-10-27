@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
-import { space } from '../../constants/design-system';
+import { space, textStyles } from '../../constants/design-system';
 
 interface Props {
   title: string;
@@ -43,9 +43,7 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultSecondary,
     },
     summary: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.xs,
-      lineHeight: lineHeights.xs,
+      ...textStyles.bodyTertiaryRegular,
       color: theme.text.defaultTertiary,
     },
   });

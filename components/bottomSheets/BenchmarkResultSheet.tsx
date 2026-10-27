@@ -2,11 +2,11 @@ import React, { RefObject, useEffect, useState } from 'react';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { pressedOpacity } from '../../styles/pressable';
-import { radius, space } from '../../constants/design-system';
+import { radius, space, textStyles } from '../../constants/design-system';
 import DeviceInfo from 'react-native-device-info';
 import BenchmarkStatsCard from '../benchmark/BenchmarkStatsCard';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
@@ -144,9 +144,7 @@ const createStyles = (theme: Theme) =>
       paddingBottom: theme.insets.bottom + space.two,
     },
     title: {
-      fontFamily: fontFamily.bold,
-      fontSize: fontSizes.lg,
-      lineHeight: lineHeights.lg,
+      ...textStyles.titleSheet,
       color: theme.text.primary,
     },
     deviceRow: {
@@ -159,9 +157,7 @@ const createStyles = (theme: Theme) =>
     },
     deviceText: {
       flex: 1,
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
+      ...textStyles.bodySecondaryRegular,
       color: theme.text.defaultTertiary,
     },
     deleteButton: {

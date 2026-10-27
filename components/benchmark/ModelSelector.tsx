@@ -3,10 +3,14 @@ import { Text, StyleSheet } from 'react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { Model } from '../../database/modelRepository';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
-import { radius, space, stroke } from '../../constants/design-system';
+import {
+  radius,
+  space,
+  stroke,
+  textStyles,
+} from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { getModelFamily } from '../../utils/modelFamily';
 import { formatModelMeta } from '../../utils/modelMeta';
@@ -68,9 +72,7 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.border.soft,
     },
     action: {
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
+      ...textStyles.bodySecondaryMedium,
       color: theme.text.accent,
     },
   });

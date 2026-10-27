@@ -13,6 +13,7 @@ import UploadInput from '../../components/UploadInput';
 import Toast from 'react-native-toast-message';
 import { Theme } from '../../styles/colors';
 import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
+import { space } from '../../constants/design-system';
 
 type LocalFile = {
   name: string;
@@ -130,14 +131,14 @@ const createStyles = (theme: Theme, headerHeight: number) =>
     },
     container: {
       flex: 1,
-      paddingHorizontal: 16,
+      paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + 16,
       justifyContent: 'space-between',
     },
     scrollViewContent: {
-      gap: 24,
+      gap: space.six,
       paddingTop: headerHeight + 24,
-      paddingBottom: 24,
+      paddingBottom: space.six,
     },
     description: {
       fontFamily: fontFamily.regular,
@@ -145,7 +146,7 @@ const createStyles = (theme: Theme, headerHeight: number) =>
       color: theme.text.primary,
     },
     textFieldSection: {
-      gap: 16,
+      gap: space.four,
     },
     label: {
       fontSize: fontSizes.md,

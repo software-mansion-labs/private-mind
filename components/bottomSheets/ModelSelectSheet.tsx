@@ -9,9 +9,9 @@ import { router } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
-import { space } from '../../constants/design-system';
+import { space, textStyles } from '../../constants/design-system';
 import { Model } from '../../database/modelRepository';
 import ModelPickerRow from '../model-hub/ModelPickerRow';
 import PrimaryButton from '../PrimaryButton';
@@ -130,9 +130,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: space.four,
     },
     title: {
-      fontFamily: fontFamily.bold,
-      fontSize: fontSizes.lg,
-      lineHeight: lineHeights.lg,
+      ...textStyles.titleSheet,
       color: theme.text.primary,
     },
     subText: {

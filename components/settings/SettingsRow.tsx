@@ -4,7 +4,7 @@ import { Pressable } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
-import { radius } from '../../constants/design-system';
+import { radius, space } from '../../constants/design-system';
 import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
@@ -36,12 +36,12 @@ export const SettingsRow = ({ label, icon, onPress, destructive }: Props) => {
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     card: {
-      padding: 16,
+      padding: space.four,
       borderRadius: radius.twelve,
       backgroundColor: theme.bg.softTertiary,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: space.three,
     },
     label: {
       flex: 1,

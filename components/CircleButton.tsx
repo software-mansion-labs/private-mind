@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import { SvgComponent } from '../utils/SvgComponent';
 import { dimmedOpacity, pressedOpacity } from '../styles/pressable';
+import { radius, space, stroke } from '../constants/design-system';
 
 interface Props {
   icon: SvgComponent;
@@ -62,11 +63,11 @@ const createStyles = (backgroundColor: string, borderColor?: string) =>
     circle: {
       width: 36,
       height: 36,
-      padding: 8,
-      borderRadius: 18,
+      padding: space.two,
+      borderRadius: radius.eighteen,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor,
-      ...(borderColor ? { borderWidth: 1, borderColor } : null),
+      ...(borderColor ? { borderWidth: stroke.soft, borderColor } : null),
     },
   });

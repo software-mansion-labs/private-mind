@@ -16,6 +16,7 @@ import { Theme } from '../../../styles/colors';
 import { RemoteModelFormState } from '../add-remote-model';
 import { CustomKeyboardAvoidingView } from '../../../components/CustomKeyboardAvoidingView';
 import { Feedback } from '../../../utils/Feedback';
+import { space } from '../../../constants/design-system';
 
 interface EditModelFormState extends RemoteModelFormState {
   modelName: string;
@@ -160,17 +161,17 @@ const createStyles = (theme: Theme, headerHeight: number) =>
     },
     container: {
       flex: 1,
-      paddingHorizontal: 16,
+      paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + 16,
       justifyContent: 'space-between',
     },
     scrollViewContent: {
-      gap: 24,
+      gap: space.six,
       paddingTop: headerHeight + 24,
-      paddingBottom: 24,
+      paddingBottom: space.six,
     },
     textFieldSection: {
-      gap: 16,
+      gap: space.four,
     },
     label: {
       fontSize: fontSizes.md,

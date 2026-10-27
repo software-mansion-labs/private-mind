@@ -8,7 +8,7 @@ import {
   type PressableProps,
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { radius } from '../../constants/design-system';
+import { radius, space } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -18,16 +18,16 @@ import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
 export const MENU_ROW = {
   regular: {
     height: 76,
-    paddingHorizontal: 8,
-    gap: 16,
+    paddingHorizontal: space.two,
+    gap: space.four,
     well: 44,
     wellRadius: radius.twelve,
     icon: 24,
   },
   compact: {
     height: 42,
-    paddingHorizontal: 12,
-    gap: 10,
+    paddingHorizontal: space.three,
+    gap: space.twoHalf,
     icon: 16,
   },
 } as const;

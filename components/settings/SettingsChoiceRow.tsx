@@ -4,7 +4,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { pressedOpacity } from '../../styles/pressable';
-import { radius } from '../../constants/design-system';
+import { radius, space, stroke } from '../../constants/design-system';
 import { Feedback } from '../../utils/Feedback';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 
@@ -71,10 +71,10 @@ export const SettingsChoiceRow = <T extends string>({
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     card: {
-      padding: 16,
+      padding: space.four,
       borderRadius: radius.twelve,
       backgroundColor: theme.bg.softTertiary,
-      gap: 12,
+      gap: space.three,
     },
     label: {
       fontFamily: fontFamily.medium,
@@ -83,14 +83,14 @@ const createStyles = (theme: Theme) =>
     },
     options: {
       flexDirection: 'row',
-      gap: 8,
+      gap: space.two,
     },
     option: {
       flex: 1,
-      paddingVertical: 10,
+      paddingVertical: space.twoHalf,
       borderRadius: radius.full,
       alignItems: 'center',
-      borderWidth: 1,
+      borderWidth: stroke.soft,
       borderColor: theme.border.soft,
     },
     optionSelected: {

@@ -13,6 +13,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { Theme } from '../../styles/colors';
 import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
+import { space } from '../../constants/design-system';
 
 export interface RemoteModelFormState {
   remoteModelPath: string;
@@ -153,14 +154,14 @@ const createStyles = (theme: Theme, headerHeight: number) =>
     },
     container: {
       flex: 1,
-      paddingHorizontal: 16,
+      paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + 16,
       justifyContent: 'space-between',
     },
     scrollViewContent: {
-      gap: 24,
+      gap: space.six,
       paddingTop: headerHeight + 24,
-      paddingBottom: 16,
+      paddingBottom: space.four,
     },
     description: {
       fontFamily: fontFamily.regular,
@@ -168,7 +169,7 @@ const createStyles = (theme: Theme, headerHeight: number) =>
       color: theme.text.primary,
     },
     textFieldSection: {
-      gap: 16,
+      gap: space.four,
     },
     label: {
       fontSize: fontSizes.md,

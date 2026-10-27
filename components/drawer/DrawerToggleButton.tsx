@@ -11,6 +11,7 @@ import { showTurnInFlightNotice } from '../../utils/turnInFlightNotice';
 import { TURN_IN_FLIGHT_HOLD_MS } from '../../constants/header-actions';
 import HeaderActionIcon from '../HeaderActionIcon';
 import HeaderGlassButton, { headerGlassButtonFill } from '../HeaderGlassButton';
+import { space } from '../../constants/design-system';
 
 interface Props {
   glass?: boolean;
@@ -63,6 +64,6 @@ const createStyles = () =>
     button: {
       justifyContent: 'center',
       alignItems: 'center',
-      marginLeft: 16,
+      marginLeft: space.four,
     },
   });

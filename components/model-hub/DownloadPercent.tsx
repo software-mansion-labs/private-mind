@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { textStyles } from '../../constants/design-system';
 
 const PERCENT_MIN_WIDTH = 40;
 
@@ -23,9 +23,7 @@ const createStyles = (theme: Theme) =>
     percent: {
       minWidth: PERCENT_MIN_WIDTH,
       textAlign: 'right',
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
+      ...textStyles.bodySecondaryMedium,
       fontVariant: ['tabular-nums'],
       color: theme.text.accent,
     },

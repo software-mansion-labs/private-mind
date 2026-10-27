@@ -13,6 +13,7 @@ import ModelRowText from '../model-hub/ModelRowText';
 import { ROW_PADDING } from '../model-hub/RowGroup';
 import { formatBenchmarkDate } from '../../utils/formatBenchmarkDate';
 import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
+import { textStyles } from '../../constants/design-system';
 
 const CHEVRON_WIDTH = 7;
 const CHEVRON_HEIGHT = 12;
@@ -73,9 +74,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'flex-end',
     },
     speedValue: {
-      fontFamily: fontFamily.bold,
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
+      ...textStyles.bodyPrimaryBold,
       fontVariant: ['tabular-nums'],
       color: theme.text.primary,
     },
