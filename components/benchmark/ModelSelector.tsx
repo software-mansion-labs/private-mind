@@ -10,6 +10,7 @@ import { pressedOpacity } from '../../styles/pressable';
 import { radius, space, stroke } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { getModelFamily } from '../../utils/modelFamily';
+import { formatModelMeta } from '../../utils/modelMeta';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
 
 interface Props {
@@ -17,18 +18,10 @@ interface Props {
   onSelect: (model: Model) => void;
 }
 
-const modelMeta = (model: Model) =>
-  [
-    model.modelSize ? `${model.modelSize.toFixed(2)} GB` : null,
-    model.parameters ? `${model.parameters.toFixed(2)} B params` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
 export const ModelSelector = ({ model, onSelect }: Props) => {
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { styles } = useThemedStyles(createStyles);
-  const meta = model ? modelMeta(model) : '';
+  const meta = model ? formatModelMeta(model, 'B params') : '';
 
   return (
     <>

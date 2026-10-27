@@ -14,23 +14,19 @@ import { Theme } from '../../styles/colors';
 import { pressedOpacity } from '../../styles/pressable';
 import { radius, space, stroke } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
-import {
-  THINKING_LABEL,
-  VISION_LABEL,
-  isCapabilityLabel,
-} from '../../constants/model-labels';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
-import ModelBadge from '../model-hub/ModelBadge';
+import ModelCapabilityBadges from '../model-hub/ModelCapabilityBadges';
+import DownloadedBadge from '../model-hub/DownloadedBadge';
 import ChatIcon from '../../assets/icons/chat.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 import EditIcon from '../../assets/icons/edit.svg';
 import CrossCircleIcon from '../../assets/icons/cross-circle.svg';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
-import CheckIcon from '../../assets/icons/check.svg';
 import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
 import { FAMILY_PROVIDERS } from '../../constants/family-descriptions';
 import { isModelCompatible } from '../../utils/modelCompatibility';
 import { getModelFamily } from '../../utils/modelFamily';
+import { modelSpecParts } from '../../utils/modelMeta';
 import { startPhantomChat } from '../../utils/startPhantomChat';
 import { useModelStore } from '../../store/modelStore';
 import { useDeleteModelFiles } from '../../hooks/useDeleteModelFiles';
@@ -52,7 +48,6 @@ const ACTION_ICON_SIZE = 16;
 const CHEVRON_WIDTH = 7;
 const CHEVRON_HEIGHT = 12;
 const CHEVRON_OPACITY = 0.5;
-const DOWNLOADED_BADGE_SIZE = 32;
 const HANDLE_WIDTH = 36;
 const HANDLE_HEIGHT = 5;
 const SHEET_RADIUS = 24;
@@ -74,8 +69,7 @@ const modelMeta = (model: Model) =>
       : null,
     model.source === 'remote' ? 'From a link' : null,
     model.source === 'local' ? 'From device' : null,
-    model.modelSize ? `${model.modelSize.toFixed(2)} GB` : null,
-    model.parameters ? `${model.parameters.toFixed(2)} B params` : null,
+    ...modelSpecParts(model, 'B params'),
   ]
     .filter(Boolean)
     .join(' · ');
@@ -125,7 +119,7 @@ const ActionRow = ({ action }: { action: Action }) => {
 };
 
 const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
-  const { styles, theme } = useThemedStyles(createStyles);
+  const { styles } = useThemedStyles(createStyles);
   const db = useSQLiteContext();
 
   const { removeModel } = useModelStore();
@@ -235,10 +229,6 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
 
   const renderHeader = (model: Model) => {
     const meta = modelMeta(model);
-    const labels = (model.labels ?? []).filter(
-      (label) => !isCapabilityLabel(label)
-    );
-    const isCompatible = isModelCompatible(model);
 
     return (
       <>
@@ -250,32 +240,9 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
             </Text>
             {meta.length > 0 && <Text style={styles.meta}>{meta}</Text>}
           </View>
-          {model.isDownloaded && (
-            <View
-              style={styles.downloadedBadge}
-              accessible
-              accessibilityRole="image"
-              accessibilityLabel="Downloaded"
-            >
-              <CheckIcon
-                width={ACTION_ICON_SIZE}
-                height={ACTION_ICON_SIZE}
-                color={theme.text.onSuccess}
-              />
-            </View>
-          )}
+          {model.isDownloaded && <DownloadedBadge size="large" />}
         </View>
-        <View style={styles.badges}>
-          {!isCompatible && <ModelBadge label="Incompatible" color="error" />}
-          {model.source !== 'built-in' && (
-            <ModelBadge label="Custom" color="neutral" />
-          )}
-          {model.thinking && <ModelBadge label={THINKING_LABEL} />}
-          {model.vision && <ModelBadge label={VISION_LABEL} />}
-          {labels.map((label) => (
-            <ModelBadge key={label} label={label} />
-          ))}
-        </View>
+        <ModelCapabilityBadges model={model} showCustom />
       </>
     );
   };
@@ -356,19 +323,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.sm,
       lineHeight: lineHeights.sm,
       color: theme.text.defaultSecondary,
-    },
-    downloadedBadge: {
-      width: DOWNLOADED_BADGE_SIZE,
-      height: DOWNLOADED_BADGE_SIZE,
-      borderRadius: radius.full,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.bg.success,
-    },
-    badges: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: space.one,
     },
     actionGroup: {
       marginTop: space.one,

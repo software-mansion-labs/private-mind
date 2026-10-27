@@ -6,6 +6,7 @@ import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Model } from '../../database/modelRepository';
 import { getModelFamily } from '../../utils/modelFamily';
+import { formatGB } from '../../utils/modelMeta';
 import { space } from '../../constants/design-system';
 import { pressedOpacity } from '../../styles/pressable';
 import CircleButton from '../CircleButton';
@@ -41,7 +42,7 @@ const DownloadedModelRow = ({ model, onDelete, onPress }: Props) => {
           <DownloadedBadge />
         </View>
         {model.modelSize ? (
-          <Text style={styles.size}>{model.modelSize.toFixed(2)} GB</Text>
+          <Text style={styles.size}>{formatGB(model.modelSize)}</Text>
         ) : null}
       </View>
       {onDelete && (
