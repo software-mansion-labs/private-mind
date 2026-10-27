@@ -1,6 +1,7 @@
 import React, { PropsWithChildren } from 'react';
 import {
   AccessibilityRole,
+  LayoutChangeEvent,
   Modal,
   Platform,
   Pressable,
@@ -39,6 +40,7 @@ type Props = PropsWithChildren<{
   testID: string;
   contentStyle?: StyleProp<ViewStyle>;
   hostsTextInput?: boolean;
+  onLayout?: (event: LayoutChangeEvent) => void;
 }>;
 
 const Popover = ({
@@ -52,6 +54,7 @@ const Popover = ({
   testID,
   contentStyle,
   hostsTextInput = false,
+  onLayout,
   children,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
@@ -74,6 +77,7 @@ const Popover = ({
       <Animated.View
         entering={FadeIn.duration(FADE_IN_MS)}
         style={[styles.shadow, anchor]}
+        onLayout={onLayout}
       >
         <View
           style={[styles.card, contentStyle]}

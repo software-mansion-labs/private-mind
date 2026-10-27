@@ -21,7 +21,7 @@ import { DrawerNavSection } from './DrawerNavSection';
 import { DrawerEmptyState } from './DrawerEmptyState';
 import { DrawerFooter } from './DrawerFooter';
 import { buildChatSections, sortChatsByRecency } from './chatSections';
-import { useDrawerChatMenu } from './useDrawerChatMenu';
+import { useChatMenu } from '../chat-menu/useChatMenu';
 import {
   DRAWER_HORIZONTAL_PADDING,
   SECTION_GAP,
@@ -76,8 +76,8 @@ const DrawerMenu = ({
   const chats = useChatStore((state) => state.chats);
   const interrupt = useLLMStore((state) => state.interrupt);
 
-  const { openMenuFor, MenuElements } = useDrawerChatMenu({
-    onMenuActiveChange,
+  const { openMenu, openChatId, MenuElements } = useChatMenu({
+    onActiveChange: onMenuActiveChange,
   });
 
   const query = search.trim().toLowerCase();
@@ -188,8 +188,11 @@ const DrawerMenu = ({
                   testID={`drawer-chat-${chat.id}`}
                   label={chatLabel(chat)}
                   active={pathname === `/chat/${chat.id}`}
+                  highlighted={openChatId === chat.id}
                   onPress={() => openChat(chat.id)}
-                  onLongPress={() => openMenuFor(chat)}
+                  onLongPress={(rect) =>
+                    openMenu(chat, { ...rect, align: 'start' })
+                  }
                 />
               ))}
             </View>
