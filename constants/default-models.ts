@@ -65,6 +65,10 @@ const HIGH_END_STARTING_MODELS = [
 ];
 
 const getStartingModelCandidates = (deviceRamInGB: number): string[] => {
+  if (deviceRamInGB < 4) {
+    return [...LOW_END_STARTING_MODELS];
+  }
+
   if (deviceRamInGB <= 6) {
     return [
       ...new Set([...MID_RANGE_STARTING_MODELS, ...LOW_END_STARTING_MODELS]),
@@ -81,10 +85,6 @@ const getStartingModelCandidates = (deviceRamInGB: number): string[] => {
 };
 
 export const getStartingModels = (deviceRamInGB: number): string[] => {
-  if (deviceRamInGB < 4) {
-    return [...LOW_END_STARTING_MODELS];
-  }
-
   return getStartingModelCandidates(deviceRamInGB)
     .filter((modelName) => {
       const model = DEFAULT_MODELS.find((m) => m.modelName === modelName);

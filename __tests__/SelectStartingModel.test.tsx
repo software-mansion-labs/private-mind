@@ -49,6 +49,8 @@ jest.mock('../constants/default-models', () => ({
 
 jest.mock('../utils/modelCompatibility', () => ({
   getDeviceMemoryGB: () => 8,
+  isModelCompatible: (model: { modelName: string }) =>
+    !model.modelName.startsWith('Too big'),
 }));
 
 jest.mock('../database/modelRepository', () => ({
@@ -128,7 +130,17 @@ jest.mock('../components/model-hub/ModelCard', () => {
 import SelectStartingModelScreen from '../app/(modals)/select-starting-model';
 import { useModelStore } from '../store/modelStore';
 
-beforeEach(() => useModelStore.setState({ downloadStates: {} }));
+const defaultRows = () => [
+  { id: 1, modelName: 'Gemma', modelSize: 2.9, isDownloaded: false },
+  { id: 2, modelName: 'Qwen', modelSize: 2.16, isDownloaded: false },
+];
+
+beforeEach(() => {
+  useModelStore.setState({ downloadStates: {} });
+  jest
+    .requireMock('../database/modelRepository')
+    .getModelsByNames.mockResolvedValue(defaultRows());
+});
 
 const renderScreen = async () => {
   render(<SelectStartingModelScreen />);
@@ -178,5 +190,36 @@ describe('select starting model', () => {
     expect(screen.getByText('Download 2 models · 5.06 GB')).toBeTruthy();
 
     await startDownload('Download 2 models · 5.06 GB', 2);
+  });
+
+  it('never lists a model the card would mark incompatible', async () => {
+    const { getModelsByNames } = jest.requireMock(
+      '../database/modelRepository'
+    );
+    getModelsByNames.mockResolvedValue([
+      { id: 1, modelName: 'Gemma', modelSize: 2.9, isDownloaded: false },
+      { id: 3, modelName: 'Too big', modelSize: 9, isDownloaded: false },
+      { id: 2, modelName: 'Qwen', modelSize: 2.16, isDownloaded: false },
+    ]);
+
+    await renderScreen();
+
+    expect(screen.queryByTestId('card-Too big')).toBeNull();
+    expect(screen.getByTestId('card-Qwen')).toBeTruthy();
+  });
+
+  it('says so when no suggested model fits the device', async () => {
+    const { getModelsByNames } = jest.requireMock(
+      '../database/modelRepository'
+    );
+    getModelsByNames.mockResolvedValue([
+      { id: 3, modelName: 'Too big', modelSize: 9, isDownloaded: false },
+    ]);
+
+    render(<SelectStartingModelScreen />);
+
+    expect(
+      await screen.findByText("No suggested model fits this device's memory.")
+    ).toBeTruthy();
   });
 });

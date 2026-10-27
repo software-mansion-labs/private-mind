@@ -86,17 +86,21 @@ describe('the memory stall watch', () => {
 });
 
 describe('getStartingModels', () => {
-  it('always returns low-end model suggestions below 4 GB RAM', () => {
+  it('offers only the low-end models that fit below 4 GB RAM', () => {
     expect(getStartingModels(3.99)).toEqual([
       'Qwen 3 - 0.6B',
       'LFM 2.5 VL - 450M',
       'LFM 2.5 - 1.2B',
     ]);
-    expect(getStartingModels(0)).toEqual([
+    expect(getStartingModels(3.3)).toEqual([
       'Qwen 3 - 0.6B',
       'LFM 2.5 VL - 450M',
-      'LFM 2.5 - 1.2B',
     ]);
+    expect(getStartingModels(2.9)).toEqual(['LFM 2.5 VL - 450M']);
+  });
+
+  it('offers nothing when no starting model fits the device', () => {
+    expect(getStartingModels(0)).toEqual([]);
   });
 
   it('replaces incompatible mid-range candidates with low-end fallbacks', () => {
@@ -128,8 +132,8 @@ describe('getStartingModels', () => {
     ]);
   });
 
-  it('only recommends compatible models when RAM is at least 4 GB', () => {
-    for (let ramGB = 4; ramGB <= 12; ramGB += 0.5) {
+  it('only recommends compatible models at any RAM size', () => {
+    for (let ramGB = 0; ramGB <= 12; ramGB += 0.25) {
       const recommended = getStartingModels(ramGB);
       for (const modelName of recommended) {
         const model = DEFAULT_MODELS.find((m) => m.modelName === modelName)!;
