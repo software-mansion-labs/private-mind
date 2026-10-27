@@ -32,7 +32,7 @@ import ModelHubTabs, {
 } from '../../components/model-hub/ModelHubTabs';
 import FamilyCard from '../../components/model-hub/FamilyCard';
 import RowGroup from '../../components/model-hub/RowGroup';
-import ModelCard from '../../components/model-hub/ModelCard';
+import ModelDownloadRow from '../../components/model-hub/ModelDownloadRow';
 import {
   groupModelsByFamily,
   orderFamiliesForDevice,
@@ -216,17 +216,14 @@ const ModelHubScreen = () => {
                 ? mineModels.length > 0 && (
                     <RowGroup separatorInset={0}>
                       {mineModels.map((model) => (
-                        <ModelCard
+                        <ModelDownloadRow
                           key={model.id}
                           model={model}
-                          compactView={false}
-                          variant="row"
-                          showFamilyIcon
+                          showFamilyTile
                           onPress={() =>
                             modelManagementSheetRef.current?.present(model)
                           }
                           wifiWarningSheetRef={wifiWarningSheetRef}
-                          showDeleteButton
                         />
                       ))}
                     </RowGroup>

@@ -12,7 +12,7 @@ import { fontFamily, fontSizes, lineHeights } from '../../../styles/fontStyles';
 import { useModelStore } from '../../../store/modelStore';
 import { Model } from '../../../database/modelRepository';
 import { getModelFamily } from '../../../utils/modelFamily';
-import ModelCard from '../../../components/model-hub/ModelCard';
+import ModelDownloadRow from '../../../components/model-hub/ModelDownloadRow';
 import ModelManagementSheet from '../../../components/bottomSheets/ModelManagementSheet';
 import WarningSheet, {
   WarningSheetData,
@@ -88,16 +88,13 @@ const FamilyScreen = () => {
               />
               <RowGroup separatorInset={0}>
                 {familyModels.map((model) => (
-                  <ModelCard
+                  <ModelDownloadRow
                     key={model.id}
                     model={model}
-                    compactView={false}
-                    variant="row"
                     onPress={() =>
                       modelManagementSheetRef.current?.present(model)
                     }
                     wifiWarningSheetRef={wifiWarningSheetRef}
-                    showDeleteButton
                   />
                 ))}
               </RowGroup>

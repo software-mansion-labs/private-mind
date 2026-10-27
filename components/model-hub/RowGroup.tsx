@@ -4,7 +4,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { radius, space, stroke } from '../../constants/design-system';
 
-export const ROW_PADDING = space.three;
+export const ROW_PADDING = space.four;
 
 interface Props {
   children: React.ReactNode;
