@@ -16,6 +16,8 @@ import { radius, space, stroke } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
 import ModelCapabilityBadges from '../model-hub/ModelCapabilityBadges';
+import ModelRow from '../model-hub/ModelRow';
+import ModelRowText from '../model-hub/ModelRowText';
 import DownloadedBadge from '../model-hub/DownloadedBadge';
 import ChatIcon from '../../assets/icons/chat.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
@@ -232,16 +234,17 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
 
     return (
       <>
-        <View style={styles.header}>
+        <ModelRow>
           <ModelFamilyTile family={getModelFamily(model)} size="card" />
-          <View style={styles.headerText}>
-            <Text style={styles.name} testID="model-sheet-name">
-              {model.modelName}
-            </Text>
-            {meta.length > 0 && <Text style={styles.meta}>{meta}</Text>}
-          </View>
+          <ModelRowText
+            title={model.modelName}
+            titleLines={0}
+            titleStyle={styles.name}
+            titleTestID="model-sheet-name"
+            subtitle={meta}
+          />
           {model.isDownloaded && <DownloadedBadge size="large" />}
-        </View>
+        </ModelRow>
         <ModelCapabilityBadges model={model} showCustom />
       </>
     );
@@ -303,26 +306,11 @@ const createStyles = (theme: Theme) =>
       paddingBottom: theme.insets.bottom + space.four,
       gap: space.three,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.three,
-    },
-    headerText: {
-      flex: 1,
-      minWidth: 0,
-    },
     name: {
       fontFamily: fontFamily.bold,
       fontSize: fontSizes.lg,
       lineHeight: lineHeights.lg,
       color: theme.text.primary,
-    },
-    meta: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
-      color: theme.text.defaultSecondary,
     },
     actionGroup: {
       marginTop: space.one,

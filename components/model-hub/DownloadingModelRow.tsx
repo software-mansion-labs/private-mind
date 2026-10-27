@@ -8,6 +8,8 @@ import { getModelFamily } from '../../utils/modelFamily';
 import { radius, space } from '../../constants/design-system';
 import CircleButton from '../CircleButton';
 import ModelFamilyTile from './ModelFamilyTile';
+import ModelRow from './ModelRow';
+import ModelRowText from './ModelRowText';
 import { ROW_PADDING } from './RowGroup';
 import DownloadProgressDetails from './DownloadProgressDetails';
 import CloseIcon from '../../assets/icons/close.svg';
@@ -27,15 +29,14 @@ const DownloadingModelRow = ({ model, progress, rate, onCancel }: Props) => {
   const percent = Math.floor(progress * 100);
 
   return (
-    <View style={styles.row} testID="downloading-model-row">
+    <ModelRow align="top" style={styles.row} testID="downloading-model-row">
       <ModelFamilyTile family={getModelFamily(model)} size="list" />
-      <View style={styles.info}>
-        <View style={styles.nameRow}>
-          <Text style={styles.name} numberOfLines={1}>
-            {model.modelName}
-          </Text>
-          <Text style={styles.percent}>{percent}%</Text>
-        </View>
+      <ModelRowText
+        title={model.modelName}
+        titleAccessory={<Text style={styles.percent}>{percent}%</Text>}
+        accessoryPlacement="end"
+        style={styles.text}
+      >
         <View
           style={styles.track}
           accessibilityRole="progressbar"
@@ -49,7 +50,7 @@ const DownloadingModelRow = ({ model, progress, rate, onCancel }: Props) => {
           progress={progress}
           rate={rate}
         />
-      </View>
+      </ModelRowText>
       <CircleButton
         onPress={() => onCancel(model)}
         backgroundColor={theme.bg.tile}
@@ -58,7 +59,7 @@ const DownloadingModelRow = ({ model, progress, rate, onCancel }: Props) => {
         size={13.33}
         testID="downloading-model-cancel"
       />
-    </View>
+    </ModelRow>
   );
 };
 
@@ -67,28 +68,10 @@ export default DownloadingModelRow;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     row: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: space.three,
       padding: ROW_PADDING,
     },
-    info: {
-      flex: 1,
-      minWidth: 0,
+    text: {
       gap: space.two,
-    },
-    nameRow: {
-      flexDirection: 'row',
-      alignItems: 'baseline',
-      justifyContent: 'space-between',
-      gap: space.two,
-    },
-    name: {
-      flexShrink: 1,
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
-      color: theme.text.primary,
     },
     percent: {
       minWidth: PERCENT_MIN_WIDTH,

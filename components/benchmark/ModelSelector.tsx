@@ -1,17 +1,18 @@
 import React, { useRef } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { Model } from '../../database/modelRepository';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
-import { pressedOpacity } from '../../styles/pressable';
 import { radius, space, stroke } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { getModelFamily } from '../../utils/modelFamily';
 import { formatModelMeta } from '../../utils/modelMeta';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
+import ModelRow from '../model-hub/ModelRow';
+import ModelRowText from '../model-hub/ModelRowText';
 
 interface Props {
   model?: Model | null;
@@ -25,31 +26,29 @@ export const ModelSelector = ({ model, onSelect }: Props) => {
 
   return (
     <>
-      <Pressable
+      <ModelRow
         accessibilityRole="button"
         accessibilityLabel={
           model ? `Change model, current ${model.modelName}` : 'Select a model'
         }
-        style={({ pressed }) => [styles.selector, pressed && pressedOpacity]}
+        style={styles.selector}
         onPress={() => bottomSheetModalRef.current?.present()}
         testID="benchmark-model-selector"
       >
         {model && (
           <ModelFamilyTile family={getModelFamily(model)} size="list" />
         )}
-        <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>
-            {model ? model.modelName : 'Select a model'}
-          </Text>
-          {meta.length > 0 && <Text style={styles.meta}>{meta}</Text>}
-        </View>
+        <ModelRowText
+          title={model ? model.modelName : 'Select a model'}
+          subtitle={meta}
+        />
         <Text
           style={styles.action}
           maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
         >
           {model ? 'Change' : 'Choose'}
         </Text>
-      </Pressable>
+      </ModelRow>
 
       <ModelSelectSheet
         bottomSheetModalRef={bottomSheetModalRef}
@@ -63,29 +62,10 @@ export const ModelSelector = ({ model, onSelect }: Props) => {
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     selector: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.three,
       padding: space.three,
       borderRadius: radius.eighteen,
       borderWidth: stroke.soft,
       borderColor: theme.border.soft,
-    },
-    info: {
-      flex: 1,
-      minWidth: 0,
-    },
-    name: {
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
-      color: theme.text.primary,
-    },
-    meta: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
-      color: theme.text.defaultSecondary,
     },
     action: {
       fontFamily: fontFamily.medium,
