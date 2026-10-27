@@ -6,6 +6,7 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import { pressedOpacity } from '../../styles/pressable';
 import type { CutShortReason } from '../../database/chatRepository';
+import { space } from '../../constants/design-system';
 
 type StopReason = 'user' | CutShortReason;
 
@@ -54,8 +55,8 @@ const createStyles = (theme: Theme) =>
     container: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      marginTop: -10,
+      gap: space.two,
+      marginTop: -space.twoHalf,
       marginBottom: 18,
     },
     line: {
@@ -68,7 +69,7 @@ const createStyles = (theme: Theme) =>
       minHeight: 32,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: space.two,
     },
     text: {
       flexShrink: 1,
@@ -80,10 +81,10 @@ const createStyles = (theme: Theme) =>
     retry: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: space.one,
       borderRadius: 16,
       backgroundColor: theme.bg.softSecondary,
-      paddingHorizontal: 10,
+      paddingHorizontal: space.twoHalf,
       paddingVertical: 6,
     },
     icon: {

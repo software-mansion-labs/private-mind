@@ -7,6 +7,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
+import { space } from '../../constants/design-system';
 
 export interface WarningSheetData {
   title: string;
@@ -62,10 +63,10 @@ export default WarningSheet;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     sheet: {
-      paddingVertical: 24,
-      paddingHorizontal: 16,
+      paddingVertical: space.six,
+      paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + 16,
-      gap: 24,
+      gap: space.six,
       backgroundColor: theme.bg.softPrimary,
     },
     title: {
@@ -79,7 +80,7 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultSecondary,
     },
     buttonGroup: {
-      gap: 8,
+      gap: space.two,
     },
     downloadButton: {
       backgroundColor: theme.bg.errorPrimary,

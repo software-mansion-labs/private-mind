@@ -5,7 +5,7 @@ import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import ChatIcon from '../../assets/icons/chat.svg';
 import SearchOffIcon from '../../assets/icons/search-off.svg';
-import { radius } from '../../constants/design-system';
+import { radius, space, stroke } from '../../constants/design-system';
 import { DrawerItem } from './DrawerItem';
 import { useStartNewChat } from './useStartNewChat';
 
@@ -45,10 +45,10 @@ export const DrawerEmptyState = ({ query, onNavigate }: Props) => {
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      paddingHorizontal: 24,
-      paddingVertical: 40,
+      paddingHorizontal: space.six,
+      paddingVertical: space.ten,
       alignItems: 'center',
-      gap: 16,
+      gap: space.four,
     },
     iconCircle: {
       width: ICON_CIRCLE_SIZE,
@@ -71,8 +71,8 @@ const createStyles = (theme: Theme) =>
     action: {
       alignSelf: 'center',
       overflow: 'hidden',
-      borderRadius: 12,
-      borderWidth: 1,
+      borderRadius: radius.twelve,
+      borderWidth: stroke.soft,
       borderColor: theme.border.soft,
     },
     icon: {

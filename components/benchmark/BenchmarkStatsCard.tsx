@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import { radius, space } from '../../constants/design-system';
+import { radius, space, textStyles } from '../../constants/design-system';
 import { BenchmarkResultPerformanceNumbers } from '../../database/benchmarkRepository';
 
 const HERO_VALUE_SIZE = 26;
@@ -125,9 +125,7 @@ const createStyles = (theme: Theme) =>
       color: theme.text.accent,
     },
     label: {
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.xs,
-      lineHeight: lineHeights.xs,
+      ...textStyles.bodyTertiaryMedium,
       color: theme.text.defaultSecondary,
     },
     heroValue: {
@@ -145,9 +143,7 @@ const createStyles = (theme: Theme) =>
       color: theme.text.primary,
     },
     caption: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.xs,
-      lineHeight: lineHeights.xs,
+      ...textStyles.bodyTertiaryRegular,
       color: theme.text.defaultTertiary,
     },
   });

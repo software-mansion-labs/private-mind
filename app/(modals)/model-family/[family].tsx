@@ -138,7 +138,7 @@ const createStyles = (theme: Theme, headerHeight: number) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      padding: 16,
+      padding: space.four,
     },
     emptyText: {
       fontFamily: fontFamily.regular,

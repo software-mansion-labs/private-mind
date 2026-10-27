@@ -3,8 +3,8 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useModelStore } from '../../store/modelStore';
 import { Model } from '../../database/modelRepository';
-import { space } from '../../constants/design-system';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { space, textStyles } from '../../constants/design-system';
+import { fontFamily, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { GUTTER } from './attachments/constants';
 import Popover from '../menu/Popover';
@@ -104,9 +104,7 @@ const createStyles = (theme: Theme) =>
       paddingTop: space.one,
       paddingBottom: space.one + space.half,
       paddingHorizontal: space.four,
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.xs,
-      lineHeight: lineHeights.xs,
+      ...textStyles.bodyTertiaryRegular,
       color: theme.text.defaultTertiary,
     },
     list: {

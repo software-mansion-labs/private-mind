@@ -18,6 +18,7 @@ import SearchField, {
   SearchFieldSurface,
 } from '../SearchField';
 import ArrowLeftIcon from '../../assets/icons/arrow-left.svg';
+import { space } from '../../constants/design-system';
 
 const BACK_ICON_SIZE = 20;
 const ICON_FADE_OUT_END = 0.6;
@@ -162,7 +163,7 @@ const createStyles = (theme: Theme) =>
     bar: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: space.two,
       minHeight: 44,
     },
     iconSlot: {

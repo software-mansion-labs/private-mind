@@ -5,7 +5,7 @@ import Toast, { ToastConfig } from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Theme } from '../styles/colors';
-import { radius } from '../constants/design-system';
+import { radius, space, stroke } from '../constants/design-system';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import CloseIcon from '../assets/icons/close.svg';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
@@ -109,9 +109,9 @@ const createStyles = (theme: Theme) =>
       width: '90%',
       backgroundColor: theme.bg.toast,
       borderRadius: radius.eighteen,
-      padding: 16,
+      padding: space.four,
       flexDirection: 'row',
-      borderWidth: 1,
+      borderWidth: stroke.soft,
       borderColor: theme.border.toast,
       shadowColor: theme.bg.shadow,
       shadowOffset: { width: 0, height: 12 },
@@ -128,11 +128,11 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.sm,
     },
     toastAction: {
-      marginTop: 12,
+      marginTop: space.three,
       alignSelf: 'flex-start',
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 999,
+      paddingVertical: space.two,
+      paddingHorizontal: space.four,
+      borderRadius: radius.full,
       backgroundColor: theme.bg.main,
     },
     toastActionLabel: {

@@ -17,6 +17,7 @@ import { Theme } from '../../../styles/colors';
 import { LocalModelFormState } from '../add-local-model';
 import { CustomKeyboardAvoidingView } from '../../../components/CustomKeyboardAvoidingView';
 import { Feedback } from '../../../utils/Feedback';
+import { space } from '../../../constants/design-system';
 
 type LocalFile = {
   name: string;
@@ -150,17 +151,17 @@ const createStyles = (theme: Theme, headerHeight: number) =>
     },
     container: {
       flex: 1,
-      paddingHorizontal: 16,
+      paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + 16,
       justifyContent: 'space-between',
     },
     scrollViewContent: {
-      gap: 24,
+      gap: space.six,
       paddingTop: headerHeight + 24,
-      paddingBottom: 24,
+      paddingBottom: space.six,
     },
     textFieldSection: {
-      gap: 16,
+      gap: space.four,
     },
     label: {
       fontSize: fontSizes.md,

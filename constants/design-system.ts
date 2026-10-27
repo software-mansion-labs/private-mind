@@ -46,6 +46,26 @@ export const textStyles = {
     fontSize: 18,
     lineHeight: 24,
   },
+  titleSheet: {
+    fontFamily: fontFamily.bold,
+    fontSize: 18,
+    lineHeight: 24,
+  },
+  bodyPrimaryMedium: {
+    fontFamily: fontFamily.medium,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  bodyPrimaryBold: {
+    fontFamily: fontFamily.bold,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  bodySecondaryRegular: {
+    fontFamily: fontFamily.regular,
+    fontSize: 14,
+    lineHeight: 20,
+  },
   bodySecondaryMedium: {
     fontFamily: fontFamily.medium,
     fontSize: 14,

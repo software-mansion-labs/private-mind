@@ -3,11 +3,15 @@ import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { pressedOpacity } from '../../styles/pressable';
-import { radius, space, stroke } from '../../constants/design-system';
+import {
+  radius,
+  space,
+  stroke,
+  textStyles,
+} from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
 import ModelCapabilityBadges from '../model-hub/ModelCapabilityBadges';
@@ -283,9 +287,7 @@ const createStyles = (theme: Theme) =>
       gap: space.three,
     },
     name: {
-      fontFamily: fontFamily.bold,
-      fontSize: fontSizes.lg,
-      lineHeight: lineHeights.lg,
+      ...textStyles.titleSheet,
       color: theme.text.primary,
     },
     actionGroup: {
@@ -316,9 +318,7 @@ const createStyles = (theme: Theme) =>
     },
     actionLabel: {
       flex: 1,
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
+      ...textStyles.bodyPrimaryMedium,
       color: theme.text.primary,
     },
     chevron: {

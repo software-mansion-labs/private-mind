@@ -6,6 +6,7 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { DRAWER_ITEM_INSET } from '../../constants/drawer-layout';
 import { dimmedOpacity } from '../../styles/pressable';
+import { radius, space } from '../../constants/design-system';
 
 const CHAT_LABEL_FONT_SIZE = 15;
 
@@ -69,9 +70,9 @@ const createStyles = (theme: Theme) =>
     item: {
       minHeight: 44,
       justifyContent: 'center',
-      paddingVertical: 8,
+      paddingVertical: space.two,
       paddingHorizontal: DRAWER_ITEM_INSET,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
     },
     activeBackground: {
       backgroundColor: theme.bg.softTertiary,
@@ -79,7 +80,7 @@ const createStyles = (theme: Theme) =>
     content: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: space.three,
     },
     label: {
       fontSize: fontSizes.md,

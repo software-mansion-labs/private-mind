@@ -27,6 +27,7 @@ import {
 } from '../../store/settingsStore';
 import { Feedback } from '../../utils/Feedback';
 import { Theme } from '../../styles/colors';
+import { space } from '../../constants/design-system';
 
 const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: 'system', label: 'System' },
@@ -154,9 +155,9 @@ const createStyles = (theme: Theme, headerHeight: number) =>
       backgroundColor: theme.bg.softPrimary,
     },
     scrollContent: {
-      gap: 24,
+      gap: space.six,
       paddingTop: headerHeight + 24,
-      paddingHorizontal: 16,
+      paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + 16,
     },
     rowIcon: {

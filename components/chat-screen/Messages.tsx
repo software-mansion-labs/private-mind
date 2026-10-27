@@ -87,6 +87,7 @@ import {
 } from './pinScroll';
 import { visibleMessageText } from '../../utils/messageText';
 import { pressedOpacity } from '../../styles/pressable';
+import { space } from '../../constants/design-system';
 
 export interface MessagesHandle {
   onMessageSent: () => void;
@@ -1385,8 +1386,8 @@ const createStyles = (theme: Theme) => {
     generationError: {
       width: '90%',
       alignSelf: 'flex-start',
-      paddingBottom: 24,
-      gap: 8,
+      paddingBottom: space.six,
+      gap: space.two,
     },
     generationErrorText: {
       color: theme.text.defaultSecondary,
@@ -1399,8 +1400,8 @@ const createStyles = (theme: Theme) => {
       gap: 6,
       borderRadius: 8,
       backgroundColor: theme.bg.softTertiary,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: space.three,
+      paddingVertical: space.two,
     },
     retryButtonIcon: {
       color: theme.text.primary,

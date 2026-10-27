@@ -9,7 +9,12 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { radius, space, stroke } from '../../constants/design-system';
+import {
+  radius,
+  space,
+  stroke,
+  textStyles,
+} from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { TEXT_SELECTION, Theme } from '../../styles/colors';
@@ -255,9 +260,7 @@ const createStyles = (theme: Theme) =>
       minWidth: 0,
     },
     caption: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.xs,
-      lineHeight: lineHeights.xs,
+      ...textStyles.bodyTertiaryRegular,
       color: theme.text.defaultTertiary,
     },
     nameRow: {
@@ -268,9 +271,7 @@ const createStyles = (theme: Theme) =>
     },
     chatTitle: {
       flex: 1,
-      fontFamily: fontFamily.bold,
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
+      ...textStyles.bodyPrimaryBold,
       color: theme.text.primary,
     },
     iconButton: {

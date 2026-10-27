@@ -10,9 +10,13 @@ import { Pressable } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useDeleteModelFiles } from '../../hooks/useDeleteModelFiles';
 import { Theme } from '../../styles/colors';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { DIMMED_OPACITY, pressedOpacity } from '../../styles/pressable';
-import { radius, space, stroke } from '../../constants/design-system';
+import {
+  radius,
+  space,
+  stroke,
+  textStyles,
+} from '../../constants/design-system';
 import { Model } from '../../database/modelRepository';
 import { useModelStore } from '../../store/modelStore';
 import { isModelCompatible } from '../../utils/modelCompatibility';
@@ -228,9 +232,7 @@ const createStyles = (theme: Theme, selected: boolean) => {
     progressText: {
       minWidth: PROGRESS_LABEL_MIN_WIDTH,
       textAlign: 'right',
-      fontSize: fontSizes.xs,
-      lineHeight: lineHeights.xs,
-      fontFamily: fontFamily.regular,
+      ...textStyles.bodyTertiaryRegular,
       color: theme.text.defaultSecondary,
     },
     progressActionIcon: {

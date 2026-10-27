@@ -17,7 +17,8 @@ import Animated, {
 import { ScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { useStableCallback } from '../../hooks/useStableCallback';
-import { dimmedOpacity } from '../../styles/pressable';
+import { DIMMED_OPACITY, dimmedOpacity } from '../../styles/pressable';
+import { radius, space } from '../../constants/design-system';
 
 interface Props {
   onSubmit: (text: string) => void;
@@ -366,9 +367,9 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       backgroundColor: theme.bg.main,
-      borderRadius: 18,
-      padding: 16,
-      gap: 16,
+      borderRadius: radius.eighteen,
+      padding: space.four,
+      gap: space.four,
     },
 
     note: {
@@ -385,11 +386,11 @@ const createStyles = (theme: Theme) =>
     recordingRow: {
       backgroundColor: theme.bg.voiceModeSurface,
       height: 40,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
       flexDirection: 'row',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      gap: 8,
+      paddingHorizontal: space.three,
+      paddingVertical: space.two,
+      gap: space.two,
     },
     recordingInfo: {
       flexDirection: 'row',
@@ -404,7 +405,7 @@ const createStyles = (theme: Theme) =>
     },
     recordingDotOff: {
       backgroundColor: theme.text.contrastPrimary,
-      opacity: 0.4,
+      opacity: DIMMED_OPACITY,
     },
     recordingAnimationWrapper: {
       flex: 1,
@@ -413,7 +414,7 @@ const createStyles = (theme: Theme) =>
     actionRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: space.two,
     },
     actionNote: {
       flex: 1,
