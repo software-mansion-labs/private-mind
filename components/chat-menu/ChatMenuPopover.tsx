@@ -8,6 +8,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useKeyboardState } from 'react-native-keyboard-controller';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import {
   radius,
@@ -22,13 +23,13 @@ import { pressedOpacity } from '../../styles/pressable';
 import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 import { MAX_CHAT_TITLE_LENGTH } from '../../utils/chatLabel';
 import { SvgComponent } from '../../utils/SvgComponent';
-import Popover, { POPOVER_WIDTH } from '../menu/Popover';
+import Popover from '../menu/Popover';
+import { MenuPlacement, menuAnchor } from './placement';
 import PopoverRow from '../menu/PopoverRow';
 import EditIcon from '../../assets/icons/edit.svg';
 import ShareIcon from '../../assets/icons/upload.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 
-const GAP_BELOW_TITLE = 8;
 const ICON_BUTTON_SIZE = 36;
 const ICON_SIZE = 16;
 const ROW_ICON_SIZE = 17;
@@ -42,7 +43,7 @@ const ROW_LABEL_SIZE = 15;
 
 interface Props {
   visible: boolean;
-  anchorTop: number;
+  placement: MenuPlacement;
   title: string;
   onRename: (title: string) => void;
   onShare: () => void;
@@ -50,9 +51,9 @@ interface Props {
   onClose: () => void;
 }
 
-const ChatTitlePopover = ({
+const ChatMenuPopover = ({
   visible,
-  anchorTop,
+  placement,
   title,
   onRename,
   onShare,
@@ -60,7 +61,11 @@ const ChatTitlePopover = ({
   onClose,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
-  const { width } = useWindowDimensions();
+  const window = useWindowDimensions();
+  const keyboardHeight = useKeyboardState((state) =>
+    state.isVisible ? state.height : 0
+  );
+  const [menuHeight, setMenuHeight] = useState(0);
   const [draft, setDraft] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,10 +84,8 @@ const ChatTitlePopover = ({
   return (
     <Popover
       visible={visible}
-      anchor={{
-        top: anchorTop + GAP_BELOW_TITLE,
-        left: (width - POPOVER_WIDTH) / 2,
-      }}
+      anchor={menuAnchor(placement, window, keyboardHeight, menuHeight)}
+      onLayout={(event) => setMenuHeight(event.nativeEvent.layout.height)}
       onClose={onClose}
       closeLabel="Close chat options"
       backdropTestID="chat-menu-backdrop"
@@ -242,7 +245,7 @@ const ActionRow = ({
   );
 };
 
-export default ChatTitlePopover;
+export default ChatMenuPopover;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({

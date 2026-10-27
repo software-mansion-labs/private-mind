@@ -21,6 +21,9 @@ jest.mock('../context/ThemeContext', () => ({
 
 jest.mock('react-native-keyboard-controller', () => ({
   OverKeyboardView: ({ children }: { children: React.ReactNode }) => children,
+  useKeyboardState: (
+    selector: (state: { isVisible: boolean; height: number }) => unknown
+  ) => selector({ isVisible: false, height: 0 }),
 }));
 
 jest.mock('../utils/Feedback', () => ({
@@ -49,40 +52,43 @@ jest.mock('../database/exportImportRepository', () => ({
   exportChatRoom: (...args: any[]) => mockExportChatRoom(...args),
 }));
 
+const mockReplace = jest.fn();
+let mockPathname = '/chat/42';
 jest.mock('expo-router', () => ({
-  router: {
-    replace: jest.fn(),
-    push: jest.fn(),
-    back: jest.fn(),
-  },
-  useRouter: () => ({
-    replace: jest.fn(),
-    push: jest.fn(),
-    back: jest.fn(),
-  }),
+  useRouter: () => ({ replace: mockReplace, push: jest.fn(), back: jest.fn() }),
+  usePathname: () => mockPathname,
 }));
-
-const mockRouter = jest.requireMock('expo-router').router as {
-  replace: jest.Mock;
-  push: jest.Mock;
-  back: jest.Mock;
-};
 
 import Toast from 'react-native-toast-message';
 
-import { useChatTitleMenu } from '../components/chat-screen/ChatTitleMenu';
+import { useChatMenu } from '../components/chat-menu/useChatMenu';
 import { MAX_CHAT_TITLE_LENGTH } from '../utils/chatLabel';
 
-const Harness = ({ chatTitle = 'My Chat' }: { chatTitle?: string }) => {
-  const { openMenu, isOpen, MenuElements } = useChatTitleMenu({
-    chatId: 42,
-    chatTitle,
-    anchorTop: 100,
+const TARGET = {
+  x: 16,
+  y: 100,
+  width: 280,
+  height: 44,
+  align: 'start' as const,
+};
+
+const Harness = ({
+  chatTitle = 'My Chat',
+  onActiveChange,
+}: {
+  chatTitle?: string;
+  onActiveChange?: (active: boolean) => void;
+}) => {
+  const { openMenu, openChatId, MenuElements } = useChatMenu({
+    onActiveChange,
   });
   return (
     <>
-      <TouchableOpacity testID="open-menu" onPress={openMenu} />
-      <Text>{`menu:${isOpen ? 'open' : 'closed'}`}</Text>
+      <TouchableOpacity
+        testID="open-menu"
+        onPress={() => openMenu({ id: 42, title: chatTitle }, TARGET)}
+      />
+      <Text>{`menu:${openChatId === 42 ? 'open' : 'closed'}`}</Text>
       {MenuElements}
     </>
   );
@@ -95,6 +101,7 @@ const openMenu = () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockPathname = '/chat/42';
   jest.spyOn(console, 'error').mockImplementation(() => {});
   mockRenameChat.mockResolvedValue(undefined);
   mockDeleteChat.mockResolvedValue(undefined);
@@ -272,7 +279,63 @@ describe('sharing and deleting', () => {
     await waitFor(() => {
       expect(mockDeleteChat).toHaveBeenCalledWith(42, undefined);
     });
-    expect(mockRouter.replace).toHaveBeenCalledWith('/');
+    expect(mockReplace).toHaveBeenCalledWith('/');
+  });
+
+  it('stays on the current chat when a different chat is deleted', async () => {
+    mockPathname = '/chat/7';
+    let confirm: (() => Promise<void>) | undefined;
+    jest.spyOn(Alert, 'alert').mockImplementation((...args: any[]) => {
+      confirm = args[2]?.find((b: any) => b.text === 'Delete')?.onPress;
+    });
+    openMenu();
+    fireEvent.press(screen.getByTestId('chat-menu-delete'));
+
+    await act(async () => {
+      await confirm?.();
+    });
+
+    await waitFor(() => expect(mockDeleteChat).toHaveBeenCalled());
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+});
+
+describe('reporting the menu as active', () => {
+  it('reports active on open and inactive once dismissed', () => {
+    const onActiveChange = jest.fn();
+    render(<Harness onActiveChange={onActiveChange} />);
+    fireEvent.press(screen.getByTestId('open-menu'));
+    expect(onActiveChange).toHaveBeenLastCalledWith(true);
+
+    fireEvent.press(screen.getByTestId('chat-menu-backdrop'));
+    expect(onActiveChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('stays active until the delete confirmation is answered', async () => {
+    let cancel: (() => void) | undefined;
+    jest.spyOn(Alert, 'alert').mockImplementation((...args: any[]) => {
+      cancel = args[2]?.find((b: any) => b.text === 'Cancel')?.onPress;
+    });
+    const onActiveChange = jest.fn();
+    render(<Harness onActiveChange={onActiveChange} />);
+    fireEvent.press(screen.getByTestId('open-menu'));
+    fireEvent.press(screen.getByTestId('chat-menu-delete'));
+
+    expect(screen.getByText('menu:closed')).toBeTruthy();
+    expect(onActiveChange).toHaveBeenLastCalledWith(true);
+
+    await act(async () => cancel?.());
+
+    await waitFor(() => expect(onActiveChange).toHaveBeenLastCalledWith(false));
+  });
+
+  it('shows the new name in the menu right after renaming', async () => {
+    openMenu();
+    fireEvent.press(screen.getByTestId('chat-menu-rename'));
+    fireEvent.changeText(screen.getByDisplayValue('My Chat'), 'Fresh name');
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => expect(screen.getByText('Fresh name')).toBeTruthy());
   });
 });
 

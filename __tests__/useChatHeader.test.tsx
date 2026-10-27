@@ -7,6 +7,7 @@ jest.mock('expo-router', () => ({
   useNavigation: () => ({ setOptions: mockSetOptions }),
   router: { replace: jest.fn(), push: jest.fn(), back: jest.fn() },
   useRouter: () => ({ replace: jest.fn(), push: jest.fn(), back: jest.fn() }),
+  usePathname: () => '/chat/42',
 }));
 
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
