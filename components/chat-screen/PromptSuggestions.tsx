@@ -164,7 +164,7 @@ const createStyles = (theme: Theme) =>
       paddingVertical: space.three,
       paddingHorizontal: space.three + space.half,
       borderRadius: radius.eighteen,
-      backgroundColor: theme.bg.whatsNewCard,
+      backgroundColor: theme.bg.softTertiary,
     },
     titleRow: {
       flexDirection: 'row',

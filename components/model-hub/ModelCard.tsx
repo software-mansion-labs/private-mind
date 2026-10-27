@@ -23,6 +23,7 @@ import ModelBadge from './ModelBadge';
 import { getModelFamily } from '../../utils/modelFamily';
 import ModelFamilyTile from './ModelFamilyTile';
 import DownloadedBadge from './DownloadedBadge';
+import DownloadProgressDetails from './DownloadProgressDetails';
 import {
   THINKING_LABEL,
   VISION_LABEL,
@@ -157,6 +158,7 @@ const ModelCard = ({
   const showProgressRow = checkable
     ? downloadStatus !== undefined
     : isDownloading;
+  const showProgressDetails = isRow && !checkable && isDownloading;
 
   const isCompatible = isModelCompatible(model);
   const disabled = checkable
@@ -326,44 +328,53 @@ const ModelCard = ({
         </View>
 
         {showProgressRow && (
-          <View style={styles.progressRow}>
-            <View style={styles.progressBarContainer}>
-              <View
-                style={[styles.progressBar, { width: `${progress * 100}%` }]}
-              />
+          <View style={styles.progressSection}>
+            <View style={styles.progressRow}>
+              <View style={styles.progressBarContainer}>
+                <View
+                  style={[styles.progressBar, { width: `${progress * 100}%` }]}
+                />
+              </View>
+              <Text style={styles.progressText}>{progressLabel}</Text>
+              {isDone && model.source !== 'local' && (
+                <Pressable
+                  onPress={handleDelete}
+                  hitSlop={PROGRESS_ACTION_HIT_SLOP}
+                  style={({ pressed }) => pressed && pressedOpacity}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete ${model.modelName}`}
+                  testID="model-card-delete"
+                >
+                  <TrashIcon
+                    width={PROGRESS_ACTION_ICON_SIZE}
+                    height={PROGRESS_ACTION_ICON_SIZE}
+                    style={styles.progressActionIcon}
+                  />
+                </Pressable>
+              )}
+              {downloadStatus === 'downloading' && (
+                <Pressable
+                  onPress={() => onCancel?.(model)}
+                  hitSlop={PROGRESS_ACTION_HIT_SLOP}
+                  style={({ pressed }) => pressed && pressedOpacity}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Cancel ${model.modelName} download`}
+                  testID="model-card-cancel"
+                >
+                  <CloseIcon
+                    width={PROGRESS_ACTION_ICON_SIZE}
+                    height={PROGRESS_ACTION_ICON_SIZE}
+                    style={styles.progressActionIcon}
+                  />
+                </Pressable>
+              )}
             </View>
-            <Text style={styles.progressText}>{progressLabel}</Text>
-            {isDone && model.source !== 'local' && (
-              <Pressable
-                onPress={handleDelete}
-                hitSlop={PROGRESS_ACTION_HIT_SLOP}
-                style={({ pressed }) => pressed && pressedOpacity}
-                accessibilityRole="button"
-                accessibilityLabel={`Delete ${model.modelName}`}
-                testID="model-card-delete"
-              >
-                <TrashIcon
-                  width={PROGRESS_ACTION_ICON_SIZE}
-                  height={PROGRESS_ACTION_ICON_SIZE}
-                  style={styles.progressActionIcon}
-                />
-              </Pressable>
-            )}
-            {downloadStatus === 'downloading' && (
-              <Pressable
-                onPress={() => onCancel?.(model)}
-                hitSlop={PROGRESS_ACTION_HIT_SLOP}
-                style={({ pressed }) => pressed && pressedOpacity}
-                accessibilityRole="button"
-                accessibilityLabel={`Cancel ${model.modelName} download`}
-                testID="model-card-cancel"
-              >
-                <CloseIcon
-                  width={PROGRESS_ACTION_ICON_SIZE}
-                  height={PROGRESS_ACTION_ICON_SIZE}
-                  style={styles.progressActionIcon}
-                />
-              </Pressable>
+            {showProgressDetails && (
+              <DownloadProgressDetails
+                modelSize={model.modelSize}
+                progress={downloadState.progress}
+                rate={trackedDownload?.rate}
+              />
             )}
           </View>
         )}
@@ -439,6 +450,9 @@ const createStyles = (
     },
     checkIcon: {
       color: theme.text.contrastPrimary,
+    },
+    progressSection: {
+      gap: space.two,
     },
     progressRow: {
       flexDirection: 'row',

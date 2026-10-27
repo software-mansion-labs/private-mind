@@ -14,13 +14,11 @@ export const SEARCH_UNMOUNT_GRACE = 120;
 
 export const BACKDROP_FADE_IN_DURATION = 240;
 
+export const ICON_MORPH_DELAY = 120;
+
+export const ICON_MORPH_DURATION = 360;
+
 export const NAV_COLLAPSE_DURATION = 260;
-
-export const FIELD_FADE_IN_DELAY = 90;
-
-export const FIELD_FADE_IN_DURATION = 460;
-
-export const FIELD_FADE_OUT_DURATION = 180;
 
 export const ANDROID_SEARCH_FOCUS_DELAY = 200;
 

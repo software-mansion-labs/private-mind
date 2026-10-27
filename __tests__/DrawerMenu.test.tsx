@@ -153,7 +153,7 @@ describe('DrawerMenu — collapsed', () => {
     renderMenu();
 
     expect(screen.queryByText('Private Mind')).toBeNull();
-    expect(screen.getByText('Search')).toBeTruthy();
+    expect(screen.getByText('Search chats...')).toBeTruthy();
     expect(screen.getByTestId('drawer-search-open')).toBeTruthy();
     expect(screen.queryByTestId('drawer-search-input')).toBeNull();
   });

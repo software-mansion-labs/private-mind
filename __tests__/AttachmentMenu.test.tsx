@@ -142,13 +142,17 @@ describe('the tool switches in the menu', () => {
     expect(Feedback.toggleOff).toHaveBeenCalledTimes(1);
   });
 
-  it('leaves the tap on a switch to its row, so a finger that drifts is not lost', () => {
-    renderWithTools();
+  it('lets the switch take its own tap, so it plays the native toggle animation', () => {
+    const tools = renderWithTools();
 
-    let node = screen.getByTestId('menu-thinking-toggle', hidden).parent;
-    while (node && node.props.pointerEvents === undefined) node = node.parent;
+    fireEvent(
+      screen.getByTestId('menu-thinking-toggle', hidden),
+      'valueChange',
+      true
+    );
 
-    expect(node?.props.pointerEvents).toBe('none');
+    expect(tools.onThinkingToggle).toHaveBeenCalledTimes(1);
+    expect(Feedback.toggleOn).toHaveBeenCalledTimes(1);
   });
 
   it('flips Web search from its row', () => {

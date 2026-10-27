@@ -91,7 +91,7 @@ const createStyles = (theme: Theme) =>
     card: {
       width: '100%',
       flexShrink: 1,
-      backgroundColor: theme.bg.whatsNewCard,
+      backgroundColor: theme.bg.softTertiary,
       borderRadius: radius.eighteen,
       padding: 16,
       gap: 12,
