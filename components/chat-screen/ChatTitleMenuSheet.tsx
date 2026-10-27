@@ -1,9 +1,5 @@
 import React, { RefObject } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import BackDismissibleSheetModal from '../bottomSheets/BackDismissibleSheetModal';
 import { Text, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -32,7 +28,7 @@ const ChatTitleMenuSheet = ({
   onDelete,
   onDismiss,
 }: Props) => {
-  const { styles, theme } = useThemedStyles(createStyles);
+  const { styles } = useThemedStyles(createStyles);
 
   const handleOption = (action: () => void) => {
     bottomSheetModalRef.current?.dismiss();
@@ -47,15 +43,6 @@ const ChatTitleMenuSheet = ({
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
       }}
-      backdropComponent={(props) => (
-        <BottomSheetBackdrop
-          {...props}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-        />
-      )}
-      backgroundStyle={{ backgroundColor: theme.bg.softPrimary }}
-      handleIndicatorStyle={{ backgroundColor: theme.border.soft }}
     >
       <BottomSheetView style={styles.container}>
         <Text numberOfLines={1} style={styles.title} testID="chat-menu-title">

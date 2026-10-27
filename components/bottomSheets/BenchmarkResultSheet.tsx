@@ -1,10 +1,5 @@
-import React, { RefObject, useCallback, useEffect, useState } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetBackdrop,
-  BottomSheetView,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
+import React, { RefObject, useEffect, useState } from 'react';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -27,9 +22,6 @@ import { Model } from '../../database/modelRepository';
 const BYTES_PER_GB = 1024 * 1024 * 1024;
 const DEVICE_ICON_SIZE = 14;
 const DELETE_BUTTON_HEIGHT = 44;
-const HANDLE_WIDTH = 36;
-const HANDLE_HEIGHT = 5;
-const SHEET_RADIUS = 24;
 
 export interface BenchmarkResultSheetData extends BenchmarkResult {
   model?: Model;
@@ -57,18 +49,6 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
     memory: '',
   });
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
-
   useEffect(() => {
     const fetchDeviceInfo = async () => {
       const [model, totalMemory] = await Promise.all([
@@ -95,14 +75,10 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
   return (
     <BackDismissibleSheetModal
       ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
       enableDynamicSizing
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
       }}
-      handleStyle={styles.handle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}
     >
       {({ data }) => {
         if (!data) return null;
@@ -198,23 +174,5 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
       color: theme.text.error,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
-    handle: {
-      borderTopLeftRadius: SHEET_RADIUS,
-      borderTopRightRadius: SHEET_RADIUS,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    handleIndicator: {
-      width: HANDLE_WIDTH,
-      height: HANDLE_HEIGHT,
-      borderRadius: radius.full,
-      backgroundColor: theme.border.soft,
-    },
-    background: {
-      borderRadius: SHEET_RADIUS,
-      backgroundColor: theme.bg.softPrimary,
     },
   });

@@ -1,9 +1,5 @@
-import React, { RefObject, useCallback } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
+import React, { RefObject } from 'react';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -21,28 +17,8 @@ interface Props {
 const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={1}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
-
   return (
-    <BackDismissibleSheetModal
-      ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
-      enableDynamicSizing
-      handleStyle={styles.handleStyle}
-      handleIndicatorStyle={styles.handleIndicatorStyle}
-      backgroundStyle={styles.sheetBackground}
-    >
+    <BackDismissibleSheetModal ref={bottomSheetModalRef} enableDynamicSizing>
       <BottomSheetView style={styles.sheetContent}>
         <Text style={styles.title}>Add model</Text>
         <View style={styles.buttonGroup}>
@@ -89,21 +65,5 @@ const createStyles = (theme: Theme) =>
     },
     icon: {
       color: theme.text.primary,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
-    handleStyle: {
-      backgroundColor: theme.bg.softPrimary,
-      borderRadius: 16,
-    },
-    handleIndicatorStyle: {
-      width: 64,
-      height: 4,
-      borderRadius: 20,
-      backgroundColor: theme.text.primary,
-    },
-    sheetBackground: {
-      backgroundColor: theme.bg.softPrimary,
     },
   });

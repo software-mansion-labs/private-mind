@@ -1,10 +1,5 @@
-import React, { RefObject, useCallback } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
+import React, { RefObject } from 'react';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -50,9 +45,6 @@ const ACTION_ICON_SIZE = 16;
 const CHEVRON_WIDTH = 7;
 const CHEVRON_HEIGHT = 12;
 const CHEVRON_OPACITY = 0.5;
-const HANDLE_WIDTH = 36;
-const HANDLE_HEIGHT = 5;
-const SHEET_RADIUS = 24;
 
 type ActionTone = 'accent' | 'neutral' | 'destructive';
 
@@ -128,18 +120,6 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
   const { deleteModelFiles, ConfirmElement: DeleteFilesConfirm } =
     useDeleteModelFiles();
   const { confirm, ConfirmElement: RemoveModelConfirm } = useConfirm();
-
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
 
   const leaveSheetFor = (navigate: () => void) => {
     bottomSheetModalRef.current?.dismiss();
@@ -273,14 +253,10 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
     <>
       <BackDismissibleSheetModal
         ref={bottomSheetModalRef}
-        backdropComponent={renderBackdrop}
         enableDynamicSizing
         onChange={(index) => {
           if (index >= 0) Feedback.sheetOpen();
         }}
-        handleStyle={styles.handle}
-        handleIndicatorStyle={styles.handleIndicator}
-        backgroundStyle={styles.background}
       >
         {(props) =>
           props.data ? (
@@ -351,23 +327,5 @@ const createStyles = (theme: Theme) =>
     },
     textError: {
       color: theme.text.error,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
-    handle: {
-      borderTopLeftRadius: SHEET_RADIUS,
-      borderTopRightRadius: SHEET_RADIUS,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    handleIndicator: {
-      width: HANDLE_WIDTH,
-      height: HANDLE_HEIGHT,
-      borderRadius: radius.full,
-      backgroundColor: theme.border.soft,
-    },
-    background: {
-      borderRadius: SHEET_RADIUS,
-      backgroundColor: theme.bg.softPrimary,
     },
   });
