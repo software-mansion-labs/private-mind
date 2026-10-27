@@ -11,9 +11,9 @@ import {
   useModelStore,
 } from '../../store/modelStore';
 import PrimaryButton from '../../components/PrimaryButton';
-import ModelCard, {
-  DownloadStatus,
-} from '../../components/model-hub/ModelCard';
+import StartingModelCard, {
+  StartingDownloadStatus,
+} from '../../components/onboarding/StartingModelCard';
 import EntryButton from '../../components/EntryButton';
 import { getNextChatId } from '../../database/chatRepository';
 import { useChatStore } from '../../store/chatStore';
@@ -143,7 +143,9 @@ function SelectStartingModelScreen() {
     await cancelDownload(model);
   };
 
-  const downloadStatusFor = (model: Model): DownloadStatus | undefined => {
+  const downloadStatusFor = (
+    model: Model
+  ): StartingDownloadStatus | undefined => {
     if (phase === 'select' || !selectedIds.includes(model.id)) return undefined;
     return isDownloaded(model.id) ? 'done' : 'downloading';
   };
@@ -230,14 +232,11 @@ function SelectStartingModelScreen() {
               </Text>
             )}
             {startingModels?.map((model) => (
-              <ModelCard
+              <StartingModelCard
                 key={model.id}
                 model={model}
                 onPress={toggleModel}
-                compactView={false}
                 selected={selectedIds.includes(model.id)}
-                checkable
-                showFamilyIcon
                 locked={phase !== 'select'}
                 downloadStatus={downloadStatusFor(model)}
                 onCancel={handleCancel}

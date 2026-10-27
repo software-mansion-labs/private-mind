@@ -1,12 +1,18 @@
 import React from 'react';
 import { Modal, View, Text, StyleSheet } from 'react-native';
-import ModelCard from '../model-hub/ModelCard';
+import ModelFamilyTile from '../model-hub/ModelFamilyTile';
+import ModelRow from '../model-hub/ModelRow';
+import ModelRowText from '../model-hub/ModelRowText';
+import ModelCapabilityBadges from '../model-hub/ModelCapabilityBadges';
 import SecondaryButton from '../SecondaryButton';
 import { SpinningCircleTimer } from '../SpinningCircleTimer';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';
+import { radius, space, stroke } from '../../constants/design-system';
+import { getModelFamily } from '../../utils/modelFamily';
+import { formatModelMeta } from '../../utils/modelMeta';
 import CheckIcon from '../../assets/icons/check.svg';
 
 interface Props {
@@ -14,7 +20,7 @@ interface Props {
   handleCancel: () => void;
   showSuccess: boolean;
   timer: number;
-  selectedModel: Model;
+  selectedModel?: Model | null;
 }
 
 export const BenchmarkModal = ({
@@ -46,12 +52,25 @@ export const BenchmarkModal = ({
               </Text>
             </View>
             <View style={styles.bottomSection}>
-              <ModelCard
-                model={selectedModel}
-                onPress={() => {}}
-                compactView={false}
-                showFamilyIcon
-              />
+              {selectedModel && (
+                <ModelRow style={styles.modelCard}>
+                  <ModelFamilyTile
+                    family={getModelFamily(selectedModel)}
+                    size="card"
+                  />
+                  <ModelRowText
+                    title={selectedModel.modelName}
+                    titleLines={0}
+                    subtitle={formatModelMeta(selectedModel, 'B')}
+                    style={styles.modelText}
+                  >
+                    <ModelCapabilityBadges
+                      model={selectedModel}
+                      style={styles.modelBadges}
+                    />
+                  </ModelRowText>
+                </ModelRow>
+              )}
               <SecondaryButton text="Cancel benchmark" onPress={handleCancel} />
             </View>
           </View>
@@ -126,6 +145,18 @@ const createStyles = (theme: Theme) =>
     bottomSection: {
       width: '100%',
       gap: 8,
+    },
+    modelCard: {
+      padding: space.four,
+      borderWidth: stroke.soft,
+      borderRadius: radius.twelve,
+      borderColor: theme.border.soft,
+    },
+    modelText: {
+      gap: space.one,
+    },
+    modelBadges: {
+      marginTop: space.one,
     },
     successIcon: {
       width: 100,
