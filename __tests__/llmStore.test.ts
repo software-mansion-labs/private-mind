@@ -93,6 +93,7 @@ const makeMockInstance = () => ({
   configure: jest.fn(),
   getGeneratedTokenCount: jest.fn(() => 10),
   lastGenerationStalled: jest.fn(() => false),
+  setChatTemplateFlags: jest.fn(),
 });
 
 let mockInstance = makeMockInstance();
