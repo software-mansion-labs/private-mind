@@ -29,6 +29,7 @@ import {
 } from '../../store/settingsStore';
 import { Feedback } from '../../utils/Feedback';
 import { shareApp } from '../../utils/shareApp';
+import { openFeedback } from '../../utils/feedbackLink';
 import { Theme } from '../../styles/colors';
 import { space } from '../../constants/design-system';
 
@@ -162,6 +163,11 @@ const SettingsScreen = () => {
             }
             onPress={handleOpenAppInfo}
             showChevron
+          />
+          <SettingsRow
+            label="Send feedback"
+            icon={<EditIcon width={20} height={20} style={styles.rowIcon} />}
+            onPress={openFeedback}
           />
           <SettingsRow
             label="Share Private Mind"
