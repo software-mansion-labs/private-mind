@@ -4,6 +4,6 @@ export const LATEST_RELEASE = {
   highlights: [
     'LFM 3 1.7B: reasons before it answers, 16 languages',
     'LFM 3 VL 2B: ask about your photos',
-    'Think switch now turns LFM 3 reasoning off',
+    'Think switch turns LFM 3 reasoning on or off',
   ],
 };
