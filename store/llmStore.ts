@@ -2135,6 +2135,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           ...getGenerationConfigForModel(benchmarkedModel),
           ...BENCHMARK_GENERATION_CONFIG,
         });
+        instance.setChatTemplateFlags(
+          chatTemplateFlagsFor(benchmarkedModel, false)
+        );
       }
 
       return await withExclusiveRunner(async (isCancelled) => {
