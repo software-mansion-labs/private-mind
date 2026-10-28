@@ -52,6 +52,8 @@ export const WEB_PLANNER_MATRIX: Record<string, WebPlannerMode> = {
   'LFM 2.5 - 1.2B': 'llm',
   'LFM 2.5 VL - 1.6B': 'llm',
   'LFM 2.5 VL - 450M': 'verbatim',
+  'LFM 3 - 1.7B': 'llm',
+  'LFM 3 VL - 2B': 'llm',
   'Bielik - v3.0': 'llm',
   'Gemma 4 - 2B': 'llm',
   'Gemma 4 VL - 2B': 'llm',

@@ -46,6 +46,23 @@ const GEMMA4_E2B_MM = {
   tokenizerConfigSource: GEMMA4_E2B_TOKENIZER_CONFIG,
 } as const;
 
+const LFM3_HF_BASE =
+  'https://huggingface.co/software-mansion/react-native-executorch-lfm-3/resolve/v1.0.0';
+
+const LFM3_1_7B_QUANTIZED = {
+  modelName: 'lfm3-1.7b',
+  modelSource: `${LFM3_HF_BASE}/1_7b/xnnpack/lfm_3_1_7b_xnnpack_8da4w.pte`,
+  tokenizerSource: `${LFM3_HF_BASE}/1_7b/tokenizer.json`,
+  tokenizerConfigSource: `${LFM3_HF_BASE}/1_7b/tokenizer_config.json`,
+} as const;
+
+const LFM3_VL_2B_QUANTIZED = {
+  modelName: 'lfm3-vl-2b',
+  modelSource: `${LFM3_HF_BASE}/vl_2b/xnnpack/lfm_3_vl_2b_xnnpack_8da4w.pte`,
+  tokenizerSource: `${LFM3_HF_BASE}/vl_2b/tokenizer.json`,
+  tokenizerConfigSource: `${LFM3_HF_BASE}/vl_2b/tokenizer_config.json`,
+} as const;
+
 const LOW_END_STARTING_MODELS = [
   'Qwen 3 - 0.6B',
   'LFM 2.5 VL - 450M',
@@ -53,15 +70,15 @@ const LOW_END_STARTING_MODELS = [
 ];
 
 const MID_RANGE_STARTING_MODELS = [
+  'LFM 3 - 1.7B',
+  'LFM 3 VL - 2B',
   'Qwen 3 - 1.7B',
-  'LFM 2.5 - 1.2B',
-  'LFM 2.5 VL - 1.6B',
 ];
 
 const HIGH_END_STARTING_MODELS = [
+  'LFM 3 - 1.7B',
+  'LFM 3 VL - 2B',
   'Gemma 4 - 2B',
-  'Gemma 4 VL - 2B',
-  'Qwen 3 - 1.7B',
 ];
 
 const getStartingModelCandidates = (deviceRamInGB: number): string[] => {
@@ -106,6 +123,8 @@ const RNE_MODELS = [
   LFM2_5_1_2B_INSTRUCT_QUANTIZED,
   LFM2_5_VL_1_6B_QUANTIZED,
   LFM2_5_VL_450M_QUANTIZED,
+  LFM3_1_7B_QUANTIZED,
+  LFM3_VL_2B_QUANTIZED,
   BIELIK_V3_0_1_5B_QUANTIZED,
   GEMMA4_E2B,
   GEMMA4_E2B_MM,
@@ -306,6 +325,35 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     thinking: false,
     vision: true,
     labels: ['Fast', 'Vision'],
+    systemPrompt:
+      'You are a helpful vision assistant. When the user shares an image, analyze it carefully and provide detailed, accurate descriptions and answers about its content. When no image is provided, respond as a knowledgeable and helpful general assistant.',
+  },
+  {
+    modelName: 'LFM 3 - 1.7B',
+    family: 'LFM 3',
+    tokenizerPath: LFM3_1_7B_QUANTIZED.tokenizerSource,
+    modelPath: LFM3_1_7B_QUANTIZED.modelSource,
+    tokenizerConfigPath: LFM3_1_7B_QUANTIZED.tokenizerConfigSource,
+    source: 'remote',
+    parameters: 1.73,
+    modelSize: 1.25,
+    featured: true,
+    thinking: true,
+    labels: ['Balanced', 'Reasoning'],
+  },
+  {
+    modelName: 'LFM 3 VL - 2B',
+    family: 'LFM 3',
+    modelPath: LFM3_VL_2B_QUANTIZED.modelSource,
+    tokenizerPath: LFM3_VL_2B_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: LFM3_VL_2B_QUANTIZED.tokenizerConfigSource,
+    source: 'remote',
+    parameters: 1.92,
+    modelSize: 2.01,
+    featured: true,
+    thinking: true,
+    vision: true,
+    labels: ['Vision'],
     systemPrompt:
       'You are a helpful vision assistant. When the user shares an image, analyze it carefully and provide detailed, accurate descriptions and answers about its content. When no image is provided, respond as a knowledgeable and helpful general assistant.',
   },
