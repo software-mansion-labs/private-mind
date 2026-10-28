@@ -391,12 +391,22 @@ export const detectQuestionLanguage = (
   return latin ? named(latin) : null;
 };
 
+const LATIN_CODES = new Set(LATIN_CANDIDATES);
+
+const isLatinScript = (question: string): boolean =>
+  question.trim() !== '' && dominantScript(question) === null;
+
 export const detectThreadLanguage = (
   userMessages: string[]
 ): QuestionLanguage | null => {
-  for (let i = userMessages.length - 1; i >= 0; i--) {
+  const latest = userMessages.at(-1) ?? '';
+  const detectedLatest = detectQuestionLanguage(latest);
+  if (detectedLatest) return detectedLatest;
+  for (let i = userMessages.length - 2; i >= 0; i--) {
     const detected = detectQuestionLanguage(userMessages[i] ?? '');
-    if (detected) return detected;
+    if (!detected) continue;
+    if (isLatinScript(latest) && !LATIN_CODES.has(detected.code)) return null;
+    return detected;
   }
   return null;
 };

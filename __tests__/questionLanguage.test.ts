@@ -237,3 +237,32 @@ describe('detectQuestionLanguage over the multilingual corpus', () => {
     expect(perLanguage.filter((entry) => !entry.endsWith('=100%'))).toEqual([]);
   });
 });
+
+describe('detectThreadLanguage across scripts', () => {
+  it('does not anchor an undetected Latin-script question to an earlier Urdu turn', () => {
+    expect(
+      detectThreadLanguage([
+        'زمین سورج کے گرد کیوں گھومتی ہے؟',
+        'Write a 300-word story about a lighthouse keeper.',
+      ])
+    ).toBeNull();
+  });
+
+  it('still inherits a Latin-script language for a short Latin follow-up', () => {
+    expect(
+      detectThreadLanguage([
+        'jaka jest dzisiaj pogoda w Gdansku',
+        'Write a 300-word story about a lighthouse keeper.',
+      ])?.code
+    ).toBe('pl');
+  });
+
+  it('takes the latest turn when its script is detected on its own', () => {
+    expect(
+      detectThreadLanguage([
+        'Write a 300-word story about a lighthouse keeper.',
+        'زمین سورج کے گرد کیوں گھومتی ہے؟',
+      ])?.code
+    ).toBe('ur');
+  });
+});
