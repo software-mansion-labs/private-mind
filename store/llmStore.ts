@@ -239,6 +239,7 @@ let streamStopRequested = false;
 let streamFlushScheduled = false;
 let streamedSoFar = '';
 let thinkOpenedByTemplate = false;
+let generationSawToken = false;
 
 const resetStreamState = () => {
   streamBuffer = '';
@@ -529,6 +530,7 @@ const loadModelInstance = async (
           }
           return;
         }
+        generationSawToken = true;
         if (suppressUtilityStreaming) return;
         if (streamStopRequested) return;
 
@@ -824,6 +826,7 @@ const describeGenerationFailure = (): string =>
   'The model returned an empty response';
 
 const NUDGE_TIME_BUDGET_MS = 40_000;
+export const FIRST_TOKEN_TIMEOUT_MS = 5 * 60_000;
 
 const digestForChat = (get: () => LLMStore, chatId: number): string | null =>
   get().activeChatDigestChatId === chatId ? get().activeChatDigest : null;
@@ -906,8 +909,22 @@ const generateLLMResponse = (
     instance.setChatTemplateFlags(chatTemplateFlags);
     thinkOpenedByTemplate = chatTemplateFlags.enable_thinking === true;
 
+    generationSawToken = false;
+    let firstTokenTimedOut = false;
+    const firstTokenWatchdog = setTimeout(() => {
+      if (generationSawToken || llmInstance !== instance) return;
+      firstTokenTimedOut = true;
+      console.warn('No first token within budget, interrupting the turn');
+      instance.interrupt();
+    }, FIRST_TOKEN_TIMEOUT_MS);
     const startTime = performance.now();
-    const finalResponse = await instance.generate(preparedMessages);
+    let finalResponse: Awaited<ReturnType<typeof instance.generate>>;
+    try {
+      finalResponse = await instance.generate(preparedMessages);
+    } finally {
+      clearTimeout(firstTokenWatchdog);
+    }
+    if (firstTokenTimedOut) return NO_LLM_RESPONSE;
     const endTime = performance.now();
     const stalled = instance.lastGenerationStalled();
 
