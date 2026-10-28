@@ -5,6 +5,7 @@ import {
   View,
   TextInput,
   Platform,
+  LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
 } from 'react-native';
@@ -20,6 +21,7 @@ import { DrawerTopBar } from './DrawerTopBar';
 import { DrawerNavSection } from './DrawerNavSection';
 import { DrawerEmptyState } from './DrawerEmptyState';
 import { DrawerFooter } from './DrawerFooter';
+import { GlassScrollEdge } from '../chat-screen/GlassScrollEdge';
 import { buildChatSections, sortChatsByRecency } from './chatSections';
 import { useChatMenu } from '../chat-menu/useChatMenu';
 import {
@@ -91,6 +93,10 @@ const DrawerMenu = ({
 
   const hasNoResults = isFiltering && sections.length === 0;
 
+  const [footerHeight, setFooterHeight] = useState(0);
+  const handleFooterLayout = (event: LayoutChangeEvent) =>
+    setFooterHeight(event.nativeEvent.layout.height);
+
   const internalScrollRef = useRef<ScrollView>(null);
   const scrollRef = externalScrollRef ?? internalScrollRef;
 
@@ -161,14 +167,16 @@ const DrawerMenu = ({
         style={styles.scrollView}
         contentContainerStyle={[
           styles.content,
-          searching && styles.contentSearching,
+          searching
+            ? styles.contentSearching
+            : { paddingBottom: footerHeight + space.four },
         ]}
         contentOffset={initialContentOffset}
         onScroll={handleScroll}
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
         keyboardShouldPersistTaps={hasNoResults ? 'always' : 'handled'}
-        {...scrollIndicatorProps()}
+        {...scrollIndicatorProps(0, searching ? 0 : footerHeight)}
       >
         <DrawerNavSection
           collapsed={isFiltering}
@@ -204,7 +212,14 @@ const DrawerMenu = ({
         )}
       </ScrollView>
 
-      {!searching && <DrawerFooter onNavigate={onNavigate} />}
+      {!searching && (
+        <>
+          <GlassScrollEdge edge="bottom" anchor={footerHeight} />
+          <View style={styles.footer} onLayout={handleFooterLayout}>
+            <DrawerFooter onNavigate={onNavigate} />
+          </View>
+        </>
+      )}
 
       {MenuElements}
     </View>
@@ -228,6 +243,12 @@ const createStyles = (theme: Theme) =>
       paddingTop: space.three,
       paddingBottom: space.four,
       paddingHorizontal: DRAWER_HORIZONTAL_PADDING,
+    },
+    footer: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
     },
     contentSearching: {
       paddingBottom: theme.insets.bottom + 16,
