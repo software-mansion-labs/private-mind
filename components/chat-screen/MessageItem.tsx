@@ -354,7 +354,7 @@ const MessageItem = memo(
               )}
               {isAwaitingFirstToken ? (
                 <AnimatedChatLoading
-                  label={isModelStarting ? MODEL_STARTING_LABEL : 'Thinking…'}
+                  label={isModelStarting ? MODEL_STARTING_LABEL : 'Generating…'}
                 />
               ) : null}
               <Animated.View
