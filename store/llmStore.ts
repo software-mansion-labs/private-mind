@@ -477,13 +477,12 @@ const loadModelInstance = async (
       return;
     }
     if (!streamBuffer) return;
-    const text = streamBuffer;
+    const text =
+      !streamedSoFar && thinkOpenedByTemplate
+        ? withTemplateThinkOpener(streamBuffer)
+        : streamBuffer;
     streamBuffer = '';
-    streamedSoFar = streamedSoFar
-      ? streamedSoFar + text
-      : thinkOpenedByTemplate
-        ? withTemplateThinkOpener(text)
-        : text;
+    streamedSoFar += text;
     const snapshot = get();
     const turnLocalId = snapshot.generatingMessageLocalId;
     const shouldAppendToActiveChat =
@@ -938,13 +937,24 @@ const generateLLMResponse = (
 const generateRefinement = (
   messages: ExecutorchMessage[],
   get: () => LLMStore
-): Promise<LLMGenerationResult> =>
-  generateLLMResponse(messages, get)
+): Promise<LLMGenerationResult> => {
+  const model = get().model;
+  const prepared =
+    model?.thinking && !usesTemplateThinkingSwitch(model)
+      ? withNoThink(messages)
+      : messages;
+  return generateLLMResponse(
+    prepared,
+    get,
+    undefined,
+    chatTemplateFlagsFor(model, false)
+  )
     .then((result) => (result.stalled ? NO_LLM_RESPONSE : result))
     .catch((error) => {
       console.warn('Refinement generation failed, keeping the answer', error);
       return NO_LLM_RESPONSE;
     });
+};
 
 export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
