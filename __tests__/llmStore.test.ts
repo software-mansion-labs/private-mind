@@ -2979,6 +2979,28 @@ describe('runBenchmark', () => {
     expect(useLLMStore.getState().isBenchmarking).toBe(false);
   });
 
+  it('measures a template-thinking model with reasoning switched off', async () => {
+    await loadModel();
+    let flagsAtGenerate: unknown;
+    mockInstance.generate.mockImplementation(async () => {
+      flagsAtGenerate =
+        mockInstance.setChatTemplateFlags.mock.calls.at(-1)?.[0];
+      return 'benchmark result';
+    });
+    useLLMStore.setState({
+      model: {
+        ...baseModel,
+        modelName: 'LFM 3 - 1.7B',
+        family: 'LFM 3',
+        thinking: true,
+      },
+    });
+
+    await useLLMStore.getState().runBenchmark();
+
+    expect(flagsAtGenerate).toEqual({ enable_thinking: false });
+  });
+
   it('sets isGenerating and isBenchmarking flags while running', async () => {
     await loadModel();
     let wasGenerating = false;
