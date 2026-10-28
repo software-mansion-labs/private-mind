@@ -768,6 +768,42 @@ describe('sendChatMessage', () => {
     });
   });
 
+  it('ignores a stray close tag when the template already closed the think block', async () => {
+    const lfm3 = {
+      ...baseModel,
+      modelName: 'LFM 3 - 1.7B',
+      family: 'LFM 3',
+      thinking: true,
+    };
+    useLLMStore.setState({
+      model: lfm3,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    let seenWhileStreaming: string | undefined;
+    mockInstance.generate.mockImplementationOnce(async () => {
+      capturedTokenCallback!('Liście zmieniają kolor');
+      await flushFrame();
+      capturedTokenCallback!('</think>');
+      capturedTokenCallback!(' jesienią.');
+      await flushFrame();
+      seenWhileStreaming = useLLMStore
+        .getState()
+        .activeChatMessages.at(-1)?.content;
+      return 'Liście zmieniają kolor</think> jesienią.';
+    });
+
+    await useLLMStore.getState().sendChatMessage('a dlaczego?', 1, noSources, {
+      ...settings,
+      thinkingEnabled: false,
+    });
+
+    expect(seenWhileStreaming).toBe('Liście zmieniają kolor jesienią.');
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Liście zmieniają kolor jesienią.'
+    );
+  });
+
   it('runs a nudge retry of a suffix-thinking model with /no_think', async () => {
     (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
       { role: 'system', content: 'You are helpful.' },
