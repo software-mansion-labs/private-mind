@@ -2,6 +2,7 @@ import {
   BACKGROUND_RELEASE_DELAY_MS,
   MODEL_WARMUP_TIMEOUT_MS,
   useLLMStore,
+  FIRST_TOKEN_TIMEOUT_MS,
 } from '../store/llmStore';
 import { LLMModule } from 'react-native-executorch/legacy';
 import * as chatRepository from '../database/chatRepository';
@@ -806,6 +807,34 @@ describe('sendChatMessage', () => {
       content: string;
     }[];
     expect(retry.at(-1)!.content).toMatch(/ \/no_think$/);
+  });
+
+  it('interrupts a turn that yields no token within the first-token budget', async () => {
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    mockInstance.generate.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          mockInstance.interrupt.mockImplementationOnce(() => resolve(''));
+        })
+    );
+    jest.useFakeTimers();
+    try {
+      const sending = useLLMStore
+        .getState()
+        .sendChatMessage('hi', 1, noSources, settings);
+      await jest.advanceTimersByTimeAsync(FIRST_TOKEN_TIMEOUT_MS + 1);
+      await sending;
+    } finally {
+      jest.useRealTimers();
+    }
+
+    expect(mockInstance.interrupt).toHaveBeenCalled();
+    expect(useLLMStore.getState().isGenerating).toBe(false);
+    expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
   });
 
   it('returns early when db is not set', async () => {
