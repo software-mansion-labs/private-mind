@@ -675,6 +675,139 @@ describe('sendChatMessage', () => {
     );
   });
 
+  describe('a model that opens its think block from the chat template', () => {
+    const lfm3 = {
+      ...baseModel,
+      modelName: 'LFM 3 - 1.7B',
+      family: 'LFM 3',
+      thinking: true,
+    };
+
+    it('shows the streamed reasoning inside a think block from the first token', async () => {
+      useLLMStore.setState({
+        model: lfm3,
+        activeChatId: 1,
+        activeChatMessages: [],
+      });
+      let seenWhileStreaming: string | undefined;
+      mockInstance.generate.mockImplementationOnce(async () => {
+        capturedTokenCallback!('We need');
+        await flushFrame();
+        seenWhileStreaming = useLLMStore
+          .getState()
+          .activeChatMessages.at(-1)?.content;
+        capturedTokenCallback!(' to answer.</think>Blue sky.');
+        await flushFrame();
+        return 'We need to answer.</think>Blue sky.';
+      });
+
+      await useLLMStore
+        .getState()
+        .sendChatMessage('Why is the sky blue?', 1, noSources, {
+          ...settings,
+          thinkingEnabled: true,
+        });
+
+      expect(mockInstance.setChatTemplateFlags).toHaveBeenCalledWith({
+        enable_thinking: true,
+      });
+      expect(seenWhileStreaming).toBe('<think>We need');
+      expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+        '<think>We need to answer.</think>Blue sky.'
+      );
+    });
+
+    it('runs a nudge retry with thinking switched off', async () => {
+      (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+        { role: 'system', content: 'You are helpful.' },
+        {
+          role: 'user',
+          content:
+            'Kurs bitcoina wynosi dziś 98 000 USD. Kurs ethereum wynosi dziś 3 200 USD.\n\nporównaj kurs bitcoina i ethereum',
+        },
+      ]);
+      const flagsSeenByRetry: unknown[] = [];
+      mockInstance.generate
+        .mockResolvedValueOnce(
+          '</think>Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.'
+        )
+        .mockImplementationOnce(async () => {
+          flagsSeenByRetry.push(
+            mockInstance.setChatTemplateFlags.mock.calls.at(-1)?.[0]
+          );
+          return 'Bitcoin kosztuje około 98 000 USD, a ethereum około 3 200 USD.';
+        })
+        .mockResolvedValue('');
+      useLLMStore.setState({
+        model: lfm3,
+        activeChatId: 1,
+        activeChatMessages: [],
+      });
+      const withSubQueries = async () => ({
+        ...(await noSources()),
+        webSubQueries: ['kurs bitcoin', 'kurs ethereum'],
+      });
+
+      await useLLMStore
+        .getState()
+        .sendChatMessage(
+          'porównaj kurs bitcoina i ethereum',
+          1,
+          withSubQueries,
+          {
+            ...settings,
+            thinkingEnabled: true,
+          }
+        );
+
+      expect(flagsSeenByRetry).toEqual([{ enable_thinking: false }]);
+      expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+        'Bitcoin kosztuje około 98 000 USD, a ethereum około 3 200 USD.'
+      );
+    });
+  });
+
+  it('runs a nudge retry of a suffix-thinking model with /no_think', async () => {
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content:
+          'Kurs bitcoina wynosi dziś 98 000 USD. Kurs ethereum wynosi dziś 3 200 USD.\n\nporównaj kurs bitcoina i ethereum',
+      },
+    ]);
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        'Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.'
+      )
+      .mockResolvedValueOnce(
+        'Bitcoin kosztuje około 98 000 USD, a ethereum około 3 200 USD.'
+      )
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: { ...baseModel, thinking: true },
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const withSubQueries = async () => ({
+      ...(await noSources()),
+      webSubQueries: ['kurs bitcoin', 'kurs ethereum'],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('porównaj kurs bitcoina i ethereum', 1, withSubQueries, {
+        ...settings,
+        thinkingEnabled: true,
+      });
+
+    const retry = mockInstance.generate.mock.calls[1][0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(retry.at(-1)!.content).toMatch(/ \/no_think$/);
+  });
+
   it('returns early when db is not set', async () => {
     useLLMStore.setState({ db: null });
     await useLLMStore.getState().sendChatMessage('hi', 1, noSources, settings);
