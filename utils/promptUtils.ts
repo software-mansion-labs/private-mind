@@ -8,6 +8,7 @@ import { isGreetingOnly } from './openingGreeting';
 import { questionForImage } from './imageQuestion';
 import { OPENING_WELCOME_INSTRUCTION } from '../constants/opening-greetings';
 import { Model } from '../database/modelRepository';
+import { usesTemplateThinkingSwitch } from '../constants/model-profiles';
 import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
 import { type Message as ExecutorchMessage } from 'react-native-executorch/legacy';
 import {
@@ -772,10 +773,12 @@ export const prepareMessagesForLLM = (
 
   lastMessage.content += answerLanguageAnchor(language);
 
-  if (settings.thinkingEnabled) {
-    lastMessage.content += ' /think';
-  } else if (model.thinking) {
-    lastMessage.content += ' /no_think';
+  if (!usesTemplateThinkingSwitch(model)) {
+    if (settings.thinkingEnabled) {
+      lastMessage.content += ' /think';
+    } else if (model.thinking) {
+      lastMessage.content += ' /no_think';
+    }
   }
 
   const budgetSample = `${messagesWithSystemPrompt[0].content}${context.join(

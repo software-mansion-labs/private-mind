@@ -1,4 +1,8 @@
-import { mapOutsideThink, unclosedThinkAsAnswer } from '../utils/thinking';
+import {
+  mapOutsideThink,
+  unclosedThinkAsAnswer,
+  withTemplateThinkOpener,
+} from '../utils/thinking';
 
 describe('mapOutsideThink', () => {
   const upper = (segment: string) => segment.toUpperCase();
@@ -41,5 +45,19 @@ describe('a think block the model opened and never closed, with thinking off', (
 
   it('leaves an answer without a think block alone', () => {
     expect(unclosedThinkAsAnswer(answer)).toBe(answer);
+  });
+});
+
+describe('withTemplateThinkOpener', () => {
+  it('opens the block the chat template already opened in the prompt', () => {
+    expect(withTemplateThinkOpener('\nreasoning</think>answer')).toBe(
+      '<think>\nreasoning</think>answer'
+    );
+  });
+
+  it('leaves text that opens its own block alone', () => {
+    expect(withTemplateThinkOpener('<think>x</think>y')).toBe(
+      '<think>x</think>y'
+    );
   });
 });

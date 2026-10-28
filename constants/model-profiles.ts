@@ -16,7 +16,10 @@ export interface ModelProfile {
   webEmbeddingRetrieval: boolean;
   webSearchReady: boolean;
   webSearchMinDeviceMemoryGB?: number;
+  thinkingSwitch: ThinkingSwitch;
 }
+
+export type ThinkingSwitch = 'suffix' | 'template';
 
 export const GENERATION_RESERVE_SHARE = 0.25;
 export const GENERATION_RESERVE_MIN_TOKENS = 256;
@@ -37,6 +40,7 @@ export const DEFAULT_PROFILE: ModelProfile = {
   ragMaxRelevantChunks: MAX_RELEVANT_CHUNKS,
   webEmbeddingRetrieval: true,
   webSearchReady: true,
+  thinkingSwitch: 'suffix',
 };
 
 export const WEB_PLANNER_MATRIX: Record<string, WebPlannerMode> = {
@@ -130,7 +134,9 @@ export const WEB_ANSWER_EVIDENCE: Record<string, string> = {
     'source-by-source enumeration. Not ready as a default web model.',
 };
 
-export const PROFILE_BY_FAMILY: Record<string, Partial<ModelProfile>> = {};
+export const PROFILE_BY_FAMILY: Record<string, Partial<ModelProfile>> = {
+  'LFM 3': { thinkingSwitch: 'template' },
+};
 
 export const PROFILE_BY_MODEL: Record<string, Partial<ModelProfile>> = {
   'Qwen 2.5 - 0.5B': { webSearchReady: false },
@@ -194,6 +200,16 @@ export const usesLlmPlanner = (
 export const isWebSearchReady = (
   model: ProfileTarget | null | undefined
 ): boolean => getModelProfile(model).webSearchReady;
+
+export const usesTemplateThinkingSwitch = (
+  model: ProfileTarget | null | undefined
+): boolean => getModelProfile(model).thinkingSwitch === 'template';
+
+export const chatTemplateFlagsFor = (
+  model: ProfileTarget | null | undefined,
+  thinkingEnabled: boolean
+): Record<string, unknown> =>
+  usesTemplateThinkingSwitch(model) ? { enable_thinking: thinkingEnabled } : {};
 
 export const getWebSearchMinDeviceMemoryGB = (
   model: ProfileTarget | null | undefined
