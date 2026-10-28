@@ -1,5 +1,7 @@
 import { estimatePromptTokens } from '../constants/context-window';
 import {
+  dropStrayThinkClose,
+  hasUnclosedThink,
   mapOutsideThink,
   stripThinkBlocks,
   unclosedThinkAsAnswer,
@@ -239,6 +241,7 @@ let streamStopRequested = false;
 let streamFlushScheduled = false;
 let streamedSoFar = '';
 let thinkOpenedByTemplate = false;
+let thinkClosedByTemplate = false;
 let generationSawToken = false;
 
 const resetStreamState = () => {
@@ -478,11 +481,14 @@ const loadModelInstance = async (
       return;
     }
     if (!streamBuffer) return;
+    const chunk = thinkClosedByTemplate
+      ? dropStrayThinkClose(streamBuffer, hasUnclosedThink(streamedSoFar))
+      : streamBuffer;
+    streamBuffer = '';
     const text =
       !streamedSoFar && thinkOpenedByTemplate
-        ? withTemplateThinkOpener(streamBuffer)
-        : streamBuffer;
-    streamBuffer = '';
+        ? withTemplateThinkOpener(chunk)
+        : chunk;
     streamedSoFar += text;
     const snapshot = get();
     const turnLocalId = snapshot.generatingMessageLocalId;
@@ -908,6 +914,7 @@ const generateLLMResponse = (
     applyGenerationConfig(instance, generationConfig);
     instance.setChatTemplateFlags(chatTemplateFlags);
     thinkOpenedByTemplate = chatTemplateFlags.enable_thinking === true;
+    thinkClosedByTemplate = chatTemplateFlags.enable_thinking === false;
 
     generationSawToken = false;
     let firstTokenTimedOut = false;
@@ -941,7 +948,9 @@ const generateLLMResponse = (
       return {
         response: thinkOpenedByTemplate
           ? withTemplateThinkOpener(finalResponse)
-          : finalResponse,
+          : thinkClosedByTemplate
+            ? dropStrayThinkClose(finalResponse)
+            : finalResponse,
         performance: { timeToFirstToken, tokensPerSecond },
         stalled,
       };
