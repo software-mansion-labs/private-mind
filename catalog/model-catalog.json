@@ -154,6 +154,34 @@
       "systemPrompt": "You are a helpful vision assistant. When the user shares an image, analyze it carefully and provide detailed, accurate descriptions and answers about its content. When no image is provided, respond as a knowledgeable and helpful general assistant."
     },
     {
+      "modelName": "LFM 3 - 1.7B",
+      "family": "LFM 3",
+      "tokenizerPath": "https://huggingface.co/software-mansion/react-native-executorch-lfm-3/resolve/v1.0.0/1_7b/tokenizer.json",
+      "modelPath": "https://huggingface.co/software-mansion/react-native-executorch-lfm-3/resolve/v1.0.0/1_7b/xnnpack/lfm_3_1_7b_xnnpack_8da4w.pte",
+      "tokenizerConfigPath": "https://huggingface.co/software-mansion/react-native-executorch-lfm-3/resolve/v1.0.0/1_7b/tokenizer_config.json",
+      "source": "remote",
+      "parameters": 1.73,
+      "modelSize": 1.25,
+      "featured": true,
+      "thinking": true,
+      "labels": ["Balanced", "Reasoning"]
+    },
+    {
+      "modelName": "LFM 3 VL - 2B",
+      "family": "LFM 3",
+      "modelPath": "https://huggingface.co/software-mansion/react-native-executorch-lfm-3/resolve/v1.0.0/vl_2b/xnnpack/lfm_3_vl_2b_xnnpack_8da4w.pte",
+      "tokenizerPath": "https://huggingface.co/software-mansion/react-native-executorch-lfm-3/resolve/v1.0.0/vl_2b/tokenizer.json",
+      "tokenizerConfigPath": "https://huggingface.co/software-mansion/react-native-executorch-lfm-3/resolve/v1.0.0/vl_2b/tokenizer_config.json",
+      "source": "remote",
+      "parameters": 1.92,
+      "modelSize": 2.01,
+      "featured": true,
+      "thinking": true,
+      "vision": true,
+      "labels": ["Vision"],
+      "systemPrompt": "You are a helpful vision assistant. When the user shares an image, analyze it carefully and provide detailed, accurate descriptions and answers about its content. When no image is provided, respond as a knowledgeable and helpful general assistant."
+    },
+    {
       "modelName": "Bielik - v3.0",
       "family": "Bielik",
       "tokenizerPath": "https://huggingface.co/software-mansion/react-native-executorch-bielik-v3.0/resolve/v0.9.0/tokenizer.json",
