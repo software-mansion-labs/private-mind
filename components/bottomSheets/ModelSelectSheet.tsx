@@ -18,6 +18,8 @@ import PrimaryButton from '../PrimaryButton';
 import BottomSheetSearchInput from './BottomSheetSearchInput';
 import { Feedback } from '../../utils/Feedback';
 
+const LIST_SNAP_POINTS = ['50%', '90%'];
+
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
   onModelPicked: (model: Model) => void;
@@ -35,6 +37,7 @@ const ModelSelectSheet = ({
   const downloadedModels = useModelStore((state) => state.downloadedModels);
   const [search, setSearch] = useState('');
   const [snapIndex, setSnapIndex] = useState(0);
+  const hasModels = downloadedModels.length > 0;
 
   const filteredModels = useMemo(() => {
     const needle = search.toLowerCase();
@@ -47,8 +50,8 @@ const ModelSelectSheet = ({
     <BackDismissibleSheetModal
       ref={bottomSheetModalRef}
       index={snapIndex}
-      snapPoints={['50%', '90%']}
-      enableDynamicSizing={false}
+      snapPoints={hasModels ? LIST_SNAP_POINTS : undefined}
+      enableDynamicSizing={!hasModels}
       keyboardBehavior={Platform.OS === 'ios' ? 'interactive' : 'fillParent'}
       keyboardBlurBehavior="restore"
       onChange={(index) => {
@@ -63,7 +66,7 @@ const ModelSelectSheet = ({
         onSheetStateChange?.(false);
       }}
     >
-      {downloadedModels.length > 0 ? (
+      {hasModels ? (
         <View style={styles.content}>
           <View style={styles.header}>
             <Text style={styles.title}>Select a model</Text>
@@ -94,7 +97,7 @@ const ModelSelectSheet = ({
           />
         </View>
       ) : (
-        <BottomSheetView style={[styles.content, styles.emptyContent]}>
+        <BottomSheetView style={styles.emptyContent}>
           <Text style={styles.title}>You have no available models yet</Text>
           <Text style={styles.subText}>
             To use Private Mind you need to have at least one model downloaded
@@ -126,8 +129,10 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: space.four,
     },
     emptyContent: {
-      gap: space.six,
+      paddingTop: space.two,
       paddingHorizontal: space.four,
+      paddingBottom: theme.insets.bottom + 16,
+      gap: space.six,
     },
     title: {
       ...textStyles.titleSheet,
