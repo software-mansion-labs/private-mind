@@ -16,6 +16,7 @@ import InfoCircleIcon from '../../assets/icons/info-circle.svg';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
 import DownloadIcon from '../../assets/icons/download.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
+import ShareIcon from '../../assets/icons/upload.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useImportChat } from '../../hooks/useImportChat';
@@ -27,6 +28,7 @@ import {
   useSettingsStore,
 } from '../../store/settingsStore';
 import { Feedback } from '../../utils/Feedback';
+import { shareApp } from '../../utils/shareApp';
 import { Theme } from '../../styles/colors';
 import { space } from '../../constants/design-system';
 
@@ -160,6 +162,11 @@ const SettingsScreen = () => {
             }
             onPress={handleOpenAppInfo}
             showChevron
+          />
+          <SettingsRow
+            label="Share Private Mind"
+            icon={<ShareIcon width={20} height={20} style={styles.rowIcon} />}
+            onPress={shareApp}
           />
         </SettingsGroup>
       </ScrollView>
