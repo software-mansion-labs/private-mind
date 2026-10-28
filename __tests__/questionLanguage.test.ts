@@ -243,7 +243,7 @@ describe('detectThreadLanguage across scripts', () => {
     expect(
       detectThreadLanguage([
         'زمین سورج کے گرد کیوں گھومتی ہے؟',
-        'Write a 300-word story about a lighthouse keeper.',
+        'Lighthouse keeper, 300 words.',
       ])
     ).toBeNull();
   });
@@ -252,7 +252,7 @@ describe('detectThreadLanguage across scripts', () => {
     expect(
       detectThreadLanguage([
         'jaka jest dzisiaj pogoda w Gdansku',
-        'Write a 300-word story about a lighthouse keeper.',
+        'Lighthouse keeper, 300 words.',
       ])?.code
     ).toBe('pl');
   });
@@ -264,5 +264,15 @@ describe('detectThreadLanguage across scripts', () => {
         'زمین سورج کے گرد کیوں گھومتی ہے؟',
       ])?.code
     ).toBe('ur');
+  });
+});
+
+describe('detectQuestionLanguage on English requests without question words', () => {
+  it.each([
+    'Write a 300-word story about a lighthouse keeper.',
+    'Tell me about your day.',
+    'Explain this to a child.',
+  ])('detects English in %s', (question) => {
+    expect(detectQuestionLanguage(question)?.code).toBe('en');
   });
 });
