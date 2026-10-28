@@ -3227,3 +3227,54 @@ describe('questions whose answer is a set of options or a measured value', () =>
     );
   });
 });
+
+describe('prepareMessagesForLLM and earlier reasoning', () => {
+  const turn = (
+    id: number,
+    role: Message['role'],
+    content: string,
+    extra: Partial<Message> = {}
+  ): Message => ({ id, chatId: 1, role, content, timestamp: 0, ...extra });
+
+  it('sends earlier answers without their think blocks', () => {
+    const result = prepareMessagesForLLM(
+      [
+        turn(1, 'user', 'Why is the sky blue?'),
+        turn(
+          2,
+          'assistant',
+          '<think>Rayleigh scattering.</think>Because of scattering.'
+        ),
+        turn(3, 'user', 'And at sunset?'),
+        turn(4, 'assistant', ''),
+      ],
+      [],
+      baseSettings,
+      baseModel
+    );
+
+    expect(result.map((m) => m.content)).toContain('Because of scattering.');
+    expect(result.some((m) => String(m.content).includes('<think>'))).toBe(
+      false
+    );
+  });
+
+  it('drops an answer that was stopped while it was still reasoning', () => {
+    const result = prepareMessagesForLLM(
+      [
+        turn(1, 'user', 'Why is the sky blue?'),
+        turn(2, 'assistant', '<think>Rayleigh scattering, let me', {
+          stoppedByUser: true,
+        }),
+        turn(3, 'user', 'And at sunset?'),
+        turn(4, 'assistant', ''),
+      ],
+      [],
+      baseSettings,
+      baseModel
+    );
+
+    expect(result.filter((m) => m.role === 'assistant')).toHaveLength(0);
+    expect(result.at(-1)?.content).toContain('And at sunset?');
+  });
+});

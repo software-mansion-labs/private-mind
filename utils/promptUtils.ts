@@ -9,6 +9,7 @@ import { questionForImage } from './imageQuestion';
 import { OPENING_WELCOME_INSTRUCTION } from '../constants/opening-greetings';
 import { Model } from '../database/modelRepository';
 import { usesTemplateThinkingSwitch } from '../constants/model-profiles';
+import { stripThinkBlocks } from './thinking';
 import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
 import { type Message as ExecutorchMessage } from 'react-native-executorch/legacy';
 import {
@@ -646,6 +647,11 @@ const withoutAnsweredOpeningGreeting = <T extends Message>(
   return chatMovedOn ? later : messages;
 };
 
+const withoutReasoning = <T extends Message>(message: T): T =>
+  message.role === 'assistant'
+    ? { ...message, content: stripThinkBlocks(message.content) }
+    : message;
+
 const withQuestionForImage = (message: Message): Message =>
   message.imagePath
     ? { ...message, content: questionForImage(message.content) }
@@ -747,12 +753,9 @@ export const prepareMessagesForLLM = (
         msg.role !== 'event' && !isAbandonedQuestion(msg) && !wasCutShort(msg)
     )
   );
-  const lastNonEventMessage = nonEventMessages.at(-1);
-  const messagesForLLM =
-    lastNonEventMessage?.role === 'assistant' &&
-    lastNonEventMessage.content.trim().length === 0
-      ? nonEventMessages.slice(0, -1)
-      : nonEventMessages;
+  const messagesForLLM = nonEventMessages
+    .map(withoutReasoning)
+    .filter((msg) => msg.role !== 'assistant' || msg.content.trim() !== '');
 
   const filteredMessages: ExecutorchMessage[] = messagesForLLM.map((msg) => ({
     role: msg.role,
