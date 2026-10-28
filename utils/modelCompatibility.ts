@@ -103,7 +103,7 @@ export const isMemoryConstrained = (
   model?: { modelSize?: number } | null
 ): boolean => {
   try {
-    const headroom = getTotalMemoryGB() - (model?.modelSize ?? 0);
+    const headroom = nominalDeviceMemoryGB() - (model?.modelSize ?? 0);
     return headroom < lowMemoryHeadroomGB();
   } catch {
     return false;
@@ -114,7 +114,7 @@ export const isHighMemoryDevice = (
   model?: { modelSize?: number } | null
 ): boolean => {
   try {
-    const headroom = getTotalMemoryGB() - (model?.modelSize ?? 0);
+    const headroom = nominalDeviceMemoryGB() - (model?.modelSize ?? 0);
     return headroom >= STRONG_DEVICE_MEMORY_GB;
   } catch {
     return false;
