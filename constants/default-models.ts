@@ -47,7 +47,7 @@ const GEMMA4_E2B_MM = {
 } as const;
 
 const LFM3_HF_BASE =
-  'https://huggingface.co/software-mansion/react-native-executorch-lfm-3/resolve/v1.0.0';
+  'https://huggingface.co/software-mansion/LFM3-ExecuTorch/resolve/v1.0.0';
 
 const LFM3_1_7B_QUANTIZED = {
   modelName: 'lfm3-1.7b',
