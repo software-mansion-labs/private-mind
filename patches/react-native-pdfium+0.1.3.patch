@@ -10,3 +10,20 @@ index 0ec9464..c297cc7 100644
  #include <react/jni/JMessageQueueThread.h>
  
  #include <memory>
+diff --git a/node_modules/react-native-pdfium/Pdfium.podspec b/node_modules/react-native-pdfium/Pdfium.podspec
+index 0000000..0000001 100644
+--- a/node_modules/react-native-pdfium/Pdfium.podspec
++++ b/node_modules/react-native-pdfium/Pdfium.podspec
+@@ -50,9 +50,10 @@ Pod::Spec.new do |s|
+ 
+   # --- Source File Definitions ---
+   s.source_files = [
+-    "ios/**/*.{m,mm,h}",      # Objective-C++ bridge files
+-    "common/**/*.{cpp,c,h,hpp}", # Shared C++ source files
++    "ios/**/*.{m,mm}",
++    "common/**/*.{cpp,c}",
+   ]
++  s.preserve_paths = ["ios/**/*.h", "common/**/*.{h,hpp}"]
+ 
+   # Install React Native dependencies
+   install_modules_dependencies(s)

@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
+import ThinkingGlowHost from '../../../components/chat-screen/ThinkingGlowHost';
 import { useState } from 'react';
 import { useLLMStore } from '../../../store/llmStore';
 import { useModelStore } from '../../../store/modelStore';
@@ -23,7 +24,11 @@ export default function ChatScreenWrapper() {
 
   const key = `${id}-${modelId || 'default'}`;
 
-  return <ChatScreenInner key={key} />;
+  return (
+    <ThinkingGlowHost>
+      <ChatScreenInner key={key} />
+    </ThinkingGlowHost>
+  );
 }
 
 function ChatScreenInner() {

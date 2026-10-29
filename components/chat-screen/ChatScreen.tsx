@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard, StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { router } from 'expo-router';
@@ -8,6 +7,7 @@ import { useKeyboardLift } from './useKeyboardLift';
 import { useModelSwitch } from './useModelSwitch';
 import { useSendChatMessage } from './useSendChatMessage';
 import { useChatScreenLayout } from './useChatScreenLayout';
+import { useThinkingGlow } from './useThinkingGlow';
 import { useChatScreenActions } from './useChatScreenActions';
 import Animated, {
   useAnimatedStyle,
@@ -21,7 +21,7 @@ import { Chat, type Message } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
 import ChatBar from './ChatBar';
-import { TopFade, topFadeHeight } from './TopFade';
+import { topFadeHeight } from './TopFade';
 import UserMessageActionMenu from './UserMessageActionMenu';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
@@ -111,13 +111,13 @@ export default function ChatScreen({
     userActionMenu,
     setUserActionMenu,
     userActionMenuPosition,
-    gradientStyle,
-    topFadeStyle,
-    showGradient,
     fadeBottom,
     topFadeAnchor,
-    emptyFadeColors,
-  } = useChatScreenLayout({ isEmpty, headerTitleBottom, headerHeight, theme });
+  } = useChatScreenLayout({ headerTitleBottom, headerHeight });
+  const lastMessage = messageHistory[messageHistory.length - 1];
+  const awaitingReply =
+    lastMessage?.role === 'assistant' && lastMessage.content === '';
+  useThinkingGlow({ chatId, isEmpty, awaitingReply });
   const chatBarTopClearance = Math.max(
     headerHeight,
     topFadeHeight(topFadeAnchor)
@@ -288,17 +288,6 @@ export default function ChatScreen({
       collapsable={false}
       onLayout={handleRootLayout}
     >
-      {showGradient && (
-        <Animated.View
-          style={[StyleSheet.absoluteFill, gradientStyle]}
-          pointerEvents="none"
-        >
-          <LinearGradient
-            colors={[theme.bg.softPrimary, theme.bg.main]}
-            style={StyleSheet.absoluteFill}
-          />
-        </Animated.View>
-      )}
       <View style={styles.messagesLayer} pointerEvents="box-none">
         <Messages
           ref={messagesRef}
@@ -360,19 +349,6 @@ export default function ChatScreen({
         />
       </Animated.View>
 
-      {showGradient && (
-        <Animated.View
-          style={[
-            styles.topFadeOverlay,
-            { height: topFadeHeight(topFadeAnchor) },
-            topFadeStyle,
-          ]}
-          pointerEvents="none"
-        >
-          <TopFade anchor={topFadeAnchor} colors={emptyFadeColors} />
-        </Animated.View>
-      )}
-
       {userActionMenuPosition && (
         <View
           style={[styles.userActionMenuOverlay, userActionMenuPosition]}
@@ -392,11 +368,10 @@ export default function ChatScreen({
   );
 }
 
-const createStyles = (theme: Theme) =>
+const createStyles = (_theme: Theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.bg.softPrimary,
     },
     messagesLayer: {
       flex: 1,
@@ -408,14 +383,6 @@ const createStyles = (theme: Theme) =>
       position: 'absolute',
       zIndex: 1000,
       elevation: 1000,
-    },
-    topFadeOverlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 3,
-      elevation: 3,
     },
     chatBarSticky: {
       position: 'absolute',
