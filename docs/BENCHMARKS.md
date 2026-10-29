@@ -14,7 +14,7 @@ Speeds are per device and drift with heat and battery: on the Pixel 10 the
 same model went from 17 tok/s to 5–9 tok/s inside one hour-long session.
 Compare like with like (same device, same scenario, cold vs warm model).
 
-## 1.3.5 (Android 173, iOS 25) — react-native-executorch 0.11.0
+## 1.3.5 (Android 173, iOS 26) — react-native-executorch 0.11.0
 
 ### LFM 3 by device, manual regression (release test builds, 2026-10-28)
 
