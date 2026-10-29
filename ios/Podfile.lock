@@ -1828,6 +1828,30 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - react-native-skia (2.6.2):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React
+    - React-callinvoker
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - react-native-webview (13.16.1):
     - hermes-engine
     - RCTRequired
@@ -2827,6 +2851,7 @@ DEPENDENCIES:
   - react-native-keyboard-controller (from `../node_modules/react-native-keyboard-controller`)
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
+  - "react-native-skia (from `../node_modules/@shopify/react-native-skia`)"
   - react-native-webview (from `../node_modules/react-native-webview`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-networking (from `../node_modules/react-native/ReactCommon/react/networking`)
@@ -3051,6 +3076,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-community/netinfo"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
+  react-native-skia:
+    :path: "../node_modules/@shopify/react-native-skia"
   react-native-webview:
     :path: "../node_modules/react-native-webview"
   React-NativeModulesApple:
@@ -3170,7 +3197,7 @@ SPEC CHECKSUMS:
   ExpoLocalization: f204d4ca963bfcea932068a978247878f664f5a4
   ExpoLogBox: 80957303325cd4439137765c90a87d7f22aaf2ff
   ExpoMediaLibrary: 341321256621e7bf220b6272c42fedcb095607d0
-  ExpoModulesCore: b86a70e5500113f5cebb8cd1716919b205025187
+  ExpoModulesCore: ce66dcc64661acdfc13eadcd3c1e8428c39a9137
   ExpoModulesJSI: 383849017851b1ebacbd78cfaa32b18b6152585e
   ExpoModulesWorklets: 1916bfde983876e6caf849398b91a0b492b73869
   ExpoModulesWorkletsAdapter: 85697593f57f6fd1375621d545c596dcd59dac1f
@@ -3178,7 +3205,7 @@ SPEC CHECKSUMS:
   ExpoRouter: 72006aae54ac9e2b17b7211214fe3c7c29a39e97
   ExpoSharing: 5cc46810cfba71e331f649d947660213082094c1
   ExpoSplashScreen: e771da4f26d550ea4fd067d8fb942657e47bb846
-  ExpoSQLite: 8a9c37ce3333cbf88ca8601f4ed1beeb544c93a2
+  ExpoSQLite: 2e30c0abbc8e107050440b3a2d7abd1726fb2bd2
   ExpoStoreReview: a70a18f8ec77262d6c63a6578ce4de3b3ee8ddf0
   ExpoSymbols: 37a3a6e5847edb08b83a5ee04d3b46525e205f00
   ExpoUI: 04f60b7b9789e2cdc337747546b892e3dd8c17d6
@@ -3190,7 +3217,7 @@ SPEC CHECKSUMS:
   MMKVCore: a58d2ce5b580948122e85be3ddf378c9b1ef739e
   op-sqlite: 10397885c9f2d478a9d099d20e2a7915c5fda944
   opencv-rne: 2305807573b6e29c8c87e3416ab096d09047a7a0
-  Pdfium: 793a9216d643b84e7f93160a3f0b30962ede1b58
+  Pdfium: c19066f81076017a1bd70977f10b2f19e73e1dc9
   Pulsar: 26e18cdb1c30b233be9bec431aeec9b8048c5ae9
   PulsarHaptics: 62d13e9ef63535263f110a925e587d5d027dc683
   RCTDeprecation: 96f68ebf33f8762466b01d57d6e873c4f30efb07
@@ -3232,10 +3259,11 @@ SPEC CHECKSUMS:
   React-mutationobservernativemodule: 530bff1bba9511a5133e3cf8170e3b2c0df49e89
   react-native-background-downloader: 330dc6a497b8e5ee328a95af9a34aaa1c6bf3d54
   react-native-blob-util: a531aa1020e42b454a2bc0d324daa7da8328023d
-  react-native-executorch: 1b7c390ebb5dde2c302b5cbf3cdce405d0230bd8
+  react-native-executorch: 69da0781f27bde7c44e5021d1f715fc5566a05c2
   react-native-keyboard-controller: 13b569883abad989ad75b635c8904527857b0e5f
   react-native-netinfo: 2f906d5d9a639090ed1c079135d6485a95f749f1
   react-native-safe-area-context: 6b4966397ada0f7dd481e4486a2ef936834861a1
+  react-native-skia: b319389e81797af11985805fcfad0714b8670cab
   react-native-webview: 2da09bdea1aeb6c46e27dd94632e21059cade6c1
   React-NativeModulesApple: 2b658272ca69df0694cf5d54f9510aa7c33977bc
   React-networking: 6be0b80e18e710dd30e77b04838ec46666a7bb78
@@ -3287,4 +3315,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: 5d671e59fed505c672a2356c9699ee2391e3d7be
 
-COCOAPODS: 1.16.2
+COCOAPODS: 1.17.0

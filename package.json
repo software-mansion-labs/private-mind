@@ -92,6 +92,7 @@
     "@react-native-rag/op-sqlite": "^0.9.0",
     "@react-native/metro-config": "0.86.3",
     "@shopify/flash-list": "2.0.2",
+    "@shopify/react-native-skia": "2.6.2",
     "expo": "^57.0.27",
     "expo-application": "~57.0.3",
     "expo-asset": "~57.0.19",
