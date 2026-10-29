@@ -44,7 +44,7 @@ Gate build 172 (1.3.4 base + the LFM 3 stack, before the benchmark learned to
 switch reasoning off). Scenario columns are passed/total turns for base chat,
 short facts and document questions. A turn fails on any check (time budget,
 cut-off, wrong fact, foreign script, list length), so the counts are a strict
-regression signal, not a quality score. Interrupted after 14 of 18 models.
+regression signal, not a quality score. Interrupted after 14 of the 17 models the device offers.
 
 | Model                                  | Size    | Load   | Probe tok/s | ttft  | Peak mem | Avg turn tok/s | Base chat | Short facts | Document Q&A |
 | -------------------------------------- | ------- | ------ | ----------- | ----- | -------- | -------------- | --------- | ----------- | ------------ |
@@ -72,5 +72,38 @@ No generation errors and no crashes in any model of this run.
 
 ### Dev benchmark, Pixel 10, seed 1016 — run 2 (gate build 173, reasoning off)
 
-Pending: started 2026-10-28 22:10, results will be added when the run
-finishes.
+The release build plus the benchmark switching reasoning off through the chat
+template. All 17 models the device offers, 2026-10-28 22:10 to 2026-10-29
+02:47, no generation errors, no crashes. Same columns as run 1.
+
+| Model                      | Size    | Load   | Probe tok/s | ttft  | Peak mem | Avg turn tok/s | Base chat | Short facts | Document Q&A |
+| -------------------------- | ------- | ------ | ----------- | ----- | -------- | -------------- | --------- | ----------- | ------------ |
+| LFM 2.5 VL - 450M          | 0.65 GB | 1.5 s  | 72.8        | 0.4 s | 1.36 GB  | 144.4          | 3/6       | 3/5         | 3/4          |
+| Qwen 2.5 - 0.5B            | 0.81 GB | 3.0 s  | 48.0        | 0.7 s | 1.36 GB  | 66.9           | 2/6       | 2/5         | 1/4          |
+| Bielik - v3.0              | 0.86 GB | 5.2 s  | 14.6        | 3.0 s | 1.83 GB  | 11.2           | 1/6       | 1/5         | 3/4          |
+| Qwen 3 - 0.6B              | 0.94 GB | 4.3 s  | 23.3        | 1.1 s | 1.57 GB  | 18.6           | 4/6       | 2/5         | 3/4          |
+| LFM 2.5 - 1.2B             | 1.14 GB | 4.1 s  | 23.0        | 1.2 s | 1.66 GB  | 22.0           | 4/6       | 3/5         | 3/4          |
+| LLaMA 3.2 - 1B - SpinQuant | 1.14 GB | 6.3 s  | 17.2        | 1.6 s | 1.95 GB  | 15.3           | 1/6       | 1/5         | 3/4          |
+| LLaMA 3.2 - 1B - QLoRa     | 1.18 GB | 6.9 s  | 15.8        | 1.6 s | 2.36 GB  | 14.3           | 1/6       | 2/5         | 1/4          |
+| LFM 3 - 1.7B               | 1.25 GB | 8.2 s  | 14.0        | 2.1 s | 2.18 GB  | 12.4           | 2/6       | 1/5         | 3/4          |
+| Qwen 2.5 - 1.5B            | 1.76 GB | 6.8 s  | 14.6        | 2.0 s | 2.17 GB  | 12.8           | 1/6       | 1/5         | 3/4          |
+| LFM 3 VL - 2B              | 2.01 GB | 10.5 s | 14.8        | 2.1 s | 3.14 GB  | 14.1           | 5/6       | 5/5         | 3/4          |
+| Qwen 3 - 1.7B              | 2.16 GB | 7.7 s  | 10.1        | 1.9 s | 2.55 GB  | 11.2           | 2/6       | 3/5         | 2/4          |
+| LFM 2.5 VL - 1.6B          | 2.43 GB | 10.0 s | 23.4        | 1.1 s | 3.67 GB  | 20.5           | 3/6       | 3/5         | 2/4          |
+| Gemma 4 - 2B               | 2.50 GB | 14.6 s | 5.7         | 6.7 s | 3.30 GB  | 5.3            | 3/6       | 3/5         | 3/4          |
+| LLaMA 3.2 - 3B - SpinQuant | 2.55 GB | 14.5 s | 6.3         | 4.9 s | 3.78 GB  | 5.8            | 3/6       | 1/5         | 3/4          |
+| LLaMA 3.2 - 3B - QLoRa     | 2.65 GB | 13.7 s | 7.3         | 3.5 s | 4.21 GB  | 5.4            | 1/6       | 1/5         | 3/4          |
+| Qwen 2.5 - 3B              | 2.89 GB | 10.7 s | 8.7         | 3.7 s | 3.29 GB  | 7.2            | 1/6       | 1/5         | 2/4          |
+| Gemma 4 VL - 2B            | 4.00 GB | 21.7 s | 5.7         | 6.5 s | 6.16 GB  | 5.3            | 4/6       | 5/5         | 3/4          |
+
+LFM 3 - 1.7B still lost 6 of 15 turns to the 60 s budget with reasoning off:
+the answer comes first and complete, then the model keeps writing
+reasoning-like text ("Wait, let me finish correctly…", "Actually keep
+simpler") instead of stopping. LFM 3 VL - 2B does not do this and fails only
+on the two turns most models fail (seven-item Hindi list, Polish memo
+question). Gemma 4 VL - 2B peaks at 6.16 GB, which is what the 7 GB floor
+for the vision models is based on.
+
+The fastest two rows carry an `unreal-speed` finding on three turns (tok/s
+above what the probe measured), so read their average turn speed as an upper
+bound.
