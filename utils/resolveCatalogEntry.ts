@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { isVersionAtLeast } from './appVersion';
 import {
   type CatalogModel,
   type ModelCatalogEntry,
@@ -23,6 +24,14 @@ export const resolveCatalogEntry = (
       : resolvePerPlatform(entry.modelSize),
 });
 
+const runsOnAppVersion = (entry: ModelCatalogEntry, appVersion: string) =>
+  entry.minAppVersion === undefined ||
+  isVersionAtLeast(appVersion, entry.minAppVersion);
+
 export const resolveCatalogManifest = (
-  manifest: ModelCatalogManifest
-): CatalogModel[] => manifest.models.map(resolveCatalogEntry);
+  manifest: ModelCatalogManifest,
+  appVersion: string
+): CatalogModel[] =>
+  manifest.models
+    .filter((entry) => runsOnAppVersion(entry, appVersion))
+    .map(resolveCatalogEntry);
