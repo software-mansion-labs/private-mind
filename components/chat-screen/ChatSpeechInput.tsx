@@ -37,8 +37,15 @@ const ACTION_NOTES: Record<Phase, string> = {
   ended: 'Dictation stopped',
 };
 
-const shownTranscript = (committed: string, nonCommitted: string) =>
-  (committed.trim() + ' ' + nonCommitted.trim()).trim();
+const BRACKETED_ANNOTATION_ONLY = /^[([][^)\]]*[)\]]$/;
+
+const isAnnotationOnly = (transcript: string): boolean =>
+  BRACKETED_ANNOTATION_ONLY.test(transcript);
+
+const shownTranscript = (committed: string, nonCommitted: string) => {
+  const heard = (committed.trim() + ' ' + nonCommitted.trim()).trim();
+  return isAnnotationOnly(heard) ? '' : heard;
+};
 
 const ChatSpeechInput: React.FC<Props> = ({
   onSubmit: onSubmitProp,
