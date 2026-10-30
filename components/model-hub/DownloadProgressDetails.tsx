@@ -2,8 +2,8 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
-import { space } from '../../constants/design-system';
+import { lineHeights } from '../../styles/fontStyles';
+import { space, textStyles } from '../../constants/design-system';
 import { formatTimeLeft, secondsLeft } from '../../utils/downloadEta';
 
 interface Props {
@@ -45,17 +45,13 @@ const createStyles = (theme: Theme) =>
     },
     bytes: {
       flexShrink: 1,
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.xs,
-      lineHeight: lineHeights.xs,
+      ...textStyles.bodyTertiaryRegular,
       fontVariant: ['tabular-nums'],
       color: theme.text.defaultTertiary,
     },
     timeLeft: {
       flexShrink: 1,
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.xs,
-      lineHeight: lineHeights.xs,
+      ...textStyles.bodyTertiaryMedium,
       fontVariant: ['tabular-nums'],
       color: theme.text.defaultSecondary,
     },

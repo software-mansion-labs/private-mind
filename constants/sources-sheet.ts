@@ -1,7 +1,7 @@
 import { space, textStyles } from './design-system';
+import { SHEET_HANDLE_HEIGHT } from './bottom-sheet';
 
 export const MAX_SHEET_HEIGHT_RATIO = 0.9;
-export const SHEET_HANDLE_HEIGHT = 24;
 
 const SHEET_CONTENT_PADDING_TOP = space.two;
 const SHEET_CONTENT_PADDING_BOTTOM = space.eight;

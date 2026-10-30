@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
-import { Platform, ActionSheetIOS } from 'react-native';
+import { act, render, screen, fireEvent } from '@testing-library/react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({ theme: require('./helpers/renderWithTheme').testTheme }),
@@ -386,46 +386,54 @@ describe('DrawerMenu — searching', () => {
 });
 
 describe('DrawerMenu — context menu', () => {
-  it('opens the context menu on long press', () => {
-    const spy = jest
-      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
-      .mockImplementation(() => {});
+  const longPressChat = (chatId: number, rowY = 120) => {
+    fireEvent(screen.getByTestId(`drawer-chat-${chatId}`), 'longPress');
+    const [row] = screen.UNSAFE_root.findAll(
+      (node) => node.instance?.measureInWindow?.mock?.calls.length > 0
+    );
+    const reportRowPosition = row.instance.measureInWindow.mock.calls.at(-1)[0];
+    act(() => reportRowPosition(16, rowY, 280, 44));
+  };
 
+  it('opens the chat menu for the long-pressed chat', () => {
     renderMenu();
 
-    fireEvent(screen.getByTestId('drawer-chat-1'), 'longPress');
+    longPressChat(1);
 
-    expect(spy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        options: ['Rename', 'Export Chat', 'Delete Chat', 'Cancel'],
-        destructiveButtonIndex: 2,
-        cancelButtonIndex: 3,
-      }),
-      expect.any(Function)
-    );
+    expect(screen.getByTestId('chat-menu')).toBeTruthy();
+    expect(screen.getAllByText('Pizza recipe')).toHaveLength(2);
+    expect(screen.getByText('Share')).toBeTruthy();
+    expect(screen.getByText('Delete chat')).toBeTruthy();
   });
 
-  it('does not open the context menu on a plain press', () => {
-    const spy = jest
-      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
-      .mockImplementation(() => {});
-
+  it('does not open the chat menu on a plain press', () => {
     renderMenu();
 
     fireEvent.press(screen.getByTestId('drawer-chat-1'));
 
-    expect(spy).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('chat-menu')).toBeNull();
+  });
+
+  it('opens the menu beside the row that was pressed', () => {
+    renderMenu();
+
+    longPressChat(1, 120);
+
+    let node = screen.getByTestId('chat-menu').parent;
+    while (node && StyleSheet.flatten(node.props.style)?.top === undefined) {
+      node = node.parent;
+    }
+    expect(StyleSheet.flatten(node?.props.style)).toEqual(
+      expect.objectContaining({ top: 120 + 44 + 8, left: 16 })
+    );
   });
 
   it('reports the menu as active so the search state is not torn down', () => {
-    jest
-      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
-      .mockImplementation(() => {});
     const onMenuActiveChange = jest.fn();
 
     renderMenu({ searching: true, onMenuActiveChange });
 
-    fireEvent(screen.getByTestId('drawer-chat-1'), 'longPress');
+    longPressChat(1);
 
     expect(onMenuActiveChange).toHaveBeenCalledWith(true);
   });

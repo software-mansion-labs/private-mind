@@ -8,6 +8,7 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
 import { DIMMED_OPACITY, pressedOpacity } from '../styles/pressable';
+import { radius, space, stroke } from '../constants/design-system';
 
 interface Props {
   fileInfo: { name: string; size: number | null; uri: string } | null;
@@ -102,45 +103,45 @@ const createStyles = (theme: Theme, disabled: boolean) =>
   StyleSheet.create({
     emptyBox: {
       height: 80,
-      borderWidth: 1,
+      borderWidth: stroke.soft,
       borderStyle: 'dashed',
-      borderRadius: 12,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
+      borderRadius: radius.twelve,
+      paddingVertical: space.twoHalf,
+      paddingHorizontal: space.three,
       alignItems: 'center',
       justifyContent: 'center',
       borderColor: theme.border.soft,
     },
     selectButton: {
       height: 40,
-      borderRadius: 12,
-      paddingHorizontal: 10,
+      borderRadius: radius.twelve,
+      paddingHorizontal: space.twoHalf,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: theme.bg.main,
     },
     selectButtonText: {
-      paddingHorizontal: 4,
+      paddingHorizontal: space.one,
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.sm,
       color: theme.text.contrastPrimary,
     },
     fileBox: {
-      borderRadius: 12,
-      paddingVertical: 16,
-      paddingHorizontal: 12,
+      borderRadius: radius.twelve,
+      paddingVertical: space.four,
+      paddingHorizontal: space.three,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      gap: 8,
+      gap: space.two,
       backgroundColor: theme.bg.softSecondary,
       opacity: disabled ? DIMMED_OPACITY : 1,
     },
     fileInfo: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: space.two,
     },
     fileText: {
       fontFamily: fontFamily.regular,

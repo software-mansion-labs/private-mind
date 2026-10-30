@@ -1,20 +1,17 @@
-import React, { RefObject, useCallback, useEffect, useState } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetBackdrop,
-  BottomSheetView,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
+import React, { RefObject, useEffect, useState } from 'react';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { pressedOpacity } from '../../styles/pressable';
-import { radius, space } from '../../constants/design-system';
+import { radius, space, textStyles } from '../../constants/design-system';
 import DeviceInfo from 'react-native-device-info';
 import BenchmarkStatsCard from '../benchmark/BenchmarkStatsCard';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
+import ModelRow from '../model-hub/ModelRow';
+import ModelRowText from '../model-hub/ModelRowText';
 import PhoneIcon from '../../assets/icons/phone.svg';
 import { Feedback } from '../../utils/Feedback';
 import { getModelFamily } from '../../utils/modelFamily';
@@ -25,9 +22,6 @@ import { Model } from '../../database/modelRepository';
 const BYTES_PER_GB = 1024 * 1024 * 1024;
 const DEVICE_ICON_SIZE = 14;
 const DELETE_BUTTON_HEIGHT = 44;
-const HANDLE_WIDTH = 36;
-const HANDLE_HEIGHT = 5;
-const SHEET_RADIUS = 24;
 
 export interface BenchmarkResultSheetData extends BenchmarkResult {
   model?: Model;
@@ -55,18 +49,6 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
     memory: '',
   });
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
-
   useEffect(() => {
     const fetchDeviceInfo = async () => {
       const [model, totalMemory] = await Promise.all([
@@ -93,14 +75,10 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
   return (
     <BackDismissibleSheetModal
       ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
       enableDynamicSizing
       onChange={(index) => {
         if (index >= 0) Feedback.sheetOpen();
       }}
-      handleStyle={styles.handle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}
     >
       {({ data }) => {
         if (!data) return null;
@@ -113,22 +91,19 @@ const BenchmarkResultSheet = ({ bottomSheetModalRef, handleDelete }: Props) => {
         return (
           <BottomSheetView style={styles.container}>
             <Text style={styles.title}>Benchmark results</Text>
-            <View style={styles.modelRow}>
+            <ModelRow>
               <ModelFamilyTile
                 family={getModelFamily(
                   data.model ?? { modelName: data.modelName }
                 )}
                 size="list"
               />
-              <View style={styles.modelText}>
-                <Text style={styles.modelName} numberOfLines={1}>
-                  {data.modelName}
-                </Text>
-                <Text style={styles.date}>
-                  {formatBenchmarkDate(data.timestamp)}
-                </Text>
-              </View>
-            </View>
+              <ModelRowText
+                title={data.modelName}
+                subtitle={formatBenchmarkDate(data.timestamp)}
+                subtitleTone="tertiary"
+              />
+            </ModelRow>
             <BenchmarkStatsCard data={data} deviceMemory={deviceInfo.memory} />
             {deviceLine.length > 0 && (
               <View style={styles.deviceRow}>
@@ -169,31 +144,8 @@ const createStyles = (theme: Theme) =>
       paddingBottom: theme.insets.bottom + space.two,
     },
     title: {
-      fontFamily: fontFamily.bold,
-      fontSize: fontSizes.lg,
-      lineHeight: lineHeights.lg,
+      ...textStyles.titleSheet,
       color: theme.text.primary,
-    },
-    modelRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.three,
-    },
-    modelText: {
-      flex: 1,
-      minWidth: 0,
-    },
-    modelName: {
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
-      color: theme.text.primary,
-    },
-    date: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
-      color: theme.text.defaultTertiary,
     },
     deviceRow: {
       flexDirection: 'row',
@@ -205,9 +157,7 @@ const createStyles = (theme: Theme) =>
     },
     deviceText: {
       flex: 1,
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
+      ...textStyles.bodySecondaryRegular,
       color: theme.text.defaultTertiary,
     },
     deleteButton: {
@@ -220,23 +170,5 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
       color: theme.text.error,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
-    handle: {
-      borderTopLeftRadius: SHEET_RADIUS,
-      borderTopRightRadius: SHEET_RADIUS,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    handleIndicator: {
-      width: HANDLE_WIDTH,
-      height: HANDLE_HEIGHT,
-      borderRadius: radius.full,
-      backgroundColor: theme.border.soft,
-    },
-    background: {
-      borderRadius: SHEET_RADIUS,
-      backgroundColor: theme.bg.softPrimary,
     },
   });

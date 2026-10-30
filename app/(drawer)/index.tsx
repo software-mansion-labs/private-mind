@@ -28,6 +28,7 @@ import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
 import WhatsNewCard from '../../components/WhatsNewCard';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import { useModelSwitch } from '../../components/chat-screen/useModelSwitch';
+import { radius, space } from '../../constants/design-system';
 
 configureReanimatedLogger({
   strict: false,
@@ -134,23 +135,23 @@ const createStyles = (theme: Theme, headerHeight: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      paddingBottom: 16 + theme.insets.bottom,
+      paddingBottom: space.four + theme.insets.bottom,
     },
     emptyContainer: {
       flex: 1,
       justifyContent: 'flex-start',
       alignItems: 'center',
-      paddingHorizontal: 16,
+      paddingHorizontal: space.four,
       paddingTop: headerHeight + 64,
-      gap: 24,
+      gap: space.six,
     },
     icon: {
       width: 64,
       height: 64,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
     },
     buttonGroup: {
-      gap: 8,
+      gap: space.two,
       width: '100%',
     },
     flatButton: {

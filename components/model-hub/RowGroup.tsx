@@ -4,7 +4,14 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { radius, space, stroke } from '../../constants/design-system';
 
-export const ROW_PADDING = space.three;
+export const ROW_PADDING = space.four;
+
+export const TILE_ROW = {
+  gap: space.four,
+  padding: space.five,
+  paddingLeft: space.four,
+  tileOffset: space.half,
+} as const;
 
 interface Props {
   children: React.ReactNode;

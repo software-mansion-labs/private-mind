@@ -23,6 +23,7 @@ import {
   type View as ViewType,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { showCopiedToast } from '../../utils/copiedToast';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { KeyboardChatScrollView } from 'react-native-keyboard-controller';
 import Reanimated, {
@@ -51,7 +52,6 @@ import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import BranchMarker from './BranchMarker';
 import StoppedMarker from './StoppedMarker';
 import { endsTurnCutShort } from './cutShortTurn';
-import Toast from 'react-native-toast-message';
 import {
   BOTTOM_FADE_HEIGHT,
   GENERATION_ERROR_MEASUREMENT_KEY,
@@ -87,6 +87,7 @@ import {
 } from './pinScroll';
 import { visibleMessageText } from '../../utils/messageText';
 import { pressedOpacity } from '../../styles/pressable';
+import { space } from '../../constants/design-system';
 
 export interface MessagesHandle {
   onMessageSent: () => void;
@@ -824,10 +825,7 @@ const Messages = ({
       if (message.role === 'user') {
         closeUserActionMenu();
       }
-      Toast.show({
-        type: 'defaultToast',
-        text1: 'Message copied',
-      });
+      showCopiedToast();
     },
     [closeUserActionMenu]
   );
@@ -1314,8 +1312,8 @@ const createStyles = (theme: Theme) => {
     generationError: {
       width: '90%',
       alignSelf: 'flex-start',
-      paddingBottom: 24,
-      gap: 8,
+      paddingBottom: space.six,
+      gap: space.two,
     },
     generationErrorText: {
       color: theme.text.defaultSecondary,
@@ -1328,8 +1326,8 @@ const createStyles = (theme: Theme) => {
       gap: 6,
       borderRadius: 8,
       backgroundColor: theme.bg.softTertiary,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: space.three,
+      paddingVertical: space.two,
     },
     retryButtonIcon: {
       color: theme.text.primary,

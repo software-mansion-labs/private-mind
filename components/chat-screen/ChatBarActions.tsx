@@ -27,6 +27,7 @@ import {
   type PrimaryAction,
 } from './usePrimaryActionGuard';
 import { dimmedOpacity } from '../../styles/pressable';
+import { space } from '../../constants/design-system';
 
 const composerAction = (
   isResponding: boolean,
@@ -210,16 +211,17 @@ const createStyles = () =>
       flexDirection: 'row',
       width: '100%',
       justifyContent: 'space-between',
+      gap: space.two,
     },
     leftActions: {
       flexDirection: 'row',
       alignItems: 'center',
       flexShrink: 1,
-      gap: 4,
+      gap: space.one,
     },
     rightActions: {
       flexDirection: 'row',
-      gap: 8,
+      gap: space.two,
       alignItems: 'center',
     },
   });

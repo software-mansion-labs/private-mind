@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import { space } from '../../constants/design-system';
 
 interface Props {
   title: string;
@@ -24,18 +25,18 @@ export const SettingsSection = ({ title, children, fill = false }: Props) => {
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     section: {
-      gap: 8,
+      gap: space.two,
     },
     title: {
       alignSelf: 'flex-start',
-      paddingHorizontal: 12,
+      paddingHorizontal: space.three,
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.xs,
       letterSpacing: 0.1,
       color: theme.text.defaultTertiary,
     },
     rows: {
-      gap: 8,
+      gap: space.two,
     },
     fill: {
       flex: 1,

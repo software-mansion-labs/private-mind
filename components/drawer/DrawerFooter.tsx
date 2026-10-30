@@ -12,7 +12,7 @@ import {
   DRAWER_HORIZONTAL_PADDING,
   DRAWER_ITEM_INSET,
 } from '../../constants/drawer-layout';
-import { radius } from '../../constants/design-system';
+import { radius, space } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { useStartNewChat } from './useStartNewChat';
 import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
@@ -82,8 +82,8 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 12,
-      paddingTop: 12,
+      gap: space.three,
+      paddingTop: space.three,
       paddingBottom: Math.max(theme.insets.bottom, 12),
       paddingLeft: DRAWER_HORIZONTAL_PADDING + DRAWER_ITEM_INSET,
       paddingRight: DRAWER_HORIZONTAL_PADDING,
@@ -93,7 +93,7 @@ const createStyles = (theme: Theme) =>
       minHeight: FOOTER_BUTTON_HEIGHT,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: space.two,
       paddingLeft: 14,
       paddingRight: 18,
       borderRadius: radius.full,

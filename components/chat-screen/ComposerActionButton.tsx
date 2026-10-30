@@ -13,6 +13,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { composerControlSurface } from './composerControl';
 import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
+import { radius } from '../../constants/design-system';
 
 export type ComposerAction = 'speech' | 'send' | 'stop';
 
@@ -144,17 +145,17 @@ const createStyles = (theme: Theme) =>
     circle: {
       width: 36,
       height: 36,
-      borderRadius: 18,
+      borderRadius: radius.eighteen,
       justifyContent: 'center',
       alignItems: 'center',
       overflow: 'hidden',
     },
     rest: {
-      borderRadius: 18,
+      borderRadius: radius.eighteen,
       ...composerControlSurface(theme),
     },
     fill: {
-      borderRadius: 18,
+      borderRadius: radius.eighteen,
       backgroundColor: theme.bg.main,
     },
     iconLayer: {

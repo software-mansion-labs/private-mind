@@ -23,12 +23,20 @@ const easedStops = (from: number) =>
 
 type Stops<T> = [T, T, ...T[]];
 
+const GRADIENT_DIRECTION = {
+  top: { start: { x: 0.5, y: 0 }, end: { x: 0.5, y: 1 } },
+  bottom: { start: { x: 0.5, y: 1 }, end: { x: 0.5, y: 0 } },
+} as const;
+
 interface Props {
   anchor: number;
+  edge?: 'top' | 'bottom';
 }
 
-export const GlassScrollEdge = React.memo(({ anchor }: Props) => {
+export const GlassScrollEdge = React.memo(({ anchor, edge = 'top' }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
+  const direction = GRADIENT_DIRECTION[edge];
+  const pinned = styles[edge];
 
   if (anchor <= 0) return null;
 
@@ -39,16 +47,17 @@ export const GlassScrollEdge = React.memo(({ anchor }: Props) => {
 
   return (
     <View
-      style={[styles.container, { height: anchor + RAMP_HEIGHT }]}
+      style={[styles.container, pinned, { height: anchor + RAMP_HEIGHT }]}
       pointerEvents="none"
     >
       {Platform.OS === 'ios' ? (
         <MaskedView
-          style={[styles.blur, { height: blurHeight }]}
+          style={[styles.blur, pinned, { height: blurHeight }]}
           maskElement={
             <LinearGradient
               colors={[MASK_OPAQUE, MASK_OPAQUE, MASK_CLEAR]}
               locations={[0, solidUntil, 1]}
+              {...direction}
               style={StyleSheet.absoluteFill}
             />
           }
@@ -63,6 +72,7 @@ export const GlassScrollEdge = React.memo(({ anchor }: Props) => {
       <LinearGradient
         colors={dim.map(({ alpha }) => withAlpha(base, alpha)) as Stops<string>}
         locations={dim.map(({ location }) => location) as Stops<number>}
+        {...direction}
         style={StyleSheet.absoluteFill}
       />
     </View>
@@ -75,14 +85,18 @@ const createStyles = (_theme: Theme) =>
   StyleSheet.create({
     container: {
       position: 'absolute',
-      top: 0,
       left: 0,
       right: 0,
     },
     blur: {
       position: 'absolute',
-      top: 0,
       left: 0,
       right: 0,
+    },
+    top: {
+      top: 0,
+    },
+    bottom: {
+      bottom: 0,
     },
   });
