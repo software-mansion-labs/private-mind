@@ -11,26 +11,7 @@ import { THINKING_LABEL, VISION_LABEL } from '../../constants/model-labels';
 import ModelFamilyTile from './ModelFamilyTile';
 import CheckIcon from '../../assets/icons/check.svg';
 
-const ROW_SIZE = {
-  compact: {
-    tile: 'row',
-    name: 15,
-    nameLine: lineHeights.sm,
-    note: fontSizes.xs,
-    noteLine: lineHeights.xs,
-    check: 16,
-  },
-  regular: {
-    tile: 'list',
-    name: fontSizes.md,
-    nameLine: lineHeights.md,
-    note: fontSizes.sm,
-    noteLine: lineHeights.sm,
-    check: 20,
-  },
-} as const;
-
-export type ModelPickerRowSize = keyof typeof ROW_SIZE;
+const CHECK_SIZE = 20;
 
 const modelNote = (model: Model) =>
   joinMeta([
@@ -44,7 +25,6 @@ interface Props {
   onPress: () => void;
   accessibilityRole: AccessibilityRole;
   testIDPrefix: string;
-  size?: ModelPickerRowSize;
 }
 
 const ModelPickerRow = ({
@@ -53,10 +33,8 @@ const ModelPickerRow = ({
   onPress,
   accessibilityRole,
   testIDPrefix,
-  size = 'compact',
 }: Props) => {
-  const { styles } = useThemedStyles(createStyles, size);
-  const spec = ROW_SIZE[size];
+  const { styles } = useThemedStyles(createStyles);
   const note = modelNote(model);
 
   return (
@@ -69,7 +47,7 @@ const ModelPickerRow = ({
       }
       testID={`${testIDPrefix}-row-${model.id}`}
     >
-      <ModelFamilyTile family={getModelFamily(model)} size={spec.tile} />
+      <ModelFamilyTile family={getModelFamily(model)} size="list" />
       <View style={styles.text}>
         <Text style={styles.name} numberOfLines={1}>
           {model.modelName}
@@ -82,8 +60,8 @@ const ModelPickerRow = ({
       </View>
       {current && (
         <CheckIcon
-          width={spec.check}
-          height={spec.check}
+          width={CHECK_SIZE}
+          height={CHECK_SIZE}
           style={styles.check}
           testID={`${testIDPrefix}-current`}
         />
@@ -94,27 +72,25 @@ const ModelPickerRow = ({
 
 export default ModelPickerRow;
 
-const createStyles = (theme: Theme, size: ModelPickerRowSize) => {
-  const spec = ROW_SIZE[size];
-  return StyleSheet.create({
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
     text: {
       flex: 1,
       minWidth: 0,
     },
     name: {
       fontFamily: fontFamily.medium,
-      fontSize: spec.name,
-      lineHeight: spec.nameLine,
+      fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
       color: theme.text.primary,
     },
     note: {
       fontFamily: fontFamily.regular,
-      fontSize: spec.note,
-      lineHeight: spec.noteLine,
+      fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
       color: theme.text.defaultTertiary,
     },
     check: {
       color: theme.text.accent,
     },
   });
-};
