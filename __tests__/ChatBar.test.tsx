@@ -347,34 +347,47 @@ beforeEach(() => {
 
 afterEach(() => jest.restoreAllMocks());
 
-// ─── "Select Model" fallback ──────────────────────────────────────────────────
+// ─── model unavailable ────────────────────────────────────────────────────────
 
-describe('no model selected', () => {
-  it('shows "Select Model" button when chatId is set but model is undefined', () => {
-    renderBar({ model: undefined });
-    expect(screen.getByText('Select Model')).toBeTruthy();
-  });
-
-  it('calls onSelectModel when "Select Model" is pressed', () => {
+describe('model unavailable', () => {
+  it('explains a removed model and offers the model sheet in place of the input', () => {
     const onSelectModel = jest.fn();
     renderBar({ model: undefined, onSelectModel });
-    fireEvent.press(screen.getByText('Select Model'));
+    expect(screen.queryByPlaceholderText('Ask anything')).toBeNull();
+    expect(
+      screen.getByText("This chat's model isn't on this device anymore")
+    ).toBeTruthy();
+    fireEvent.press(screen.getByText('Choose a model'));
     expect(onSelectModel).toHaveBeenCalled();
   });
 
-  it('does not render the text input when model is undefined', () => {
-    renderBar({ model: undefined });
+  it('names the model whose files were deleted', () => {
+    const onSelectModel = jest.fn();
+    renderBar({
+      model: { ...downloadedModel, isDownloaded: false },
+      onSelectModel,
+    });
     expect(screen.queryByPlaceholderText('Ask anything')).toBeNull();
+    expect(
+      screen.getByText(
+        `${downloadedModel.modelName} isn't on this device anymore`
+      )
+    ).toBeTruthy();
+    fireEvent.press(screen.getByTestId('model-unavailable-card'));
+    expect(onSelectModel).toHaveBeenCalled();
   });
-});
-
-// ─── model not downloaded ─────────────────────────────────────────────────────
-
-describe('model not downloaded', () => {
-  it('renders nothing interactive when model is not downloaded', () => {
-    renderBar({ model: { ...downloadedModel, isDownloaded: false } });
-    expect(screen.queryByPlaceholderText('Ask anything')).toBeNull();
-    expect(screen.queryByText('Select Model')).toBeNull();
+  it('shows the picked model loading and ignores taps until it lands', () => {
+    const onSelectModel = jest.fn();
+    renderBar({
+      model: { ...downloadedModel, isDownloaded: false },
+      pendingModel: { ...downloadedModel, id: 2, modelName: 'Picked LLM' },
+      onSelectModel,
+    } as Partial<typeof defaultProps>);
+    expect(screen.getByText('Picked LLM')).toBeTruthy();
+    expect(screen.getByTestId('model-unavailable-card-loader')).toBeTruthy();
+    expect(screen.queryByText('Choose a model')).toBeNull();
+    fireEvent.press(screen.getByTestId('model-unavailable-card'));
+    expect(onSelectModel).not.toHaveBeenCalled();
   });
 });
 
