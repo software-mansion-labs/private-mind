@@ -111,7 +111,7 @@ function ChatScreenInner() {
         selectModel={handleSetModel}
         revealFromTop={shouldPlayBranchEntryAnimation}
         headerTitleBottom={titleBottom}
-        opensModelMenu={entryAction === CHAT_ENTRY_ACTION.PickModel}
+        opensModelSheet={entryAction === CHAT_ENTRY_ACTION.PickModel}
       />
       {MenuElements}
     </>

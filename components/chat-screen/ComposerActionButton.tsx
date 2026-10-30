@@ -20,6 +20,8 @@ export type ComposerAction = 'speech' | 'send' | 'stop';
 export const MORPH_IN_MS = 170;
 export const MORPH_OUT_MS = 110;
 const RESTING_SCALE = 0.55;
+const BUTTON_SIZE = 36;
+const STOP_SIZE = 40;
 
 interface Props {
   action: ComposerAction;
@@ -42,6 +44,11 @@ export const morphScale = (progress: number) => {
 export const morphFillOpacity = (send: number, stop: number) => {
   'worklet';
   return Math.min(1, Math.max(send, stop));
+};
+
+export const stopGrowth = (stop: number) => {
+  'worklet';
+  return 1 + (STOP_SIZE / BUTTON_SIZE - 1) * stop;
 };
 
 const morphTo = (on: boolean) =>
@@ -86,55 +93,67 @@ const ComposerActionButton = ({
     opacity: morphOpacity(stop.get()),
     transform: [{ scale: morphScale(stop.get()) }],
   }));
+  const stopFillStyle = useAnimatedStyle(() => ({
+    opacity: morphOpacity(stop.get()),
+  }));
+  const growStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: stopGrowth(stop.get()) }],
+  }));
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.circle,
-        disabled && dimmedOpacity,
-        pressed && pressedOpacity,
-      ]}
-      disabled={disabled}
-      accessibilityState={{ disabled, busy }}
-      testID={testID}
-    >
-      <Reanimated.View
-        style={[StyleSheet.absoluteFill, styles.rest, restStyle]}
-        pointerEvents="none"
-      />
-      <Reanimated.View
-        style={[StyleSheet.absoluteFill, styles.fill, fillStyle]}
-        pointerEvents="none"
-      />
-      {busy ? (
-        <ActivityIndicator size="small" color={theme.text.contrastPrimary} />
-      ) : (
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <Reanimated.View style={[styles.iconLayer, speechStyle]}>
-            <SoundwaveIcon
-              width={20}
-              height={20}
-              color={theme.text.onChatBar}
-            />
-          </Reanimated.View>
-          <Reanimated.View style={[styles.iconLayer, sendStyle]}>
-            <SendIcon
-              width={20}
-              height={20}
-              color={theme.text.contrastPrimary}
-            />
-          </Reanimated.View>
-          <Reanimated.View style={[styles.iconLayer, stopStyle]}>
-            <PauseIcon
-              width={13.33}
-              height={13.33}
-              color={theme.text.contrastPrimary}
-            />
-          </Reanimated.View>
-        </View>
-      )}
-    </Pressable>
+    <Reanimated.View style={growStyle}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.circle,
+          disabled && dimmedOpacity,
+          pressed && pressedOpacity,
+        ]}
+        disabled={disabled}
+        accessibilityState={{ disabled, busy }}
+        testID={testID}
+      >
+        <Reanimated.View
+          style={[StyleSheet.absoluteFill, styles.rest, restStyle]}
+          pointerEvents="none"
+        />
+        <Reanimated.View
+          style={[StyleSheet.absoluteFill, styles.fill, fillStyle]}
+          pointerEvents="none"
+        />
+        <Reanimated.View
+          style={[StyleSheet.absoluteFill, styles.stopFill, stopFillStyle]}
+          pointerEvents="none"
+        />
+        {busy ? (
+          <ActivityIndicator size="small" color={theme.text.contrastPrimary} />
+        ) : (
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            <Reanimated.View style={[styles.iconLayer, speechStyle]}>
+              <SoundwaveIcon
+                width={20}
+                height={20}
+                color={theme.text.onChatBar}
+              />
+            </Reanimated.View>
+            <Reanimated.View style={[styles.iconLayer, sendStyle]}>
+              <SendIcon
+                width={20}
+                height={20}
+                color={theme.text.contrastPrimary}
+              />
+            </Reanimated.View>
+            <Reanimated.View style={[styles.iconLayer, stopStyle]}>
+              <PauseIcon
+                width={13.33}
+                height={13.33}
+                color={theme.text.onBrand}
+              />
+            </Reanimated.View>
+          </View>
+        )}
+      </Pressable>
+    </Reanimated.View>
   );
 };
 
@@ -143,8 +162,8 @@ export default ComposerActionButton;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     circle: {
-      width: 36,
-      height: 36,
+      width: BUTTON_SIZE,
+      height: BUTTON_SIZE,
       borderRadius: radius.eighteen,
       justifyContent: 'center',
       alignItems: 'center',
@@ -157,6 +176,10 @@ const createStyles = (theme: Theme) =>
     fill: {
       borderRadius: radius.eighteen,
       backgroundColor: theme.bg.main,
+    },
+    stopFill: {
+      borderRadius: radius.eighteen,
+      backgroundColor: theme.bg.errorPrimary,
     },
     iconLayer: {
       ...StyleSheet.absoluteFill,

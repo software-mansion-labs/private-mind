@@ -3,7 +3,6 @@ import { Keyboard, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useHeaderHeight } from 'expo-router/react-navigation';
-import { router } from 'expo-router';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useModelSwitch } from './useModelSwitch';
 import { useSendChatMessage } from './useSendChatMessage';
@@ -49,7 +48,7 @@ interface Props {
   selectModel?: (model: Model) => Promise<void>;
   revealFromTop?: boolean;
   headerTitleBottom?: number;
-  opensModelMenu?: boolean;
+  opensModelSheet?: boolean;
 }
 
 export default function ChatScreen({
@@ -61,7 +60,7 @@ export default function ChatScreen({
   selectModel,
   revealFromTop = false,
   headerTitleBottom,
-  opensModelMenu = false,
+  opensModelSheet = false,
 }: Props) {
   const inputRef = useRef<{
     setInput: (text: string) => void;
@@ -193,18 +192,19 @@ export default function ChatScreen({
 
   const answeringModel = pendingModel ?? model;
 
-  const handleModelPickedFromMenu = useCallback(
+  const handleModelPicked = useCallback(
     (picked: Model) => {
-      pickModel(picked);
-      handleModelSwitchSheetState(false);
+      if (picked.id !== model?.id) pickModel(picked);
     },
-    [pickModel, handleModelSwitchSheetState]
+    [model?.id, pickModel]
   );
 
-  const handleShowAllModels = useCallback(() => {
-    Keyboard.dismiss();
-    router.push('/model-hub');
-  }, []);
+  const presentedSheetOnEntry = useRef(false);
+  useEffect(() => {
+    if (!opensModelSheet || presentedSheetOnEntry.current) return;
+    presentedSheetOnEntry.current = true;
+    handlePresentModelSheet();
+  }, [opensModelSheet, handlePresentModelSheet]);
 
   const handleModelSheetStateChange = useCallback(
     (isOpen: boolean) => {
@@ -335,10 +335,7 @@ export default function ChatScreen({
           chatId={chatId}
           onSend={handleSendMessage}
           onSelectModel={handlePresentModelSheet}
-          onPickModel={handleModelPickedFromMenu}
-          onShowAllModels={handleShowAllModels}
           modelLocked={!isPhantomChat}
-          opensModelMenu={opensModelMenu}
           onSelectPrompt={handleSelectPrompt}
           ref={inputRef}
           model={model}
@@ -384,7 +381,7 @@ export default function ChatScreen({
 
       <ModelSelectSheet
         bottomSheetModalRef={modelBottomSheetModalRef}
-        onModelPicked={pickModel}
+        onModelPicked={handleModelPicked}
         onSheetStateChange={handleModelSheetStateChange}
         currentModelId={model?.id}
       />

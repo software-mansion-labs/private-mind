@@ -17,13 +17,13 @@ import ModelFamilyTile from '../model-hub/ModelFamilyTile';
 import { composerControlSurface } from './composerControl';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
 
-const BADGE_HEIGHT = 32;
+export const BADGE_HEIGHT = 32;
 const BADGE_MAX_WIDTH = 220;
-const CHEVRON_WIDTH = 10;
-const CHEVRON_HEIGHT = 6;
+export const CHEVRON_WIDTH = 10;
+export const CHEVRON_HEIGHT = 6;
 const ACCESSORY_SIZE = 14;
-const LOADER_SCALE = 0.65;
-const CHEVRON_OPACITY = 0.7;
+export const LOADER_SCALE = 0.65;
+export const CHEVRON_OPACITY = 0.7;
 
 interface Props {
   model: Model;
