@@ -9,6 +9,7 @@ import {
   modelCatalogManifestSchema,
   type CatalogModel,
 } from './modelCatalogSchema';
+import { currentAppVersion } from './appVersion';
 import { resolveCatalogManifest } from './resolveCatalogEntry';
 
 export type ModelCatalogOrigin = 'remote' | 'cache' | 'fallback';
@@ -38,25 +39,34 @@ const fetchManifestText = async (): Promise<string> => {
   }
 };
 
-const parseManifest = (text: string): CatalogModel[] | null => {
+const parseManifest = (
+  text: string,
+  appVersion: string
+): CatalogModel[] | null => {
   const parsed = modelCatalogManifestSchema.safeParse(JSON.parse(text));
-  return parsed.success ? resolveCatalogManifest(parsed.data) : null;
+  return parsed.success
+    ? resolveCatalogManifest(parsed.data, appVersion)
+    : null;
 };
 
-const readCachedCatalog = async (): Promise<CatalogModel[] | null> => {
+const readCachedCatalog = async (
+  appVersion: string
+): Promise<CatalogModel[] | null> => {
   try {
     const cached = await AsyncStorage.getItem(MODEL_CATALOG_CACHE_KEY);
-    return cached ? parseManifest(cached) : null;
+    return cached ? parseManifest(cached, appVersion) : null;
   } catch (error) {
     console.warn('Failed to read cached model catalog', error);
     return null;
   }
 };
 
-export const resolveModelCatalog = async (): Promise<ResolvedModelCatalog> => {
+export const resolveModelCatalog = async ({
+  appVersion = currentAppVersion(),
+}: { appVersion?: string } = {}): Promise<ResolvedModelCatalog> => {
   try {
     const text = await fetchManifestText();
-    const models = parseManifest(text);
+    const models = parseManifest(text, appVersion);
     if (models) {
       try {
         await AsyncStorage.setItem(MODEL_CATALOG_CACHE_KEY, text);
@@ -69,7 +79,7 @@ export const resolveModelCatalog = async (): Promise<ResolvedModelCatalog> => {
     console.warn('Failed to fetch model catalog, falling back to cache', error);
   }
 
-  const cached = await readCachedCatalog();
+  const cached = await readCachedCatalog(appVersion);
   if (cached) {
     return { models: cached, origin: 'cache' };
   }
