@@ -44,7 +44,6 @@ import {
   MESSAGE_LIST_SIDE_PADDING,
 } from '../../constants/chat-screen';
 import { Message, type SourceDocument } from '../../database/chatRepository';
-import { stripCitations } from '../../utils/citations';
 import { parseThinkingContent, stripThinkMarkers } from '../../utils/thinking';
 import { stripSpecialTokens } from '../../utils/specialTokens';
 import { pressedOpacity } from '../../styles/pressable';
@@ -173,20 +172,8 @@ const MessageItem = memo(
       Linking.openURL(url).catch(() => {});
     }, []);
 
-    const normalContent = useMemo(
-      () =>
-        hasSources
-          ? stripCitations(contentParts.normalContent)
-          : contentParts.normalContent,
-      [contentParts.normalContent, hasSources]
-    );
-    const normalAfterThink = useMemo(
-      () =>
-        hasSources
-          ? stripCitations(contentParts.normalAfterThink ?? '')
-          : (contentParts.normalAfterThink ?? ''),
-      [contentParts.normalAfterThink, hasSources]
-    );
+    const normalContent = contentParts.normalContent;
+    const normalAfterThink = contentParts.normalAfterThink ?? '';
 
     const {
       isGenerating,
@@ -369,6 +356,7 @@ const MessageItem = memo(
                   <AttributedAnswer
                     text={normalContent}
                     sources={webResults}
+                    hasSources={hasSources}
                     streaming={isLastMessage && isGenerating}
                     onLinkPress={handleLinkPress}
                   />
@@ -390,6 +378,7 @@ const MessageItem = memo(
                     <AttributedAnswer
                       text={normalAfterThink}
                       sources={webResults}
+                      hasSources={hasSources}
                       streaming={isLastMessage && isGenerating}
                       onLinkPress={handleLinkPress}
                     />

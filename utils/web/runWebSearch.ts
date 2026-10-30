@@ -283,6 +283,7 @@ const searchWithCleanup = async (
           passage: quote.text,
           used: true,
           read: true,
+          ordinal: 1,
         },
       ],
       telemetry: {
