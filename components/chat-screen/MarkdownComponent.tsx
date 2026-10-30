@@ -8,6 +8,7 @@ import { Platform } from 'react-native';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { radius, space, stroke } from '../../constants/design-system';
+import { showCopiedToast } from '../../utils/copiedToast';
 
 const MD4C_FLAGS = { latexMath: true } as const;
 
@@ -158,6 +159,7 @@ const MarkdownComponent = memo(
           flavor="github"
           selectable={true}
           onLinkPress={onLinkPress}
+          onCopyPress={showCopiedToast}
         />
       );
     }
@@ -170,6 +172,7 @@ const MarkdownComponent = memo(
         flavor="github"
         selectable={true}
         onLinkPress={onLinkPress}
+        onCopyPress={showCopiedToast}
       />
     );
   }

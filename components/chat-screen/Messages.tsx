@@ -23,6 +23,7 @@ import {
   type View as ViewType,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { showCopiedToast } from '../../utils/copiedToast';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { KeyboardChatScrollView } from 'react-native-keyboard-controller';
 import Reanimated, {
@@ -51,7 +52,6 @@ import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import BranchMarker from './BranchMarker';
 import StoppedMarker from './StoppedMarker';
 import { endsTurnCutShort } from './cutShortTurn';
-import Toast from 'react-native-toast-message';
 import {
   BOTTOM_FADE_HEIGHT,
   GENERATION_ERROR_MEASUREMENT_KEY,
@@ -825,10 +825,7 @@ const Messages = ({
       if (message.role === 'user') {
         closeUserActionMenu();
       }
-      Toast.show({
-        type: 'defaultToast',
-        text1: 'Message copied',
-      });
+      showCopiedToast();
     },
     [closeUserActionMenu]
   );
