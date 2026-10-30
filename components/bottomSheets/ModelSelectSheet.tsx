@@ -87,7 +87,6 @@ const ModelSelectSheet = ({
                 current={item.id === currentModelId}
                 accessibilityRole="button"
                 testIDPrefix="model-select"
-                size="regular"
                 onPress={() => {
                   onModelPicked(item);
                   bottomSheetModalRef.current?.dismiss();

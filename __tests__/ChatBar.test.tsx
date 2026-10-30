@@ -212,6 +212,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onAttach,
     sendPending,
     sendInFlight,
+    onSelectModel,
   }: {
     userInput: string;
     hasAttachments: boolean;
@@ -223,9 +224,11 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     onAttach: () => void;
     sendPending?: boolean;
     sendInFlight?: boolean;
+    onSelectModel: () => void;
   }) => (
     <View testID="chat-bar-actions">
       {sendPending && <Text>send pending</Text>}
+      <Pressable testID="composer-model-badge" onPress={onSelectModel} />
       <Pressable testID="attach-btn" onPress={onAttach}>
         <Text>+</Text>
       </Pressable>
@@ -249,26 +252,6 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
           <Text>Mic</Text>
         </Pressable>
       )}
-    </View>
-  );
-});
-
-jest.mock('../components/chat-screen/ComposerModelMenu', () => {
-  const { View, Pressable, Text } = require('react-native');
-  return ({
-    visible,
-    onPick,
-    onShowAllModels,
-  }: {
-    visible: boolean;
-    onPick: (model: { id: number }) => void;
-    onShowAllModels: () => void;
-  }) => (
-    <View>
-      <Text>{`model-menu:${visible ? 'open' : 'closed'}`}</Text>
-      <Pressable testID="menu-pick-current" onPress={() => onPick({ id: 1 })} />
-      <Pressable testID="menu-pick-other" onPress={() => onPick({ id: 2 })} />
-      <Pressable testID="menu-all-models" onPress={onShowAllModels} />
     </View>
   );
 });
@@ -309,8 +292,6 @@ const defaultProps = {
   extraContentPadding: { value: 0 } as unknown as SharedValue<number>,
   onSend: jest.fn(),
   onSelectModel: jest.fn(),
-  onPickModel: jest.fn(),
-  onShowAllModels: jest.fn(),
   onSelectPrompt: jest.fn(),
   model: downloadedModel,
   scrollRef: { current: null },
@@ -321,7 +302,6 @@ const defaultProps = {
   hasMessages: false,
   disabled: false,
   modelSwitching: false,
-  opensModelMenu: false,
 };
 
 const renderBar = (props: Partial<typeof defaultProps> = {}) =>
@@ -1409,44 +1389,12 @@ describe('a refused send', () => {
   });
 });
 
-describe('model menu', () => {
-  it('starts closed', () => {
-    renderBar();
-    expect(screen.getByText('model-menu:closed')).toBeTruthy();
-  });
-
-  it('switches to a different model picked from the menu', () => {
-    const onPickModel = jest.fn();
-    renderBar({ onPickModel });
-    fireEvent.press(screen.getByTestId('menu-pick-other'));
-    expect(onPickModel).toHaveBeenCalledWith({ id: 2 });
-  });
-
-  it('does not reload the model the chat already uses', () => {
-    const onPickModel = jest.fn();
-    renderBar({ onPickModel });
-    fireEvent.press(screen.getByTestId('menu-pick-current'));
-    expect(onPickModel).not.toHaveBeenCalled();
-  });
-
-  it('opens on arrival when the chat was started to pick another model', () => {
-    renderBar({ opensModelMenu: true });
-    const [measuredCard] = screen.UNSAFE_root.findAll(
-      (node) => node.instance?.measureInWindow?.mock?.calls.length > 0
-    );
-    const measureCalls = measuredCard.instance.measureInWindow.mock.calls;
-    const reportCardPosition = measureCalls.at(-1)[0];
-
-    act(() => reportCardPosition(0, 600));
-
-    expect(screen.getByText('model-menu:open')).toBeTruthy();
-  });
-
-  it('opens the full model list from the menu', () => {
-    const onShowAllModels = jest.fn();
-    renderBar({ onShowAllModels });
-    fireEvent.press(screen.getByTestId('menu-all-models'));
-    expect(onShowAllModels).toHaveBeenCalledTimes(1);
+describe('model badge', () => {
+  it('opens the model sheet', () => {
+    const onSelectModel = jest.fn();
+    renderBar({ onSelectModel });
+    fireEvent.press(screen.getByTestId('composer-model-badge'));
+    expect(onSelectModel).toHaveBeenCalledTimes(1);
   });
 });
 

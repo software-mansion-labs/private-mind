@@ -52,7 +52,6 @@ import { showPermissionToast } from '../../utils/permissionToast';
 import { Feedback } from '../../utils/Feedback';
 import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
-import ComposerModelMenu from './ComposerModelMenu';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
 import WhatsNewCard from '../WhatsNewCard';
@@ -71,7 +70,6 @@ import { pressedOpacity } from '../../styles/pressable';
 import { radius, space, stroke } from '../../constants/design-system';
 
 const SENT_ECHO_WINDOW_MS = 300;
-const MODEL_MENU_GAP = 8;
 
 const REFUSAL_COPY: Record<SendRefusal, string | null> = {
   'nothing-to-send': 'Add a message or an attachment first.',
@@ -92,10 +90,7 @@ interface Props {
     attachments?: Attachment[]
   ) => boolean | void | SendRefusal | Promise<boolean | void | SendRefusal>;
   onSelectModel: () => void;
-  onPickModel: (model: Model) => void;
-  onShowAllModels: () => void;
   modelLocked?: boolean;
-  opensModelMenu?: boolean;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
     setInput: (text: string) => void;
@@ -120,10 +115,7 @@ const ChatBar = ({
   chatId,
   onSend,
   onSelectModel,
-  onPickModel,
-  onShowAllModels,
   modelLocked = false,
-  opensModelMenu = false,
   onSelectPrompt,
   ref,
   model,
@@ -187,7 +179,6 @@ const ChatBar = ({
 
   const {
     width: screenWidth,
-    height: windowHeight,
     composerBottom,
     gridWidth,
     gridHeight,
@@ -195,33 +186,6 @@ const ChatBar = ({
     sheetBottom,
     menuMaxBottom,
   } = useSheetGeometry(panelWindowHeight);
-
-  const inputCardRef = useRef<View>(null);
-  const [modelMenuBottom, setModelMenuBottom] = useState<number | null>(null);
-  const openModelMenu = useCallback(() => {
-    inputCardRef.current?.measureInWindow((_x, y) => {
-      Feedback.sheetOpen();
-      setModelMenuBottom(windowHeight - y + MODEL_MENU_GAP);
-    });
-  }, [windowHeight]);
-  const closeModelMenu = useCallback(() => setModelMenuBottom(null), []);
-  const openedModelMenuOnEntry = useRef(false);
-  useEffect(() => {
-    if (!opensModelMenu || openedModelMenuOnEntry.current) return;
-    openedModelMenuOnEntry.current = true;
-    openModelMenu();
-  }, [opensModelMenu, openModelMenu]);
-  const handlePickModel = useCallback(
-    (picked: Model) => {
-      setModelMenuBottom(null);
-      if (picked.id !== model?.id) onPickModel(picked);
-    },
-    [model?.id, onPickModel]
-  );
-  const handleShowAllModels = useCallback(() => {
-    setModelMenuBottom(null);
-    onShowAllModels();
-  }, [onShowAllModels]);
 
   const [filesBusy, setFilesBusy] = useState(false);
   const handleSelectFiles = useCallback(() => {
@@ -686,7 +650,7 @@ const ChatBar = ({
               <PromptSuggestions onSelectPrompt={onSelectPrompt} />
             </View>
           )}
-          <View ref={inputCardRef} style={styles.inputContainer}>
+          <View style={styles.inputContainer}>
             <Animated.View
               pointerEvents={attachments.length ? 'auto' : 'none'}
               style={[styles.strip, stripStyle]}
@@ -773,7 +737,7 @@ const ChatBar = ({
                 onSpeechInput={openSpeechInput}
                 model={model}
                 pendingModel={pendingModel}
-                onSelectModel={openModelMenu}
+                onSelectModel={onSelectModel}
                 modelLocked={modelLocked}
                 thinkingEnabled={thinkingEnabled}
                 onThinkingToggle={onThinkingToggle}
@@ -804,14 +768,6 @@ const ChatBar = ({
             imagesEnabled={isVisionModel}
             attachmentsBlocked={isRespondingHere}
             tools={menuTools}
-          />
-          <ComposerModelMenu
-            visible={modelMenuBottom !== null}
-            anchorBottom={modelMenuBottom ?? 0}
-            currentModelId={model?.id}
-            onPick={handlePickModel}
-            onShowAllModels={handleShowAllModels}
-            onClose={closeModelMenu}
           />
           <EmbeddingDownloadSheet
             bottomSheetModalRef={embeddingDownloadSheetRef}
