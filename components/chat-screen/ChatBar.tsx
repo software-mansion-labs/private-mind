@@ -44,7 +44,7 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useChatStore } from '../../store/chatStore';
 import { useLLMStore } from '../../store/llmStore';
-import RotateLeft from '../../assets/icons/rotate_left.svg';
+import ModelUnavailableCard from './ModelUnavailableCard';
 import LinkIcon from '../../assets/icons/link-alt.svg';
 import { detectUrls } from '../../utils/web/url/urlDetection';
 import { hostname } from '../../utils/web/hostname';
@@ -614,23 +614,14 @@ const ChatBar = ({
     );
   }
 
-  if (chatId && !model) {
+  if (chatId && !model?.isDownloaded) {
     return (
       <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.modelSelection,
-            pressed && pressedOpacity,
-          ]}
+        <ModelUnavailableCard
+          model={model}
+          pendingModel={pendingModel}
           onPress={onSelectModel}
-        >
-          <Text style={styles.selectedModel}>Select Model</Text>
-          <RotateLeft
-            width={20}
-            height={20}
-            style={{ color: theme.text.primary }}
-          />
-        </Pressable>
+        />
       </View>
     );
   }
@@ -796,22 +787,6 @@ const createStyles = (theme: Theme) =>
       flexShrink: 1,
       marginBottom: space.five,
       gap: space.six,
-    },
-    modelSelection: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      height: 52,
-      borderWidth: stroke.soft,
-      borderColor: theme.border.soft,
-      borderRadius: radius.twelve,
-      paddingHorizontal: space.four,
-      paddingVertical: space.three,
-    },
-    selectedModel: {
-      fontSize: 14,
-      fontFamily: fontFamily.regular,
-      color: theme.text.primary,
     },
     content: {
       flexDirection: 'row',
