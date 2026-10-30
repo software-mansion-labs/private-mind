@@ -19,13 +19,14 @@ import { DrawerItem } from './DrawerItem';
 import { DrawerTopBar } from './DrawerTopBar';
 import { DrawerNavSection } from './DrawerNavSection';
 import { DrawerEmptyState } from './DrawerEmptyState';
+import { DrawerFooter } from './DrawerFooter';
 import { buildChatSections, sortChatsByRecency } from './chatSections';
 import { useDrawerChatMenu } from './useDrawerChatMenu';
 import {
   DRAWER_HORIZONTAL_PADDING,
   SECTION_GAP,
 } from '../../constants/drawer-layout';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { scrollIndicatorProps } from '../../constants/scroll-indicator';
 
@@ -157,7 +158,10 @@ const DrawerMenu = ({
         ref={scrollRef}
         testID="drawer-scroll"
         style={styles.scrollView}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          searching && styles.contentSearching,
+        ]}
         contentOffset={initialContentOffset}
         onScroll={handleScroll}
         onContentSizeChange={handleContentSizeChange}
@@ -179,6 +183,7 @@ const DrawerMenu = ({
               {sectionChats.map((chat) => (
                 <DrawerItem
                   key={chat.id}
+                  variant="chat"
                   testID={`drawer-chat-${chat.id}`}
                   label={chatLabel(chat)}
                   active={pathname === `/chat/${chat.id}`}
@@ -190,8 +195,12 @@ const DrawerMenu = ({
           </View>
         ))}
 
-        {hasNoResults && <DrawerEmptyState onNavigate={onNavigate} />}
+        {hasNoResults && (
+          <DrawerEmptyState query={search.trim()} onNavigate={onNavigate} />
+        )}
       </ScrollView>
+
+      {!searching && <DrawerFooter onNavigate={onNavigate} />}
 
       {MenuElements}
     </View>
@@ -212,20 +221,25 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     content: {
-      paddingTop: 16,
-      paddingBottom: theme.insets.bottom + 16,
+      paddingTop: 12,
+      paddingBottom: 16,
       paddingHorizontal: DRAWER_HORIZONTAL_PADDING,
     },
+    contentSearching: {
+      paddingBottom: theme.insets.bottom + 16,
+    },
     section: {
-      gap: 8,
+      gap: 2,
       marginBottom: SECTION_GAP,
     },
     sectionTitle: {
       alignSelf: 'flex-start',
       paddingHorizontal: 12,
-      fontFamily: fontFamily.medium,
+      paddingBottom: 4,
+      fontFamily: fontFamily.bold,
       fontSize: fontSizes.xs,
-      letterSpacing: 0.1,
+      lineHeight: lineHeights.xs,
+      letterSpacing: 0.24,
       color: theme.text.defaultTertiary,
     },
   });

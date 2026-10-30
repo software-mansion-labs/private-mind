@@ -133,18 +133,27 @@ beforeEach(() => {
 afterEach(() => setPlatform(ORIGINAL_OS));
 
 describe('DrawerMenu — collapsed', () => {
-  it('keeps New chat, Models and Settings at the top', () => {
+  it('keeps Manage models at the top and New chat with Settings pinned in the footer', () => {
     renderMenu();
 
+    expect(screen.getByText('Manage models')).toBeTruthy();
     expect(screen.getByText('New chat')).toBeTruthy();
-    expect(screen.getByText('Models')).toBeTruthy();
-    expect(screen.getByText('Settings')).toBeTruthy();
+    expect(screen.getByLabelText('Settings')).toBeTruthy();
   });
 
-  it('renders the app name and a search button instead of a search field', () => {
+  it('opens Settings from the footer', () => {
     renderMenu();
 
-    expect(screen.getByText('Private Mind')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('drawer-settings'));
+
+    expect(mockReplace).toHaveBeenCalledWith('/settings');
+  });
+
+  it('renders a search field look-alike instead of the app name', () => {
+    renderMenu();
+
+    expect(screen.queryByText('Private Mind')).toBeNull();
+    expect(screen.getByText('Search chats...')).toBeTruthy();
     expect(screen.getByTestId('drawer-search-open')).toBeTruthy();
     expect(screen.queryByTestId('drawer-search-input')).toBeNull();
   });
@@ -297,26 +306,26 @@ describe('DrawerMenu — searching', () => {
     expect(scrollOffsetRef.current).toBe(120);
   });
 
-  it('keeps the navigation items while the query is still empty', () => {
+  it('keeps Manage models while the query is still empty, without the footer', () => {
     renderMenu({ searching: true });
 
-    expect(screen.getByText('New chat')).toBeTruthy();
-    expect(screen.getByText('Models')).toBeTruthy();
-    expect(screen.getByText('Settings')).toBeTruthy();
+    expect(screen.getByText('Manage models')).toBeTruthy();
+    expect(screen.queryByTestId('drawer-new-chat')).toBeNull();
+    expect(screen.queryByLabelText('Settings')).toBeNull();
   });
 
   it('hides the navigation items once a query is typed, leaving only results', () => {
     renderMenu({ searching: true, search: 'pizza' });
 
     expect(screen.queryByText('New chat')).toBeNull();
-    expect(screen.queryByText('Models')).toBeNull();
-    expect(screen.queryByText('Settings')).toBeNull();
+    expect(screen.queryByText('Manage models')).toBeNull();
+    expect(screen.queryByLabelText('Settings')).toBeNull();
     expect(screen.getByText('Pizza recipe')).toBeTruthy();
   });
 
   it('brings the navigation back when the query is cleared', () => {
     const { rerender } = renderMenu({ searching: true, search: 'pizza' });
-    expect(screen.queryByText('Models')).toBeNull();
+    expect(screen.queryByText('Manage models')).toBeNull();
 
     rerender(
       <DrawerMenu
@@ -327,7 +336,7 @@ describe('DrawerMenu — searching', () => {
       />
     );
 
-    expect(screen.getByText('Models')).toBeTruthy();
+    expect(screen.getByText('Manage models')).toBeTruthy();
   });
 
   it('filters the chat list by the query', () => {
@@ -348,7 +357,7 @@ describe('DrawerMenu — searching', () => {
   it('shows an empty state when nothing matches', () => {
     renderMenu({ searching: true, search: 'nonexistent' });
 
-    expect(screen.getByText('No chats found')).toBeTruthy();
+    expect(screen.getByText('No chats match "nonexistent"')).toBeTruthy();
     expect(screen.getByText('Start new chat')).toBeTruthy();
   });
 

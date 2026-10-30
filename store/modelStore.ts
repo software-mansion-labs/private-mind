@@ -20,6 +20,7 @@ import {
   describeDownloadError,
   recordDownloadEvent,
 } from '../utils/downloadDiagnostics';
+import { RateSample, nextProgressRate } from '../utils/downloadEta';
 
 export enum ModelState {
   Downloaded = 'downloaded',
@@ -30,6 +31,7 @@ export enum ModelState {
 export interface DownloadState {
   progress: number;
   status: ModelState;
+  rate?: number;
 }
 
 interface DownloadAttempt {
@@ -37,6 +39,7 @@ interface DownloadAttempt {
   cancelled: boolean;
   fetching: boolean;
   finished: boolean;
+  resumedSinceLastProgress: boolean;
   settled: Promise<void>;
   ownedSource: string | null;
   cancellation: Promise<void>;
@@ -60,6 +63,7 @@ const createAttempt = (model: Model): DownloadAttempt => {
     cancelled: false,
     fetching: false,
     finished: false,
+    resumedSinceLastProgress: false,
     settled: Promise.resolve(),
     ownedSource: null,
     cancellation,
@@ -99,6 +103,7 @@ const resumePausedDownloads = () => {
     pausedForBackground.delete(attempt);
     if (attempt.finished || attempt.cancelled) continue;
     const { model } = attempt;
+    attempt.resumedSinceLastProgress = true;
     recordDownloadEvent(model.id, model.modelName, 'resumed-in-foreground');
     ExpoResourceFetcher.resumeFetching(source).catch((err) =>
       recordDownloadEvent(
@@ -281,12 +286,21 @@ const runDownload = async (model: Model, attempt: DownloadAttempt) => {
   const isCurrent = () =>
     attempts.get(model.id) === attempt && !attempt.cancelled;
 
+  let lastSample: RateSample | undefined;
+  let rate: number | undefined;
+
   const publish = (progress: number, status: DownloadState['status']) => {
     if (!isCurrent()) return;
+    const sample = { progress, at: Date.now() };
+    if (lastSample && !attempt.resumedSinceLastProgress) {
+      rate = nextProgressRate(rate, lastSample, sample);
+    }
+    attempt.resumedSinceLastProgress = false;
+    lastSample = sample;
     useModelStore.setState((state) => ({
       downloadStates: {
         ...state.downloadStates,
-        [model.id]: { progress, status },
+        [model.id]: { progress, status, rate },
       },
     }));
   };

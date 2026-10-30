@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Text, StyleSheet, Alert, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useModelStore } from '../../store/modelStore';
-import ModalHeader from '../../components/ModalHeader';
+import GlassScreenHeader, {
+  useGlassScreenHeaderHeight,
+} from '../../components/GlassScreenHeader';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import PrimaryButton from '../../components/PrimaryButton';
@@ -26,7 +28,8 @@ export interface LocalModelFormState {
 
 export default function AddLocalModelScreen() {
   const router = useRouter();
-  const { styles } = useThemedStyles(createStyles);
+  const headerHeight = useGlassScreenHeaderHeight(true);
+  const { styles } = useThemedStyles(createStyles, headerHeight);
   const { addModelToDB } = useModelStore();
 
   const [
@@ -76,7 +79,6 @@ export default function AddLocalModelScreen() {
       style={styles.keyboardAvoidingView}
     >
       <View style={styles.container}>
-        <ModalHeader title="Add Local Model" onClose={() => router.back()} />
         <ScrollView
           contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
@@ -110,11 +112,17 @@ export default function AddLocalModelScreen() {
         </ScrollView>
         <PrimaryButton text="Add model" onPress={handleSave} />
       </View>
+      <GlassScreenHeader
+        title="Add Local Model"
+        onBack={() => router.back()}
+        icon="close"
+        sheet
+      />
     </CustomKeyboardAvoidingView>
   );
 }
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, headerHeight: number) =>
   StyleSheet.create({
     keyboardAvoidingView: {
       flex: 1,
@@ -122,12 +130,13 @@ const createStyles = (theme: Theme) =>
     },
     container: {
       flex: 1,
-      padding: 16,
+      paddingHorizontal: 16,
       paddingBottom: theme.insets.bottom + 16,
       justifyContent: 'space-between',
     },
     scrollViewContent: {
       gap: 24,
+      paddingTop: headerHeight + 24,
       paddingBottom: 24,
     },
     description: {

@@ -1,47 +1,140 @@
-import React, { RefObject, useCallback, useState } from 'react';
+import React, { RefObject, useCallback } from 'react';
 import {
   BottomSheetModal,
   BottomSheetView,
   BottomSheetBackdrop,
+  type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { StyleSheet, Text, View } from 'react-native';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import BackDismissibleSheetModal from './BackDismissibleSheetModal';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSQLiteContext } from 'expo-sqlite';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import EntryButton from '../EntryButton';
-import ModelCard from '../model-hub/ModelCard';
+import { pressedOpacity } from '../../styles/pressable';
+import { radius, space, stroke } from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
+import {
+  THINKING_LABEL,
+  VISION_LABEL,
+  isCapabilityLabel,
+} from '../../constants/model-labels';
+import ModelFamilyTile from '../model-hub/ModelFamilyTile';
+import ModelBadge from '../model-hub/ModelBadge';
+import ChatIcon from '../../assets/icons/chat.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 import EditIcon from '../../assets/icons/edit.svg';
 import CrossCircleIcon from '../../assets/icons/cross-circle.svg';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
+import CheckIcon from '../../assets/icons/check.svg';
+import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
+import { FAMILY_PROVIDERS } from '../../constants/family-descriptions';
 import { isModelCompatible } from '../../utils/modelCompatibility';
+import { getModelFamily } from '../../utils/modelFamily';
+import { startPhantomChat } from '../../utils/startPhantomChat';
 import { useModelStore } from '../../store/modelStore';
+import { useDeleteModelFiles } from '../../hooks/useDeleteModelFiles';
+import { useConfirm } from '../../hooks/useConfirm';
 import { Model } from '../../database/modelRepository';
 import Toast from 'react-native-toast-message';
-import PrimaryButton from '../PrimaryButton';
-import SecondaryButton from '../SecondaryButton';
 import { router } from 'expo-router';
 import { Feedback } from '../../utils/Feedback';
+import { SvgComponent } from '../../utils/SvgComponent';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal<Model> | null>;
 }
 
-enum ModalStage {
-  Initial,
-  RemoveFiles,
-  RemoveModel,
+const ACTION_ROW_MIN_HEIGHT = 52;
+const ACTION_WELL_SIZE = 32;
+const ACTION_WELL_RADIUS = 10;
+const ACTION_ICON_SIZE = 16;
+const CHEVRON_WIDTH = 7;
+const CHEVRON_HEIGHT = 12;
+const CHEVRON_OPACITY = 0.5;
+const DOWNLOADED_BADGE_SIZE = 32;
+const HANDLE_WIDTH = 36;
+const HANDLE_HEIGHT = 5;
+const SHEET_RADIUS = 24;
+
+type ActionTone = 'accent' | 'neutral' | 'destructive';
+
+interface Action {
+  key: string;
+  label: string;
+  icon: SvgComponent;
+  tone: ActionTone;
+  onPress: () => void;
 }
 
-const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
-  const { styles } = useThemedStyles(createStyles);
+const modelMeta = (model: Model) =>
+  [
+    model.source === 'built-in'
+      ? FAMILY_PROVIDERS[getModelFamily(model)]
+      : null,
+    model.source === 'remote' ? 'From a link' : null,
+    model.source === 'local' ? 'From device' : null,
+    model.modelSize ? `${model.modelSize.toFixed(2)} GB` : null,
+    model.parameters ? `${model.parameters.toFixed(2)} B params` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
-  const { removeModel, removeModelFiles } = useModelStore();
-  const [stage, setStage] = useState<ModalStage>(ModalStage.Initial);
-  const [isProcessing, setIsProcessing] = useState(false);
+const ActionRow = ({ action }: { action: Action }) => {
+  const { styles, theme } = useThemedStyles(createStyles);
+  const { background, foreground } = {
+    accent: { background: theme.bg.accentSoft, foreground: theme.text.accent },
+    neutral: { background: theme.bg.tile, foreground: theme.text.primary },
+    destructive: {
+      background: theme.bg.errorSecondary,
+      foreground: theme.text.error,
+    },
+  }[action.tone];
+  const destructive = action.tone === 'destructive';
+  const Icon = action.icon;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={action.onPress}
+      style={({ pressed }) => [styles.actionRow, pressed && pressedOpacity]}
+      testID={`model-sheet-${action.key}`}
+    >
+      <View style={[styles.actionWell, { backgroundColor: background }]}>
+        <Icon
+          width={ACTION_ICON_SIZE}
+          height={ACTION_ICON_SIZE}
+          style={{ color: foreground }}
+        />
+      </View>
+      <Text
+        style={[styles.actionLabel, destructive && styles.textError]}
+        maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+      >
+        {action.label}
+      </Text>
+      {!destructive && (
+        <ChevronRightIcon
+          width={CHEVRON_WIDTH}
+          height={CHEVRON_HEIGHT}
+          style={styles.chevron}
+        />
+      )}
+    </Pressable>
+  );
+};
+
+const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
+  const { styles, theme } = useThemedStyles(createStyles);
+  const db = useSQLiteContext();
+
+  const { removeModel } = useModelStore();
+  const { deleteModelFiles, ConfirmElement: DeleteFilesConfirm } =
+    useDeleteModelFiles();
+  const { confirm, ConfirmElement: RemoveModelConfirm } = useConfirm();
 
   const renderBackdrop = useCallback(
-    (props: any) => (
+    (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
@@ -52,191 +145,184 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
     [styles.backdrop]
   );
 
-  const renderStageContent = (model: Model) => {
-    switch (stage) {
-      case ModalStage.Initial:
-        return (
-          <>
-            <ModelCard model={model} onPress={() => {}} />
-            <View style={styles.buttonGroup}>
-              {model.isDownloaded && isModelCompatible(model) && (
-                <EntryButton
-                  text="Run benchmark"
-                  icon={
-                    <View style={styles.iconSlot}>
-                      <BenchmarkIcon
-                        width={18}
-                        height={18}
-                        style={styles.iconPrimary}
-                      />
-                    </View>
-                  }
-                  onPress={() => {
-                    bottomSheetModalRef.current?.dismiss();
-                    if (router.canDismiss()) router.dismissAll();
-                    router.replace(`/benchmark?modelId=${model.id}`);
-                  }}
-                />
-              )}
+  const leaveSheetFor = (navigate: () => void) => {
+    bottomSheetModalRef.current?.dismiss();
+    if (router.canDismiss()) router.dismissAll();
+    navigate();
+  };
 
-              {model.source !== 'built-in' && (
-                <EntryButton
-                  text="Edit model"
-                  icon={
-                    <EditIcon
-                      width={18}
-                      height={20}
-                      style={styles.iconPrimary}
-                    />
-                  }
-                  onPress={() => {
-                    router.push(
-                      model.source === 'remote'
-                        ? `edit-remote-model/${model.id}`
-                        : `edit-local-model/${model.id}`
-                    );
-                    bottomSheetModalRef.current?.dismiss();
-                  }}
-                />
-              )}
-
-              {model.source !== 'local' && model.isDownloaded && (
-                <EntryButton
-                  text="Delete downloaded files"
-                  icon={
-                    <TrashIcon
-                      width={24}
-                      height={24}
-                      style={styles.iconImportant}
-                    />
-                  }
-                  onPress={() => setStage(ModalStage.RemoveFiles)}
-                />
-              )}
-
-              {model.source !== 'built-in' && (
-                <EntryButton
-                  text="Remove from the app"
-                  textStyle={styles.textError}
-                  icon={
-                    <CrossCircleIcon
-                      width={20}
-                      height={20}
-                      style={styles.iconError}
-                    />
-                  }
-                  onPress={() => setStage(ModalStage.RemoveModel)}
-                />
-              )}
-            </View>
-          </>
-        );
-
-      case ModalStage.RemoveFiles:
-        return (
-          <>
-            <Text style={styles.title}>
-              Are you sure you want to delete files of this model?
-            </Text>
-            <Text style={styles.subText}>
-              You won’t be able to use this model, but you can always redownload
-              the files.
-            </Text>
-            <View style={styles.buttonGroup}>
-              <PrimaryButton
-                text={
-                  isProcessing
-                    ? 'Deleting model files...'
-                    : 'Delete model files'
-                }
-                disabled={isProcessing}
-                onPress={async () => {
-                  Feedback.destructive();
-                  setIsProcessing(true);
-                  await removeModelFiles(model.id);
-                  setIsProcessing(false);
-                  Toast.show({
-                    type: 'defaultToast',
-                    text1: `${model.modelName} has been successfully deleted`,
-                  });
-                  bottomSheetModalRef.current?.dismiss();
-                }}
-              />
-              <SecondaryButton
-                text="Close"
-                onPress={() => setStage(ModalStage.Initial)}
-                disabled={isProcessing}
-              />
-            </View>
-          </>
-        );
-
-      case ModalStage.RemoveModel:
-        return (
-          <>
-            <Text style={styles.title}>
-              Are you sure you want permanently remove this model from the app?
-            </Text>
-            <Text style={styles.subText}>
-              {model.source === 'local'
-                ? 'This will remove the model from the app. The original files on your device will not be touched. You can always add this model again manually.'
-                : 'It will delete the model files and stored external URLs. You can always add this model again manually.'}
-            </Text>
-            <View style={styles.buttonGroup}>
-              <PrimaryButton
-                text={
-                  isProcessing ? 'Removing model...' : 'Remove from the app'
-                }
-                disabled={isProcessing}
-                style={styles.buttonDestructive}
-                onPress={async () => {
-                  Feedback.destructive();
-                  setIsProcessing(true);
-                  await removeModel(model.id);
-                  setIsProcessing(false);
-                  Toast.show({
-                    type: 'defaultToast',
-                    text1: `${model.modelName} has been successfully deleted`,
-                  });
-                  bottomSheetModalRef.current?.dismiss();
-                }}
-              />
-              <SecondaryButton
-                text="Close"
-                onPress={() => setStage(ModalStage.Initial)}
-                disabled={isProcessing}
-              />
-            </View>
-          </>
-        );
-
-      default:
-        return null;
+  const modelActions = (model: Model): Action[] => {
+    const usable = model.isDownloaded && isModelCompatible(model);
+    const actions: Action[] = [];
+    if (usable) {
+      actions.push({
+        key: 'start-chat',
+        label: 'Start a chat',
+        icon: ChatIcon,
+        tone: 'accent',
+        onPress: () =>
+          leaveSheetFor(() => startPhantomChat(db, 'replace', model)),
+      });
+      actions.push({
+        key: 'benchmark',
+        label: 'Run benchmark',
+        icon: BenchmarkIcon,
+        tone: 'neutral',
+        onPress: () =>
+          leaveSheetFor(() => router.replace(`/benchmark?modelId=${model.id}`)),
+      });
     }
+    if (model.source !== 'built-in') {
+      actions.push({
+        key: 'edit',
+        label: 'Edit model',
+        icon: EditIcon,
+        tone: 'neutral',
+        onPress: () => {
+          router.push(
+            model.source === 'remote'
+              ? `edit-remote-model/${model.id}`
+              : `edit-local-model/${model.id}`
+          );
+          bottomSheetModalRef.current?.dismiss();
+        },
+      });
+    }
+    if (model.source !== 'local' && model.isDownloaded) {
+      actions.push({
+        key: 'delete-files',
+        label: 'Delete downloaded files',
+        icon: TrashIcon,
+        tone: 'destructive',
+        onPress: () => {
+          bottomSheetModalRef.current?.dismiss();
+          deleteModelFiles(model);
+        },
+      });
+    }
+    if (model.source !== 'built-in') {
+      actions.push({
+        key: 'remove',
+        label: 'Remove from the app',
+        icon: CrossCircleIcon,
+        tone: 'destructive',
+        onPress: () => {
+          bottomSheetModalRef.current?.dismiss();
+          removeFromApp(model);
+        },
+      });
+    }
+    return actions;
+  };
+
+  const removeFromApp = async (model: Model) => {
+    const confirmed = await confirm({
+      title: 'Remove model from the app?',
+      message:
+        model.source === 'local'
+          ? `${model.modelName} will be removed from the app. The original files on your device will not be touched.`
+          : `${model.modelName} and its stored external URLs will be removed. You can add it again manually.`,
+      confirmLabel: 'Remove',
+    });
+    if (!confirmed) return;
+
+    await removeModel(model.id);
+    Toast.show({
+      type: 'defaultToast',
+      text1: `${model.modelName} has been successfully deleted`,
+    });
+  };
+
+  const renderHeader = (model: Model) => {
+    const meta = modelMeta(model);
+    const labels = (model.labels ?? []).filter(
+      (label) => !isCapabilityLabel(label)
+    );
+    const isCompatible = isModelCompatible(model);
+
+    return (
+      <>
+        <View style={styles.header}>
+          <ModelFamilyTile family={getModelFamily(model)} size="card" />
+          <View style={styles.headerText}>
+            <Text style={styles.name} testID="model-sheet-name">
+              {model.modelName}
+            </Text>
+            {meta.length > 0 && <Text style={styles.meta}>{meta}</Text>}
+          </View>
+          {model.isDownloaded && (
+            <View
+              style={styles.downloadedBadge}
+              accessible
+              accessibilityRole="image"
+              accessibilityLabel="Downloaded"
+            >
+              <CheckIcon
+                width={ACTION_ICON_SIZE}
+                height={ACTION_ICON_SIZE}
+                color={theme.text.onSuccess}
+              />
+            </View>
+          )}
+        </View>
+        <View style={styles.badges}>
+          {!isCompatible && <ModelBadge label="Incompatible" color="error" />}
+          {model.source !== 'built-in' && (
+            <ModelBadge label="Custom" color="neutral" />
+          )}
+          {model.thinking && <ModelBadge label={THINKING_LABEL} />}
+          {model.vision && <ModelBadge label={VISION_LABEL} />}
+          {labels.map((label) => (
+            <ModelBadge key={label} label={label} />
+          ))}
+        </View>
+      </>
+    );
+  };
+
+  const renderContent = (model: Model) => {
+    const actions = modelActions(model);
+    return (
+      <>
+        {renderHeader(model)}
+        {actions.length > 0 && (
+          <View style={styles.actionGroup}>
+            {actions.map((action, index) => (
+              <React.Fragment key={action.key}>
+                {index > 0 && <View style={styles.separator} />}
+                <ActionRow action={action} />
+              </React.Fragment>
+            ))}
+          </View>
+        )}
+      </>
+    );
   };
 
   return (
-    <BottomSheetModal
-      ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
-      enableDynamicSizing
-      onChange={(index) => {
-        if (index >= 0) Feedback.sheetOpen();
-        setStage(ModalStage.Initial);
-        setIsProcessing(false);
-      }}
-      handleStyle={styles.handle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}
-    >
-      {(props) =>
-        props.data ? (
-          <BottomSheetView style={styles.container}>
-            {renderStageContent(props.data)}
-          </BottomSheetView>
-        ) : null
-      }
-    </BottomSheetModal>
+    <>
+      <BackDismissibleSheetModal
+        ref={bottomSheetModalRef}
+        backdropComponent={renderBackdrop}
+        enableDynamicSizing
+        onChange={(index) => {
+          if (index >= 0) Feedback.sheetOpen();
+        }}
+        handleStyle={styles.handle}
+        handleIndicatorStyle={styles.handleIndicator}
+        backgroundStyle={styles.background}
+      >
+        {(props) =>
+          props.data ? (
+            <BottomSheetView style={styles.container}>
+              {renderContent(props.data)}
+            </BottomSheetView>
+          ) : null
+        }
+      </BackDismissibleSheetModal>
+      {DeleteFilesConfirm}
+      {RemoveModelConfirm}
+    </>
   );
 };
 
@@ -245,60 +331,101 @@ export default ModelManagementSheet;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      paddingVertical: 24,
-      paddingHorizontal: 16,
-      paddingBottom: theme.insets.bottom + 16,
-      gap: 24,
-      backgroundColor: theme.bg.softPrimary,
+      paddingTop: space.two,
+      paddingHorizontal: space.four,
+      paddingBottom: theme.insets.bottom + space.four,
+      gap: space.three,
     },
-    title: {
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.three,
+    },
+    headerText: {
+      flex: 1,
+      minWidth: 0,
+    },
+    name: {
+      fontFamily: fontFamily.bold,
       fontSize: fontSizes.lg,
-      fontFamily: fontFamily.medium,
+      lineHeight: lineHeights.lg,
       color: theme.text.primary,
     },
-    subText: {
-      fontSize: fontSizes.md,
+    meta: {
       fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
       color: theme.text.defaultSecondary,
     },
-    buttonGroup: {
-      gap: 8,
+    downloadedBadge: {
+      width: DOWNLOADED_BADGE_SIZE,
+      height: DOWNLOADED_BADGE_SIZE,
+      borderRadius: radius.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.bg.success,
     },
-    textError: {
-      color: theme.text.error,
+    badges: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: space.one,
     },
-    iconPrimary: {
-      color: theme.text.primary,
+    actionGroup: {
+      marginTop: space.one,
+      borderRadius: radius.twelve,
+      borderWidth: stroke.soft,
+      borderColor: theme.border.soft,
+      overflow: 'hidden',
     },
-    iconSlot: {
-      width: 24,
-      height: 24,
+    separator: {
+      height: stroke.soft,
+      backgroundColor: theme.border.soft,
+    },
+    actionRow: {
+      minHeight: ACTION_ROW_MIN_HEIGHT,
+      paddingVertical: space.two,
+      paddingHorizontal: space.three,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.three,
+    },
+    actionWell: {
+      width: ACTION_WELL_SIZE,
+      height: ACTION_WELL_SIZE,
+      borderRadius: ACTION_WELL_RADIUS,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    iconImportant: {
-      color: theme.bg.strongPrimary,
+    actionLabel: {
+      flex: 1,
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
+      color: theme.text.primary,
     },
-    iconError: {
+    chevron: {
+      color: theme.text.primary,
+      opacity: CHEVRON_OPACITY,
+    },
+    textError: {
       color: theme.text.error,
-    },
-    buttonDestructive: {
-      backgroundColor: theme.bg.errorPrimary,
     },
     backdrop: {
       backgroundColor: theme.bg.overlay,
     },
     handle: {
-      borderRadius: 16,
+      borderTopLeftRadius: SHEET_RADIUS,
+      borderTopRightRadius: SHEET_RADIUS,
       backgroundColor: theme.bg.softPrimary,
     },
     handleIndicator: {
-      backgroundColor: theme.text.primary,
-      width: 64,
-      height: 4,
-      borderRadius: 20,
+      width: HANDLE_WIDTH,
+      height: HANDLE_HEIGHT,
+      borderRadius: radius.full,
+      backgroundColor: theme.border.soft,
     },
     background: {
+      borderRadius: SHEET_RADIUS,
       backgroundColor: theme.bg.softPrimary,
     },
   });

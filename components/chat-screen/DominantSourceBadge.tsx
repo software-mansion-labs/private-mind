@@ -6,6 +6,7 @@ import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { type SourceDocument } from '../../database/chatRepository';
 import WebFavicon from './WebFavicon';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
   source?: SourceDocument;
@@ -22,7 +23,7 @@ const DominantSourceBadge = ({ source }: Props) => {
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.badge, pressed && styles.badgePressed]}
+      style={({ pressed }) => [styles.badge, pressed && pressedOpacity]}
       onPress={handlePress}
       disabled={!source.url}
       hitSlop={4}
@@ -57,9 +58,6 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bg.softSecondary,
       borderWidth: 1,
       borderColor: theme.border.soft,
-    },
-    badgePressed: {
-      opacity: 0.7,
     },
     dot: {
       width: 6,

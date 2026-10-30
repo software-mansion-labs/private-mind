@@ -6,28 +6,36 @@ import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
+import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { router } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import { radius, space } from '../../constants/design-system';
 import { Model } from '../../database/modelRepository';
-import ModelCard from '../model-hub/ModelCard';
+import ModelPickerRow from '../model-hub/ModelPickerRow';
 import PrimaryButton from '../PrimaryButton';
 import BottomSheetSearchInput from './BottomSheetSearchInput';
 import { Feedback } from '../../utils/Feedback';
+
+const HANDLE_WIDTH = 36;
+const HANDLE_HEIGHT = 5;
+const SHEET_RADIUS = 24;
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
   onModelPicked: (model: Model) => void;
   onSheetStateChange?: (isOpen: boolean) => void;
+  currentModelId?: number;
 }
 
 const ModelSelectSheet = ({
   bottomSheetModalRef,
   onModelPicked,
   onSheetStateChange,
+  currentModelId,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const downloadedModels = useModelStore((state) => state.downloadedModels);
@@ -54,11 +62,11 @@ const ModelSelectSheet = ({
   );
 
   return (
-    <BottomSheetModal
+    <BackDismissibleSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       index={snapIndex}
-      snapPoints={['30%', '50%']}
+      snapPoints={['50%', '90%']}
       enableDynamicSizing={false}
       handleStyle={styles.handle}
       handleIndicatorStyle={styles.handleIndicator}
@@ -79,30 +87,26 @@ const ModelSelectSheet = ({
     >
       {downloadedModels.length > 0 ? (
         <View style={styles.content}>
-          <Text style={[styles.title, styles.horizontalInset]}>
-            Select a Model
-          </Text>
-          <BottomSheetSearchInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search Models..."
-          />
+          <View style={styles.header}>
+            <Text style={styles.title}>Select a model</Text>
+            <BottomSheetSearchInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search models"
+            />
+          </View>
 
           <BottomSheetFlatList
             data={filteredModels}
             keyExtractor={(item) => item.id.toString()}
-            // only frist two styles appear to be forwarded, so the array is
-            // nested to make all styles be part of the first item
-            contentContainerStyle={[
-              [
-                styles.modelList,
-                styles.horizontalInset,
-                { paddingBottom: theme.insets.bottom + 16 },
-              ],
-            ]}
+            contentContainerStyle={{ paddingBottom: theme.insets.bottom + 16 }}
             renderItem={({ item }) => (
-              <ModelCard
+              <ModelPickerRow
                 model={item}
+                current={item.id === currentModelId}
+                accessibilityRole="button"
+                testIDPrefix="model-select"
+                size="regular"
                 onPress={() => {
                   onModelPicked(item);
                   bottomSheetModalRef.current?.dismiss();
@@ -112,7 +116,7 @@ const ModelSelectSheet = ({
           />
         </View>
       ) : (
-        <BottomSheetView style={[styles.content, styles.horizontalInset]}>
+        <BottomSheetView style={[styles.content, styles.emptyContent]}>
           <Text style={styles.title}>You have no available models yet</Text>
           <Text style={styles.subText}>
             To use Private Mind you need to have at least one model downloaded
@@ -126,7 +130,7 @@ const ModelSelectSheet = ({
           />
         </BottomSheetView>
       )}
-    </BottomSheetModal>
+    </BackDismissibleSheetModal>
   );
 };
 
@@ -135,16 +139,18 @@ export default ModelSelectSheet;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     handle: {
+      borderTopLeftRadius: SHEET_RADIUS,
+      borderTopRightRadius: SHEET_RADIUS,
       backgroundColor: theme.bg.softPrimary,
-      borderRadius: 16,
     },
     handleIndicator: {
-      width: 64,
-      height: 4,
-      borderRadius: 20,
-      backgroundColor: theme.text.primary,
+      width: HANDLE_WIDTH,
+      height: HANDLE_HEIGHT,
+      borderRadius: radius.full,
+      backgroundColor: theme.border.soft,
     },
     background: {
+      borderRadius: SHEET_RADIUS,
       backgroundColor: theme.bg.softPrimary,
     },
     backdrop: {
@@ -152,23 +158,26 @@ const createStyles = (theme: Theme) =>
     },
     content: {
       flex: 1,
-      paddingTop: 16,
-      gap: 24,
+      paddingTop: space.two,
+      gap: space.three,
     },
-    horizontalInset: {
-      paddingHorizontal: 16,
+    header: {
+      gap: space.three,
+      paddingHorizontal: space.four,
+    },
+    emptyContent: {
+      gap: space.six,
+      paddingHorizontal: space.four,
     },
     title: {
+      fontFamily: fontFamily.bold,
       fontSize: fontSizes.lg,
-      fontFamily: fontFamily.medium,
+      lineHeight: lineHeights.lg,
       color: theme.text.primary,
     },
     subText: {
       fontSize: fontSizes.md,
       fontFamily: fontFamily.regular,
       color: theme.text.defaultSecondary,
-    },
-    modelList: {
-      gap: 8,
     },
   });

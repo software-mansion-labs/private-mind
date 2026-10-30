@@ -37,7 +37,8 @@ import MessageItem from './MessageItem';
 import ScrollToLatestButton from './ScrollToLatestButton';
 import SourcesSheet, { type SourcesSheetHandle } from './SourcesSheet';
 import { EdgeFade } from './EdgeFade';
-import { TopFade, topFadeHeight } from './TopFade';
+import { topFadeHeight } from './TopFade';
+import { GlassScrollEdge } from './GlassScrollEdge';
 import {
   Message,
   SourceDocument,
@@ -67,7 +68,10 @@ import {
   MESSAGE_LIST_SIDE_PADDING,
 } from '../../constants/chat-screen';
 import { messageRowKey } from '../../utils/messageRowKey';
-import { scrollIndicatorProps } from '../../constants/scroll-indicator';
+import {
+  SCROLL_INDICATOR_INPUT_GAP,
+  scrollIndicatorProps,
+} from '../../constants/scroll-indicator';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 import { useSendKeyboardFreeze } from './useSendKeyboardFreeze';
@@ -82,6 +86,7 @@ import {
   stoppedTurnLandsShort,
 } from './pinScroll';
 import { visibleMessageText } from '../../utils/messageText';
+import { pressedOpacity } from '../../styles/pressable';
 
 export interface MessagesHandle {
   onMessageSent: () => void;
@@ -342,7 +347,8 @@ const Messages = ({
     ],
   }));
 
-  const listTopPadding = topInset + 16;
+  const fadeAnchor = fadeBottom ?? topInset;
+  const listTopPadding = Math.max(topInset, topFadeHeight(fadeAnchor)) + 16;
   const listBottomPadding = chatBarInset + 8;
   const listPaddingRef = useRef({
     top: listTopPadding,
@@ -356,7 +362,6 @@ const Messages = ({
     ],
     [styles.contentContainer, listBottomPadding, listTopPadding]
   );
-  const fadeAnchor = fadeBottom ?? topInset;
   const scrollButtonStyle = useMemo(
     () => [styles.scrollToBottomButtonContainer, { bottom: chatBarInset + 16 }],
     [styles.scrollToBottomButtonContainer, chatBarInset]
@@ -1048,7 +1053,10 @@ const Messages = ({
           applyWorkaroundForContentInsetHitTestBug
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={contentContainerStyle}
-          {...scrollIndicatorProps(topFadeHeight(fadeAnchor))}
+          {...scrollIndicatorProps(
+            topFadeHeight(fadeAnchor),
+            chatBarInset + SCROLL_INDICATOR_INPUT_GAP
+          )}
           onLayout={handleContainerLayout}
           onScroll={handleScroll}
           onScrollBeginDrag={handleScrollBeginDrag}
@@ -1202,7 +1210,7 @@ const Messages = ({
                   accessibilityLabel="Retry response generation"
                   style={({ pressed }) => [
                     styles.retryButton,
-                    pressed && styles.retryButtonPressed,
+                    pressed && pressedOpacity,
                   ]}
                 >
                   <RotateLeftIcon
@@ -1233,7 +1241,7 @@ const Messages = ({
         </KeyboardChatScrollView>
       </Reanimated.View>
 
-      {hasMessages && <TopFade anchor={fadeAnchor} />}
+      {hasMessages && <GlassScrollEdge anchor={fadeAnchor} />}
       {hasMessages && (
         <Reanimated.View
           style={[styles.bottomFade, bottomFadeAnimatedStyle]}
@@ -1319,12 +1327,9 @@ const createStyles = (theme: Theme) => {
       alignItems: 'center',
       gap: 6,
       borderRadius: 8,
-      backgroundColor: theme.bg.softSecondary,
+      backgroundColor: theme.bg.softTertiary,
       paddingHorizontal: 12,
       paddingVertical: 8,
-    },
-    retryButtonPressed: {
-      opacity: 0.7,
     },
     retryButtonIcon: {
       color: theme.text.primary,

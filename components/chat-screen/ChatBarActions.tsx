@@ -12,12 +12,13 @@ import ComposerActionButton, {
   type ComposerAction,
 } from './ComposerActionButton';
 import SoundwaveIcon from '../../assets/icons/soundwave.svg';
-import LightBulbCrossedIcon from '../../assets/icons/light_bulb_crossed.svg';
-import LightBulbIcon from '../../assets/icons/light_bulb.svg';
 import PlusIcon from '../../assets/icons/plus.svg';
+import LightBulbIcon from '../../assets/icons/light_bulb.svg';
 import WebIcon from '../../assets/icons/web.svg';
-import WebCrossedIcon from '../../assets/icons/web_crossed.svg';
-import ChatBarToggle from './ChatBarToggle';
+import ComposerToolChip from './ComposerToolChip';
+import ComposerModelBadge from './ComposerModelBadge';
+import { composerControlColors } from './composerControl';
+import { Model } from '../../database/modelRepository';
 import { Feedback } from '../../utils/Feedback';
 import Toast from 'react-native-toast-message';
 import { COMPOSER } from './attachments/constants';
@@ -25,6 +26,7 @@ import {
   usePrimaryActionGuard,
   type PrimaryAction,
 } from './usePrimaryActionGuard';
+import { dimmedOpacity } from '../../styles/pressable';
 
 const composerAction = (
   isResponding: boolean,
@@ -46,7 +48,6 @@ interface Props {
   userInput: string;
   hasAttachments?: boolean;
   isLoadingAttachment?: boolean;
-  togglesDisabled?: boolean;
   sendPending?: boolean;
   sendInFlight?: boolean;
   onSend: () => void;
@@ -54,9 +55,13 @@ interface Props {
   isProcessingPrompt: boolean;
   onInterrupt: () => void;
   onSpeechInput: () => void;
-  thinkingEnabled: boolean;
-  onThinkingToggle?: () => void;
   plusOut: SharedValue<number>;
+  model?: Model;
+  pendingModel?: Model;
+  onSelectModel: () => void;
+  modelLocked?: boolean;
+  thinkingEnabled?: boolean;
+  onThinkingToggle?: () => void;
   webSearchEnabled?: boolean;
   onWebSearchToggle?: () => void;
 }
@@ -66,7 +71,6 @@ const ChatBarActions = ({
   userInput,
   hasAttachments = false,
   isLoadingAttachment = false,
-  togglesDisabled = false,
   sendPending = false,
   sendInFlight = false,
   onSend,
@@ -74,9 +78,13 @@ const ChatBarActions = ({
   isProcessingPrompt,
   onInterrupt,
   onSpeechInput,
+  plusOut,
+  model,
+  pendingModel,
+  onSelectModel,
+  modelLocked = false,
   thinkingEnabled = false,
   onThinkingToggle,
-  plusOut,
   webSearchEnabled = false,
   onWebSearchToggle,
 }: Props) => {
@@ -86,7 +94,6 @@ const ChatBarActions = ({
     transform: [{ translateX: plusOut.get() * COMPOSER.plusSlide }],
   }));
   const isResponding = isGenerating || isProcessingPrompt;
-  const isAttachmentBlocked = isResponding || isLoadingAttachment;
   const hasComposedInput = !!userInput || hasAttachments;
   const isSendable = hasComposedInput;
   const action = composerAction(
@@ -97,21 +104,17 @@ const ChatBarActions = ({
   const guardPrimaryPress = usePrimaryActionGuard(guardedAction);
 
   const handleAttach = () => {
-    if (isAttachmentBlocked) {
+    if (isLoadingAttachment) {
       Toast.show({
         type: 'defaultToast',
-        text1: isResponding
-          ? 'Wait for the response to finish or stop it first.'
-          : 'Wait for the document to finish processing.',
+        text1: 'Wait for the document to finish processing.',
       });
       return;
     }
 
-    Feedback.attach();
+    Feedback.sheetOpen();
     onAttach();
   };
-
-  const handleThinkingToggle = () => onThinkingToggle?.();
 
   const renderButton = () => {
     const handlePress = () =>
@@ -135,7 +138,7 @@ const ChatBarActions = ({
           <CircleButton
             icon={SoundwaveIcon}
             onPress={onSpeechInput}
-            backgroundColor="transparent"
+            {...composerControlColors(theme)}
             color={theme.text.onChatBar}
           />
         )}
@@ -155,36 +158,41 @@ const ChatBarActions = ({
       <View style={styles.leftActions}>
         <View
           testID="attach-btn-container"
-          style={isAttachmentBlocked ? styles.blockedAttachment : undefined}
+          style={isLoadingAttachment ? dimmedOpacity : undefined}
         >
           <Animated.View style={plusStyle}>
             <CircleButton
               icon={PlusIcon}
-              size={14}
+              size={16}
               onPress={handleAttach}
-              backgroundColor={theme.bg.attachButton}
-              color={theme.text.onAttachButton}
+              {...composerControlColors(theme)}
+              color={theme.text.onChatBar}
               testID="attach-btn"
             />
           </Animated.View>
         </View>
-        <ChatBarToggle
-          label="Think"
-          enabled={thinkingEnabled}
-          iconOn={LightBulbIcon}
-          iconOff={LightBulbCrossedIcon}
-          onToggle={handleThinkingToggle}
-          disabled={togglesDisabled}
-        />
-        {onWebSearchToggle ? (
-          <ChatBarToggle
-            label="Web"
-            enabled={webSearchEnabled}
-            iconOn={WebIcon}
-            iconOff={WebCrossedIcon}
-            onToggle={onWebSearchToggle}
-            disabled={togglesDisabled}
-            testID="web-search-toggle"
+        {model && (
+          <ComposerModelBadge
+            model={pendingModel ?? model}
+            loading={!!pendingModel}
+            onPress={onSelectModel}
+            locked={modelLocked}
+          />
+        )}
+        {thinkingEnabled && onThinkingToggle ? (
+          <ComposerToolChip
+            label="Think"
+            icon={LightBulbIcon}
+            onTurnOff={onThinkingToggle}
+            testID="tool-chip-think"
+          />
+        ) : null}
+        {webSearchEnabled && onWebSearchToggle ? (
+          <ComposerToolChip
+            label="Web search"
+            icon={WebIcon}
+            onTurnOff={onWebSearchToggle}
+            testID="tool-chip-web"
           />
         ) : null}
       </View>
@@ -205,10 +213,9 @@ const createStyles = () =>
     },
     leftActions: {
       flexDirection: 'row',
-      gap: 8,
-    },
-    blockedAttachment: {
-      opacity: 0.4,
+      alignItems: 'center',
+      flexShrink: 1,
+      gap: 4,
     },
     rightActions: {
       flexDirection: 'row',

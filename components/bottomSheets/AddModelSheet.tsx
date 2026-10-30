@@ -4,6 +4,7 @@ import {
   BottomSheetView,
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
+import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -34,7 +35,7 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
   );
 
   return (
-    <BottomSheetModal
+    <BackDismissibleSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       enableDynamicSizing
@@ -63,7 +64,7 @@ const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
           />
         </View>
       </BottomSheetView>
-    </BottomSheetModal>
+    </BackDismissibleSheetModal>
   );
 };
 

@@ -1,13 +1,8 @@
 import React, { RefObject } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  useWindowDimensions,
-} from 'react-native';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import Animated, {
+  Extrapolation,
   interpolate,
   SharedValue,
   useAnimatedStyle,
@@ -15,13 +10,21 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import { TEXT_SELECTION, Theme } from '../../styles/colors';
-import {
-  DRAWER_HORIZONTAL_PADDING,
-  getDrawerWidth,
-} from '../../constants/drawer-layout';
-import SearchIcon from '../../assets/icons/search.svg';
+import { Theme } from '../../styles/colors';
+import { pressedOpacity } from '../../styles/pressable';
+import SearchField, {
+  SEARCH_ICON_SIZE,
+  SearchFieldIcon,
+  SearchFieldSurface,
+} from '../SearchField';
 import ArrowLeftIcon from '../../assets/icons/arrow-left.svg';
+
+const BACK_ICON_SIZE = 20;
+const ICON_FADE_OUT_END = 0.6;
+const ICON_FADE_IN_START = 0.3;
+const ICON_HIDDEN_SCALE = 0.6;
+
+const PLACEHOLDER = 'Search chats...';
 
 interface Props {
   searching: boolean;
@@ -44,39 +47,69 @@ export const DrawerTopBar = ({
   inputRef,
   progress,
 }: Props) => {
-  const { styles, theme } = useThemedStyles(createStyles);
-  const { width: screenWidth } = useWindowDimensions();
-
-  const collapsedTitleWidth =
-    getDrawerWidth(screenWidth) - DRAWER_HORIZONTAL_PADDING * 2;
+  const { styles } = useThemedStyles(createStyles);
 
   const fallbackProgress = useSharedValue(1);
   const value = progress ?? fallbackProgress;
 
-  const titleLayerStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(value.get(), [0, 0.4], [1, 0]),
-  }));
+  const searchIconStyle = useAnimatedStyle(() => {
+    const t = value.get();
+    return {
+      opacity: interpolate(
+        t,
+        [0, ICON_FADE_OUT_END],
+        [1, 0],
+        Extrapolation.CLAMP
+      ),
+      transform: [
+        {
+          scale: interpolate(
+            t,
+            [0, ICON_FADE_OUT_END],
+            [1, ICON_HIDDEN_SCALE],
+            Extrapolation.CLAMP
+          ),
+        },
+      ],
+    };
+  });
 
-  const fieldStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(value.get(), [0.35, 1], [0, 1]),
-  }));
+  const backIconStyle = useAnimatedStyle(() => {
+    const t = value.get();
+    return {
+      opacity: interpolate(
+        t,
+        [ICON_FADE_IN_START, 1],
+        [0, 1],
+        Extrapolation.CLAMP
+      ),
+      transform: [
+        {
+          scale: interpolate(
+            t,
+            [ICON_FADE_IN_START, 1],
+            [ICON_HIDDEN_SCALE, 1],
+            Extrapolation.CLAMP
+          ),
+        },
+      ],
+    };
+  });
 
   if (!searching) {
     return (
       <View style={styles.bar}>
-        <Text style={styles.title}>Private Mind</Text>
         <Pressable
           onPress={onOpenSearch}
           testID="drawer-search-open"
           accessibilityRole="button"
           accessibilityLabel="Search chats"
-          hitSlop={12}
-          style={({ pressed }) => [
-            styles.iconButton,
-            pressed && styles.pressed,
-          ]}
+          style={({ pressed }) => [styles.grow, pressed && pressedOpacity]}
         >
-          <SearchIcon width={20} height={20} style={styles.icon} />
+          <SearchFieldSurface>
+            <SearchFieldIcon />
+            <Text style={styles.placeholder}>{PLACEHOLDER}</Text>
+          </SearchFieldSurface>
         </Pressable>
       </View>
     );
@@ -84,50 +117,42 @@ export const DrawerTopBar = ({
 
   return (
     <View style={styles.bar}>
-      <Animated.View style={[styles.field, fieldStyle]}>
-        <Pressable
-          onPress={() => onCloseSearch()}
-          testID="drawer-search-back"
-          accessibilityRole="button"
-          accessibilityLabel="Close search"
-          hitSlop={12}
-          style={({ pressed }) => [styles.backButton, pressed && styles.dimmed]}
-        >
-          <ArrowLeftIcon width={20} height={20} style={styles.icon} />
-        </Pressable>
-        <TextInput
-          {...TEXT_SELECTION}
-          ref={inputRef}
+      <View style={styles.grow}>
+        <SearchField
+          inputRef={inputRef}
           value={search}
           onChangeText={onChangeSearch}
           onBlur={onBlur}
-          placeholder="Search chats..."
-          placeholderTextColor={theme.text.defaultTertiary}
-          style={styles.input}
+          placeholder={PLACEHOLDER}
+          accessibilityLabel="Search chats"
           testID="drawer-search-input"
-          autoCorrect={false}
-          autoCapitalize="none"
-          clearButtonMode="while-editing"
-          returnKeyType="search"
           submitBehavior="submit"
+          leading={
+            <Pressable
+              onPress={() => onCloseSearch()}
+              testID="drawer-search-back"
+              accessibilityRole="button"
+              accessibilityLabel="Close search"
+              hitSlop={12}
+              style={({ pressed }) => [
+                styles.iconSlot,
+                pressed && pressedOpacity,
+              ]}
+            >
+              <Animated.View style={[styles.iconLayer, searchIconStyle]}>
+                <SearchFieldIcon />
+              </Animated.View>
+              <Animated.View style={[styles.iconLayer, backIconStyle]}>
+                <ArrowLeftIcon
+                  width={BACK_ICON_SIZE}
+                  height={BACK_ICON_SIZE}
+                  style={styles.icon}
+                />
+              </Animated.View>
+            </Pressable>
+          }
         />
-      </Animated.View>
-
-      <Animated.View
-        style={[
-          styles.titleLayer,
-          { width: collapsedTitleWidth },
-          titleLayerStyle,
-        ]}
-        pointerEvents="none"
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        <Text style={styles.title}>Private Mind</Text>
-        <View style={styles.iconButton}>
-          <SearchIcon width={20} height={20} style={styles.icon} />
-        </View>
-      </Animated.View>
+      </View>
     </View>
   );
 };
@@ -140,63 +165,25 @@ const createStyles = (theme: Theme) =>
       gap: 8,
       minHeight: 44,
     },
-    titleLayer: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      flexDirection: 'row',
+    iconSlot: {
+      width: SEARCH_ICON_SIZE,
+      height: SEARCH_ICON_SIZE,
+    },
+    iconLayer: {
+      ...StyleSheet.absoluteFill,
       alignItems: 'center',
-      gap: 8,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    title: {
-      flex: 1,
-      paddingHorizontal: 12,
-      fontFamily: fontFamily.bold,
-      fontSize: fontSizes.lg,
-      color: theme.text.primary,
-    },
-    iconButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
       justifyContent: 'center',
-      alignItems: 'center',
-    },
-    pressed: {
-      backgroundColor: theme.bg.softSecondary,
     },
     icon: {
       color: theme.text.primary,
     },
-    field: {
+    grow: {
       flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingLeft: 4,
-      paddingRight: 12,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border.soft,
-      backgroundColor: theme.bg.softSecondary,
     },
-    backButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    dimmed: {
-      opacity: 0.5,
-    },
-    input: {
+    placeholder: {
       flex: 1,
-      paddingVertical: 10,
       fontFamily: fontFamily.regular,
       fontSize: fontSizes.md,
-      color: theme.text.primary,
+      color: theme.text.defaultTertiary,
     },
   });

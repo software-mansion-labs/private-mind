@@ -5,10 +5,12 @@ import Toast, { ToastConfig } from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Theme } from '../styles/colors';
+import { radius } from '../constants/design-system';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import CloseIcon from '../assets/icons/close.svg';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { openAppSettings } from '../utils/openAppSettings';
+import { pressedOpacity } from '../styles/pressable';
 
 const NAV_HEADER_HEIGHT = Platform.OS === 'ios' ? 44 : 56;
 const TOAST_HEADER_GAP = 2;
@@ -36,7 +38,7 @@ const ToastAction = ({ label, testID, onPress }: ToastActionProps) => {
       onPress={handlePress}
       cancelable={false}
       accessibilityRole="button"
-      style={({ pressed }) => [styles.toastAction, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.toastAction, pressed && pressedOpacity]}
       testID={testID}
     >
       <Text style={styles.toastActionLabel}>{label}</Text>
@@ -76,7 +78,7 @@ const AppToast: React.FC = () => {
           accessibilityLabel="Dismiss"
           style={({ pressed }) => [
             styles.toastCloseButton,
-            pressed && styles.pressed,
+            pressed && pressedOpacity,
           ]}
           testID="toast-close"
         >
@@ -105,17 +107,17 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     toastContainer: {
       width: '90%',
-      backgroundColor: theme.bg.softSecondary,
-      borderRadius: 12,
+      backgroundColor: theme.bg.toast,
+      borderRadius: radius.eighteen,
       padding: 16,
       flexDirection: 'row',
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border.soft,
+      borderWidth: 1,
+      borderColor: theme.border.toast,
       shadowColor: theme.bg.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: theme.shadow.floatingOpacity,
+      shadowRadius: 20,
+      elevation: 12,
     },
     toastBody: {
       width: '80%',
@@ -145,8 +147,5 @@ const createStyles = (theme: Theme) =>
     },
     toastIcon: {
       color: theme.text.primary,
-    },
-    pressed: {
-      opacity: 0.2,
     },
   });

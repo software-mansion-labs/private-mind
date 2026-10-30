@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import CircleButton from '../components/CircleButton';
+import { DIMMED_OPACITY } from '../styles/pressable';
 
 jest.mock('react-native-gesture-handler', () => {
   const { Pressable } = require('react-native');
@@ -28,7 +29,7 @@ describe('CircleButton', () => {
   it('looks live and takes the press when enabled', () => {
     const onPress = jest.fn();
     renderButton({ onPress });
-    expect(opacityOf()).not.toBe(0.6);
+    expect(opacityOf()).not.toBe(DIMMED_OPACITY);
     fireEvent.press(screen.getByTestId('btn'));
     expect(onPress).toHaveBeenCalled();
   });
@@ -36,7 +37,7 @@ describe('CircleButton', () => {
   it('dims itself and blocks the press when disabled (#380)', () => {
     const onPress = jest.fn();
     renderButton({ onPress, disabled: true });
-    expect(opacityOf()).toBe(0.6);
+    expect(opacityOf()).toBe(DIMMED_OPACITY);
     fireEvent.press(screen.getByTestId('btn'));
     expect(onPress).not.toHaveBeenCalled();
   });
@@ -44,7 +45,7 @@ describe('CircleButton', () => {
   it('can be dimmed without being inert, so a tap can still explain itself', () => {
     const onPress = jest.fn();
     renderButton({ onPress, dimmed: true });
-    expect(opacityOf()).toBe(0.6);
+    expect(opacityOf()).toBe(DIMMED_OPACITY);
     fireEvent.press(screen.getByTestId('btn'));
     expect(onPress).toHaveBeenCalled();
   });

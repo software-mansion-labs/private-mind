@@ -12,7 +12,7 @@ import {
   DMSans_600SemiBold_Italic,
 } from '@expo-google-fonts/dm-sans';
 import { fontFamily } from '../styles/fontStyles';
-import { ThemeProvider } from '../context/ThemeContext';
+import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import AppToast from '../components/AppToast';
@@ -101,6 +101,13 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen
+        name="(modals)/downloads"
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
         name="(modals)/onboarding"
         options={{
           headerShown: false,
@@ -118,6 +125,11 @@ function RootNavigator() {
       />
     </Stack>
   );
+}
+
+function ThemedStatusBar() {
+  const { isDark } = useTheme();
+  return <StatusBar style={isDark ? 'light' : 'dark'} />;
 }
 
 export default function Layout() {
@@ -139,7 +151,7 @@ export default function Layout() {
               <KeyboardProvider>
                 <BottomSheetModalProvider>
                   <RootNavigator />
-                  {Platform.OS === 'android' && <StatusBar style="auto" />}
+                  {Platform.OS === 'android' && <ThemedStatusBar />}
                 </BottomSheetModalProvider>
                 <AppToast />
               </KeyboardProvider>

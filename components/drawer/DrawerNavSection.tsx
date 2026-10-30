@@ -9,18 +9,11 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { useSQLiteContext } from 'expo-sqlite';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useLLMStore } from '../../store/llmStore';
-import { startPhantomChat } from '../../utils/startPhantomChat';
 import { Theme } from '../../styles/colors';
-import ChatIcon from '../../assets/icons/chat.svg';
-import ModelsIcon from '../../assets/icons/models.svg';
-import SettingsIcon from '../../assets/icons/settings.svg';
+import CubeIcon from '../../assets/icons/cube.svg';
 import { DrawerItem } from './DrawerItem';
-import { useIsOnPhantomChat } from './useIsOnPhantomChat';
-import { useTurnInFlight } from '../../hooks/useTurnInFlight';
-import { showTurnInFlightNotice } from '../../utils/turnInFlightNotice';
 import {
   NAV_COLLAPSE_DURATION,
   SECTION_GAP,
@@ -46,11 +39,7 @@ export const DrawerNavSection = ({
 
   const router = useRouter();
   const pathname = usePathname();
-  const db = useSQLiteContext();
   const interrupt = useLLMStore((state) => state.interrupt);
-
-  const isOnPhantomChat = useIsOnPhantomChat();
-  const turnInFlight = useTurnInFlight();
 
   const [rendered, setRendered] = useState(!collapsed);
   const progress = useSharedValue(collapsed ? 0 : 1);
@@ -99,29 +88,9 @@ export const DrawerNavSection = ({
     if (measured > 0) onMeasured(measured);
   };
 
-  const startNewChat = () => {
-    if (turnInFlight) {
-      showTurnInFlightNotice();
-      return;
-    }
-    if (isOnPhantomChat) {
-      onNavigate?.();
-      return;
-    }
-    interrupt();
-    startPhantomChat(db, 'replace');
-    onNavigate?.();
-  };
-
   const goToModelHub = () => {
     interrupt();
     router.replace('/model-hub');
-    onNavigate?.();
-  };
-
-  const goToSettings = () => {
-    interrupt();
-    router.replace('/settings');
     onNavigate?.();
   };
 
@@ -132,29 +101,12 @@ export const DrawerNavSection = ({
       style={[styles.wrapper, animatedStyle]}
       pointerEvents={collapsed ? 'none' : 'auto'}
     >
-      <View
-        style={styles.section}
-        onLayout={height ? undefined : handleSectionLayout}
-      >
+      <View onLayout={handleSectionLayout}>
         <DrawerItem
-          icon={<ChatIcon width={18} height={18} style={styles.icon} />}
-          label="New chat"
-          testID="drawer-new-chat"
-          active={pathname === '/' || isOnPhantomChat}
-          dimmed={turnInFlight}
-          onPress={startNewChat}
-        />
-        <DrawerItem
-          icon={<ModelsIcon width={18} height={18} style={styles.icon} />}
-          label="Models"
+          icon={<CubeIcon width={20} height={20} style={styles.icon} />}
+          label="Manage models"
           active={pathname === '/model-hub'}
           onPress={goToModelHub}
-        />
-        <DrawerItem
-          icon={<SettingsIcon width={18} height={18} style={styles.icon} />}
-          label="Settings"
-          active={pathname === '/settings'}
-          onPress={goToSettings}
         />
       </View>
     </Animated.View>
@@ -166,9 +118,6 @@ const createStyles = (theme: Theme) =>
     wrapper: {
       overflow: 'hidden',
       marginBottom: SECTION_GAP,
-    },
-    section: {
-      gap: 8,
     },
     icon: {
       color: theme.text.primary,

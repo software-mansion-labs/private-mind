@@ -4,6 +4,8 @@ export const DRAWER_TOP_SPACING = 12;
 
 export const DRAWER_HORIZONTAL_PADDING = 16;
 
+export const DRAWER_ITEM_INSET = 12;
+
 export const SEARCH_EXPAND_DURATION = 500;
 
 export const SEARCH_COLLAPSE_DURATION = 240;
@@ -12,19 +14,17 @@ export const SEARCH_UNMOUNT_GRACE = 120;
 
 export const BACKDROP_FADE_IN_DURATION = 240;
 
+export const ICON_MORPH_DELAY = 120;
+
+export const ICON_MORPH_DURATION = 360;
+
 export const NAV_COLLAPSE_DURATION = 260;
-
-export const FIELD_FADE_IN_DELAY = 90;
-
-export const FIELD_FADE_IN_DURATION = 460;
-
-export const FIELD_FADE_OUT_DURATION = 180;
 
 export const ANDROID_SEARCH_FOCUS_DELAY = 200;
 
 export const ANDROID_KEYBOARD_RETRY_DELAY = 400;
 
-export const SECTION_GAP = 24;
+export const SECTION_GAP = 20;
 
 export const getDrawerWidth = (screenWidth: number) =>
   Math.max(screenWidth - DRAWER_EDGE_INSET, 0);

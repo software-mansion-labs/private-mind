@@ -47,6 +47,7 @@ import { Message, type SourceDocument } from '../../database/chatRepository';
 import { stripCitations } from '../../utils/citations';
 import { parseThinkingContent, stripThinkMarkers } from '../../utils/thinking';
 import { stripSpecialTokens } from '../../utils/specialTokens';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface MessageItemProps {
   message: Message;
@@ -246,7 +247,7 @@ const MessageItem = memo(
             <Pressable
               style={({ pressed }) => [
                 styles.sourcesButton,
-                pressed && styles.sourcesButtonPressed,
+                pressed && pressedOpacity,
               ]}
               onPress={() => onShowSources?.(displayedSources, userQuestion)}
               hitSlop={8}
@@ -445,7 +446,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       maxWidth: `${USER_BUBBLE_WIDTH_SHARE * 100}%`,
       borderRadius: 12,
-      backgroundColor: theme.bg.softSecondary,
+      backgroundColor: theme.bg.chatBar,
       overflow: 'hidden',
     },
     userMessageContent: {
@@ -467,7 +468,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: 16,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border.soft,
-      backgroundColor: theme.bg.softSecondary,
+      backgroundColor: theme.bg.chatBar,
     },
     documentIcon: {
       color: theme.text.defaultSecondary,
@@ -534,9 +535,6 @@ const createStyles = (theme: Theme) =>
       gap: 6,
       paddingLeft: 4,
       paddingVertical: 4,
-    },
-    sourcesButtonPressed: {
-      opacity: 0.6,
     },
     sourcesButtonIcon: {
       color: theme.text.primary,

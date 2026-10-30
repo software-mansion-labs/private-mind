@@ -1,16 +1,20 @@
 import React from 'react';
-import { StyleSheet, Text, Pressable, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import { pressedOpacity } from '../../styles/pressable';
+import { radius, space, stroke } from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 
 export type ModelHubTab = 'featured' | 'experimental' | 'mine';
 
 interface Props {
   value: ModelHubTab;
   onChange: (tab: ModelHubTab) => void;
+  edgeInset?: number;
 }
+
+const TAB_HEIGHT = 36;
 
 const TABS: { key: ModelHubTab; label: string }[] = [
   { key: 'featured', label: 'Recommended' },
@@ -18,11 +22,18 @@ const TABS: { key: ModelHubTab; label: string }[] = [
   { key: 'mine', label: 'Mine' },
 ];
 
-const ModelHubTabs = ({ value, onChange }: Props) => {
-  const { styles } = useThemedStyles(createStyles);
+const ModelHubTabs = ({ value, onChange, edgeInset = 0 }: Props) => {
+  const { styles } = useThemedStyles(createStyles, edgeInset);
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      accessibilityRole="tablist"
+      accessibilityLabel="Model lists"
+    >
       {TABS.map((tab) => {
         const selected = tab.key === value;
         return (
@@ -31,48 +42,60 @@ const ModelHubTabs = ({ value, onChange }: Props) => {
             style={({ pressed }) => [
               styles.tab,
               selected && styles.tabSelected,
-              pressed && pressedOpacity,
+              pressed && !selected && styles.pressed,
             ]}
             onPress={() => onChange(tab.key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            testID={`model-hub-tab-${tab.key}`}
           >
-            <Text style={[styles.label, selected && styles.labelSelected]}>
+            <Text
+              style={[styles.label, selected && styles.labelSelected]}
+              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+            >
               {tab.label}
             </Text>
           </Pressable>
         );
       })}
-    </View>
+    </ScrollView>
   );
 };
 
 export default ModelHubTabs;
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, edgeInset: number) =>
   StyleSheet.create({
-    container: {
-      flexDirection: 'row',
-      backgroundColor: theme.bg.softSecondary,
-      borderRadius: 9999,
-      padding: 4,
-      gap: 4,
+    scroll: {
+      flexGrow: 0,
+      marginHorizontal: -edgeInset,
+    },
+    content: {
+      gap: space.two,
+      paddingHorizontal: edgeInset,
     },
     tab: {
-      flex: 1,
-      paddingVertical: 10,
-      alignItems: 'center',
+      minHeight: TAB_HEIGHT,
+      paddingHorizontal: space.four,
+      paddingVertical: space.one,
       justifyContent: 'center',
-      borderRadius: 9999,
+      borderRadius: radius.full,
+      borderWidth: stroke.soft,
+      borderColor: theme.border.soft,
     },
     tabSelected: {
       backgroundColor: theme.bg.main,
+      borderColor: theme.bg.main,
+    },
+    pressed: {
+      backgroundColor: theme.bg.softTertiary,
     },
     label: {
-      fontFamily: fontFamily.regular,
+      fontFamily: fontFamily.medium,
       fontSize: fontSizes.sm,
-      color: theme.text.defaultSecondary,
+      color: theme.text.primary,
     },
     labelSelected: {
-      fontFamily: fontFamily.medium,
-      color: theme.text.contrastPrimary,
+      color: theme.text.onBrand,
     },
   });

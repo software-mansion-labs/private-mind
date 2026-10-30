@@ -16,14 +16,21 @@ import {
   SWITCH_TRACK_HEIGHT,
   SWITCH_TRACK_WIDTH,
 } from '../constants/switch';
+import { dimmedOpacity } from '../styles/pressable';
 
 interface Props {
   value: boolean;
   onValueChange: (value: boolean) => void;
   disabled?: boolean;
+  testID?: string;
 }
 
-export const ThemedSwitch = ({ value, onValueChange, disabled }: Props) => {
+export const ThemedSwitch = ({
+  value,
+  onValueChange,
+  disabled,
+  testID,
+}: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const progress = useSharedValue(value ? 1 : 0);
 
@@ -48,6 +55,7 @@ export const ThemedSwitch = ({ value, onValueChange, disabled }: Props) => {
   if (Platform.OS !== 'android') {
     return (
       <Switch
+        testID={testID}
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
@@ -59,15 +67,18 @@ export const ThemedSwitch = ({ value, onValueChange, disabled }: Props) => {
 
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="switch"
       accessibilityState={{ checked: value, disabled }}
       disabled={disabled}
       hitSlop={8}
       onPress={() => onValueChange(!value)}
-      style={disabled && styles.disabled}
+      style={disabled && dimmedOpacity}
     >
       <Animated.View style={[styles.track, trackStyle]}>
-        <Animated.View style={[styles.thumb, thumbStyle]} />
+        <Animated.View
+          style={[styles.thumb, disabled && styles.flatThumb, thumbStyle]}
+        />
       </Animated.View>
     </Pressable>
   );
@@ -93,7 +104,8 @@ const createStyles = (theme: Theme) =>
       shadowRadius: 2,
       shadowOffset: { width: 0, height: 1 },
     },
-    disabled: {
-      opacity: 0.5,
+    flatThumb: {
+      elevation: 0,
+      shadowOpacity: 0,
     },
   });

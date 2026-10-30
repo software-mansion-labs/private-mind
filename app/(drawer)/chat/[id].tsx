@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
 import { useState } from 'react';
@@ -50,10 +50,6 @@ function ChatScreenInner() {
     ? getModelById(parseInt(resolvedModelId.toString(), 10))
     : undefined;
   const [model, setModel] = useState<Model | undefined>(resolvedModel);
-  const [pendingModel, setPendingModel] = useState<Model | undefined>();
-  const chatModelIsStarting = useLLMStore(
-    (state) => state.isLoading && !!model && state.model?.id === model.id
-  );
   // Only show the loading/empty state on the very first mount for this
   // chat. useFocusEffect refires on every refocus (including returning
   // from a bottom sheet), and flipping messageHistory to [] mid-session
@@ -70,20 +66,11 @@ function ChatScreenInner() {
 
   const isEmpty = !isLoading && historyForThisChat.length === 0;
   const shouldExitOnBack = isPhantom && isEmpty;
-  const openModelSheetRef = useRef<(() => void) | null>(null);
-  const openModelSheet = useCallback(() => openModelSheetRef.current?.(), []);
-  const opensOnModelPicker = entryAction === CHAT_ENTRY_ACTION.PickModel;
-
-  useEffect(() => {
-    if (opensOnModelPicker) openModelSheet();
-  }, [opensOnModelPicker, openModelSheet]);
 
   const { MenuElements, titleBottom } = useChatHeader({
     chatId: chatId,
-    chatModel: pendingModel ?? model,
-    isModelLoading: !!pendingModel || chatModelIsStarting,
     isEmpty,
-    onSelectModelFromTitle: isPhantom ? openModelSheet : undefined,
+    hideTitle: isPhantom,
   });
 
   useFocusEffect(
@@ -121,11 +108,10 @@ function ChatScreenInner() {
         messageHistory={isLoading ? [] : historyForThisChat}
         isLoading={isLoading}
         model={model}
-        onPendingModelChange={setPendingModel}
         selectModel={handleSetModel}
-        openModelSheetRef={openModelSheetRef}
         revealFromTop={shouldPlayBranchEntryAnimation}
         headerTitleBottom={titleBottom}
+        opensModelMenu={entryAction === CHAT_ENTRY_ACTION.PickModel}
       />
       {MenuElements}
     </>

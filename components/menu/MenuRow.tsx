@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -9,9 +9,11 @@ import {
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { radius } from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { SvgComponent } from '../../utils/SvgComponent';
+import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
 
 export const MENU_ROW = {
   regular: {
@@ -40,6 +42,8 @@ interface Props {
   destructive?: boolean;
   dimmed?: boolean;
   busy?: boolean;
+  checked?: boolean;
+  trailing?: ReactNode;
   pressRetentionOffset?: PressableProps['pressRetentionOffset'];
   accessibilityLabel?: string;
   testID?: string;
@@ -53,6 +57,8 @@ const MenuRow = ({
   destructive = false,
   dimmed = false,
   busy = false,
+  checked,
+  trailing,
   pressRetentionOffset,
   accessibilityLabel,
   testID,
@@ -64,19 +70,20 @@ const MenuRow = ({
       ? theme.text.onChatBar
       : theme.text.primary;
   const size = MENU_ROW[variant].icon;
+  const isSwitch = checked !== undefined;
 
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={isSwitch ? 'switch' : 'button'}
       accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ disabled: dimmed }}
+      accessibilityState={{ disabled: dimmed, checked }}
       testID={testID}
       onPress={onPress}
       pressRetentionOffset={pressRetentionOffset}
       style={({ pressed }) => [
         styles.row,
-        dimmed && styles.dimmed,
-        pressed && styles.pressed,
+        dimmed && dimmedOpacity,
+        pressed && pressedOpacity,
       ]}
     >
       {variant === 'regular' ? (
@@ -90,9 +97,21 @@ const MenuRow = ({
       ) : (
         <Icon width={size} height={size} style={{ color }} />
       )}
-      <Text numberOfLines={1} style={[styles.label, { color }]}>
+      <Text
+        numberOfLines={1}
+        style={[styles.label, { color }]}
+        maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+      >
         {label}
       </Text>
+      {trailing ? (
+        <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          {trailing}
+        </View>
+      ) : null}
     </Pressable>
   );
 };
@@ -109,12 +128,6 @@ const createStyles = (theme: Theme, variant: MenuRowVariant) => {
       flexDirection: 'row',
       alignItems: 'center',
     },
-    dimmed: {
-      opacity: 0.4,
-    },
-    pressed: {
-      opacity: 0.6,
-    },
     well: {
       width: MENU_ROW.regular.well,
       height: MENU_ROW.regular.well,
@@ -124,6 +137,8 @@ const createStyles = (theme: Theme, variant: MenuRowVariant) => {
       justifyContent: 'center',
     },
     label: {
+      flexGrow: 1,
+      flexShrink: 1,
       fontFamily: fontFamily.medium,
       fontSize: variant === 'compact' ? fontSizes.sm : fontSizes.md,
       lineHeight: variant === 'compact' ? lineHeights.sm : lineHeights.md,

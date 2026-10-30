@@ -4,13 +4,14 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { radius, space } from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import {
   LabelColor,
   labelColor,
   labelIcon,
 } from '../../constants/model-labels';
 
-export type ModelBadgeColor = LabelColor | 'error';
+export type ModelBadgeColor = LabelColor | 'error' | 'neutral';
 
 interface Props {
   label: string;
@@ -33,7 +34,9 @@ const ModelBadge = ({ label, color = labelColor(label) }: Props) => {
           style={styles.icon}
         />
       )}
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label} maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}>
+        {label}
+      </Text>
     </View>
   );
 };
@@ -44,10 +47,13 @@ const createStyles = (theme: Theme, color: ModelBadgeColor) => {
   const { background, foreground } =
     color === 'error'
       ? { background: theme.bg.errorSecondary, foreground: theme.text.error }
-      : theme.label[color];
+      : color === 'neutral'
+        ? { background: theme.bg.tile, foreground: theme.text.defaultSecondary }
+        : theme.label[color];
   return StyleSheet.create({
     badge: {
-      height: BADGE_HEIGHT,
+      minHeight: BADGE_HEIGHT,
+      paddingVertical: space.half,
       flexDirection: 'row',
       alignItems: 'center',
       gap: space.one,

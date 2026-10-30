@@ -28,6 +28,10 @@ jest.mock('../components/drawer/DrawerMenu', () => ({
   },
 }));
 
+jest.mock('../components/drawer/DrawerFooter', () => ({
+  DrawerFooter: () => null,
+}));
+
 const FRAME = 16;
 const RETRY_AT = ANDROID_SEARCH_FOCUS_DELAY + ANDROID_KEYBOARD_RETRY_DELAY;
 

@@ -2,12 +2,13 @@ import React, { useMemo } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import { SvgComponent } from '../utils/SvgComponent';
-import { pressedOpacity } from '../styles/pressable';
+import { dimmedOpacity, pressedOpacity } from '../styles/pressable';
 
 interface Props {
   icon: SvgComponent;
   size?: number;
   backgroundColor: string;
+  borderColor?: string;
   color: string;
   onPress?: () => void;
   disabled?: boolean;
@@ -20,6 +21,7 @@ const CircleButton = ({
   icon: Icon,
   size = 20,
   backgroundColor,
+  borderColor,
   color,
   onPress,
   disabled = false,
@@ -28,8 +30,8 @@ const CircleButton = ({
   testID,
 }: Props) => {
   const styles = useMemo(
-    () => createStyles(backgroundColor),
-    [backgroundColor]
+    () => createStyles(backgroundColor, borderColor),
+    [backgroundColor, borderColor]
   );
 
   return (
@@ -37,7 +39,7 @@ const CircleButton = ({
       onPress={disabled ? undefined : onPress}
       style={({ pressed }) => [
         styles.circle,
-        (disabled || dimmed) && styles.dimmed,
+        (disabled || dimmed) && dimmedOpacity,
         pressed && pressedOpacity,
       ]}
       disabled={disabled}
@@ -55,7 +57,7 @@ const CircleButton = ({
 
 export default CircleButton;
 
-const createStyles = (backgroundColor: string) =>
+const createStyles = (backgroundColor: string, borderColor?: string) =>
   StyleSheet.create({
     circle: {
       width: 36,
@@ -65,8 +67,6 @@ const createStyles = (backgroundColor: string) =>
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor,
-    },
-    dimmed: {
-      opacity: 0.6,
+      ...(borderColor ? { borderWidth: 1, borderColor } : null),
     },
   });

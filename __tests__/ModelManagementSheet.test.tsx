@@ -24,13 +24,33 @@ jest.mock('../store/modelStore', () => ({
   })),
 }));
 
-jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
+jest.mock('expo-router', () => ({
+  router: {
+    push: jest.fn(),
+    replace: jest.fn(),
+    canDismiss: jest.fn(() => false),
+    dismissAll: jest.fn(),
+  },
+}));
 
-// ModelCard — stub to show model name
-jest.mock('../components/model-hub/ModelCard', () => {
-  const { Text } = require('react-native');
-  return ({ model }: any) => <Text testID="model-card">{model.modelName}</Text>;
-});
+jest.mock('expo-sqlite', () => ({ useSQLiteContext: () => ({}) }));
+
+jest.mock('../utils/startPhantomChat', () => ({
+  startPhantomChat: jest.fn(),
+}));
+
+const mockDeleteModelFiles = jest.fn();
+jest.mock('../hooks/useDeleteModelFiles', () => ({
+  useDeleteModelFiles: () => ({
+    deleteModelFiles: mockDeleteModelFiles,
+    ConfirmElement: null,
+  }),
+}));
+
+const mockConfirm = jest.fn();
+jest.mock('../hooks/useConfirm', () => ({
+  useConfirm: () => ({ confirm: mockConfirm, ConfirmElement: null }),
+}));
 
 // BottomSheetModal — immediately render children with injected data
 jest.mock('@gorhom/bottom-sheet', () => {
@@ -62,6 +82,7 @@ import ModelManagementSheet from '../components/bottomSheets/ModelManagementShee
 import { useModelStore } from '../store/modelStore';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
+import { startPhantomChat } from '../utils/startPhantomChat';
 
 const mockUseModelStore = useModelStore as unknown as jest.Mock;
 const setSheetData = (BottomSheetModal as any).__setData;
@@ -99,10 +120,25 @@ afterEach(() => {
 // ─── Initial stage ────────────────────────────────────────────────────────────
 
 describe('Initial stage', () => {
-  it('renders the model card with model name', () => {
+  it('renders the model name in the header', () => {
     renderSheet();
-    expect(screen.getByTestId('model-card')).toBeTruthy();
+    expect(screen.getByTestId('model-sheet-name')).toBeTruthy();
     expect(screen.getByText('Test Model')).toBeTruthy();
+  });
+
+  it('starts a chat with the model on "Start a chat" press', () => {
+    renderSheet();
+    fireEvent.press(screen.getByText('Start a chat'));
+    expect(startPhantomChat).toHaveBeenCalledWith(
+      expect.anything(),
+      'replace',
+      expect.objectContaining({ id: baseModel.id })
+    );
+  });
+
+  it('does not offer "Start a chat" for models that are not downloaded', () => {
+    renderSheet({ ...baseModel, isDownloaded: false });
+    expect(screen.queryByText('Start a chat')).toBeNull();
   });
 
   it('shows "Edit model" for remote models', () => {
@@ -136,81 +172,52 @@ describe('Initial stage', () => {
   });
 });
 
-// ─── RemoveFiles stage ────────────────────────────────────────────────────────
+// ─── Delete files ─────────────────────────────────────────────────────────────
 
-describe('RemoveFiles stage', () => {
-  it('transitions to RemoveFiles stage on "Delete downloaded files" press', () => {
-    renderSheet();
-    fireEvent.press(screen.getByText('Delete downloaded files'));
-    expect(
-      screen.getByText(/Are you sure you want to delete files/)
-    ).toBeTruthy();
-  });
-
-  it('shows "Delete model files" confirm button', () => {
-    renderSheet();
-    fireEvent.press(screen.getByText('Delete downloaded files'));
-    expect(screen.getByText('Delete model files')).toBeTruthy();
-  });
-
-  it('calls removeModelFiles and shows success toast on confirm', async () => {
-    const removeModelFiles = jest.fn().mockResolvedValue(undefined);
-    mockUseModelStore.mockReturnValue({
-      removeModel: jest.fn(),
-      removeModelFiles,
-    });
-    renderSheet();
+describe('Delete downloaded files', () => {
+  it('dismisses the sheet and hands off to the shared delete confirmation', () => {
+    const ref = createRef<any>();
+    const dismiss = jest.fn();
+    setSheetData(baseModel);
+    render(<ModelManagementSheet bottomSheetModalRef={ref} />);
+    ref.current = { dismiss };
 
     fireEvent.press(screen.getByText('Delete downloaded files'));
-    fireEvent.press(screen.getByText('Delete model files'));
 
-    await waitFor(() =>
-      expect(removeModelFiles).toHaveBeenCalledWith(baseModel.id)
-    );
-    expect(Toast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ text1: expect.stringContaining('Test Model') })
-    );
-  });
-
-  it('returns to Initial stage on "Close" press', () => {
-    renderSheet();
-    fireEvent.press(screen.getByText('Delete downloaded files'));
-    fireEvent.press(screen.getByText('Close'));
-    expect(screen.getByTestId('model-card')).toBeTruthy();
+    expect(dismiss).toHaveBeenCalled();
+    expect(mockDeleteModelFiles).toHaveBeenCalledWith(baseModel);
   });
 });
 
-// ─── RemoveModel stage ────────────────────────────────────────────────────────
+// ─── Remove from the app ──────────────────────────────────────────────────────
 
-describe('RemoveModel stage', () => {
-  it('transitions to RemoveModel stage on "Remove from the app" press', () => {
-    renderSheet();
-    fireEvent.press(screen.getByText('Remove from the app'));
-    expect(screen.getByText(/permanently remove this model/)).toBeTruthy();
-  });
-
-  it('calls removeModel and shows success toast on confirm', async () => {
+describe('Remove from the app', () => {
+  it('removes the model and shows a toast once confirmed', async () => {
     const removeModel = jest.fn().mockResolvedValue(undefined);
-    mockUseModelStore.mockReturnValue({
-      removeModel,
-      removeModelFiles: jest.fn(),
-    });
+    mockUseModelStore.mockReturnValue({ removeModel });
+    mockConfirm.mockResolvedValue(true);
     renderSheet();
 
-    fireEvent.press(screen.getByText('Remove from the app'));
-    // Second press targets the confirm button in the new stage
     fireEvent.press(screen.getByText('Remove from the app'));
 
     await waitFor(() => expect(removeModel).toHaveBeenCalledWith(baseModel.id));
+    expect(mockConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({ confirmLabel: 'Remove' })
+    );
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({ text1: expect.stringContaining('Test Model') })
     );
   });
 
-  it('returns to Initial stage on "Close" press', () => {
+  it('keeps the model when the confirmation is cancelled', async () => {
+    const removeModel = jest.fn();
+    mockUseModelStore.mockReturnValue({ removeModel });
+    mockConfirm.mockResolvedValue(false);
     renderSheet();
+
     fireEvent.press(screen.getByText('Remove from the app'));
-    fireEvent.press(screen.getByText('Close'));
-    expect(screen.getByTestId('model-card')).toBeTruthy();
+
+    await waitFor(() => expect(mockConfirm).toHaveBeenCalled());
+    expect(removeModel).not.toHaveBeenCalled();
   });
 });
