@@ -2,6 +2,7 @@ import {
   useModelStore,
   ModelState,
   pauseDownloadsForBackground,
+  pauseModelDownloadsWhile,
   resumeDownloadsAfterBackground,
   resetDownloadAttempts,
 } from '../store/modelStore';
@@ -205,6 +206,84 @@ describe('a download while the app is in the background (UW-22)', () => {
 
     expect(ExpoResourceFetcher.resumeFetching).toHaveBeenCalledTimes(1);
     await fetcher.finishEverything();
+    await started;
+  });
+});
+
+describe('a download while something more urgent needs the connection', () => {
+  const downloadUnderway = async () => {
+    const started = download();
+    await flushMicrotasks();
+    await fetcher.releaseSizeLookups();
+    return { started };
+  };
+
+  it('is paused while the urgent work runs and resumed right after', async () => {
+    const { started } = await downloadUnderway();
+    const order: string[] = [];
+    (ExpoResourceFetcher.pauseFetching as jest.Mock).mockImplementationOnce(
+      async () => {
+        order.push('paused');
+      }
+    );
+    (ExpoResourceFetcher.resumeFetching as jest.Mock).mockImplementationOnce(
+      async () => {
+        order.push('resumed');
+      }
+    );
+
+    const result = await pauseModelDownloadsWhile(async () => {
+      order.push('work');
+      return 'loaded';
+    });
+
+    expect(result).toBe('loaded');
+    expect(order).toEqual(['paused', 'work', 'resumed']);
+    expect(status()).toBe(ModelState.Downloading);
+
+    await fetcher.finishEverything();
+    await started;
+    expect(status()).toBe(ModelState.Downloaded);
+  });
+
+  it('resumes the download even when the urgent work fails', async () => {
+    const { started } = await downloadUnderway();
+
+    await expect(
+      pauseModelDownloadsWhile(async () => {
+        throw new Error('no model');
+      })
+    ).rejects.toThrow('no model');
+
+    expect(ExpoResourceFetcher.resumeFetching).toHaveBeenCalledWith(
+      model.modelPath
+    );
+    await fetcher.finishEverything();
+    await started;
+  });
+
+  it('leaves a download alone that the background pause already holds', async () => {
+    const { started } = await downloadUnderway();
+    await pauseDownloadsForBackground();
+    (ExpoResourceFetcher.pauseFetching as jest.Mock).mockClear();
+
+    await pauseModelDownloadsWhile(async () => 'loaded');
+
+    expect(ExpoResourceFetcher.pauseFetching).not.toHaveBeenCalled();
+    expect(ExpoResourceFetcher.resumeFetching).not.toHaveBeenCalled();
+
+    await resumeDownloadsAfterBackground();
+    await fetcher.finishEverything();
+    await started;
+  });
+
+  it('does not touch a download the user cancelled', async () => {
+    const { started } = await downloadUnderway();
+    await cancel();
+
+    await pauseModelDownloadsWhile(async () => 'loaded');
+
+    expect(ExpoResourceFetcher.resumeFetching).not.toHaveBeenCalled();
     await started;
   });
 });

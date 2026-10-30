@@ -82,14 +82,15 @@ const ChatSpeechInput: React.FC<Props> = ({
     onCancelProp();
   });
 
-  const { loadProgress, status, start, stop, abandon } = useSpeechInput({
-    onAudioData: (data) => {
-      setRecordingDuration(
-        Math.floor((Date.now() - recordingStartTimeRef.current) / 1000)
-      );
-      animationRef.current?.pushChunk(data);
-    },
-  });
+  const { loadProgress, isDownloading, status, start, stop, abandon } =
+    useSpeechInput({
+      onAudioData: (data) => {
+        setRecordingDuration(
+          Math.floor((Date.now() - recordingStartTimeRef.current) / 1000)
+        );
+        animationRef.current?.pushChunk(data);
+      },
+    });
 
   const [hasStarted, setHasStarted] = useState(false);
   const unmountedRef = useRef(false);
@@ -260,6 +261,13 @@ const ChatSpeechInput: React.FC<Props> = ({
     if (phase === 'ended') return null;
 
     const progressPercentage = Math.round(loadProgress * 100);
+    if (status === 'loading' && isDownloading) {
+      return (
+        <Text style={styles.secondaryNote}>
+          Downloading the dictation model ({progressPercentage}%)
+        </Text>
+      );
+    }
     return (
       <Text style={styles.secondaryNote}>
         Loading...{status === 'loading' ? ` (${progressPercentage}%)` : ''}
