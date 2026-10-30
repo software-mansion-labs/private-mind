@@ -18,6 +18,9 @@ const normalizeThinkMarkup = (text: string): string => {
   return `${THINK_OPEN}${text}`;
 };
 
+export const withTemplateThinkOpener = (text: string): string =>
+  text.startsWith(THINK_OPEN) ? text : `${THINK_OPEN}${text}`;
+
 export const stripThinkMarkers = (text: string): string =>
   text.split(THINK_OPEN).join('').split(THINK_CLOSE).join('');
 

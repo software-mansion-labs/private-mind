@@ -11,6 +11,8 @@ import {
   getWebSearchMinDeviceMemoryGB,
   isWebSearchReady,
   usesLlmPlanner,
+  chatTemplateFlagsFor,
+  usesTemplateThinkingSwitch,
 } from '../constants/model-profiles';
 
 describe('WEB_PLANNER_MATRIX', () => {
@@ -216,5 +218,22 @@ describe('web search capability floor', () => {
           PLANNER_EVIDENCE[model.modelName]
       ).toBeDefined();
     }
+  });
+});
+
+describe('the Think switch', () => {
+  it('reaches LFM 3 through the chat template, not a /no_think suffix', () => {
+    const lfm3 = { modelName: 'LFM 3 - 1.7B', family: 'LFM 3' };
+    expect(usesTemplateThinkingSwitch(lfm3)).toBe(true);
+    expect(chatTemplateFlagsFor(lfm3, false)).toEqual({
+      enable_thinking: false,
+    });
+    expect(chatTemplateFlagsFor(lfm3, true)).toEqual({ enable_thinking: true });
+  });
+
+  it('leaves every other family on the suffix', () => {
+    const qwen = { modelName: 'Qwen 3 - 1.7B', family: 'Qwen 3' };
+    expect(usesTemplateThinkingSwitch(qwen)).toBe(false);
+    expect(chatTemplateFlagsFor(qwen, false)).toEqual({});
   });
 });
