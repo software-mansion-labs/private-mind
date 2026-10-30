@@ -11,6 +11,8 @@ export type DownloadPhase =
   | 'cancel-landed'
   | 'cancel-failed'
   | 'paused-in-background'
+  | 'paused-for-priority'
+  | 'resumed-after-priority'
   | 'pause-failed'
   | 'resumed-in-foreground'
   | 'resume-failed';

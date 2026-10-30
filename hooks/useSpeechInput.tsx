@@ -20,7 +20,7 @@ type StartReturnType = Promise<AsyncGenerator<
 
 export type Status = 'loading' | 'idle' | 'listening' | 'processing';
 
-interface Result extends Pick<STTStore, 'loadProgress'> {
+interface Result extends Pick<STTStore, 'loadProgress' | 'isDownloading'> {
   start: () => StartReturnType;
   stop: () => Promise<boolean>;
   abandon: () => void;
@@ -148,6 +148,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
 
   return {
     loadProgress: stt.loadProgress,
+    isDownloading: stt.isDownloading,
     start,
     stop,
     abandon,

@@ -3,7 +3,8 @@ import {
   type WhisperSpeechToText,
 } from 'react-native-executorch';
 import { create } from 'zustand';
-import { localWhisperModel } from '../utils/sttModelFiles';
+import { pauseModelDownloadsWhile } from './modelStore';
+import { isWhisperDownloaded, localWhisperModel } from '../utils/sttModelFiles';
 
 export type SpeechToTextModule = WhisperSpeechToText<'en'>;
 
@@ -11,6 +12,7 @@ export interface STTStore {
   module: SpeechToTextModule | null;
   isReady: boolean;
   isLoading: boolean;
+  isDownloading: boolean;
   loadProgress: number;
   streamEnd: Promise<void> | null;
   audioSessionOwner: number;
@@ -27,6 +29,7 @@ export const useSTTStore = create<STTStore>((set, get) => {
     module: null,
     isReady: false,
     isLoading: false,
+    isDownloading: false,
     loadProgress: 0,
     streamEnd: null,
     audioSessionOwner: 0,
@@ -43,6 +46,7 @@ export const useSTTStore = create<STTStore>((set, get) => {
         module: null,
         isReady: false,
         isLoading: false,
+        isDownloading: false,
         loadProgress: 0,
       });
       Promise.resolve(streamEnd).then(() => module?.dispose());
@@ -66,15 +70,25 @@ export const useSTTStore = create<STTStore>((set, get) => {
         loadProgress: 0,
       });
 
-      return (modelLoadPromise = localWhisperModel((progress) => {
-        set({ loadProgress: progress });
-      })
-        .then(createWhisperSpeechToText)
+      const loadModule = async () =>
+        createWhisperSpeechToText(
+          await localWhisperModel((progress) => {
+            set({ loadProgress: progress });
+          })
+        );
+
+      return (modelLoadPromise = isWhisperDownloaded()
+        .then((downloaded) => {
+          if (downloaded) return loadModule();
+          set({ isDownloading: true });
+          return pauseModelDownloadsWhile(loadModule);
+        })
         .then((module) => {
           set({
             module,
             isReady: true,
             isLoading: false,
+            isDownloading: false,
             loadProgress: 1,
           });
         })
@@ -82,6 +96,7 @@ export const useSTTStore = create<STTStore>((set, get) => {
           set({
             isReady: false,
             isLoading: false,
+            isDownloading: false,
             loadProgress: 0,
           });
           throw error;

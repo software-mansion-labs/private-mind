@@ -33,6 +33,7 @@ jest.mock('../components/chat-screen/RecordingAnimation', () => {
 
 const mockSpeech = {
   loadProgress: 0.4,
+  isDownloading: false,
   status: 'loading' as 'loading' | 'listening' | 'processing' | 'idle',
   start: jest.fn(async () => null),
   stop: jest.fn(async () => true),
@@ -52,12 +53,22 @@ describe('ChatSpeechInput while the model is still loading', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSpeech.status = 'loading';
+    mockSpeech.isDownloading = false;
   });
 
   it('says what it is waiting for instead of offering a send', () => {
     renderSheet();
 
     expect(screen.getByText('Loading speech recognition...')).toBeTruthy();
+  });
+
+  it('shows the download progress when the dictation model is being fetched', () => {
+    mockSpeech.isDownloading = true;
+    renderSheet();
+
+    expect(
+      screen.getByText('Downloading the dictation model (40%)')
+    ).toBeTruthy();
   });
 
   it('answers a send with an explanation rather than silence', () => {

@@ -20,6 +20,7 @@ import { Feedback } from '../utils/Feedback';
 import {
   describeDownloadError,
   recordDownloadEvent,
+  type DownloadPhase,
 } from '../utils/downloadDiagnostics';
 import NetInfo from '@react-native-community/netinfo';
 import {
@@ -61,6 +62,7 @@ interface DownloadAttempt {
 
 const attempts = new Map<number, DownloadAttempt>();
 const pausedForBackground = new Map<DownloadAttempt, string>();
+const pausedForPriority = new Map<DownloadAttempt, string>();
 const sourceFetches = new Map<string, Promise<unknown>>();
 
 const sourcesOf = (model: Model) =>
@@ -85,15 +87,20 @@ const createAttempt = (model: Model): DownloadAttempt => {
 
 let pauseInFlight: Promise<void> = Promise.resolve();
 
-const pauseActiveDownloads = async () => {
+const pauseActiveDownloads = async (
+  held: Map<DownloadAttempt, string>,
+  pausedEvent: DownloadPhase,
+  alreadyHeld?: Map<DownloadAttempt, string>
+) => {
   for (const attempt of attempts.values()) {
     const source = attempt.ownedSource;
     if (!source || attempt.finished || attempt.cancelled) continue;
+    if (alreadyHeld?.has(attempt)) continue;
     const { model } = attempt;
     try {
       await ExpoResourceFetcher.pauseFetching(source);
-      pausedForBackground.set(attempt, source);
-      recordDownloadEvent(model.id, model.modelName, 'paused-in-background');
+      held.set(attempt, source);
+      recordDownloadEvent(model.id, model.modelName, pausedEvent);
     } catch (err) {
       recordDownloadEvent(
         model.id,
@@ -105,17 +112,17 @@ const pauseActiveDownloads = async () => {
   }
 };
 
-export const pauseDownloadsForBackground = () => {
-  pauseInFlight = pauseInFlight.then(pauseActiveDownloads);
-  return pauseInFlight;
-};
-
-const resumePausedDownloads = () => {
-  for (const [attempt, source] of [...pausedForBackground]) {
-    pausedForBackground.delete(attempt);
+const resumePausedDownloads = (
+  held: Map<DownloadAttempt, string>,
+  resumedEvent: DownloadPhase,
+  stillHeld?: Map<DownloadAttempt, string>
+) => {
+  for (const [attempt, source] of [...held]) {
+    held.delete(attempt);
     if (attempt.finished || attempt.cancelled) continue;
+    if (stillHeld?.has(attempt)) continue;
     const { model } = attempt;
-    recordDownloadEvent(model.id, model.modelName, 'resumed-in-foreground');
+    recordDownloadEvent(model.id, model.modelName, resumedEvent);
     ExpoResourceFetcher.resumeFetching(source).catch((err) =>
       recordDownloadEvent(
         model.id,
@@ -127,12 +134,48 @@ const resumePausedDownloads = () => {
   }
 };
 
+export const pauseDownloadsForBackground = () => {
+  pauseInFlight = pauseInFlight.then(() =>
+    pauseActiveDownloads(pausedForBackground, 'paused-in-background')
+  );
+  return pauseInFlight;
+};
+
 export const resumeDownloadsAfterBackground = () =>
-  pauseInFlight.then(resumePausedDownloads);
+  pauseInFlight.then(() =>
+    resumePausedDownloads(
+      pausedForBackground,
+      'resumed-in-foreground',
+      pausedForPriority
+    )
+  );
+
+export const pauseModelDownloadsWhile = async <T>(
+  work: () => Promise<T>
+): Promise<T> => {
+  pauseInFlight = pauseInFlight.then(() =>
+    pauseActiveDownloads(
+      pausedForPriority,
+      'paused-for-priority',
+      pausedForBackground
+    )
+  );
+  await pauseInFlight;
+  try {
+    return await work();
+  } finally {
+    resumePausedDownloads(
+      pausedForPriority,
+      'resumed-after-priority',
+      pausedForBackground
+    );
+  }
+};
 
 export const resetDownloadAttempts = () => {
   attempts.clear();
   sourceFetches.clear();
+  pausedForPriority.clear();
 };
 
 interface ModelStore {

@@ -1,7 +1,40 @@
+import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import { ResourceFetcher } from 'react-native-executorch/legacy';
-import { localWhisperModel, whisperSources } from '../utils/sttModelFiles';
+import {
+  isWhisperDownloaded,
+  localWhisperModel,
+  whisperSources,
+} from '../utils/sttModelFiles';
 
+const list = ExpoResourceFetcher.listDownloadedFiles as jest.Mock;
 const fetch = ResourceFetcher.fetch as jest.Mock;
+
+describe('isWhisperDownloaded', () => {
+  it('is true once the model, the tokenizer and the voice detector are on the phone', async () => {
+    list.mockResolvedValueOnce([
+      'file:///rne/whisper.pte',
+      'file:///rne/tokenizer.json',
+      'file:///rne/vad.pte',
+    ]);
+
+    expect(await isWhisperDownloaded()).toBe(true);
+  });
+
+  it('is false for a dictation set up before the voice detector existed', async () => {
+    list.mockResolvedValueOnce([
+      'file:///rne/whisper.pte',
+      'file:///rne/tokenizer.json',
+    ]);
+
+    expect(await isWhisperDownloaded()).toBe(false);
+  });
+
+  it('is false when the download folder does not exist yet', async () => {
+    list.mockRejectedValueOnce(new Error('not a directory'));
+
+    expect(await isWhisperDownloaded()).toBe(false);
+  });
+});
 
 describe('localWhisperModel', () => {
   it('fetches the three files and points the recognizer at them on disk', async () => {
