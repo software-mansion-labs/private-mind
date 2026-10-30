@@ -211,6 +211,7 @@ const createStyles = () =>
       flexDirection: 'row',
       width: '100%',
       justifyContent: 'space-between',
+      gap: space.two,
     },
     leftActions: {
       flexDirection: 'row',
