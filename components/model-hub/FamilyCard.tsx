@@ -13,6 +13,7 @@ import ModelRowText from './ModelRowText';
 import { dimmedOpacity } from '../../styles/pressable';
 import SpinningCircle from '../SpinningCircle';
 import { ModelState, useModelStore } from '../../store/modelStore';
+import { TILE_ROW } from './RowGroup';
 import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
 
 const MAX_LABELS = 5;
@@ -119,16 +120,16 @@ export default FamilyCard;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     row: {
-      gap: space.four,
-      padding: space.five,
-      paddingLeft: space.four,
+      gap: TILE_ROW.gap,
+      padding: TILE_ROW.padding,
+      paddingLeft: TILE_ROW.paddingLeft,
     },
     pressed: {
       backgroundColor: theme.bg.softTertiary,
     },
     tile: {
       alignSelf: 'flex-start',
-      marginTop: space.half,
+      marginTop: TILE_ROW.tileOffset,
     },
     labels: {
       flexDirection: 'row',

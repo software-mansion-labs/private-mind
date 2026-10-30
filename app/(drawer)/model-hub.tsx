@@ -220,6 +220,7 @@ const ModelHubScreen = () => {
                           key={model.id}
                           model={model}
                           showFamilyTile
+                          matchFamilyCards
                           onPress={() =>
                             modelManagementSheetRef.current?.present(model)
                           }

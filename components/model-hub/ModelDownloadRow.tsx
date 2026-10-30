@@ -28,7 +28,7 @@ import DownloadedBadge from './DownloadedBadge';
 import DownloadPercent from './DownloadPercent';
 import DownloadProgressBar from './DownloadProgressBar';
 import DownloadProgressDetails from './DownloadProgressDetails';
-import { ROW_PADDING } from './RowGroup';
+import { ROW_PADDING, TILE_ROW } from './RowGroup';
 import DownloadArrowIcon from '../../assets/icons/download-arrow.svg';
 import CloseIcon from '../../assets/icons/close.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
@@ -41,6 +41,7 @@ interface Props {
   onPress: (model: Model) => void;
   wifiWarningSheetRef?: WifiWarningSheetRef;
   showFamilyTile?: boolean;
+  matchFamilyCards?: boolean;
 }
 
 const ModelDownloadRow = ({
@@ -48,6 +49,7 @@ const ModelDownloadRow = ({
   onPress,
   wifiWarningSheetRef,
   showFamilyTile = false,
+  matchFamilyCards = false,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const { status, progress, rate, startDownload, stopDownload } =
@@ -86,7 +88,11 @@ const ModelDownloadRow = ({
   return (
     <ModelRow
       align="top"
-      style={[styles.row, !isCompatible && dimmedOpacity]}
+      style={[
+        styles.row,
+        matchFamilyCards && styles.tileRow,
+        !isCompatible && dimmedOpacity,
+      ]}
       onPress={() => onPress(model)}
       disabled={disabled}
       accessibilityRole="button"
@@ -98,7 +104,9 @@ const ModelDownloadRow = ({
       testID={`model-download-row-${model.id}`}
     >
       {showFamilyTile && (
-        <ModelFamilyTile family={getModelFamily(model)} size="list" />
+        <View style={matchFamilyCards && styles.tile}>
+          <ModelFamilyTile family={getModelFamily(model)} size="list" />
+        </View>
       )}
       <ModelRowText
         title={model.modelName}
@@ -168,6 +176,14 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     row: {
       padding: ROW_PADDING,
+    },
+    tileRow: {
+      gap: TILE_ROW.gap,
+      padding: TILE_ROW.padding,
+      paddingLeft: TILE_ROW.paddingLeft,
+    },
+    tile: {
+      marginTop: TILE_ROW.tileOffset,
     },
     text: {
       gap: space.one,

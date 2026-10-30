@@ -62,7 +62,11 @@ const ModelRowText = ({
           }
         >
           {titleText}
-          {titleAccessory}
+          {accessoryPlacement === 'inline' ? (
+            <View style={styles.firstLineSlot}>{titleAccessory}</View>
+          ) : (
+            titleAccessory
+          )}
         </View>
       ) : (
         titleText
@@ -93,8 +97,12 @@ const createStyles = (theme: Theme) =>
     },
     titleRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: space.four,
+    },
+    firstLineSlot: {
+      height: textStyles.bodyPrimaryMedium.lineHeight,
+      justifyContent: 'center',
     },
     titleRowEnd: {
       flexDirection: 'row',
