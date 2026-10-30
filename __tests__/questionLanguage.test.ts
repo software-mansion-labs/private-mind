@@ -237,3 +237,42 @@ describe('detectQuestionLanguage over the multilingual corpus', () => {
     expect(perLanguage.filter((entry) => !entry.endsWith('=100%'))).toEqual([]);
   });
 });
+
+describe('detectThreadLanguage across scripts', () => {
+  it('does not anchor an undetected Latin-script question to an earlier Urdu turn', () => {
+    expect(
+      detectThreadLanguage([
+        'زمین سورج کے گرد کیوں گھومتی ہے؟',
+        'Lighthouse keeper, 300 words.',
+      ])
+    ).toBeNull();
+  });
+
+  it('still inherits a Latin-script language for a short Latin follow-up', () => {
+    expect(
+      detectThreadLanguage([
+        'jaka jest dzisiaj pogoda w Gdansku',
+        'Lighthouse keeper, 300 words.',
+      ])?.code
+    ).toBe('pl');
+  });
+
+  it('takes the latest turn when its script is detected on its own', () => {
+    expect(
+      detectThreadLanguage([
+        'Write a 300-word story about a lighthouse keeper.',
+        'زمین سورج کے گرد کیوں گھومتی ہے؟',
+      ])?.code
+    ).toBe('ur');
+  });
+});
+
+describe('detectQuestionLanguage on English requests without question words', () => {
+  it.each([
+    'Write a 300-word story about a lighthouse keeper.',
+    'Tell me about your day.',
+    'Explain this to a child.',
+  ])('detects English in %s', (question) => {
+    expect(detectQuestionLanguage(question)?.code).toBe('en');
+  });
+});

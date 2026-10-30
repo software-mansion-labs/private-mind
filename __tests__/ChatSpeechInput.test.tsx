@@ -203,6 +203,18 @@ describe('ChatSpeechInput when the transcript ends without a send', () => {
     expect(Toast.show).not.toHaveBeenCalled();
   });
 
+  it('treats a bracketed annotation alone, as Whisper writes for silence, as nothing heard', async () => {
+    const endStream = endingStream('(speaking in foreign language)');
+    const onCancel = jest.fn();
+    render(<ChatSpeechInput onSubmit={jest.fn()} onCancel={onCancel} />);
+    await act(async () => {});
+
+    endStream();
+
+    await waitFor(() => expect(onCancel).toHaveBeenCalled());
+    expect(Toast.show).not.toHaveBeenCalled();
+  });
+
   it('stays quiet when the trash ended it', async () => {
     const endStream = endingStream('call mom');
     const onInterrupted = jest.fn();

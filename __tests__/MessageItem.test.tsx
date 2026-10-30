@@ -229,7 +229,9 @@ describe('assistant messages', () => {
     renderItem({ content: '', isLastMessage: true, modelName: 'Llama-3B' });
 
     expect(screen.getByText('Llama-3B')).toBeTruthy();
-    expect(screen.getByTestId('chat-loading').props.children).toBe('Thinking…');
+    expect(screen.getByTestId('chat-loading').props.children).toBe(
+      'Generating…'
+    );
   });
 
   it('renders the model name', () => {

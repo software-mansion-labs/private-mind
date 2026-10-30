@@ -2,6 +2,7 @@ import {
   BACKGROUND_RELEASE_DELAY_MS,
   MODEL_WARMUP_TIMEOUT_MS,
   useLLMStore,
+  FIRST_TOKEN_TIMEOUT_MS,
 } from '../store/llmStore';
 import { LLMModule } from 'react-native-executorch/legacy';
 import * as chatRepository from '../database/chatRepository';
@@ -93,6 +94,7 @@ const makeMockInstance = () => ({
   configure: jest.fn(),
   getGeneratedTokenCount: jest.fn(() => 10),
   lastGenerationStalled: jest.fn(() => false),
+  setChatTemplateFlags: jest.fn(),
 });
 
 let mockInstance = makeMockInstance();
@@ -672,6 +674,203 @@ describe('sendChatMessage', () => {
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
       '**Photosynthesis**\n\nPlants turn light into energy.'
     );
+  });
+
+  describe('a model that opens its think block from the chat template', () => {
+    const lfm3 = {
+      ...baseModel,
+      modelName: 'LFM 3 - 1.7B',
+      family: 'LFM 3',
+      thinking: true,
+    };
+
+    it('shows the streamed reasoning inside a think block from the first token', async () => {
+      useLLMStore.setState({
+        model: lfm3,
+        activeChatId: 1,
+        activeChatMessages: [],
+      });
+      let seenWhileStreaming: string | undefined;
+      mockInstance.generate.mockImplementationOnce(async () => {
+        capturedTokenCallback!('We need');
+        await flushFrame();
+        seenWhileStreaming = useLLMStore
+          .getState()
+          .activeChatMessages.at(-1)?.content;
+        capturedTokenCallback!(' to answer.</think>Blue sky.');
+        await flushFrame();
+        return 'We need to answer.</think>Blue sky.';
+      });
+
+      await useLLMStore
+        .getState()
+        .sendChatMessage('Why is the sky blue?', 1, noSources, {
+          ...settings,
+          thinkingEnabled: true,
+        });
+
+      expect(mockInstance.setChatTemplateFlags).toHaveBeenCalledWith({
+        enable_thinking: true,
+      });
+      expect(seenWhileStreaming).toBe('<think>We need');
+      expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+        '<think>We need to answer.</think>Blue sky.'
+      );
+    });
+
+    it('runs a nudge retry with thinking switched off', async () => {
+      (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+        { role: 'system', content: 'You are helpful.' },
+        {
+          role: 'user',
+          content:
+            'Kurs bitcoina wynosi dziś 98 000 USD. Kurs ethereum wynosi dziś 3 200 USD.\n\nporównaj kurs bitcoina i ethereum',
+        },
+      ]);
+      const flagsSeenByRetry: unknown[] = [];
+      mockInstance.generate
+        .mockResolvedValueOnce(
+          '</think>Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.'
+        )
+        .mockImplementationOnce(async () => {
+          flagsSeenByRetry.push(
+            mockInstance.setChatTemplateFlags.mock.calls.at(-1)?.[0]
+          );
+          return 'Bitcoin kosztuje około 98 000 USD, a ethereum około 3 200 USD.';
+        })
+        .mockResolvedValue('');
+      useLLMStore.setState({
+        model: lfm3,
+        activeChatId: 1,
+        activeChatMessages: [],
+      });
+      const withSubQueries = async () => ({
+        ...(await noSources()),
+        webSubQueries: ['kurs bitcoin', 'kurs ethereum'],
+      });
+
+      await useLLMStore
+        .getState()
+        .sendChatMessage(
+          'porównaj kurs bitcoina i ethereum',
+          1,
+          withSubQueries,
+          {
+            ...settings,
+            thinkingEnabled: true,
+          }
+        );
+
+      expect(flagsSeenByRetry).toEqual([{ enable_thinking: false }]);
+      expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+        'Bitcoin kosztuje około 98 000 USD, a ethereum około 3 200 USD.'
+      );
+    });
+  });
+
+  it('ignores a stray close tag when the template already closed the think block', async () => {
+    const lfm3 = {
+      ...baseModel,
+      modelName: 'LFM 3 - 1.7B',
+      family: 'LFM 3',
+      thinking: true,
+    };
+    useLLMStore.setState({
+      model: lfm3,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    let seenWhileStreaming: string | undefined;
+    mockInstance.generate.mockImplementationOnce(async () => {
+      capturedTokenCallback!('Liście zmieniają kolor');
+      await flushFrame();
+      capturedTokenCallback!('</think>');
+      capturedTokenCallback!(' jesienią.');
+      await flushFrame();
+      seenWhileStreaming = useLLMStore
+        .getState()
+        .activeChatMessages.at(-1)?.content;
+      return 'Liście zmieniają kolor</think> jesienią.';
+    });
+
+    await useLLMStore.getState().sendChatMessage('a dlaczego?', 1, noSources, {
+      ...settings,
+      thinkingEnabled: false,
+    });
+
+    expect(seenWhileStreaming).toBe('Liście zmieniają kolor jesienią.');
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Liście zmieniają kolor jesienią.'
+    );
+  });
+
+  it('runs a nudge retry of a suffix-thinking model with /no_think', async () => {
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content:
+          'Kurs bitcoina wynosi dziś 98 000 USD. Kurs ethereum wynosi dziś 3 200 USD.\n\nporównaj kurs bitcoina i ethereum',
+      },
+    ]);
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        'Bitcoin kosztuje obecnie około 98 000 USD i od tygodnia zyskuje na wartości.'
+      )
+      .mockResolvedValueOnce(
+        'Bitcoin kosztuje około 98 000 USD, a ethereum około 3 200 USD.'
+      )
+      .mockResolvedValue('');
+    useLLMStore.setState({
+      model: { ...baseModel, thinking: true },
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    const withSubQueries = async () => ({
+      ...(await noSources()),
+      webSubQueries: ['kurs bitcoin', 'kurs ethereum'],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('porównaj kurs bitcoina i ethereum', 1, withSubQueries, {
+        ...settings,
+        thinkingEnabled: true,
+      });
+
+    const retry = mockInstance.generate.mock.calls[1][0] as {
+      role: string;
+      content: string;
+    }[];
+    expect(retry.at(-1)!.content).toMatch(/ \/no_think$/);
+  });
+
+  it('interrupts a turn that yields no token within the first-token budget', async () => {
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [],
+    });
+    mockInstance.generate.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          mockInstance.interrupt.mockImplementationOnce(() => resolve(''));
+        })
+    );
+    jest.useFakeTimers();
+    try {
+      const sending = useLLMStore
+        .getState()
+        .sendChatMessage('hi', 1, noSources, settings);
+      await jest.advanceTimersByTimeAsync(FIRST_TOKEN_TIMEOUT_MS + 1);
+      await sending;
+    } finally {
+      jest.useRealTimers();
+    }
+
+    expect(mockInstance.interrupt).toHaveBeenCalled();
+    expect(useLLMStore.getState().isGenerating).toBe(false);
+    expect(useLLMStore.getState().isProcessingPrompt).toBe(false);
   });
 
   it('returns early when db is not set', async () => {
@@ -2843,6 +3042,28 @@ describe('runBenchmark', () => {
     expect(result).toBeUndefined();
     expect(useLLMStore.getState().isGenerating).toBe(false);
     expect(useLLMStore.getState().isBenchmarking).toBe(false);
+  });
+
+  it('measures a template-thinking model with reasoning switched off', async () => {
+    await loadModel();
+    let flagsAtGenerate: unknown;
+    mockInstance.generate.mockImplementation(async () => {
+      flagsAtGenerate =
+        mockInstance.setChatTemplateFlags.mock.calls.at(-1)?.[0];
+      return 'benchmark result';
+    });
+    useLLMStore.setState({
+      model: {
+        ...baseModel,
+        modelName: 'LFM 3 - 1.7B',
+        family: 'LFM 3',
+        thinking: true,
+      },
+    });
+
+    await useLLMStore.getState().runBenchmark();
+
+    expect(flagsAtGenerate).toEqual({ enable_thinking: false });
   });
 
   it('sets isGenerating and isBenchmarking flags while running', async () => {
