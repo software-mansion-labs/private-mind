@@ -3278,3 +3278,55 @@ describe('prepareMessagesForLLM and earlier reasoning', () => {
     expect(result.at(-1)?.content).toContain('And at sunset?');
   });
 });
+
+describe('a greeting sent after a real question', () => {
+  const afterAQuestion: Message[] = [
+    {
+      id: 1,
+      chatId: 1,
+      role: 'user',
+      content: 'What is the capital of Australia and why was it chosen?',
+      timestamp: 0,
+    },
+    {
+      id: 2,
+      chatId: 1,
+      role: 'assistant',
+      content:
+        'Canberra, chosen in 1913 as a compromise between Sydney and Melbourne.',
+      timestamp: 0,
+    },
+    { id: 3, chatId: 1, role: 'user', content: 'hi', timestamp: 0 },
+    { id: 4, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+  ];
+
+  it('goes to the model without the earlier turns, so there is nothing to restate', () => {
+    const result = prepareMessagesForLLM(
+      afterAQuestion,
+      [],
+      baseSettings,
+      baseModel
+    );
+
+    expect(result.map((message) => message.role)).toEqual(['system', 'user']);
+    expect(result[1].content).toMatch(/^hi/);
+    expect(result[0].content).toContain('only a greeting');
+  });
+
+  it('keeps the earlier turns for a real follow-up', () => {
+    const followUp = afterAQuestion.map((message) =>
+      message.id === 3
+        ? { ...message, content: 'And when did that happen?' }
+        : message
+    );
+
+    const result = prepareMessagesForLLM(followUp, [], baseSettings, baseModel);
+
+    expect(result.map((message) => message.role)).toEqual([
+      'system',
+      'user',
+      'assistant',
+      'user',
+    ]);
+  });
+});
