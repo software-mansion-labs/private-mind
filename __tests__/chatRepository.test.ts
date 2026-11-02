@@ -199,6 +199,7 @@ describe('a cut-short mark carried into another chat', () => {
         null,
         null,
         null,
+        null,
         0,
         'memory',
       ]
@@ -217,9 +218,9 @@ describe('a cut-short mark carried into another chat', () => {
 
     const [sql, values] = runAsync.mock.calls[0];
     expect(sql).toContain('cutShortReason');
-    expect(values.length).toBe(26);
-    expect(values[12]).toBe('memory');
-    expect(values[25]).toBeNull();
+    expect(values.length).toBe(28);
+    expect(values[13]).toBe('memory');
+    expect(values[27]).toBeNull();
   });
 });
 
@@ -312,7 +313,7 @@ describe('forkChat', () => {
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO messages'),
-      [10, 'user', 'one', 100, '', 0, 0, null, null, null, null, 0, null]
+      [10, 'user', 'one', 100, '', 0, 0, null, null, null, null, null, 0, null]
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO messages'),
@@ -324,6 +325,7 @@ describe('forkChat', () => {
         'model',
         0,
         0,
+        null,
         null,
         null,
         null,
@@ -393,6 +395,7 @@ describe('forkChat', () => {
         'model',
         0,
         0,
+        null,
         null,
         null,
         null,
@@ -835,5 +838,105 @@ describe('getChatMessages source provenance', () => {
     expect(source?.name).toBe('report.pdf');
     expect(source?.kind).toBeUndefined();
     expect(source?.url).toBeUndefined();
+  });
+});
+
+describe('retrievalStats survive a reload', () => {
+  it('serializes both legs into the INSERT', async () => {
+    const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 11 });
+    const mockDb = { runAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    await persistMessage(mockDb, {
+      role: 'assistant',
+      content: 'Answered from the report and the web.',
+      chatId: 1,
+      retrievalStats: {
+        rag: { ms: 412, chunks: 6 },
+        web: { ms: 8420, sources: 5, read: 3, queries: 2 },
+      },
+    });
+
+    expect(runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('retrievalStats'),
+      expect.arrayContaining([
+        JSON.stringify({
+          rag: { ms: 412, chunks: 6 },
+          web: { ms: 8420, sources: 5, read: 3, queries: 2 },
+        }),
+      ])
+    );
+  });
+
+  it('stores nothing for a turn that retrieved nothing', async () => {
+    const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 12 });
+    const mockDb = { runAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    await persistMessage(mockDb, {
+      role: 'assistant',
+      content: 'Answered from what it knew.',
+      chatId: 1,
+      retrievalStats: {},
+    });
+
+    const [, values] = runAsync.mock.calls[0];
+    expect(values[values.length - 3]).toBeNull();
+  });
+
+  it('reads both legs back with their counts', async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 1,
+        chatId: 1,
+        role: 'assistant',
+        content: 'Answered.',
+        retrievalStats: JSON.stringify({
+          rag: { ms: 412, chunks: 6 },
+          web: { ms: 8420, sources: 5, read: 3, queries: 2 },
+        }),
+      },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(messages[0].retrievalStats).toEqual({
+      rag: { ms: 412, chunks: 6 },
+      web: { ms: 8420, sources: 5, read: 3, queries: 2 },
+    });
+  });
+
+  it('drops a leg whose counts are missing rather than rendering NaN', async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 1,
+        chatId: 1,
+        role: 'assistant',
+        content: 'Answered.',
+        retrievalStats: JSON.stringify({
+          rag: { ms: 412 },
+          web: { ms: 8420, sources: 5, read: 3, queries: 2 },
+        }),
+      },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(messages[0].retrievalStats).toEqual({
+      web: { ms: 8420, sources: 5, read: 3, queries: 2 },
+    });
+  });
+
+  it('leaves a message written before the column existed without stats', async () => {
+    const getAllAsync = jest
+      .fn()
+      .mockResolvedValue([
+        { id: 1, chatId: 1, role: 'assistant', content: 'Answered.' },
+      ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(messages[0].retrievalStats).toBeUndefined();
   });
 });

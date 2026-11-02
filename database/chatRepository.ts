@@ -54,10 +54,22 @@ export type Message = {
   groundingCaveats?: GroundingCaveatKind[];
   tokensPerSecond?: number;
   timeToFirstToken?: number;
+  retrievalStats?: RetrievalStats;
   stoppedByUser?: boolean;
   cutShortReason?: CutShortReason;
   timestamp: number;
 };
+
+export type RagStats = { ms: number; chunks: number };
+
+export type WebStats = {
+  ms: number;
+  sources: number;
+  read: number;
+  queries: number;
+};
+
+export type RetrievalStats = { rag?: RagStats; web?: WebStats };
 
 export type SourceKind = 'document' | 'web';
 
@@ -80,10 +92,15 @@ export const sourceKind = (source: SourceDocument): SourceKind =>
 
 type RawMessage = Omit<
   Message,
-  'sourceDocuments' | 'groundingCaveats' | 'stoppedByUser' | 'cutShortReason'
+  | 'sourceDocuments'
+  | 'groundingCaveats'
+  | 'retrievalStats'
+  | 'stoppedByUser'
+  | 'cutShortReason'
 > & {
   sourceDocuments?: string | null;
   groundingCaveats?: string | null;
+  retrievalStats?: string | null;
   stoppedByUser?: number | null;
   cutShortReason?: string | null;
 };
@@ -116,6 +133,58 @@ const parseGroundingCaveats = (
     return undefined;
   }
 };
+
+const RAG_STAT_KEYS = ['ms', 'chunks'] as const;
+const WEB_STAT_KEYS = ['ms', 'sources', 'read', 'queries'] as const;
+
+const readStatCounts = <K extends string>(
+  value: unknown,
+  keys: readonly K[]
+): Record<K, number> | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const raw = value as Record<string, unknown>;
+  const counts = {} as Record<K, number>;
+  for (const key of keys) {
+    const count = raw[key];
+    if (typeof count !== 'number' || !Number.isFinite(count) || count < 0) {
+      return undefined;
+    }
+    counts[key] = count;
+  }
+  return counts;
+};
+
+const parseRetrievalStats = (
+  retrievalStats?: string | null
+): RetrievalStats | undefined => {
+  if (!retrievalStats) return undefined;
+
+  try {
+    const parsed = JSON.parse(retrievalStats);
+    if (!parsed || typeof parsed !== 'object') return undefined;
+
+    const rag = readStatCounts(
+      (parsed as Record<string, unknown>).rag,
+      RAG_STAT_KEYS
+    );
+    const web = readStatCounts(
+      (parsed as Record<string, unknown>).web,
+      WEB_STAT_KEYS
+    );
+    if (!rag && !web) return undefined;
+
+    return { ...(rag ? { rag } : {}), ...(web ? { web } : {}) };
+  } catch {
+    return undefined;
+  }
+};
+
+const serializeRetrievalStats = (
+  retrievalStats?: RetrievalStats
+): string | null =>
+  retrievalStats?.rag || retrievalStats?.web
+    ? JSON.stringify(retrievalStats)
+    : null;
 
 const parseSourceDocuments = (
   sourceDocuments?: string | null
@@ -241,6 +310,7 @@ export const getChatMessages = async (
     ...message,
     sourceDocuments: parseSourceDocuments(message.sourceDocuments),
     groundingCaveats: parseGroundingCaveats(message.groundingCaveats),
+    retrievalStats: parseRetrievalStats(message.retrievalStats),
     stoppedByUser: message.stoppedByUser === 1,
     cutShortReason: parseCutShortReason(message.cutShortReason),
   }));
@@ -273,7 +343,7 @@ export const persistMessage = async (
   message: Omit<Message, 'id' | 'timestamp'>
 ): Promise<number> => {
   const result = await db.runAsync(
-    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, stoppedByUser, cutShortReason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, retrievalStats, stoppedByUser, cutShortReason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
     [
       message.chatId,
       message.role,
@@ -289,6 +359,7 @@ export const persistMessage = async (
       message.groundingCaveats?.length
         ? JSON.stringify(message.groundingCaveats)
         : null,
+      serializeRetrievalStats(message.retrievalStats),
       message.stoppedByUser ? 1 : 0,
       message.cutShortReason ?? null,
     ]
@@ -307,8 +378,8 @@ export const persistMessage = async (
 };
 
 // SQLite's default SQLITE_MAX_VARIABLE_NUMBER is 999 on older builds.
-// 10 params per row, so 90 rows per batch keeps us well under the limit.
-const IMPORT_BATCH_SIZE = 90;
+// 12 params per row, so 80 rows per batch keeps us well under the limit.
+const IMPORT_BATCH_SIZE = 70;
 const MAX_PREVIEW_LENGTH = 72;
 
 export const importMessages = async (
@@ -321,7 +392,7 @@ export const importMessages = async (
   for (let i = 0; i < messages.length; i += IMPORT_BATCH_SIZE) {
     const batch = messages.slice(i, i + IMPORT_BATCH_SIZE);
     const placeholders = batch
-      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .join(', ');
     const flattenedValues = batch.flatMap((msg) => [
       chatId,
@@ -337,11 +408,12 @@ export const importMessages = async (
       msg.groundingCaveats?.length
         ? JSON.stringify(msg.groundingCaveats)
         : null,
+      serializeRetrievalStats(msg.retrievalStats),
       msg.stoppedByUser ? 1 : 0,
       parseCutShortReason(msg.cutShortReason) ?? null,
     ]);
     await db.runAsync(
-      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, stoppedByUser, cutShortReason) VALUES ${placeholders}`,
+      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, retrievalStats, stoppedByUser, cutShortReason) VALUES ${placeholders}`,
       flattenedValues
     );
   }
@@ -382,9 +454,10 @@ const copyMessagesWithIdMap = async (
           documentName,
           sourceDocuments,
           groundingCaveats,
+          retrievalStats,
           stoppedByUser,
           cutShortReason
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         chatId,
@@ -402,6 +475,7 @@ const copyMessagesWithIdMap = async (
         msg.groundingCaveats?.length
           ? JSON.stringify(msg.groundingCaveats)
           : null,
+        serializeRetrievalStats(msg.retrievalStats),
         msg.stoppedByUser ? 1 : 0,
         msg.cutShortReason ?? null,
       ]

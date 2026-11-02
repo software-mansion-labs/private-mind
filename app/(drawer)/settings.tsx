@@ -100,7 +100,7 @@ const SettingsScreen = () => {
         <SettingsSection title="Chat">
           <SettingsToggleRow
             label="Response speed stats"
-            description="Show time to first token and tokens per second under each answer."
+            description="Show what each answer cost: document and web retrieval, time to first token, tokens per second."
             icon={
               <BenchmarkIcon width={20} height={20} style={styles.rowIcon} />
             }

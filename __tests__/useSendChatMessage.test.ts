@@ -4,10 +4,12 @@ import { useLLMStore } from '../store/llmStore';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { Model } from '../database/modelRepository';
 import type { MessagesHandle } from '../components/chat-screen/Messages';
+import type { RetrievalStats } from '../database/chatRepository';
+import { buildMessageSources } from '../utils/messageSources';
+import { runWebSearch } from '../utils/web/runWebSearch';
 import Toast from 'react-native-toast-message';
 import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import type { Attachment } from '../hooks/useAttachment';
-import { runWebSearch } from '../utils/web/runWebSearch';
 import { WEB_SKIP_COPY } from '../constants/web-copy';
 import { useCpuSupportStore } from '../store/cpuSupportStore';
 
@@ -29,6 +31,14 @@ jest.mock('../utils/messageSources', () => ({
   })),
 }));
 jest.mock('../utils/web/runWebSearch', () => ({ runWebSearch: jest.fn() }));
+jest.mock('../constants/model-profiles', () => ({
+  ...jest.requireActual('../constants/model-profiles'),
+  isWebSearchReady: () => true,
+}));
+jest.mock('../utils/modelCompatibility', () => ({
+  ...jest.requireActual('../utils/modelCompatibility'),
+  hasMemoryForWebSearch: () => true,
+}));
 jest.mock('../utils/web/scrape/webViewScrapeProvider', () => ({
   webViewScrapeProvider: { releaseHost: jest.fn() },
 }));
@@ -372,6 +382,96 @@ describe('the model in the header is the one that answers', () => {
       await usePinnedTo({ id: 2, modelName: 'Gemma 4 - 2B' } as Model)('hi')
     ).toBe('busy');
     expect(state.loadModel).not.toHaveBeenCalled();
+  });
+});
+
+describe('what a turn paid for its sources', () => {
+  const capturedBuildSources = () =>
+    mockedState().sendChatMessage.mock.calls[0][2] as (
+      signal?: AbortSignal
+    ) => Promise<{ retrievalStats?: RetrievalStats }>;
+
+  const useSendWith = (
+    overrides: Partial<Parameters<typeof useSendChatMessage>[0]>
+  ) =>
+    useSendChatMessage({
+      chatId: 1,
+      model: { id: 1, modelName: 'Test LLM' } as Model,
+      messageHistory: [],
+      chatSettings: {
+        systemPrompt: '',
+        thinkingEnabled: false,
+      },
+      enabledSources: [],
+      vectorStore: null,
+      embeddings: null,
+      messagesRef,
+      db: {} as SQLiteDatabase,
+      isGenerating: false,
+      isModelLoading: false,
+      isSwitching: false,
+      waitForModelSwitch: noSwitchInFlight,
+      ...overrides,
+    });
+
+  it('counts the chunks the attached documents contributed', async () => {
+    (buildMessageSources as jest.Mock).mockResolvedValueOnce({
+      context: ['first chunk', 'second chunk'],
+      sourceDocuments: [],
+      preferredSourceDocuments: [],
+    });
+
+    await useSendWith({
+      enabledSources: [1],
+      vectorStore: {} as never,
+    })('what does the report say?');
+
+    const built = await capturedBuildSources()();
+
+    expect(built.retrievalStats?.rag).toEqual({
+      ms: expect.any(Number),
+      chunks: 2,
+    });
+    expect(built.retrievalStats?.web).toBeUndefined();
+  });
+
+  it('separates the pages it opened from the pages it only listed', async () => {
+    (runWebSearch as jest.Mock).mockResolvedValueOnce({
+      context: ['a web chunk'],
+      sourceDocuments: [
+        { name: 'A', kind: 'web', url: 'https://a.example', read: true },
+        { name: 'B', kind: 'web', url: 'https://b.example', read: false },
+        { name: 'C', kind: 'web', url: 'https://c.example', read: true },
+      ],
+      telemetry: {
+        needsSearch: true,
+        intent: 'today',
+        plannedQueries: ['what happened today', 'news today'],
+        finalLabel: 'correct',
+      },
+    });
+
+    webEnabledByChat[1] = true;
+
+    await useSendWith({})('what happened today?');
+
+    const built = await capturedBuildSources()();
+
+    expect(built.retrievalStats?.web).toEqual({
+      ms: expect.any(Number),
+      sources: 3,
+      read: 2,
+      queries: 2,
+    });
+    expect(built.retrievalStats?.rag).toBeUndefined();
+  });
+
+  it('reports nothing for a turn with no documents and no search', async () => {
+    await useSendWith({})('hello');
+
+    const built = await capturedBuildSources()();
+
+    expect(built.retrievalStats).toEqual({});
   });
 });
 

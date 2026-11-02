@@ -118,6 +118,15 @@ export const runMigrations = async (db: SQLiteDatabase) => {
     );
   }
 
+  const hasRetrievalStats = messagesTableInfo.some(
+    (col) => col.name === 'retrievalStats'
+  );
+  if (!hasRetrievalStats) {
+    await db.execAsync(
+      `ALTER TABLE messages ADD COLUMN retrievalStats TEXT DEFAULT NULL`
+    );
+  }
+
   const hasStoppedByUser = messagesTableInfo.some(
     (col) => col.name === 'stoppedByUser'
   );
@@ -289,6 +298,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
       documentName TEXT DEFAULT NULL,
       sourceDocuments TEXT DEFAULT NULL,
       groundingCaveats TEXT DEFAULT NULL,
+      retrievalStats TEXT DEFAULT NULL,
       stoppedByUser INTEGER DEFAULT 0,
       cutShortReason TEXT DEFAULT NULL,
       FOREIGN KEY (chatId) REFERENCES chats (id) ON DELETE CASCADE

@@ -22,6 +22,7 @@ import {
   MEMORY_CUT_SHORT,
   Message,
   persistMessage,
+  RetrievalStats,
   setChatDigest,
   SourceDocument,
 } from '../database/chatRepository';
@@ -137,6 +138,7 @@ export interface LLMStore {
       webSubQueries?: string[];
       webWeak?: boolean;
       webSearchFailed?: boolean;
+      retrievalStats?: RetrievalStats;
     }>,
     settings: ChatSettings,
     imagePath?: string,
@@ -1463,6 +1465,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         webSubQueries,
         webWeak,
         webSearchFailed,
+        retrievalStats,
       } = built;
 
       if (!get().isProcessingPrompt) {
@@ -1964,6 +1967,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           groundingCaveats,
           tokensPerSecond: responsePerformance.tokensPerSecond,
           timeToFirstToken: responsePerformance.timeToFirstToken,
+          retrievalStats,
           stoppedByUser,
         });
 
@@ -1980,6 +1984,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               groundingCaveats,
               tokensPerSecond: responsePerformance.tokensPerSecond,
               timeToFirstToken: responsePerformance.timeToFirstToken,
+              retrievalStats,
               stoppedByUser,
             },
             timeToFirstToken: responsePerformance.timeToFirstToken,
