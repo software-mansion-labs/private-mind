@@ -96,6 +96,11 @@ export const DOT_GAP = 6;
 
 export const ILLUSTRATION_MAX_WIDTH = 300;
 export const INTRO_ART_MAX_WIDTH = 340;
+
+export const WIDE_LAYOUT_MIN_WIDTH = 600;
+export const WIDE_COLUMN_MAX_WIDTH = 480;
+export const WIDE_ILLUSTRATION_MAX_WIDTH = 450;
+export const WIDE_INTRO_ART_MAX_WIDTH = 460;
 export const ILLUSTRATION_SIDE_INSET = 24;
 export const ILLUSTRATION_TOP_CLEARANCE = 48;
 export const CROP_FADE = 160;
@@ -109,4 +114,6 @@ const BUTTON_HEIGHT = 48;
 export const ILLUSTRATION_CLEARANCE = 8;
 export const CONTROLS_HEIGHT = PAGINATION_HEIGHT + CONTROLS_GAP + BUTTON_HEIGHT;
 export const SCRIM_RISE = 200;
+export const CAPTION_TITLE_SHIFT = 56;
+export const CAPTION_BADGE_SHIFT = 32;
 export const LABEL_ICON_SIZE = 16;

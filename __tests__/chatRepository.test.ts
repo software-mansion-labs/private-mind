@@ -2,10 +2,14 @@ import {
   forkChat,
   getChatDigest,
   getChatMessages,
+  importMessages,
+  markMessageCutShort,
   persistMessage,
   setChatDigest,
 } from '../database/chatRepository';
+import type { SourceDocument } from '../database/chatRepository';
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { attributeSourcesByBlock } from '../utils/attributeSources';
 
 type TransactionCallback = Parameters<
   SQLiteDatabase['withTransactionAsync']
@@ -75,6 +79,148 @@ describe('persistMessage with imagePath', () => {
       expect.stringContaining('sourceDocuments'),
       expect.arrayContaining([JSON.stringify(sourceDocuments)])
     );
+  });
+});
+
+describe('a message a memory stall cut short', () => {
+  it('stores why it was cut short', async () => {
+    const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 4 });
+    const mockDb = { runAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    await persistMessage(mockDb, {
+      role: 'assistant',
+      content: 'It began in',
+      chatId: 1,
+      cutShortReason: 'memory',
+    });
+
+    expect(runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('cutShortReason'),
+      expect.arrayContaining(['memory'])
+    );
+  });
+
+  it('marks and clears an existing message', async () => {
+    const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 0 });
+    const mockDb = { runAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    await markMessageCutShort(mockDb, 9, 'memory');
+    await markMessageCutShort(mockDb, 9, null);
+
+    expect(runAsync).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('cutShortReason'),
+      ['memory', 9]
+    );
+    expect(runAsync).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('cutShortReason'),
+      [null, 9]
+    );
+  });
+
+  it('reads the reason back and ignores one it does not know', async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 1,
+        chatId: 1,
+        role: 'user',
+        content: 'a',
+        cutShortReason: 'memory',
+      },
+      { id: 2, chatId: 1, role: 'user', content: 'b', cutShortReason: 'gpu' },
+      { id: 3, chatId: 1, role: 'user', content: 'c', cutShortReason: null },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(messages.map((message) => message.cutShortReason)).toEqual([
+      'memory',
+      undefined,
+      undefined,
+    ]);
+  });
+});
+
+describe('a cut-short mark carried into another chat', () => {
+  it('survives a fork', async () => {
+    const runAsync = jest
+      .fn()
+      .mockResolvedValueOnce({ lastInsertRowId: 10 })
+      .mockResolvedValueOnce({ lastInsertRowId: 101 })
+      .mockResolvedValueOnce({ lastInsertRowId: 102 })
+      .mockResolvedValue({ lastInsertRowId: 0 });
+    const mockDb = {
+      runAsync,
+      getFirstAsync: jest.fn().mockResolvedValue({
+        id: 1,
+        title: 'Original',
+        modelId: 7,
+        lastUsed: 1,
+      }),
+      getAllAsync: jest
+        .fn()
+        .mockResolvedValueOnce([
+          {
+            id: 1,
+            chatId: 1,
+            role: 'user',
+            content: 'q',
+            timestamp: 100,
+            cutShortReason: 'memory',
+          },
+          {
+            id: 2,
+            chatId: 1,
+            role: 'assistant',
+            content: 'It began in',
+            timestamp: 200,
+            cutShortReason: 'memory',
+          },
+        ])
+        .mockResolvedValueOnce([]),
+      withTransactionAsync: async (callback: TransactionCallback) => callback(),
+    } as unknown as SQLiteDatabase;
+
+    await forkChat(mockDb, 1, 2);
+
+    expect(runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('cutShortReason'),
+      [
+        10,
+        'assistant',
+        'It began in',
+        200,
+        '',
+        0,
+        0,
+        null,
+        null,
+        null,
+        null,
+        null,
+        0,
+        'memory',
+      ]
+    );
+  });
+
+  it('survives an import, and an unknown reason from the file is dropped', async () => {
+    const runAsync = jest.fn().mockResolvedValue({ lastInsertRowId: 0 });
+    const mockDb = { runAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+    const imported = [
+      { role: 'assistant', content: 'It began in', cutShortReason: 'memory' },
+      { role: 'assistant', content: 'Paris', cutShortReason: 'gpu' },
+    ] as unknown as Parameters<typeof importMessages>[2];
+
+    await importMessages(mockDb, 5, imported);
+
+    const [sql, values] = runAsync.mock.calls[0];
+    expect(sql).toContain('cutShortReason');
+    expect(values.length).toBe(28);
+    expect(values[13]).toBe('memory');
+    expect(values[27]).toBeNull();
   });
 });
 
@@ -167,7 +313,7 @@ describe('forkChat', () => {
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO messages'),
-      [10, 'user', 'one', 100, '', 0, 0, null, null, null, null, null, 0]
+      [10, 'user', 'one', 100, '', 0, 0, null, null, null, null, null, 0, null]
     );
     expect(runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO messages'),
@@ -185,6 +331,7 @@ describe('forkChat', () => {
         null,
         null,
         0,
+        null,
       ]
     );
     expect(runAsync).toHaveBeenCalledWith(
@@ -254,6 +401,7 @@ describe('forkChat', () => {
         null,
         null,
         1,
+        null,
       ]
     );
   });
@@ -575,6 +723,101 @@ describe('getChatMessages source provenance', () => {
     });
   });
 
+  it('carries every field a source has, because the reader lists them one by one', async () => {
+    const everyField: Required<SourceDocument> = {
+      documentId: 7,
+      name: 'Bankier',
+      passage: 'Bitcoin kosztuje 98 000 USD.',
+      similarity: 0.82,
+      kind: 'web',
+      url: 'https://bankier.pl/btc',
+      query: 'kurs bitcoina',
+      sourceQuery: 'kurs bitcoin',
+      used: true,
+      read: true,
+      ordinal: 3,
+    };
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 5,
+        chatId: 1,
+        role: 'assistant',
+        content: 'Answer.',
+        sourceDocuments: JSON.stringify([everyField]),
+      },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(messages[0].sourceDocuments?.[0]).toEqual(everyField);
+  });
+
+  it('numbers a document source too, not just a web one', async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 6,
+        chatId: 1,
+        role: 'assistant',
+        content: 'Answer.',
+        sourceDocuments: JSON.stringify([
+          { documentId: 7, name: 'report.pdf', ordinal: 1 },
+          { documentId: 8, name: 'notes.md' },
+        ]),
+      },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+
+    expect(
+      messages[0].sourceDocuments?.map((source) => source.ordinal)
+    ).toEqual([1, undefined]);
+  });
+
+  it('still cites the source the answer named after the chat is reloaded', async () => {
+    const stored = [
+      {
+        name: 'Londyn — pogoda na weekend',
+        url: 'https://pogoda.interia.pl/londyn',
+        kind: 'web',
+        ordinal: 1,
+        used: true,
+        passage:
+          'Pogoda na weekend w Londynie. Sobota 19.09 temperatura 21°C, opady przelotne.',
+      },
+      {
+        name: 'Met Office — London weekend forecast',
+        url: 'https://www.metoffice.gov.uk/london',
+        kind: 'web',
+        ordinal: 2,
+        used: true,
+        passage:
+          'London weekend forecast. Saturday 19 September highs of 21C with scattered showers.',
+      },
+    ];
+    const answer =
+      'W sobotę w Londynie temperatura sięgnie 21°C, a opady będą przelotne [2].';
+    const getAllAsync = jest.fn().mockResolvedValue([
+      {
+        id: 6,
+        chatId: 1,
+        role: 'assistant',
+        content: answer,
+        sourceDocuments: JSON.stringify(stored),
+      },
+    ]);
+    const mockDb = { getAllAsync } as Partial<SQLiteDatabase> as SQLiteDatabase;
+
+    const messages = await getChatMessages(mockDb, 1);
+    const blocks = attributeSourcesByBlock(
+      answer,
+      messages[0].sourceDocuments!
+    );
+
+    expect(blocks.map((block) => block.source?.ordinal)).toEqual([2]);
+  });
+
   it('leaves document sources without a web kind/url', async () => {
     const getAllAsync = jest.fn().mockResolvedValue([
       {
@@ -636,7 +879,7 @@ describe('retrievalStats survive a reload', () => {
     });
 
     const [, values] = runAsync.mock.calls[0];
-    expect(values[values.length - 2]).toBeNull();
+    expect(values[values.length - 3]).toBeNull();
   });
 
   it('reads both legs back with their counts', async () => {

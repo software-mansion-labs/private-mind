@@ -1,12 +1,6 @@
 import React from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
-  Linking,
-  Platform,
-} from 'react-native';
+import { StyleSheet, View, Text, Pressable, Linking } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import * as Application from 'expo-application';
@@ -14,12 +8,15 @@ import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { useTheme } from '../../context/ThemeContext';
-import ModalHeader from '../../components/ModalHeader';
+import GlassScreenHeader, {
+  useGlassScreenHeaderHeight,
+} from '../../components/GlassScreenHeader';
 import SecondaryButton from '../../components/SecondaryButton';
 import Logo from '../../assets/icons/logo.svg';
 import GithubIcon from '../../assets/icons/github.svg';
 import CopyIcon from '../../assets/icons/copy.svg';
 import FooterIcon from '../../assets/icons/footer.svg';
+import { pressedOpacity } from '../../styles/pressable';
 
 const APP_VERSION = `v.${Application.nativeApplicationVersion ?? ''}`;
 
@@ -112,13 +109,16 @@ const VersionInfo = () => {
         <Text style={[styles.versionText, { color: theme.text.primary }]}>
           {APP_VERSION}
         </Text>
-        <TouchableOpacity onPress={handleCopyVersion}>
+        <Pressable
+          onPress={handleCopyVersion}
+          style={({ pressed }) => pressed && pressedOpacity}
+        >
           <CopyIcon
             width={16}
             height={16}
             style={{ color: theme.text.defaultTertiary }}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );
@@ -128,30 +128,28 @@ export default function AppInfoScreen() {
   const router = useRouter();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const headerHeight = useGlassScreenHeaderHeight();
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.softPrimary }]}>
-      <View
-        style={[
+      <ScrollView
+        contentContainerStyle={[
           styles.container,
           {
-            paddingTop: Platform.OS === 'ios' ? insets.top : 16,
-            paddingBottom: insets.bottom,
+            paddingTop: headerHeight + 24,
+            paddingBottom: insets.bottom + 16,
           },
         ]}
+        showsVerticalScrollIndicator={false}
       >
-        <ModalHeader
-          title="App info"
-          leftIcon="back"
-          onClose={() => router.back()}
-        />
         <AppHeader />
         <LearnMoreSection />
         <VersionInfo />
         <View style={styles.footer}>
           <FooterIcon />
         </View>
-      </View>
+      </ScrollView>
+      <GlassScreenHeader title="App info" onBack={() => router.back()} />
     </View>
   );
 }
@@ -161,8 +159,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    flex: 1,
-    padding: 16,
+    flexGrow: 1,
+    paddingHorizontal: 16,
     gap: 16,
   },
   card: {

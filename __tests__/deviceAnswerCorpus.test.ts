@@ -6,6 +6,7 @@ import {
   isQuestionEchoAnswer,
 } from '../utils/messageSources';
 import { carryReferentIntoQuery } from '../utils/web/buildSearchQuery';
+import { stripThinkBlocks } from '../utils/thinking';
 
 type Turn = { role: string; content: string };
 
@@ -81,7 +82,19 @@ describe('real device answers — how often each guard fires', () => {
     const echoed = firing(answersWithQuestions, ({ answer, question }) =>
       isQuestionEchoAnswer(answer, question)
     );
-    expect(echoed.map(({ answer }) => label(answer))).toHaveLength(9);
+    expect(echoed.map(({ answer }) => label(answer))).toHaveLength(8);
+  });
+
+  it('lets a greeting the model returned stand instead of calling it an echo', () => {
+    const greeting = answersWithQuestions.find(
+      ({ answer, question }) =>
+        question === 'Hej, jak leci?' &&
+        stripThinkBlocks(answer).trim() === question
+    );
+    expect(greeting).toBeDefined();
+    expect(isQuestionEchoAnswer(greeting!.answer, greeting!.question)).toBe(
+      false
+    );
   });
 
   it('flags a source-only non-answer rarely, and never a well-cited one', () => {

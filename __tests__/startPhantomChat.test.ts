@@ -6,6 +6,7 @@ import { useModelStore } from '../store/modelStore';
 import { getNextChatId } from '../database/chatRepository';
 import { getLastUsedModelId } from '../utils/lastUsedModel';
 import type { Model } from '../database/modelRepository';
+import { CHAT_ENTRY_ACTION } from '../constants/chat-route-params';
 
 jest.mock('expo-router', () => ({
   router: { replace: jest.fn(), push: jest.fn() },
@@ -55,6 +56,26 @@ describe('startPhantomChat', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  it('replaces at once when asked to, without waiting for the navigation to settle', async () => {
+    await startPhantomChat({} as never, 'replace-immediately');
+
+    expect(router.replace).toHaveBeenCalledWith({
+      pathname: '/chat/42',
+      params: { modelId: '7' },
+    });
+  });
+
+  it('drops an immediate replace once its phantom chat is no longer the current one', async () => {
+    (useChatStore.getState as jest.Mock).mockReturnValue({
+      initPhantomChat: jest.fn().mockResolvedValue(undefined),
+      phantomChat: { id: 99 },
+    });
+
+    await startPhantomChat({} as never, 'replace-immediately');
+
+    expect(router.replace).not.toHaveBeenCalled();
   });
 
   it('waits briefly before a replace navigation', async () => {
@@ -116,5 +137,19 @@ describe('startPhantomChat', () => {
       params: { modelId: '7' },
     });
     expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it('asks the new chat to open the model list when told to', async () => {
+    await startPhantomChat(
+      {} as never,
+      'push',
+      undefined,
+      CHAT_ENTRY_ACTION.PickModel
+    );
+
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/chat/42',
+      params: { modelId: '7', entryAction: 'pick-model' },
+    });
   });
 });

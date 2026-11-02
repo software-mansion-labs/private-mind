@@ -1,0 +1,100 @@
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+
+jest.mock('../context/ThemeContext', () => ({
+  useTheme: () => ({ theme: require('./helpers/renderWithTheme').testTheme }),
+}));
+
+jest.mock('react-native-gesture-handler', () => {
+  const RN = require('react-native');
+  return { ScrollView: RN.ScrollView, Pressable: RN.Pressable };
+});
+
+import PromptSuggestions from '../components/chat-screen/PromptSuggestions';
+import {
+  DEFAULT_PROMPT_SUGGESTIONS,
+  PROMPT_SUGGESTIONS_TEXT,
+} from '../constants/default-prompts';
+
+const firstPrompt = DEFAULT_PROMPT_SUGGESTIONS[0];
+
+describe('the suggested message cards', () => {
+  it('hands the whole prompt to the composer when one is tapped', () => {
+    const onSelectPrompt = jest.fn();
+    render(<PromptSuggestions onSelectPrompt={onSelectPrompt} />);
+
+    fireEvent.press(screen.getByText(firstPrompt.title));
+
+    expect(onSelectPrompt).toHaveBeenCalledWith(firstPrompt.prompt);
+  });
+
+  it('reserves no line the prompt does not use', () => {
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    const flattened = StyleSheet.flatten(
+      screen.getByText(firstPrompt.prompt).props.style
+    ) as { height?: number };
+
+    expect(flattened.height).toBeUndefined();
+  });
+
+  it('keeps every card the height of the tallest one', () => {
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    const row = screen.UNSAFE_getByType(
+      require('react-native').ScrollView
+    ).props;
+    const content = StyleSheet.flatten(row.contentContainerStyle) as {
+      alignItems?: string;
+    };
+
+    expect(content.alignItems).toBe('stretch');
+  });
+  it('heads the row with a centered question rather than a label', () => {
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    const heading = screen.getByText(PROMPT_SUGGESTIONS_TEXT.title);
+    expect(PROMPT_SUGGESTIONS_TEXT.title).toBe('How can I help?');
+    expect(StyleSheet.flatten(heading.props.style)).toEqual(
+      expect.objectContaining({ textAlign: 'center' })
+    );
+    expect(screen.queryByText('Suggested messages')).toBeNull();
+  });
+
+  it('shows each prompt on a single line under its title', () => {
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    for (const suggestion of DEFAULT_PROMPT_SUGGESTIONS) {
+      expect(screen.getByText(suggestion.prompt).props.numberOfLines).toBe(1);
+    }
+  });
+
+  it('tints each card icon with its own label color', () => {
+    const { testTheme } = require('./helpers/renderWithTheme');
+    const view = render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    const cards = screen.getAllByTestId('prompt-suggestion-card');
+    expect(cards).toHaveLength(DEFAULT_PROMPT_SUGGESTIONS.length);
+    const tiles = view.UNSAFE_root.findAll(
+      (node) =>
+        node.props.accessibilityElementsHidden === true &&
+        typeof node.type === 'string'
+    );
+    DEFAULT_PROMPT_SUGGESTIONS.forEach((suggestion, i) => {
+      expect(StyleSheet.flatten(tiles[i]!.props.style)).toEqual(
+        expect.objectContaining({
+          backgroundColor: testTheme.label[suggestion.tone].background,
+        })
+      );
+    });
+  });
+
+  it('holds every card title to one line, so no card outgrows the row', () => {
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    const titles = screen.getAllByTestId('suggestion-title');
+    expect(titles.length).toBeGreaterThan(0);
+    titles.forEach((title) => expect(title.props.numberOfLines).toBe(1));
+  });
+});

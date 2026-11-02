@@ -18,7 +18,7 @@ export const LFM_2_5_EMBEDDING_SOURCES: ModelSourceConfig = {
   tokenizerSource: `${LFM_2_5_EMBEDDING_HF_BASE}/tokenizer.json`,
 };
 
-const LFM_2_5_EMBEDDING_MODEL_BYTES = 430_609_152;
+const LFM_2_5_EMBEDDING_MODEL_BYTES = 574_784_896;
 const LFM_2_5_EMBEDDING_TOKENIZER_BYTES = 4_733_275;
 
 export const LFM_2_5_EMBEDDING_DOWNLOAD_SIZE_BYTES =

@@ -75,6 +75,27 @@ const SCRIPT_GROUPS: [RegExp, string[]][] = [
 
 const MIN_SCRIPT_CHARS = 2;
 
+const PERSO_URDU_LETTERS =
+  /[\u067E\u0686\u0698\u06A9\u06AF\u06CC\u06D2\u06D3\u06C1\u06C2\u06BA\u06BE\u0679\u0688\u0691]/gu;
+const ARABIC_ONLY_LETTERS = /[\u0643\u064A]/gu;
+
+const countOf = (text: string, letters: RegExp): number =>
+  text.match(letters)?.length ?? 0;
+
+const rulesOutArabic = (text: string): boolean =>
+  countOf(text, PERSO_URDU_LETTERS) > countOf(text, ARABIC_ONLY_LETTERS);
+
+const narrowedByLetters = (candidates: string[], text: string): string[] =>
+  candidates.includes('ar') && rulesOutArabic(text)
+    ? candidates.filter((code) => code !== 'ar')
+    : candidates;
+
+const fallbackWithinScript = (candidates: string[]): string | null => {
+  if (candidates.includes('ar')) return 'ar';
+  if (candidates.includes('ur')) return 'ur';
+  return null;
+};
+
 const LATIN_CANDIDATES = [
   'en',
   'pl',
@@ -110,7 +131,7 @@ const LETTERS: Record<string, string> = {
 };
 
 const WORDS: Record<string, string> = {
-  en: 'who what which is are the how where when why today tomorrow now will latest current news weather price cost of and in for to my me it can do does much many time year best near open per',
+  en: 'who what which is are the how where when why today tomorrow now will latest current news weather price cost of and in for to my me it can do does much many time year best near open per about write story tell explain describe summarize this that these those you your we they have has would could should with from',
   pl: 'kto kim komu kogo co czego czemu jest są czy jak jaka jaki jakie gdzie kiedy ile dlaczego jutro dzisiaj dziś teraz aktualny obecny aktualna najnowsze wiadomości pogoda cena kurs koszt się masz hej cześć siema oraz dla mnie moje jak długo ile kosztuje na od do po za nie to który która które był była było byli były dokonał dokonała znajdź szukaj pokaż sprawdź podaj napisz wyjaśnij kup kupić zrobić działa najlepszy najlepsza najlepsze najtańszy najtańsza najdroższy najdroższa najdroższe największy największa najszybszy najnowszy sklep sklepie polsce polski wynosi',
   cs: 'kdo co je jsou jak kde kdy proč dnes zítra teď zprávy počasí cena kolik stojí jaký jaká jaké nejnovější aktuální mi moje na od do po za to',
   de: 'wer was ist sind wie wo wann warum heute morgen jetzt aktuelle aktueller aktuelles nachrichten wetter preis kosten kostet der die das und für ich mein wieviel viel beantrage bekomme gibt pro',
@@ -358,26 +379,34 @@ export const detectQuestionLanguage = (
   question: string
 ): QuestionLanguage | null => {
   if (!question.trim()) return null;
-  const candidates = dominantScript(question);
-  if (candidates) {
+  const scriptCandidates = dominantScript(question);
+  if (scriptCandidates) {
+    const candidates = narrowedByLetters(scriptCandidates, question);
     const picked = pickCandidate(question, candidates);
-    if (!picked) {
-      return candidates.includes('ar')
-        ? named({ code: 'ar', evidence: 0 })
-        : null;
-    }
-    return named(picked);
+    if (picked) return named(picked);
+    const fallback = fallbackWithinScript(candidates);
+    return fallback ? named({ code: fallback, evidence: 0 }) : null;
   }
   const latin = pickCandidate(question, LATIN_CANDIDATES);
   return latin ? named(latin) : null;
 };
 
+const LATIN_CODES = new Set(LATIN_CANDIDATES);
+
+const isLatinScript = (question: string): boolean =>
+  question.trim() !== '' && dominantScript(question) === null;
+
 export const detectThreadLanguage = (
   userMessages: string[]
 ): QuestionLanguage | null => {
-  for (let i = userMessages.length - 1; i >= 0; i--) {
+  const latest = userMessages.at(-1) ?? '';
+  const detectedLatest = detectQuestionLanguage(latest);
+  if (detectedLatest) return detectedLatest;
+  for (let i = userMessages.length - 2; i >= 0; i--) {
     const detected = detectQuestionLanguage(userMessages[i] ?? '');
-    if (detected) return detected;
+    if (!detected) continue;
+    if (isLatinScript(latest) && !LATIN_CODES.has(detected.code)) return null;
+    return detected;
   }
   return null;
 };

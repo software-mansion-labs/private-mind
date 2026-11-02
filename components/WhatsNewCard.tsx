@@ -1,33 +1,86 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated';
 import * as Application from 'expo-application';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
+import { radius } from '../constants/design-system';
 import { LATEST_RELEASE } from '../constants/latest-release';
+import { useSettingsStore } from '../store/settingsStore';
+import { Feedback } from '../utils/Feedback';
+import CloseIcon from '../assets/icons/cross-small.svg';
+
+const CLOSE_BUTTON_SIZE = 24;
+const CLOSE_ICON_SIZE = 16;
+const DISMISS_FADE_MS = 160;
+
+const SCROLL_INDICATOR_GUTTER = 12;
 
 const installedVersion =
   Application.nativeApplicationVersion ?? LATEST_RELEASE.version;
 
 const WhatsNewCard = () => {
   const { styles } = useThemedStyles(createStyles);
+  const dismissedVersion = useSettingsStore(
+    (state) => state.dismissedWhatsNewVersion
+  );
+  const dismissWhatsNew = useSettingsStore((state) => state.dismissWhatsNew);
+  const hasHydrated = useSettingsStore((state) => state.hasHydrated);
+
+  if (!hasHydrated || dismissedVersion === installedVersion) return null;
+
+  const handleDismiss = () => {
+    Feedback.toggleOff();
+    dismissWhatsNew(installedVersion);
+  };
 
   return (
-    <View style={styles.card}>
+    <Animated.View
+      style={styles.card}
+      exiting={FadeOut.duration(DISMISS_FADE_MS)}
+      layout={LinearTransition}
+      testID="whats-new-card"
+    >
       <View style={styles.header}>
         <Text style={styles.badge}>What's new</Text>
-        <Text style={styles.version}>v{installedVersion}</Text>
+        <View style={styles.headerTrailing}>
+          <Text style={styles.version}>v{installedVersion}</Text>
+          <Pressable
+            onPress={handleDismiss}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss what's new"
+            testID="whats-new-dismiss"
+            style={({ pressed }) => [
+              styles.closeButton,
+              pressed && styles.closeButtonPressed,
+            ]}
+          >
+            <CloseIcon
+              width={CLOSE_ICON_SIZE}
+              height={CLOSE_ICON_SIZE}
+              style={styles.closeIcon}
+            />
+          </Pressable>
+        </View>
       </View>
       <Text style={styles.title}>{LATEST_RELEASE.title}</Text>
-      <View style={styles.list}>
+      <ScrollView
+        testID="whats-new-highlights"
+        style={styles.listScroll}
+        contentContainerStyle={styles.list}
+        persistentScrollbar
+        nestedScrollEnabled
+      >
         {LATEST_RELEASE.highlights.map((item, i) => (
           <View key={i} style={styles.row}>
             <Text style={styles.bullet}>•</Text>
             <Text style={styles.item}>{item}</Text>
           </View>
         ))}
-      </View>
-    </View>
+      </ScrollView>
+    </Animated.View>
   );
 };
 
@@ -37,8 +90,9 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     card: {
       width: '100%',
-      backgroundColor: theme.bg.cardSurface,
-      borderRadius: 16,
+      flexShrink: 1,
+      backgroundColor: theme.bg.softTertiary,
+      borderRadius: radius.eighteen,
       padding: 16,
       gap: 12,
     },
@@ -54,6 +108,24 @@ const createStyles = (theme: Theme) =>
       textTransform: 'uppercase',
       letterSpacing: 1,
     },
+    headerTrailing: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    closeButton: {
+      width: CLOSE_BUTTON_SIZE,
+      height: CLOSE_BUTTON_SIZE,
+      borderRadius: radius.twelve,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    closeButtonPressed: {
+      backgroundColor: theme.bg.softSecondary,
+    },
+    closeIcon: {
+      color: theme.text.defaultSecondary,
+    },
     version: {
       fontFamily: fontFamily.regular,
       fontSize: fontSizes.xs,
@@ -65,8 +137,14 @@ const createStyles = (theme: Theme) =>
       lineHeight: lineHeights.lg,
       color: theme.text.primary,
     },
+    listScroll: {
+      flexGrow: 0,
+      flexShrink: 1,
+      marginRight: -SCROLL_INDICATOR_GUTTER,
+    },
     list: {
       gap: 6,
+      paddingRight: SCROLL_INDICATOR_GUTTER,
     },
     row: {
       flexDirection: 'row',

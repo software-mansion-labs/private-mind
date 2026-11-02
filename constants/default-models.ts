@@ -46,6 +46,23 @@ const GEMMA4_E2B_MM = {
   tokenizerConfigSource: GEMMA4_E2B_TOKENIZER_CONFIG,
 } as const;
 
+const LFM3_HF_BASE =
+  'https://huggingface.co/software-mansion/LFM3-ExecuTorch/resolve/v1.0.0';
+
+const LFM3_1_7B_QUANTIZED = {
+  modelName: 'lfm3-1.7b',
+  modelSource: `${LFM3_HF_BASE}/1_7b/xnnpack/lfm_3_1_7b_xnnpack_8da4w.pte`,
+  tokenizerSource: `${LFM3_HF_BASE}/1_7b/tokenizer.json`,
+  tokenizerConfigSource: `${LFM3_HF_BASE}/1_7b/tokenizer_config.json`,
+} as const;
+
+const LFM3_VL_2B_QUANTIZED = {
+  modelName: 'lfm3-vl-2b',
+  modelSource: `${LFM3_HF_BASE}/vl_2b/xnnpack/lfm_3_vl_2b_xnnpack_8da4w.pte`,
+  tokenizerSource: `${LFM3_HF_BASE}/vl_2b/tokenizer.json`,
+  tokenizerConfigSource: `${LFM3_HF_BASE}/vl_2b/tokenizer_config.json`,
+} as const;
+
 const LOW_END_STARTING_MODELS = [
   'Qwen 3 - 0.6B',
   'LFM 2.5 VL - 450M',
@@ -53,18 +70,22 @@ const LOW_END_STARTING_MODELS = [
 ];
 
 const MID_RANGE_STARTING_MODELS = [
+  'LFM 3 - 1.7B',
+  'LFM 3 VL - 2B',
   'Qwen 3 - 1.7B',
-  'LFM 2.5 - 1.2B',
-  'LFM 2.5 VL - 1.6B',
 ];
 
 const HIGH_END_STARTING_MODELS = [
+  'LFM 3 - 1.7B',
+  'LFM 3 VL - 2B',
   'Gemma 4 - 2B',
-  'Gemma 4 VL - 2B',
-  'Qwen 3 - 1.7B',
 ];
 
 const getStartingModelCandidates = (deviceRamInGB: number): string[] => {
+  if (deviceRamInGB < 4) {
+    return [...LOW_END_STARTING_MODELS];
+  }
+
   if (deviceRamInGB <= 6) {
     return [
       ...new Set([...MID_RANGE_STARTING_MODELS, ...LOW_END_STARTING_MODELS]),
@@ -81,10 +102,6 @@ const getStartingModelCandidates = (deviceRamInGB: number): string[] => {
 };
 
 export const getStartingModels = (deviceRamInGB: number): string[] => {
-  if (deviceRamInGB < 4) {
-    return [...LOW_END_STARTING_MODELS];
-  }
-
   return getStartingModelCandidates(deviceRamInGB)
     .filter((modelName) => {
       const model = DEFAULT_MODELS.find((m) => m.modelName === modelName);
@@ -106,6 +123,8 @@ const RNE_MODELS = [
   LFM2_5_1_2B_INSTRUCT_QUANTIZED,
   LFM2_5_VL_1_6B_QUANTIZED,
   LFM2_5_VL_450M_QUANTIZED,
+  LFM3_1_7B_QUANTIZED,
+  LFM3_VL_2B_QUANTIZED,
   BIELIK_V3_0_1_5B_QUANTIZED,
   GEMMA4_E2B,
   GEMMA4_E2B_MM,
@@ -124,13 +143,34 @@ export const DEFAULT_REPETITION_PENALTY = DEFAULT_PROFILE.repetitionPenalty;
 
 export const GROUNDED_REPETITION_PENALTY = 1;
 
+export const RUNNER_DEFAULT_SAMPLING = {
+  temperature: 0.8,
+  topP: 0.9,
+  minP: 0,
+};
+
+const MLX_DELEGATE_PATH_SEGMENT = 'mlx';
+
+export const runsOnMlxDelegate = (model: Pick<Model, 'modelPath'>): boolean =>
+  model.modelPath.split('/').includes(MLX_DELEGATE_PATH_SEGMENT);
+
+export const MEMORY_STALL_PASS_MS = 3_000;
+export const MEMORY_STALL_PASS_COUNT = 3;
+
+const MEMORY_STALL_WATCH = {
+  stallPassMs: MEMORY_STALL_PASS_MS,
+  stallPassCount: MEMORY_STALL_PASS_COUNT,
+};
+
 export const getGenerationConfigForModel = (
   model: ProfileTarget & Pick<Model, 'modelPath'>,
   grounded: boolean = false
 ) => ({
+  ...RUNNER_DEFAULT_SAMPLING,
   repetitionPenalty: getModelProfile(model).repetitionPenalty,
   ...GENERATION_CONFIG_BY_MODEL_PATH[model.modelPath],
   ...(grounded ? { repetitionPenalty: GROUNDED_REPETITION_PENALTY } : {}),
+  ...(runsOnMlxDelegate(model) ? MEMORY_STALL_WATCH : {}),
 });
 
 export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
@@ -285,6 +325,35 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     thinking: false,
     vision: true,
     labels: ['Fast', 'Vision'],
+    systemPrompt:
+      'You are a helpful vision assistant. When the user shares an image, analyze it carefully and provide detailed, accurate descriptions and answers about its content. When no image is provided, respond as a knowledgeable and helpful general assistant.',
+  },
+  {
+    modelName: 'LFM 3 - 1.7B',
+    family: 'LFM 3',
+    tokenizerPath: LFM3_1_7B_QUANTIZED.tokenizerSource,
+    modelPath: LFM3_1_7B_QUANTIZED.modelSource,
+    tokenizerConfigPath: LFM3_1_7B_QUANTIZED.tokenizerConfigSource,
+    source: 'remote',
+    parameters: 1.73,
+    modelSize: 1.25,
+    featured: true,
+    thinking: true,
+    labels: ['Balanced', 'Reasoning'],
+  },
+  {
+    modelName: 'LFM 3 VL - 2B',
+    family: 'LFM 3',
+    modelPath: LFM3_VL_2B_QUANTIZED.modelSource,
+    tokenizerPath: LFM3_VL_2B_QUANTIZED.tokenizerSource,
+    tokenizerConfigPath: LFM3_VL_2B_QUANTIZED.tokenizerConfigSource,
+    source: 'remote',
+    parameters: 1.92,
+    modelSize: 2.01,
+    featured: true,
+    thinking: true,
+    vision: true,
+    labels: ['Vision'],
     systemPrompt:
       'You are a helpful vision assistant. When the user shares an image, analyze it carefully and provide detailed, accurate descriptions and answers about its content. When no image is provided, respond as a knowledgeable and helpful general assistant.',
   },

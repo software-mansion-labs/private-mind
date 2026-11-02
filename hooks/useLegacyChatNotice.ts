@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import Toast from 'react-native-toast-message';
-import { useDrawerStatus } from '@react-navigation/drawer';
+import { useDrawerStatus } from 'expo-router/drawer';
 import { useTheme } from '../context/ThemeContext';
 import { Message } from '../database/chatRepository';
 import { diagnoseLegacyChat } from '../utils/legacyChat';

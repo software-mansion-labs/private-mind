@@ -4,12 +4,25 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
+import { pressedOpacity } from '../../styles/pressable';
+import type { CutShortReason } from '../../database/chatRepository';
+
+type StopReason = 'user' | CutShortReason;
+
+const STOPPED_COPY: Record<StopReason, string> = {
+  user: 'You stopped this response',
+  memory: 'Stopped early: your phone was short on memory',
+};
 
 type StoppedMarkerProps = {
   onRetry?: () => void;
+  reason?: StopReason;
 };
 
-export default function StoppedMarker({ onRetry }: StoppedMarkerProps) {
+export default function StoppedMarker({
+  onRetry,
+  reason = 'user',
+}: StoppedMarkerProps) {
   const { styles } = useThemedStyles(createStyles);
 
   return (
@@ -17,14 +30,14 @@ export default function StoppedMarker({ onRetry }: StoppedMarkerProps) {
       <View style={styles.line} />
       <View style={styles.content}>
         <Text style={styles.text} numberOfLines={2}>
-          You stopped this response
+          {STOPPED_COPY[reason]}
         </Text>
         {onRetry && (
           <Pressable
             onPress={onRetry}
             accessibilityRole="button"
             accessibilityLabel="Retry this response"
-            style={({ pressed }) => [styles.retry, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.retry, pressed && pressedOpacity]}
           >
             <RotateLeftIcon width={14} height={14} style={styles.icon} />
             <Text style={styles.retryText}>Retry</Text>
@@ -72,9 +85,6 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bg.softSecondary,
       paddingHorizontal: 10,
       paddingVertical: 6,
-    },
-    pressed: {
-      opacity: 0.6,
     },
     icon: {
       color: theme.text.primary,

@@ -1457,3 +1457,45 @@ describe('a labelled list in a domain no word list ever carried', () => {
     ).toContain('zuverlaessig');
   });
 });
+
+describe('the ordinal a source is saved under is the one the model was shown', () => {
+  const three = [
+    result({ title: 'First', url: 'https://a.example/1' }),
+    result({ title: 'Second', url: 'https://b.example/2' }),
+    result({ title: 'Third', url: 'https://c.example/3' }),
+  ];
+
+  it('matches the number printed in that source’s own header', () => {
+    const { context, sourceDocuments } = webResultsToContext(three);
+    const joined = context.join('\n');
+
+    const numbered = sourceDocuments.filter((doc) => doc.ordinal !== undefined);
+    expect(numbered.length).toBeGreaterThan(0);
+    for (const doc of numbered) {
+      expect(joined).toContain(`--- Source ${doc.ordinal}: ${doc.name} ---`);
+    }
+  });
+
+  it('counts on from an offset when documents were numbered first', () => {
+    const { context, sourceDocuments } = webResultsToContext(
+      three,
+      undefined,
+      4
+    );
+    const joined = context.join('\n');
+
+    for (const doc of sourceDocuments.filter((d) => d.ordinal !== undefined)) {
+      expect(doc.ordinal).toBeGreaterThan(4);
+      expect(joined).toContain(`--- Source ${doc.ordinal}: ${doc.name} ---`);
+    }
+  });
+
+  it('leaves a result that never reached the prompt without a number', () => {
+    const { context, sourceDocuments } = webResultsToContext(three);
+    const joined = context.join('\n');
+
+    for (const doc of sourceDocuments.filter((d) => d.ordinal === undefined)) {
+      expect(joined).not.toContain(`: ${doc.name} ---`);
+    }
+  });
+});

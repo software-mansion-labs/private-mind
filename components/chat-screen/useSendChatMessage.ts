@@ -14,15 +14,22 @@ import { Model } from '../../database/modelRepository';
 
 export type SendRefusal =
   | 'nothing-to-send'
-  | 'model-loading'
+  | 'cpu-unsupported'
+  | 'model-not-started'
   | 'busy'
   | 'chat-not-created'
-  | 'image-not-saved';
+  | 'image-not-saved'
+  | 'image-unsupported';
 import { Attachment } from '../../hooks/useAttachment';
 import { LFMEmbeddings } from '../../utils/lfmEmbeddings';
+import {
+  beginLoadingPinnedModel,
+  loadModelPinnedToChat,
+} from './loadModelPinnedToChat';
 import { buildMessageSources } from '../../utils/messageSources';
 import { isDeviceOnline } from '../../utils/network';
 import { runWebSearch } from '../../utils/web/runWebSearch';
+import { isStalledOnPlanning } from './webSearchTrace';
 import type { WebIntentKind } from '../../utils/web/intentKind';
 import { webViewScrapeProvider } from '../../utils/web/scrape/webViewScrapeProvider';
 import { webContextCharBudget } from '../../utils/web/contextBudget';
@@ -33,6 +40,7 @@ import {
   WEB_OFFLOAD_LLM_FOR_EMBEDDINGS,
   WEB_SEARCH_ENABLED,
   WEB_SEARCH_OVERALL_TIMEOUT_MS,
+  WEB_SLOW_DEVICE_NOTE_MS,
 } from '../../constants/web';
 import {
   getModelProfile,
@@ -50,6 +58,7 @@ import { useLLMStore } from '../../store/llmStore';
 import { useSourceStore } from '../../store/sourceStore';
 import { useWebSearchStore } from '../../store/webSearchStore';
 import { useEmbeddingModelStore } from '../../store/embeddingModelStore';
+import { useCpuSupportStore } from '../../store/cpuSupportStore';
 import type { MessagesHandle } from './Messages';
 
 interface UseSendChatMessageOptions {
@@ -68,7 +77,7 @@ interface UseSendChatMessageOptions {
   isGenerating: boolean;
   isModelLoading: boolean;
   isSwitching: boolean;
-  waitForModelSwitch?: () => Promise<void>;
+  waitForModelSwitch: () => Promise<Model | undefined>;
 }
 
 const webSkipReason = (
@@ -109,9 +118,14 @@ export const useSendChatMessage = ({
     if (!userInput.trim() && !imagePath && !hasDocuments) {
       return 'nothing-to-send';
     }
+    // TEMPORARY FIX (#437 A2): remove with utils/cpuSupport.ts.
+    if (useCpuSupportStore.getState().lacksLseAtomics) return 'cpu-unsupported';
+    let pinnedModel = model;
     if (isSwitching) {
-      if (!waitForModelSwitch) return 'model-loading';
-      await waitForModelSwitch();
+      pinnedModel = (await waitForModelSwitch()) ?? model;
+    }
+    if (imagePath && pinnedModel && !pinnedModel.vision) {
+      return 'image-unsupported';
     }
     const llm = useLLMStore.getState();
     const busy = llm.isGenerating || llm.isProcessingPrompt;
@@ -120,7 +134,12 @@ export const useSendChatMessage = ({
     } else if (busy || isGenerating) {
       return 'busy';
     }
-    if (!llm.model && !isModelLoading) return 'model-loading';
+    if (!llm.model && !isModelLoading) {
+      const started =
+        !!pinnedModel && (await beginLoadingPinnedModel(pinnedModel));
+      if (!started) return 'model-not-started';
+    }
+    loadModelPinnedToChat(pinnedModel);
 
     messagesRef.current?.onMessageSent();
     Keyboard.dismiss();
@@ -139,7 +158,10 @@ export const useSendChatMessage = ({
       const docName = attachments?.find((a) => a.type === 'document')?.name;
       const titleSource =
         stripThinkMarkers(userInput).trim() || docName || 'New chat';
-      const newChatId = await addChat(toChatTitle(titleSource), model!.id);
+      const newChatId = await addChat(
+        toChatTitle(titleSource),
+        pinnedModel!.id
+      );
       if (!newChatId) {
         messagesRef.current?.cancelMessageSent();
         return 'chat-not-created';
@@ -245,8 +267,9 @@ export const useSendChatMessage = ({
         };
       }
 
+      const documentAttachedHere = attachmentSourceIds.length > 0;
       const skippedForAttachmentPriority =
-        RAG_PRIORITY_OVER_WEB_SEARCH && (hasRagSources || !!imagePath);
+        RAG_PRIORITY_OVER_WEB_SEARCH && (documentAttachedHere || !!imagePath);
       const modelForWebSearch = useLLMStore.getState().model;
 
       const shouldRunWebSearch =
@@ -268,7 +291,7 @@ export const useSendChatMessage = ({
           text1:
             WEB_SKIP_COPY[
               webSkipReason(
-                RAG_PRIORITY_OVER_WEB_SEARCH && hasRagSources,
+                RAG_PRIORITY_OVER_WEB_SEARCH && documentAttachedHere,
                 RAG_PRIORITY_OVER_WEB_SEARCH && !!imagePath,
                 modelForWebSearch
               )
@@ -280,6 +303,12 @@ export const useSendChatMessage = ({
         const trimmedInput = userInput.trim();
         const lowMemory = isMemoryConstrained(useLLMStore.getState().model);
         useWebSearchStore.getState().setSearchingWeb(true);
+        const slowDeviceNoteTimer = setTimeout(() => {
+          const { isSearchingWeb, webSearchTrace, pushWebSearchEvent } =
+            useWebSearchStore.getState();
+          if (!isStalledOnPlanning(isSearchingWeb, webSearchTrace)) return;
+          pushWebSearchEvent({ type: 'slow' });
+        }, WEB_SLOW_DEVICE_NOTE_MS);
         try {
           const embeddingModelReady =
             !lowMemory && useEmbeddingModelStore.getState().status === 'ready';
@@ -356,6 +385,7 @@ export const useSendChatMessage = ({
           console.warn('Web search failed', error);
           webSearchFailed = true;
         } finally {
+          clearTimeout(slowDeviceNoteTimer);
           useWebSearchStore.getState().setSearchingWeb(false);
           webViewScrapeProvider.releaseHost();
         }

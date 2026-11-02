@@ -1,47 +1,32 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useSQLiteContext } from 'expo-sqlite';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { useLLMStore } from '../../store/llmStore';
-import { startPhantomChat } from '../../utils/startPhantomChat';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import ChatIcon from '../../assets/icons/chat.svg';
+import SearchOffIcon from '../../assets/icons/search-off.svg';
+import { radius } from '../../constants/design-system';
 import { DrawerItem } from './DrawerItem';
-import { useIsOnPhantomChat } from './useIsOnPhantomChat';
-import { useTurnInFlight } from '../../hooks/useTurnInFlight';
-import { showTurnInFlightNotice } from '../../utils/turnInFlightNotice';
+import { useStartNewChat } from './useStartNewChat';
+
+const ICON_CIRCLE_SIZE = 56;
 
 interface Props {
+  query: string;
   onNavigate?: () => void;
 }
 
-export const DrawerEmptyState = ({ onNavigate }: Props) => {
+export const DrawerEmptyState = ({ query, onNavigate }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
-  const db = useSQLiteContext();
-  const interrupt = useLLMStore((state) => state.interrupt);
-
-  const isOnPhantomChat = useIsOnPhantomChat();
-  const turnInFlight = useTurnInFlight();
-
-  const startNewChat = () => {
-    if (turnInFlight) {
-      showTurnInFlightNotice();
-      return;
-    }
-    if (isOnPhantomChat) {
-      onNavigate?.();
-      return;
-    }
-    interrupt();
-    startPhantomChat(db, 'replace');
-    onNavigate?.();
-  };
+  const { startNewChat, turnInFlight } = useStartNewChat(onNavigate);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>No chats found</Text>
+      <View style={styles.iconCircle}>
+        <SearchOffIcon width={24} height={24} style={styles.iconCircleIcon} />
+      </View>
+      <Text style={styles.title}>No chats match "{query}"</Text>
       <View style={styles.action}>
         <DrawerItem
           icon={<ChatIcon width={18} height={18} style={styles.icon} />}
@@ -60,16 +45,28 @@ export const DrawerEmptyState = ({ onNavigate }: Props) => {
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      paddingHorizontal: 12,
-      paddingVertical: 32,
+      paddingHorizontal: 24,
+      paddingVertical: 40,
       alignItems: 'center',
       gap: 16,
     },
-    text: {
+    iconCircle: {
+      width: ICON_CIRCLE_SIZE,
+      height: ICON_CIRCLE_SIZE,
+      borderRadius: radius.full,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.bg.tile,
+    },
+    iconCircleIcon: {
+      color: theme.text.defaultSecondary,
+    },
+    title: {
       textAlign: 'center',
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      color: theme.text.defaultTertiary,
+      fontFamily: fontFamily.bold,
+      fontSize: fontSizes.md,
+      lineHeight: 22,
+      color: theme.text.primary,
     },
     action: {
       alignSelf: 'center',

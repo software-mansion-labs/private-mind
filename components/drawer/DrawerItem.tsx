@@ -2,8 +2,12 @@ import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
+import { DRAWER_ITEM_INSET } from '../../constants/drawer-layout';
+import { dimmedOpacity } from '../../styles/pressable';
+
+const CHAT_LABEL_FONT_SIZE = 15;
 
 interface Props {
   label: string;
@@ -14,6 +18,7 @@ interface Props {
   testID?: string;
   hugContent?: boolean;
   dimmed?: boolean;
+  variant?: 'nav' | 'chat';
 }
 
 export const DrawerItem = memo(
@@ -26,6 +31,7 @@ export const DrawerItem = memo(
     testID,
     hugContent,
     dimmed,
+    variant = 'nav',
   }: Props) => {
     const { styles } = useThemedStyles(createStyles);
 
@@ -39,11 +45,16 @@ export const DrawerItem = memo(
           (active || pressed) && styles.activeBackground,
         ]}
       >
-        <View style={[styles.content, dimmed && styles.contentDimmed]}>
+        <View style={[styles.content, dimmed && dimmedOpacity]}>
           {icon}
           <Text
             numberOfLines={1}
-            style={[styles.label, hugContent && styles.labelHug]}
+            style={[
+              styles.label,
+              variant === 'chat' && styles.chatLabel,
+              variant === 'chat' && active && styles.chatLabelActive,
+              hugContent && styles.labelHug,
+            ]}
           >
             {label}
           </Text>
@@ -56,14 +67,14 @@ export const DrawerItem = memo(
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     item: {
-      padding: 12,
+      minHeight: 44,
+      justifyContent: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: DRAWER_ITEM_INSET,
       borderRadius: 12,
     },
-    contentDimmed: {
-      opacity: 0.4,
-    },
     activeBackground: {
-      backgroundColor: theme.bg.softSecondary,
+      backgroundColor: theme.bg.softTertiary,
     },
     content: {
       flexDirection: 'row',
@@ -75,6 +86,13 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.medium,
       color: theme.text.primary,
       flex: 1,
+    },
+    chatLabel: {
+      fontSize: CHAT_LABEL_FONT_SIZE,
+      lineHeight: lineHeights.sm,
+    },
+    chatLabelActive: {
+      fontFamily: fontFamily.bold,
     },
     labelHug: {
       flex: 0,

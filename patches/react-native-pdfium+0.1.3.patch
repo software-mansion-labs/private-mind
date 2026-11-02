@@ -1,0 +1,12 @@
+diff --git a/node_modules/react-native-pdfium/android/src/main/cpp/PdfiumInstallerModule.h b/node_modules/react-native-pdfium/android/src/main/cpp/PdfiumInstallerModule.h
+index 0ec9464..c297cc7 100644
+--- a/node_modules/react-native-pdfium/android/src/main/cpp/PdfiumInstallerModule.h
++++ b/node_modules/react-native-pdfium/android/src/main/cpp/PdfiumInstallerModule.h
+@@ -3,7 +3,6 @@
+ #include <ReactCommon/CallInvokerHolder.h>
+ #include <fbjni/fbjni.h>
+ 
+-#include <react/jni/CxxModuleWrapper.h>
+ #include <react/jni/JMessageQueueThread.h>
+ 
+ #include <memory>

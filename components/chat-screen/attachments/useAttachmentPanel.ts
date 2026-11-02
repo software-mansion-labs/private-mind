@@ -20,15 +20,21 @@ export type Sheet = 'photos' | 'camera';
 interface PanelOptions {
   onLeaveSheet?: () => void;
   onSelectFiles?: () => void | Promise<DocumentPickOutcome | void>;
+  onSelectPhotos?: () => Promise<DocumentPickOutcome | void>;
   canAttachImages?: boolean;
   onImagesUnsupported?: () => void;
+  attachmentsBlocked?: boolean;
+  onAttachmentsBlocked?: () => void;
 }
 
 export function useAttachmentPanel({
   onLeaveSheet,
   onSelectFiles,
+  onSelectPhotos,
   canAttachImages = true,
   onImagesUnsupported,
+  attachmentsBlocked = false,
+  onAttachmentsBlocked,
 }: PanelOptions = {}) {
   const [mode, setMode] = useState<Mode>('closed');
   const [sheet, setSheet] = useState<Sheet>('photos');
@@ -159,21 +165,28 @@ export function useAttachmentPanel({
     );
   }, [gridOpacity, menuOpacity, morph, onLeaveSheet, pulseBlur]);
 
+  const dismissUnlessCanceled = useCallback(
+    (picking: void | Promise<DocumentPickOutcome | void>) => {
+      if (picking && typeof (picking as Promise<unknown>).then === 'function') {
+        (picking as Promise<DocumentPickOutcome | void>).then((outcome) => {
+          if (outcome === 'canceled') return;
+          dismiss();
+        }, dismiss);
+      } else {
+        dismiss();
+      }
+    },
+    [dismiss]
+  );
+
   const onMenuAction = useCallback(
     (action: MenuAction) => {
+      if (attachmentsBlocked) {
+        onAttachmentsBlocked?.();
+        return;
+      }
       if (action === 'files') {
-        const picking = onSelectFiles?.();
-        if (
-          picking &&
-          typeof (picking as Promise<unknown>).then === 'function'
-        ) {
-          (picking as Promise<DocumentPickOutcome | void>).then((outcome) => {
-            if (outcome === 'canceled') return;
-            dismiss();
-          }, dismiss);
-        } else {
-          dismiss();
-        }
+        dismissUnlessCanceled(onSelectFiles?.());
         return;
       }
       if (!canAttachImages) {
@@ -181,9 +194,23 @@ export function useAttachmentPanel({
         onImagesUnsupported?.();
         return;
       }
+      if (action === 'photos' && onSelectPhotos) {
+        dismissUnlessCanceled(onSelectPhotos());
+        return;
+      }
       showSheet(action === 'camera' ? 'camera' : 'photos');
     },
-    [canAttachImages, dismiss, onImagesUnsupported, onSelectFiles, showSheet]
+    [
+      attachmentsBlocked,
+      canAttachImages,
+      dismiss,
+      dismissUnlessCanceled,
+      onAttachmentsBlocked,
+      onImagesUnsupported,
+      onSelectFiles,
+      onSelectPhotos,
+      showSheet,
+    ]
   );
 
   const onPlusPress = useCallback(() => {

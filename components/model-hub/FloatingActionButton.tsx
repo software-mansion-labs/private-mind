@@ -1,8 +1,9 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet, Pressable } from 'react-native';
 import PlusIcon from '../../assets/icons/plus.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
   onPress: () => void;
@@ -13,13 +14,13 @@ const FloatingActionButton = ({ onPress, disabled = false }: Props) => {
   const { styles } = useThemedStyles(createStyles, disabled);
 
   return (
-    <TouchableOpacity
-      style={styles.button}
+    <Pressable
+      style={({ pressed }) => [styles.button, pressed && pressedOpacity]}
       onPress={onPress}
       disabled={disabled}
     >
       <PlusIcon width={18} height={18} style={styles.icon} />
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 

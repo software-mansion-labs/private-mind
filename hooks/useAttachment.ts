@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Keyboard } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import * as MediaLibrary from 'expo-media-library';
+import * as MediaLibrary from 'expo-media-library/legacy';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
 import { useSourceStore } from '../store/sourceStore';
@@ -12,6 +12,7 @@ import { documentErrorMessage } from '../utils/documentErrorMessage';
 import { extractArticle } from '../utils/web/url/extractArticle';
 import { buildUrlSource } from '../utils/web/url/urlSource';
 import { hostname } from '../utils/web/hostname';
+import { launchSystemPhotoPicker } from '../utils/systemPhotoPicker';
 
 export type DownloadResume = 'attachment' | 'none';
 
@@ -210,6 +211,16 @@ export const useAttachment = () => {
       })
     );
   }, []);
+
+  const pickSystemPhoto =
+    useCallback(async (): Promise<DocumentPickOutcome> => {
+      const photo = await launchSystemPhotoPicker();
+      if (!photo) return 'canceled';
+      addImages([photo]).catch((error) => {
+        console.error('Failed to attach the picked photo:', error);
+      });
+      return 'picked';
+    }, [addImages]);
 
   const runDocumentPicker = useCallback(async () => {
     const pickedFileResult = await DocumentPicker.getDocumentAsync({
@@ -542,6 +553,21 @@ export const useAttachment = () => {
     [runUrlSource, presentDownloadSheet]
   );
 
+  const loadWithLanguageModelOffloaded = useCallback(
+    (load: () => Promise<unknown>) =>
+      useLLMStore.getState().runWithModelOffloaded(
+        async () => {
+          try {
+            await load();
+          } finally {
+            await embeddingsRef.current?.unload();
+          }
+        },
+        { restore: false }
+      ),
+    []
+  );
+
   const downloadModelAndContinue = useCallback(async () => {
     const store = await awaitVectorStore(STORE_READY_TIMEOUT_MS);
     if (!store) {
@@ -551,16 +577,9 @@ export const useAttachment = () => {
       });
       return;
     }
-    const ready = await useLLMStore.getState().runWithModelOffloaded(
-      async () => {
-        const loaded = await useEmbeddingModelStore
-          .getState()
-          .ensureReady(store);
-        await embeddingsRef.current?.unload();
-        return loaded;
-      },
-      { restore: false }
-    );
+    const ready = await useEmbeddingModelStore
+      .getState()
+      .ensureReady(store, loadWithLanguageModelOffloaded);
     if (!ready) {
       Toast.show({
         type: 'defaultToast',
@@ -571,7 +590,7 @@ export const useAttachment = () => {
     if (!embeddingDownloadSheetOpenRef.current) return;
     pendingDocumentPickRef.current = downloadResumeRef.current === 'attachment';
     embeddingDownloadSheetRef.current?.dismiss();
-  }, [awaitVectorStore]);
+  }, [awaitVectorStore, loadWithLanguageModelOffloaded]);
 
   const restoreAttachments = useCallback((previous: Attachment[]) => {
     setAttachments(previous);
@@ -631,6 +650,7 @@ export const useAttachment = () => {
     attachments,
     embeddingDownloadSheetRef,
     addImages,
+    pickSystemPhoto,
     presentDownloadSheet,
     pickDocument,
     addUrlSource,

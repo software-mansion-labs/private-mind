@@ -30,6 +30,7 @@ interface UseChatScreenActionsOptions {
   ) => void;
   db: SQLiteDatabase;
   inputRef: React.RefObject<{ setInput: (text: string) => void } | null>;
+  modelSwitching?: boolean;
 }
 
 export const useChatScreenActions = ({
@@ -40,6 +41,7 @@ export const useChatScreenActions = ({
   setSetting,
   db,
   inputRef,
+  modelSwitching = false,
 }: UseChatScreenActionsOptions) => {
   const { model: loadedModel, loadModel } = useLLMStore();
   const { getModelById } = useModelStore();
@@ -113,6 +115,7 @@ export const useChatScreenActions = ({
   const handleSelectPrompt = useCallback(
     async (prompt: string) => {
       inputRef.current?.setInput(prompt);
+      if (modelSwitching) return;
 
       const currentModel =
         model || (chat?.modelId ? getModelById(chat.modelId) : undefined);
@@ -124,7 +127,15 @@ export const useChatScreenActions = ({
         }
       }
     },
-    [model, loadedModel, loadModel, getModelById, chat?.modelId, inputRef]
+    [
+      model,
+      loadedModel,
+      loadModel,
+      getModelById,
+      chat?.modelId,
+      inputRef,
+      modelSwitching,
+    ]
   );
 
   return {

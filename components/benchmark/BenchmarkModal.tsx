@@ -46,7 +46,12 @@ export const BenchmarkModal = ({
               </Text>
             </View>
             <View style={styles.bottomSection}>
-              <ModelCard model={selectedModel} onPress={() => {}} />
+              <ModelCard
+                model={selectedModel}
+                onPress={() => {}}
+                compactView={false}
+                showFamilyIcon
+              />
               <SecondaryButton text="Cancel benchmark" onPress={handleCancel} />
             </View>
           </View>

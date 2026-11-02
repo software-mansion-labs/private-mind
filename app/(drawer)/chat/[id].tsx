@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
 import { useState } from 'react';
@@ -9,7 +9,9 @@ import { useChatStore } from '../../../store/chatStore';
 import useChatHeader from '../../../hooks/useChatHeader';
 import { useChatBackGuard } from '../../../hooks/useChatBackGuard';
 import {
+  CHAT_ENTRY_ACTION,
   CHAT_ENTRY_ANIMATION,
+  ChatEntryAction,
   ChatEntryAnimation,
 } from '../../../constants/chat-route-params';
 
@@ -29,8 +31,12 @@ function ChatScreenInner() {
   const {
     modelId,
     entryAnimation,
-  }: { modelId: string; entryAnimation?: ChatEntryAnimation } =
-    useLocalSearchParams();
+    entryAction,
+  }: {
+    modelId: string;
+    entryAnimation?: ChatEntryAnimation;
+    entryAction?: ChatEntryAction;
+  } = useLocalSearchParams();
   const { activeChatMessages, activeChatId } = useLLMStore();
   const { getModelById } = useModelStore();
   const { getChatById, setChatModel, loadChats, phantomChat } = useChatStore();
@@ -44,7 +50,6 @@ function ChatScreenInner() {
     ? getModelById(parseInt(resolvedModelId.toString(), 10))
     : undefined;
   const [model, setModel] = useState<Model | undefined>(resolvedModel);
-  const [pendingModel, setPendingModel] = useState<Model | undefined>();
   // Only show the loading/empty state on the very first mount for this
   // chat. useFocusEffect refires on every refocus (including returning
   // from a bottom sheet), and flipping messageHistory to [] mid-session
@@ -61,15 +66,11 @@ function ChatScreenInner() {
 
   const isEmpty = !isLoading && historyForThisChat.length === 0;
   const shouldExitOnBack = isPhantom && isEmpty;
-  const openModelSheetRef = useRef<(() => void) | null>(null);
-  const openModelSheet = useCallback(() => openModelSheetRef.current?.(), []);
 
   const { MenuElements, titleBottom } = useChatHeader({
     chatId: chatId,
-    chatModel: pendingModel ?? model,
-    isModelLoading: !!pendingModel,
     isEmpty,
-    onSelectModelFromTitle: isPhantom ? openModelSheet : undefined,
+    hideTitle: isPhantom,
   });
 
   useFocusEffect(
@@ -107,11 +108,10 @@ function ChatScreenInner() {
         messageHistory={isLoading ? [] : historyForThisChat}
         isLoading={isLoading}
         model={model}
-        onPendingModelChange={setPendingModel}
         selectModel={handleSetModel}
-        openModelSheetRef={openModelSheetRef}
         revealFromTop={shouldPlayBranchEntryAnimation}
         headerTitleBottom={titleBottom}
+        opensModelMenu={entryAction === CHAT_ENTRY_ACTION.PickModel}
       />
       {MenuElements}
     </>

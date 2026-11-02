@@ -13,6 +13,9 @@ import {
   Image,
   Pressable,
   Linking,
+  PixelRatio,
+  LayoutChangeEvent,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import ThinkingBlock from './ThinkingBlock';
@@ -38,11 +41,13 @@ import MessageActionButton from './MessageActionButton';
 import {
   MESSAGE_ACTION_ROW_HEIGHT,
   SUPPORTS_USER_ACTION_MENU,
+  MESSAGE_LIST_SIDE_PADDING,
 } from '../../constants/chat-screen';
 import { Message, type SourceDocument } from '../../database/chatRepository';
-import { stripCitations } from '../../utils/citations';
 import { retrievalStatsLines } from '../../utils/retrievalStatsLine';
 import { parseThinkingContent, stripThinkMarkers } from '../../utils/thinking';
+import { stripSpecialTokens } from '../../utils/specialTokens';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface MessageItemProps {
   message: Message;
@@ -76,6 +81,8 @@ const splitDocumentName = (name: string) => {
 
 const REFINED_SWAP_MS = 320;
 
+export const MODEL_STARTING_LABEL = 'Starting the model on your device…';
+
 const useRefinedSwap = (isRefining: boolean): number => {
   const [swap, setSwap] = useState(0);
   const wasRefining = useRef(false);
@@ -84,6 +91,16 @@ const useRefinedSwap = (isRefining: boolean): number => {
     wasRefining.current = isRefining;
   }, [isRefining]);
   return swap;
+};
+
+const USER_BUBBLE_WIDTH_SHARE = 0.65;
+
+const bubbleWidthOnPixelGrid = (rowWidth: number) => {
+  const pixelsPerPoint = PixelRatio.get();
+  return (
+    Math.floor(rowWidth * USER_BUBBLE_WIDTH_SHARE * pixelsPerPoint) /
+    pixelsPerPoint
+  );
 };
 
 const MessageItem = memo(
@@ -110,12 +127,34 @@ const MessageItem = memo(
       (state) => state.showPerformanceMetrics
     );
     const [lightboxVisible, setLightboxVisible] = useState(false);
-
-    const contentParts = useMemo(
-      () => parseThinkingContent(content),
-      [content]
+    const [userRowWidth, setUserRowWidth] = useState<number | null>(null);
+    const handleUserRowLayout = useCallback(
+      (event: LayoutChangeEvent) =>
+        setUserRowWidth(event.nativeEvent.layout.width),
+      []
     );
-    const userText = useMemo(() => stripThinkMarkers(content), [content]);
+    const { width: windowWidth } = useWindowDimensions();
+    const userBubbleWidth = useMemo(
+      () => ({
+        maxWidth: bubbleWidthOnPixelGrid(
+          userRowWidth ?? windowWidth - 2 * MESSAGE_LIST_SIDE_PADDING
+        ),
+      }),
+      [userRowWidth, windowWidth]
+    );
+
+    const visibleContent = useMemo(
+      () => (role === 'assistant' ? stripSpecialTokens(content) : content),
+      [content, role]
+    );
+    const contentParts = useMemo(
+      () => parseThinkingContent(visibleContent),
+      [visibleContent]
+    );
+    const userText = useMemo(
+      () => stripThinkMarkers(visibleContent),
+      [visibleContent]
+    );
     const {
       displayedSources,
       webResults,
@@ -134,20 +173,8 @@ const MessageItem = memo(
       Linking.openURL(url).catch(() => {});
     }, []);
 
-    const normalContent = useMemo(
-      () =>
-        hasSources
-          ? stripCitations(contentParts.normalContent)
-          : contentParts.normalContent,
-      [contentParts.normalContent, hasSources]
-    );
-    const normalAfterThink = useMemo(
-      () =>
-        hasSources
-          ? stripCitations(contentParts.normalAfterThink ?? '')
-          : (contentParts.normalAfterThink ?? ''),
-      [contentParts.normalAfterThink, hasSources]
-    );
+    const normalContent = contentParts.normalContent;
+    const normalAfterThink = contentParts.normalAfterThink ?? '';
 
     const {
       isGenerating,
@@ -155,6 +182,7 @@ const MessageItem = memo(
       isRefining,
       isSearchingThis,
       isAwaitingFirstToken,
+      isModelStarting,
       trace: webSearchTrace,
       webActive,
     } = useWebSearchActivity({
@@ -183,7 +211,8 @@ const MessageItem = memo(
     const canShowSourcesAction =
       !!content.trim() && documentSources.length > 0 && !isBusy;
 
-    const answerIsIncomplete = !!message.stoppedByUser;
+    const answerIsIncomplete =
+      !!message.stoppedByUser || !!message.cutShortReason;
 
     const actions =
       !answerIsIncomplete && (showActions || canShowSourcesAction) ? (
@@ -206,7 +235,7 @@ const MessageItem = memo(
             <Pressable
               style={({ pressed }) => [
                 styles.sourcesButton,
-                pressed && styles.sourcesButtonPressed,
+                pressed && pressedOpacity,
               ]}
               onPress={() => onShowSources?.(displayedSources, userQuestion)}
               hitSlop={8}
@@ -237,9 +266,12 @@ const MessageItem = memo(
             </Text>
           </View>
         ) : role === 'user' ? (
-          <View style={styles.userMessageGroup}>
+          <View style={styles.userMessageGroup} onLayout={handleUserRowLayout}>
             {imagePath && (
-              <View style={styles.userBubble} testID="image-bubble">
+              <View
+                style={[styles.userBubble, userBubbleWidth]}
+                testID="image-bubble"
+              >
                 <Pressable
                   onPress={() => setLightboxVisible(true)}
                   style={({ pressed }) => pressed && styles.imagePressed}
@@ -276,13 +308,16 @@ const MessageItem = memo(
               </View>
             )}
             {userText.trim() && (
-              <View style={styles.userBubble} testID="text-bubble">
+              <View
+                style={[styles.userBubble, userBubbleWidth]}
+                testID="text-bubble"
+              >
                 <View style={styles.userMessageContent}>
                   <Text
                     style={styles.userText}
                     selectable={!SUPPORTS_USER_ACTION_MENU}
                   >
-                    {userText}
+                    {userText.trim()}
                   </Text>
                 </View>
               </View>
@@ -307,7 +342,9 @@ const MessageItem = memo(
                 />
               )}
               {isAwaitingFirstToken ? (
-                <AnimatedChatLoading label="Thinking…" />
+                <AnimatedChatLoading
+                  label={isModelStarting ? MODEL_STARTING_LABEL : 'Generating…'}
+                />
               ) : null}
               <Animated.View
                 key={refinedSwap}
@@ -320,6 +357,7 @@ const MessageItem = memo(
                   <AttributedAnswer
                     text={normalContent}
                     sources={webResults}
+                    hasSources={hasSources}
                     streaming={isLastMessage && isGenerating}
                     onLinkPress={handleLinkPress}
                   />
@@ -341,6 +379,7 @@ const MessageItem = memo(
                     <AttributedAnswer
                       text={normalAfterThink}
                       sources={webResults}
+                      hasSources={hasSources}
                       streaming={isLastMessage && isGenerating}
                       onLinkPress={handleLinkPress}
                     />
@@ -401,9 +440,9 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'column',
       alignItems: 'flex-start',
       justifyContent: 'center',
-      maxWidth: '65%',
+      maxWidth: `${USER_BUBBLE_WIDTH_SHARE * 100}%`,
       borderRadius: 12,
-      backgroundColor: theme.bg.softSecondary,
+      backgroundColor: theme.bg.chatBar,
       overflow: 'hidden',
     },
     userMessageContent: {
@@ -425,7 +464,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: 16,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border.soft,
-      backgroundColor: theme.bg.softSecondary,
+      backgroundColor: theme.bg.chatBar,
     },
     documentIcon: {
       color: theme.text.defaultSecondary,
@@ -492,9 +531,6 @@ const createStyles = (theme: Theme) =>
       gap: 6,
       paddingLeft: 4,
       paddingVertical: 4,
-    },
-    sourcesButtonPressed: {
-      opacity: 0.6,
     },
     sourcesButtonIcon: {
       color: theme.text.primary,

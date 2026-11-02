@@ -8,36 +8,54 @@ import React, {
 import { Appearance } from 'react-native';
 import { darkTheme, lightTheme, Theme } from '../styles/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ThemePreference, useSettingsStore } from '../store/settingsStore';
 
-const ThemeContext = createContext<{ theme: Theme }>({
+interface ThemeContextValue {
+  theme: Theme;
+  isDark: boolean;
+}
+
+const ThemeContext = createContext<ThemeContextValue>({
   theme: {
     ...lightTheme,
     insets: { top: 0, bottom: 0, left: 0, right: 0 },
   },
+  isDark: false,
 });
 
+const resolveIsDark = (
+  preference: ThemePreference,
+  systemScheme: string | null | undefined
+) => {
+  if (preference === 'system') return systemScheme === 'dark';
+  return preference === 'dark';
+};
+
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const colorScheme = Appearance.getColorScheme();
-  const [themeColors, setThemeColors] = useState(
-    colorScheme === 'dark' ? darkTheme : lightTheme
-  );
+  const preference = useSettingsStore((state) => state.themePreference);
+  const [systemScheme, setSystemScheme] = useState(Appearance.getColorScheme());
   const insets = useSafeAreaInsets();
 
-  const theme = useMemo(
-    () => ({ ...themeColors, insets }),
-    [themeColors, insets]
+  const isDark = resolveIsDark(preference, systemScheme);
+
+  const value = useMemo(
+    () => ({
+      theme: { ...(isDark ? darkTheme : lightTheme), insets },
+      isDark,
+    }),
+    [isDark, insets]
   );
 
   useEffect(() => {
     const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      setThemeColors(colorScheme === 'dark' ? darkTheme : lightTheme);
+      setSystemScheme(colorScheme);
     });
 
     return () => subscription.remove();
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme }}>{children}</ThemeContext.Provider>
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
   );
 };
 

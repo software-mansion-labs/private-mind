@@ -1,21 +1,25 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import ChatIcon from '../assets/icons/chat.svg';
 import { useThemedStyles } from '../hooks/useThemedStyles';
+import { Feedback } from '../utils/Feedback';
 import { startPhantomChat } from '../utils/startPhantomChat';
 import { useChatStore } from '../store/chatStore';
+import { pressedOpacity } from '../styles/pressable';
 import { useTurnInFlight } from '../hooks/useTurnInFlight';
 import { useSteadyFlag } from '../hooks/useSteadyFlag';
 import { showTurnInFlightNotice } from '../utils/turnInFlightNotice';
 import { TURN_IN_FLIGHT_HOLD_MS } from '../constants/header-actions';
 import HeaderActionIcon from './HeaderActionIcon';
+import HeaderGlassButton, { headerGlassButtonFill } from './HeaderGlassButton';
 
 interface Props {
   noOp?: boolean;
+  glass?: boolean;
 }
 
-const NewChatHeaderButton = ({ noOp = false }: Props) => {
+const NewChatHeaderButton = ({ noOp = false, glass = false }: Props) => {
   const db = useSQLiteContext();
   const { styles, theme } = useThemedStyles(createStyles);
 
@@ -27,6 +31,7 @@ const NewChatHeaderButton = ({ noOp = false }: Props) => {
       showTurnInFlightNotice();
       return;
     }
+    Feedback.newChat();
     if (noOp) {
       useChatStore.getState().startBlankChat();
       return;
@@ -34,10 +39,13 @@ const NewChatHeaderButton = ({ noOp = false }: Props) => {
     startPhantomChat(db, 'replace');
   };
 
-  return (
-    <TouchableOpacity
+  const button = (
+    <Pressable
       onPress={handlePress}
-      style={styles.button}
+      style={({ pressed }) => [
+        glass ? headerGlassButtonFill : styles.button,
+        pressed && pressedOpacity,
+      ]}
       hitSlop={15}
       testID="new-chat-header-button"
     >
@@ -48,8 +56,12 @@ const NewChatHeaderButton = ({ noOp = false }: Props) => {
         color={theme.text.primary}
         dimmed={looksBusy}
       />
-    </TouchableOpacity>
+    </Pressable>
   );
+
+  if (!glass) return button;
+
+  return <HeaderGlassButton edge="trailing">{button}</HeaderGlassButton>;
 };
 
 export default NewChatHeaderButton;

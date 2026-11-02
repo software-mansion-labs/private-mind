@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
+import { Image, LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import Animated, {
   Extrapolation,
   SharedValue,
@@ -10,21 +10,21 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import OnboardingScrim from './OnboardingScrim';
+import OnboardingCaption from './OnboardingCaption';
 import { Theme, mixColors, withAlpha } from '../../styles/colors';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import {
   BADGE_LEAD,
   CARD_INSET,
-  CONTENT_PADDING,
   CROP_FADE,
   ILLUSTRATION_MAX_WIDTH,
   ILLUSTRATION_PARALLAX,
   ILLUSTRATION_SIDE_INSET,
   ILLUSTRATION_TOP_CLEARANCE,
-  LABEL_ICON_SIZE,
   OnboardingSlide as Slide,
   TITLE_LEAD,
+  WIDE_ILLUSTRATION_MAX_WIDTH,
 } from '../../constants/onboarding';
+import { useOnboardingLayout } from '../../hooks/useOnboardingLayout';
 
 const CROP_RAMP: [number, number][] = [
   [0, 1],
@@ -59,16 +59,25 @@ function OnboardingSlide({
 }: Props) {
   const { styles, theme } = useThemedStyles(createStyles);
   const reducedMotion = useReducedMotion();
+  const { isWide, isSplit, columnLeft, columnRight } = useOnboardingLayout();
 
-  const illustrationWidth = Math.min(
-    pageWidth - ILLUSTRATION_SIDE_INSET * 2,
-    ILLUSTRATION_MAX_WIDTH
-  );
-
-  const Icon = slide.icon.art;
-  const iconHeight = LABEL_ICON_SIZE * (slide.icon.scale ?? 1);
-  const anchoredTop = slide.illustration.anchor === 'top';
+  const anchoredTop = isWide || slide.illustration.anchor === 'top';
   const cropClearance = theme.insets.top + ILLUSTRATION_TOP_CLEARANCE;
+  const splitBottomClearance = CARD_INSET + theme.insets.bottom;
+  const fitsPage = pageWidth - ILLUSTRATION_SIDE_INSET * 2;
+  const artAreaHeight = isSplit
+    ? pageHeight - cropClearance - splitBottomClearance
+    : pageHeight - cropClearance - illustrationBottom;
+  const fitsHeight = artAreaHeight * slide.illustration.aspectRatio;
+  const illustrationWidth = isWide
+    ? Math.min(fitsPage, fitsHeight, WIDE_ILLUSTRATION_MAX_WIDTH)
+    : Math.min(fitsPage, ILLUSTRATION_MAX_WIDTH);
+  const anchoredPlacement = anchoredTop
+    ? styles.zoneToScrim
+    : [styles.zoneAboveText, { bottom: illustrationBottom }];
+  const zonePlacement = isSplit
+    ? [styles.zoneCentred, { bottom: splitBottomClearance }]
+    : anchoredPlacement;
   const cropHeight = cropClearance + CROP_FADE;
   const clearStop = cropClearance / cropHeight;
   const cropFadeLocations = [
@@ -94,20 +103,24 @@ function OnboardingSlide({
   const illustrationStyle = useAnimatedStyle(() => {
     const travel = reducedMotion ? 0 : pageWidth * ILLUSTRATION_PARALLAX;
     return {
-      opacity: interpolate(
-        scrollX.get(),
-        [start, middle, end],
-        [0, 1, 0],
-        Extrapolation.CLAMP
-      ),
-      transform: [
-        {
-          translateX: interpolate(
+      opacity: isSplit
+        ? 1
+        : interpolate(
             scrollX.get(),
             [start, middle, end],
-            [-travel, 0, travel],
+            [0, 1, 0],
             Extrapolation.CLAMP
           ),
+      transform: [
+        {
+          translateX: isSplit
+            ? 0
+            : interpolate(
+                scrollX.get(),
+                [start, middle, end],
+                [-travel, 0, travel],
+                Extrapolation.CLAMP
+              ),
         },
         {
           scale: reducedMotion
@@ -171,19 +184,14 @@ function OnboardingSlide({
     <View style={[styles.page, { width: pageWidth, height: pageHeight }]}>
       <View
         pointerEvents="none"
-        style={[
-          styles.illustrationZone,
-          anchoredTop
-            ? styles.zoneToScrim
-            : [styles.zoneAboveText, { bottom: illustrationBottom }],
-        ]}
+        style={[styles.illustrationZone, zonePlacement]}
       >
         <Animated.View style={illustrationStyle}>
           <Image
             source={slide.illustration.source}
             style={{
               width: illustrationWidth,
-              aspectRatio: slide.illustration.aspectRatio,
+              height: illustrationWidth / slide.illustration.aspectRatio,
             }}
           />
         </Animated.View>
@@ -197,28 +205,24 @@ function OnboardingSlide({
         )}
       </View>
 
-      <OnboardingScrim height={textTop} />
-
-      <View style={[styles.textClip, { bottom: textBottom }]}>
-        <View
-          style={styles.textBlock}
-          onLayout={onTextLayout}
-          accessible
-          accessibilityLabel={`${slide.label}. ${slide.title}`}
-        >
-          <Animated.View style={[styles.labelBadge, badgeStyle]}>
-            <Icon
-              width={iconHeight * slide.icon.aspectRatio}
-              height={iconHeight}
-              style={styles.labelIcon}
+      {!isSplit && (
+        <>
+          <OnboardingScrim height={textTop} />
+          <View
+            style={[
+              styles.textClip,
+              { bottom: textBottom, left: columnLeft, right: columnRight },
+            ]}
+          >
+            <OnboardingCaption
+              slide={slide}
+              badgeStyle={badgeStyle}
+              titleStyle={titleStyle}
+              onLayout={onTextLayout}
             />
-            <Text style={styles.labelText}>{slide.label}</Text>
-          </Animated.View>
-          <Animated.Text style={[styles.title, titleStyle]}>
-            {slide.title}
-          </Animated.Text>
-        </View>
-      </View>
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -246,6 +250,9 @@ const createStyles = (theme: Theme) =>
       top: 0,
       justifyContent: 'flex-end',
     },
+    zoneCentred: {
+      justifyContent: 'center',
+    },
     cropFade: {
       position: 'absolute',
       top: 0,
@@ -254,39 +261,6 @@ const createStyles = (theme: Theme) =>
     },
     textClip: {
       position: 'absolute',
-      left: CARD_INSET,
-      right: CARD_INSET,
       overflow: 'hidden',
-    },
-    textBlock: {
-      paddingHorizontal: CONTENT_PADDING,
-      alignItems: 'center',
-      gap: 12,
-    },
-    labelBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      backgroundColor: theme.bg.onBrandSoft,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
-    },
-    labelIcon: {
-      color: theme.text.onBrand,
-    },
-    labelText: {
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.xs,
-      lineHeight: lineHeights.xs,
-      textAlign: 'center',
-      color: theme.text.onBrand,
-    },
-    title: {
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.xxl,
-      lineHeight: lineHeights.xxl,
-      textAlign: 'center',
-      color: theme.text.onBrand,
     },
   });

@@ -10,3 +10,7 @@ export const dimOpacity = (progress: number) => {
   'worklet';
   return 1 - progress * (1 - HEADER_DIMMED_OPACITY);
 };
+
+export const GLASS_BUTTON_SIZE = 44;
+
+export const HEADER_EDGE_PX = 16;

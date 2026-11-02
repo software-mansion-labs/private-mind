@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { ComponentProps } from 'react';
 import Drawer from 'expo-router/drawer';
 import { useWindowDimensions } from 'react-native';
+import { HeaderTitle } from 'expo-router/react-navigation';
 import { useTheme } from '../../context/ThemeContext';
 import CustomDrawer from '../../components/drawer/CustomDrawer';
 import { getDrawerWidth } from '../../constants/drawer-layout';
@@ -8,6 +9,11 @@ import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import WebScrapeSheet from '../../components/bottomSheets/WebScrapeSheet';
 import { WEB_SEARCH_ENABLED } from '../../constants/web';
 import { useTurnInFlight } from '../../hooks/useTurnInFlight';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
+
+const renderHeaderTitle = (props: ComponentProps<typeof HeaderTitle>) => (
+  <HeaderTitle {...props} maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE} />
+);
 
 const DrawerLayout = () => {
   const { width } = useWindowDimensions();
@@ -30,6 +36,7 @@ const DrawerLayout = () => {
             backgroundColor: theme.bg.softPrimary,
           },
           headerTitleAlign: 'center',
+          headerTitle: renderHeaderTitle,
           headerTitleStyle: {
             color: theme.text.primary,
             fontFamily: fontFamily.medium,
@@ -41,24 +48,32 @@ const DrawerLayout = () => {
           name="index"
           options={{
             title: '',
+            headerTransparent: true,
+            headerStyle: { backgroundColor: 'transparent' },
           }}
         />
         <Drawer.Screen
           name="model-hub"
           options={{
-            title: 'Models',
+            title: 'Manage models',
+            headerTransparent: true,
+            headerStyle: { backgroundColor: 'transparent' },
           }}
         />
         <Drawer.Screen
           name="settings"
           options={{
             title: 'Settings',
+            headerTransparent: true,
+            headerStyle: { backgroundColor: 'transparent' },
           }}
         />
         <Drawer.Screen
           name="benchmark"
           options={{
             title: 'Benchmark',
+            headerTransparent: true,
+            headerStyle: { backgroundColor: 'transparent' },
           }}
         />
         <Drawer.Screen

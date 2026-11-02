@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import React from 'react';
+import { StyleSheet, Platform, StyleProp, ViewStyle } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { TEXT_SELECTION, Theme } from '../../styles/colors';
-import SearchIcon from '../../assets/icons/search.svg';
-import TextInputBorder from '../TextInputBorder';
+import { space } from '../../constants/design-system';
+import { SearchFieldIcon, SearchFieldSurface } from '../SearchField';
 
 interface Props {
   value: string;
   onChangeText: (text: string) => void;
   placeholder: string;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }
 
 const BottomSheetSearchInput = ({
@@ -21,29 +21,28 @@ const BottomSheetSearchInput = ({
   style,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
-  const [active, setActive] = useState(false);
 
   if (Platform.OS !== 'ios') {
     return null;
   }
 
   return (
-    <View style={[styles.container, style]}>
-      <View style={styles.inputWrapper}>
-        <TextInputBorder active={active} />
-        <SearchIcon width={20} height={20} style={styles.searchIcon} />
-        <BottomSheetTextInput
-          {...TEXT_SELECTION}
-          style={styles.input}
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={theme.text.defaultTertiary}
-          onFocus={() => setActive(true)}
-          onBlur={() => setActive(false)}
-        />
-      </View>
-    </View>
+    <SearchFieldSurface style={style}>
+      <SearchFieldIcon />
+      <BottomSheetTextInput
+        {...TEXT_SELECTION}
+        style={styles.input}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={theme.text.defaultTertiary}
+        autoCorrect={false}
+        autoCapitalize="none"
+        clearButtonMode="while-editing"
+        returnKeyType="search"
+        accessibilityLabel={placeholder}
+      />
+    </SearchFieldSurface>
   );
 };
 
@@ -51,24 +50,11 @@ export default BottomSheetSearchInput;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    container: {
-      paddingHorizontal: 16,
-    },
-    inputWrapper: {
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
     input: {
-      width: '90%',
-      fontSize: fontSizes.md,
+      flex: 1,
+      paddingVertical: space.twoHalf,
       fontFamily: fontFamily.regular,
-      color: theme.text.primary,
-      lineHeight: 22,
-    },
-    searchIcon: {
+      fontSize: fontSizes.md,
       color: theme.text.primary,
     },
   });

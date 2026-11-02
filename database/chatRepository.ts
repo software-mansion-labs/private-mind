@@ -37,6 +37,10 @@ export type ChatSettings = {
 
 export type GroundingCaveatKind = 'figure' | 'trend' | 'conversion';
 
+export const MEMORY_CUT_SHORT = 'memory';
+
+export type CutShortReason = typeof MEMORY_CUT_SHORT;
+
 export type Message = {
   id: number;
   localId?: number;
@@ -52,6 +56,7 @@ export type Message = {
   timeToFirstToken?: number;
   retrievalStats?: RetrievalStats;
   stoppedByUser?: boolean;
+  cutShortReason?: CutShortReason;
   timestamp: number;
 };
 
@@ -79,6 +84,7 @@ export type SourceDocument = {
   sourceQuery?: string;
   used?: boolean;
   read?: boolean;
+  ordinal?: number;
 };
 
 export const sourceKind = (source: SourceDocument): SourceKind =>
@@ -86,13 +92,23 @@ export const sourceKind = (source: SourceDocument): SourceKind =>
 
 type RawMessage = Omit<
   Message,
-  'sourceDocuments' | 'groundingCaveats' | 'retrievalStats' | 'stoppedByUser'
+  | 'sourceDocuments'
+  | 'groundingCaveats'
+  | 'retrievalStats'
+  | 'stoppedByUser'
+  | 'cutShortReason'
 > & {
   sourceDocuments?: string | null;
   groundingCaveats?: string | null;
   retrievalStats?: string | null;
   stoppedByUser?: number | null;
+  cutShortReason?: string | null;
 };
+
+const parseCutShortReason = (
+  cutShortReason?: string | null
+): CutShortReason | undefined =>
+  cutShortReason === MEMORY_CUT_SHORT ? MEMORY_CUT_SHORT : undefined;
 
 const GROUNDING_CAVEAT_KINDS: GroundingCaveatKind[] = [
   'figure',
@@ -217,6 +233,8 @@ const parseSourceDocuments = (
           source.kind === 'web' && typeof source.read === 'boolean'
             ? source.read
             : undefined,
+        ordinal:
+          typeof source.ordinal === 'number' ? source.ordinal : undefined,
       }));
   } catch {
     return undefined;
@@ -294,6 +312,7 @@ export const getChatMessages = async (
     groundingCaveats: parseGroundingCaveats(message.groundingCaveats),
     retrievalStats: parseRetrievalStats(message.retrievalStats),
     stoppedByUser: message.stoppedByUser === 1,
+    cutShortReason: parseCutShortReason(message.cutShortReason),
   }));
 };
 
@@ -308,12 +327,23 @@ export const markMessageStopped = async (
   ]);
 };
 
+export const markMessageCutShort = async (
+  db: SQLiteDatabase,
+  messageId: number,
+  reason: CutShortReason | null
+): Promise<void> => {
+  await db.runAsync(`UPDATE messages SET cutShortReason = ? WHERE id = ?`, [
+    reason,
+    messageId,
+  ]);
+};
+
 export const persistMessage = async (
   db: SQLiteDatabase,
   message: Omit<Message, 'id' | 'timestamp'>
 ): Promise<number> => {
   const result = await db.runAsync(
-    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, retrievalStats, stoppedByUser) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+    `INSERT INTO messages (chatId, role, content, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, retrievalStats, stoppedByUser, cutShortReason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
     [
       message.chatId,
       message.role,
@@ -331,6 +361,7 @@ export const persistMessage = async (
         : null,
       serializeRetrievalStats(message.retrievalStats),
       message.stoppedByUser ? 1 : 0,
+      message.cutShortReason ?? null,
     ]
   );
 
@@ -348,7 +379,7 @@ export const persistMessage = async (
 
 // SQLite's default SQLITE_MAX_VARIABLE_NUMBER is 999 on older builds.
 // 12 params per row, so 80 rows per batch keeps us well under the limit.
-const IMPORT_BATCH_SIZE = 80;
+const IMPORT_BATCH_SIZE = 70;
 const MAX_PREVIEW_LENGTH = 72;
 
 export const importMessages = async (
@@ -361,7 +392,7 @@ export const importMessages = async (
   for (let i = 0; i < messages.length; i += IMPORT_BATCH_SIZE) {
     const batch = messages.slice(i, i + IMPORT_BATCH_SIZE);
     const placeholders = batch
-      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .join(', ');
     const flattenedValues = batch.flatMap((msg) => [
       chatId,
@@ -379,9 +410,10 @@ export const importMessages = async (
         : null,
       serializeRetrievalStats(msg.retrievalStats),
       msg.stoppedByUser ? 1 : 0,
+      parseCutShortReason(msg.cutShortReason) ?? null,
     ]);
     await db.runAsync(
-      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, retrievalStats, stoppedByUser) VALUES ${placeholders}`,
+      `INSERT INTO messages (chatId, role, content, timestamp, modelName, tokensPerSecond, timeToFirstToken, imagePath, documentName, sourceDocuments, groundingCaveats, retrievalStats, stoppedByUser, cutShortReason) VALUES ${placeholders}`,
       flattenedValues
     );
   }
@@ -423,8 +455,9 @@ const copyMessagesWithIdMap = async (
           sourceDocuments,
           groundingCaveats,
           retrievalStats,
-          stoppedByUser
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          stoppedByUser,
+          cutShortReason
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         chatId,
@@ -444,6 +477,7 @@ const copyMessagesWithIdMap = async (
           : null,
         serializeRetrievalStats(msg.retrievalStats),
         msg.stoppedByUser ? 1 : 0,
+        msg.cutShortReason ?? null,
       ]
     );
     idMap.set(msg.id, result.lastInsertRowId);

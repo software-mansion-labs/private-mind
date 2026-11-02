@@ -12,10 +12,13 @@ import {
   DMSans_600SemiBold_Italic,
 } from '@expo-google-fonts/dm-sans';
 import { fontFamily } from '../styles/fontStyles';
-import { ThemeProvider } from '../context/ThemeContext';
+import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import AppToast from '../components/AppToast';
+import AppNotices from '../components/notices/AppNotices';
+import { useUnsupportedCpuNotice } from '../hooks/useUnsupportedCpuNotice';
+import { useTurnResumesOnForeground } from '../hooks/useTurnResumesOnForeground';
 import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Stack } from 'expo-router';
@@ -25,6 +28,8 @@ import SplashScreenAnimation from '../components/SplashScreenAnimation';
 import { initExecutorch } from 'react-native-executorch/legacy';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import { removeBundledModelLeftovers } from '../utils/bundledModelCleanup';
+import { noteAppLaunch } from '../utils/reviewPrompt';
+import { useDownloadsSurviveBackground } from '../hooks/useDownloadsSurviveBackground';
 
 initExecutorch({ resourceFetcher: ExpoResourceFetcher });
 
@@ -32,8 +37,12 @@ SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ fade: false, duration: 0 });
 
 function RootNavigator() {
+  useTurnResumesOnForeground();
+  useDownloadsSurviveBackground();
+  useUnsupportedCpuNotice();
   useEffect(() => {
     SplashScreen.hideAsync();
+    noteAppLaunch();
     removeBundledModelLeftovers().catch((error) =>
       console.warn('Failed to clean up leftover model files', error)
     );
@@ -92,6 +101,13 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen
+        name="(modals)/downloads"
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
         name="(modals)/onboarding"
         options={{
           headerShown: false,
@@ -111,6 +127,11 @@ function RootNavigator() {
   );
 }
 
+function ThemedStatusBar() {
+  const { isDark } = useTheme();
+  return <StatusBar style={isDark ? 'light' : 'dark'} />;
+}
+
 export default function Layout() {
   useFonts({
     [fontFamily.regular]: DMSans_400Regular,
@@ -125,15 +146,17 @@ export default function Layout() {
     <GestureHandlerRootView>
       <SQLiteProvider databaseName="executorch.db" onInit={initDatabase}>
         <ThemeProvider>
-          <VectorStoreProvider>
-            <KeyboardProvider>
-              <BottomSheetModalProvider>
-                <RootNavigator />
-                {Platform.OS === 'android' && <StatusBar style="auto" />}
-              </BottomSheetModalProvider>
-              <AppToast />
-            </KeyboardProvider>
-          </VectorStoreProvider>
+          <AppNotices>
+            <VectorStoreProvider>
+              <KeyboardProvider>
+                <BottomSheetModalProvider>
+                  <RootNavigator />
+                  {Platform.OS === 'android' && <ThemedStatusBar />}
+                </BottomSheetModalProvider>
+                <AppToast />
+              </KeyboardProvider>
+            </VectorStoreProvider>
+          </AppNotices>
           <SplashScreenAnimation />
         </ThemeProvider>
       </SQLiteProvider>

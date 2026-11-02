@@ -108,6 +108,42 @@ describe('useModelSwitch', () => {
     );
   });
 
+  it('tells whoever waited which model the switch landed on', async () => {
+    const loadModel = jest.fn().mockResolvedValue(true);
+    const { result } = renderHook(() => useModelSwitch(loadModel));
+
+    act(() => result.current.pickModel(makeModel(2)));
+    const settled = result.current.whenSettled();
+    act(() => result.current.handleSheetStateChange(false));
+    await flushFrames();
+
+    expect(await settled).toEqual(expect.objectContaining({ id: 2 }));
+  });
+
+  it('tells a waiter that nothing landed when the load failed', async () => {
+    const loadModel = jest.fn().mockResolvedValue(false);
+    const { result } = renderHook(() => useModelSwitch(loadModel));
+
+    act(() => result.current.pickModel(makeModel(2)));
+    const settled = result.current.whenSettled();
+    act(() => result.current.handleSheetStateChange(false));
+    await flushFrames();
+
+    expect(await settled).toBeUndefined();
+  });
+
+  it('tells a waiter that nothing landed when the pick was abandoned', async () => {
+    const loadModel = jest.fn().mockResolvedValue(true);
+    const { result } = renderHook(() => useModelSwitch(loadModel));
+
+    act(() => result.current.pickModel(makeModel(2)));
+    const settled = result.current.whenSettled();
+    act(() => result.current.handleSheetStateChange(true));
+
+    expect(await settled).toBeUndefined();
+    expect(loadModel).not.toHaveBeenCalled();
+  });
+
   it('does not load after unmount', async () => {
     const loadModel = jest.fn().mockResolvedValue(undefined);
     const { result, unmount } = renderHook(() => useModelSwitch(loadModel));

@@ -2,7 +2,9 @@ import React, { useRef, useState } from 'react';
 import { Text, StyleSheet, Alert, Platform, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useModelStore } from '../../../store/modelStore';
-import ModalHeader from '../../../components/ModalHeader';
+import GlassScreenHeader, {
+  useGlassScreenHeaderHeight,
+} from '../../../components/GlassScreenHeader';
 import TextFieldInput from '../../../components/TextFieldInput';
 import { fontSizes, fontFamily } from '../../../styles/fontStyles';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
@@ -25,7 +27,8 @@ export default function EditRemoteModelScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const router = useRouter();
 
-  const { styles } = useThemedStyles(createStyles);
+  const headerHeight = useGlassScreenHeaderHeight(true);
+  const { styles } = useThemedStyles(createStyles, headerHeight);
 
   const { getModelById, editModel } = useModelStore();
   const model = getModelById(modelId);
@@ -91,7 +94,6 @@ export default function EditRemoteModelScreen() {
       style={styles.keyboardAvoidingView}
     >
       <View style={styles.container}>
-        <ModalHeader title="Edit Remote Model" onClose={() => router.back()} />
         <ScrollView
           contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
@@ -140,11 +142,17 @@ export default function EditRemoteModelScreen() {
         </ScrollView>
         <PrimaryButton text="Save changes" onPress={handleSave} />
       </View>
+      <GlassScreenHeader
+        title="Edit Remote Model"
+        onBack={() => router.back()}
+        icon="close"
+        sheet
+      />
     </CustomKeyboardAvoidingView>
   );
 }
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, headerHeight: number) =>
   StyleSheet.create({
     keyboardAvoidingView: {
       flex: 1,
@@ -152,12 +160,13 @@ const createStyles = (theme: Theme) =>
     },
     container: {
       flex: 1,
-      padding: 16,
+      paddingHorizontal: 16,
       paddingBottom: theme.insets.bottom + 16,
       justifyContent: 'space-between',
     },
     scrollViewContent: {
       gap: 24,
+      paddingTop: headerHeight + 24,
       paddingBottom: 24,
     },
     textFieldSection: {

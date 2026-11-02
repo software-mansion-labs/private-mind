@@ -1,8 +1,14 @@
 import ExpoModulesCore
 
+@_silgen_name("pm_mlx_release_cache") private func pmMlxReleaseCache()
+
 public class MemoryProbeModule: Module {
   public func definition() -> ModuleDefinition {
     Name("MemoryProbe")
+
+    Function("releaseMlxCache") {
+      pmMlxReleaseCache()
+    }
 
     Function("getPhysFootprintBytes") { () -> Double in
       var info = task_vm_info_data_t()

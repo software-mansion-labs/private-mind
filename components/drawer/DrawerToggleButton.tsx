@@ -1,16 +1,22 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import { Keyboard, Pressable, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import Menu from '../../assets/icons/menu.svg';
 import { useNavigation } from 'expo-router';
-import { DrawerContentComponentProps } from '@react-navigation/drawer';
+import { DrawerContentComponentProps } from 'expo-router/drawer';
+import { pressedOpacity } from '../../styles/pressable';
 import { useTurnInFlight } from '../../hooks/useTurnInFlight';
 import { useSteadyFlag } from '../../hooks/useSteadyFlag';
 import { showTurnInFlightNotice } from '../../utils/turnInFlightNotice';
 import { TURN_IN_FLIGHT_HOLD_MS } from '../../constants/header-actions';
 import HeaderActionIcon from '../HeaderActionIcon';
+import HeaderGlassButton, { headerGlassButtonFill } from '../HeaderGlassButton';
 
-const DrawerToggleButton = () => {
+interface Props {
+  glass?: boolean;
+}
+
+const DrawerToggleButton = ({ glass = false }: Props) => {
   const navigation: DrawerContentComponentProps['navigation'] = useNavigation();
   const { styles, theme } = useThemedStyles(createStyles);
   const turnInFlight = useTurnInFlight();
@@ -21,13 +27,17 @@ const DrawerToggleButton = () => {
       showTurnInFlightNotice();
       return;
     }
+    Keyboard.dismiss();
     navigation.openDrawer();
   };
 
-  return (
-    <TouchableOpacity
+  const button = (
+    <Pressable
       onPress={handlePress}
-      style={styles.button}
+      style={({ pressed }) => [
+        glass ? headerGlassButtonFill : styles.button,
+        pressed && pressedOpacity,
+      ]}
       hitSlop={15}
       testID="drawer-toggle"
     >
@@ -38,8 +48,12 @@ const DrawerToggleButton = () => {
         color={theme.text.primary}
         dimmed={looksBusy}
       />
-    </TouchableOpacity>
+    </Pressable>
   );
+
+  if (!glass) return button;
+
+  return <HeaderGlassButton edge="leading">{button}</HeaderGlassButton>;
 };
 
 export default React.memo(DrawerToggleButton);

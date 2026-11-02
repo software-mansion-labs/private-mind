@@ -11,7 +11,7 @@ import React, {
 import {
   View,
   TextInput as RNTextInput,
-  TouchableOpacity,
+  Pressable,
   Text,
   StyleSheet,
   Keyboard,
@@ -32,11 +32,14 @@ import {
   type LibraryImage,
 } from '../../hooks/useAttachment';
 import AttachmentOverlay from './attachments/AttachmentOverlay';
+import { USES_SYSTEM_PHOTO_PICKER } from './attachments/usePhotoLibrary';
 import { COMPOSER, COMPOSER_STRIP_HEIGHT } from './attachments/constants';
 import { useAttachmentFlights } from './attachments/useAttachmentFlights';
 import { useAttachmentPanel } from './attachments/useAttachmentPanel';
 import { useSheetGeometry } from './attachments/useSheetGeometry';
 import { Model } from '../../database/modelRepository';
+import { isWebSearchReady } from '../../constants/model-profiles';
+import { hasMemoryForWebSearch } from '../../utils/modelCompatibility';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useChatStore } from '../../store/chatStore';
@@ -46,8 +49,10 @@ import LinkIcon from '../../assets/icons/link-alt.svg';
 import { detectUrls } from '../../utils/web/url/urlDetection';
 import { hostname } from '../../utils/web/hostname';
 import { showPermissionToast } from '../../utils/permissionToast';
+import { Feedback } from '../../utils/Feedback';
 import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
+import ComposerModelMenu from './ComposerModelMenu';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
 import WhatsNewCard from '../WhatsNewCard';
@@ -56,20 +61,26 @@ import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
 import { useEmbeddingDownloadPrompt } from './useEmbeddingDownloadPrompt';
 import type { SendRefusal } from './useSendChatMessage';
+import { UNSUPPORTED_CPU_REFUSAL } from '../../constants/cpu-support';
 import {
   BAR_GROW_DURATION,
   BAR_GROW_LAYOUT,
   useBarGrowth,
 } from './useBarGrowth';
+import { pressedOpacity } from '../../styles/pressable';
 
 const SENT_ECHO_WINDOW_MS = 300;
+const MODEL_MENU_GAP = 8;
 
 const REFUSAL_COPY: Record<SendRefusal, string | null> = {
   'nothing-to-send': 'Add a message or an attachment first.',
-  'model-loading': 'Wait for the model to finish loading.',
+  'cpu-unsupported': UNSUPPORTED_CPU_REFUSAL,
+  'model-not-started': 'Could not start the model. Try again.',
   'busy': 'Wait for the response to finish or stop it first.',
   'chat-not-created': 'Could not start this chat. Try again.',
   'image-not-saved': null,
+  'image-unsupported':
+    "This model can't see images. Remove the photo or pick a model with Vision.",
 };
 
 interface Props {
@@ -80,11 +91,16 @@ interface Props {
     attachments?: Attachment[]
   ) => boolean | void | SendRefusal | Promise<boolean | void | SendRefusal>;
   onSelectModel: () => void;
+  onPickModel: (model: Model) => void;
+  onShowAllModels: () => void;
+  modelLocked?: boolean;
+  opensModelMenu?: boolean;
   onSelectPrompt: (prompt: string) => void;
   ref: Ref<{
     setInput: (text: string) => void;
   }>;
   model: Model | undefined;
+  pendingModel?: Model;
   isVisionModel: boolean;
   extraContentPadding: SharedValue<number>;
   onHeightChange?: (height: number) => void;
@@ -103,9 +119,14 @@ const ChatBar = ({
   chatId,
   onSend,
   onSelectModel,
+  onPickModel,
+  onShowAllModels,
+  modelLocked = false,
+  opensModelMenu = false,
   onSelectPrompt,
   ref,
   model,
+  pendingModel,
   isVisionModel,
   extraContentPadding,
   onHeightChange,
@@ -128,6 +149,8 @@ const ChatBar = ({
   const phantomChatStarts = useChatStore((state) => state.phantomChatStarts);
   const [userInput, setUserInput] = useState('');
   const lastSentRef = useRef<{ text: string; at: number } | null>(null);
+  const heldUntilSwitchLandsRef = useRef<string | null>(null);
+  const [isHoldingInput, setIsHoldingInput] = useState(false);
 
   const handleChangeText = useCallback((text: string) => {
     const justSent = lastSentRef.current;
@@ -145,6 +168,7 @@ const ChatBar = ({
     attachments,
     embeddingDownloadSheetRef,
     addImages,
+    pickSystemPhoto,
     presentDownloadSheet,
     pickDocument,
     addUrlSource,
@@ -162,6 +186,7 @@ const ChatBar = ({
 
   const {
     width: screenWidth,
+    height: windowHeight,
     composerBottom,
     gridWidth,
     gridHeight,
@@ -169,6 +194,33 @@ const ChatBar = ({
     sheetBottom,
     menuMaxBottom,
   } = useSheetGeometry(panelWindowHeight);
+
+  const inputCardRef = useRef<View>(null);
+  const [modelMenuBottom, setModelMenuBottom] = useState<number | null>(null);
+  const openModelMenu = useCallback(() => {
+    inputCardRef.current?.measureInWindow((_x, y) => {
+      Feedback.sheetOpen();
+      setModelMenuBottom(windowHeight - y + MODEL_MENU_GAP);
+    });
+  }, [windowHeight]);
+  const closeModelMenu = useCallback(() => setModelMenuBottom(null), []);
+  const openedModelMenuOnEntry = useRef(false);
+  useEffect(() => {
+    if (!opensModelMenu || openedModelMenuOnEntry.current) return;
+    openedModelMenuOnEntry.current = true;
+    openModelMenu();
+  }, [opensModelMenu, openModelMenu]);
+  const handlePickModel = useCallback(
+    (picked: Model) => {
+      setModelMenuBottom(null);
+      if (picked.id !== model?.id) onPickModel(picked);
+    },
+    [model?.id, onPickModel]
+  );
+  const handleShowAllModels = useCallback(() => {
+    setModelMenuBottom(null);
+    onShowAllModels();
+  }, [onShowAllModels]);
 
   const [filesBusy, setFilesBusy] = useState(false);
   const handleSelectFiles = useCallback(() => {
@@ -187,10 +239,37 @@ const ChatBar = ({
     });
   }, []);
 
+  const handleSelectPhotos = useCallback(
+    () =>
+      pickSystemPhoto().catch((error) => {
+        console.error('Failed to open the photo picker:', error);
+        return 'canceled' as const;
+      }),
+    [pickSystemPhoto]
+  );
+
+  const isGeneratingHere = useLLMStore(
+    (state) => state.isGenerating && state.generatingForChatId === chatId
+  );
+  const isProcessingPromptHere = useLLMStore(
+    (state) => state.isProcessingPrompt && state.generatingForChatId === chatId
+  );
+  const isRespondingHere = isGeneratingHere || isProcessingPromptHere;
+
+  const showAttachmentsBlocked = useCallback(() => {
+    Toast.show({
+      type: 'defaultToast',
+      text1: 'Wait for the response to finish or stop it first.',
+    });
+  }, []);
+
   const panel = useAttachmentPanel({
     onSelectFiles: handleSelectFiles,
+    onSelectPhotos: USES_SYSTEM_PHOTO_PICKER ? handleSelectPhotos : undefined,
     canAttachImages: isVisionModel,
     onImagesUnsupported: showImagesUnsupported,
+    attachmentsBlocked: isRespondingHere,
+    onAttachmentsBlocked: showAttachmentsBlocked,
   });
 
   const handleAttachPhotos = useCallback(
@@ -224,10 +303,17 @@ const ChatBar = ({
 
   const pendingIds = flights.map((flight) => flight.photo.id);
 
+  const panelOpenRef = useRef(false);
   useEffect(() => {
+    panelOpenRef.current = panel.mode !== 'closed';
     if (panel.mode === 'closed') markPanelClosed();
     else markPanelOpen();
   }, [panel.mode, markPanelClosed, markPanelOpen]);
+
+  const { dismiss: dismissPanel } = panel;
+  const dismissPanelIfOpen = useCallback(() => {
+    if (panelOpenRef.current) dismissPanel();
+  }, [dismissPanel]);
 
   useEffect(() => {
     onAttachmentSheetStateChange?.(panel.mode !== 'closed');
@@ -244,7 +330,30 @@ const ChatBar = ({
     onWebSearchToggle,
     presentDownloadSheet,
     markDownloadSheetClosed,
+    onWillPresentWebPrompt: dismissPanelIfOpen,
   });
+  const webSearchToggle = onWebSearchToggle ? handleWebSearchToggle : undefined;
+  const thinkingAvailable = !model || model.thinking === true;
+  const webSearchAvailable =
+    isWebSearchReady(model) && hasMemoryForWebSearch(model);
+  const menuTools = useMemo(
+    () => ({
+      thinkingEnabled,
+      thinkingAvailable,
+      onThinkingToggle,
+      webSearchEnabled,
+      webSearchAvailable,
+      onWebSearchToggle: webSearchToggle,
+    }),
+    [
+      thinkingEnabled,
+      thinkingAvailable,
+      onThinkingToggle,
+      webSearchEnabled,
+      webSearchAvailable,
+      webSearchToggle,
+    ]
+  );
 
   const textInputRef = useRef<RNTextInput>(null);
   // iOS-only: bump the TextInput key to force a remount when a prompt
@@ -273,6 +382,8 @@ const ChatBar = ({
     composerKeyRef.current = composerKey;
     setUserInput('');
     lastSentRef.current = null;
+    heldUntilSwitchLandsRef.current = null;
+    setIsHoldingInput(false);
     if (Platform.OS === 'ios') setIosInputKey((key) => key + 1);
   }
 
@@ -285,30 +396,19 @@ const ChatBar = ({
     ...(onBarGrow ? { onBarGrow } : {}),
   });
 
-  const isGeneratingHere = useLLMStore(
-    (state) => state.isGenerating && state.generatingForChatId === chatId
-  );
-  const isProcessingPromptHere = useLLMStore(
-    (state) => state.isProcessingPrompt && state.generatingForChatId === chatId
-  );
+  const aTurnIsStarting = useLLMStore((state) => state.isProcessingPrompt);
   const interrupt = useLLMStore((state) => state.interrupt);
   const loadModel = useLLMStore((state) => state.loadModel);
   const loadedModel = useLLMStore((state) => state.model);
   const loadSelectedModel = useCallback(async () => {
+    if (modelSwitching) return;
     if (model?.isDownloaded && loadedModel?.id !== model.id) {
       return loadModel(model);
     }
-  }, [model, loadedModel, loadModel]);
+  }, [model, loadedModel, loadModel, modelSwitching]);
 
   const imageAttachment = attachments.find((a) => a.type === 'image');
   const hasLoadingAttachment = attachments.some((a) => a.status === 'loading');
-
-  const showModelSwitchingToast = useCallback(() => {
-    Toast.show({
-      type: 'defaultToast',
-      text1: 'Wait for the model to finish loading.',
-    });
-  }, []);
 
   const handleAttach = useCallback(() => {
     loadSelectedModel();
@@ -335,37 +435,99 @@ const ChatBar = ({
   const [sendPending, setSendPending] = useState(false);
   const [sendInFlight, setSendInFlight] = useState(false);
 
+  const clearComposer = useCallback(
+    (sentText: string) => {
+      lastSentRef.current = sentText
+        ? { text: sentText, at: Date.now() }
+        : null;
+      if (Platform.OS === 'ios') {
+        textInputRef.current?.blur();
+        setIosInputKey((key) => key + 1);
+      }
+      setUserInput('');
+      clearAll({ cleanupSources: false });
+    },
+    [clearAll]
+  );
+
+  const releaseHeldInput = useCallback(
+    (clear: boolean) => {
+      const held = heldUntilSwitchLandsRef.current;
+      if (held === null) return;
+      heldUntilSwitchLandsRef.current = null;
+      setIsHoldingInput(false);
+      if (clear) clearComposer(held);
+    },
+    [clearComposer]
+  );
+
   useEffect(() => {
-    if (isGeneratingHere || isProcessingPromptHere) setSendInFlight(false);
+    if (!isGeneratingHere && !isProcessingPromptHere) return;
+    setSendInFlight(false);
+    setSendPending(false);
   }, [isGeneratingHere, isProcessingPromptHere]);
 
+  const settleSend = useCallback(
+    (
+      outcome: ReturnType<Props['onSend']>,
+      inputToSend: string,
+      attachmentsToSend: Attachment[]
+    ) => {
+      Promise.resolve(outcome)
+        .then((accepted) => {
+          if (accepted !== false && typeof accepted !== 'string') return;
+          lastSentRef.current = null;
+          setUserInput((current) => current || inputToSend);
+          if (attachmentsToSend.length) restoreAttachments(attachmentsToSend);
+          const text1 = REFUSAL_COPY[accepted === false ? 'busy' : accepted];
+          if (text1) Toast.show({ type: 'defaultToast', text1 });
+        })
+        .catch((error) => {
+          console.error('Failed to send message:', error);
+        })
+        .finally(() => {
+          setSendPending(false);
+          setSendInFlight(false);
+        });
+    },
+    [restoreAttachments]
+  );
+
+  useEffect(() => {
+    if (aTurnIsStarting) releaseHeldInput(true);
+  }, [aTurnIsStarting, releaseHeldInput]);
+
   const handleSend = useCallback(() => {
-    if (hasLoadingAttachment) return;
+    if (hasLoadingAttachment || heldUntilSwitchLandsRef.current !== null) {
+      return;
+    }
     const attachmentsToSend = attachments;
     const imageUriToSend = imageAttachment?.uri;
-    const inputToSend = userInput;
+    const inputToSend = userInput.trim();
+    const holdUntilSwitchLands = modelSwitching;
     setSendInFlight(true);
     const outcome = onSend(inputToSend, imageUriToSend, attachmentsToSend);
     Keyboard.dismiss();
     if (disabled || modelSwitching) setSendPending(true);
 
-    lastSentRef.current = inputToSend
-      ? { text: inputToSend, at: Date.now() }
-      : null;
-    if (Platform.OS === 'ios') {
-      textInputRef.current?.blur();
-      setIosInputKey((key) => key + 1);
+    if (holdUntilSwitchLands) {
+      heldUntilSwitchLandsRef.current = userInput;
+      setIsHoldingInput(true);
+    } else {
+      clearComposer(userInput);
     }
-    setUserInput('');
-    clearAll({ cleanupSources: false });
     Promise.resolve(outcome)
       .then((accepted) => {
         if (accepted !== false && typeof accepted !== 'string') return;
+        const text1 = REFUSAL_COPY[accepted === false ? 'busy' : accepted];
+        if (text1) Toast.show({ type: 'defaultToast', text1 });
+        if (holdUntilSwitchLands) {
+          releaseHeldInput(false);
+          return;
+        }
         lastSentRef.current = null;
         setUserInput((current) => current || inputToSend);
         if (attachmentsToSend.length) restoreAttachments(attachmentsToSend);
-        const text1 = REFUSAL_COPY[accepted === false ? 'busy' : accepted];
-        if (text1) Toast.show({ type: 'defaultToast', text1 });
       })
       .catch((error) => {
         console.error('Failed to send message:', error);
@@ -373,6 +535,7 @@ const ChatBar = ({
       .finally(() => {
         setSendPending(false);
         setSendInFlight(false);
+        if (holdUntilSwitchLands) releaseHeldInput(true);
       });
   }, [
     onSend,
@@ -380,7 +543,8 @@ const ChatBar = ({
     userInput,
     imageAttachment,
     attachments,
-    clearAll,
+    clearComposer,
+    releaseHeldInput,
     restoreAttachments,
     hasLoadingAttachment,
     modelSwitching,
@@ -424,11 +588,15 @@ const ChatBar = ({
   const [showSpeechInput, setShowSpeechInput] = useState(false);
 
   const openSpeechInput = async () => {
-    if (modelSwitching || disabled) {
-      showModelSwitchingToast();
+    if (hasLoadingAttachment) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: 'Wait for the attachment to finish loading.',
+      });
       return;
     }
 
+    Feedback.speechMode();
     const permissionStatus = await AudioManager.requestRecordingPermissions();
     if (permissionStatus !== 'Granted') {
       showPermissionToast(
@@ -438,6 +606,7 @@ const ChatBar = ({
     }
 
     loadSelectedModel();
+    Keyboard.dismiss();
     setShowSpeechInput(true);
   };
 
@@ -448,11 +617,14 @@ const ChatBar = ({
         const attachmentsToSend = attachments;
         const imageUriToSend = imageAttachment?.uri;
         clearAll({ cleanupSources: false });
-        Promise.resolve(
-          onSend(transcript, imageUriToSend, attachmentsToSend)
-        ).catch((error) => {
-          console.error('Failed to send transcript:', error);
-        });
+        setSendInFlight(true);
+        setSendPending(true);
+        settleSend(
+          onSend(transcript, imageUriToSend, attachmentsToSend),
+          transcript,
+          attachmentsToSend
+        );
+        Keyboard.dismiss();
       }
     };
 
@@ -461,6 +633,17 @@ const ChatBar = ({
         <ChatSpeechInput
           onSubmit={handleSubmit}
           onCancel={() => setShowSpeechInput(false)}
+          onInterrupted={(heard) => {
+            setShowSpeechInput(false);
+            if (!heard) return;
+            setUserInput((current) =>
+              current ? `${current} ${heard}` : heard
+            );
+            Toast.show({
+              type: 'defaultToast',
+              text1: 'Dictation stopped. What it heard is in the message box.',
+            });
+          }}
         />
       </View>
     );
@@ -469,14 +652,20 @@ const ChatBar = ({
   if (chatId && !model) {
     return (
       <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
-        <TouchableOpacity style={styles.modelSelection} onPress={onSelectModel}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.modelSelection,
+            pressed && pressedOpacity,
+          ]}
+          onPress={onSelectModel}
+        >
           <Text style={styles.selectedModel}>Select Model</Text>
           <RotateLeft
             width={20}
             height={20}
             style={{ color: theme.text.primary }}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }
@@ -496,7 +685,7 @@ const ChatBar = ({
               <PromptSuggestions onSelectPrompt={onSelectPrompt} />
             </View>
           )}
-          <View style={styles.inputContainer}>
+          <View ref={inputCardRef} style={styles.inputContainer}>
             <Animated.View
               pointerEvents={attachments.length ? 'auto' : 'none'}
               style={[styles.strip, stripStyle]}
@@ -529,8 +718,11 @@ const ChatBar = ({
               onLayout={handleRowsBelowStripLayout}
             >
               {showIndexChip && (
-                <TouchableOpacity
-                  style={styles.indexUrlChip}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.indexUrlChip,
+                    pressed && pressedOpacity,
+                  ]}
                   onPress={handleIndexUrl}
                   testID="index-url-chip"
                 >
@@ -542,7 +734,7 @@ const ChatBar = ({
                   <Text style={styles.indexUrlChipText} numberOfLines={1}>
                     Index {hostname(detectedUrl!)}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               )}
               <View style={styles.content}>
                 <TextInputWrapper
@@ -557,16 +749,16 @@ const ChatBar = ({
                     multiline
                     numberOfLines={3}
                     onFocus={() => loadSelectedModel()}
-                    placeholder="Ask about anything..."
+                    placeholder="Ask anything"
                     placeholderTextColor={theme.text.onChatBarMuted}
                     value={userInput}
+                    editable={!isHoldingInput}
                     onChangeText={handleChangeText}
                   />
                 </TextInputWrapper>
               </View>
               <ChatBarActions
                 plusOut={panel.plusOut}
-                modelBusy={disabled || modelSwitching}
                 sendPending={sendPending}
                 sendInFlight={sendInFlight}
                 onAttach={handleAttach}
@@ -578,12 +770,14 @@ const ChatBar = ({
                 isProcessingPrompt={isProcessingPromptHere}
                 onInterrupt={interrupt}
                 onSpeechInput={openSpeechInput}
+                model={model}
+                pendingModel={pendingModel}
+                onSelectModel={openModelMenu}
+                modelLocked={modelLocked}
                 thinkingEnabled={thinkingEnabled}
                 onThinkingToggle={onThinkingToggle}
                 webSearchEnabled={webSearchEnabled}
-                onWebSearchToggle={
-                  onWebSearchToggle ? handleWebSearchToggle : undefined
-                }
+                onWebSearchToggle={webSearchToggle}
               />
             </View>
           </View>
@@ -607,6 +801,16 @@ const ChatBar = ({
             attachedIds={attachments.map((attachment) => attachment.id)}
             maxSelection={MAX_IMAGE_ATTACHMENTS}
             imagesEnabled={isVisionModel}
+            attachmentsBlocked={isRespondingHere}
+            tools={menuTools}
+          />
+          <ComposerModelMenu
+            visible={modelMenuBottom !== null}
+            anchorBottom={modelMenuBottom ?? 0}
+            currentModelId={model?.id}
+            onPick={handlePickModel}
+            onShowAllModels={handleShowAllModels}
+            onClose={closeModelMenu}
           />
           <EmbeddingDownloadSheet
             bottomSheetModalRef={embeddingDownloadSheetRef}
@@ -629,10 +833,12 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'column',
       justifyContent: 'center',
       paddingHorizontal: 16,
+      flexShrink: 1,
     },
     suggestionsContainer: {
-      marginBottom: 12,
-      gap: 12,
+      flexShrink: 1,
+      marginBottom: 20,
+      gap: 24,
     },
     modelSelection: {
       flexDirection: 'row',
@@ -653,12 +859,16 @@ const createStyles = (theme: Theme) =>
     content: {
       flexDirection: 'row',
       width: '100%',
+      marginBottom: COMPOSER.inputGapBelow,
     },
     inputContainer: {
       flexDirection: 'column',
       backgroundColor: theme.bg.chatBar,
+      borderWidth: 1,
+      borderColor: theme.border.chatBar,
       borderRadius: 18,
       padding: COMPOSER.cardPadding,
+      paddingTop: COMPOSER.cardPaddingTop,
       justifyContent: 'center',
     },
     textInputWrapper: {

@@ -6,12 +6,16 @@ import { useLLMStore } from '../store/llmStore';
 import { useModelStore } from '../store/modelStore';
 import { getNextChatId } from '../database/chatRepository';
 import { getLastUsedModelId, setLastUsedModelId } from './lastUsedModel';
+import type { ChatEntryAction } from '../constants/chat-route-params';
 
-type NavMode = 'push' | 'replace';
+type NavMode = 'push' | 'replace' | 'replace-immediately';
 
 type NavTarget = {
   readonly pathname: string;
-  readonly params: { readonly modelId: string };
+  readonly params: {
+    readonly modelId: string;
+    readonly entryAction?: ChatEntryAction;
+  };
 };
 
 const NAV_SETTLE_MS = 50;
@@ -45,7 +49,8 @@ const replaceWhenNavSettles = (
 export const startPhantomChat = async (
   db: SQLiteDatabase,
   mode: NavMode = 'push',
-  explicitModel?: Model
+  explicitModel?: Model,
+  entryAction?: ChatEntryAction
 ) => {
   const { downloadedModels } = useModelStore.getState();
   if (!explicitModel && downloadedModels.length === 0) {
@@ -71,10 +76,16 @@ export const startPhantomChat = async (
 
   const target = {
     pathname: `/chat/${nextChatId}`,
-    params: { modelId: String(model.id) },
+    params: entryAction
+      ? { modelId: String(model.id), entryAction }
+      : { modelId: String(model.id) },
   } as const;
 
-  if (mode === 'replace') {
+  if (mode === 'replace-immediately') {
+    if (useChatStore.getState().phantomChat?.id === nextChatId) {
+      router.replace(target);
+    }
+  } else if (mode === 'replace') {
     await replaceWhenNavSettles(
       target,
       () => useChatStore.getState().phantomChat?.id === nextChatId
