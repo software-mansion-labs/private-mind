@@ -188,7 +188,7 @@ interface ModelStore {
   ) => Promise<void>;
 }
 
-const MS_PER_FRAME = 16; // ~60 fps
+const PROGRESS_PUBLISH_INTERVAL_MS = 250;
 
 const CANCEL_POLL_MS = 50;
 const CANCEL_DEADLINE_MS = 30_000;
@@ -361,20 +361,17 @@ const runDownload = async (model: Model, attempt: DownloadAttempt) => {
 
     recordDownloadEvent(model.id, model.modelName, 'started');
 
-    let lastReportedPercent = -1;
-
-    // used for avoiding updates more frequent than 60 per second, which can cause
-    // glitches due to the UI becoming out of sync with the actual progress
-    let lastReportTime = Date.now();
+    let lastReportedProgress = 0;
+    let lastReportTime = 0;
 
     const reportProgress = (p: number) => {
-      const currentPercent = Math.floor(p * 100);
+      const now = Date.now();
       if (
-        currentPercent !== lastReportedPercent &&
-        lastReportTime + MS_PER_FRAME < Date.now()
+        p > lastReportedProgress &&
+        now - lastReportTime >= PROGRESS_PUBLISH_INTERVAL_MS
       ) {
-        lastReportedPercent = currentPercent;
-        lastReportTime = Date.now();
+        lastReportedProgress = p;
+        lastReportTime = now;
         publish(p, ModelState.Downloading);
       }
     };

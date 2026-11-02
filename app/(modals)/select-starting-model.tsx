@@ -26,6 +26,10 @@ import {
   isModelCompatible,
 } from '../../utils/modelCompatibility';
 import { radius, space, stroke } from '../../constants/design-system';
+import {
+  formatDownloadPercent,
+  hasDownloadStarted,
+} from '../../utils/downloadProgress';
 
 const APP_ICON_SIZE = 72;
 const SECTION_GAP = 28;
@@ -165,8 +169,7 @@ function SelectStartingModelScreen() {
           : (downloadStates[model.id]?.progress ?? 0)),
     0
   );
-  const overallPercent =
-    totalSize > 0 ? Math.floor((downloadedSize / totalSize) * 100) : 0;
+  const overallProgress = totalSize > 0 ? downloadedSize / totalSize : 0;
 
   const primaryButton = {
     select: {
@@ -175,7 +178,9 @@ function SelectStartingModelScreen() {
       disabled: selectedModels.length === 0,
     },
     downloading: {
-      text: `Downloading… ${overallPercent}%`,
+      text: hasDownloadStarted(overallProgress)
+        ? `Downloading… ${formatDownloadPercent(overallProgress)}`
+        : 'Starting download…',
       onPress: () => {},
       disabled: true,
     },

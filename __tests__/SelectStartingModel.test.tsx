@@ -185,7 +185,7 @@ describe('select starting model', () => {
     fireEvent.press(screen.getByTestId('card-Gemma'));
     fireEvent.press(screen.getByTestId('card-Qwen'));
     await startDownload('Download 2 models · 5.06 GB', 2);
-    expect(screen.getByText('Downloading… 0%')).toBeTruthy();
+    expect(screen.getByText('Starting download…')).toBeTruthy();
   });
 
   it('goes back to selecting multiple models after cancelling a download', async () => {

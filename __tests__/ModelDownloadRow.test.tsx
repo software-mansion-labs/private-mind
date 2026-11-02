@@ -285,6 +285,26 @@ describe('download state rendering', () => {
     );
   });
 
+  it('spins instead of showing 0% before the first bytes arrive', () => {
+    withDownloadStates({
+      1: { status: ModelState.Downloading, progress: 0 },
+    });
+    renderRow();
+    expect(screen.getByTestId('download-percent-starting')).toBeTruthy();
+    expect(screen.queryByText('0%')).toBeNull();
+    expect(screen.queryByText('Starting…')).toBeNull();
+    expect(screen.getByTestId('download-progress-starting')).toBeTruthy();
+  });
+
+  it('shows the progress bar fill once the first bytes arrive', () => {
+    withDownloadStates({
+      1: { status: ModelState.Downloading, progress: 0.004 },
+    });
+    renderRow();
+    expect(screen.getByText('<1%')).toBeTruthy();
+    expect(screen.queryByTestId('download-progress-starting')).toBeNull();
+  });
+
   it('shows no time left before the rate is known', () => {
     withDownloadStates({
       1: { status: ModelState.Downloading, progress: 0.4 },
