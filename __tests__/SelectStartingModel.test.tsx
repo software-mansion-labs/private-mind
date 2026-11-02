@@ -92,39 +92,52 @@ jest.mock('../store/modelStore', () => {
   return { ModelState, useModelStore };
 });
 
-jest.mock('../components/onboarding/StartingModelCard', () => {
+jest.mock('../components/model-hub/ModelDownloadRow', () => {
   const { Text, Pressable } = require('react-native');
+  const { useModelStore } = require('../store/modelStore');
   return ({
     model,
-    selected,
-    locked,
-    downloadStatus,
+    selection,
     onPress,
-    onCancel,
+    onCancelled,
   }: {
     model: { id: number; modelName: string };
-    selected: boolean;
-    locked: boolean;
-    downloadStatus?: string;
+    selection: { selected: boolean; locked: boolean };
     onPress: (model: unknown) => void;
-    onCancel: (model: unknown) => void;
-  }) => (
-    <>
-      <Pressable
-        testID={`card-${model.modelName}`}
-        accessibilityState={{ checked: selected, disabled: locked }}
-        onPress={() => !locked && onPress(model)}
-      >
-        <Text>{downloadStatus ?? 'idle'}</Text>
-      </Pressable>
-      {downloadStatus === 'downloading' && (
+    onCancelled: (model: unknown) => void;
+  }) => {
+    const status = useModelStore(
+      (state: { downloadStates: Record<number, { status: string }> }) =>
+        state.downloadStates[model.id]?.status
+    );
+    const cancelDownload = useModelStore(
+      (state: { cancelDownload: (model: unknown) => Promise<void> }) =>
+        state.cancelDownload
+    );
+    return (
+      <>
         <Pressable
-          testID={`cancel-${model.modelName}`}
-          onPress={() => onCancel(model)}
-        />
-      )}
-    </>
-  );
+          testID={`card-${model.modelName}`}
+          accessibilityState={{
+            checked: selection.selected,
+            disabled: selection.locked,
+          }}
+          onPress={() => !selection.locked && onPress(model)}
+        >
+          <Text>{status ?? 'idle'}</Text>
+        </Pressable>
+        {status === 'downloading' && (
+          <Pressable
+            testID={`cancel-${model.modelName}`}
+            onPress={async () => {
+              await cancelDownload(model);
+              onCancelled(model);
+            }}
+          />
+        )}
+      </>
+    );
+  };
 });
 
 import SelectStartingModelScreen from '../app/(modals)/select-starting-model';

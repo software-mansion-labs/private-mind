@@ -11,9 +11,7 @@ import {
   useModelStore,
 } from '../../store/modelStore';
 import PrimaryButton from '../../components/PrimaryButton';
-import StartingModelCard, {
-  StartingDownloadStatus,
-} from '../../components/onboarding/StartingModelCard';
+import ModelDownloadRow from '../../components/model-hub/ModelDownloadRow';
 import EntryButton from '../../components/EntryButton';
 import { getNextChatId } from '../../database/chatRepository';
 import { useChatStore } from '../../store/chatStore';
@@ -68,7 +66,6 @@ function SelectStartingModelScreen() {
   const { initPhantomChat } = useChatStore();
   const { setActiveChatId } = useLLMStore();
   const downloadModel = useModelStore((state) => state.downloadModel);
-  const cancelDownload = useModelStore((state) => state.cancelDownload);
   const downloadStates = useModelStore((state) => state.downloadStates);
   const storeModels = useModelStore((state) => state.models);
   const [startingModels, setStartingModels] = useState<Model[] | null>(null);
@@ -135,19 +132,6 @@ function SelectStartingModelScreen() {
           if (!isModelDownloaded(model.id)) deselect(model.id);
         })
     );
-  };
-
-  const handleCancel = async (model: Model) => {
-    deselect(model.id);
-    Feedback.cancelDownload();
-    await cancelDownload(model);
-  };
-
-  const downloadStatusFor = (
-    model: Model
-  ): StartingDownloadStatus | undefined => {
-    if (phase === 'select' || !selectedIds.includes(model.id)) return undefined;
-    return isDownloaded(model.id) ? 'done' : 'downloading';
   };
 
   const handleStartChatting = async () => {
@@ -232,14 +216,16 @@ function SelectStartingModelScreen() {
               </Text>
             )}
             {startingModels?.map((model) => (
-              <StartingModelCard
+              <ModelDownloadRow
                 key={model.id}
                 model={model}
                 onPress={toggleModel}
-                selected={selectedIds.includes(model.id)}
-                locked={phase !== 'select'}
-                downloadStatus={downloadStatusFor(model)}
-                onCancel={handleCancel}
+                showFamilyTile
+                selection={{
+                  selected: selectedIds.includes(model.id),
+                  locked: phase !== 'select',
+                }}
+                onCancelled={(cancelled) => deselect(cancelled.id)}
                 onDeleted={(deleted) => deselect(deleted.id)}
               />
             ))}
