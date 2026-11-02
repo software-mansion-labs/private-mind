@@ -1,0 +1,48 @@
+diff --git a/node_modules/@gorhom/bottom-sheet/src/components/bottomSheet/BottomSheetContent.tsx b/node_modules/@gorhom/bottom-sheet/src/components/bottomSheet/BottomSheetContent.tsx
+index 4a69a68..1ae8de8 100644
+--- a/node_modules/@gorhom/bottom-sheet/src/components/bottomSheet/BottomSheetContent.tsx
++++ b/node_modules/@gorhom/bottom-sheet/src/components/bottomSheet/BottomSheetContent.tsx
+@@ -1,5 +1,6 @@
+ import React, { memo, useMemo } from 'react';
+ import type { ViewProps, ViewStyle } from 'react-native';
++import { State } from 'react-native-gesture-handler';
+ import Animated, {
+   type AnimatedStyle,
+   useAnimatedStyle,
+@@ -50,6 +51,8 @@ function BottomSheetContentComponent({
+     animatedDetentsState,
+     animatedSheetHeight,
+     animatedKeyboardState,
++    animatedContentGestureState,
++    animatedHandleGestureState,
+     isInTemporaryPosition,
+   } = useBottomSheetInternal();
+   //#endregion
+@@ -199,6 +202,18 @@ function BottomSheetContentComponent({
+     const paddingBottom = detached ? 0 : animatedPaddingBottom.get();
+     const height = animatedContentHeightMax.get() + paddingBottom;
+ 
++    const contentGestureState = animatedContentGestureState.get();
++    const handleGestureState = animatedHandleGestureState.get();
++    const isGestureActive =
++      contentGestureState === State.ACTIVE ||
++      contentGestureState === State.BEGAN ||
++      handleGestureState === State.ACTIVE ||
++      handleGestureState === State.BEGAN;
++
++    if (isGestureActive) {
++      return { paddingBottom, height };
++    }
++
+     return {
+       paddingBottom: animate({
+         point: paddingBottom,
+@@ -220,6 +235,8 @@ function BottomSheetContentComponent({
+     animatedLayoutState,
+     animatedContentHeightMax,
+     animatedLayoutState,
++    animatedContentGestureState,
++    animatedHandleGestureState,
+   ]);
+   const contentContainerStyle = useMemo(
+     () => [

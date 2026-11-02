@@ -7,7 +7,7 @@ import {
 import { resolveModelCatalog } from '../utils/fetchModelCatalog';
 
 const VALID_MANIFEST = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   models: [
     {
       modelName: 'Remote Model',
@@ -23,9 +23,84 @@ const mockFetchOnce = (impl: () => Promise<Partial<Response>>) => {
   (global as unknown as { fetch: jest.Mock }).fetch = jest.fn(impl);
 };
 
+const GATED_MANIFEST = {
+  schemaVersion: 2,
+  models: [
+    ...VALID_MANIFEST.models,
+    {
+      modelName: 'Newer Model',
+      modelPath: 'https://example.com/newer.pte',
+      tokenizerPath: 'https://example.com/tokenizer.json',
+      tokenizerConfigPath: 'https://example.com/tokenizer_config.json',
+      minAppVersion: '1.3.5',
+    },
+  ],
+};
+
 describe('resolveModelCatalog', () => {
   beforeEach(async () => {
     await AsyncStorage.clear();
+  });
+
+  it('drops an entry that needs a newer app than the one running', async () => {
+    mockFetchOnce(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify(GATED_MANIFEST)),
+      })
+    );
+
+    const result = await resolveModelCatalog({ appVersion: '1.3.4' });
+
+    expect(result.models.map((m) => m.modelName)).toEqual(['Remote Model']);
+  });
+
+  it('keeps an entry whose minimum app version the running app meets', async () => {
+    mockFetchOnce(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify(GATED_MANIFEST)),
+      })
+    );
+
+    const result = await resolveModelCatalog({ appVersion: '1.3.5' });
+
+    expect(result.models.map((m) => m.modelName)).toEqual([
+      'Remote Model',
+      'Newer Model',
+    ]);
+  });
+
+  it('applies the gate to the cached manifest as well', async () => {
+    await AsyncStorage.setItem(
+      MODEL_CATALOG_CACHE_KEY,
+      JSON.stringify(GATED_MANIFEST)
+    );
+    mockFetchOnce(() => Promise.reject(new Error('network down')));
+
+    const result = await resolveModelCatalog({ appVersion: '1.3.4' });
+
+    expect(result.origin).toBe('cache');
+    expect(result.models.map((m) => m.modelName)).toEqual(['Remote Model']);
+  });
+
+  it('rejects a manifest of the previous schema version', async () => {
+    mockFetchOnce(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({ ...VALID_MANIFEST, schemaVersion: 1 })
+          ),
+      })
+    );
+
+    const result = await resolveModelCatalog({ appVersion: '1.3.5' });
+
+    expect(result.origin).toBe('fallback');
   });
 
   it('returns the remote manifest and caches it on success', async () => {
@@ -37,7 +112,7 @@ describe('resolveModelCatalog', () => {
       })
     );
 
-    const result = await resolveModelCatalog();
+    const result = await resolveModelCatalog({ appVersion: '1.3.5' });
 
     expect(result.origin).toBe('remote');
     expect(result.models).toEqual([
@@ -62,7 +137,7 @@ describe('resolveModelCatalog', () => {
     );
     mockFetchOnce(() => Promise.reject(new Error('network down')));
 
-    const result = await resolveModelCatalog();
+    const result = await resolveModelCatalog({ appVersion: '1.3.5' });
 
     expect(result.origin).toBe('cache');
     expect(result.models[0].modelName).toBe('Remote Model');
@@ -81,7 +156,7 @@ describe('resolveModelCatalog', () => {
       })
     );
 
-    const result = await resolveModelCatalog();
+    const result = await resolveModelCatalog({ appVersion: '1.3.5' });
 
     expect(result.origin).toBe('cache');
   });
@@ -99,7 +174,7 @@ describe('resolveModelCatalog', () => {
       })
     );
 
-    const result = await resolveModelCatalog();
+    const result = await resolveModelCatalog({ appVersion: '1.3.5' });
 
     expect(result.origin).toBe('cache');
   });
@@ -117,7 +192,7 @@ describe('resolveModelCatalog', () => {
       })
     );
 
-    const result = await resolveModelCatalog();
+    const result = await resolveModelCatalog({ appVersion: '1.3.5' });
 
     expect(result.origin).toBe('cache');
   });
@@ -125,7 +200,7 @@ describe('resolveModelCatalog', () => {
   it('falls back to DEFAULT_MODELS when both the network and the cache fail', async () => {
     mockFetchOnce(() => Promise.reject(new Error('network down')));
 
-    const result = await resolveModelCatalog();
+    const result = await resolveModelCatalog({ appVersion: '1.3.5' });
 
     expect(result.origin).toBe('fallback');
     expect(result.models).toBe(DEFAULT_MODELS);
@@ -135,7 +210,7 @@ describe('resolveModelCatalog', () => {
     await AsyncStorage.setItem(MODEL_CATALOG_CACHE_KEY, '{not valid json');
     mockFetchOnce(() => Promise.reject(new Error('network down')));
 
-    const result = await resolveModelCatalog();
+    const result = await resolveModelCatalog({ appVersion: '1.3.5' });
 
     expect(result.origin).toBe('fallback');
   });
@@ -145,7 +220,7 @@ describe('resolveModelCatalog', () => {
       throw new Error('fetch is not defined');
     });
 
-    await expect(resolveModelCatalog()).resolves.toEqual(
+    await expect(resolveModelCatalog({ appVersion: '1.3.5' })).resolves.toEqual(
       expect.objectContaining({ origin: 'fallback' })
     );
   });

@@ -80,3 +80,62 @@ index 6bd328c..c6d325c 100644
  }
  
  uint64_t UIEventHandler::getHandlerId() const {
+diff --git a/node_modules/react-native-reanimated/lib/module/animation/timing.js b/node_modules/react-native-reanimated/lib/module/animation/timing.js
+index 8c8278b..adceb43 100644
+--- a/node_modules/react-native-reanimated/lib/module/animation/timing.js
++++ b/node_modules/react-native-reanimated/lib/module/animation/timing.js
+@@ -56,14 +56,22 @@ export const withTiming = function (toValue, userConfig, callback) {
+         startTime,
+         startValue
+       } = animation;
+-      const runtime = now - startTime;
++      let runtime = now - startTime;
++      if (runtime < 0) {
++        animation.startTime = now;
++        runtime = 0;
++      }
+       if (runtime >= config.duration) {
+         // reset startTime to avoid reusing finished animation config in `start` method
+         animation.startTime = 0;
+         animation.current = toValue;
+         return true;
+       }
+-      const progress = animation.easing(runtime / config.duration);
++      const normalizedTime = Math.min(
++        Math.max(runtime / config.duration, 0),
++        1
++      );
++      const progress = animation.easing(normalizedTime);
+       animation.current = startValue + (toValue - startValue) * progress;
+       return false;
+     }
+diff --git a/node_modules/react-native-reanimated/src/animation/timing.ts b/node_modules/react-native-reanimated/src/animation/timing.ts
+index db89567..10c9482 100644
+--- a/node_modules/react-native-reanimated/src/animation/timing.ts
++++ b/node_modules/react-native-reanimated/src/animation/timing.ts
+@@ -101,7 +101,11 @@ export const withTiming = function (
+     function timing(animation: InnerTimingAnimation, now: Timestamp): boolean {
+       // eslint-disable-next-line @typescript-eslint/no-shadow
+       const { toValue, startTime, startValue } = animation;
+-      const runtime = now - startTime;
++      let runtime = now - startTime;
++      if (runtime < 0) {
++        animation.startTime = now;
++        runtime = 0;
++      }
+ 
+       if (runtime >= config.duration) {
+         // reset startTime to avoid reusing finished animation config in `start` method
+@@ -109,7 +113,11 @@ export const withTiming = function (
+         animation.current = toValue;
+         return true;
+       }
+-      const progress = animation.easing(runtime / config.duration);
++      const normalizedTime = Math.min(
++        Math.max(runtime / config.duration, 0),
++        1
++      );
++      const progress = animation.easing(normalizedTime);
+       animation.current =
+         (startValue as number) + (toValue - (startValue as number)) * progress;
+       return false;

@@ -40,6 +40,21 @@ export interface DeviceModelFamily extends ModelFamily {
   runnable: boolean;
 }
 
+export const FAMILY_PRIORITY = [
+  'LFM 3',
+  'Gemma 4',
+  'Qwen 3',
+  'LFM 2.5',
+  'LLaMA 3.2',
+  'Qwen 2.5',
+  'Bielik',
+];
+
+const familyRank = (name: string): number => {
+  const index = FAMILY_PRIORITY.indexOf(name);
+  return index === -1 ? FAMILY_PRIORITY.length : index;
+};
+
 export const orderFamiliesForDevice = (
   families: ModelFamily[],
   isCompatible: (model: Model) => boolean
@@ -51,7 +66,9 @@ export const orderFamiliesForDevice = (
     }))
     .sort(
       (a, b) =>
-        Number(b.runnable) - Number(a.runnable) || a.name.localeCompare(b.name)
+        Number(b.runnable) - Number(a.runnable) ||
+        familyRank(a.name) - familyRank(b.name) ||
+        a.name.localeCompare(b.name)
     );
 
 export const familyLabels = (family: ModelFamily): string[] => {

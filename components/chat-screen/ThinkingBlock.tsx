@@ -1,4 +1,4 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { View, StyleSheet, Text, Pressable } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -20,6 +20,10 @@ const ThinkingBlock = memo(
   ({ content, isComplete = true, inProgress }: Props) => {
     const [expanded, setExpanded] = useState(!isComplete);
     const { styles } = useThemedStyles(createStyles);
+
+    useEffect(() => {
+      if (isComplete) setExpanded(false);
+    }, [isComplete]);
 
     const toggleExpanded = () => {
       if (inProgress) return;

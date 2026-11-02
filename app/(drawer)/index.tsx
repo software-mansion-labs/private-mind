@@ -29,6 +29,8 @@ import WhatsNewCard from '../../components/WhatsNewCard';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import { useModelSwitch } from '../../components/chat-screen/useModelSwitch';
 
+let coldStartRedirectPending = true;
+
 configureReanimatedLogger({
   strict: false,
 });
@@ -74,7 +76,11 @@ export default function App() {
       hasAutoRedirectedRef.current = true;
       (async () => {
         try {
-          await startPhantomChat(db, 'replace');
+          const mode = coldStartRedirectPending
+            ? 'replace-immediately'
+            : 'replace';
+          coldStartRedirectPending = false;
+          await startPhantomChat(db, mode);
         } catch (error) {
           console.error(
             'Failed to open a chat for the downloaded model',

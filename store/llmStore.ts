@@ -1,9 +1,12 @@
 import { estimatePromptTokens } from '../constants/context-window';
 import {
+  dropStrayThinkClose,
+  hasUnclosedThink,
   mapOutsideThink,
   stripThinkBlocks,
   unclosedThinkAsAnswer,
   unclosedThinkText,
+  withTemplateThinkOpener,
 } from '../utils/thinking';
 import { create } from 'zustand';
 import { LLMModule } from 'react-native-executorch/legacy';
@@ -85,6 +88,10 @@ import {
   getGenerationConfigForModel,
   runsOnMlxDelegate,
 } from '../constants/default-models';
+import {
+  chatTemplateFlagsFor,
+  usesTemplateThinkingSwitch,
+} from '../constants/model-profiles';
 import { promptReviewAfterAnswer } from '../utils/reviewPrompt';
 import { cpuLacksLseAtomics } from '../utils/cpuSupport';
 import { UNSUPPORTED_CPU_REFUSAL } from '../constants/cpu-support';
@@ -233,6 +240,9 @@ let streamFirstTokenTime = 0;
 let streamStopRequested = false;
 let streamFlushScheduled = false;
 let streamedSoFar = '';
+let thinkOpenedByTemplate = false;
+let thinkClosedByTemplate = false;
+let generationSawToken = false;
 
 const resetStreamState = () => {
   streamBuffer = '';
@@ -471,8 +481,14 @@ const loadModelInstance = async (
       return;
     }
     if (!streamBuffer) return;
-    const text = streamBuffer;
+    const chunk = thinkClosedByTemplate
+      ? dropStrayThinkClose(streamBuffer, hasUnclosedThink(streamedSoFar))
+      : streamBuffer;
     streamBuffer = '';
+    const text =
+      !streamedSoFar && thinkOpenedByTemplate
+        ? withTemplateThinkOpener(chunk)
+        : chunk;
     streamedSoFar += text;
     const snapshot = get();
     const turnLocalId = snapshot.generatingMessageLocalId;
@@ -520,6 +536,7 @@ const loadModelInstance = async (
           }
           return;
         }
+        generationSawToken = true;
         if (suppressUtilityStreaming) return;
         if (streamStopRequested) return;
 
@@ -782,13 +799,17 @@ const runUtilityGeneration = (
     }
     suppressUtilityStreaming = true;
     try {
-      const prepared = model?.thinking ? withNoThink(messages) : messages;
+      const prepared =
+        model?.thinking && !usesTemplateThinkingSwitch(model)
+          ? withNoThink(messages)
+          : messages;
       if (model) {
         applyGenerationConfig(
           instance,
           getGenerationConfigForModel(model, true)
         );
       }
+      instance.setChatTemplateFlags(chatTemplateFlagsFor(model, false));
       const result = await instance.generate(prepared);
       reportPromptEstimateAccuracy(prepared, instance, 'utility');
       return typeof result === 'string' ? result : '';
@@ -811,6 +832,7 @@ const describeGenerationFailure = (): string =>
   'The model returned an empty response';
 
 const NUDGE_TIME_BUDGET_MS = 40_000;
+export const FIRST_TOKEN_TIMEOUT_MS = 5 * 60_000;
 
 const digestForChat = (get: () => LLMStore, chatId: number): string | null =>
   get().activeChatDigestChatId === chatId ? get().activeChatDigest : null;
@@ -870,7 +892,8 @@ const NO_LLM_RESPONSE: LLMGenerationResult = {
 const generateLLMResponse = (
   messages: ExecutorchMessage[],
   get: () => LLMStore,
-  generationConfig?: LLMGenerationConfig
+  generationConfig?: LLMGenerationConfig,
+  chatTemplateFlags: Record<string, unknown> = {}
 ): Promise<LLMGenerationResult> => {
   const instance = llmInstance;
   if (!instance) return Promise.resolve(NO_LLM_RESPONSE);
@@ -889,9 +912,26 @@ const generateLLMResponse = (
   return withExclusiveRunner<LLMGenerationResult>(async (isCancelled) => {
     if (llmInstance !== instance || isCancelled()) return NO_LLM_RESPONSE;
     applyGenerationConfig(instance, generationConfig);
+    instance.setChatTemplateFlags(chatTemplateFlags);
+    thinkOpenedByTemplate = chatTemplateFlags.enable_thinking === true;
+    thinkClosedByTemplate = chatTemplateFlags.enable_thinking === false;
 
+    generationSawToken = false;
+    let firstTokenTimedOut = false;
+    const firstTokenWatchdog = setTimeout(() => {
+      if (generationSawToken || llmInstance !== instance) return;
+      firstTokenTimedOut = true;
+      console.warn('No first token within budget, interrupting the turn');
+      instance.interrupt();
+    }, FIRST_TOKEN_TIMEOUT_MS);
     const startTime = performance.now();
-    const finalResponse = await instance.generate(preparedMessages);
+    let finalResponse: Awaited<ReturnType<typeof instance.generate>>;
+    try {
+      finalResponse = await instance.generate(preparedMessages);
+    } finally {
+      clearTimeout(firstTokenWatchdog);
+    }
+    if (firstTokenTimedOut) return NO_LLM_RESPONSE;
     const endTime = performance.now();
     const stalled = instance.lastGenerationStalled();
 
@@ -906,7 +946,11 @@ const generateLLMResponse = (
       );
 
       return {
-        response: finalResponse,
+        response: thinkOpenedByTemplate
+          ? withTemplateThinkOpener(finalResponse)
+          : thinkClosedByTemplate
+            ? dropStrayThinkClose(finalResponse)
+            : finalResponse,
         performance: { timeToFirstToken, tokensPerSecond },
         stalled,
       };
@@ -919,13 +963,24 @@ const generateLLMResponse = (
 const generateRefinement = (
   messages: ExecutorchMessage[],
   get: () => LLMStore
-): Promise<LLMGenerationResult> =>
-  generateLLMResponse(messages, get)
+): Promise<LLMGenerationResult> => {
+  const model = get().model;
+  const prepared =
+    model?.thinking && !usesTemplateThinkingSwitch(model)
+      ? withNoThink(messages)
+      : messages;
+  return generateLLMResponse(
+    prepared,
+    get,
+    undefined,
+    chatTemplateFlagsFor(model, false)
+  )
     .then((result) => (result.stalled ? NO_LLM_RESPONSE : result))
     .catch((error) => {
       console.warn('Refinement generation failed, keeping the answer', error);
       return NO_LLM_RESPONSE;
     });
+};
 
 export const useLLMStore = create<LLMStore>((set, get) => ({
   isLoading: false,
@@ -1515,7 +1570,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           : await generateLLMResponse(
               messagesWithSystemPrompt,
               get,
-              turnGenerationConfig
+              turnGenerationConfig,
+              chatTemplateFlagsFor(currentModel, !!settings.thinkingEnabled)
             );
       } catch (error) {
         if (abortController.signal.aborted || !stillOurs()) throw error;
@@ -1546,7 +1602,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         generation = await generateLLMResponse(
           effectivePrepared,
           get,
-          turnGenerationConfig
+          turnGenerationConfig,
+          chatTemplateFlagsFor(currentModel, !!settings.thinkingEnabled)
         );
       }
       const userStoppedTurn = !get().isGenerating;
@@ -2104,6 +2161,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           ...getGenerationConfigForModel(benchmarkedModel),
           ...BENCHMARK_GENERATION_CONFIG,
         });
+        instance.setChatTemplateFlags(
+          chatTemplateFlagsFor(benchmarkedModel, false)
+        );
       }
 
       return await withExclusiveRunner(async (isCancelled) => {

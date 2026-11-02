@@ -105,11 +105,12 @@ export const formatContextChunks = (chunks: ContextChunk[]): string[] =>
 export const getSourceDocumentsFromChunks = (
   chunks: ContextChunk[]
 ): SourceDocument[] =>
-  groupChunksByDocument(chunks).map((group) => ({
+  groupChunksByDocument(chunks).map((group, index) => ({
     documentId: group.documentId,
     name: group.name,
     passage: joinGroupPassages(group),
     similarity: group.maxSimilarity,
+    ordinal: index + 1,
   }));
 
 export const sourcesPresentInContext = (

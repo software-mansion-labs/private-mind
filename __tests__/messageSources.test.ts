@@ -1351,6 +1351,17 @@ describe('humanizeSourceReferences — Polish declension (live-found)', () => {
 });
 
 describe('stripEchoedQuestionPrefix — the model restating the question first', () => {
+  it.each([
+    ['hello', 'Hello! How can I assist you today?'],
+    ['hi', 'Hi! What would you like help with?'],
+    ['cześć', 'Cześć! W czym mogę pomóc?'],
+  ])(
+    'keeps the greeting word when the user only said %s',
+    (greeting, reply) => {
+      expect(stripEchoedQuestionPrefix(reply, greeting)).toBe(reply);
+    }
+  );
+
   it('drops a verbatim question prefix and keeps the answer (live-found)', () => {
     expect(
       stripEchoedQuestionPrefix(

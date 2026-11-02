@@ -1,4 +1,10 @@
-import { mapOutsideThink, unclosedThinkAsAnswer } from '../utils/thinking';
+import {
+  mapOutsideThink,
+  unclosedThinkAsAnswer,
+  withTemplateThinkOpener,
+  dropStrayThinkClose,
+  hasUnclosedThink,
+} from '../utils/thinking';
 
 describe('mapOutsideThink', () => {
   const upper = (segment: string) => segment.toUpperCase();
@@ -41,5 +47,53 @@ describe('a think block the model opened and never closed, with thinking off', (
 
   it('leaves an answer without a think block alone', () => {
     expect(unclosedThinkAsAnswer(answer)).toBe(answer);
+  });
+});
+
+describe('withTemplateThinkOpener', () => {
+  it('opens the block the chat template already opened in the prompt', () => {
+    expect(withTemplateThinkOpener('\nreasoning</think>answer')).toBe(
+      '<think>\nreasoning</think>answer'
+    );
+  });
+
+  it('leaves text that opens its own block alone', () => {
+    expect(withTemplateThinkOpener('<think>x</think>y')).toBe(
+      '<think>x</think>y'
+    );
+  });
+});
+
+describe('dropStrayThinkClose', () => {
+  it('drops a close tag that no open tag precedes', () => {
+    expect(dropStrayThinkClose('Polish answer</think>English tail')).toBe(
+      'Polish answerEnglish tail'
+    );
+  });
+
+  it('keeps a close tag that closes an open block', () => {
+    expect(dropStrayThinkClose('<think>why</think>answer')).toBe(
+      '<think>why</think>answer'
+    );
+  });
+
+  it('keeps a close tag when the block was opened in an earlier chunk', () => {
+    expect(dropStrayThinkClose('more</think>answer', true)).toBe(
+      'more</think>answer'
+    );
+  });
+
+  it('drops a second close tag after the block is closed', () => {
+    expect(dropStrayThinkClose('<think>a</think>b</think>c')).toBe(
+      '<think>a</think>bc'
+    );
+  });
+});
+
+describe('hasUnclosedThink', () => {
+  it('is true only while an open tag has no close', () => {
+    expect(hasUnclosedThink('<think>so far')).toBe(true);
+    expect(hasUnclosedThink('<think>done</think>answer')).toBe(false);
+    expect(hasUnclosedThink('plain')).toBe(false);
   });
 });

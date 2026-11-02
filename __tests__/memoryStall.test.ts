@@ -68,6 +68,7 @@ const makeInstance = () => ({
   configure: jest.fn(),
   getGeneratedTokenCount: jest.fn(() => 3),
   lastGenerationStalled: jest.fn(() => false),
+  setChatTemplateFlags: jest.fn(),
 });
 
 let instance = makeInstance();

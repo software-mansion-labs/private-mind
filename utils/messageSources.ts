@@ -298,7 +298,7 @@ export const stripEchoedQuestionPrefix = (
   question: string | undefined
 ): string => {
   const asked = question?.trim().replace(/[?!.]+$/, '');
-  if (!asked) return answer;
+  if (!asked || isConversationalOpener(asked)) return answer;
   const head = answer.match(THINK_PREFIX)?.[0] ?? '';
   let rest = answer.slice(head.length);
 

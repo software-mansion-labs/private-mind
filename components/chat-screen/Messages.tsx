@@ -851,16 +851,35 @@ const Messages = ({
     [isGenerating, onForkMessage]
   );
 
+  const latestLongPressInputs = useRef({
+    chatHistory,
+    activeUserActionsId,
+    handleCopyMessage,
+    onUserActionMenuChange,
+  });
+  latestLongPressInputs.current = {
+    chatHistory,
+    activeUserActionsId,
+    handleCopyMessage,
+    onUserActionMenuChange,
+  };
+
   const handleUserLongPress = useCallback(
     (messageId: number, target: ViewType | null) => {
-      const message = chatHistory.find((item) => item.id === messageId);
+      const {
+        chatHistory: history,
+        activeUserActionsId: activeId,
+        handleCopyMessage: copyMessage,
+        onUserActionMenuChange: notifyMenuChange,
+      } = latestLongPressInputs.current;
+      const message = history.find((item) => item.id === messageId);
       if (!message) return;
 
-      const shouldOpen = activeUserActionsId !== messageId;
+      const shouldOpen = activeId !== messageId;
       setActiveUserActionsId(shouldOpen ? messageId : null);
 
       if (!shouldOpen) {
-        onUserActionMenuChange?.({ isOpen: false });
+        notifyMenuChange?.({ isOpen: false });
         return;
       }
 
@@ -868,10 +887,10 @@ const Messages = ({
 
       const openMenu = () => {
         target?.measureInWindow((x, y, width, height) => {
-          onUserActionMenuChange?.({
+          notifyMenuChange?.({
             isOpen: true,
             anchor: { x, y, width, height },
-            onCopy: () => handleCopyMessage(message),
+            onCopy: () => copyMessage(message),
           });
         });
       };
@@ -884,12 +903,7 @@ const Messages = ({
       pendingMenuOpenRef.current = openMenu;
       Keyboard.dismiss();
     },
-    [
-      activeUserActionsId,
-      chatHistory,
-      handleCopyMessage,
-      onUserActionMenuChange,
-    ]
+    []
   );
 
   const touchScrolledRef = useRef(false);
@@ -1036,6 +1050,149 @@ const Messages = ({
     lastAssistantHeight.current = 0;
   }
 
+  const messageRows = useMemo(
+    () =>
+      chatHistory.map((message, index) => {
+        const isLastMessage = index === chatHistory.length - 1;
+        const userQuestion = questionForAssistantAt[index];
+        const key = messageRowKey(message, index);
+
+        let onLayout: ((event: LayoutChangeEvent) => void) | undefined;
+        if (index === lastUserIndex) {
+          onLayout = (event) => handleLastUserLayout(key, event);
+        } else if (index === lastAssistantIndex) {
+          onLayout = (event) => handleLastAssistantLayout(key, event);
+        }
+        const branchMarker = latestBranchMarkerByMessageId.get(message.id);
+        const { showActions, showForkAction } = getMessageActionsState(message);
+
+        const item = (
+          <View
+            style={styles.messageRow}
+            collapsable={false}
+            onLayout={index === lastAssistantIndex ? onLayout : undefined}
+          >
+            <MessageItem
+              message={message}
+              content={message.content}
+              modelName={message.modelName}
+              role={message.role}
+              tokensPerSecond={message.tokensPerSecond}
+              timeToFirstToken={message.timeToFirstToken}
+              isLastMessage={isLastMessage}
+              imagePath={message.imagePath}
+              documentName={message.documentName}
+              sourceDocuments={message.sourceDocuments}
+              userQuestion={userQuestion}
+              onShowSources={handleShowSources}
+              showActions={showActions}
+              showForkAction={showForkAction}
+              onCopy={handleCopyMessage}
+              onFork={handleForkMessage}
+            />
+            {message.stoppedByUser && (
+              <StoppedMarker
+                onRetry={
+                  canRetryGeneration &&
+                  stoppedWithNothingToShow(message) &&
+                  isLastMessage &&
+                  !isGenerating
+                    ? onRetryGeneration
+                    : undefined
+                }
+              />
+            )}
+            {endsTurnCutShort(chatHistory, index) &&
+              index < firstRowUnderFooter && (
+                <StoppedMarker reason={message.cutShortReason} />
+              )}
+            {branchMarker && (
+              <BranchMarker
+                key={`branch-${branchMarker.id}`}
+                marker={branchMarker}
+                onPress={onBranchMarkerPress}
+              />
+            )}
+          </View>
+        );
+
+        const shouldHandleUserLongPress =
+          SUPPORTS_USER_ACTION_MENU &&
+          message.role === 'user' &&
+          message.id > 0;
+
+        if (onLayout) {
+          const rowStyle =
+            index === lastAssistantIndex ? pinFloorStyle : undefined;
+          const measureRow = index === lastUserIndex ? onLayout : undefined;
+
+          if (!shouldHandleUserLongPress) {
+            return (
+              <View
+                key={key}
+                style={rowStyle}
+                onLayout={measureRow}
+                collapsable={false}
+              >
+                {item}
+              </View>
+            );
+          }
+
+          return (
+            <View
+              key={key}
+              style={rowStyle}
+              onLayout={measureRow}
+              collapsable={false}
+            >
+              <LongPressableMessage
+                messageId={message.id}
+                onLongPress={handleUserLongPress}
+              >
+                {item}
+              </LongPressableMessage>
+            </View>
+          );
+        }
+
+        if (!shouldHandleUserLongPress) {
+          return <React.Fragment key={key}>{item}</React.Fragment>;
+        }
+
+        return (
+          <LongPressableMessage
+            key={key}
+            messageId={message.id}
+            onLongPress={handleUserLongPress}
+          >
+            {item}
+          </LongPressableMessage>
+        );
+      }),
+    [
+      canRetryGeneration,
+      chatHistory,
+      firstRowUnderFooter,
+      getMessageActionsState,
+      handleCopyMessage,
+      handleForkMessage,
+      handleLastAssistantLayout,
+      handleLastUserLayout,
+      handleShowSources,
+      handleUserLongPress,
+      isGenerating,
+      lastAssistantIndex,
+      lastUserIndex,
+      latestBranchMarkerByMessageId,
+      onBranchMarkerPress,
+      onRetryGeneration,
+      pinFloorStyle,
+      questionForAssistantAt,
+      styles.messageRow,
+    ]
+  );
+
   return (
     <View style={styles.container}>
       <Reanimated.View
@@ -1069,125 +1226,7 @@ const Messages = ({
           scrollEventThrottle={16}
           style={styles.container}
         >
-          {chatHistory.map((message, index) => {
-            const isLastMessage = index === chatHistory.length - 1;
-            const userQuestion = questionForAssistantAt[index];
-            const key = messageRowKey(message, index);
-
-            let onLayout: ((event: LayoutChangeEvent) => void) | undefined;
-            if (index === lastUserIndex) {
-              onLayout = (event) => handleLastUserLayout(key, event);
-            } else if (index === lastAssistantIndex) {
-              onLayout = (event) => handleLastAssistantLayout(key, event);
-            }
-            const branchMarker = latestBranchMarkerByMessageId.get(message.id);
-            const { showActions, showForkAction } =
-              getMessageActionsState(message);
-
-            const item = (
-              <View
-                style={styles.messageRow}
-                collapsable={false}
-                onLayout={index === lastAssistantIndex ? onLayout : undefined}
-              >
-                <MessageItem
-                  message={message}
-                  content={message.content}
-                  modelName={message.modelName}
-                  role={message.role}
-                  tokensPerSecond={message.tokensPerSecond}
-                  timeToFirstToken={message.timeToFirstToken}
-                  isLastMessage={isLastMessage}
-                  imagePath={message.imagePath}
-                  documentName={message.documentName}
-                  sourceDocuments={message.sourceDocuments}
-                  userQuestion={userQuestion}
-                  onShowSources={handleShowSources}
-                  showActions={showActions}
-                  showForkAction={showForkAction}
-                  onCopy={handleCopyMessage}
-                  onFork={handleForkMessage}
-                />
-                {message.stoppedByUser && (
-                  <StoppedMarker
-                    onRetry={
-                      canRetryGeneration &&
-                      stoppedWithNothingToShow(message) &&
-                      isLastMessage &&
-                      !isGenerating
-                        ? onRetryGeneration
-                        : undefined
-                    }
-                  />
-                )}
-                {endsTurnCutShort(chatHistory, index) &&
-                  index < firstRowUnderFooter && (
-                    <StoppedMarker reason={message.cutShortReason} />
-                  )}
-                {branchMarker && (
-                  <BranchMarker
-                    key={`branch-${branchMarker.id}`}
-                    marker={branchMarker}
-                    onPress={onBranchMarkerPress}
-                  />
-                )}
-              </View>
-            );
-
-            const shouldHandleUserLongPress =
-              SUPPORTS_USER_ACTION_MENU &&
-              message.role === 'user' &&
-              message.id > 0;
-
-            if (onLayout) {
-              const rowStyle =
-                index === lastAssistantIndex ? pinFloorStyle : undefined;
-              const measureRow = index === lastUserIndex ? onLayout : undefined;
-
-              if (!shouldHandleUserLongPress) {
-                return (
-                  <View
-                    key={key}
-                    style={rowStyle}
-                    onLayout={measureRow}
-                    collapsable={false}
-                  >
-                    {item}
-                  </View>
-                );
-              }
-
-              return (
-                <View
-                  key={key}
-                  style={rowStyle}
-                  onLayout={measureRow}
-                  collapsable={false}
-                >
-                  <LongPressableMessage
-                    messageId={message.id}
-                    onLongPress={handleUserLongPress}
-                  >
-                    {item}
-                  </LongPressableMessage>
-                </View>
-              );
-            }
-
-            if (!shouldHandleUserLongPress) {
-              return <React.Fragment key={key}>{item}</React.Fragment>;
-            }
-
-            return (
-              <LongPressableMessage
-                key={key}
-                messageId={message.id}
-                onLongPress={handleUserLongPress}
-              >
-                {item}
-              </LongPressableMessage>
-            );
-          })}
+          {messageRows}
           {generationError && (
             <View style={pinFloorStyle} collapsable={false}>
               <View

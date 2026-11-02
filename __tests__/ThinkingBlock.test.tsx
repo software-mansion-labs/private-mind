@@ -71,6 +71,24 @@ describe('expand/collapse', () => {
     expect(screen.queryByTestId('thinking-content')).toBeNull();
   });
 
+  it('collapses by itself when the think phase completes', () => {
+    const view = renderBlock({ isComplete: false, inProgress: true });
+    expect(screen.getByTestId('thinking-content')).toBeTruthy();
+
+    view.rerender(
+      <ThinkingBlock content="some reasoning" isComplete inProgress={false} />
+    );
+
+    expect(screen.queryByTestId('thinking-content')).toBeNull();
+  });
+
+  it('stays open when the reader expands a completed block', () => {
+    renderBlock({ isComplete: true, inProgress: false });
+    fireEvent.press(screen.getByTestId('thinking-toggle'));
+
+    expect(screen.getByTestId('thinking-content')).toBeTruthy();
+  });
+
   it('does not collapse when inProgress — toggle is a no-op', () => {
     renderBlock({ isComplete: false, inProgress: true });
     expect(screen.getByTestId('thinking-content')).toBeTruthy();
