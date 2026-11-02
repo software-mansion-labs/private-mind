@@ -98,14 +98,16 @@ const createStyles = (theme: Theme) =>
       height: SWITCH_THUMB_SIZE,
       borderRadius: SWITCH_THUMB_SIZE / 2,
       backgroundColor: theme.bg.switchThumb,
-      elevation: 2,
-      shadowColor: theme.bg.shadow,
-      shadowOpacity: 0.2,
-      shadowRadius: 2,
-      shadowOffset: { width: 0, height: 1 },
+      boxShadow: [
+        {
+          offsetX: 0,
+          offsetY: 1,
+          blurRadius: 3,
+          color: `${theme.bg.shadow}40`,
+        },
+      ],
     },
     flatThumb: {
-      elevation: 0,
-      shadowOpacity: 0,
+      boxShadow: [],
     },
   });
