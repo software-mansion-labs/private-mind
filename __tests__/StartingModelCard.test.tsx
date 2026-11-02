@@ -224,18 +224,25 @@ describe('selection download', () => {
     expect(screen.getByText('70%')).toBeTruthy();
   });
 
-  it('keeps the progress to the percentage alone', () => {
+  it('shows downloaded bytes and the estimated time left', () => {
     withDownloadStates({
       1: { status: ModelState.Downloading, progress: 0.4, rate: 0.01 },
     });
     renderCard({ selected: true, downloadStatus: 'downloading' });
-    expect(screen.queryByText('1.00 of 2.50 GB')).toBeNull();
-    expect(screen.queryByTestId('downloading-model-time-left')).toBeNull();
+    expect(screen.getByText('1.00 of 2.50 GB')).toBeTruthy();
+    expect(screen.getByText('~1 min left')).toBeTruthy();
   });
 
-  it('labels a finished model as Done', () => {
+  it('marks a finished model with the downloaded badge', () => {
     renderCard({ selected: true, downloadStatus: 'done' });
-    expect(screen.getByText('Done')).toBeTruthy();
+    expect(screen.getByTestId('starting-model-downloaded')).toBeTruthy();
+    expect(screen.queryByRole('progressbar')).toBeNull();
+  });
+
+  it('swaps the checkbox for the cancel button while downloading', () => {
+    renderCard({ selected: true, downloadStatus: 'downloading' });
+    expect(screen.queryByTestId('starting-model-checkbox')).toBeNull();
+    expect(screen.getByTestId('starting-model-cancel')).toBeTruthy();
   });
 
   it('cancels a downloading model', () => {

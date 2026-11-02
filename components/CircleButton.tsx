@@ -5,6 +5,8 @@ import { SvgComponent } from '../utils/SvgComponent';
 import { dimmedOpacity, pressedOpacity } from '../styles/pressable';
 import { radius, space, stroke } from '../constants/design-system';
 
+export const CIRCLE_BUTTON_SIZE = 36;
+
 interface Props {
   icon: SvgComponent;
   size?: number;
@@ -61,8 +63,8 @@ export default CircleButton;
 const createStyles = (backgroundColor: string, borderColor?: string) =>
   StyleSheet.create({
     circle: {
-      width: 36,
-      height: 36,
+      width: CIRCLE_BUTTON_SIZE,
+      height: CIRCLE_BUTTON_SIZE,
       padding: space.two,
       borderRadius: radius.eighteen,
       justifyContent: 'center',
