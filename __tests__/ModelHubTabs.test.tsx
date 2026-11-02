@@ -29,4 +29,14 @@ describe('ModelHubTabs', () => {
     fireEvent.press(screen.getByText('Mine'));
     expect(onChange).toHaveBeenCalledWith('mine');
   });
+
+  it('marks only the current tab as selected', () => {
+    render(<ModelHubTabs value="experimental" onChange={jest.fn()} />);
+    expect(
+      screen.getByTestId('model-hub-tab-experimental').props.accessibilityState
+    ).toEqual({ selected: true });
+    expect(
+      screen.getByTestId('model-hub-tab-featured').props.accessibilityState
+    ).toEqual({ selected: false });
+  });
 });

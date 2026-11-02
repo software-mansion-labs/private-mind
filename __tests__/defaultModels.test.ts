@@ -1,12 +1,18 @@
 import {
   BIELIK_V3_0_1_5B_QUANTIZED,
+  GEMMA4_E2B_MLX_MM,
+  GEMMA4_E2B_MLX_MODEL,
+  GEMMA4_E2B_VULKAN_MODEL,
   QWEN3_1_7B_QUANTIZED,
 } from 'react-native-executorch/legacy';
 import {
   DEFAULT_MODELS,
   DEFAULT_REPETITION_PENALTY,
+  MEMORY_STALL_PASS_COUNT,
+  MEMORY_STALL_PASS_MS,
   getGenerationConfigForModel,
   getStartingModels,
+  runsOnMlxDelegate,
 } from '../constants/default-models';
 import { isModelCompatibleWithRam } from '../utils/modelCompatibility';
 
@@ -28,51 +34,106 @@ describe('getGenerationConfigForModel', () => {
   });
 });
 
+describe('the memory stall watch', () => {
+  it('watches only the answer being written, never the prompt being read', () => {
+    const config = getGenerationConfigForModel({
+      modelName: 'Any',
+      modelPath: GEMMA4_E2B_MLX_MODEL,
+    }) as { stallPrefillPassMs?: number; stallPrefillPassCount?: number };
+
+    expect(config.stallPrefillPassMs).toBeUndefined();
+    expect(config.stallPrefillPassCount).toBeUndefined();
+  });
+
+  const stallWatchOf = (modelPath: string) => {
+    const { stallPassMs, stallPassCount } = getGenerationConfigForModel({
+      modelName: 'Any',
+      modelPath,
+    }) as { stallPassMs?: number; stallPassCount?: number };
+    return { stallPassMs, stallPassCount };
+  };
+
+  it('is on for the Gemma builds that run on the MLX delegate', () => {
+    for (const modelPath of [GEMMA4_E2B_MLX_MODEL, GEMMA4_E2B_MLX_MM]) {
+      expect(stallWatchOf(modelPath)).toEqual({
+        stallPassMs: MEMORY_STALL_PASS_MS,
+        stallPassCount: MEMORY_STALL_PASS_COUNT,
+      });
+    }
+  });
+
+  it('is on for an MLX build a catalog delivers under a newer release', () => {
+    expect(
+      runsOnMlxDelegate({
+        modelPath:
+          'https://huggingface.co/software-mansion/react-native-executorch-gemma-4/resolve/v0.11.0/e2b/mlx/gemma4_e2b_mlx_int4.pte',
+      })
+    ).toBe(true);
+  });
+
+  it('stays off for CPU and Vulkan builds', () => {
+    for (const modelPath of [
+      GEMMA4_E2B_VULKAN_MODEL,
+      QWEN3_1_7B_QUANTIZED.modelSource,
+      'https://example.com/models/mlx-like-name.pte',
+    ]) {
+      expect(stallWatchOf(modelPath)).toEqual({
+        stallPassMs: undefined,
+        stallPassCount: undefined,
+      });
+    }
+  });
+});
+
 describe('getStartingModels', () => {
-  it('always returns low-end model suggestions below 4 GB RAM', () => {
+  it('offers only the low-end models that fit below 4 GB RAM', () => {
     expect(getStartingModels(3.99)).toEqual([
       'Qwen 3 - 0.6B',
       'LFM 2.5 VL - 450M',
       'LFM 2.5 - 1.2B',
     ]);
-    expect(getStartingModels(0)).toEqual([
+    expect(getStartingModels(3.3)).toEqual([
       'Qwen 3 - 0.6B',
       'LFM 2.5 VL - 450M',
-      'LFM 2.5 - 1.2B',
     ]);
+    expect(getStartingModels(2.9)).toEqual(['LFM 2.5 VL - 450M']);
+  });
+
+  it('offers nothing when no starting model fits the device', () => {
+    expect(getStartingModels(0)).toEqual([]);
   });
 
   it('replaces incompatible mid-range candidates with low-end fallbacks', () => {
     expect(getStartingModels(4)).toEqual([
-      'LFM 2.5 - 1.2B',
+      'LFM 3 - 1.7B',
       'Qwen 3 - 0.6B',
       'LFM 2.5 VL - 450M',
     ]);
     expect(getStartingModels(6)).toEqual([
+      'LFM 3 - 1.7B',
       'Qwen 3 - 1.7B',
-      'LFM 2.5 - 1.2B',
-      'LFM 2.5 VL - 1.6B',
+      'Qwen 3 - 0.6B',
     ]);
   });
 
   it('offers the large models only where the device budget covers them', () => {
     expect(getStartingModels(7.6)).toEqual([
+      'LFM 3 - 1.7B',
+      'LFM 3 VL - 2B',
       'Gemma 4 - 2B',
-      'Gemma 4 VL - 2B',
-      'Qwen 3 - 1.7B',
     ]);
   });
 
   it('drops a 6 GB phone down to what it can actually hold', () => {
     expect(getStartingModels(5.4959)).toEqual([
+      'LFM 3 - 1.7B',
       'Qwen 3 - 1.7B',
-      'LFM 2.5 - 1.2B',
       'Qwen 3 - 0.6B',
     ]);
   });
 
-  it('only recommends compatible models when RAM is at least 4 GB', () => {
-    for (let ramGB = 4; ramGB <= 12; ramGB += 0.5) {
+  it('only recommends compatible models at any RAM size', () => {
+    for (let ramGB = 0; ramGB <= 12; ramGB += 0.25) {
       const recommended = getStartingModels(ramGB);
       for (const modelName of recommended) {
         const model = DEFAULT_MODELS.find((m) => m.modelName === modelName)!;

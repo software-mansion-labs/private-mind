@@ -64,6 +64,155 @@ describe('prepareMessagesForLLM', () => {
       expect(result[0].content).toContain(baseSettings.systemPrompt);
     });
 
+    describe('default prompt sentence about documents', () => {
+      const defaultPromptLead =
+        'You are a knowledgeable and helpful assistant. Provide clear, accurate, and well-structured responses.';
+      const defaultDocumentSentence =
+        'When given context from documents, use that information to give comprehensive answers while being concise and relevant.';
+      const defaultSettings = {
+        ...baseSettings,
+        systemPrompt: `${defaultPromptLead} ${defaultDocumentSentence}`,
+      } as ChatSettings;
+      const bielikPromptLead =
+        'Jesteś pomocnym asystentem. Udzielaj jasnych, dokładnych i dobrze ustrukturyzowanych odpowiedzi w języku polskim.';
+      const bielikDocumentSentence =
+        'Gdy otrzymasz kontekst z dokumentów, wykorzystaj te informacje, aby udzielać wyczerpujących odpowiedzi, będąc jednocześnie zwięzłym i rzeczowym.';
+      const question: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'Name three mountains.',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+      const systemPromptFor = (settings: ChatSettings, context: string[]) =>
+        prepareMessagesForLLM(question, context, settings, baseModel)[0]
+          .content as string;
+
+      it('is dropped when the turn carries no documents, so the model does not ask for them', () => {
+        const systemPrompt = systemPromptFor(defaultSettings, []);
+
+        expect(systemPrompt).not.toContain(defaultDocumentSentence);
+        expect(systemPrompt.startsWith(`${defaultPromptLead}\n\n`)).toBe(true);
+      });
+
+      it('stays when the turn carries retrieved context', () => {
+        const systemPrompt = systemPromptFor(defaultSettings, [
+          'some retrieved passage',
+        ]);
+
+        expect(systemPrompt).toContain(
+          `${defaultPromptLead} ${defaultDocumentSentence}`
+        );
+      });
+
+      it('leaves a custom prompt that mentions documents in its own words untouched', () => {
+        const customPrompt =
+          'You are a concise assistant. If documents are attached, quote them; otherwise answer from what you know.';
+        const systemPrompt = systemPromptFor(
+          { ...baseSettings, systemPrompt: customPrompt } as ChatSettings,
+          []
+        );
+
+        expect(systemPrompt.startsWith(`${customPrompt}\n\n`)).toBe(true);
+      });
+
+      it('leaves the Polish Bielik prompt as it is', () => {
+        const systemPrompt = systemPromptFor(
+          {
+            ...baseSettings,
+            systemPrompt: `${bielikPromptLead} ${bielikDocumentSentence}`,
+          } as ChatSettings,
+          []
+        );
+
+        expect(
+          systemPrompt.startsWith(
+            `${bielikPromptLead} ${bielikDocumentSentence}\n\n`
+          )
+        ).toBe(true);
+      });
+    });
+
+    it('tells the model to greet back when the latest message is only a greeting', () => {
+      const underWay: Message[] = [
+        { id: 1, chatId: 1, role: 'user', content: 'ping', timestamp: 0 },
+        { id: 2, chatId: 1, role: 'assistant', content: 'pong', timestamp: 0 },
+        { id: 3, chatId: 1, role: 'user', content: 'hello', timestamp: 0 },
+        { id: 4, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const systemPrompt = prepareMessagesForLLM(
+        underWay,
+        [],
+        baseSettings,
+        baseModel
+      )[0].content as string;
+
+      expect(systemPrompt).toContain('only a greeting');
+    });
+
+    it('hands the model the prepared welcome as its example when a greeting opens the chat', () => {
+      const opening: Message[] = [
+        { id: 1, chatId: 1, role: 'user', content: 'cześć', timestamp: 0 },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const systemPrompt = prepareMessagesForLLM(
+        opening,
+        [],
+        baseSettings,
+        baseModel,
+        { openingWelcome: 'Cześć! Jestem Twoim prywatnym asystentem.' }
+      )[0].content as string;
+
+      expect(systemPrompt).toContain('Example of such a welcome:');
+      expect(systemPrompt).toContain(
+        'Cześć! Jestem Twoim prywatnym asystentem.'
+      );
+      expect(systemPrompt).not.toContain('one or two short');
+    });
+
+    it('says nothing about greetings when the message carries a task', () => {
+      const task: Message[] = [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'hi, what is the capital of France?',
+          timestamp: 0,
+        },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const systemPrompt = prepareMessagesForLLM(
+        task,
+        [],
+        baseSettings,
+        baseModel
+      )[0].content as string;
+
+      expect(systemPrompt).not.toContain('only a greeting');
+    });
+
+    it('still guards against source language when sources are present', () => {
+      const greeting: Message[] = [
+        { id: 1, chatId: 1, role: 'user', content: 'hi', timestamp: 0 },
+        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+      ];
+
+      const systemPrompt = prepareMessagesForLLM(
+        greeting,
+        ['some retrieved passage'],
+        baseSettings,
+        baseModel
+      )[0].content;
+
+      expect(systemPrompt).toContain('not in English either');
+    });
+
     it('states the date only where it can matter', () => {
       const temporal: Message[] = [
         {
@@ -127,27 +276,25 @@ describe('prepareMessagesForLLM', () => {
       expect(bare[0].content).toContain('Write the whole answer in Polish');
     });
 
-    it('falls back to the generic language rule when the question is opaque', () => {
-      const messages: Message[] = [
-        {
-          id: 1,
-          chatId: 1,
-          role: 'user',
-          content: 'Gdansk 2026',
-          timestamp: 0,
-        },
-        { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
-      ];
-      const result = prepareMessagesForLLM(
-        messages,
-        [],
-        baseSettings,
-        baseModel
-      );
-      expect(result[0].content).toContain(
-        'the language of the latest user message'
-      );
-    });
+    it.each(['Gdansk 2026', 'hi', 'hello there'])(
+      'mirrors the message language without warning against English for %p',
+      (content) => {
+        const messages: Message[] = [
+          { id: 1, chatId: 1, role: 'user', content, timestamp: 0 },
+          { id: 2, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+        ];
+        const result = prepareMessagesForLLM(
+          messages,
+          [],
+          baseSettings,
+          baseModel
+        );
+        expect(result[0].content).toContain(
+          'the same language the latest user message is written in'
+        );
+        expect(result[0].content).not.toContain('not in English either');
+      }
+    );
 
     it('restates the detected language next to the question itself', () => {
       const messages: Message[] = [
@@ -2547,6 +2694,74 @@ describe('prepareMessagesForLLM', () => {
   });
 });
 
+describe('prepareMessagesForLLM — images in the history', () => {
+  const withPhoto: Message[] = [
+    {
+      id: 1,
+      chatId: 1,
+      role: 'user',
+      content: 'what is this?',
+      imagePath: 'file:///chat-images/cat.jpg',
+      timestamp: 0,
+    },
+    { id: 2, chatId: 1, role: 'assistant', content: 'A cat.', timestamp: 0 },
+    { id: 3, chatId: 1, role: 'user', content: 'and now?', timestamp: 0 },
+  ];
+
+  it('hands the photo to a vision model', () => {
+    const result = prepareMessagesForLLM(withPhoto, [], baseSettings, {
+      ...baseModel,
+      vision: true,
+    });
+
+    expect(result.find((m) => m.content === 'what is this?')?.mediaPath).toBe(
+      'file:///chat-images/cat.jpg'
+    );
+  });
+
+  const photoAlone: Message[] = [
+    {
+      id: 1,
+      chatId: 1,
+      role: 'user',
+      content: '',
+      imagePath: 'file:///chat-images/cat.jpg',
+      timestamp: 0,
+    },
+  ];
+
+  it('asks what is in a photo sent without any text, ahead of the language anchor', () => {
+    const result = prepareMessagesForLLM(photoAlone, [], baseSettings, {
+      ...baseModel,
+      vision: true,
+    });
+
+    expect(result.at(-1)!.content).toMatch(
+      /^What is in this picture\? \(Answer in English\.\)/
+    );
+  });
+
+  it('keeps the question typed next to a photo', () => {
+    const result = prepareMessagesForLLM(
+      [{ ...photoAlone[0]!, content: 'what is this?' }],
+      [],
+      baseSettings,
+      { ...baseModel, vision: true }
+    );
+
+    expect(result.at(-1)!.content).toMatch(/^what is this\?/);
+  });
+
+  it('keeps the photo away from a text model the chat was switched to, so the chat keeps working', () => {
+    const result = prepareMessagesForLLM(withPhoto, [], baseSettings, {
+      ...baseModel,
+      vision: false,
+    });
+
+    expect(result.some((m) => m.mediaPath)).toBe(false);
+  });
+});
+
 describe('getPromptCharBudget script awareness', () => {
   const english = 'plain ascii english text about concert tickets '.repeat(40);
   const polish =
@@ -2651,8 +2866,8 @@ describe('prepareMessagesForLLM — conversation digest replaces dropped turns',
 
   it('leaves a short conversation untouched — nothing was dropped, nothing to replace', () => {
     const short: Message[] = [
-      turn('user', 'czesc'),
-      turn('assistant', 'czesc, w czym pomoc?'),
+      turn('user', 'jaki rower gorski na start?'),
+      turn('assistant', 'Hardtail z amortyzatorem z przodu.'),
       turn('user', 'a jakie hamulce?'),
     ];
     const result = prepareMessagesForLLM(short, [], baseSettings, baseModel, {
@@ -2750,6 +2965,25 @@ describe('a question about a named day must not be answered with "now"', () => {
   it('stays silent for a question with no day in it at all', () => {
     expect(systemPromptFor('Ile kosztuje Samsung Galaxy S25?')).not.toContain(
       'does not answer a question about a different day'
+    );
+  });
+
+  it('asks for every day when the question covers a span, not one of them', () => {
+    const prompt = systemPromptFor('pogoda londyn weekend');
+
+    expect(prompt).toContain('named day or span of days');
+    expect(prompt).toContain('give the value for each day it covers');
+  });
+
+  it('still warns off a day outside the span', () => {
+    expect(systemPromptFor('pogoda londyn weekend')).toContain(
+      'neither does a day outside the span asked about'
+    );
+  });
+
+  it('covers a span asked about in English too', () => {
+    expect(systemPromptFor('london weather this weekend')).toContain(
+      'give the value for each day it covers'
     );
   });
 });
@@ -2991,5 +3225,108 @@ describe('questions whose answer is a set of options or a measured value', () =>
     expect(groundedPromptFor('Ile kosztuje kulig w Zakopanem?')).not.toContain(
       'together with its unit'
     );
+  });
+});
+
+describe('prepareMessagesForLLM and earlier reasoning', () => {
+  const turn = (
+    id: number,
+    role: Message['role'],
+    content: string,
+    extra: Partial<Message> = {}
+  ): Message => ({ id, chatId: 1, role, content, timestamp: 0, ...extra });
+
+  it('sends earlier answers without their think blocks', () => {
+    const result = prepareMessagesForLLM(
+      [
+        turn(1, 'user', 'Why is the sky blue?'),
+        turn(
+          2,
+          'assistant',
+          '<think>Rayleigh scattering.</think>Because of scattering.'
+        ),
+        turn(3, 'user', 'And at sunset?'),
+        turn(4, 'assistant', ''),
+      ],
+      [],
+      baseSettings,
+      baseModel
+    );
+
+    expect(result.map((m) => m.content)).toContain('Because of scattering.');
+    expect(result.some((m) => String(m.content).includes('<think>'))).toBe(
+      false
+    );
+  });
+
+  it('drops an answer that was stopped while it was still reasoning', () => {
+    const result = prepareMessagesForLLM(
+      [
+        turn(1, 'user', 'Why is the sky blue?'),
+        turn(2, 'assistant', '<think>Rayleigh scattering, let me', {
+          stoppedByUser: true,
+        }),
+        turn(3, 'user', 'And at sunset?'),
+        turn(4, 'assistant', ''),
+      ],
+      [],
+      baseSettings,
+      baseModel
+    );
+
+    expect(result.filter((m) => m.role === 'assistant')).toHaveLength(0);
+    expect(result.at(-1)?.content).toContain('And at sunset?');
+  });
+});
+
+describe('a greeting sent after a real question', () => {
+  const afterAQuestion: Message[] = [
+    {
+      id: 1,
+      chatId: 1,
+      role: 'user',
+      content: 'What is the capital of Australia and why was it chosen?',
+      timestamp: 0,
+    },
+    {
+      id: 2,
+      chatId: 1,
+      role: 'assistant',
+      content:
+        'Canberra, chosen in 1913 as a compromise between Sydney and Melbourne.',
+      timestamp: 0,
+    },
+    { id: 3, chatId: 1, role: 'user', content: 'hi', timestamp: 0 },
+    { id: 4, chatId: 1, role: 'assistant', content: '', timestamp: 0 },
+  ];
+
+  it('goes to the model without the earlier turns, so there is nothing to restate', () => {
+    const result = prepareMessagesForLLM(
+      afterAQuestion,
+      [],
+      baseSettings,
+      baseModel
+    );
+
+    expect(result.map((message) => message.role)).toEqual(['system', 'user']);
+    expect(result[1].content).toMatch(/^hi/);
+    expect(result[0].content).toContain('only a greeting');
+  });
+
+  it('keeps the earlier turns for a real follow-up', () => {
+    const followUp = afterAQuestion.map((message) =>
+      message.id === 3
+        ? { ...message, content: 'And when did that happen?' }
+        : message
+    );
+
+    const result = prepareMessagesForLLM(followUp, [], baseSettings, baseModel);
+
+    expect(result.map((message) => message.role)).toEqual([
+      'system',
+      'user',
+      'assistant',
+      'user',
+    ]);
   });
 });

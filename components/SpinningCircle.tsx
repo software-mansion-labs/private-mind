@@ -13,11 +13,17 @@ import { useTheme } from '../context/ThemeContext';
 interface SpinningCircleProps {
   size?: number;
   strokeWidth?: number;
+  trackColor?: string;
+  arcColor?: string;
+  testID?: string;
 }
 
 const SpinningCircle = ({
   size = 20,
   strokeWidth = 2,
+  trackColor,
+  arcColor,
+  testID,
 }: SpinningCircleProps) => {
   const { theme } = useTheme();
   const rotation = useSharedValue(0);
@@ -44,6 +50,7 @@ const SpinningCircle = ({
 
   return (
     <View
+      testID={testID}
       style={{
         width: size,
         height: size,
@@ -56,7 +63,7 @@ const SpinningCircle = ({
           cx={cx}
           cy={cx}
           r={radius}
-          stroke={theme.text.defaultTertiary}
+          stroke={trackColor ?? theme.text.defaultTertiary}
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -73,10 +80,12 @@ const SpinningCircle = ({
             cx={cx}
             cy={cx}
             r={radius}
-            stroke={theme.text.primary}
+            stroke={arcColor ?? theme.text.primary}
             strokeWidth={strokeWidth}
             fill="none"
-            strokeDasharray={`${Math.PI * 2 * radius * 0.25}, ${Math.PI * 2 * radius}`}
+            strokeDasharray={`${Math.PI * 2 * radius * 0.25}, ${
+              Math.PI * 2 * radius
+            }`}
             strokeLinecap="round"
           />
         </Svg>

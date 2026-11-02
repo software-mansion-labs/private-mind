@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Text, StyleSheet, View, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useModelStore } from '../../../store/modelStore';
-import ModalHeader from '../../../components/ModalHeader';
+import GlassScreenHeader, {
+  useGlassScreenHeaderHeight,
+} from '../../../components/GlassScreenHeader';
 import { fontSizes, fontFamily } from '../../../styles/fontStyles';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import PrimaryButton from '../../../components/PrimaryButton';
@@ -40,7 +42,8 @@ export default function EditLocalModelScreen() {
   const modelId = parseInt(rawModelId);
 
   const router = useRouter();
-  const { styles } = useThemedStyles(createStyles);
+  const headerHeight = useGlassScreenHeaderHeight(true);
+  const { styles } = useThemedStyles(createStyles, headerHeight);
 
   const { getModelById, editModel } = useModelStore();
   const model = getModelById(modelId);
@@ -90,7 +93,6 @@ export default function EditLocalModelScreen() {
       style={styles.keyboardAvoidingView}
     >
       <View style={styles.container}>
-        <ModalHeader title="Edit Local Model" onClose={() => router.back()} />
         <ScrollView
           contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
@@ -130,11 +132,17 @@ export default function EditLocalModelScreen() {
         </ScrollView>
         <PrimaryButton text="Save changes" onPress={handleSave} />
       </View>
+      <GlassScreenHeader
+        title="Edit Local Model"
+        onBack={() => router.back()}
+        icon="close"
+        sheet
+      />
     </CustomKeyboardAvoidingView>
   );
 }
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, headerHeight: number) =>
   StyleSheet.create({
     keyboardAvoidingView: {
       flex: 1,
@@ -142,12 +150,13 @@ const createStyles = (theme: Theme) =>
     },
     container: {
       flex: 1,
-      padding: 16,
+      paddingHorizontal: 16,
       paddingBottom: theme.insets.bottom + 16,
       justifyContent: 'space-between',
     },
     scrollViewContent: {
       gap: 24,
+      paddingTop: headerHeight + 24,
       paddingBottom: 24,
     },
     textFieldSection: {

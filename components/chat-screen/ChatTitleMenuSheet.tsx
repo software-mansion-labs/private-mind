@@ -4,6 +4,7 @@ import {
   BottomSheetView,
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
+import BackDismissibleSheetModal from '../bottomSheets/BackDismissibleSheetModal';
 import { Text, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
@@ -39,7 +40,7 @@ const ChatTitleMenuSheet = ({
   };
 
   return (
-    <BottomSheetModal
+    <BackDismissibleSheetModal
       ref={bottomSheetModalRef}
       enableDynamicSizing
       onDismiss={onDismiss}
@@ -80,7 +81,7 @@ const ChatTitleMenuSheet = ({
           }}
         />
       </BottomSheetView>
-    </BottomSheetModal>
+    </BackDismissibleSheetModal>
   );
 };
 

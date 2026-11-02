@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react-native';
 
-jest.mock('expo-media-library', () => ({
+jest.mock('expo-media-library/legacy', () => ({
   getAssetInfoAsync: jest.fn(),
   usePermissions: jest.fn(() => [null, jest.fn()]),
 }));
@@ -29,7 +29,7 @@ jest.mock('../utils/web/url/extractArticle', () => ({
   extractArticle: jest.fn(),
 }));
 
-import * as MediaLibrary from 'expo-media-library';
+import * as MediaLibrary from 'expo-media-library/legacy';
 import * as DocumentPicker from 'expo-document-picker';
 import {
   useAttachment,

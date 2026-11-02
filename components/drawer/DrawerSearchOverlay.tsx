@@ -8,6 +8,7 @@ import {
   Keyboard,
 } from 'react-native';
 import Animated, {
+  Extrapolation,
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
@@ -20,11 +21,15 @@ import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller
 import { Theme } from '../../styles/colors';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import DrawerMenu from './DrawerMenu';
+import { DrawerFooter } from './DrawerFooter';
 import { useSearchOverlayAnimation } from './useSearchOverlayAnimation';
+import { useSearchInputFocus } from './useSearchInputFocus';
 import {
   getDrawerTopPadding,
   getDrawerWidth,
 } from '../../constants/drawer-layout';
+
+const FOOTER_FADE_END = 0.4;
 
 interface Props {
   active: boolean;
@@ -60,9 +65,13 @@ export const DrawerSearchOverlay = ({
   const { styles } = useThemedStyles(createStyles);
   const { width: screenWidth } = useWindowDimensions();
 
-  const { mounted, progress, contentProgress, backdropOpacity, startExpand } =
+  const { mounted, progress, iconMorph, backdropOpacity, startExpand } =
     useSearchOverlayAnimation({ active, closeInstantly });
   const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
+  const { focusAfterShow, refocus, cancelPendingFocus } = useSearchInputFocus(
+    inputRef,
+    active
+  );
 
   const collapsedWidth = getDrawerWidth(screenWidth);
 
@@ -77,6 +86,15 @@ export const DrawerSearchOverlay = ({
     opacity: backdropOpacity.get(),
   }));
 
+  const footerStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      progress.get(),
+      [0, FOOTER_FADE_END],
+      [1, 0],
+      Extrapolation.CLAMP
+    ),
+  }));
+
   const handleBackdropPress = () => {
     Keyboard.dismiss();
     onRequestClose();
@@ -84,8 +102,20 @@ export const DrawerSearchOverlay = ({
 
   const handleShow = useCallback(() => {
     startExpand();
-    requestAnimationFrame(() => inputRef.current?.focus());
-  }, [startExpand, inputRef]);
+    focusAfterShow();
+  }, [startExpand, focusAfterShow]);
+
+  const handleMenuActiveChange = useCallback(
+    (menuActive: boolean) => {
+      onMenuActiveChange(menuActive);
+      if (menuActive) {
+        cancelPendingFocus();
+        return;
+      }
+      refocus();
+    },
+    [onMenuActiveChange, cancelPendingFocus, refocus]
+  );
 
   if (!mounted) return null;
 
@@ -119,13 +149,21 @@ export const DrawerSearchOverlay = ({
                 onChangeSearch={onChangeSearch}
                 onCloseSearch={onRequestClose}
                 onSearchBlur={onSearchBlur}
-                onMenuActiveChange={onMenuActiveChange}
+                onMenuActiveChange={handleMenuActiveChange}
                 onNavigate={onNavigate}
                 inputRef={inputRef}
                 scrollOffsetRef={scrollOffsetRef}
-                searchProgress={contentProgress}
+                searchProgress={iconMorph}
               />
             </View>
+            <Animated.View
+              style={[styles.footer, { width: collapsedWidth }, footerStyle]}
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <DrawerFooter />
+            </Animated.View>
           </Animated.View>
         </BottomSheetModalProvider>
       </GestureHandlerRootView>
@@ -139,11 +177,11 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: theme.bg.softPrimary,
     },
     backdropTouch: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     panel: {
       position: 'absolute',
@@ -156,5 +194,11 @@ const createStyles = (theme: Theme) =>
     },
     panelContent: {
       flex: 1,
+    },
+    footer: {
+      position: 'absolute',
+      left: 0,
+      bottom: 0,
+      backgroundColor: theme.bg.softPrimary,
     },
   });

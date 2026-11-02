@@ -16,38 +16,47 @@ jest.mock('../utils/startPhantomChat', () => ({
   startPhantomChat: (...args: unknown[]) => mockStart(...args),
 }));
 
+jest.mock('../utils/Feedback', () => ({
+  Feedback: { newChat: jest.fn() },
+}));
+
 import NewChatHeaderButton from '../components/NewChatHeaderButton';
 import { useChatStore } from '../store/chatStore';
+import { Feedback } from '../utils/Feedback';
 
 beforeEach(() => jest.clearAllMocks());
 afterEach(() => jest.restoreAllMocks());
 
 describe('NewChatHeaderButton', () => {
   it('renders a Touchable', () => {
-    const { UNSAFE_getAllByType } = render(<NewChatHeaderButton />);
-    const { TouchableOpacity } = require('react-native');
-    expect(UNSAFE_getAllByType(TouchableOpacity).length).toBeGreaterThan(0);
+    const { getByTestId } = render(<NewChatHeaderButton />);
+    expect(getByTestId('new-chat-header-button')).toBeTruthy();
   });
 
   it('starts a phantom chat when noOp is not set', () => {
-    const { UNSAFE_getByType } = render(<NewChatHeaderButton />);
-    const { TouchableOpacity } = require('react-native');
-    fireEvent.press(UNSAFE_getByType(TouchableOpacity));
+    const { getByTestId } = render(<NewChatHeaderButton />);
+    fireEvent.press(getByTestId('new-chat-header-button'));
     expect(mockStart).toHaveBeenCalled();
   });
 
   it('navigates nowhere when noOp=true, because that screen is already a new chat', () => {
-    const { UNSAFE_getByType } = render(<NewChatHeaderButton noOp={true} />);
-    const { TouchableOpacity } = require('react-native');
-    fireEvent.press(UNSAFE_getByType(TouchableOpacity));
+    const { getByTestId } = render(<NewChatHeaderButton noOp={true} />);
+    fireEvent.press(getByTestId('new-chat-header-button'));
     expect(mockStart).not.toHaveBeenCalled();
   });
 
   it('still asks for a fresh blank chat when noOp=true, so a tapped suggestion can be taken back', () => {
     const before = useChatStore.getState().phantomChatStarts;
-    const { UNSAFE_getByType } = render(<NewChatHeaderButton noOp={true} />);
-    const { TouchableOpacity } = require('react-native');
-    fireEvent.press(UNSAFE_getByType(TouchableOpacity));
+    const { getByTestId } = render(<NewChatHeaderButton noOp={true} />);
+    fireEvent.press(getByTestId('new-chat-header-button'));
     expect(useChatStore.getState().phantomChatStarts).toBe(before + 1);
+  });
+
+  it('taps back like the rest of the chat controls, on either screen', () => {
+    const { getByTestId, rerender } = render(<NewChatHeaderButton />);
+    fireEvent.press(getByTestId('new-chat-header-button'));
+    rerender(<NewChatHeaderButton noOp={true} />);
+    fireEvent.press(getByTestId('new-chat-header-button'));
+    expect(Feedback.newChat).toHaveBeenCalledTimes(2);
   });
 });

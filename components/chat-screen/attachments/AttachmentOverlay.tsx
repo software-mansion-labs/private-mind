@@ -7,10 +7,15 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
+import { useBackToDismiss } from '../../../hooks/useBackToDismiss';
 import { Theme } from '../../../styles/colors';
 import { Feedback } from '../../../utils/Feedback';
 import AttachmentFlight, { type Flight } from './AttachmentFlight';
-import AttachmentMenu, { type MenuAction } from './AttachmentMenu';
+import AttachmentMenu, {
+  attachmentMenuHeight,
+  type MenuAction,
+  type MenuTools,
+} from './AttachmentMenu';
 import AttachmentPanel from './AttachmentPanel';
 import CameraBar from './CameraBar';
 import CameraSheet, { type CameraSheetHandle } from './CameraSheet';
@@ -40,6 +45,8 @@ interface Props {
   attachedIds: string[];
   maxSelection: number;
   imagesEnabled: boolean;
+  attachmentsBlocked?: boolean;
+  tools?: MenuTools;
 }
 
 const AttachmentOverlay = ({
@@ -62,6 +69,8 @@ const AttachmentOverlay = ({
   attachedIds,
   maxSelection,
   imagesEnabled,
+  attachmentsBlocked = false,
+  tools = {},
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const barTop = sheetBottom - BOTTOM_BAR.inset - BOTTOM_BAR.controlSize;
@@ -198,12 +207,18 @@ const AttachmentOverlay = ({
     panel.dismiss();
   }, [panel]);
 
+  useBackToDismiss(panel.mode !== 'closed', () => {
+    if (panel.closing || isFlying) return;
+    if (panel.mode === 'menu') panel.dismiss();
+    else panel.backToMenu();
+  });
+
   return (
     <OverKeyboardView visible={panel.mode !== 'closed'}>
       {panel.mode !== 'closed' ? (
         <View
           key={resumeKey}
-          pointerEvents={isFlying ? 'none' : 'box-none'}
+          pointerEvents={isFlying || panel.closing ? 'none' : 'box-none'}
           style={StyleSheet.absoluteFill}
           onLayout={(event) =>
             onWindowHeight?.(event.nativeEvent.layout.height)
@@ -223,6 +238,7 @@ const AttachmentOverlay = ({
             gridWidth={gridWidth}
             gridHeight={gridHeight}
             menuMaxBottom={menuMaxBottom}
+            menuHeight={attachmentMenuHeight(tools)}
             sheetTop={sheetTop}
             sheetHeight={gridHeight}
             interactive={
@@ -239,7 +255,9 @@ const AttachmentOverlay = ({
               <AttachmentMenu
                 onSelect={panel.onMenuAction}
                 imagesEnabled={imagesEnabled}
+                attachmentsBlocked={attachmentsBlocked}
                 busy={busyAction}
+                {...tools}
               />
             }
             grid={

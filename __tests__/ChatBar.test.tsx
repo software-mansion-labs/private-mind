@@ -84,12 +84,14 @@ jest.mock('../components/bottomSheets/EmbeddingDownloadSheet', () => ({
 }));
 
 jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
-  const { View, TouchableOpacity, Text } = require('react-native');
+  const { View, Pressable, Text } = require('react-native');
   return ({
     panel,
     imagesEnabled,
     maxSelection,
     busyAction,
+    attachmentsBlocked,
+    tools,
   }: {
     panel: {
       mode: string;
@@ -98,36 +100,55 @@ jest.mock('../components/chat-screen/attachments/AttachmentOverlay', () => {
     imagesEnabled: boolean;
     maxSelection: number;
     busyAction?: string | null;
+    attachmentsBlocked?: boolean;
+    tools?: {
+      thinkingEnabled?: boolean;
+      thinkingAvailable?: boolean;
+      onThinkingToggle?: () => void;
+      webSearchEnabled?: boolean;
+      onWebSearchToggle?: () => void;
+    };
   }) => (
     <View testID="attachment-overlay">
       <Text>{`mode:${panel.mode}`}</Text>
+      <Text>{`menu-think:${tools?.thinkingEnabled ? 'on' : 'off'}`}</Text>
+      <Text>{`menu-think-available:${
+        tools?.thinkingAvailable ? 'yes' : 'no'
+      }`}</Text>
+      <Pressable testID="menu-think-switch" onPress={tools?.onThinkingToggle} />
+      {tools?.onWebSearchToggle && (
+        <Pressable testID="web-search-toggle" onPress={tools.onWebSearchToggle}>
+          <Text>Web search</Text>
+        </Pressable>
+      )}
       <Text>{`vision:${imagesEnabled}`}</Text>
       <Text>{`max:${maxSelection}`}</Text>
       <Text>{`busy:${busyAction ?? 'none'}`}</Text>
-      <TouchableOpacity
+      <Text>{`attachments-blocked:${!!attachmentsBlocked}`}</Text>
+      <Pressable
         testID="menu-photos"
         onPress={() => panel.onMenuAction('photos')}
       >
         <Text>Photos</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
+      </Pressable>
+      <Pressable
         testID="menu-camera"
         onPress={() => panel.onMenuAction('camera')}
       >
         <Text>Camera</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
+      </Pressable>
+      <Pressable
         testID="menu-files"
         onPress={() => panel.onMenuAction('files')}
       >
         <Text>Files</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 });
 
 jest.mock('../components/chat-screen/AttachmentThumbnail', () => {
-  const { View, TouchableOpacity, Text } = require('react-native');
+  const { View, Pressable, Text } = require('react-native');
   return ({
     attachment,
     onRemove,
@@ -137,18 +158,18 @@ jest.mock('../components/chat-screen/AttachmentThumbnail', () => {
   }) => (
     <View testID={`attachment-thumb-${attachment.id}`}>
       <Text>{attachment.name || attachment.uri}</Text>
-      <TouchableOpacity
+      <Pressable
         testID={`attachment-dismiss-${attachment.id}`}
         onPress={onRemove}
       >
         <Text>X</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 });
 
 jest.mock('../components/chat-screen/ChatSpeechInput', () => {
-  const { View, TouchableOpacity } = require('react-native');
+  const { View, Pressable } = require('react-native');
   return ({
     onSubmit,
     onCancel,
@@ -157,29 +178,29 @@ jest.mock('../components/chat-screen/ChatSpeechInput', () => {
     onCancel: () => void;
   }) => (
     <View testID="speech-input">
-      <TouchableOpacity
+      <Pressable
         testID="speech-submit"
         onPress={() => onSubmit('voice transcript')}
       />
-      <TouchableOpacity testID="speech-cancel" onPress={onCancel} />
+      <Pressable testID="speech-cancel" onPress={onCancel} />
     </View>
   );
 });
 
 jest.mock('../components/chat-screen/PromptSuggestions', () => {
-  const { TouchableOpacity, Text } = require('react-native');
+  const { Pressable, Text } = require('react-native');
   return ({ onSelectPrompt }: { onSelectPrompt: (prompt: string) => void }) => (
-    <TouchableOpacity
+    <Pressable
       testID="prompt-suggestion"
       onPress={() => onSelectPrompt('Suggested prompt')}
     >
       <Text>Suggest something</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 });
 
 jest.mock('../components/chat-screen/ChatBarActions', () => {
-  const { View, TouchableOpacity, Text } = require('react-native');
+  const { View, Pressable, Text } = require('react-native');
   return ({
     userInput,
     hasAttachments,
@@ -188,11 +209,7 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     isProcessingPrompt,
     onInterrupt,
     onSpeechInput,
-    onThinkingToggle,
-    thinkingEnabled,
     onAttach,
-    onWebSearchToggle,
-    modelBusy,
     sendPending,
     sendInFlight,
   }: {
@@ -203,51 +220,55 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
     isProcessingPrompt: boolean;
     onInterrupt: () => void;
     onSpeechInput: () => void;
-    onThinkingToggle: () => void;
-    thinkingEnabled: boolean;
     onAttach: () => void;
-    onWebSearchToggle?: () => void;
-    modelBusy?: boolean;
     sendPending?: boolean;
     sendInFlight?: boolean;
   }) => (
     <View testID="chat-bar-actions">
-      {modelBusy && <Text>model busy</Text>}
       {sendPending && <Text>send pending</Text>}
-      {onWebSearchToggle && (
-        <TouchableOpacity
-          testID="web-search-toggle"
-          onPress={onWebSearchToggle}
-        >
-          <Text>Web</Text>
-        </TouchableOpacity>
-      )}
-      <TouchableOpacity testID="attach-btn" onPress={onAttach}>
+      <Pressable testID="attach-btn" onPress={onAttach}>
         <Text>+</Text>
-      </TouchableOpacity>
+      </Pressable>
       {isGenerating || isProcessingPrompt ? (
-        <TouchableOpacity testID="interrupt-btn" onPress={onInterrupt}>
+        <Pressable testID="interrupt-btn" onPress={onInterrupt}>
           <Text>Stop</Text>
-        </TouchableOpacity>
+        </Pressable>
       ) : userInput || hasAttachments || sendInFlight ? (
         <>
           {hasAttachments && !userInput && (
-            <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}>
+            <Pressable testID="speech-btn" onPress={onSpeechInput}>
               <Text>Mic</Text>
-            </TouchableOpacity>
+            </Pressable>
           )}
-          <TouchableOpacity testID="send-btn" onPress={onSend}>
+          <Pressable testID="send-btn" onPress={onSend}>
             <Text>Send</Text>
-          </TouchableOpacity>
+          </Pressable>
         </>
       ) : (
-        <TouchableOpacity testID="speech-btn" onPress={onSpeechInput}>
+        <Pressable testID="speech-btn" onPress={onSpeechInput}>
           <Text>Mic</Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
-      <TouchableOpacity testID="thinking-btn" onPress={onThinkingToggle}>
-        <Text>{thinkingEnabled ? 'Think ON' : 'Think OFF'}</Text>
-      </TouchableOpacity>
+    </View>
+  );
+});
+
+jest.mock('../components/chat-screen/ComposerModelMenu', () => {
+  const { View, Pressable, Text } = require('react-native');
+  return ({
+    visible,
+    onPick,
+    onShowAllModels,
+  }: {
+    visible: boolean;
+    onPick: (model: { id: number }) => void;
+    onShowAllModels: () => void;
+  }) => (
+    <View>
+      <Text>{`model-menu:${visible ? 'open' : 'closed'}`}</Text>
+      <Pressable testID="menu-pick-current" onPress={() => onPick({ id: 1 })} />
+      <Pressable testID="menu-pick-other" onPress={() => onPick({ id: 2 })} />
+      <Pressable testID="menu-all-models" onPress={onShowAllModels} />
     </View>
   );
 });
@@ -288,6 +309,8 @@ const defaultProps = {
   extraContentPadding: { value: 0 } as unknown as SharedValue<number>,
   onSend: jest.fn(),
   onSelectModel: jest.fn(),
+  onPickModel: jest.fn(),
+  onShowAllModels: jest.fn(),
   onSelectPrompt: jest.fn(),
   model: downloadedModel,
   scrollRef: { current: null },
@@ -298,6 +321,7 @@ const defaultProps = {
   hasMessages: false,
   disabled: false,
   modelSwitching: false,
+  opensModelMenu: false,
 };
 
 const renderBar = (props: Partial<typeof defaultProps> = {}) =>
@@ -329,6 +353,7 @@ beforeEach(() => {
   mockUseAttachment.addImages.mockClear();
   mockUseAttachment.pickDocument.mockClear();
   mockUseAttachment.clearAll.mockClear();
+  mockUseAttachment.restoreAttachments.mockClear();
   mockUseAttachment.removeAttachment.mockClear();
   mockRunWithModelOffloaded.mockClear();
   jest.clearAllMocks();
@@ -359,7 +384,7 @@ describe('no model selected', () => {
 
   it('does not render the text input when model is undefined', () => {
     renderBar({ model: undefined });
-    expect(screen.queryByPlaceholderText('Ask about anything...')).toBeNull();
+    expect(screen.queryByPlaceholderText('Ask anything')).toBeNull();
   });
 });
 
@@ -368,7 +393,7 @@ describe('no model selected', () => {
 describe('model not downloaded', () => {
   it('renders nothing interactive when model is not downloaded', () => {
     renderBar({ model: { ...downloadedModel, isDownloaded: false } });
-    expect(screen.queryByPlaceholderText('Ask about anything...')).toBeNull();
+    expect(screen.queryByPlaceholderText('Ask anything')).toBeNull();
     expect(screen.queryByText('Select Model')).toBeNull();
   });
 });
@@ -378,7 +403,7 @@ describe('model not downloaded', () => {
 describe('downloaded model — text input', () => {
   it('renders the text input', () => {
     renderBar();
-    expect(screen.getByPlaceholderText('Ask about anything...')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Ask anything')).toBeTruthy();
   });
 
   it('hands the message over before it closes the keyboard', () => {
@@ -387,15 +412,27 @@ describe('downloaded model — text input', () => {
       .mockImplementation(() => {});
     const onSend = jest.fn();
     renderBar({ onSend });
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'Hello'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'Hello');
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(onSend.mock.invocationCallOrder[0]).toBeLessThan(
       dismiss.mock.invocationCallOrder[0]
     );
     dismiss.mockRestore();
+  });
+
+  it('sends a prompt without the whitespace that would draw a blank line in the bubble (#399)', () => {
+    const onSend = jest.fn();
+    renderBar({ onSend });
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask anything'),
+      'Help me write a Python function.\n'
+    );
+    fireEvent.press(screen.getByTestId('send-btn'));
+    expect(onSend).toHaveBeenCalledWith(
+      'Help me write a Python function.',
+      undefined,
+      []
+    );
   });
 
   it('keeps the send button up while the turn is still being created (#408)', async () => {
@@ -407,10 +444,7 @@ describe('downloaded model — text input', () => {
         })
     );
     renderBar({ onSend });
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'Hello'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'Hello');
     fireEvent.press(screen.getByTestId('send-btn'));
 
     expect(screen.queryByTestId('speech-btn')).toBeNull();
@@ -426,18 +460,14 @@ describe('downloaded model — text input', () => {
   it('calls onSend with current input when send button is pressed', () => {
     const onSend = jest.fn();
     renderBar({ onSend });
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'Hello'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'Hello');
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(onSend).toHaveBeenCalledWith('Hello', undefined, []);
   });
 
   it('stays empty when the native input echoes the sent text back', () => {
     renderBar();
-    const textInput = () =>
-      screen.getByPlaceholderText('Ask about anything...');
+    const textInput = () => screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(textInput(), 'czesc test wysylki');
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(textInput().props.value).toBe('');
@@ -450,8 +480,7 @@ describe('downloaded model — text input', () => {
     const now = jest.spyOn(Date, 'now');
     now.mockReturnValue(10_000);
     renderBar();
-    const textInput = () =>
-      screen.getByPlaceholderText('Ask about anything...');
+    const textInput = () => screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(textInput(), 'czesc test wysylki');
     fireEvent.press(screen.getByTestId('send-btn'));
     expect(textInput().props.value).toBe('');
@@ -464,8 +493,7 @@ describe('downloaded model — text input', () => {
 
   it('accepts genuine typing right after a send', () => {
     renderBar();
-    const textInput = () =>
-      screen.getByPlaceholderText('Ask about anything...');
+    const textInput = () => screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(textInput(), 'first');
     fireEvent.press(screen.getByTestId('send-btn'));
 
@@ -477,8 +505,7 @@ describe('downloaded model — text input', () => {
 
   it('does not swallow a repeat of the same message typed again', () => {
     renderBar();
-    const textInput = () =>
-      screen.getByPlaceholderText('Ask about anything...');
+    const textInput = () => screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(textInput(), 'again');
     fireEvent.press(screen.getByTestId('send-btn'));
 
@@ -490,18 +517,85 @@ describe('downloaded model — text input', () => {
   it('takes a send made while the model is still switching, instead of refusing it', () => {
     const onSend = jest.fn(() => new Promise<boolean>(() => {}));
     renderBar({ onSend, modelSwitching: true });
-    const input = screen.getByPlaceholderText('Ask about anything...');
+    const input = screen.getByPlaceholderText('Ask anything');
     fireEvent.changeText(input, 'Keep this message');
 
     fireEvent.press(screen.getByTestId('send-btn'));
 
     expect(onSend).toHaveBeenCalledWith('Keep this message', undefined, []);
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('');
-    expect(Toast.show).not.toHaveBeenCalledWith({
-      type: 'defaultToast',
-      text1: 'Wait for the model to finish loading.',
+    expect(Toast.show).not.toHaveBeenCalled();
+  });
+
+  describe('a send that waits for the model switch to land', () => {
+    const input = () => screen.getByPlaceholderText('Ask anything');
+
+    const storeWith = (isProcessingPrompt: boolean) =>
+      mockUseLLMStore.mockImplementation(
+        (selector?: (state: Partial<LLMStore>) => unknown) => {
+          const state = {
+            isGenerating: false,
+            isProcessingPrompt,
+            generatingForChatId: isProcessingPrompt ? 1 : null,
+            interrupt: jest.fn(),
+            loadModel: jest.fn(),
+            model: null,
+          };
+          return selector ? selector(state) : state;
+        }
+      );
+
+    const sendWhileSwitching = (onSend: jest.Mock) => {
+      const view = renderBar({ onSend, modelSwitching: true });
+      fireEvent.changeText(input(), 'Keep this message');
+      fireEvent.press(screen.getByTestId('send-btn'));
+      return view;
+    };
+
+    it('keeps the message in the composer, locked, until it is on its way', () => {
+      sendWhileSwitching(jest.fn(() => new Promise<boolean>(() => {})));
+
+      expect(input().props.value).toBe('Keep this message');
+      expect(input().props.editable).toBe(false);
+      expect(mockUseAttachment.clearAll).not.toHaveBeenCalled();
+    });
+
+    it('empties the composer once the turn starts', () => {
+      const view = sendWhileSwitching(
+        jest.fn(() => new Promise<boolean>(() => {}))
+      );
+
+      storeWith(true);
+      view.rerender(
+        <ChatBar {...defaultProps} modelSwitching={false} onSend={jest.fn()} />
+      );
+
+      expect(input().props.value).toBe('');
+      expect(input().props.editable).toBe(true);
+      expect(mockUseAttachment.clearAll).toHaveBeenCalledTimes(1);
+    });
+
+    it('hands the message back, editable and not duplicated, when the send is refused', async () => {
+      sendWhileSwitching(jest.fn(() => Promise.resolve('busy' as const)));
+
+      await act(async () => {});
+
+      expect(input().props.value).toBe('Keep this message');
+      expect(input().props.editable).toBe(true);
+      expect(mockUseAttachment.restoreAttachments).not.toHaveBeenCalled();
+      expect(mockUseAttachment.clearAll).not.toHaveBeenCalled();
+      expect(Toast.show).toHaveBeenCalledWith({
+        type: 'defaultToast',
+        text1: 'Wait for the response to finish or stop it first.',
+      });
+    });
+
+    it('takes no second send while one is held', () => {
+      const onSend = jest.fn(() => new Promise<boolean>(() => {}));
+      sendWhileSwitching(onSend);
+
+      fireEvent.press(screen.getByTestId('send-btn'));
+
+      expect(onSend).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -522,16 +616,26 @@ describe('downloaded model — text input', () => {
     expect(onSelectPrompt).toHaveBeenCalledWith('Suggested prompt');
   });
 
-  it('passes thinkingEnabled to ChatBarActions', () => {
+  it('passes thinkingEnabled to the + menu', () => {
     renderBar({ thinkingEnabled: true });
-    expect(screen.getByText('Think ON')).toBeTruthy();
+    expect(screen.getByText('menu-think:on')).toBeTruthy();
   });
 
-  it('calls onThinkingToggle when thinking button is pressed', () => {
+  it('calls onThinkingToggle from the + menu', () => {
     const onThinkingToggle = jest.fn();
     renderBar({ onThinkingToggle });
-    fireEvent.press(screen.getByTestId('thinking-btn'));
+    fireEvent.press(screen.getByTestId('menu-think-switch'));
     expect(onThinkingToggle).toHaveBeenCalled();
+  });
+
+  it('marks thinking unavailable for a model without thinking', () => {
+    renderBar();
+    expect(screen.getByText('menu-think-available:no')).toBeTruthy();
+  });
+
+  it('leaves web search out of the + menu when the screen offers no toggle', () => {
+    renderBar();
+    expect(screen.queryByTestId('web-search-toggle')).toBeNull();
   });
 });
 
@@ -596,21 +700,90 @@ describe('generating state', () => {
     expect(screen.queryByTestId('interrupt-btn')).toBeNull();
     expect(screen.getByTestId('speech-btn')).toBeTruthy();
   });
+
+  describe('the + menu while this chat is responding', () => {
+    beforeEach(() => {
+      mockUseLLMStore.mockImplementation(
+        (selector?: (state: Partial<LLMStore>) => unknown) => {
+          const state = {
+            isGenerating: true,
+            isProcessingPrompt: false,
+            generatingForChatId: defaultProps.chatId,
+            interrupt: jest.fn(),
+            loadModel: jest.fn(),
+            model: null,
+          };
+          return selector ? selector(state) : state;
+        }
+      );
+    });
+
+    it('still flips Think', async () => {
+      const onThinkingToggle = jest.fn();
+      renderBar({ onThinkingToggle });
+      await openPanel();
+
+      expect(screen.getByText('mode:menu')).toBeTruthy();
+      fireEvent.press(screen.getByTestId('menu-think-switch'));
+      expect(onThinkingToggle).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['menu-files', 'menu-photos', 'menu-camera'])(
+      'refuses %s with the reason and keeps the menu open',
+      async (row) => {
+        renderBar({ isVisionModel: true });
+        await openPanel();
+
+        expect(screen.getByText('attachments-blocked:true')).toBeTruthy();
+        await act(async () => {
+          fireEvent.press(screen.getByTestId(row));
+        });
+
+        expect(mockUseAttachment.pickDocument).not.toHaveBeenCalled();
+        expect(screen.getByText('mode:menu')).toBeTruthy();
+        expect(Toast.show).toHaveBeenCalledWith({
+          type: 'defaultToast',
+          text1: 'Wait for the response to finish or stop it first.',
+        });
+      }
+    );
+  });
+});
+
+describe('the model the field loads on focus', () => {
+  const focusWith = (modelSwitching: boolean) => {
+    const loadModel = jest.fn();
+    mockUseLLMStore.mockImplementation(
+      (selector?: (state: Partial<LLMStore>) => unknown) => {
+        const state = {
+          isGenerating: false,
+          isProcessingPrompt: false,
+          interrupt: jest.fn(),
+          loadModel,
+          model: { id: downloadedModel.id + 1 } as LLMStore['model'],
+        };
+        return selector ? selector(state) : state;
+      }
+    );
+    renderBar({ modelSwitching });
+    fireEvent(screen.getByPlaceholderText('Ask anything'), 'focus');
+    return loadModel;
+  };
+
+  it('brings back the chat’s model when another one is resident', () => {
+    expect(focusWith(false)).toHaveBeenCalledWith(downloadedModel);
+  });
+
+  it('queues nothing mid-switch, when the chat’s model is the one being replaced', () => {
+    expect(focusWith(true)).not.toHaveBeenCalled();
+  });
 });
 
 // ─── speech input ─────────────────────────────────────────────────────────────
 
-describe('speech input', () => {
-  it('shows a toast instead of opening speech input while switching models', () => {
-    renderBar({ modelSwitching: true });
-    fireEvent.press(screen.getByTestId('speech-btn'));
-    expect(mockAudioManager.requestRecordingPermissions).not.toHaveBeenCalled();
-    expect(Toast.show).toHaveBeenCalledWith({
-      type: 'defaultToast',
-      text1: 'Wait for the model to finish loading.',
-    });
-  });
+const SETTLE_ON_CI_MS = 4000;
 
+describe('speech input', () => {
   it('says nothing on the send button while the model merely loads (#380)', () => {
     renderBar({ disabled: true });
     expect(screen.queryByText('send pending')).toBeNull();
@@ -620,10 +793,7 @@ describe('speech input', () => {
     const onSend = jest.fn(() => new Promise<boolean>(() => {}));
     renderBar({ disabled: true, onSend });
 
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'hi'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'hi');
     fireEvent.press(screen.getByTestId('send-btn'));
 
     await waitFor(() => expect(screen.getByText('send pending')).toBeTruthy());
@@ -633,34 +803,46 @@ describe('speech input', () => {
     const onSend = jest.fn(async () => true);
     renderBar({ disabled: true, onSend });
 
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'hi'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'hi');
     fireEvent.press(screen.getByTestId('send-btn'));
 
-    await waitFor(() => expect(screen.queryByText('send pending')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('send pending')).toBeNull(), {
+      timeout: SETTLE_ON_CI_MS,
+    });
   });
 
   it('leaves the send button alone when the model is already up', async () => {
     const onSend = jest.fn(() => new Promise<boolean>(() => {}));
     renderBar({ onSend });
 
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'hi'
-    );
+    fireEvent.changeText(screen.getByPlaceholderText('Ask anything'), 'hi');
     fireEvent.press(screen.getByTestId('send-btn'));
 
     await waitFor(() => expect(onSend).toHaveBeenCalled());
     expect(screen.queryByText('send pending')).toBeNull();
   });
 
-  it('does not open speech input while the model is loading', () => {
-    renderBar({ disabled: true });
-    fireEvent.press(screen.getByTestId('speech-btn'));
-    expect(mockAudioManager.requestRecordingPermissions).not.toHaveBeenCalled();
+  it('does not open dictation while an attached document is still loading', async () => {
+    mockUseAttachment.attachments = [
+      {
+        id: 'doc-1',
+        type: 'document',
+        uri: 'file:///doc.pdf',
+        name: 'doc.pdf',
+        status: 'loading',
+      },
+    ];
+    renderBar();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+
     expect(screen.queryByTestId('speech-input')).toBeNull();
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: 'Wait for the attachment to finish loading.',
+      })
+    );
   });
 
   it('switches to speech input view after mic button press when permission granted', async () => {
@@ -696,6 +878,67 @@ describe('speech input', () => {
     fireEvent.press(screen.getByTestId('speech-submit'));
     expect(onSend).toHaveBeenCalledWith('voice transcript', undefined, []);
     expect(screen.queryByTestId('speech-input')).toBeNull();
+  });
+
+  it('spins the send button where the mic would be while a dictated message goes out', async () => {
+    const onSend = jest.fn(() => new Promise<boolean>(() => {}));
+    renderBar({ onSend });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+
+    fireEvent.press(screen.getByTestId('speech-submit'));
+
+    expect(screen.getByText('send pending')).toBeTruthy();
+    expect(screen.getByTestId('send-btn')).toBeTruthy();
+    expect(screen.queryByTestId('speech-btn')).toBeNull();
+  });
+
+  it('gives a refused dictated message back to the field and says why', async () => {
+    const onSend = jest.fn(async () => 'model-not-started' as const);
+    renderBar({ onSend });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-submit'));
+    });
+
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe(
+      'voice transcript'
+    );
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Could not start the model. Try again.',
+    });
+  });
+
+  it('lets go of the spinner once the answer to a dictated message starts', async () => {
+    const onSend = jest.fn(() => new Promise<boolean>(() => {}));
+    const { rerender } = renderBar({ onSend });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+    fireEvent.press(screen.getByTestId('speech-submit'));
+
+    mockUseLLMStore.mockImplementation(
+      (selector?: (state: Partial<LLMStore>) => unknown) => {
+        const state = {
+          isGenerating: true,
+          isProcessingPrompt: false,
+          generatingForChatId: defaultProps.chatId,
+          interrupt: jest.fn(),
+          loadModel: jest.fn(),
+          model: null,
+        };
+        return selector ? selector(state) : state;
+      }
+    );
+    rerender(<ChatBar {...defaultProps} onSend={jest.fn()} />);
+
+    expect(screen.getByTestId('interrupt-btn')).toBeTruthy();
+    expect(screen.queryByText('send pending')).toBeNull();
   });
 
   it('forwards attached imagePath when submitting speech transcript', async () => {
@@ -745,13 +988,10 @@ describe('speech input', () => {
     const onSend = jest.fn();
     // Override speech mock to submit empty string
     jest.mock('../components/chat-screen/ChatSpeechInput', () => {
-      const { View, TouchableOpacity } = require('react-native');
+      const { View, Pressable } = require('react-native');
       return ({ onSubmit }: { onSubmit: (transcript: string) => void }) => (
         <View testID="speech-input">
-          <TouchableOpacity
-            testID="speech-submit"
-            onPress={() => onSubmit('')}
-          />
+          <Pressable testID="speech-submit" onPress={() => onSubmit('')} />
         </View>
       );
     });
@@ -1068,6 +1308,148 @@ describe('paste functionality', () => {
   });
 });
 
+describe('opening another chat', () => {
+  it('leaves the composer empty, so a suggestion typed into the last chat does not follow you', () => {
+    const view = renderBar();
+    const input = screen.getByPlaceholderText('Ask anything');
+    fireEvent.changeText(input, 'a draft from the previous chat');
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe(
+      'a draft from the previous chat'
+    );
+
+    view.rerender(<ChatBar {...defaultProps} chatId={2} />);
+
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe('');
+  });
+
+  it('empties the composer when another blank chat is started, which reuses the same unsaved id', () => {
+    renderBar();
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask anything'),
+      'a suggestion tapped by mistake'
+    );
+
+    act(() => {
+      useChatStore.setState((state) => ({
+        phantomChatStarts: state.phantomChatStarts + 1,
+      }));
+    });
+
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe('');
+  });
+
+  it('keeps what is being typed while the same chat stays open', () => {
+    const view = renderBar();
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Ask anything'),
+      'still writing this'
+    );
+
+    view.rerender(<ChatBar {...defaultProps} hasMessages />);
+
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe(
+      'still writing this'
+    );
+  });
+});
+
+describe('a refused send', () => {
+  it('puts the text back and says why instead of dropping it silently', async () => {
+    const onSend = jest.fn(async () => false);
+    renderBar({ onSend });
+    const input = screen.getByPlaceholderText('Ask anything');
+    fireEvent.changeText(input, 'Lost message');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('send-btn'));
+    });
+
+    expect(onSend).toHaveBeenCalledWith('Lost message', undefined, []);
+    expect(screen.getByPlaceholderText('Ask anything').props.value).toBe(
+      'Lost message'
+    );
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Wait for the response to finish or stop it first.',
+    });
+  });
+
+  it('says which of the five reasons it was, not always the busy one', async () => {
+    const onSend = jest.fn(async () => 'model-not-started' as const);
+    renderBar({ onSend });
+    const input = screen.getByPlaceholderText('Ask anything');
+    fireEvent.changeText(input, 'Hello');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('send-btn'));
+    });
+
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'defaultToast',
+      text1: 'Could not start the model. Try again.',
+    });
+  });
+
+  it('hands the attachment back rather than dropping it on the floor', async () => {
+    const image: Attachment = {
+      id: 'img-1',
+      type: 'image',
+      uri: 'file://photo.jpg',
+      status: 'ready',
+    };
+    mockUseAttachment.attachments = [image];
+    const onSend = jest.fn(async () => 'busy' as const);
+    renderBar({ onSend, isVisionModel: true });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('send-btn'));
+    });
+
+    expect(mockUseAttachment.restoreAttachments).toHaveBeenCalledWith([image]);
+  });
+});
+
+describe('model menu', () => {
+  it('starts closed', () => {
+    renderBar();
+    expect(screen.getByText('model-menu:closed')).toBeTruthy();
+  });
+
+  it('switches to a different model picked from the menu', () => {
+    const onPickModel = jest.fn();
+    renderBar({ onPickModel });
+    fireEvent.press(screen.getByTestId('menu-pick-other'));
+    expect(onPickModel).toHaveBeenCalledWith({ id: 2 });
+  });
+
+  it('does not reload the model the chat already uses', () => {
+    const onPickModel = jest.fn();
+    renderBar({ onPickModel });
+    fireEvent.press(screen.getByTestId('menu-pick-current'));
+    expect(onPickModel).not.toHaveBeenCalled();
+  });
+
+  it('opens on arrival when the chat was started to pick another model', () => {
+    renderBar({ opensModelMenu: true });
+    const [measuredCard] = screen.UNSAFE_root.findAll(
+      (node) => node.instance?.measureInWindow?.mock?.calls.length > 0
+    );
+    const measureCalls = measuredCard.instance.measureInWindow.mock.calls;
+    const reportCardPosition = measureCalls.at(-1)[0];
+
+    act(() => reportCardPosition(0, 600));
+
+    expect(screen.getByText('model-menu:open')).toBeTruthy();
+  });
+
+  it('opens the full model list from the menu', () => {
+    const onShowAllModels = jest.fn();
+    renderBar({ onShowAllModels });
+    fireEvent.press(screen.getByTestId('menu-all-models'));
+    expect(onShowAllModels).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('web search toggle and the embedding download sheet', () => {
   const flush = () => act(async () => {});
 
@@ -1177,110 +1559,5 @@ describe('web search toggle and the embedding download sheet', () => {
 
     expect(onWebSearchToggle).toHaveBeenCalledTimes(2);
     expect(mockPresentDownloadSheet).not.toHaveBeenCalled();
-  });
-});
-
-describe('opening another chat', () => {
-  it('leaves the composer empty, so a suggestion typed into the last chat does not follow you', () => {
-    const view = renderBar();
-    const input = screen.getByPlaceholderText('Ask about anything...');
-    fireEvent.changeText(input, 'a draft from the previous chat');
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('a draft from the previous chat');
-
-    view.rerender(<ChatBar {...defaultProps} chatId={2} />);
-
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('');
-  });
-
-  it('empties the composer when another blank chat is started, which reuses the same unsaved id', () => {
-    renderBar();
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'a suggestion tapped by mistake'
-    );
-
-    act(() => {
-      useChatStore.setState((state) => ({
-        phantomChatStarts: state.phantomChatStarts + 1,
-      }));
-    });
-
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('');
-  });
-
-  it('keeps what is being typed while the same chat stays open', () => {
-    const view = renderBar();
-    fireEvent.changeText(
-      screen.getByPlaceholderText('Ask about anything...'),
-      'still writing this'
-    );
-
-    view.rerender(<ChatBar {...defaultProps} hasMessages />);
-
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('still writing this');
-  });
-});
-
-describe('a refused send', () => {
-  it('puts the text back and says why instead of dropping it silently', async () => {
-    const onSend = jest.fn(async () => false);
-    renderBar({ onSend });
-    const input = screen.getByPlaceholderText('Ask about anything...');
-    fireEvent.changeText(input, 'Lost message');
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('send-btn'));
-    });
-
-    expect(onSend).toHaveBeenCalledWith('Lost message', undefined, []);
-    expect(
-      screen.getByPlaceholderText('Ask about anything...').props.value
-    ).toBe('Lost message');
-    expect(Toast.show).toHaveBeenCalledWith({
-      type: 'defaultToast',
-      text1: 'Wait for the response to finish or stop it first.',
-    });
-  });
-
-  it('says which of the five reasons it was, not always the busy one', async () => {
-    const onSend = jest.fn(async () => 'model-loading' as const);
-    renderBar({ onSend });
-    const input = screen.getByPlaceholderText('Ask about anything...');
-    fireEvent.changeText(input, 'Hello');
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('send-btn'));
-    });
-
-    expect(Toast.show).toHaveBeenCalledWith({
-      type: 'defaultToast',
-      text1: 'Wait for the model to finish loading.',
-    });
-  });
-
-  it('hands the attachment back rather than dropping it on the floor', async () => {
-    const image: Attachment = {
-      id: 'img-1',
-      type: 'image',
-      uri: 'file://photo.jpg',
-      status: 'ready',
-    };
-    mockUseAttachment.attachments = [image];
-    const onSend = jest.fn(async () => 'busy' as const);
-    renderBar({ onSend, isVisionModel: true });
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('send-btn'));
-    });
-
-    expect(mockUseAttachment.restoreAttachments).toHaveBeenCalledWith([image]);
   });
 });

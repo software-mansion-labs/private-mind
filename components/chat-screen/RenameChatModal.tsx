@@ -133,7 +133,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: 24,
     },
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: theme.bg.overlay,
     },
     card: {

@@ -11,6 +11,8 @@ import PauseIcon from '../../assets/icons/pause_icon.svg';
 import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
+import { composerControlSurface } from './composerControl';
+import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
 
 export type ComposerAction = 'speech' | 'send' | 'stop';
 
@@ -23,7 +25,6 @@ interface Props {
   onPress: () => void;
   busy?: boolean;
   disabled?: boolean;
-  dimmed?: boolean;
   testID?: string;
 }
 
@@ -53,7 +54,6 @@ const ComposerActionButton = ({
   onPress,
   busy = false,
   disabled = false,
-  dimmed = false,
   testID,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
@@ -67,6 +67,9 @@ const ComposerActionButton = ({
     stop.set(morphTo(action === 'stop'));
   }, [action, send, speech, stop]);
 
+  const restStyle = useAnimatedStyle(() => ({
+    opacity: morphOpacity(speech.get()),
+  }));
   const fillStyle = useAnimatedStyle(() => ({
     opacity: morphFillOpacity(send.get(), stop.get()),
   }));
@@ -88,12 +91,17 @@ const ComposerActionButton = ({
       onPress={onPress}
       style={({ pressed }) => [
         styles.circle,
-        (disabled || dimmed || pressed) && styles.dimmed,
+        disabled && dimmedOpacity,
+        pressed && pressedOpacity,
       ]}
       disabled={disabled}
       accessibilityState={{ disabled, busy }}
       testID={testID}
     >
+      <Reanimated.View
+        style={[StyleSheet.absoluteFill, styles.rest, restStyle]}
+        pointerEvents="none"
+      />
       <Reanimated.View
         style={[StyleSheet.absoluteFill, styles.fill, fillStyle]}
         pointerEvents="none"
@@ -141,16 +149,17 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       overflow: 'hidden',
     },
+    rest: {
+      borderRadius: 18,
+      ...composerControlSurface(theme),
+    },
     fill: {
       borderRadius: 18,
       backgroundColor: theme.bg.main,
     },
     iconLayer: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       justifyContent: 'center',
       alignItems: 'center',
-    },
-    dimmed: {
-      opacity: 0.6,
     },
   });

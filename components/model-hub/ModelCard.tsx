@@ -1,26 +1,55 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text } from 'react-native';
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import React from 'react';
+import {
+  type AccessibilityActionEvent,
+  type AccessibilityActionInfo,
+  StyleSheet,
+  View,
+  Text,
+} from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
 import { WarningSheetData } from '../bottomSheets/WarningSheet';
 import { isModelCompatible } from '../../utils/modelCompatibility';
-import { useConfirm } from '../../hooks/useConfirm';
-import Chip from '../Chip';
+import { useDeleteModelFiles } from '../../hooks/useDeleteModelFiles';
 import CircleButton from '../CircleButton';
-import ProcessorIcon from '../../assets/icons/processor.svg';
-import DownloadCloudIcon from '../../assets/icons/download_cloud.svg';
-import DownloadIcon from '../../assets/icons/download.svg';
+import ModelBadge from './ModelBadge';
+import { getModelFamily } from '../../utils/modelFamily';
+import ModelFamilyTile from './ModelFamilyTile';
+import DownloadedBadge from './DownloadedBadge';
+import DownloadProgressDetails from './DownloadProgressDetails';
+import {
+  THINKING_LABEL,
+  VISION_LABEL,
+  isCapabilityLabel,
+} from '../../constants/model-labels';
+import DownloadArrowIcon from '../../assets/icons/download-arrow.svg';
 import CloseIcon from '../../assets/icons/close.svg';
-import EyeIcon from '../../assets/icons/eye.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
+import CheckIcon from '../../assets/icons/check.svg';
 import { Feedback } from '../../utils/Feedback';
+import { pressedOpacity } from '../../styles/pressable';
+import { radius, space, stroke } from '../../constants/design-system';
+import { DIMMED_OPACITY } from '../../styles/pressable';
+
+const PROGRESS_LABEL_MIN_WIDTH = 48;
+const CHECKBOX_SIZE = 24;
+const CHECKBOX_RADIUS = 7;
+const CHECKBOX_BORDER_WIDTH = 1.5;
+const CHECKBOX_ICON_SIZE = 14;
+const PROGRESS_ACTION_ICON_SIZE = 16;
+const PROGRESS_ACTION_HIT_SLOP = 12;
+const LOCKED_CARD_OPACITY = 0.4;
+const DOWNLOAD_ICON_SIZE = 16;
+
+export type DownloadStatus = 'downloading' | 'done';
+export type ModelCardVariant = 'card' | 'row';
 
 interface Props {
   model: Model;
@@ -29,7 +58,22 @@ interface Props {
   onPress: (model: Model) => void;
   wifiWarningSheetRef?: React.RefObject<BottomSheetModal<WarningSheetData> | null>;
   showDeleteButton?: boolean;
+  checkable?: boolean;
+  showFamilyIcon?: boolean;
+  downloadStatus?: DownloadStatus;
+  locked?: boolean;
+  onCancel?: (model: Model) => void;
+  onDeleted?: (model: Model) => void;
+  variant?: ModelCardVariant;
 }
+
+const modelMeta = (model: Model) =>
+  [
+    model.modelSize ? `${model.modelSize.toFixed(2)} GB` : null,
+    model.parameters ? `${model.parameters.toFixed(2)} B` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
 const ModelCard = ({
   model,
@@ -38,35 +82,31 @@ const ModelCard = ({
   onPress,
   wifiWarningSheetRef,
   showDeleteButton = false,
+  checkable = false,
+  showFamilyIcon = false,
+  downloadStatus,
+  locked = false,
+  onCancel,
+  onDeleted,
+  variant = 'card',
 }: Props) => {
-  const { styles, theme } = useThemedStyles(createStyles, selected);
+  const { styles, theme } = useThemedStyles(createStyles, selected, variant);
+  const isRow = variant === 'row';
 
   const trackedDownload = useModelStore(
     (state) => state.downloadStates[model.id]
   );
   const downloadModel = useModelStore((state) => state.downloadModel);
   const cancelDownload = useModelStore((state) => state.cancelDownload);
-  const removeModelFiles = useModelStore((state) => state.removeModelFiles);
-  const { confirm, ConfirmElement } = useConfirm();
+  const { deleteModelFiles, ConfirmElement } = useDeleteModelFiles();
 
   const downloadState = trackedDownload ?? {
     progress: model.isDownloaded ? 1 : 0,
     status: model.isDownloaded ? ModelState.Downloaded : ModelState.NotStarted,
   };
 
-  const isDownloading = downloadState.status === ModelState.Downloading;
-
-  const [modelState, setModelState] = useState<ModelState>(
-    isDownloading
-      ? ModelState.Downloading
-      : !model.isDownloaded
-        ? ModelState.NotStarted
-        : ModelState.Downloaded
-  );
-
-  useEffect(() => {
-    setModelState(downloadState.status);
-  }, [downloadState.status]);
+  const modelState = downloadState.status;
+  const isDownloading = modelState === ModelState.Downloading;
 
   const handlePress = async () => {
     if (isDownloading) {
@@ -107,222 +147,350 @@ const ModelCard = ({
   };
 
   const handleDelete = async () => {
-    const confirmed = await confirm({
-      title: 'Delete model files?',
-      message: `${model.modelName} will be removed from your device. You can redownload it later.`,
-      confirmLabel: 'Delete',
-    });
-    if (!confirmed) return;
-
-    await removeModelFiles(model.id);
-    Toast.show({
-      type: 'defaultToast',
-      text1: `${model.modelName} has been successfully deleted`,
-    });
+    if (await deleteModelFiles(model)) onDeleted?.(model);
   };
 
+  const isDone = downloadStatus === 'done';
+  const progress = isDone ? 1 : downloadState.progress;
+  const progressLabel = isDone
+    ? 'Done'
+    : `${Math.floor(downloadState.progress * 100)}%`;
+  const showProgressRow = checkable
+    ? downloadStatus !== undefined
+    : isDownloading;
+  const showProgressDetails = isRow && !checkable && isDownloading;
+
   const isCompatible = isModelCompatible(model);
-  const disabled =
-    modelState !== ModelState.Downloaded && model.source === 'built-in';
+  const disabled = checkable
+    ? !isCompatible
+    : modelState !== ModelState.Downloaded && model.source === 'built-in';
+  const showDownloadControls = !checkable;
+  const meta = modelMeta(model);
+  const labels = compactView
+    ? []
+    : (model.labels ?? []).filter((label) => !isCapabilityLabel(label));
+  const showDownloadedBadge =
+    showDownloadControls && isRow && modelState === ModelState.Downloaded;
+  const hasBadges =
+    !isCompatible || model.thinking || model.vision || labels.length > 0;
+
+  const isPickedDownloadRunning = downloadStatus === 'downloading';
+  const canDownload =
+    showDownloadControls &&
+    modelState === ModelState.NotStarted &&
+    isCompatible;
+  const canCancelDownload =
+    (showDownloadControls && isDownloading) || isPickedDownloadRunning;
+  const canDelete =
+    model.source !== 'local' &&
+    (isDone ||
+      (showDownloadControls &&
+        showDeleteButton &&
+        modelState === ModelState.Downloaded));
+
+  const accessibilityActions: AccessibilityActionInfo[] = [
+    ...(canDownload ? [{ name: 'download', label: 'Download' }] : []),
+    ...(canCancelDownload
+      ? [{ name: 'cancelDownload', label: 'Cancel download' }]
+      : []),
+    ...(canDelete ? [{ name: 'delete', label: 'Delete model files' }] : []),
+  ];
+
+  const hasAccessibilityActions = accessibilityActions.length > 0;
+
+  const handleCancelDownload = () => {
+    if (isPickedDownloadRunning) {
+      onCancel?.(model);
+      return;
+    }
+    handlePress();
+  };
+
+  const handleAccessibilityAction = ({
+    nativeEvent,
+  }: AccessibilityActionEvent) => {
+    switch (nativeEvent.actionName) {
+      case 'download':
+        handlePress();
+        return;
+      case 'cancelDownload':
+        handleCancelDownload();
+        return;
+      case 'delete':
+        handleDelete();
+    }
+  };
 
   return (
-    <TouchableOpacity
-      style={[styles.card, !isCompatible && styles.incompatibleCard]}
-      onPress={() => onPress(model)}
-      disabled={disabled}
-    >
-      <View style={styles.topRow}>
-        <View
-          style={[styles.titleSection, compactView && { maxWidth: '100%' }]}
-        >
-          <Text style={[styles.name, !isCompatible && styles.incompatibleText]}>
-            {model.modelName}
-          </Text>
-          <View style={styles.chipContainer}>
-            {!isCompatible && (
-              <Chip
-                title="Incompatible"
-                borderColor={theme.text.error}
-                backgroundColor={theme.bg.errorSecondary}
-                textColor={theme.text.error}
-              />
-            )}
-            {model.parameters && (
-              <Chip
-                title={`${model.parameters.toFixed(2)} B`}
-                icon={
-                  <ProcessorIcon
-                    width={16}
-                    height={16}
-                    style={styles.iconSecondary}
-                  />
-                }
-              />
-            )}
-            {model.modelSize && (
-              <Chip
-                title={`${model.modelSize.toFixed(2)} GB`}
-                icon={
-                  <DownloadCloudIcon
-                    width={16}
-                    height={16}
-                    style={styles.iconSecondary}
-                  />
-                }
-                borderColor={theme.border.soft}
-              />
-            )}
-            {model.vision && (
-              <Chip
-                title="Vision"
-                icon={
-                  <EyeIcon
-                    width={16}
-                    height={16}
-                    style={styles.iconSecondary}
-                  />
-                }
-                borderColor={theme.border.soft}
-              />
-            )}
-            {!compactView &&
-              model.labels
-                ?.filter((label) => label !== 'Vision')
-                .map((label) => (
-                  <Chip
-                    key={label}
-                    title={label}
-                    borderColor={theme.border.soft}
-                  />
-                ))}
-          </View>
-        </View>
-
-        {modelState === ModelState.Downloading && (
-          <CircleButton
-            onPress={handlePress}
-            backgroundColor={theme.bg.errorSecondary}
-            color={theme.text.primary}
-            icon={CloseIcon}
-            size={13.33}
-          />
-        )}
-
-        {modelState === ModelState.NotStarted && (
-          <CircleButton
-            onPress={!isCompatible ? undefined : handlePress}
-            backgroundColor={
-              !isCompatible ? theme.border.soft : theme.bg.softSecondary
-            }
-            color={
-              !isCompatible ? theme.text.defaultTertiary : theme.text.primary
-            }
-            icon={DownloadIcon}
-            size={15}
-            disabled={!isCompatible}
-          />
-        )}
-
-        {showDeleteButton &&
-          modelState === ModelState.Downloaded &&
-          model.source !== 'local' && (
-            <CircleButton
-              onPress={handleDelete}
-              backgroundColor={theme.bg.errorPrimary}
-              color={theme.text.contrastPrimary}
-              icon={TrashIcon}
-              size={16}
+    <View style={locked && !selected && styles.dimmedCard}>
+      <Pressable
+        style={({ pressed }) => [
+          styles.card,
+          !isCompatible && styles.incompatibleCard,
+          pressed && pressedOpacity,
+        ]}
+        onPress={locked ? undefined : () => onPress(model)}
+        disabled={disabled || locked}
+        accessibilityRole={checkable ? 'checkbox' : 'button'}
+        accessibilityState={
+          checkable
+            ? { checked: selected, disabled: disabled || locked }
+            : { selected, disabled: disabled && !hasAccessibilityActions }
+        }
+        accessibilityActions={accessibilityActions}
+        onAccessibilityAction={handleAccessibilityAction}
+      >
+        <View style={styles.topRow}>
+          {showFamilyIcon && (
+            <ModelFamilyTile
+              family={getModelFamily(model)}
+              size={isRow ? 'list' : 'card'}
             />
           )}
-      </View>
 
-      {modelState === ModelState.Downloading && (
-        <View style={styles.progressRow}>
-          <View
-            style={[
-              styles.progressBarContainer,
-              { backgroundColor: theme.bg.softSecondary },
-            ]}
-          >
-            <View
-              style={[
-                styles.progressBar,
-                {
-                  width: `${downloadState.progress * 100}%`,
-                  backgroundColor: theme.bg.strongPrimary,
-                },
-              ]}
-            />
+          <View style={styles.info}>
+            <View style={styles.nameRow}>
+              <Text
+                style={[styles.name, !isCompatible && styles.incompatibleText]}
+              >
+                {model.modelName}
+              </Text>
+              {showDownloadedBadge && (
+                <DownloadedBadge testID="model-card-downloaded" />
+              )}
+            </View>
+            {meta.length > 0 && <Text style={styles.meta}>{meta}</Text>}
+            {hasBadges && (
+              <View style={styles.badges}>
+                {!isCompatible && (
+                  <ModelBadge label="Incompatible" color="error" />
+                )}
+                {model.thinking && <ModelBadge label={THINKING_LABEL} />}
+                {model.vision && <ModelBadge label={VISION_LABEL} />}
+                {labels.map((label) => (
+                  <ModelBadge key={label} label={label} />
+                ))}
+              </View>
+            )}
           </View>
-          <Text style={styles.progressText}>
-            {Math.floor(downloadState.progress * 100)}%
-          </Text>
-        </View>
-      )}
 
-      {showDeleteButton && ConfirmElement}
-    </TouchableOpacity>
+          {checkable && (
+            <View style={styles.checkbox} testID="model-card-checkbox">
+              {selected && (
+                <CheckIcon
+                  width={CHECKBOX_ICON_SIZE}
+                  height={CHECKBOX_ICON_SIZE}
+                  style={styles.checkIcon}
+                />
+              )}
+            </View>
+          )}
+
+          {showDownloadControls && modelState === ModelState.Downloading && (
+            <CircleButton
+              onPress={handlePress}
+              backgroundColor={isRow ? theme.bg.tile : theme.bg.errorSecondary}
+              color={theme.text.primary}
+              icon={CloseIcon}
+              size={13.33}
+            />
+          )}
+
+          {showDownloadControls && modelState === ModelState.NotStarted && (
+            <CircleButton
+              onPress={!isCompatible ? undefined : handlePress}
+              backgroundColor={
+                isCompatible ? theme.bg.accentSoft : theme.border.soft
+              }
+              color={
+                isCompatible ? theme.text.accent : theme.text.defaultTertiary
+              }
+              icon={DownloadArrowIcon}
+              size={DOWNLOAD_ICON_SIZE}
+              disabled={!isCompatible}
+            />
+          )}
+
+          {showDownloadControls &&
+            showDeleteButton &&
+            modelState === ModelState.Downloaded &&
+            model.source !== 'local' && (
+              <CircleButton
+                onPress={handleDelete}
+                backgroundColor={
+                  isRow ? theme.bg.errorSecondary : theme.bg.errorPrimary
+                }
+                color={isRow ? theme.text.error : theme.text.contrastPrimary}
+                icon={TrashIcon}
+                size={16}
+              />
+            )}
+        </View>
+
+        {showProgressRow && (
+          <View style={styles.progressSection}>
+            <View style={styles.progressRow}>
+              <View style={styles.progressBarContainer}>
+                <View
+                  style={[styles.progressBar, { width: `${progress * 100}%` }]}
+                />
+              </View>
+              <Text style={styles.progressText}>{progressLabel}</Text>
+              {isDone && model.source !== 'local' && (
+                <Pressable
+                  onPress={handleDelete}
+                  hitSlop={PROGRESS_ACTION_HIT_SLOP}
+                  style={({ pressed }) => pressed && pressedOpacity}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete ${model.modelName}`}
+                  testID="model-card-delete"
+                >
+                  <TrashIcon
+                    width={PROGRESS_ACTION_ICON_SIZE}
+                    height={PROGRESS_ACTION_ICON_SIZE}
+                    style={styles.progressActionIcon}
+                  />
+                </Pressable>
+              )}
+              {downloadStatus === 'downloading' && (
+                <Pressable
+                  onPress={() => onCancel?.(model)}
+                  hitSlop={PROGRESS_ACTION_HIT_SLOP}
+                  style={({ pressed }) => pressed && pressedOpacity}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Cancel ${model.modelName} download`}
+                  testID="model-card-cancel"
+                >
+                  <CloseIcon
+                    width={PROGRESS_ACTION_ICON_SIZE}
+                    height={PROGRESS_ACTION_ICON_SIZE}
+                    style={styles.progressActionIcon}
+                  />
+                </Pressable>
+              )}
+            </View>
+            {showProgressDetails && (
+              <DownloadProgressDetails
+                modelSize={model.modelSize}
+                progress={downloadState.progress}
+                rate={trackedDownload?.rate}
+              />
+            )}
+          </View>
+        )}
+
+        {(showDeleteButton || checkable) && ConfirmElement}
+      </Pressable>
+    </View>
   );
 };
 
 export default ModelCard;
 
-const createStyles = (theme: Theme, selected: boolean) =>
-  StyleSheet.create({
-    card: {
-      padding: 16,
-      borderWidth: 1,
-      borderRadius: 12,
-      borderColor: selected ? theme.bg.strongPrimary : theme.border.soft,
-      flexDirection: 'column',
-      gap: 16,
-    },
-    name: {
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.md,
-      color: theme.text.primary,
-    },
-    iconSecondary: {
-      color: theme.text.defaultSecondary,
-    },
-    titleSection: {
-      gap: 4,
-      maxWidth: '85%',
-    },
-    chipContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: 4,
-    },
+const createStyles = (
+  theme: Theme,
+  selected: boolean,
+  variant: ModelCardVariant
+) => {
+  const borderWidth = selected ? stroke.strong : stroke.soft;
+  const isRow = variant === 'row';
+  return StyleSheet.create({
+    card: isRow
+      ? { padding: space.four, gap: space.three }
+      : {
+          padding: space.four - (borderWidth - stroke.soft),
+          borderWidth,
+          borderRadius: radius.twelve,
+          borderColor: selected ? theme.bg.strongPrimary : theme.border.soft,
+          backgroundColor: selected ? theme.bg.cardSelected : undefined,
+          gap: space.three,
+        },
     topRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
+      alignItems: isRow ? 'flex-start' : 'center',
+      gap: isRow ? space.two : space.three,
+    },
+    info: {
+      flex: 1,
+      gap: space.one,
+    },
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.four,
+    },
+    name: {
+      flexShrink: 1,
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
+      color: theme.text.primary,
+    },
+    meta: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
+      color: theme.text.defaultSecondary,
+    },
+    badges: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: space.one,
+      marginTop: space.one,
+    },
+    checkbox: {
+      width: CHECKBOX_SIZE,
+      height: CHECKBOX_SIZE,
+      borderRadius: CHECKBOX_RADIUS,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: selected ? 0 : CHECKBOX_BORDER_WIDTH,
+      borderColor: theme.border.soft,
+      backgroundColor: selected ? theme.bg.strongPrimary : undefined,
+    },
+    checkIcon: {
+      color: theme.text.contrastPrimary,
+    },
+    progressSection: {
+      gap: space.two,
     },
     progressRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
+      gap: space.three,
     },
     progressBarContainer: {
-      height: 8,
-      borderRadius: 4,
+      flex: 1,
+      height: space.two,
+      borderRadius: radius.full,
       overflow: 'hidden',
-      width: '85%',
+      backgroundColor: theme.bg.tile,
     },
     progressBar: {
       height: '100%',
+      borderRadius: radius.full,
+      backgroundColor: isRow ? theme.bg.main : theme.bg.strongPrimary,
     },
     progressText: {
+      minWidth: PROGRESS_LABEL_MIN_WIDTH,
+      textAlign: 'right',
       fontSize: fontSizes.xs,
+      lineHeight: lineHeights.xs,
       fontFamily: fontFamily.regular,
       color: theme.text.defaultSecondary,
     },
+    progressActionIcon: {
+      color: theme.text.defaultSecondary,
+    },
+    dimmedCard: {
+      opacity: LOCKED_CARD_OPACITY,
+    },
     incompatibleCard: {
-      opacity: 0.5,
+      opacity: DIMMED_OPACITY,
       borderColor: theme.border.soft,
     },
     incompatibleText: {
       color: theme.text.defaultTertiary,
     },
   });
+};

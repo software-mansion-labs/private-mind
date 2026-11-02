@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useHeaderHeight } from '@react-navigation/elements';
+import { useHeaderHeight } from 'expo-router/react-navigation';
+import { router } from 'expo-router';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useModelSwitch } from './useModelSwitch';
 import { useSendChatMessage } from './useSendChatMessage';
@@ -32,7 +33,12 @@ import useChatSettings from '../../hooks/useChatSettings';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import useChatBranching from '../../hooks/useChatBranching';
 import { useStableCallback } from '../../hooks/useStableCallback';
+import { useBackToDismiss } from '../../hooks/useBackToDismiss';
 import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
+import { retryWithPinnedModel } from './loadModelPinnedToChat';
+import { useMemoryStallCard } from './useMemoryStallCard';
+import { startPhantomChat } from '../../utils/startPhantomChat';
+import { CHAT_ENTRY_ACTION } from '../../constants/chat-route-params';
 
 interface Props {
   chatId: number;
@@ -40,11 +46,10 @@ interface Props {
   messageHistory: Message[];
   isLoading?: boolean;
   model: Model | undefined;
-  onPendingModelChange?: (model: Model | undefined) => void;
   selectModel?: (model: Model) => Promise<void>;
-  openModelSheetRef?: React.MutableRefObject<(() => void) | null>;
   revealFromTop?: boolean;
   headerTitleBottom?: number;
+  opensModelMenu?: boolean;
 }
 
 export default function ChatScreen({
@@ -53,11 +58,10 @@ export default function ChatScreen({
   messageHistory,
   isLoading = false,
   model,
-  onPendingModelChange,
   selectModel,
-  openModelSheetRef,
   revealFromTop = false,
   headerTitleBottom,
+  opensModelMenu = false,
 }: Props) {
   const inputRef = useRef<{
     setInput: (text: string) => void;
@@ -74,6 +78,7 @@ export default function ChatScreen({
   const retryLastGeneration = useLLMStore((state) => state.retryLastGeneration);
   const retryArmedForChatId = useLLMStore((state) => state.retryArmedForChatId);
   const { setChatModel, phantomChat } = useChatStore();
+  const isPhantomChat = phantomChat?.id === chatId && !chat;
 
   const { styles, theme } = useThemedStyles(createStyles);
   const headerHeight = useHeaderHeight();
@@ -101,6 +106,7 @@ export default function ChatScreen({
 
   const {
     rootRef,
+    rootFrame,
     handleRootLayout,
     userActionMenu,
     setUserActionMenu,
@@ -112,6 +118,13 @@ export default function ChatScreen({
     topFadeAnchor,
     emptyFadeColors,
   } = useChatScreenLayout({ isEmpty, headerTitleBottom, headerHeight, theme });
+  const chatBarTopClearance = Math.max(
+    headerHeight,
+    topFadeHeight(topFadeAnchor)
+  );
+  useBackToDismiss(userActionMenu.isOpen, () =>
+    setUserActionMenu({ isOpen: false })
+  );
 
   const { branchMarkers, handleForkMessage, handleBranchMarkerPress } =
     useChatBranching({
@@ -150,14 +163,6 @@ export default function ChatScreen({
     );
   }, []);
 
-  useEffect(() => {
-    if (!openModelSheetRef) return;
-    openModelSheetRef.current = handlePresentModelSheet;
-    return () => {
-      openModelSheetRef.current = null;
-    };
-  }, [openModelSheetRef, handlePresentModelSheet]);
-
   const handleSelectModel = async (selectedModel: Model) => {
     try {
       await loadModel(selectedModel);
@@ -171,8 +176,10 @@ export default function ChatScreen({
 
       await setLastUsedModelId(selectedModel.id);
       await selectModel?.(selectedModel);
+      return true;
     } catch (error) {
       console.error('Error loading model:', error);
+      return false;
     }
   };
 
@@ -184,9 +191,20 @@ export default function ChatScreen({
     whenSettled: whenModelSwitchSettles,
   } = useModelSwitch(handleSelectModel);
 
-  useEffect(() => {
-    onPendingModelChange?.(pendingModel);
-  }, [pendingModel, onPendingModelChange]);
+  const answeringModel = pendingModel ?? model;
+
+  const handleModelPickedFromMenu = useCallback(
+    (picked: Model) => {
+      pickModel(picked);
+      handleModelSwitchSheetState(false);
+    },
+    [pickModel, handleModelSwitchSheetState]
+  );
+
+  const handleShowAllModels = useCallback(() => {
+    Keyboard.dismiss();
+    router.push('/model-hub');
+  }, []);
 
   const handleModelSheetStateChange = useCallback(
     (isOpen: boolean) => {
@@ -227,6 +245,7 @@ export default function ChatScreen({
     setSetting,
     db,
     inputRef,
+    modelSwitching: isSwitching,
   });
 
   const chatGenerationError =
@@ -234,10 +253,29 @@ export default function ChatScreen({
 
   const handleRetryGeneration = useCallback(() => {
     messagesRef.current?.onMessageSent();
-    retryLastGeneration().catch((error) => {
+    retryWithPinnedModel(
+      isSwitching ? undefined : model,
+      retryLastGeneration
+    ).catch((error) => {
       console.error('Failed to retry generation:', error);
     });
-  }, [retryLastGeneration]);
+  }, [model, retryLastGeneration, isSwitching]);
+
+  const handleNewChatWithAnotherModel = useCallback(() => {
+    startPhantomChat(db, 'push', undefined, CHAT_ENTRY_ACTION.PickModel).catch(
+      (error) => {
+        console.error('Failed to open a new chat for another model:', error);
+      }
+    );
+  }, [db]);
+
+  const memoryStallCard = useMemoryStallCard({
+    chatId,
+    model,
+    busy: isModelLoading || isSwitching,
+    startNewChat: handleNewChatWithAnotherModel,
+    retryWithChatModel: handleRetryGeneration,
+  });
 
   const scrollBottomOffset = theme.insets.bottom;
 
@@ -270,6 +308,7 @@ export default function ChatScreen({
           generationError={chatGenerationError}
           onRetryGeneration={handleRetryGeneration}
           canRetryGeneration={retryArmedForChatId === chatId}
+          turnFooter={memoryStallCard}
           bottomOffset={scrollBottomOffset}
           freeze={overlayOpen}
           revealFromTop={revealFromTop}
@@ -283,15 +322,28 @@ export default function ChatScreen({
         />
       </View>
 
-      <Animated.View style={[styles.chatBarSticky, chatBarStickyStyle]}>
+      <Animated.View
+        style={[
+          styles.chatBarSticky,
+          rootFrame.height > 0 && {
+            maxHeight: rootFrame.height - chatBarTopClearance,
+          },
+          chatBarStickyStyle,
+        ]}
+      >
         <ChatBar
           chatId={chatId}
           onSend={handleSendMessage}
           onSelectModel={handlePresentModelSheet}
+          onPickModel={handleModelPickedFromMenu}
+          onShowAllModels={handleShowAllModels}
+          modelLocked={!isPhantomChat}
+          opensModelMenu={opensModelMenu}
           onSelectPrompt={handleSelectPrompt}
           ref={inputRef}
           model={model}
-          isVisionModel={model?.vision === true}
+          pendingModel={pendingModel}
+          isVisionModel={answeringModel?.vision === true}
           extraContentPadding={extraContentPadding}
           thinkingEnabled={thinkingEnabled}
           onThinkingToggle={handleThinkingToggle}
@@ -334,6 +386,7 @@ export default function ChatScreen({
         bottomSheetModalRef={modelBottomSheetModalRef}
         onModelPicked={pickModel}
         onSheetStateChange={handleModelSheetStateChange}
+        currentModelId={model?.id}
       />
     </View>
   );

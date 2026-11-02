@@ -4,7 +4,12 @@ import {
   SourceDocument,
   sourceKind,
 } from '../database/chatRepository';
+import { isGreetingOnly } from './openingGreeting';
+import { questionForImage } from './imageQuestion';
+import { OPENING_WELCOME_INSTRUCTION } from '../constants/opening-greetings';
 import { Model } from '../database/modelRepository';
+import { usesTemplateThinkingSwitch } from '../constants/model-profiles';
+import { stripThinkBlocks } from './thinking';
 import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
 import { type Message as ExecutorchMessage } from 'react-native-executorch/legacy';
 import {
@@ -207,16 +212,40 @@ const getContextInstruction = (
   return `\n\n${instruction}`;
 };
 
-const languageInstruction = (language?: QuestionLanguage | null): string => {
-  if (!language) {
-    return 'Write the whole answer in the language of the latest user message, and do not switch language or script partway through. Take that language from the message itself, not from the sources and not from these instructions: if the message is not written in English, the answer is not in English either.';
-  }
+const MIRROR_UNKNOWN_LANGUAGE =
+  'Write the whole answer in the same language the latest user message is written in, and do not switch language or script partway through.';
+
+const MIRROR_UNKNOWN_LANGUAGE_OVER_SOURCES =
+  'Write the whole answer in the language of the latest user message, and do not switch language or script partway through. Take that language from the message itself, not from the sources and not from these instructions: if the message is not written in English, the answer is not in English either.';
+
+const namedLanguageInstruction = (language: QuestionLanguage): string => {
   const inScript = language.script ? `, written in ${language.script}` : '';
   const noLatin = language.script
     ? ' Never transliterate the answer into the Latin alphabet.'
     : '';
   return `Write the whole answer in ${language.name}${inScript} — the language of the question — and do not switch language or script partway through.${noLatin}`;
 };
+
+const languageInstruction = (language?: QuestionLanguage | null): string =>
+  language
+    ? namedLanguageInstruction(language)
+    : MIRROR_UNKNOWN_LANGUAGE_OVER_SOURCES;
+
+const unsourcedLanguageInstruction = (
+  language?: QuestionLanguage | null
+): string =>
+  language ? namedLanguageInstruction(language) : MIRROR_UNKNOWN_LANGUAGE;
+
+const GREETING_ONLY_INSTRUCTION =
+  'The latest user message is only a greeting. Greet the user back in one or two short, friendly sentences in the same language and ask what they would like help with. Do not answer a question that was not asked.';
+
+const getOpeningWelcomeInstruction = (welcome: string): string =>
+  `\n\n${OPENING_WELCOME_INSTRUCTION}\n\nExample of such a welcome:\n${welcome}`;
+
+const getGreetingOnlyInstruction = (question?: string): string =>
+  question && isGreetingOnly(question)
+    ? `\n\n${GREETING_ONLY_INSTRUCTION}`
+    : '';
 
 export const focusedRetrySystemPrompt = (
   language: QuestionLanguage | null
@@ -487,7 +516,7 @@ const SUPERLATIVE_MARKERS =
 
 const getTimeScopeInstruction = (question?: string): string =>
   question && namesAnotherDay(question)
-    ? '\n\nThe question asks about a named day, not about right now. A page reporting a value that changes over time usually prints the current reading and the forecast for several days close together, often with the current one first and most prominent. Use only the value the page labels with the day the question asks about; a figure the page labels "now", "today", "current" or "at the moment" does not answer a question about a different day, and neither does the next day\'s. If the page carries no value for the day asked about, say so rather than quoting the nearest one.'
+    ? '\n\nThe question asks about a named day or span of days, not about right now. A page reporting a value that changes over time usually prints the current reading and the forecast for several days close together, often with the current one first and most prominent. Use only values the page labels with the day or days the question asks about; a figure the page labels "now", "today", "current" or "at the moment" does not answer a question about a different day, and neither does a day outside the span asked about. If the question covers more than one day, give the value for each day it covers rather than picking one. If the page carries no value for the day or days asked about, say so rather than quoting the nearest one.'
     : '';
 
 const getPeriodScopeInstruction = (question?: string): string =>
@@ -572,6 +601,7 @@ export interface PrepareMessagesOptions {
   webWeak?: boolean;
   webSearchFailed?: boolean;
   digest?: string;
+  openingWelcome?: string;
 }
 
 const MAX_SHAPE_INSTRUCTIONS = 4;
@@ -585,8 +615,50 @@ const shapeInstructions = (candidates: string[]): string =>
 const isAbandonedQuestion = (message: Message): boolean =>
   message.role === 'user' && !!message.stoppedByUser;
 
+const wasCutShort = (message: Message): boolean => !!message.cutShortReason;
+
+const DEFAULT_PROMPT_DOCUMENT_SENTENCE =
+  'When given context from documents, use that information to give comprehensive answers while being concise and relevant.';
+
+const withoutDefaultDocumentSentence = (prompt: string): string => {
+  const parts = prompt.split(DEFAULT_PROMPT_DOCUMENT_SENTENCE);
+  if (parts.length === 1) return prompt;
+  return parts
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+    .join(' ');
+};
+
+const isBareGreeting = (message: Message): boolean =>
+  message.role === 'user' &&
+  !message.imagePath &&
+  !message.documentName &&
+  isGreetingOnly(message.content);
+
+const withoutAnsweredOpeningGreeting = <T extends Message>(
+  messages: T[]
+): T[] => {
+  const [opening, welcome, ...later] = messages;
+  const chatMovedOn =
+    !!opening &&
+    isBareGreeting(opening) &&
+    welcome?.role === 'assistant' &&
+    later.some((message) => message.role === 'user');
+  return chatMovedOn ? later : messages;
+};
+
+const withoutReasoning = <T extends Message>(message: T): T =>
+  message.role === 'assistant'
+    ? { ...message, content: stripThinkBlocks(message.content) }
+    : message;
+
+const withQuestionForImage = (message: Message): Message =>
+  message.imagePath
+    ? { ...message, content: questionForImage(message.content) }
+    : message;
+
 export const prepareMessagesForLLM = (
-  activeChatMessages: Message[],
+  chatMessages: Message[],
   context: string[],
   settings: ChatSettings,
   model: Model,
@@ -603,7 +675,9 @@ export const prepareMessagesForLLM = (
     webWeak,
     webSearchFailed,
     digest,
+    openingWelcome,
   } = options;
+  const activeChatMessages = chatMessages.map(withQuestionForImage);
   const hasContext = context.some((chunk) => chunk.trim().length > 0);
   const question = activeChatMessages.findLast(
     (msg) => msg.role === 'user'
@@ -614,7 +688,9 @@ export const prepareMessagesForLLM = (
       .map((msg) => msg.content)
   );
 
-  let systemPrompt = settings.systemPrompt;
+  let systemPrompt = hasContext
+    ? settings.systemPrompt
+    : withoutDefaultDocumentSentence(settings.systemPrompt);
 
   const trimmedCustomPrompt = customSystemPrompt.trim();
   if (trimmedCustomPrompt) {
@@ -657,7 +733,10 @@ export const prepareMessagesForLLM = (
     systemPrompt += getVerifiedProductInstruction(contextText);
     systemPrompt += getWeakRetrievalInstruction(webWeak);
   } else {
-    systemPrompt += `\n\n${languageInstruction(language)}`;
+    systemPrompt += `\n\n${unsourcedLanguageInstruction(language)}`;
+    systemPrompt += openingWelcome
+      ? getOpeningWelcomeInstruction(openingWelcome)
+      : getGreetingOnlyInstruction(question);
     systemPrompt += getWebSearchFailedInstruction(webSearchFailed);
     const hasPriorWebAnswer = activeChatMessages.some(
       (msg) =>
@@ -668,21 +747,20 @@ export const prepareMessagesForLLM = (
   }
   systemPrompt += getDateInstruction(sourceDocuments, question);
 
-  const nonEventMessages = activeChatMessages.filter(
-    (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
-      msg.role !== 'event' && !isAbandonedQuestion(msg)
+  const nonEventMessages = withoutAnsweredOpeningGreeting(
+    activeChatMessages.filter(
+      (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
+        msg.role !== 'event' && !isAbandonedQuestion(msg) && !wasCutShort(msg)
+    )
   );
-  const lastNonEventMessage = nonEventMessages.at(-1);
-  const messagesForLLM =
-    lastNonEventMessage?.role === 'assistant' &&
-    lastNonEventMessage.content.trim().length === 0
-      ? nonEventMessages.slice(0, -1)
-      : nonEventMessages;
+  const messagesForLLM = nonEventMessages
+    .map(withoutReasoning)
+    .filter((msg) => msg.role !== 'assistant' || msg.content.trim() !== '');
 
   const filteredMessages: ExecutorchMessage[] = messagesForLLM.map((msg) => ({
     role: msg.role,
     content: msg.content,
-    ...(msg.imagePath ? { mediaPath: msg.imagePath } : {}),
+    ...(msg.imagePath && model.vision ? { mediaPath: msg.imagePath } : {}),
   }));
 
   const messagesWithSystemPrompt: ExecutorchMessage[] = [
@@ -698,10 +776,12 @@ export const prepareMessagesForLLM = (
 
   lastMessage.content += answerLanguageAnchor(language);
 
-  if (settings.thinkingEnabled) {
-    lastMessage.content += ' /think';
-  } else if (model.thinking) {
-    lastMessage.content += ' /no_think';
+  if (!usesTemplateThinkingSwitch(model)) {
+    if (settings.thinkingEnabled) {
+      lastMessage.content += ' /think';
+    } else if (model.thinking) {
+      lastMessage.content += ' /no_think';
+    }
   }
 
   const budgetSample = `${messagesWithSystemPrompt[0].content}${context.join(
@@ -808,7 +888,9 @@ export const prepareMessagesForLLM = (
   const mandatoryChars =
     systemChars + lastMessage.content.length + digestLine.length;
   const remainingChars = budgetChars - mandatoryChars;
-  const history = messagesWithSystemPrompt.slice(1, -1);
+  const greetingTurn =
+    lastMessage.role === 'user' && !!question && isGreetingOnly(question);
+  const history = greetingTurn ? [] : messagesWithSystemPrompt.slice(1, -1);
   const fitFrom = (turns: ExecutorchMessage[]): ExecutorchMessage[] => {
     let room = remainingChars;
     const takenReversed: ExecutorchMessage[] = [];

@@ -5,6 +5,7 @@ import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
+import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { StyleSheet, Text, View } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -106,7 +107,7 @@ const EmbeddingDownloadSheet = ({
   );
 
   return (
-    <BottomSheetModal
+    <BackDismissibleSheetModal
       ref={bottomSheetModalRef}
       backdropComponent={renderBackdrop}
       enableDynamicSizing
@@ -143,7 +144,7 @@ const EmbeddingDownloadSheet = ({
           </View>
         )}
       </BottomSheetView>
-    </BottomSheetModal>
+    </BackDismissibleSheetModal>
   );
 };
 

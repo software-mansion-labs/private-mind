@@ -4,7 +4,10 @@ import { chatLabel } from '../../utils/chatLabel';
 const DAY_MS = 1000 * 60 * 60 * 24;
 
 export const getRelativeDateSection = (date: Date, now: Date): string => {
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / DAY_MS);
+  const diffDays = Math.max(
+    0,
+    Math.floor((now.getTime() - date.getTime()) / DAY_MS)
+  );
 
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';

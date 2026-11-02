@@ -1,26 +1,50 @@
 import React from 'react';
-import {
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { FullWindowOverlay } from 'react-native-screens';
 import Toast, { ToastConfig } from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Theme } from '../styles/colors';
+import { radius } from '../constants/design-system';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import CloseIcon from '../assets/icons/close.svg';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { openAppSettings } from '../utils/openAppSettings';
+import { pressedOpacity } from '../styles/pressable';
 
 const NAV_HEADER_HEIGHT = Platform.OS === 'ios' ? 44 : 56;
 const TOAST_HEADER_GAP = 2;
+const CLOSE_HIT_SLOP = 12;
 
 export const toastTopOffset = (safeAreaTop: number) =>
   safeAreaTop + NAV_HEADER_HEIGHT + TOAST_HEADER_GAP;
+
+interface ToastActionProps {
+  label: string;
+  testID: string;
+  onPress: () => void;
+}
+
+const ToastAction = ({ label, testID, onPress }: ToastActionProps) => {
+  const { styles } = useThemedStyles(createStyles);
+
+  const handlePress = () => {
+    Toast.hide();
+    onPress();
+  };
+
+  return (
+    <Pressable
+      onPress={handlePress}
+      cancelable={false}
+      accessibilityRole="button"
+      style={({ pressed }) => [styles.toastAction, pressed && pressedOpacity]}
+      testID={testID}
+    >
+      <Text style={styles.toastActionLabel}>{label}</Text>
+    </Pressable>
+  );
+};
 
 const AppToast: React.FC = () => {
   const { styles } = useThemedStyles(createStyles);
@@ -32,24 +56,34 @@ const AppToast: React.FC = () => {
         <View style={styles.toastBody}>
           <Text style={styles.toastText}>{text1}</Text>
           {props?.settings && (
-            <TouchableOpacity
-              onPress={() => {
-                Toast.hide();
-                openAppSettings();
-              }}
-              style={styles.toastAction}
+            <ToastAction
+              label="Open Settings"
               testID="toast-open-settings"
-            >
-              <Text style={styles.toastActionLabel}>Open Settings</Text>
-            </TouchableOpacity>
+              onPress={openAppSettings}
+            />
+          )}
+          {props?.onRetry && (
+            <ToastAction
+              label="Retry"
+              testID="toast-retry"
+              onPress={props.onRetry}
+            />
           )}
         </View>
-        <TouchableOpacity
+        <Pressable
           onPress={() => Toast.hide()}
-          style={styles.toastCloseButton}
+          cancelable={false}
+          hitSlop={CLOSE_HIT_SLOP}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss"
+          style={({ pressed }) => [
+            styles.toastCloseButton,
+            pressed && pressedOpacity,
+          ]}
+          testID="toast-close"
         >
           <CloseIcon width={13.33} height={13.33} style={styles.toastIcon} />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     ),
   };
@@ -73,17 +107,17 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     toastContainer: {
       width: '90%',
-      backgroundColor: theme.bg.softSecondary,
-      borderRadius: 12,
+      backgroundColor: theme.bg.toast,
+      borderRadius: radius.eighteen,
       padding: 16,
       flexDirection: 'row',
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border.soft,
+      borderWidth: 1,
+      borderColor: theme.border.toast,
       shadowColor: theme.bg.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: theme.shadow.floatingOpacity,
+      shadowRadius: 20,
+      elevation: 12,
     },
     toastBody: {
       width: '80%',

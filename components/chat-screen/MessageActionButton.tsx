@@ -3,6 +3,7 @@ import { Pressable, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { SvgComponent } from '../../utils/SvgComponent';
+import { pressedOpacity } from '../../styles/pressable';
 
 type MessageActionButtonProps = {
   label: string;
@@ -21,7 +22,7 @@ export default function MessageActionButton({
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+      style={({ pressed }) => [styles.button, pressed && pressedOpacity]}
       onPress={onPress}
       hitSlop={8}
       accessibilityRole="button"
@@ -42,9 +43,6 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-    },
-    buttonPressed: {
-      opacity: 0.6,
     },
     icon: {
       color: theme.text.primary,

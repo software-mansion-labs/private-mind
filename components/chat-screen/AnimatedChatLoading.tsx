@@ -11,7 +11,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 
-const AnimatedChatLoading = ({ label = 'Thinking…' }: { label?: string }) => {
+const AnimatedChatLoading = ({ label = 'Generating…' }: { label?: string }) => {
   const { styles } = useThemedStyles(createStyles);
 
   const opacity = useSharedValue(0.4);

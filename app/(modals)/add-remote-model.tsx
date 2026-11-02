@@ -2,7 +2,9 @@ import React, { useRef, useState } from 'react';
 import { Text, StyleSheet, Alert, Platform, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useModelStore } from '../../store/modelStore';
-import ModalHeader from '../../components/ModalHeader';
+import GlassScreenHeader, {
+  useGlassScreenHeaderHeight,
+} from '../../components/GlassScreenHeader';
 import TextFieldInput from '../../components/TextFieldInput';
 import { fontSizes, fontFamily } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -20,7 +22,8 @@ export interface RemoteModelFormState {
 
 export default function AddRemoteModelScreen() {
   const router = useRouter();
-  const { styles } = useThemedStyles(createStyles);
+  const headerHeight = useGlassScreenHeaderHeight(true);
+  const { styles } = useThemedStyles(createStyles, headerHeight);
   const scrollViewRef = useRef<ScrollView>(null);
   const { addModelToDB } = useModelStore();
 
@@ -86,7 +89,6 @@ export default function AddRemoteModelScreen() {
       style={styles.keyboardAvoidingView}
     >
       <View style={styles.container}>
-        <ModalHeader title="Add External Model" onClose={() => router.back()} />
         <ScrollView
           contentContainerStyle={styles.scrollViewContent}
           showsVerticalScrollIndicator={false}
@@ -133,11 +135,17 @@ export default function AddRemoteModelScreen() {
         </ScrollView>
         <PrimaryButton text="Add model" onPress={handleSave} />
       </View>
+      <GlassScreenHeader
+        title="Add External Model"
+        onBack={() => router.back()}
+        icon="close"
+        sheet
+      />
     </CustomKeyboardAvoidingView>
   );
 }
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, headerHeight: number) =>
   StyleSheet.create({
     keyboardAvoidingView: {
       flex: 1,
@@ -145,12 +153,13 @@ const createStyles = (theme: Theme) =>
     },
     container: {
       flex: 1,
-      padding: 16,
+      paddingHorizontal: 16,
       paddingBottom: theme.insets.bottom + 16,
       justifyContent: 'space-between',
     },
     scrollViewContent: {
       gap: 24,
+      paddingTop: headerHeight + 24,
       paddingBottom: 16,
     },
     description: {

@@ -1,5 +1,5 @@
-import React, { memo, useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import React, { memo, useEffect, useState } from 'react';
+import { View, StyleSheet, Text, Pressable } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
@@ -8,6 +8,7 @@ import ChevronDown from '../../assets/icons/chevron-down.svg';
 import ChevronUp from '../../assets/icons/chevron-up.svg';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import { Feedback } from '../../utils/Feedback';
+import { pressedOpacity } from '../../styles/pressable';
 
 interface Props {
   content: string;
@@ -20,6 +21,10 @@ const ThinkingBlock = memo(
     const [expanded, setExpanded] = useState(!isComplete);
     const { styles } = useThemedStyles(createStyles);
 
+    useEffect(() => {
+      if (isComplete) setExpanded(false);
+    }, [isComplete]);
+
     const toggleExpanded = () => {
       if (inProgress) return;
       Feedback.sheetOpen();
@@ -30,9 +35,13 @@ const ThinkingBlock = memo(
       <View style={styles.thinkingBox}>
         <View style={styles.thinkingHeader}>
           <Text style={styles.thinkingTitle}>Thinking...</Text>
-          <TouchableOpacity
+          <Pressable
             onPress={toggleExpanded}
-            style={styles.chevronButton}
+            style={({ pressed }) => [
+              styles.chevronButton,
+              pressed && pressedOpacity,
+            ]}
+            testID="thinking-toggle"
           >
             {inProgress ? (
               <RotateLeftIcon
@@ -49,7 +58,7 @@ const ThinkingBlock = memo(
                 style={styles.chevronIcon}
               />
             )}
-          </TouchableOpacity>
+          </Pressable>
         </View>
         {expanded && (
           <MarkdownComponent

@@ -6,21 +6,20 @@ import React, {
   useState,
 } from 'react';
 import { startPhantomChat } from '../../utils/startPhantomChat';
-import { router, useFocusEffect, useNavigation } from 'expo-router';
+import { useFocusEffect, useNavigation } from 'expo-router';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { configureReanimatedLogger } from 'react-native-reanimated';
 import NewChatHeaderButton from '../../components/NewChatHeaderButton';
 import { Model } from '../../database/modelRepository';
-import { importMessages } from '../../database/chatRepository';
 import { useSQLiteContext } from 'expo-sqlite';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
-import { View, Image, StyleSheet, Alert } from 'react-native';
+import { View, Image, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import PrimaryButton from '../../components/PrimaryButton';
 import TextButton from '../../components/TextButton';
 import { Theme } from '../../styles/colors';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { importChatRoom } from '../../database/exportImportRepository';
-import { useChatStore } from '../../store/chatStore';
+import { useImportChat } from '../../hooks/useImportChat';
 import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
@@ -29,6 +28,8 @@ import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
 import WhatsNewCard from '../../components/WhatsNewCard';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import { useModelSwitch } from '../../components/chat-screen/useModelSwitch';
+
+let coldStartRedirectPending = true;
 
 configureReanimatedLogger({
   strict: false,
@@ -44,38 +45,25 @@ export default function App() {
   const hasAutoRedirectedRef = useRef(false);
   const [redirectFailed, setRedirectFailed] = useState(false);
   const db = useSQLiteContext();
-  useDefaultHeader();
+  useDefaultHeader({ glass: true });
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerRight: () => <NewChatHeaderButton noOp />,
+      headerRight: () => <NewChatHeaderButton noOp glass />,
     });
   }, [navigation]);
-  const { styles, theme } = useThemedStyles(createStyles);
-  const { addChat } = useChatStore();
+  const headerHeight = useHeaderHeight();
+  const { styles, theme } = useThemedStyles(createStyles, headerHeight);
 
   const handleSetModel = async (model: Model, replace = false) => {
     await setLastUsedModelId(model.id);
     await startPhantomChat(db, replace ? 'replace' : 'push', model);
+    return true;
   };
 
   const { pickModel, handleSheetStateChange } = useModelSwitch(handleSetModel);
 
-  const handleImport = async () => {
-    const importedChat = await importChatRoom();
-    if (importedChat) {
-      try {
-        const newChatId = await addChat(importedChat.title, -1);
-        if (newChatId) {
-          await importMessages(db!, newChatId, importedChat.messages);
-          router.replace(`/chat/${newChatId}`);
-        }
-      } catch (error) {
-        console.error('Error importing chat:', error);
-        Alert.alert('Error', 'Failed to import chat. Please try again.');
-      }
-    }
-  };
+  const handleImport = useImportChat();
 
   useEffect(() => {
     loadSources();
@@ -88,7 +76,11 @@ export default function App() {
       hasAutoRedirectedRef.current = true;
       (async () => {
         try {
-          await startPhantomChat(db, 'replace');
+          const mode = coldStartRedirectPending
+            ? 'replace-immediately'
+            : 'replace';
+          coldStartRedirectPending = false;
+          await startPhantomChat(db, mode);
         } catch (error) {
           console.error(
             'Failed to open a chat for the downloaded model',
@@ -144,7 +136,7 @@ export default function App() {
   );
 }
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, headerHeight: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -155,7 +147,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'flex-start',
       alignItems: 'center',
       paddingHorizontal: 16,
-      paddingTop: 64,
+      paddingTop: headerHeight + 64,
       gap: 24,
     },
     icon: {

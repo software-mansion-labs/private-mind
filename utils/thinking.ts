@@ -18,6 +18,38 @@ const normalizeThinkMarkup = (text: string): string => {
   return `${THINK_OPEN}${text}`;
 };
 
+export const withTemplateThinkOpener = (text: string): string =>
+  text.startsWith(THINK_OPEN) ? text : `${THINK_OPEN}${text}`;
+
+export const hasUnclosedThink = (text: string): boolean =>
+  text.split(THINK_OPEN).length > text.split(THINK_CLOSE).length;
+
+export const dropStrayThinkClose = (
+  text: string,
+  openBefore = false
+): string => {
+  let out = '';
+  let cursor = 0;
+  let open = openBefore;
+  for (;;) {
+    const nextOpen = text.indexOf(THINK_OPEN, cursor);
+    const nextClose = text.indexOf(THINK_CLOSE, cursor);
+    if (nextClose === -1) return out + text.slice(cursor);
+    if (nextOpen !== -1 && nextOpen < nextClose) {
+      const afterOpen = nextOpen + THINK_OPEN.length;
+      out += text.slice(cursor, afterOpen);
+      cursor = afterOpen;
+      open = true;
+      continue;
+    }
+    out += open
+      ? text.slice(cursor, nextClose + THINK_CLOSE.length)
+      : text.slice(cursor, nextClose);
+    open = false;
+    cursor = nextClose + THINK_CLOSE.length;
+  }
+};
+
 export const stripThinkMarkers = (text: string): string =>
   text.split(THINK_OPEN).join('').split(THINK_CLOSE).join('');
 
@@ -80,6 +112,15 @@ export const unclosedThinkText = (text: string): string => {
   return source.indexOf(THINK_CLOSE, contentStart) === -1
     ? source.slice(contentStart)
     : '';
+};
+
+export const unclosedThinkAsAnswer = (text: string): string => {
+  const source = normalizeThinkMarkup(text);
+  const open = source.lastIndexOf(THINK_OPEN);
+  if (open === -1) return text;
+  const contentStart = open + THINK_OPEN.length;
+  if (source.indexOf(THINK_CLOSE, contentStart) !== -1) return text;
+  return `${source.slice(0, open)}${source.slice(contentStart).trimStart()}`;
 };
 
 export const mapOutsideThink = (

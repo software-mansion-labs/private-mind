@@ -10,7 +10,7 @@ import { getDrawerTopPadding } from '../../constants/drawer-layout';
 import {
   DrawerContentComponentProps,
   useDrawerStatus,
-} from '@react-navigation/drawer';
+} from 'expo-router/drawer';
 
 const CustomDrawer = ({ navigation }: DrawerContentComponentProps) => {
   const isFirstRender = useRef(true);
@@ -78,7 +78,6 @@ const CustomDrawer = ({ navigation }: DrawerContentComponentProps) => {
 
   const handleMenuActiveChange = useCallback((active: boolean) => {
     menuActiveRef.current = active;
-    if (!active) inputRef.current?.focus();
   }, []);
 
   return (

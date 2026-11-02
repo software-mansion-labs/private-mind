@@ -5,6 +5,7 @@ import {
   EMBEDDING_QUERY_PREFIX,
 } from '../constants/embedding-model';
 import { truncateToTokenBudget } from './textChunking';
+import { preferDownloadedCopy } from './downloadedCopy';
 
 interface LFMEmbeddingsParams {
   modelSource: ResourceSource;
@@ -35,8 +36,8 @@ export class LFMEmbeddings implements Embeddings {
   async load(): Promise<this> {
     if (!this.module) {
       this.module = await TextEmbeddingsModule.fromCustomModel(
-        this.modelSource,
-        this.tokenizerSource,
+        preferDownloadedCopy(this.modelSource),
+        preferDownloadedCopy(this.tokenizerSource),
         this.onDownloadProgress
       );
     }
